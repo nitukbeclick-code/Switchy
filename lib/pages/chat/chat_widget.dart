@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../flutter_flow/flutter_flow_theme.dart';
@@ -24,8 +23,11 @@ class _ChatWidgetState extends State<ChatWidget> {
   @override
   void initState() {
     super.initState();
+    final appState = FFAppState();
+    final name = appState.isLoggedIn ? appState.firstName : '';
+    final greeting = name.isNotEmpty ? 'שלום $name! ' : 'שלום! ';
     _messages = [
-      _Msg(text: 'שלום! אני דנה, הנציגה שלכם 😊\nאני כאן לעזור לכם בכל שאלה לגבי תהליך המעבר.\nאיך אפשר לעזור?', isUser: false, time: DateTime.now().subtract(const Duration(minutes: 3))),
+      _Msg(text: '${greeting}אני דנה, הנציגה שלכם 😊\nאני כאן לעזור בכל שאלה לגבי תהליך המעבר.\nאיך אפשר לעזור?', isUser: false, time: DateTime.now().subtract(const Duration(minutes: 3))),
       _Msg(text: 'הבקשה שלכם התקבלה ואנחנו בודקים זמינות בספק. תוך 24 שעות נחזור אליכם עם תאריך מעבר מוצע.', isUser: false, time: DateTime.now().subtract(const Duration(minutes: 1))),
     ];
   }
@@ -46,15 +48,27 @@ class _ChatWidgetState extends State<ChatWidget> {
     });
     _scrollToBottom();
 
-    await Future.delayed(const Duration(milliseconds: 1500));
+    await Future.delayed(Duration(milliseconds: 1200 + (text.length * 15).clamp(0, 1000)));
 
-    const replies = [
-      'תודה על השאלה! אני בודקת ומחזירה לכם תשובה בהקדם.',
-      'הבנתי. נדאג לזה בהקדם האפשרי. תוך שעה נחזור אליכם.',
-      'זו שאלה מצוינת. אני מעבירה אותה לצוות הטכני שלנו.',
-      'בוודאי! הסטטוס הנוכחי: הבקשה בטיפול, צפי השלמה 24-48 שעות.',
-    ];
-    final reply = replies[DateTime.now().second % replies.length];
+    final lower = text.toLowerCase();
+    final String reply;
+    if (lower.contains('סטטוס') || lower.contains('מצב') || lower.contains('איפה') || lower.contains('מה קורה')) {
+      reply = 'הסטטוס הנוכחי: הבקשה בטיפול ✅\nאנחנו בשלב אישור המסלול מול הספק.\nצפי השלמה: 24-48 שעות נוספות.';
+    } else if (lower.contains('מתי') || lower.contains('כמה זמן') || lower.contains('זמן')) {
+      reply = 'תהליך הניוד לוקח בדרך כלל 1-3 ימי עסקים לאחר האישור. 📅\nהמספר שלכם יישמר לאורך כל התהליך — לא תצטרכו לשנות כלום.';
+    } else if (lower.contains('ביטול') || lower.contains('לבטל') || lower.contains('לא רוצ')) {
+      reply = 'מבין. אפשר לבטל את הבקשה בכל שלב לפני השלמת הניוד ☎️\nנציג שלנו ייצור קשר לאישור. האם להעביר את הבקשה?';
+    } else if (lower.contains('מחיר') || lower.contains('עלות') || lower.contains('כסף') || lower.contains('תשלום')) {
+      reply = 'המחיר שסוכם איתכם נשאר קבוע 💰\nאין עמלות נסתרות ואין עלויות ניוד — הכל כולל.\nאם יש שינוי במחיר, ניידע אתכם מראש בהחלט.';
+    } else if (lower.contains('תודה') || lower.contains('תנקס') || lower.contains('מעולה') || lower.contains('כייף')) {
+      reply = 'בשמחה! 🙏 תמיד כאן לעזור.\nיש עוד שאלות? אפשר לכתוב בכל עת.';
+    } else if (lower.contains('שלום') || lower.contains('היי') || lower.contains('ערב טוב') || lower.contains('בוקר טוב')) {
+      reply = 'שלום! 😊 כיף לשמוע מכם.\nאיך אפשר לעזור היום?';
+    } else if (lower.contains('ניוד') || lower.contains('מספר') || lower.contains('לנייד')) {
+      reply = 'ניוד המספר שלכם יתבצע ביום המעבר 📱\nהמספר יישמר בדיוק כמו שהוא — ללא שינויים.\nבמהלך הניוד ייתכן הפסקה קצרה של עד שעה.';
+    } else {
+      reply = 'הבנתי. אני בודקת ומחזירה לכם תשובה בהקדם 🔍\nאם זה דחוף, אפשר גם לפנות לשירות הלקוחות שלנו ישירות.';
+    }
 
     if (mounted) {
       setState(() {
@@ -76,9 +90,8 @@ class _ChatWidgetState extends State<ChatWidget> {
   @override
   Widget build(BuildContext context) {
     final ffTheme = FlutterFlowTheme.of(context);
-    final appState = Provider.of<FFAppState>(context, listen: false);
 
-    final quickReplies = ['מה הסטטוס?', 'מתי יצרו קשר?', 'שאלה נוספת'];
+    final quickReplies = ['מה הסטטוס?', 'מתי הניוד?', 'שאלה על מחיר', 'תודה!'];
 
     return Scaffold(
       backgroundColor: ffTheme.background,
@@ -195,28 +208,45 @@ class _ChatWidgetState extends State<ChatWidget> {
     );
   }
 
+  String _timeLabel(DateTime t) {
+    final now = DateTime.now();
+    final diff = now.difference(t);
+    if (diff.inMinutes < 1) return 'עכשיו';
+    if (diff.inMinutes < 60) return 'לפני ${diff.inMinutes} דקות';
+    return '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+  }
+
   Widget _buildBubble(_Msg msg, FlutterFlowTheme ffTheme) {
     final isUser = msg.isUser;
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
-      child: Row(
-        mainAxisAlignment: isUser ? MainAxisAlignment.start : MainAxisAlignment.end,
+      child: Column(
+        crossAxisAlignment: isUser ? CrossAxisAlignment.start : CrossAxisAlignment.end,
         children: [
-          Container(
-            constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.72),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: isUser ? ffTheme.primary : Colors.white,
-              borderRadius: BorderRadius.only(
-                topLeft: const Radius.circular(18),
-                topRight: const Radius.circular(18),
-                bottomLeft: isUser ? const Radius.circular(18) : const Radius.circular(4),
-                bottomRight: isUser ? const Radius.circular(4) : const Radius.circular(18),
+          Row(
+            mainAxisAlignment: isUser ? MainAxisAlignment.start : MainAxisAlignment.end,
+            children: [
+              Container(
+                constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.72),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: isUser ? ffTheme.primary : Colors.white,
+                  borderRadius: BorderRadius.only(
+                    topLeft: const Radius.circular(18),
+                    topRight: const Radius.circular(18),
+                    bottomLeft: isUser ? const Radius.circular(18) : const Radius.circular(4),
+                    bottomRight: isUser ? const Radius.circular(4) : const Radius.circular(18),
+                  ),
+                  border: isUser ? null : Border.all(color: ffTheme.alternate),
+                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 6)],
+                ),
+                child: Text(msg.text, style: ffTheme.bodyMedium.override(color: isUser ? Colors.white : ffTheme.primaryText, lineHeight: 1.5)),
               ),
-              border: isUser ? null : Border.all(color: ffTheme.alternate),
-              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 6)],
-            ),
-            child: Text(msg.text, style: ffTheme.bodyMedium.override(color: isUser ? Colors.white : ffTheme.primaryText, lineHeight: 1.5)),
+            ],
+          ),
+          Padding(
+            padding: const EdgeInsets.only(top: 3, right: 4, left: 4),
+            child: Text(_timeLabel(msg.time), style: ffTheme.labelSmall.override(color: ffTheme.secondaryText.withOpacity(0.6))),
           ),
         ],
       ),

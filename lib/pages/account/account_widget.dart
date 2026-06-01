@@ -141,12 +141,31 @@ class AccountWidget extends StatelessWidget {
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                 decoration: BoxDecoration(
-                                  color: ffTheme.accent1,
+                                  color: appState.trackerStep >= 3 ? ffTheme.accent1 : ffTheme.accent1,
                                   borderRadius: BorderRadius.circular(8),
                                 ),
-                                child: Text('בתהליך', style: GoogleFonts.rubik(fontSize: 11, fontWeight: FontWeight.w700, color: ffTheme.primary)),
+                                child: Text(
+                                  appState.trackerStep >= 4 ? 'הושלם ✓' : 'בתהליך',
+                                  style: GoogleFonts.rubik(fontSize: 11, fontWeight: FontWeight.w700, color: appState.trackerStep >= 4 ? ffTheme.success : ffTheme.primary),
+                                ),
                               ),
                             ],
+                          ),
+                          const SizedBox(height: 12),
+                          // Mini tracker progress
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(6),
+                            child: LinearProgressIndicator(
+                              value: appState.trackerStep / 4,
+                              backgroundColor: ffTheme.alternate,
+                              valueColor: AlwaysStoppedAnimation(appState.trackerStep >= 4 ? ffTheme.success : ffTheme.primary),
+                              minHeight: 6,
+                            ),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            ['ממתין לאישור', 'אישור מסלול', 'ניוד בעיצומו', 'כמעט שם! 🎉', 'הושלם ✓'][appState.trackerStep.clamp(0, 4)],
+                            style: ffTheme.labelSmall.override(color: ffTheme.primary),
                           ),
                           const SizedBox(height: 10),
                           OutlinedButton(
@@ -156,7 +175,7 @@ class AccountWidget extends StatelessWidget {
                               side: BorderSide(color: ffTheme.primary),
                               minimumSize: const Size(double.infinity, 40),
                             ),
-                            child: const Text('מעקב'),
+                            child: const Text('מעקב מלא'),
                           ),
                         ],
                       ),
@@ -296,6 +315,55 @@ class AccountWidget extends StatelessWidget {
                         ],
                       ),
                     ).animate().fadeIn(delay: 250.ms),
+                  ],
+
+                  // Recently viewed
+                  if (appState.recentlyViewed.isNotEmpty) ...[
+                    const SizedBox(height: 20),
+                    Row(
+                      children: [
+                        Text('צפיות אחרונות', style: ffTheme.titleLarge),
+                        const Spacer(),
+                        GestureDetector(
+                          onTap: () => context.goNamed('Results'),
+                          child: Text('כל המסלולים', style: ffTheme.labelSmall.override(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      height: 88,
+                      child: ListView(
+                        scrollDirection: Axis.horizontal,
+                        children: appState.recentlyViewed.map((id) {
+                          final p = planById(id);
+                          if (p == null) return const SizedBox();
+                          return GestureDetector(
+                            onTap: () => context.pushNamed('PlanDetail', pathParameters: {'planId': id}),
+                            child: Container(
+                              width: 140,
+                              margin: const EdgeInsets.only(left: 10),
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(color: ffTheme.alternate),
+                                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 6)],
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(p.provider, style: ffTheme.labelLarge, overflow: TextOverflow.ellipsis),
+                                  Text(p.plan, style: ffTheme.labelSmall.override(color: ffTheme.secondaryText), maxLines: 1, overflow: TextOverflow.ellipsis),
+                                  Text('₪${p.price}/חודש', style: ffTheme.titleSmall.override(color: ffTheme.primary)),
+                                ],
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
                   ],
 
                   const SizedBox(height: 20),

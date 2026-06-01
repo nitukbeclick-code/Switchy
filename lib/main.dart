@@ -8,8 +8,8 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
-    statusBarBrightness: Brightness.light,
-    statusBarIconBrightness: Brightness.dark,
+    statusBarBrightness: Brightness.dark,
+    statusBarIconBrightness: Brightness.light,
   ));
   await FFAppState().initializePersistedState();
   runApp(ChangeNotifierProvider.value(value: FFAppState(), child: const ChosechApp()));

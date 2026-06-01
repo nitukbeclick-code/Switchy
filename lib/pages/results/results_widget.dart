@@ -7,7 +7,6 @@ import '../../app_state.dart';
 import '../../models.dart';
 import '../../data.dart';
 import '../../components/plan_card/plan_card_widget.dart';
-import '../../components/logo_widget/logo_widget.dart';
 
 class ResultsWidget extends StatefulWidget {
   const ResultsWidget({super.key});

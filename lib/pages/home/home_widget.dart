@@ -70,7 +70,11 @@ class _HomeWidgetState extends State<HomeWidget> {
               // ── 7. Tools quick-action row ──────────────────────────────────
               SliverToBoxAdapter(child: _buildToolsRow(context, ffTheme)),
 
-              // ── 8. Brand trust strip ───────────────────────────────────────
+              // ── 8. Watchlist quick view ────────────────────────────────────
+              if (appState.watchedPlans.isNotEmpty)
+                SliverToBoxAdapter(child: _buildWatchlist(context, ffTheme, appState)),
+
+              // ── 9. Brand trust strip ───────────────────────────────────────
               SliverToBoxAdapter(child: _buildBrandStrip(context, ffTheme)),
 
               // ── 10. Bottom padding for nav + FAB ──────────────────────────
@@ -375,7 +379,7 @@ class _HomeWidgetState extends State<HomeWidget> {
           ),
           const SizedBox(height: 20),
           GestureDetector(
-            onTap: () => context.goNamed('Quiz'),
+            onTap: () => (totalSave > 0 || appState.quizCompleted) ? context.goNamed('Results') : context.goNamed('Quiz'),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               decoration: BoxDecoration(
@@ -383,7 +387,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
-                totalSave > 0 ? 'חפש חבילות ←' : 'בדוק כמה תחסוך ←',
+                (totalSave > 0 || appState.quizCompleted) ? 'חפש חבילות ←' : 'בדוק כמה תחסוך ←',
                 style: ffTheme.titleSmall.override(color: ffTheme.primary),
               ),
             ),
@@ -674,6 +678,72 @@ class _HomeWidgetState extends State<HomeWidget> {
                     ),
                   ),
                 );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWatchlist(BuildContext context, FlutterFlowTheme ffTheme, FFAppState appState) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.notifications_active_rounded, color: ffTheme.warning, size: 18),
+              const SizedBox(width: 6),
+              Text('מסלולים במעקב', style: ffTheme.titleLarge),
+              const Spacer(),
+              TextButton(
+                onPressed: () => context.pushNamed('Account'),
+                child: Text('הכל', style: ffTheme.labelSmall.override(color: ffTheme.primary)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            height: 76,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: appState.watchedPlans.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 10),
+              itemBuilder: (_, i) {
+                final plan = planById(appState.watchedPlans[i]);
+                if (plan == null) return const SizedBox();
+                return GestureDetector(
+                  onTap: () => context.pushNamed('PlanDetail', pathParameters: {'planId': plan.id}),
+                  child: Container(
+                    width: 140,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: ffTheme.alternate),
+                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 6)],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(plan.provider, style: ffTheme.titleSmall.override(fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
+                        const SizedBox(height: 3),
+                        Text('₪${plan.price}/חודש', style: ffTheme.labelSmall.override(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+                        const SizedBox(height: 2),
+                        Row(
+                          children: [
+                            Container(width: 6, height: 6, decoration: BoxDecoration(color: ffTheme.success, shape: BoxShape.circle)),
+                            const SizedBox(width: 4),
+                            Text('עוקב', style: ffTheme.labelSmall.override(color: ffTheme.success)),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ).animate(delay: (i * 50).ms).fadeIn(duration: 250.ms);
               },
             ),
           ),

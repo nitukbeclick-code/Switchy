@@ -15,6 +15,29 @@ class FFAppState extends ChangeNotifier {
     _userPhone = p.getString('userPhone') ?? '';
     _totalSavings = p.getInt('totalSavings') ?? 0;
     _selectedCat = p.getString('selectedCat') ?? 'cellular';
+    // Bills
+    _currentBills['cellular'] = p.getInt('bill_cellular') ?? 119;
+    _currentBills['internet'] = p.getInt('bill_internet') ?? 140;
+    _currentBills['tv'] = p.getInt('bill_tv') ?? 130;
+    _currentBills['triple'] = p.getInt('bill_triple') ?? 260;
+    _currentBills['abroad'] = p.getInt('bill_abroad') ?? 0;
+    // Quiz
+    _quizCompleted = p.getBool('quizCompleted') ?? false;
+    _quizBudget = p.getInt('quizBudget') ?? 90;
+    _quizPriority = p.getString('quizPriority') ?? 'price';
+    _quizLines = p.getInt('quizLines') ?? 1;
+    // Lead & tracker
+    _leadPlanId = p.getString('leadPlanId');
+    _leadProvider = p.getString('leadProvider');
+    _leadName = p.getString('leadName');
+    _leadPhone = p.getString('leadPhone');
+    _trackerStep = p.getInt('trackerStep') ?? 0;
+    // Watched plans
+    final watched = p.getStringList('watchedPlans') ?? [];
+    _watchedPlans.addAll(watched);
+    // Recently viewed
+    final recent = p.getStringList('recentlyViewed') ?? [];
+    _recentlyViewed.addAll(recent);
     notifyListeners();
   }
 
@@ -25,6 +48,22 @@ class FFAppState extends ChangeNotifier {
     await p.setString('userPhone', _userPhone);
     await p.setInt('totalSavings', _totalSavings);
     await p.setString('selectedCat', _selectedCat);
+    // Bills
+    for (final e in _currentBills.entries) { await p.setInt('bill_${e.key}', e.value); }
+    // Quiz
+    await p.setBool('quizCompleted', _quizCompleted);
+    await p.setInt('quizBudget', _quizBudget);
+    await p.setString('quizPriority', _quizPriority);
+    await p.setInt('quizLines', _quizLines);
+    // Lead & tracker
+    if (_leadPlanId != null) await p.setString('leadPlanId', _leadPlanId!);
+    if (_leadProvider != null) await p.setString('leadProvider', _leadProvider!);
+    if (_leadName != null) await p.setString('leadName', _leadName!);
+    if (_leadPhone != null) await p.setString('leadPhone', _leadPhone!);
+    await p.setInt('trackerStep', _trackerStep);
+    // Watched & recently viewed
+    await p.setStringList('watchedPlans', _watchedPlans.toList());
+    await p.setStringList('recentlyViewed', _recentlyViewed);
   }
 
   void update(VoidCallback cb) { cb(); notifyListeners(); }
@@ -54,7 +93,7 @@ class FFAppState extends ChangeNotifier {
   final Map<String, int> _currentBills = {'cellular': 119, 'internet': 140, 'tv': 130, 'triple': 260, 'abroad': 0};
   Map<String, int> get currentBills => Map.unmodifiable(_currentBills);
   int currentBill(String cat) => _currentBills[cat] ?? 0;
-  void setCurrentBill(String cat, int v) { _currentBills[cat] = v.clamp(0, 2000); notifyListeners(); }
+  void setCurrentBill(String cat, int v) { _currentBills[cat] = v.clamp(0, 2000); notifyListeners(); _persist(); }
 
   // Quiz
   int _quizLines = 1; String _quizPriority = 'price'; int _quizBudget = 90; bool _quizCompleted = false;
@@ -62,10 +101,10 @@ class FFAppState extends ChangeNotifier {
   String get quizPriority => _quizPriority;
   int get quizBudget => _quizBudget;
   bool get quizCompleted => _quizCompleted;
-  void setQuizLines(int v) { _quizLines = v; notifyListeners(); }
-  void setQuizPriority(String v) { _quizPriority = v; notifyListeners(); }
-  void setQuizBudget(int v) { _quizBudget = v; notifyListeners(); }
-  void setQuizCompleted(bool v) { _quizCompleted = v; notifyListeners(); }
+  void setQuizLines(int v) { _quizLines = v; notifyListeners(); _persist(); }
+  void setQuizPriority(String v) { _quizPriority = v; notifyListeners(); _persist(); }
+  void setQuizBudget(int v) { _quizBudget = v; notifyListeners(); _persist(); }
+  void setQuizCompleted(bool v) { _quizCompleted = v; notifyListeners(); _persist(); }
 
   // Auth
   bool _isLoggedIn = false; String _userName = ''; String _userPhone = '';
@@ -90,7 +129,7 @@ class FFAppState extends ChangeNotifier {
   // Tracker
   int _trackerStep = 0;
   int get trackerStep => _trackerStep;
-  void advanceTracker() { if (_trackerStep < 3) { _trackerStep++; notifyListeners(); } }
+  void advanceTracker() { if (_trackerStep < 3) { _trackerStep++; notifyListeners(); _persist(); } }
 
   // Savings
   int _totalSavings = 0;
@@ -115,6 +154,7 @@ class FFAppState extends ChangeNotifier {
     if (_watchedPlans.contains(planId)) _watchedPlans.remove(planId);
     else _watchedPlans.add(planId);
     notifyListeners();
+    _persist();
   }
 
   // Recently viewed plans
@@ -125,5 +165,6 @@ class FFAppState extends ChangeNotifier {
     _recentlyViewed.insert(0, planId);
     if (_recentlyViewed.length > 6) _recentlyViewed.removeLast();
     notifyListeners();
+    _persist();
   }
 }

@@ -68,13 +68,82 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                     Container(width: 1, height: 40, color: ffTheme.alternate, margin: const EdgeInsets.symmetric(horizontal: 24)),
                     _Stat(value: appState.leadPlanId != null ? '1' : '0', label: 'מעברים', ffTheme: ffTheme),
                     Container(width: 1, height: 40, color: ffTheme.alternate, margin: const EdgeInsets.symmetric(horizontal: 24)),
-                    _Stat(value: '0', label: 'ביקורות', ffTheme: ffTheme),
+                    _Stat(value: '${appState.watchedPlans.length}', label: 'במעקב', ffTheme: ffTheme),
                   ],
                 ),
               ],
             ).animate().fadeIn(duration: 400.ms),
 
             const SizedBox(height: 28),
+
+            // Quiz summary or CTA
+            if (appState.quizCompleted) ...[
+              _SectionHeader(title: 'העדפות השאלון', ffTheme: ffTheme),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: ffTheme.alternate),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 6,
+                      children: [
+                        _QuizChip(text: _catLabel(appState.selectedCat), ffTheme: ffTheme),
+                        _QuizChip(text: 'תקציב ₪${appState.quizBudget}', ffTheme: ffTheme),
+                        _QuizChip(text: _priorityLabel(appState.quizPriority), ffTheme: ffTheme),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    GestureDetector(
+                      onTap: () => context.pushNamed('Quiz'),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          Text('עדכן שאלון', style: ffTheme.labelSmall.override(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+                          const SizedBox(width: 4),
+                          Icon(Icons.refresh_rounded, size: 14, color: ffTheme.primary),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+            ] else ...[
+              _SectionHeader(title: 'שאלון חיסכון', ffTheme: ffTheme),
+              GestureDetector(
+                onTap: () => context.pushNamed('Quiz'),
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(colors: [ffTheme.primary, ffTheme.tertiary]),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Row(
+                    children: [
+                      const Text('🎯', style: TextStyle(fontSize: 24)),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('גלה כמה תחסוך', style: ffTheme.titleSmall.override(color: Colors.white)),
+                            Text('ענה על 4 שאלות קצרות', style: ffTheme.bodySmall.override(color: Colors.white70)),
+                          ],
+                        ),
+                      ),
+                      Icon(Icons.arrow_back_ios_rounded, color: Colors.white70, size: 16),
+                    ],
+                  ),
+                ),
+              ).animate().fadeIn(delay: 200.ms),
+              const SizedBox(height: 20),
+            ],
 
             // Notifications section
             _SectionHeader(title: 'התראות', ffTheme: ffTheme),
@@ -172,6 +241,35 @@ class _ProfileWidgetState extends State<ProfileWidget> {
           ],
         ),
       ),
+    );
+  }
+}
+
+String _catLabel(String cat) => const {
+  'cellular': '📱 סלולר', 'internet': '🌐 אינטרנט',
+  'tv': '📺 טלוויזיה', 'triple': '🏠 משולב', 'abroad': '✈️ חו"ל',
+}[cat] ?? cat;
+
+String _priorityLabel(String p) => const {
+  'price': '💰 מחיר', 'speed': '⚡ מהירות',
+  'abroad': '✈️ חו"ל', 'nocommit': '🔓 ללא התחייבות',
+}[p] ?? p;
+
+class _QuizChip extends StatelessWidget {
+  const _QuizChip({required this.text, required this.ffTheme});
+  final String text;
+  final FlutterFlowTheme ffTheme;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: ffTheme.accent1,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: ffTheme.primary.withOpacity(0.2)),
+      ),
+      child: Text(text, style: ffTheme.labelSmall.override(color: ffTheme.primary, fontWeight: FontWeight.w600)),
     );
   }
 }

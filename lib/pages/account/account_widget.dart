@@ -218,6 +218,88 @@ class AccountWidget extends StatelessWidget {
                     const SizedBox(height: 10),
                   ],
 
+                  // Quiz CTA or summary
+                  if (!appState.quizCompleted) ...[
+                    const SizedBox(height: 20),
+                    GestureDetector(
+                      onTap: () => context.pushNamed('Quiz'),
+                      child: Container(
+                        padding: const EdgeInsets.all(18),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [const Color(0xFF0E3A26), ffTheme.primary],
+                            begin: Alignment.topRight,
+                            end: Alignment.bottomLeft,
+                          ),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 48,
+                              height: 48,
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              child: const Center(child: Text('🎯', style: TextStyle(fontSize: 24))),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('גלה כמה תוכל לחסוך!',
+                                      style: ffTheme.titleSmall.override(color: Colors.white)),
+                                  const SizedBox(height: 2),
+                                  Text('שאלון קצר — תוצאות מותאמות אישית',
+                                      style: ffTheme.bodySmall.override(color: Colors.white70)),
+                                ],
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: ffTheme.secondary,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Text('התחל ←',
+                                  style: ffTheme.labelSmall.override(
+                                      color: const Color(0xFF0E3A26),
+                                      fontWeight: FontWeight.w700)),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ).animate().fadeIn(delay: 250.ms),
+                  ] else ...[
+                    const SizedBox(height: 20),
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: ffTheme.accent1,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: ffTheme.primary.withOpacity(0.2)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Text('🎯', style: TextStyle(fontSize: 20)),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text('תקציב השאלון: ₪${appState.quizBudget}/חודש',
+                                style: ffTheme.bodyMedium.override(color: ffTheme.primary)),
+                          ),
+                          GestureDetector(
+                            onTap: () => context.pushNamed('Results'),
+                            child: Text('לתוצאות', style: ffTheme.labelSmall.override(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+                          ),
+                        ],
+                      ),
+                    ).animate().fadeIn(delay: 250.ms),
+                  ],
+
+                  const SizedBox(height: 20),
+
                   // Quick actions
                   Text('פעולות מהירות', style: ffTheme.titleLarge),
                   const SizedBox(height: 12),

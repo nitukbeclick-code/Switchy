@@ -45,7 +45,7 @@ class _OnboardingWidgetState extends State<OnboardingWidget> {
     if (_page < _pages.length - 1) {
       _controller.nextPage(duration: const Duration(milliseconds: 350), curve: Curves.easeInOut);
     } else {
-      context.goNamed('Home');
+      context.goNamed('Quiz');
     }
   }
 

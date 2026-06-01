@@ -61,7 +61,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
       sort: appState.sortMode,
       filters: appState.activeFilters,
       query: appState.searchQuery,
-      budget: 9999,
+      budget: appState.quizCompleted ? appState.quizBudget : 9999,
       currentBill: bill,
     );
 
@@ -330,6 +330,38 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                   ),
                 ),
               ),
+
+              // Quiz context banner
+              if (appState.quizCompleted)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: ffTheme.accent1,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: ffTheme.primary.withOpacity(0.25)),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.filter_alt_rounded, size: 18, color: ffTheme.primary),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              'מסוננים לפי השאלון — תקציב ₪${appState.quizBudget}',
+                              style: ffTheme.labelMedium.override(color: ffTheme.primary),
+                            ),
+                          ),
+                          GestureDetector(
+                            onTap: () { appState.setQuizCompleted(false); },
+                            child: Icon(Icons.close_rounded, size: 18, color: ffTheme.secondaryText),
+                          ),
+                        ],
+                      ),
+                    ).animate().fadeIn(duration: 250.ms),
+                  ),
+                ),
 
               // AI banner
               if (topPlan != null && topSave > 0)

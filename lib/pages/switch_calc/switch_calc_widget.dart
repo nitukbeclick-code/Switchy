@@ -3,6 +3,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../flutter_flow/flutter_flow_theme.dart';
 import '../../flutter_flow/flutter_flow_util.dart';
+import '../../app_state.dart';
+import '../../data.dart';
 
 class SwitchCalcWidget extends StatefulWidget {
   const SwitchCalcWidget({super.key});
@@ -12,8 +14,20 @@ class SwitchCalcWidget extends StatefulWidget {
 }
 
 class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
-  double _current = 120;
-  double _newPlan = 49;
+  late double _current;
+  late double _newPlan;
+
+  @override
+  void initState() {
+    super.initState();
+    final appState = FFAppState();
+    final cat = appState.selectedCat;
+    _current = appState.currentBill(cat).toDouble().clamp(20, 500);
+    final bestPlan = plansByCat(cat).isEmpty ? null : (plansByCat(cat)..sort((a, b) => a.price.compareTo(b.price))).first;
+    _newPlan = bestPlan != null ? bestPlan.price.toDouble().clamp(20, 300) : 49;
+  }
+
+
   double _exitFee = 0;
 
   int get _monthlySaving => (_current - _newPlan).round().clamp(0, 9999);

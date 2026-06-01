@@ -9,9 +9,14 @@ import '../../app_state.dart';
 import '../../data.dart';
 import '../../models.dart';
 
-class TrackerWidget extends StatelessWidget {
+class TrackerWidget extends StatefulWidget {
   const TrackerWidget({super.key});
 
+  @override
+  State<TrackerWidget> createState() => _TrackerWidgetState();
+}
+
+class _TrackerWidgetState extends State<TrackerWidget> {
   @override
   Widget build(BuildContext context) {
     final ffTheme = FlutterFlowTheme.of(context);
@@ -64,7 +69,58 @@ class TrackerWidget extends StatelessWidget {
               ),
             ).animate().fadeIn(duration: 400.ms),
 
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
+
+            // Savings counter card
+            if (plan != null) ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: ffTheme.alternate),
+                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10)],
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('החיסכון הצפוי שלך', style: ffTheme.labelMedium.override(color: ffTheme.secondaryText)),
+                    const SizedBox(height: 8),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          '₪${planSaveYear(plan, appState.currentBill(plan.cat))}',
+                          style: ffTheme.displaySmall.override(color: ffTheme.primary, fontWeight: FontWeight.w800),
+                        ).animate(onPlay: (c) => c.repeat()).shimmer(duration: 2000.ms, color: ffTheme.secondary.withOpacity(0.4)),
+                        const SizedBox(width: 6),
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 4),
+                          child: Text('לשנה', style: ffTheme.bodyMedium.override(color: ffTheme.secondaryText)),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: LinearProgressIndicator(
+                        value: step / 4,
+                        backgroundColor: ffTheme.alternate,
+                        valueColor: AlwaysStoppedAnimation(ffTheme.primary),
+                        minHeight: 8,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      step == 0 ? 'ממתין לאישור' : step == 1 ? 'בתהליך אישור (${ (step / 4 * 100).round()}%)' : step >= 3 ? 'כמעט שם! 🎉' : 'בעיצומו (${(step / 4 * 100).round()}%)',
+                      style: ffTheme.labelSmall.override(color: ffTheme.primary),
+                    ),
+                  ],
+                ),
+              ).animate().fadeIn(delay: 100.ms),
+              const SizedBox(height: 20),
+            ],
 
             // Timeline
             Text('שלבי המעבר', style: ffTheme.titleLarge),

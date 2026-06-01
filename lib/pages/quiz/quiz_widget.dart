@@ -127,6 +127,48 @@ class _QuizWidgetState extends State<QuizWidget> {
           ),
         );
       case 1:
+        if (_cat == 'internet') {
+          return _StepCard(
+            step: 2,
+            title: 'איזו מהירות אינטרנט?',
+            subtitle: 'בחרו מה מתאים לשימוש שלכם',
+            ffTheme: ffTheme,
+            child: Column(
+              children: [
+                ('speed_basic', 'מהיר — עד 200Mb', '🏃'),
+                ('speed_fast', 'מהיר מאוד — 500Mb+', '⚡'),
+                ('speed_ultra', 'גיגה — 1000Mb', '🚀'),
+              ].map((p) => _RadioTile(
+                emoji: p.$3,
+                label: p.$2,
+                selected: _priority == p.$1,
+                onTap: () => setState(() => _priority = p.$1),
+                ffTheme: ffTheme,
+              )).toList(),
+            ),
+          );
+        }
+        if (_cat == 'tv') {
+          return _StepCard(
+            step: 2,
+            title: 'מה הכי חשוב לכם בטלוויזיה?',
+            subtitle: 'בחרו קריטריון עיקרי',
+            ffTheme: ffTheme,
+            child: Column(
+              children: [
+                ('channels', 'מגוון ערוצים רחב', '📡'),
+                ('sport', 'ספורט חי וסדרות', '⚽'),
+                ('price', 'מחיר נמוך', '💰'),
+              ].map((p) => _RadioTile(
+                emoji: p.$3,
+                label: p.$2,
+                selected: _priority == p.$1,
+                onTap: () => setState(() => _priority = p.$1),
+                ffTheme: ffTheme,
+              )).toList(),
+            ),
+          );
+        }
         return _StepCard(
           step: 2,
           title: 'כמה קווים?',
@@ -215,6 +257,7 @@ class _QuizWidgetState extends State<QuizWidget> {
       appState.setQuizLines(_lines);
       appState.setQuizPriority(_priority);
       appState.setQuizBudget(_budget.round());
+      appState.setQuizCompleted(true);
       context.goNamed('Results');
     }
   }

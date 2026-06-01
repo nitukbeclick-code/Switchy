@@ -57,13 +57,15 @@ class FFAppState extends ChangeNotifier {
   void setCurrentBill(String cat, int v) { _currentBills[cat] = v.clamp(0, 2000); notifyListeners(); }
 
   // Quiz
-  int _quizLines = 1; String _quizPriority = 'price'; int _quizBudget = 90;
+  int _quizLines = 1; String _quizPriority = 'price'; int _quizBudget = 90; bool _quizCompleted = false;
   int get quizLines => _quizLines;
   String get quizPriority => _quizPriority;
   int get quizBudget => _quizBudget;
+  bool get quizCompleted => _quizCompleted;
   void setQuizLines(int v) { _quizLines = v; notifyListeners(); }
   void setQuizPriority(String v) { _quizPriority = v; notifyListeners(); }
   void setQuizBudget(int v) { _quizBudget = v; notifyListeners(); }
+  void setQuizCompleted(bool v) { _quizCompleted = v; notifyListeners(); }
 
   // Auth
   bool _isLoggedIn = false; String _userName = ''; String _userPhone = '';

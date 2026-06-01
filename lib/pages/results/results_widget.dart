@@ -254,9 +254,26 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                                 style: ffTheme.bodyMedium
                                     .override(color: ffTheme.secondaryText)),
                             const SizedBox(width: 8),
-                            Text('₪$bill',
-                                style: ffTheme.titleMedium
-                                    .override(color: ffTheme.primary)),
+                            GestureDetector(
+                              onTap: () => _showBillEditor(context, appState, cat, bill, ffTheme),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: ffTheme.accent1,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text('₪$bill',
+                                        style: ffTheme.titleMedium
+                                            .override(color: ffTheme.primary)),
+                                    const SizedBox(width: 4),
+                                    Icon(Icons.edit_rounded, size: 12, color: ffTheme.primary),
+                                  ],
+                                ),
+                              ),
+                            ),
                             const Spacer(),
                             _StepButton(
                               icon: Icons.remove,
@@ -622,6 +639,59 @@ class _ResultsWidgetState extends State<ResultsWidget> {
             ),
           );
         }).toList(),
+      ),
+    );
+  }
+
+  void _showBillEditor(BuildContext context, FFAppState appState, String cat, int currentBill, FlutterFlowTheme ffTheme) {
+    final ctrl = TextEditingController(text: currentBill > 0 ? '$currentBill' : '');
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.fromLTRB(24, 20, 24, MediaQuery.of(ctx).viewInsets.bottom + 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('עדכן חשבון חודשי', style: ffTheme.titleLarge),
+            const SizedBox(height: 6),
+            Text('הכניסו את הסכום שאתם משלמים כרגע', style: ffTheme.bodySmall.override(color: ffTheme.secondaryText)),
+            const SizedBox(height: 16),
+            TextField(
+              controller: ctrl,
+              keyboardType: TextInputType.number,
+              autofocus: true,
+              textDirection: TextDirection.ltr,
+              style: ffTheme.displaySmall.override(color: ffTheme.primary),
+              decoration: InputDecoration(
+                prefixText: '₪',
+                prefixStyle: ffTheme.displaySmall.override(color: ffTheme.primary),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.primary, width: 2)),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.primary, width: 2)),
+                filled: true, fillColor: ffTheme.accent1,
+              ),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  final v = int.tryParse(ctrl.text);
+                  if (v != null && v > 0) appState.setCurrentBill(cat, v);
+                  Navigator.pop(ctx);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: ffTheme.primary,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+                child: Text('עדכן', style: ffTheme.titleSmall.override(color: Colors.white)),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

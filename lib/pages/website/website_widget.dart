@@ -238,11 +238,45 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
             ).animate().fadeIn(delay: 400.ms),
           ),
 
+          // Testimonials
+          SliverToBoxAdapter(
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(20, 28, 20, 28),
+              color: Colors.white,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text('מה אומרים הלקוחות שלנו', style: ffTheme.headlineMedium),
+                      const Spacer(),
+                      Row(
+                        children: List.generate(5, (_) => Icon(Icons.star_rounded, size: 14, color: ffTheme.warning)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: const [
+                        _Testimonial(name: 'מאיה כהן', city: 'תל אביב', saving: 960, provider: 'גולן', text: 'חסכתי ₪80 לחודש בסלולר. הכל היה פשוט, ניוד המספר היה חלק לגמרי. ממליצה בחום!'),
+                        _Testimonial(name: 'דן שפירא', city: 'חיפה', saving: 1200, provider: 'סלקום', text: 'מצאתי אינטרנט גיגה ב-₪99 ללא התחייבות. 3 שנים שמשלמים יותר, היום הפסקנו.'),
+                        _Testimonial(name: 'נועה גרין', city: 'ירושלים', saving: 1440, provider: 'פרטנר', text: 'עברנו לחבילה משולבת עם Netflix. חוסכים ₪120 לחודש על אינטרנט + TV.'),
+                        _Testimonial(name: 'יוסי לוי', city: 'ראשל"צ', saving: 720, provider: 'הוט', text: 'שירות מהיר. הנציג עשה הכל בשבילי, לא הייתי צריך לעשות כלום.'),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ).animate().fadeIn(delay: 350.ms),
+          ),
+
           // Provider strip
           SliverToBoxAdapter(
             child: Container(
               padding: const EdgeInsets.all(20),
-              color: Colors.white,
+              color: ffTheme.background,
               child: Column(
                 children: [
                   Text('כל הספקים', style: ffTheme.titleMedium.override(color: ffTheme.secondaryText)),
@@ -256,6 +290,27 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
                 ],
               ),
             ),
+          ),
+
+          // FAQ section
+          SliverToBoxAdapter(
+            child: Container(
+              padding: const EdgeInsets.all(20),
+              color: Colors.white,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('שאלות נפוצות', style: ffTheme.headlineMedium),
+                  const SizedBox(height: 12),
+                  ...const [
+                    _FAQ(q: 'האם השירות חינמי?', a: 'כן! חוסך הוא שירות חינמי לחלוטין. אנחנו מרוויחים עמלה מהספקים, לא ממך.'),
+                    _FAQ(q: 'מה קורה לאחר שאני בוחר מסלול?', a: 'נציג חוסך יצור קשר תוך שעה, יסביר את התהליך ויסייע בכל שלב עד הניוד.'),
+                    _FAQ(q: 'האם אפשר לנייד את המספר שלי?', a: 'כן! ניוד מספר בישראל הוא חינמי וזכות שלך. התהליך לוקח עד 3 ימי עסקים.'),
+                    _FAQ(q: 'מה אם לא מרוצה מהספק החדש?', a: 'ניתן לנייד שוב בכל עת. לחבילות ללא התחייבות – ניתן לסגת מיד.'),
+                  ],
+                ],
+              ),
+            ).animate().fadeIn(delay: 400.ms),
           ),
 
           // CTA band
@@ -300,7 +355,7 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
                     ],
                   ),
                   const SizedBox(height: 8),
-                  Text('© 2025 חוסך. כל הזכויות שמורות.', style: GoogleFonts.assistant(fontSize: 11, color: Colors.white38)),
+                  Text('© 2026 חוסך. כל הזכויות שמורות.', style: GoogleFonts.assistant(fontSize: 11, color: Colors.white38)),
                   const SizedBox(height: 4),
                   Text('לא ספק תקשורת. לא מחויבים לאף חברה. רק בצד שלכם.', style: GoogleFonts.assistant(fontSize: 11, color: Colors.white38), textAlign: TextAlign.center),
                 ],
@@ -334,6 +389,108 @@ class _StatDivider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(width: 1, height: 32, color: const Color(0xFFE5E0D5));
+}
+
+class _Testimonial extends StatelessWidget {
+  const _Testimonial({required this.name, required this.city, required this.saving, required this.provider, required this.text});
+  final String name, city, provider, text;
+  final int saving;
+
+  @override
+  Widget build(BuildContext context) {
+    final ffTheme = FlutterFlowTheme.of(context);
+    return Container(
+      width: 260,
+      margin: const EdgeInsets.only(left: 12, bottom: 4),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: ffTheme.background,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: ffTheme.alternate),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(color: ffTheme.accent1, shape: BoxShape.circle),
+                child: Center(child: Text(name[0], style: GoogleFonts.rubik(fontSize: 16, fontWeight: FontWeight.w700, color: ffTheme.primary))),
+              ),
+              const SizedBox(width: 10),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(name, style: ffTheme.labelLarge),
+                  Text(city, style: ffTheme.labelSmall),
+                ],
+              ),
+              const Spacer(),
+              Row(children: List.generate(5, (_) => Icon(Icons.star_rounded, size: 12, color: ffTheme.warning))),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(text, style: ffTheme.bodySmall.override(lineHeight: 1.5), maxLines: 3, overflow: TextOverflow.ellipsis),
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(color: ffTheme.secondary, borderRadius: BorderRadius.circular(8)),
+            child: Text('חסך ₪$saving/שנה → $provider', style: ffTheme.labelSmall.override(color: const Color(0xFF0E3A26), fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _FAQ extends StatefulWidget {
+  const _FAQ({required this.q, required this.a});
+  final String q, a;
+
+  @override
+  State<_FAQ> createState() => _FAQState();
+}
+
+class _FAQState extends State<_FAQ> {
+  bool _open = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final ffTheme = FlutterFlowTheme.of(context);
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: ffTheme.background,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: _open ? ffTheme.primary.withOpacity(0.3) : ffTheme.alternate),
+      ),
+      child: InkWell(
+        onTap: () => setState(() => _open = !_open),
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Expanded(child: Text(widget.q, style: ffTheme.titleSmall.override(fontWeight: FontWeight.w600))),
+                  Icon(_open ? Icons.remove_rounded : Icons.add_rounded, size: 20, color: ffTheme.primary),
+                ],
+              ),
+              if (_open) ...[
+                const SizedBox(height: 8),
+                Text(widget.a, style: ffTheme.bodySmall.override(color: ffTheme.secondaryText, lineHeight: 1.5)),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _Step extends StatelessWidget {

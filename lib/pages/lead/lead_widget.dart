@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 import '../../flutter_flow/flutter_flow_theme.dart';
 import '../../flutter_flow/flutter_flow_util.dart';
@@ -112,19 +113,41 @@ class _LeadWidgetState extends State<LeadWidget> {
 
               const SizedBox(height: 32),
 
-              // Benefits
-              ...['נציג יחזור אליכם תוך שעה', 'נעזור בכל תהליך הניוד', 'ללא עלות וללא התחייבות'].map((b) => Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Row(
+              // What happens next timeline
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: ffTheme.background,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: ffTheme.alternate),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(Icons.check_circle_outline_rounded, color: ffTheme.success, size: 18),
-                    const SizedBox(width: 10),
-                    Text(b, style: ffTheme.bodyMedium),
+                    Text('מה קורה אחרי שתשלחו?', style: ffTheme.titleSmall),
+                    const SizedBox(height: 14),
+                    _TimelineStep(step: 1, title: 'נציג יחזור אליכם תוך שעה', sub: 'בימי א׳–ה׳, 9:00–21:00', ffTheme: ffTheme),
+                    _TimelineStep(step: 2, title: 'אישור המסלול יחד', sub: 'נבדוק יחד שהכל מתאים לכם', ffTheme: ffTheme),
+                    _TimelineStep(step: 3, title: 'ניוד המספר', sub: 'תוך 1–3 ימי עסקים', ffTheme: ffTheme, isLast: true),
                   ],
                 ),
-              )),
+              ),
 
-              const SizedBox(height: 32),
+              const SizedBox(height: 24),
+
+              // Trust badges
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _TrustBadge(icon: Icons.lock_outline_rounded, label: 'מאובטח', ffTheme: ffTheme),
+                  const SizedBox(width: 16),
+                  _TrustBadge(icon: Icons.star_outline_rounded, label: 'דירוג 4.8', ffTheme: ffTheme),
+                  const SizedBox(width: 16),
+                  _TrustBadge(icon: Icons.people_outline_rounded, label: '60K לקוחות', ffTheme: ffTheme),
+                ],
+              ),
+
+              const SizedBox(height: 24),
 
               FFButtonWidget(
                 text: 'שלחו פרטים',
@@ -150,6 +173,66 @@ class _LeadWidgetState extends State<LeadWidget> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _TimelineStep extends StatelessWidget {
+  const _TimelineStep({required this.step, required this.title, required this.sub, required this.ffTheme, this.isLast = false});
+  final int step;
+  final String title, sub;
+  final FlutterFlowTheme ffTheme;
+  final bool isLast;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Column(
+          children: [
+            Container(
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(color: ffTheme.primary, shape: BoxShape.circle),
+              child: Center(child: Text('$step', style: ffTheme.labelSmall.override(color: Colors.white, fontWeight: FontWeight.w800))),
+            ),
+            if (!isLast)
+              Container(width: 2, height: 28, color: ffTheme.alternate, margin: const EdgeInsets.symmetric(vertical: 3)),
+          ],
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Padding(
+            padding: EdgeInsets.only(top: 4, bottom: isLast ? 0 : 18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: ffTheme.titleSmall.override(fontSize: 13)),
+                Text(sub, style: ffTheme.labelSmall),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _TrustBadge extends StatelessWidget {
+  const _TrustBadge({required this.icon, required this.label, required this.ffTheme});
+  final IconData icon;
+  final String label;
+  final FlutterFlowTheme ffTheme;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Icon(icon, color: ffTheme.primary, size: 22),
+        const SizedBox(height: 4),
+        Text(label, style: ffTheme.labelSmall.override(color: ffTheme.secondaryText)),
+      ],
     );
   }
 }

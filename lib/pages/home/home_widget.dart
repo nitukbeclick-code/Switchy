@@ -3,11 +3,11 @@ import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../flutter_flow/flutter_flow_theme.dart';
 import '../../flutter_flow/flutter_flow_util.dart';
-import '../../flutter_flow/flutter_flow_widgets.dart';
 import '../../app_state.dart';
 import '../../data.dart';
 import '../../models.dart';
 import '../../components/logo_widget/logo_widget.dart';
+import 'home_model.dart';
 
 class HomeWidget extends StatefulWidget {
   const HomeWidget({super.key});
@@ -17,162 +17,411 @@ class HomeWidget extends StatefulWidget {
 }
 
 class _HomeWidgetState extends State<HomeWidget> {
+  late HomeModel _model;
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _model = createModel(context, HomeModel.new);
+    _model.startTicker(setState);
+  }
+
+  @override
+  void dispose() {
+    _model.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final ffTheme = FlutterFlowTheme.of(context);
     final appState = Provider.of<FFAppState>(context);
-    final bill = appState.currentBill(appState.selectedCat);
     final deal = hotDeal(appState.currentBill('cellular'));
 
     return Scaffold(
       backgroundColor: ffTheme.background,
-      body: CustomScrollView(
-        slivers: [
-          // Hero header
-          SliverToBoxAdapter(
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topRight,
-                  end: Alignment.bottomLeft,
-                  colors: [ffTheme.primary, ffTheme.tertiary],
-                ),
-              ),
-              child: SafeArea(
-                bottom: false,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('שלום, ${appState.firstName}', style: ffTheme.headlineMedium.override(color: Colors.white)),
-                              Text('בואו נמצא לכם עסקה טובה יותר', style: ffTheme.bodyMedium.override(color: Colors.white70)),
-                            ],
-                          ),
-                          Container(
-                            decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: IconButton(
-                              icon: const Icon(Icons.notifications_outlined, color: Colors.white),
-                              onPressed: () {},
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
-                      // Savings card
-                      if (appState.totalSavings > 0)
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Row(
-                            children: [
-                              const Text('💰', style: TextStyle(fontSize: 28)),
-                              const SizedBox(width: 12),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text('חסכתם עד כה', style: ffTheme.bodySmall.override(color: Colors.white70)),
-                                  Text(formatPrice(appState.totalSavings), style: ffTheme.headlineSmall.override(color: Colors.white)),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
+      body: Stack(
+        children: [
+          // ── Main scrollable content ────────────────────────────────────────
+          CustomScrollView(
+            controller: _scrollController,
+            slivers: [
+              // ── 1. Green gradient header ───────────────────────────────────
+              SliverToBoxAdapter(child: _buildHeader(context, ffTheme, appState)),
+
+              // ── 2. Social proof ticker ─────────────────────────────────────
+              SliverToBoxAdapter(child: _buildTicker(context, ffTheme)),
+
+              // ── 3. Savings hero card ───────────────────────────────────────
+              SliverToBoxAdapter(child: _buildSavingsHero(context, ffTheme)),
+
+              // ── 4. Hot deal card ───────────────────────────────────────────
+              if (deal != null)
+                SliverToBoxAdapter(child: _buildHotDeal(context, ffTheme, deal)),
+
+              // ── 5. Category grid ───────────────────────────────────────────
+              SliverToBoxAdapter(child: _buildCategoryGrid(context, ffTheme, appState)),
+
+              // ── 6. AI advisor card ─────────────────────────────────────────
+              SliverToBoxAdapter(child: _buildAIAdvisor(context, ffTheme)),
+
+              // ── 7. Tools quick-action row ──────────────────────────────────
+              SliverToBoxAdapter(child: _buildToolsRow(context, ffTheme)),
+
+              // ── 8. Brand trust strip ───────────────────────────────────────
+              SliverToBoxAdapter(child: _buildBrandStrip(context, ffTheme)),
+
+              // ── 10. Bottom padding for nav + FAB ──────────────────────────
+              const SliverToBoxAdapter(child: SizedBox(height: 100)),
+            ],
           ),
 
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Quick quiz CTA
-                  _QuizCTA(ffTheme: ffTheme),
-                  const SizedBox(height: 24),
-
-                  // Categories
-                  Text('קטגוריות', style: ffTheme.titleLarge),
-                  const SizedBox(height: 12),
-                ],
-              ),
+          // ── 9. Callback FAB ────────────────────────────────────────────────
+          Positioned(
+            bottom: 24,
+            left: 20,
+            child: FloatingActionButton(
+              backgroundColor: ffTheme.secondary,
+              elevation: 4,
+              onPressed: () => context.pushNamed('Callback'),
+              child: Icon(Icons.phone_rounded, color: ffTheme.primary, size: 26),
             ),
           ),
-
-          // Category grid
-          SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            sliver: SliverGrid(
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                crossAxisSpacing: 12,
-                mainAxisSpacing: 12,
-                childAspectRatio: 0.9,
-              ),
-              delegate: SliverChildBuilderDelegate(
-                (ctx, i) => _CategoryCard(category: categories[i], ffTheme: ffTheme),
-                childCount: categories.length,
-              ),
-            ),
-          ),
-
-          // Hot deal
-          if (deal != null)
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        const Text('🔥', style: TextStyle(fontSize: 20)),
-                        const SizedBox(width: 8),
-                        Text('עסקה חמה', style: ffTheme.titleLarge),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    _HotDealCard(plan: deal, ffTheme: ffTheme),
-                  ],
-                ),
-              ),
-            ),
-
-          const SliverToBoxAdapter(child: SizedBox(height: 24)),
         ],
       ),
     );
   }
-}
 
-class _QuizCTA extends StatelessWidget {
-  const _QuizCTA({required this.ffTheme});
-  final FlutterFlowTheme ffTheme;
+  // ── Section builders ─────────────────────────────────────────────────────
 
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildHeader(BuildContext context, FlutterFlowTheme ffTheme, FFAppState appState) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topRight,
+          end: Alignment.bottomLeft,
+          colors: [ffTheme.primary, ffTheme.tertiary],
+        ),
+      ),
+      child: SafeArea(
+        bottom: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 14, 20, 28),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Left: greeting
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'שלום, ${appState.firstName} 👋',
+                      style: FlutterFlowTheme.of(context).headlineSmall.override(
+                        color: Colors.white,
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'בואו נחסוך יחד',
+                      style: FlutterFlowTheme.of(context).bodyMedium.override(
+                        color: Colors.white.withOpacity(0.70),
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Right: notification bell
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.10),
+                  shape: BoxShape.circle,
+                ),
+                child: IconButton(
+                  icon: const Icon(Icons.notifications_outlined, color: Colors.white, size: 22),
+                  onPressed: () {},
+                  padding: EdgeInsets.zero,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTicker(BuildContext context, FlutterFlowTheme ffTheme) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+        border: const Border(
+          right: BorderSide(color: Color(0xFFC9EC4B), width: 3),
+        ),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 400),
+        transitionBuilder: (child, animation) => FadeTransition(opacity: animation, child: child),
+        child: Text(
+          _model.tickers[_model.tickerIndex],
+          key: ValueKey(_model.tickerIndex),
+          style: FlutterFlowTheme.of(context).labelMedium.override(
+            color: FlutterFlowTheme.of(context).primaryText,
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+          ),
+          textAlign: TextAlign.right,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSavingsHero(BuildContext context, FlutterFlowTheme ffTheme) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: const Color(0xFF0E3A26),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        children: [
+          Text(
+            'חיסכון משוער שנתי',
+            style: ffTheme.labelMedium.override(color: Colors.white.withOpacity(0.60)),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '₪1,240',
+            style: ffTheme.displaySmall.override(
+              color: ffTheme.secondary,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'לפי הנתונים שלנו — ללא התחייבות',
+            style: ffTheme.bodySmall.override(color: Colors.white.withOpacity(0.50)),
+          ),
+          const SizedBox(height: 20),
+          GestureDetector(
+            onTap: () => context.goNamed('Quiz'),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              decoration: BoxDecoration(
+                color: ffTheme.secondary,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                'בדוק כמה תחסוך ←',
+                style: ffTheme.titleSmall.override(color: ffTheme.primary),
+              ),
+            ),
+          ),
+        ],
+      ),
+    )
+        .animate()
+        .fadeIn(duration: 600.ms)
+        .scale(begin: const Offset(0.95, 0.95), end: const Offset(1.0, 1.0));
+  }
+
+  Widget _buildHotDeal(BuildContext context, FlutterFlowTheme ffTheme, Plan deal) {
+    final saving = planSaveYear(deal, 119);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Row(
+              children: [
+                const Text('🔥', style: TextStyle(fontSize: 18)),
+                const SizedBox(width: 6),
+                Text('עסקה חמה היום', style: ffTheme.titleLarge),
+              ],
+            ),
+          ),
+          GestureDetector(
+            onTap: () => context.pushNamed('PlanDetail', pathParameters: {'planId': deal.id}),
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: ffTheme.alternate),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  LogoWidget(provider: deal.provider, size: 52),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(deal.provider, style: ffTheme.titleSmall),
+                        const SizedBox(height: 2),
+                        Text(deal.plan, style: ffTheme.bodySmall, maxLines: 1, overflow: TextOverflow.ellipsis),
+                        const SizedBox(height: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFC9EC4B),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            'חוסך ₪$saving/שנה',
+                            style: ffTheme.labelSmall.override(
+                              color: ffTheme.primary,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        '₪${deal.price}/חודש',
+                        style: ffTheme.titleMedium.override(color: ffTheme.primary),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: ffTheme.primary,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          'ראה עסקה ←',
+                          style: ffTheme.labelSmall.override(color: Colors.white),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCategoryGrid(BuildContext context, FlutterFlowTheme ffTheme, FFAppState appState) {
+    // Savings estimates per category (annual)
+    final savingsEst = {
+      'cellular': 850,
+      'internet': 480,
+      'tv': 360,
+      'triple': 1200,
+      'abroad': 240,
+    };
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('השוואה לפי קטגוריה', style: ffTheme.titleLarge),
+          const SizedBox(height: 12),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+              childAspectRatio: 1.6,
+            ),
+            itemCount: categories.length,
+            itemBuilder: (context, i) {
+              final cat = categories[i];
+              final isActive = appState.selectedCat == cat.id;
+              final est = savingsEst[cat.id] ?? 0;
+              return GestureDetector(
+                onTap: () {
+                  appState.setCategory(cat.id);
+                  context.goNamed('Results');
+                },
+                child: Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: isActive ? const Color(0xFFE8F5EE) : Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: isActive ? ffTheme.primary : ffTheme.alternate,
+                      width: isActive ? 2 : 1,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.04),
+                        blurRadius: 6,
+                        offset: const Offset(0, 1),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(cat.icon, style: const TextStyle(fontSize: 24)),
+                      const SizedBox(height: 4),
+                      Text(cat.name, style: ffTheme.labelLarge.override(color: ffTheme.primaryText)),
+                      const SizedBox(height: 2),
+                      Text('${cat.planCount} מסלולים', style: ffTheme.labelSmall),
+                      Text('חיסכון ממוצע ₪$est', style: ffTheme.labelSmall.override(color: ffTheme.primary)),
+                    ],
+                  ),
+                )
+                    .animate(delay: (i * 80).ms)
+                    .fadeIn()
+                    .slideY(begin: 0.2, end: 0),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAIAdvisor(BuildContext context, FlutterFlowTheme ffTheme) {
     return GestureDetector(
-      onTap: () => context.goNamed('Quiz'),
+      onTap: () => context.pushNamed('AIAdvisor'),
       child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: ffTheme.secondary,
+          gradient: const LinearGradient(
+            colors: [Color(0xFF0E3A26), Color(0xFF1E7A4E)],
+            begin: Alignment.centerRight,
+            end: Alignment.centerLeft,
+          ),
           borderRadius: BorderRadius.circular(20),
         ),
         child: Row(
@@ -181,99 +430,167 @@ class _QuizCTA extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('גלו כמה תוכלו לחסוך', style: ffTheme.titleMedium.override(color: ffTheme.primary)),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: ffTheme.secondary,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      '✦ חוסך AI',
+                      style: ffTheme.labelSmall.override(color: ffTheme.primary, fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'שאלו אותנו הכל\nעל מסלולי תקשורת',
+                    style: ffTheme.titleMedium.override(color: Colors.white),
+                  ),
                   const SizedBox(height: 4),
-                  Text('שאלון קצר – 2 דקות', style: ffTheme.bodySmall.override(color: ffTheme.primary.withOpacity(0.7))),
+                  Text(
+                    'זמין 24/7 · עונה תוך שניות',
+                    style: ffTheme.bodySmall.override(color: Colors.white.withOpacity(0.60)),
+                  ),
                 ],
               ),
             ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              decoration: BoxDecoration(
-                color: ffTheme.primary,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text('התחילו', style: ffTheme.labelLarge.override(color: Colors.white)),
-            ),
+            Icon(Icons.chat_bubble_rounded, color: ffTheme.secondary, size: 40),
           ],
         ),
-      ).animate().fadeIn().slideX(begin: 0.1, end: 0),
+      ),
+    ).animate().fadeIn(delay: 400.ms);
+  }
+
+  Widget _buildToolsRow(BuildContext context, FlutterFlowTheme ffTheme) {
+    final tools = [
+      _Tool(icon: '📍', label: 'בדיקת כיסוי', route: 'Availability'),
+      _Tool(icon: '🧮', label: 'מחשבון מעבר', route: 'SwitchCalc'),
+      _Tool(icon: '📊', label: 'ניהול חשבון', route: 'Bills'),
+    ];
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 0, 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(right: 0, bottom: 12),
+            child: Text('כלים שימושיים', style: ffTheme.titleLarge),
+          ),
+          SizedBox(
+            height: 96,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: tools.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 12),
+              itemBuilder: (context, i) {
+                final tool = tools[i];
+                return GestureDetector(
+                  onTap: () => context.pushNamed(tool.route),
+                  child: Container(
+                    width: 110,
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: ffTheme.alternate),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.04),
+                          blurRadius: 6,
+                          offset: const Offset(0, 1),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(tool.icon, style: const TextStyle(fontSize: 26)),
+                        const SizedBox(height: 6),
+                        Text(
+                          tool.label,
+                          style: ffTheme.labelSmall.override(color: ffTheme.primaryText),
+                          textAlign: TextAlign.center,
+                          maxLines: 2,
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
     );
   }
-}
 
-class _CategoryCard extends StatelessWidget {
-  const _CategoryCard({required this.category, required this.ffTheme});
-  final Category category;
-  final FlutterFlowTheme ffTheme;
+  Widget _buildBrandStrip(BuildContext context, FlutterFlowTheme ffTheme) {
+    final providers = [
+      _Provider('פלאפון', const Color(0xFFE07034), const Color(0xFFFFF3EC)),
+      _Provider('סלקום', const Color(0xFFCC2244), const Color(0xFFFFECF0)),
+      _Provider('פרטנר', const Color(0xFF2255CC), const Color(0xFFEEF2FF)),
+      _Provider('הוט', const Color(0xFF8B1A1A), const Color(0xFFFFECEC)),
+      _Provider('yes', const Color(0xFF1A3A7A), const Color(0xFFEEF0FF)),
+      _Provider('בזק', const Color(0xFF007B8A), const Color(0xFFECFAFB)),
+      _Provider('גולן', const Color(0xFF15603E), const Color(0xFFE8F5EE)),
+      _Provider('019', const Color(0xFF6B35C8), const Color(0xFFF3EEFF)),
+      _Provider('FreeTV', const Color(0xFF1A7A4E), const Color(0xFFE8F8EE)),
+    ];
 
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        Provider.of<FFAppState>(context, listen: false).setCategory(category.id);
-        context.goNamed('Results');
-      },
-      child: Container(
-        decoration: BoxDecoration(
-          color: ffTheme.secondaryBackground,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: ffTheme.alternate),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(category.icon, style: const TextStyle(fontSize: 28)),
-            const SizedBox(height: 8),
-            Text(category.name, style: ffTheme.labelMedium, textAlign: TextAlign.center),
-            const SizedBox(height: 4),
-            Text('מ-₪${category.currentBill}', style: ffTheme.labelSmall.override(color: ffTheme.secondaryText)),
-          ],
-        ),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 0, 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Text('כל הספקים הגדולים', style: ffTheme.titleLarge),
+          ),
+          SizedBox(
+            height: 44,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: providers.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 8),
+              itemBuilder: (context, i) {
+                final p = providers[i];
+                return Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: p.bg,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: p.color.withOpacity(0.25)),
+                  ),
+                  child: Text(
+                    p.name,
+                    style: ffTheme.labelMedium.override(
+                      color: p.color,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
 }
 
-class _HotDealCard extends StatelessWidget {
-  const _HotDealCard({required this.plan, required this.ffTheme});
-  final Plan plan;
-  final FlutterFlowTheme ffTheme;
+// ── Helper data classes ────────────────────────────────────────────────────────
 
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => context.pushNamed('PlanDetail', pathParameters: {'planId': plan.id}),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: ffTheme.secondaryBackground,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: ffTheme.alternate),
-        ),
-        child: Row(
-          children: [
-            LogoWidget(provider: plan.provider, size: 48),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(plan.provider, style: ffTheme.titleSmall),
-                  Text(plan.plan, style: ffTheme.bodySmall),
-                ],
-              ),
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text('₪${plan.price}/חודש', style: ffTheme.titleMedium.override(color: ffTheme.primary)),
-                Text('חסכו ${formatPrice(planSaveYear(plan, 119))}/שנה', style: ffTheme.labelSmall.override(color: ffTheme.success)),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+class _Tool {
+  const _Tool({required this.icon, required this.label, required this.route});
+  final String icon;
+  final String label;
+  final String route;
+}
+
+class _Provider {
+  const _Provider(this.name, this.color, this.bg);
+  final String name;
+  final Color color;
+  final Color bg;
 }

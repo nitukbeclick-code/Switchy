@@ -191,6 +191,18 @@ class _HomeWidgetState extends State<HomeWidget> {
   }
 
   Widget _buildSavingsHero(BuildContext context, FlutterFlowTheme ffTheme) {
+    final appState = Provider.of<FFAppState>(context, listen: false);
+    // Calculate actual potential savings from all categories
+    final totalSave = categories.fold<int>(0, (sum, c) {
+      final bill = appState.currentBill(c.id);
+      if (bill <= 0) return sum;
+      final plans = plansByCat(c.id);
+      if (plans.isEmpty) return sum;
+      final minPrice = plans.map((p) => p.price).reduce((a, b) => a < b ? a : b);
+      return sum + ((bill - minPrice) * 12).clamp(0, 999999);
+    });
+    final display = totalSave > 0 ? '₪${(totalSave / 1000).toStringAsFixed(1)}K' : '₪1,240+';
+
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       padding: const EdgeInsets.all(24),
@@ -201,12 +213,12 @@ class _HomeWidgetState extends State<HomeWidget> {
       child: Column(
         children: [
           Text(
-            'חיסכון משוער שנתי',
+            'חיסכון פוטנציאלי שנתי',
             style: ffTheme.labelMedium.override(color: Colors.white.withOpacity(0.60)),
           ),
           const SizedBox(height: 8),
           Text(
-            '₪1,240',
+            display,
             style: ffTheme.displaySmall.override(
               color: ffTheme.secondary,
               fontWeight: FontWeight.bold,
@@ -214,7 +226,7 @@ class _HomeWidgetState extends State<HomeWidget> {
           ),
           const SizedBox(height: 4),
           Text(
-            'לפי הנתונים שלנו — ללא התחייבות',
+            totalSave > 0 ? 'חיסכון מחושב לפי חשבונות שלכם' : 'ממוצע לקוחות חוסך',
             style: ffTheme.bodySmall.override(color: Colors.white.withOpacity(0.50)),
           ),
           const SizedBox(height: 20),
@@ -227,7 +239,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
-                'בדוק כמה תחסוך ←',
+                totalSave > 0 ? 'חפש חבילות ←' : 'בדוק כמה תחסוך ←',
                 style: ffTheme.titleSmall.override(color: ffTheme.primary),
               ),
             ),

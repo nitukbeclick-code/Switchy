@@ -315,7 +315,7 @@ class _MessageBubble extends StatelessWidget {
                       bottomRight: Radius.circular(18),
                     ),
                   ),
-                  child: Text(msg.text, style: ffTheme.bodyMedium.override(height: 1.5)),
+                  child: Text(msg.text, style: ffTheme.bodyMedium.override(lineHeight: 1.5)),
                 ),
               ] else ...[
                 Container(
@@ -330,7 +330,7 @@ class _MessageBubble extends StatelessWidget {
                       bottomRight: Radius.circular(4),
                     ),
                   ),
-                  child: Text(msg.text, style: ffTheme.bodyMedium.override(color: Colors.white, height: 1.5)),
+                  child: Text(msg.text, style: ffTheme.bodyMedium.override(color: Colors.white, lineHeight: 1.5)),
                 ),
               ],
             ],

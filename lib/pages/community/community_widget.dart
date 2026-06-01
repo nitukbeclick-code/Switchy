@@ -134,7 +134,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text('עסקת השבוע', style: ffTheme.labelSmall.override(color: ffTheme.secondary, fontWeight: FontWeight.w700)),
-                          Text(p.text.length > 60 ? '${p.text.substring(0, 60)}...' : p.text, style: ffTheme.bodySmall.override(color: Colors.white70, height: 1.3)),
+                          Text(p.text.length > 60 ? '${p.text.substring(0, 60)}...' : p.text, style: ffTheme.bodySmall.override(color: Colors.white70, lineHeight: 1.3)),
                         ],
                       ),
                     ),

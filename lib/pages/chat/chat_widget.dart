@@ -216,7 +216,7 @@ class _ChatWidgetState extends State<ChatWidget> {
               border: isUser ? null : Border.all(color: ffTheme.alternate),
               boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 6)],
             ),
-            child: Text(msg.text, style: ffTheme.bodyMedium.override(color: isUser ? Colors.white : ffTheme.primaryText, height: 1.5)),
+            child: Text(msg.text, style: ffTheme.bodyMedium.override(color: isUser ? Colors.white : ffTheme.primaryText, lineHeight: 1.5)),
           ),
         ],
       ),

@@ -349,7 +349,9 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              'מסוננים לפי השאלון — תקציב ₪${appState.quizBudget}',
+                              cat == 'cellular' && appState.quizLines > 1
+                                  ? 'שאלון: ${appState.quizLines} קווים, עד ₪${appState.quizBudget}'
+                                  : 'שאלון: עד ₪${appState.quizBudget}/חודש',
                               style: ffTheme.labelMedium.override(color: ffTheme.primary),
                             ),
                           ),

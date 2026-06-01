@@ -258,6 +258,13 @@ class _QuizWidgetState extends State<QuizWidget> {
       appState.setQuizPriority(_priority);
       appState.setQuizBudget(_budget.round());
       appState.setQuizCompleted(true);
+      // Apply quiz priority as a smart filter/sort
+      appState.clearFilters();
+      if (_priority == 'nocommit') appState.toggleFilter('nocommit');
+      if (_priority == 'abroad') appState.toggleFilter('abroad');
+      if (_priority == 'price') appState.setSortMode('price');
+      if (_priority == 'speed' || _priority == 'speed_ultra') appState.setSortMode('match');
+      if (_priority == 'speed_fast') appState.setSortMode('match');
       context.goNamed('Results');
     }
   }

@@ -61,16 +61,62 @@ class AccountWidget extends StatelessWidget {
                           ],
                         ),
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.settings_rounded, color: Colors.white),
-                        onPressed: () => context.pushNamed('Profile'),
-                      ),
+                      if (appState.isLoggedIn)
+                        IconButton(
+                          icon: const Icon(Icons.settings_rounded, color: Colors.white),
+                          onPressed: () => context.pushNamed('Profile'),
+                        )
+                      else
+                        TextButton(
+                          onPressed: () => context.pushNamed('Auth'),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: ffTheme.secondary,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text('כניסה', style: GoogleFonts.rubik(fontSize: 13, fontWeight: FontWeight.w700, color: const Color(0xFF0E3A26))),
+                          ),
+                        ),
                     ],
                   ),
                 ),
               ),
             ).animate().fadeIn(duration: 400.ms),
           ),
+
+          // Login CTA banner for guests
+          if (!appState.isLoggedIn)
+            SliverToBoxAdapter(
+              child: GestureDetector(
+                onTap: () => context.pushNamed('Auth'),
+                child: Container(
+                  margin: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: ffTheme.accent1,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: ffTheme.primary.withOpacity(0.2)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Text('🔓', style: TextStyle(fontSize: 22)),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('הצטרפו לחוסך בחינם', style: ffTheme.titleSmall.override(color: ffTheme.primary)),
+                            Text('שמרו תוצאות, עקבו אחר מחירים ועוד', style: ffTheme.bodySmall),
+                          ],
+                        ),
+                      ),
+                      Icon(Icons.arrow_back_ios_rounded, size: 14, color: ffTheme.primary),
+                    ],
+                  ),
+                ),
+              ).animate().fadeIn(delay: 150.ms),
+            ),
 
           SliverToBoxAdapter(
             child: Padding(
@@ -181,20 +227,34 @@ class AccountWidget extends StatelessWidget {
                       ),
                     ).animate().fadeIn(delay: 300.ms)
                   else
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: ffTheme.alternate),
-                      ),
-                      child: Column(
-                        children: [
-                          const Text('📭', style: TextStyle(fontSize: 36)),
-                          const SizedBox(height: 8),
-                          Text('אין בקשות פעילות', style: ffTheme.bodyMedium.override(color: ffTheme.secondaryText)),
-                        ],
+                    GestureDetector(
+                      onTap: () => context.goNamed('Results'),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: ffTheme.alternate, width: 1.5),
+                        ),
+                        child: Column(
+                          children: [
+                            const Text('🚀', style: TextStyle(fontSize: 40)),
+                            const SizedBox(height: 12),
+                            Text('עוד לא בחרתם מסלול?', style: ffTheme.titleSmall),
+                            const SizedBox(height: 4),
+                            Text('מצאו את החבילה הזולה ביותר עכשיו', style: ffTheme.bodySmall.override(color: ffTheme.secondaryText)),
+                            const SizedBox(height: 14),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 9),
+                              decoration: BoxDecoration(
+                                color: ffTheme.primary,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Text('השווה מסלולים', style: ffTheme.labelMedium.override(color: Colors.white, fontWeight: FontWeight.w700)),
+                            ),
+                          ],
+                        ),
                       ),
                     ).animate().fadeIn(delay: 300.ms),
 

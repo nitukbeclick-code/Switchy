@@ -22,12 +22,20 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
   double _billInput = 119;
   String _activeCat = 'cellular';
 
+  int _potentialSaving(int bill) {
+    final catPlans = plansByCat('cellular');
+    if (catPlans.isEmpty) return 0;
+    final minPrice = catPlans.map((p) => p.price).reduce((a, b) => a < b ? a : b);
+    return ((bill - minPrice) * 12).clamp(0, 9999);
+  }
+
   @override
   Widget build(BuildContext context) {
     final ffTheme = FlutterFlowTheme.of(context);
     final appState = Provider.of<FFAppState>(context, listen: false);
     final plans = plansByCat(_activeCat).take(6).toList();
     final bill = _billInput.round();
+    final saving = _potentialSaving(bill);
 
     return Scaffold(
       backgroundColor: ffTheme.background,
@@ -98,26 +106,62 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.15),
                       borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.white.withOpacity(0.2)),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('מה אתם משלמים היום?', style: GoogleFonts.rubik(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
-                        const SizedBox(height: 10),
+                        Text('מה אתם משלמים היום על סלולר?', style: GoogleFonts.rubik(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
+                        const SizedBox(height: 12),
                         Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             Expanded(
                               child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text('₪${_billInput.round()}', style: GoogleFonts.rubik(fontSize: 32, fontWeight: FontWeight.w800, color: ffTheme.secondary)),
+                                  Row(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      Text('₪${_billInput.round()}', style: GoogleFonts.rubik(fontSize: 36, fontWeight: FontWeight.w800, color: ffTheme.secondary)),
+                                      const SizedBox(width: 6),
+                                      Padding(
+                                        padding: const EdgeInsets.only(bottom: 6),
+                                        child: Text('לחודש', style: GoogleFonts.assistant(fontSize: 12, color: Colors.white54)),
+                                      ),
+                                    ],
+                                  ),
                                   Slider(
                                     value: _billInput,
                                     min: 20,
                                     max: 500,
                                     activeColor: ffTheme.secondary,
-                                    inactiveColor: Colors.white30,
+                                    inactiveColor: Colors.white24,
                                     onChanged: (v) => setState(() => _billInput = v),
                                   ),
+                                  if (saving > 0)
+                                    AnimatedSwitcher(
+                                      duration: const Duration(milliseconds: 300),
+                                      child: Container(
+                                        key: ValueKey(saving),
+                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                        decoration: BoxDecoration(
+                                          color: ffTheme.secondary.withOpacity(0.2),
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            const Text('💰', style: TextStyle(fontSize: 12)),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              'תוכלו לחסוך עד ₪$saving בשנה!',
+                                              style: GoogleFonts.rubik(fontSize: 11, fontWeight: FontWeight.w700, color: ffTheme.secondary),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
                                 ],
                               ),
                             ),
@@ -130,10 +174,16 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: ffTheme.secondary,
                                 foregroundColor: const Color(0xFF0E3A26),
-                                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                elevation: 0,
                               ),
-                              child: Text('בדוק', style: GoogleFonts.rubik(fontSize: 15, fontWeight: FontWeight.w700)),
+                              child: Column(
+                                children: [
+                                  Text('בדוק', style: GoogleFonts.rubik(fontSize: 16, fontWeight: FontWeight.w800)),
+                                  Text('עכשיו', style: GoogleFonts.rubik(fontSize: 10, fontWeight: FontWeight.w600)),
+                                ],
+                              ),
                             ),
                           ],
                         ),
@@ -150,16 +200,45 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
             child: Container(
               color: Colors.white,
               padding: const EdgeInsets.symmetric(vertical: 20),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: const [
-                  _Stat(value: '60,000+', label: 'לקוחות'),
-                  _StatDivider(),
-                  _Stat(value: '₪850', label: 'חיסכון ממוצע'),
-                  _StatDivider(),
-                  _Stat(value: '5', label: 'קטגוריות'),
-                  _StatDivider(),
-                  _Stat(value: 'כל', label: 'הספקים'),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: const [
+                      _Stat(value: '60,000+', label: 'לקוחות'),
+                      _StatDivider(),
+                      _Stat(value: '₪850', label: 'חיסכון ממוצע'),
+                      _StatDivider(),
+                      _Stat(value: '200+', label: 'מסלולים'),
+                      _StatDivider(),
+                      _Stat(value: '4.8★', label: 'דירוג'),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 20),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF4F0E8),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 7,
+                          height: 7,
+                          decoration: const BoxDecoration(color: Color(0xFF15603E), shape: BoxShape.circle),
+                        ).animate(onPlay: (c) => c.repeat(reverse: true))
+                          .scale(begin: const Offset(1, 1), end: const Offset(1.5, 1.5), duration: 900.ms),
+                        const SizedBox(width: 8),
+                        Text(
+                          '${saving > 0 ? "אפשר לחסוך עד ₪$saving בשנה לפי החשבון שלך" : "גלגל את הסליידר למעלה ובדוק כמה תחסוך"}',
+                          style: GoogleFonts.assistant(fontSize: 12, fontWeight: FontWeight.w600, color: const Color(0xFF15603E)),
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ).animate().fadeIn(delay: 300.ms),

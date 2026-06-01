@@ -18,6 +18,84 @@ class _ProfileWidgetState extends State<ProfileWidget> {
   bool _darkMode = false;
   String _lang = 'עברית';
 
+  void _showEditProfile(BuildContext context, FFAppState appState, FlutterFlowTheme ffTheme) {
+    final nameCtrl = TextEditingController(text: appState.userName);
+    final phoneCtrl = TextEditingController(text: appState.userPhone);
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: ffTheme.background,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.fromLTRB(20, 16, 20, MediaQuery.of(ctx).viewInsets.bottom + 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(width: 40, height: 4, decoration: BoxDecoration(color: ffTheme.alternate, borderRadius: BorderRadius.circular(2))),
+            ),
+            const SizedBox(height: 16),
+            Text('עריכת פרופיל', style: ffTheme.headlineSmall),
+            const SizedBox(height: 20),
+            Text('שם מלא', style: ffTheme.labelLarge),
+            const SizedBox(height: 8),
+            TextField(
+              controller: nameCtrl,
+              textDirection: TextDirection.rtl,
+              decoration: InputDecoration(
+                hintText: 'ישראל ישראלי',
+                filled: true,
+                fillColor: Colors.white,
+                prefixIcon: Icon(Icons.person_outline_rounded, color: ffTheme.secondaryText),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.alternate)),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.primary, width: 1.5)),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text('מספר טלפון', style: ffTheme.labelLarge),
+            const SizedBox(height: 8),
+            TextField(
+              controller: phoneCtrl,
+              keyboardType: TextInputType.phone,
+              textDirection: TextDirection.ltr,
+              decoration: InputDecoration(
+                hintText: '050-0000000',
+                filled: true,
+                fillColor: Colors.white,
+                prefixIcon: Icon(Icons.phone_outlined, color: ffTheme.secondaryText),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.alternate)),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.primary, width: 1.5)),
+              ),
+            ),
+            const SizedBox(height: 24),
+            FFButtonWidget(
+              text: 'שמור שינויים',
+              onPressed: () async {
+                final name = nameCtrl.text.trim();
+                final phone = phoneCtrl.text.trim();
+                if (name.isNotEmpty && phone.isNotEmpty) {
+                  appState.login(name: name, phone: phone);
+                }
+                Navigator.pop(ctx);
+              },
+              options: FFButtonOptions(
+                width: double.infinity,
+                height: 52,
+                color: ffTheme.primary,
+                textStyle: ffTheme.titleSmall.override(color: Colors.white),
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final ffTheme = FlutterFlowTheme.of(context);
@@ -38,23 +116,61 @@ class _ProfileWidgetState extends State<ProfileWidget> {
             // Avatar + info
             Column(
               children: [
-                Container(
-                  width: 88,
-                  height: 88,
-                  decoration: BoxDecoration(
-                    color: ffTheme.primary,
-                    shape: BoxShape.circle,
-                    boxShadow: [BoxShadow(color: ffTheme.primary.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 8))],
-                  ),
-                  child: Center(
-                    child: Text(
-                      appState.isLoggedIn && appState.firstName.isNotEmpty ? appState.firstName[0] : '👤',
-                      style: GoogleFonts.rubik(fontSize: 38, fontWeight: FontWeight.w700, color: Colors.white),
+                Stack(
+                  children: [
+                    GestureDetector(
+                      onTap: appState.isLoggedIn ? () => _showEditProfile(context, appState, ffTheme) : null,
+                      child: Container(
+                        width: 88,
+                        height: 88,
+                        decoration: BoxDecoration(
+                          color: ffTheme.primary,
+                          shape: BoxShape.circle,
+                          boxShadow: [BoxShadow(color: ffTheme.primary.withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 8))],
+                        ),
+                        child: Center(
+                          child: Text(
+                            appState.isLoggedIn && appState.firstName.isNotEmpty ? appState.firstName[0] : '👤',
+                            style: GoogleFonts.rubik(fontSize: 38, fontWeight: FontWeight.w700, color: Colors.white),
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
+                    if (appState.isLoggedIn)
+                      Positioned(
+                        bottom: 0,
+                        left: 0,
+                        child: Container(
+                          width: 26,
+                          height: 26,
+                          decoration: BoxDecoration(
+                            color: ffTheme.secondary,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: ffTheme.background, width: 2),
+                          ),
+                          child: Icon(Icons.camera_alt_rounded, size: 13, color: ffTheme.primary),
+                        ),
+                      ),
+                  ],
                 ).animate().scale(duration: 500.ms, curve: Curves.elasticOut),
                 const SizedBox(height: 14),
-                Text(appState.isLoggedIn ? appState.userName : 'אורח', style: ffTheme.headlineSmall),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(appState.isLoggedIn ? appState.userName : 'אורח', style: ffTheme.headlineSmall),
+                    if (appState.isLoggedIn) ...[
+                      const SizedBox(width: 6),
+                      GestureDetector(
+                        onTap: () => _showEditProfile(context, appState, ffTheme),
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(color: ffTheme.accent1, shape: BoxShape.circle),
+                          child: Icon(Icons.edit_rounded, size: 14, color: ffTheme.primary),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
                 Text(appState.isLoggedIn ? appState.userPhone : 'לא מחובר', style: ffTheme.bodyMedium.override(color: ffTheme.secondaryText)),
                 const SizedBox(height: 16),
                 // Stats

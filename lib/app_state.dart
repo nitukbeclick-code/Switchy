@@ -104,4 +104,14 @@ class FFAppState extends ChangeNotifier {
   void setSortMode(String m) { _sortMode = m; notifyListeners(); }
   void toggleFilter(String f) { if (_activeFilters.contains(f)) _activeFilters.remove(f); else _activeFilters.add(f); notifyListeners(); }
   void clearFilters() { _activeFilters.clear(); _sortMode = 'match'; _searchQuery = ''; notifyListeners(); }
+
+  // Watchlist (price alerts)
+  final Set<String> _watchedPlans = {};
+  List<String> get watchedPlans => List.unmodifiable(_watchedPlans.toList());
+  bool isWatching(String planId) => _watchedPlans.contains(planId);
+  void toggleWatch(String planId) {
+    if (_watchedPlans.contains(planId)) _watchedPlans.remove(planId);
+    else _watchedPlans.add(planId);
+    notifyListeners();
+  }
 }

@@ -18,7 +18,6 @@ class PlanDetailWidget extends StatefulWidget {
 }
 
 class _PlanDetailWidgetState extends State<PlanDetailWidget> {
-  bool _priceAlert = false;
 
   @override
   Widget build(BuildContext context) {
@@ -376,9 +375,8 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                               ),
                             ),
                             Switch(
-                              value: _priceAlert,
-                              onChanged: (v) =>
-                                  setState(() => _priceAlert = v),
+                              value: appState.isWatching(plan.id),
+                              onChanged: (v) => appState.toggleWatch(plan.id),
                               activeColor: ffTheme.primary,
                             ),
                           ],

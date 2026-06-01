@@ -181,6 +181,43 @@ class AccountWidget extends StatelessWidget {
 
                   const SizedBox(height: 20),
 
+                  // Watchlist
+                  if (appState.watchedPlans.isNotEmpty) ...[
+                    Text('מסלולים במעקב', style: ffTheme.titleLarge),
+                    const SizedBox(height: 10),
+                    ...appState.watchedPlans.map((id) {
+                      final p = planById(id);
+                      if (p == null) return const SizedBox();
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: ffTheme.alternate),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.notifications_active_rounded, color: ffTheme.warning, size: 20),
+                            const SizedBox(width: 12),
+                            Expanded(child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(p.provider, style: ffTheme.titleSmall),
+                                Text('₪${p.price}/חודש', style: ffTheme.bodySmall),
+                              ],
+                            )),
+                            TextButton(
+                              onPressed: () => context.pushNamed('PlanDetail', pathParameters: {'planId': id}),
+                              child: Text('פרטים', style: ffTheme.labelSmall.override(color: ffTheme.primary)),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+                    const SizedBox(height: 10),
+                  ],
+
                   // Quick actions
                   Text('פעולות מהירות', style: ffTheme.titleLarge),
                   const SizedBox(height: 12),

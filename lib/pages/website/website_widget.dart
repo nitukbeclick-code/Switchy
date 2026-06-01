@@ -1,70 +1,369 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../flutter_flow/flutter_flow_theme.dart';
 import '../../flutter_flow/flutter_flow_util.dart';
 import '../../flutter_flow/flutter_flow_widgets.dart';
+import '../../app_state.dart';
+import '../../data.dart';
+import '../../models.dart';
+import '../../components/plan_card/plan_card_widget.dart';
+import '../../components/logo_widget/logo_widget.dart';
 
-class WebsiteWidget extends StatelessWidget {
+class WebsiteWidget extends StatefulWidget {
   const WebsiteWidget({super.key});
+
+  @override
+  State<WebsiteWidget> createState() => _WebsiteWidgetState();
+}
+
+class _WebsiteWidgetState extends State<WebsiteWidget> {
+  double _billInput = 119;
+  String _activeCat = 'cellular';
 
   @override
   Widget build(BuildContext context) {
     final ffTheme = FlutterFlowTheme.of(context);
+    final appState = Provider.of<FFAppState>(context, listen: false);
+    final plans = plansByCat(_activeCat).take(6).toList();
+    final bill = _billInput.round();
 
     return Scaffold(
       backgroundColor: ffTheme.background,
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
+      body: CustomScrollView(
+        slivers: [
+          // Sticky nav
+          SliverAppBar(
+            pinned: true,
+            backgroundColor: ffTheme.primary,
+            elevation: 0,
+            title: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(color: ffTheme.secondary, borderRadius: BorderRadius.circular(8)),
+                  child: Text('חוסך', style: GoogleFonts.rubik(fontSize: 16, fontWeight: FontWeight.w800, color: const Color(0xFF0E3A26))),
+                ),
+                const Spacer(),
+                TextButton(
+                  onPressed: () => context.goNamed('Home'),
+                  child: Text('הורד אפליקציה', style: GoogleFonts.rubik(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white70)),
+                ),
+              ],
+            ),
+            actions: [
               Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: ffTheme.accent1,
-                  shape: BoxShape.circle,
+                margin: const EdgeInsets.only(left: 16, top: 8, bottom: 8),
+                child: ElevatedButton(
+                  onPressed: () => context.goNamed('Home'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: ffTheme.secondary,
+                    foregroundColor: const Color(0xFF0E3A26),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  child: Text('בדוק כמה תחסוך', style: GoogleFonts.rubik(fontSize: 12, fontWeight: FontWeight.w700)),
                 ),
-                child: Icon(Icons.language_rounded, size: 48, color: ffTheme.primary),
-              ),
-              const SizedBox(height: 24),
-              Text('אתר חוסך', style: ffTheme.headlineLarge, textAlign: TextAlign.center),
-              const SizedBox(height: 12),
-              Text(
-                'אפליקציית האינטרנט המלאה שלנו',
-                style: ffTheme.bodyLarge.override(color: ffTheme.secondaryText),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'www.chosech.co.il',
-                style: ffTheme.titleMedium.override(color: ffTheme.primary),
-              ),
-              const SizedBox(height: 40),
-              FFButtonWidget(
-                text: 'פתח אתר',
-                onPressed: () async { /* url_launcher */ },
-                options: FFButtonOptions(
-                  width: double.infinity,
-                  height: 52,
-                  color: ffTheme.primary,
-                  textStyle: ffTheme.titleSmall.override(color: Colors.white),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-              ),
-              const SizedBox(height: 12),
-              OutlinedButton(
-                onPressed: () => context.goNamed('Home'),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: ffTheme.primary,
-                  side: BorderSide(color: ffTheme.primary),
-                  minimumSize: const Size(double.infinity, 48),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                ),
-                child: const Text('חזרה לאפליקציה'),
               ),
             ],
           ),
-        ),
+
+          // Hero section
+          SliverToBoxAdapter(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topRight,
+                  end: Alignment.bottomLeft,
+                  colors: [const Color(0xFF0E3A26), ffTheme.primary, ffTheme.tertiary],
+                ),
+              ),
+              padding: const EdgeInsets.fromLTRB(20, 40, 20, 48),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'השוואת מחירי תקשורת\nהכי חכמה בישראל',
+                    style: GoogleFonts.rubik(fontSize: 30, fontWeight: FontWeight.w800, color: Colors.white, height: 1.2),
+                  ).animate().fadeIn(duration: 500.ms).slideY(begin: 0.2, end: 0),
+                  const SizedBox(height: 12),
+                  Text(
+                    'חסכנו לאלפי ישראלים יותר מ-₪850 בשנה',
+                    style: GoogleFonts.assistant(fontSize: 14, color: Colors.white70),
+                  ).animate().fadeIn(delay: 100.ms),
+                  const SizedBox(height: 24),
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('מה אתם משלמים היום?', style: GoogleFonts.rubik(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                children: [
+                                  Text('₪${_billInput.round()}', style: GoogleFonts.rubik(fontSize: 32, fontWeight: FontWeight.w800, color: ffTheme.secondary)),
+                                  Slider(
+                                    value: _billInput,
+                                    min: 20,
+                                    max: 500,
+                                    activeColor: ffTheme.secondary,
+                                    inactiveColor: Colors.white30,
+                                    onChanged: (v) => setState(() => _billInput = v),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            ElevatedButton(
+                              onPressed: () {
+                                appState.setCurrentBill('cellular', _billInput.round());
+                                context.goNamed('Home');
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: ffTheme.secondary,
+                                foregroundColor: const Color(0xFF0E3A26),
+                                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                              child: Text('בדוק', style: GoogleFonts.rubik(fontSize: 15, fontWeight: FontWeight.w700)),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ).animate().fadeIn(delay: 200.ms).scale(begin: const Offset(0.97, 0.97), delay: 200.ms),
+                ],
+              ),
+            ),
+          ),
+
+          // Stats bar
+          SliverToBoxAdapter(
+            child: Container(
+              color: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 20),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: const [
+                  _Stat(value: '60,000+', label: 'לקוחות'),
+                  _StatDivider(),
+                  _Stat(value: '₪850', label: 'חיסכון ממוצע'),
+                  _StatDivider(),
+                  _Stat(value: '5', label: 'קטגוריות'),
+                  _StatDivider(),
+                  _Stat(value: 'כל', label: 'הספקים'),
+                ],
+              ),
+            ).animate().fadeIn(delay: 300.ms),
+          ),
+
+          // Category tabs + plans
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('השוואת מחירים', style: ffTheme.headlineMedium),
+                  const SizedBox(height: 14),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: categories.map((cat) {
+                        final active = _activeCat == cat.id;
+                        return GestureDetector(
+                          onTap: () => setState(() => _activeCat = cat.id),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            margin: const EdgeInsets.only(left: 8),
+                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+                            decoration: BoxDecoration(
+                              color: active ? ffTheme.primary : Colors.white,
+                              borderRadius: BorderRadius.circular(24),
+                              border: Border.all(color: active ? ffTheme.primary : ffTheme.alternate),
+                            ),
+                            child: Row(
+                              children: [
+                                Text(cat.icon, style: const TextStyle(fontSize: 14)),
+                                const SizedBox(width: 6),
+                                Text(cat.name, style: ffTheme.labelMedium.override(color: active ? Colors.white : ffTheme.primaryText)),
+                              ],
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  ...plans.map((p) => PlanCardWidget(plan: p, currentBill: bill)),
+                  if (plans.length >= 6)
+                    Center(
+                      child: TextButton(
+                        onPressed: () {
+                          appState.setCategory(_activeCat);
+                          context.goNamed('Home');
+                        },
+                        child: Text('ראה את כל המסלולים →', style: ffTheme.titleSmall.override(color: ffTheme.primary)),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+
+          // How it works
+          SliverToBoxAdapter(
+            child: Container(
+              color: ffTheme.accent1,
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                children: [
+                  Text('איך זה עובד?', style: ffTheme.headlineMedium),
+                  const SizedBox(height: 24),
+                  ...const [
+                    _Step(emoji: '🔍', title: 'בחר קטגוריה ומלא פרטים', subtitle: 'ספר לנו על הצרכים שלך'),
+                    _Step(emoji: '💰', title: 'ראה השוואת מחירים מלאה', subtitle: 'כל הספקים במקום אחד, שקוף ואמין'),
+                    _Step(emoji: '🤝', title: 'נלווה אותך במעבר', subtitle: 'נציג אישי מנהל את כל התהליך בשבילך'),
+                  ],
+                ],
+              ),
+            ).animate().fadeIn(delay: 400.ms),
+          ),
+
+          // Provider strip
+          SliverToBoxAdapter(
+            child: Container(
+              padding: const EdgeInsets.all(20),
+              color: Colors.white,
+              child: Column(
+                children: [
+                  Text('כל הספקים', style: ffTheme.titleMedium.override(color: ffTheme.secondaryText)),
+                  const SizedBox(height: 14),
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    alignment: WrapAlignment.center,
+                    children: const ['פלאפון', 'סלקום', 'פרטנר', 'הוט', 'yes', 'בזק', 'גולן', '019 מובייל', 'Airalo', 'FreeTV', 'רמי לוי'].map((p) => LogoWidget(provider: p, size: 40)).toList(),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // CTA band
+          SliverToBoxAdapter(
+            child: Container(
+              padding: const EdgeInsets.all(32),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(colors: [const Color(0xFF0E3A26), ffTheme.primary]),
+              ),
+              child: Column(
+                children: [
+                  Text('מוכנים לחסוך?', style: GoogleFonts.rubik(fontSize: 28, fontWeight: FontWeight.w800, color: Colors.white)),
+                  const SizedBox(height: 8),
+                  Text('הצטרפו ל-60,000 ישראלים שכבר חוסכים', style: GoogleFonts.assistant(fontSize: 14, color: Colors.white70)),
+                  const SizedBox(height: 20),
+                  ElevatedButton(
+                    onPressed: () => context.goNamed('Home'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: ffTheme.secondary,
+                      foregroundColor: const Color(0xFF0E3A26),
+                      padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 16),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    ),
+                    child: Text('בדוק כמה תחסוך עכשיו', style: GoogleFonts.rubik(fontSize: 16, fontWeight: FontWeight.w800)),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // Footer
+          SliverToBoxAdapter(
+            child: Container(
+              padding: const EdgeInsets.all(20),
+              color: const Color(0xFF0E3A26),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text('חוסך', style: GoogleFonts.rubik(fontSize: 18, fontWeight: FontWeight.w800, color: const Color(0xFFC9EC4B))),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Text('© 2025 חוסך. כל הזכויות שמורות.', style: GoogleFonts.assistant(fontSize: 11, color: Colors.white38)),
+                  const SizedBox(height: 4),
+                  Text('לא ספק תקשורת. לא מחויבים לאף חברה. רק בצד שלכם.', style: GoogleFonts.assistant(fontSize: 11, color: Colors.white38), textAlign: TextAlign.center),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Stat extends StatelessWidget {
+  const _Stat({required this.value, required this.label});
+  final String value, label;
+
+  @override
+  Widget build(BuildContext context) {
+    final ffTheme = FlutterFlowTheme.of(context);
+    return Column(
+      children: [
+        Text(value, style: GoogleFonts.rubik(fontSize: 18, fontWeight: FontWeight.w800, color: ffTheme.primary)),
+        Text(label, style: ffTheme.labelSmall),
+      ],
+    );
+  }
+}
+
+class _StatDivider extends StatelessWidget {
+  const _StatDivider();
+
+  @override
+  Widget build(BuildContext context) => Container(width: 1, height: 32, color: const Color(0xFFE5E0D5));
+}
+
+class _Step extends StatelessWidget {
+  const _Step({required this.emoji, required this.title, required this.subtitle});
+  final String emoji, title, subtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    final ffTheme = FlutterFlowTheme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Row(
+        children: [
+          Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle, boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 10)]),
+            child: Center(child: Text(emoji, style: const TextStyle(fontSize: 24))),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: ffTheme.titleSmall),
+                Text(subtitle, style: ffTheme.bodySmall),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

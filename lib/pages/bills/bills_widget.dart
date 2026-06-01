@@ -6,6 +6,7 @@ import '../../flutter_flow/flutter_flow_theme.dart';
 import '../../flutter_flow/flutter_flow_util.dart';
 import '../../app_state.dart';
 import '../../data.dart';
+import '../../models.dart';
 
 class BillsWidget extends StatelessWidget {
   const BillsWidget({super.key});
@@ -115,7 +116,7 @@ class BillsWidget extends StatelessWidget {
 
 class _BillStepper extends StatelessWidget {
   const _BillStepper({required this.category, required this.currentBill, required this.onDecrease, required this.onIncrease, required this.ffTheme});
-  final category;
+  final Category category;
   final int currentBill;
   final VoidCallback onDecrease;
   final VoidCallback onIncrease;

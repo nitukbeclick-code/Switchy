@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../flutter_flow/flutter_flow_theme.dart';
 import '../../flutter_flow/flutter_flow_util.dart';
-import '../../app_state.dart';
 
 class SwitchCalcWidget extends StatefulWidget {
   const SwitchCalcWidget({super.key});
@@ -12,12 +12,25 @@ class SwitchCalcWidget extends StatefulWidget {
 }
 
 class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
-  double _current = 119;
-  double _newPrice = 39;
+  double _current = 120;
+  double _newPlan = 49;
+  double _exitFee = 0;
 
-  int get _monthlySaving => (_current - _newPrice).clamp(0, 9999).round();
-  int get _annualSaving => (_monthlySaving * 12);
-  int get _fiveYearSaving => (_annualSaving * 5);
+  int get _monthlySaving => (_current - _newPlan).round().clamp(0, 9999);
+  int get _annualSaving => (_monthlySaving * 12 - _exitFee.round()).clamp(0, 99999);
+  double get _breakeven => _monthlySaving > 0 ? _exitFee / _monthlySaving : 0;
+
+  Color _resultColor(FlutterFlowTheme ffTheme) {
+    if (_annualSaving > 1200) return ffTheme.success;
+    if (_annualSaving > 0) return ffTheme.warning;
+    return ffTheme.error;
+  }
+
+  String _resultText() {
+    if (_annualSaving > 1200) return '🎉 שווה מאוד לעבור!';
+    if (_annualSaving > 0) return '💡 יש חיסכון קטן';
+    return '❌ לא כדאי לעבור כרגע';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -25,98 +38,103 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
 
     return Scaffold(
       backgroundColor: ffTheme.background,
-      appBar: AppBar(title: const Text('מחשבון מעבר')),
+      appBar: AppBar(
+        title: const Text('מחשבון מעבר'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        foregroundColor: ffTheme.primaryText,
+      ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Current bill
-            Text('החשבון הנוכחי שלכם', style: ffTheme.titleMedium),
-            const SizedBox(height: 8),
-            _SliderCard(
-              label: 'מחיר נוכחי',
+            Text('מחשבון מעבר', style: ffTheme.headlineMedium),
+            const SizedBox(height: 4),
+            Text('חשבו אם המעבר משתלם לכם', style: ffTheme.bodySmall),
+            const SizedBox(height: 24),
+
+            _SliderSection(
+              label: 'חשבון נוכחי',
+              emoji: '💸',
               value: _current,
               min: 20,
               max: 500,
               onChanged: (v) => setState(() => _current = v),
               ffTheme: ffTheme,
-            ),
+            ).animate().fadeIn(duration: 400.ms),
 
             const SizedBox(height: 20),
 
-            Text('מחיר החבילה החדשה', style: ffTheme.titleMedium),
-            const SizedBox(height: 8),
-            _SliderCard(
-              label: 'מחיר חדש',
-              value: _newPrice,
-              min: 10,
+            _SliderSection(
+              label: 'מסלול חדש',
+              emoji: '✨',
+              value: _newPlan,
+              min: 20,
               max: 300,
-              onChanged: (v) => setState(() => _newPrice = v),
+              onChanged: (v) => setState(() => _newPlan = v),
               ffTheme: ffTheme,
-            ),
+            ).animate().fadeIn(delay: 100.ms),
+
+            const SizedBox(height: 20),
+
+            _SliderSection(
+              label: 'דמי ניתוק',
+              emoji: '🔓',
+              value: _exitFee,
+              min: 0,
+              max: 500,
+              onChanged: (v) => setState(() => _exitFee = v),
+              ffTheme: ffTheme,
+            ).animate().fadeIn(delay: 200.ms),
 
             const SizedBox(height: 28),
 
-            // Results
-            Container(
-              padding: const EdgeInsets.all(20),
+            // Results card
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              width: double.infinity,
+              padding: const EdgeInsets.all(22),
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topRight,
-                  end: Alignment.bottomLeft,
-                  colors: [ffTheme.primary, ffTheme.tertiary],
-                ),
+                color: _resultColor(ffTheme).withOpacity(0.08),
                 borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: _resultColor(ffTheme).withOpacity(0.3), width: 2),
               ),
               child: Column(
                 children: [
-                  Text('החיסכון שלכם', style: ffTheme.titleLarge.override(color: Colors.white)),
-                  const SizedBox(height: 16),
+                  Text(_resultText(), style: GoogleFonts.rubik(fontSize: 18, fontWeight: FontWeight.w800, color: _resultColor(ffTheme))),
+                  const SizedBox(height: 20),
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
-                      _SavingBox(label: 'לחודש', value: formatPrice(_monthlySaving), ffTheme: ffTheme),
-                      _SavingBox(label: 'לשנה', value: formatPrice(_annualSaving), ffTheme: ffTheme),
-                      _SavingBox(label: 'ל-5 שנים', value: formatPrice(_fiveYearSaving), ffTheme: ffTheme),
+                      Expanded(child: _ResultStat(label: 'חיסכון חודשי', value: '₪$_monthlySaving', color: _resultColor(ffTheme), ffTheme: ffTheme)),
+                      Expanded(child: _ResultStat(label: 'חיסכון שנתי', value: '₪$_annualSaving', color: _resultColor(ffTheme), ffTheme: ffTheme)),
                     ],
                   ),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 20),
-
-            if (_monthlySaving > 0) ...[
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(color: ffTheme.accent1, borderRadius: BorderRadius.circular(14)),
-                child: Row(
-                  children: [
-                    const Text('💡', style: TextStyle(fontSize: 24)),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        'חיסכון של ${formatPrice(_annualSaving)} בשנה – שווה לבדוק!',
-                        style: ffTheme.bodyMedium.override(color: ffTheme.success, fontWeight: FontWeight.w600),
-                      ),
+                  if (_breakeven > 0) ...[
+                    const SizedBox(height: 14),
+                    Text(
+                      'נקודת איזון: ${_breakeven.toStringAsFixed(1)} חודשים',
+                      style: ffTheme.bodySmall.override(color: ffTheme.secondaryText),
                     ),
                   ],
-                ),
+                ],
               ),
-              const SizedBox(height: 16),
-              ElevatedButton.icon(
-                onPressed: () => context.goNamed('Results'),
-                icon: const Icon(Icons.search_rounded),
-                label: const Text('מצאו חבילה מתאימה'),
+            ).animate().fadeIn(delay: 300.ms),
+
+            const SizedBox(height: 24),
+
+            if (_annualSaving > 0)
+              ElevatedButton(
+                onPressed: () => context.pushNamed('Results'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: ffTheme.primary,
-                  foregroundColor: Colors.white,
                   minimumSize: const Size(double.infinity, 52),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                 ),
-              ),
-            ],
+                child: Text('מצא מסלולים מתאימים', style: ffTheme.titleSmall.override(color: Colors.white)),
+              ).animate().fadeIn(delay: 400.ms),
+
+            const SizedBox(height: 32),
           ],
         ),
       ),
@@ -124,12 +142,10 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
   }
 }
 
-class _SliderCard extends StatelessWidget {
-  const _SliderCard({required this.label, required this.value, required this.min, required this.max, required this.onChanged, required this.ffTheme});
-  final String label;
-  final double value;
-  final double min;
-  final double max;
+class _SliderSection extends StatelessWidget {
+  const _SliderSection({required this.label, required this.emoji, required this.value, required this.min, required this.max, required this.onChanged, required this.ffTheme});
+  final String label, emoji;
+  final double value, min, max;
   final ValueChanged<double> onChanged;
   final FlutterFlowTheme ffTheme;
 
@@ -138,17 +154,20 @@ class _SliderCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: ffTheme.secondaryBackground,
+        color: Colors.white,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: ffTheme.alternate),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(label, style: ffTheme.bodyMedium.override(color: ffTheme.secondaryText)),
-              Text('₪${value.round()}', style: ffTheme.titleLarge.override(color: ffTheme.primary)),
+              Text(emoji, style: const TextStyle(fontSize: 20)),
+              const SizedBox(width: 8),
+              Text(label, style: ffTheme.titleSmall),
+              const Spacer(),
+              Text('₪${value.round()}', style: ffTheme.headlineSmall.override(color: ffTheme.primary)),
             ],
           ),
           Slider(
@@ -159,24 +178,32 @@ class _SliderCard extends StatelessWidget {
             inactiveColor: ffTheme.alternate,
             onChanged: onChanged,
           ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text('₪${min.round()}', style: ffTheme.labelSmall),
+              Text('₪${max.round()}', style: ffTheme.labelSmall),
+            ],
+          ),
         ],
       ),
     );
   }
 }
 
-class _SavingBox extends StatelessWidget {
-  const _SavingBox({required this.label, required this.value, required this.ffTheme});
-  final String label;
-  final String value;
+class _ResultStat extends StatelessWidget {
+  const _ResultStat({required this.label, required this.value, required this.color, required this.ffTheme});
+  final String label, value;
+  final Color color;
   final FlutterFlowTheme ffTheme;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Text(value, style: ffTheme.titleLarge.override(color: Colors.white)),
-        Text(label, style: ffTheme.labelSmall.override(color: Colors.white70)),
+        Text(label, style: ffTheme.labelSmall),
+        const SizedBox(height: 4),
+        Text(value, style: ffTheme.headlineSmall.override(color: color)),
       ],
     );
   }

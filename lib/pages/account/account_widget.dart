@@ -7,6 +7,7 @@ import '../../flutter_flow/flutter_flow_util.dart';
 import '../../flutter_flow/flutter_flow_widgets.dart';
 import '../../app_state.dart';
 import '../../data.dart';
+import '../../models.dart';
 
 class AccountWidget extends StatelessWidget {
   const AccountWidget({super.key});

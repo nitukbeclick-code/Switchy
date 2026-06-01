@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../flutter_flow/flutter_flow_theme.dart';
 
 class LogoWidget extends StatelessWidget {
   const LogoWidget({super.key, required this.provider, this.size = 44});
@@ -42,10 +41,10 @@ class LogoWidget extends StatelessWidget {
       if (parts.length > 1) return parts[0][0].toUpperCase() + parts[1][0].toUpperCase();
       return trimmed[0].toUpperCase();
     }
-    // Hebrew: take first 2 chars
-    final chars = trimmed.characters;
-    if (chars.length >= 2) return '${chars.first}${chars.elementAt(1)}';
-    return chars.first;
+    // Hebrew: use runes to safely get Unicode characters
+    final runes = trimmed.runes.toList();
+    if (runes.length >= 2) return String.fromCharCodes([runes[0], runes[1]]);
+    return String.fromCharCodes([runes[0]]);
   }
 
   @override

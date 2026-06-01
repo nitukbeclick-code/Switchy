@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'router.dart';
 
@@ -11,6 +12,11 @@ class ChosechApp extends StatelessWidget {
       title: 'חוסך',
       debugShowCheckedModeBanner: false,
       locale: const Locale('he'),
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
       supportedLocales: const [Locale('he'), Locale('en')],
       theme: _theme(),
       routerConfig: createRouter(),

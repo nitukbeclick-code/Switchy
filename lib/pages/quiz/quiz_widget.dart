@@ -54,18 +54,50 @@ class _QuizWidgetState extends State<QuizWidget> {
           padding: const EdgeInsets.all(24),
           child: Column(
             children: [
-              Expanded(child: _buildStep(ffTheme)),
-              const SizedBox(height: 24),
-              FFButtonWidget(
-                text: _step < 3 ? 'הבא' : 'הצג תוצאות',
-                onPressed: () async => _next(),
-                options: FFButtonOptions(
-                  width: double.infinity,
-                  height: 56,
-                  color: ffTheme.primary,
-                  textStyle: ffTheme.titleMedium.override(color: Colors.white),
-                  borderRadius: BorderRadius.circular(18),
+              Expanded(
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 350),
+                  transitionBuilder: (child, animation) => FadeTransition(
+                    opacity: animation,
+                    child: SlideTransition(
+                      position: Tween<Offset>(begin: const Offset(0.08, 0), end: Offset.zero).animate(animation),
+                      child: child,
+                    ),
+                  ),
+                  child: KeyedSubtree(key: ValueKey(_step), child: _buildStep(ffTheme)),
                 ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  if (_step > 0)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 12),
+                      child: OutlinedButton(
+                        onPressed: () => setState(() => _step--),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: ffTheme.secondaryText,
+                          side: BorderSide(color: ffTheme.alternate),
+                          minimumSize: const Size(52, 56),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                        ),
+                        child: const Icon(Icons.arrow_forward_ios_rounded, size: 18),
+                      ),
+                    ),
+                  Expanded(
+                    child: FFButtonWidget(
+                      text: _step < 3 ? 'הבא ←' : '🔍 הצג תוצאות',
+                      onPressed: () async => _next(),
+                      options: FFButtonOptions(
+                        width: double.infinity,
+                        height: 56,
+                        color: ffTheme.primary,
+                        textStyle: ffTheme.titleMedium.override(color: Colors.white),
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),

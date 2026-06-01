@@ -181,67 +181,130 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
               ...List.generate(_providers.length, (i) {
                 final isp = _providers[i];
                 final isAvailable = isp.status == 'זמין';
+                final isBest = isAvailable && isp.price > 0 && _providers.where((p) => p.status == 'זמין' && p.price > 0).map((p) => p.price).fold(9999, (a, b) => a < b ? a : b) == isp.price;
                 if (i >= _revealedCount) return const SizedBox();
                 return Container(
-                  margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.all(14),
+                  margin: const EdgeInsets.only(bottom: 10),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: isAvailable ? ffTheme.success.withOpacity(0.25) : ffTheme.alternate),
-                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8)],
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: isBest ? ffTheme.secondary : (isAvailable ? ffTheme.success.withOpacity(0.25) : ffTheme.alternate),
+                      width: isBest ? 2 : 1,
+                    ),
+                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 2))],
                   ),
-                  child: Row(
+                  child: Column(
                     children: [
-                      Text(isp.icon, style: const TextStyle(fontSize: 20)),
-                      const SizedBox(width: 12),
-                      Expanded(
+                      if (isBest)
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(vertical: 5),
+                          decoration: BoxDecoration(
+                            color: ffTheme.secondary,
+                            borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                          ),
+                          child: Center(
+                            child: Text('⭐ מחיר הכי נמוך', style: ffTheme.labelSmall.override(color: const Color(0xFF0E3A26), fontWeight: FontWeight.w800)),
+                          ),
+                        ),
+                      Padding(
+                        padding: const EdgeInsets.all(14),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(isp.name, style: ffTheme.titleSmall),
-                            Text('${isp.tech} • ${isp.speed}', style: ffTheme.bodySmall),
+                            Row(
+                              children: [
+                                Text(isp.icon, style: const TextStyle(fontSize: 20)),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(isp.name, style: ffTheme.titleSmall),
+                                      Text('${isp.tech} • ${isp.speed}', style: ffTheme.bodySmall),
+                                    ],
+                                  ),
+                                ),
+                                if (isAvailable && isp.price > 0) ...[
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      Text('מ-₪${isp.price}', style: ffTheme.titleSmall.override(color: ffTheme.primary)),
+                                      Text('לחודש', style: ffTheme.labelSmall.override(color: ffTheme.secondaryText)),
+                                    ],
+                                  ),
+                                ] else
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                    decoration: BoxDecoration(color: ffTheme.accent2, borderRadius: BorderRadius.circular(8)),
+                                    child: Text(isp.status, style: ffTheme.labelSmall.override(color: ffTheme.warning, fontWeight: FontWeight.w700)),
+                                  ),
+                              ],
+                            ),
+                            if (isAvailable) ...[
+                              const SizedBox(height: 10),
+                              _SpeedBar(speed: isp.speed, ffTheme: ffTheme),
+                              const SizedBox(height: 10),
+                              GestureDetector(
+                                onTap: () {
+                                  Provider.of<FFAppState>(context, listen: false).setCategory('internet');
+                                  context.pushNamed('Results');
+                                },
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.end,
+                                  children: [
+                                    Text('ראה מסלולי ${isp.name}', style: ffTheme.labelSmall.override(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+                                    const SizedBox(width: 4),
+                                    Icon(Icons.arrow_forward_ios_rounded, size: 11, color: ffTheme.primary),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                       ),
-                      if (isAvailable && isp.price > 0) ...[
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text('מ-₪${isp.price}', style: ffTheme.titleSmall.override(color: ffTheme.primary)),
-                            Text('לחודש', style: ffTheme.labelSmall.override(color: ffTheme.secondaryText)),
-                          ],
-                        ),
-                      ] else
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: ffTheme.accent2,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(isp.status, style: ffTheme.labelSmall.override(color: ffTheme.warning, fontWeight: FontWeight.w700)),
-                        ),
                     ],
                   ),
                 ).animate().fadeIn(duration: 300.ms).slideX(begin: 0.04, end: 0);
               }),
 
               if (_revealedCount >= _providers.length) ...[
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: () {
-                    Provider.of<FFAppState>(context, listen: false).setCategory('internet');
-                    context.pushNamed('Results');
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: ffTheme.secondary,
-                    foregroundColor: const Color(0xFF0E3A26),
-                    minimumSize: const Size(double.infinity, 50),
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(colors: [ffTheme.primary, ffTheme.tertiary]),
+                    borderRadius: BorderRadius.circular(14),
                   ),
-                  child: Text('השווה מחירי אינטרנט זמינים →', style: ffTheme.titleSmall.override(color: const Color(0xFF0E3A26))),
-                ).animate().fadeIn(duration: 300.ms),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text('${_providers.where((p) => p.status == 'זמין').length} ספקים זמינים', style: ffTheme.titleSmall.override(color: Colors.white)),
+                            Text('השווה מחירים ומהירויות', style: ffTheme.bodySmall.override(color: Colors.white70)),
+                          ],
+                        ),
+                      ),
+                      ElevatedButton(
+                        onPressed: () {
+                          Provider.of<FFAppState>(context, listen: false).setCategory('internet');
+                          context.pushNamed('Results');
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: ffTheme.secondary,
+                          foregroundColor: const Color(0xFF0E3A26),
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        ),
+                        child: Text('השווה ←', style: ffTheme.labelMedium.override(color: const Color(0xFF0E3A26), fontWeight: FontWeight.w700)),
+                      ),
+                    ],
+                  ),
+                ).animate().fadeIn(duration: 400.ms),
               ],
             ],
 
@@ -257,4 +320,43 @@ class _ISP {
   final String name, tech, status, speed, icon;
   final int price;
   const _ISP({required this.name, required this.tech, required this.status, required this.speed, required this.price, required this.icon});
+}
+
+class _SpeedBar extends StatelessWidget {
+  const _SpeedBar({required this.speed, required this.ffTheme});
+  final String speed;
+  final FlutterFlowTheme ffTheme;
+
+  double _speedFraction() {
+    if (speed.contains('1Gb') || speed.contains('1000')) return 1.0;
+    if (speed.contains('500')) return 0.75;
+    if (speed.contains('200')) return 0.55;
+    if (speed.contains('100')) return 0.4;
+    if (speed.contains('50')) return 0.25;
+    return 0.3;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final fraction = _speedFraction();
+    return Row(
+      children: [
+        Text('מהירות:', style: ffTheme.labelSmall.override(color: ffTheme.secondaryText)),
+        const SizedBox(width: 8),
+        Expanded(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: fraction,
+              backgroundColor: ffTheme.alternate,
+              valueColor: AlwaysStoppedAnimation(fraction >= 0.75 ? ffTheme.success : (fraction >= 0.45 ? ffTheme.primary : ffTheme.warning)),
+              minHeight: 6,
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(speed, style: ffTheme.labelSmall.override(color: ffTheme.primaryText, fontWeight: FontWeight.w600)),
+      ],
+    );
+  }
 }

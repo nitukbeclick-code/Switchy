@@ -21,6 +21,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
   String _activeChannel = 'הכל';
 
   final _channels = ['הכל', 'המלצות', 'סלולר', 'אינטרנט', 'עזרה בניתוק'];
+  bool _sortByPopular = false;
 
   @override
   void initState() {
@@ -34,8 +35,13 @@ class _CommunityWidgetState extends State<CommunityWidget> {
     super.dispose();
   }
 
-  List<CommunityPost> get _filtered =>
-      _activeChannel == 'הכל' ? _posts : _posts.where((p) => p.channel == _activeChannel).toList();
+  List<CommunityPost> get _filtered {
+    final base = _activeChannel == 'הכל' ? _posts : _posts.where((p) => p.channel == _activeChannel).toList();
+    if (_sortByPopular) {
+      return List.from(base)..sort((a, b) => b.likes.compareTo(a.likes));
+    }
+    return base;
+  }
 
   void _send() {
     final text = _composerCtrl.text.trim();
@@ -96,7 +102,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
             ),
           ),
 
-          // Members online
+          // Members online + sort toggle
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
             child: Row(
@@ -105,10 +111,25 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                 const SizedBox(width: 6),
                 Text('847 חברים מחוברים', style: ffTheme.labelSmall.override(color: Colors.green, fontWeight: FontWeight.w600)),
                 const Spacer(),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(color: ffTheme.accent2, borderRadius: BorderRadius.circular(8), border: Border.all(color: ffTheme.warning.withOpacity(0.3))),
-                  child: Text('🔥 ${_posts.fold(0, (s, p) => s + p.likes)} לייקים היום', style: ffTheme.labelSmall.override(color: ffTheme.warning, fontWeight: FontWeight.w600)),
+                GestureDetector(
+                  onTap: () => setState(() => _sortByPopular = !_sortByPopular),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: _sortByPopular ? ffTheme.primary.withOpacity(0.1) : ffTheme.background,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: _sortByPopular ? ffTheme.primary : ffTheme.alternate),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(_sortByPopular ? Icons.local_fire_department_rounded : Icons.access_time_rounded, size: 13, color: _sortByPopular ? ffTheme.primary : ffTheme.secondaryText),
+                        const SizedBox(width: 4),
+                        Text(_sortByPopular ? 'פופולרי' : 'חדש', style: ffTheme.labelSmall.override(color: _sortByPopular ? ffTheme.primary : ffTheme.secondaryText, fontWeight: FontWeight.w600)),
+                      ],
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -148,12 +169,27 @@ class _CommunityWidgetState extends State<CommunityWidget> {
 
           // Posts list
           Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
-              itemCount: _filtered.length,
-              itemBuilder: (context, i) => _PostCard(post: _filtered[i], ffTheme: ffTheme)
-                  .animate(delay: (i * 50).ms).fadeIn(duration: 350.ms).slideY(begin: 0.05, end: 0),
-            ),
+            child: _filtered.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.forum_outlined, size: 56, color: ffTheme.alternate)
+                          .animate(onPlay: (c) => c.repeat(reverse: true))
+                          .scale(begin: const Offset(1, 1), end: const Offset(1.05, 1.05), duration: 1400.ms, curve: Curves.easeInOut),
+                      const SizedBox(height: 16),
+                      Text('אין פוסטים בערוץ זה עדיין', style: ffTheme.titleSmall.override(color: ffTheme.secondaryText)),
+                      const SizedBox(height: 8),
+                      Text('היה הראשון לשתף!', style: ffTheme.bodySmall.override(color: ffTheme.secondaryText)),
+                    ],
+                  ),
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+                  itemCount: _filtered.length,
+                  itemBuilder: (context, i) => _PostCard(post: _filtered[i], ffTheme: ffTheme)
+                      .animate(delay: (i * 50).ms).fadeIn(duration: 350.ms).slideY(begin: 0.05, end: 0),
+                ),
           ),
 
           // Composer

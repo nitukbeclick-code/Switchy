@@ -427,25 +427,76 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                 )
               else if (plans.isEmpty)
                 SliverFillRemaining(
-                  child: Center(
+                  hasScrollBody: false,
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.search_off_rounded,
-                            size: 64, color: ffTheme.alternate),
-                        const SizedBox(height: 16),
-                        Text('לא נמצאו מסלולים',
-                            style: ffTheme.titleMedium
-                                .override(color: ffTheme.secondaryText)),
+                        Container(
+                          width: 88,
+                          height: 88,
+                          decoration: BoxDecoration(
+                            color: ffTheme.alternate.withOpacity(0.4),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(Icons.search_off_rounded, size: 44, color: ffTheme.secondaryText),
+                        ).animate(onPlay: (c) => c.repeat(reverse: true))
+                          .scale(begin: const Offset(1, 1), end: const Offset(1.06, 1.06), duration: 1400.ms, curve: Curves.easeInOut),
+                        const SizedBox(height: 20),
+                        Text(
+                          appState.searchQuery.isNotEmpty ? 'אין תוצאות לחיפוש' : 'לא נמצאו מסלולים',
+                          style: ffTheme.headlineSmall,
+                        ),
                         const SizedBox(height: 8),
-                        TextButton(
-                          onPressed: () {
-                            appState.clearFilters();
-                            _searchController.clear();
-                          },
-                          child: Text('נקה סינונים',
-                              style: ffTheme.bodyMedium
-                                  .override(color: ffTheme.primary)),
+                        Text(
+                          appState.searchQuery.isNotEmpty
+                            ? 'לא מצאנו תוצאות עבור "${appState.searchQuery}"'
+                            : appState.activeFilters.isNotEmpty
+                              ? 'הסינונים שבחרת מצמצמים מדי — נסה להסיר חלקם'
+                              : 'אין מסלולים בקטגוריה זו כרגע',
+                          style: ffTheme.bodyMedium.override(color: ffTheme.secondaryText),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 28),
+                        if (appState.searchQuery.isNotEmpty)
+                          _ActionChip(
+                            label: 'נקה חיפוש',
+                            icon: Icons.clear_rounded,
+                            onTap: () { _searchController.clear(); appState.setSearch(''); },
+                            ffTheme: ffTheme,
+                          ),
+                        if (appState.activeFilters.isNotEmpty) ...[
+                          const SizedBox(height: 10),
+                          _ActionChip(
+                            label: 'נקה את כל הסינונים',
+                            icon: Icons.filter_alt_off_rounded,
+                            onTap: appState.clearFilters,
+                            ffTheme: ffTheme,
+                          ),
+                        ],
+                        const SizedBox(height: 28),
+                        Text('נסה קטגוריה אחרת', style: ffTheme.labelMedium.override(color: ffTheme.secondaryText)),
+                        const SizedBox(height: 12),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          alignment: WrapAlignment.center,
+                          children: _categories
+                            .where((c) => c.$1 != cat)
+                            .map((c) => GestureDetector(
+                              onTap: () => _switchCategory(appState, c.$1),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(20),
+                                  border: Border.all(color: ffTheme.primary.withOpacity(0.3)),
+                                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 4)],
+                                ),
+                                child: Text(c.$2, style: ffTheme.labelSmall.override(color: ffTheme.primary, fontWeight: FontWeight.w600)),
+                              ),
+                            )).toList(),
                         ),
                       ],
                     ),
@@ -652,6 +703,37 @@ class _ResultsWidgetState extends State<ResultsWidget> {
               const SizedBox(height: 8),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ActionChip extends StatelessWidget {
+  const _ActionChip({required this.label, required this.icon, required this.onTap, required this.ffTheme});
+  final String label;
+  final IconData icon;
+  final VoidCallback onTap;
+  final FlutterFlowTheme ffTheme;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+        decoration: BoxDecoration(
+          color: ffTheme.primary,
+          borderRadius: BorderRadius.circular(22),
+          boxShadow: [BoxShadow(color: ffTheme.primary.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 3))],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16, color: Colors.white),
+            const SizedBox(width: 8),
+            Text(label, style: ffTheme.labelMedium.override(color: Colors.white, fontWeight: FontWeight.w700)),
+          ],
         ),
       ),
     );

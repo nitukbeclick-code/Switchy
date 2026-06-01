@@ -25,6 +25,7 @@ class _QuizWidgetState extends State<QuizWidget> {
     ('internet', 'אינטרנט', '🌐'),
     ('tv', 'טלוויזיה', '📺'),
     ('triple', 'חבילה משולבת', '🏠'),
+    ('abroad', 'חו"ל', '✈️'),
   ];
 
   @override
@@ -128,10 +129,10 @@ class _QuizWidgetState extends State<QuizWidget> {
           ),
         );
       case 1:
-        if (_cat == 'internet') {
+        if (_cat == 'internet' || _cat == 'triple') {
           return _StepCard(
             step: 2,
-            title: 'איזו מהירות אינטרנט?',
+            title: _cat == 'triple' ? 'איזה אינטרנט חשוב לכם?' : 'איזו מהירות אינטרנט?',
             subtitle: 'בחרו מה מתאים לשימוש שלכם',
             ffTheme: ffTheme,
             child: Column(
@@ -170,6 +171,27 @@ class _QuizWidgetState extends State<QuizWidget> {
             ),
           );
         }
+        if (_cat == 'abroad') {
+          return _StepCard(
+            step: 2,
+            title: 'לכמה זמן נוסעים?',
+            subtitle: 'זה ישפיע על סוג החבילה המומלצת',
+            ffTheme: ffTheme,
+            child: Column(
+              children: [
+                ('price', 'נסיעה קצרה — עד שבוע', '🛫'),
+                ('data', 'נסיעה ארוכה — חודש+', '🌍'),
+                ('nocommit', 'נסיעות תכופות', '✈️'),
+              ].map((p) => _RadioTile(
+                emoji: p.$3,
+                label: p.$2,
+                selected: _priority == p.$1,
+                onTap: () => setState(() => _priority = p.$1),
+                ffTheme: ffTheme,
+              )).toList(),
+            ),
+          );
+        }
         return _StepCard(
           step: 2,
           title: 'כמה קווים?',
@@ -193,6 +215,28 @@ class _QuizWidgetState extends State<QuizWidget> {
           ),
         );
       case 2:
+        if (_cat == 'triple') {
+          return _StepCard(
+            step: 3,
+            title: 'מה עוד חשוב בחבילה?',
+            subtitle: 'בחרו תוספת שתשפר את החוויה',
+            ffTheme: ffTheme,
+            child: Column(
+              children: [
+                ('netflix', 'Netflix / VOD כלול', '🎬'),
+                ('sport', 'ערוצי ספורט', '⚽'),
+                ('nocommit', 'ללא התחייבות', '🔓'),
+                ('price', 'מחיר נמוך', '💰'),
+              ].map((p) => _RadioTile(
+                emoji: p.$3,
+                label: p.$2,
+                selected: _extraFilter == p.$1,
+                onTap: () => setState(() => _extraFilter = p.$1),
+                ffTheme: ffTheme,
+              )).toList(),
+            ),
+          );
+        }
         if (_cat == 'internet') {
           return _StepCard(
             step: 3,
@@ -248,7 +292,7 @@ class _QuizWidgetState extends State<QuizWidget> {
                 ('price', 'מחיר נמוך', '💰'),
                 ('data', 'הרבה גלישה', '📶'),
                 ('esim', 'eSIM מיידי', '📲'),
-                ('nocommit', 'גמישות מקסימלית', '🔓'),
+                ('nocommit', 'גמישות — ביטול חופשי', '🔓'),
               ].map((p) => _RadioTile(
                 emoji: p.$3,
                 label: p.$2,
@@ -335,7 +379,7 @@ class _QuizWidgetState extends State<QuizWidget> {
       if (_priority == 'price') appState.setSortMode('price');
       if (_priority == 'data') appState.setSortMode('match');
       if (_priority == 'speed' || _priority == 'speed_ultra' || _priority == 'speed_fast') appState.setSortMode('match');
-      // Apply secondary filter (internet/tv step 2 choice)
+      // Apply secondary filter (internet/tv/triple step 2 choice)
       if (_extraFilter != null) {
         if (_extraFilter == 'nocommit') appState.toggleFilter('nocommit');
         if (_extraFilter == 'streaming') appState.toggleFilter('streaming');

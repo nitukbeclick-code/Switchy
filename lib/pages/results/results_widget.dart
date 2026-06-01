@@ -628,12 +628,12 @@ class _ResultsWidgetState extends State<ResultsWidget> {
 
   void _showFilters(
       BuildContext context, FFAppState appState, FlutterFlowTheme ffTheme) {
-    final Map<String, List<String>> catFilters = {
-      'cellular': ['5G', 'ללא התחייבות', 'מחיר קבוע', 'גלישה לחו"ל'],
-      'internet': ['ללא התחייבות', 'סיב אופטי', '1000Mb+'],
-      'tv': ['סטרימינג', 'לוויין', 'כבלים'],
-      'triple': ['כולל סלולר', 'Netflix'],
-      'abroad': ['ללא מנוי', 'eSIM'],
+    const Map<String, List<(String, String)>> catFilters = {
+      'cellular': [('5G', '5g'), ('ללא התחייבות', 'nocommit'), ('מחיר קבוע', 'fixed'), ('כולל חו"ל', 'abroad')],
+      'internet': [('ללא התחייבות', 'nocommit'), ('סיב אופטי', 'fiber'), ('1000Mb+', '1g'), ('סטרימינג', 'streaming')],
+      'tv': [('סטרימינג', 'streaming'), ('לוויין', 'satellite'), ('ספורט', 'sport'), ('Netflix', 'netflix')],
+      'triple': [('Netflix', 'netflix'), ('5G', '5g'), ('ללא התחייבות', 'nocommit')],
+      'abroad': [('eSIM', 'esim'), ('ללא התחייבות', 'nocommit')],
     };
     showModalBottomSheet(
       context: context,
@@ -664,15 +664,14 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  for (final f in catFilters[appState.selectedCat] ?? [])
+                  for (final chip in catFilters[appState.selectedCat] ?? [])
                     Builder(builder: (ctx) {
-                      final key = f.toLowerCase().replaceAll(' ', '').replaceAll('"', '');
-                      final selected = appState.activeFilters.contains(key);
+                      final selected = appState.activeFilters.contains(chip.$2);
                       return FilterChip(
-                        label: Text(f),
+                        label: Text(chip.$1),
                         selected: selected,
                         onSelected: (_) {
-                          appState.toggleFilter(key);
+                          appState.toggleFilter(chip.$2);
                           setModalState(() {});
                         },
                         selectedColor: ffTheme.primary,

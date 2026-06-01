@@ -96,6 +96,16 @@ class _BillsWidgetState extends State<BillsWidget> {
               ),
             ).animate().fadeIn(duration: 400.ms).scale(begin: const Offset(0.97, 0.97), end: const Offset(1, 1)),
 
+            const SizedBox(height: 16),
+
+            // Savings ring
+            if (total > 0 && totalSavings > 0)
+              _SavingsRing(
+                total: total,
+                totalSavings: totalSavings,
+                ffTheme: ffTheme,
+              ).animate().fadeIn(delay: 200.ms),
+
             const SizedBox(height: 20),
 
             // Bar chart
@@ -244,6 +254,115 @@ class _BillsWidgetState extends State<BillsWidget> {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _SavingsRing extends StatelessWidget {
+  const _SavingsRing({required this.total, required this.totalSavings, required this.ffTheme});
+  final int total;
+  final int totalSavings;
+  final FlutterFlowTheme ffTheme;
+
+  @override
+  Widget build(BuildContext context) {
+    final savingsPerMonth = (totalSavings / 12).round();
+    final pct = ((savingsPerMonth / total) * 100).round().clamp(0, 100);
+    final keep = total - savingsPerMonth;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: ffTheme.alternate),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 12)],
+      ),
+      child: Row(
+        children: [
+          // Donut chart
+          SizedBox(
+            width: 110,
+            height: 110,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                PieChart(
+                  PieChartData(
+                    startDegreeOffset: -90,
+                    sectionsSpace: 3,
+                    centerSpaceRadius: 34,
+                    sections: [
+                      PieChartSectionData(
+                        value: savingsPerMonth.toDouble(),
+                        color: ffTheme.secondary,
+                        radius: 20,
+                        showTitle: false,
+                      ),
+                      PieChartSectionData(
+                        value: keep.toDouble().clamp(1, double.infinity),
+                        color: ffTheme.alternate,
+                        radius: 16,
+                        showTitle: false,
+                      ),
+                    ],
+                  ),
+                ),
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('$pct%', style: GoogleFonts.rubik(fontSize: 18, fontWeight: FontWeight.w800, color: ffTheme.primary)),
+                    Text('חיסכון', style: ffTheme.labelSmall.override(fontSize: 10)),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 20),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('פוטנציאל החיסכון שלך', style: ffTheme.titleSmall),
+                const SizedBox(height: 10),
+                _RingLegendRow(color: ffTheme.secondary, label: 'אפשר לחסוך', value: '₪$savingsPerMonth/חודש', ffTheme: ffTheme),
+                const SizedBox(height: 6),
+                _RingLegendRow(color: ffTheme.alternate, label: 'מחיר שוק', value: '₪$keep/חודש', ffTheme: ffTheme),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                  decoration: BoxDecoration(
+                    color: ffTheme.accent1,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: ffTheme.primary.withOpacity(0.15)),
+                  ),
+                  child: Text('₪$totalSavings חיסכון שנתי', style: ffTheme.labelMedium.override(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RingLegendRow extends StatelessWidget {
+  const _RingLegendRow({required this.color, required this.label, required this.value, required this.ffTheme});
+  final Color color;
+  final String label, value;
+  final FlutterFlowTheme ffTheme;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(width: 10, height: 10, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+        const SizedBox(width: 8),
+        Text(label, style: ffTheme.labelSmall),
+        const Spacer(),
+        Text(value, style: ffTheme.labelSmall.override(color: ffTheme.primaryText, fontWeight: FontWeight.w700)),
+      ],
     );
   }
 }

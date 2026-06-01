@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../flutter_flow/flutter_flow_theme.dart';
 import '../../flutter_flow/flutter_flow_util.dart';
 import '../../flutter_flow/flutter_flow_widgets.dart';
@@ -155,6 +156,15 @@ class _CompareTable extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // ── Winner summary card ───────────────────────────────────────────
+          _WinnerSummaryCard(
+            plans: plans,
+            winnerId: winnerId,
+            bill: bill,
+            appState: appState,
+            ffTheme: ffTheme,
+          ),
+
           // Header row
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
@@ -253,6 +263,166 @@ class _CompareTable extends StatelessWidget {
     );
   }
 }
+
+// ── Winner summary card ────────────────────────────────────────────────────────
+
+class _WinnerSummaryCard extends StatelessWidget {
+  const _WinnerSummaryCard({
+    required this.plans,
+    required this.winnerId,
+    required this.bill,
+    required this.appState,
+    required this.ffTheme,
+  });
+  final List<Plan> plans;
+  final String? winnerId;
+  final int bill;
+  final FFAppState appState;
+  final FlutterFlowTheme ffTheme;
+
+  @override
+  Widget build(BuildContext context) {
+    final winner = plans.firstWhere((p) => p.id == winnerId, orElse: () => plans.first);
+    final winnerSave = planSaveYear(winner, bill);
+    final maxPrice = plans.map((p) => p.price).reduce((a, b) => a > b ? a : b).toDouble();
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Champion banner
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [const Color(0xFF0E3A26), ffTheme.primary],
+                begin: Alignment.topRight,
+                end: Alignment.bottomLeft,
+              ),
+              borderRadius: BorderRadius.circular(18),
+              boxShadow: [BoxShadow(color: ffTheme.primary.withOpacity(0.3), blurRadius: 14, offset: const Offset(0, 4))],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(color: ffTheme.secondary, borderRadius: BorderRadius.circular(8)),
+                      child: Text('🏆 ההמלצה שלנו', style: ffTheme.labelSmall.override(color: const Color(0xFF0E3A26), fontWeight: FontWeight.w800)),
+                    ),
+                    const Spacer(),
+                    if (winnerSave > 0)
+                      Text('חיסכון ₪$winnerSave/שנה', style: GoogleFonts.rubik(fontSize: 13, fontWeight: FontWeight.w700, color: ffTheme.secondary)),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(color: Colors.white.withOpacity(0.15), borderRadius: BorderRadius.circular(12)),
+                      child: LogoWidget(provider: winner.provider, size: 40),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(winner.provider, style: GoogleFonts.rubik(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white)),
+                          Text(winner.plan, style: GoogleFonts.assistant(fontSize: 12, color: Colors.white70), maxLines: 1, overflow: TextOverflow.ellipsis),
+                        ],
+                      ),
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text('₪${winner.price}', style: GoogleFonts.rubik(fontSize: 28, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: -1)),
+                        Text('לחודש', style: GoogleFonts.assistant(fontSize: 11, color: Colors.white60)),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                ElevatedButton(
+                  onPressed: () => context.pushNamed('Lead', pathParameters: {'planId': winner.id}),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: ffTheme.secondary,
+                    foregroundColor: const Color(0xFF0E3A26),
+                    minimumSize: const Size(double.infinity, 44),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    elevation: 0,
+                  ),
+                  child: Text('בחר מסלול זה ←', style: GoogleFonts.rubik(fontSize: 14, fontWeight: FontWeight.w800)),
+                ),
+              ],
+            ),
+          ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.1, end: 0),
+
+          const SizedBox(height: 16),
+
+          // Price bars comparison
+          Text('השוואת מחירים', style: ffTheme.titleSmall.override(color: ffTheme.secondaryText, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 10),
+          ...plans.map((p) {
+            final fraction = maxPrice > 0 ? p.price / maxPrice : 0.0;
+            final isWinner = p.id == winnerId;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 80,
+                    child: Text(p.provider, style: ffTheme.labelSmall.override(
+                      color: isWinner ? ffTheme.primary : ffTheme.secondaryText,
+                      fontWeight: isWinner ? FontWeight.w700 : FontWeight.w500,
+                    ), maxLines: 1, overflow: TextOverflow.ellipsis),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(6),
+                      child: LinearProgressIndicator(
+                        value: fraction,
+                        backgroundColor: ffTheme.alternate,
+                        valueColor: AlwaysStoppedAnimation(isWinner ? ffTheme.primary : ffTheme.warning),
+                        minHeight: isWinner ? 10 : 8,
+                      ),
+                    ).animate(delay: 200.ms).slideX(begin: -0.3, end: 0, duration: 400.ms),
+                  ),
+                  const SizedBox(width: 8),
+                  SizedBox(
+                    width: 56,
+                    child: Text('₪${p.price}', style: ffTheme.labelSmall.override(
+                      color: isWinner ? ffTheme.primary : ffTheme.primaryText,
+                      fontWeight: isWinner ? FontWeight.w800 : FontWeight.w600,
+                    ), textAlign: TextAlign.end),
+                  ),
+                  if (isWinner)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 4),
+                      child: Icon(Icons.star_rounded, size: 14, color: ffTheme.secondary),
+                    )
+                  else
+                    const SizedBox(width: 18),
+                ],
+              ),
+            );
+          }),
+
+          const SizedBox(height: 4),
+          Divider(color: ffTheme.alternate),
+          const SizedBox(height: 4),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Plan header ────────────────────────────────────────────────────────────────
 
 class _PlanHeader extends StatelessWidget {
   const _PlanHeader({

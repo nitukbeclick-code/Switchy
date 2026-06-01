@@ -101,6 +101,13 @@ List<Plan> filteredPlans({
       case 'nocommit': plans = plans.where((p) => p.noCommit).toList();
       case 'fixed': plans = plans.where((p) => p.isFixed).toList();
       case 'abroad': plans = plans.where((p) => p.hasAbroad).toList();
+      case 'fiber': plans = plans.where((p) => p.net == 'fiber').toList();
+      case '1g': plans = plans.where((p) => p.price >= 99 && p.net == 'fiber').toList();
+      case 'streaming': plans = plans.where((p) => p.net == 'streaming').toList();
+      case 'sport': plans = plans.where((p) => p.feats.any((f) => f.contains('ספורט'))).toList();
+      case 'satellite': plans = plans.where((p) => p.net == 'satellite').toList();
+      case 'netflix': plans = plans.where((p) => p.feats.any((f) => f.contains('Netflix'))).toList();
+      case 'esim': plans = plans.where((p) => p.net == 'esim').toList();
     }
   }
 

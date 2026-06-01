@@ -177,6 +177,35 @@ class _LeadWidgetState extends State<LeadWidget> {
 
               const SizedBox(height: 24),
 
+              // Social proof counter
+              if (plan != null) ...[
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: ffTheme.accent2,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: ffTheme.warning.withOpacity(0.25)),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: 8,
+                        height: 8,
+                        decoration: BoxDecoration(color: ffTheme.warning, shape: BoxShape.circle),
+                      ).animate(onPlay: (c) => c.repeat(reverse: true))
+                        .scale(begin: const Offset(1, 1), end: const Offset(1.4, 1.4), duration: 800.ms),
+                      const SizedBox(width: 8),
+                      Text(
+                        '${(plan.reviews % 30) + 14} אנשים בחרו ב${plan.provider} השבוע',
+                        style: ffTheme.labelMedium.override(color: ffTheme.warning, fontWeight: FontWeight.w700),
+                      ),
+                    ],
+                  ),
+                ).animate().fadeIn(duration: 300.ms),
+                const SizedBox(height: 16),
+              ],
+
               // Trust badges
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,

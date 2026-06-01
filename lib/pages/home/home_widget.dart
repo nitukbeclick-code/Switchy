@@ -61,6 +61,9 @@ class _HomeWidgetState extends State<HomeWidget> {
               if (deal != null)
                 SliverToBoxAdapter(child: _buildHotDeal(context, ffTheme, deal)),
 
+              // ── 4b. Top pick for you ──────────────────────────────────────
+              SliverToBoxAdapter(child: _buildTopPick(context, ffTheme, appState)),
+
               // ── 5. Category grid ───────────────────────────────────────────
               SliverToBoxAdapter(child: _buildCategoryGrid(context, ffTheme, appState)),
 
@@ -492,6 +495,102 @@ class _HomeWidgetState extends State<HomeWidget> {
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTopPick(BuildContext context, FlutterFlowTheme ffTheme, FFAppState appState) {
+    // Find the single best plan across all categories where user has a bill set
+    Plan? bestPlan;
+    int bestSave = 0;
+    String? bestCatName;
+    for (final cat in categories) {
+      final bill = appState.currentBill(cat.id);
+      if (bill <= 0) continue;
+      final sorted = filteredPlans(cat: cat.id, sort: 'save', filters: [], query: '', budget: 9999, currentBill: bill);
+      if (sorted.isEmpty) continue;
+      final save = planSaveYear(sorted.first, bill);
+      if (save > bestSave) {
+        bestSave = save;
+        bestPlan = sorted.first;
+        bestCatName = cat.name;
+      }
+    }
+    if (bestPlan == null || bestSave <= 0) return const SizedBox();
+
+    final plan = bestPlan;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text('🎯', style: TextStyle(fontSize: 16)),
+              const SizedBox(width: 6),
+              Text('המלצה אישית ל$bestCatName', style: ffTheme.titleLarge),
+            ],
+          ),
+          const SizedBox(height: 10),
+          GestureDetector(
+            onTap: () => context.pushNamed('PlanDetail', pathParameters: {'planId': plan.id}),
+            child: Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: ffTheme.primary.withOpacity(0.25), width: 1.5),
+                boxShadow: [BoxShadow(color: ffTheme.primary.withOpacity(0.08), blurRadius: 12, offset: const Offset(0, 3))],
+              ),
+              child: Row(
+                children: [
+                  LogoWidget(provider: plan.provider, size: 52),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Text(plan.provider, style: ffTheme.titleSmall),
+                            const SizedBox(width: 6),
+                            if (plan.noCommit)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(color: ffTheme.accent1, borderRadius: BorderRadius.circular(5)),
+                                child: Text('ללא התחייבות', style: ffTheme.labelSmall.override(color: ffTheme.primary, fontSize: 10)),
+                              ),
+                          ],
+                        ),
+                        const SizedBox(height: 2),
+                        Text(plan.plan, style: ffTheme.bodySmall, maxLines: 1, overflow: TextOverflow.ellipsis),
+                        const SizedBox(height: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(color: ffTheme.secondary, borderRadius: BorderRadius.circular(6)),
+                          child: Text('חוסך ₪$bestSave/שנה', style: ffTheme.labelSmall.override(color: const Color(0xFF0E3A26), fontWeight: FontWeight.w800)),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text('₪${plan.price}', style: ffTheme.titleLarge.override(color: ffTheme.primary)),
+                      Text('לחודש', style: ffTheme.labelSmall),
+                      const SizedBox(height: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(color: ffTheme.primary, borderRadius: BorderRadius.circular(8)),
+                        child: Text('בחר ←', style: ffTheme.labelSmall.override(color: Colors.white, fontWeight: FontWeight.w700)),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.08, end: 0),
         ],
       ),
     );

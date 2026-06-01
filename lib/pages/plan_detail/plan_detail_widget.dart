@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../flutter_flow/flutter_flow_theme.dart';
@@ -78,7 +79,17 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                 actions: [
                   IconButton(
                     icon: const Icon(Icons.share_rounded, color: Colors.white),
-                    onPressed: () {},
+                    onPressed: () {
+                      final msg = '${plan.provider} — ${plan.plan}\n₪${plan.price}/חודש · ${plan.commitmentLabel}\n\nמצאתי את זה דרך חוסך 🎯';
+                      Clipboard.setData(ClipboardData(text: msg));
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                        content: const Text('פרטי המסלול הועתקו ללוח!'),
+                        backgroundColor: ffTheme.primary,
+                        behavior: SnackBarBehavior.floating,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        duration: const Duration(seconds: 2),
+                      ));
+                    },
                   ),
                   IconButton(
                     icon: Icon(

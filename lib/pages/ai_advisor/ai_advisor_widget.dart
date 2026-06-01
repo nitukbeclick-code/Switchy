@@ -123,7 +123,7 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
     if (mounted) {
       setState(() {
         _isTyping = false;
-        _messages.add(_ChatMsg(text: reply, isUser: false, time: DateTime.now(), planId: bestPlan?.id));
+        _messages.add(_ChatMsg(text: reply, isUser: false, time: DateTime.now(), planId: bestPlan?.id, cat: cat));
       });
     }
     _scrollToBottom();
@@ -199,7 +199,7 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
                   return _TypingBubble(ffTheme: ffTheme);
                 }
                 final msg = _messages[i];
-                return _MessageBubble(msg: msg, ffTheme: ffTheme, bill: appState.currentBill('cellular'));
+                return _MessageBubble(msg: msg, ffTheme: ffTheme, bill: appState.currentBill(msg.cat));
               },
             ),
           ),
@@ -282,7 +282,8 @@ class _ChatMsg {
   final bool isUser;
   final DateTime time;
   final String? planId;
-  const _ChatMsg({required this.text, required this.isUser, required this.time, this.planId});
+  final String cat;
+  const _ChatMsg({required this.text, required this.isUser, required this.time, this.planId, this.cat = 'cellular'});
 }
 
 class _MessageBubble extends StatelessWidget {
@@ -338,6 +339,32 @@ class _MessageBubble extends StatelessWidget {
           if (plan != null) ...[
             const SizedBox(height: 8),
             PlanCardWidget(plan: plan, currentBill: bill, showCompare: false),
+            const SizedBox(height: 4),
+            Align(
+              alignment: Alignment.centerRight,
+              child: GestureDetector(
+                onTap: () {
+                  FFAppState().setCategory(msg.cat);
+                  context.pushNamed('Results');
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: ffTheme.primary.withOpacity(0.3)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('ראה כל המסלולים', style: ffTheme.labelSmall.override(color: ffTheme.primary, fontWeight: FontWeight.w600)),
+                      const SizedBox(width: 4),
+                      Icon(Icons.arrow_back_ios_rounded, size: 11, color: ffTheme.primary),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           ],
         ],
       ),

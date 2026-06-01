@@ -251,8 +251,20 @@ String _catLabel(String cat) => const {
 }[cat] ?? cat;
 
 String _priorityLabel(String p) => const {
-  'price': '💰 מחיר', 'speed': '⚡ מהירות',
-  'abroad': '✈️ חו"ל', 'nocommit': '🔓 ללא התחייבות',
+  'price': '💰 מחיר',
+  'speed': '⚡ מהירות',
+  'speed_basic': '🏃 עד 200Mb',
+  'speed_fast': '⚡ 500Mb+',
+  'speed_ultra': '🚀 גיגה',
+  'abroad': '✈️ חו"ל',
+  'nocommit': '🔓 ללא התחייבות',
+  'esim': '📲 eSIM',
+  'data': '📶 הרבה גלישה',
+  'channels': '📡 ערוצים',
+  'sport': '⚽ ספורט',
+  'streaming': '🎬 סטרימינג',
+  'netflix': '🎬 Netflix',
+  'reliability': '🛡️ אמינות',
 }[p] ?? p;
 
 class _QuizChip extends StatelessWidget {

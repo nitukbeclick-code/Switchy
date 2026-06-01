@@ -210,8 +210,8 @@ class _ChatWidgetState extends State<ChatWidget> {
               borderRadius: BorderRadius.only(
                 topLeft: const Radius.circular(18),
                 topRight: const Radius.circular(18),
-                bottomLeft: isUser ? const Radius.circular(4) : const Radius.circular(18),
-                bottomRight: isUser ? const Radius.circular(18) : const Radius.circular(4),
+                bottomLeft: isUser ? const Radius.circular(18) : const Radius.circular(4),
+                bottomRight: isUser ? const Radius.circular(4) : const Radius.circular(18),
               ),
               border: isUser ? null : Border.all(color: ffTheme.alternate),
               boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 6)],

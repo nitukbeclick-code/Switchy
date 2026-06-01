@@ -249,6 +249,31 @@ class _TrackerWidgetState extends State<TrackerWidget> {
               ),
             ).animate().fadeIn(delay: 400.ms),
 
+            const SizedBox(height: 8),
+
+            // Demo: advance tracker step
+            if (step < 4 && plan != null)
+              GestureDetector(
+                onTap: () => appState.advanceTracker(),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: ffTheme.alternate),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.play_arrow_rounded, size: 18, color: ffTheme.secondaryText),
+                      const SizedBox(width: 6),
+                      Text('סמולציה: קידום שלב', style: ffTheme.labelMedium.override(color: ffTheme.secondaryText)),
+                    ],
+                  ),
+                ),
+              ).animate().fadeIn(delay: 440.ms),
+
             const SizedBox(height: 12),
 
             // Porting CTA when step >= 1

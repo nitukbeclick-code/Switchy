@@ -15,9 +15,6 @@ class ProfileWidget extends StatefulWidget {
 }
 
 class _ProfileWidgetState extends State<ProfileWidget> {
-  bool _priceAlerts = true;
-  bool _requestUpdates = true;
-  bool _communityNotifs = false;
   bool _darkMode = false;
   String _lang = 'עברית';
 
@@ -151,24 +148,24 @@ class _ProfileWidgetState extends State<ProfileWidget> {
               icon: Icons.trending_down_rounded,
               title: 'ירידות מחיר',
               subtitle: 'עדכן אותי כשמחירים יורדים',
-              value: _priceAlerts,
-              onChanged: (v) => setState(() => _priceAlerts = v),
+              value: appState.prefPriceAlerts,
+              onChanged: appState.setPrefPriceAlerts,
               ffTheme: ffTheme,
             ),
             _ToggleTile(
               icon: Icons.swap_horiz_rounded,
               title: 'עדכוני בקשות',
               subtitle: 'התקדמות בתהליך המעבר',
-              value: _requestUpdates,
-              onChanged: (v) => setState(() => _requestUpdates = v),
+              value: appState.prefRequestUpdates,
+              onChanged: appState.setPrefRequestUpdates,
               ffTheme: ffTheme,
             ),
             _ToggleTile(
               icon: Icons.people_rounded,
               title: 'קהילה',
               subtitle: 'תגובות ולייקים',
-              value: _communityNotifs,
-              onChanged: (v) => setState(() => _communityNotifs = v),
+              value: appState.prefCommunityNotifs,
+              onChanged: appState.setPrefCommunityNotifs,
               ffTheme: ffTheme,
             ),
 

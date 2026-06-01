@@ -38,6 +38,10 @@ class FFAppState extends ChangeNotifier {
     // Recently viewed
     final recent = p.getStringList('recentlyViewed') ?? [];
     _recentlyViewed.addAll(recent);
+    // Preferences
+    _prefPriceAlerts = p.getBool('prefPriceAlerts') ?? true;
+    _prefRequestUpdates = p.getBool('prefRequestUpdates') ?? true;
+    _prefCommunityNotifs = p.getBool('prefCommunityNotifs') ?? false;
     notifyListeners();
   }
 
@@ -64,6 +68,10 @@ class FFAppState extends ChangeNotifier {
     // Watched & recently viewed
     await p.setStringList('watchedPlans', _watchedPlans.toList());
     await p.setStringList('recentlyViewed', _recentlyViewed);
+    // Preferences
+    await p.setBool('prefPriceAlerts', _prefPriceAlerts);
+    await p.setBool('prefRequestUpdates', _prefRequestUpdates);
+    await p.setBool('prefCommunityNotifs', _prefCommunityNotifs);
   }
 
   void update(VoidCallback cb) { cb(); notifyListeners(); }
@@ -167,4 +175,15 @@ class FFAppState extends ChangeNotifier {
     notifyListeners();
     _persist();
   }
+
+  // User preferences
+  bool _prefPriceAlerts = true;
+  bool _prefRequestUpdates = true;
+  bool _prefCommunityNotifs = false;
+  bool get prefPriceAlerts => _prefPriceAlerts;
+  bool get prefRequestUpdates => _prefRequestUpdates;
+  bool get prefCommunityNotifs => _prefCommunityNotifs;
+  void setPrefPriceAlerts(bool v) { _prefPriceAlerts = v; notifyListeners(); _persist(); }
+  void setPrefRequestUpdates(bool v) { _prefRequestUpdates = v; notifyListeners(); _persist(); }
+  void setPrefCommunityNotifs(bool v) { _prefCommunityNotifs = v; notifyListeners(); _persist(); }
 }

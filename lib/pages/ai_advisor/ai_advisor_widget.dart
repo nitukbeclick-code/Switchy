@@ -46,50 +46,78 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
   Future<void> _send(String text) async {
     if (text.trim().isEmpty) return;
     _inputCtrl.clear();
+    final appState = Provider.of<FFAppState>(context, listen: false);
     setState(() {
       _messages.add(_ChatMsg(text: text, isUser: true, time: DateTime.now()));
       _isTyping = true;
     });
     _scrollToBottom();
 
-    await Future.delayed(const Duration(milliseconds: 1200));
+    await Future.delayed(const Duration(milliseconds: 1100));
 
-    // Simple keyword-based AI
     final lower = text.toLowerCase();
     String cat = 'cellular';
     String sort = 'match';
-    List<String> filters = [];
+    final List<String> filters = [];
 
-    if (lower.contains('אינטרנט') || lower.contains('internet')) cat = 'internet';
-    else if (lower.contains('טלוויזיה') || lower.contains('tv') || lower.contains('ערוצים')) cat = 'tv';
-    else if (lower.contains('חו"ל') || lower.contains('חול') || lower.contains('abroad')) cat = 'abroad';
-    else if (lower.contains('חבילה') && lower.contains('משולבת')) cat = 'triple';
+    // Category detection
+    if (lower.contains('אינטרנט') || lower.contains('internet') || lower.contains('סיב') || lower.contains('רשת')) {
+      cat = 'internet';
+    } else if (lower.contains('טלוויזיה') || lower.contains('tv') || lower.contains('ערוצים') || lower.contains('כבלים')) {
+      cat = 'tv';
+    } else if (lower.contains('חו"ל') || lower.contains('חול') || lower.contains('abroad') || lower.contains('נסיעה') || lower.contains('טיול') || lower.contains('esim')) {
+      cat = 'abroad';
+    } else if ((lower.contains('חבילה') && (lower.contains('משולב') || lower.contains('הכל'))) || lower.contains('triple') || lower.contains('ביתי')) {
+      cat = 'triple';
+    }
 
-    if (lower.contains('זול') || lower.contains('מחיר נמוך') || lower.contains('הכי פחות')) sort = 'price';
+    // Sort & filter detection
+    if (lower.contains('זול') || lower.contains('מחיר נמוך') || lower.contains('הכי פחות') || lower.contains('בזול') || lower.contains('תקציב')) sort = 'price';
     if (lower.contains('5g')) filters.add('5g');
-    if (lower.contains('ללא התחייבות') || lower.contains('גמישות')) filters.add('nocommit');
+    if (lower.contains('ללא התחייבות') || lower.contains('גמישות') || lower.contains('חופשי') || lower.contains('לא מחויב')) filters.add('nocommit');
+
+    // Budget extraction
+    final budgetMatch = RegExp(r'₪?(\d+)').firstMatch(lower);
+    final budgetHint = budgetMatch != null ? int.tryParse(budgetMatch.group(1) ?? '') : null;
 
     // Find best matching plan
-    final plans = plansByCat(cat);
+    var plans = plansByCat(cat);
+    if (filters.contains('5g')) plans = plans.where((p) => p.is5G).toList();
+    if (filters.contains('nocommit')) plans = plans.where((p) => p.noCommit).toList();
+    if (budgetHint != null) {
+      final budgetFiltered = plans.where((p) => p.price <= budgetHint).toList();
+      if (budgetFiltered.isNotEmpty) plans = budgetFiltered;
+    }
+
     Plan? bestPlan;
     if (plans.isNotEmpty) {
       if (sort == 'price') {
         bestPlan = plans.reduce((a, b) => a.price < b.price ? a : b);
-      } else if (filters.contains('5g')) {
-        final fiveg = plans.where((p) => p.flags.contains('5g')).toList();
-        bestPlan = fiveg.isNotEmpty ? fiveg.first : plans.first;
       } else {
-        bestPlan = plans.firstWhere((p) => p.highlight, orElse: () => plans.first);
+        final highlighted = plans.where((p) => p.highlight).toList();
+        bestPlan = highlighted.isNotEmpty ? highlighted.first : plans.reduce((a, b) => b.rating > a.rating ? b : a);
       }
     }
 
     String reply;
     if (bestPlan != null) {
+      final currentBill = appState.currentBill(cat);
+      final saveYear = ((currentBill - bestPlan.price) * 12).clamp(0, 999999);
       final catName = categoryById(cat)?.name ?? cat;
-      reply = 'על סמך הבקשה שלך, אני ממליץ על:\n\n**${bestPlan.provider} — ${bestPlan.plan}**\n₪${bestPlan.price}/חודש\n\nזה המסלול הכי מתאים לקטגורית $catName. רוצה לראות פרטים מלאים?';
+      final promoNote = bestPlan.hasPromo ? '\n⚡ מבצע: ₪${bestPlan.price} לחודשים הראשונים' : '';
+      final commitNote = bestPlan.noCommit ? '\n✅ ללא התחייבות' : '\n📅 התחייבות ${bestPlan.term} חודשים';
+      final savingsLine = saveYear > 0
+          ? '\n💰 תחסוך ₪$saveYear בשנה לעומת מה שאתה משלם כרגע'
+          : '';
+
+      reply = 'המלצה עבורך בקטגורית $catName:$promoNote$commitNote$savingsLine';
       _suggestedPlanId = bestPlan.id;
+    } else if (lower.contains('שלום') || lower.contains('היי') || lower.contains('מה שלומך') || lower.contains('hi')) {
+      reply = 'שלום! אני כאן לעזור לך למצוא את מסלול התקשורת הכי משתלם 🤖\n\nספר לי — מה מחפשים? סלולר, אינטרנט, טלוויזיה, חבילה לחו"ל?';
+    } else if (lower.contains('תודה') || lower.contains('תנקס')) {
+      reply = 'בשמחה! 🙌 אם יש שאלות נוספות על מסלולים, תמיד פה.\n\nאחרי שתחליט, אפשר לעשות את כל המעבר דרך חוסך — כולל ניוד מספר.';
     } else {
-      reply = 'לא מצאתי מסלולים מתאימים לבקשה שלך. נסה לשאול בצורה אחרת, למשל: "מצא לי סלולר 5G ללא התחייבות"';
+      reply = 'לא הצלחתי להבין בדיוק מה מחפשים. נסה לכתוב למשל:\n• "מצא לי סלולר זול ללא התחייבות"\n• "רוצה אינטרנט 1000MB"\n• "חבילת חו"ל לאירופה"\n• "5G בפחות מ-₪60"';
     }
 
     if (mounted) {
@@ -118,7 +146,14 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
     final ffTheme = FlutterFlowTheme.of(context);
     final appState = Provider.of<FFAppState>(context, listen: false);
 
-    final quickStarts = ['מצא סלולר זול', 'אינטרנט מהיר', 'ללא התחייבות', '5G טוב', 'חבילת חו"ל'];
+    final quickStarts = [
+      '📱 סלולר הכי זול',
+      '🌐 אינטרנט 1000Mb',
+      '✅ ללא התחייבות',
+      '📶 5G מהיר',
+      '✈️ חבילת חו"ל',
+      '💰 פחות מ-₪50',
+    ];
 
     return Scaffold(
       backgroundColor: ffTheme.background,

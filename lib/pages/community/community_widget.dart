@@ -98,20 +98,58 @@ class _CommunityWidgetState extends State<CommunityWidget> {
 
           // Members online
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
             child: Row(
               children: [
                 Container(width: 8, height: 8, decoration: const BoxDecoration(color: Colors.green, shape: BoxShape.circle)),
                 const SizedBox(width: 6),
                 Text('847 חברים מחוברים', style: ffTheme.labelSmall.override(color: Colors.green, fontWeight: FontWeight.w600)),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(color: ffTheme.accent2, borderRadius: BorderRadius.circular(8), border: Border.all(color: ffTheme.warning.withOpacity(0.3))),
+                  child: Text('🔥 ${_posts.fold(0, (s, p) => s + p.likes)} לייקים היום', style: ffTheme.labelSmall.override(color: ffTheme.warning, fontWeight: FontWeight.w600)),
+                ),
               ],
             ),
+          ),
+
+          // Hot deal banner (from team posts with planId)
+          ..._posts.where((p) => p.isTeam && p.planId != null).take(1).map((p) =>
+            GestureDetector(
+              onTap: () => context.pushNamed('PlanDetail', pathParameters: {'planId': p.planId!}),
+              child: Container(
+                margin: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(colors: [const Color(0xFF0E3A26), ffTheme.primary]),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Row(
+                  children: [
+                    const Text('🔥', style: TextStyle(fontSize: 22)),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('עסקת השבוע', style: ffTheme.labelSmall.override(color: ffTheme.secondary, fontWeight: FontWeight.w700)),
+                          Text(p.text.length > 60 ? '${p.text.substring(0, 60)}...' : p.text, style: ffTheme.bodySmall.override(color: Colors.white70, height: 1.3)),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Colors.white54),
+                  ],
+                ),
+              ),
+            ).animate().fadeIn(duration: 400.ms),
           ),
 
           // Posts list
           Expanded(
             child: ListView.builder(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
               itemCount: _filtered.length,
               itemBuilder: (context, i) => _PostCard(post: _filtered[i], ffTheme: ffTheme)
                   .animate(delay: (i * 50).ms).fadeIn(duration: 350.ms).slideY(begin: 0.05, end: 0),
@@ -261,22 +299,45 @@ class _PostCardState extends State<_PostCard> {
             children: [
               GestureDetector(
                 onTap: () => setState(() => _liked = !_liked),
-                child: Row(
-                  children: [
-                    Icon(_liked ? Icons.favorite_rounded : Icons.favorite_border_rounded, size: 16, color: _liked ? Colors.red : ffTheme.secondaryText),
-                    const SizedBox(width: 4),
-                    Text('${post.likes + (_liked ? 1 : 0)}', style: ffTheme.labelSmall),
-                  ],
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: _liked ? Colors.red.withOpacity(0.08) : Colors.transparent,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(_liked ? Icons.favorite_rounded : Icons.favorite_border_rounded, size: 15, color: _liked ? Colors.red : ffTheme.secondaryText),
+                      const SizedBox(width: 4),
+                      Text('${post.likes + (_liked ? 1 : 0)}', style: ffTheme.labelSmall.override(color: _liked ? Colors.red : ffTheme.secondaryText)),
+                    ],
+                  ),
                 ),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 8),
               Row(
                 children: [
-                  Icon(Icons.chat_bubble_outline_rounded, size: 16, color: ffTheme.secondaryText),
+                  Icon(Icons.chat_bubble_outline_rounded, size: 15, color: ffTheme.secondaryText),
                   const SizedBox(width: 4),
                   Text('${post.replies}', style: ffTheme.labelSmall),
                 ],
               ),
+              if (post.planId != null) ...[
+                const Spacer(),
+                GestureDetector(
+                  onTap: () => context.pushNamed('PlanDetail', pathParameters: {'planId': post.planId!}),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: ffTheme.accent1,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: ffTheme.primary.withOpacity(0.2)),
+                    ),
+                    child: Text('צפה בחבילה', style: ffTheme.labelSmall.override(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+                  ),
+                ),
+              ],
             ],
           ),
         ],

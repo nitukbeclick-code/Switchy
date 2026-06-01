@@ -362,6 +362,24 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                         ).animate(delay: 240.ms).fadeIn(duration: 300.ms),
                       ],
 
+                      // Savings timeline
+                      if (saveYear > 0) ...[
+                        const SizedBox(height: 14),
+                        _Card(
+                          title: 'חיסכון לאורך זמן',
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceAround,
+                            children: [
+                              _SavingsPeriod(months: 6, saveYear: saveYear, ffTheme: ffTheme),
+                              Container(width: 1, height: 48, color: ffTheme.alternate),
+                              _SavingsPeriod(months: 12, saveYear: saveYear, ffTheme: ffTheme),
+                              Container(width: 1, height: 48, color: ffTheme.alternate),
+                              _SavingsPeriod(months: 24, saveYear: saveYear, ffTheme: ffTheme),
+                            ],
+                          ),
+                        ).animate(delay: 260.ms).fadeIn(duration: 300.ms).slideY(begin: 0.08),
+                      ],
+
                       const SizedBox(height: 14),
 
                       // Price alert card
@@ -568,6 +586,28 @@ class _StarRow extends StatelessWidget {
           color: ffTheme.warning,
         ),
       ),
+    );
+  }
+}
+
+class _SavingsPeriod extends StatelessWidget {
+  const _SavingsPeriod({required this.months, required this.saveYear, required this.ffTheme});
+  final int months;
+  final int saveYear;
+  final FlutterFlowTheme ffTheme;
+
+  @override
+  Widget build(BuildContext context) {
+    final amount = (saveYear * months / 12).round();
+    return Column(
+      children: [
+        Text(
+          '₪$amount',
+          style: ffTheme.titleMedium.override(color: ffTheme.primary, fontWeight: FontWeight.w800),
+        ),
+        const SizedBox(height: 4),
+        Text('$months חודשים', style: ffTheme.labelSmall),
+      ],
     );
   }
 }

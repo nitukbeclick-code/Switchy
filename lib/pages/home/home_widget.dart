@@ -89,6 +89,38 @@ class _HomeWidgetState extends State<HomeWidget> {
               child: Icon(Icons.phone_rounded, color: ffTheme.primary, size: 26),
             ),
           ),
+
+          // ── Compare tray ───────────────────────────────────────────────────
+          if (appState.comparePlans.isNotEmpty)
+            Positioned(
+              bottom: 24,
+              right: 16,
+              left: 76,
+              child: GestureDetector(
+                onTap: () => context.goNamed('Compare'),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: ffTheme.primary,
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [BoxShadow(color: ffTheme.primary.withOpacity(0.35), blurRadius: 14, offset: const Offset(0, 4))],
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.compare_arrows_rounded, color: ffTheme.secondary, size: 20),
+                      const SizedBox(width: 8),
+                      Text('השווה ${appState.comparePlans.length} מסלולים', style: ffTheme.titleSmall.override(color: Colors.white)),
+                      const Spacer(),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(color: ffTheme.secondary, borderRadius: BorderRadius.circular(8)),
+                        child: Text('←', style: ffTheme.labelMedium.override(color: ffTheme.primary, fontWeight: FontWeight.w800)),
+                      ),
+                    ],
+                  ),
+                ),
+              ).animate().slideY(begin: 1, end: 0, duration: 300.ms, curve: Curves.easeOutCubic),
+            ),
         ],
       ),
     );
@@ -118,7 +150,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'שלום, ${appState.firstName} 👋',
+                      '${_greeting()} ${appState.firstName} 👋',
                       style: FlutterFlowTheme.of(context).headlineSmall.override(
                         color: Colors.white,
                         fontSize: 22,
@@ -593,6 +625,14 @@ class _HomeWidgetState extends State<HomeWidget> {
 }
 
 // ── Helper data classes ────────────────────────────────────────────────────────
+
+String _greeting() {
+  final h = DateTime.now().hour;
+  if (h < 12) return 'בוקר טוב,';
+  if (h < 17) return 'צהריים טובים,';
+  if (h < 21) return 'ערב טוב,';
+  return 'לילה טוב,';
+}
 
 class _Tool {
   const _Tool({required this.icon, required this.label, required this.route});

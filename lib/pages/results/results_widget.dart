@@ -7,6 +7,7 @@ import '../../app_state.dart';
 import '../../models.dart';
 import '../../data.dart';
 import '../../components/plan_card/plan_card_widget.dart';
+import '../../components/shimmer_card/shimmer_card_widget.dart';
 
 class ResultsWidget extends StatefulWidget {
   const ResultsWidget({super.key});
@@ -17,6 +18,7 @@ class ResultsWidget extends StatefulWidget {
 
 class _ResultsWidgetState extends State<ResultsWidget> {
   final _searchController = TextEditingController();
+  bool _loading = false;
 
   static const _categories = [
     ('cellular', '📱 סלולר'),
@@ -36,6 +38,14 @@ class _ResultsWidgetState extends State<ResultsWidget> {
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  Future<void> _switchCategory(FFAppState appState, String cat) async {
+    setState(() => _loading = true);
+    appState.setCategory(cat);
+    _searchController.clear();
+    await Future.delayed(const Duration(milliseconds: 700));
+    if (mounted) setState(() => _loading = false);
   }
 
   @override
@@ -97,10 +107,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                   return Padding(
                     padding: const EdgeInsets.only(left: 8),
                     child: GestureDetector(
-                      onTap: () {
-                        appState.setCategory(c.$1);
-                        _searchController.clear();
-                      },
+                      onTap: () => _switchCategory(appState, c.$1),
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 200),
                         padding: const EdgeInsets.symmetric(
@@ -368,8 +375,18 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                   ),
                 ),
 
-              // Plan list or empty state
-              if (plans.isEmpty)
+              // Plan list or shimmer or empty state
+              if (_loading)
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
+                  sliver: SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (_, __) => const ShimmerCardWidget(),
+                      childCount: 4,
+                    ),
+                  ),
+                )
+              else if (plans.isEmpty)
                 SliverFillRemaining(
                   child: Center(
                     child: Column(

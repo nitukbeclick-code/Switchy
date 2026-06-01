@@ -263,27 +263,35 @@ class PlanCardWidget extends StatelessWidget {
                 ],
 
                 if (!compact) ...[
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
 
-                  // Feature chips
+                  // Flag + feature chips
                   Wrap(
                     spacing: 6,
                     runSpacing: 6,
-                    children: plan.feats.take(3).map((feat) => Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: ffTheme.background,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        feat,
-                        style: GoogleFonts.assistant(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: ffTheme.primaryText,
+                    children: [
+                      if (plan.is5G)
+                        _FlagChip(label: '5G', color: ffTheme.info, ffTheme: ffTheme),
+                      if (plan.noCommit)
+                        _FlagChip(label: 'ללא התחייבות', color: ffTheme.success, ffTheme: ffTheme),
+                      if (plan.hasAbroad)
+                        _FlagChip(label: 'כולל חו"ל', color: ffTheme.tertiary, ffTheme: ffTheme),
+                      ...plan.feats.take(3).map((feat) => Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: ffTheme.background,
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                      ),
-                    )).toList(),
+                        child: Text(
+                          feat,
+                          style: GoogleFonts.assistant(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: ffTheme.primaryText,
+                          ),
+                        ),
+                      )),
+                    ],
                   ),
 
                   const SizedBox(height: 12),
@@ -291,7 +299,6 @@ class PlanCardWidget extends StatelessWidget {
                   // Rating + action row
                   Row(
                     children: [
-                      // Stars
                       Row(
                         children: List.generate(5, (i) => Icon(
                           i < plan.rating.floor()
@@ -310,9 +317,11 @@ class PlanCardWidget extends StatelessWidget {
                         ),
                       ),
                       const Spacer(),
-                      // CTA button
                       GestureDetector(
-                        onTap: () => context.push('/plan/${plan.id}'),
+                        onTap: () {
+                          appState.viewPlan(plan.id);
+                          context.push('/plan/${plan.id}');
+                        },
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 9),
                           decoration: BoxDecoration(
@@ -334,7 +343,10 @@ class PlanCardWidget extends StatelessWidget {
                 ] else ...[
                   const SizedBox(height: 10),
                   GestureDetector(
-                    onTap: () => context.push('/plan/${plan.id}'),
+                    onTap: () {
+                      appState.viewPlan(plan.id);
+                      context.push('/plan/${plan.id}');
+                    },
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 9),
                       decoration: BoxDecoration(
@@ -358,6 +370,33 @@ class PlanCardWidget extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _FlagChip extends StatelessWidget {
+  const _FlagChip({required this.label, required this.color, required this.ffTheme});
+  final String label;
+  final Color color;
+  final FlutterFlowTheme ffTheme;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: color.withOpacity(0.35)),
+      ),
+      child: Text(
+        label,
+        style: GoogleFonts.assistant(
+          fontSize: 11,
+          fontWeight: FontWeight.w700,
+          color: color,
+        ),
       ),
     );
   }

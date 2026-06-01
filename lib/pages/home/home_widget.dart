@@ -597,14 +597,23 @@ class _HomeWidgetState extends State<HomeWidget> {
   }
 
   Widget _buildCategoryGrid(BuildContext context, FlutterFlowTheme ffTheme, FFAppState appState) {
-    // Savings estimates per category (annual)
-    final savingsEst = {
-      'cellular': 850,
-      'internet': 480,
-      'tv': 360,
-      'triple': 1200,
-      'abroad': 240,
-    };
+    // Calculate actual savings per category
+    final Map<String, int> actualSavings = {};
+    final Map<String, bool> hasActual = {};
+    for (final cat in categories) {
+      final bill = appState.currentBill(cat.id);
+      if (bill > 0) {
+        final catPlans = plansByCat(cat.id);
+        if (catPlans.isNotEmpty) {
+          final minPrice = catPlans.map((p) => p.price).reduce((a, b) => a < b ? a : b);
+          actualSavings[cat.id] = ((bill - minPrice) * 12).clamp(0, 99999);
+          hasActual[cat.id] = true;
+        }
+      }
+    }
+
+    // Fallback estimates
+    const savingsEst = {'cellular': 850, 'internet': 480, 'tv': 360, 'triple': 1200, 'abroad': 240};
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
@@ -626,7 +635,13 @@ class _HomeWidgetState extends State<HomeWidget> {
             itemBuilder: (context, i) {
               final cat = categories[i];
               final isActive = appState.selectedCat == cat.id;
-              final est = savingsEst[cat.id] ?? 0;
+              final isPersonalized = hasActual[cat.id] == true;
+              final save = isPersonalized ? actualSavings[cat.id]! : savingsEst[cat.id] ?? 0;
+              final savingsText = isPersonalized
+                  ? (save > 0 ? 'תחסוך ₪$save בשנה' : 'מחיר תחרותי')
+                  : 'ממוצע ₪$save בשנה';
+              final savingsColor = isPersonalized && save > 0 ? ffTheme.success : ffTheme.primary;
+
               return GestureDetector(
                 onTap: () {
                   appState.setCategory(cat.id);
@@ -653,12 +668,23 @@ class _HomeWidgetState extends State<HomeWidget> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text(cat.icon, style: const TextStyle(fontSize: 24)),
+                      Row(
+                        children: [
+                          Text(cat.icon, style: const TextStyle(fontSize: 22)),
+                          if (isPersonalized) ...[
+                            const Spacer(),
+                            Container(
+                              width: 6, height: 6,
+                              decoration: BoxDecoration(color: ffTheme.success, shape: BoxShape.circle),
+                            ),
+                          ],
+                        ],
+                      ),
                       const SizedBox(height: 4),
                       Text(cat.name, style: ffTheme.labelLarge.override(color: ffTheme.primaryText)),
                       const SizedBox(height: 2),
                       Text('${cat.planCount} מסלולים', style: ffTheme.labelSmall),
-                      Text('חיסכון ממוצע ₪$est', style: ffTheme.labelSmall.override(color: ffTheme.primary)),
+                      Text(savingsText, style: ffTheme.labelSmall.override(color: savingsColor, fontWeight: isPersonalized ? FontWeight.w700 : FontWeight.w500)),
                     ],
                   ),
                 )

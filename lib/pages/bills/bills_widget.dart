@@ -231,6 +231,7 @@ class _BillsWidgetState extends State<BillsWidget> {
                 yearlySave: yearlySave,
                 onDecrease: () => appState.setCurrentBill(cat.id, (bill - 10).clamp(0, 2000)),
                 onIncrease: () => appState.setCurrentBill(cat.id, (bill + 10).clamp(0, 2000)),
+                onSetValue: (v) => appState.setCurrentBill(cat.id, v),
                 onTap: () {
                   appState.setCategory(cat.id);
                   context.pushNamed('Results');
@@ -254,6 +255,7 @@ class _BillCard extends StatelessWidget {
     required this.yearlySave,
     required this.onDecrease,
     required this.onIncrease,
+    required this.onSetValue,
     required this.onTap,
     required this.ffTheme,
   });
@@ -262,8 +264,17 @@ class _BillCard extends StatelessWidget {
   final int yearlySave;
   final VoidCallback onDecrease;
   final VoidCallback onIncrease;
+  final ValueChanged<int> onSetValue;
   final VoidCallback onTap;
   final FlutterFlowTheme ffTheme;
+
+  static const Map<String, List<int>> _presets = {
+    'cellular': [29, 49, 89, 129],
+    'internet': [79, 99, 149, 199],
+    'tv': [49, 89, 149, 199],
+    'triple': [199, 279, 349, 449],
+    'abroad': [19, 39, 69, 99],
+  };
 
   @override
   Widget build(BuildContext context) {
@@ -321,6 +332,34 @@ class _BillCard extends StatelessWidget {
                 ],
               ),
             ],
+          ),
+          const SizedBox(height: 10),
+          // Quick-preset chips
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: (_presets[category.id] ?? [49, 99, 149, 199]).map((preset) {
+              final isActive = currentBill == preset;
+              return GestureDetector(
+                onTap: () => onSetValue(preset),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 150),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: isActive ? ffTheme.primary : ffTheme.background,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: isActive ? ffTheme.primary : ffTheme.alternate),
+                  ),
+                  child: Text(
+                    '₪$preset',
+                    style: ffTheme.labelSmall.override(
+                      color: isActive ? Colors.white : ffTheme.secondaryText,
+                      fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
           ),
           if (currentBill > 0 && yearlySave > 0) ...[
             const SizedBox(height: 10),

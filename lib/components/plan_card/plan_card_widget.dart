@@ -27,6 +27,7 @@ class PlanCardWidget extends StatelessWidget {
     final ffTheme = FlutterFlowTheme.of(context);
     final savings = ((currentBill - plan.price) * 12).clamp(0, 999999);
     final inCompare = appState.isInCompare(plan.id);
+    final isWatching = appState.isWatching(plan.id);
     final displayPrice = '₪${plan.price}';
     final displayAfter = plan.hasPromo ? '₪${plan.after}' : null;
 
@@ -145,24 +146,49 @@ class PlanCardWidget extends StatelessWidget {
                       ),
                     ),
                     if (showCompare)
-                      GestureDetector(
-                        onTap: () => appState.toggleCompare(plan.id),
-                        child: Container(
-                          width: 32,
-                          height: 32,
-                          decoration: BoxDecoration(
-                            color: inCompare ? ffTheme.primary : ffTheme.background,
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: inCompare ? ffTheme.primary : ffTheme.alternate,
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          GestureDetector(
+                            onTap: () => appState.toggleWatch(plan.id),
+                            child: Container(
+                              width: 32,
+                              height: 32,
+                              decoration: BoxDecoration(
+                                color: isWatching ? ffTheme.warning.withOpacity(0.1) : ffTheme.background,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: isWatching ? ffTheme.warning : ffTheme.alternate,
+                                ),
+                              ),
+                              child: Icon(
+                                isWatching ? Icons.notifications_active_rounded : Icons.notifications_none_rounded,
+                                size: 15,
+                                color: isWatching ? ffTheme.warning : ffTheme.secondaryText,
+                              ),
                             ),
                           ),
-                          child: Icon(
-                            inCompare ? Icons.check : Icons.add,
-                            size: 16,
-                            color: inCompare ? Colors.white : ffTheme.secondaryText,
+                          const SizedBox(width: 6),
+                          GestureDetector(
+                            onTap: () => appState.toggleCompare(plan.id),
+                            child: Container(
+                              width: 32,
+                              height: 32,
+                              decoration: BoxDecoration(
+                                color: inCompare ? ffTheme.primary : ffTheme.background,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: inCompare ? ffTheme.primary : ffTheme.alternate,
+                                ),
+                              ),
+                              child: Icon(
+                                inCompare ? Icons.check : Icons.add,
+                                size: 16,
+                                color: inCompare ? Colors.white : ffTheme.secondaryText,
+                              ),
+                            ),
                           ),
-                        ),
+                        ],
                       ),
                   ],
                 ),

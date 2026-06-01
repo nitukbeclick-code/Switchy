@@ -17,6 +17,7 @@ class _QuizWidgetState extends State<QuizWidget> {
   String _cat = 'cellular';
   int _lines = 1;
   String _priority = 'price';
+  String? _extraFilter; // secondary preference for internet/tv
   double _budget = 90;
 
   static const _cats = [
@@ -192,6 +193,72 @@ class _QuizWidgetState extends State<QuizWidget> {
           ),
         );
       case 2:
+        if (_cat == 'internet') {
+          return _StepCard(
+            step: 3,
+            title: 'מה עוד חשוב לך?',
+            subtitle: 'מעבר למהירות שבחרת',
+            ffTheme: ffTheme,
+            child: Column(
+              children: [
+                ('nocommit', 'ללא התחייבות', '🔓'),
+                ('price', 'מחיר הכי נמוך', '💰'),
+                ('streaming', 'כולל שירותי סטרימינג', '🎬'),
+                ('reliability', 'אמינות ויציבות', '🛡️'),
+              ].map((p) => _RadioTile(
+                emoji: p.$3,
+                label: p.$2,
+                selected: _extraFilter == p.$1,
+                onTap: () => setState(() => _extraFilter = p.$1),
+                ffTheme: ffTheme,
+              )).toList(),
+            ),
+          );
+        }
+        if (_cat == 'tv') {
+          return _StepCard(
+            step: 3,
+            title: 'מה עוד חשוב לך?',
+            subtitle: 'מעבר לתוכן שבחרת',
+            ffTheme: ffTheme,
+            child: Column(
+              children: [
+                ('nocommit', 'ללא התחייבות', '🔓'),
+                ('price', 'מחיר הכי נמוך', '💰'),
+                ('sport', 'ערוצי ספורט', '⚽'),
+                ('netflix', 'Netflix / VOD', '🎬'),
+              ].map((p) => _RadioTile(
+                emoji: p.$3,
+                label: p.$2,
+                selected: _extraFilter == p.$1,
+                onTap: () => setState(() => _extraFilter = p.$1),
+                ffTheme: ffTheme,
+              )).toList(),
+            ),
+          );
+        }
+        if (_cat == 'abroad') {
+          return _StepCard(
+            step: 3,
+            title: 'מה הכי חשוב לך בחו"ל?',
+            subtitle: 'בחר את הדבר הכי חשוב בנסיעות',
+            ffTheme: ffTheme,
+            child: Column(
+              children: [
+                ('price', 'מחיר נמוך', '💰'),
+                ('data', 'הרבה גלישה', '📶'),
+                ('esim', 'eSIM מיידי', '📲'),
+                ('nocommit', 'גמישות מקסימלית', '🔓'),
+              ].map((p) => _RadioTile(
+                emoji: p.$3,
+                label: p.$2,
+                selected: _priority == p.$1,
+                onTap: () => setState(() => _priority = p.$1),
+                ffTheme: ffTheme,
+              )).toList(),
+            ),
+          );
+        }
         return _StepCard(
           step: 3,
           title: 'מה הכי חשוב לכם?',
@@ -204,7 +271,7 @@ class _QuizWidgetState extends State<QuizWidget> {
               ('abroad', 'גלישה בחו"ל', '✈️'),
               ('nocommit', 'ללא התחייבות', '🔓'),
             ].map((p) => _RadioTile(
-              emoji: p.$1 == 'price' ? '💰' : p.$1 == 'speed' ? '⚡' : p.$1 == 'abroad' ? '✈️' : '🔓',
+              emoji: p.$3,
               label: p.$2,
               selected: _priority == p.$1,
               onTap: () => setState(() => _priority = p.$1),
@@ -258,13 +325,24 @@ class _QuizWidgetState extends State<QuizWidget> {
       appState.setQuizPriority(_priority);
       appState.setQuizBudget(_budget.round());
       appState.setQuizCompleted(true);
-      // Apply quiz priority as a smart filter/sort
       appState.clearFilters();
+      // Apply primary priority
       if (_priority == 'nocommit') appState.toggleFilter('nocommit');
       if (_priority == 'abroad') appState.toggleFilter('abroad');
+      if (_priority == 'esim') appState.toggleFilter('esim');
+      if (_priority == 'sport') appState.toggleFilter('sport');
+      if (_priority == 'channels') appState.setSortMode('match');
       if (_priority == 'price') appState.setSortMode('price');
-      if (_priority == 'speed' || _priority == 'speed_ultra') appState.setSortMode('match');
-      if (_priority == 'speed_fast') appState.setSortMode('match');
+      if (_priority == 'data') appState.setSortMode('match');
+      if (_priority == 'speed' || _priority == 'speed_ultra' || _priority == 'speed_fast') appState.setSortMode('match');
+      // Apply secondary filter (internet/tv step 2 choice)
+      if (_extraFilter != null) {
+        if (_extraFilter == 'nocommit') appState.toggleFilter('nocommit');
+        if (_extraFilter == 'streaming') appState.toggleFilter('streaming');
+        if (_extraFilter == 'sport') appState.toggleFilter('sport');
+        if (_extraFilter == 'netflix') appState.toggleFilter('netflix');
+        if (_extraFilter == 'price') appState.setSortMode('price');
+      }
       context.goNamed('Results');
     }
   }

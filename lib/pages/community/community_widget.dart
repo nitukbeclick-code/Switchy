@@ -18,8 +18,10 @@ class CommunityWidget extends StatefulWidget {
 
 class _CommunityWidgetState extends State<CommunityWidget> {
   final _composerCtrl = TextEditingController();
+  final _searchCtrl = TextEditingController();
   late List<CommunityPost> _posts;
   String _activeChannel = 'הכל';
+  String _searchQuery = '';
   int _onlineCount = 847;
 
   final _channels = ['הכל', 'המלצות', 'סלולר', 'אינטרנט', 'עזרה בניתוק'];
@@ -34,17 +36,23 @@ class _CommunityWidgetState extends State<CommunityWidget> {
     _onlineTimer = Timer.periodic(const Duration(seconds: 12), (_) {
       if (mounted) setState(() => _onlineCount = 820 + (DateTime.now().second * 7 % 60));
     });
+    _searchCtrl.addListener(() => setState(() => _searchQuery = _searchCtrl.text));
   }
 
   @override
   void dispose() {
     _composerCtrl.dispose();
+    _searchCtrl.dispose();
     _onlineTimer?.cancel();
     super.dispose();
   }
 
   List<CommunityPost> get _filtered {
-    final base = _activeChannel == 'הכל' ? _posts : _posts.where((p) => p.channel == _activeChannel).toList();
+    var base = _activeChannel == 'הכל' ? _posts : _posts.where((p) => p.channel == _activeChannel).toList();
+    if (_searchQuery.isNotEmpty) {
+      final q = _searchQuery.toLowerCase();
+      base = base.where((p) => p.text.toLowerCase().contains(q) || p.author.toLowerCase().contains(q)).toList();
+    }
     if (_sortByPopular) {
       return List.from(base)..sort((a, b) => b.likes.compareTo(a.likes));
     }
@@ -142,6 +150,31 @@ class _CommunityWidgetState extends State<CommunityWidget> {
               ],
             ),
           ),
+
+          // Search bar
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+            child: TextField(
+              controller: _searchCtrl,
+              textDirection: TextDirection.rtl,
+              decoration: InputDecoration(
+                hintText: 'חיפוש בפוסטים...',
+                hintTextDirection: TextDirection.rtl,
+                prefixIcon: _searchQuery.isEmpty
+                    ? Icon(Icons.search_rounded, color: ffTheme.secondaryText, size: 20)
+                    : GestureDetector(
+                        onTap: () { _searchCtrl.clear(); setState(() => _searchQuery = ''); },
+                        child: Icon(Icons.close_rounded, color: ffTheme.secondaryText, size: 20),
+                      ),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                filled: true,
+                fillColor: Colors.white,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide(color: ffTheme.alternate)),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide(color: ffTheme.alternate)),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide(color: ffTheme.primary)),
+              ),
+            ),
+          ).animate().fadeIn(duration: 300.ms),
 
           // Hot deal banner (from team posts with planId)
           ..._posts.where((p) => p.isTeam && p.planId != null).take(1).map((p) =>
@@ -259,11 +292,16 @@ class _PostCard extends StatefulWidget {
 
 class _PostCardState extends State<_PostCard> {
   bool _liked = false;
+  bool _bouncing = false;
 
   String _timeAgo(DateTime t) {
     final diff = DateTime.now().difference(t);
+    if (diff.inSeconds < 60) return 'עכשיו';
+    if (diff.inMinutes == 1) return 'לפני דקה';
     if (diff.inMinutes < 60) return 'לפני ${diff.inMinutes} דקות';
+    if (diff.inHours == 1) return 'לפני שעה';
     if (diff.inHours < 24) return 'לפני ${diff.inHours} שעות';
+    if (diff.inDays == 1) return 'אתמול';
     return 'לפני ${diff.inDays} ימים';
   }
 
@@ -367,7 +405,10 @@ class _PostCardState extends State<_PostCard> {
           Row(
             children: [
               GestureDetector(
-                onTap: () => setState(() => _liked = !_liked),
+                onTap: () {
+                  setState(() { _liked = !_liked; _bouncing = true; });
+                  Future.delayed(const Duration(milliseconds: 400), () { if (mounted) setState(() => _bouncing = false); });
+                },
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -377,7 +418,12 @@ class _PostCardState extends State<_PostCard> {
                   ),
                   child: Row(
                     children: [
-                      Icon(_liked ? Icons.favorite_rounded : Icons.favorite_border_rounded, size: 15, color: _liked ? Colors.red : ffTheme.secondaryText),
+                      AnimatedScale(
+                        scale: _bouncing ? 1.35 : 1.0,
+                        duration: const Duration(milliseconds: 200),
+                        curve: Curves.elasticOut,
+                        child: Icon(_liked ? Icons.favorite_rounded : Icons.favorite_border_rounded, size: 15, color: _liked ? Colors.red : ffTheme.secondaryText),
+                      ),
                       const SizedBox(width: 4),
                       Text('${post.likes + (_liked ? 1 : 0)}', style: ffTheme.labelSmall.override(color: _liked ? Colors.red : ffTheme.secondaryText)),
                     ],

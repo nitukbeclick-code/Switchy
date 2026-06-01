@@ -246,24 +246,44 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                 children: [
                   Column(
                     children: [
-                      Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: s.done ? ffTheme.primary : s.active ? ffTheme.accent1 : ffTheme.alternate,
-                          shape: BoxShape.circle,
-                          border: s.active ? Border.all(color: ffTheme.primary, width: 2) : null,
-                        ),
-                        child: Icon(
-                          s.icon,
-                          size: 20,
-                          color: s.done ? Colors.white : s.active ? ffTheme.primary : ffTheme.secondaryText,
-                        ),
-                      ),
+                      s.active
+                        ? Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              Container(
+                                width: 52,
+                                height: 52,
+                                decoration: BoxDecoration(
+                                  color: ffTheme.primary.withOpacity(0.12),
+                                  shape: BoxShape.circle,
+                                ),
+                              ).animate(onPlay: (c) => c.repeat(reverse: true))
+                                .scale(begin: const Offset(1, 1), end: const Offset(1.2, 1.2), duration: 900.ms, curve: Curves.easeInOut),
+                              Container(
+                                width: 40,
+                                height: 40,
+                                decoration: BoxDecoration(
+                                  color: ffTheme.accent1,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: ffTheme.primary, width: 2),
+                                ),
+                                child: Icon(s.icon, size: 20, color: ffTheme.primary),
+                              ),
+                            ],
+                          )
+                        : Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: s.done ? ffTheme.primary : ffTheme.alternate,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(s.icon, size: 20, color: s.done ? Colors.white : ffTheme.secondaryText),
+                          ),
                       if (!isLast)
                         Container(
                           width: 2,
-                          height: 40,
+                          height: s.active ? 50 : 40,
                           color: s.done ? ffTheme.primary.withOpacity(0.3) : ffTheme.alternate,
                         ),
                     ],
@@ -271,7 +291,7 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                   const SizedBox(width: 14),
                   Expanded(
                     child: Padding(
-                      padding: EdgeInsets.only(bottom: isLast ? 0 : 24, top: 8),
+                      padding: EdgeInsets.only(bottom: isLast ? 0 : 24, top: s.active ? 14 : 8),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -283,14 +303,21 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                           Text(s.subtitle, style: ffTheme.bodySmall),
                           if (s.active) ...[
                             const SizedBox(height: 6),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                              decoration: BoxDecoration(
-                                color: ffTheme.primary,
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              child: Text('בתהליך...', style: GoogleFonts.rubik(fontSize: 10, fontWeight: FontWeight.w700, color: Colors.white)),
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(color: ffTheme.primary, borderRadius: BorderRadius.circular(6)),
+                                  child: Text('בתהליך...', style: GoogleFonts.rubik(fontSize: 10, fontWeight: FontWeight.w700, color: Colors.white)),
+                                ),
+                                const SizedBox(width: 8),
+                                Text('~24 שעות', style: ffTheme.labelSmall.override(color: ffTheme.secondaryText)),
+                              ],
                             ),
+                          ],
+                          if (s.done) ...[
+                            const SizedBox(height: 4),
+                            Icon(Icons.check_circle_rounded, size: 14, color: ffTheme.primary),
                           ],
                         ],
                       ),
@@ -303,53 +330,72 @@ class _TrackerWidgetState extends State<TrackerWidget> {
             const SizedBox(height: 24),
 
             // Rep card
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: ffTheme.alternate),
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10)],
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 50,
-                    height: 50,
-                    decoration: BoxDecoration(
-                      color: ffTheme.accent1,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Center(
-                      child: Text('ד', style: GoogleFonts.rubik(fontSize: 20, fontWeight: FontWeight.w700, color: ffTheme.primary)),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+            GestureDetector(
+              onTap: () => context.pushNamed('Chat'),
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: ffTheme.alternate),
+                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10)],
+                ),
+                child: Row(
+                  children: [
+                    Stack(
                       children: [
-                        Text('דנה — הנציגה שלכם', style: ffTheme.titleSmall),
-                        Text('זמן תגובה: ~5 דקות', style: ffTheme.bodySmall),
+                        Container(
+                          width: 50,
+                          height: 50,
+                          decoration: BoxDecoration(color: ffTheme.accent1, shape: BoxShape.circle),
+                          child: Center(
+                            child: Text('ד', style: GoogleFonts.rubik(fontSize: 20, fontWeight: FontWeight.w700, color: ffTheme.primary)),
+                          ),
+                        ),
+                        Positioned(
+                          right: 0, bottom: 0,
+                          child: Container(
+                            width: 14, height: 14,
+                            decoration: BoxDecoration(
+                              color: Colors.green,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 2),
+                            ),
+                          ).animate(onPlay: (c) => c.repeat(reverse: true))
+                            .scale(begin: const Offset(1, 1), end: const Offset(1.3, 1.3), duration: 800.ms),
+                        ),
                       ],
                     ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: ffTheme.accent1,
-                      borderRadius: BorderRadius.circular(10),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('דנה — הנציגה שלכם', style: ffTheme.titleSmall),
+                          Row(
+                            children: [
+                              Container(width: 6, height: 6, decoration: const BoxDecoration(color: Colors.green, shape: BoxShape.circle)),
+                              const SizedBox(width: 4),
+                              Text('פנויה עכשיו · תגובה ~5 דקות', style: ffTheme.labelSmall.override(color: Colors.green, fontWeight: FontWeight.w600)),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
-                    child: Icon(Icons.circle, color: Colors.green, size: 10),
-                  ),
-                ],
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(color: ffTheme.primary, borderRadius: BorderRadius.circular(10)),
+                      child: const Icon(Icons.chat_rounded, color: Colors.white, size: 18),
+                    ),
+                  ],
+                ),
               ),
             ).animate().fadeIn(delay: 300.ms),
 
             const SizedBox(height: 16),
 
             FFButtonWidget(
-              text: 'שליחת הודעה לנציג',
+              text: 'שליחת הודעה לדנה',
               onPressed: () async => context.pushNamed('Chat'),
               options: FFButtonOptions(
                 width: double.infinity,
@@ -362,13 +408,13 @@ class _TrackerWidgetState extends State<TrackerWidget> {
 
             const SizedBox(height: 8),
 
-            // Demo: advance tracker step
+            // Advance step for demo
             if (step < 4 && plan != null)
               GestureDetector(
                 onTap: () => appState.advanceTracker(),
                 child: Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(14),
@@ -377,9 +423,9 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.play_arrow_rounded, size: 18, color: ffTheme.secondaryText),
+                      Icon(Icons.arrow_forward_rounded, size: 16, color: ffTheme.secondaryText),
                       const SizedBox(width: 6),
-                      Text('סמולציה: קידום שלב', style: ffTheme.labelMedium.override(color: ffTheme.secondaryText)),
+                      Text('קבלתי עדכון מהספק', style: ffTheme.labelMedium.override(color: ffTheme.secondaryText)),
                     ],
                   ),
                 ),

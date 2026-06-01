@@ -69,27 +69,49 @@ class _PortingWidgetState extends State<PortingWidget> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Info card
+            // Process steps mini-timeline
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: ffTheme.accent1,
                 borderRadius: BorderRadius.circular(14),
-                border:
-                    Border.all(color: ffTheme.primary.withOpacity(0.2)),
+                border: Border.all(color: ffTheme.primary.withOpacity(0.2)),
               ),
-              child: Row(
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Icon(Icons.info_outline_rounded,
-                      color: ffTheme.primary, size: 20),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'ניוד מספר מאפשר לך לשמור על מספר הטלפון שלך בעת מעבר לספק חדש. התהליך לוקח עד 3 ימי עסקים.',
-                      style: ffTheme.bodyMedium
-                          .override(color: ffTheme.primary),
-                    ),
+                  Row(
+                    children: [
+                      Icon(Icons.info_outline_rounded, color: ffTheme.primary, size: 18),
+                      const SizedBox(width: 8),
+                      Text('כיצד עובד הניוד?', style: ffTheme.labelLarge.override(color: ffTheme.primary)),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  Row(
+                    children: [
+                      for (final item in [
+                        (Icons.send_rounded, 'שליחת בקשה'),
+                        (Icons.sync_rounded, 'עיבוד (1-3 ימים)'),
+                        (Icons.check_circle_rounded, 'ניוד הושלם'),
+                      ]) ...[
+                        Expanded(
+                          child: Column(
+                            children: [
+                              Container(
+                                width: 36, height: 36,
+                                decoration: BoxDecoration(color: ffTheme.primary.withOpacity(0.12), shape: BoxShape.circle),
+                                child: Icon(item.$1, size: 17, color: ffTheme.primary),
+                              ),
+                              const SizedBox(height: 5),
+                              Text(item.$2, style: ffTheme.labelSmall.override(color: ffTheme.primary), textAlign: TextAlign.center),
+                            ],
+                          ),
+                        ),
+                        if (item != (Icons.check_circle_rounded, 'ניוד הושלם'))
+                          Expanded(child: Divider(color: ffTheme.primary.withOpacity(0.25), thickness: 1.5)),
+                      ],
+                    ],
                   ),
                 ],
               ),
@@ -348,35 +370,57 @@ class _SuccessState extends StatelessWidget {
               const SizedBox(height: 32),
 
               Text(
-                'בקשת הניוד נשלחה! ✓',
-                style: ffTheme.headlineMedium
-                    .override(color: Colors.white),
+                'הבקשה נשלחה בהצלחה! ✓',
+                style: ffTheme.headlineMedium.override(color: Colors.white),
                 textAlign: TextAlign.center,
               ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.2),
 
               const SizedBox(height: 12),
 
               Text(
-                'נחזור אליך תוך 24 שעות\nולמלא את תהליך הניוד',
-                style: ffTheme.bodyLarge
-                    .override(color: Colors.white.withOpacity(0.8)),
+                'נציג ייצור קשר תוך 24 שעות\nלהשלמת תהליך הניוד',
+                style: ffTheme.bodyLarge.override(color: Colors.white.withOpacity(0.85)),
                 textAlign: TextAlign.center,
               ).animate().fadeIn(delay: 400.ms),
 
-              const SizedBox(height: 48),
+              const SizedBox(height: 16),
+
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.schedule_rounded, color: ffTheme.secondary, size: 16),
+                    const SizedBox(width: 8),
+                    Text('זמן ניוד: 1–3 ימי עסקים', style: ffTheme.labelMedium.override(color: ffTheme.secondary, fontWeight: FontWeight.w600)),
+                  ],
+                ),
+              ).animate().fadeIn(delay: 450.ms),
+
+              const SizedBox(height: 40),
 
               FFButtonWidget(
-                text: 'חזרה לאזור האישי',
-                onPressed: () async => context.goNamed('Account'),
+                text: 'עקוב אחר הניוד',
+                onPressed: () async => context.goNamed('Tracker'),
                 options: FFButtonOptions(
                   width: double.infinity,
                   height: 56,
                   color: ffTheme.secondary,
-                  textStyle:
-                      ffTheme.titleMedium.override(color: ffTheme.primary),
+                  textStyle: ffTheme.titleMedium.override(color: ffTheme.primary),
                   borderRadius: BorderRadius.circular(16),
                 ),
               ).animate().fadeIn(delay: 500.ms),
+
+              const SizedBox(height: 12),
+
+              TextButton(
+                onPressed: () => context.goNamed('Account'),
+                child: Text('חזרה לאזור האישי', style: ffTheme.bodyMedium.override(color: Colors.white70)),
+              ).animate().fadeIn(delay: 600.ms),
             ],
           ),
         ),

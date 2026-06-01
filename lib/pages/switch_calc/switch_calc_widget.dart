@@ -137,6 +137,64 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
 
             const SizedBox(height: 24),
 
+            // Delay cost warning
+            if (_monthlySaving > 0) ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                decoration: BoxDecoration(
+                  color: ffTheme.warning.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: ffTheme.warning.withOpacity(0.3)),
+                ),
+                child: Row(
+                  children: [
+                    const Text('⏰', style: TextStyle(fontSize: 20)),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'כל חודש שאתם מחכים עולה לכם ₪$_monthlySaving',
+                        style: ffTheme.bodyMedium.override(color: ffTheme.warning, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
+                ),
+              ).animate().fadeIn(delay: 380.ms),
+              const SizedBox(height: 16),
+            ],
+
+            // Savings timeline
+            if (_annualSaving > 0) ...[
+              Container(
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: ffTheme.alternate),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('חיסכון לאורך זמן', style: ffTheme.titleSmall),
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        _TimelineStat(months: 6, monthlySaving: _monthlySaving, exitFee: _exitFee, ffTheme: ffTheme),
+                        Container(width: 1, height: 48, color: ffTheme.alternate),
+                        _TimelineStat(months: 12, monthlySaving: _monthlySaving, exitFee: _exitFee, ffTheme: ffTheme),
+                        Container(width: 1, height: 48, color: ffTheme.alternate),
+                        _TimelineStat(months: 24, monthlySaving: _monthlySaving, exitFee: _exitFee, ffTheme: ffTheme),
+                        Container(width: 1, height: 48, color: ffTheme.alternate),
+                        _TimelineStat(months: 36, monthlySaving: _monthlySaving, exitFee: _exitFee, ffTheme: ffTheme),
+                      ],
+                    ),
+                  ],
+                ),
+              ).animate().fadeIn(delay: 420.ms),
+              const SizedBox(height: 16),
+            ],
+
             if (_annualSaving > 0)
               ElevatedButton(
                 onPressed: () => context.pushNamed('Results'),
@@ -146,7 +204,7 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                 ),
                 child: Text('מצא מסלולים מתאימים', style: ffTheme.titleSmall.override(color: Colors.white)),
-              ).animate().fadeIn(delay: 400.ms),
+              ).animate().fadeIn(delay: 460.ms),
 
             const SizedBox(height: 32),
           ],
@@ -218,6 +276,29 @@ class _ResultStat extends StatelessWidget {
         Text(label, style: ffTheme.labelSmall),
         const SizedBox(height: 4),
         Text(value, style: ffTheme.headlineSmall.override(color: color)),
+      ],
+    );
+  }
+}
+
+class _TimelineStat extends StatelessWidget {
+  const _TimelineStat({required this.months, required this.monthlySaving, required this.exitFee, required this.ffTheme});
+  final int months;
+  final int monthlySaving;
+  final double exitFee;
+  final FlutterFlowTheme ffTheme;
+
+  @override
+  Widget build(BuildContext context) {
+    final amount = (monthlySaving * months - exitFee).round().clamp(0, 999999);
+    return Column(
+      children: [
+        Text(
+          '₪$amount',
+          style: ffTheme.titleMedium.override(color: ffTheme.primary, fontWeight: FontWeight.w800),
+        ),
+        const SizedBox(height: 4),
+        Text('$months חודשים', style: ffTheme.labelSmall),
       ],
     );
   }

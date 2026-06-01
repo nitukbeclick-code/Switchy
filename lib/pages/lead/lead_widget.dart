@@ -58,32 +58,74 @@ class _LeadWidgetState extends State<LeadWidget> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Plan summary
+              // Plan summary with savings
               if (plan != null) ...[
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: ffTheme.accent1,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: ffTheme.primary.withOpacity(0.2)),
-                  ),
-                  child: Row(
-                    children: [
-                      LogoWidget(provider: plan.provider, size: 48),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                Builder(builder: (ctx) {
+                  final bill = appState.currentBill(plan.cat);
+                  final saveYear = planSaveYear(plan, bill);
+                  return Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [ffTheme.accent1, Colors.white],
+                        begin: Alignment.topRight,
+                        end: Alignment.bottomLeft,
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: ffTheme.primary.withOpacity(0.2)),
+                    ),
+                    child: Column(
+                      children: [
+                        Row(
                           children: [
-                            Text(plan.provider, style: ffTheme.titleSmall),
-                            Text(plan.plan, style: ffTheme.bodySmall),
-                            Text('₪${plan.price}/חודש', style: ffTheme.titleMedium.override(color: ffTheme.primary)),
+                            LogoWidget(provider: plan.provider, size: 48),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(plan.provider, style: ffTheme.titleSmall),
+                                  Text(plan.plan, style: ffTheme.bodySmall, maxLines: 1, overflow: TextOverflow.ellipsis),
+                                  Text('₪${plan.price}/חודש', style: ffTheme.titleMedium.override(color: ffTheme.primary)),
+                                ],
+                              ),
+                            ),
+                            if (saveYear > 0)
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: ffTheme.secondary,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Column(
+                                  children: [
+                                    Text('חוסך', style: ffTheme.labelSmall.override(color: const Color(0xFF0E3A26))),
+                                    Text('₪$saveYear/שנה', style: ffTheme.titleSmall.override(color: const Color(0xFF0E3A26), fontWeight: FontWeight.w800)),
+                                  ],
+                                ),
+                              ),
                           ],
                         ),
-                      ),
-                    ],
-                  ),
-                ),
+                        if (saveYear > 0) ...[
+                          const SizedBox(height: 10),
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: ffTheme.primary.withOpacity(0.08),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              '🎉 כ-₪${(saveYear / 12).round()} חיסכון בחודש הראשון!',
+                              style: ffTheme.labelMedium.override(color: ffTheme.primary, fontWeight: FontWeight.w700),
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  );
+                }).animate().fadeIn(duration: 350.ms),
                 const SizedBox(height: 24),
               ],
 

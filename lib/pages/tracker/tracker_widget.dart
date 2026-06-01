@@ -193,6 +193,22 @@ class TrackerWidget extends StatelessWidget {
               ),
             ).animate().fadeIn(delay: 400.ms),
 
+            const SizedBox(height: 12),
+
+            // Porting CTA when step >= 1
+            if (step >= 1)
+              OutlinedButton.icon(
+                onPressed: () => context.pushNamed('Porting'),
+                icon: const Icon(Icons.swap_horizontal_circle_outlined, size: 18),
+                label: const Text('ניוד מספר טלפון'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: ffTheme.primary,
+                  side: BorderSide(color: ffTheme.primary),
+                  minimumSize: const Size(double.infinity, 48),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+              ).animate().fadeIn(delay: 450.ms),
+
             const SizedBox(height: 16),
 
             // Guarantee card

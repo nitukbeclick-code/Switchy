@@ -466,6 +466,7 @@ class _HomeWidgetState extends State<HomeWidget> {
       _Tool(icon: '📍', label: 'בדיקת כיסוי', route: 'Availability'),
       _Tool(icon: '🧮', label: 'מחשבון מעבר', route: 'SwitchCalc'),
       _Tool(icon: '📊', label: 'ניהול חשבון', route: 'Bills'),
+      _Tool(icon: '📲', label: 'ניוד מספר', route: 'Porting'),
     ];
 
     return Padding(

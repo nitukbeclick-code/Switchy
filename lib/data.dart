@@ -1,615 +1,131 @@
+import 'package:flutter/material.dart';
 import 'models.dart';
-import 'theme.dart';
 
-final List<Category> kCategories = [
-  Category(
-    id: 'cellular',
-    name: 'סלולר',
-    sub: 'מנויים ניידים',
-    icon: '📱',
-    currentBill: 119,
-    color: AppColors.green,
-  ),
-  Category(
-    id: 'internet',
-    name: 'אינטרנט',
-    sub: 'סיב אופטי וכבלים',
-    icon: '🌐',
-    currentBill: 140,
-    color: AppColors.greenLight,
-  ),
-  Category(
-    id: 'tv',
-    name: 'טלוויזיה',
-    sub: 'שידור וסטרימינג',
-    icon: '📺',
-    currentBill: 130,
-    color: AppColors.orange,
-  ),
-  Category(
-    id: 'triple',
-    name: 'חבילה משולבת',
-    sub: 'אינטרנט + טלוויזיה + טלפון',
-    icon: '🏠',
-    currentBill: 260,
-    color: AppColors.blueLight,
-  ),
-  Category(
-    id: 'abroad',
-    name: "חו\"ל",
-    sub: 'שיחות ונתונים בחו"ל',
-    icon: '✈️',
-    currentBill: 0,
-    color: AppColors.warn,
-  ),
+// ── Categories ────────────────────────────────────────────────────────────────
+
+final List<Category> categories = [
+  const Category(id: 'cellular', name: 'סלולר', icon: '📱', currentBill: 119, color: Color(0xFF15603E), planCount: 8, description: 'חבילות סלולר לנייד'),
+  const Category(id: 'internet', name: 'אינטרנט', icon: '🌐', currentBill: 140, color: Color(0xFF2563EB), planCount: 6, description: 'אינטרנט ביתי מהיר'),
+  const Category(id: 'tv', name: 'טלוויזיה', icon: '📺', currentBill: 130, color: Color(0xFF7C3AED), planCount: 5, description: 'ערוצי טלוויזיה ושידורים'),
+  const Category(id: 'triple', name: 'חבילה משולבת', icon: '🏠', currentBill: 260, color: Color(0xFFE07034), planCount: 5, description: 'אינטרנט + טלוויזיה + טלפון'),
+  const Category(id: 'abroad', name: 'חבילות חו"ל', icon: '✈️', currentBill: 0, color: Color(0xFF0891B2), planCount: 5, description: 'גלישה ושיחות בחו"ל'),
 ];
 
-final List<Plan> kPlans = [
-  // ── CELLULAR ──────────────────────────────────────────────────
-  Plan(
-    id: 'c-019',
-    cat: 'cellular',
-    provider: '019 מובייל',
-    net: 'LTE',
-    plan: '12GB ללא הגבלה',
-    price: 19.90,
-    rating: 3.8,
-    reviews: 214,
-    flags: ['nocommit', 'fixed'],
-    feats: [
-      PlanFeat('📶', '12GB גלישה'),
-      PlanFeat('📞', 'שיחות ללא הגבלה'),
-      PlanFeat('✉️', 'SMS ללא הגבלה'),
-      PlanFeat('🔒', 'מחיר קבוע לתמיד'),
-    ],
-    fine: 'מחיר אינו כולל מע"מ',
-  ),
-  Plan(
-    id: 'c-partner-20',
-    cat: 'cellular',
-    provider: 'פרטנר',
-    net: '5G',
-    plan: '20GB 5G',
-    price: 29,
-    rating: 4.1,
-    reviews: 381,
-    flags: ['5g', 'nocommit'],
-    feats: [
-      PlanFeat('📶', '20GB גלישה'),
-      PlanFeat('📡', '5G מהיר'),
-      PlanFeat('📞', 'שיחות ללא הגבלה'),
-      PlanFeat('🔓', 'ללא התחייבות'),
-    ],
-  ),
-  Plan(
-    id: 'c-golan-50',
-    cat: 'cellular',
-    provider: 'גולן טלקום',
-    net: '5G',
-    plan: '50GB 5G',
-    price: 39,
-    after: 49,
-    intro: '3 חודשים ראשונים',
-    rating: 4.3,
-    reviews: 1053,
-    flags: ['5g', 'nocommit'],
-    best: true,
-    feats: [
-      PlanFeat('📶', '50GB גלישה'),
-      PlanFeat('📡', '5G מהיר'),
-      PlanFeat('📞', 'שיחות ללא הגבלה'),
-      PlanFeat('🌍', 'רואמינג בסיסי'),
-      PlanFeat('🔓', 'ללא התחייבות'),
-    ],
-    fine: 'לאחר 3 חודשים המחיר עולה ל-₪49',
-  ),
-  Plan(
-    id: 'c-hot-100',
-    cat: 'cellular',
-    provider: 'הוט מובייל',
-    net: '5G',
-    plan: '100GB 5G',
-    price: 49,
-    rating: 4.0,
-    reviews: 729,
-    flags: ['5g', 'nocommit'],
-    feats: [
-      PlanFeat('📶', '100GB גלישה'),
-      PlanFeat('📡', '5G מהיר'),
-      PlanFeat('📞', 'שיחות ללא הגבלה'),
-      PlanFeat('🔓', 'ללא התחייבות'),
-    ],
-  ),
-  Plan(
-    id: 'c-cellcom-200',
-    cat: 'cellular',
-    provider: 'סלקום',
-    net: '5G',
-    plan: '200GB 5G',
-    price: 59,
-    rating: 4.2,
-    reviews: 892,
-    flags: ['5g', 'nocommit'],
-    feats: [
-      PlanFeat('📶', '200GB גלישה'),
-      PlanFeat('📡', '5G מהיר'),
-      PlanFeat('📞', 'שיחות ללא הגבלה'),
-      PlanFeat('🔒', 'ביטוח מכשיר'),
-      PlanFeat('🔓', 'ללא התחייבות'),
-    ],
-  ),
-  Plan(
-    id: 'c-partner-500',
-    cat: 'cellular',
-    provider: 'פרטנר',
-    net: '5G',
-    plan: '500GB 5G + חו"ל',
-    price: 69,
-    rating: 4.4,
-    reviews: 567,
-    flags: ['5g', 'nocommit', 'abroad'],
-    feats: [
-      PlanFeat('📶', '500GB גלישה'),
-      PlanFeat('📡', '5G מהיר'),
-      PlanFeat('📞', 'שיחות ללא הגבלה'),
-      PlanFeat('✈️', 'גלישה בחו"ל 5GB/חודש'),
-      PlanFeat('🔓', 'ללא התחייבות'),
-    ],
-  ),
-  Plan(
-    id: 'c-pelephone-1000',
-    cat: 'cellular',
-    provider: 'פלאפון',
-    net: '5G',
-    plan: '1000GB 5G פרימיום',
-    price: 75,
-    after: 95,
-    term: '24',
-    intro: '12 חודשים ראשונים',
-    rating: 4.1,
-    reviews: 445,
-    flags: ['5g'],
-    feats: [
-      PlanFeat('📶', '1000GB גלישה'),
-      PlanFeat('📡', '5G Ultra'),
-      PlanFeat('📞', 'שיחות ללא הגבלה'),
-      PlanFeat('✈️', 'גלישה בחו"ל 10GB/חודש'),
-      PlanFeat('📺', 'שנה HOT NOW חינם'),
-    ],
-    fine: 'התחייבות 24 חודש, לאחר 12 חודש: ₪95',
-  ),
-  Plan(
-    id: 'c-rami-levi',
-    cat: 'cellular',
-    provider: 'רמי לוי',
-    net: 'LTE',
-    plan: 'ללא הגבלה LTE',
-    price: 30,
-    rating: 3.9,
-    reviews: 310,
-    flags: ['nocommit'],
-    feats: [
-      PlanFeat('📶', 'גלישה ללא הגבלה'),
-      PlanFeat('📞', 'שיחות ללא הגבלה'),
-      PlanFeat('✉️', 'SMS ללא הגבלה'),
-      PlanFeat('🔓', 'ללא התחייבות'),
-    ],
-  ),
-  Plan(
-    id: 'c-pelephone-fam',
-    cat: 'cellular',
-    provider: 'פלאפון',
-    net: '5G',
-    plan: 'חבילת משפחה 4 קווים',
-    price: 49,
-    after: 60,
-    term: '24',
-    intro: '6 חודשים ראשונים',
-    rating: 4.0,
-    reviews: 298,
-    flags: ['5g', 'family'],
-    feats: [
-      PlanFeat('👨‍👩‍👧‍👦', '4 קווים יחד'),
-      PlanFeat('📶', '100GB לכל קו'),
-      PlanFeat('📡', '5G מהיר'),
-      PlanFeat('📞', 'שיחות בין הקווים חינם'),
-    ],
-    fine: 'חבילת משפחה, 4 קווים במחיר ₪49/קו',
-  ),
+// ── Plans ─────────────────────────────────────────────────────────────────────
 
-  // ── INTERNET ──────────────────────────────────────────────────
-  Plan(
-    id: 'i-bezeq-200',
-    cat: 'internet',
-    provider: 'בזק',
-    net: 'סיב אופטי',
-    plan: '200Mbps סיב אופטי',
-    price: 99,
-    rating: 4.0,
-    reviews: 1203,
-    flags: ['fiber'],
-    feats: [
-      PlanFeat('⚡', '200Mbps הורדה'),
-      PlanFeat('⬆️', '20Mbps העלאה'),
-      PlanFeat('📦', 'ראוטר חינם'),
-      PlanFeat('🛠', 'טכנאי לבית חינם'),
-    ],
-    fine: 'כולל התקנה',
-  ),
-  Plan(
-    id: 'i-hot-500',
-    cat: 'internet',
-    provider: 'הוט',
-    net: 'כבל',
-    plan: '500Mbps כבל',
-    price: 109,
-    rating: 3.9,
-    reviews: 987,
-    flags: [],
-    feats: [
-      PlanFeat('⚡', '500Mbps הורדה'),
-      PlanFeat('⬆️', '50Mbps העלאה'),
-      PlanFeat('📦', 'מודם חינם'),
-      PlanFeat('📺', 'ניתן לצרף טלוויזיה'),
-    ],
-  ),
-  Plan(
-    id: 'i-partner-1000',
-    cat: 'internet',
-    provider: 'פרטנר',
-    net: 'סיב אופטי',
-    plan: '1000Mbps גיגה סיב',
-    price: 119,
-    rating: 4.3,
-    reviews: 752,
-    flags: ['fiber', 'best'],
-    best: true,
-    feats: [
-      PlanFeat('⚡', '1000Mbps הורדה'),
-      PlanFeat('⬆️', '100Mbps העלאה'),
-      PlanFeat('📦', 'ראוטר WiFi 6'),
-      PlanFeat('🛠', 'התקנה מקצועית'),
-      PlanFeat('📞', 'טלפון בית חינם שנה'),
-    ],
-  ),
-  Plan(
-    id: 'i-cellcom-1000',
-    cat: 'internet',
-    provider: 'סלקום',
-    net: 'סיב אופטי',
-    plan: '1000Mbps סיב',
-    price: 109,
-    rating: 4.1,
-    reviews: 631,
-    flags: ['fiber'],
-    feats: [
-      PlanFeat('⚡', '1000Mbps הורדה'),
-      PlanFeat('⬆️', '100Mbps העלאה'),
-      PlanFeat('📦', 'ראוטר חינם'),
-      PlanFeat('🔓', 'ללא התחייבות'),
-    ],
-  ),
-  Plan(
-    id: 'i-gilat-50',
-    cat: 'internet',
-    provider: 'גילת',
-    net: 'לווין',
-    plan: 'לווין 50Mbps',
-    price: 129,
-    rating: 3.5,
-    reviews: 198,
-    flags: ['satellite'],
-    feats: [
-      PlanFeat('🛰', 'כיסוי לכל הארץ'),
-      PlanFeat('⚡', '50Mbps הורדה'),
-      PlanFeat('⬆️', '10Mbps העלאה'),
-      PlanFeat('🏘', 'מתאים ליישובים מרוחקים'),
-    ],
-    fine: 'כולל ציוד לווין, דורש התקנה',
-  ),
-  Plan(
-    id: 'i-bezeq-1000',
-    cat: 'internet',
-    provider: 'בזק',
-    net: 'סיב אופטי',
-    plan: '1000Mbps גיגה פרימיום',
-    price: 139,
-    rating: 4.2,
-    reviews: 843,
-    flags: ['fiber'],
-    feats: [
-      PlanFeat('⚡', '1000Mbps הורדה'),
-      PlanFeat('⬆️', '100Mbps העלאה'),
-      PlanFeat('📦', 'ראוטר WiFi 6E'),
-      PlanFeat('🛠', 'תמיכה עדיפות'),
-    ],
-  ),
+const List<Plan> allPlans = [
+  // CELLULAR
+  Plan(id: 'cel_019', cat: 'cellular', provider: '019 מובייל', net: '4G', plan: '12GB ללא הגבלת שיחות', price: 20, rating: 4.1, reviews: 890, flags: ['nocommit', 'fixed'], feats: ['12GB גלישה', 'שיחות ללא הגבלה', 'SMS ללא הגבלה', 'ללא התחייבות', 'מחיר קבוע לתמיד']),
+  Plan(id: 'cel_rami', cat: 'cellular', provider: 'רמי לוי', net: '4G', plan: '20GB ללא הגבלה', price: 29, rating: 4.3, reviews: 2100, flags: ['nocommit', 'fixed'], feats: ['20GB גלישה', 'שיחות ללא הגבלה', 'ניוד מספר חינם', 'שמירת מספר', 'מחיר קבוע']),
+  Plan(id: 'cel_golan', cat: 'cellular', provider: 'גולן טלקום', net: '5G', plan: '50GB 5G ללא הגבלה', price: 39, after: 49, intro: '3 חודשים ראשונים', rating: 4.4, reviews: 3200, flags: ['5g', 'nocommit'], feats: ['50GB גלישה', '5G מהיר', 'שיחות ללא הגבלה', 'גיבוי ענן', 'ניוד חינם']),
+  Plan(id: 'cel_hot', cat: 'cellular', provider: 'הוט מובייל', net: '5G', plan: '100GB 5G', price: 49, rating: 4.0, reviews: 1560, flags: ['5g', 'nocommit'], feats: ['100GB גלישה', '5G מהיר', 'גלישה בחו"ל 1GB', 'שיחות ללא הגבלה', 'WiFi Calling']),
+  Plan(id: 'cel_cellcom', cat: 'cellular', provider: 'סלקום', net: '5G', plan: '200GB 5G ללא הגבלה', price: 59, rating: 4.2, reviews: 4300, flags: ['5g', 'nocommit'], feats: ['200GB גלישה', '5G מהיר', 'שיחות ללא הגבלה', 'חבילת חו"ל בסיסית 1GB', 'צ\'אט תמיכה 24/7']),
+  Plan(id: 'cel_partner', cat: 'cellular', provider: 'פרטנר', net: '5G', plan: '500GB 5G + חו"ל', price: 69, rating: 4.3, reviews: 3800, flags: ['5g', 'nocommit', 'abroad'], feats: ['500GB גלישה', '5G', 'גלישה בחו"ל 3GB', 'שיחות ללא הגבלה', 'ש\'אט WhatsApp ללא הגבלה']),
+  Plan(id: 'cel_pelephone', cat: 'cellular', provider: 'פלאפון', net: '5G', plan: 'MAX 1000GB 5G פרמיום', price: 79, after: 99, term: 24, rating: 4.4, reviews: 5100, flags: ['5g'], feats: ['1000GB גלישה', '5G פרמיום', '100 דקות בינ"ל', 'ראוטר WiFi 6 חינם', 'ביטוח מסך'], highlight: true, fine: 'מחיר ₪99 לאחר 24 חודשי מבצע'),
+  Plan(id: 'cel_spik', cat: 'cellular', provider: 'ספיק', net: '4G', plan: 'Unlimited שיחות + גלישה', price: 35, rating: 3.9, reviews: 650, flags: ['nocommit', 'fixed'], feats: ['גלישה ללא הגבלה (מוגבל לאחר 10GB)', 'שיחות ללא הגבלה', 'ללא התחייבות']),
 
-  // ── TV ────────────────────────────────────────────────────────
-  Plan(
-    id: 'tv-freetv',
-    cat: 'tv',
-    provider: 'FreeTV',
-    net: 'סטרימינג',
-    plan: 'בייסיק סטרימינג',
-    price: 29,
-    rating: 3.7,
-    reviews: 312,
-    flags: ['streaming'],
-    feats: [
-      PlanFeat('📺', '40+ ערוצים חינם'),
-      PlanFeat('📱', 'אפליקציה לכל מכשיר'),
-      PlanFeat('⏺', 'הקלטה ב-DVR'),
-      PlanFeat('🔓', 'ללא התחייבות'),
-    ],
-  ),
-  Plan(
-    id: 'tv-hot',
-    cat: 'tv',
-    provider: 'הוט',
-    net: 'כבל',
-    plan: 'HOT 70+ ערוצים',
-    price: 79,
-    rating: 3.9,
-    reviews: 1567,
-    flags: ['cable'],
-    feats: [
-      PlanFeat('📺', '70+ ערוצים'),
-      PlanFeat('📦', 'ממיר מתנה'),
-      PlanFeat('⏺', 'DVR 500GB'),
-      PlanFeat('🎬', 'HOT NOW כלול'),
-    ],
-  ),
-  Plan(
-    id: 'tv-partner',
-    cat: 'tv',
-    provider: 'פרטנר TV',
-    net: 'סטרימינג',
-    plan: '100+ ערוצים + VOD',
-    price: 89,
-    rating: 4.1,
-    reviews: 734,
-    flags: ['streaming', 'vod'],
-    best: true,
-    feats: [
-      PlanFeat('📺', '100+ ערוצים'),
-      PlanFeat('🎬', 'ספריית VOD ענקית'),
-      PlanFeat('📱', 'עד 4 מסכים בו-זמנית'),
-      PlanFeat('🔓', 'ללא התחייבות'),
-    ],
-  ),
-  Plan(
-    id: 'tv-yes',
-    cat: 'tv',
-    provider: 'yes',
-    net: 'לווין',
-    plan: 'yes פלטינום 140+ ערוצים',
-    price: 149,
-    rating: 4.3,
-    reviews: 2103,
-    flags: ['satellite', 'premium'],
-    feats: [
-      PlanFeat('📺', '140+ ערוצים'),
-      PlanFeat('🎬', 'yes VOD כלול'),
-      PlanFeat('🌍', 'ערוצי חו"ל פרימיום'),
-      PlanFeat('⏺', 'DVR 1TB'),
-      PlanFeat('📦', 'ממיר 4K'),
-    ],
-    fine: 'התקנת לווין נדרשת',
-  ),
-  Plan(
-    id: 'tv-cellcom',
-    cat: 'tv',
-    provider: 'סלקום TV',
-    net: 'סטרימינג',
-    plan: 'סטרימינג + כבלים',
-    price: 99,
-    rating: 4.0,
-    reviews: 521,
-    flags: ['streaming', 'cable'],
-    feats: [
-      PlanFeat('📺', '80+ ערוצים'),
-      PlanFeat('🎬', 'VOD ו-VOD פרימיום'),
-      PlanFeat('📱', 'עד 3 מסכים'),
-      PlanFeat('🔓', 'ללא התחייבות'),
-    ],
-  ),
+  // INTERNET
+  Plan(id: 'net_bezeq_200', cat: 'internet', provider: 'בזק', net: 'fiber', plan: 'סיב אופטי 200Mb', price: 89, rating: 4.1, reviews: 7200, flags: [], feats: ['200Mb הורדה / 100Mb העלאה', 'סיב אופטי לבית', 'ראוטר WiFi 5 כלול', 'תמיכה טכנית 24/7', 'IP קבוע']),
+  Plan(id: 'net_hot_500', cat: 'internet', provider: 'HOT', net: 'cable', plan: 'כבלים 500Mb', price: 99, rating: 3.9, reviews: 5400, flags: [], feats: ['500Mb הורדה', 'כבלים', 'ראוטר WiFi 5 כלול', 'טלפון ביתי אופציונלי']),
+  Plan(id: 'net_cellcom_1g', cat: 'internet', provider: 'סלקום', net: 'fiber', plan: 'סיב 1000Mb ללא התחייבות', price: 99, rating: 4.3, reviews: 2800, flags: ['nocommit'], feats: ['1000Mb הורדה', 'ללא התחייבות', 'ראוטר WiFi 6', 'הגדרה עצמאית'], highlight: true),
+  Plan(id: 'net_bezeq_1g', cat: 'internet', provider: 'בזק', net: 'fiber', plan: 'סיב אופטי 1000Mb', price: 109, rating: 4.2, reviews: 4100, flags: [], feats: ['1000Mb הורדה/העלאה', 'סיב אופטי', 'ראוטר WiFi 6 כלול', 'עד 4 מכשירים סימולטנית', 'אבטחת רשת']),
+  Plan(id: 'net_partner_1g', cat: 'internet', provider: 'פרטנר', net: 'fiber', plan: 'One לייף 1000Mb פרמיום', price: 119, rating: 4.4, reviews: 3200, flags: [], feats: ['1000Mb הורדה/העלאה', 'סיב אופטי', 'ראוטר WiFi 6E', 'IP קבוע', 'גיבוי ענן 100GB', 'מסנן תוכן']),
+  Plan(id: 'net_gilat', cat: 'internet', provider: 'גילת', net: 'satellite', plan: 'לווייני 50Mb - פריפריה', price: 149, rating: 3.7, reviews: 680, flags: [], feats: ['50Mb הורדה', 'לווייני', 'כיסוי בכל הארץ כולל פריפריה', 'גם בעמקים ובהרים']),
 
-  // ── TRIPLE ────────────────────────────────────────────────────
-  Plan(
-    id: 'tr-hot',
-    cat: 'triple',
-    provider: 'הוט',
-    net: 'כבל',
-    plan: 'סיב 500Mb + TV + טלפון',
-    price: 149,
-    rating: 4.0,
-    reviews: 892,
-    flags: ['bundle'],
-    feats: [
-      PlanFeat('🌐', '500Mbps אינטרנט'),
-      PlanFeat('📺', '70+ ערוצי HOT'),
-      PlanFeat('📞', 'טלפון בית ללא הגבלה'),
-      PlanFeat('💰', 'חיסכון ₪40/חודש לעומת נפרד'),
-    ],
-    best: true,
-  ),
-  Plan(
-    id: 'tr-partner',
-    cat: 'triple',
-    provider: 'פרטנר',
-    net: 'סיב אופטי',
-    plan: 'גיגה + TV + טלפון',
-    price: 169,
-    rating: 4.2,
-    reviews: 743,
-    flags: ['bundle', 'fiber'],
-    feats: [
-      PlanFeat('🌐', '1000Mbps גיגה סיב'),
-      PlanFeat('📺', '100+ ערוצים'),
-      PlanFeat('📞', 'טלפון בית ו-10GB נייד'),
-      PlanFeat('💰', 'חיסכון ₪60/חודש לעומת נפרד'),
-    ],
-  ),
-  Plan(
-    id: 'tr-cellcom',
-    cat: 'triple',
-    provider: 'סלקום',
-    net: 'סיב אופטי',
-    plan: 'גיגה + TV + טלפון',
-    price: 179,
-    rating: 4.1,
-    reviews: 521,
-    flags: ['bundle', 'fiber'],
-    feats: [
-      PlanFeat('🌐', '1000Mbps גיגה סיב'),
-      PlanFeat('📺', '80+ ערוצים'),
-      PlanFeat('📞', 'טלפון בית ו-20GB נייד'),
-      PlanFeat('💰', 'חיסכון ₪50/חודש לעומת נפרד'),
-    ],
-  ),
-  Plan(
-    id: 'tr-yes',
-    cat: 'triple',
-    provider: 'yes',
-    net: 'לווין + סיב',
-    plan: 'לווין + סיב גיגה + טלפון',
-    price: 199,
-    rating: 4.3,
-    reviews: 1043,
-    flags: ['bundle', 'satellite', 'fiber'],
-    feats: [
-      PlanFeat('🌐', '1000Mbps סיב'),
-      PlanFeat('📺', '140+ ערוצי yes פלטינום'),
-      PlanFeat('📞', 'טלפון בית ו-30GB נייד'),
-      PlanFeat('💰', 'חיסכון ₪80/חודש לעומת נפרד'),
-    ],
-  ),
-  Plan(
-    id: 'tr-sting',
-    cat: 'triple',
-    provider: 'NEXT TV',
-    net: 'סיב אופטי',
-    plan: 'STING+ דאבל חבילה',
-    price: 149,
-    rating: 3.8,
-    reviews: 234,
-    flags: ['bundle'],
-    feats: [
-      PlanFeat('🌐', '500Mbps אינטרנט'),
-      PlanFeat('📺', '60+ ערוצים'),
-      PlanFeat('💰', 'מחיר קבוע 3 שנים'),
-      PlanFeat('🔓', 'ללא התחייבות'),
-    ],
-  ),
+  // TV
+  Plan(id: 'tv_hot_basic', cat: 'tv', provider: 'HOT', net: 'cable', plan: 'כבלים - 70 ערוצים', price: 79, rating: 3.9, reviews: 3400, flags: [], feats: ['70+ ערוצים', 'כבלים', 'VOD בסיסי', 'ממיר SD כלול', 'ערוצי ספורט בסיסיים']),
+  Plan(id: 'tv_partner', cat: 'tv', provider: 'פרטנר TV', net: 'streaming', plan: 'סטרימינג 100+ ערוצים', price: 89, rating: 4.1, reviews: 2100, flags: [], feats: ['100+ ערוצים', 'ללא ממיר', 'כל המסכים', 'VOD עשיר', 'ספורט + קולנוע']),
+  Plan(id: 'tv_cellcom', cat: 'tv', provider: 'סלקום TV', net: 'streaming', plan: 'סלקום TV פרמיום', price: 99, rating: 4.0, reviews: 1800, flags: [], feats: ['120+ ערוצים', 'ערוצי ספורט', 'VOD עשיר', 'אפליקציה נוחה', 'שידור חי בנייד']),
+  Plan(id: 'tv_yes', cat: 'tv', provider: 'yes', net: 'satellite', plan: 'לוויין 140+ ערוצים פרמיום', price: 149, after: 179, term: 24, rating: 4.3, reviews: 5600, flags: [], feats: ['140+ ערוצים', 'ערוצי ספורט', 'קולנוע פרמיום', 'סדרות', 'ממיר 4K כלול'], highlight: true),
+  Plan(id: 'tv_freetv', cat: 'tv', provider: 'FreeTV', net: 'streaming', plan: 'ערוצי ציבור - חינם', price: 0, rating: 3.8, reviews: 1200, flags: ['nocommit', 'fixed'], feats: ['ערוצי ציבור', 'ישראל 11, 12, 13, 14', 'ללא תשלום', 'דורש חיבור אינטרנט']),
 
-  // ── ABROAD ────────────────────────────────────────────────────
-  Plan(
-    id: 'ab-019',
-    cat: 'abroad',
-    provider: '019 מובייל',
-    net: 'רואמינג',
-    plan: 'תעריף שיחות ₪0.99/דקה',
-    priceText: '₪0.99/דקה',
-    price: 0.99,
-    rating: 3.6,
-    reviews: 187,
-    flags: ['permin'],
-    feats: [
-      PlanFeat('📞', '₪0.99/דקה לחו"ל'),
-      PlanFeat('📱', 'ללא חבילה חודשית'),
-      PlanFeat('🌍', 'כיסוי 100+ מדינות'),
-      PlanFeat('✉️', 'SMS ₪0.29'),
-    ],
-  ),
-  Plan(
-    id: 'ab-golan-eu',
-    cat: 'abroad',
-    provider: 'גולן טלקום',
-    net: '4G',
-    plan: 'יורופה ₪9.90/יום',
-    priceText: '₪9.90/יום',
-    price: 9.90,
-    rating: 4.2,
-    reviews: 432,
-    flags: ['perday', 'europe'],
-    feats: [
-      PlanFeat('🇪🇺', 'כל מדינות אירופה'),
-      PlanFeat('📶', 'גלישה ללא הגבלה'),
-      PlanFeat('📞', 'שיחות כלולות'),
-      PlanFeat('📱', 'מחיר ליום, לא לחודש'),
-    ],
-    best: true,
-  ),
-  Plan(
-    id: 'ab-partner-world',
-    cat: 'abroad',
-    provider: 'פרטנר',
-    net: '4G',
-    plan: 'עולמי 1GB ₪29/חודש',
-    price: 29,
-    rating: 4.0,
-    reviews: 312,
-    flags: ['monthly', 'worldwide'],
-    feats: [
-      PlanFeat('🌍', '180+ מדינות'),
-      PlanFeat('📶', '1GB גלישה'),
-      PlanFeat('📞', 'שיחות ₪1.5/דקה'),
-      PlanFeat('✉️', 'SMS ₪0.50'),
-    ],
-  ),
-  Plan(
-    id: 'ab-pelephone-5',
-    cat: 'abroad',
-    provider: 'פלאפון',
-    net: '4G',
-    plan: 'עולמי 5GB ₪49/חודש',
-    price: 49,
-    rating: 4.1,
-    reviews: 267,
-    flags: ['monthly', 'worldwide'],
-    feats: [
-      PlanFeat('🌍', '200+ מדינות'),
-      PlanFeat('📶', '5GB גלישה'),
-      PlanFeat('📞', 'שיחות כלולות 100 דקות'),
-      PlanFeat('✉️', 'SMS ללא הגבלה'),
-      PlanFeat('📱', 'eSIM נתמך'),
-    ],
-  ),
-  Plan(
-    id: 'ab-airalo-esim',
-    cat: 'abroad',
-    provider: 'Airalo',
-    net: 'eSIM',
-    plan: 'eSIM יורופה 3GB',
-    price: 12,
-    rating: 4.4,
-    reviews: 789,
-    flags: ['esim', 'europe'],
-    feats: [
-      PlanFeat('📱', 'eSIM דיגיטלי מיידי'),
-      PlanFeat('📶', '3GB ב-30 יום'),
-      PlanFeat('🇪🇺', '35 מדינות אירופה'),
-      PlanFeat('⚡', 'הפעלה מיידית'),
-    ],
-  ),
+  // TRIPLE
+  Plan(id: 'tri_hot', cat: 'triple', provider: 'HOT', net: 'cable', plan: 'Triple 500Mb + TV 70 ערוצים', price: 149, rating: 3.9, reviews: 2900, flags: [], feats: ['500Mb אינטרנט', '70+ ערוצי TV', 'טלפון ביתי', 'ראוטר + ממיר כלולים', 'חשבון אחד']),
+  Plan(id: 'tri_partner', cat: 'triple', provider: 'פרטנר', net: 'fiber', plan: 'One לייף Triple 1000Mb + TV', price: 169, rating: 4.3, reviews: 2200, flags: [], feats: ['1000Mb סיב אופטי', 'TV 100+ ערוצים', 'Netflix חודשי כלול', 'טלפון ביתי', 'ניהול חשבון אחד'], highlight: true),
+  Plan(id: 'tri_cellcom', cat: 'triple', provider: 'סלקום', net: 'fiber', plan: 'Tri Pack 1000Mb + TV + סלולר', price: 179, rating: 4.1, reviews: 1800, flags: [], feats: ['1000Mb אינטרנט', 'TV 120+ ערוצים', 'סלולר 100GB', 'ניהול חשבון אחד', 'תמיכה מועדפת']),
+  Plan(id: 'tri_yes', cat: 'triple', provider: 'yes + בזק', net: 'fiber', plan: 'לוויין + סיב 1000Mb פרמיום', price: 199, after: 239, term: 24, rating: 4.2, reviews: 1500, flags: [], feats: ['1000Mb סיב בזק', '140+ ערוצי yes', 'טלפון ביתי', 'ממיר 4K', 'שירות פרמיום']),
+  Plan(id: 'tri_pelephone', cat: 'triple', provider: 'פלאפון', net: 'fiber', plan: 'Pelephone Home + 5G Triple', price: 189, term: 24, rating: 4.4, reviews: 1200, flags: ['5g'], feats: ['1000Mb סיב', 'TV + ספורט', 'סלולר 500GB 5G', 'ראוטר WiFi 6 + ממיר 4K', 'ניהול מרכזי']),
+
+  // ABROAD
+  Plan(id: 'ab_019', cat: 'abroad', provider: '019 מובייל', net: 'international', plan: 'תעריף לדקה - אירופה', price: 1, rating: 3.9, reviews: 450, flags: [], feats: ['₪0.99 לדקה באירופה', '₪1.90 לMB גלישה', 'ללא מנוי חודשי', 'מתאים לנסיעות קצרות']),
+  Plan(id: 'ab_golan', cat: 'abroad', provider: 'גולן טלקום', net: 'international', plan: '₪9.90/יום - כל אירופה', price: 10, rating: 4.2, reviews: 890, flags: ['nocommit'], feats: ['גלישה + שיחות ב-₪9.90/יום', 'כל אירופה', 'הפעלה ב-SMS', 'מינימום יום אחד']),
+  Plan(id: 'ab_partner', cat: 'abroad', provider: 'פרטנר', net: 'international', plan: 'World Pack 1GB חודשי', price: 29, rating: 4.1, reviews: 1200, flags: ['nocommit'], feats: ['1GB גלישה בחו"ל', '60 דקות שיחות', '90+ מדינות', 'ניתן לביטול חודשי', 'אפליקציה לניהול'], highlight: true),
+  Plan(id: 'ab_pelephone', cat: 'abroad', provider: 'פלאפון', net: 'international', plan: 'World 5GB חודשי', price: 49, rating: 4.3, reviews: 980, flags: [], feats: ['5GB גלישה', '200 דקות שיחות', '130+ מדינות', 'שיתוף עד 3 מכשירים', 'אפליקציה למעקב']),
+  Plan(id: 'ab_airalo', cat: 'abroad', provider: 'Airalo eSIM', net: 'esim', plan: 'eSIM אירופה 10GB', price: 25, rating: 4.5, reviews: 3400, flags: ['nocommit'], feats: ['10GB גלישה', 'eSIM דיגיטלי', '30+ מדינות אירופה', 'הפעלה מיידית מהאפליקציה', 'ללא כרטיס פיזי']),
 ];
 
-List<Plan> plansByCategory(String catId) =>
-    kPlans.where((p) => p.cat == catId).toList();
-
-Plan? planById(String id) {
-  try {
-    return kPlans.firstWhere((p) => p.id == id);
-  } catch (_) {
-    return null;
-  }
-}
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 Category? categoryById(String id) {
-  try {
-    return kCategories.firstWhere((c) => c.id == id);
-  } catch (_) {
-    return null;
-  }
+  try { return categories.firstWhere((c) => c.id == id); } catch (_) { return null; }
 }
+
+List<Plan> plansByCat(String cat) => allPlans.where((p) => p.cat == cat).toList();
+
+Plan? planById(String id) {
+  try { return allPlans.firstWhere((p) => p.id == id); } catch (_) { return null; }
+}
+
+int planSaveYear(Plan p, int currentBill) {
+  return ((currentBill - p.price) * 12).clamp(0, 999999);
+}
+
+Plan? hotDeal(int currentBill) {
+  Plan? best;
+  int bestSave = 0;
+  for (final p in allPlans.where((p) => p.cat == 'cellular')) {
+    final s = planSaveYear(p, currentBill);
+    if (s > bestSave) { bestSave = s; best = p; }
+  }
+  return best;
+}
+
+List<Plan> filteredPlans({
+  required String cat,
+  required String sort,
+  required List<String> filters,
+  required String query,
+  required int budget,
+  int? currentBill,
+}) {
+  var plans = plansByCat(cat);
+
+  if (query.isNotEmpty) {
+    final q = query.toLowerCase();
+    plans = plans.where((p) => p.provider.contains(q) || p.plan.contains(q)).toList();
+  }
+
+  for (final f in filters) {
+    switch (f) {
+      case '5g': plans = plans.where((p) => p.is5G).toList();
+      case 'nocommit': plans = plans.where((p) => p.noCommit).toList();
+      case 'fixed': plans = plans.where((p) => p.isFixed).toList();
+      case 'abroad': plans = plans.where((p) => p.hasAbroad).toList();
+    }
+  }
+
+  if (budget > 0) plans = plans.where((p) => p.price <= budget).toList();
+
+  final bill = currentBill ?? 119;
+  switch (sort) {
+    case 'price': plans.sort((a, b) => a.price.compareTo(b.price));
+    case 'save': plans.sort((a, b) => planSaveYear(b, bill).compareTo(planSaveYear(a, bill)));
+    default: // 'match' - sort by savings then rating
+      plans.sort((a, b) {
+        final sc = planSaveYear(b, bill).compareTo(planSaveYear(a, bill));
+        return sc != 0 ? sc : b.rating.compareTo(a.rating);
+      });
+  }
+
+  return plans;
+}
+
+// Community posts seed data
+List<CommunityPost> get communityPosts => [
+  CommunityPost(id: '1', author: 'מאיה כהן', avatar: 'מ', channel: 'המלצות', text: 'עברתי לגולן ב-₪39 במקום ₪119 בפלאפון. חוסך עזר לי עם כל ניתוק. ממליצה בחום!', likes: 34, replies: 8, timestamp: DateTime.now().subtract(const Duration(hours: 2)), isVerified: true),
+  CommunityPost(id: '2', author: 'צוות חוסך', avatar: 'ח', channel: 'המלצות', text: '🔥 עסקה חמה: גולן 50GB ב-₪39 - המבצע מסתיים בסוף השבוע. 3 חודשים ראשונים ואז ₪49. עדיין חיסכון של ₪720/שנה!', likes: 89, replies: 23, timestamp: DateTime.now().subtract(const Duration(hours: 5)), isTeam: true, planId: 'cel_golan'),
+  CommunityPost(id: '3', author: 'יוסי לוי', avatar: 'י', channel: 'סלולר', text: 'שאלה - מי יותר טוב לגבי כיסוי 5G בחיפה? פרטנר או סלקום?', likes: 12, replies: 15, timestamp: DateTime.now().subtract(const Duration(hours: 8))),
+  CommunityPost(id: '4', author: 'רחל אברהם', avatar: 'ר', channel: 'עזרה בניתוק', text: 'פלאפון מסרבים לבצע את הניוד. כבר שבוע. מה עושים?', likes: 5, replies: 19, timestamp: DateTime.now().subtract(const Duration(hours: 12))),
+  CommunityPost(id: '5', author: 'דן שפירא', avatar: 'ד', channel: 'אינטרנט', text: 'עברתי לסלקום אינטרנט 1000Mb ב-₪99 ללא התחייבות. מהירות מדהימה! 950Mb בבדיקה.', likes: 27, replies: 6, timestamp: DateTime.now().subtract(const Duration(days: 1))),
+  CommunityPost(id: '6', author: 'נועה גרין', avatar: 'נ', channel: 'חבילה משולבת', text: 'חוסך עזר לי לעבור לפרטנר ONE לייף - אינטרנט + TV + Netflix הכל ב-₪169. חסכתי ₪1,100 בשנה!', likes: 41, replies: 11, timestamp: DateTime.now().subtract(const Duration(days: 2)), isVerified: true, planId: 'tri_partner'),
+];

@@ -1,253 +1,132 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
-import 'state.dart';
-import 'screens/onboarding_screen.dart';
-import 'screens/auth_screen.dart';
-import 'screens/home_screen.dart';
-import 'screens/quiz_screen.dart';
-import 'screens/results_screen.dart';
-import 'screens/plan_detail_screen.dart';
-import 'screens/compare_screen.dart';
-import 'screens/lead_screen.dart';
-import 'screens/success_screen.dart';
-import 'screens/tracker_screen.dart';
-import 'screens/account_screen.dart';
-import 'screens/community_screen.dart';
-import 'screens/ai_advisor_screen.dart';
-import 'screens/profile_screen.dart';
-import 'screens/bills_screen.dart';
-import 'screens/ratings_screen.dart';
-import 'screens/chat_screen.dart';
-import 'screens/availability_screen.dart';
-import 'screens/switch_calc_screen.dart';
-import 'screens/callback_screen.dart';
-import 'screens/website_screen.dart';
+import 'app_state.dart';
+import 'flutter_flow/flutter_flow_theme.dart';
+import 'pages/onboarding/onboarding_widget.dart';
+import 'pages/auth/auth_widget.dart';
+import 'pages/home/home_widget.dart';
+import 'pages/quiz/quiz_widget.dart';
+import 'pages/results/results_widget.dart';
+import 'pages/plan_detail/plan_detail_widget.dart';
+import 'pages/compare/compare_widget.dart';
+import 'pages/lead/lead_widget.dart';
+import 'pages/success/success_widget.dart';
+import 'pages/tracker/tracker_widget.dart';
+import 'pages/account/account_widget.dart';
+import 'pages/community/community_widget.dart';
+import 'pages/ai_advisor/ai_advisor_widget.dart';
+import 'pages/profile/profile_widget.dart';
+import 'pages/bills/bills_widget.dart';
+import 'pages/ratings/ratings_widget.dart';
+import 'pages/chat/chat_widget.dart';
+import 'pages/availability/availability_widget.dart';
+import 'pages/switch_calc/switch_calc_widget.dart';
+import 'pages/callback/callback_widget.dart';
+import 'pages/website/website_widget.dart';
 
-final _rootNavigatorKey = GlobalKey<NavigatorState>();
-final _shellNavigatorKey = GlobalKey<NavigatorState>();
+final _rootNavKey = GlobalKey<NavigatorState>(debugLabel: 'root');
+final _shellNavKey = GlobalKey<NavigatorState>(debugLabel: 'shell');
 
-GoRouter createRouter(AppState appState) {
-  return GoRouter(
-    navigatorKey: _rootNavigatorKey,
-    initialLocation: '/onboarding',
-    routes: [
-      GoRoute(
-        path: '/onboarding',
-        builder: (context, state) => const OnboardingScreen(),
-      ),
-      GoRoute(
-        path: '/auth',
-        builder: (context, state) => const AuthScreen(),
-      ),
-      GoRoute(
-        path: '/website',
-        builder: (context, state) => const WebsiteScreen(),
-      ),
-      ShellRoute(
-        navigatorKey: _shellNavigatorKey,
-        builder: (context, state, child) {
-          return ScaffoldWithNav(child: child);
-        },
-        routes: [
-          GoRoute(
-            path: '/home',
-            builder: (context, state) => const HomeScreen(),
-          ),
-          GoRoute(
-            path: '/quiz',
-            builder: (context, state) => const QuizScreen(),
-          ),
-          GoRoute(
-            path: '/results',
-            builder: (context, state) => const ResultsScreen(),
-          ),
-          GoRoute(
-            path: '/plan/:id',
-            builder: (context, state) {
-              final id = state.pathParameters['id']!;
-              return PlanDetailScreen(planId: id);
-            },
-          ),
-          GoRoute(
-            path: '/compare',
-            builder: (context, state) => const CompareScreen(),
-          ),
-          GoRoute(
-            path: '/lead/:planId',
-            builder: (context, state) {
-              final planId = state.pathParameters['planId']!;
-              return LeadScreen(planId: planId);
-            },
-          ),
-          GoRoute(
-            path: '/success',
-            builder: (context, state) => const SuccessScreen(),
-          ),
-          GoRoute(
-            path: '/tracker',
-            builder: (context, state) => const TrackerScreen(),
-          ),
-          GoRoute(
-            path: '/account',
-            builder: (context, state) => const AccountScreen(),
-          ),
-          GoRoute(
-            path: '/community',
-            builder: (context, state) => const CommunityScreen(),
-          ),
-          GoRoute(
-            path: '/advisor',
-            builder: (context, state) => const AIAdvisorScreen(),
-          ),
-          GoRoute(
-            path: '/profile',
-            builder: (context, state) => const ProfileScreen(),
-          ),
-          GoRoute(
-            path: '/bills',
-            builder: (context, state) => const BillsScreen(),
-          ),
-          GoRoute(
-            path: '/ratings',
-            builder: (context, state) => const RatingsScreen(),
-          ),
-          GoRoute(
-            path: '/chat',
-            builder: (context, state) => const ChatScreen(),
-          ),
-          GoRoute(
-            path: '/availability',
-            builder: (context, state) => const AvailabilityScreen(),
-          ),
-          GoRoute(
-            path: '/switch-calc',
-            builder: (context, state) => const SwitchCalcScreen(),
-          ),
-          GoRoute(
-            path: '/callback',
-            builder: (context, state) => const CallbackScreen(),
-          ),
-        ],
-      ),
-    ],
-  );
-}
+GoRouter createRouter() => GoRouter(
+  navigatorKey: _rootNavKey,
+  initialLocation: '/onboarding',
+  routes: [
+    GoRoute(path: '/onboarding', name: 'Onboarding', parentNavigatorKey: _rootNavKey, builder: (_, __) => const OnboardingWidget()),
+    GoRoute(path: '/auth', name: 'Auth', parentNavigatorKey: _rootNavKey, builder: (_, __) => const AuthWidget()),
+    GoRoute(path: '/website', name: 'Website', parentNavigatorKey: _rootNavKey, builder: (_, __) => const WebsiteWidget()),
+    ShellRoute(
+      navigatorKey: _shellNavKey,
+      builder: (ctx, state, child) => _ScaffoldWithNav(child: child, location: state.uri.path),
+      routes: [
+        GoRoute(path: '/home', name: 'Home', builder: (_, __) => const HomeWidget()),
+        GoRoute(path: '/quiz', name: 'Quiz', builder: (_, __) => const QuizWidget()),
+        GoRoute(path: '/results', name: 'Results', builder: (_, __) => const ResultsWidget()),
+        GoRoute(path: '/plan/:planId', name: 'PlanDetail', builder: (_, s) => PlanDetailWidget(planId: s.pathParameters['planId']!)),
+        GoRoute(path: '/compare', name: 'Compare', builder: (_, __) => const CompareWidget()),
+        GoRoute(path: '/lead/:planId', name: 'Lead', builder: (_, s) => LeadWidget(planId: s.pathParameters['planId']!)),
+        GoRoute(path: '/success', name: 'Success', builder: (_, __) => const SuccessWidget()),
+        GoRoute(path: '/tracker', name: 'Tracker', builder: (_, __) => const TrackerWidget()),
+        GoRoute(path: '/account', name: 'Account', builder: (_, __) => const AccountWidget()),
+        GoRoute(path: '/community', name: 'Community', builder: (_, __) => const CommunityWidget()),
+        GoRoute(path: '/advisor', name: 'AIAdvisor', builder: (_, __) => const AIAdvisorWidget()),
+        GoRoute(path: '/profile', name: 'Profile', builder: (_, __) => const ProfileWidget()),
+        GoRoute(path: '/bills', name: 'Bills', builder: (_, __) => const BillsWidget()),
+        GoRoute(path: '/ratings', name: 'Ratings', builder: (_, __) => const RatingsWidget()),
+        GoRoute(path: '/chat', name: 'Chat', builder: (_, __) => const ChatWidget()),
+        GoRoute(path: '/availability', name: 'Availability', builder: (_, __) => const AvailabilityWidget()),
+        GoRoute(path: '/switch-calc', name: 'SwitchCalc', builder: (_, __) => const SwitchCalcWidget()),
+        GoRoute(path: '/callback', name: 'Callback', builder: (_, __) => const CallbackWidget()),
+      ],
+    ),
+  ],
+);
 
-class ScaffoldWithNav extends StatelessWidget {
+class _ScaffoldWithNav extends StatelessWidget {
+  const _ScaffoldWithNav({required this.child, required this.location});
   final Widget child;
-  const ScaffoldWithNav({super.key, required this.child});
+  final String location;
 
   static const _tabs = [
-    _NavTab(icon: Icons.home_rounded, label: 'בית', route: '/home'),
-    _NavTab(
-        icon: Icons.compare_arrows_rounded,
-        label: 'השוואה',
-        route: '/compare'),
-    _NavTab(
-        icon: Icons.people_rounded, label: 'קהילה', route: '/community'),
-    _NavTab(
-        icon: Icons.swap_horiz_rounded, label: 'המעבר', route: '/tracker'),
-    _NavTab(icon: Icons.person_rounded, label: 'אישי', route: '/account'),
+    _Tab(icon: Icons.home_rounded, label: 'בית', route: '/home'),
+    _Tab(icon: Icons.bar_chart_rounded, label: 'השוואה', route: '/compare'),
+    _Tab(icon: Icons.people_rounded, label: 'קהילה', route: '/community'),
+    _Tab(icon: Icons.sync_alt_rounded, label: 'המעבר', route: '/tracker'),
+    _Tab(icon: Icons.person_rounded, label: 'אישי', route: '/account'),
   ];
 
-  int _currentIndex(BuildContext context) {
-    final loc = GoRouterState.of(context).uri.toString();
-    if (loc.startsWith('/compare')) return 1;
-    if (loc.startsWith('/community')) return 2;
-    if (loc.startsWith('/tracker')) return 3;
-    if (loc.startsWith('/account') ||
-        loc.startsWith('/profile') ||
-        loc.startsWith('/bills') ||
-        loc.startsWith('/ratings')) return 4;
+  int get _activeIndex {
+    if (location.startsWith('/compare')) return 1;
+    if (location.startsWith('/community')) return 2;
+    if (location.startsWith('/tracker')) return 3;
+    if (location.startsWith('/account') || location.startsWith('/profile') || location.startsWith('/bills') || location.startsWith('/ratings')) return 4;
     return 0;
   }
 
   @override
   Widget build(BuildContext context) {
-    final idx = _currentIndex(context);
-    final appState = context.watch<AppState>();
+    final appState = Provider.of<FFAppState>(context);
+    final ffTheme = FlutterFlowTheme.of(context);
+    final idx = _activeIndex;
 
     return Scaffold(
       body: child,
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: Colors.white,
-          border: Border(
-            top: BorderSide(color: const Color(0xFFE5E0D5), width: 1),
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.06),
-              blurRadius: 12,
-              offset: const Offset(0, -4),
-            ),
-          ],
+          border: Border(top: BorderSide(color: ffTheme.alternate, width: 1)),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 16, offset: const Offset(0, -4))],
         ),
         child: SafeArea(
+          top: false,
           child: SizedBox(
-            height: 62,
+            height: 64,
             child: Row(
               children: List.generate(_tabs.length, (i) {
                 final tab = _tabs[i];
                 final active = i == idx;
                 final isCompare = i == 1;
                 final compareCount = appState.comparePlans.length;
-
                 return Expanded(
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
+                  child: InkWell(
                     onTap: () => context.go(tab.route),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Stack(
-                          clipBehavior: Clip.none,
-                          children: [
-                            Icon(
-                              tab.icon,
-                              size: 24,
-                              color: active
-                                  ? const Color(0xFF15603E)
-                                  : const Color(0xFF6B6760),
-                            ),
-                            if (isCompare && compareCount > 0)
-                              Positioned(
-                                top: -4,
-                                right: -6,
-                                child: Container(
-                                  width: 16,
-                                  height: 16,
-                                  decoration: const BoxDecoration(
-                                    color: Color(0xFFC9EC4B),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: Center(
-                                    child: Text(
-                                      '$compareCount',
-                                      style: const TextStyle(
-                                        fontSize: 9,
-                                        fontWeight: FontWeight.w800,
-                                        color: Color(0xFF15603E),
-                                      ),
-                                    ),
-                                  ),
-                                ),
+                        Stack(clipBehavior: Clip.none, children: [
+                          Icon(tab.icon, size: 26, color: active ? ffTheme.primary : ffTheme.secondaryText),
+                          if (isCompare && compareCount > 0)
+                            Positioned(
+                              top: -5, right: -8,
+                              child: Container(
+                                width: 18, height: 18,
+                                decoration: BoxDecoration(color: ffTheme.secondary, shape: BoxShape.circle),
+                                child: Center(child: Text('$compareCount', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: ffTheme.primary))),
                               ),
-                          ],
-                        ),
+                            ),
+                        ]),
                         const SizedBox(height: 3),
-                        Text(
-                          tab.label,
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight:
-                                active ? FontWeight.w700 : FontWeight.w500,
-                            color: active
-                                ? const Color(0xFF15603E)
-                                : const Color(0xFF6B6760),
-                          ),
-                        ),
+                        Text(tab.label, style: TextStyle(fontSize: 10.5, fontWeight: active ? FontWeight.w700 : FontWeight.w500, color: active ? ffTheme.primary : ffTheme.secondaryText)),
                       ],
                     ),
                   ),
@@ -261,10 +140,4 @@ class ScaffoldWithNav extends StatelessWidget {
   }
 }
 
-class _NavTab {
-  final IconData icon;
-  final String label;
-  final String route;
-  const _NavTab(
-      {required this.icon, required this.label, required this.route});
-}
+class _Tab { final IconData icon; final String label; final String route; const _Tab({required this.icon, required this.label, required this.route}); }

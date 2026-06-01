@@ -14,11 +14,22 @@ class QuizWidget extends StatefulWidget {
 
 class _QuizWidgetState extends State<QuizWidget> {
   int _step = 0;
-  String _cat = 'cellular';
-  int _lines = 1;
-  String _priority = 'price';
+  late String _cat;
+  late int _lines;
+  late String _priority;
   String? _extraFilter; // secondary preference for internet/tv
-  double _budget = 90;
+  late double _budget;
+
+  @override
+  void initState() {
+    super.initState();
+    final appState = FFAppState();
+    // Pre-fill from existing quiz state if already completed
+    _cat = appState.selectedCat;
+    _lines = appState.quizLines;
+    _priority = appState.quizPriority;
+    _budget = appState.quizBudget.toDouble().clamp(20, 300);
+  }
 
   static const _cats = [
     ('cellular', 'סלולר', '📱'),

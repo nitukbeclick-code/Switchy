@@ -29,7 +29,11 @@ class _AuthWidgetState extends State<AuthWidget> {
   void _submit() {
     if (!_formKey.currentState!.validate()) return;
     final appState = Provider.of<FFAppState>(context, listen: false);
-    appState.login(name: _nameCtrl.text.trim(), phone: _phoneCtrl.text.trim());
+    // For login mode, keep existing name if present and user left name blank
+    final name = _nameCtrl.text.trim().isNotEmpty
+        ? _nameCtrl.text.trim()
+        : (appState.isLoggedIn ? appState.userName : 'משתמש');
+    appState.login(name: name, phone: _phoneCtrl.text.trim());
     context.goNamed('Home');
   }
 

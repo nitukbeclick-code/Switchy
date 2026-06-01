@@ -279,6 +279,11 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                 ),
               ),
 
+              // Quick filter chips per category
+              SliverToBoxAdapter(
+                child: _buildQuickFilters(context, appState, ffTheme, cat),
+              ),
+
               // Sort chips
               SliverToBoxAdapter(
                 child: SizedBox(
@@ -484,6 +489,54 @@ class _ResultsWidgetState extends State<ResultsWidget> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildQuickFilters(BuildContext context, FFAppState appState, FlutterFlowTheme ffTheme, String cat) {
+    const quickFilters = <String, List<(String, String)>>{
+      'cellular': [('5G', '5g'), ('ללא התחייבות', 'nocommit'), ('מחיר קבוע', 'fixed'), ('כולל חו"ל', 'abroad')],
+      'internet': [('ללא התחייבות', 'nocommit'), ('סיב אופטי', 'fiber'), ('1Gb+', '1g')],
+      'tv': [('סטרימינג', 'streaming'), ('ספורט', 'sport'), ('לוויין', 'satellite')],
+      'triple': [('כולל Netflix', 'netflix'), ('5G', '5g')],
+      'abroad': [('eSIM', 'esim'), ('ללא מנוי', 'nocommit')],
+    };
+    final chips = quickFilters[cat] ?? const [];
+    if (chips.isEmpty) return const SizedBox();
+
+    return SizedBox(
+      height: 44,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        children: chips.map((chip) {
+          final active = appState.activeFilters.contains(chip.$2);
+          return Padding(
+            padding: const EdgeInsets.only(left: 8),
+            child: GestureDetector(
+              onTap: () => appState.toggleFilter(chip.$2),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                decoration: BoxDecoration(
+                  color: active ? ffTheme.primary.withOpacity(0.1) : Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: active ? ffTheme.primary : ffTheme.alternate),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (active) ...[
+                      Icon(Icons.check_rounded, size: 12, color: ffTheme.primary),
+                      const SizedBox(width: 4),
+                    ],
+                    Text(chip.$1, style: ffTheme.labelSmall.override(color: active ? ffTheme.primary : ffTheme.primaryText, fontWeight: active ? FontWeight.w700 : FontWeight.w600)),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }).toList(),
       ),
     );
   }

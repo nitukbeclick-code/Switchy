@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:fl_chart/fl_chart.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../flutter_flow/flutter_flow_theme.dart';
 import '../../flutter_flow/flutter_flow_util.dart';
@@ -8,14 +9,22 @@ import '../../app_state.dart';
 import '../../data.dart';
 import '../../models.dart';
 
-class BillsWidget extends StatelessWidget {
+class BillsWidget extends StatefulWidget {
   const BillsWidget({super.key});
+
+  @override
+  State<BillsWidget> createState() => _BillsWidgetState();
+}
+
+class _BillsWidgetState extends State<BillsWidget> {
+  int _touchedIndex = -1;
 
   @override
   Widget build(BuildContext context) {
     final ffTheme = FlutterFlowTheme.of(context);
     final appState = Provider.of<FFAppState>(context);
 
+    final activeCats = categories.where((c) => appState.currentBill(c.id) > 0).toList();
     final total = categories.fold<int>(0, (sum, c) => sum + appState.currentBill(c.id));
     final totalSavings = categories.fold<int>(0, (sum, c) {
       final bill = appState.currentBill(c.id);
@@ -33,80 +42,204 @@ class BillsWidget extends StatelessWidget {
         backgroundColor: Colors.transparent,
         elevation: 0,
         foregroundColor: ffTheme.primaryText,
+        actions: [
+          TextButton(
+            onPressed: () => context.pushNamed('Results'),
+            child: Text('השווה עכשיו', style: ffTheme.labelMedium.override(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+          ),
+        ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.symmetric(horizontal: 20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Monthly total hero
+            // Hero total card
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                gradient: LinearGradient(colors: [const Color(0xFF0E3A26), ffTheme.primary]),
+                gradient: const LinearGradient(
+                  begin: Alignment.topRight,
+                  end: Alignment.bottomLeft,
+                  colors: [Color(0xFF0E3A26), Color(0xFF15603E)],
+                ),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('הוצאה חודשית כוללת', style: GoogleFonts.assistant(fontSize: 13, color: ffTheme.secondary, fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 8),
-                  Text('₪$total', style: GoogleFonts.rubik(fontSize: 44, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: -1)),
+                  Text('הוצאה חודשית כוללת', style: GoogleFonts.assistant(fontSize: 13, color: const Color(0xFFC9EC4B), fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 6),
+                  Text('₪$total', style: GoogleFonts.rubik(fontSize: 48, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: -1.5)),
                   Text('לחודש בכל הקטגוריות', style: GoogleFonts.assistant(fontSize: 12, color: Colors.white60)),
+                  if (totalSavings > 0) ...[
+                    const SizedBox(height: 14),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text('💡', style: TextStyle(fontSize: 16)),
+                          const SizedBox(width: 8),
+                          Text('חיסכון פוטנציאלי: ₪$totalSavings/שנה',
+                              style: GoogleFonts.rubik(fontSize: 13, fontWeight: FontWeight.w700, color: const Color(0xFFC9EC4B))),
+                        ],
+                      ),
+                    ),
+                  ],
                 ],
               ),
-            ).animate().fadeIn(duration: 400.ms),
+            ).animate().fadeIn(duration: 400.ms).scale(begin: const Offset(0.97, 0.97), end: const Offset(1, 1)),
 
             const SizedBox(height: 20),
 
-            // Savings estimate
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: ffTheme.secondary,
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Row(
-                children: [
-                  const Text('💡', style: TextStyle(fontSize: 24)),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('פוטנציאל חיסכון שנתי', style: GoogleFonts.rubik(fontSize: 14, fontWeight: FontWeight.w700, color: const Color(0xFF0E3A26))),
-                        Text('₪$totalSavings בשנה על כלל הקטגוריות', style: GoogleFonts.assistant(fontSize: 12, color: const Color(0xFF0E3A26).withOpacity(0.8))),
-                      ],
+            // Bar chart
+            if (activeCats.isNotEmpty) ...[
+              Text('פילוח לפי קטגוריה', style: ffTheme.titleMedium),
+              const SizedBox(height: 12),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.fromLTRB(12, 20, 12, 12),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: ffTheme.alternate),
+                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 12)],
+                ),
+                child: Column(
+                  children: [
+                    SizedBox(
+                      height: 160,
+                      child: BarChart(
+                        BarChartData(
+                          alignment: BarChartAlignment.spaceAround,
+                          maxY: activeCats.map((c) => appState.currentBill(c.id).toDouble()).reduce((a, b) => a > b ? a : b) * 1.3,
+                          barTouchData: BarTouchData(
+                            touchCallback: (event, response) {
+                              setState(() {
+                                _touchedIndex = response?.spot?.touchedBarGroupIndex ?? -1;
+                              });
+                            },
+                            touchTooltipData: BarTouchTooltipData(
+                              getTooltipColor: (_) => const Color(0xFF0E3A26),
+                              getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                                return BarTooltipItem(
+                                  '₪${rod.toY.toInt()}',
+                                  GoogleFonts.rubik(color: const Color(0xFFC9EC4B), fontWeight: FontWeight.w700, fontSize: 13),
+                                );
+                              },
+                            ),
+                          ),
+                          titlesData: FlTitlesData(
+                            show: true,
+                            rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                            leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                            bottomTitles: AxisTitles(
+                              sideTitles: SideTitles(
+                                showTitles: true,
+                                getTitlesWidget: (value, meta) {
+                                  final i = value.toInt();
+                                  if (i >= activeCats.length) return const SizedBox();
+                                  return Padding(
+                                    padding: const EdgeInsets.only(top: 6),
+                                    child: Text(activeCats[i].icon, style: const TextStyle(fontSize: 18)),
+                                  );
+                                },
+                              ),
+                            ),
+                          ),
+                          borderData: FlBorderData(show: false),
+                          gridData: FlGridData(
+                            show: true,
+                            horizontalInterval: 50,
+                            getDrawingHorizontalLine: (v) => FlLine(color: ffTheme.alternate, strokeWidth: 1, dashArray: [4, 4]),
+                            drawVerticalLine: false,
+                          ),
+                          barGroups: activeCats.asMap().entries.map((entry) {
+                            final i = entry.key;
+                            final cat = entry.value;
+                            final bill = appState.currentBill(cat.id).toDouble();
+                            final isTouch = i == _touchedIndex;
+                            return BarChartGroupData(
+                              x: i,
+                              barRods: [
+                                BarChartRodData(
+                                  toY: bill,
+                                  color: isTouch ? const Color(0xFF0E3A26) : const Color(0xFF15603E),
+                                  width: isTouch ? 28 : 24,
+                                  borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+                                  backDrawRodData: BackgroundBarChartRodData(
+                                    show: true,
+                                    toY: activeCats.map((c) => appState.currentBill(c.id).toDouble()).reduce((a, b) => a > b ? a : b) * 1.3,
+                                    color: const Color(0xFFF4F0E8),
+                                  ),
+                                ),
+                              ],
+                            );
+                          }).toList(),
+                        ),
+                        duration: const Duration(milliseconds: 500),
+                        curve: Curves.easeInOut,
+                      ),
                     ),
-                  ),
-                ],
-              ),
-            ).animate().fadeIn(delay: 100.ms),
+                    const SizedBox(height: 12),
+                    // Legend
+                    Wrap(
+                      spacing: 16,
+                      runSpacing: 8,
+                      alignment: WrapAlignment.center,
+                      children: activeCats.map((c) => Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(c.icon, style: const TextStyle(fontSize: 14)),
+                          const SizedBox(width: 4),
+                          Text(c.name, style: ffTheme.labelSmall),
+                          const SizedBox(width: 4),
+                          Text('₪${appState.currentBill(c.id)}', style: ffTheme.labelSmall.override(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+                        ],
+                      )).toList(),
+                    ),
+                  ],
+                ),
+              ).animate().fadeIn(delay: 150.ms),
 
-            const SizedBox(height: 24),
+              const SizedBox(height: 24),
+            ],
 
-            Text('עדכן חשבונות', style: ffTheme.titleLarge),
+            Text('עדכן חשבונות', style: ffTheme.titleMedium),
             const SizedBox(height: 4),
             Text('הכנס את הסכום שאתה משלם כיום', style: ffTheme.bodySmall),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
 
-            // Category bills
             ...categories.asMap().entries.map((entry) {
               final i = entry.key;
               final cat = entry.value;
               final bill = appState.currentBill(cat.id);
-              return _BillStepper(
+              final plans = plansByCat(cat.id);
+              final minPrice = plans.isEmpty ? 0 : plans.map((p) => p.price).reduce((a, b) => a < b ? a : b);
+              final yearlySave = bill > 0 ? ((bill - minPrice) * 12).clamp(0, 999999) : 0;
+
+              return _BillCard(
                 category: cat,
                 currentBill: bill,
+                yearlySave: yearlySave,
                 onDecrease: () => appState.setCurrentBill(cat.id, (bill - 10).clamp(0, 2000)),
                 onIncrease: () => appState.setCurrentBill(cat.id, (bill + 10).clamp(0, 2000)),
+                onTap: () {
+                  appState.setCategory(cat.id);
+                  context.pushNamed('Results');
+                },
                 ffTheme: ffTheme,
-              ).animate(delay: (i * 80).ms).fadeIn(duration: 350.ms).slideX(begin: 0.05, end: 0);
+              ).animate(delay: (i * 70).ms).fadeIn(duration: 350.ms).slideX(begin: 0.05, end: 0);
             }),
 
-            const SizedBox(height: 24),
+            const SizedBox(height: 32),
           ],
         ),
       ),
@@ -114,12 +247,22 @@ class BillsWidget extends StatelessWidget {
   }
 }
 
-class _BillStepper extends StatelessWidget {
-  const _BillStepper({required this.category, required this.currentBill, required this.onDecrease, required this.onIncrease, required this.ffTheme});
+class _BillCard extends StatelessWidget {
+  const _BillCard({
+    required this.category,
+    required this.currentBill,
+    required this.yearlySave,
+    required this.onDecrease,
+    required this.onIncrease,
+    required this.onTap,
+    required this.ffTheme,
+  });
   final Category category;
   final int currentBill;
+  final int yearlySave;
   final VoidCallback onDecrease;
   final VoidCallback onIncrease;
+  final VoidCallback onTap;
   final FlutterFlowTheme ffTheme;
 
   @override
@@ -129,57 +272,101 @@ class _BillStepper extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: ffTheme.alternate),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8)],
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: currentBill > 0 ? ffTheme.primary.withOpacity(0.2) : ffTheme.alternate),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10)],
       ),
-      child: Row(
+      child: Column(
         children: [
-          Text(category.icon, style: const TextStyle(fontSize: 28)),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(category.name, style: ffTheme.titleSmall),
-                Text('₪$currentBill/חודש', style: ffTheme.bodySmall),
-              ],
-            ),
-          ),
           Row(
             children: [
-              GestureDetector(
-                onTap: onDecrease,
-                child: Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: ffTheme.background,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: ffTheme.alternate),
-                  ),
-                  child: const Icon(Icons.remove, size: 18),
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: ffTheme.accent1,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Center(child: Text(category.icon, style: const TextStyle(fontSize: 22))),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(category.name, style: ffTheme.titleSmall),
+                    if (currentBill > 0 && yearlySave > 0)
+                      Text('חיסכון פוטנציאלי: ₪$yearlySave/שנה',
+                          style: ffTheme.labelSmall.override(color: ffTheme.success, fontWeight: FontWeight.w600)),
+                    if (currentBill == 0)
+                      Text('לא בשימוש', style: ffTheme.labelSmall),
+                  ],
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: Text('₪$currentBill', style: ffTheme.titleSmall.override(color: ffTheme.primary)),
-              ),
-              GestureDetector(
-                onTap: onIncrease,
-                child: Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: ffTheme.primary,
-                    shape: BoxShape.circle,
+              // Stepper
+              Row(
+                children: [
+                  _RoundBtn(icon: Icons.remove, color: ffTheme.alternate, iconColor: ffTheme.secondaryText, onTap: onDecrease),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    child: Text(
+                      '₪$currentBill',
+                      style: ffTheme.titleSmall.override(
+                        color: currentBill > 0 ? ffTheme.primary : ffTheme.secondaryText,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ),
-                  child: const Icon(Icons.add, size: 18, color: Colors.white),
-                ),
+                  _RoundBtn(icon: Icons.add, color: ffTheme.primary, iconColor: Colors.white, onTap: onIncrease),
+                ],
               ),
             ],
           ),
+          if (currentBill > 0 && yearlySave > 0) ...[
+            const SizedBox(height: 10),
+            GestureDetector(
+              onTap: onTap,
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                decoration: BoxDecoration(
+                  color: ffTheme.accent1,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: ffTheme.primary.withOpacity(0.15)),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.search_rounded, size: 14, color: ffTheme.primary),
+                    const SizedBox(width: 6),
+                    Text('חפש חבילות זולות יותר', style: ffTheme.labelSmall.override(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ],
+      ),
+    );
+  }
+}
+
+class _RoundBtn extends StatelessWidget {
+  const _RoundBtn({required this.icon, required this.color, required this.iconColor, required this.onTap});
+  final IconData icon;
+  final Color color;
+  final Color iconColor;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 34,
+        height: 34,
+        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        child: Icon(icon, size: 17, color: iconColor),
       ),
     );
   }

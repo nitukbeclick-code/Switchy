@@ -91,7 +91,10 @@ class PlanCardWidget extends StatelessWidget {
                 // Header row
                 Row(
                   children: [
-                    LogoWidget(provider: plan.provider, size: 44),
+                    Hero(
+                      tag: 'plan_logo_${plan.id}',
+                      child: LogoWidget(provider: plan.provider, size: 44),
+                    ),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Column(

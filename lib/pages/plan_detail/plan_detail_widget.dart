@@ -100,7 +100,10 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           const SizedBox(height: 32),
-                          LogoWidget(provider: plan.provider, size: 80),
+                          Hero(
+                            tag: 'plan_logo_${plan.id}',
+                            child: LogoWidget(provider: plan.provider, size: 80),
+                          ),
                           const SizedBox(height: 10),
                           Text(plan.provider,
                               style: ffTheme.titleLarge.override(color: Colors.white)),

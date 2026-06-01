@@ -21,7 +21,6 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
   final _inputCtrl = TextEditingController();
   final _scrollCtrl = ScrollController();
   bool _isTyping = false;
-  String? _suggestedPlanId;
   late List<_ChatMsg> _messages;
 
   @override
@@ -29,7 +28,7 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
     super.initState();
     _messages = [
       _ChatMsg(
-        text: 'שלום! אני חוסך AI 🤖\nאני יכול לעזור לך למצוא את מסלול התקשורת הכי מתאים לך.\n\nמה אתה מחפש?',
+        text: 'שלום! אני חוסך AI 🤖\nאני יכול לעזור למצוא את מסלול התקשורת הכי מתאים.\n\nמה מחפשים?',
         isUser: false,
         time: DateTime.now(),
       ),
@@ -53,77 +52,96 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
     });
     _scrollToBottom();
 
-    await Future.delayed(const Duration(milliseconds: 1100));
+    final typingDelay = 800 + (text.length * 12).clamp(0, 800);
+    await Future.delayed(Duration(milliseconds: typingDelay));
 
     final lower = text.toLowerCase();
     String cat = 'cellular';
     String sort = 'match';
     final List<String> filters = [];
 
-    // Category detection
-    if (lower.contains('אינטרנט') || lower.contains('internet') || lower.contains('סיב') || lower.contains('רשת')) {
+    // Category detection — extended Hebrew keyword set
+    if (lower.contains('אינטרנט') || lower.contains('internet') || lower.contains('סיב') || lower.contains('רשת בית') || lower.contains('ברודבנד') || lower.contains('ראוטר') || lower.contains('mb') || lower.contains('gb אינטרנט')) {
       cat = 'internet';
-    } else if (lower.contains('טלוויזיה') || lower.contains('tv') || lower.contains('ערוצים') || lower.contains('כבלים')) {
+    } else if (lower.contains('טלוויזיה') || lower.contains('tv') || lower.contains('ערוצים') || lower.contains('כבלים') || lower.contains('לוויין') || lower.contains('yes') || lower.contains('הוט') || lower.contains('נטפליקס') || lower.contains('ספורט')) {
       cat = 'tv';
-    } else if (lower.contains('חו"ל') || lower.contains('חול') || lower.contains('abroad') || lower.contains('נסיעה') || lower.contains('טיול') || lower.contains('esim')) {
+    } else if (lower.contains('חו"ל') || lower.contains('חול') || lower.contains('abroad') || lower.contains('נסיעה') || lower.contains('טיול') || lower.contains('esim') || lower.contains('eSIM') || lower.contains('אירופה') || lower.contains('אמריקה') || lower.contains('רואמינג')) {
       cat = 'abroad';
-    } else if ((lower.contains('חבילה') && (lower.contains('משולב') || lower.contains('הכל'))) || lower.contains('triple') || lower.contains('ביתי')) {
+    } else if ((lower.contains('חבילה') && (lower.contains('משולב') || lower.contains('הכל') || lower.contains('ביתי') || lower.contains('כולל הכל'))) || lower.contains('triple') || lower.contains('פקיג')) {
       cat = 'triple';
     }
 
-    // Sort & filter detection
-    if (lower.contains('זול') || lower.contains('מחיר נמוך') || lower.contains('הכי פחות') || lower.contains('בזול') || lower.contains('תקציב')) sort = 'price';
-    if (lower.contains('5g')) filters.add('5g');
-    if (lower.contains('ללא התחייבות') || lower.contains('גמישות') || lower.contains('חופשי') || lower.contains('לא מחויב')) filters.add('nocommit');
+    // Sort & filter detection — extended
+    if (lower.contains('זול') || lower.contains('מחיר נמוך') || lower.contains('הכי פחות') || lower.contains('בזול') || lower.contains('תקציב') || lower.contains('חסכוני') || lower.contains('משתלם') || lower.contains('פחות כסף')) sort = 'price';
+    if (lower.contains('5g') || lower.contains('חמישה ג') || lower.contains('הכי מהיר')) filters.add('5g');
+    if (lower.contains('ללא התחייבות') || lower.contains('בלי התחייבות') || lower.contains('גמישות') || lower.contains('חופשי') || lower.contains('לא מחויב') || lower.contains('אפשר לצאת')) filters.add('nocommit');
+    if (lower.contains('סיב אופטי') || lower.contains('fiber') || lower.contains('סיב')) filters.add('fiber');
+    if (lower.contains('1000') || lower.contains('גיגה') && cat == 'internet') filters.add('1g');
 
-    // Budget extraction
-    final budgetMatch = RegExp(r'₪?(\d+)').firstMatch(lower);
-    final budgetHint = budgetMatch != null ? int.tryParse(budgetMatch.group(1) ?? '') : null;
-
-    // Find best matching plan
-    var plans = plansByCat(cat);
-    if (filters.contains('5g')) plans = plans.where((p) => p.is5G).toList();
-    if (filters.contains('nocommit')) plans = plans.where((p) => p.noCommit).toList();
-    if (budgetHint != null) {
-      final budgetFiltered = plans.where((p) => p.price <= budgetHint).toList();
-      if (budgetFiltered.isNotEmpty) plans = budgetFiltered;
-    }
-
-    Plan? bestPlan;
-    if (plans.isNotEmpty) {
-      if (sort == 'price') {
-        bestPlan = plans.reduce((a, b) => a.price < b.price ? a : b);
-      } else {
-        final highlighted = plans.where((p) => p.highlight).toList();
-        bestPlan = highlighted.isNotEmpty ? highlighted.first : plans.reduce((a, b) => b.rating > a.rating ? b : a);
+    // Budget extraction — find any number preceded by ₪ or followed by ₪/שקל
+    final budgetMatch = RegExp(r'₪\s?(\d+)|(\d+)\s?₪|(\d+)\s?שקל|פחות\s?מ\s?-?\s?(\d+)').firstMatch(lower);
+    int? budgetHint;
+    if (budgetMatch != null) {
+      for (int i = 1; i <= budgetMatch.groupCount; i++) {
+        final g = budgetMatch.group(i);
+        if (g != null) { budgetHint = int.tryParse(g); break; }
       }
     }
 
-    String reply;
-    if (bestPlan != null) {
-      final currentBill = appState.currentBill(cat);
-      final saveYear = ((currentBill - bestPlan.price) * 12).clamp(0, 999999);
-      final catName = categoryById(cat)?.name ?? cat;
-      final promoNote = bestPlan.hasPromo ? '\n⚡ מבצע: ₪${bestPlan.price} לחודשים הראשונים' : '';
-      final commitNote = bestPlan.noCommit ? '\n✅ ללא התחייבות' : '\n📅 התחייבות ${bestPlan.term} חודשים';
-      final savingsLine = saveYear > 0
-          ? '\n💰 תחסוך ₪$saveYear בשנה לעומת מה שאתה משלם כרגע'
-          : '';
+    // Find top matching plans (up to 3)
+    var plans = plansByCat(cat);
+    if (filters.contains('5g')) plans = plans.where((p) => p.is5G).toList();
+    if (filters.contains('nocommit')) plans = plans.where((p) => p.noCommit).toList();
+    if (filters.contains('fiber')) plans = plans.where((p) => p.net == 'fiber').toList();
+    if (filters.contains('1g')) plans = plans.where((p) => p.plan.contains('1000') || p.plan.contains('גיגה')).toList();
+    if (budgetHint != null) {
+      final budgetFiltered = plans.where((p) => p.price <= budgetHint!).toList();
+      if (budgetFiltered.isNotEmpty) plans = budgetFiltered;
+    }
 
-      reply = 'המלצה עבורך בקטגורית $catName:$promoNote$commitNote$savingsLine';
-      _suggestedPlanId = bestPlan.id;
-    } else if (lower.contains('שלום') || lower.contains('היי') || lower.contains('מה שלומך') || lower.contains('hi')) {
-      reply = 'שלום! אני כאן לעזור לך למצוא את מסלול התקשורת הכי משתלם 🤖\n\nספר לי — מה מחפשים? סלולר, אינטרנט, טלוויזיה, חבילה לחו"ל?';
-    } else if (lower.contains('תודה') || lower.contains('תנקס')) {
-      reply = 'בשמחה! 🙌 אם יש שאלות נוספות על מסלולים, תמיד פה.\n\nאחרי שתחליט, אפשר לעשות את כל המעבר דרך חוסך — כולל ניוד מספר.';
+    List<Plan> topPlans = [];
+    if (plans.isNotEmpty) {
+      if (sort == 'price') {
+        plans.sort((a, b) => a.price.compareTo(b.price));
+      } else {
+        plans.sort((a, b) {
+          if (a.highlight != b.highlight) return a.highlight ? -1 : 1;
+          return b.rating.compareTo(a.rating);
+        });
+      }
+      topPlans = plans.take(3).toList();
+    }
+
+    // Build reply text
+    String reply;
+    final isGreeting = lower.contains('שלום') || lower.contains('היי') || lower.contains('hi') || lower.contains('hello') || lower.contains('הי') || lower.contains('מה שלום') || lower.contains('בוקר') || lower.contains('ערב');
+    final isThanks = lower.contains('תודה') || lower.contains('תנקס') || lower.contains('thanks') || lower.contains('כייף') || lower.contains('סבבה');
+
+    if (topPlans.isNotEmpty) {
+      final currentBill = appState.currentBill(cat);
+      final best = topPlans.first;
+      final saveYear = ((currentBill - best.price) * 12).clamp(0, 999999);
+      final catName = categoryById(cat)?.name ?? cat;
+      final promoNote = best.hasPromo ? '\n⚡ מבצע זמין — מחיר ראשוני' : '';
+      final commitNote = best.noCommit ? '\n✅ ללא התחייבות' : '\n📅 התחייבות ${best.term} חודשים';
+      final savingsLine = saveYear > 0 ? '\n💰 חיסכון שנתי צפוי: ₪$saveYear' : '';
+      final multiNote = topPlans.length > 1 ? '\n\nמצאתי ${topPlans.length} מסלולים מתאימים — הנה הכי טוב:' : '\nמצאתי מסלול מעולה עבורך:';
+
+      reply = 'בקטגורית $catName:$multiNote$promoNote$commitNote$savingsLine';
+    } else if (isGreeting) {
+      reply = 'שלום! 🤖 אני חוסך AI — יועץ התקשורת החכם שלכם.\n\nאספר לי מה מחפשים ואמצא את המסלול הכי משתלם:\n\n📱 סלולר  🌐 אינטרנט  📺 טלוויזיה  ✈️ חו"ל';
+    } else if (isThanks) {
+      reply = 'בשמחה! 🙌 תמיד פה לעזור.\n\nאחרי שתחליטו, אפשר לסיים את המעבר כולל ניוד מספר ישירות דרך חוסך — בקלות ובלי עמלות נסתרות.';
+    } else if (lower.contains('כמה') && (lower.contains('עולה') || lower.contains('עלות') || lower.contains('מחיר'))) {
+      reply = 'אפשר לכוון אותך! 😊\n\nאיזה שירות אתם מחפשים?\n• 📱 סלולר — מ-₪29/חודש\n• 🌐 אינטרנט — מ-₪89/חודש\n• 📺 טלוויזיה — מ-₪79/חודש\n• ✈️ חו"ל — מ-₪9/יום\n\nספרו לי עם איזו קטגוריה ואמצא את הכי זול!';
     } else {
-      reply = 'לא הצלחתי להבין בדיוק מה מחפשים. נסה לכתוב למשל:\n• "מצא לי סלולר זול ללא התחייבות"\n• "רוצה אינטרנט 1000MB"\n• "חבילת חו"ל לאירופה"\n• "5G בפחות מ-₪60"';
+      reply = 'לא הצלחתי להבין בדיוק. נסו לכתוב למשל:\n\n• "מצא סלולר זול ללא התחייבות"\n• "אינטרנט גיגה בזול"\n• "חבילת חו"ל לאירופה"\n• "5G בפחות מ-₪60"\n• "טלוויזיה עם ספורט"';
     }
 
     if (mounted) {
       setState(() {
         _isTyping = false;
-        _messages.add(_ChatMsg(text: reply, isUser: false, time: DateTime.now(), planId: bestPlan?.id, cat: cat));
+        _messages.add(_ChatMsg(text: reply, isUser: false, time: DateTime.now(), planIds: topPlans.map((p) => p.id).toList(), cat: cat));
       });
     }
     _scrollToBottom();
@@ -281,9 +299,10 @@ class _ChatMsg {
   final String text;
   final bool isUser;
   final DateTime time;
-  final String? planId;
+  final List<String> planIds;
   final String cat;
-  const _ChatMsg({required this.text, required this.isUser, required this.time, this.planId, this.cat = 'cellular'});
+  const _ChatMsg({required this.text, required this.isUser, required this.time, this.planIds = const [], this.cat = 'cellular'});
+  String? get planId => planIds.isNotEmpty ? planIds.first : null;
 }
 
 class _MessageBubble extends StatelessWidget {
@@ -294,7 +313,7 @@ class _MessageBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final plan = msg.planId != null ? planById(msg.planId!) : null;
+    final plans = msg.planIds.map((id) => planById(id)).whereType<Plan>().toList();
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Column(
@@ -336,10 +355,13 @@ class _MessageBubble extends StatelessWidget {
               ],
             ],
           ),
-          if (plan != null) ...[
+          if (plans.isNotEmpty) ...[
             const SizedBox(height: 8),
-            PlanCardWidget(plan: plan, currentBill: bill, showCompare: false),
-            const SizedBox(height: 4),
+            ...plans.asMap().entries.map((e) => Padding(
+              padding: EdgeInsets.only(bottom: e.key < plans.length - 1 ? 8 : 0),
+              child: PlanCardWidget(plan: e.value, currentBill: bill, showCompare: false),
+            )),
+            const SizedBox(height: 6),
             Align(
               alignment: Alignment.centerRight,
               child: GestureDetector(
@@ -357,7 +379,7 @@ class _MessageBubble extends StatelessWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text('ראה כל המסלולים', style: ffTheme.labelSmall.override(color: ffTheme.primary, fontWeight: FontWeight.w600)),
+                      Text('ראה את כל המסלולים', style: ffTheme.labelSmall.override(color: ffTheme.primary, fontWeight: FontWeight.w600)),
                       const SizedBox(width: 4),
                       Icon(Icons.arrow_back_ios_rounded, size: 11, color: ffTheme.primary),
                     ],

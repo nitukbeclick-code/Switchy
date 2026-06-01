@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -19,19 +20,26 @@ class _CommunityWidgetState extends State<CommunityWidget> {
   final _composerCtrl = TextEditingController();
   late List<CommunityPost> _posts;
   String _activeChannel = 'הכל';
+  int _onlineCount = 847;
 
   final _channels = ['הכל', 'המלצות', 'סלולר', 'אינטרנט', 'עזרה בניתוק'];
   bool _sortByPopular = false;
+
+  Timer? _onlineTimer;
 
   @override
   void initState() {
     super.initState();
     _posts = List.from(communityPosts);
+    _onlineTimer = Timer.periodic(const Duration(seconds: 12), (_) {
+      if (mounted) setState(() => _onlineCount = 820 + (DateTime.now().second * 7 % 60));
+    });
   }
 
   @override
   void dispose() {
     _composerCtrl.dispose();
+    _onlineTimer?.cancel();
     super.dispose();
   }
 
@@ -109,7 +117,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
               children: [
                 Container(width: 8, height: 8, decoration: const BoxDecoration(color: Colors.green, shape: BoxShape.circle)),
                 const SizedBox(width: 6),
-                Text('847 חברים מחוברים', style: ffTheme.labelSmall.override(color: Colors.green, fontWeight: FontWeight.w600)),
+                Text('$_onlineCount חברים מחוברים', style: ffTheme.labelSmall.override(color: Colors.green, fontWeight: FontWeight.w600)),
                 const Spacer(),
                 GestureDetector(
                   onTap: () => setState(() => _sortByPopular = !_sortByPopular),
@@ -264,18 +272,43 @@ class _PostCardState extends State<_PostCard> {
     final ffTheme = widget.ffTheme;
     final post = widget.post;
 
+    final isTrending = post.likes >= 15;
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: ffTheme.alternate),
+        border: Border.all(color: isTrending ? ffTheme.warning.withOpacity(0.5) : ffTheme.alternate, width: isTrending ? 1.5 : 1),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8)],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (isTrending)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: ffTheme.warning.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text('🔥', style: const TextStyle(fontSize: 11)),
+                        const SizedBox(width: 4),
+                        Text('טרנדינג', style: ffTheme.labelSmall.override(color: ffTheme.warning, fontWeight: FontWeight.w700)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
           Row(
             children: [
               Container(

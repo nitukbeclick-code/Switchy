@@ -31,6 +31,117 @@ class _TrackerWidgetState extends State<TrackerWidget> {
       _TrackerStep(icon: Icons.check_circle_rounded, title: 'הושלם', subtitle: 'ברוכים הבאים לחבילה החדשה', done: step >= 4),
     ];
 
+    // Empty state — no lead submitted yet
+    if (plan == null && step == 0) {
+      return Scaffold(
+        backgroundColor: ffTheme.background,
+        appBar: AppBar(
+          title: const Text('מעקב מעבר'),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          foregroundColor: ffTheme.primaryText,
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 96,
+                  height: 96,
+                  decoration: BoxDecoration(
+                    color: ffTheme.accent1,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.track_changes_rounded, size: 52, color: ffTheme.primary),
+                ).animate(onPlay: (c) => c.repeat(reverse: true))
+                  .scale(begin: const Offset(1, 1), end: const Offset(1.05, 1.05), duration: 1500.ms, curve: Curves.easeInOut),
+                const SizedBox(height: 24),
+                Text('עוד לא התחלתם', style: ffTheme.headlineSmall),
+                const SizedBox(height: 8),
+                Text('בחרו מסלול ושלחו פרטים כדי לעקוב אחר תהליך המעבר',
+                    style: ffTheme.bodyMedium.override(color: ffTheme.secondaryText), textAlign: TextAlign.center),
+                const SizedBox(height: 32),
+                FFButtonWidget(
+                  text: 'מצא מסלול →',
+                  onPressed: () => context.goNamed('Results'),
+                  options: FFButtonOptions(
+                    width: double.infinity,
+                    height: 52,
+                    color: ffTheme.primary,
+                    textStyle: ffTheme.titleSmall.override(color: Colors.white),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    // Completion state
+    if (step >= 4) {
+      return Scaffold(
+        backgroundColor: ffTheme.primary,
+        appBar: AppBar(
+          title: const Text('מעקב מעבר'),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          foregroundColor: Colors.white,
+          iconTheme: const IconThemeData(color: Colors.white),
+        ),
+        body: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(28),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 100,
+                  height: 100,
+                  decoration: BoxDecoration(color: ffTheme.secondary, shape: BoxShape.circle),
+                  child: Icon(Icons.verified_rounded, size: 60, color: ffTheme.primary),
+                ).animate().scale(duration: 600.ms, curve: Curves.elasticOut),
+                const SizedBox(height: 24),
+                Text('ברוכים הבאים\nלחבילה החדשה! 🎉',
+                    style: GoogleFonts.rubik(fontSize: 28, fontWeight: FontWeight.w800, color: Colors.white, height: 1.2),
+                    textAlign: TextAlign.center).animate().fadeIn(delay: 300.ms).slideY(begin: 0.2),
+                const SizedBox(height: 12),
+                if (plan != null) ...[
+                  Text('${plan.provider} — ₪${plan.price}/חודש',
+                      style: ffTheme.bodyLarge.override(color: ffTheme.secondary, fontWeight: FontWeight.w700))
+                      .animate().fadeIn(delay: 450.ms),
+                  const SizedBox(height: 10),
+                  Text('המעבר הושלם בהצלחה. חיסכון שנתי של ₪${planSaveYear(plan, appState.currentBill(plan.cat))} כבר מתחיל!',
+                      style: ffTheme.bodyMedium.override(color: Colors.white.withOpacity(0.8)),
+                      textAlign: TextAlign.center).animate().fadeIn(delay: 550.ms),
+                ] else ...[
+                  const SizedBox(height: 10),
+                  Text('המעבר הושלם בהצלחה!',
+                      style: ffTheme.bodyMedium.override(color: Colors.white.withOpacity(0.8)),
+                      textAlign: TextAlign.center).animate().fadeIn(delay: 550.ms),
+                ],
+                const SizedBox(height: 40),
+                FFButtonWidget(
+                  text: 'חזרה לדף הבית',
+                  onPressed: () => context.goNamed('Home'),
+                  options: FFButtonOptions(
+                    width: double.infinity,
+                    height: 52,
+                    color: ffTheme.secondary,
+                    textStyle: GoogleFonts.rubik(fontSize: 15, fontWeight: FontWeight.w700, color: ffTheme.primary),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ).animate().fadeIn(delay: 700.ms),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: ffTheme.background,
       appBar: AppBar(

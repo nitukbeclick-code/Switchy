@@ -57,6 +57,9 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
     final cost24 = plan.price * 24;
     final inCompare = appState.isInCompare(plan.id);
 
+    // Track viewed plan
+    WidgetsBinding.instance.addPostFrameCallback((_) => appState.viewPlan(plan.id));
+
     return Scaffold(
       backgroundColor: ffTheme.background,
       body: Stack(
@@ -406,6 +409,68 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                           .animate(delay: 280.ms)
                           .fadeIn(duration: 300.ms)
                           .slideY(begin: 0.08),
+
+                      // Similar plans section
+                      Builder(builder: (_) {
+                        final similar = allPlans
+                            .where((p) => p.cat == plan.cat && p.id != plan.id)
+                            .toList()
+                          ..sort((a, b) => (a.price - plan.price).abs().compareTo((b.price - plan.price).abs()));
+                        final topSimilar = similar.take(4).toList();
+                        if (topSimilar.isEmpty) return const SizedBox();
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(height: 20),
+                            Text('מסלולים דומים', style: ffTheme.titleLarge),
+                            const SizedBox(height: 12),
+                            SizedBox(
+                              height: 110,
+                              child: ListView.separated(
+                                scrollDirection: Axis.horizontal,
+                                itemCount: topSimilar.length,
+                                separatorBuilder: (_, __) => const SizedBox(width: 10),
+                                itemBuilder: (ctx, i) {
+                                  final p = topSimilar[i];
+                                  final pSave = planSaveYear(p, bill);
+                                  return GestureDetector(
+                                    onTap: () => context.pushNamed('PlanDetail', pathParameters: {'planId': p.id}),
+                                    child: Container(
+                                      width: 160,
+                                      padding: const EdgeInsets.all(14),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white,
+                                        borderRadius: BorderRadius.circular(14),
+                                        border: Border.all(color: ffTheme.alternate),
+                                        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))],
+                                      ),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Row(
+                                            children: [
+                                              LogoWidget(provider: p.provider, size: 28),
+                                              const SizedBox(width: 8),
+                                              Expanded(child: Text(p.provider, style: ffTheme.labelSmall.override(fontWeight: FontWeight.w700), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                                            ],
+                                          ),
+                                          const SizedBox(height: 6),
+                                          Text('₪${p.price}/חודש', style: ffTheme.titleSmall.override(color: ffTheme.primary)),
+                                          const SizedBox(height: 3),
+                                          if (pSave > 0)
+                                            Text('חוסך ₪$pSave/שנה', style: ffTheme.labelSmall.override(color: ffTheme.success))
+                                          else
+                                            Text(p.plan, style: ffTheme.labelSmall, maxLines: 1, overflow: TextOverflow.ellipsis),
+                                        ],
+                                      ),
+                                    ),
+                                  ).animate(delay: (i * 60).ms).fadeIn(duration: 250.ms);
+                                },
+                              ),
+                            ),
+                          ],
+                        );
+                      }),
 
                       const SizedBox(height: 100),
                     ],

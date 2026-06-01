@@ -116,4 +116,14 @@ class FFAppState extends ChangeNotifier {
     else _watchedPlans.add(planId);
     notifyListeners();
   }
+
+  // Recently viewed plans
+  final List<String> _recentlyViewed = [];
+  List<String> get recentlyViewed => List.unmodifiable(_recentlyViewed);
+  void viewPlan(String planId) {
+    _recentlyViewed.remove(planId);
+    _recentlyViewed.insert(0, planId);
+    if (_recentlyViewed.length > 6) _recentlyViewed.removeLast();
+    notifyListeners();
+  }
 }

@@ -74,6 +74,10 @@ class _HomeWidgetState extends State<HomeWidget> {
               if (appState.watchedPlans.isNotEmpty)
                 SliverToBoxAdapter(child: _buildWatchlist(context, ffTheme, appState)),
 
+              // ── 8b. Recently viewed ───────────────────────────────────────
+              if (appState.recentlyViewed.isNotEmpty)
+                SliverToBoxAdapter(child: _buildRecentlyViewed(context, ffTheme, appState)),
+
               // ── 9. Brand trust strip ───────────────────────────────────────
               SliverToBoxAdapter(child: _buildBrandStrip(context, ffTheme)),
 
@@ -744,6 +748,61 @@ class _HomeWidgetState extends State<HomeWidget> {
                     ),
                   ),
                 ).animate(delay: (i * 50).ms).fadeIn(duration: 250.ms);
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRecentlyViewed(BuildContext context, FlutterFlowTheme ffTheme, FFAppState appState) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.history_rounded, color: ffTheme.secondaryText, size: 18),
+              const SizedBox(width: 6),
+              Text('ראית לאחרונה', style: ffTheme.titleLarge),
+            ],
+          ),
+          const SizedBox(height: 10),
+          SizedBox(
+            height: 76,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: appState.recentlyViewed.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 10),
+              itemBuilder: (_, i) {
+                final plan = planById(appState.recentlyViewed[i]);
+                if (plan == null) return const SizedBox();
+                return GestureDetector(
+                  onTap: () => context.pushNamed('PlanDetail', pathParameters: {'planId': plan.id}),
+                  child: Container(
+                    width: 140,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: ffTheme.alternate),
+                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 6)],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(plan.provider, style: ffTheme.titleSmall.override(fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
+                        const SizedBox(height: 3),
+                        Text('₪${plan.price}/חודש', style: ffTheme.labelSmall.override(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+                        const SizedBox(height: 2),
+                        Text(plan.plan, style: ffTheme.labelSmall, maxLines: 1, overflow: TextOverflow.ellipsis),
+                      ],
+                    ),
+                  ),
+                ).animate(delay: (i * 40).ms).fadeIn(duration: 200.ms);
               },
             ),
           ),

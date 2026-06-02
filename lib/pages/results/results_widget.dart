@@ -379,12 +379,17 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                             child: Text(
                               cat == 'cellular' && appState.quizLines > 1
                                   ? 'שאלון: ${appState.quizLines} קווים, עד ₪${appState.quizBudget}'
-                                  : 'שאלון: עד ₪${appState.quizBudget}/חודש',
+                                  : 'שאלון: עד ₪${appState.quizBudget}${cat == 'abroad' ? '/חבילה' : '/חודש'}',
                               style: ffTheme.labelMedium.override(color: ffTheme.primary),
                             ),
                           ),
                           GestureDetector(
-                            onTap: () { appState.setQuizCompleted(false); },
+                            onTap: () => context.pushNamed('Quiz'),
+                            child: Text('עריכה', style: ffTheme.labelSmall.override(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+                          ),
+                          const SizedBox(width: 8),
+                          GestureDetector(
+                            onTap: () => appState.setQuizCompleted(false),
                             child: Icon(Icons.close_rounded, size: 18, color: ffTheme.secondaryText),
                           ),
                         ],

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'data.dart' show planById, planSaveYear;
 
 class FFAppState extends ChangeNotifier {
   static FFAppState _instance = FFAppState._internal();
@@ -141,7 +142,11 @@ class FFAppState extends ChangeNotifier {
   String? get leadCallbackTime => _leadCallbackTime;
   void submitLead({required String name, required String phone, required String provider, required String planId, String email = '', String callbackTime = 'now'}) {
     _leadName = name; _leadPhone = phone; _leadProvider = provider; _leadPlanId = planId; _leadEmail = email; _leadCallbackTime = callbackTime;
-    _trackerStep = 1; _totalSavings += 540; notifyListeners(); _persist();
+    _trackerStep = 1;
+    final plan = planById(planId);
+    final save = plan != null ? planSaveYear(plan, currentBill(plan.cat)) : 0;
+    _totalSavings += save > 0 ? save : 540;
+    notifyListeners(); _persist();
   }
 
   // Tracker

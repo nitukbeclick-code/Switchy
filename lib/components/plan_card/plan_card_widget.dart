@@ -47,11 +47,11 @@ class PlanCardWidget extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border(
-          left: BorderSide(
+          right: BorderSide(
             color: plan.highlight ? ffTheme.primary : ffTheme.alternate,
             width: plan.highlight ? 3 : 1,
           ),
-          right: BorderSide(color: ffTheme.alternate, width: 1),
+          left: BorderSide(color: ffTheme.alternate, width: 1),
           top: BorderSide(color: ffTheme.alternate, width: 1),
           bottom: BorderSide(color: ffTheme.alternate, width: 1),
         ),
@@ -241,7 +241,7 @@ class PlanCardWidget extends StatelessWidget {
                           ),
                         ),
                         Text(
-                          'לחודש',
+                          plan.cat == 'abroad' ? 'לחבילה' : 'לחודש',
                           style: GoogleFonts.assistant(
                             fontSize: 12,
                             color: ffTheme.secondaryText,

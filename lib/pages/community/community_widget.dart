@@ -91,7 +91,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
     _posts = List.from(communityPosts);
     _replyData.addAll(_mockReplies);
     _onlineTimer = Timer.periodic(const Duration(seconds: 12), (_) {
-      if (mounted) setState(() => _onlineCount = 820 + (DateTime.now().second * 7 % 60));
+      if (mounted) setState(() => _onlineCount = 820 + (DateTime.now().millisecond % 41) - 20);
     });
     _searchCtrl.addListener(() => setState(() => _searchQuery = _searchCtrl.text));
   }
@@ -281,12 +281,20 @@ class _CommunityWidgetState extends State<CommunityWidget> {
           );
         },
       ),
-    );
+    ).then((_) => replyCtrl.dispose());
   }
 
   // ── Composer modal ────────────────────────────────────────────────────────────
 
   void _showComposer(BuildContext context, FFAppState appState, FlutterFlowTheme ffTheme) {
+    if (!appState.isLoggedIn) {
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: const Text('יש להתחבר כדי לפרסם פוסט'),
+        action: SnackBarAction(label: 'כניסה', onPressed: () => context.pushNamed('Auth')),
+        duration: const Duration(seconds: 3),
+      ));
+      return;
+    }
     final ctrl = TextEditingController();
     String selectedChannel = _activeChannel == 'הכל' ? 'המלצות' : _activeChannel;
 
@@ -398,7 +406,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
           ),
         ),
       ),
-    );
+    ).then((_) => ctrl.dispose());
   }
 
   // ── Build ─────────────────────────────────────────────────────────────────────
@@ -510,7 +518,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                   onTap: () => setState(() => _activeChannel = ch),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
-                    margin: const EdgeInsets.only(left: 8),
+                    margin: const EdgeInsets.only(right: 8),
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
                       color: active ? ffTheme.primary : Colors.white,
@@ -665,7 +673,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                         post: post,
                         ffTheme: ffTheme,
                         bookmarked: _bookmarked.contains(post.id),
-                        replyCount: (_replyData[post.id]?.length ?? 0) + post.replies,
+                        replyCount: _replyData.containsKey(post.id) ? _replyData[post.id]!.length : post.replies,
                         onBookmark: (id) => setState(() => _bookmarked.contains(id) ? _bookmarked.remove(id) : _bookmarked.add(id)),
                         onReply: () => _showReplies(context, post, ffTheme),
                       ).animate(delay: (i * 50).ms).fadeIn(duration: 350.ms).slideY(begin: 0.05, end: 0);

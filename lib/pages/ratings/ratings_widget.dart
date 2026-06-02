@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import '../../flutter_flow/flutter_flow_theme.dart';
 import '../../flutter_flow/flutter_flow_util.dart';
+import '../../app_state.dart';
 import '../../data.dart';
 import '../../components/logo_widget/logo_widget.dart';
 
@@ -14,14 +16,21 @@ class RatingsWidget extends StatefulWidget {
 }
 
 class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProviderStateMixin {
+  // Review form state
   String? _selectedProvider;
-  int _myRating = 0;
+  String _reviewCat = 'cellular';
   final _reviewCtrl = TextEditingController();
   bool _submitted = false;
+  final Map<String, int> _subRatings = {'price': 0, 'service': 0, 'coverage': 0, 'speed': 0};
+
+  // Leaderboard state
   String _selectedCat = 'הכל';
+  String _sortBy = 'rating'; // 'rating' | 'reviews' | 'value'
   late TabController _tabCtrl;
 
-  static const _cats = ['הכל', 'סלולר', 'אינטרנט', 'טלוויזיה'];
+  static const _cats = ['הכל', 'סלולר', 'אינטרנט', 'טלוויזיה', 'חו"ל'];
+  static const _catIds = {'סלולר': 'cellular', 'אינטרנט': 'internet', 'טלוויזיה': 'tv', 'חו"ל': 'abroad'};
+  static const _subLabels = {'price': 'מחיר', 'service': 'שירות', 'coverage': 'כיסוי', 'speed': 'מהירות'};
 
   @override
   void initState() {
@@ -38,10 +47,9 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
   }
 
   Map<String, List<double>> get _providerRatings {
-    final catFilter = <String, String>{'סלולר': 'cellular', 'אינטרנט': 'internet', 'טלוויזיה': 'tv'};
     final plans = _selectedCat == 'הכל'
-        ? allPlans.where((p) => p.cat != 'abroad' && p.cat != 'triple').toList()
-        : allPlans.where((p) => p.cat == catFilter[_selectedCat]).toList();
+        ? allPlans
+        : allPlans.where((p) => p.cat == (_catIds[_selectedCat] ?? '')).toList();
 
     final map = <String, List<double>>{};
     for (final plan in plans) {
@@ -50,27 +58,54 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
     return map;
   }
 
-  // Synthetic sub-ratings per provider (price, service, coverage)
-  Map<String, double> _subRating(String provider, String key) {
+  int _totalReviews(String provider) =>
+      allPlans.where((p) => p.provider == provider).fold(0, (s, p) => s + p.reviews);
+
+  double _subRatingValue(String provider, String key) {
     final seed = provider.codeUnits.fold(0, (s, c) => s + c);
     switch (key) {
-      case 'price': return {provider: (3.5 + (seed % 15) / 10).clamp(3.0, 5.0)};
-      case 'service': return {provider: (3.2 + (seed % 17) / 10).clamp(3.0, 5.0)};
-      case 'coverage': return {provider: (3.8 + (seed % 12) / 10).clamp(3.5, 5.0)};
-      default: return {provider: 4.0};
+      case 'price': return (3.5 + (seed % 15) / 10).clamp(3.0, 5.0);
+      case 'service': return (3.2 + (seed % 17) / 10).clamp(3.0, 5.0);
+      case 'coverage': return (3.8 + (seed % 12) / 10).clamp(3.5, 5.0);
+      case 'speed': return (3.6 + (seed % 11) / 10).clamp(3.2, 5.0);
+      default: return 4.0;
     }
+  }
+
+  // Best category for a provider (for navigation)
+  String _primaryCat(String provider) {
+    final plans = allPlans.where((p) => p.provider == provider).toList();
+    if (plans.isEmpty) return 'cellular';
+    final freq = <String, int>{};
+    for (final p in plans) freq[p.cat] = (freq[p.cat] ?? 0) + 1;
+    return freq.entries.reduce((a, b) => a.value > b.value ? a : b).key;
   }
 
   @override
   Widget build(BuildContext context) {
     final ffTheme = FlutterFlowTheme.of(context);
+    final appState = Provider.of<FFAppState>(context, listen: false);
     final ratings = _providerRatings;
-    final sorted = ratings.entries.toList()
-      ..sort((a, b) {
+
+    var sorted = ratings.entries.toList();
+    if (_sortBy == 'rating') {
+      sorted.sort((a, b) {
         final avgA = a.value.reduce((x, y) => x + y) / a.value.length;
         final avgB = b.value.reduce((x, y) => x + y) / b.value.length;
         return avgB.compareTo(avgA);
       });
+    } else if (_sortBy == 'reviews') {
+      sorted.sort((a, b) => _totalReviews(b.key).compareTo(_totalReviews(a.key)));
+    } else {
+      // value = rating / price ratio
+      sorted.sort((a, b) {
+        final avgA = a.value.reduce((x, y) => x + y) / a.value.length;
+        final avgB = b.value.reduce((x, y) => x + y) / b.value.length;
+        final minPriceA = allPlans.where((p) => p.provider == a.key).map((p) => p.price).reduce((x, y) => x < y ? x : y);
+        final minPriceB = allPlans.where((p) => p.provider == b.key).map((p) => p.price).reduce((x, y) => x < y ? x : y);
+        return (avgB / minPriceB).compareTo(avgA / minPriceA);
+      });
+    }
 
     return Scaffold(
       backgroundColor: ffTheme.background,
@@ -89,6 +124,7 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
               indicatorColor: ffTheme.secondary,
               labelColor: Colors.white,
               unselectedLabelColor: Colors.white60,
+              isScrollable: true,
               labelStyle: GoogleFonts.rubik(fontSize: 13, fontWeight: FontWeight.w700),
               unselectedLabelStyle: GoogleFonts.rubik(fontSize: 13, fontWeight: FontWeight.w500),
             ),
@@ -105,7 +141,18 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
                 const SizedBox(height: 20),
               ],
 
-              Text('לוח מנצחים', style: ffTheme.titleLarge),
+              // Sort row
+              Row(
+                children: [
+                  Text('לוח מנצחים', style: ffTheme.titleLarge),
+                  const Spacer(),
+                  _SortChip(label: 'דירוג', value: 'rating', current: _sortBy, ffTheme: ffTheme, onTap: () => setState(() => _sortBy = 'rating')),
+                  const SizedBox(width: 6),
+                  _SortChip(label: 'ביקורות', value: 'reviews', current: _sortBy, ffTheme: ffTheme, onTap: () => setState(() => _sortBy = 'reviews')),
+                  const SizedBox(width: 6),
+                  _SortChip(label: 'מחיר-ערך', value: 'value', current: _sortBy, ffTheme: ffTheme, onTap: () => setState(() => _sortBy = 'value')),
+                ],
+              ),
               const SizedBox(height: 12),
 
               // Full leaderboard
@@ -114,73 +161,79 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
                 final provider = entry.value.key;
                 final provRatings = entry.value.value;
                 final avg = provRatings.reduce((a, b) => a + b) / provRatings.length;
-                final totalReviews = allPlans.where((p) => p.provider == provider).fold(0, (s, p) => s + p.reviews);
+                final totalReviews = _totalReviews(provider);
+                final primaryCat = _primaryCat(provider);
 
-                final priceR = _subRating(provider, 'price')[provider]!;
-                final serviceR = _subRating(provider, 'service')[provider]!;
-                final coverageR = _subRating(provider, 'coverage')[provider]!;
-
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: i == 0 ? ffTheme.secondary : ffTheme.alternate, width: i == 0 ? 2 : 1),
-                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8)],
-                  ),
-                  child: Column(
-                    children: [
-                      Row(
-                        children: [
-                          Container(
-                            width: 32,
-                            height: 32,
-                            decoration: BoxDecoration(
-                              color: i == 0 ? ffTheme.secondary : i == 1 ? const Color(0xFFE5E0D5) : i == 2 ? const Color(0xFFFFE8D0) : ffTheme.background,
-                              shape: BoxShape.circle,
+                return GestureDetector(
+                  onTap: () {
+                    appState.setCategory(primaryCat);
+                    context.goNamed('Results');
+                  },
+                  child: Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: i == 0 ? ffTheme.secondary : ffTheme.alternate, width: i == 0 ? 2 : 1),
+                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8)],
+                    ),
+                    child: Column(
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              width: 32,
+                              height: 32,
+                              decoration: BoxDecoration(
+                                color: i == 0 ? ffTheme.secondary : i == 1 ? const Color(0xFFE5E0D5) : i == 2 ? const Color(0xFFFFE8D0) : ffTheme.background,
+                                shape: BoxShape.circle,
+                              ),
+                              child: Center(child: Text('${i + 1}', style: GoogleFonts.rubik(fontSize: 13, fontWeight: FontWeight.w800, color: const Color(0xFF0E3A26)))),
                             ),
-                            child: Center(child: Text('${i + 1}', style: GoogleFonts.rubik(fontSize: 13, fontWeight: FontWeight.w800, color: const Color(0xFF0E3A26)))),
-                          ),
-                          const SizedBox(width: 10),
-                          LogoWidget(provider: provider, size: 38),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                            const SizedBox(width: 10),
+                            LogoWidget(provider: provider, size: 38),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(provider, style: ffTheme.titleSmall, overflow: TextOverflow.ellipsis),
+                                  Row(
+                                    children: [
+                                      ...List.generate(5, (j) => Icon(
+                                        j < avg.floor() ? Icons.star_rounded : j < avg ? Icons.star_half_rounded : Icons.star_outline_rounded,
+                                        size: 13,
+                                        color: ffTheme.warning,
+                                      )),
+                                      const SizedBox(width: 4),
+                                      Text(avg.toStringAsFixed(1), style: ffTheme.labelSmall.override(fontWeight: FontWeight.w700)),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
-                                Text(provider, style: ffTheme.titleSmall, overflow: TextOverflow.ellipsis),
-                                Row(
-                                  children: [
-                                    ...List.generate(5, (j) => Icon(
-                                      j < avg.floor() ? Icons.star_rounded : j < avg ? Icons.star_half_rounded : Icons.star_outline_rounded,
-                                      size: 13,
-                                      color: ffTheme.warning,
-                                    )),
-                                    const SizedBox(width: 4),
-                                    Text(avg.toStringAsFixed(1), style: ffTheme.labelSmall.override(fontWeight: FontWeight.w700)),
-                                  ],
-                                ),
+                                Text('$totalReviews', style: ffTheme.titleSmall.override(color: ffTheme.primary)),
+                                Text('ביקורות', style: ffTheme.labelSmall),
                               ],
                             ),
-                          ),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Text('$totalReviews', style: ffTheme.titleSmall.override(color: ffTheme.primary)),
-                              Text('ביקורות', style: ffTheme.labelSmall),
-                            ],
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      // Sub-rating bars
-                      _SubBar(label: 'מחיר', value: priceR / 5, ffTheme: ffTheme),
-                      const SizedBox(height: 6),
-                      _SubBar(label: 'שירות', value: serviceR / 5, ffTheme: ffTheme),
-                      const SizedBox(height: 6),
-                      _SubBar(label: 'כיסוי', value: coverageR / 5, ffTheme: ffTheme),
-                    ],
+                            const SizedBox(width: 6),
+                            Icon(Icons.arrow_forward_ios_rounded, size: 14, color: ffTheme.secondaryText),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        _SubBar(label: 'מחיר', value: _subRatingValue(provider, 'price') / 5, ffTheme: ffTheme),
+                        const SizedBox(height: 6),
+                        _SubBar(label: 'שירות', value: _subRatingValue(provider, 'service') / 5, ffTheme: ffTheme),
+                        const SizedBox(height: 6),
+                        _SubBar(label: 'כיסוי', value: _subRatingValue(provider, 'coverage') / 5, ffTheme: ffTheme),
+                        const SizedBox(height: 6),
+                        _SubBar(label: 'מהירות', value: _subRatingValue(provider, 'speed') / 5, ffTheme: ffTheme),
+                      ],
+                    ),
                   ),
                 ).animate(delay: (i * 60).ms).fadeIn(duration: 350.ms).slideX(begin: 0.05, end: 0);
               }),
@@ -212,11 +265,22 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
                       Center(
                         child: Column(
                           children: [
-                            Icon(Icons.check_circle_rounded, color: ffTheme.success, size: 52),
+                            Icon(Icons.check_circle_rounded, color: ffTheme.success, size: 52)
+                                .animate().scale(duration: 500.ms, curve: Curves.elasticOut),
                             const SizedBox(height: 8),
                             Text('תודה! הביקורת נשמרה', style: ffTheme.titleSmall),
                             const SizedBox(height: 4),
                             Text('הביקורת שלך תסייע לאחרים לבחור', style: ffTheme.bodySmall),
+                            const SizedBox(height: 16),
+                            TextButton(
+                              onPressed: () => setState(() {
+                                _submitted = false;
+                                _selectedProvider = null;
+                                _subRatings.updateAll((_, __) => 0);
+                                _reviewCtrl.clear();
+                              }),
+                              child: Text('כתוב ביקורת נוספת', style: ffTheme.labelMedium.override(color: ffTheme.primary)),
+                            ),
                           ],
                         ),
                       )
@@ -226,7 +290,7 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
                       Wrap(
                         spacing: 8,
                         runSpacing: 8,
-                        children: sorted.take(8).map((e) {
+                        children: sorted.take(10).map((e) {
                           final active = _selectedProvider == e.key;
                           return GestureDetector(
                             onTap: () => setState(() => _selectedProvider = e.key),
@@ -243,23 +307,43 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
                           );
                         }).toList(),
                       ),
+
                       const SizedBox(height: 16),
-                      Text('דירוג כולל', style: ffTheme.labelLarge),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: List.generate(5, (i) => GestureDetector(
-                          onTap: () => setState(() => _myRating = i + 1),
-                          child: Padding(
-                            padding: const EdgeInsets.only(left: 4),
-                            child: Icon(
-                              i < _myRating ? Icons.star_rounded : Icons.star_outline_rounded,
-                              size: 38,
-                              color: ffTheme.warning,
+                      Text('דירוג לפי קטגוריה', style: ffTheme.labelLarge),
+                      const SizedBox(height: 12),
+
+                      // Multi-dimension star ratings
+                      ..._subLabels.entries.map((e) => Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: Row(
+                          children: [
+                            SizedBox(
+                              width: 52,
+                              child: Text(e.value, style: ffTheme.labelSmall),
                             ),
-                          ),
-                        )),
-                      ),
-                      const SizedBox(height: 16),
+                            const SizedBox(width: 8),
+                            ...List.generate(5, (j) => GestureDetector(
+                              onTap: () => setState(() => _subRatings[e.key] = j + 1),
+                              child: Padding(
+                                padding: const EdgeInsets.only(left: 3),
+                                child: Icon(
+                                  j < (_subRatings[e.key] ?? 0) ? Icons.star_rounded : Icons.star_outline_rounded,
+                                  size: 28,
+                                  color: ffTheme.warning,
+                                ),
+                              ),
+                            )),
+                            const Spacer(),
+                            if ((_subRatings[e.key] ?? 0) > 0)
+                              Text(
+                                _ratingLabel(_subRatings[e.key]!),
+                                style: ffTheme.labelSmall.override(color: ffTheme.primary, fontWeight: FontWeight.w600),
+                              ),
+                          ],
+                        ),
+                      )),
+
+                      const SizedBox(height: 4),
                       TextField(
                         controller: _reviewCtrl,
                         maxLines: 3,
@@ -284,7 +368,7 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
                       ),
                       const SizedBox(height: 16),
                       ElevatedButton.icon(
-                        onPressed: (_selectedProvider != null && _myRating > 0)
+                        onPressed: (_selectedProvider != null && _subRatings.values.any((v) => v > 0))
                             ? () => setState(() => _submitted = true)
                             : null,
                         icon: const Icon(Icons.send_rounded, size: 18),
@@ -311,6 +395,17 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
     );
   }
 
+  String _ratingLabel(int r) {
+    switch (r) {
+      case 1: return 'גרוע';
+      case 2: return 'בינוני';
+      case 3: return 'סביר';
+      case 4: return 'טוב';
+      case 5: return 'מצוין';
+      default: return '';
+    }
+  }
+
   Widget _buildPodium(List<MapEntry<String, List<double>>> top, FlutterFlowTheme ffTheme) {
     final avgs = top.map((e) => e.value.reduce((a, b) => a + b) / e.value.length).toList();
 
@@ -328,19 +423,45 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
             crossAxisAlignment: CrossAxisAlignment.end,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // 2nd place
               _PodiumItem(rank: 2, provider: top[1].key, avg: avgs[1], height: 80, ffTheme: ffTheme),
               const SizedBox(width: 8),
-              // 1st place
               _PodiumItem(rank: 1, provider: top[0].key, avg: avgs[0], height: 100, ffTheme: ffTheme),
               const SizedBox(width: 8),
-              // 3rd place
               _PodiumItem(rank: 3, provider: top[2].key, avg: avgs[2], height: 60, ffTheme: ffTheme),
             ],
           ),
         ],
       ),
     ).animate().fadeIn(duration: 500.ms);
+  }
+}
+
+class _SortChip extends StatelessWidget {
+  const _SortChip({required this.label, required this.value, required this.current, required this.ffTheme, required this.onTap});
+  final String label, value, current;
+  final FlutterFlowTheme ffTheme;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final active = current == value;
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: active ? ffTheme.primary : ffTheme.background,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: active ? ffTheme.primary : ffTheme.alternate),
+        ),
+        child: Text(label, style: ffTheme.labelSmall.override(
+          color: active ? Colors.white : ffTheme.secondaryText,
+          fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+          fontSize: 11,
+        )),
+      ),
+    );
   }
 }
 

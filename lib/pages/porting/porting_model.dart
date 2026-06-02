@@ -10,11 +10,13 @@ class PortingModel extends FlutterFlowModel<PortingWidget> {
   bool poaAccepted = false;
   bool submitted = false;
 
-  bool get canSubmit =>
-      phoneController.text.trim().length == 10 &&
-      idController.text.trim().length == 9 &&
-      selectedProvider != null &&
-      poaAccepted;
+  bool get canSubmit {
+    final phone = phoneController.text.replaceAll(RegExp(r'[\s\-]'), '');
+    return phone.length >= 9 && phone.length <= 10 && phone.startsWith('0') &&
+        idController.text.trim().length == 9 &&
+        selectedProvider != null &&
+        poaAccepted;
+  }
 
   @override
   void initState(BuildContext context) {

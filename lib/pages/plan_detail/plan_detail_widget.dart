@@ -387,6 +387,33 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                           .fadeIn(duration: 300.ms)
                           .slideY(begin: 0.08),
 
+                      // Rate provider CTA
+                      const SizedBox(height: 10),
+                      GestureDetector(
+                        onTap: () => context.pushNamed('Ratings'),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: ffTheme.accent1,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: ffTheme.primary.withOpacity(0.15)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.rate_review_rounded, size: 16, color: ffTheme.primary),
+                              const SizedBox(width: 6),
+                              Text(
+                                appState.hasReviewedProvider(plan.provider) ? 'עדכן דירוג עבור ${plan.provider}' : 'דרג את ${plan.provider}',
+                                style: ffTheme.labelSmall.override(color: ffTheme.primary, fontWeight: FontWeight.w700),
+                              ),
+                              const Spacer(),
+                              Icon(Icons.chevron_left_rounded, size: 16, color: ffTheme.primary),
+                            ],
+                          ),
+                        ),
+                      ).animate(delay: 250.ms).fadeIn(duration: 300.ms),
+
                       // Fine print
                       if (plan.fine != null) ...[
                         const SizedBox(height: 14),

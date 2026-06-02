@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -133,12 +134,40 @@ class _OnboardingWidgetState extends State<OnboardingWidget> {
 
 // ── Page 1: Savings value proposition ────────────────────────────────────────
 
-class _Page1 extends StatelessWidget {
+class _Page1 extends StatefulWidget {
   const _Page1({required this.ffTheme});
   final FlutterFlowTheme ffTheme;
 
   @override
+  State<_Page1> createState() => _Page1State();
+}
+
+class _Page1State extends State<_Page1> {
+  static const _testimonials = [
+    ('"עברתי מ-₪150 ל-₪49 בחודש — חסכתי ₪1,212 השנה!"', 'מיכאל כ. | סלולר'),
+    ('"מעבר אינטרנט ל-yes ב-3 ימים. ₪960 חיסכון לשנה!"', 'רחל מ. | אינטרנט'),
+    ('"חבילה משולבת רמי לוי — ₪2,400 פחות בשנה 🤩"', 'עמית ב. | חבילה משולבת'),
+  ];
+  int _tIdx = 0;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(seconds: 4), (_) {
+      if (mounted) setState(() => _tIdx = (_tIdx + 1) % _testimonials.length);
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final ffTheme = widget.ffTheme;
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(24, 32, 24, 16),
       child: Column(
@@ -164,35 +193,60 @@ class _Page1 extends StatelessWidget {
               const SizedBox(width: 10),
               _StatChip(value: '60K', label: 'לקוחות', ffTheme: ffTheme),
               const SizedBox(width: 10),
-              _StatChip(value: '₪49', label: 'מהמחיר', ffTheme: ffTheme),
+              _StatChip(value: '₪49', label: 'מינימום', ffTheme: ffTheme),
             ],
           ).animate().fadeIn(delay: 350.ms).slideY(begin: 0.1, end: 0),
           const SizedBox(height: 20),
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: ffTheme.accent1,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: ffTheme.primary.withOpacity(0.15)),
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 500),
+            transitionBuilder: (child, anim) => FadeTransition(
+              opacity: anim,
+              child: SlideTransition(
+                position: Tween(begin: const Offset(0, 0.08), end: Offset.zero).animate(anim),
+                child: child,
+              ),
             ),
-            child: Row(
-              children: [
-                const Text('⭐', style: TextStyle(fontSize: 24)),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('"עברתי מ-₪150 ל-₪49 בחודש — חסכתי ₪1,212 השנה!"',
-                          style: ffTheme.bodyMedium.override(color: ffTheme.primaryText, fontWeight: FontWeight.w600)),
-                      const SizedBox(height: 4),
-                      Text('מיכאל כ. | לקוח חוסך', style: ffTheme.labelSmall),
-                    ],
+            child: Container(
+              key: ValueKey(_tIdx),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: ffTheme.accent1,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: ffTheme.primary.withOpacity(0.15)),
+              ),
+              child: Row(
+                children: [
+                  const Text('⭐', style: TextStyle(fontSize: 24)),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(_testimonials[_tIdx].$1,
+                            style: ffTheme.bodyMedium.override(color: ffTheme.primaryText, fontWeight: FontWeight.w600)),
+                        const SizedBox(height: 4),
+                        Text(_testimonials[_tIdx].$2, style: ffTheme.labelSmall),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ).animate().fadeIn(delay: 450.ms),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(_testimonials.length, (i) => AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              margin: const EdgeInsets.symmetric(horizontal: 3),
+              width: i == _tIdx ? 20 : 6,
+              height: 6,
+              decoration: BoxDecoration(
+                color: i == _tIdx ? ffTheme.primary : ffTheme.alternate,
+                borderRadius: BorderRadius.circular(3),
+              ),
+            )),
+          ),
         ],
       ),
     );
@@ -214,6 +268,8 @@ class _Page2 extends StatelessWidget {
     ('בזק', Color(0xFF007B8A), Color(0xFFECFAFB)),
     ('גולן', Color(0xFF15603E), Color(0xFFE8F5EE)),
     ('019', Color(0xFF6B35C8), Color(0xFFF3EEFF)),
+    ('רמי לוי', Color(0xFF0D47A1), Color(0xFFE3F2FD)),
+    ('Airalo', Color(0xFF00897B), Color(0xFFE0F2F1)),
   ];
 
   @override

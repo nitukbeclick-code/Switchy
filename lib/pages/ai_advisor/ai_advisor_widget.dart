@@ -330,6 +330,7 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
                   Expanded(
                     child: TextField(
                       controller: _inputCtrl,
+                      textDirection: TextDirection.rtl,
                       decoration: InputDecoration(
                         hintText: 'שאל על מסלולי תקשורת...',
                         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -388,10 +389,10 @@ class _MessageBubble extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Column(
-        crossAxisAlignment: msg.isUser ? CrossAxisAlignment.start : CrossAxisAlignment.end,
+        crossAxisAlignment: msg.isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: msg.isUser ? MainAxisAlignment.start : MainAxisAlignment.end,
+            mainAxisAlignment: msg.isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
             children: [
               if (!msg.isUser) ...[
                 Container(
@@ -406,7 +407,7 @@ class _MessageBubble extends StatelessWidget {
                       bottomRight: Radius.circular(18),
                     ),
                   ),
-                  child: Text(msg.text, style: ffTheme.bodyMedium.override(lineHeight: 1.5)),
+                  child: Text(msg.text, style: ffTheme.bodyMedium.override(lineHeight: 1.5), textDirection: TextDirection.rtl),
                 ),
               ] else ...[
                 Container(
@@ -421,7 +422,7 @@ class _MessageBubble extends StatelessWidget {
                       bottomRight: Radius.circular(4),
                     ),
                   ),
-                  child: Text(msg.text, style: ffTheme.bodyMedium.override(color: Colors.white, lineHeight: 1.5)),
+                  child: Text(msg.text, style: ffTheme.bodyMedium.override(color: Colors.white, lineHeight: 1.5), textDirection: TextDirection.rtl),
                 ),
               ],
             ],
@@ -474,7 +475,7 @@ class _TypingBubble extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
+        mainAxisAlignment: MainAxisAlignment.start,
         children: [
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),

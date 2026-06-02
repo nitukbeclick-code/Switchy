@@ -79,9 +79,13 @@ class _ProfileWidgetState extends State<ProfileWidget> {
               onPressed: () async {
                 final name = nameCtrl.text.trim();
                 final phone = phoneCtrl.text.trim();
-                if (name.isNotEmpty && phone.isNotEmpty) {
-                  appState.login(name: name, phone: phone);
+                if (name.isEmpty || phone.isEmpty) {
+                  ScaffoldMessenger.of(ctx).showSnackBar(
+                    const SnackBar(content: Text('אנא מלאו שם ומספר טלפון'), duration: Duration(seconds: 2)),
+                  );
+                  return;
                 }
+                Provider.of<FFAppState>(ctx, listen: false).login(name: name, phone: phone);
                 Navigator.pop(ctx);
               },
               options: FFButtonOptions(

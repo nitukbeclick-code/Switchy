@@ -633,7 +633,7 @@ class _HomeWidgetState extends State<HomeWidget> {
         final catPlans = plansByCat(cat.id);
         if (catPlans.isNotEmpty) {
           final minPrice = catPlans.map((p) => p.price).reduce((a, b) => a < b ? a : b);
-          actualSavings[cat.id] = ((bill - minPrice) * 12).clamp(0, 99999);
+          actualSavings[cat.id] = ((bill - minPrice) * 12).clamp(0, 999999);
           hasActual[cat.id] = true;
         }
       }

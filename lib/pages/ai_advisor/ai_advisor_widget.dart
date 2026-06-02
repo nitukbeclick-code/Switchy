@@ -98,7 +98,7 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
       cat = 'tv';
     } else if (lower.contains('חו"ל') || lower.contains('חול') || lower.contains('abroad') || lower.contains('נסיעה') || lower.contains('טיול') || lower.contains('esim') || lower.contains('eSIM') || lower.contains('אירופה') || lower.contains('אמריקה') || lower.contains('רואמינג')) {
       cat = 'abroad';
-    } else if ((lower.contains('חבילה') && (lower.contains('משולב') || lower.contains('הכל') || lower.contains('ביתי') || lower.contains('כולל הכל'))) || lower.contains('triple') || lower.contains('פקיג')) {
+    } else if ((lower.contains('חבילה') && (lower.contains('משולב') || lower.contains('הכל') || lower.contains('ביתי') || lower.contains('כולל הכל'))) || lower.contains('triple') || lower.contains('פקיג') || lower.contains('טריפל')) {
       cat = 'triple';
     }
 
@@ -108,6 +108,8 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
     if (lower.contains('ללא התחייבות') || lower.contains('בלי התחייבות') || lower.contains('גמישות') || lower.contains('חופשי') || lower.contains('לא מחויב') || lower.contains('אפשר לצאת')) filters.add('nocommit');
     if (lower.contains('סיב אופטי') || lower.contains('fiber') || lower.contains('סיב')) filters.add('fiber');
     if (lower.contains('1000') || lower.contains('גיגה') && cat == 'internet') filters.add('1g');
+    if (lower.contains('ספורט') && cat == 'tv') filters.add('sport');
+    if ((lower.contains('נטפליקס') || lower.contains('netflix')) && (cat == 'tv' || cat == 'triple')) filters.add('netflix');
 
     // Budget extraction — find any number preceded by ₪ or followed by ₪/שקל
     final budgetMatch = RegExp(r'₪\s?(\d+)|(\d+)\s?₪|(\d+)\s?שקל|פחות\s?מ\s?-?\s?(\d+)').firstMatch(lower);
@@ -125,6 +127,8 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
     if (filters.contains('nocommit')) plans = plans.where((p) => p.noCommit).toList();
     if (filters.contains('fiber')) plans = plans.where((p) => p.net == 'fiber').toList();
     if (filters.contains('1g')) plans = plans.where((p) => p.plan.contains('1000') || p.plan.contains('גיגה')).toList();
+    if (filters.contains('sport')) { final f = plans.where((p) => p.feats.any((feat) => feat.contains('ספורט'))).toList(); if (f.isNotEmpty) plans = f; }
+    if (filters.contains('netflix')) { final f = plans.where((p) => p.feats.any((feat) => feat.contains('Netflix'))).toList(); if (f.isNotEmpty) plans = f; }
     if (budgetHint != null) {
       final budgetFiltered = plans.where((p) => p.price <= budgetHint!).toList();
       if (budgetFiltered.isNotEmpty) plans = budgetFiltered;
@@ -179,7 +183,7 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
     } else if (isThanks) {
       reply = 'בשמחה! 🙌 תמיד פה לעזור.\n\nאחרי שתחליטו, אפשר לסיים את המעבר כולל ניוד מספר ישירות דרך חוסך — בקלות ובלי עמלות נסתרות.';
     } else if (lower.contains('כמה') && (lower.contains('עולה') || lower.contains('עלות') || lower.contains('מחיר'))) {
-      reply = 'אפשר לכוון אותך! 😊\n\nאיזה שירות אתם מחפשים?\n• 📱 סלולר — מ-₪29/חודש\n• 🌐 אינטרנט — מ-₪89/חודש\n• 📺 טלוויזיה — מ-₪79/חודש\n• ✈️ חו"ל — מ-₪9/יום\n\nספרו לי עם איזו קטגוריה ואמצא את הכי זול!';
+      reply = 'אפשר לכוון אותך! 😊\n\nאיזה שירות אתם מחפשים?\n• 📱 סלולר — מ-₪15/חודש (רמי לוי)\n• 🌐 אינטרנט — מ-₪89/חודש (HOT סיב)\n• 📺 טלוויזיה — מ-₪49/חודש (פרטנר TV)\n• 🏠 חבילה משולבת — מ-₪84/חודש\n• ✈️ חו"ל — מ-₪7.90/יום\n\nספרו לי עם איזו קטגוריה ואמצא את הכי זול!';
     } else {
       reply = 'לא הצלחתי להבין בדיוק. נסו לכתוב למשל:\n\n• "מצא סלולר זול ללא התחייבות"\n• "אינטרנט גיגה בזול"\n• "חבילת חו"ל לאירופה"\n• "5G בפחות מ-₪60"\n• "טלוויזיה עם ספורט"';
     }
@@ -217,8 +221,12 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
       '📶 5G מהיר',
       '✈️ חבילת חו"ל',
       '💰 פחות מ-₪50',
+      '📺 טלוויזיה + ספורט',
+      '🏠 חבילה משולבת',
       '🔍 חבילות גולן',
       '🔍 חבילות פלאפון',
+      '🔍 חבילות פרטנר',
+      '🧮 כמה עולה?',
     ];
 
     return Scaffold(
@@ -289,10 +297,10 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 2,
-                  mainAxisSpacing: 8,
-                  crossAxisSpacing: 8,
-                  childAspectRatio: 3.2,
+                  crossAxisCount: 3,
+                  mainAxisSpacing: 6,
+                  crossAxisSpacing: 6,
+                  childAspectRatio: 2.6,
                 ),
                 itemCount: quickStarts.length,
                 itemBuilder: (ctx, i) {

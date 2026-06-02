@@ -295,9 +295,14 @@ class AccountWidget extends StatelessWidget {
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.end,
                                 children: [
-                                  Text('₪${p.price}/חודש', style: ffTheme.titleSmall.override(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+                                  Text('₪${p.price}/${p.cat == 'abroad' ? 'חבילה' : 'חודש'}', style: ffTheme.titleSmall.override(color: ffTheme.primary, fontWeight: FontWeight.w700)),
                                   if (save > 0) Text('חוסך ₪$save/שנה', style: ffTheme.labelSmall.override(color: ffTheme.success)),
                                 ],
+                              ),
+                              const SizedBox(width: 8),
+                              GestureDetector(
+                                onTap: () => appState.toggleWatch(id),
+                                child: Icon(Icons.notifications_off_outlined, size: 18, color: ffTheme.secondaryText),
                               ),
                             ],
                           ),

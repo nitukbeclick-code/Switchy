@@ -106,6 +106,7 @@ class FFAppState extends ChangeNotifier {
   Map<String, int> get currentBills => Map.unmodifiable(_currentBills);
   int currentBill(String cat) => _currentBills[cat] ?? 0;
   void setCurrentBill(String cat, int v) { _currentBills[cat] = v.clamp(0, 2000); notifyListeners(); _persist(); }
+  void resetAllBills() { _currentBills.updateAll((_, __) => 0); notifyListeners(); _persist(); }
 
   // Quiz
   int _quizLines = 1; String _quizPriority = 'price'; int _quizBudget = 90; bool _quizCompleted = false; String _quizCat = 'cellular';

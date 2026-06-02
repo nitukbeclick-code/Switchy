@@ -43,6 +43,31 @@ class _BillsWidgetState extends State<BillsWidget> {
         elevation: 0,
         foregroundColor: ffTheme.primaryText,
         actions: [
+          if (total > 0)
+            IconButton(
+              icon: Icon(Icons.refresh_rounded, color: ffTheme.secondaryText, size: 20),
+              tooltip: 'אפס הכל',
+              onPressed: () {
+                final appState = Provider.of<FFAppState>(context, listen: false);
+                showDialog(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                    title: const Text('איפוס חשבונות', textAlign: TextAlign.center),
+                    content: const Text('להאפיס את כל הסכומים לאפס?', textAlign: TextAlign.center),
+                    actionsAlignment: MainAxisAlignment.center,
+                    actions: [
+                      TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('ביטול')),
+                      ElevatedButton(
+                        onPressed: () { Navigator.pop(ctx); appState.resetAllBills(); },
+                        style: ElevatedButton.styleFrom(backgroundColor: ffTheme.error, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+                        child: const Text('אפס'),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
           TextButton(
             onPressed: () => context.pushNamed('Results'),
             child: Text('השווה עכשיו', style: ffTheme.labelMedium.override(color: ffTheme.primary, fontWeight: FontWeight.w700)),

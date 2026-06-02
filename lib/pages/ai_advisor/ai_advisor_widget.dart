@@ -456,7 +456,7 @@ class _MessageBubble extends StatelessWidget {
               alignment: Alignment.centerRight,
               child: GestureDetector(
                 onTap: () {
-                  FFAppState().setCategory(msg.cat);
+                  Provider.of<FFAppState>(context, listen: false).setCategory(msg.cat);
                   context.pushNamed('Results');
                 },
                 child: Container(

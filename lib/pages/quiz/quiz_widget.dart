@@ -135,7 +135,11 @@ class _QuizWidgetState extends State<QuizWidget> {
               emoji: c.$3,
               label: c.$2,
               selected: _cat == c.$1,
-              onTap: () => setState(() => _cat = c.$1),
+              onTap: () => setState(() {
+                _cat = c.$1;
+                final cfg = _budgetConfig(c.$1);
+                _budget = _budget.clamp(cfg.$1, cfg.$2);
+              }),
               ffTheme: ffTheme,
             )).toList(),
           ),
@@ -339,7 +343,6 @@ class _QuizWidgetState extends State<QuizWidget> {
       default:
         final sliderConfig = _budgetConfig(_cat);
         final clampedBudget = _budget.clamp(sliderConfig.$1, sliderConfig.$2);
-        if (_budget != clampedBudget) WidgetsBinding.instance.addPostFrameCallback((_) => setState(() => _budget = clampedBudget));
         final planCount = plansByCat(_cat).where((p) => p.price <= clampedBudget.round()).length;
         return _StepCard(
           step: 4,

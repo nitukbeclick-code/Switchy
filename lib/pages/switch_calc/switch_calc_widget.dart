@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import '../../flutter_flow/flutter_flow_theme.dart';
 import '../../flutter_flow/flutter_flow_util.dart';
 import '../../app_state.dart';
@@ -469,7 +470,7 @@ class _LeadingPlanCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text('₪${plan.price}', style: ffTheme.headlineSmall.override(color: ffTheme.primary)),
-                  Text('לחודש', style: ffTheme.labelSmall.override(color: ffTheme.secondaryText)),
+                  Text(selectedCat == 'abroad' ? 'לחבילה' : 'לחודש', style: ffTheme.labelSmall.override(color: ffTheme.secondaryText)),
                 ],
               ),
             ],
@@ -479,7 +480,7 @@ class _LeadingPlanCard extends StatelessWidget {
             width: double.infinity,
             child: OutlinedButton(
               onPressed: () {
-                FFAppState().setCategory(selectedCat);
+                Provider.of<FFAppState>(context, listen: false).setCategory(selectedCat);
                 context.pushNamed('Results');
               },
               style: OutlinedButton.styleFrom(

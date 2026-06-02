@@ -35,7 +35,7 @@ GoRouter createRouter() => GoRouter(
   redirect: (context, state) {
     final appState = Provider.of<FFAppState>(context, listen: false);
     final isOnboarding = state.uri.path == '/onboarding';
-    if (isOnboarding && (appState.isLoggedIn || appState.quizCompleted)) {
+    if (isOnboarding && (appState.isLoggedIn || appState.quizCompleted || appState.seenOnboarding)) {
       return '/home';
     }
     return null;

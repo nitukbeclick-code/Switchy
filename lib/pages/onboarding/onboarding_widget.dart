@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../flutter_flow/flutter_flow_theme.dart';
 import '../../flutter_flow/flutter_flow_util.dart';
 import '../../flutter_flow/flutter_flow_widgets.dart';
+import '../../app_state.dart';
 
 class OnboardingWidget extends StatefulWidget {
   const OnboardingWidget({super.key});
@@ -24,6 +25,7 @@ class _OnboardingWidgetState extends State<OnboardingWidget> {
       _animating = true;
       _controller.nextPage(duration: const Duration(milliseconds: 350), curve: Curves.easeInOut);
     } else {
+      FFAppState().markOnboardingSeen();
       context.goNamed('Quiz');
     }
   }
@@ -72,7 +74,10 @@ class _OnboardingWidgetState extends State<OnboardingWidget> {
                         Text('חוסך', style: GoogleFonts.rubik(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white)),
                         const Spacer(),
                         TextButton(
-                          onPressed: () => context.goNamed('Home'),
+                          onPressed: () {
+                            FFAppState().markOnboardingSeen();
+                            context.goNamed('Home');
+                          },
                           child: Text('דלג', style: ffTheme.labelMedium.override(color: Colors.white.withOpacity(0.7))),
                         ),
                       ],

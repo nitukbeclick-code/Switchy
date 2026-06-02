@@ -61,6 +61,7 @@ class FFAppState extends ChangeNotifier {
     _prefPriceAlerts = p.getBool('prefPriceAlerts') ?? true;
     _prefRequestUpdates = p.getBool('prefRequestUpdates') ?? true;
     _prefCommunityNotifs = p.getBool('prefCommunityNotifs') ?? false;
+    _seenOnboarding = p.getBool('seenOnboarding') ?? false;
     notifyListeners();
   }
 
@@ -96,6 +97,7 @@ class FFAppState extends ChangeNotifier {
     await p.setBool('prefPriceAlerts', _prefPriceAlerts);
     await p.setBool('prefRequestUpdates', _prefRequestUpdates);
     await p.setBool('prefCommunityNotifs', _prefCommunityNotifs);
+    await p.setBool('seenOnboarding', _seenOnboarding);
   }
 
   void update(VoidCallback cb) { cb(); notifyListeners(); }
@@ -220,6 +222,11 @@ class FFAppState extends ChangeNotifier {
   void setPrefPriceAlerts(bool v) { _prefPriceAlerts = v; notifyListeners(); _persist(); }
   void setPrefRequestUpdates(bool v) { _prefRequestUpdates = v; notifyListeners(); _persist(); }
   void setPrefCommunityNotifs(bool v) { _prefCommunityNotifs = v; notifyListeners(); _persist(); }
+
+  // Onboarding
+  bool _seenOnboarding = false;
+  bool get seenOnboarding => _seenOnboarding;
+  void markOnboardingSeen() { _seenOnboarding = true; _persist(); }
 
   // User reviews
   final List<Map<String, dynamic>> _userReviews = [];

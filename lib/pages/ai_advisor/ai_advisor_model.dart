@@ -68,7 +68,8 @@ class AIAdvisorModel extends FlutterFlowModel<AIAdvisorWidget> {
       return 'לא מצאתי תוכנית שמתאימה בדיוק. נסה לפרט יותר — איזה קטגוריה? סלולר, אינטרנט, טלוויזיה?';
     }
     final saving = planSaveYear(plan, 119);
-    return 'מצאתי עבורך! ${plan.provider} עם תוכנית "${plan.plan}" ב-₪${plan.price}/חודש.'
+    final unit = plan.cat == 'abroad' ? 'חבילה' : 'חודש';
+    return 'מצאתי עבורך! ${plan.provider} עם תוכנית "${plan.plan}" ב-₪${plan.price}/$unit.'
         + (saving > 0 ? '\n💰 חיסכון משוער: ₪$saving בשנה!' : '')
         + '\n\nתרצה לראות פרטים נוספים?';
   }

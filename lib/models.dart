@@ -40,7 +40,9 @@ class Plan {
     switch (net) {
       case 'fiber': return 'סיב אופטי';
       case 'cable': return 'כבלים';
+      case 'adsl': return 'ADSL';
       case 'satellite': return 'לוויין';
+      case '4G': return '4G';
       case '5g': case '5G': return '5G';
       case 'lte': case 'LTE': return 'LTE';
       case 'esim': case 'eSIM': return 'eSIM';

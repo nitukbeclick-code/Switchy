@@ -380,7 +380,7 @@ class AccountWidget extends StatelessWidget {
                           const Text('🎯', style: TextStyle(fontSize: 20)),
                           const SizedBox(width: 10),
                           Expanded(
-                            child: Text('תקציב השאלון: ₪${appState.quizBudget}/חודש',
+                            child: Text('תקציב השאלון: ₪${appState.quizBudget}${appState.quizCat == 'abroad' ? '/חבילה' : '/חודש'}',
                                 style: ffTheme.bodyMedium.override(color: ffTheme.primary)),
                           ),
                           GestureDetector(
@@ -436,7 +436,7 @@ class AccountWidget extends StatelessWidget {
                                     ],
                                   ),
                                   const SizedBox(height: 5),
-                                  Text('₪${p.price}/חודש', style: ffTheme.titleSmall.override(color: ffTheme.primary)),
+                                  Text('₪${p.price}/${p.cat == 'abroad' ? 'חבילה' : 'חודש'}', style: ffTheme.titleSmall.override(color: ffTheme.primary)),
                                   Text(p.plan, style: ffTheme.labelSmall.override(color: ffTheme.secondaryText), maxLines: 1, overflow: TextOverflow.ellipsis),
                                 ],
                               ),

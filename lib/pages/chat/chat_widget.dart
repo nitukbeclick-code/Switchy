@@ -275,7 +275,7 @@ class _ChatWidgetState extends State<ChatWidget> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(color: ffTheme.primary, borderRadius: BorderRadius.circular(20)),
-            child: Text('₪${plan.price}/חודש', style: ffTheme.labelSmall.override(color: Colors.white, fontWeight: FontWeight.w700)),
+            child: Text('₪${plan.price}/${plan.cat == 'abroad' ? 'חבילה' : 'חודש'}', style: ffTheme.labelSmall.override(color: Colors.white, fontWeight: FontWeight.w700)),
           ),
         ],
       ),

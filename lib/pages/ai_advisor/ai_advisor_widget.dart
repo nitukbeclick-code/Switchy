@@ -174,11 +174,12 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
       final best = topPlans.first;
       final saveYear = ((currentBill - best.price) * 12).clamp(0, 999999);
       final catName = categoryById(cat)?.name ?? cat;
-      final promoNote = best.hasPromo ? '\n⚡ מחיר מבצע! לאחר המבצע: ₪${best.after}/חודש' : '';
+      final unit = best.cat == 'abroad' ? 'חבילה' : 'חודש';
+      final promoNote = best.hasPromo ? '\n⚡ מחיר מבצע! לאחר המבצע: ₪${best.after}/$unit' : '';
       final commitNote = best.noCommit ? '\n✅ ללא התחייבות' : '\n📅 התחייבות ${best.term} חודשים';
       final savingsLine = saveYear > 0 ? '\n💰 חיסכון שנתי צפוי: ₪$saveYear' : '';
       final multiNote = topPlans.length > 1 ? '\n\nמצאתי ${topPlans.length} מסלולים — הנה הכי טוב:' : '\nמצאתי מסלול מעולה עבורך:';
-      final planLine = '${best.plan} — ₪${best.price}/חודש';
+      final planLine = '${best.plan} — ₪${best.price}/$unit';
 
       final replyPrefix = isComparison && detectedProvider != null && detectedProvider2 != null
           ? 'השוואה: $detectedProvider מול $detectedProvider2:'

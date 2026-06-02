@@ -437,7 +437,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                   Text(plan.provider, style: ffTheme.titleSmall.override(fontWeight: FontWeight.w700)),
                   Text(plan.plan, style: ffTheme.bodySmall.override(color: ffTheme.secondaryText), maxLines: 1, overflow: TextOverflow.ellipsis),
                   const SizedBox(height: 4),
-                  Text('₪${plan.price}/חודש', style: ffTheme.labelSmall.override(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+                  Text('₪${plan.price}/${plan.cat == 'abroad' ? 'חבילה' : 'חודש'}', style: ffTheme.labelSmall.override(color: ffTheme.primary, fontWeight: FontWeight.w700)),
                 ],
               ),
             ),
@@ -501,7 +501,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text('₪${plan.price}/חודש', style: ffTheme.titleSmall.override(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+                    Text('₪${plan.price}/${plan.cat == 'abroad' ? 'חבילה' : 'חודש'}', style: ffTheme.titleSmall.override(color: ffTheme.primary, fontWeight: FontWeight.w700)),
                     if (save > 0)
                       Text('חוסך ₪$save/שנה', style: ffTheme.labelSmall.override(color: ffTheme.success)),
                   ],
@@ -551,7 +551,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                     ],
                   ),
                   const SizedBox(height: 6),
-                  Text('₪${p.price}/חודש', style: ffTheme.titleSmall.override(color: ffTheme.primary)),
+                  Text('₪${p.price}/${p.cat == 'abroad' ? 'חבילה' : 'חודש'}', style: ffTheme.titleSmall.override(color: ffTheme.primary)),
                   const SizedBox(height: 2),
                   Text(p.plan, style: ffTheme.labelSmall.override(color: ffTheme.secondaryText), maxLines: 1, overflow: TextOverflow.ellipsis),
                 ],

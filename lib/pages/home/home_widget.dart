@@ -203,7 +203,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text('עוקב אחר ${p.provider}', style: ffTheme.titleSmall.override(fontSize: 13)),
-                            Text('₪${p.price}/חודש — מחיר עדכני', style: ffTheme.labelSmall),
+                            Text('₪${p.price}/${p.cat == 'abroad' ? 'חבילה' : 'חודש'} — מחיר עדכני', style: ffTheme.labelSmall),
                           ],
                         ),
                       ),
@@ -1109,7 +1109,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                           ],
                         ),
                         const SizedBox(height: 5),
-                        Text('₪${plan.price}/חודש', style: ffTheme.titleSmall.override(color: ffTheme.primary, fontSize: 13, fontWeight: FontWeight.w700)),
+                        Text('₪${plan.price}/${plan.cat == 'abroad' ? 'חבילה' : 'חודש'}', style: ffTheme.titleSmall.override(color: ffTheme.primary, fontSize: 13, fontWeight: FontWeight.w700)),
                         const SizedBox(height: 3),
                         Row(
                           children: [
@@ -1175,7 +1175,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                           ],
                         ),
                         const SizedBox(height: 5),
-                        Text('₪${plan.price}/חודש', style: ffTheme.titleSmall.override(color: ffTheme.primary, fontSize: 13, fontWeight: FontWeight.w700)),
+                        Text('₪${plan.price}/${plan.cat == 'abroad' ? 'חבילה' : 'חודש'}', style: ffTheme.titleSmall.override(color: ffTheme.primary, fontSize: 13, fontWeight: FontWeight.w700)),
                         const SizedBox(height: 3),
                         Text(plan.plan, style: ffTheme.labelSmall.override(color: ffTheme.secondaryText), maxLines: 1, overflow: TextOverflow.ellipsis),
                       ],

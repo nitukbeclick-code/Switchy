@@ -194,7 +194,7 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
       reply = 'בשמחה! 🙌 תמיד פה לעזור.\n\nאחרי שתחליטו, אפשר לסיים את המעבר כולל ניוד מספר ישירות דרך חוסך — בקלות ובלי עמלות נסתרות.';
     } else if (lower.contains('כמה') && (lower.contains('עולה') || lower.contains('עלות') || lower.contains('מחיר'))) {
       int _minPrice(String c) => plansByCat(c).map((p) => p.price).fold(9999, (a, b) => a < b ? a : b);
-      reply = 'אפשר לכוון אותך! 😊\n\nאיזה שירות אתם מחפשים?\n• 📱 סלולר — מ-₪${_minPrice('cellular')}/חודש\n• 🌐 אינטרנט — מ-₪${_minPrice('internet')}/חודש (מבצע)\n• 📺 טלוויזיה — מ-₪${_minPrice('tv')}/חודש\n• 🏠 חבילה משולבת — מ-₪${_minPrice('triple')}/חודש\n• ✈️ חו"ל — מ-₪${_minPrice('abroad')}/יום\n\nספרו לי עם איזו קטגוריה ואמצא את הכי זול!';
+      reply = 'אפשר לכוון אותך! 😊\n\nאיזה שירות אתם מחפשים?\n• 📱 סלולר — מ-₪${_minPrice('cellular')}/חודש\n• 🌐 אינטרנט — מ-₪${_minPrice('internet')}/חודש (מבצע)\n• 📺 טלוויזיה — מ-₪${_minPrice('tv')}/חודש\n• 🏠 חבילה משולבת — מ-₪${_minPrice('triple')}/חודש\n• ✈️ חו"ל — מ-₪${_minPrice('abroad')}/חבילה\n\nספרו לי עם איזו קטגוריה ואמצא את הכי זול!';
     } else {
       reply = 'לא הצלחתי להבין בדיוק. נסו לכתוב למשל:\n\n• "מצא סלולר זול ללא התחייבות"\n• "אינטרנט גיגה בזול"\n• "חבילת חו"ל לאירופה"\n• "5G בפחות מ-₪60"\n• "טלוויזיה עם ספורט"';
     }

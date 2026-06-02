@@ -8,6 +8,7 @@ import '../../flutter_flow/flutter_flow_widgets.dart';
 import '../../app_state.dart';
 import '../../data.dart';
 import '../../models.dart';
+import '../../components/logo_widget/logo_widget.dart';
 
 class AccountWidget extends StatelessWidget {
   const AccountWidget({super.key});
@@ -267,30 +268,38 @@ class AccountWidget extends StatelessWidget {
                     ...appState.watchedPlans.map((id) {
                       final p = planById(id);
                       if (p == null) return const SizedBox();
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: ffTheme.alternate),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(Icons.notifications_active_rounded, color: ffTheme.warning, size: 20),
-                            const SizedBox(width: 12),
-                            Expanded(child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(p.provider, style: ffTheme.titleSmall),
-                                Text('₪${p.price}/חודש', style: ffTheme.bodySmall),
-                              ],
-                            )),
-                            TextButton(
-                              onPressed: () => context.pushNamed('PlanDetail', pathParameters: {'planId': id}),
-                              child: Text('פרטים', style: ffTheme.labelSmall.override(color: ffTheme.primary)),
-                            ),
-                          ],
+                      final save = planSaveYear(p, appState.currentBill(p.cat));
+                      return GestureDetector(
+                        onTap: () => context.pushNamed('PlanDetail', pathParameters: {'planId': id}),
+                        child: Container(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: ffTheme.alternate),
+                            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 6)],
+                          ),
+                          child: Row(
+                            children: [
+                              LogoWidget(provider: p.provider, size: 38),
+                              const SizedBox(width: 12),
+                              Expanded(child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(p.provider, style: ffTheme.titleSmall),
+                                  Text(p.plan, style: ffTheme.bodySmall.override(color: ffTheme.secondaryText), maxLines: 1, overflow: TextOverflow.ellipsis),
+                                ],
+                              )),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Text('₪${p.price}/חודש', style: ffTheme.titleSmall.override(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+                                  if (save > 0) Text('חוסך ₪$save/שנה', style: ffTheme.labelSmall.override(color: ffTheme.success)),
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
                       );
                     }),
@@ -412,11 +421,17 @@ class AccountWidget extends StatelessWidget {
                               ),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text(p.provider, style: ffTheme.labelLarge, overflow: TextOverflow.ellipsis),
-                                  Text(p.plan, style: ffTheme.labelSmall.override(color: ffTheme.secondaryText), maxLines: 1, overflow: TextOverflow.ellipsis),
+                                  Row(
+                                    children: [
+                                      LogoWidget(provider: p.provider, size: 24),
+                                      const SizedBox(width: 6),
+                                      Expanded(child: Text(p.provider, style: ffTheme.labelSmall.override(fontWeight: FontWeight.w700), overflow: TextOverflow.ellipsis)),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 5),
                                   Text('₪${p.price}/חודש', style: ffTheme.titleSmall.override(color: ffTheme.primary)),
+                                  Text(p.plan, style: ffTheme.labelSmall.override(color: ffTheme.secondaryText), maxLines: 1, overflow: TextOverflow.ellipsis),
                                 ],
                               ),
                             ),

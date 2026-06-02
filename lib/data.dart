@@ -4,7 +4,7 @@ import 'models.dart';
 // ── Categories ────────────────────────────────────────────────────────────────
 
 final List<Category> categories = [
-  const Category(id: 'cellular', name: 'סלולר', icon: '📱', currentBill: 119, color: Color(0xFF15603E), planCount: 8, description: 'חבילות סלולר לנייד'),
+  const Category(id: 'cellular', name: 'סלולר', icon: '📱', currentBill: 119, color: Color(0xFF15603E), planCount: 16, description: 'חבילות סלולר לנייד'),
   const Category(id: 'internet', name: 'אינטרנט', icon: '🌐', currentBill: 140, color: Color(0xFF2563EB), planCount: 6, description: 'אינטרנט ביתי מהיר'),
   const Category(id: 'tv', name: 'טלוויזיה', icon: '📺', currentBill: 130, color: Color(0xFF7C3AED), planCount: 5, description: 'ערוצי טלוויזיה ושידורים'),
   const Category(id: 'triple', name: 'חבילה משולבת', icon: '🏠', currentBill: 260, color: Color(0xFFE07034), planCount: 5, description: 'אינטרנט + טלוויזיה + טלפון'),
@@ -16,7 +16,16 @@ final List<Category> categories = [
 const List<Plan> allPlans = [
   // CELLULAR
   Plan(id: 'cel_019', cat: 'cellular', provider: '019 מובייל', net: '4G', plan: '12GB ללא הגבלת שיחות', price: 20, rating: 4.1, reviews: 890, flags: ['nocommit', 'fixed'], feats: ['12GB גלישה', 'שיחות ללא הגבלה', 'SMS ללא הגבלה', 'ללא התחייבות', 'מחיר קבוע לתמיד']),
-  Plan(id: 'cel_rami', cat: 'cellular', provider: 'רמי לוי', net: '4G', plan: '20GB ללא הגבלה', price: 29, rating: 4.3, reviews: 2100, flags: ['nocommit', 'fixed'], feats: ['20GB גלישה', 'שיחות ללא הגבלה', 'ניוד מספר חינם', 'שמירת מספר', 'מחיר קבוע']),
+  // רמי לוי — עדכון 02.06.2026
+  Plan(id: 'cel_rami_kosher_zol', cat: 'cellular', provider: 'רמי לוי', net: '4G', plan: 'זול כשר', price: 15, after: 18, term: 24, rating: 4.0, reviews: 420, flags: [], feats: ['10,000 דק\' ברשת', '4,000 דק\' מחוץ לרשת', 'SMS ללא הגבלה', 'ניוד: 9.90₪ | חיבור: 49₪'], fine: '₪18 לקו לאחר 24 חודשים'),
+  Plan(id: 'cel_rami_kosher_max', cat: 'cellular', provider: 'רמי לוי', net: '4G', plan: 'מקס כשר', price: 17, after: 20, term: 24, rating: 4.1, reviews: 540, flags: [], feats: ['10,000 דק\' ברשת', '5,000 דק\' מחוץ לרשת', 'SMS ללא הגבלה', 'ניוד: 9.90₪ | חיבור: 49₪'], fine: '₪20 לקו לאחר 24 חודשים'),
+  Plan(id: 'cel_rami_duo_cc', cat: 'cellular', provider: 'רמי לוי', net: '4G', plan: 'זוג כרטיס אשראי 250GB', price: 25, term: 24, rating: 4.2, reviews: 980, flags: [], feats: ['250GB גלישה משותפת', '2 קווים — ₪50 סה"כ', '2 חודשים ראשונים חינם', 'חיבור חינם', 'בכרטיס אשראי רמי לוי בלבד', 'ניוד: 9.90₪'], fine: '₪50 לזוג (₪25 לקו) לכל 24 חודשים'),
+  Plan(id: 'cel_rami_duo50', cat: 'cellular', provider: 'רמי לוי', net: '4G', plan: 'זוג 250GB — 2 קווים', price: 25, after: 35, term: 24, rating: 4.3, reviews: 1800, flags: [], feats: ['250GB גלישה משותפת', '2 קווים — ₪50 סה"כ', 'שיחות ללא הגבלה', 'SMS ללא הגבלה', 'ניוד: 29.90₪'], fine: '₪70 לזוג (₪35 לקו) לאחר 24 חודשים'),
+  Plan(id: 'cel_rami_xtreme300', cat: 'cellular', provider: 'רמי לוי', net: '4G', plan: 'xtreme 300GB', price: 35, after: 40, term: 24, rating: 4.3, reviews: 2100, flags: [], feats: ['300GB גלישה', 'שיחות ללא הגבלה', 'SMS ללא הגבלה', 'ניוד: 29.90₪ | חיבור: 50.32₪'], fine: '₪40 לחודש לאחר 24 חודשים'),
+  Plan(id: 'cel_rami_triple', cat: 'cellular', provider: 'רמי לוי', net: '4G', plan: 'טריפל 600GB — 3 קווים', price: 27, after: 35, term: 24, rating: 4.5, reviews: 870, flags: [], feats: ['600GB גלישה משותפת', '3 קווים — ₪80 סה"כ', 'עד 5,000 דק\' / 2,500 שיחות', 'שיחות ללא הגבלה', 'ניוד: 29.90₪'], fine: '₪105 ל-3 קווים (₪35 לקו) לאחר 24 חודשים'),
+  Plan(id: 'cel_rami_duo55', cat: 'cellular', provider: 'רמי לוי', net: '4G', plan: 'זוג 500GB — 2 קווים', price: 28, after: 35, term: 24, rating: 4.3, reviews: 1600, flags: [], feats: ['500GB גלישה משותפת', '2 קווים — ₪55 סה"כ', 'שיחות ללא הגבלה', 'SMS ללא הגבלה', 'ניוד: 29.90₪'], fine: '₪70 לזוג (₪35 לקו) לאחר 24 חודשים'),
+  Plan(id: 'cel_rami_global500', cat: 'cellular', provider: 'רמי לוי', net: '4G', plan: '500GB גלובל + חו"ל', price: 50, after: 55, term: 24, rating: 4.4, reviews: 1200, flags: ['abroad'], feats: ['500GB גלישה', '500 דק\' לחו"ל דרך 014', 'שיחות ללא הגבלה', 'SMS ללא הגבלה', 'ניוד: 29.90₪'], fine: '₪55 לחודש לאחר 24 חודשים'),
+  Plan(id: 'cel_rami_xtreme1000', cat: 'cellular', provider: 'רמי לוי', net: '5G', plan: 'xtreme 1000GB 5G', price: 55, after: 60, term: 24, rating: 4.4, reviews: 1400, flags: ['5g'], feats: ['1000GB גלישה', 'דור 5 — 5G', 'שיחות ללא הגבלה', 'SMS ללא הגבלה', 'ניוד: 29.90₪ | חיבור: 50.32₪'], fine: '₪60 לחודש לאחר 24 חודשים', highlight: true),
   Plan(id: 'cel_golan', cat: 'cellular', provider: 'גולן טלקום', net: '5G', plan: '50GB 5G ללא הגבלה', price: 39, after: 49, intro: '3 חודשים ראשונים', rating: 4.4, reviews: 3200, flags: ['5g', 'nocommit'], feats: ['50GB גלישה', '5G מהיר', 'שיחות ללא הגבלה', 'גיבוי ענן', 'ניוד חינם']),
   Plan(id: 'cel_hot', cat: 'cellular', provider: 'הוט מובייל', net: '5G', plan: '100GB 5G', price: 49, rating: 4.0, reviews: 1560, flags: ['5g', 'nocommit'], feats: ['100GB גלישה', '5G מהיר', 'גלישה בחו"ל 1GB', 'שיחות ללא הגבלה', 'WiFi Calling']),
   Plan(id: 'cel_cellcom', cat: 'cellular', provider: 'סלקום', net: '5G', plan: '200GB 5G ללא הגבלה', price: 59, rating: 4.2, reviews: 4300, flags: ['5g', 'nocommit'], feats: ['200GB גלישה', '5G מהיר', 'שיחות ללא הגבלה', 'חבילת חו"ל בסיסית 1GB', 'צ\'אט תמיכה 24/7']),

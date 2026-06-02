@@ -256,7 +256,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                           onTap: () {
                             final text = replyCtrl.text.trim();
                             if (text.isEmpty) return;
-                            final appState = FFAppState();
+                            final appState = Provider.of<FFAppState>(ctx, listen: false);
                             final newReply = _Reply(
                               author: appState.isLoggedIn ? appState.firstName : 'אורח',
                               avatar: appState.isLoggedIn && appState.firstName.isNotEmpty ? appState.firstName[0] : 'א',

@@ -61,7 +61,11 @@ class _HomeWidgetState extends State<HomeWidget> {
               if (deal != null)
                 SliverToBoxAdapter(child: _buildHotDeal(context, ffTheme, deal, appState)),
 
-              // ── 4b. Top pick for you ──────────────────────────────────────
+              // ── 4b. Quiz match (when quiz completed) ──────────────────────
+              if (appState.quizCompleted)
+                SliverToBoxAdapter(child: _buildQuizMatch(context, ffTheme, appState)),
+
+              // ── 4c. Top pick for you ──────────────────────────────────────
               SliverToBoxAdapter(child: _buildTopPick(context, ffTheme, appState)),
 
               // ── 5. Category grid ───────────────────────────────────────────
@@ -527,6 +531,107 @@ class _HomeWidgetState extends State<HomeWidget> {
     );
   }
 
+  Widget _buildQuizMatch(BuildContext context, FlutterFlowTheme ffTheme, FFAppState appState) {
+    final cat = appState.quizCat;
+    final budget = appState.quizBudget;
+    final catInfo = categoryById(cat);
+    if (catInfo == null || budget <= 0) return const SizedBox();
+
+    final matched = filteredPlans(
+      cat: cat, sort: 'match', filters: [], query: '',
+      budget: budget, currentBill: appState.currentBill(cat),
+    ).take(1).toList();
+    if (matched.isEmpty) return const SizedBox();
+
+    final plan = matched.first;
+    final save = planSaveYear(plan, appState.currentBill(cat));
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text('🎯', style: TextStyle(fontSize: 16)),
+              const SizedBox(width: 6),
+              Expanded(child: Text('התאמת השאלון — ${catInfo.name} עד ₪$budget', style: ffTheme.titleLarge)),
+              GestureDetector(
+                onTap: () {
+                  appState.setCategory(cat);
+                  context.goNamed('Results');
+                },
+                child: Text('הכל ←', style: ffTheme.labelSmall.override(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          GestureDetector(
+            onTap: () {
+              appState.viewPlan(plan.id);
+              context.pushNamed('PlanDetail', pathParameters: {'planId': plan.id});
+            },
+            child: Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: ffTheme.secondary, width: 2),
+                boxShadow: [BoxShadow(color: ffTheme.secondary.withOpacity(0.2), blurRadius: 12, offset: const Offset(0, 3))],
+              ),
+              child: Row(
+                children: [
+                  LogoWidget(provider: plan.provider, size: 48),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(plan.provider, style: ffTheme.titleSmall),
+                        Text(plan.plan, style: ffTheme.bodySmall, maxLines: 1, overflow: TextOverflow.ellipsis),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(color: ffTheme.accent1, borderRadius: BorderRadius.circular(5)),
+                              child: Text('✓ בתקציב', style: ffTheme.labelSmall.override(color: ffTheme.success, fontSize: 10, fontWeight: FontWeight.w700)),
+                            ),
+                            if (save > 0) ...[
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(color: ffTheme.secondary, borderRadius: BorderRadius.circular(5)),
+                                child: Text('חוסך ₪$save/שנה', style: ffTheme.labelSmall.override(color: const Color(0xFF0E3A26), fontSize: 10, fontWeight: FontWeight.w800)),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text('₪${plan.price}', style: ffTheme.titleLarge.override(color: ffTheme.primary)),
+                      Text(cat == 'abroad' ? 'לחבילה' : 'לחודש', style: ffTheme.labelSmall),
+                      const SizedBox(height: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        decoration: BoxDecoration(color: ffTheme.primary, borderRadius: BorderRadius.circular(8)),
+                        child: Text('בחר ←', style: ffTheme.labelSmall.override(color: Colors.white, fontWeight: FontWeight.w700)),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.08, end: 0),
+        ],
+      ),
+    );
+  }
+
   Widget _buildTopPick(BuildContext context, FlutterFlowTheme ffTheme, FFAppState appState) {
     // Find the single best plan across all categories where user has a bill set
     Plan? bestPlan;
@@ -605,7 +710,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text('₪${plan.price}', style: ffTheme.titleLarge.override(color: ffTheme.primary)),
-                      Text('לחודש', style: ffTheme.labelSmall),
+                      Text(plan.cat == 'abroad' ? 'לחבילה' : 'לחודש', style: ffTheme.labelSmall),
                       const SizedBox(height: 6),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),

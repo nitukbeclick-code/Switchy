@@ -447,6 +447,58 @@ class AccountWidget extends StatelessWidget {
                     ),
                   ],
 
+                  if (appState.userReviews.isNotEmpty) ...[
+                    const SizedBox(height: 20),
+                    Row(
+                      children: [
+                        Text('הביקורות שלי', style: ffTheme.titleLarge),
+                        const Spacer(),
+                        GestureDetector(
+                          onTap: () => context.pushNamed('Ratings'),
+                          child: Text('כל הדירוגים', style: ffTheme.labelSmall.override(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    ...appState.userReviews.take(3).map((r) {
+                      final overall = r['overall'] as int? ?? 0;
+                      final text = r['text'] as String? ?? '';
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: ffTheme.alternate),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(r['provider'] as String, style: ffTheme.labelMedium.override(fontWeight: FontWeight.w700)),
+                                  if (text.isNotEmpty) ...[
+                                    const SizedBox(height: 2),
+                                    Text(text, style: ffTheme.bodySmall.override(color: ffTheme.secondaryText), maxLines: 1, overflow: TextOverflow.ellipsis),
+                                  ],
+                                ],
+                              ),
+                            ),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: List.generate(5, (i) => Icon(
+                                i < overall ? Icons.star_rounded : Icons.star_outline_rounded,
+                                size: 14,
+                                color: ffTheme.warning,
+                              )),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+                  ],
+
                   const SizedBox(height: 20),
 
                   // Quick actions

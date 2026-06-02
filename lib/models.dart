@@ -37,7 +37,17 @@ class Plan {
 
   String get commitmentLabel => noCommit ? 'ללא התחייבות' : 'התחייבות $term חודשים';
   String get netLabel {
-    switch (net) { case 'fiber': return 'סיב אופטי'; case 'cable': return 'כבלים'; case 'satellite': return 'לוויין'; case '5g': case '5G': return '5G'; case 'lte': case 'LTE': return 'LTE'; default: return net.toUpperCase(); }
+    switch (net) {
+      case 'fiber': return 'סיב אופטי';
+      case 'cable': return 'כבלים';
+      case 'satellite': return 'לוויין';
+      case '5g': case '5G': return '5G';
+      case 'lte': case 'LTE': return 'LTE';
+      case 'esim': case 'eSIM': return 'eSIM';
+      case 'streaming': return 'סטרימינג';
+      case 'international': return 'בינלאומי';
+      default: return net.toUpperCase();
+    }
   }
 }
 

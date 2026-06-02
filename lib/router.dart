@@ -80,7 +80,7 @@ class _ScaffoldWithNav extends StatelessWidget {
   int get _activeIndex {
     if (location.startsWith('/compare')) return 1;
     if (location.startsWith('/community')) return 2;
-    if (location.startsWith('/tracker')) return 3;
+    if (location.startsWith('/tracker') || location.startsWith('/lead') || location.startsWith('/success') || location.startsWith('/porting') || location.startsWith('/chat') || location.startsWith('/callback')) return 3;
     if (location.startsWith('/account') || location.startsWith('/profile') || location.startsWith('/bills') || location.startsWith('/ratings')) return 4;
     return 0;
   }

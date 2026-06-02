@@ -154,7 +154,8 @@ class _CallbackWidgetState extends State<CallbackWidget> {
                   ));
                   return;
                 }
-                if (_phoneCtrl.text.trim().length < 9) {
+                final phoneDigits = _phoneCtrl.text.replaceAll(RegExp(r'[\s\-]'), '');
+                if (phoneDigits.length < 9 || phoneDigits.length > 10 || !phoneDigits.startsWith('0')) {
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                     content: const Text('מספר טלפון אינו תקין'),
                     backgroundColor: FlutterFlowTheme.of(context).error,

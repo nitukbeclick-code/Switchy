@@ -1240,6 +1240,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                 return GestureDetector(
                   onTap: () {
                     appState.setCategory(cat);
+                    appState.setSearch(p.name);
                     context.pushNamed('Results');
                   },
                   child: Container(

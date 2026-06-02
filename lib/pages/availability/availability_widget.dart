@@ -490,6 +490,7 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
 
   Widget _buildSummaryCard(FlutterFlowTheme ffTheme, BuildContext context) {
     final available = _filteredProviders.where((p) => p.status == 'זמין').toList();
+    if (available.isEmpty) return const SizedBox.shrink();
     final cheapest = available.where((p) => p.price > 0).map((p) => p.price).fold(9999, (a, b) => a < b ? a : b);
     final fastest = available.map((p) => _speedMbps(p.speed)).reduce((a, b) => a > b ? a : b);
 

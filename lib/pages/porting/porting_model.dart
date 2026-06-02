@@ -11,8 +11,8 @@ class PortingModel extends FlutterFlowModel<PortingWidget> {
   bool submitted = false;
 
   bool get canSubmit =>
-      phoneController.text.trim().length >= 9 &&
-      idController.text.trim().length >= 9 &&
+      phoneController.text.trim().length == 10 &&
+      idController.text.trim().length == 9 &&
       selectedProvider != null &&
       poaAccepted;
 

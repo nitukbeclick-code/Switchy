@@ -176,7 +176,7 @@ class _AuthWidgetState extends State<AuthWidget> {
                           enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.alternate)),
                           focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.primary, width: 1.5)),
                         ),
-                        validator: (v) => (v == null || v.trim().length < 9) ? 'אנא הכניסו מספר טלפון תקין' : null,
+                        validator: (v) => (v == null || v.trim().length < 10) ? 'אנא הכניסו מספר טלפון תקין' : null,
                       ).animate().fadeIn(delay: 60.ms).slideY(begin: 0.05),
 
                       const SizedBox(height: 28),
@@ -214,7 +214,9 @@ class _AuthWidgetState extends State<AuthWidget> {
                         children: [
                           Expanded(
                             child: OutlinedButton.icon(
-                              onPressed: () => _submit(),
+                              onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('כניסה עם גוגל — בקרוב'), duration: Duration(seconds: 2)),
+                              ),
                               style: OutlinedButton.styleFrom(
                                 side: BorderSide(color: ffTheme.alternate),
                                 padding: const EdgeInsets.symmetric(vertical: 13),
@@ -227,7 +229,9 @@ class _AuthWidgetState extends State<AuthWidget> {
                           const SizedBox(width: 12),
                           Expanded(
                             child: OutlinedButton.icon(
-                              onPressed: () => _submit(),
+                              onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('כניסה עם Apple — בקרוב'), duration: Duration(seconds: 2)),
+                              ),
                               style: OutlinedButton.styleFrom(
                                 side: BorderSide(color: ffTheme.alternate),
                                 padding: const EdgeInsets.symmetric(vertical: 13),

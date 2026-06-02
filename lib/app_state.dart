@@ -146,7 +146,7 @@ class FFAppState extends ChangeNotifier {
   // Tracker
   int _trackerStep = 0;
   int get trackerStep => _trackerStep;
-  void advanceTracker() { if (_trackerStep < 3) { _trackerStep++; notifyListeners(); _persist(); } }
+  void advanceTracker() { if (_trackerStep < 4) { _trackerStep++; notifyListeners(); _persist(); } }
 
   // Savings
   int _totalSavings = 0;

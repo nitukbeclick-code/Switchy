@@ -26,7 +26,7 @@ class _TrackerWidgetState extends State<TrackerWidget> {
 
     final steps = [
       _TrackerStep(icon: Icons.person_add_rounded, title: 'הצטרפות', subtitle: 'פרטים נשלחו בהצלחה', done: step >= 1),
-      _TrackerStep(icon: Icons.task_alt_rounded, title: 'אישור מסלול', subtitle: 'נציג אישר את הבקשה', done: step >= 2),
+      _TrackerStep(icon: Icons.task_alt_rounded, title: 'אישור מסלול', subtitle: 'נציג אישר את הבקשה', done: step >= 2, active: step == 1),
       _TrackerStep(icon: Icons.swap_horiz_rounded, title: 'מדריך ניתוק', subtitle: 'תהליך הניוד בעיצומו', done: step >= 3, active: step == 2),
       _TrackerStep(icon: Icons.check_circle_rounded, title: 'הושלם', subtitle: 'ברוכים הבאים לחבילה החדשה', done: step >= 4),
     ];

@@ -287,7 +287,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
       leading: Navigator.canPop(context)
           ? IconButton(
               icon: const Icon(Icons.arrow_back_ios_rounded, color: Colors.white),
-              onPressed: () => context.pop(),
+              onPressed: () => context.safePop(),
             )
           : null,
       actions: [

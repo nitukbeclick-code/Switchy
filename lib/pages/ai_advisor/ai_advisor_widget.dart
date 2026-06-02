@@ -66,7 +66,7 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
   }
 
   Future<void> _send(String text) async {
-    if (text.trim().isEmpty) return;
+    if (text.trim().isEmpty || _isTyping) return;
     _inputCtrl.clear();
     final appState = Provider.of<FFAppState>(context, listen: false);
     setState(() {
@@ -116,7 +116,7 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
     if (lower.contains('5g') || lower.contains('חמישה ג') || lower.contains('הכי מהיר')) filters.add('5g');
     if (lower.contains('ללא התחייבות') || lower.contains('בלי התחייבות') || lower.contains('גמישות') || lower.contains('חופשי') || lower.contains('לא מחויב') || lower.contains('אפשר לצאת')) filters.add('nocommit');
     if (lower.contains('סיב אופטי') || lower.contains('fiber') || lower.contains('סיב')) filters.add('fiber');
-    if (lower.contains('1000') || lower.contains('גיגה') && cat == 'internet') filters.add('1g');
+    if ((lower.contains('1000') || lower.contains('גיגה')) && cat == 'internet') filters.add('1g');
     if (lower.contains('ספורט') && cat == 'tv') filters.add('sport');
     if ((lower.contains('נטפליקס') || lower.contains('netflix')) && (cat == 'tv' || cat == 'triple')) filters.add('netflix');
 

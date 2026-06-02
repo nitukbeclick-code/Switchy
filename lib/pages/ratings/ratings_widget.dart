@@ -96,12 +96,14 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
     } else if (_sortBy == 'reviews') {
       sorted.sort((a, b) => _totalReviews(b.key).compareTo(_totalReviews(a.key)));
     } else {
-      // value = rating / price ratio
+      // value = rating / price ratio (guard against zero price)
       sorted.sort((a, b) {
         final avgA = a.value.reduce((x, y) => x + y) / a.value.length;
         final avgB = b.value.reduce((x, y) => x + y) / b.value.length;
-        final minPriceA = allPlans.where((p) => p.provider == a.key).map((p) => p.price).reduce((x, y) => x < y ? x : y);
-        final minPriceB = allPlans.where((p) => p.provider == b.key).map((p) => p.price).reduce((x, y) => x < y ? x : y);
+        final pricedA = allPlans.where((p) => p.provider == a.key && p.price > 0).map((p) => p.price);
+        final pricedB = allPlans.where((p) => p.provider == b.key && p.price > 0).map((p) => p.price);
+        final minPriceA = pricedA.isEmpty ? 1 : pricedA.reduce((x, y) => x < y ? x : y);
+        final minPriceB = pricedB.isEmpty ? 1 : pricedB.reduce((x, y) => x < y ? x : y);
         return (avgB / minPriceB).compareTo(avgA / minPriceA);
       });
     }
@@ -166,7 +168,7 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
                 return GestureDetector(
                   onTap: () {
                     appState.setCategory(primaryCat);
-                    context.goNamed('Results');
+                    context.pushNamed('Results');
                   },
                   child: Container(
                     margin: const EdgeInsets.only(bottom: 12),

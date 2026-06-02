@@ -65,7 +65,7 @@ class _ChatWidgetState extends State<ChatWidget> {
   }
 
   Future<void> _send(String text) async {
-    if (text.trim().isEmpty) return;
+    if (text.trim().isEmpty || _isTyping) return;
     _inputCtrl.clear();
     setState(() {
       _messages.add(_Msg(text: text, isUser: true, time: DateTime.now(), isRead: false));

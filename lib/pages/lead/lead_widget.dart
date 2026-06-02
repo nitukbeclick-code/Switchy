@@ -178,6 +178,8 @@ class _LeadWidgetState extends State<LeadWidget> {
                     phone: _phoneCtrl.text.trim(),
                     provider: plan?.provider ?? '',
                     planId: widget.planId,
+                    email: _emailCtrl.text.trim(),
+                    callbackTime: _callbackTime,
                   );
                   context.goNamed('Success');
                 },

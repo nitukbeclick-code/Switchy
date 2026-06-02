@@ -13,6 +13,7 @@ class FFAppState extends ChangeNotifier {
     _isLoggedIn = p.getBool('isLoggedIn') ?? false;
     _userName = p.getString('userName') ?? '';
     _userPhone = p.getString('userPhone') ?? '';
+    _userEmail = p.getString('userEmail') ?? '';
     _totalSavings = p.getInt('totalSavings') ?? 0;
     _selectedCat = p.getString('selectedCat') ?? 'cellular';
     // Bills
@@ -50,6 +51,7 @@ class FFAppState extends ChangeNotifier {
     await p.setBool('isLoggedIn', _isLoggedIn);
     await p.setString('userName', _userName);
     await p.setString('userPhone', _userPhone);
+    await p.setString('userEmail', _userEmail);
     await p.setInt('totalSavings', _totalSavings);
     await p.setString('selectedCat', _selectedCat);
     // Bills
@@ -115,22 +117,25 @@ class FFAppState extends ChangeNotifier {
   void setQuizCompleted(bool v) { _quizCompleted = v; notifyListeners(); _persist(); }
 
   // Auth
-  bool _isLoggedIn = false; String _userName = ''; String _userPhone = '';
+  bool _isLoggedIn = false; String _userName = ''; String _userPhone = ''; String _userEmail = '';
   bool get isLoggedIn => _isLoggedIn;
   String get userName => _userName;
   String get userPhone => _userPhone;
+  String get userEmail => _userEmail;
   String get firstName => _userName.isNotEmpty ? _userName.split(' ').first : 'אורח';
-  void login({required String name, required String phone}) { _isLoggedIn = true; _userName = name; _userPhone = phone; notifyListeners(); _persist(); }
-  void logout() { _isLoggedIn = false; _userName = ''; _userPhone = ''; notifyListeners(); _persist(); }
+  void login({required String name, required String phone, String email = ''}) { _isLoggedIn = true; _userName = name; _userPhone = phone; _userEmail = email; notifyListeners(); _persist(); }
+  void logout() { _isLoggedIn = false; _userName = ''; _userPhone = ''; _userEmail = ''; notifyListeners(); _persist(); }
 
   // Lead
-  String? _leadName; String? _leadPhone; String? _leadProvider; String? _leadPlanId;
+  String? _leadName; String? _leadPhone; String? _leadProvider; String? _leadPlanId; String? _leadEmail; String? _leadCallbackTime;
   String? get leadName => _leadName;
   String? get leadPhone => _leadPhone;
   String? get leadProvider => _leadProvider;
   String? get leadPlanId => _leadPlanId;
-  void submitLead({required String name, required String phone, required String provider, required String planId}) {
-    _leadName = name; _leadPhone = phone; _leadProvider = provider; _leadPlanId = planId;
+  String? get leadEmail => _leadEmail;
+  String? get leadCallbackTime => _leadCallbackTime;
+  void submitLead({required String name, required String phone, required String provider, required String planId, String email = '', String callbackTime = 'now'}) {
+    _leadName = name; _leadPhone = phone; _leadProvider = provider; _leadPlanId = planId; _leadEmail = email; _leadCallbackTime = callbackTime;
     _trackerStep = 1; _totalSavings += 540; notifyListeners(); _persist();
   }
 

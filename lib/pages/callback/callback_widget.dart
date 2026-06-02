@@ -144,7 +144,26 @@ class _CallbackWidgetState extends State<CallbackWidget> {
             FFButtonWidget(
               text: _isLoading ? 'שולח...' : 'בקש שיחה חוזרת',
               onPressed: _isLoading ? () async {} : () async {
-                if (_nameCtrl.text.isEmpty || _phoneCtrl.text.isEmpty) return;
+                if (_nameCtrl.text.trim().isEmpty || _phoneCtrl.text.trim().isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: const Text('נא למלא שם ומספר טלפון'),
+                    backgroundColor: FlutterFlowTheme.of(context).error,
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    duration: const Duration(seconds: 2),
+                  ));
+                  return;
+                }
+                if (_phoneCtrl.text.trim().length < 9) {
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: const Text('מספר טלפון אינו תקין'),
+                    backgroundColor: FlutterFlowTheme.of(context).error,
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    duration: const Duration(seconds: 2),
+                  ));
+                  return;
+                }
                 setState(() => _isLoading = true);
                 await Future.delayed(const Duration(milliseconds: 600));
                 if (!mounted) return;

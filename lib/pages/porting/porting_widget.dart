@@ -66,7 +66,7 @@ class _PortingWidgetState extends State<PortingWidget> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_rounded, color: Colors.white),
-          onPressed: () => context.pop(),
+          onPressed: () => context.safePop(),
         ),
         title: Text('בקשת ניוד מספר',
             style: ffTheme.titleLarge.override(color: Colors.white)),

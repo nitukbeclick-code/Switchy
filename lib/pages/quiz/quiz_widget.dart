@@ -29,7 +29,15 @@ class _QuizWidgetState extends State<QuizWidget> {
     _cat = appState.selectedCat;
     _lines = appState.quizLines;
     _priority = appState.quizPriority;
-    _budget = appState.quizBudget > 0 ? appState.quizBudget.toDouble() : _defaultBudget(appState.selectedCat);
+    // Pre-fill budget: prefer previous quiz budget, then current bill, then default
+    final catBill = appState.currentBill(appState.selectedCat);
+    final rawBudget = appState.quizBudget > 0
+        ? appState.quizBudget.toDouble()
+        : catBill > 0
+            ? catBill.toDouble()
+            : _defaultBudget(appState.selectedCat);
+    final cfg = _budgetConfig(appState.selectedCat);
+    _budget = rawBudget.clamp(cfg.$1, cfg.$2);
   }
 
   static const _cats = [

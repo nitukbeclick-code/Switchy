@@ -716,9 +716,9 @@ class _ResultsWidgetState extends State<ResultsWidget> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('עדכן חשבון חודשי', style: ffTheme.titleLarge),
+            Text(cat == 'abroad' ? 'עדכן תקציב לחבילה' : 'עדכן חשבון חודשי', style: ffTheme.titleLarge),
             const SizedBox(height: 6),
-            Text('הכניסו את הסכום שאתם משלמים כרגע', style: ffTheme.bodySmall.override(color: ffTheme.secondaryText)),
+            Text(cat == 'abroad' ? 'הכניסו את התקציב שלכם לחבילת חו"ל' : 'הכניסו את הסכום שאתם משלמים כרגע', style: ffTheme.bodySmall.override(color: ffTheme.secondaryText)),
             const SizedBox(height: 16),
             TextField(
               controller: ctrl,

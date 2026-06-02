@@ -27,6 +27,7 @@ class FFAppState extends ChangeNotifier {
     _quizBudget = p.getInt('quizBudget') ?? 90;
     _quizPriority = p.getString('quizPriority') ?? 'price';
     _quizLines = p.getInt('quizLines') ?? 1;
+    _quizCat = p.getString('quizCat') ?? 'cellular';
     // Lead & tracker
     _leadPlanId = p.getString('leadPlanId');
     _leadProvider = p.getString('leadProvider');
@@ -61,6 +62,7 @@ class FFAppState extends ChangeNotifier {
     await p.setInt('quizBudget', _quizBudget);
     await p.setString('quizPriority', _quizPriority);
     await p.setInt('quizLines', _quizLines);
+    await p.setString('quizCat', _quizCat);
     // Lead & tracker
     if (_leadPlanId != null) await p.setString('leadPlanId', _leadPlanId!);
     if (_leadProvider != null) await p.setString('leadProvider', _leadProvider!);
@@ -106,15 +108,17 @@ class FFAppState extends ChangeNotifier {
   void setCurrentBill(String cat, int v) { _currentBills[cat] = v.clamp(0, 2000); notifyListeners(); _persist(); }
 
   // Quiz
-  int _quizLines = 1; String _quizPriority = 'price'; int _quizBudget = 90; bool _quizCompleted = false;
+  int _quizLines = 1; String _quizPriority = 'price'; int _quizBudget = 90; bool _quizCompleted = false; String _quizCat = 'cellular';
   int get quizLines => _quizLines;
   String get quizPriority => _quizPriority;
   int get quizBudget => _quizBudget;
   bool get quizCompleted => _quizCompleted;
+  String get quizCat => _quizCat;
   void setQuizLines(int v) { _quizLines = v; notifyListeners(); _persist(); }
   void setQuizPriority(String v) { _quizPriority = v; notifyListeners(); _persist(); }
   void setQuizBudget(int v) { _quizBudget = v; notifyListeners(); _persist(); }
   void setQuizCompleted(bool v) { _quizCompleted = v; notifyListeners(); _persist(); }
+  void setQuizCat(String v) { _quizCat = v; notifyListeners(); _persist(); }
 
   // Auth
   bool _isLoggedIn = false; String _userName = ''; String _userPhone = ''; String _userEmail = '';

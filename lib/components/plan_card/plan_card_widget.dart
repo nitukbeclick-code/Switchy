@@ -23,6 +23,7 @@ class PlanCardWidget extends StatelessWidget {
 
   String? _quizMatch(FFAppState appState) {
     if (!appState.quizCompleted || appState.quizBudget <= 0) return null;
+    if (plan.cat != appState.quizCat) return null;
     final diff = plan.price - appState.quizBudget;
     if (diff <= 0) return '✓ מתאים לתקציב';
     if (diff <= 20) return 'קרוב לתקציב';

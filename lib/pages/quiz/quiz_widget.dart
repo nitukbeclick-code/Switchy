@@ -450,6 +450,7 @@ class _QuizWidgetState extends State<QuizWidget> {
       appState.setQuizLines(_lines);
       appState.setQuizPriority(_priority);
       appState.setQuizBudget(_budget.round());
+      appState.setQuizCat(_cat);
       appState.setQuizCompleted(true);
       appState.clearFilters();
       // Apply primary priority

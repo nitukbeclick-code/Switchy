@@ -189,11 +189,11 @@ class _Page1State extends State<_Page1> {
           const SizedBox(height: 28),
           Row(
             children: [
-              _StatChip(value: '200+', label: 'מסלולים', ffTheme: ffTheme),
+              _StatChip(value: '100+', label: 'מסלולים', ffTheme: ffTheme),
               const SizedBox(width: 10),
               _StatChip(value: '60K', label: 'לקוחות', ffTheme: ffTheme),
               const SizedBox(width: 10),
-              _StatChip(value: '₪49', label: 'מינימום', ffTheme: ffTheme),
+              _StatChip(value: '₪15', label: 'מחיר מינימום', ffTheme: ffTheme),
             ],
           ).animate().fadeIn(delay: 350.ms).slideY(begin: 0.1, end: 0),
           const SizedBox(height: 20),

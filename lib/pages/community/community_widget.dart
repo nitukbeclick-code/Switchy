@@ -27,7 +27,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
   final Set<String> _bookmarked = {};
   final Map<String, List<_Reply>> _replyData = {};
 
-  static const _channels = ['הכל', 'המלצות', 'סלולר', 'אינטרנט', 'עזרה בניתוק'];
+  static const _channels = ['הכל', 'המלצות', 'סלולר', 'אינטרנט', 'טלוויזיה', 'חו"ל', 'חבילה משולבת', 'עזרה בניתוק'];
 
   // Preset replies for key posts
   static final _mockReplies = <String, List<_Reply>>{
@@ -52,6 +52,31 @@ class _CommunityWidgetState extends State<CommunityWidget> {
     '10': [
       _Reply(author: 'מיכל ביטון', avatar: 'מ', text: 'וואו 3 שעות?! אצלי לקח 6 שעות אבל גם היה חלק', time: _ago(days: 4, hours: 2)),
       _Reply(author: 'נועה גרין', avatar: 'נ', text: 'אצלי לקח יום וחצי אבל אולי כי עברתי בסוף שבוע', time: _ago(days: 4, hours: 3)),
+    ],
+    '22': [
+      _Reply(author: 'ברק כהן', avatar: 'ב', text: 'ה-FreeTV עובד על כל טלוויזיה חכמה? גם Samsung?', time: _ago(days: 4, hours: 3)),
+      _Reply(author: 'שירה מנצ׳ר', avatar: 'ש', text: 'כן! Samsung, LG, פיירסטיק, כל דבר עם אנדרואיד. הורדה ישירה מ-Google Play', time: _ago(days: 4, hours: 4)),
+      _Reply(author: 'לי עמר', avatar: 'ל', text: 'מה עם VOD? סרטים חדשים?', time: _ago(days: 4, hours: 5)),
+    ],
+    '26': [
+      _Reply(author: 'אפרת נחמיאס', avatar: 'א', text: 'שמחתי לשמוע! הזמנתי בדיוק את אותה חבילה לנסיעה שלי', time: _ago(days: 1, hours: 4)),
+      _Reply(author: 'גיל מירון', avatar: 'ג', text: 'תהנה! תזכור להפעיל את ה-eSIM לפני שממריאים', time: _ago(days: 1, hours: 5)),
+      _Reply(author: 'ידידיה לב', avatar: 'י', text: 'כמה זמן לקח ההגדרה?', time: _ago(days: 1, hours: 6)),
+    ],
+    '28': [
+      _Reply(author: 'שרה גולד', avatar: 'ש', text: 'אותו דבר בדיוק! שילמתי להוט ₪150 לשבועיים. לא שוב!', time: _ago(days: 10, hours: 2)),
+      _Reply(author: 'אמנון כץ', avatar: 'א', text: 'הבעיה עם ₪/יום שלא מרגישים את הצטברות. בסוף הסכום מדהים', time: _ago(days: 10, hours: 3)),
+      _Reply(author: 'ירון בן-אור', avatar: 'י', text: 'פרטנר גם ₪8 ליום — עדיין יקר לעומת Airalo', time: _ago(days: 10, hours: 4)),
+    ],
+    '33': [
+      _Reply(author: 'צביה נחמן', avatar: 'צ', text: 'ניסיתי — פלאפון הציעו לי ₪49 אחרי שאמרתי שאני עובר לגולן 😂', time: _ago(days: 5, hours: 1)),
+      _Reply(author: 'גבי מרקוס', avatar: 'ג', text: 'עבדתי! גם אני קיבלתי מחיר מיוחד. תודה על הטיפ!', time: _ago(days: 5, hours: 2)),
+      _Reply(author: 'יפה שמש', avatar: 'י', text: 'מה אם לא מתגמשים? בכל זאת לעבור?', time: _ago(days: 5, hours: 3)),
+    ],
+    '34': [
+      _Reply(author: 'חיים יוסף', avatar: 'ח', text: 'זה אמיתי?! ₪80 ל-3 קווים??', time: _ago(days: 6, hours: 2)),
+      _Reply(author: 'מרים אזולאי', avatar: 'מ', text: 'כן! ₪26.67 לקו בממוצע. עשינו דרך חוסך ב-30 דקות', time: _ago(days: 6, hours: 3)),
+      _Reply(author: 'תמר ששון', avatar: 'ת', text: 'הצטרפתי! חסכתי ₪1,200 לשנה על 2 קווים', time: _ago(days: 6, hours: 4)),
     ],
   };
 

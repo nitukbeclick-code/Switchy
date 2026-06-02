@@ -48,6 +48,12 @@ class FFAppState extends ChangeNotifier {
       final list = jsonDecode(reviewsJson) as List<dynamic>;
       _userReviews.addAll(list.cast<Map<String, dynamic>>());
     }
+    // Community posts
+    final postsJson = p.getString('communityPosts');
+    if (postsJson != null) {
+      final list = jsonDecode(postsJson) as List<dynamic>;
+      _communityPosts.addAll(list.cast<Map<String, dynamic>>());
+    }
     // Preferences
     _prefPriceAlerts = p.getBool('prefPriceAlerts') ?? true;
     _prefRequestUpdates = p.getBool('prefRequestUpdates') ?? true;
@@ -81,6 +87,7 @@ class FFAppState extends ChangeNotifier {
     await p.setStringList('watchedPlans', _watchedPlans.toList());
     await p.setStringList('recentlyViewed', _recentlyViewed);
     await p.setString('userReviews', jsonEncode(_userReviews));
+    await p.setString('communityPosts', jsonEncode(_communityPosts));
     // Preferences
     await p.setBool('prefPriceAlerts', _prefPriceAlerts);
     await p.setBool('prefRequestUpdates', _prefRequestUpdates);
@@ -215,6 +222,16 @@ class FFAppState extends ChangeNotifier {
   List<Map<String, dynamic>> get userReviews => List.unmodifiable(_userReviews);
   bool hasReviewedProvider(String provider) => _userReviews.any((r) => r['provider'] == provider);
   Map<String, dynamic>? reviewFor(String provider) => _userReviews.where((r) => r['provider'] == provider).firstOrNull;
+  // Community posts (user-submitted, persisted)
+  final List<Map<String, dynamic>> _communityPosts = [];
+  List<Map<String, dynamic>> get communityPosts => List.unmodifiable(_communityPosts);
+  void addCommunityPost({required String id, required String author, required String avatar, required String channel, required String text}) {
+    _communityPosts.insert(0, {'id': id, 'author': author, 'avatar': avatar, 'channel': channel, 'text': text, 'ts': DateTime.now().toIso8601String()});
+    if (_communityPosts.length > 50) _communityPosts.removeLast();
+    notifyListeners();
+    _persist();
+  }
+
   void addReview({required String provider, required int overall, required Map<String, int> subRatings, required String text}) {
     _userReviews.removeWhere((r) => r['provider'] == provider);
     _userReviews.insert(0, {

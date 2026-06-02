@@ -195,8 +195,45 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
     } else if (lower.contains('כמה') && (lower.contains('עולה') || lower.contains('עלות') || lower.contains('מחיר'))) {
       int _minPrice(String c) => plansByCat(c).map((p) => p.price).fold(9999, (a, b) => a < b ? a : b);
       reply = 'אפשר לכוון אותך! 😊\n\nאיזה שירות אתם מחפשים?\n• 📱 סלולר — מ-₪${_minPrice('cellular')}/חודש\n• 🌐 אינטרנט — מ-₪${_minPrice('internet')}/חודש (מבצע)\n• 📺 טלוויזיה — מ-₪${_minPrice('tv')}/חודש\n• 🏠 חבילה משולבת — מ-₪${_minPrice('triple')}/חודש\n• ✈️ חו"ל — מ-₪${_minPrice('abroad')}/חבילה\n\nספרו לי עם איזו קטגוריה ואמצא את הכי זול!';
+    } else if (lower.contains('חשבון') || lower.contains('כמה אני משלם') || lower.contains('כמה משלם') || lower.contains('המחיר שלי') || lower.contains('נוכחי')) {
+      final bills = ['cellular', 'internet', 'tv', 'triple', 'abroad'].where((c) => appState.currentBill(c) > 0);
+      if (bills.isEmpty) {
+        reply = 'לא הגדרת עדיין את החשבונות שלך.\nעבור לדף "החשבונות שלי" ↓ כדי להכניס כמה אתה משלם — ואמצא כמה תוכל לחסוך! 💡';
+      } else {
+        final names = {'cellular': 'סלולר', 'internet': 'אינטרנט', 'tv': 'טלוויזיה', 'triple': 'חבילה משולבת', 'abroad': 'חו"ל'};
+        final lines = bills.map((c) => '• ${names[c]}: ₪${appState.currentBill(c)}').join('\n');
+        reply = 'החשבונות השמורים שלך:\n$lines\n\nרוצה לבדוק כמה תחסוך בכל קטגוריה? אמור לי!';
+      }
+    } else if (lower.contains('כמה אחסוך') || lower.contains('חיסכון שלי') || lower.contains('כמה חוסך') || lower.contains('כמה אפשר לחסוך')) {
+      final bills = ['cellular', 'internet', 'tv', 'triple'];
+      final savings = <String>[];
+      for (final c in bills) {
+        final bill = appState.currentBill(c);
+        if (bill <= 0) continue;
+        final best = filteredPlans(cat: c, sort: 'save', filters: [], query: '', budget: 9999, currentBill: bill).firstOrNull;
+        if (best == null) continue;
+        final save = ((bill - best.price) * 12).clamp(0, 999999);
+        if (save > 0) {
+          final names = {'cellular': 'סלולר', 'internet': 'אינטרנט', 'tv': 'טלוויזיה', 'triple': 'חבילה משולבת'};
+          savings.add('• ${names[c]}: ₪$save/שנה עם ${best.provider}');
+        }
+      }
+      if (savings.isEmpty) {
+        reply = 'לא הגדרת חשבונות עדיין. עבור ל"החשבונות שלי" כדי להכניס כמה אתה משלם.';
+      } else {
+        reply = '💰 פוטנציאל החיסכון שלך:\n\n${savings.join('\n')}\n\nרוצה לראות פרטים על מסלול מסוים?';
+      }
+    } else if (lower.contains('רשימת מעקב') || lower.contains('מעקב שלי') || lower.contains('שמרתי') || lower.contains('מסלולים שמרתי')) {
+      final watched = appState.watchedPlans;
+      if (watched.isEmpty) {
+        reply = 'אין לך מסלולים במעקב עדיין.\nכנס לדף פרטי מסלול ולחץ על 🔔 כדי לעקוב אחרי עדכוני מחיר!';
+      } else {
+        final plans = watched.map((id) => planById(id)).whereType<Plan>().take(5).toList();
+        final lines = plans.map((p) => '• ${p.provider} — ${p.plan} ₪${p.price}').join('\n');
+        reply = '🔔 מסלולים במעקב שלך:\n\n$lines\n\nרוצה שאמצא משהו יותר זול באחת הקטגוריות?';
+      }
     } else {
-      reply = 'לא הצלחתי להבין בדיוק. נסו לכתוב למשל:\n\n• "מצא סלולר זול ללא התחייבות"\n• "אינטרנט גיגה בזול"\n• "חבילת חו"ל לאירופה"\n• "5G בפחות מ-₪60"\n• "טלוויזיה עם ספורט"';
+      reply = 'לא הצלחתי להבין בדיוק. נסו לכתוב למשל:\n\n• "מצא סלולר זול ללא התחייבות"\n• "אינטרנט גיגה בזול"\n• "חבילת חו"ל לאירופה"\n• "5G בפחות מ-₪60"\n• "כמה אני חוסך"';
     }
 
     if (mounted) {
@@ -235,9 +272,9 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
       '📺 טלוויזיה + ספורט',
       '🏠 חבילה משולבת',
       '🔍 חבילות גולן',
-      '🔍 חבילות פלאפון',
       '🔍 חבילות פרטנר',
-      '🧮 כמה עולה?',
+      '💳 כמה אני משלם?',
+      '💰 כמה אחסוך?',
     ];
 
     return Scaffold(

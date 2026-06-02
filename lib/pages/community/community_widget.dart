@@ -88,7 +88,18 @@ class _CommunityWidgetState extends State<CommunityWidget> {
   @override
   void initState() {
     super.initState();
-    _posts = List.from(communityPosts);
+    final appState = FFAppState();
+    final persisted = appState.communityPosts.map((m) => CommunityPost(
+      id: m['id'] as String,
+      author: m['author'] as String,
+      avatar: m['avatar'] as String,
+      channel: m['channel'] as String,
+      text: m['text'] as String,
+      likes: 0,
+      replies: 0,
+      timestamp: DateTime.tryParse(m['ts'] as String? ?? '') ?? DateTime.now(),
+    )).toList();
+    _posts = [...persisted, ...communityPosts];
     _replyData.addAll(_mockReplies);
     _onlineTimer = Timer.periodic(const Duration(seconds: 12), (_) {
       if (mounted) setState(() => _onlineCount = 820 + (DateTime.now().millisecond % 41) - 20);
@@ -375,11 +386,15 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                     onPressed: () {
                       final text = ctrl.text.trim();
                       if (text.isEmpty) return;
+                      final id = DateTime.now().millisecondsSinceEpoch.toString();
+                      final author = appState.isLoggedIn ? appState.firstName : 'אורח';
+                      final avatar = appState.isLoggedIn && appState.firstName.isNotEmpty ? appState.firstName[0] : 'א';
+                      appState.addCommunityPost(id: id, author: author, avatar: avatar, channel: selectedChannel, text: text);
                       setState(() {
                         _posts.insert(0, CommunityPost(
-                          id: DateTime.now().millisecondsSinceEpoch.toString(),
-                          author: appState.isLoggedIn ? appState.firstName : 'אורח',
-                          avatar: appState.isLoggedIn && appState.firstName.isNotEmpty ? appState.firstName[0] : 'א',
+                          id: id,
+                          author: author,
+                          avatar: avatar,
                           channel: selectedChannel,
                           text: text,
                           likes: 0,

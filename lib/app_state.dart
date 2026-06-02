@@ -54,6 +54,9 @@ class FFAppState extends ChangeNotifier {
       final list = jsonDecode(postsJson) as List<dynamic>;
       _communityPosts.addAll(list.cast<Map<String, dynamic>>());
     }
+    // Liked posts
+    final liked = p.getStringList('likedPosts') ?? [];
+    _likedPosts.addAll(liked);
     // Preferences
     _prefPriceAlerts = p.getBool('prefPriceAlerts') ?? true;
     _prefRequestUpdates = p.getBool('prefRequestUpdates') ?? true;
@@ -88,6 +91,7 @@ class FFAppState extends ChangeNotifier {
     await p.setStringList('recentlyViewed', _recentlyViewed);
     await p.setString('userReviews', jsonEncode(_userReviews));
     await p.setString('communityPosts', jsonEncode(_communityPosts));
+    await p.setStringList('likedPosts', _likedPosts.toList());
     // Preferences
     await p.setBool('prefPriceAlerts', _prefPriceAlerts);
     await p.setBool('prefRequestUpdates', _prefRequestUpdates);
@@ -225,6 +229,16 @@ class FFAppState extends ChangeNotifier {
   // Community posts (user-submitted, persisted)
   final List<Map<String, dynamic>> _communityPosts = [];
   List<Map<String, dynamic>> get communityPosts => List.unmodifiable(_communityPosts);
+  // Liked posts
+  final Set<String> _likedPosts = {};
+  bool hasLiked(String postId) => _likedPosts.contains(postId);
+  void toggleLike(String postId) {
+    if (_likedPosts.contains(postId)) _likedPosts.remove(postId);
+    else _likedPosts.add(postId);
+    notifyListeners();
+    _persist();
+  }
+
   void addCommunityPost({required String id, required String author, required String avatar, required String channel, required String text}) {
     _communityPosts.insert(0, {'id': id, 'author': author, 'avatar': avatar, 'channel': channel, 'text': text, 'ts': DateTime.now().toIso8601String()});
     if (_communityPosts.length > 50) _communityPosts.removeLast();

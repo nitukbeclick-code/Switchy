@@ -61,6 +61,12 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
       allPlans.where((p) => p.provider == provider).fold(0, (s, p) => s + p.reviews);
 
   double _subRatingValue(String provider, String key) {
+    final appState = FFAppState();
+    final review = appState.reviewFor(provider);
+    if (review != null) {
+      final v = review[key] as int? ?? 0;
+      if (v > 0) return v.toDouble();
+    }
     final seed = provider.codeUnits.fold(0, (s, c) => s + c);
     switch (key) {
       case 'price': return (3.5 + (seed % 15) / 10).clamp(3.0, 5.0);

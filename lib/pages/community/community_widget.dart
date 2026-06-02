@@ -724,7 +724,6 @@ class _PostCard extends StatefulWidget {
 }
 
 class _PostCardState extends State<_PostCard> {
-  bool _liked = false;
   bool _bouncing = false;
 
   String _timeAgo(DateTime t) {
@@ -884,16 +883,21 @@ class _PostCardState extends State<_PostCard> {
             child: Row(
               children: [
                 // Like
-                _ActionBtn(
-                  icon: _liked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                  label: '${post.likes + (_liked ? 1 : 0)}',
-                  color: _liked ? Colors.red : ffTheme.secondaryText,
-                  scale: _bouncing ? 1.4 : 1.0,
-                  onTap: () {
-                    setState(() { _liked = !_liked; _bouncing = true; });
-                    Future.delayed(const Duration(milliseconds: 400), () { if (mounted) setState(() => _bouncing = false); });
-                  },
-                ),
+                Builder(builder: (ctx) {
+                  final appState = Provider.of<FFAppState>(ctx, listen: false);
+                  final liked = appState.hasLiked(post.id);
+                  return _ActionBtn(
+                    icon: liked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                    label: '${post.likes + (liked ? 1 : 0)}',
+                    color: liked ? Colors.red : ffTheme.secondaryText,
+                    scale: _bouncing ? 1.4 : 1.0,
+                    onTap: () {
+                      appState.toggleLike(post.id);
+                      setState(() { _bouncing = true; });
+                      Future.delayed(const Duration(milliseconds: 400), () { if (mounted) setState(() => _bouncing = false); });
+                    },
+                  );
+                }),
                 const SizedBox(width: 4),
                 // Reply
                 _ActionBtn(

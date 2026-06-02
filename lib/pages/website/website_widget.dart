@@ -406,6 +406,10 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
                       child: TextButton(
                         onPressed: () {
                           appState.setCategory(_activeCat);
+                          final catBillVal = _catBills[_activeCat];
+                          if (catBillVal != null && catBillVal > 0) {
+                            appState.setCurrentBill(_activeCat, catBillVal.round());
+                          }
                           context.goNamed('Home');
                         },
                         child: Text('ראה את כל המסלולים →', style: ffTheme.titleSmall.override(color: ffTheme.primary)),
@@ -632,7 +636,15 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
               ),
             ),
             GestureDetector(
-              onTap: () => context.goNamed('Home'),
+              onTap: () {
+                final appState = Provider.of<FFAppState>(context, listen: false);
+                appState.setCategory(cat);
+                final catBillVal = _catBills[cat];
+                if (catBillVal != null && catBillVal > 0) {
+                  appState.setCurrentBill(cat, catBillVal.round());
+                }
+                context.goNamed('Home');
+              },
               child: Container(
                 margin: const EdgeInsets.only(left: 16),
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),

@@ -48,6 +48,15 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
     return _allProviders.where((p) => p.tech == _techFilter).toList();
   }
 
+  Future<void> _restaggerReveal() async {
+    final providers = _filteredProviders;
+    for (var i = 1; i <= providers.length; i++) {
+      await Future.delayed(const Duration(milliseconds: 280));
+      if (!mounted) return;
+      setState(() => _revealedCount = i);
+    }
+  }
+
   Future<void> _check() async {
     if (_cityCtrl.text.trim().isEmpty) return;
     setState(() { _loading = true; _checked = false; _revealedCount = 0; });
@@ -140,15 +149,19 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
                 const SizedBox(height: 4),
                 Text('גלה אילו ספקי אינטרנט פעילים באזורך', style: GoogleFonts.assistant(fontSize: 13, color: Colors.white70)),
                 const SizedBox(height: 14),
-                Row(
-                  children: [
-                    _StatPill(value: '8', label: 'ספקים', ffTheme: ffTheme),
-                    const SizedBox(width: 10),
-                    _StatPill(value: '1Gb', label: 'מהירות מקס', ffTheme: ffTheme),
-                    const SizedBox(width: 10),
-                    _StatPill(value: '₪79', label: 'ממחיר', ffTheme: ffTheme),
-                  ],
-                ),
+                Builder(builder: (_) {
+                  final avail = _allProviders.where((p) => p.status == 'זמין' && p.price > 0).toList();
+                  final cheapest = avail.isEmpty ? 0 : avail.map((p) => p.price).reduce((a, b) => a < b ? a : b);
+                  return Row(
+                    children: [
+                      _StatPill(value: '${_allProviders.length}', label: 'ספקים', ffTheme: ffTheme),
+                      const SizedBox(width: 10),
+                      _StatPill(value: '1Gb', label: 'מהירות מקס', ffTheme: ffTheme),
+                      const SizedBox(width: 10),
+                      _StatPill(value: '₪$cheapest', label: 'ממחיר', ffTheme: ffTheme),
+                    ],
+                  );
+                }),
               ],
             ),
           ),
@@ -256,7 +269,10 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
           children: filters.map((f) {
             final selected = _techFilter == f;
             return GestureDetector(
-              onTap: () => setState(() { _techFilter = f; if (_checked) _revealedCount = 0; }),
+              onTap: () {
+                setState(() { _techFilter = f; _revealedCount = 0; });
+                if (_checked) _restaggerReveal();
+              },
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),

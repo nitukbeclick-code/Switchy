@@ -262,7 +262,7 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
                       const _StatDivider(),
                       _AnimatedStat(end: 850, prefix: '₪', suffix: '', label: 'חיסכון ממוצע'),
                       const _StatDivider(),
-                      _AnimatedStat(end: 200, prefix: '', suffix: '+', label: 'מסלולים'),
+                      _AnimatedStat(end: 100, prefix: '', suffix: '+', label: 'מסלולים'),
                       const _StatDivider(),
                       const _Stat(value: '4.8★', label: 'דירוג'),
                     ],

@@ -188,7 +188,7 @@ class AccountWidget extends StatelessWidget {
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                 decoration: BoxDecoration(
-                                  color: appState.trackerStep >= 3 ? ffTheme.accent1 : ffTheme.accent1,
+                                  color: appState.trackerStep >= 4 ? ffTheme.success.withOpacity(0.1) : ffTheme.accent1,
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Text(

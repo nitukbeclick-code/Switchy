@@ -18,7 +18,6 @@ class RatingsWidget extends StatefulWidget {
 class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProviderStateMixin {
   // Review form state
   String? _selectedProvider;
-  String _reviewCat = 'cellular';
   final _reviewCtrl = TextEditingController();
   bool _submitted = false;
   final Map<String, int> _subRatings = {'price': 0, 'service': 0, 'coverage': 0, 'speed': 0};
@@ -28,8 +27,8 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
   String _sortBy = 'rating'; // 'rating' | 'reviews' | 'value'
   late TabController _tabCtrl;
 
-  static const _cats = ['הכל', 'סלולר', 'אינטרנט', 'טלוויזיה', 'חו"ל'];
-  static const _catIds = {'סלולר': 'cellular', 'אינטרנט': 'internet', 'טלוויזיה': 'tv', 'חו"ל': 'abroad'};
+  static const _cats = ['הכל', 'סלולר', 'אינטרנט', 'טלוויזיה', 'חבילה', 'חו"ל'];
+  static const _catIds = {'סלולר': 'cellular', 'אינטרנט': 'internet', 'טלוויזיה': 'tv', 'חבילה': 'triple', 'חו"ל': 'abroad'};
   static const _subLabels = {'price': 'מחיר', 'service': 'שירות', 'coverage': 'כיסוי', 'speed': 'מהירות'};
 
   @override

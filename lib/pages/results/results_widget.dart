@@ -62,7 +62,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
       sort: appState.sortMode,
       filters: appState.activeFilters,
       query: appState.searchQuery,
-      budget: appState.quizCompleted ? appState.quizBudget : 9999,
+      budget: (appState.quizCompleted && appState.quizCat == cat) ? appState.quizBudget : 9999,
       currentBill: bill,
     );
     final plans = _providerFilter.isEmpty
@@ -358,8 +358,8 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                 ),
               ),
 
-              // Quiz context banner
-              if (appState.quizCompleted)
+              // Quiz context banner (only for the matching quiz category)
+              if (appState.quizCompleted && appState.quizCat == cat)
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),

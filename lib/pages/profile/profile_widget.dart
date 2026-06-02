@@ -571,7 +571,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
         spacing: 8,
         runSpacing: 6,
         children: [
-          _QuizChip(text: _catLabel(appState.selectedCat), ffTheme: ffTheme),
+          _QuizChip(text: _catLabel(appState.quizCat), ffTheme: ffTheme),
           _QuizChip(text: 'תקציב ₪${appState.quizBudget}', ffTheme: ffTheme),
           _QuizChip(text: _priorityLabel(appState.quizPriority), ffTheme: ffTheme),
         ],

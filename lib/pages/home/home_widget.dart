@@ -70,6 +70,9 @@ class _HomeWidgetState extends State<HomeWidget> {
               // ── 6. AI advisor card ─────────────────────────────────────────
               SliverToBoxAdapter(child: _buildAIAdvisor(context, ffTheme)),
 
+              // ── 6b. Community highlights ──────────────────────────────────
+              SliverToBoxAdapter(child: _buildCommunityHighlights(context, ffTheme)),
+
               // ── 7. Tools quick-action row ──────────────────────────────────
               SliverToBoxAdapter(child: _buildToolsRow(context, ffTheme)),
 
@@ -773,6 +776,116 @@ class _HomeWidgetState extends State<HomeWidget> {
     ).animate().fadeIn(delay: 400.ms);
   }
 
+  static const _communityPreviews = [
+    _CommunityPreview(user: 'דן', channel: 'סלולר', text: 'מי עדיף — גולן או רמי לוי ב-2026?', likes: 48, replies: 23),
+    _CommunityPreview(user: 'מ', channel: 'אינטרנט', text: 'עברתי לסלקום גיגה ב-₪89 — כדאי ב-100%', likes: 61, replies: 15),
+    _CommunityPreview(user: 'ש', channel: 'TV', text: 'HOT או yes? מה הכי שווה לספורט?', likes: 34, replies: 19),
+  ];
+
+  Widget _buildCommunityHighlights(BuildContext context, FlutterFlowTheme ffTheme) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Text('💬', style: TextStyle(fontSize: 18)),
+              const SizedBox(width: 6),
+              Text('חם בקהילה', style: ffTheme.titleLarge),
+              const Spacer(),
+              GestureDetector(
+                onTap: () => context.goNamed('Community'),
+                child: Text('הכל ←', style: ffTheme.labelMedium.override(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ..._communityPreviews.asMap().entries.map((e) {
+            final i = e.key;
+            final post = e.value;
+            return GestureDetector(
+              onTap: () => context.goNamed('Community'),
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: ffTheme.alternate),
+                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 6, offset: const Offset(0, 1))],
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        color: ffTheme.accent1,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Center(
+                        child: Text(
+                          post.user,
+                          style: ffTheme.labelLarge.override(color: ffTheme.primary, fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: ffTheme.accent2,
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(post.channel, style: ffTheme.labelSmall.override(color: const Color(0xFF8A6000), fontSize: 10, fontWeight: FontWeight.w700)),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(post.text, style: ffTheme.bodySmall.override(fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.favorite_rounded, size: 12, color: Colors.red.shade400),
+                            const SizedBox(width: 3),
+                            Text('${post.likes}', style: ffTheme.labelSmall.override(color: Colors.red.shade400, fontWeight: FontWeight.w600)),
+                          ],
+                        ),
+                        const SizedBox(height: 3),
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.chat_bubble_outline_rounded, size: 12, color: ffTheme.secondaryText),
+                            const SizedBox(width: 3),
+                            Text('${post.replies}', style: ffTheme.labelSmall),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ).animate(delay: (i * 60).ms).fadeIn(duration: 300.ms).slideX(begin: 0.04, end: 0),
+            );
+          }),
+        ],
+      ),
+    ).animate().fadeIn(delay: 420.ms);
+  }
+
   Widget _buildToolsRow(BuildContext context, FlutterFlowTheme ffTheme) {
     final tools = [
       _Tool(icon: '📍', label: 'בדיקת כיסוי', route: 'Availability'),
@@ -1065,4 +1178,10 @@ class _Provider {
   final String name;
   final Color color;
   final Color bg;
+}
+
+class _CommunityPreview {
+  const _CommunityPreview({required this.user, required this.channel, required this.text, required this.likes, required this.replies});
+  final String user, channel, text;
+  final int likes, replies;
 }

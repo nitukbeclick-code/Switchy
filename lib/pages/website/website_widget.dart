@@ -64,7 +64,7 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
     final catPlans = plansByCat(cat);
     if (catPlans.isEmpty || bill <= 0) return 0;
     final minPrice = catPlans.map((p) => p.price).reduce((a, b) => a < b ? a : b);
-    return ((bill - minPrice) * 12).clamp(0, 9999);
+    return ((bill - minPrice) * 12).clamp(0, 99999);
   }
 
   @override
@@ -190,7 +190,7 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
                                     max: 500,
                                     activeColor: ffTheme.secondary,
                                     inactiveColor: Colors.white24,
-                                    onChanged: (v) => setState(() => _billInput = v),
+                                    onChanged: (v) => setState(() { _billInput = v; _catBills['cellular'] = v; }),
                                   ),
                                   if (heroSaving > 0)
                                     AnimatedSwitcher(
@@ -222,6 +222,7 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
                             ElevatedButton(
                               onPressed: () {
                                 appState.setCurrentBill('cellular', _billInput.round());
+                                appState.setCategory('cellular');
                                 context.goNamed('Home');
                               },
                               style: ElevatedButton.styleFrom(

@@ -40,7 +40,7 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
     _ISP(name: 'גילת', tech: 'לוויין', status: 'זמין', speed: '100Mb', price: 149, reliability: 3.8),
     _ISP(name: 'CCC', tech: 'סיב אופטי', status: 'זמין', speed: '1Gb', price: 79, reliability: 4.2),
     _ISP(name: 'Xphone', tech: 'סיב אופטי', status: 'בקרוב', speed: '—', price: 0, reliability: 0),
-    _ISP(name: '019 מובייל', tech: 'VDSL', status: 'זמין', speed: '200Mb', price: 119, reliability: 4.0),
+    _ISP(name: '019 מובייל', tech: 'סיב אופטי', status: 'זמין', speed: '200Mb', price: 119, reliability: 4.0),
   ];
 
   List<_ISP> get _filteredProviders {

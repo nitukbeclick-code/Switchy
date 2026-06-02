@@ -26,6 +26,7 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
     'cellular': 119,
     'internet': 199,
     'tv': 89,
+    'triple': 349,
     'abroad': 0,
   };
   int _tickerIndex = 0;
@@ -39,6 +40,10 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
     {'name': 'אמיר', 'city': 'ראשל"צ', 'cat': 'סלולר', 'save': '1,080'},
     {'name': 'רחל', 'city': 'באר שבע', 'cat': 'אינטרנט', 'save': '600'},
     {'name': 'שי', 'city': 'נתניה', 'cat': 'חבילה', 'save': '1,800'},
+    {'name': 'לירון', 'city': 'אשדוד', 'cat': 'סלולר', 'save': '1,200'},
+    {'name': 'גלי', 'city': 'רמת גן', 'cat': 'אינטרנט', 'save': '780'},
+    {'name': 'עידו', 'city': 'מודיעין', 'cat': 'חבילה', 'save': '2,160'},
+    {'name': 'תמר', 'city': 'הרצליה', 'cat': 'TV', 'save': '480'},
   ];
 
   @override
@@ -75,7 +80,7 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
 
     return Scaffold(
       backgroundColor: ffTheme.background,
-      bottomNavigationBar: heroSaving > 0 ? _buildStickyBar(context, ffTheme, heroSaving) : null,
+      bottomNavigationBar: (heroSaving > 0 || catSaving > 0) ? _buildStickyBar(context, ffTheme, catSaving > heroSaving ? catSaving : heroSaving, catSaving > heroSaving ? _activeCat : 'cellular') : null,
       body: CustomScrollView(
         slivers: [
           // Sticky nav
@@ -252,14 +257,14 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
                 children: [
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: const [
-                      _Stat(value: '60,000+', label: 'לקוחות'),
-                      _StatDivider(),
-                      _Stat(value: '₪850', label: 'חיסכון ממוצע'),
-                      _StatDivider(),
-                      _Stat(value: '200+', label: 'מסלולים'),
-                      _StatDivider(),
-                      _Stat(value: '4.8★', label: 'דירוג'),
+                    children: [
+                      _AnimatedStat(end: 60000, prefix: '', suffix: '+', label: 'לקוחות'),
+                      const _StatDivider(),
+                      _AnimatedStat(end: 850, prefix: '₪', suffix: '', label: 'חיסכון ממוצע'),
+                      const _StatDivider(),
+                      _AnimatedStat(end: 200, prefix: '', suffix: '+', label: 'מסלולים'),
+                      const _StatDivider(),
+                      const _Stat(value: '4.8★', label: 'דירוג'),
                     ],
                   ),
                   const SizedBox(height: 14),
@@ -551,8 +556,8 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
   }
 
   Widget _buildCatBillInput(BuildContext context, FlutterFlowTheme ffTheme) {
-    final labels = {'cellular': 'על סלולר', 'internet': 'על אינטרנט', 'tv': 'על טלוויזיה'};
-    final maxes = {'cellular': 500.0, 'internet': 400.0, 'tv': 300.0};
+    final labels = {'cellular': 'על סלולר', 'internet': 'על אינטרנט', 'tv': 'על טלוויזיה', 'triple': 'על חבילה משולבת'};
+    final maxes = {'cellular': 500.0, 'internet': 400.0, 'tv': 300.0, 'triple': 700.0};
     final bill = _catBills[_activeCat] ?? 119;
     final max = maxes[_activeCat] ?? 500.0;
     final label = labels[_activeCat] ?? 'בקטגוריה';
@@ -587,9 +592,19 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
     );
   }
 
-  Widget _buildStickyBar(BuildContext context, FlutterFlowTheme ffTheme, int saving) {
+  static const _catLabels = {
+    'cellular': 'בסלולר',
+    'internet': 'באינטרנט',
+    'tv': 'בטלוויזיה',
+    'triple': 'בחבילה משולבת',
+    'abroad': 'בחו"ל',
+  };
+
+  Widget _buildStickyBar(BuildContext context, FlutterFlowTheme ffTheme, int saving, String cat) {
+    final catLabel = _catLabels[cat] ?? 'בתקשורת';
     return SafeArea(
-      child: Container(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
         height: 64,
         decoration: BoxDecoration(
           color: Colors.white,
@@ -604,7 +619,14 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('פוטנציאל החיסכון שלך', style: GoogleFonts.assistant(fontSize: 11, color: Colors.grey.shade500)),
-                  Text('עד ₪$saving/שנה בסלולר', style: GoogleFonts.rubik(fontSize: 14, fontWeight: FontWeight.w800, color: ffTheme.primary)),
+                  AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    child: Text(
+                      key: ValueKey('$saving$cat'),
+                      'עד ₪$saving/שנה $catLabel',
+                      style: GoogleFonts.rubik(fontSize: 14, fontWeight: FontWeight.w800, color: ffTheme.primary),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -649,6 +671,34 @@ class _TrustPill extends StatelessWidget {
           Text(label, style: GoogleFonts.assistant(fontSize: 11, color: Colors.white70, fontWeight: FontWeight.w600)),
         ],
       ),
+    );
+  }
+}
+
+class _AnimatedStat extends StatelessWidget {
+  const _AnimatedStat({required this.end, required this.prefix, required this.suffix, required this.label});
+  final int end;
+  final String prefix, suffix, label;
+
+  @override
+  Widget build(BuildContext context) {
+    final ffTheme = FlutterFlowTheme.of(context);
+    return Column(
+      children: [
+        TweenAnimationBuilder<int>(
+          tween: IntTween(begin: 0, end: end),
+          duration: const Duration(milliseconds: 1200),
+          curve: Curves.easeOut,
+          builder: (_, val, __) {
+            final display = end >= 1000 ? '${(val / 1000).round()}K' : '$val';
+            return Text(
+              '$prefix$display$suffix',
+              style: GoogleFonts.rubik(fontSize: 18, fontWeight: FontWeight.w800, color: ffTheme.primary),
+            );
+          },
+        ),
+        Text(label, style: ffTheme.labelSmall),
+      ],
     );
   }
 }

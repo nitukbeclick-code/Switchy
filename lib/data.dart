@@ -6,7 +6,7 @@ import 'models.dart';
 final List<Category> categories = [
   const Category(id: 'cellular', name: 'סלולר', icon: '📱', currentBill: 119, color: Color(0xFF15603E), planCount: 41, description: 'חבילות סלולר לנייד'),
   const Category(id: 'internet', name: 'אינטרנט', icon: '🌐', currentBill: 140, color: Color(0xFF2563EB), planCount: 21, description: 'אינטרנט ביתי מהיר'),
-  const Category(id: 'tv', name: 'טלוויזיה', icon: '📺', currentBill: 130, color: Color(0xFF7C3AED), planCount: 11, description: 'ערוצי טלוויזיה ושידורים'),
+  const Category(id: 'tv', name: 'טלוויזיה', icon: '📺', currentBill: 130, color: Color(0xFF7C3AED), planCount: 16, description: 'ערוצי טלוויזיה ושידורים'),
   const Category(id: 'triple', name: 'חבילה משולבת', icon: '🏠', currentBill: 260, color: Color(0xFFE07034), planCount: 14, description: 'אינטרנט + טלוויזיה + טלפון'),
   const Category(id: 'abroad', name: 'חבילות חו"ל', icon: '✈️', currentBill: 0, color: Color(0xFF0891B2), planCount: 11, description: 'גלישה ושיחות בחו"ל'),
 ];
@@ -130,6 +130,10 @@ const List<Plan> allPlans = [
   Plan(id: 'tv_yes_basic', cat: 'tv', provider: 'yes', net: 'satellite', plan: 'לוויין Basic 80 ערוצים', price: 89, rating: 4.0, reviews: 2800, flags: [], feats: ['80+ ערוצים', 'חדשות + סדרות + ספורט', 'ממיר HD', 'VOD בסיסי'], fine: 'ממיר מחיר השכרה 15₪/חודש'),
   Plan(id: 'tv_cellcom_basic', cat: 'tv', provider: 'סלקום TV', net: 'streaming', plan: 'סלקום TV Basic', price: 59, rating: 3.9, reviews: 1400, flags: ['nocommit'], feats: ['80+ ערוצים', 'VOD בסיסי', 'ללא ממיר', 'שידור בנייד ובטלוויזיה']),
   Plan(id: 'tv_partner_sport', cat: 'tv', provider: 'פרטנר TV', net: 'streaming', plan: 'ספורט פרמיום', price: 129, rating: 4.3, reviews: 1600, flags: ['nocommit'], feats: ['100+ ערוצים', 'Sport1 + Sport5', 'Premier League + גביע', 'NBA + Euro League', 'VOD ספורט'], highlight: true),
+  Plan(id: 'tv_partner_lite', cat: 'tv', provider: 'פרטנר TV', net: 'streaming', plan: 'Partner TV Lite', price: 49, rating: 3.9, reviews: 860, flags: ['nocommit'], feats: ['60+ ערוצים', 'ערוצי בסיס + ילדים', 'VOD בסיסי', 'עד 2 מכשירים', 'ללא ממיר']),
+  Plan(id: 'tv_hot_cinema', cat: 'tv', provider: 'HOT', net: 'cable', plan: 'HOT Cinema קולנוע פרמיום', price: 79, rating: 4.1, reviews: 1300, flags: ['fixed'], feats: ['120+ ערוצים', 'HBO Max 3 חודשים חינם', 'ערוצי קולנוע פרמיום', '2 ממירים HD', 'VOD עשיר + סדרות']),
+  Plan(id: 'tv_yes_family', cat: 'tv', provider: 'yes', net: 'satellite', plan: 'לוויין Family 120 ערוצים', price: 109, rating: 4.1, reviews: 3100, flags: [], feats: ['120+ ערוצים', 'ספורט + ילדים + קולנוע', 'ממיר HD', 'VOD + catch-up 7 ימים', 'YouTube ב-TV'], fine: 'ממיר השכרה 15₪/חודש'),
+  Plan(id: 'tv_yes_start', cat: 'tv', provider: 'yes', net: 'satellite', plan: 'לוויין Start 60 ערוצים', price: 69, rating: 3.9, reviews: 1900, flags: [], feats: ['60+ ערוצים', 'ערוצי חדשות + ילדים', 'ממיר HD בסיסי', 'VOD בסיסי'], fine: 'ממיר השכרה 15₪/חודש'),
 
   // ─── TRIPLE ──────────────────────────────────────────────────────────────────
 

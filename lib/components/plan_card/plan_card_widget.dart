@@ -21,6 +21,14 @@ class PlanCardWidget extends StatelessWidget {
   final bool showCompare;
   final bool compact;
 
+  String? _quizMatch(FFAppState appState) {
+    if (!appState.quizCompleted || appState.quizBudget <= 0) return null;
+    final diff = plan.price - appState.quizBudget;
+    if (diff <= 0) return '✓ מתאים לתקציב';
+    if (diff <= 20) return 'קרוב לתקציב';
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     final appState = context.watch<FFAppState>();
@@ -30,6 +38,7 @@ class PlanCardWidget extends StatelessWidget {
     final isWatching = appState.isWatching(plan.id);
     final displayPrice = '₪${plan.price}';
     final displayAfter = plan.hasPromo ? '₪${plan.after}' : null;
+    final matchLabel = _quizMatch(appState);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -131,6 +140,25 @@ class PlanCardWidget extends StatelessWidget {
                                   ),
                                 ),
                               ),
+                              if (matchLabel != null) ...[
+                                const SizedBox(width: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: matchLabel.startsWith('✓') ? ffTheme.success.withOpacity(0.1) : ffTheme.warning.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(color: matchLabel.startsWith('✓') ? ffTheme.success.withOpacity(0.4) : ffTheme.warning.withOpacity(0.4)),
+                                  ),
+                                  child: Text(
+                                    matchLabel,
+                                    style: GoogleFonts.rubik(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w700,
+                                      color: matchLabel.startsWith('✓') ? ffTheme.success : ffTheme.warning,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ],
                           ),
                           const SizedBox(height: 2),

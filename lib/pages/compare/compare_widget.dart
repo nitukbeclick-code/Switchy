@@ -51,7 +51,7 @@ class CompareWidget extends StatelessWidget {
         ],
       ),
       body: plans.length < 2
-          ? _EmptyState(ffTheme: ffTheme)
+          ? _EmptyState(ffTheme: ffTheme, hasPlan: plans.length == 1, firstPlan: plans.isEmpty ? null : plans.first)
           : _CompareTable(
               plans: plans,
               appState: appState,
@@ -65,39 +65,62 @@ class CompareWidget extends StatelessWidget {
 // ── Empty state ───────────────────────────────────────────────────────────────
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.ffTheme});
+  const _EmptyState({required this.ffTheme, this.hasPlan = false, this.firstPlan});
   final FlutterFlowTheme ffTheme;
+  final bool hasPlan;
+  final Plan? firstPlan;
 
   @override
   Widget build(BuildContext context) {
-    return Center(
+    return SingleChildScrollView(
       child: Padding(
-        padding: const EdgeInsets.all(40),
+        padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.compare_arrows_rounded,
-                    size: 80, color: ffTheme.alternate)
-                .animate()
-                .fadeIn(duration: 400.ms)
-                .scale(begin: const Offset(0.7, 0.7)),
+            const SizedBox(height: 20),
+            Icon(Icons.compare_arrows_rounded, size: 80, color: hasPlan ? ffTheme.primary.withOpacity(0.4) : ffTheme.alternate)
+                .animate().fadeIn(duration: 400.ms).scale(begin: const Offset(0.7, 0.7)),
             const SizedBox(height: 24),
-            Text('בחר 2–3 מסלולים מהתוצאות',
-                    style: ffTheme.headlineSmall
-                        .override(color: ffTheme.secondaryText),
+            Text(hasPlan ? 'מסלול אחד בסל' : 'בחר 2–3 מסלולים מהתוצאות',
+                    style: ffTheme.headlineSmall.override(color: ffTheme.secondaryText),
                     textAlign: TextAlign.center)
-                .animate()
-                .fadeIn(delay: 150.ms),
+                .animate().fadeIn(delay: 150.ms),
             const SizedBox(height: 12),
             Text(
-              'לחץ על + בכרטיס של כל מסלול\nלהוספה לסל ההשוואה',
-              style:
-                  ffTheme.bodyMedium.override(color: ffTheme.secondaryText),
+              hasPlan ? 'הוסף מסלול נוסף להשוואה — לחץ + בכרטיס מסלול' : 'לחץ על + בכרטיס של כל מסלול\nלהוספה לסל ההשוואה',
+              style: ffTheme.bodyMedium.override(color: ffTheme.secondaryText),
               textAlign: TextAlign.center,
             ).animate().fadeIn(delay: 200.ms),
+            if (hasPlan && firstPlan != null) ...[
+              const SizedBox(height: 20),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: ffTheme.primary.withOpacity(0.25)),
+                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8)],
+                ),
+                child: Row(
+                  children: [
+                    LogoWidget(provider: firstPlan!.provider, size: 40),
+                    const SizedBox(width: 12),
+                    Expanded(child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(firstPlan!.provider, style: ffTheme.titleSmall),
+                        Text(firstPlan!.plan, style: ffTheme.bodySmall.override(color: ffTheme.secondaryText), maxLines: 1, overflow: TextOverflow.ellipsis),
+                      ],
+                    )),
+                    Text('₪${firstPlan!.price}', style: ffTheme.titleMedium.override(color: ffTheme.primary)),
+                  ],
+                ),
+              ).animate().fadeIn(delay: 250.ms),
+            ],
             const SizedBox(height: 32),
             FFButtonWidget(
-              text: 'חזרה לתוצאות',
+              text: hasPlan ? 'הוסף מסלול נוסף ←' : 'חזרה לתוצאות',
               onPressed: () async => context.goNamed('Results'),
               options: FFButtonOptions(
                 color: ffTheme.primary,

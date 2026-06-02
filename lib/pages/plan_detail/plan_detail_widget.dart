@@ -100,7 +100,8 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                   IconButton(
                     icon: const Icon(Icons.share_rounded, color: Colors.white),
                     onPressed: () {
-                      final msg = '${plan.provider} — ${plan.plan}\n₪${plan.price}/חודש · ${plan.commitmentLabel}\n\nמצאתי את זה דרך חוסך 🎯';
+                      final unit = plan.cat == 'abroad' ? 'חבילה' : 'חודש';
+                      final msg = '${plan.provider} — ${plan.plan}\n₪${plan.price}/$unit · ${plan.commitmentLabel}\n\nמצאתי את זה דרך חוסך 🎯';
                       Clipboard.setData(ClipboardData(text: msg));
                       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                         content: const Text('פרטי המסלול הועתקו ללוח!'),
@@ -217,7 +218,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                                     const SizedBox(width: 4),
                                     Padding(
                                       padding: const EdgeInsets.only(bottom: 6),
-                                      child: Text('/חודש',
+                                      child: Text(plan.cat == 'abroad' ? '/חבילה' : '/חודש',
                                           style: ffTheme.bodySmall.override(
                                               color: ffTheme.secondaryText)),
                                     ),
@@ -312,8 +313,10 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                             _PriceRow(
                                 label: 'התחייבות',
                                 value: plan.commitmentLabel,
-                                ffTheme: ffTheme),
-                            _PriceRow(
+                                ffTheme: ffTheme,
+                                isLast: plan.cat == 'abroad'),
+                            if (plan.cat != 'abroad')
+                              _PriceRow(
                                 label: 'עלות ל-24 חודשים',
                                 value: '₪$cost24',
                                 ffTheme: ffTheme,

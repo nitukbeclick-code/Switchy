@@ -244,11 +244,12 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
                   const SizedBox(height: 20),
                   Row(
                     children: [
-                      Expanded(child: _ResultStat(label: 'חיסכון חודשי', value: '₪$_monthlySaving', color: _resultColor(ffTheme), ffTheme: ffTheme)),
-                      Expanded(child: _ResultStat(label: 'חיסכון שנתי', value: '₪$_annualSaving', color: _resultColor(ffTheme), ffTheme: ffTheme)),
+                      Expanded(child: _ResultStat(label: _selectedCat == 'abroad' ? 'חיסכון לחבילה' : 'חיסכון חודשי', value: '₪$_monthlySaving', color: _resultColor(ffTheme), ffTheme: ffTheme)),
+                      if (_selectedCat != 'abroad')
+                        Expanded(child: _ResultStat(label: 'חיסכון שנתי', value: '₪$_annualSaving', color: _resultColor(ffTheme), ffTheme: ffTheme)),
                     ],
                   ),
-                  if (_breakeven > 0) ...[
+                  if (_breakeven > 0 && _selectedCat != 'abroad') ...[
                     const SizedBox(height: 14),
                     Text(
                       'נקודת איזון: ${_breakeven.toStringAsFixed(1)} חודשים',
@@ -277,7 +278,7 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        'כל חודש שאתם מחכים עולה לכם ₪$_monthlySaving',
+                        _selectedCat == 'abroad' ? 'כל נסיעה שאתם מחכים עולה לכם ₪$_monthlySaving' : 'כל חודש שאתם מחכים עולה לכם ₪$_monthlySaving',
                         style: ffTheme.bodyMedium.override(color: ffTheme.warning, fontWeight: FontWeight.w600),
                       ),
                     ),
@@ -287,8 +288,8 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
               const SizedBox(height: 16),
             ],
 
-            // Savings timeline with bar chart
-            if (_annualSaving > 0) ...[
+            // Savings timeline with bar chart (hidden for abroad — no monthly concept)
+            if (_annualSaving > 0 && _selectedCat != 'abroad') ...[
               Container(
                 padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(

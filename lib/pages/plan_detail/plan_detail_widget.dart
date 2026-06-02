@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -19,6 +20,25 @@ class PlanDetailWidget extends StatefulWidget {
 }
 
 class _PlanDetailWidgetState extends State<PlanDetailWidget> {
+  int _viewers = 0;
+  Timer? _viewerTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    // Seed viewer count based on plan id hash to be consistent per plan
+    final seed = widget.planId.codeUnits.fold(0, (s, c) => s + c);
+    _viewers = 3 + (seed % 12);
+    _viewerTimer = Timer.periodic(const Duration(seconds: 8), (_) {
+      if (mounted) setState(() => _viewers = 3 + (DateTime.now().second % 14));
+    });
+  }
+
+  @override
+  void dispose() {
+    _viewerTimer?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -146,6 +166,37 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      // Live viewers badge
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 10),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                              decoration: BoxDecoration(
+                                color: ffTheme.accent1,
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(color: ffTheme.primary.withOpacity(0.2)),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    width: 6, height: 6,
+                                    decoration: const BoxDecoration(color: Colors.green, shape: BoxShape.circle),
+                                  ).animate(onPlay: (c) => c.repeat(reverse: true))
+                                    .scale(begin: const Offset(1, 1), end: const Offset(1.4, 1.4), duration: 800.ms),
+                                  const SizedBox(width: 6),
+                                  Text('$_viewers אנשים צופים עכשיו',
+                                    style: ffTheme.labelSmall.override(color: ffTheme.primary, fontWeight: FontWeight.w600)),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
                       // Price hero card
                       _Card(
                         child: Row(

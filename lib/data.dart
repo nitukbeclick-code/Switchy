@@ -5,7 +5,7 @@ import 'models.dart';
 
 final List<Category> categories = [
   const Category(id: 'cellular', name: 'סלולר', icon: '📱', currentBill: 119, color: Color(0xFF15603E), planCount: 41, description: 'חבילות סלולר לנייד'),
-  const Category(id: 'internet', name: 'אינטרנט', icon: '🌐', currentBill: 140, color: Color(0xFF2563EB), planCount: 19, description: 'אינטרנט ביתי מהיר'),
+  const Category(id: 'internet', name: 'אינטרנט', icon: '🌐', currentBill: 140, color: Color(0xFF2563EB), planCount: 21, description: 'אינטרנט ביתי מהיר'),
   const Category(id: 'tv', name: 'טלוויזיה', icon: '📺', currentBill: 130, color: Color(0xFF7C3AED), planCount: 11, description: 'ערוצי טלוויזיה ושידורים'),
   const Category(id: 'triple', name: 'חבילה משולבת', icon: '🏠', currentBill: 260, color: Color(0xFFE07034), planCount: 14, description: 'אינטרנט + טלוויזיה + טלפון'),
   const Category(id: 'abroad', name: 'חבילות חו"ל', icon: '✈️', currentBill: 0, color: Color(0xFF0891B2), planCount: 11, description: 'גלישה ושיחות בחו"ל'),
@@ -114,6 +114,8 @@ const List<Plan> allPlans = [
 
   // Xphone
   Plan(id: 'net_xphone_1g', cat: 'internet', provider: 'Xphone', net: 'fiber', plan: '1,000 מגה קבוע', price: 122, rating: 4.0, reviews: 480, flags: ['fixed'], feats: ['1,000Mb הורדה', 'תשתית בזק', 'Mesh: 2 חודשים חינם', 'מחיר קבוע', 'נתב שכירות 25₪']),
+  Plan(id: 'net_019_1g', cat: 'internet', provider: '019 מובייל', net: 'fiber', plan: 'סיבים 1000 מגה', price: 89, after: 109, term: 12, rating: 4.0, reviews: 620, flags: [], feats: ['1,000Mb הורדה', 'תשתית HOT', 'נתב כלול', 'גיגה לסלולר כמתנה לחודש ראשון'], fine: '₪109 מחודש 13'),
+  Plan(id: 'net_hot_2g5', cat: 'internet', provider: 'HOT', net: 'fiber', plan: '2500mb Fiber AI', price: 149, rating: 4.1, reviews: 1500, flags: ['fixed'], feats: ['2,500Mb הורדה/העלאה', 'Fiber AI מגדיל חכם', '2 נקודות רשת', 'נתב HOT חינם', 'מחיר קבוע'], highlight: true),
 
   // ─── TV ──────────────────────────────────────────────────────────────────────
 

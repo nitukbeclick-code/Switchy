@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'data.dart' show planById, planSaveYear;
@@ -41,6 +42,12 @@ class FFAppState extends ChangeNotifier {
     // Recently viewed
     final recent = p.getStringList('recentlyViewed') ?? [];
     _recentlyViewed.addAll(recent);
+    // User reviews
+    final reviewsJson = p.getString('userReviews');
+    if (reviewsJson != null) {
+      final list = jsonDecode(reviewsJson) as List<dynamic>;
+      _userReviews.addAll(list.cast<Map<String, dynamic>>());
+    }
     // Preferences
     _prefPriceAlerts = p.getBool('prefPriceAlerts') ?? true;
     _prefRequestUpdates = p.getBool('prefRequestUpdates') ?? true;
@@ -73,6 +80,7 @@ class FFAppState extends ChangeNotifier {
     // Watched & recently viewed
     await p.setStringList('watchedPlans', _watchedPlans.toList());
     await p.setStringList('recentlyViewed', _recentlyViewed);
+    await p.setString('userReviews', jsonEncode(_userReviews));
     // Preferences
     await p.setBool('prefPriceAlerts', _prefPriceAlerts);
     await p.setBool('prefRequestUpdates', _prefRequestUpdates);
@@ -201,4 +209,25 @@ class FFAppState extends ChangeNotifier {
   void setPrefPriceAlerts(bool v) { _prefPriceAlerts = v; notifyListeners(); _persist(); }
   void setPrefRequestUpdates(bool v) { _prefRequestUpdates = v; notifyListeners(); _persist(); }
   void setPrefCommunityNotifs(bool v) { _prefCommunityNotifs = v; notifyListeners(); _persist(); }
+
+  // User reviews
+  final List<Map<String, dynamic>> _userReviews = [];
+  List<Map<String, dynamic>> get userReviews => List.unmodifiable(_userReviews);
+  bool hasReviewedProvider(String provider) => _userReviews.any((r) => r['provider'] == provider);
+  Map<String, dynamic>? reviewFor(String provider) => _userReviews.where((r) => r['provider'] == provider).firstOrNull;
+  void addReview({required String provider, required int overall, required Map<String, int> subRatings, required String text}) {
+    _userReviews.removeWhere((r) => r['provider'] == provider);
+    _userReviews.insert(0, {
+      'provider': provider,
+      'overall': overall,
+      'price': subRatings['price'] ?? 0,
+      'service': subRatings['service'] ?? 0,
+      'coverage': subRatings['coverage'] ?? 0,
+      'speed': subRatings['speed'] ?? 0,
+      'text': text,
+      'ts': DateTime.now().toIso8601String(),
+    });
+    notifyListeners();
+    _persist();
+  }
 }

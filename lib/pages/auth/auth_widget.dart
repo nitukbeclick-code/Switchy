@@ -176,7 +176,11 @@ class _AuthWidgetState extends State<AuthWidget> {
                           enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.alternate)),
                           focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.primary, width: 1.5)),
                         ),
-                        validator: (v) => (v == null || v.trim().length < 10) ? 'אנא הכניסו מספר טלפון תקין' : null,
+                        validator: (v) {
+                          final digits = (v ?? '').replaceAll(RegExp(r'[\s\-]'), '');
+                          if (digits.length < 9 || digits.length > 10 || !digits.startsWith('0')) return 'אנא הכניסו מספר טלפון תקין';
+                          return null;
+                        },
                       ).animate().fadeIn(delay: 60.ms).slideY(begin: 0.05),
 
                       const SizedBox(height: 28),

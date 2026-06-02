@@ -294,7 +294,23 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
                         children: sorted.take(10).map((e) {
                           final active = _selectedProvider == e.key;
                           return GestureDetector(
-                            onTap: () => setState(() => _selectedProvider = e.key),
+                            onTap: () {
+                              final existing = appState.reviewFor(e.key);
+                              setState(() {
+                                _selectedProvider = e.key;
+                                _submitted = false;
+                                if (existing != null) {
+                                  _subRatings['price'] = existing['price'] as int? ?? 0;
+                                  _subRatings['service'] = existing['service'] as int? ?? 0;
+                                  _subRatings['coverage'] = existing['coverage'] as int? ?? 0;
+                                  _subRatings['speed'] = existing['speed'] as int? ?? 0;
+                                  _reviewCtrl.text = existing['text'] as String? ?? '';
+                                } else {
+                                  _subRatings.updateAll((_, __) => 0);
+                                  _reviewCtrl.clear();
+                                }
+                              });
+                            },
                             child: AnimatedContainer(
                               duration: const Duration(milliseconds: 200),
                               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -303,7 +319,17 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
                                 borderRadius: BorderRadius.circular(20),
                                 border: Border.all(color: active ? ffTheme.primary : ffTheme.alternate),
                               ),
-                              child: Text(e.key, style: ffTheme.labelSmall.override(color: active ? Colors.white : ffTheme.primaryText)),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (appState.hasReviewedProvider(e.key) && !active)
+                                    Padding(
+                                      padding: const EdgeInsets.only(left: 4),
+                                      child: Icon(Icons.check_circle_rounded, size: 13, color: ffTheme.success),
+                                    ),
+                                  Text(e.key, style: ffTheme.labelSmall.override(color: active ? Colors.white : ffTheme.primaryText)),
+                                ],
+                              ),
                             ),
                           );
                         }).toList(),
@@ -370,10 +396,20 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
                       const SizedBox(height: 16),
                       ElevatedButton.icon(
                         onPressed: (_selectedProvider != null && _subRatings.values.any((v) => v > 0))
-                            ? () => setState(() => _submitted = true)
+                            ? () {
+                                final avg = _subRatings.values.where((v) => v > 0).fold(0, (a, b) => a + b) ~/
+                                    _subRatings.values.where((v) => v > 0).length;
+                                Provider.of<FFAppState>(context, listen: false).addReview(
+                                  provider: _selectedProvider!,
+                                  overall: avg,
+                                  subRatings: Map.of(_subRatings),
+                                  text: _reviewCtrl.text.trim(),
+                                );
+                                setState(() => _submitted = true);
+                              }
                             : null,
                         icon: const Icon(Icons.send_rounded, size: 18),
-                        label: const Text('שלח ביקורת'),
+                        label: Text(_selectedProvider != null && appState.hasReviewedProvider(_selectedProvider!) ? 'עדכן ביקורת' : 'שלח ביקורת'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: ffTheme.primary,
                           foregroundColor: Colors.white,
@@ -387,6 +423,61 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
                   ],
                 ),
               ).animate().fadeIn(delay: 300.ms),
+
+              // User's submitted reviews
+              if (appState.userReviews.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: ffTheme.alternate),
+                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10)],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.history_rounded, color: ffTheme.primary, size: 20),
+                          const SizedBox(width: 8),
+                          Text('הביקורות שלך', style: ffTheme.titleSmall),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      ...appState.userReviews.map((r) {
+                        final overall = r['overall'] as int? ?? 0;
+                        final text = r['text'] as String? ?? '';
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Text(r['provider'] as String, style: ffTheme.labelMedium.override(fontWeight: FontWeight.w700)),
+                                  const Spacer(),
+                                  ...List.generate(5, (i) => Icon(
+                                    i < overall ? Icons.star_rounded : Icons.star_outline_rounded,
+                                    size: 14,
+                                    color: ffTheme.warning,
+                                  )),
+                                ],
+                              ),
+                              if (text.isNotEmpty) ...[
+                                const SizedBox(height: 4),
+                                Text(text, style: ffTheme.bodySmall, maxLines: 2, overflow: TextOverflow.ellipsis),
+                              ],
+                              const Divider(height: 16),
+                            ],
+                          ),
+                        );
+                      }),
+                    ],
+                  ),
+                ).animate().fadeIn(delay: 400.ms),
+              ],
 
               const SizedBox(height: 24),
             ],

@@ -155,6 +155,50 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                     const SizedBox(height: 20),
                   ],
 
+                  // User reviews
+                  if (appState.userReviews.isNotEmpty) ...[
+                    _buildSectionHeader('הביקורות שלי', ffTheme, actionLabel: 'כתוב ביקורת', onAction: () => context.pushNamed('Ratings')),
+                    ...appState.userReviews.take(3).map((r) {
+                      final overall = r['overall'] as int? ?? 0;
+                      final text = r['text'] as String? ?? '';
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: ffTheme.alternate),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(r['provider'] as String, style: ffTheme.labelMedium.override(fontWeight: FontWeight.w700)),
+                                  if (text.isNotEmpty) ...[
+                                    const SizedBox(height: 2),
+                                    Text(text, style: ffTheme.bodySmall.override(color: ffTheme.secondaryText), maxLines: 2, overflow: TextOverflow.ellipsis),
+                                  ],
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: List.generate(5, (i) => Icon(
+                                i < overall ? Icons.star_rounded : Icons.star_outline_rounded,
+                                size: 15,
+                                color: ffTheme.warning,
+                              )),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+                    const SizedBox(height: 12),
+                  ],
+
                   // Notifications
                   _buildSectionHeader('התראות', ffTheme),
                   _ToggleTile(
@@ -369,6 +413,8 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                     _HeroStat(value: appState.leadPlanId != null ? '1' : '0', label: 'מעברים', ffTheme: ffTheme),
                     Container(width: 1, height: 32, color: Colors.white.withOpacity(0.3), margin: const EdgeInsets.symmetric(horizontal: 20)),
                     _HeroStat(value: '${appState.watchedPlans.length}', label: 'במעקב', ffTheme: ffTheme),
+                    Container(width: 1, height: 32, color: Colors.white.withOpacity(0.3), margin: const EdgeInsets.symmetric(horizontal: 20)),
+                    _HeroStat(value: '${appState.userReviews.length}', label: 'ביקורות', ffTheme: ffTheme),
                   ],
                 ),
               ],

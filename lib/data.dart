@@ -204,6 +204,7 @@ List<Plan> filteredPlans({
       case 'satellite': plans = plans.where((p) => p.net == 'satellite').toList();
       case 'netflix': plans = plans.where((p) => p.feats.any((f) => f.contains('Netflix'))).toList();
       case 'esim': plans = plans.where((p) => p.net == 'esim').toList();
+      case 'kosher': plans = plans.where((p) => p.plan.contains('כשר')).toList();
     }
   }
 

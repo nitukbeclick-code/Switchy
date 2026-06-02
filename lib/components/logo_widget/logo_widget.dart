@@ -16,11 +16,16 @@ class LogoWidget extends StatelessWidget {
     'בזק': Color(0xFF007B8A),
     'גולן': Color(0xFF15603E),
     '019': Color(0xFF6B35C8),
-    'רמי לוי': Color(0xFFCC2244),
+    'רמי לוי': Color(0xFFD4232A),
+    'Xphone': Color(0xFF0066CC),
+    'ויקום': Color(0xFF6B21A8),
+    'וואלה': Color(0xFF0077B6),
     'Airalo': Color(0xFF1E90CC),
     'FreeTV': Color(0xFF1A7A4E),
+    'NextTV': Color(0xFFE07034),
     'NEXT TV': Color(0xFF334466),
     'גילת': Color(0xFF007B8A),
+    'CCC': Color(0xFF2E7D32),
   };
 
   Color get _color {

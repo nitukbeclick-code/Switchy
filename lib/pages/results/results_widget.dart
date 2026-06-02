@@ -19,6 +19,7 @@ class ResultsWidget extends StatefulWidget {
 class _ResultsWidgetState extends State<ResultsWidget> {
   final _searchController = TextEditingController();
   bool _loading = false;
+  String _providerFilter = '';
 
   static const _categories = [
     ('cellular', '📱 סלולר'),
@@ -41,7 +42,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
   }
 
   Future<void> _switchCategory(FFAppState appState, String cat) async {
-    setState(() => _loading = true);
+    setState(() { _loading = true; _providerFilter = ''; });
     appState.setCategory(cat);
     _searchController.clear();
     await Future.delayed(const Duration(milliseconds: 700));
@@ -56,7 +57,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
     final catData = categoryById(cat);
     final bill = appState.currentBill(cat);
 
-    final plans = filteredPlans(
+    final rawPlans = filteredPlans(
       cat: cat,
       sort: appState.sortMode,
       filters: appState.activeFilters,
@@ -64,6 +65,10 @@ class _ResultsWidgetState extends State<ResultsWidget> {
       budget: appState.quizCompleted ? appState.quizBudget : 9999,
       currentBill: bill,
     );
+    final plans = _providerFilter.isEmpty
+        ? rawPlans
+        : rawPlans.where((p) => p.provider == _providerFilter).toList();
+    final allCatProviders = plansByCat(cat).map((p) => p.provider).toSet().toList();
 
     final topPlan = plans.isNotEmpty ? plans.first : null;
     final topSave = topPlan != null ? planSaveYear(topPlan, bill) : 0;
@@ -217,10 +222,10 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                           Text('${plans.length} מסלולים',
                               style: ffTheme.labelMedium
                                   .override(color: ffTheme.secondaryText)),
-                          if (appState.activeFilters.isNotEmpty) ...[
+                          if (appState.activeFilters.isNotEmpty || _providerFilter.isNotEmpty) ...[
                             const SizedBox(width: 8),
                             GestureDetector(
-                              onTap: appState.clearFilters,
+                              onTap: () { appState.clearFilters(); setState(() => _providerFilter = ''); },
                               child: Text('נקה',
                                   style: ffTheme.labelMedium.override(
                                       color: ffTheme.error,
@@ -299,6 +304,11 @@ class _ResultsWidgetState extends State<ResultsWidget> {
               // Quick filter chips per category
               SliverToBoxAdapter(
                 child: _buildQuickFilters(context, appState, ffTheme, cat),
+              ),
+
+              // Provider chips
+              SliverToBoxAdapter(
+                child: _buildProviderChips(ffTheme, allCatProviders),
               ),
 
               // Sort chips
@@ -595,12 +605,57 @@ class _ResultsWidgetState extends State<ResultsWidget> {
     );
   }
 
+  Widget _buildProviderChips(FlutterFlowTheme ffTheme, List<String> providers) {
+    if (providers.length <= 1) return const SizedBox();
+    return SizedBox(
+      height: 44,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+        children: [
+          _providerChip('הכל', ffTheme),
+          ...providers.map((p) => _providerChip(p, ffTheme)),
+        ],
+      ),
+    );
+  }
+
+  Widget _providerChip(String label, FlutterFlowTheme ffTheme) {
+    final isAll = label == 'הכל';
+    final active = isAll ? _providerFilter.isEmpty : _providerFilter == label;
+    return Padding(
+      padding: const EdgeInsets.only(left: 8),
+      child: GestureDetector(
+        onTap: () => setState(() => _providerFilter = isAll ? '' : label),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+          decoration: BoxDecoration(
+            color: active ? ffTheme.tertiary.withOpacity(0.1) : Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: active ? ffTheme.tertiary : ffTheme.alternate,
+              width: active ? 1.5 : 1,
+            ),
+          ),
+          child: Text(
+            label,
+            style: ffTheme.labelSmall.override(
+              color: active ? ffTheme.tertiary : ffTheme.primaryText,
+              fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildQuickFilters(BuildContext context, FFAppState appState, FlutterFlowTheme ffTheme, String cat) {
     const quickFilters = <String, List<(String, String)>>{
-      'cellular': [('5G', '5g'), ('ללא התחייבות', 'nocommit'), ('מחיר קבוע', 'fixed'), ('כולל חו"ל', 'abroad')],
-      'internet': [('ללא התחייבות', 'nocommit'), ('סיב אופטי', 'fiber'), ('1Gb+', '1g')],
-      'tv': [('סטרימינג', 'streaming'), ('ספורט', 'sport'), ('לוויין', 'satellite')],
-      'triple': [('כולל Netflix', 'netflix'), ('5G', '5g')],
+      'cellular': [('5G', '5g'), ('ללא התחייבות', 'nocommit'), ('מחיר קבוע', 'fixed'), ('כולל חו"ל', 'abroad'), ('כשר', 'kosher')],
+      'internet': [('ללא התחייבות', 'nocommit'), ('סיב אופטי', 'fiber'), ('1,000Mb+', '1g'), ('מחיר קבוע', 'fixed')],
+      'tv': [('סטרימינג', 'streaming'), ('ספורט', 'sport'), ('לוויין', 'satellite'), ('Netflix', 'netflix')],
+      'triple': [('כולל Netflix', 'netflix'), ('ללא התחייבות', 'nocommit'), ('ספורט', 'sport')],
       'abroad': [('eSIM', 'esim'), ('ללא מנוי', 'nocommit')],
     };
     final chips = quickFilters[cat] ?? const [];
@@ -699,10 +754,10 @@ class _ResultsWidgetState extends State<ResultsWidget> {
   void _showFilters(
       BuildContext context, FFAppState appState, FlutterFlowTheme ffTheme) {
     const Map<String, List<(String, String)>> catFilters = {
-      'cellular': [('5G', '5g'), ('ללא התחייבות', 'nocommit'), ('מחיר קבוע', 'fixed'), ('כולל חו"ל', 'abroad')],
-      'internet': [('ללא התחייבות', 'nocommit'), ('סיב אופטי', 'fiber'), ('1000Mb+', '1g'), ('סטרימינג', 'streaming')],
+      'cellular': [('5G', '5g'), ('ללא התחייבות', 'nocommit'), ('מחיר קבוע', 'fixed'), ('כולל חו"ל', 'abroad'), ('כשר', 'kosher')],
+      'internet': [('ללא התחייבות', 'nocommit'), ('סיב אופטי', 'fiber'), ('1,000Mb+', '1g'), ('מחיר קבוע', 'fixed')],
       'tv': [('סטרימינג', 'streaming'), ('לוויין', 'satellite'), ('ספורט', 'sport'), ('Netflix', 'netflix')],
-      'triple': [('Netflix', 'netflix'), ('5G', '5g'), ('ללא התחייבות', 'nocommit')],
+      'triple': [('Netflix', 'netflix'), ('ספורט', 'sport'), ('ללא התחייבות', 'nocommit')],
       'abroad': [('eSIM', 'esim'), ('ללא התחייבות', 'nocommit')],
     };
     showModalBottomSheet(

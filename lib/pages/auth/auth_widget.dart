@@ -93,6 +93,42 @@ class _AuthWidgetState extends State<AuthWidget> {
                           _Benefit(text: 'פרטיות מלאה', ffTheme: ffTheme),
                         ],
                       ),
+                      const SizedBox(height: 14),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Text('⭐', style: TextStyle(fontSize: 13)),
+                                const SizedBox(width: 5),
+                                Text('60K+ משתמשים פעילים', style: ffTheme.labelSmall.override(color: Colors.white70)),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Text('💰', style: TextStyle(fontSize: 13)),
+                                const SizedBox(width: 5),
+                                Text('₪850 חיסכון ממוצע', style: ffTheme.labelSmall.override(color: Colors.white70)),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
                     ],
                   ],
                 ),
@@ -156,6 +192,53 @@ class _AuthWidgetState extends State<AuthWidget> {
                           borderRadius: BorderRadius.circular(18),
                         ),
                       ).animate().fadeIn(delay: 100.ms),
+
+                      const SizedBox(height: 20),
+
+                      // Divider with "or"
+                      Row(
+                        children: [
+                          Expanded(child: Divider(color: ffTheme.alternate)),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            child: Text('או', style: ffTheme.labelSmall.override(color: ffTheme.secondaryText)),
+                          ),
+                          Expanded(child: Divider(color: ffTheme.alternate)),
+                        ],
+                      ).animate().fadeIn(delay: 150.ms),
+
+                      const SizedBox(height: 16),
+
+                      // Social login placeholders
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () => _submit(),
+                              style: OutlinedButton.styleFrom(
+                                side: BorderSide(color: ffTheme.alternate),
+                                padding: const EdgeInsets.symmetric(vertical: 13),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                              icon: const Text('G', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF4285F4))),
+                              label: Text('גוגל', style: ffTheme.labelMedium),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              onPressed: () => _submit(),
+                              style: OutlinedButton.styleFrom(
+                                side: BorderSide(color: ffTheme.alternate),
+                                padding: const EdgeInsets.symmetric(vertical: 13),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                              icon: const Icon(Icons.apple_rounded, size: 18),
+                              label: Text('Apple', style: ffTheme.labelMedium),
+                            ),
+                          ),
+                        ],
+                      ).animate().fadeIn(delay: 180.ms),
 
                       const SizedBox(height: 16),
 

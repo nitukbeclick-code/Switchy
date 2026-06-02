@@ -4,6 +4,7 @@ import '../../flutter_flow/flutter_flow_theme.dart';
 import '../../flutter_flow/flutter_flow_util.dart';
 import '../../flutter_flow/flutter_flow_widgets.dart';
 import '../../app_state.dart';
+import '../../data.dart';
 
 class QuizWidget extends StatefulWidget {
   const QuizWidget({super.key});
@@ -336,6 +337,7 @@ class _QuizWidgetState extends State<QuizWidget> {
         );
       case 3:
       default:
+        final planCount = plansByCat(_cat).where((p) => p.price <= _budget.round()).length;
         return _StepCard(
           step: 4,
           title: 'מה התקציב החודשי?',
@@ -346,6 +348,14 @@ class _QuizWidgetState extends State<QuizWidget> {
               Text(
                 '₪${_budget.round()}',
                 style: ffTheme.displayMedium.override(color: ffTheme.primary),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '$planCount מסלולים בתקציב זה',
+                style: ffTheme.labelMedium.override(
+                  color: planCount > 0 ? ffTheme.success : ffTheme.error,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
               const SizedBox(height: 16),
               Slider(
@@ -363,6 +373,34 @@ class _QuizWidgetState extends State<QuizWidget> {
                   Text('₪20', style: ffTheme.labelSmall),
                   Text('₪300', style: ffTheme.labelSmall),
                 ],
+              ),
+              const SizedBox(height: 16),
+              // Quick presets
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                alignment: WrapAlignment.center,
+                children: [39, 59, 89, 119, 149, 199].map((preset) {
+                  final inRange = preset <= 300;
+                  final active = _budget.round() == preset;
+                  return GestureDetector(
+                    onTap: inRange ? () => setState(() => _budget = preset.toDouble()) : null,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                      decoration: BoxDecoration(
+                        color: active ? ffTheme.primary : Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: active ? ffTheme.primary : ffTheme.alternate),
+                      ),
+                      child: Text('₪$preset',
+                        style: ffTheme.labelMedium.override(
+                          color: active ? Colors.white : ffTheme.primaryText,
+                          fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                        )),
+                    ),
+                  );
+                }).toList(),
               ),
             ],
           ),

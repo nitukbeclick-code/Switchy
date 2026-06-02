@@ -82,7 +82,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                 SliverToBoxAdapter(child: _buildRecentlyViewed(context, ffTheme, appState)),
 
               // ── 9. Brand trust strip ───────────────────────────────────────
-              SliverToBoxAdapter(child: _buildBrandStrip(context, ffTheme)),
+              SliverToBoxAdapter(child: _buildBrandStrip(context, ffTheme, appState)),
 
               // ── 10. Bottom padding for nav + FAB ──────────────────────────
               const SliverToBoxAdapter(child: SizedBox(height: 100)),
@@ -265,11 +265,23 @@ class _HomeWidgetState extends State<HomeWidget> {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    Text(
-                      'בואו נחסוך יחד',
-                      style: FlutterFlowTheme.of(context).bodyMedium.override(
-                        color: Colors.white.withOpacity(0.70),
-                        fontSize: 14,
+                    GestureDetector(
+                      onTap: () => context.goNamed('Results'),
+                      child: Container(
+                        margin: const EdgeInsets.only(top: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.white.withOpacity(0.25)),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.search_rounded, color: Colors.white.withOpacity(0.7), size: 16),
+                            const SizedBox(width: 8),
+                            Text('חפש מסלול...', style: FlutterFlowTheme.of(context).bodySmall.override(color: Colors.white.withOpacity(0.65))),
+                          ],
+                        ),
                       ),
                     ),
                   ],
@@ -329,8 +341,11 @@ class _HomeWidgetState extends State<HomeWidget> {
       ),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 400),
-        transitionBuilder: (child, animation) => FadeTransition(opacity: animation, child: child),
+        duration: const Duration(milliseconds: 450),
+        transitionBuilder: (child, animation) => SlideTransition(
+          position: Tween<Offset>(begin: const Offset(0, 0.5), end: Offset.zero).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
+          child: FadeTransition(opacity: animation, child: child),
+        ),
         child: Text(
           _model.tickers[_model.tickerIndex],
           key: ValueKey(_model.tickerIndex),
@@ -372,12 +387,20 @@ class _HomeWidgetState extends State<HomeWidget> {
             style: ffTheme.labelMedium.override(color: Colors.white.withOpacity(0.60)),
           ),
           const SizedBox(height: 8),
-          Text(
-            display,
-            style: ffTheme.displaySmall.override(
-              color: ffTheme.secondary,
-              fontWeight: FontWeight.bold,
-            ),
+          TweenAnimationBuilder<int>(
+            tween: IntTween(begin: 0, end: totalSave > 0 ? totalSave : 1240),
+            duration: const Duration(milliseconds: 1800),
+            curve: Curves.easeOutCubic,
+            builder: (_, value, __) {
+              final disp = value > 1000 ? '₪${(value / 1000).toStringAsFixed(1)}K' : '₪$value';
+              return Text(
+                disp,
+                style: ffTheme.displaySmall.override(
+                  color: ffTheme.secondary,
+                  fontWeight: FontWeight.bold,
+                ),
+              );
+            },
           ),
           const SizedBox(height: 4),
           Text(
@@ -936,7 +959,12 @@ class _HomeWidgetState extends State<HomeWidget> {
     );
   }
 
-  Widget _buildBrandStrip(BuildContext context, FlutterFlowTheme ffTheme) {
+  static const _providerCat = {
+    'HOT': 'internet', 'בזק': 'internet', 'גילת': 'internet',
+    'CCC': 'internet', 'yes': 'tv', 'NextTV': 'tv', 'FreeTV': 'tv',
+  };
+
+  Widget _buildBrandStrip(BuildContext context, FlutterFlowTheme ffTheme, FFAppState appState) {
     final providers = [
       _Provider('פלאפון', const Color(0xFFE07034), const Color(0xFFFFF3EC)),
       _Provider('סלקום', const Color(0xFFCC2244), const Color(0xFFFFECF0)),
@@ -974,7 +1002,13 @@ class _HomeWidgetState extends State<HomeWidget> {
               separatorBuilder: (_, __) => const SizedBox(width: 8),
               itemBuilder: (context, i) {
                 final p = providers[i];
-                return Container(
+                final cat = _providerCat[p.name] ?? 'cellular';
+                return GestureDetector(
+                  onTap: () {
+                    appState.setCategory(cat);
+                    context.pushNamed('Results');
+                  },
+                  child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                   decoration: BoxDecoration(
                     color: p.bg,
@@ -988,6 +1022,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                       fontWeight: FontWeight.w700,
                     ),
                   ),
+                ),
                 );
               },
             ),

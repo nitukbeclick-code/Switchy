@@ -215,7 +215,7 @@ List<Plan> filteredPlans({
       case 'fixed': plans = plans.where((p) => p.isFixed).toList();
       case 'abroad': plans = plans.where((p) => p.hasAbroad).toList();
       case 'fiber': plans = plans.where((p) => p.net == 'fiber').toList();
-      case '1g': plans = plans.where((p) => p.price >= 99 && p.net == 'fiber').toList();
+      case '1g': plans = plans.where((p) => p.net == 'fiber' && (p.plan.contains('1000') || p.plan.contains('2000') || p.plan.contains('2500') || p.plan.contains('5000') || p.plan.contains('ג׳יגה') || p.feats.any((f) => f.startsWith('1,000Mb') || f.startsWith('2,000Mb') || f.startsWith('2,500Mb') || f.startsWith('5,000Mb')))).toList();
       case 'streaming': plans = plans.where((p) => p.net == 'streaming').toList();
       case 'sport': plans = plans.where((p) => p.feats.any((f) => f.contains('ספורט'))).toList();
       case 'satellite': plans = plans.where((p) => p.net == 'satellite').toList();

@@ -6,6 +6,7 @@ import '../../flutter_flow/flutter_flow_theme.dart';
 import '../../flutter_flow/flutter_flow_util.dart';
 import '../../flutter_flow/flutter_flow_widgets.dart';
 import '../../app_state.dart';
+import '../../components/logo_widget/logo_widget.dart';
 
 class AvailabilityWidget extends StatefulWidget {
   const AvailabilityWidget({super.key});
@@ -31,10 +32,66 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
   final _providers = [
     _ISP(name: 'בזק', tech: 'סיב אופטי', status: 'זמין', speed: '1Gb', price: 89, icon: '✅'),
     _ISP(name: 'HOT', tech: 'כבלים', status: 'זמין', speed: '500Mb', price: 79, icon: '✅'),
-    _ISP(name: 'סלקום', tech: 'סיב אופטי', status: 'זמין', speed: '1Gb', price: 99, icon: '✅'),
-    _ISP(name: 'פרטנר', tech: 'סיב אופטי', status: 'בקרוב', speed: '—', price: 0, icon: '🔜'),
-    _ISP(name: 'גילת', tech: 'לוויין', status: 'זמין', speed: 'עד 100Mb', price: 149, icon: '✅'),
+    _ISP(name: 'סלקום', tech: 'סיב אופטי', status: 'זמין', speed: '1Gb', price: 89, icon: '✅'),
+    _ISP(name: 'פרטנר', tech: 'סיב אופטי', status: 'זמין', speed: '500Mb', price: 99, icon: '✅'),
+    _ISP(name: 'גילת', tech: 'לוויין', status: 'זמין', speed: '100Mb', price: 149, icon: '✅'),
+    _ISP(name: 'CCC', tech: 'סיב אופטי', status: 'זמין', speed: '1Gb', price: 79, icon: '✅'),
+    _ISP(name: 'Xphone', tech: 'סיב אופטי', status: 'בקרוב', speed: '—', price: 0, icon: '🔜'),
+    _ISP(name: '019 מובייל', tech: 'VDSL', status: 'זמין', speed: '200Mb', price: 119, icon: '✅'),
   ];
+
+  Widget _buildSummaryCard(FlutterFlowTheme ffTheme, BuildContext context) {
+    final available = _providers.where((p) => p.status == 'זמין').toList();
+    final cheapest = available.where((p) => p.price > 0).map((p) => p.price).fold(9999, (a, b) => a < b ? a : b);
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(colors: [ffTheme.primary, ffTheme.tertiary]),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('${available.length} ספקים זמינים', style: GoogleFonts.rubik(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white)),
+                    const SizedBox(height: 2),
+                    Text('מחיר מינימלי: ₪$cheapest/חודש', style: GoogleFonts.assistant(fontSize: 13, color: Colors.white70)),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(color: Colors.white.withOpacity(0.15), shape: BoxShape.circle),
+                child: const Text('📡', style: TextStyle(fontSize: 22)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () {
+                Provider.of<FFAppState>(context, listen: false).setCategory('internet');
+                context.pushNamed('Results');
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: ffTheme.secondary,
+                foregroundColor: const Color(0xFF0E3A26),
+                elevation: 0,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+              child: Text('השווה מסלולים', style: ffTheme.labelMedium.override(color: const Color(0xFF0E3A26), fontWeight: FontWeight.w800)),
+            ),
+          ),
+        ],
+      ),
+    ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.1, end: 0);
+  }
 
   Future<void> _check() async {
     if (_cityCtrl.text.trim().isEmpty) return;
@@ -181,17 +238,22 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
               ...List.generate(_providers.length, (i) {
                 final isp = _providers[i];
                 final isAvailable = isp.status == 'זמין';
-                final isBest = isAvailable && isp.price > 0 && _providers.where((p) => p.status == 'זמין' && p.price > 0).map((p) => p.price).fold(9999, (a, b) => a < b ? a : b) == isp.price;
+                final minPrice = _providers.where((p) => p.status == 'זמין' && p.price > 0).map((p) => p.price).fold(9999, (a, b) => a < b ? a : b);
+                final isBest = isAvailable && isp.price > 0 && minPrice == isp.price;
                 if (i >= _revealedCount) return const SizedBox();
                 return Container(
                   margin: const EdgeInsets.only(bottom: 10),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: isBest ? ffTheme.secondary : (isAvailable ? ffTheme.success.withOpacity(0.25) : ffTheme.alternate),
-                      width: isBest ? 2 : 1,
-                    ),
+                    border: isAvailable
+                        ? Border(
+                            left: BorderSide(color: ffTheme.primary, width: 3),
+                            top: BorderSide(color: isBest ? ffTheme.secondary : ffTheme.alternate, width: isBest ? 2 : 1),
+                            right: BorderSide(color: isBest ? ffTheme.secondary : ffTheme.alternate, width: isBest ? 2 : 1),
+                            bottom: BorderSide(color: isBest ? ffTheme.secondary : ffTheme.alternate, width: isBest ? 2 : 1),
+                          )
+                        : Border.all(color: ffTheme.alternate),
                     boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 2))],
                   ),
                   child: Column(
@@ -215,14 +277,24 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
                           children: [
                             Row(
                               children: [
-                                Text(isp.icon, style: const TextStyle(fontSize: 20)),
+                                Stack(
+                                  clipBehavior: Clip.none,
+                                  children: [
+                                    LogoWidget(provider: isp.name, size: 40),
+                                    Positioned(
+                                      bottom: -2,
+                                      right: -2,
+                                      child: Text(isp.icon, style: const TextStyle(fontSize: 12)),
+                                    ),
+                                  ],
+                                ),
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       Text(isp.name, style: ffTheme.titleSmall),
-                                      Text('${isp.tech} • ${isp.speed}', style: ffTheme.bodySmall),
+                                      Text(isp.tech, style: ffTheme.bodySmall.override(color: ffTheme.secondaryText)),
                                     ],
                                   ),
                                 ),
@@ -230,8 +302,13 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
                                   Column(
                                     crossAxisAlignment: CrossAxisAlignment.end,
                                     children: [
-                                      Text('מ-₪${isp.price}', style: ffTheme.titleSmall.override(color: ffTheme.primary)),
-                                      Text('לחודש', style: ffTheme.labelSmall.override(color: ffTheme.secondaryText)),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                        decoration: BoxDecoration(color: ffTheme.accent1, borderRadius: BorderRadius.circular(8)),
+                                        child: Text(isp.speed, style: ffTheme.labelSmall.override(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text('מ-₪${isp.price}/חודש', style: ffTheme.titleSmall.override(color: ffTheme.primary)),
                                     ],
                                   ),
                                 ] else
@@ -271,40 +348,7 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
 
               if (_revealedCount >= _providers.length) ...[
                 const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(colors: [ffTheme.primary, ffTheme.tertiary]),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('${_providers.where((p) => p.status == 'זמין').length} ספקים זמינים', style: ffTheme.titleSmall.override(color: Colors.white)),
-                            Text('השווה מחירים ומהירויות', style: ffTheme.bodySmall.override(color: Colors.white70)),
-                          ],
-                        ),
-                      ),
-                      ElevatedButton(
-                        onPressed: () {
-                          Provider.of<FFAppState>(context, listen: false).setCategory('internet');
-                          context.pushNamed('Results');
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: ffTheme.secondary,
-                          foregroundColor: const Color(0xFF0E3A26),
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                        ),
-                        child: Text('השווה ←', style: ffTheme.labelMedium.override(color: const Color(0xFF0E3A26), fontWeight: FontWeight.w700)),
-                      ),
-                    ],
-                  ),
-                ).animate().fadeIn(duration: 400.ms),
+                _buildSummaryCard(ffTheme, context),
               ],
             ],
 

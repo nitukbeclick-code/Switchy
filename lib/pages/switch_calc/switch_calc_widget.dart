@@ -5,6 +5,8 @@ import '../../flutter_flow/flutter_flow_theme.dart';
 import '../../flutter_flow/flutter_flow_util.dart';
 import '../../app_state.dart';
 import '../../data.dart';
+import '../../models.dart';
+import '../../components/logo_widget/logo_widget.dart';
 
 class SwitchCalcWidget extends StatefulWidget {
   const SwitchCalcWidget({super.key});
@@ -16,17 +18,36 @@ class SwitchCalcWidget extends StatefulWidget {
 class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
   late double _current;
   late double _newPlan;
+  late String _selectedCat;
+
+  static const _catInfo = [
+    ('cellular', '📱', 'סלולר'),
+    ('internet', '🌐', 'אינטרנט'),
+    ('tv', '📺', 'טלוויזיה'),
+    ('triple', '🏠', 'משולב'),
+  ];
 
   @override
   void initState() {
     super.initState();
     final appState = FFAppState();
-    final cat = appState.selectedCat;
-    _current = appState.currentBill(cat).toDouble().clamp(20, 500);
-    final bestPlan = plansByCat(cat).isEmpty ? null : (plansByCat(cat)..sort((a, b) => a.price.compareTo(b.price))).first;
-    _newPlan = bestPlan != null ? bestPlan.price.toDouble().clamp(20, 300) : 49;
+    _selectedCat = appState.selectedCat.isNotEmpty ? appState.selectedCat : 'cellular';
+    _initFromCat(_selectedCat, appState);
   }
 
+  void _initFromCat(String cat, [FFAppState? appState]) {
+    final state = appState ?? FFAppState();
+    _current = state.currentBill(cat).toDouble().clamp(20, 500);
+    final plans = plansByCat(cat)..sort((a, b) => a.price.compareTo(b.price));
+    _newPlan = plans.isNotEmpty ? plans.first.price.toDouble().clamp(20, 300) : 49;
+  }
+
+  void _selectCat(String cat) {
+    setState(() {
+      _selectedCat = cat;
+      _initFromCat(cat);
+    });
+  }
 
   double _exitFee = 0;
 
@@ -53,10 +74,21 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
     return Scaffold(
       backgroundColor: ffTheme.background,
       appBar: AppBar(
-        title: const Text('מחשבון מעבר'),
-        backgroundColor: Colors.transparent,
+        flexibleSpace: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(colors: [ffTheme.primary, ffTheme.tertiary]),
+          ),
+        ),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('מחשבון מעבר', style: GoogleFonts.rubik(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
+            Text(_catInfo.firstWhere((c) => c.$1 == _selectedCat, orElse: () => _catInfo.first).$3,
+              style: GoogleFonts.assistant(fontSize: 12, color: Colors.white70)),
+          ],
+        ),
         elevation: 0,
-        foregroundColor: ffTheme.primaryText,
+        foregroundColor: Colors.white,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
@@ -66,7 +98,45 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
             Text('מחשבון מעבר', style: ffTheme.headlineMedium),
             const SizedBox(height: 4),
             Text('חשבו אם המעבר משתלם לכם', style: ffTheme.bodySmall),
-            const SizedBox(height: 24),
+            const SizedBox(height: 16),
+
+            SizedBox(
+              height: 40,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: _catInfo.length,
+                separatorBuilder: (_, __) => const SizedBox(width: 8),
+                itemBuilder: (ctx, i) {
+                  final cat = _catInfo[i];
+                  final isActive = cat.$1 == _selectedCat;
+                  return GestureDetector(
+                    onTap: () => _selectCat(cat.$1),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: isActive ? ffTheme.primary : Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: isActive ? ffTheme.primary : ffTheme.alternate),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(cat.$2, style: const TextStyle(fontSize: 14)),
+                          const SizedBox(width: 6),
+                          Text(cat.$3, style: ffTheme.labelMedium.override(
+                            color: isActive ? Colors.white : ffTheme.primaryText,
+                            fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+                          )),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ).animate().fadeIn(duration: 300.ms),
+
+            const SizedBox(height: 20),
 
             _SliderSection(
               label: 'חשבון נוכחי',
@@ -195,6 +265,14 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
               const SizedBox(height: 16),
             ],
 
+            _LeadingPlanCard(
+              selectedCat: _selectedCat,
+              maxPrice: _newPlan.round(),
+              ffTheme: ffTheme,
+            ).animate().fadeIn(delay: 440.ms),
+
+            const SizedBox(height: 12),
+
             if (_annualSaving > 0)
               ElevatedButton(
                 onPressed: () => context.pushNamed('Results'),
@@ -209,6 +287,88 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
             const SizedBox(height: 32),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _LeadingPlanCard extends StatelessWidget {
+  const _LeadingPlanCard({required this.selectedCat, required this.maxPrice, required this.ffTheme});
+  final String selectedCat;
+  final int maxPrice;
+  final FlutterFlowTheme ffTheme;
+
+  @override
+  Widget build(BuildContext context) {
+    final plans = plansByCat(selectedCat)..sort((a, b) => a.price.compareTo(b.price));
+    if (plans.isEmpty) return const SizedBox();
+    final matching = plans.where((p) => p.price <= maxPrice).toList();
+    final plan = matching.isNotEmpty ? matching.first : plans.first;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: ffTheme.alternate),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(color: ffTheme.accent1, borderRadius: BorderRadius.circular(8)),
+                child: Text('הצעה מובילה', style: ffTheme.labelSmall.override(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+              ),
+              if (matching.isEmpty) ...[
+                const SizedBox(width: 8),
+                Text('(הכי זול בקטגוריה)', style: ffTheme.labelSmall.override(color: ffTheme.secondaryText)),
+              ],
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              LogoWidget(provider: plan.provider, size: 44),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(plan.provider, style: ffTheme.titleSmall),
+                    Text(plan.plan, style: ffTheme.bodySmall.override(color: ffTheme.secondaryText), maxLines: 1, overflow: TextOverflow.ellipsis),
+                  ],
+                ),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text('₪${plan.price}', style: ffTheme.headlineSmall.override(color: ffTheme.primary)),
+                  Text('לחודש', style: ffTheme.labelSmall.override(color: ffTheme.secondaryText)),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              onPressed: () {
+                FFAppState().setCategory(selectedCat);
+                context.pushNamed('Results');
+              },
+              style: OutlinedButton.styleFrom(
+                side: BorderSide(color: ffTheme.primary),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+              ),
+              child: Text('הצג מסלול', style: ffTheme.labelMedium.override(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+            ),
+          ),
+        ],
       ),
     );
   }

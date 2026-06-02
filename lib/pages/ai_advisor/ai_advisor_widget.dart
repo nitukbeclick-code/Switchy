@@ -23,12 +23,26 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
   bool _isTyping = false;
   late List<_ChatMsg> _messages;
 
+  static const _providerNames = {
+    'פלאפון': 'פלאפון', 'golan': 'גולן טלקום', 'גולן': 'גולן טלקום',
+    'סלקום': 'סלקום', 'פרטנר': 'פרטנר', 'הוט': 'הוט מובייל',
+    'hot': 'הוט מובייל', 'רמי לוי': 'רמי לוי', 'xphone': 'Xphone',
+    'ויקום': 'ויקום', '019': '019 מובייל', 'וואלה': 'וואלה מובייל',
+  };
+
   @override
   void initState() {
     super.initState();
+    final appState = FFAppState();
+    final String greeting;
+    if (appState.isLoggedIn && appState.firstName.isNotEmpty && appState.firstName != 'אורח') {
+      greeting = 'שלום ${appState.firstName}! אני חוסך AI 🤖\nיועץ התקשורת החכם שלך.\n\nמה מחפשים?';
+    } else {
+      greeting = 'שלום! אני חוסך AI 🤖\nיועץ התקשורת החכם שלך.\n\nמה מחפשים?';
+    }
     _messages = [
       _ChatMsg(
-        text: 'שלום! אני חוסך AI 🤖\nאני יכול לעזור למצוא את מסלול התקשורת הכי מתאים.\n\nמה מחפשים?',
+        text: greeting,
         isUser: false,
         time: DateTime.now(),
       ),
@@ -60,10 +74,27 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
     String sort = 'match';
     final List<String> filters = [];
 
+    // Provider detection
+    String? detectedProvider;
+    String? detectedProvider2;
+    for (final entry in _providerNames.entries) {
+      if (lower.contains(entry.key)) {
+        if (detectedProvider == null) {
+          detectedProvider = entry.value;
+        } else if (entry.value != detectedProvider) {
+          detectedProvider2 = entry.value;
+          break;
+        }
+      }
+    }
+
+    // Comparison detection
+    final isComparison = lower.contains('עדיף') || lower.contains('השוואה') || lower.contains('לעומת') || lower.contains('השווה');
+
     // Category detection — extended Hebrew keyword set
     if (lower.contains('אינטרנט') || lower.contains('internet') || lower.contains('סיב') || lower.contains('רשת בית') || lower.contains('ברודבנד') || lower.contains('ראוטר') || lower.contains('mb') || lower.contains('gb אינטרנט')) {
       cat = 'internet';
-    } else if (lower.contains('טלוויזיה') || lower.contains('tv') || lower.contains('ערוצים') || lower.contains('כבלים') || lower.contains('לוויין') || lower.contains('yes') || lower.contains('הוט') || lower.contains('נטפליקס') || lower.contains('ספורט')) {
+    } else if (lower.contains('טלוויזיה') || lower.contains('tv') || lower.contains('ערוצים') || lower.contains('כבלים') || lower.contains('לוויין') || lower.contains('yes') || lower.contains('נטפליקס') || lower.contains('ספורט')) {
       cat = 'tv';
     } else if (lower.contains('חו"ל') || lower.contains('חול') || lower.contains('abroad') || lower.contains('נסיעה') || lower.contains('טיול') || lower.contains('esim') || lower.contains('eSIM') || lower.contains('אירופה') || lower.contains('אמריקה') || lower.contains('רואמינג')) {
       cat = 'abroad';
@@ -99,6 +130,14 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
       if (budgetFiltered.isNotEmpty) plans = budgetFiltered;
     }
 
+    // Provider filter
+    if (isComparison && detectedProvider != null && detectedProvider2 != null) {
+      plans = plans.where((p) => p.provider == detectedProvider || p.provider == detectedProvider2).toList();
+    } else if (detectedProvider != null) {
+      final provFiltered = plans.where((p) => p.provider == detectedProvider).toList();
+      if (provFiltered.isNotEmpty) plans = provFiltered;
+    }
+
     List<Plan> topPlans = [];
     if (plans.isNotEmpty) {
       if (sort == 'price') {
@@ -109,7 +148,7 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
           return b.rating.compareTo(a.rating);
         });
       }
-      topPlans = plans.take(3).toList();
+      topPlans = plans.take(isComparison ? 4 : 3).toList();
     }
 
     // Build reply text
@@ -125,9 +164,16 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
       final promoNote = best.hasPromo ? '\n⚡ מבצע זמין — מחיר ראשוני' : '';
       final commitNote = best.noCommit ? '\n✅ ללא התחייבות' : '\n📅 התחייבות ${best.term} חודשים';
       final savingsLine = saveYear > 0 ? '\n💰 חיסכון שנתי צפוי: ₪$saveYear' : '';
-      final multiNote = topPlans.length > 1 ? '\n\nמצאתי ${topPlans.length} מסלולים מתאימים — הנה הכי טוב:' : '\nמצאתי מסלול מעולה עבורך:';
+      final multiNote = topPlans.length > 1 ? '\n\nמצאתי ${topPlans.length} מסלולים — הנה הכי טוב:' : '\nמצאתי מסלול מעולה עבורך:';
+      final planLine = '${best.plan} — ₪${best.price}/חודש';
 
-      reply = 'בקטגורית $catName:$multiNote$promoNote$commitNote$savingsLine';
+      final replyPrefix = isComparison && detectedProvider != null && detectedProvider2 != null
+          ? 'השוואה: $detectedProvider מול $detectedProvider2:'
+          : detectedProvider != null
+              ? 'מסלולי $detectedProvider:'
+              : 'בקטגורית $catName:';
+
+      reply = '$replyPrefix$multiNote\n$planLine$promoNote$commitNote$savingsLine';
     } else if (isGreeting) {
       reply = 'שלום! 🤖 אני חוסך AI — יועץ התקשורת החכם שלכם.\n\nאספר לי מה מחפשים ואמצא את המסלול הכי משתלם:\n\n📱 סלולר  🌐 אינטרנט  📺 טלוויזיה  ✈️ חו"ל';
     } else if (isThanks) {
@@ -171,6 +217,8 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
       '📶 5G מהיר',
       '✈️ חבילת חו"ל',
       '💰 פחות מ-₪50',
+      '🔍 חבילות גולן',
+      '🔍 חבילות פלאפון',
     ];
 
     return Scaffold(
@@ -197,7 +245,18 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('חוסך AI', style: GoogleFonts.rubik(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
-                Text('יועץ חכם', style: GoogleFonts.assistant(fontSize: 11, color: Colors.white70)),
+                Row(
+                  children: [
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: const BoxDecoration(color: Color(0xFF4CAF50), shape: BoxShape.circle),
+                    ).animate(onPlay: (c) => c.repeat(reverse: true))
+                      .scale(begin: const Offset(1, 1), end: const Offset(1.3, 1.3), duration: 800.ms),
+                    const SizedBox(width: 4),
+                    Text('מחובר עכשיו', style: GoogleFonts.assistant(fontSize: 11, color: Colors.white70)),
+                  ],
+                ),
               ],
             ),
           ],
@@ -226,21 +285,33 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
           if (_messages.length == 1)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-              child: Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: quickStarts.map((q) => GestureDetector(
-                  onTap: () => _send(q),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: ffTheme.alternate),
+              child: GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  mainAxisSpacing: 8,
+                  crossAxisSpacing: 8,
+                  childAspectRatio: 3.2,
+                ),
+                itemCount: quickStarts.length,
+                itemBuilder: (ctx, i) {
+                  final q = quickStarts[i];
+                  return GestureDetector(
+                    onTap: () => _send(q),
+                    child: Container(
+                      alignment: Alignment.center,
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: ffTheme.alternate),
+                        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 4, offset: const Offset(0, 1))],
+                      ),
+                      child: Text(q, style: ffTheme.labelMedium, textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
                     ),
-                    child: Text(q, style: ffTheme.labelMedium),
-                  ),
-                )).toList(),
+                  );
+                },
               ),
             ).animate().fadeIn(duration: 500.ms),
 

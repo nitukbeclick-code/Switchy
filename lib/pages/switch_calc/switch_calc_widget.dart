@@ -172,6 +172,36 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
               ffTheme: ffTheme,
             ).animate().fadeIn(delay: 200.ms),
 
+            const SizedBox(height: 10),
+
+            // Exit fee quick presets
+            Row(
+              children: [
+                Text('הגדר במהירות: ', style: ffTheme.labelSmall.override(color: ffTheme.secondaryText)),
+                ...[0, 100, 200, 300, 500].map((fee) {
+                  final active = _exitFee.round() == fee;
+                  return GestureDetector(
+                    onTap: () => setState(() => _exitFee = fee.toDouble()),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+                      margin: const EdgeInsets.only(right: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: active ? ffTheme.primary : Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: active ? ffTheme.primary : ffTheme.alternate),
+                      ),
+                      child: Text(fee == 0 ? 'ללא' : '₪$fee',
+                        style: ffTheme.labelSmall.override(
+                          color: active ? Colors.white : ffTheme.primaryText,
+                          fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                        )),
+                    ),
+                  );
+                }),
+              ],
+            ).animate().fadeIn(delay: 230.ms),
+
             const SizedBox(height: 28),
 
             // Results card
@@ -233,7 +263,7 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
               const SizedBox(height: 16),
             ],
 
-            // Savings timeline
+            // Savings timeline with bar chart
             if (_annualSaving > 0) ...[
               Container(
                 padding: const EdgeInsets.all(18),
@@ -247,6 +277,12 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
                   children: [
                     Text('חיסכון לאורך זמן', style: ffTheme.titleSmall),
                     const SizedBox(height: 16),
+                    _SavingsBarChart(
+                      monthlySaving: _monthlySaving,
+                      exitFee: _exitFee,
+                      ffTheme: ffTheme,
+                    ),
+                    const Divider(height: 24),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
@@ -288,6 +324,69 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _SavingsBarChart extends StatelessWidget {
+  const _SavingsBarChart({required this.monthlySaving, required this.exitFee, required this.ffTheme});
+  final int monthlySaving;
+  final double exitFee;
+  final FlutterFlowTheme ffTheme;
+
+  @override
+  Widget build(BuildContext context) {
+    final milestones = [
+      (3, '3 חודשים'),
+      (6, '6 חודשים'),
+      (12, 'שנה'),
+      (24, '2 שנים'),
+    ];
+    final maxAmount = (monthlySaving * 24 - exitFee).clamp(1, double.infinity);
+
+    return Column(
+      children: milestones.map((m) {
+        final amount = (monthlySaving * m.$1 - exitFee).clamp(0, double.infinity).round();
+        final fraction = (amount / maxAmount).clamp(0.0, 1.0);
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 64,
+                child: Text(m.$2, style: ffTheme.labelSmall.override(color: ffTheme.secondaryText, fontSize: 11)),
+              ),
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: TweenAnimationBuilder<double>(
+                    tween: Tween(begin: 0, end: fraction),
+                    duration: const Duration(milliseconds: 800),
+                    curve: Curves.easeOutCubic,
+                    builder: (_, v, __) => LinearProgressIndicator(
+                      value: v,
+                      backgroundColor: ffTheme.alternate,
+                      valueColor: AlwaysStoppedAnimation(
+                        fraction > 0.5 ? ffTheme.success : (fraction > 0.2 ? ffTheme.primary : ffTheme.warning),
+                      ),
+                      minHeight: 12,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              SizedBox(
+                width: 52,
+                child: Text(
+                  '₪$amount',
+                  style: ffTheme.labelSmall.override(color: ffTheme.primary, fontWeight: FontWeight.w700, fontSize: 11),
+                  textAlign: TextAlign.end,
+                ),
+              ),
+            ],
+          ),
+        );
+      }).toList(),
     );
   }
 }

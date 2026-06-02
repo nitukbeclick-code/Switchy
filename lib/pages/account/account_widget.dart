@@ -125,7 +125,8 @@ class AccountWidget extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Savings hero
+                  // Savings hero — only for users who have an active plan/savings
+                  if (appState.isLoggedIn || appState.totalSavings > 0)
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(20),
@@ -159,9 +160,9 @@ class AccountWidget extends StatelessWidget {
 
                   const SizedBox(height: 20),
 
-                  // Active request
-                  Text('בקשה פעילה', style: ffTheme.titleLarge),
-                  const SizedBox(height: 12),
+                  // Active request — header only shown when a plan is active
+                  if (plan != null) Text('בקשה פעילה', style: ffTheme.titleLarge),
+                  if (plan != null) const SizedBox(height: 12),
                   if (plan != null)
                     Container(
                       padding: const EdgeInsets.all(16),
@@ -378,7 +379,7 @@ class AccountWidget extends StatelessWidget {
                                 style: ffTheme.bodyMedium.override(color: ffTheme.primary)),
                           ),
                           GestureDetector(
-                            onTap: () => context.pushNamed('Results'),
+                            onTap: () => context.goNamed('Results'),
                             child: Text('לתוצאות', style: ffTheme.labelSmall.override(color: ffTheme.primary, fontWeight: FontWeight.w700)),
                           ),
                         ],
@@ -411,7 +412,7 @@ class AccountWidget extends StatelessWidget {
                             onTap: () => context.pushNamed('PlanDetail', pathParameters: {'planId': id}),
                             child: Container(
                               width: 140,
-                              margin: const EdgeInsets.only(left: 10),
+                              margin: const EdgeInsets.only(right: 10),
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
                                 color: Colors.white,

@@ -32,6 +32,14 @@ final _shellNavKey = GlobalKey<NavigatorState>(debugLabel: 'shell');
 GoRouter createRouter() => GoRouter(
   navigatorKey: _rootNavKey,
   initialLocation: '/onboarding',
+  redirect: (context, state) {
+    final appState = Provider.of<FFAppState>(context, listen: false);
+    final isOnboarding = state.uri.path == '/onboarding';
+    if (isOnboarding && (appState.isLoggedIn || appState.quizCompleted)) {
+      return '/home';
+    }
+    return null;
+  },
   routes: [
     GoRoute(path: '/onboarding', name: 'Onboarding', parentNavigatorKey: _rootNavKey, builder: (_, __) => const OnboardingWidget()),
     GoRoute(path: '/auth', name: 'Auth', parentNavigatorKey: _rootNavKey, builder: (_, __) => const AuthWidget()),

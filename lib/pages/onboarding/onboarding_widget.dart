@@ -15,10 +15,13 @@ class OnboardingWidget extends StatefulWidget {
 
 class _OnboardingWidgetState extends State<OnboardingWidget> {
   int _page = 0;
+  bool _animating = false;
   final _controller = PageController();
 
   void _next() {
+    if (_animating) return;
     if (_page < 2) {
+      _animating = true;
       _controller.nextPage(duration: const Duration(milliseconds: 350), curve: Curves.easeInOut);
     } else {
       context.goNamed('Quiz');
@@ -82,7 +85,7 @@ class _OnboardingWidgetState extends State<OnboardingWidget> {
               Expanded(
                 child: PageView(
                   controller: _controller,
-                  onPageChanged: (i) => setState(() => _page = i),
+                  onPageChanged: (i) => setState(() { _page = i; _animating = false; }),
                   children: [
                     _Page1(ffTheme: ffTheme),
                     _Page2(ffTheme: ffTheme),

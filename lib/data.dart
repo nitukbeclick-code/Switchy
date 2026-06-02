@@ -206,7 +206,11 @@ List<Plan> filteredPlans({
 
   if (query.isNotEmpty) {
     final q = query.toLowerCase();
-    plans = plans.where((p) => p.provider.contains(q) || p.plan.contains(q)).toList();
+    plans = plans.where((p) =>
+      p.provider.contains(q) ||
+      p.plan.contains(q) ||
+      p.feats.any((f) => f.toLowerCase().contains(q))
+    ).toList();
   }
 
   for (final f in filters) {

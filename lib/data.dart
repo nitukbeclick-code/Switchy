@@ -6,9 +6,9 @@ import 'models.dart';
 final List<Category> categories = [
   const Category(id: 'cellular', name: 'סלולר', icon: '📱', currentBill: 119, color: Color(0xFF15603E), planCount: 41, description: 'חבילות סלולר לנייד'),
   const Category(id: 'internet', name: 'אינטרנט', icon: '🌐', currentBill: 140, color: Color(0xFF2563EB), planCount: 19, description: 'אינטרנט ביתי מהיר'),
-  const Category(id: 'tv', name: 'טלוויזיה', icon: '📺', currentBill: 130, color: Color(0xFF7C3AED), planCount: 6, description: 'ערוצי טלוויזיה ושידורים'),
+  const Category(id: 'tv', name: 'טלוויזיה', icon: '📺', currentBill: 130, color: Color(0xFF7C3AED), planCount: 11, description: 'ערוצי טלוויזיה ושידורים'),
   const Category(id: 'triple', name: 'חבילה משולבת', icon: '🏠', currentBill: 260, color: Color(0xFFE07034), planCount: 14, description: 'אינטרנט + טלוויזיה + טלפון'),
-  const Category(id: 'abroad', name: 'חבילות חו"ל', icon: '✈️', currentBill: 0, color: Color(0xFF0891B2), planCount: 5, description: 'גלישה ושיחות בחו"ל'),
+  const Category(id: 'abroad', name: 'חבילות חו"ל', icon: '✈️', currentBill: 0, color: Color(0xFF0891B2), planCount: 11, description: 'גלישה ושיחות בחו"ל'),
 ];
 
 // ── Plans ─────────────────────────────────────────────────────────────────────

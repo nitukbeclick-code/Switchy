@@ -123,6 +123,11 @@ const List<Plan> allPlans = [
   Plan(id: 'tv_cellcom', cat: 'tv', provider: 'סלקום TV', net: 'streaming', plan: 'סלקום TV פרמיום', price: 99, rating: 4.0, reviews: 1800, flags: ['nocommit'], feats: ['120+ ערוצים', 'ערוצי ספורט', 'VOD עשיר', 'אפליקציה נוחה', 'שידור חי בנייד']),
   Plan(id: 'tv_yes', cat: 'tv', provider: 'yes', net: 'satellite', plan: 'לוויין 140+ ערוצים פרמיום', price: 149, after: 179, term: 24, rating: 4.3, reviews: 5600, flags: [], feats: ['140+ ערוצים', 'ערוצי ספורט', 'קולנוע פרמיום', 'Netflix / HBO Max / דיסני+ (3 ח׳)', 'ממיר 4K כלול'], highlight: true),
   Plan(id: 'tv_freetv', cat: 'tv', provider: 'FreeTV', net: 'streaming', plan: 'ערוצי ציבור — חינם', price: 0, rating: 3.8, reviews: 1200, flags: ['nocommit', 'fixed'], feats: ['ערוצי ציבור', 'ישראל 11, 12, 13, 14', 'ללא תשלום', 'דורש חיבור אינטרנט']),
+  Plan(id: 'tv_hot_basic', cat: 'tv', provider: 'HOT', net: 'cable', plan: 'HOT TV 80 ערוצים', price: 59, rating: 3.8, reviews: 2100, flags: ['fixed'], feats: ['80+ ערוצים', 'VOD בסיסי', 'ממיר אחד', 'ערוצי חדשות + ספורט']),
+  Plan(id: 'tv_hot_sport', cat: 'tv', provider: 'HOT', net: 'cable', plan: 'HOT Sport פרמיום', price: 119, rating: 4.2, reviews: 1900, flags: ['fixed'], feats: ['140+ ערוצים', 'ערוצי ספורט + Sport1', 'VOD', 'NBA League Pass (3 ח׳)', 'FIFA World Cup 4K'], highlight: true),
+  Plan(id: 'tv_yes_basic', cat: 'tv', provider: 'yes', net: 'satellite', plan: 'לוויין Basic 80 ערוצים', price: 89, rating: 4.0, reviews: 2800, flags: [], feats: ['80+ ערוצים', 'חדשות + סדרות + ספורט', 'ממיר HD', 'VOD בסיסי'], fine: 'ממיר מחיר השכרה 15₪/חודש'),
+  Plan(id: 'tv_cellcom_basic', cat: 'tv', provider: 'סלקום TV', net: 'streaming', plan: 'סלקום TV Basic', price: 59, rating: 3.9, reviews: 1400, flags: ['nocommit'], feats: ['80+ ערוצים', 'VOD בסיסי', 'ללא ממיר', 'שידור בנייד ובטלוויזיה']),
+  Plan(id: 'tv_partner_sport', cat: 'tv', provider: 'פרטנר TV', net: 'streaming', plan: 'ספורט פרמיום', price: 129, rating: 4.3, reviews: 1600, flags: ['nocommit'], feats: ['100+ ערוצים', 'Sport1 + Sport5', 'Premier League + גביע', 'NBA + Euro League', 'VOD ספורט'], highlight: true),
 
   // ─── TRIPLE ──────────────────────────────────────────────────────────────────
 
@@ -148,6 +153,12 @@ const List<Plan> allPlans = [
   Plan(id: 'ab_partner', cat: 'abroad', provider: 'פרטנר', net: 'international', plan: 'World Pack 1GB חודשי', price: 29, rating: 4.1, reviews: 1200, flags: ['nocommit'], feats: ['1GB גלישה בחו"ל', '60 דקות שיחות', '90+ מדינות', 'ניתן לביטול חודשי'], highlight: true),
   Plan(id: 'ab_pelephone', cat: 'abroad', provider: 'פלאפון', net: 'international', plan: 'World 5GB חודשי', price: 49, rating: 4.3, reviews: 980, flags: [], feats: ['5GB גלישה', '200 דקות שיחות', '130+ מדינות', 'שיתוף עד 3 מכשירים']),
   Plan(id: 'ab_airalo', cat: 'abroad', provider: 'Airalo eSIM', net: 'esim', plan: 'eSIM אירופה 10GB', price: 25, rating: 4.5, reviews: 3400, flags: ['nocommit'], feats: ['10GB גלישה', 'eSIM דיגיטלי', '30+ מדינות אירופה', 'הפעלה מיידית מהאפליקציה']),
+  Plan(id: 'ab_airalo_3g', cat: 'abroad', provider: 'Airalo eSIM', net: 'esim', plan: 'eSIM אירופה 3GB', price: 13, rating: 4.5, reviews: 2100, flags: ['nocommit'], feats: ['3GB גלישה', 'eSIM דיגיטלי', '30+ מדינות אירופה', 'הפעלה מיידית מהאפליקציה', 'מתאים לנסיעה קצרה'], highlight: true),
+  Plan(id: 'ab_airalo_global', cat: 'abroad', provider: 'Airalo eSIM', net: 'esim', plan: 'eSIM גלובל 5GB', price: 37, rating: 4.4, reviews: 1800, flags: ['nocommit'], feats: ['5GB גלישה', 'eSIM דיגיטלי', '100+ מדינות ברחבי העולם', 'הפעלה מיידית', 'ניתן להרחבה מהאפליקציה']),
+  Plan(id: 'ab_hot', cat: 'abroad', provider: 'הוט מובייל', net: 'international', plan: '₪8.90/יום — אירופה', price: 9, rating: 4.0, reviews: 760, flags: ['nocommit'], feats: ['גלישה + שיחות ב-₪8.90/יום', 'כל אירופה + ארה"ב', 'הפעלה אוטומטית בנחיתה', 'ניתן לביטול בחזרה']),
+  Plan(id: 'ab_partner_3g', cat: 'abroad', provider: 'פרטנר', net: 'international', plan: 'World Pack 3GB חודשי', price: 49, rating: 4.2, reviews: 890, flags: ['nocommit'], feats: ['3GB גלישה בחו"ל', '120 דקות שיחות', '90+ מדינות', 'שיתוף בין 2 מכשירים'], highlight: true),
+  Plan(id: 'ab_cellcom', cat: 'abroad', provider: 'סלקום', net: 'international', plan: '₪7.90/יום — כל אירופה', price: 8, rating: 4.1, reviews: 1100, flags: ['nocommit'], feats: ['גלישה + שיחות ב-₪7.90/יום', 'כל אירופה + טורקיה', 'הפעלה ב-SMS', 'חיסכון מ-30 יום']),
+  Plan(id: 'ab_019_world', cat: 'abroad', provider: '019 מובייל', net: 'international', plan: '2GB גלישה חודשי', price: 19, rating: 3.8, reviews: 340, flags: ['nocommit'], feats: ['2GB גלישה', '60 דקות שיחות', '80+ מדינות', 'ניתן לביטול חודשי']),
 ];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

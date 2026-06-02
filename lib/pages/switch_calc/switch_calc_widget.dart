@@ -25,7 +25,19 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
     ('internet', '🌐', 'אינטרנט'),
     ('tv', '📺', 'טלוויזיה'),
     ('triple', '🏠', 'משולב'),
+    ('abroad', '✈️', 'חו"ל'),
   ];
+
+  // Returns (currentMax, newPlanMax, exitFeeMax) per category
+  static (double, double, double) _sliderConfig(String cat) {
+    switch (cat) {
+      case 'internet': return (500, 250, 500);
+      case 'tv':       return (350, 200, 300);
+      case 'triple':   return (700, 400, 700);
+      case 'abroad':   return (150, 100, 100);
+      default:         return (400, 300, 500);
+    }
+  }
 
   @override
   void initState() {
@@ -37,9 +49,12 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
 
   void _initFromCat(String cat, [FFAppState? appState]) {
     final state = appState ?? FFAppState();
-    _current = state.currentBill(cat).toDouble().clamp(20, 500);
+    final cfg = _sliderConfig(cat);
+    final minVal = cat == 'abroad' ? 5.0 : 20.0;
+    final rawBill = state.currentBill(cat).toDouble();
+    _current = (rawBill > 0 ? rawBill : minVal).clamp(minVal, cfg.$1);
     final plans = plansByCat(cat)..sort((a, b) => a.price.compareTo(b.price));
-    _newPlan = plans.isNotEmpty ? plans.first.price.toDouble().clamp(20, 300) : 49;
+    _newPlan = plans.isNotEmpty ? plans.first.price.toDouble().clamp(minVal, cfg.$2) : (cat == 'abroad' ? 15.0 : 49.0);
   }
 
   void _selectCat(String cat) {
@@ -138,39 +153,47 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
 
             const SizedBox(height: 20),
 
-            _SliderSection(
-              label: 'חשבון נוכחי',
-              emoji: '💸',
-              value: _current,
-              min: 20,
-              max: 500,
-              onChanged: (v) => setState(() => _current = v),
-              ffTheme: ffTheme,
-            ).animate().fadeIn(duration: 400.ms),
+            Builder(builder: (_) {
+              final cfg = _sliderConfig(_selectedCat);
+              final minVal = _selectedCat == 'abroad' ? 5.0 : 20.0;
+              return Column(
+                children: [
+                  _SliderSection(
+                    label: 'חשבון נוכחי',
+                    emoji: '💸',
+                    value: _current.clamp(minVal, cfg.$1),
+                    min: minVal,
+                    max: cfg.$1,
+                    onChanged: (v) => setState(() => _current = v),
+                    ffTheme: ffTheme,
+                  ).animate().fadeIn(duration: 400.ms),
 
-            const SizedBox(height: 20),
+                  const SizedBox(height: 20),
 
-            _SliderSection(
-              label: 'מסלול חדש',
-              emoji: '✨',
-              value: _newPlan,
-              min: 20,
-              max: 300,
-              onChanged: (v) => setState(() => _newPlan = v),
-              ffTheme: ffTheme,
-            ).animate().fadeIn(delay: 100.ms),
+                  _SliderSection(
+                    label: 'מסלול חדש',
+                    emoji: '✨',
+                    value: _newPlan.clamp(minVal, cfg.$2),
+                    min: minVal,
+                    max: cfg.$2,
+                    onChanged: (v) => setState(() => _newPlan = v),
+                    ffTheme: ffTheme,
+                  ).animate().fadeIn(delay: 100.ms),
 
-            const SizedBox(height: 20),
+                  const SizedBox(height: 20),
 
-            _SliderSection(
-              label: 'דמי ניתוק',
-              emoji: '🔓',
-              value: _exitFee,
-              min: 0,
-              max: 500,
-              onChanged: (v) => setState(() => _exitFee = v),
-              ffTheme: ffTheme,
-            ).animate().fadeIn(delay: 200.ms),
+                  _SliderSection(
+                    label: 'דמי ניתוק',
+                    emoji: '🔓',
+                    value: _exitFee.clamp(0, cfg.$3),
+                    min: 0,
+                    max: cfg.$3,
+                    onChanged: (v) => setState(() => _exitFee = v),
+                    ffTheme: ffTheme,
+                  ).animate().fadeIn(delay: 200.ms),
+                ],
+              );
+            }),
 
             const SizedBox(height: 10),
 

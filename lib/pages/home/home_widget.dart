@@ -59,7 +59,7 @@ class _HomeWidgetState extends State<HomeWidget> {
 
               // ── 4. Hot deal card ───────────────────────────────────────────
               if (deal != null)
-                SliverToBoxAdapter(child: _buildHotDeal(context, ffTheme, deal)),
+                SliverToBoxAdapter(child: _buildHotDeal(context, ffTheme, deal, appState)),
 
               // ── 4b. Top pick for you ──────────────────────────────────────
               SliverToBoxAdapter(child: _buildTopPick(context, ffTheme, appState)),
@@ -433,8 +433,9 @@ class _HomeWidgetState extends State<HomeWidget> {
         .scale(begin: const Offset(0.95, 0.95), end: const Offset(1.0, 1.0));
   }
 
-  Widget _buildHotDeal(BuildContext context, FlutterFlowTheme ffTheme, Plan deal) {
-    final saving = planSaveYear(deal, 119);
+  Widget _buildHotDeal(BuildContext context, FlutterFlowTheme ffTheme, Plan deal, FFAppState appState) {
+    final bill = appState.currentBill(deal.cat);
+    final saving = planSaveYear(deal, bill > 0 ? bill : 119);
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
       child: Column(

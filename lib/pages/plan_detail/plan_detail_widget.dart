@@ -373,22 +373,10 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                               ],
                             ),
                             const SizedBox(height: 14),
-                            _RatingBar(
-                                label: 'כיסוי רשת',
-                                value: (plan.rating / 5.0).clamp(0.0, 1.0),
-                                ffTheme: ffTheme),
-                            const SizedBox(height: 10),
-                            _RatingBar(
-                                label: 'מהירות',
-                                value: ((plan.rating - 0.2) / 5.0)
-                                    .clamp(0.0, 1.0),
-                                ffTheme: ffTheme),
-                            const SizedBox(height: 10),
-                            _RatingBar(
-                                label: 'שירות לקוחות',
-                                value: ((plan.rating - 0.4) / 5.0)
-                                    .clamp(0.0, 1.0),
-                                ffTheme: ffTheme),
+                            ..._ratingDimensions(plan).asMap().entries.expand((e) => [
+                              if (e.key > 0) const SizedBox(height: 10),
+                              _RatingBar(label: e.value.$1, value: e.value.$2, ffTheme: ffTheme),
+                            ]),
                           ],
                         ),
                       )
@@ -611,6 +599,28 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
         ],
       ),
     );
+  }
+}
+
+// ── Rating dimensions per category ────────────────────────────────────────────
+
+List<(String, double)> _ratingDimensions(Plan plan) {
+  final r = plan.rating;
+  final seed = plan.id.codeUnits.fold(0, (s, c) => s + c);
+  final v1 = (r / 5.0).clamp(0.0, 1.0);
+  final v2 = ((r * 0.97 + 0.05 + (seed % 5) * 0.01) / 5.0).clamp(0.0, 1.0);
+  final v3 = ((r * 0.92 + 0.10 + (seed % 7) * 0.01) / 5.0).clamp(0.0, 1.0);
+  switch (plan.cat) {
+    case 'internet':
+      return [('מהירות הורדה', v1), ('אמינות החיבור', v2), ('שירות לקוחות', v3)];
+    case 'tv':
+      return [('מגוון ערוצים', v1), ('איכות שידור', v2), ('שירות לקוחות', v3)];
+    case 'triple':
+      return [('ערך לכסף', v1), ('אמינות הרשת', v2), ('שירות לקוחות', v3)];
+    case 'abroad':
+      return [('כיסוי בינלאומי', v1), ('מהירות גלישה', v2), ('שירות לקוחות', v3)];
+    default:
+      return [('כיסוי רשת', v1), ('מהירות גלישה', v2), ('שירות לקוחות', v3)];
   }
 }
 

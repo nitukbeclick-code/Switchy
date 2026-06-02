@@ -45,6 +45,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
     setState(() { _loading = true; _providerFilter = ''; });
     appState.setCategory(cat);
     _searchController.clear();
+    appState.setSearch('');
     await Future.delayed(const Duration(milliseconds: 700));
     if (mounted) setState(() => _loading = false);
   }

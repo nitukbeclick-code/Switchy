@@ -308,8 +308,8 @@ class _QuizWidgetState extends State<QuizWidget> {
               ].map((p) => _RadioTile(
                 emoji: p.$3,
                 label: p.$2,
-                selected: _priority == p.$1,
-                onTap: () => setState(() => _priority = p.$1),
+                selected: _extraFilter == p.$1,
+                onTap: () => setState(() => _extraFilter = p.$1),
                 ffTheme: ffTheme,
               )).toList(),
             ),
@@ -462,13 +462,15 @@ class _QuizWidgetState extends State<QuizWidget> {
       if (_priority == 'price') appState.setSortMode('price');
       if (_priority == 'data') appState.setSortMode('match');
       if (_priority == 'speed' || _priority == 'speed_ultra' || _priority == 'speed_fast') appState.setSortMode('match');
-      // Apply secondary filter (internet/tv/triple step 2 choice)
+      // Apply secondary filter (internet/tv/triple/abroad step 2 choice)
       if (_extraFilter != null) {
         if (_extraFilter == 'nocommit') appState.toggleFilter('nocommit');
         if (_extraFilter == 'streaming') appState.toggleFilter('streaming');
         if (_extraFilter == 'sport') appState.toggleFilter('sport');
         if (_extraFilter == 'netflix') appState.toggleFilter('netflix');
+        if (_extraFilter == 'esim') appState.toggleFilter('esim');
         if (_extraFilter == 'price') appState.setSortMode('price');
+        if (_extraFilter == 'data') appState.setSortMode('match');
       }
       context.goNamed('Results');
     }

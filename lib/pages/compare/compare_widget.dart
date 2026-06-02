@@ -20,14 +20,12 @@ class CompareWidget extends StatelessWidget {
     final ids = appState.comparePlans;
     final plans = ids.map((id) => planById(id)).whereType<Plan>().toList();
 
-    // Find winner (highest annual savings)
+    // Find winner (highest annual savings using each plan's own category bill)
     String? winnerId;
     if (plans.length >= 2) {
-      final cat = plans.first.cat;
-      final bill = appState.currentBill(cat);
       int bestSave = -1;
       for (final p in plans) {
-        final s = planSaveYear(p, bill);
+        final s = planSaveYear(p, appState.currentBill(p.cat));
         if (s > bestSave) {
           bestSave = s;
           winnerId = p.id;
@@ -131,8 +129,7 @@ class _CompareTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cat = plans.first.cat;
-    final bill = appState.currentBill(cat);
+    final mixedCats = plans.map((p) => p.cat).toSet().length > 1;
 
     final rows = <_Row>[
       _Row('מחיר חודשי', plans.map((p) => '₪${p.price}').toList()),
@@ -141,7 +138,10 @@ class _CompareTable extends StatelessWidget {
       _Row('התחייבות',
           plans.map((p) => p.commitmentLabel).toList()),
       _Row('חיסכון שנתי',
-          plans.map((p) => '₪${planSaveYear(p, bill)}').toList(),
+          plans.map((p) {
+            final bill = appState.currentBill(p.cat);
+            return bill > 0 ? '₪${planSaveYear(p, bill)}' : '—';
+          }).toList(),
           isHighlight: true),
       _Row('דירוג',
           plans.map((p) => '${p.rating}/5 (${p.reviews})').toList()),
@@ -160,7 +160,6 @@ class _CompareTable extends StatelessWidget {
           _WinnerSummaryCard(
             plans: plans,
             winnerId: winnerId,
-            bill: bill,
             appState: appState,
             ffTheme: ffTheme,
           ),
@@ -205,16 +204,41 @@ class _CompareTable extends StatelessWidget {
                     winnerId: winnerId,
                     ffTheme: ffTheme,
                     isAlt: isAlt,
-                    bill: bill,
                   );
                 }).toList(),
               ),
             ),
           ),
 
+          // Mixed-category notice
+          if (mixedCats)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: ffTheme.warning.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: ffTheme.warning.withOpacity(0.3)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline_rounded, size: 16, color: ffTheme.warning),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'אתה משווה מסלולים מקטגוריות שונות',
+                        style: ffTheme.labelSmall.override(color: ffTheme.warning, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
           // CTA row
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
@@ -258,6 +282,54 @@ class _CompareTable extends StatelessWidget {
               ),
             ),
           ),
+
+          // Features comparison
+          if (plans.any((p) => p.feats.isNotEmpty)) ...[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Divider(color: ffTheme.alternate),
+                  const SizedBox(height: 8),
+                  Text('מה כלול בכל מסלול', style: ffTheme.titleSmall.override(color: ffTheme.secondaryText, fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 12),
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(width: 110),
+                        ...plans.map((p) => SizedBox(
+                          width: 150,
+                          child: Padding(
+                            padding: const EdgeInsets.only(left: 10),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: p.feats.map((f) => Padding(
+                                padding: const EdgeInsets.only(bottom: 6),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Icon(Icons.check_rounded, size: 14, color: p.id == winnerId ? ffTheme.primary : ffTheme.secondaryText),
+                                    const SizedBox(width: 4),
+                                    Expanded(child: Text(f, style: ffTheme.labelSmall.override(
+                                      color: p.id == winnerId ? ffTheme.primaryText : ffTheme.secondaryText,
+                                    ))),
+                                  ],
+                                ),
+                              )).toList(),
+                            ),
+                          ),
+                        )),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ] else
+            const SizedBox(height: 32),
         ],
       ),
     );
@@ -270,20 +342,19 @@ class _WinnerSummaryCard extends StatelessWidget {
   const _WinnerSummaryCard({
     required this.plans,
     required this.winnerId,
-    required this.bill,
     required this.appState,
     required this.ffTheme,
   });
   final List<Plan> plans;
   final String? winnerId;
-  final int bill;
   final FFAppState appState;
   final FlutterFlowTheme ffTheme;
 
   @override
   Widget build(BuildContext context) {
     final winner = plans.firstWhere((p) => p.id == winnerId, orElse: () => plans.first);
-    final winnerSave = planSaveYear(winner, bill);
+    final winnerBill = appState.currentBill(winner.cat);
+    final winnerSave = winnerBill > 0 ? planSaveYear(winner, winnerBill) : 0;
     final maxPrice = plans.map((p) => p.price).reduce((a, b) => a > b ? a : b).toDouble();
 
     return Padding(
@@ -507,14 +578,12 @@ class _RowWidget extends StatelessWidget {
     required this.winnerId,
     required this.ffTheme,
     required this.isAlt,
-    required this.bill,
   });
   final _Row row;
   final List<Plan> plans;
   final String? winnerId;
   final FlutterFlowTheme ffTheme;
   final bool isAlt;
-  final int bill;
 
   @override
   Widget build(BuildContext context) {

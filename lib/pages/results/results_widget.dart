@@ -749,7 +749,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
           ],
         ),
       ),
-    );
+    ).then((_) => ctrl.dispose());
   }
 
   void _showFilters(

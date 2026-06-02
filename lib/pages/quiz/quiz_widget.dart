@@ -29,7 +29,7 @@ class _QuizWidgetState extends State<QuizWidget> {
     _cat = appState.selectedCat;
     _lines = appState.quizLines;
     _priority = appState.quizPriority;
-    _budget = appState.quizBudget.toDouble().clamp(20, 300);
+    _budget = appState.quizBudget > 0 ? appState.quizBudget.toDouble() : _defaultBudget(appState.selectedCat);
   }
 
   static const _cats = [
@@ -337,16 +337,19 @@ class _QuizWidgetState extends State<QuizWidget> {
         );
       case 3:
       default:
-        final planCount = plansByCat(_cat).where((p) => p.price <= _budget.round()).length;
+        final sliderConfig = _budgetConfig(_cat);
+        final clampedBudget = _budget.clamp(sliderConfig.$1, sliderConfig.$2);
+        if (_budget != clampedBudget) WidgetsBinding.instance.addPostFrameCallback((_) => setState(() => _budget = clampedBudget));
+        final planCount = plansByCat(_cat).where((p) => p.price <= clampedBudget.round()).length;
         return _StepCard(
           step: 4,
-          title: 'מה התקציב החודשי?',
-          subtitle: 'הגדירו את הסכום המקסימלי שאתם מוכנים לשלם',
+          title: _cat == 'abroad' ? 'מה התקציב לנסיעה?' : 'מה התקציב החודשי?',
+          subtitle: _cat == 'abroad' ? 'לפי עלות חבילת הנסיעה' : 'הגדירו את הסכום המקסימלי שאתם מוכנים לשלם',
           ffTheme: ffTheme,
           child: Column(
             children: [
               Text(
-                '₪${_budget.round()}',
+                '₪${clampedBudget.round()}${_cat == 'abroad' ? '' : '/חודש'}',
                 style: ffTheme.displayMedium.override(color: ffTheme.primary),
               ),
               const SizedBox(height: 4),
@@ -359,10 +362,10 @@ class _QuizWidgetState extends State<QuizWidget> {
               ),
               const SizedBox(height: 16),
               Slider(
-                value: _budget,
-                min: 20,
-                max: 300,
-                divisions: 56,
+                value: clampedBudget,
+                min: sliderConfig.$1,
+                max: sliderConfig.$2,
+                divisions: sliderConfig.$3,
                 activeColor: ffTheme.primary,
                 inactiveColor: ffTheme.alternate,
                 onChanged: (v) => setState(() => _budget = v),
@@ -370,21 +373,20 @@ class _QuizWidgetState extends State<QuizWidget> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('₪20', style: ffTheme.labelSmall),
-                  Text('₪300', style: ffTheme.labelSmall),
+                  Text('₪${sliderConfig.$1.round()}', style: ffTheme.labelSmall),
+                  Text('₪${sliderConfig.$2.round()}', style: ffTheme.labelSmall),
                 ],
               ),
               const SizedBox(height: 16),
-              // Quick presets
+              // Quick presets — category-specific
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
                 alignment: WrapAlignment.center,
-                children: [39, 59, 89, 119, 149, 199].map((preset) {
-                  final inRange = preset <= 300;
-                  final active = _budget.round() == preset;
+                children: _budgetPresets(_cat).map((preset) {
+                  final active = clampedBudget.round() == preset;
                   return GestureDetector(
-                    onTap: inRange ? () => setState(() => _budget = preset.toDouble()) : null,
+                    onTap: () => setState(() => _budget = preset.toDouble()),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 180),
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
@@ -405,6 +407,37 @@ class _QuizWidgetState extends State<QuizWidget> {
             ],
           ),
         );
+    }
+  }
+
+  double _defaultBudget(String cat) {
+    switch (cat) {
+      case 'abroad': return 25.0;
+      case 'triple': return 199.0;
+      case 'internet': return 119.0;
+      case 'tv': return 89.0;
+      default: return 119.0;
+    }
+  }
+
+  // Returns (min, max, divisions) for budget slider based on category
+  (double, double, int) _budgetConfig(String cat) {
+    switch (cat) {
+      case 'abroad': return (5.0, 100.0, 19);
+      case 'triple': return (50.0, 400.0, 70);
+      case 'internet': return (30.0, 300.0, 54);
+      case 'tv': return (0.0, 200.0, 40);
+      default: return (20.0, 300.0, 56); // cellular
+    }
+  }
+
+  List<int> _budgetPresets(String cat) {
+    switch (cat) {
+      case 'abroad': return [10, 15, 25, 39, 50, 75];
+      case 'triple': return [99, 139, 179, 219, 299, 349];
+      case 'internet': return [49, 79, 99, 129, 159, 199];
+      case 'tv': return [0, 49, 69, 89, 119, 149];
+      default: return [29, 39, 59, 89, 119, 149]; // cellular
     }
   }
 

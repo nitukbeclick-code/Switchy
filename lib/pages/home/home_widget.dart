@@ -892,6 +892,8 @@ class _HomeWidgetState extends State<HomeWidget> {
       _Tool(icon: '🧮', label: 'מחשבון מעבר', route: 'SwitchCalc'),
       _Tool(icon: '📊', label: 'ניהול חשבון', route: 'Bills'),
       _Tool(icon: '📲', label: 'ניוד מספר', route: 'Porting'),
+      _Tool(icon: '⭐', label: 'דירוגי ספקים', route: 'Ratings'),
+      _Tool(icon: '🤖', label: 'יועץ AI', route: 'AIAdvisor'),
     ];
 
     return Padding(
@@ -1083,8 +1085,10 @@ class _HomeWidgetState extends State<HomeWidget> {
   }
 
   static const _providerCat = {
-    'HOT': 'internet', 'בזק': 'internet', 'גילת': 'internet',
-    'CCC': 'internet', 'yes': 'tv', 'NextTV': 'tv', 'FreeTV': 'tv',
+    'HOT': 'internet', 'הוט': 'internet', 'הוט מובייל': 'internet',
+    'בזק': 'internet', 'גילת': 'internet', 'CCC': 'internet',
+    'yes': 'tv', 'YES': 'tv', 'NextTV': 'tv', 'FreeTV': 'tv',
+    'Airalo': 'abroad', 'airalo': 'abroad',
   };
 
   Widget _buildBrandStrip(BuildContext context, FlutterFlowTheme ffTheme, FFAppState appState) {
@@ -1106,6 +1110,7 @@ class _HomeWidgetState extends State<HomeWidget> {
       _Provider('גילת', const Color(0xFF1D6FA4), const Color(0xFFECF4FF)),
       _Provider('CCC', const Color(0xFF2E7D32), const Color(0xFFEDF7EE)),
       _Provider('FreeTV', const Color(0xFF1A7A4E), const Color(0xFFE8F8EE)),
+      _Provider('Airalo', const Color(0xFF00897B), const Color(0xFFE0F2F1)),
     ];
 
     return Padding(

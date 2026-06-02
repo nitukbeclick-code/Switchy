@@ -134,6 +134,7 @@ const List<Plan> allPlans = [
   Plan(id: 'tv_hot_cinema', cat: 'tv', provider: 'HOT', net: 'cable', plan: 'HOT Cinema קולנוע פרמיום', price: 79, rating: 4.1, reviews: 1300, flags: ['fixed'], feats: ['120+ ערוצים', 'HBO Max 3 חודשים חינם', 'ערוצי קולנוע פרמיום', '2 ממירים HD', 'VOD עשיר + סדרות']),
   Plan(id: 'tv_yes_family', cat: 'tv', provider: 'yes', net: 'satellite', plan: 'לוויין Family 120 ערוצים', price: 109, rating: 4.1, reviews: 3100, flags: [], feats: ['120+ ערוצים', 'ספורט + ילדים + קולנוע', 'ממיר HD', 'VOD + catch-up 7 ימים', 'YouTube ב-TV'], fine: 'ממיר השכרה 15₪/חודש'),
   Plan(id: 'tv_yes_start', cat: 'tv', provider: 'yes', net: 'satellite', plan: 'לוויין Start 60 ערוצים', price: 69, rating: 3.9, reviews: 1900, flags: [], feats: ['60+ ערוצים', 'ערוצי חדשות + ילדים', 'ממיר HD בסיסי', 'VOD בסיסי'], fine: 'ממיר השכרה 15₪/חודש'),
+  Plan(id: 'tv_yes_sport', cat: 'tv', provider: 'yes', net: 'satellite', plan: 'לוויין Sport 100 ערוצים', price: 129, rating: 4.2, reviews: 2200, flags: [], feats: ['100+ ערוצים', 'ספורט פרמיום — Sport1+5', 'Premier League + NBA + Liga', 'ממיר HD + VOD ספורט', 'catch-up 7 ימים'], fine: 'ממיר השכרה 15₪/חודש', highlight: true),
 
   // ─── TRIPLE ──────────────────────────────────────────────────────────────────
 

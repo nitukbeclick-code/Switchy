@@ -858,7 +858,7 @@ class _HomeWidgetState extends State<HomeWidget> {
           ),
           const SizedBox(height: 8),
           SizedBox(
-            height: 76,
+            height: 90,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: appState.watchedPlans.length,
@@ -869,7 +869,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                 return GestureDetector(
                   onTap: () => context.pushNamed('PlanDetail', pathParameters: {'planId': plan.id}),
                   child: Container(
-                    width: 140,
+                    width: 148,
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       color: Colors.white,
@@ -879,17 +879,22 @@ class _HomeWidgetState extends State<HomeWidget> {
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text(plan.provider, style: ffTheme.titleSmall.override(fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
-                        const SizedBox(height: 3),
-                        Text('₪${plan.price}/חודש', style: ffTheme.labelSmall.override(color: ffTheme.primary, fontWeight: FontWeight.w700)),
-                        const SizedBox(height: 2),
                         Row(
                           children: [
-                            Container(width: 6, height: 6, decoration: BoxDecoration(color: ffTheme.success, shape: BoxShape.circle)),
+                            LogoWidget(provider: plan.provider, size: 24),
+                            const SizedBox(width: 6),
+                            Expanded(child: Text(plan.provider, style: ffTheme.labelSmall.override(fontWeight: FontWeight.w700), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                          ],
+                        ),
+                        const SizedBox(height: 5),
+                        Text('₪${plan.price}/חודש', style: ffTheme.titleSmall.override(color: ffTheme.primary, fontSize: 13, fontWeight: FontWeight.w700)),
+                        const SizedBox(height: 3),
+                        Row(
+                          children: [
+                            Container(width: 5, height: 5, decoration: BoxDecoration(color: ffTheme.success, shape: BoxShape.circle)),
                             const SizedBox(width: 4),
-                            Text('עוקב', style: ffTheme.labelSmall.override(color: ffTheme.success)),
+                            Text('עוקב', style: ffTheme.labelSmall.override(color: ffTheme.success, fontSize: 10)),
                           ],
                         ),
                       ],
@@ -919,7 +924,7 @@ class _HomeWidgetState extends State<HomeWidget> {
           ),
           const SizedBox(height: 10),
           SizedBox(
-            height: 76,
+            height: 90,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               itemCount: appState.recentlyViewed.length,
@@ -930,7 +935,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                 return GestureDetector(
                   onTap: () => context.pushNamed('PlanDetail', pathParameters: {'planId': plan.id}),
                   child: Container(
-                    width: 140,
+                    width: 148,
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       color: Colors.white,
@@ -940,13 +945,18 @@ class _HomeWidgetState extends State<HomeWidget> {
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text(plan.provider, style: ffTheme.titleSmall.override(fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
+                        Row(
+                          children: [
+                            LogoWidget(provider: plan.provider, size: 24),
+                            const SizedBox(width: 6),
+                            Expanded(child: Text(plan.provider, style: ffTheme.labelSmall.override(fontWeight: FontWeight.w700), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                          ],
+                        ),
+                        const SizedBox(height: 5),
+                        Text('₪${plan.price}/חודש', style: ffTheme.titleSmall.override(color: ffTheme.primary, fontSize: 13, fontWeight: FontWeight.w700)),
                         const SizedBox(height: 3),
-                        Text('₪${plan.price}/חודש', style: ffTheme.labelSmall.override(color: ffTheme.primary, fontWeight: FontWeight.w700)),
-                        const SizedBox(height: 2),
-                        Text(plan.plan, style: ffTheme.labelSmall, maxLines: 1, overflow: TextOverflow.ellipsis),
+                        Text(plan.plan, style: ffTheme.labelSmall.override(color: ffTheme.secondaryText), maxLines: 1, overflow: TextOverflow.ellipsis),
                       ],
                     ),
                   ),

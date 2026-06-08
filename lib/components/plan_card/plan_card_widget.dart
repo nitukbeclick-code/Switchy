@@ -222,6 +222,19 @@ class PlanCardWidget extends StatelessWidget {
                   ],
                 ),
 
+                // Spec chips (shown only when plan has specs)
+                if (plan.specs.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 0,
+                    clipBehavior: Clip.hardEdge,
+                    children: plan.specs.entries.take(3).map((e) =>
+                      _SpecChip(label: e.key, value: e.value, ffTheme: ffTheme),
+                    ).toList(),
+                  ),
+                ],
+
                 const SizedBox(height: 12),
 
                 // Price + savings row
@@ -396,6 +409,54 @@ class PlanCardWidget extends StatelessWidget {
                   ),
                 ],
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+IconData _specIcon(String label) {
+  if (label.contains('נתונים') || label.contains('גלישה')) return Icons.data_usage_rounded;
+  if (label.contains('דקות')) return Icons.call_rounded;
+  if (label.contains('SMS') || label.contains('sms')) return Icons.sms_rounded;
+  if (label.contains('מהירות')) return Icons.speed_rounded;
+  if (label.contains('ערוצים')) return Icons.tv_rounded;
+  if (label.contains('חו"ל') || label.contains('חול')) return Icons.public_rounded;
+  return Icons.check_rounded;
+}
+
+class _SpecChip extends StatelessWidget {
+  const _SpecChip({required this.label, required this.value, required this.ffTheme});
+  final String label;
+  final String value;
+  final AppTheme ffTheme;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+        color: ffTheme.background,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: ffTheme.alternate),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(_specIcon(label), size: 11, color: ffTheme.secondaryText),
+          const SizedBox(width: 3),
+          Flexible(
+            child: Text(
+              value,
+              style: GoogleFonts.assistant(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: ffTheme.secondaryText,
+              ),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
             ),
           ),
         ],

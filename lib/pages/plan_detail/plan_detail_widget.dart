@@ -5,6 +5,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../theme/app_theme.dart';
 import '../../core/nav.dart';
 import '../../widgets/app_button.dart';
@@ -500,10 +501,26 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                         ).animate(delay: 270.ms).fadeIn(duration: 300.ms).slideY(begin: 0.08),
                       ],
 
+                      // ── Quick-spec grid ─────────────────────────────────
+                      if (plan.specs.isNotEmpty) ...[
+                        const SizedBox(height: 14),
+                        _SpecGrid(plan: plan)
+                            .animate(delay: 285.ms)
+                            .fadeIn(duration: 300.ms)
+                            .slideY(begin: 0.08),
+                      ],
+
                       // Price trend chart
                       const SizedBox(height: 14),
                       _PriceTrendCard(plan: plan)
                           .animate(delay: 290.ms)
+                          .fadeIn(duration: 300.ms)
+                          .slideY(begin: 0.08),
+
+                      // ── Detailed cost breakdown ──────────────────────────
+                      const SizedBox(height: 14),
+                      _CostBreakdownCard(plan: plan)
+                          .animate(delay: 295.ms)
                           .fadeIn(duration: 300.ms)
                           .slideY(begin: 0.08),
 
@@ -536,6 +553,15 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                             ],
                           ),
                         ).animate(delay: 240.ms).fadeIn(duration: 300.ms),
+                      ],
+
+                      // ── מידע נוסף / אותיות קטנות (progressive disclosure) ──
+                      if (plan.hasExtraInfo) ...[
+                        const SizedBox(height: 14),
+                        _ExtraInfoSection(plan: plan)
+                            .animate(delay: 305.ms)
+                            .fadeIn(duration: 300.ms)
+                            .slideY(begin: 0.08),
                       ],
 
                       // Savings timeline
@@ -1078,6 +1104,353 @@ class _RatingBar extends StatelessWidget {
           style: ffTheme.labelSmall.copyWith(fontWeight: FontWeight.w700),
         ),
       ],
+    );
+  }
+}
+
+// ── Spec grid ─────────────────────────────────────────────────────────────────
+
+IconData _specIcon(String label) {
+  final l = label.toLowerCase();
+  if (l.contains('נתונים') || l.contains('גלישה')) return Icons.data_usage_rounded;
+  if (l.contains('דקות')) return Icons.call_rounded;
+  if (l.contains('sms') || l.contains('הודעות')) return Icons.sms_rounded;
+  if (l.contains('מהירות')) return Icons.speed_rounded;
+  if (l.contains('ערוצים')) return Icons.tv_rounded;
+  if (l.contains('חו"ל') || l.contains('חול') || l.contains('בינלאומי')) return Icons.public_rounded;
+  return Icons.info_outline_rounded;
+}
+
+class _SpecGrid extends StatelessWidget {
+  const _SpecGrid({required this.plan});
+  final Plan plan;
+
+  @override
+  Widget build(BuildContext context) {
+    final ffTheme = AppTheme.of(context);
+    final entries = plan.specs.entries.toList();
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: ffTheme.alternate),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('מפרט', style: ffTheme.titleSmall),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: entries.map((e) {
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                decoration: BoxDecoration(
+                  color: ffTheme.background,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: ffTheme.alternate),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(_specIcon(e.key), size: 16, color: ffTheme.primary),
+                    const SizedBox(width: 8),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          e.value,
+                          style: ffTheme.bodySmall.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: ffTheme.primaryText,
+                          ),
+                        ),
+                        Text(
+                          e.key,
+                          style: ffTheme.labelSmall.copyWith(
+                            color: ffTheme.secondaryText,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              );
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Cost breakdown ────────────────────────────────────────────────────────────
+
+class _CostBreakdownCard extends StatelessWidget {
+  const _CostBreakdownCard({required this.plan});
+  final Plan plan;
+
+  @override
+  Widget build(BuildContext context) {
+    final ffTheme = AppTheme.of(context);
+    final isAbroad = plan.cat == 'abroad';
+    final unit = isAbroad ? 'לחבילה' : 'לחודש';
+    final estimateMonths = (plan.term != null && plan.term! > 0) ? plan.term! : 12;
+    final estimatedTotal = plan.price * estimateMonths;
+    final feeEntries = plan.fees.entries.toList();
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: ffTheme.alternate),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('עלות כוללת', style: ffTheme.titleSmall),
+          const SizedBox(height: 12),
+          // Monthly/package price row
+          _PriceRow(
+            label: 'מחיר $unit',
+            value: '₪${plan.price}',
+            ffTheme: ffTheme,
+          ),
+          // Promo info
+          if (plan.hasPromo) ...[
+            _PriceRow(
+              label: 'מחיר לאחר מבצע',
+              value: '₪${plan.after}',
+              valueColor: ffTheme.warning,
+              ffTheme: ffTheme,
+            ),
+          ],
+          // Commitment label
+          _PriceRow(
+            label: 'התחייבות',
+            value: plan.commitmentLabel,
+            ffTheme: ffTheme,
+          ),
+          // Estimated cost
+          if (!isAbroad) ...[
+            _PriceRow(
+              label: 'עלות מוערכת ל-$estimateMonths חודשים',
+              value: '₪$estimatedTotal',
+              ffTheme: ffTheme,
+              isLast: feeEntries.isEmpty,
+            ),
+          ],
+          // Fee rows
+          if (feeEntries.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Divider(height: 1, color: ffTheme.alternate),
+            const SizedBox(height: 8),
+            Text(
+              'עמלות ותשלומים נוספים',
+              style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText),
+            ),
+            const SizedBox(height: 8),
+            ...feeEntries.asMap().entries.map((entry) {
+              final isLast = entry.key == feeEntries.length - 1;
+              return _PriceRow(
+                label: entry.value.key,
+                value: entry.value.value,
+                ffTheme: ffTheme,
+                isLast: isLast,
+              );
+            }),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+// ── Extra info / fine print (expandable) ─────────────────────────────────────
+
+class _ExtraInfoSection extends StatelessWidget {
+  const _ExtraInfoSection({required this.plan});
+  final Plan plan;
+
+  @override
+  Widget build(BuildContext context) {
+    final ffTheme = AppTheme.of(context);
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: ffTheme.alternate),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: ExpansionTile(
+        title: Text('מידע נוסף ואותיות קטנות', style: ffTheme.titleSmall),
+        iconColor: ffTheme.secondaryText,
+        collapsedIconColor: ffTheme.secondaryText,
+        tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        children: [
+          // Terms bullets
+          if (plan.terms.isNotEmpty) ...[
+            _ExtraSubheading(label: 'תנאי התחייבות', ffTheme: ffTheme),
+            ...plan.terms.map((t) => _BulletRow(
+              text: t,
+              icon: Icons.check_circle_outline_rounded,
+              ffTheme: ffTheme,
+            )),
+            const SizedBox(height: 10),
+          ],
+          // Fine print bullets
+          if (plan.allFinePrint.isNotEmpty) ...[
+            _ExtraSubheading(label: 'אותיות קטנות', ffTheme: ffTheme),
+            ...plan.allFinePrint.map((f) => _BulletRow(
+              text: f,
+              icon: Icons.info_outline_rounded,
+              ffTheme: ffTheme,
+            )),
+            const SizedBox(height: 10),
+          ],
+          // Eligibility
+          if (plan.eligibility != null && plan.eligibility!.trim().isNotEmpty) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: ffTheme.accent1,
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: ffTheme.primary.withOpacity(0.15)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.person_outline_rounded, size: 16, color: ffTheme.primary),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'למי זה מתאים: ${plan.eligibility!.trim()}',
+                      style: ffTheme.bodySmall.copyWith(
+                        color: ffTheme.primary,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+          ],
+          // Notes
+          if (plan.notes != null && plan.notes!.trim().isNotEmpty) ...[
+            Text(
+              plan.notes!.trim(),
+              style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText),
+            ),
+            const SizedBox(height: 10),
+          ],
+          // Footer: updatedAt + source link
+          if (plan.updatedAt != null || plan.sourceUrl != null)
+            Row(
+              children: [
+                if (plan.updatedAt != null)
+                  Expanded(
+                    child: Text(
+                      'עודכן: ${plan.updatedAt!}',
+                      style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText),
+                    ),
+                  ),
+                if (plan.sourceUrl != null)
+                  GestureDetector(
+                    onTap: () async {
+                      try {
+                        await launchUrl(
+                          Uri.parse(plan.sourceUrl!),
+                          mode: LaunchMode.externalApplication,
+                        );
+                      } catch (_) {}
+                    },
+                    child: Text(
+                      'מקור',
+                      style: ffTheme.labelSmall.copyWith(
+                        color: ffTheme.primary,
+                        fontWeight: FontWeight.w700,
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ExtraSubheading extends StatelessWidget {
+  const _ExtraSubheading({required this.label, required this.ffTheme});
+  final String label;
+  final AppTheme ffTheme;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Text(
+        label,
+        style: ffTheme.labelSmall.copyWith(
+          color: ffTheme.secondaryText,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.2,
+        ),
+      ),
+    );
+  }
+}
+
+class _BulletRow extends StatelessWidget {
+  const _BulletRow({required this.text, required this.icon, required this.ffTheme});
+  final String text;
+  final IconData icon;
+  final AppTheme ffTheme;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, size: 15, color: ffTheme.secondaryText),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              text,
+              style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

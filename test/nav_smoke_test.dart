@@ -86,8 +86,10 @@ void main() {
 
     final planId = plans.first.id;
     _navigateTo(tester, '/plan/$planId');
-    await tester.pump(const Duration(milliseconds: 300));
-    await tester.pump(const Duration(milliseconds: 300));
+    // Pump past the route transition (~300ms) + the longest flutter_animate
+    // delay (~305ms) so no one-shot animation timer is left pending.
+    await tester.pump(const Duration(milliseconds: 700));
+    await tester.pump(const Duration(milliseconds: 700));
 
     expect(tester.takeException(), isNull);
   });

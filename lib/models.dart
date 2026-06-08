@@ -12,7 +12,32 @@ class Category {
 }
 
 class Plan {
-  const Plan({required this.id, required this.cat, required this.provider, required this.net, required this.plan, required this.price, this.after, this.term, this.intro, this.rating = 4.0, this.reviews = 0, this.flags = const [], this.feats = const [], this.fine, this.highlight = false});
+  const Plan({
+    required this.id,
+    required this.cat,
+    required this.provider,
+    required this.net,
+    required this.plan,
+    required this.price,
+    this.after,
+    this.term,
+    this.intro,
+    this.rating = 4.0,
+    this.reviews = 0,
+    this.flags = const [],
+    this.feats = const [],
+    this.fine,
+    this.highlight = false,
+    // ── Rich real-world detail (all optional, backward compatible) ──────────
+    this.specs = const {},
+    this.fineLines = const [],
+    this.fees = const {},
+    this.terms = const [],
+    this.eligibility,
+    this.notes,
+    this.sourceUrl,
+    this.updatedAt,
+  });
   final String id;
   final String cat;
   final String provider;
@@ -29,11 +54,51 @@ class Plan {
   final String? fine;
   final bool highlight;
 
+  /// Structured key specs as label → value (e.g. 'נתונים' → '100GB',
+  /// 'דקות' → 'ללא הגבלה', 'מהירות' → '1000Mb'). Drives the quick-spec grid.
+  final Map<String, String> specs;
+
+  /// Fine-print bullets (the "אותיות קטנות"): each a single clause.
+  final List<String> fineLines;
+
+  /// Fees as label → value (e.g. 'דמי ניתוק' → '₪0', 'התקנה' → '₪149').
+  final Map<String, String> fees;
+
+  /// Commitment / contract terms, as bullets.
+  final List<String> terms;
+
+  /// Who the plan is for (e.g. 'ללקוחות חדשים בלבד').
+  final String? eligibility;
+
+  /// Free-text additional info.
+  final String? notes;
+
+  /// Link to the provider/source page the data was taken from.
+  final String? sourceUrl;
+
+  /// When this data was last verified (ISO date string).
+  final String? updatedAt;
+
   bool get hasPromo => after != null && after! > price;
   bool get noCommit => term == null || term == 0;
   bool get is5G => flags.contains('5g');
   bool get hasAbroad => flags.contains('abroad');
   bool get isFixed => flags.contains('fixed');
+
+  /// All fine-print clauses, combining the legacy [fine] string and [fineLines].
+  List<String> get allFinePrint => [
+        if (fine != null && fine!.trim().isNotEmpty) fine!.trim(),
+        ...fineLines,
+      ];
+
+  /// True when there's any extra detail worth an expandable "more info" section.
+  bool get hasExtraInfo =>
+      specs.isNotEmpty ||
+      fees.isNotEmpty ||
+      terms.isNotEmpty ||
+      allFinePrint.isNotEmpty ||
+      (eligibility != null && eligibility!.trim().isNotEmpty) ||
+      (notes != null && notes!.trim().isNotEmpty);
 
   String get commitmentLabel => noCommit ? 'ללא התחייבות' : 'התחייבות $term חודשים';
   String get netLabel {

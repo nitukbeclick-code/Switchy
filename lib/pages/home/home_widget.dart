@@ -63,6 +63,32 @@ class _HomeWidgetState extends State<HomeWidget> {
     super.dispose();
   }
 
+  /// Returns the best alternative plan in the same category, or null if none
+  /// is clearly better (score delta > 4 AND cheaper or positive annual saving).
+  PlanMatch? _betterDealFor(Plan watched, AppState appState) {
+    final profile = MatchProfile(
+      category: watched.cat,
+      currentBill: appState.currentBill(watched.cat),
+      budget: (appState.quizCompleted && appState.quizCat == watched.cat)
+          ? appState.quizBudget
+          : 0,
+      priority: priorityFromId(appState.quizPriority),
+      lines: appState.quizLines,
+      wants5G: appState.wants5G,
+      wantsAbroad: appState.wantsAbroad,
+      wantsNoCommit: appState.wantsNoCommit,
+    );
+    final watchedScore = RecommendationEngine.scorePlan(watched, profile).score;
+    for (final m in RecommendationEngine.rank(profile)) {
+      if (m.plan.id == watched.id) continue;
+      if (m.score > watchedScore + 4 &&
+          (m.plan.price < watched.price || m.annualSaving > 0)) {
+        return m;
+      }
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     final ffTheme = AppTheme.of(context);
@@ -218,40 +244,101 @@ class _HomeWidgetState extends State<HomeWidget> {
               ...appState.watchedPlans.map((id) {
                 final p = planById(id);
                 if (p == null) return const SizedBox();
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 10),
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: ffTheme.alternate),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(color: ffTheme.accent2, borderRadius: BorderRadius.circular(10)),
-                        child: Icon(Icons.trending_down_rounded, color: ffTheme.warning, size: 18),
+                final better = _betterDealFor(p, appState);
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      margin: EdgeInsets.only(bottom: better != null ? 4 : 10),
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: ffTheme.alternate),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('עוקב אחר ${p.provider}', style: ffTheme.titleSmall.copyWith(fontSize: 13)),
-                            Text('₪${p.price}/${p.cat == 'abroad' ? 'חבילה' : 'חודש'} — מחיר עדכני', style: ffTheme.labelSmall),
-                          ],
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(color: ffTheme.accent2, borderRadius: BorderRadius.circular(10)),
+                            child: Icon(Icons.trending_down_rounded, color: ffTheme.warning, size: 18),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('עוקב אחר ${p.provider}', style: ffTheme.titleSmall.copyWith(fontSize: 13)),
+                                Text('₪${p.price}/${p.cat == 'abroad' ? 'חבילה' : 'חודש'} — מחיר עדכני', style: ffTheme.labelSmall),
+                              ],
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              Navigator.pop(context);
+                              context.pushNamed('PlanDetail', pathParameters: {'planId': id});
+                            },
+                            child: Text('פרטים', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (better != null)
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.pop(context);
+                          context.pushNamed('PlanDetail', pathParameters: {'planId': better.plan.id});
+                        },
+                        child: Container(
+                          margin: const EdgeInsets.only(bottom: 10),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: ffTheme.accent1,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: ffTheme.primary.withOpacity(0.2)),
+                          ),
+                          child: Row(
+                            children: [
+                              const Text('💡', style: TextStyle(fontSize: 15)),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('מצאנו לך אופציה טובה יותר', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700, fontSize: 12)),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      '${better.plan.provider} · ${better.plan.plan} · ₪${better.plan.price}/${better.plan.cat == 'abroad' ? 'לחבילה' : '/חודש'}',
+                                      style: ffTheme.labelSmall.copyWith(color: ffTheme.primaryText),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: better.annualSaving > 0 ? ffTheme.secondary : ffTheme.primary,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  better.annualSaving > 0
+                                      ? 'חוסך ₪${better.annualSaving}/שנה'
+                                      : '${better.scorePct}% התאמה',
+                                  style: ffTheme.labelSmall.copyWith(
+                                    color: better.annualSaving > 0 ? ffTheme.primary : Colors.white,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 10,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
-                      TextButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                          context.pushNamed('PlanDetail', pathParameters: {'planId': id});
-                        },
-                        child: Text('פרטים', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
-                      ),
-                    ],
-                  ),
+                  ],
                 );
               }),
             const SizedBox(height: 8),
@@ -1189,39 +1276,63 @@ class _HomeWidgetState extends State<HomeWidget> {
               itemBuilder: (_, i) {
                 final plan = planById(appState.watchedPlans[i]);
                 if (plan == null) return const SizedBox();
+                final better = _betterDealFor(plan, appState);
                 return GestureDetector(
                   onTap: () => context.pushNamed('PlanDetail', pathParameters: {'planId': plan.id}),
-                  child: Container(
-                    width: 148,
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: ffTheme.alternate),
-                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 6)],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Container(
+                        width: 148,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: better != null ? ffTheme.primary.withOpacity(0.35) : ffTheme.alternate,
+                          ),
+                          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 6)],
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            LogoWidget(provider: plan.provider, size: 24),
-                            const SizedBox(width: 6),
-                            Expanded(child: Text(plan.provider, style: ffTheme.labelSmall.copyWith(fontWeight: FontWeight.w700), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                            Row(
+                              children: [
+                                LogoWidget(provider: plan.provider, size: 24),
+                                const SizedBox(width: 6),
+                                Expanded(child: Text(plan.provider, style: ffTheme.labelSmall.copyWith(fontWeight: FontWeight.w700), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                              ],
+                            ),
+                            const SizedBox(height: 5),
+                            Text('₪${plan.price}/${plan.cat == 'abroad' ? 'חבילה' : 'חודש'}', style: ffTheme.titleSmall.copyWith(color: ffTheme.primary, fontSize: 13, fontWeight: FontWeight.w700)),
+                            const SizedBox(height: 3),
+                            Row(
+                              children: [
+                                Container(width: 5, height: 5, decoration: BoxDecoration(color: ffTheme.success, shape: BoxShape.circle)),
+                                const SizedBox(width: 4),
+                                Text('עוקב', style: ffTheme.labelSmall.copyWith(color: ffTheme.success, fontSize: 10)),
+                              ],
+                            ),
                           ],
                         ),
-                        const SizedBox(height: 5),
-                        Text('₪${plan.price}/${plan.cat == 'abroad' ? 'חבילה' : 'חודש'}', style: ffTheme.titleSmall.copyWith(color: ffTheme.primary, fontSize: 13, fontWeight: FontWeight.w700)),
-                        const SizedBox(height: 3),
-                        Row(
-                          children: [
-                            Container(width: 5, height: 5, decoration: BoxDecoration(color: ffTheme.success, shape: BoxShape.circle)),
-                            const SizedBox(width: 4),
-                            Text('עוקב', style: ffTheme.labelSmall.copyWith(color: ffTheme.success, fontSize: 10)),
-                          ],
+                      ),
+                      if (better != null)
+                        Positioned(
+                          top: -6,
+                          left: -6,
+                          child: Container(
+                            width: 22,
+                            height: 22,
+                            decoration: BoxDecoration(
+                              color: ffTheme.secondary,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 1.5),
+                              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.12), blurRadius: 4)],
+                            ),
+                            child: const Center(child: Text('💡', style: TextStyle(fontSize: 11))),
+                          ),
                         ),
-                      ],
-                    ),
+                    ],
                   ),
                 ).animate(delay: (i * 50).ms).fadeIn(duration: 250.ms);
               },

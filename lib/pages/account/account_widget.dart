@@ -64,7 +64,7 @@ class AccountWidget extends StatelessWidget {
                         IconButton(
                           icon: const Icon(Icons.settings_rounded, color: Colors.white),
                           tooltip: 'הגדרות פרופיל',
-                          onPressed: () => context.pushNamed('Profile'),
+                          onPressed: () => context.pushNamed('Settings'),
                         )
                       else
                         TextButton(

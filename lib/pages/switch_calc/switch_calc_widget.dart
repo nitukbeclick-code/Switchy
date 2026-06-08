@@ -7,6 +7,7 @@ import '../../core/nav.dart';
 import '../../app_state.dart';
 import '../../data.dart';
 import '../../components/logo_widget/logo_widget.dart';
+import '../../services/recommendation_engine.dart';
 
 class SwitchCalcWidget extends StatefulWidget {
   const SwitchCalcWidget({super.key});
@@ -85,6 +86,19 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
   @override
   Widget build(BuildContext context) {
     final ffTheme = AppTheme.of(context);
+    final appState = Provider.of<AppState>(context);
+    final cat = _selectedCat;
+    final profile = MatchProfile(
+      category: cat,
+      currentBill: appState.currentBill(cat),
+      budget: (appState.quizCompleted && appState.quizCat == cat) ? appState.quizBudget : 0,
+      priority: priorityFromId(appState.quizPriority),
+      lines: appState.quizLines,
+      wants5G: appState.wants5G,
+      wantsAbroad: appState.wantsAbroad,
+      wantsNoCommit: appState.wantsNoCommit,
+    );
+    final recommended = RecommendationEngine.bestMatch(profile);
 
     return Scaffold(
       backgroundColor: ffTheme.background,
@@ -325,11 +339,27 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
               const SizedBox(height: 16),
             ],
 
+            if (recommended != null)
+              _RecommendedPlanCard(
+                match: recommended,
+                selectedCat: _selectedCat,
+                onUsePrefill: () {
+                  final cfg = _sliderConfig(_selectedCat);
+                  final minVal = _selectedCat == 'abroad' ? 5.0 : 20.0;
+                  setState(() {
+                    _newPlan = recommended.plan.price.toDouble().clamp(minVal, cfg.$2);
+                  });
+                },
+                ffTheme: ffTheme,
+              ).animate().fadeIn(delay: 440.ms),
+
+            if (recommended != null) const SizedBox(height: 12),
+
             _LeadingPlanCard(
               selectedCat: _selectedCat,
               maxPrice: _newPlan.round(),
               ffTheme: ffTheme,
-            ).animate().fadeIn(delay: 440.ms),
+            ).animate().fadeIn(delay: 460.ms),
 
             const SizedBox(height: 12),
 
@@ -342,9 +372,145 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                 ),
                 child: Text('מצא מסלולים מתאימים', style: ffTheme.titleSmall.copyWith(color: Colors.white)),
-              ).animate().fadeIn(delay: 460.ms),
+              ).animate().fadeIn(delay: 480.ms),
 
             const SizedBox(height: 32),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Recommended Plan Card ────────────────────────────────────────────────────
+
+class _RecommendedPlanCard extends StatelessWidget {
+  const _RecommendedPlanCard({
+    required this.match,
+    required this.selectedCat,
+    required this.onUsePrefill,
+    required this.ffTheme,
+  });
+
+  final PlanMatch match;
+  final String selectedCat;
+  final VoidCallback onUsePrefill;
+  final AppTheme ffTheme;
+
+  @override
+  Widget build(BuildContext context) {
+    final plan = match.plan;
+    final priceLabel = selectedCat == 'abroad' ? 'לחבילה' : '/חודש';
+    final topReasons = match.reasons.take(2).toList();
+
+    return GestureDetector(
+      onTap: () => context.pushNamed('PlanDetail', pathParameters: {'planId': plan.id}),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [ffTheme.primary.withOpacity(0.06), ffTheme.secondary.withOpacity(0.10)],
+            begin: Alignment.topRight,
+            end: Alignment.bottomLeft,
+          ),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: ffTheme.primary.withOpacity(0.35), width: 1.5),
+          boxShadow: [BoxShadow(color: ffTheme.primary.withOpacity(0.08), blurRadius: 10, offset: const Offset(0, 3))],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header row: title + score badge
+            Row(
+              children: [
+                Text('✨ המסלול המומלץ למעבר',
+                    style: ffTheme.titleSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w800)),
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: ffTheme.primary,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text('${match.scorePct}% התאמה',
+                      style: ffTheme.labelSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+
+            // Plan info row
+            Row(
+              children: [
+                LogoWidget(provider: plan.provider, size: 44),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(plan.provider,
+                          style: ffTheme.titleSmall.copyWith(fontWeight: FontWeight.w700)),
+                      Text(plan.plan,
+                          style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis),
+                    ],
+                  ),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text('₪${plan.price}',
+                        style: ffTheme.headlineSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w800)),
+                    Text(priceLabel,
+                        style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText)),
+                  ],
+                ),
+              ],
+            ),
+
+            // Reasons
+            if (topReasons.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 6,
+                runSpacing: 4,
+                children: topReasons.map((r) => Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: ffTheme.secondary.withOpacity(0.25),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(r, style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w600)),
+                )).toList(),
+              ),
+            ],
+
+            // Annual saving
+            if (match.annualSaving > 0) ...[
+              const SizedBox(height: 8),
+              Text('חיסכון שנתי משוער: ₪${match.annualSaving}',
+                  style: ffTheme.bodySmall.copyWith(color: ffTheme.success, fontWeight: FontWeight.w700)),
+            ],
+
+            // Prefill action
+            const SizedBox(height: 12),
+            GestureDetector(
+              onTap: onUsePrefill,
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 9),
+                decoration: BoxDecoration(
+                  color: ffTheme.primary,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  'השתמש במחיר המומלץ (₪${plan.price})',
+                  textAlign: TextAlign.center,
+                  style: ffTheme.labelMedium.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
+                ),
+              ),
+            ),
           ],
         ),
       ),

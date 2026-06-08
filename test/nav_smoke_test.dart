@@ -132,4 +132,15 @@ void main() {
 
     expect(tester.takeException(), isNull);
   });
+
+  // ── Test 7: Settings screen ──────────────────────────────────────────────
+  testWidgets('7. Settings screen renders without exceptions', (tester) async {
+    await _bootApp(tester);
+
+    _navigateTo(tester, '/settings');
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(tester.takeException(), isNull);
+  });
 }

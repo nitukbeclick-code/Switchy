@@ -25,6 +25,7 @@ import 'pages/switch_calc/switch_calc_widget.dart';
 import 'pages/callback/callback_widget.dart';
 import 'pages/website/website_widget.dart';
 import 'pages/porting/porting_widget.dart';
+import 'pages/settings/settings_widget.dart';
 
 final _rootNavKey = GlobalKey<NavigatorState>(debugLabel: 'root');
 final _shellNavKey = GlobalKey<NavigatorState>(debugLabel: 'shell');
@@ -67,6 +68,7 @@ GoRouter createRouter() => GoRouter(
         GoRoute(path: '/switch-calc', name: 'SwitchCalc', builder: (_, __) => const SwitchCalcWidget()),
         GoRoute(path: '/callback', name: 'Callback', builder: (_, __) => const CallbackWidget()),
         GoRoute(path: '/porting', name: 'Porting', builder: (_, __) => const PortingWidget()),
+        GoRoute(path: '/settings', name: 'Settings', builder: (_, __) => const SettingsWidget()),
       ],
     ),
   ],

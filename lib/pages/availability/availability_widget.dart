@@ -7,6 +7,7 @@ import '../../core/nav.dart';
 import '../../widgets/app_button.dart';
 import '../../app_state.dart';
 import '../../components/logo_widget/logo_widget.dart';
+import '../../services/recommendation_engine.dart';
 
 class AvailabilityWidget extends StatefulWidget {
   const AvailabilityWidget({super.key});
@@ -123,6 +124,10 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
               const SizedBox(height: 12),
               _buildProviderList(ffTheme),
             ],
+
+            // Recommendation card — shown only after all results revealed
+            if (_checked && _revealedCount >= _filteredProviders.length)
+              _buildRecommendationCard(ffTheme, context),
 
             const SizedBox(height: 32),
           ],
@@ -544,6 +549,110 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
         ],
       ),
     ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.1, end: 0);
+  }
+
+  Widget _buildRecommendationCard(AppTheme ffTheme, BuildContext context) {
+    final appState = Provider.of<AppState>(context, listen: false);
+    const cat = 'internet';
+    final profile = MatchProfile(
+      category: cat,
+      currentBill: appState.currentBill(cat),
+      budget: (appState.quizCompleted && appState.quizCat == cat) ? appState.quizBudget : 0,
+      priority: priorityFromId(appState.quizPriority),
+      lines: appState.quizLines,
+      wants5G: appState.wants5G,
+      wantsAbroad: appState.wantsAbroad,
+      wantsNoCommit: appState.wantsNoCommit,
+    );
+    final match = RecommendationEngine.bestMatch(profile);
+    if (match == null) return const SizedBox.shrink();
+
+    final plan = match.plan;
+    final priceUnit = plan.cat == 'abroad' ? 'לחבילה' : '/חודש';
+    final topReasons = match.reasons.take(2).toList();
+
+    return GestureDetector(
+      onTap: () => context.pushNamed('PlanDetail', pathParameters: {'planId': plan.id}),
+      child: Container(
+        margin: const EdgeInsets.only(top: 8, bottom: 8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: ffTheme.primary.withOpacity(0.25), width: 1.5),
+          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 12, offset: const Offset(0, 3))],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header bar
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+              decoration: BoxDecoration(
+                color: ffTheme.accent1,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
+              ),
+              child: Row(
+                children: [
+                  Text('✨ המסלול המומלץ עבורך', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w800, fontSize: 13)),
+                  const Spacer(),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+                    decoration: BoxDecoration(color: ffTheme.primary, borderRadius: BorderRadius.circular(20)),
+                    child: Text('${match.scorePct}% התאמה', style: ffTheme.labelSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 11)),
+                  ),
+                ],
+              ),
+            ),
+            // Body
+            Padding(
+              padding: const EdgeInsets.all(14),
+              child: Row(
+                children: [
+                  LogoWidget(provider: plan.provider, size: 44),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(plan.provider, style: ffTheme.titleSmall),
+                        Text(plan.plan, style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText)),
+                        if (topReasons.isNotEmpty) ...[
+                          const SizedBox(height: 5),
+                          Wrap(
+                            spacing: 6,
+                            runSpacing: 4,
+                            children: topReasons.map((r) => Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                              decoration: BoxDecoration(color: ffTheme.accent1, borderRadius: BorderRadius.circular(6)),
+                              child: Text(r, style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontSize: 11)),
+                            )).toList(),
+                          ),
+                        ],
+                        if (match.annualSaving > 0) ...[
+                          const SizedBox(height: 4),
+                          Text('חיסכון שנתי: ₪${match.annualSaving}', style: ffTheme.labelSmall.copyWith(color: ffTheme.success, fontWeight: FontWeight.w700)),
+                        ],
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text('₪${plan.price}', style: ffTheme.titleMedium.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w800)),
+                      Text(priceUnit, style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText, fontSize: 11)),
+                      const SizedBox(height: 6),
+                      Icon(Icons.arrow_forward_ios_rounded, size: 14, color: ffTheme.primary),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.08, end: 0),
+    );
   }
 
   int _speedMbps(String speed) {

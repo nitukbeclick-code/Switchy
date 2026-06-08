@@ -99,6 +99,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                 actions: [
                   IconButton(
                     icon: const Icon(Icons.share_rounded, color: Colors.white),
+                    tooltip: 'שתף מסלול',
                     onPressed: () {
                       final unit = plan.cat == 'abroad' ? 'חבילה' : 'חודש';
                       final msg = '${plan.provider} — ${plan.plan}\n₪${plan.price}/$unit · ${plan.commitmentLabel}\n\nמצאתי את זה דרך חוסך 🎯';
@@ -117,7 +118,11 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                       inCompare ? Icons.compare_arrows_rounded : Icons.add,
                       color: inCompare ? ffTheme.secondary : Colors.white,
                     ),
-                    onPressed: () => appState.toggleCompare(plan.id),
+                    tooltip: inCompare ? 'הסר מהשוואה' : 'הוסף להשוואה',
+                    onPressed: () {
+                      HapticFeedback.selectionClick();
+                      appState.toggleCompare(plan.id);
+                    },
                   ),
                   const SizedBox(width: 8),
                 ],
@@ -480,7 +485,10 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                             ),
                             Switch(
                               value: appState.isWatching(plan.id),
-                              onChanged: (v) => appState.toggleWatch(plan.id),
+                              onChanged: (v) {
+                                HapticFeedback.selectionClick();
+                                appState.toggleWatch(plan.id);
+                              },
                               activeColor: ffTheme.primary,
                             ),
                           ],
@@ -598,7 +606,10 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                     ),
                     const SizedBox(width: 12),
                     GestureDetector(
-                      onTap: () => appState.toggleCompare(plan.id),
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        appState.toggleCompare(plan.id);
+                      },
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 200),
                         width: 56,

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -285,8 +286,10 @@ class _CompareTable extends StatelessWidget {
                     child: Padding(
                       padding: const EdgeInsets.only(left: 10),
                       child: ElevatedButton(
-                        onPressed: () => context.pushNamed('Lead',
-                            pathParameters: {'planId': p.id}),
+                        onPressed: () {
+                          HapticFeedback.lightImpact();
+                          context.pushNamed('Lead', pathParameters: {'planId': p.id});
+                        },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: p.id == winnerId
                               ? ffTheme.primary
@@ -455,7 +458,10 @@ class _WinnerSummaryCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 14),
                 ElevatedButton(
-                  onPressed: () => context.pushNamed('Lead', pathParameters: {'planId': winner.id}),
+                  onPressed: () {
+                    HapticFeedback.lightImpact();
+                    context.pushNamed('Lead', pathParameters: {'planId': winner.id});
+                  },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: ffTheme.secondary,
                     foregroundColor: const Color(0xFF0E3A26),
@@ -589,10 +595,17 @@ class _PlanHeader extends StatelessWidget {
               maxLines: 2,
               overflow: TextOverflow.ellipsis),
           const SizedBox(height: 4),
-          GestureDetector(
-            onTap: () => appState.toggleCompare(plan.id),
-            child: Icon(Icons.close_rounded,
-                size: 18, color: ffTheme.secondaryText),
+          Semantics(
+            button: true,
+            label: 'הסר מהשוואה',
+            child: GestureDetector(
+              onTap: () {
+                HapticFeedback.selectionClick();
+                appState.toggleCompare(plan.id);
+              },
+              child: Icon(Icons.close_rounded,
+                  size: 18, color: ffTheme.secondaryText),
+            ),
           ),
         ],
       ),

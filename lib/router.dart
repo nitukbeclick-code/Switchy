@@ -46,7 +46,7 @@ GoRouter createRouter() => GoRouter(
     GoRoute(path: '/website', name: 'Website', parentNavigatorKey: _rootNavKey, builder: (_, __) => const WebsiteWidget()),
     ShellRoute(
       navigatorKey: _shellNavKey,
-      builder: (ctx, state, child) => _ScaffoldWithNav(child: child, location: state.uri.path),
+      builder: (ctx, state, child) => _ScaffoldWithNav(location: state.uri.path, child: child),
       routes: [
         GoRoute(path: '/home', name: 'Home', builder: (_, __) => const HomeWidget()),
         GoRoute(path: '/quiz', name: 'Quiz', builder: (_, __) => const QuizWidget()),

@@ -5,10 +5,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../theme/app_theme.dart';
 import '../../core/nav.dart';
-import '../../widgets/app_button.dart';
 import '../../app_state.dart';
 import '../../data.dart';
-import '../../models.dart';
 import '../../components/plan_card/plan_card_widget.dart';
 import '../../components/logo_widget/logo_widget.dart';
 
@@ -144,8 +142,8 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
                   ).animate().fadeIn(delay: 100.ms),
                   const SizedBox(height: 18),
                   // Trust signals
-                  Row(
-                    children: const [
+                  const Row(
+                    children: [
                       _TrustPill(icon: Icons.verified_rounded, label: 'שירות חינמי'),
                       SizedBox(width: 8),
                       _TrustPill(icon: Icons.timer_rounded, label: '2 דקות'),
@@ -256,16 +254,16 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
               padding: const EdgeInsets.symmetric(vertical: 20),
               child: Column(
                 children: [
-                  Row(
+                  const Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
                       _AnimatedStat(end: 60000, prefix: '', suffix: '+', label: 'לקוחות'),
-                      const _StatDivider(),
+                      _StatDivider(),
                       _AnimatedStat(end: 850, prefix: '₪', suffix: '', label: 'חיסכון ממוצע'),
-                      const _StatDivider(),
+                      _StatDivider(),
                       _AnimatedStat(end: 100, prefix: '', suffix: '+', label: 'מסלולים'),
-                      const _StatDivider(),
-                      const _Stat(value: '4.8★', label: 'דירוג'),
+                      _StatDivider(),
+                      _Stat(value: '4.8★', label: 'דירוג'),
                     ],
                   ),
                   const SizedBox(height: 14),
@@ -455,10 +453,10 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
                     ],
                   ),
                   const SizedBox(height: 16),
-                  SingleChildScrollView(
+                  const SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: Row(
-                      children: const [
+                      children: [
                         _Testimonial(name: 'מאיה כהן', city: 'תל אביב', saving: 960, provider: 'גולן', text: 'חסכתי ₪80 לחודש בסלולר. הכל היה פשוט, ניוד המספר היה חלק לגמרי. ממליצה בחום!'),
                         _Testimonial(name: 'דן שפירא', city: 'חיפה', saving: 1200, provider: 'סלקום', text: 'מצאתי אינטרנט גיגה ב-₪99 ללא התחייבות. 3 שנים שמשלמים יותר, היום הפסקנו.'),
                         _Testimonial(name: 'נועה גרין', city: 'ירושלים', saving: 1440, provider: 'פרטנר', text: 'עברנו לחבילה משולבת עם Netflix. חוסכים ₪120 לחודש על אינטרנט + TV.'),
@@ -498,9 +496,9 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
             child: Container(
               padding: const EdgeInsets.all(20),
               color: Colors.white,
-              child: Column(
+              child: const Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
+                children: [
                   _FAQHeader(),
                   _FAQ(q: 'האם השירות חינמי?', a: 'כן! חוסך הוא שירות חינמי לחלוטין. אנחנו מרוויחים עמלה מהספקים, לא ממך.'),
                   _FAQ(q: 'מה קורה לאחר שאני בוחר מסלול?', a: 'נציג חוסך יצור קשר תוך שעה, יסביר את התהליך ויסייע בכל שלב עד הניוד.'),

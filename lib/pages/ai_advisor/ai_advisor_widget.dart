@@ -193,8 +193,8 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
     } else if (isThanks) {
       reply = 'בשמחה! 🙌 תמיד פה לעזור.\n\nאחרי שתחליטו, אפשר לסיים את המעבר כולל ניוד מספר ישירות דרך חוסך — בקלות ובלי עמלות נסתרות.';
     } else if (lower.contains('כמה') && (lower.contains('עולה') || lower.contains('עלות') || lower.contains('מחיר'))) {
-      int _minPrice(String c) => plansByCat(c).map((p) => p.price).fold(9999, (a, b) => a < b ? a : b);
-      reply = 'אפשר לכוון אותך! 😊\n\nאיזה שירות אתם מחפשים?\n• 📱 סלולר — מ-₪${_minPrice('cellular')}/חודש\n• 🌐 אינטרנט — מ-₪${_minPrice('internet')}/חודש (מבצע)\n• 📺 טלוויזיה — מ-₪${_minPrice('tv')}/חודש\n• 🏠 חבילה משולבת — מ-₪${_minPrice('triple')}/חודש\n• ✈️ חו"ל — מ-₪${_minPrice('abroad')}/חבילה\n\nספרו לי עם איזו קטגוריה ואמצא את הכי זול!';
+      int minPrice(String c) => plansByCat(c).map((p) => p.price).fold(9999, (a, b) => a < b ? a : b);
+      reply = 'אפשר לכוון אותך! 😊\n\nאיזה שירות אתם מחפשים?\n• 📱 סלולר — מ-₪${minPrice('cellular')}/חודש\n• 🌐 אינטרנט — מ-₪${minPrice('internet')}/חודש (מבצע)\n• 📺 טלוויזיה — מ-₪${minPrice('tv')}/חודש\n• 🏠 חבילה משולבת — מ-₪${minPrice('triple')}/חודש\n• ✈️ חו"ל — מ-₪${minPrice('abroad')}/חבילה\n\nספרו לי עם איזו קטגוריה ואמצא את הכי זול!';
     } else if (lower.contains('חשבון') || lower.contains('כמה אני משלם') || lower.contains('כמה משלם') || lower.contains('המחיר שלי') || lower.contains('נוכחי')) {
       final bills = ['cellular', 'internet', 'tv', 'triple', 'abroad'].where((c) => appState.currentBill(c) > 0);
       if (bills.isEmpty) {

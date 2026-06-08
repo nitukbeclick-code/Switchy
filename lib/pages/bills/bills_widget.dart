@@ -219,8 +219,8 @@ class _BillsWidgetState extends State<BillsWidget> {
                             );
                           }).toList(),
                         ),
-                        duration: const Duration(milliseconds: 500),
-                        curve: Curves.easeInOut,
+                        swapAnimationDuration: const Duration(milliseconds: 500),
+                        swapAnimationCurve: Curves.easeInOut,
                       ),
                     ),
                     const SizedBox(height: 12),

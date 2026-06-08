@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'theme/app_theme.dart';
 import 'router.dart';
 
 class ChosechApp extends StatelessWidget {
@@ -25,24 +26,23 @@ class ChosechApp extends StatelessWidget {
   }
 
   ThemeData _theme() {
-    final base = ThemeData(useMaterial3: true);
+    final base = ThemeData(useMaterial3: true, fontFamily: GoogleFonts.assistant().fontFamily);
     return base.copyWith(
-      colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF15603E), surface: const Color(0xFFFEFCF8)),
-      scaffoldBackgroundColor: const Color(0xFFF4F0E8),
-      fontFamily: GoogleFonts.assistant().fontFamily,
+      colorScheme: ColorScheme.fromSeed(seedColor: AppColors.primary, surface: AppColors.secondaryBackground),
+      scaffoldBackgroundColor: AppColors.background,
       textTheme: GoogleFonts.assistantTextTheme(base.textTheme),
       appBarTheme: AppBarTheme(
-        backgroundColor: const Color(0xFF15603E),
+        backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         elevation: 0,
         centerTitle: false,
         titleTextStyle: GoogleFonts.rubik(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white),
       ),
       inputDecorationTheme: InputDecorationTheme(
-        filled: true, fillColor: const Color(0xFFFEFCF8),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFE5E0D5))),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFFE5E0D5))),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: Color(0xFF15603E), width: 1.5)),
+        filled: true, fillColor: AppColors.secondaryBackground,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: AppColors.alternate)),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: AppColors.alternate)),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: AppColors.primary, width: 1.5)),
       ),
     );
   }

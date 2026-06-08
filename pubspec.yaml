@@ -1,5 +1,8 @@
 name: chosech
-description: חוסך - Israeli Telecom Price Comparison App
+description: >
+  חוסך — Compare Israeli telecom plans (cellular, internet, TV, triple bundles,
+  abroad) in one place. Find the best deal, calculate your savings, and switch
+  providers with step-by-step porting guidance. Hebrew-first, RTL Flutter app.
 publish_to: 'none'
 version: 1.0.0+1
 

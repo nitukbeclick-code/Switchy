@@ -117,8 +117,11 @@ class AppState extends ChangeNotifier {
   List<String> get comparePlans => List.unmodifiable(_comparePlans);
   bool isInCompare(String id) => _comparePlans.contains(id);
   void toggleCompare(String id) {
-    if (_comparePlans.contains(id)) _comparePlans.remove(id);
-    else if (_comparePlans.length < 3) _comparePlans.add(id);
+    if (_comparePlans.contains(id)) {
+      _comparePlans.remove(id);
+    } else if (_comparePlans.length < 3) {
+      _comparePlans.add(id);
+    }
     notifyListeners();
   }
   void clearCompare() { _comparePlans.clear(); notifyListeners(); }
@@ -187,7 +190,11 @@ class AppState extends ChangeNotifier {
   List<String> get activeFilters => List.unmodifiable(_activeFilters);
   void setSearch(String q) { _searchQuery = q; notifyListeners(); }
   void setSortMode(String m) { _sortMode = m; notifyListeners(); }
-  void toggleFilter(String f) { if (_activeFilters.contains(f)) _activeFilters.remove(f); else _activeFilters.add(f); notifyListeners(); }
+  void toggleFilter(String f) { if (_activeFilters.contains(f)) {
+    _activeFilters.remove(f);
+  } else {
+    _activeFilters.add(f);
+  } notifyListeners(); }
   void clearFilters() { _activeFilters.clear(); _sortMode = 'match'; _searchQuery = ''; notifyListeners(); }
 
   // Watchlist (price alerts)
@@ -195,8 +202,11 @@ class AppState extends ChangeNotifier {
   List<String> get watchedPlans => List.unmodifiable(_watchedPlans.toList());
   bool isWatching(String planId) => _watchedPlans.contains(planId);
   void toggleWatch(String planId) {
-    if (_watchedPlans.contains(planId)) _watchedPlans.remove(planId);
-    else _watchedPlans.add(planId);
+    if (_watchedPlans.contains(planId)) {
+      _watchedPlans.remove(planId);
+    } else {
+      _watchedPlans.add(planId);
+    }
     notifyListeners();
     _persist();
   }
@@ -240,8 +250,11 @@ class AppState extends ChangeNotifier {
   final Set<String> _likedPosts = {};
   bool hasLiked(String postId) => _likedPosts.contains(postId);
   void toggleLike(String postId) {
-    if (_likedPosts.contains(postId)) _likedPosts.remove(postId);
-    else _likedPosts.add(postId);
+    if (_likedPosts.contains(postId)) {
+      _likedPosts.remove(postId);
+    } else {
+      _likedPosts.add(postId);
+    }
     notifyListeners();
     _persist();
   }

@@ -342,6 +342,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
         if (appState.isLoggedIn)
           IconButton(
             icon: const Icon(Icons.edit_rounded, color: Colors.white),
+            tooltip: 'עריכת פרופיל',
             onPressed: () => _showEditProfile(context, appState, ffTheme),
           ),
         const SizedBox(width: 8),
@@ -452,7 +453,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                 ],
               ),
             ),
-            Icon(Icons.arrow_back_ios_rounded, color: Colors.white70, size: 16),
+            const Icon(Icons.arrow_back_ios_rounded, color: Colors.white70, size: 16),
           ],
         ),
       ),
@@ -651,7 +652,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                 ],
               ),
             ),
-            Icon(Icons.arrow_back_ios_rounded, color: Colors.white70, size: 16),
+            const Icon(Icons.arrow_back_ios_rounded, color: Colors.white70, size: 16),
           ],
         ),
       ),

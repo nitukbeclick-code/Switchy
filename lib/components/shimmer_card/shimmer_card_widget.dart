@@ -24,7 +24,7 @@ class ShimmerCardWidget extends StatelessWidget {
           children: [
             Row(
               children: [
-                Container(width: 44, height: 44, decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle)),
+                Container(width: 44, height: 44, decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle)),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Column(
@@ -36,7 +36,7 @@ class ShimmerCardWidget extends StatelessWidget {
                     ],
                   ),
                 ),
-                Container(width: 32, height: 32, decoration: BoxDecoration(color: Colors.white, shape: BoxShape.circle)),
+                Container(width: 32, height: 32, decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle)),
               ],
             ),
             const SizedBox(height: 14),

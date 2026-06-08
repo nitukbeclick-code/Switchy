@@ -637,7 +637,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Colors.white54),
+                    const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Colors.white54),
                   ],
                 ),
               ),
@@ -892,6 +892,7 @@ class _PostCardState extends State<_PostCard> {
                     color: liked ? Colors.red : ffTheme.secondaryText,
                     scale: _bouncing ? 1.4 : 1.0,
                     onTap: () {
+                      HapticFeedback.selectionClick();
                       appState.toggleLike(post.id);
                       setState(() { _bouncing = true; });
                       Future.delayed(const Duration(milliseconds: 400), () { if (mounted) setState(() => _bouncing = false); });

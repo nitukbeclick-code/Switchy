@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../theme/app_theme.dart';
 import '../../core/nav.dart';
 import '../../app_state.dart';
-import '../../models.dart';
 import '../../data.dart';
 import '../../components/plan_card/plan_card_widget.dart';
 import '../../components/shimmer_card/shimmer_card_widget.dart';
@@ -42,6 +42,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
   }
 
   Future<void> _switchCategory(AppState appState, String cat) async {
+    HapticFeedback.selectionClick();
     setState(() { _loading = true; _providerFilter = ''; });
     appState.setCategory(cat);
     _searchController.clear();
@@ -96,6 +97,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                   ),
                 ),
             ]),
+            tooltip: 'סינון',
             onPressed: () => _showFilters(context, appState, ffTheme),
           ),
         ],
@@ -325,7 +327,10 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                       return Padding(
                         padding: const EdgeInsets.only(left: 8),
                         child: GestureDetector(
-                          onTap: () => appState.setSortMode(s.$1),
+                          onTap: () {
+                            HapticFeedback.selectionClick();
+                            appState.setSortMode(s.$1);
+                          },
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 200),
                             padding: const EdgeInsets.symmetric(
@@ -418,7 +423,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                         ),
                         child: Row(
                           children: [
-                            Text('💡', style: const TextStyle(fontSize: 20)),
+                            const Text('💡', style: TextStyle(fontSize: 20)),
                             const SizedBox(width: 10),
                             Expanded(
                               child: Column(
@@ -586,7 +591,10 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                     ),
                     const Spacer(),
                     ElevatedButton(
-                      onPressed: () => context.goNamed('Compare'),
+                      onPressed: () {
+                        HapticFeedback.lightImpact();
+                        context.goNamed('Compare');
+                      },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: ffTheme.secondary,
                         foregroundColor: ffTheme.primary,

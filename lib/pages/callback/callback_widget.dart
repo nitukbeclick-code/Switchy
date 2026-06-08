@@ -382,7 +382,7 @@ class _CallbackWidgetState extends State<CallbackWidget> {
               const SizedBox(height: 32),
               AppButton(
                 text: 'מעקב אחר התהליך',
-                onPressed: () => context.goNamed('Tracker'),
+                onPressed: () async => context.goNamed('Tracker'),
                 
                   width: 240,
                   height: 52,

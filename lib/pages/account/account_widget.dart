@@ -4,10 +4,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../theme/app_theme.dart';
 import '../../core/nav.dart';
-import '../../widgets/app_button.dart';
 import '../../app_state.dart';
 import '../../data.dart';
-import '../../models.dart';
 import '../../components/logo_widget/logo_widget.dart';
 
 class AccountWidget extends StatelessWidget {
@@ -65,6 +63,7 @@ class AccountWidget extends StatelessWidget {
                       if (appState.isLoggedIn)
                         IconButton(
                           icon: const Icon(Icons.settings_rounded, color: Colors.white),
+                          tooltip: 'הגדרות פרופיל',
                           onPressed: () => context.pushNamed('Profile'),
                         )
                       else

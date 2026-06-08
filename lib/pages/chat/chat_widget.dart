@@ -7,6 +7,7 @@ import '../../theme/app_theme.dart';
 import '../../core/nav.dart';
 import '../../app_state.dart';
 import '../../data.dart';
+import '../../models.dart';
 import '../../components/logo_widget/logo_widget.dart';
 
 class ChatWidget extends StatefulWidget {
@@ -20,7 +21,7 @@ class _ChatWidgetState extends State<ChatWidget> {
   final _inputCtrl = TextEditingController();
   final _scrollCtrl = ScrollController();
   bool _isTyping = false;
-  bool _agentOnline = true;
+  final bool _agentOnline = true;
 
   late List<_Msg> _messages;
   Plan? _contextPlan;
@@ -43,7 +44,7 @@ class _ChatWidgetState extends State<ChatWidget> {
 
     _messages = [
       _Msg(
-        text: '${greeting}אני דנה, הנציגה שלכם 😊\nאני כאן לעזור בכל שאלה לגבי תהליך המעבר.$planLine',
+        text: '$greetingאני דנה, הנציגה שלכם 😊\nאני כאן לעזור בכל שאלה לגבי תהליך המעבר.$planLine',
         isUser: false,
         time: DateTime.now().subtract(const Duration(minutes: 2)),
         isRead: true,
@@ -320,12 +321,12 @@ class _ChatWidgetState extends State<ChatWidget> {
       padding: const EdgeInsets.symmetric(vertical: 12),
       child: Row(
         children: [
-          Expanded(child: Divider(color: Colors.black12)),
+          const Expanded(child: Divider(color: Colors.black12)),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Text(label, style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText)),
           ),
-          Expanded(child: Divider(color: Colors.black12)),
+          const Expanded(child: Divider(color: Colors.black12)),
         ],
       ),
     );
@@ -358,7 +359,7 @@ class _ChatWidgetState extends State<ChatWidget> {
   Widget _buildInputBar(AppTheme ffTheme) {
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: Colors.white,
         border: Border(top: BorderSide(color: Colors.black12)),
       ),
@@ -374,8 +375,8 @@ class _ChatWidgetState extends State<ChatWidget> {
                   hintText: 'כתוב הודעה...',
                   hintTextDirection: TextDirection.rtl,
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide(color: Colors.black12)),
-                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide(color: Colors.black12)),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: const BorderSide(color: Colors.black12)),
+                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: const BorderSide(color: Colors.black12)),
                   focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide(color: ffTheme.primary, width: 1.5)),
                   filled: true,
                   fillColor: const Color(0xFFF0F2F5),

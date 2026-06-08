@@ -1,6 +1,25 @@
 include: package:flutter_lints/flutter.yaml
 
+analyzer:
+  errors:
+    # Treat these as warnings rather than errors to keep CI practical
+    missing_return: warning
+  exclude:
+    - "**/*.g.dart"
+    - "**/*.freezed.dart"
+
 linter:
   rules:
-    prefer_const_constructors: false
-    use_key_in_widget_constructors: false
+    # Style rewards — safe for the existing clean codebase
+    prefer_const_constructors: true
+    prefer_const_constructors_in_immutables: true
+    prefer_const_literals_to_create_immutables: true
+    prefer_final_locals: true
+    use_key_in_widget_constructors: true
+    sized_box_for_whitespace: true
+    avoid_print: true
+
+    # Disabled — would cause widespread failures in the current codebase
+    public_member_api_docs: false
+    always_specify_types: false
+    lines_longer_than_80_chars: false

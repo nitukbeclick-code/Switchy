@@ -180,7 +180,7 @@ class _Page1State extends State<_Page1> {
       padding: const EdgeInsets.fromLTRB(24, 32, 24, 16),
       child: Column(
         children: [
-          Text('💰', style: const TextStyle(fontSize: 72))
+          const Text('💰', style: TextStyle(fontSize: 72))
               .animate().scale(duration: 500.ms, curve: Curves.elasticOut),
           const SizedBox(height: 20),
           Text(
@@ -286,7 +286,7 @@ class _Page2 extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(24, 32, 24, 16),
       child: Column(
         children: [
-          Text('🔍', style: const TextStyle(fontSize: 72))
+          const Text('🔍', style: TextStyle(fontSize: 72))
               .animate().scale(duration: 500.ms, curve: Curves.elasticOut),
           const SizedBox(height: 20),
           Text(
@@ -346,7 +346,7 @@ class _Page3 extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(24, 32, 24, 16),
       child: Column(
         children: [
-          Text('🤝', style: const TextStyle(fontSize: 72))
+          const Text('🤝', style: TextStyle(fontSize: 72))
               .animate().scale(duration: 500.ms, curve: Curves.elasticOut),
           const SizedBox(height: 20),
           Text(

@@ -6,7 +6,6 @@ import '../../theme/app_theme.dart';
 import '../../core/nav.dart';
 import '../../app_state.dart';
 import '../../data.dart';
-import '../../models.dart';
 import '../../components/logo_widget/logo_widget.dart';
 
 class SwitchCalcWidget extends StatefulWidget {

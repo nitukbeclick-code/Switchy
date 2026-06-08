@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -7,7 +8,6 @@ import '../../core/nav.dart';
 import '../../widgets/app_button.dart';
 import '../../app_state.dart';
 import '../../data.dart';
-import '../../models.dart';
 
 class TrackerWidget extends StatefulWidget {
   const TrackerWidget({super.key});
@@ -65,7 +65,7 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                 const SizedBox(height: 32),
                 AppButton(
                   text: 'מצא מסלול →',
-                  onPressed: () => context.goNamed('Results'),
+                  onPressed: () async => context.goNamed('Results'),
                   
                     width: double.infinity,
                     height: 52,
@@ -126,7 +126,7 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                 const SizedBox(height: 40),
                 AppButton(
                   text: 'חזרה לדף הבית',
-                  onPressed: () => context.goNamed('Home'),
+                  onPressed: () async => context.goNamed('Home'),
                   
                     width: double.infinity,
                     height: 52,
@@ -331,7 +331,10 @@ class _TrackerWidgetState extends State<TrackerWidget> {
 
             // Rep card
             GestureDetector(
-              onTap: () => context.pushNamed('Chat'),
+              onTap: () {
+                HapticFeedback.lightImpact();
+                context.pushNamed('Chat');
+              },
               child: Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -396,7 +399,10 @@ class _TrackerWidgetState extends State<TrackerWidget> {
 
             AppButton(
               text: 'שליחת הודעה לדנה',
-              onPressed: () async => context.pushNamed('Chat'),
+              onPressed: () async {
+                HapticFeedback.lightImpact();
+                context.pushNamed('Chat');
+              },
               
                 width: double.infinity,
                 height: 52,
@@ -500,7 +506,11 @@ class _StepConfirmButton extends StatelessWidget {
             actions: [
               TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('ביטול')),
               ElevatedButton(
-                onPressed: () { Navigator.pop(ctx); onConfirm(); },
+                onPressed: () {
+                  HapticFeedback.lightImpact();
+                  Navigator.pop(ctx);
+                  onConfirm();
+                },
                 style: ElevatedButton.styleFrom(backgroundColor: ffTheme.primary, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
                 child: const Text('אישור'),
               ),

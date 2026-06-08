@@ -82,7 +82,9 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
     final plans = allPlans.where((p) => p.provider == provider).toList();
     if (plans.isEmpty) return 'cellular';
     final freq = <String, int>{};
-    for (final p in plans) freq[p.cat] = (freq[p.cat] ?? 0) + 1;
+    for (final p in plans) {
+      freq[p.cat] = (freq[p.cat] ?? 0) + 1;
+    }
     return freq.entries.reduce((a, b) => a.value > b.value ? a : b).key;
   }
 
@@ -92,7 +94,7 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
     final appState = Provider.of<AppState>(context, listen: false);
     final ratings = _providerRatings;
 
-    var sorted = ratings.entries.toList();
+    final sorted = ratings.entries.toList();
     if (_sortBy == 'rating') {
       sorted.sort((a, b) {
         final avgA = a.value.reduce((x, y) => x + y) / a.value.length;

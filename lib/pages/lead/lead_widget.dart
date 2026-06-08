@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 import '../../theme/app_theme.dart';
@@ -7,6 +8,7 @@ import '../../core/nav.dart';
 import '../../widgets/app_button.dart';
 import '../../app_state.dart';
 import '../../data.dart';
+import '../../models.dart';
 import '../../components/logo_widget/logo_widget.dart';
 
 class LeadWidget extends StatefulWidget {
@@ -170,9 +172,10 @@ class _LeadWidgetState extends State<LeadWidget> {
                 text: _isSubmitting ? 'שולח...' : 'שלחו פרטים',
                 onPressed: _isSubmitting ? () async {} : () async {
                   if (!_formKey.currentState!.validate()) return;
+                  HapticFeedback.lightImpact();
                   setState(() => _isSubmitting = true);
                   await Future.delayed(const Duration(milliseconds: 800));
-                  if (!mounted) return;
+                  if (!context.mounted) return;
                   appState.submitLead(
                     name: _nameCtrl.text.trim(),
                     phone: _phoneCtrl.text.trim(),

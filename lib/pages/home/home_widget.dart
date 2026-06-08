@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../theme/app_theme.dart';
@@ -131,7 +132,10 @@ class _HomeWidgetState extends State<HomeWidget> {
             child: FloatingActionButton(
               backgroundColor: ffTheme.secondary,
               elevation: 4,
-              onPressed: () => context.pushNamed('Callback'),
+              onPressed: () {
+                HapticFeedback.lightImpact();
+                context.pushNamed('Callback');
+              },
               child: Icon(Icons.phone_rounded, color: ffTheme.primary, size: 26),
             ),
           ),
@@ -143,7 +147,10 @@ class _HomeWidgetState extends State<HomeWidget> {
               right: 16,
               left: 76,
               child: GestureDetector(
-                onTap: () => context.goNamed('Compare'),
+                onTap: () {
+                  HapticFeedback.lightImpact();
+                  context.goNamed('Compare');
+                },
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   decoration: BoxDecoration(
@@ -301,7 +308,10 @@ class _HomeWidgetState extends State<HomeWidget> {
                     ),
                     const SizedBox(height: 4),
                     GestureDetector(
-                      onTap: () => context.goNamed('Results'),
+                      onTap: () {
+                        HapticFeedback.lightImpact();
+                        context.goNamed('Results');
+                      },
                       child: Container(
                         margin: const EdgeInsets.only(top: 8),
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
@@ -335,6 +345,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                     ),
                     child: IconButton(
                       icon: const Icon(Icons.notifications_outlined, color: Colors.white, size: 22),
+                      tooltip: 'התראות',
                       onPressed: () => _showNotifications(context, appState, ffTheme),
                       padding: EdgeInsets.zero,
                     ),
@@ -406,7 +417,6 @@ class _HomeWidgetState extends State<HomeWidget> {
       final minPrice = plans.map((p) => p.price).reduce((a, b) => a < b ? a : b);
       return sum + ((bill - minPrice) * 12).clamp(0, 999999);
     });
-    final display = totalSave > 0 ? '₪${(totalSave / 1000).toStringAsFixed(1)}K' : '₪1,240+';
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -444,7 +454,10 @@ class _HomeWidgetState extends State<HomeWidget> {
           ),
           const SizedBox(height: 20),
           GestureDetector(
-            onTap: () => (totalSave > 0 || appState.quizCompleted) ? context.goNamed('Results') : context.goNamed('Quiz'),
+            onTap: () {
+              HapticFeedback.lightImpact();
+              (totalSave > 0 || appState.quizCompleted) ? context.goNamed('Results') : context.goNamed('Quiz');
+            },
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               decoration: BoxDecoration(
@@ -804,6 +817,7 @@ class _HomeWidgetState extends State<HomeWidget> {
 
               return GestureDetector(
                 onTap: () {
+                  HapticFeedback.selectionClick();
                   appState.setCategory(cat.id);
                   context.goNamed('Results');
                 },
@@ -861,7 +875,10 @@ class _HomeWidgetState extends State<HomeWidget> {
 
   Widget _buildAIAdvisor(BuildContext context, AppTheme ffTheme) {
     return GestureDetector(
-      onTap: () => context.pushNamed('AIAdvisor'),
+      onTap: () {
+        HapticFeedback.lightImpact();
+        context.pushNamed('AIAdvisor');
+      },
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         padding: const EdgeInsets.all(20),
@@ -1043,12 +1060,12 @@ class _HomeWidgetState extends State<HomeWidget> {
 
   Widget _buildToolsRow(BuildContext context, AppTheme ffTheme) {
     final tools = [
-      _Tool(icon: '📍', label: 'בדיקת כיסוי', route: 'Availability'),
-      _Tool(icon: '🧮', label: 'מחשבון מעבר', route: 'SwitchCalc'),
-      _Tool(icon: '📊', label: 'ניהול חשבון', route: 'Bills'),
-      _Tool(icon: '📲', label: 'ניוד מספר', route: 'Porting'),
-      _Tool(icon: '⭐', label: 'דירוגי ספקים', route: 'Ratings'),
-      _Tool(icon: '🤖', label: 'יועץ AI', route: 'AIAdvisor'),
+      const _Tool(icon: '📍', label: 'בדיקת כיסוי', route: 'Availability'),
+      const _Tool(icon: '🧮', label: 'מחשבון מעבר', route: 'SwitchCalc'),
+      const _Tool(icon: '📊', label: 'ניהול חשבון', route: 'Bills'),
+      const _Tool(icon: '📲', label: 'ניוד מספר', route: 'Porting'),
+      const _Tool(icon: '⭐', label: 'דירוגי ספקים', route: 'Ratings'),
+      const _Tool(icon: '🤖', label: 'יועץ AI', route: 'AIAdvisor'),
     ];
 
     return Padding(
@@ -1069,7 +1086,10 @@ class _HomeWidgetState extends State<HomeWidget> {
               itemBuilder: (context, i) {
                 final tool = tools[i];
                 return GestureDetector(
-                  onTap: () => context.pushNamed(tool.route),
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    context.pushNamed(tool.route);
+                  },
                   child: Container(
                     width: 110,
                     padding: const EdgeInsets.all(14),
@@ -1248,24 +1268,24 @@ class _HomeWidgetState extends State<HomeWidget> {
 
   Widget _buildBrandStrip(BuildContext context, AppTheme ffTheme, AppState appState) {
     final providers = [
-      _Provider('פלאפון', const Color(0xFFE07034), const Color(0xFFFFF3EC)),
-      _Provider('סלקום', const Color(0xFFCC2244), const Color(0xFFFFECF0)),
-      _Provider('פרטנר', const Color(0xFF2255CC), const Color(0xFFEEF2FF)),
-      _Provider('הוט מובייל', const Color(0xFF8B1A1A), const Color(0xFFFFECEC)),
-      _Provider('גולן טלקום', const Color(0xFF15603E), const Color(0xFFE8F5EE)),
-      _Provider('רמי לוי', const Color(0xFFD4232A), const Color(0xFFFFF0F0)),
-      _Provider('Xphone', const Color(0xFF0066CC), const Color(0xFFEEF5FF)),
-      _Provider('ויקום', const Color(0xFF6B21A8), const Color(0xFFF5EEFF)),
-      _Provider('וואלה מובייל', const Color(0xFF0077B6), const Color(0xFFECF6FF)),
-      _Provider('019 מובייל', const Color(0xFF6B35C8), const Color(0xFFF3EEFF)),
-      _Provider('yes', const Color(0xFF1A3A7A), const Color(0xFFEEF0FF)),
-      _Provider('בזק', const Color(0xFF007B8A), const Color(0xFFECFAFB)),
-      _Provider('HOT', const Color(0xFF8B1A1A), const Color(0xFFFFECEC)),
-      _Provider('NextTV', const Color(0xFFE07034), const Color(0xFFFFF3EC)),
-      _Provider('גילת', const Color(0xFF1D6FA4), const Color(0xFFECF4FF)),
-      _Provider('CCC', const Color(0xFF2E7D32), const Color(0xFFEDF7EE)),
-      _Provider('FreeTV', const Color(0xFF1A7A4E), const Color(0xFFE8F8EE)),
-      _Provider('Airalo', const Color(0xFF00897B), const Color(0xFFE0F2F1)),
+      const _Provider('פלאפון', Color(0xFFE07034), Color(0xFFFFF3EC)),
+      const _Provider('סלקום', Color(0xFFCC2244), Color(0xFFFFECF0)),
+      const _Provider('פרטנר', Color(0xFF2255CC), Color(0xFFEEF2FF)),
+      const _Provider('הוט מובייל', Color(0xFF8B1A1A), Color(0xFFFFECEC)),
+      const _Provider('גולן טלקום', Color(0xFF15603E), Color(0xFFE8F5EE)),
+      const _Provider('רמי לוי', Color(0xFFD4232A), Color(0xFFFFF0F0)),
+      const _Provider('Xphone', Color(0xFF0066CC), Color(0xFFEEF5FF)),
+      const _Provider('ויקום', Color(0xFF6B21A8), Color(0xFFF5EEFF)),
+      const _Provider('וואלה מובייל', Color(0xFF0077B6), Color(0xFFECF6FF)),
+      const _Provider('019 מובייל', Color(0xFF6B35C8), Color(0xFFF3EEFF)),
+      const _Provider('yes', Color(0xFF1A3A7A), Color(0xFFEEF0FF)),
+      const _Provider('בזק', Color(0xFF007B8A), Color(0xFFECFAFB)),
+      const _Provider('HOT', Color(0xFF8B1A1A), Color(0xFFFFECEC)),
+      const _Provider('NextTV', Color(0xFFE07034), Color(0xFFFFF3EC)),
+      const _Provider('גילת', Color(0xFF1D6FA4), Color(0xFFECF4FF)),
+      const _Provider('CCC', Color(0xFF2E7D32), Color(0xFFEDF7EE)),
+      const _Provider('FreeTV', Color(0xFF1A7A4E), Color(0xFFE8F8EE)),
+      const _Provider('Airalo', Color(0xFF00897B), Color(0xFFE0F2F1)),
     ];
 
     return Padding(

@@ -1,2 +1,77 @@
-.claude/
-.claude/
+# ── Dart / Flutter tooling ────────────────────────────────────────────────────
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+pubspec.lock
+
+# ── Build outputs ─────────────────────────────────────────────────────────────
+build/
+*.apk
+*.aab
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# ── IntelliJ / Android Studio ─────────────────────────────────────────────────
+*.iml
+*.ipr
+*.iws
+.idea/
+.gradle/
+
+# ── Android ───────────────────────────────────────────────────────────────────
+android/local.properties
+android/.gradle/
+android/app/debug/
+android/app/profile/
+android/app/release/
+android/captures/
+
+# ── iOS / macOS ───────────────────────────────────────────────────────────────
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/App.framework
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+ios/Flutter/Generated.xcconfig
+ios/Flutter/ephemeral/
+ios/Runner.xcworkspace/xcshareddata/WorkspaceSettings.xcsettings
+macos/Pods/
+macos/.symlinks/
+macos/Flutter/ephemeral/
+
+# ── Web ───────────────────────────────────────────────────────────────────────
+web/
+
+# ── macOS system ──────────────────────────────────────────────────────────────
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# ── Editor configs ────────────────────────────────────────────────────────────
+*.swp
+*.swo
+*~
+.vscode/
+
+# ── Secrets / env ─────────────────────────────────────────────────────────────
+.env
+.env.*
+*.pem
+*.p12
+*.jks
+google-services.json
+GoogleService-Info.plist
+
+# ── Coverage ──────────────────────────────────────────────────────────────────
+coverage/
+lcov.info
+
+# ── Claude Code ───────────────────────────────────────────────────────────────
+# Keep settings.json and the SessionStart hook tracked so web sessions are
+# reproducible; ignore only local overrides and transient worktrees.
+.claude/settings.local.json
+.claude/worktrees/

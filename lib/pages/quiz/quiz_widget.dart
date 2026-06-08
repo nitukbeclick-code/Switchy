@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../theme/app_theme.dart';
 import '../../core/nav.dart';
@@ -109,7 +110,10 @@ class _QuizWidgetState extends State<QuizWidget> {
                   Expanded(
                     child: AppButton(
                       text: _step < 3 ? 'הבא ←' : '🔍 הצג תוצאות',
-                      onPressed: () async => _next(),
+                      onPressed: () async {
+                        HapticFeedback.lightImpact();
+                        _next();
+                      },
                       
                         width: double.infinity,
                         height: 56,
@@ -225,6 +229,7 @@ class _QuizWidgetState extends State<QuizWidget> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               IconButton(
+                tooltip: 'הפחת קו',
                 onPressed: () => setState(() { if (_lines > 1) _lines--; }),
                 icon: Icon(Icons.remove_circle_outline_rounded, size: 36, color: ffTheme.primary),
               ),
@@ -232,6 +237,7 @@ class _QuizWidgetState extends State<QuizWidget> {
               Text('$_lines', style: ffTheme.displaySmall),
               const SizedBox(width: 16),
               IconButton(
+                tooltip: 'הוסף קו',
                 onPressed: () => setState(() { if (_lines < 10) _lines++; }),
                 icon: Icon(Icons.add_circle_outline_rounded, size: 36, color: ffTheme.primary),
               ),
@@ -526,7 +532,10 @@ class _ChoiceChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: () {
+        HapticFeedback.selectionClick();
+        onTap();
+      },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -559,7 +568,10 @@ class _RadioTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: onTap,
+      onTap: () {
+        HapticFeedback.selectionClick();
+        onTap();
+      },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         margin: const EdgeInsets.only(bottom: 10),

@@ -176,9 +176,35 @@ class _CompareTable extends StatelessWidget {
   final String? winnerId;
   final Map<String, PlanMatch> matchMap;
 
+  // Canonical spec key order; any extra keys are appended alphabetically.
+  static const _canonicalSpecOrder = [
+    'נתונים', 'דקות', 'SMS', 'מהירות', 'ערוצים', 'ממירים', 'VOD', 'חו"ל',
+  ];
+
+  /// Returns spec keys present in at least one plan, in canonical order first,
+  /// then remaining keys sorted alphabetically.
+  List<String> _specKeyUnion(List<Plan> plans) {
+    final allKeys = <String>{};
+    for (final p in plans) {
+      allKeys.addAll(p.specs.keys);
+    }
+    if (allKeys.isEmpty) return const [];
+
+    final result = <String>[];
+    for (final k in _canonicalSpecOrder) {
+      if (allKeys.contains(k)) result.add(k);
+    }
+    final remaining = allKeys.difference(result.toSet()).toList()..sort();
+    result.addAll(remaining);
+    return result;
+  }
+
   @override
   Widget build(BuildContext context) {
     final mixedCats = plans.map((p) => p.cat).toSet().length > 1;
+
+    // Compute spec union once, outside builders.
+    final specKeys = _specKeyUnion(plans);
 
     final rows = <_Row>[
       _Row('מחיר', plans.map((p) => p.cat == 'abroad' ? '₪${p.price}/חבילה' : '₪${p.price}/חודש').toList()),
@@ -242,7 +268,7 @@ class _CompareTable extends StatelessWidget {
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: rows.asMap().entries.map((e) {
@@ -260,6 +286,54 @@ class _CompareTable extends StatelessWidget {
               ),
             ),
           ),
+
+          // ── Spec rows (מפרט) ────────────────────────────────────────────────
+          if (specKeys.isNotEmpty) ...[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 6),
+              child: Row(
+                children: [
+                  Icon(Icons.tune_rounded, size: 14, color: ffTheme.secondaryText),
+                  const SizedBox(width: 6),
+                  Text(
+                    'מפרט',
+                    style: ffTheme.labelSmall.copyWith(
+                      color: ffTheme.secondaryText,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: specKeys.asMap().entries.map((e) {
+                    final idx = e.key;
+                    final key = e.value;
+                    final specRow = _Row(
+                      key,
+                      plans.map((p) => p.specs[key] ?? '—').toList(),
+                    );
+                    // Continue alternating tint from where main rows left off.
+                    final isAlt = (rows.length + idx).isOdd;
+                    return _RowWidget(
+                      row: specRow,
+                      plans: plans,
+                      winnerId: winnerId,
+                      ffTheme: ffTheme,
+                      isAlt: isAlt,
+                    );
+                  }).toList(),
+                ),
+              ),
+            ),
+          ] else
+            const SizedBox(height: 16),
 
           // Mixed-category notice
           if (mixedCats)

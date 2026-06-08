@@ -6,26 +6,57 @@ class LogoWidget extends StatelessWidget {
   final String provider;
   final double size;
 
+  // Maps a substring key → brand background color.
+  // Keys are checked via provider.contains(key) so minor variants still match.
   static const Map<String, Color> _colors = {
-    'פלאפון': Color(0xFFE07034),
-    'סלקום': Color(0xFFCC2244),
-    'פרטנר': Color(0xFF2255CC),
-    'הוט': Color(0xFF8B1A1A),
-    'HOT': Color(0xFF8B1A1A),
-    'yes': Color(0xFF1A3A7A),
-    'בזק': Color(0xFF007B8A),
-    'גולן': Color(0xFF15603E),
-    '019': Color(0xFF6B35C8),
-    'רמי לוי': Color(0xFFD4232A),
-    'Xphone': Color(0xFF0066CC),
+    // Cellular
+    'סלקום': Color(0xFF4527A0), // deep indigo/purple
+    'פרטנר': Color(0xFF2E7D32), // brand green
+    'פלאפון': Color(0xFF1565C0), // brand blue
+    'גולן': Color(0xFF00695C), // teal/navy
+    'הוט מובייל': Color(0xFFB71C1C), // HOT Mobile red
+    'הוט': Color(0xFFB71C1C), // HOT red (catch-all for HOT variants)
+    'HOT': Color(0xFFB71C1C), // HOT red (Latin)
+    'Xphone': Color(0xFF0277BD), // sky blue
+    'רמי לוי': Color(0xFFD32F2F), // rami levy red
+    'WeCom': Color(0xFF00838F), // cyan/teal
+    '019': Color(0xFF6A1B9A), // purple
+    'וואלה': Color(0xFFE64A19), // orange-red
+    'בזק': Color(0xFF1565C0), // Bezeq blue
+    'גילת': Color(0xFF0277BD), // Gilat blue
+    'CCC': Color(0xFF388E3C), // green
+    'STING': Color(0xFFAD1457), // magenta/pink
+    'yes': Color(0xFF0D2B6E), // dark blue
+    'NextTV': Color(0xFFE65100), // orange
+    'NEXT TV': Color(0xFFE65100), // orange (space variant)
+    'Airalo': Color(0xFFFF6F61), // coral
+    // Legacy / fallback entries kept for backward compat
     'ויקום': Color(0xFF6B21A8),
-    'וואלה': Color(0xFF0077B6),
-    'Airalo': Color(0xFF1E90CC),
     'FreeTV': Color(0xFF1A7A4E),
-    'NextTV': Color(0xFFE07034),
-    'NEXT TV': Color(0xFF334466),
-    'גילת': Color(0xFF007B8A),
-    'CCC': Color(0xFF2E7D32),
+  };
+
+  // Override initials for providers where auto-derivation is ambiguous.
+  static const Map<String, String> _initials = {
+    'סלקום': 'סל',
+    'פרטנר': 'פר',
+    'פלאפון': 'פל',
+    'גולן': 'גל',
+    'הוט מובייל': 'HOT',
+    'הוט': 'HOT',
+    'HOT': 'HOT',
+    'Xphone': 'X',
+    'רמי לוי': 'רל',
+    'WeCom': 'WC',
+    '019': '019',
+    'וואלה': 'וו',
+    'בזק': 'בז',
+    'גילת': 'גי',
+    'CCC': 'CCC',
+    'STING': 'ST',
+    'yes': 'yes',
+    'NextTV': 'N',
+    'NEXT TV': 'N',
+    'Airalo': 'Air',
   };
 
   Color get _color {
@@ -34,17 +65,26 @@ class LogoWidget extends StatelessWidget {
         return entry.value;
       }
     }
-    return const Color(0xFF15603E);
+    return const Color(0xFF15603E); // neutral brand green fallback
   }
 
-  String get _initials {
+  String get _label {
+    for (final entry in _initials.entries) {
+      if (provider.contains(entry.key) || entry.key.contains(provider)) {
+        return entry.value;
+      }
+    }
+    // Auto-derive from provider string
     final trimmed = provider.trim();
     if (trimmed.isEmpty) return '?';
-    // Special handling for english names
-    if (RegExp(r'^[A-Za-z]').hasMatch(trimmed)) {
+    if (RegExp(r'^[A-Za-z0-9]').hasMatch(trimmed)) {
       final parts = trimmed.split(' ');
-      if (parts.length > 1) return parts[0][0].toUpperCase() + parts[1][0].toUpperCase();
-      return trimmed[0].toUpperCase();
+      if (parts.length > 1) {
+        return parts[0][0].toUpperCase() + parts[1][0].toUpperCase();
+      }
+      return trimmed.length >= 2
+          ? trimmed.substring(0, 2).toUpperCase()
+          : trimmed[0].toUpperCase();
     }
     // Hebrew: use runes to safely get Unicode characters
     final runes = trimmed.runes.toList();
@@ -55,7 +95,10 @@ class LogoWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final color = _color;
-    final fontSize = size * 0.36;
+    final label = _label;
+    // Shrink font for longer labels (e.g. 'CCC', 'HOT', '019', 'Air')
+    final fontScale = label.length >= 3 ? 0.28 : 0.36;
+    final fontSize = size * fontScale;
     return Container(
       width: size,
       height: size,
@@ -66,7 +109,7 @@ class LogoWidget extends StatelessWidget {
       ),
       child: Center(
         child: Text(
-          _initials,
+          label,
           style: GoogleFonts.rubik(
             fontSize: fontSize,
             fontWeight: FontWeight.w800,

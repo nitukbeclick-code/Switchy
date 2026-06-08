@@ -3,7 +3,7 @@
     "short_name": "חוסך",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#F4F0E8",
+    "background_color": "#15603E",
     "theme_color": "#15603E",
     "description": "השוואת מחירי סלולר, אינטרנט, טלוויזיה וחבילות — וחיסכון אמיתי.",
     "orientation": "portrait-primary",

@@ -39,9 +39,7 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
     'freetv': 'FreeTV', 'פריtv': 'FreeTV',
   };
 
-  @override
-  void initState() {
-    super.initState();
+  List<_ChatMsg> _buildSeed() {
     final appState = AppState();
     final String greeting;
     if (appState.isLoggedIn && appState.firstName.isNotEmpty && appState.firstName != 'אורח') {
@@ -49,13 +47,24 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
     } else {
       greeting = 'שלום! אני חוסך AI 🤖\nיועץ התקשורת החכם שלך.\n\nמה מחפשים?';
     }
-    _messages = [
-      _ChatMsg(
-        text: greeting,
-        isUser: false,
-        time: DateTime.now(),
-      ),
-    ];
+    return [_ChatMsg(text: greeting, isUser: false, time: DateTime.now())];
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    final appState = AppState();
+    final history = appState.advisorHistory;
+    if (history.isNotEmpty) {
+      _messages = history.map((m) => _ChatMsg(
+        text: m['text'] as String,
+        isUser: m['isUser'] as bool,
+        time: DateTime.tryParse(m['ts'] as String? ?? '') ?? DateTime.now(),
+      )).toList();
+    } else {
+      _messages = _buildSeed();
+      appState.addAdvisorMessage(text: _messages.first.text, isUser: false);
+    }
   }
 
   @override
@@ -69,6 +78,7 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
     if (text.trim().isEmpty || _isTyping) return;
     _inputCtrl.clear();
     final appState = Provider.of<AppState>(context, listen: false);
+    appState.addAdvisorMessage(text: text, isUser: true);
     setState(() {
       _messages.add(_ChatMsg(text: text, isUser: true, time: DateTime.now()));
       _isTyping = true;
@@ -237,6 +247,7 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
     }
 
     if (mounted) {
+      appState.addAdvisorMessage(text: reply, isUser: false);
       setState(() {
         _isTyping = false;
         _messages.add(_ChatMsg(text: reply, isUser: false, time: DateTime.now(), planIds: topPlans.map((p) => p.id).toList(), cat: cat));
@@ -317,6 +328,32 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
             ),
           ],
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.delete_sweep_rounded),
+            tooltip: 'נקה שיחה',
+            onPressed: () async {
+              final confirmed = await showDialog<bool>(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: Text('נקה שיחה', style: AppTheme.of(context).titleMedium),
+                  content: Text('לנקות את השיחה?', style: AppTheme.of(context).bodyMedium),
+                  actions: [
+                    TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('ביטול')),
+                    TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('נקה')),
+                  ],
+                ),
+              );
+              if (confirmed == true && mounted) {
+                final appState = AppState();
+                appState.clearAdvisorHistory();
+                final seed = _buildSeed();
+                appState.addAdvisorMessage(text: seed.first.text, isUser: false);
+                setState(() { _messages = seed; });
+              }
+            },
+          ),
+        ],
         foregroundColor: Colors.white,
         elevation: 0,
       ),

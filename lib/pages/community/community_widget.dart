@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -1115,14 +1116,7 @@ class _PostCardState extends State<_PostCard> {
                   semanticLabel: 'שתף פוסט',
                   onTap: () {
                     HapticFeedback.selectionClick();
-                    Clipboard.setData(ClipboardData(text: '${post.author}: ${post.text}'));
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: const Text('הפוסט הועתק ללוח'),
-                      backgroundColor: ffTheme.primary,
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      duration: const Duration(seconds: 2),
-                    ));
+                    Share.share('${post.author}:\n${post.text}\n\nמתוך אפליקציית חוסך 💚');
                   },
                 ),
               ],

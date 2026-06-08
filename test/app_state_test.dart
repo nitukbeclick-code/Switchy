@@ -341,4 +341,57 @@ void main() {
       expect(state.communityPosts.any((p) => p['id'] == 'u1'), isFalse);
     });
   });
+
+  // ── Chat & AI-advisor history ────────────────────────────────────────────────
+
+  group('chat history', () {
+    test('addChatMessage stores messages with role + text', () {
+      final state = AppState();
+      expect(state.chatHistory, isEmpty);
+      state.addChatMessage(text: 'שלום', isUser: true);
+      state.addChatMessage(text: 'היי, איך אפשר לעזור?', isUser: false);
+      expect(state.chatHistory.length, equals(2));
+      expect(state.chatHistory.first['text'], equals('שלום'));
+      expect(state.chatHistory.first['isUser'], isTrue);
+      expect(state.chatHistory.last['isUser'], isFalse);
+    });
+
+    test('chat history is capped at 100 entries (keeps most recent)', () {
+      final state = AppState();
+      for (var i = 0; i < 130; i++) {
+        state.addChatMessage(text: 'm$i', isUser: i.isEven);
+      }
+      expect(state.chatHistory.length, equals(100));
+      expect(state.chatHistory.last['text'], equals('m129'));
+      expect(state.chatHistory.first['text'], equals('m30'));
+    });
+
+    test('clearChatHistory empties the conversation', () {
+      final state = AppState();
+      state.addChatMessage(text: 'x', isUser: true);
+      state.clearChatHistory();
+      expect(state.chatHistory, isEmpty);
+    });
+  });
+
+  group('advisor history', () {
+    test('addAdvisorMessage stores and clearAdvisorHistory empties', () {
+      final state = AppState();
+      state.addAdvisorMessage(text: 'כמה אחסוך?', isUser: true);
+      state.addAdvisorMessage(text: 'עד ₪850 בשנה', isUser: false);
+      expect(state.advisorHistory.length, equals(2));
+      state.clearAdvisorHistory();
+      expect(state.advisorHistory, isEmpty);
+    });
+
+    test('chat and advisor histories are independent stores', () {
+      final state = AppState();
+      state.addChatMessage(text: 'chat', isUser: true);
+      state.addAdvisorMessage(text: 'advisor', isUser: true);
+      expect(state.chatHistory.length, equals(1));
+      expect(state.advisorHistory.length, equals(1));
+      expect(state.chatHistory.first['text'], equals('chat'));
+      expect(state.advisorHistory.first['text'], equals('advisor'));
+    });
+  });
 }

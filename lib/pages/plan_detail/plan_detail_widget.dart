@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../theme/app_theme.dart';
@@ -101,16 +102,9 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                     icon: const Icon(Icons.share_rounded, color: Colors.white),
                     tooltip: 'שתף מסלול',
                     onPressed: () {
+                      HapticFeedback.selectionClick();
                       final unit = plan.cat == 'abroad' ? 'חבילה' : 'חודש';
-                      final msg = '${plan.provider} — ${plan.plan}\n₪${plan.price}/$unit · ${plan.commitmentLabel}\n\nמצאתי את זה דרך חוסך 🎯';
-                      Clipboard.setData(ClipboardData(text: msg));
-                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                        content: const Text('פרטי המסלול הועתקו ללוח!'),
-                        backgroundColor: ffTheme.primary,
-                        behavior: SnackBarBehavior.floating,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        duration: const Duration(seconds: 2),
-                      ));
+                      Share.share('${plan.provider} — ${plan.plan}\n₪${plan.price}/$unit\n\nמצאתי בחוסך 💚');
                     },
                   ),
                   IconButton(

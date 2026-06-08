@@ -87,6 +87,9 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
       budget: (appState.quizCompleted && appState.quizCat == plan.cat) ? appState.quizBudget : 0,
       priority: priorityFromId(appState.quizPriority),
       lines: appState.quizLines,
+      wants5G: appState.wants5G,
+      wantsAbroad: appState.wantsAbroad,
+      wantsNoCommit: appState.wantsNoCommit,
     );
     final planMatch = RecommendationEngine.scorePlan(plan, matchProfile);
 

@@ -30,6 +30,9 @@ class AppState extends ChangeNotifier {
     _quizPriority = p.getString('quizPriority') ?? 'price';
     _quizLines = p.getInt('quizLines') ?? 1;
     _quizCat = p.getString('quizCat') ?? 'cellular';
+    _wants5G = p.getBool('wants5G') ?? false;
+    _wantsAbroad = p.getBool('wantsAbroad') ?? false;
+    _wantsNoCommit = p.getBool('wantsNoCommit') ?? false;
     // Lead & tracker
     _leadPlanId = p.getString('leadPlanId');
     _leadProvider = p.getString('leadProvider');
@@ -104,6 +107,9 @@ class AppState extends ChangeNotifier {
     await p.setString('quizPriority', _quizPriority);
     await p.setInt('quizLines', _quizLines);
     await p.setString('quizCat', _quizCat);
+    await p.setBool('wants5G', _wants5G);
+    await p.setBool('wantsAbroad', _wantsAbroad);
+    await p.setBool('wantsNoCommit', _wantsNoCommit);
     // Lead & tracker
     if (_leadPlanId != null) await p.setString('leadPlanId', _leadPlanId!);
     if (_leadProvider != null) await p.setString('leadProvider', _leadProvider!);
@@ -172,6 +178,21 @@ class AppState extends ChangeNotifier {
   void setQuizBudget(int v) { _quizBudget = v; notifyListeners(); _persist(); }
   void setQuizCompleted(bool v) { _quizCompleted = v; notifyListeners(); _persist(); }
   void setQuizCat(String v) { _quizCat = v; notifyListeners(); _persist(); }
+
+  // Quiz-derived needs — soft preferences the recommendation engine rewards
+  // (each only bonuses a plan that actually has the attribute), persisted so
+  // every screen's match profile reflects them, not just the quiz.
+  bool _wants5G = false, _wantsAbroad = false, _wantsNoCommit = false;
+  bool get wants5G => _wants5G;
+  bool get wantsAbroad => _wantsAbroad;
+  bool get wantsNoCommit => _wantsNoCommit;
+  void setQuizNeeds({required bool wants5G, required bool wantsAbroad, required bool wantsNoCommit}) {
+    _wants5G = wants5G;
+    _wantsAbroad = wantsAbroad;
+    _wantsNoCommit = wantsNoCommit;
+    notifyListeners();
+    _persist();
+  }
 
   // Auth
   bool _isLoggedIn = false; String _userName = ''; String _userPhone = ''; String _userEmail = '';

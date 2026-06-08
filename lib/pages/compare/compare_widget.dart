@@ -23,6 +23,9 @@ class CompareWidget extends StatelessWidget {
             : 0,
         priority: priorityFromId(appState.quizPriority),
         lines: appState.quizLines,
+        wants5G: appState.wants5G,
+        wantsAbroad: appState.wantsAbroad,
+        wantsNoCommit: appState.wantsNoCommit,
       );
 
   @override

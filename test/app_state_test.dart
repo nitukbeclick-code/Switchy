@@ -394,4 +394,31 @@ void main() {
       expect(state.advisorHistory.first['text'], equals('advisor'));
     });
   });
+
+  // ── Quiz-derived needs ───────────────────────────────────────────────────────
+
+  group('quiz needs', () {
+    test('default to false', () {
+      final state = AppState();
+      expect(state.wants5G, isFalse);
+      expect(state.wantsAbroad, isFalse);
+      expect(state.wantsNoCommit, isFalse);
+    });
+
+    test('setQuizNeeds updates all three flags', () {
+      final state = AppState();
+      state.setQuizNeeds(wants5G: true, wantsAbroad: false, wantsNoCommit: true);
+      expect(state.wants5G, isTrue);
+      expect(state.wantsAbroad, isFalse);
+      expect(state.wantsNoCommit, isTrue);
+    });
+
+    test('setQuizNeeds notifies listeners', () {
+      final state = AppState();
+      var notified = false;
+      state.addListener(() => notified = true);
+      state.setQuizNeeds(wants5G: true, wantsAbroad: true, wantsNoCommit: false);
+      expect(notified, isTrue);
+    });
+  });
 }

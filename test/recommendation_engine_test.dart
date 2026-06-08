@@ -131,4 +131,87 @@ void main() {
       }
     });
   });
+
+  group('needs bonuses', () {
+    test('wants5G: 5G plan scores higher with wants5G=true than wants5G=false', () {
+      final fivegPlan = plansByCat('cellular').where((p) => p.is5G).firstOrNull;
+      if (fivegPlan != null) {
+        const profileWith = MatchProfile(
+          category: 'cellular',
+          currentBill: 120,
+          wants5G: true,
+        );
+        const profileWithout = MatchProfile(
+          category: 'cellular',
+          currentBill: 120,
+          wants5G: false,
+        );
+        final scoreWith = RecommendationEngine.scorePlan(fivegPlan, profileWith).score;
+        final scoreWithout = RecommendationEngine.scorePlan(fivegPlan, profileWithout).score;
+        expect(scoreWith, greaterThan(scoreWithout));
+      }
+    });
+
+    test('wantsNoCommit: no-commit plan scores higher with wantsNoCommit=true than false', () {
+      final noCommitPlan = plansByCat('cellular').where((p) => p.noCommit).firstOrNull;
+      if (noCommitPlan != null) {
+        const profileWith = MatchProfile(
+          category: 'cellular',
+          currentBill: 120,
+          wantsNoCommit: true,
+        );
+        const profileWithout = MatchProfile(
+          category: 'cellular',
+          currentBill: 120,
+          wantsNoCommit: false,
+        );
+        final scoreWith = RecommendationEngine.scorePlan(noCommitPlan, profileWith).score;
+        final scoreWithout = RecommendationEngine.scorePlan(noCommitPlan, profileWithout).score;
+        expect(scoreWith, greaterThan(scoreWithout));
+      }
+    });
+
+    test('wantsAbroad: abroad-capable plan scores higher with wantsAbroad=true than false', () {
+      Plan? abroadPlan;
+      for (final cat in ['cellular', 'internet', 'tv', 'triple', 'abroad']) {
+        abroadPlan = plansByCat(cat).where((p) => p.hasAbroad).firstOrNull;
+        if (abroadPlan != null) break;
+      }
+      if (abroadPlan != null) {
+        final cat = abroadPlan.cat;
+        final profileWith = MatchProfile(
+          category: cat,
+          currentBill: 120,
+          wantsAbroad: true,
+        );
+        final profileWithout = MatchProfile(
+          category: cat,
+          currentBill: 120,
+          wantsAbroad: false,
+        );
+        final scoreWith = RecommendationEngine.scorePlan(abroadPlan, profileWith).score;
+        final scoreWithout = RecommendationEngine.scorePlan(abroadPlan, profileWithout).score;
+        expect(scoreWith, greaterThan(scoreWithout));
+      }
+    });
+
+    test('wants5G does not change score for a non-5G plan', () {
+      final nonFivegPlan = plansByCat('cellular').where((p) => !p.is5G).firstOrNull;
+      if (nonFivegPlan != null) {
+        const profileWith = MatchProfile(
+          category: 'cellular',
+          currentBill: 120,
+          wants5G: true,
+        );
+        const profileWithout = MatchProfile(
+          category: 'cellular',
+          currentBill: 120,
+          wants5G: false,
+        );
+        final scoreWith = RecommendationEngine.scorePlan(nonFivegPlan, profileWith).score;
+        final scoreWithout = RecommendationEngine.scorePlan(nonFivegPlan, profileWithout).score;
+        expect(scoreWith, equals(scoreWithout));
+      }
+    });
+  });
 }

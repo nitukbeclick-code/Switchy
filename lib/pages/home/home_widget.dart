@@ -682,6 +682,9 @@ class _HomeWidgetState extends State<HomeWidget> {
       budget: (appState.quizCompleted && appState.quizCat == cat) ? appState.quizBudget : 0,
       priority: priorityFromId(appState.quizPriority),
       lines: appState.quizLines,
+      wants5G: appState.wants5G,
+      wantsAbroad: appState.wantsAbroad,
+      wantsNoCommit: appState.wantsNoCommit,
     );
 
     // Find the single best match across active categories (bill > 0); fall back to selectedCat

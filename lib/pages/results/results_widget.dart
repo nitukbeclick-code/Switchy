@@ -70,6 +70,9 @@ class _ResultsWidgetState extends State<ResultsWidget> {
       budget: (appState.quizCompleted && appState.quizCat == cat) ? appState.quizBudget : 0,
       priority: priorityFromId(appState.quizPriority),
       lines: appState.quizLines,
+      wants5G: appState.wants5G,
+      wantsAbroad: appState.wantsAbroad,
+      wantsNoCommit: appState.wantsNoCommit,
     );
 
     final effectiveSort = _smartSort ? 'match' : appState.sortMode;

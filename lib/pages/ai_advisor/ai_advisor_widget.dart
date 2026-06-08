@@ -316,6 +316,9 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
     budget: (AppState().quizCompleted && AppState().quizCat == cat) ? AppState().quizBudget : 0,
     priority: priorityFromId(AppState().quizPriority),
     lines: AppState().quizLines,
+    wants5G: AppState().wants5G,
+    wantsAbroad: AppState().wantsAbroad,
+    wantsNoCommit: AppState().wantsNoCommit,
   );
 
   void _scrollToBottom() {

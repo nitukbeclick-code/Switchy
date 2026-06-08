@@ -509,6 +509,11 @@ class _QuizWidgetState extends State<QuizWidget> {
     appState.setQuizBudget(_budget.round());
     appState.setQuizCat(_cat);
     appState.setQuizCompleted(true);
+    appState.setQuizNeeds(
+      wants5G: _priority.startsWith('speed') || _priority == 'data',
+      wantsAbroad: _cat == 'abroad' || _priority == 'abroad' || _extraFilter == 'abroad',
+      wantsNoCommit: _priority == 'nocommit' || _extraFilter == 'nocommit',
+    );
     appState.clearFilters();
     // Apply primary priority
     if (_priority == 'nocommit') appState.toggleFilter('nocommit');

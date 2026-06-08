@@ -6,6 +6,7 @@ import '../../core/nav.dart';
 import '../../widgets/app_button.dart';
 import '../../app_state.dart';
 import '../../data.dart';
+import '../../services/recommendation_engine.dart';
 
 class QuizWidget extends StatefulWidget {
   const QuizWidget({super.key});
@@ -21,6 +22,11 @@ class _QuizWidgetState extends State<QuizWidget> {
   late String _priority;
   String? _extraFilter; // secondary preference for internet/tv
   late double _budget;
+
+  // Reveal phase
+  bool _revealed = false;
+  bool _analyzing = false;
+  List<PlanMatch> _recs = [];
 
   @override
   void initState() {
@@ -87,11 +93,36 @@ class _QuizWidgetState extends State<QuizWidget> {
                       child: child,
                     ),
                   ),
-                  child: KeyedSubtree(key: ValueKey(_step), child: _buildStep(ffTheme)),
+                  child: _analyzing
+                      ? _buildAnalyzing(ffTheme)
+                      : _revealed
+                          ? KeyedSubtree(key: const ValueKey('reveal'), child: _buildReveal(ffTheme))
+                          : KeyedSubtree(key: ValueKey(_step), child: _buildStep(ffTheme)),
                 ),
               ),
               const SizedBox(height: 16),
-              Row(
+              if (_analyzing)
+                const SizedBox.shrink()
+              else if (_revealed) ...[
+                AppButton(
+                  text: 'ראה את כל המסלולים ←',
+                  onPressed: () async {
+                    HapticFeedback.lightImpact();
+                    context.goNamed('Results');
+                  },
+                  width: double.infinity,
+                  height: 56,
+                  color: ffTheme.primary,
+                  textStyle: ffTheme.titleMedium.copyWith(color: Colors.white),
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                const SizedBox(height: 8),
+                TextButton(
+                  onPressed: () => setState(() => _revealed = false),
+                  child: Text('↺ ערוך תשובות',
+                      style: ffTheme.bodyMedium.copyWith(color: ffTheme.secondaryText)),
+                ),
+              ] else Row(
                 children: [
                   if (_step > 0)
                     Padding(
@@ -112,15 +143,13 @@ class _QuizWidgetState extends State<QuizWidget> {
                       text: _step < 3 ? 'הבא ←' : '🔍 הצג תוצאות',
                       onPressed: () async {
                         HapticFeedback.lightImpact();
-                        _next();
+                        await _next();
                       },
-                      
-                        width: double.infinity,
-                        height: 56,
-                        color: ffTheme.primary,
-                        textStyle: ffTheme.titleMedium.copyWith(color: Colors.white),
-                        borderRadius: BorderRadius.circular(18),
-                      
+                      width: double.infinity,
+                      height: 56,
+                      color: ffTheme.primary,
+                      textStyle: ffTheme.titleMedium.copyWith(color: Colors.white),
+                      borderRadius: BorderRadius.circular(18),
                     ),
                   ),
                 ],
@@ -458,39 +487,282 @@ class _QuizWidgetState extends State<QuizWidget> {
     }
   }
 
-  void _next() {
+  MatchPriority _mapPriority() {
+    if (_priority.startsWith('speed') || _priority == 'data') return MatchPriority.speed;
+    if (_priority == 'nocommit') return MatchPriority.flexibility;
+    if (_priority == 'channels' || _priority == 'reliability') return MatchPriority.coverage;
+    if (_priority == 'sport' || _priority == 'netflix' || _priority == 'streaming') return MatchPriority.service;
+    return priorityFromId(_priority);
+  }
+
+  Future<void> _next() async {
     if (_step < 3) {
       setState(() => _step++);
-    } else {
-      final appState = Provider.of<AppState>(context, listen: false);
-      appState.setCategory(_cat);
-      appState.setQuizLines(_lines);
-      appState.setQuizPriority(_priority);
-      appState.setQuizBudget(_budget.round());
-      appState.setQuizCat(_cat);
-      appState.setQuizCompleted(true);
-      appState.clearFilters();
-      // Apply primary priority
-      if (_priority == 'nocommit') appState.toggleFilter('nocommit');
-      if (_priority == 'abroad') appState.toggleFilter('abroad');
-      if (_priority == 'esim') appState.toggleFilter('esim');
-      if (_priority == 'sport') appState.toggleFilter('sport');
-      if (_priority == 'channels') appState.setSortMode('match');
-      if (_priority == 'price') appState.setSortMode('price');
-      if (_priority == 'data') appState.setSortMode('match');
-      if (_priority == 'speed' || _priority == 'speed_ultra' || _priority == 'speed_fast') appState.setSortMode('match');
-      // Apply secondary filter (internet/tv/triple/abroad step 2 choice)
-      if (_extraFilter != null) {
-        if (_extraFilter == 'nocommit') appState.toggleFilter('nocommit');
-        if (_extraFilter == 'streaming') appState.toggleFilter('streaming');
-        if (_extraFilter == 'sport') appState.toggleFilter('sport');
-        if (_extraFilter == 'netflix') appState.toggleFilter('netflix');
-        if (_extraFilter == 'esim') appState.toggleFilter('esim');
-        if (_extraFilter == 'price') appState.setSortMode('price');
-        if (_extraFilter == 'data') appState.setSortMode('match');
-      }
-      context.goNamed('Results');
+      return;
     }
+    if (_analyzing) return; // guard against re-entry during the reveal delay
+
+    final appState = Provider.of<AppState>(context, listen: false);
+    appState.setCategory(_cat);
+    appState.setQuizLines(_lines);
+    appState.setQuizPriority(_priority);
+    appState.setQuizBudget(_budget.round());
+    appState.setQuizCat(_cat);
+    appState.setQuizCompleted(true);
+    appState.clearFilters();
+    // Apply primary priority
+    if (_priority == 'nocommit') appState.toggleFilter('nocommit');
+    if (_priority == 'abroad') appState.toggleFilter('abroad');
+    if (_priority == 'esim') appState.toggleFilter('esim');
+    if (_priority == 'sport') appState.toggleFilter('sport');
+    if (_priority == 'channels') appState.setSortMode('match');
+    if (_priority == 'price') appState.setSortMode('price');
+    if (_priority == 'data') appState.setSortMode('match');
+    if (_priority == 'speed' || _priority == 'speed_ultra' || _priority == 'speed_fast') appState.setSortMode('match');
+    // Apply secondary filter (internet/tv/triple/abroad step 2 choice)
+    if (_extraFilter != null) {
+      if (_extraFilter == 'nocommit') appState.toggleFilter('nocommit');
+      if (_extraFilter == 'streaming') appState.toggleFilter('streaming');
+      if (_extraFilter == 'sport') appState.toggleFilter('sport');
+      if (_extraFilter == 'netflix') appState.toggleFilter('netflix');
+      if (_extraFilter == 'esim') appState.toggleFilter('esim');
+      if (_extraFilter == 'price') appState.setSortMode('price');
+      if (_extraFilter == 'data') appState.setSortMode('match');
+    }
+
+    // Build profile and rank plans
+    final profile = MatchProfile(
+      category: _cat,
+      currentBill: appState.currentBill(_cat),
+      budget: _budget.round(),
+      priority: _mapPriority(),
+      lines: _lines,
+      wants5G: _priority.startsWith('speed') || _priority == 'data',
+      wantsAbroad: _cat == 'abroad' || _priority == 'abroad' || _extraFilter == 'abroad',
+      wantsNoCommit: _priority == 'nocommit' || _extraFilter == 'nocommit',
+    );
+
+    final recs = RecommendationEngine.rank(profile, limit: 3);
+    if (recs.isEmpty) {
+      if (mounted) context.goNamed('Results');
+      return;
+    }
+
+    // Brief "analyzing" state for ~700ms
+    if (mounted) setState(() => _analyzing = true);
+    await Future.delayed(const Duration(milliseconds: 700));
+    if (!mounted) return;
+    setState(() {
+      _analyzing = false;
+      _recs = recs;
+      _revealed = true;
+    });
+  }
+
+  Widget _buildAnalyzing(AppTheme ffTheme) {
+    return Center(
+      key: const ValueKey('analyzing'),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CircularProgressIndicator(color: ffTheme.primary, strokeWidth: 3),
+          const SizedBox(height: 24),
+          Text('מנתח את הנתונים…',
+              style: ffTheme.titleMedium.copyWith(color: ffTheme.secondaryText)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReveal(AppTheme ffTheme) {
+    final top = _recs.first;
+    final priceUnit = _cat == 'abroad' ? 'לחבילה' : '/חודש';
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('🎯 מצאנו לך התאמה!',
+              style: ffTheme.headlineMedium.copyWith(color: ffTheme.primary)),
+          const SizedBox(height: 4),
+          Text('מבוסס על התשובות שלך',
+              style: ffTheme.bodyMedium.copyWith(color: ffTheme.secondaryText)),
+          const SizedBox(height: 20),
+
+          // Top match card
+          GestureDetector(
+            onTap: () => context.pushNamed('PlanDetail',
+                pathParameters: {'planId': top.plan.id}),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: ffTheme.secondaryBackground,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: ffTheme.primary, width: 2),
+                boxShadow: [
+                  BoxShadow(
+                      color: ffTheme.primary.withOpacity(0.10),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4))
+                ],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(top.plan.provider,
+                                style: ffTheme.labelMedium
+                                    .copyWith(color: ffTheme.secondaryText)),
+                            const SizedBox(height: 2),
+                            Text(top.plan.plan,
+                                style: ffTheme.titleLarge
+                                    .copyWith(color: ffTheme.primaryText)),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text('₪${top.plan.price}',
+                              style: ffTheme.headlineSmall
+                                  .copyWith(color: ffTheme.primary, fontWeight: FontWeight.w800)),
+                          Text(priceUnit,
+                              style: ffTheme.labelSmall
+                                  .copyWith(color: ffTheme.secondaryText)),
+                        ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  // Badge row
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: ffTheme.primary,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text('${top.scorePct}% התאמה',
+                            style: ffTheme.labelSmall
+                                .copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
+                      ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: ffTheme.accent1,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: ffTheme.primary.withOpacity(0.3)),
+                        ),
+                        child: Text(top.label,
+                            style: ffTheme.labelSmall
+                                .copyWith(color: ffTheme.primary, fontWeight: FontWeight.w600)),
+                      ),
+                    ],
+                  ),
+                  if (top.reasons.isNotEmpty) ...[
+                    const SizedBox(height: 14),
+                    ...top.reasons.take(3).map((r) => Padding(
+                          padding: const EdgeInsets.only(bottom: 6),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Icon(Icons.check_circle_rounded,
+                                  size: 18, color: ffTheme.success),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                  child: Text(r,
+                                      style: ffTheme.bodySmall
+                                          .copyWith(color: ffTheme.primaryText))),
+                            ],
+                          ),
+                        )),
+                  ],
+                  if (top.annualSaving > 0) ...[
+                    const SizedBox(height: 10),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: ffTheme.success.withOpacity(0.10),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text('💰 חיסכון שנתי של ₪${top.annualSaving}',
+                          style: ffTheme.labelMedium
+                              .copyWith(color: ffTheme.success, fontWeight: FontWeight.w700)),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+
+          // Alternatives
+          if (_recs.length > 1) ...[
+            const SizedBox(height: 20),
+            Text('חלופות נוספות',
+                style: ffTheme.labelLarge.copyWith(color: ffTheme.secondaryText)),
+            const SizedBox(height: 10),
+            ..._recs.skip(1).take(2).map((alt) => GestureDetector(
+                  onTap: () => context.pushNamed('PlanDetail',
+                      pathParameters: {'planId': alt.plan.id}),
+                  child: Container(
+                    margin: const EdgeInsets.only(bottom: 10),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    decoration: BoxDecoration(
+                      color: ffTheme.secondaryBackground,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: ffTheme.alternate),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(alt.plan.provider,
+                                  style: ffTheme.labelSmall
+                                      .copyWith(color: ffTheme.secondaryText)),
+                              Text(alt.plan.plan,
+                                  style: ffTheme.bodyMedium
+                                      .copyWith(color: ffTheme.primaryText)),
+                            ],
+                          ),
+                        ),
+                        Text('₪${alt.plan.price}',
+                            style: ffTheme.titleMedium
+                                .copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+                        const SizedBox(width: 10),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: ffTheme.alternate,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Text('${alt.scorePct}%',
+                              style: ffTheme.labelSmall
+                                  .copyWith(color: ffTheme.secondaryText, fontWeight: FontWeight.w600)),
+                        ),
+                        const SizedBox(width: 6),
+                        Icon(Icons.chevron_left_rounded,
+                            color: ffTheme.secondaryText, size: 20),
+                      ],
+                    ),
+                  ),
+                )),
+          ],
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
   }
 }
 

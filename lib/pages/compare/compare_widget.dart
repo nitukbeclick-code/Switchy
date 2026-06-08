@@ -10,9 +10,20 @@ import '../../app_state.dart';
 import '../../models.dart';
 import '../../data.dart';
 import '../../components/logo_widget/logo_widget.dart';
+import '../../services/recommendation_engine.dart';
 
 class CompareWidget extends StatelessWidget {
   const CompareWidget({super.key});
+
+  MatchProfile _profileFor(Plan p, AppState appState) => MatchProfile(
+        category: p.cat,
+        currentBill: appState.currentBill(p.cat),
+        budget: (appState.quizCompleted && appState.quizCat == p.cat)
+            ? appState.quizBudget
+            : 0,
+        priority: priorityFromId(appState.quizPriority),
+        lines: appState.quizLines,
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -21,28 +32,23 @@ class CompareWidget extends StatelessWidget {
     final ids = appState.comparePlans;
     final plans = ids.map((id) => planById(id)).whereType<Plan>().toList();
 
-    // Find winner based on user's quiz priority preference
+    // Compute PlanMatch scores once, keyed by plan id.
+    final Map<String, PlanMatch> matchMap = {
+      for (final p in plans)
+        p.id: RecommendationEngine.scorePlan(p, _profileFor(p, appState)),
+    };
+
+    // Winner = highest score; tie-break: higher annualSaving, then lower price.
     String? winnerId;
     if (plans.length >= 2) {
-      final priority = appState.quizPriority; // 'price', 'rating', 'coverage', 'nocommit'
-      Plan? winner;
-      if (priority == 'rating') {
-        winner = plans.reduce((a, b) => a.rating >= b.rating ? a : b);
-      } else if (priority == 'nocommit') {
-        final noCommitPlans = plans.where((p) => p.noCommit).toList();
-        if (noCommitPlans.isNotEmpty) {
-          winner = noCommitPlans.reduce((a, b) {
-            final sa = planSaveYear(a, appState.currentBill(a.cat));
-            final sb = planSaveYear(b, appState.currentBill(b.cat));
-            return sa >= sb ? a : b;
-          });
-        }
-      }
-      // Default: highest savings (price priority or fallback)
-      winner ??= plans.reduce((a, b) {
-        final sa = planSaveYear(a, appState.currentBill(a.cat));
-        final sb = planSaveYear(b, appState.currentBill(b.cat));
-        return sa >= sb ? a : b;
+      final winner = plans.reduce((a, b) {
+        final ma = matchMap[a.id]!;
+        final mb = matchMap[b.id]!;
+        final byScore = mb.score.compareTo(ma.score);
+        if (byScore != 0) return byScore < 0 ? a : b;
+        final bySave = mb.annualSaving.compareTo(ma.annualSaving);
+        if (bySave != 0) return bySave < 0 ? a : b;
+        return a.price <= b.price ? a : b;
       });
       winnerId = winner.id;
     }
@@ -71,6 +77,7 @@ class CompareWidget extends StatelessWidget {
               appState: appState,
               ffTheme: ffTheme,
               winnerId: winnerId,
+              matchMap: matchMap,
             ),
     );
   }
@@ -136,12 +143,12 @@ class _EmptyState extends StatelessWidget {
             AppButton(
               text: hasPlan ? 'הוסף מסלול נוסף ←' : 'חזרה לתוצאות',
               onPressed: () async => context.goNamed('Results'),
-              
+
                 color: ffTheme.primary,
                 textStyle: ffTheme.titleSmall.copyWith(color: Colors.white),
                 borderRadius: BorderRadius.circular(14),
                 height: 52,
-              
+
             ).animate().fadeIn(delay: 300.ms),
           ],
         ),
@@ -158,11 +165,13 @@ class _CompareTable extends StatelessWidget {
     required this.appState,
     required this.ffTheme,
     required this.winnerId,
+    required this.matchMap,
   });
   final List<Plan> plans;
   final AppState appState;
   final AppTheme ffTheme;
   final String? winnerId;
+  final Map<String, PlanMatch> matchMap;
 
   @override
   Widget build(BuildContext context) {
@@ -199,6 +208,7 @@ class _CompareTable extends StatelessWidget {
             winnerId: winnerId,
             appState: appState,
             ffTheme: ffTheme,
+            matchMap: matchMap,
           ),
 
           // Header row
@@ -217,6 +227,7 @@ class _CompareTable extends StatelessWidget {
                       isWinner: isWinner,
                       ffTheme: ffTheme,
                       appState: appState,
+                      match: matchMap[p.id],
                     );
                   }),
                 ],
@@ -383,11 +394,13 @@ class _WinnerSummaryCard extends StatelessWidget {
     required this.winnerId,
     required this.appState,
     required this.ffTheme,
+    required this.matchMap,
   });
   final List<Plan> plans;
   final String? winnerId;
   final AppState appState;
   final AppTheme ffTheme;
+  final Map<String, PlanMatch> matchMap;
 
   @override
   Widget build(BuildContext context) {
@@ -395,6 +408,27 @@ class _WinnerSummaryCard extends StatelessWidget {
     final winnerBill = appState.currentBill(winner.cat);
     final winnerSave = winnerBill > 0 ? planSaveYear(winner, winnerBill) : 0;
     final maxPrice = plans.map((p) => p.price).reduce((a, b) => a > b ? a : b).toDouble();
+    final winnerMatch = matchMap[winner.id];
+
+    // Derive comparative superlatives that are TRUE for the winner.
+    final superlatives = <String>[];
+    final minPrice = plans.map((p) => p.price).reduce((a, b) => a < b ? a : b);
+    if (winner.price == minPrice && plans.where((p) => p.price == minPrice).length == 1) {
+      superlatives.add('המחיר הזול ביותר');
+    }
+
+    final maxRating = plans.map((p) => p.rating).reduce((a, b) => a > b ? a : b);
+    if (winner.rating == maxRating && plans.where((p) => p.rating == maxRating).length == 1) {
+      superlatives.add('הדירוג הגבוה ביותר');
+    }
+
+    final maxSaving = plans.map((p) => planSaveYear(p, appState.currentBill(p.cat))).reduce((a, b) => a > b ? a : b);
+    if (maxSaving > 0 && winnerSave == maxSaving && plans.where((p) => planSaveYear(p, appState.currentBill(p.cat)) == maxSaving).length == 1) {
+      superlatives.add('החיסכון הגדול ביותר');
+    }
+
+    // Top 2–3 reasons from the engine.
+    final topReasons = winnerMatch != null ? winnerMatch.reasons.take(3).toList() : <String>[];
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
@@ -456,6 +490,58 @@ class _WinnerSummaryCard extends StatelessWidget {
                     ),
                   ],
                 ),
+
+                // ── "Why winner wins" explanation block ───────────────────
+                if (topReasons.isNotEmpty || superlatives.isNotEmpty) ...[
+                  const SizedBox(height: 14),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.10),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'למה ${winner.provider} מנצח?',
+                          style: GoogleFonts.rubik(fontSize: 13, fontWeight: FontWeight.w700, color: ffTheme.secondary),
+                        ),
+                        const SizedBox(height: 8),
+                        // Engine reasons
+                        ...topReasons.map((r) => Padding(
+                          padding: const EdgeInsets.only(bottom: 4),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Icon(Icons.check_circle_rounded, size: 15, color: ffTheme.secondary),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(r, style: GoogleFonts.assistant(fontSize: 12, color: Colors.white, fontWeight: FontWeight.w600)),
+                              ),
+                            ],
+                          ),
+                        )),
+                        // Comparative superlatives
+                        ...superlatives.take(2).map((s) => Padding(
+                          padding: const EdgeInsets.only(bottom: 4),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Icon(Icons.star_rounded, size: 15, color: ffTheme.secondary),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(s, style: GoogleFonts.assistant(fontSize: 12, color: Colors.white, fontWeight: FontWeight.w600)),
+                              ),
+                            ],
+                          ),
+                        )),
+                      ],
+                    ),
+                  ),
+                ],
+
                 const SizedBox(height: 14),
                 ElevatedButton(
                   onPressed: () {
@@ -543,11 +629,13 @@ class _PlanHeader extends StatelessWidget {
     required this.isWinner,
     required this.ffTheme,
     required this.appState,
+    this.match,
   });
   final Plan plan;
   final bool isWinner;
   final AppTheme ffTheme;
   final AppState appState;
+  final PlanMatch? match;
 
   @override
   Widget build(BuildContext context) {
@@ -594,6 +682,26 @@ class _PlanHeader extends StatelessWidget {
               textAlign: TextAlign.center,
               maxLines: 2,
               overflow: TextOverflow.ellipsis),
+          // Match score badge
+          if (match != null) ...[
+            const SizedBox(height: 4),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: isWinner ? ffTheme.primary : ffTheme.alternate,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                '${match!.scorePct}% התאמה',
+                style: ffTheme.labelSmall.copyWith(
+                  color: isWinner ? Colors.white : ffTheme.secondaryText,
+                  fontWeight: isWinner ? FontWeight.w700 : FontWeight.w500,
+                  fontSize: isWinner ? null : 10,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ],
           const SizedBox(height: 4),
           Semantics(
             button: true,

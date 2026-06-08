@@ -8,6 +8,7 @@ import '../../app_state.dart';
 import '../../data.dart';
 import '../../components/plan_card/plan_card_widget.dart';
 import '../../components/shimmer_card/shimmer_card_widget.dart';
+import '../../services/recommendation_engine.dart';
 
 class ResultsWidget extends StatefulWidget {
   const ResultsWidget({super.key});
@@ -20,6 +21,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
   final _searchController = TextEditingController();
   bool _loading = false;
   String _providerFilter = '';
+  bool _smartSort = false;
 
   static const _categories = [
     ('cellular', '📱 סלולר'),
@@ -30,6 +32,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
   ];
 
   static const _sorts = [
+    ('smart', 'התאמה חכמה'),
     ('match', 'מומלץ'),
     ('price', 'הכי זול'),
     ('save', 'מקסימום חיסכון'),
@@ -59,20 +62,46 @@ class _ResultsWidgetState extends State<ResultsWidget> {
     final catData = categoryById(cat);
     final bill = appState.currentBill(cat);
 
+    final profile = MatchProfile(
+      category: cat,
+      currentBill: appState.currentBill(cat),
+      // Only apply the quiz budget to the category the quiz was taken for —
+      // matching the filteredPlans budget gate below.
+      budget: (appState.quizCompleted && appState.quizCat == cat) ? appState.quizBudget : 0,
+      priority: priorityFromId(appState.quizPriority),
+      lines: appState.quizLines,
+    );
+
+    final effectiveSort = _smartSort ? 'match' : appState.sortMode;
+
     final rawPlans = filteredPlans(
       cat: cat,
-      sort: appState.sortMode,
+      sort: effectiveSort,
       filters: appState.activeFilters,
       query: appState.searchQuery,
       budget: (appState.quizCompleted && appState.quizCat == cat) ? appState.quizBudget : 9999,
       currentBill: bill,
     );
-    final plans = _providerFilter.isEmpty
+    final filteredByProvider = _providerFilter.isEmpty
         ? rawPlans
         : rawPlans.where((p) => p.provider == _providerFilter).toList();
+
+    // Compute scores once per build; also used for smart-sort ordering.
+    final matchMap = {
+      for (final p in filteredByProvider)
+        p.id: RecommendationEngine.scorePlan(p, profile),
+    };
+
+    final plans = _smartSort
+        ? (List.of(filteredByProvider)
+          ..sort((a, b) =>
+              (matchMap[b.id]?.score ?? 0).compareTo(matchMap[a.id]?.score ?? 0)))
+        : filteredByProvider;
+
     final allCatProviders = plansByCat(cat).map((p) => p.provider).toSet().toList();
 
-    final topPlan = plans.isNotEmpty ? plans.first : null;
+    final topPlanMatch = plans.isNotEmpty ? matchMap[plans.first.id] : null;
+    final topPlan = topPlanMatch?.plan;
     final topSave = topPlan != null ? planSaveYear(topPlan, bill) : 0;
 
     return Scaffold(
@@ -323,13 +352,21 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 16, vertical: 8),
                     children: _sorts.map((s) {
-                      final active = appState.sortMode == s.$1;
+                      final isSmart = s.$1 == 'smart';
+                      final active = isSmart
+                          ? _smartSort
+                          : (!_smartSort && appState.sortMode == s.$1);
                       return Padding(
                         padding: const EdgeInsets.only(left: 8),
                         child: GestureDetector(
                           onTap: () {
                             HapticFeedback.selectionClick();
-                            appState.setSortMode(s.$1);
+                            if (isSmart) {
+                              setState(() => _smartSort = true);
+                            } else {
+                              setState(() => _smartSort = false);
+                              appState.setSortMode(s.$1);
+                            }
                           },
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 200),
@@ -337,24 +374,33 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                                 horizontal: 14, vertical: 6),
                             decoration: BoxDecoration(
                               color: active
-                                  ? ffTheme.primary
+                                  ? (isSmart ? ffTheme.secondary : ffTheme.primary)
                                   : ffTheme.secondaryBackground,
                               borderRadius: BorderRadius.circular(20),
                               border: Border.all(
                                   color: active
-                                      ? ffTheme.primary
+                                      ? (isSmart ? ffTheme.secondary : ffTheme.primary)
                                       : ffTheme.alternate),
                             ),
-                            child: Text(
-                              s.$2,
-                              style: ffTheme.labelMedium.copyWith(
-                                color: active
-                                    ? Colors.white
-                                    : ffTheme.primaryText,
-                                fontWeight: active
-                                    ? FontWeight.w700
-                                    : FontWeight.w500,
-                              ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (isSmart) ...[
+                                  Text('🎯', style: TextStyle(fontSize: active ? 13 : 12)),
+                                  const SizedBox(width: 4),
+                                ],
+                                Text(
+                                  s.$2,
+                                  style: ffTheme.labelMedium.copyWith(
+                                    color: active
+                                        ? (isSmart ? ffTheme.primary : Colors.white)
+                                        : ffTheme.primaryText,
+                                    fontWeight: active
+                                        ? FontWeight.w700
+                                        : FontWeight.w500,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ),
@@ -545,13 +591,59 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
                   sliver: SliverList(
                     delegate: SliverChildBuilderDelegate(
-                      (context, index) => PlanCardWidget(
-                        plan: plans[index],
-                        currentBill: bill,
-                      )
-                          .animate(delay: (index * 60).ms)
-                          .fadeIn(duration: 300.ms)
-                          .slideX(begin: 0.05),
+                      (context, index) {
+                        final plan = plans[index];
+                        final match = matchMap[plan.id];
+                        final isTopMatch = _smartSort && index == 0 && match != null && match.scorePct >= 70;
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            if (isTopMatch)
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 4),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: ffTheme.secondary,
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Text('🎯', style: TextStyle(fontSize: 12)),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            'ההתאמה הטובה ביותר',
+                                            style: ffTheme.labelSmall.copyWith(
+                                              color: ffTheme.primary,
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            Stack(
+                              children: [
+                                PlanCardWidget(plan: plan, currentBill: bill),
+                                if (match != null)
+                                  Positioned(
+                                    top: 12,
+                                    left: 12,
+                                    child: _MatchBadge(match: match, ffTheme: ffTheme),
+                                  ),
+                              ],
+                            ),
+                          ],
+                        )
+                            .animate(delay: (index * 60).ms)
+                            .fadeIn(duration: 300.ms)
+                            .slideX(begin: 0.05);
+                      },
                       childCount: plans.length,
                     ),
                   ),
@@ -843,6 +935,77 @@ class _ResultsWidgetState extends State<ResultsWidget> {
           ),
         ),
       ),
+    );
+  }
+}
+
+class _MatchBadge extends StatelessWidget {
+  const _MatchBadge({required this.match, required this.ffTheme});
+  final PlanMatch match;
+  final AppTheme ffTheme;
+
+  Color _badgeColor() {
+    if (match.scorePct >= 85) return const Color(0xFFC9EC4B); // secondary-lime
+    if (match.scorePct >= 70) return const Color(0xFF15603E); // primary green
+    return const Color(0xFF8E9AA0); // muted
+  }
+
+  Color _textColor() {
+    if (match.scorePct >= 85) return const Color(0xFF15603E);
+    return Colors.white;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final badgeColor = _badgeColor();
+    final textColor = _textColor();
+    final topReason = match.reasons.isNotEmpty ? match.reasons.first : null;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+          decoration: BoxDecoration(
+            color: badgeColor,
+            borderRadius: BorderRadius.circular(10),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.12),
+                blurRadius: 4,
+                offset: const Offset(0, 1),
+              ),
+            ],
+          ),
+          child: Text(
+            '${match.scorePct}% התאמה',
+            style: ffTheme.labelSmall.copyWith(
+              color: textColor,
+              fontWeight: FontWeight.w700,
+              fontSize: 10,
+            ),
+          ),
+        ),
+        if (topReason != null) ...[
+          const SizedBox(height: 3),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.88),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              topReason,
+              style: ffTheme.labelSmall.copyWith(
+                color: ffTheme.primary,
+                fontSize: 9,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ],
     );
   }
 }

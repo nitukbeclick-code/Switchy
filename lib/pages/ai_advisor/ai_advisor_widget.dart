@@ -9,6 +9,7 @@ import '../../app_state.dart';
 import '../../data.dart';
 import '../../models.dart';
 import '../../components/plan_card/plan_card_widget.dart';
+import '../../services/recommendation_engine.dart';
 
 class AIAdvisorWidget extends StatefulWidget {
   const AIAdvisorWidget({super.key});
@@ -179,7 +180,60 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
     final isGreeting = lower.contains('שלום') || lower.contains('היי') || lower.contains('hi') || lower.contains('hello') || lower.contains('הי') || lower.contains('מה שלום') || lower.contains('בוקר') || lower.contains('ערב');
     final isThanks = lower.contains('תודה') || lower.contains('תנקס') || lower.contains('thanks') || lower.contains('כייף') || lower.contains('סבבה');
 
-    if (topPlans.isNotEmpty) {
+    // Recommendation intent — "what's best for me / recommend"
+    final isRecommendIntent = lower.contains('מה כדאי') || lower.contains('המלצה') || lower.contains('הכי משתלם') || lower.contains('מה הכי טוב') || lower.contains('תמליץ') || lower.contains('מה הכי') || lower.contains('מה כדאי לי') || lower.contains('recommend') || lower.contains('הכי טוב לי') || lower.contains('מה הכי משתלם') || lower.contains('✨ מה הכי משתלם');
+
+    if (isRecommendIntent && detectedProvider == null) {
+      // Determine category from text, fall back to selected
+      String recCat = appState.selectedCat;
+      if (lower.contains('אינטרנט') || lower.contains('internet')) {
+        recCat = 'internet';
+      } else if (lower.contains('טלוויזיה') || lower.contains('tv')) {
+        recCat = 'tv';
+      } else if (lower.contains('חו"ל') || lower.contains('חול') || lower.contains('abroad')) {
+        recCat = 'abroad';
+      } else if (lower.contains('משולב') || lower.contains('triple')) {
+        recCat = 'triple';
+      } else if (lower.contains('סלולר') || lower.contains('cellular') || lower.contains('פלאפון')) {
+        recCat = 'cellular';
+      }
+      cat = recCat;
+
+      final profile = _profileFor(recCat);
+      // Score the category once; reuse for both the top pick and the alternative.
+      final ranked = RecommendationEngine.rank(profile, limit: 2);
+      final best = ranked.isEmpty ? null : ranked.first;
+      if (best != null) {
+        final unit = recCat == 'abroad' ? 'לחבילה' : 'לחודש';
+        final catName = categoryById(recCat)?.name ?? recCat;
+        final labelLine = '${best.label} — ${best.scorePct}%';
+        final topReasons = best.reasons.take(3).map((r) => '• $r').join('\n');
+        final savingLine = best.annualSaving > 0 ? '\n💰 חיסכון שנתי: ₪${best.annualSaving}' : '';
+        final promoNote = best.plan.hasPromo ? '\n⚡ מחיר מבצע! לאחר המבצע: ₪${best.plan.after}/$unit' : '';
+
+        // Alternative plan (reuses the ranking computed above)
+        String altLine = '';
+        if (ranked.length >= 2) {
+          final alt = ranked[1];
+          final altUnit = recCat == 'abroad' ? 'לחבילה' : 'לחודש';
+          altLine = '\n\n🥈 אלטרנטיבה: ${alt.plan.provider} — ${alt.plan.plan} ₪${alt.plan.price}/$altUnit (${alt.label})';
+        }
+
+        reply = '✨ הממליץ החכם שלי בקטגורית $catName:\n\n'
+            '🏆 ${best.plan.provider} — ${best.plan.plan}\n'
+            '₪${best.plan.price}/$unit\n'
+            '$labelLine\n'
+            '$topReasons'
+            '$savingLine'
+            '$promoNote'
+            '$altLine\n\n'
+            'רוצה לראות פרטים? כתבו "הצג מסלול"';
+
+        topPlans = [best.plan];
+      } else {
+        reply = 'לא מצאתי מסלולים בקטגוריה הנבחרת. נסו לציין קטגוריה: סלולר, אינטרנט, טלוויזיה, חו"ל.';
+      }
+    } else if (topPlans.isNotEmpty) {
       final currentBill = appState.currentBill(cat);
       final best = topPlans.first;
       final saveYear = ((currentBill - best.price) * 12).clamp(0, 999999);
@@ -256,6 +310,14 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
     _scrollToBottom();
   }
 
+  MatchProfile _profileFor(String cat) => MatchProfile(
+    category: cat,
+    currentBill: AppState().currentBill(cat),
+    budget: (AppState().quizCompleted && AppState().quizCat == cat) ? AppState().quizBudget : 0,
+    priority: priorityFromId(AppState().quizPriority),
+    lines: AppState().quizLines,
+  );
+
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollCtrl.hasClients) {
@@ -274,6 +336,7 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
     final appState = Provider.of<AppState>(context, listen: false);
 
     final quickStarts = [
+      '✨ מה הכי משתלם לי?',
       '📱 סלולר הכי זול',
       '🌐 אינטרנט 1000Mb',
       '✅ ללא התחייבות',
@@ -283,7 +346,6 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
       '📺 טלוויזיה + ספורט',
       '🏠 חבילה משולבת',
       '🔍 חבילות גולן',
-      '🔍 חבילות פרטנר',
       '💳 כמה אני משלם?',
       '💰 כמה אחסוך?',
     ];

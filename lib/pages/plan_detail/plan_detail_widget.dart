@@ -11,6 +11,7 @@ import '../../app_state.dart';
 import '../../models.dart';
 import '../../data.dart';
 import '../../components/logo_widget/logo_widget.dart';
+import '../../services/recommendation_engine.dart';
 
 class PlanDetailWidget extends StatefulWidget {
   const PlanDetailWidget({super.key, required this.planId});
@@ -78,6 +79,16 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
     final saveYear = planSaveYear(plan, bill);
     final cost24 = plan.price * 24;
     final inCompare = appState.isInCompare(plan.id);
+
+    // Compute match once for this plan
+    final matchProfile = MatchProfile(
+      category: plan.cat,
+      currentBill: bill,
+      budget: (appState.quizCompleted && appState.quizCat == plan.cat) ? appState.quizBudget : 0,
+      priority: priorityFromId(appState.quizPriority),
+      lines: appState.quizLines,
+    );
+    final planMatch = RecommendationEngine.scorePlan(plan, matchProfile);
 
     // Track viewed plan
     WidgetsBinding.instance.addPostFrameCallback((_) => appState.viewPlan(plan.id));
@@ -412,6 +423,78 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                           ),
                         ),
                       ).animate(delay: 250.ms).fadeIn(duration: 300.ms),
+
+                      // ── Smart match card ──────────────────────────────────
+                      if (planMatch.reasons.isNotEmpty || planMatch.caveats.isNotEmpty) ...[
+                        const SizedBox(height: 14),
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: ffTheme.primary.withOpacity(0.18)),
+                            boxShadow: [
+                              BoxShadow(
+                                color: ffTheme.primary.withOpacity(0.06),
+                                blurRadius: 10,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Text('✨', style: ffTheme.titleSmall),
+                                  const SizedBox(width: 6),
+                                  Text('למה זה מתאים לך', style: ffTheme.titleSmall),
+                                  const Spacer(),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: ffTheme.primary,
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    child: Text(
+                                      '${planMatch.scorePct}% · ${planMatch.label}',
+                                      style: ffTheme.labelSmall.copyWith(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              if (planMatch.reasons.isNotEmpty) ...[
+                                const SizedBox(height: 12),
+                                ...planMatch.reasons.map((r) => Padding(
+                                  padding: const EdgeInsets.only(bottom: 7),
+                                  child: Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Icon(Icons.check_circle_rounded, color: ffTheme.success, size: 17),
+                                      const SizedBox(width: 8),
+                                      Expanded(child: Text(r, style: ffTheme.bodySmall.copyWith(fontWeight: FontWeight.w500))),
+                                    ],
+                                  ),
+                                )),
+                              ],
+                              if (planMatch.caveats.isNotEmpty) ...[
+                                const SizedBox(height: 6),
+                                ...planMatch.caveats.map((c) => Padding(
+                                  padding: const EdgeInsets.only(bottom: 5),
+                                  child: Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Icon(Icons.info_outline_rounded, color: ffTheme.secondaryText, size: 15),
+                                      const SizedBox(width: 7),
+                                      Expanded(child: Text(c, style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText, fontSize: 12))),
+                                    ],
+                                  ),
+                                )),
+                              ],
+                            ],
+                          ),
+                        ).animate(delay: 270.ms).fadeIn(duration: 300.ms).slideY(begin: 0.08),
+                      ],
 
                       // Fine print
                       if (plan.fine != null) ...[

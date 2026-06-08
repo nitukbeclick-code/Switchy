@@ -9,6 +9,7 @@ import '../../app_state.dart';
 import '../../data.dart';
 import '../../models.dart';
 import '../../components/logo_widget/logo_widget.dart';
+import '../../services/recommendation_engine.dart';
 
 class HomeWidget extends StatefulWidget {
   const HomeWidget({super.key});
@@ -674,25 +675,37 @@ class _HomeWidgetState extends State<HomeWidget> {
   }
 
   Widget _buildTopPick(BuildContext context, AppTheme ffTheme, AppState appState) {
-    // Find the single best plan across all categories where user has a bill set
-    Plan? bestPlan;
-    int bestSave = 0;
-    String? bestCatName;
-    for (final cat in categories) {
-      final bill = appState.currentBill(cat.id);
-      if (bill <= 0) continue;
-      final sorted = filteredPlans(cat: cat.id, sort: 'save', filters: [], query: '', budget: 9999, currentBill: bill);
-      if (sorted.isEmpty) continue;
-      final save = planSaveYear(sorted.first, bill);
-      if (save > bestSave) {
-        bestSave = save;
-        bestPlan = sorted.first;
-        bestCatName = cat.name;
+    // Build profile helper
+    MatchProfile profileFor(String cat) => MatchProfile(
+      category: cat,
+      currentBill: appState.currentBill(cat),
+      budget: (appState.quizCompleted && appState.quizCat == cat) ? appState.quizBudget : 0,
+      priority: priorityFromId(appState.quizPriority),
+      lines: appState.quizLines,
+    );
+
+    // Find the single best match across active categories (bill > 0); fall back to selectedCat
+    final activeCats = categories.where((c) => appState.currentBill(c.id) > 0).toList();
+    final searchCats = activeCats.isNotEmpty ? activeCats.map((c) => c.id).toList() : [appState.selectedCat];
+
+    PlanMatch? topMatch;
+    String? topCatName;
+    for (final catId in searchCats) {
+      final m = RecommendationEngine.bestMatch(profileFor(catId));
+      if (m == null) continue;
+      if (topMatch == null || m.annualSaving > topMatch.annualSaving || (m.annualSaving == topMatch.annualSaving && m.score > topMatch.score)) {
+        topMatch = m;
+        topCatName = categoryById(catId)?.name ?? catId;
       }
     }
-    if (bestPlan == null || bestSave <= 0) return const SizedBox();
+    // Only surface the personal pick when it represents a real saving —
+    // preserves the prior behaviour of hiding the card otherwise.
+    if (topMatch == null || topMatch.annualSaving <= 0) return const SizedBox();
 
-    final plan = bestPlan;
+    final match = topMatch;
+    final plan = match.plan;
+    final topReason = match.reasons.isNotEmpty ? match.reasons.first : null;
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
       child: Column(
@@ -702,7 +715,7 @@ class _HomeWidgetState extends State<HomeWidget> {
             children: [
               const Text('🎯', style: TextStyle(fontSize: 16)),
               const SizedBox(width: 6),
-              Text('המלצה אישית ל$bestCatName', style: ffTheme.titleLarge),
+              Text('המלצה אישית ל$topCatName', style: ffTheme.titleLarge),
             ],
           ),
           const SizedBox(height: 10),
@@ -728,22 +741,39 @@ class _HomeWidgetState extends State<HomeWidget> {
                           children: [
                             Text(plan.provider, style: ffTheme.titleSmall),
                             const SizedBox(width: 6),
-                            if (plan.noCommit)
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(color: ffTheme.accent1, borderRadius: BorderRadius.circular(5)),
-                                child: Text('ללא התחייבות', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontSize: 10)),
+                            // Match score badge
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: ffTheme.primary,
+                                borderRadius: BorderRadius.circular(20),
                               ),
+                              child: Text(
+                                '${match.scorePct}% התאמה',
+                                style: ffTheme.labelSmall.copyWith(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700),
+                              ),
+                            ),
                           ],
                         ),
                         const SizedBox(height: 2),
                         Text(plan.plan, style: ffTheme.bodySmall, maxLines: 1, overflow: TextOverflow.ellipsis),
+                        if (topReason != null) ...[
+                          const SizedBox(height: 3),
+                          Text(topReason, style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText, fontSize: 11)),
+                        ],
                         const SizedBox(height: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(color: ffTheme.secondary, borderRadius: BorderRadius.circular(6)),
-                          child: Text('חוסך ₪$bestSave/שנה', style: ffTheme.labelSmall.copyWith(color: const Color(0xFF0E3A26), fontWeight: FontWeight.w800)),
-                        ),
+                        if (match.annualSaving > 0)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(color: ffTheme.secondary, borderRadius: BorderRadius.circular(6)),
+                            child: Text('חוסך ₪${match.annualSaving}/שנה', style: ffTheme.labelSmall.copyWith(color: const Color(0xFF0E3A26), fontWeight: FontWeight.w800)),
+                          )
+                        else if (plan.noCommit)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(color: ffTheme.accent1, borderRadius: BorderRadius.circular(5)),
+                            child: Text('ללא התחייבות', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontSize: 10)),
+                          ),
                       ],
                     ),
                   ),

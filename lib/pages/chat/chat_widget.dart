@@ -33,29 +33,66 @@ class _ChatWidgetState extends State<ChatWidget> {
   void initState() {
     super.initState();
     final appState = AppState();
-    final name = appState.isLoggedIn ? appState.firstName : '';
-    final greeting = name.isNotEmpty ? 'שלום $name! ' : 'שלום! ';
-
     _contextPlan = appState.leadPlanId != null ? planById(appState.leadPlanId!) : null;
 
-    final planLine = _contextPlan != null
-        ? '\nראיתי שהתעניינת ב${_contextPlan!.provider} – ${_contextPlan!.plan}. אני כאן לכל שאלה!'
-        : '';
-
-    _messages = [
-      _Msg(
+    final history = appState.chatHistory;
+    if (history.isNotEmpty) {
+      _messages = history.map((m) => _Msg(
+        text: m['text'] as String,
+        isUser: m['isUser'] as bool,
+        time: DateTime.tryParse(m['ts'] as String? ?? '') ?? DateTime.now(),
+        isRead: m['isRead'] as bool? ?? true,
+      )).toList();
+    } else {
+      final name = appState.isLoggedIn ? appState.firstName : '';
+      final greeting = name.isNotEmpty ? 'שלום $name! ' : 'שלום! ';
+      final planLine = _contextPlan != null
+          ? '\nראיתי שהתעניינת ב${_contextPlan!.provider} – ${_contextPlan!.plan}. אני כאן לכל שאלה!'
+          : '';
+      final seed1 = _Msg(
         text: '$greetingאני דנה, הנציגה שלכם 😊\nאני כאן לעזור בכל שאלה לגבי תהליך המעבר.$planLine',
         isUser: false,
         time: DateTime.now().subtract(const Duration(minutes: 2)),
         isRead: true,
-      ),
-      _Msg(
+      );
+      final seed2 = _Msg(
         text: 'הבקשה שלכם התקבלה ואנחנו בודקים זמינות בספק. תוך 24 שעות נחזור אליכם עם תאריך מעבר מוצע.',
         isUser: false,
         time: DateTime.now().subtract(const Duration(minutes: 1)),
         isRead: true,
-      ),
-    ];
+      );
+      _messages = [seed1, seed2];
+      appState.addChatMessage(text: seed1.text, isUser: false, isRead: true);
+      appState.addChatMessage(text: seed2.text, isUser: false, isRead: true);
+    }
+  }
+
+  void _resetToSeed() {
+    final appState = AppState();
+    appState.clearChatHistory();
+    final name = appState.isLoggedIn ? appState.firstName : '';
+    final greeting = name.isNotEmpty ? 'שלום $name! ' : 'שלום! ';
+    final planLine = _contextPlan != null
+        ? '\nראיתי שהתעניינת ב${_contextPlan!.provider} – ${_contextPlan!.plan}. אני כאן לכל שאלה!'
+        : '';
+    final seed1 = _Msg(
+      text: '$greetingאני דנה, הנציגה שלכם 😊\nאני כאן לעזור בכל שאלה לגבי תהליך המעבר.$planLine',
+      isUser: false,
+      time: DateTime.now().subtract(const Duration(minutes: 2)),
+      isRead: true,
+    );
+    final seed2 = _Msg(
+      text: 'הבקשה שלכם התקבלה ואנחנו בודקים זמינות בספק. תוך 24 שעות נחזור אליכם עם תאריך מעבר מוצע.',
+      isUser: false,
+      time: DateTime.now().subtract(const Duration(minutes: 1)),
+      isRead: true,
+    );
+    setState(() {
+      _messages = [seed1, seed2];
+      _quickReplies = ['מה הסטטוס?', 'מתי הניוד?', 'שאלה על מחיר', 'תודה!'];
+    });
+    appState.addChatMessage(text: seed1.text, isUser: false, isRead: true);
+    appState.addChatMessage(text: seed2.text, isUser: false, isRead: true);
   }
 
   @override
@@ -68,6 +105,7 @@ class _ChatWidgetState extends State<ChatWidget> {
   Future<void> _send(String text) async {
     if (text.trim().isEmpty || _isTyping) return;
     _inputCtrl.clear();
+    AppState().addChatMessage(text: text, isUser: true, isRead: false);
     setState(() {
       _messages.add(_Msg(text: text, isUser: true, time: DateTime.now(), isRead: false));
       _isTyping = true;
@@ -151,6 +189,7 @@ class _ChatWidgetState extends State<ChatWidget> {
     }
 
     if (mounted) {
+      AppState().addChatMessage(text: reply, isUser: false, isRead: true);
       setState(() {
         _isTyping = false;
         _messages.add(_Msg(text: reply, isUser: false, time: DateTime.now(), isRead: true));
@@ -273,6 +312,24 @@ class _ChatWidgetState extends State<ChatWidget> {
         ],
       ),
       actions: [
+        IconButton(
+          icon: const Icon(Icons.delete_sweep_rounded, color: Colors.white),
+          tooltip: 'נקה שיחה',
+          onPressed: () async {
+            final confirmed = await showDialog<bool>(
+              context: context,
+              builder: (ctx) => AlertDialog(
+                title: const Text('נקה שיחה', textDirection: TextDirection.rtl),
+                content: const Text('לנקות את השיחה?', textDirection: TextDirection.rtl),
+                actions: [
+                  TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('ביטול')),
+                  TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('נקה')),
+                ],
+              ),
+            );
+            if (confirmed == true) _resetToSeed();
+          },
+        ),
         IconButton(
           icon: const Icon(Icons.track_changes_rounded, color: Colors.white),
           tooltip: 'מעקב תהליך',

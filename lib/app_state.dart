@@ -68,6 +68,12 @@ class AppState extends ChangeNotifier {
         _communityReplies[postId] = (value as List).cast<Map<String, dynamic>>();
       });
     }
+    // Chat history
+    final chatHistoryJson = p.getString('chatHistory');
+    if (chatHistoryJson != null) {
+      final list = jsonDecode(chatHistoryJson) as List<dynamic>;
+      _chatHistory.addAll(list.cast<Map<String, dynamic>>());
+    }
     // Preferences
     _prefPriceAlerts = p.getBool('prefPriceAlerts') ?? true;
     _prefRequestUpdates = p.getBool('prefRequestUpdates') ?? true;
@@ -106,6 +112,7 @@ class AppState extends ChangeNotifier {
     await p.setStringList('likedPosts', _likedPosts.toList());
     await p.setStringList('bookmarkedPosts', _bookmarkedPosts.toList());
     await p.setString('communityReplies', jsonEncode(_communityReplies));
+    await p.setString('chatHistory', jsonEncode(_chatHistory));
     // Preferences
     await p.setBool('prefPriceAlerts', _prefPriceAlerts);
     await p.setBool('prefRequestUpdates', _prefRequestUpdates);
@@ -297,6 +304,17 @@ class AppState extends ChangeNotifier {
     notifyListeners();
     _persist();
   }
+
+  // Chat history — persisted support-chat messages
+  final List<Map<String, dynamic>> _chatHistory = [];
+  List<Map<String, dynamic>> get chatHistory => List.unmodifiable(_chatHistory);
+  void addChatMessage({required String text, required bool isUser, bool isRead = true}) {
+    _chatHistory.add({'text': text, 'isUser': isUser, 'isRead': isRead, 'ts': DateTime.now().toIso8601String()});
+    if (_chatHistory.length > 100) _chatHistory.removeAt(0);
+    notifyListeners();
+    _persist();
+  }
+  void clearChatHistory() { _chatHistory.clear(); notifyListeners(); _persist(); }
 
   void addCommunityPost({required String id, required String author, required String avatar, required String channel, required String text}) {
     _communityPosts.insert(0, {'id': id, 'author': author, 'avatar': avatar, 'channel': channel, 'text': text, 'ts': DateTime.now().toIso8601String()});

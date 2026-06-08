@@ -43,9 +43,6 @@ macos/Pods/
 macos/.symlinks/
 macos/Flutter/ephemeral/
 
-# ── Web ───────────────────────────────────────────────────────────────────────
-web/
-
 # ── macOS system ──────────────────────────────────────────────────────────────
 .DS_Store
 .AppleDouble

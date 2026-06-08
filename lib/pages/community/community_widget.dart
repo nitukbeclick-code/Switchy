@@ -24,7 +24,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
   String _searchQuery = '';
   int _onlineCount = 847;
   bool _sortByPopular = false;
-  final Set<String> _bookmarked = {};
+  bool _showBookmarksOnly = false;
   final Map<String, List<_Reply>> _replyData = {};
 
   static const _channels = ['הכל', 'המלצות', 'סלולר', 'אינטרנט', 'טלוויזיה', 'חו"ל', 'חבילה משולבת', 'עזרה בניתוק'];
@@ -101,6 +101,16 @@ class _CommunityWidgetState extends State<CommunityWidget> {
     )).toList();
     _posts = [...persisted, ...communityPosts];
     _replyData.addAll(_mockReplies);
+    // Merge persisted user replies on top of the seed conversation.
+    appState.communityReplies.forEach((postId, raw) {
+      final converted = raw.map((m) => _Reply(
+        author: m['author'] as String? ?? 'אורח',
+        avatar: m['avatar'] as String? ?? 'א',
+        text: m['text'] as String? ?? '',
+        time: DateTime.tryParse(m['ts'] as String? ?? '') ?? DateTime.now(),
+      )).toList();
+      _replyData.putIfAbsent(postId, () => []).addAll(converted);
+    });
     _onlineTimer = Timer.periodic(const Duration(seconds: 12), (_) {
       if (mounted) setState(() => _onlineCount = 820 + (DateTime.now().millisecond % 41) - 20);
     });
@@ -118,15 +128,102 @@ class _CommunityWidgetState extends State<CommunityWidget> {
       ch == 'הכל' ? _posts.length : _posts.where((p) => p.channel == ch).length;
 
   List<CommunityPost> get _filtered {
+    final appState = AppState();
     var base = _activeChannel == 'הכל'
         ? _posts
         : _posts.where((p) => p.channel == _activeChannel).toList();
+    if (_showBookmarksOnly) {
+      base = base.where((p) => appState.isBookmarked(p.id)).toList();
+    }
     if (_searchQuery.isNotEmpty) {
       final q = _searchQuery.toLowerCase();
-      base = base.where((p) => p.text.toLowerCase().contains(q) || p.author.toLowerCase().contains(q)).toList();
+      base = base.where((p) =>
+          p.text.toLowerCase().contains(q) ||
+          p.author.toLowerCase().contains(q) ||
+          p.channel.toLowerCase().contains(q)).toList();
     }
     if (_sortByPopular) return List.from(base)..sort((a, b) => b.likes.compareTo(a.likes));
     return base;
+  }
+
+  // ── Feed actions ───────────────────────────────────────────────────────────────
+
+  Future<void> _refreshFeed() async {
+    HapticFeedback.mediumImpact();
+    await Future.delayed(const Duration(milliseconds: 700));
+    if (!mounted) return;
+    final appState = AppState();
+    final persisted = appState.communityPosts.map((m) => CommunityPost(
+          id: m['id'] as String,
+          author: m['author'] as String,
+          avatar: m['avatar'] as String,
+          channel: m['channel'] as String,
+          text: m['text'] as String,
+          likes: 0,
+          replies: 0,
+          timestamp: DateTime.tryParse(m['ts'] as String? ?? '') ?? DateTime.now(),
+        )).toList();
+    setState(() {
+      _posts = [...persisted, ...communityPosts];
+      _onlineCount = 820 + (DateTime.now().millisecond % 41) - 20;
+    });
+  }
+
+  void _confirmDelete(BuildContext context, CommunityPost post, AppState appState, AppTheme ffTheme) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text('מחיקת פוסט', textAlign: TextAlign.center),
+        content: const Text('למחוק את הפוסט? לא ניתן לשחזר.', textAlign: TextAlign.center),
+        actionsAlignment: MainAxisAlignment.center,
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('ביטול')),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              HapticFeedback.mediumImpact();
+              appState.removeCommunityPost(post.id);
+              setState(() => _posts.removeWhere((p) => p.id == post.id));
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: ffTheme.error,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text('מחק'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _submitReply({
+    required BuildContext ctx,
+    required StateSetter setSheet,
+    required List<_Reply> replies,
+    required TextEditingController replyCtrl,
+    required String postId,
+    required ScrollController scrollCtrl,
+  }) {
+    final text = replyCtrl.text.trim();
+    if (text.isEmpty) return;
+    HapticFeedback.lightImpact();
+    final appState = Provider.of<AppState>(ctx, listen: false);
+    final author = appState.isLoggedIn ? appState.firstName : 'אורח';
+    final avatar = appState.isLoggedIn && appState.firstName.isNotEmpty ? appState.firstName[0] : 'א';
+    appState.addCommunityReply(postId: postId, author: author, avatar: avatar, text: text);
+    setSheet(() {
+      replies.add(_Reply(author: author, avatar: avatar, text: text, time: DateTime.now()));
+      replyCtrl.clear();
+    });
+    setState(() {});
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (scrollCtrl.hasClients) {
+        scrollCtrl.animateTo(scrollCtrl.position.maxScrollExtent,
+            duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+      }
+    });
   }
 
   // ── Reply thread ─────────────────────────────────────────────────────────────
@@ -251,6 +348,15 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                           child: TextField(
                             controller: replyCtrl,
                             textDirection: TextDirection.rtl,
+                            textInputAction: TextInputAction.send,
+                            onSubmitted: (_) => _submitReply(
+                              ctx: ctx,
+                              setSheet: setSheet,
+                              replies: replies,
+                              replyCtrl: replyCtrl,
+                              postId: post.id,
+                              scrollCtrl: scrollCtrl,
+                            ),
                             decoration: InputDecoration(
                               hintText: 'כתוב תגובה...',
                               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -263,24 +369,23 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                           ),
                         ),
                         const SizedBox(width: 10),
-                        GestureDetector(
-                          onTap: () {
-                            final text = replyCtrl.text.trim();
-                            if (text.isEmpty) return;
-                            final appState = Provider.of<AppState>(ctx, listen: false);
-                            final newReply = _Reply(
-                              author: appState.isLoggedIn ? appState.firstName : 'אורח',
-                              avatar: appState.isLoggedIn && appState.firstName.isNotEmpty ? appState.firstName[0] : 'א',
-                              text: text,
-                              time: DateTime.now(),
-                            );
-                            setSheet(() { replies.add(newReply); replyCtrl.clear(); });
-                            setState(() {});
-                          },
-                          child: Container(
-                            width: 44, height: 44,
-                            decoration: BoxDecoration(color: ffTheme.primary, shape: BoxShape.circle),
-                            child: const Icon(Icons.send_rounded, color: Colors.white, size: 20),
+                        Semantics(
+                          button: true,
+                          label: 'שלח תגובה',
+                          child: GestureDetector(
+                            onTap: () => _submitReply(
+                              ctx: ctx,
+                              setSheet: setSheet,
+                              replies: replies,
+                              replyCtrl: replyCtrl,
+                              postId: post.id,
+                              scrollCtrl: scrollCtrl,
+                            ),
+                            child: Container(
+                              width: 44, height: 44,
+                              decoration: BoxDecoration(color: ffTheme.primary, shape: BoxShape.circle),
+                              child: const Icon(Icons.send_rounded, color: Colors.white, size: 20),
+                            ),
                           ),
                         ),
                       ],
@@ -368,8 +473,10 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                   controller: ctrl,
                   maxLines: 4,
                   minLines: 3,
+                  maxLength: 500,
                   autofocus: true,
                   textDirection: TextDirection.rtl,
+                  onChanged: (_) => setSheet(() {}),
                   decoration: InputDecoration(
                     hintText: 'שתפו חוויה, טיפ, שאלה...',
                     filled: true,
@@ -386,6 +493,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                     onPressed: () {
                       final text = ctrl.text.trim();
                       if (text.isEmpty) return;
+                      HapticFeedback.lightImpact();
                       final id = DateTime.now().millisecondsSinceEpoch.toString();
                       final author = appState.isLoggedIn ? appState.firstName : 'אורח';
                       final avatar = appState.isLoggedIn && appState.firstName.isNotEmpty ? appState.firstName[0] : 'א';
@@ -586,6 +694,30 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                   ),
                 ),
                 const SizedBox(width: 8),
+                Tooltip(
+                  message: 'פוסטים שמורים',
+                  child: GestureDetector(
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      setState(() => _showBookmarksOnly = !_showBookmarksOnly);
+                    },
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: _showBookmarksOnly ? ffTheme.warning.withOpacity(0.12) : ffTheme.background,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: _showBookmarksOnly ? ffTheme.warning : ffTheme.alternate),
+                      ),
+                      child: Icon(
+                        _showBookmarksOnly ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+                        size: 15,
+                        color: _showBookmarksOnly ? ffTheme.warning : ffTheme.secondaryText,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
                 Expanded(
                   child: TextField(
                     controller: _searchCtrl,
@@ -651,17 +783,33 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.forum_outlined, size: 56, color: ffTheme.alternate)
+                        Icon(_showBookmarksOnly ? Icons.bookmark_border_rounded : Icons.forum_outlined, size: 56, color: ffTheme.alternate)
                             .animate(onPlay: (c) => c.repeat(reverse: true))
                             .scale(begin: const Offset(1, 1), end: const Offset(1.05, 1.05), duration: 1400.ms, curve: Curves.easeInOut),
                         const SizedBox(height: 16),
                         Text(
-                          _searchQuery.isNotEmpty ? 'אין תוצאות עבור "$_searchQuery"' : 'אין פוסטים בערוץ זה עדיין',
+                          _showBookmarksOnly
+                              ? 'אין פוסטים שמורים'
+                              : _searchQuery.isNotEmpty
+                                  ? 'אין תוצאות עבור "$_searchQuery"'
+                                  : 'אין פוסטים בערוץ זה עדיין',
                           style: ffTheme.titleSmall.copyWith(color: ffTheme.secondaryText),
                           textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 8),
-                        if (_searchQuery.isEmpty) ...[
+                        if (_showBookmarksOnly) ...[
+                          Text('סמנו 🔖 על פוסטים כדי לשמור אותם לכאן', style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText), textAlign: TextAlign.center),
+                          const SizedBox(height: 16),
+                          OutlinedButton(
+                            onPressed: () => setState(() => _showBookmarksOnly = false),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: ffTheme.primary,
+                              side: BorderSide(color: ffTheme.primary),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                            child: const Text('הצג את כל הפוסטים'),
+                          ),
+                        ] else if (_searchQuery.isEmpty) ...[
                           Text('היה הראשון לשתף!', style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText)),
                           const SizedBox(height: 16),
                           ElevatedButton.icon(
@@ -679,20 +827,31 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                       ],
                     ),
                   )
-                : ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
-                    itemCount: _filtered.length,
-                    itemBuilder: (context, i) {
-                      final post = _filtered[i];
-                      return _PostCard(
-                        post: post,
-                        ffTheme: ffTheme,
-                        bookmarked: _bookmarked.contains(post.id),
-                        replyCount: _replyData.containsKey(post.id) ? _replyData[post.id]!.length : post.replies,
-                        onBookmark: (id) => setState(() => _bookmarked.contains(id) ? _bookmarked.remove(id) : _bookmarked.add(id)),
-                        onReply: () => _showReplies(context, post, ffTheme),
-                      ).animate(delay: (i * 50).ms).fadeIn(duration: 350.ms).slideY(begin: 0.05, end: 0);
-                    },
+                : RefreshIndicator(
+                    onRefresh: _refreshFeed,
+                    color: ffTheme.primary,
+                    child: ListView.builder(
+                      physics: const AlwaysScrollableScrollPhysics(),
+                      padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+                      itemCount: _filtered.length,
+                      itemBuilder: (context, i) {
+                        final post = _filtered[i];
+                        return _PostCard(
+                          post: post,
+                          ffTheme: ffTheme,
+                          bookmarked: appState.isBookmarked(post.id),
+                          isOwn: appState.isOwnPost(post.id),
+                          replyCount: _replyData.containsKey(post.id) ? _replyData[post.id]!.length : post.replies,
+                          onBookmark: (id) {
+                            HapticFeedback.selectionClick();
+                            appState.toggleBookmark(id);
+                            setState(() {});
+                          },
+                          onReply: () => _showReplies(context, post, ffTheme),
+                          onDelete: () => _confirmDelete(context, post, appState, ffTheme),
+                        ).animate(delay: (i * 50).ms).fadeIn(duration: 350.ms).slideY(begin: 0.05, end: 0);
+                      },
+                    ),
                   ),
           ),
         ],
@@ -711,6 +870,8 @@ class _PostCard extends StatefulWidget {
     required this.replyCount,
     required this.onBookmark,
     required this.onReply,
+    this.isOwn = false,
+    this.onDelete,
   });
   final CommunityPost post;
   final AppTheme ffTheme;
@@ -718,6 +879,8 @@ class _PostCard extends StatefulWidget {
   final int replyCount;
   final ValueChanged<String> onBookmark;
   final VoidCallback onReply;
+  final bool isOwn;
+  final VoidCallback? onDelete;
 
   @override
   State<_PostCard> createState() => _PostCardState();
@@ -824,22 +987,56 @@ class _PostCardState extends State<_PostCard> {
                     ),
                     const SizedBox(width: 4),
                     // Bookmark
-                    GestureDetector(
-                      onTap: () => widget.onBookmark(post.id),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        padding: const EdgeInsets.all(5),
-                        decoration: BoxDecoration(
-                          color: widget.bookmarked ? ffTheme.accent2 : Colors.transparent,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Icon(
-                          widget.bookmarked ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
-                          size: 18,
-                          color: widget.bookmarked ? ffTheme.warning : ffTheme.secondaryText,
+                    Semantics(
+                      button: true,
+                      label: widget.bookmarked ? 'הסר מהשמורים' : 'שמור פוסט',
+                      child: Tooltip(
+                        message: widget.bookmarked ? 'הסר מהשמורים' : 'שמור',
+                        child: GestureDetector(
+                          onTap: () => widget.onBookmark(post.id),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            padding: const EdgeInsets.all(5),
+                            decoration: BoxDecoration(
+                              color: widget.bookmarked ? ffTheme.accent2 : Colors.transparent,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(
+                              widget.bookmarked ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+                              size: 18,
+                              color: widget.bookmarked ? ffTheme.warning : ffTheme.secondaryText,
+                            ),
+                          ),
                         ),
                       ),
                     ),
+                    // Own-post overflow menu
+                    if (widget.isOwn && widget.onDelete != null)
+                      SizedBox(
+                        height: 28,
+                        width: 28,
+                        child: PopupMenuButton<String>(
+                          padding: EdgeInsets.zero,
+                          tooltip: 'אפשרויות',
+                          icon: Icon(Icons.more_vert_rounded, size: 18, color: ffTheme.secondaryText),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          onSelected: (v) {
+                            if (v == 'delete') widget.onDelete!();
+                          },
+                          itemBuilder: (_) => [
+                            PopupMenuItem<String>(
+                              value: 'delete',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.delete_outline_rounded, size: 18, color: ffTheme.error),
+                                  const SizedBox(width: 8),
+                                  Text('מחק פוסט', style: ffTheme.bodyMedium.copyWith(color: ffTheme.error)),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                   ],
                 ),
 
@@ -891,6 +1088,7 @@ class _PostCardState extends State<_PostCard> {
                     label: '${post.likes + (liked ? 1 : 0)}',
                     color: liked ? Colors.red : ffTheme.secondaryText,
                     scale: _bouncing ? 1.4 : 1.0,
+                    semanticLabel: liked ? 'בטל לייק' : 'אהבתי',
                     onTap: () {
                       HapticFeedback.selectionClick();
                       appState.toggleLike(post.id);
@@ -905,6 +1103,7 @@ class _PostCardState extends State<_PostCard> {
                   icon: Icons.chat_bubble_outline_rounded,
                   label: '${widget.replyCount}',
                   color: ffTheme.primary.withOpacity(0.7),
+                  semanticLabel: 'הגב לפוסט',
                   onTap: widget.onReply,
                 ),
                 const Spacer(),
@@ -913,7 +1112,9 @@ class _PostCardState extends State<_PostCard> {
                   icon: Icons.ios_share_rounded,
                   label: '',
                   color: ffTheme.secondaryText,
+                  semanticLabel: 'שתף פוסט',
                   onTap: () {
+                    HapticFeedback.selectionClick();
                     Clipboard.setData(ClipboardData(text: '${post.author}: ${post.text}'));
                     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                       content: const Text('הפוסט הועתק ללוח'),
@@ -936,34 +1137,39 @@ class _PostCardState extends State<_PostCard> {
 // ── Helper widgets ────────────────────────────────────────────────────────────
 
 class _ActionBtn extends StatelessWidget {
-  const _ActionBtn({required this.icon, required this.label, required this.color, required this.onTap, this.scale = 1.0});
+  const _ActionBtn({required this.icon, required this.label, required this.color, required this.onTap, this.scale = 1.0, this.semanticLabel});
   final IconData icon;
   final String label;
   final Color color;
   final VoidCallback onTap;
   final double scale;
+  final String? semanticLabel;
 
   @override
   Widget build(BuildContext context) {
     final ffTheme = AppTheme.of(context);
-    return GestureDetector(
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            AnimatedScale(
-              scale: scale,
-              duration: const Duration(milliseconds: 200),
-              curve: Curves.elasticOut,
-              child: Icon(icon, size: 17, color: color),
-            ),
-            if (label.isNotEmpty) ...[
-              const SizedBox(width: 4),
-              Text(label, style: ffTheme.labelSmall.copyWith(color: color, fontWeight: FontWeight.w600)),
+    return Semantics(
+      button: true,
+      label: semanticLabel,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AnimatedScale(
+                scale: scale,
+                duration: const Duration(milliseconds: 200),
+                curve: Curves.elasticOut,
+                child: Icon(icon, size: 17, color: color),
+              ),
+              if (label.isNotEmpty) ...[
+                const SizedBox(width: 4),
+                Text(label, style: ffTheme.labelSmall.copyWith(color: color, fontWeight: FontWeight.w600)),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );

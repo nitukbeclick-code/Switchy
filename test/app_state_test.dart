@@ -254,4 +254,91 @@ void main() {
       expect(count, equals(2));
     });
   });
+
+  // ── Community: bookmarks ─────────────────────────────────────────────────────
+
+  group('toggleBookmark', () {
+    test('bookmarks a post and reflects in isBookmarked', () {
+      final state = AppState();
+      expect(state.isBookmarked('p1'), isFalse);
+      state.toggleBookmark('p1');
+      expect(state.isBookmarked('p1'), isTrue);
+      expect(state.bookmarkedPosts, contains('p1'));
+    });
+
+    test('un-bookmarks a previously bookmarked post', () {
+      final state = AppState();
+      state.toggleBookmark('p1');
+      state.toggleBookmark('p1');
+      expect(state.isBookmarked('p1'), isFalse);
+    });
+
+    test('bookmarks are independent per post', () {
+      final state = AppState();
+      state.toggleBookmark('p1');
+      expect(state.isBookmarked('p1'), isTrue);
+      expect(state.isBookmarked('p2'), isFalse);
+    });
+  });
+
+  // ── Community: replies ───────────────────────────────────────────────────────
+
+  group('community replies', () {
+    test('addCommunityReply stores a reply for a post', () {
+      final state = AppState();
+      expect(state.replyCountFor('p1'), equals(0));
+      state.addCommunityReply(postId: 'p1', author: 'דנה', avatar: 'ד', text: 'תשובה');
+      expect(state.replyCountFor('p1'), equals(1));
+      final replies = state.repliesFor('p1');
+      expect(replies.single['author'], equals('דנה'));
+      expect(replies.single['text'], equals('תשובה'));
+    });
+
+    test('multiple replies accumulate in order', () {
+      final state = AppState();
+      state.addCommunityReply(postId: 'p1', author: 'א', avatar: 'א', text: 'ראשון');
+      state.addCommunityReply(postId: 'p1', author: 'ב', avatar: 'ב', text: 'שני');
+      expect(state.replyCountFor('p1'), equals(2));
+      expect(state.repliesFor('p1').last['text'], equals('שני'));
+    });
+
+    test('replies are keyed independently per post', () {
+      final state = AppState();
+      state.addCommunityReply(postId: 'p1', author: 'א', avatar: 'א', text: 'x');
+      expect(state.replyCountFor('p1'), equals(1));
+      expect(state.replyCountFor('p2'), equals(0));
+    });
+  });
+
+  // ── Community: posts & deletion ──────────────────────────────────────────────
+
+  group('community posts', () {
+    test('addCommunityPost inserts at the front and marks ownership', () {
+      final state = AppState();
+      state.addCommunityPost(id: 'u1', author: 'אני', avatar: 'א', channel: 'סלולר', text: 'פוסט');
+      expect(state.isOwnPost('u1'), isTrue);
+      expect(state.communityPosts.first['id'], equals('u1'));
+    });
+
+    test('isOwnPost is false for unknown / seed posts', () {
+      final state = AppState();
+      expect(state.isOwnPost('seed_1'), isFalse);
+    });
+
+    test('removeCommunityPost deletes the post and all its associated data', () {
+      final state = AppState();
+      state.addCommunityPost(id: 'u1', author: 'אני', avatar: 'א', channel: 'סלולר', text: 'פוסט');
+      state.toggleLike('u1');
+      state.toggleBookmark('u1');
+      state.addCommunityReply(postId: 'u1', author: 'x', avatar: 'x', text: 'r');
+
+      state.removeCommunityPost('u1');
+
+      expect(state.isOwnPost('u1'), isFalse);
+      expect(state.hasLiked('u1'), isFalse);
+      expect(state.isBookmarked('u1'), isFalse);
+      expect(state.replyCountFor('u1'), equals(0));
+      expect(state.communityPosts.any((p) => p['id'] == 'u1'), isFalse);
+    });
+  });
 }

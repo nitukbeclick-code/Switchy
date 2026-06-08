@@ -149,7 +149,7 @@ class RecommendationEngine {
     if (_isGigFiber(plan)) reasons.add('סיב אופטי במהירות גיגה');
     if (plan.noCommit) reasons.add('ללא התחייבות — ביטול בכל עת');
     if (plan.hasAbroad && !abroad) reasons.add('כולל גלישה בחו״ל');
-    if (plan.isFixed) reasons.add('מחיר קבוע לכל החיים');
+    if (plan.isFixed) reasons.add('מחיר קבוע — ללא עליות');
 
     if (plan.hasPromo) caveats.add('מחיר מבצע — עולה ל-₪${plan.after} בהמשך');
     if (!plan.noCommit && plan.term != null && plan.term! > 0) {

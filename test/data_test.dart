@@ -6,28 +6,27 @@ void main() {
   // ── planSaveYear ────────────────────────────────────────────────────────────
 
   group('planSaveYear', () {
+    // Use constructed plans so the formula is verified independently of the
+    // catalogue data (which is replaced as real provider plans are loaded).
+    Plan p(int price) => Plan(id: 't', cat: 'cellular', provider: 'x', net: '4G', plan: 't', price: price);
+
     test('calculates annual saving correctly', () {
-      // Plan at ₪35, bill ₪119 → (119-35)*12 = 1008
-      final plan = planById('cel_partner_prince')!;
-      expect(planSaveYear(plan, 119), equals(1008));
+      // ₪35 vs bill ₪119 → (119-35)*12 = 1008
+      expect(planSaveYear(p(35), 119), equals(1008));
     });
 
     test('clamps to 0 when plan price exceeds bill', () {
-      // Plan at ₪179, bill ₪99 → (99-179)*12 = -960, clamps to 0
-      final plan = planById('net_bezeq_5g')!; // price=179
-      expect(planSaveYear(plan, 99), equals(0));
+      // ₪179 vs bill ₪99 → negative, clamps to 0
+      expect(planSaveYear(p(179), 99), equals(0));
     });
 
     test('returns 0 when plan price equals bill', () {
-      // Plan at ₪109, bill ₪109 → 0
-      final plan = planById('net_bezeq_300f')!; // price=109
-      expect(planSaveYear(plan, 109), equals(0));
+      expect(planSaveYear(p(109), 109), equals(0));
     });
 
     test('large saving is not artificially capped', () {
-      // Plan at ₪15, bill ₪2000 → (2000-15)*12 = 23820
-      final plan = planById('cel_rami_kosher_zol')!; // price=15
-      expect(planSaveYear(plan, 2000), equals(23820));
+      // ₪15 vs bill ₪2000 → (2000-15)*12 = 23820
+      expect(planSaveYear(p(15), 2000), equals(23820));
     });
   });
 
@@ -35,11 +34,12 @@ void main() {
 
   group('planById', () {
     test('returns a plan for a valid id', () {
-      final plan = planById('cel_golan_400');
+      // Look up a real id dynamically so the test survives data changes.
+      final sample = plansByCat('cellular').first;
+      final plan = planById(sample.id);
       expect(plan, isNotNull);
-      expect(plan!.id, equals('cel_golan_400'));
+      expect(plan!.id, equals(sample.id));
       expect(plan.cat, equals('cellular'));
-      expect(plan.provider, equals('גולן טלקום'));
     });
 
     test('returns null for an unknown id', () {

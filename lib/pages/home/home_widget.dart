@@ -38,7 +38,8 @@ class _HomeWidgetState extends State<HomeWidget> {
   Widget build(BuildContext context) {
     final ffTheme = FlutterFlowTheme.of(context);
     final appState = Provider.of<FFAppState>(context);
-    final deal = hotDeal(appState.currentBill('cellular'));
+    final activeCat = appState.selectedCat;
+    final deal = hotDeal(appState.currentBill(activeCat), cat: activeCat);
 
     return Scaffold(
       backgroundColor: ffTheme.background,
@@ -889,6 +890,19 @@ class _HomeWidgetState extends State<HomeWidget> {
   ];
 
   Widget _buildCommunityHighlights(BuildContext context, FlutterFlowTheme ffTheme) {
+    final appState = Provider.of<FFAppState>(context, listen: false);
+    // Merge user posts (up to 1) with seed posts for a total of 3
+    final userPosts = appState.communityPosts.take(1).map((p) => _CommunityPreview(
+      user: (p['author'] as String? ?? 'א')[0],
+      channel: p['channel'] as String? ?? 'כללי',
+      text: p['text'] as String? ?? '',
+      likes: 0,
+      replies: 0,
+      isUserPost: true,
+    )).toList();
+    final seedPosts = _communityPreviews.take(3 - userPosts.length).toList();
+    final displayPosts = [...userPosts, ...seedPosts];
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
       child: Column(
@@ -907,7 +921,7 @@ class _HomeWidgetState extends State<HomeWidget> {
             ],
           ),
           const SizedBox(height: 12),
-          ..._communityPreviews.asMap().entries.map((e) {
+          ...displayPosts.asMap().entries.map((e) {
             final i = e.key;
             final post = e.value;
             return GestureDetector(
@@ -916,9 +930,9 @@ class _HomeWidgetState extends State<HomeWidget> {
                 margin: const EdgeInsets.only(bottom: 8),
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: post.isUserPost ? ffTheme.accent1 : Colors.white,
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: ffTheme.alternate),
+                  border: Border.all(color: post.isUserPost ? ffTheme.primary.withOpacity(0.2) : ffTheme.alternate),
                   boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 6, offset: const Offset(0, 1))],
                 ),
                 child: Row(
@@ -927,13 +941,13 @@ class _HomeWidgetState extends State<HomeWidget> {
                       width: 38,
                       height: 38,
                       decoration: BoxDecoration(
-                        color: ffTheme.accent1,
+                        color: post.isUserPost ? ffTheme.primary : ffTheme.accent1,
                         shape: BoxShape.circle,
                       ),
                       child: Center(
                         child: Text(
                           post.user,
-                          style: ffTheme.labelLarge.override(color: ffTheme.primary, fontWeight: FontWeight.w700),
+                          style: ffTheme.labelLarge.override(color: post.isUserPost ? Colors.white : ffTheme.primary, fontWeight: FontWeight.w700),
                         ),
                       ),
                     ),
@@ -952,6 +966,14 @@ class _HomeWidgetState extends State<HomeWidget> {
                                 ),
                                 child: Text(post.channel, style: ffTheme.labelSmall.override(color: const Color(0xFF8A6000), fontSize: 10, fontWeight: FontWeight.w700)),
                               ),
+                              if (post.isUserPost) ...[
+                                const SizedBox(width: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(color: ffTheme.primary, borderRadius: BorderRadius.circular(6)),
+                                  child: Text('הפוסט שלך', style: ffTheme.labelSmall.override(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w700)),
+                                ),
+                              ],
                             ],
                           ),
                           const SizedBox(height: 4),
@@ -1293,7 +1315,8 @@ class _Provider {
 }
 
 class _CommunityPreview {
-  const _CommunityPreview({required this.user, required this.channel, required this.text, required this.likes, required this.replies});
+  const _CommunityPreview({required this.user, required this.channel, required this.text, required this.likes, required this.replies, this.isUserPost = false});
   final String user, channel, text;
   final int likes, replies;
+  final bool isUserPost;
 }

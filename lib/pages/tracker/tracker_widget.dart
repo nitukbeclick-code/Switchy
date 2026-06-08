@@ -408,28 +408,9 @@ class _TrackerWidgetState extends State<TrackerWidget> {
 
             const SizedBox(height: 8),
 
-            // Advance step for demo
-            if (step < 4 && plan != null)
-              GestureDetector(
-                onTap: () => appState.advanceTracker(),
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: ffTheme.alternate),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.arrow_forward_rounded, size: 16, color: ffTheme.secondaryText),
-                      const SizedBox(width: 6),
-                      Text('קבלתי עדכון מהספק', style: ffTheme.labelMedium.override(color: ffTheme.secondaryText)),
-                    ],
-                  ),
-                ),
-              ).animate().fadeIn(delay: 440.ms),
+            if (step < 4 && plan != null) ...[
+              _StepConfirmButton(step: step, onConfirm: () => appState.advanceTracker(), ffTheme: ffTheme),
+            ],
 
             const SizedBox(height: 12),
 
@@ -489,4 +470,61 @@ class _TrackerStep {
   final bool done;
   final bool active;
   const _TrackerStep({required this.icon, required this.title, required this.subtitle, this.done = false, this.active = false});
+}
+
+class _StepConfirmButton extends StatelessWidget {
+  const _StepConfirmButton({required this.step, required this.onConfirm, required this.ffTheme});
+  final int step;
+  final VoidCallback onConfirm;
+  final FlutterFlowTheme ffTheme;
+
+  static const _labels = [
+    'קיבלתי אישור מהספק ✓',
+    'הניוד החל — אישרתי פרטים',
+    'המספר נויד בהצלחה 🎉',
+    'הכל עובד! סיימתי ✓',
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    final label = step < _labels.length ? _labels[step] : _labels.last;
+    return GestureDetector(
+      onTap: () {
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: const Text('עדכון סטטוס', textAlign: TextAlign.center),
+            content: Text('לעדכן: "$label"?', textAlign: TextAlign.center),
+            actionsAlignment: MainAxisAlignment.center,
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('ביטול')),
+              ElevatedButton(
+                onPressed: () { Navigator.pop(ctx); onConfirm(); },
+                style: ElevatedButton.styleFrom(backgroundColor: ffTheme.primary, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+                child: const Text('אישור'),
+              ),
+            ],
+          ),
+        );
+      },
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 13),
+        decoration: BoxDecoration(
+          color: ffTheme.accent1,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: ffTheme.primary.withOpacity(0.25)),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.check_circle_outline_rounded, size: 17, color: ffTheme.primary),
+            const SizedBox(width: 8),
+            Text(label, style: ffTheme.labelMedium.override(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+          ],
+        ),
+      ),
+    ).animate().fadeIn(delay: 440.ms);
+  }
 }

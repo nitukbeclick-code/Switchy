@@ -186,10 +186,10 @@ int planSaveYear(Plan p, int currentBill) {
   return ((currentBill - p.price) * 12).clamp(0, 999999);
 }
 
-Plan? hotDeal(int currentBill) {
+Plan? hotDeal(int currentBill, {String cat = 'cellular'}) {
   Plan? best;
   int bestSave = 0;
-  for (final p in allPlans.where((p) => p.cat == 'cellular')) {
+  for (final p in allPlans.where((p) => p.cat == cat)) {
     final s = planSaveYear(p, currentBill);
     if (s > bestSave) { bestSave = s; best = p; }
   }

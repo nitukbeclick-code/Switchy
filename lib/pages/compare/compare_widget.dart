@@ -20,17 +20,30 @@ class CompareWidget extends StatelessWidget {
     final ids = appState.comparePlans;
     final plans = ids.map((id) => planById(id)).whereType<Plan>().toList();
 
-    // Find winner (highest annual savings using each plan's own category bill)
+    // Find winner based on user's quiz priority preference
     String? winnerId;
     if (plans.length >= 2) {
-      int bestSave = -1;
-      for (final p in plans) {
-        final s = planSaveYear(p, appState.currentBill(p.cat));
-        if (s > bestSave) {
-          bestSave = s;
-          winnerId = p.id;
+      final priority = appState.quizPriority; // 'price', 'rating', 'coverage', 'nocommit'
+      Plan? winner;
+      if (priority == 'rating') {
+        winner = plans.reduce((a, b) => a.rating >= b.rating ? a : b);
+      } else if (priority == 'nocommit') {
+        final noCommitPlans = plans.where((p) => p.noCommit).toList();
+        if (noCommitPlans.isNotEmpty) {
+          winner = noCommitPlans.reduce((a, b) {
+            final sa = planSaveYear(a, appState.currentBill(a.cat));
+            final sb = planSaveYear(b, appState.currentBill(b.cat));
+            return sa >= sb ? a : b;
+          });
         }
       }
+      // Default: highest savings (price priority or fallback)
+      winner ??= plans.reduce((a, b) {
+        final sa = planSaveYear(a, appState.currentBill(a.cat));
+        final sb = planSaveYear(b, appState.currentBill(b.cat));
+        return sa >= sb ? a : b;
+      });
+      winnerId = winner.id;
     }
 
     return Scaffold(

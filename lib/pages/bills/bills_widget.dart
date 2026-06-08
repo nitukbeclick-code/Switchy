@@ -54,7 +54,7 @@ class _BillsWidgetState extends State<BillsWidget> {
                   builder: (ctx) => AlertDialog(
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                     title: const Text('איפוס חשבונות', textAlign: TextAlign.center),
-                    content: const Text('להאפיס את כל הסכומים לאפס?', textAlign: TextAlign.center),
+                    content: const Text('לאפס את כל הסכומים לאפס?', textAlign: TextAlign.center),
                     actionsAlignment: MainAxisAlignment.center,
                     actions: [
                       TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('ביטול')),

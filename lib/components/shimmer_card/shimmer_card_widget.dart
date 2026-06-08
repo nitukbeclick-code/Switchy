@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
-import '../../flutter_flow/flutter_flow_theme.dart';
+import '../../theme/app_theme.dart';
 
 class ShimmerCardWidget extends StatelessWidget {
   const ShimmerCardWidget({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final ffTheme = FlutterFlowTheme.of(context);
+    final ffTheme = AppTheme.of(context);
 
     return Shimmer.fromColors(
       baseColor: ffTheme.alternate,

@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import '../../flutter_flow/flutter_flow_theme.dart';
-import '../../flutter_flow/flutter_flow_util.dart';
-import '../../flutter_flow/flutter_flow_widgets.dart';
+import '../../theme/app_theme.dart';
+import '../../core/nav.dart';
+import '../../widgets/app_button.dart';
 import '../../app_state.dart';
 import '../../models.dart';
 import '../../data.dart';
@@ -42,8 +42,8 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
 
   @override
   Widget build(BuildContext context) {
-    final ffTheme = FlutterFlowTheme.of(context);
-    final appState = Provider.of<FFAppState>(context);
+    final ffTheme = AppTheme.of(context);
+    final appState = Provider.of<AppState>(context);
     final plan = planById(widget.planId);
 
     if (plan == null) {
@@ -65,7 +65,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
               const SizedBox(height: 8),
               TextButton(
                 onPressed: () => context.pop(),
-                child: Text('חזרה', style: ffTheme.bodyMedium.override(color: ffTheme.primary)),
+                child: Text('חזרה', style: ffTheme.bodyMedium.copyWith(color: ffTheme.primary)),
               ),
             ],
           ),
@@ -141,14 +141,14 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                           ),
                           const SizedBox(height: 10),
                           Text(plan.provider,
-                              style: ffTheme.titleLarge.override(color: Colors.white)),
+                              style: ffTheme.titleLarge.copyWith(color: Colors.white)),
                           const SizedBox(height: 4),
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 40),
                             child: Text(
                               plan.plan,
                               style: ffTheme.bodySmall
-                                  .override(color: Colors.white.withOpacity(0.85)),
+                                  .copyWith(color: Colors.white.withOpacity(0.85)),
                               textAlign: TextAlign.center,
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
@@ -190,7 +190,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                                     .scale(begin: const Offset(1, 1), end: const Offset(1.4, 1.4), duration: 800.ms),
                                   const SizedBox(width: 6),
                                   Text('$_viewers אנשים צופים עכשיו',
-                                    style: ffTheme.labelSmall.override(color: ffTheme.primary, fontWeight: FontWeight.w600)),
+                                    style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w600)),
                                 ],
                               ),
                             ),
@@ -211,7 +211,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                                   children: [
                                     Text(
                                       '₪${plan.price}',
-                                      style: ffTheme.displaySmall.override(
+                                      style: ffTheme.displaySmall.copyWith(
                                           color: ffTheme.primary,
                                           fontWeight: FontWeight.w800),
                                     ),
@@ -219,7 +219,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                                     Padding(
                                       padding: const EdgeInsets.only(bottom: 6),
                                       child: Text(plan.cat == 'abroad' ? '/חבילה' : '/חודש',
-                                          style: ffTheme.bodySmall.override(
+                                          style: ffTheme.bodySmall.copyWith(
                                               color: ffTheme.secondaryText)),
                                     ),
                                   ],
@@ -228,7 +228,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                                   Text(
                                     '₪${plan.after} אחרי ${plan.intro ?? 'המבצע'}',
                                     style: ffTheme.bodySmall
-                                        .override(color: ffTheme.secondaryText),
+                                        .copyWith(color: ffTheme.secondaryText),
                                   ),
                                 const SizedBox(height: 8),
                                 Container(
@@ -255,7 +255,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                                 ),
                                 child: Text(
                                   'חוסך ₪$saveYear בשנה',
-                                  style: ffTheme.labelMedium.override(
+                                  style: ffTheme.labelMedium.copyWith(
                                     color: const Color(0xFF0E3A26),
                                     fontWeight: FontWeight.w700,
                                   ),
@@ -347,7 +347,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                               Expanded(
                                 child: Text(
                                   'המחיר יעלה ל-₪${plan.after} לאחר ${plan.intro ?? 'תקופת המבצע'}',
-                                  style: ffTheme.bodySmall.override(
+                                  style: ffTheme.bodySmall.copyWith(
                                       color: ffTheme.warning,
                                       fontWeight: FontWeight.w600),
                                 ),
@@ -405,7 +405,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                               const SizedBox(width: 6),
                               Text(
                                 appState.hasReviewedProvider(plan.provider) ? 'עדכן דירוג עבור ${plan.provider}' : 'דרג את ${plan.provider}',
-                                style: ffTheme.labelSmall.override(color: ffTheme.primary, fontWeight: FontWeight.w700),
+                                style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700),
                               ),
                               const Spacer(),
                               Icon(Icons.chevron_left_rounded, size: 16, color: ffTheme.primary),
@@ -531,14 +531,14 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                                             children: [
                                               LogoWidget(provider: p.provider, size: 28),
                                               const SizedBox(width: 8),
-                                              Expanded(child: Text(p.provider, style: ffTheme.labelSmall.override(fontWeight: FontWeight.w700), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                                              Expanded(child: Text(p.provider, style: ffTheme.labelSmall.copyWith(fontWeight: FontWeight.w700), maxLines: 1, overflow: TextOverflow.ellipsis)),
                                             ],
                                           ),
                                           const SizedBox(height: 6),
-                                          Text('₪${p.price}/${plan.cat == 'abroad' ? 'חבילה' : 'חודש'}', style: ffTheme.titleSmall.override(color: ffTheme.primary)),
+                                          Text('₪${p.price}/${plan.cat == 'abroad' ? 'חבילה' : 'חודש'}', style: ffTheme.titleSmall.copyWith(color: ffTheme.primary)),
                                           const SizedBox(height: 3),
                                           if (pSave > 0)
-                                            Text('חוסך ₪$pSave/שנה', style: ffTheme.labelSmall.override(color: ffTheme.success))
+                                            Text('חוסך ₪$pSave/שנה', style: ffTheme.labelSmall.copyWith(color: ffTheme.success))
                                           else
                                             Text(p.plan, style: ffTheme.labelSmall, maxLines: 1, overflow: TextOverflow.ellipsis),
                                         ],
@@ -583,17 +583,17 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                 child: Row(
                   children: [
                     Expanded(
-                      child: FFButtonWidget(
+                      child: AppButton(
                         text: 'עברו למסלול הזה ←',
                         onPressed: () async => context.pushNamed('Lead',
                             pathParameters: {'planId': plan.id}),
-                        options: FFButtonOptions(
+                        
                           height: 56,
                           color: ffTheme.primary,
                           textStyle:
-                              ffTheme.titleSmall.override(color: Colors.white),
+                              ffTheme.titleSmall.copyWith(color: Colors.white),
                           borderRadius: BorderRadius.circular(16),
-                        ),
+                        
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -663,7 +663,7 @@ class _Card extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ffTheme = FlutterFlowTheme.of(context);
+    final ffTheme = AppTheme.of(context);
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -702,7 +702,7 @@ class _PriceRow extends StatelessWidget {
   });
   final String label;
   final String value;
-  final FlutterFlowTheme ffTheme;
+  final AppTheme ffTheme;
   final Color? valueColor;
   final bool isLast;
 
@@ -715,9 +715,9 @@ class _PriceRow extends StatelessWidget {
           children: [
             Text(label,
                 style: ffTheme.bodyMedium
-                    .override(color: ffTheme.secondaryText)),
+                    .copyWith(color: ffTheme.secondaryText)),
             Text(value,
-                style: ffTheme.bodyMedium.override(
+                style: ffTheme.bodyMedium.copyWith(
                     color: valueColor ?? ffTheme.primaryText,
                     fontWeight: FontWeight.w600)),
           ],
@@ -735,7 +735,7 @@ class _PriceRow extends StatelessWidget {
 class _StarRow extends StatelessWidget {
   const _StarRow({required this.rating, required this.ffTheme});
   final double rating;
-  final FlutterFlowTheme ffTheme;
+  final AppTheme ffTheme;
 
   @override
   Widget build(BuildContext context) {
@@ -761,7 +761,7 @@ class _SavingsPeriod extends StatelessWidget {
   const _SavingsPeriod({required this.months, required this.saveYear, required this.ffTheme});
   final int months;
   final int saveYear;
-  final FlutterFlowTheme ffTheme;
+  final AppTheme ffTheme;
 
   @override
   Widget build(BuildContext context) {
@@ -770,7 +770,7 @@ class _SavingsPeriod extends StatelessWidget {
       children: [
         Text(
           '₪$amount',
-          style: ffTheme.titleMedium.override(color: ffTheme.primary, fontWeight: FontWeight.w800),
+          style: ffTheme.titleMedium.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w800),
         ),
         const SizedBox(height: 4),
         Text('$months חודשים', style: ffTheme.labelSmall),
@@ -784,7 +784,7 @@ class _RatingBar extends StatelessWidget {
       {required this.label, required this.value, required this.ffTheme});
   final String label;
   final double value;
-  final FlutterFlowTheme ffTheme;
+  final AppTheme ffTheme;
 
   @override
   Widget build(BuildContext context) {
@@ -809,7 +809,7 @@ class _RatingBar extends StatelessWidget {
         const SizedBox(width: 8),
         Text(
           (value * 5).toStringAsFixed(1),
-          style: ffTheme.labelSmall.override(fontWeight: FontWeight.w700),
+          style: ffTheme.labelSmall.copyWith(fontWeight: FontWeight.w700),
         ),
       ],
     );

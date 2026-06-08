@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../flutter_flow/flutter_flow_theme.dart';
-import '../../flutter_flow/flutter_flow_util.dart';
-import '../../flutter_flow/flutter_flow_widgets.dart';
+import '../../theme/app_theme.dart';
+import '../../core/nav.dart';
+import '../../widgets/app_button.dart';
 import '../../app_state.dart';
 import '../../models.dart';
 import '../../data.dart';
@@ -15,8 +15,8 @@ class CompareWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ffTheme = FlutterFlowTheme.of(context);
-    final appState = Provider.of<FFAppState>(context);
+    final ffTheme = AppTheme.of(context);
+    final appState = Provider.of<AppState>(context);
     final ids = appState.comparePlans;
     final plans = ids.map((id) => planById(id)).whereType<Plan>().toList();
 
@@ -52,13 +52,13 @@ class CompareWidget extends StatelessWidget {
         backgroundColor: ffTheme.primary,
         foregroundColor: Colors.white,
         title: Text('השוואת מסלולים',
-            style: ffTheme.titleLarge.override(color: Colors.white)),
+            style: ffTheme.titleLarge.copyWith(color: Colors.white)),
         actions: [
           if (ids.isNotEmpty)
             TextButton(
               onPressed: appState.clearCompare,
               child: Text('נקה הכל',
-                  style: ffTheme.labelMedium.override(
+                  style: ffTheme.labelMedium.copyWith(
                       color: Colors.white.withOpacity(0.85))),
             ),
         ],
@@ -79,7 +79,7 @@ class CompareWidget extends StatelessWidget {
 
 class _EmptyState extends StatelessWidget {
   const _EmptyState({required this.ffTheme, this.hasPlan = false, this.firstPlan});
-  final FlutterFlowTheme ffTheme;
+  final AppTheme ffTheme;
   final bool hasPlan;
   final Plan? firstPlan;
 
@@ -96,13 +96,13 @@ class _EmptyState extends StatelessWidget {
                 .animate().fadeIn(duration: 400.ms).scale(begin: const Offset(0.7, 0.7)),
             const SizedBox(height: 24),
             Text(hasPlan ? 'מסלול אחד בסל' : 'בחר 2–3 מסלולים מהתוצאות',
-                    style: ffTheme.headlineSmall.override(color: ffTheme.secondaryText),
+                    style: ffTheme.headlineSmall.copyWith(color: ffTheme.secondaryText),
                     textAlign: TextAlign.center)
                 .animate().fadeIn(delay: 150.ms),
             const SizedBox(height: 12),
             Text(
               hasPlan ? 'הוסף מסלול נוסף להשוואה — לחץ + בכרטיס מסלול' : 'לחץ על + בכרטיס של כל מסלול\nלהוספה לסל ההשוואה',
-              style: ffTheme.bodyMedium.override(color: ffTheme.secondaryText),
+              style: ffTheme.bodyMedium.copyWith(color: ffTheme.secondaryText),
               textAlign: TextAlign.center,
             ).animate().fadeIn(delay: 200.ms),
             if (hasPlan && firstPlan != null) ...[
@@ -123,24 +123,24 @@ class _EmptyState extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(firstPlan!.provider, style: ffTheme.titleSmall),
-                        Text(firstPlan!.plan, style: ffTheme.bodySmall.override(color: ffTheme.secondaryText), maxLines: 1, overflow: TextOverflow.ellipsis),
+                        Text(firstPlan!.plan, style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText), maxLines: 1, overflow: TextOverflow.ellipsis),
                       ],
                     )),
-                    Text('₪${firstPlan!.price}', style: ffTheme.titleMedium.override(color: ffTheme.primary)),
+                    Text('₪${firstPlan!.price}', style: ffTheme.titleMedium.copyWith(color: ffTheme.primary)),
                   ],
                 ),
               ).animate().fadeIn(delay: 250.ms),
             ],
             const SizedBox(height: 32),
-            FFButtonWidget(
+            AppButton(
               text: hasPlan ? 'הוסף מסלול נוסף ←' : 'חזרה לתוצאות',
               onPressed: () async => context.goNamed('Results'),
-              options: FFButtonOptions(
+              
                 color: ffTheme.primary,
-                textStyle: ffTheme.titleSmall.override(color: Colors.white),
+                textStyle: ffTheme.titleSmall.copyWith(color: Colors.white),
                 borderRadius: BorderRadius.circular(14),
                 height: 52,
-              ),
+              
             ).animate().fadeIn(delay: 300.ms),
           ],
         ),
@@ -159,8 +159,8 @@ class _CompareTable extends StatelessWidget {
     required this.winnerId,
   });
   final List<Plan> plans;
-  final FFAppState appState;
-  final FlutterFlowTheme ffTheme;
+  final AppState appState;
+  final AppTheme ffTheme;
   final String? winnerId;
 
   @override
@@ -264,7 +264,7 @@ class _CompareTable extends StatelessWidget {
                     Expanded(
                       child: Text(
                         'אתה משווה מסלולים מקטגוריות שונות',
-                        style: ffTheme.labelSmall.override(color: ffTheme.warning, fontWeight: FontWeight.w600),
+                        style: ffTheme.labelSmall.copyWith(color: ffTheme.warning, fontWeight: FontWeight.w600),
                       ),
                     ),
                   ],
@@ -306,7 +306,7 @@ class _CompareTable extends StatelessWidget {
                         ),
                         child: Text(
                           'בחר ←',
-                          style: ffTheme.titleSmall.override(
+                          style: ffTheme.titleSmall.copyWith(
                               color: p.id == winnerId
                                   ? Colors.white
                                   : ffTheme.primaryText),
@@ -328,7 +328,7 @@ class _CompareTable extends StatelessWidget {
                 children: [
                   Divider(color: ffTheme.alternate),
                   const SizedBox(height: 8),
-                  Text('מה כלול בכל מסלול', style: ffTheme.titleSmall.override(color: ffTheme.secondaryText, fontWeight: FontWeight.w600)),
+                  Text('מה כלול בכל מסלול', style: ffTheme.titleSmall.copyWith(color: ffTheme.secondaryText, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 12),
                   SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
@@ -349,7 +349,7 @@ class _CompareTable extends StatelessWidget {
                                   children: [
                                     Icon(Icons.check_rounded, size: 14, color: p.id == winnerId ? ffTheme.primary : ffTheme.secondaryText),
                                     const SizedBox(width: 4),
-                                    Expanded(child: Text(f, style: ffTheme.labelSmall.override(
+                                    Expanded(child: Text(f, style: ffTheme.labelSmall.copyWith(
                                       color: p.id == winnerId ? ffTheme.primaryText : ffTheme.secondaryText,
                                     ))),
                                   ],
@@ -383,8 +383,8 @@ class _WinnerSummaryCard extends StatelessWidget {
   });
   final List<Plan> plans;
   final String? winnerId;
-  final FFAppState appState;
-  final FlutterFlowTheme ffTheme;
+  final AppState appState;
+  final AppTheme ffTheme;
 
   @override
   Widget build(BuildContext context) {
@@ -419,7 +419,7 @@ class _WinnerSummaryCard extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(color: ffTheme.secondary, borderRadius: BorderRadius.circular(8)),
-                      child: Text('🏆 ההמלצה שלנו', style: ffTheme.labelSmall.override(color: const Color(0xFF0E3A26), fontWeight: FontWeight.w800)),
+                      child: Text('🏆 ההמלצה שלנו', style: ffTheme.labelSmall.copyWith(color: const Color(0xFF0E3A26), fontWeight: FontWeight.w800)),
                     ),
                     const Spacer(),
                     if (winnerSave > 0)
@@ -472,7 +472,7 @@ class _WinnerSummaryCard extends StatelessWidget {
           const SizedBox(height: 16),
 
           // Price bars comparison
-          Text('השוואת מחירים', style: ffTheme.titleSmall.override(color: ffTheme.secondaryText, fontWeight: FontWeight.w600)),
+          Text('השוואת מחירים', style: ffTheme.titleSmall.copyWith(color: ffTheme.secondaryText, fontWeight: FontWeight.w600)),
           const SizedBox(height: 10),
           ...plans.map((p) {
             final fraction = maxPrice > 0 ? p.price / maxPrice : 0.0;
@@ -483,7 +483,7 @@ class _WinnerSummaryCard extends StatelessWidget {
                 children: [
                   SizedBox(
                     width: 80,
-                    child: Text(p.provider, style: ffTheme.labelSmall.override(
+                    child: Text(p.provider, style: ffTheme.labelSmall.copyWith(
                       color: isWinner ? ffTheme.primary : ffTheme.secondaryText,
                       fontWeight: isWinner ? FontWeight.w700 : FontWeight.w500,
                     ), maxLines: 1, overflow: TextOverflow.ellipsis),
@@ -503,7 +503,7 @@ class _WinnerSummaryCard extends StatelessWidget {
                   const SizedBox(width: 8),
                   SizedBox(
                     width: 56,
-                    child: Text('₪${p.price}', style: ffTheme.labelSmall.override(
+                    child: Text('₪${p.price}', style: ffTheme.labelSmall.copyWith(
                       color: isWinner ? ffTheme.primary : ffTheme.primaryText,
                       fontWeight: isWinner ? FontWeight.w800 : FontWeight.w600,
                     ), textAlign: TextAlign.end),
@@ -540,8 +540,8 @@ class _PlanHeader extends StatelessWidget {
   });
   final Plan plan;
   final bool isWinner;
-  final FlutterFlowTheme ffTheme;
-  final FFAppState appState;
+  final AppTheme ffTheme;
+  final AppState appState;
 
   @override
   Widget build(BuildContext context) {
@@ -576,7 +576,7 @@ class _PlanHeader extends StatelessWidget {
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text('🏆 זוכה',
-                  style: ffTheme.labelSmall.override(
+                  style: ffTheme.labelSmall.copyWith(
                       color: const Color(0xFF0E3A26),
                       fontWeight: FontWeight.w700)),
             ),
@@ -584,7 +584,7 @@ class _PlanHeader extends StatelessWidget {
           const SizedBox(height: 6),
           Text(plan.provider,
               style: ffTheme.labelSmall
-                  .override(fontWeight: FontWeight.w700),
+                  .copyWith(fontWeight: FontWeight.w700),
               textAlign: TextAlign.center,
               maxLines: 2,
               overflow: TextOverflow.ellipsis),
@@ -618,7 +618,7 @@ class _RowWidget extends StatelessWidget {
   final _Row row;
   final List<Plan> plans;
   final String? winnerId;
-  final FlutterFlowTheme ffTheme;
+  final AppTheme ffTheme;
   final bool isAlt;
 
   @override
@@ -637,7 +637,7 @@ class _RowWidget extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
               child: Text(row.label,
                   style: ffTheme.bodySmall
-                      .override(color: ffTheme.secondaryText)),
+                      .copyWith(color: ffTheme.secondaryText)),
             ),
           ),
           ...row.values.asMap().entries.map((e) {
@@ -668,7 +668,7 @@ class _RowWidget extends StatelessWidget {
                         ),
                         child: Text(
                           v,
-                          style: ffTheme.labelSmall.override(
+                          style: ffTheme.labelSmall.copyWith(
                             color: isWinner
                                 ? const Color(0xFF0E3A26)
                                 : ffTheme.secondaryText,
@@ -681,7 +681,7 @@ class _RowWidget extends StatelessWidget {
                       )
                     : Text(
                         v,
-                        style: ffTheme.bodySmall.override(
+                        style: ffTheme.bodySmall.copyWith(
                           color: textColor,
                           fontWeight: FontWeight.w600,
                         ),

@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../flutter_flow/flutter_flow_theme.dart';
-import '../../flutter_flow/flutter_flow_util.dart';
-import '../../flutter_flow/flutter_flow_widgets.dart';
+import '../../theme/app_theme.dart';
+import '../../core/nav.dart';
+import '../../widgets/app_button.dart';
 import '../../app_state.dart';
 import '../../data.dart';
 import '../../models.dart';
@@ -69,8 +69,8 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
 
   @override
   Widget build(BuildContext context) {
-    final ffTheme = FlutterFlowTheme.of(context);
-    final appState = Provider.of<FFAppState>(context, listen: false);
+    final ffTheme = AppTheme.of(context);
+    final appState = Provider.of<AppState>(context, listen: false);
     final plans = plansByCat(_activeCat).take(6).toList();
     final heroBill = _billInput.round();
     final heroSaving = _potentialSaving('cellular', heroBill);
@@ -319,7 +319,7 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
                 children: [
                   Text(
                     'כפי שסוקרנו ב',
-                    style: ffTheme.labelSmall.override(color: ffTheme.secondaryText),
+                    style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText),
                   ),
                   const SizedBox(height: 12),
                   Row(
@@ -368,7 +368,7 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
                               children: [
                                 Text(cat.icon, style: const TextStyle(fontSize: 14)),
                                 const SizedBox(width: 6),
-                                Text(cat.name, style: ffTheme.labelMedium.override(color: active ? Colors.white : ffTheme.primaryText)),
+                                Text(cat.name, style: ffTheme.labelMedium.copyWith(color: active ? Colors.white : ffTheme.primaryText)),
                               ],
                             ),
                           ),
@@ -412,7 +412,7 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
                           }
                           context.goNamed('Home');
                         },
-                        child: Text('ראה את כל המסלולים →', style: ffTheme.titleSmall.override(color: ffTheme.primary)),
+                        child: Text('ראה את כל המסלולים →', style: ffTheme.titleSmall.copyWith(color: ffTheme.primary)),
                       ),
                     ),
                 ],
@@ -478,7 +478,7 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
               color: ffTheme.background,
               child: Column(
                 children: [
-                  Text('כל הספקים', style: ffTheme.titleMedium.override(color: ffTheme.secondaryText)),
+                  Text('כל הספקים', style: ffTheme.titleMedium.copyWith(color: ffTheme.secondaryText)),
                   const SizedBox(height: 14),
                   Wrap(
                     spacing: 10,
@@ -560,7 +560,7 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
     );
   }
 
-  Widget _buildCatBillInput(BuildContext context, FlutterFlowTheme ffTheme) {
+  Widget _buildCatBillInput(BuildContext context, AppTheme ffTheme) {
     final labels = {'cellular': 'על סלולר', 'internet': 'על אינטרנט', 'tv': 'על טלוויזיה', 'triple': 'על חבילה משולבת'};
     final maxes = {'cellular': 500.0, 'internet': 400.0, 'tv': 300.0, 'triple': 700.0};
     final bill = _catBills[_activeCat] ?? 119;
@@ -581,7 +581,7 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
             children: [
               Text('מה אתם משלמים $label?', style: ffTheme.labelMedium),
               const Spacer(),
-              Text('₪${bill.round()}/חודש', style: ffTheme.titleSmall.override(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+              Text('₪${bill.round()}/חודש', style: ffTheme.titleSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
             ],
           ),
           Slider(
@@ -605,7 +605,7 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
     'abroad': 'בחו"ל',
   };
 
-  Widget _buildStickyBar(BuildContext context, FlutterFlowTheme ffTheme, int saving, String cat) {
+  Widget _buildStickyBar(BuildContext context, AppTheme ffTheme, int saving, String cat) {
     final catLabel = _catLabels[cat] ?? 'בתקשורת';
     return SafeArea(
       child: AnimatedContainer(
@@ -637,7 +637,7 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
             ),
             GestureDetector(
               onTap: () {
-                final appState = Provider.of<FFAppState>(context, listen: false);
+                final appState = Provider.of<AppState>(context, listen: false);
                 appState.setCategory(cat);
                 final catBillVal = _catBills[cat];
                 if (catBillVal != null && catBillVal > 0) {
@@ -695,7 +695,7 @@ class _AnimatedStat extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ffTheme = FlutterFlowTheme.of(context);
+    final ffTheme = AppTheme.of(context);
     return Column(
       children: [
         TweenAnimationBuilder<int>(
@@ -722,7 +722,7 @@ class _Stat extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ffTheme = FlutterFlowTheme.of(context);
+    final ffTheme = AppTheme.of(context);
     return Column(
       children: [
         Text(value, style: GoogleFonts.rubik(fontSize: 18, fontWeight: FontWeight.w800, color: ffTheme.primary)),
@@ -753,7 +753,7 @@ class _NumberedStep extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ffTheme = FlutterFlowTheme.of(context);
+    final ffTheme = AppTheme.of(context);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -811,7 +811,7 @@ class _Testimonial extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ffTheme = FlutterFlowTheme.of(context);
+    final ffTheme = AppTheme.of(context);
     return Container(
       width: 260,
       margin: const EdgeInsets.only(left: 12, bottom: 4),
@@ -846,12 +846,12 @@ class _Testimonial extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 10),
-          Text(text, style: ffTheme.bodySmall.override(lineHeight: 1.5), maxLines: 3, overflow: TextOverflow.ellipsis),
+          Text(text, style: ffTheme.bodySmall.copyWith(height: 1.5), maxLines: 3, overflow: TextOverflow.ellipsis),
           const SizedBox(height: 10),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(color: ffTheme.secondary, borderRadius: BorderRadius.circular(8)),
-            child: Text('חסך ₪$saving/שנה → $provider', style: ffTheme.labelSmall.override(color: const Color(0xFF0E3A26), fontWeight: FontWeight.w700)),
+            child: Text('חסך ₪$saving/שנה → $provider', style: ffTheme.labelSmall.copyWith(color: const Color(0xFF0E3A26), fontWeight: FontWeight.w700)),
           ),
         ],
       ),
@@ -864,7 +864,7 @@ class _FAQHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ffTheme = FlutterFlowTheme.of(context);
+    final ffTheme = AppTheme.of(context);
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Text('שאלות נפוצות', style: ffTheme.headlineMedium),
@@ -885,7 +885,7 @@ class _FAQState extends State<_FAQ> {
 
   @override
   Widget build(BuildContext context) {
-    final ffTheme = FlutterFlowTheme.of(context);
+    final ffTheme = AppTheme.of(context);
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
@@ -903,13 +903,13 @@ class _FAQState extends State<_FAQ> {
             children: [
               Row(
                 children: [
-                  Expanded(child: Text(widget.q, style: ffTheme.titleSmall.override(fontWeight: FontWeight.w600))),
+                  Expanded(child: Text(widget.q, style: ffTheme.titleSmall.copyWith(fontWeight: FontWeight.w600))),
                   Icon(_open ? Icons.remove_rounded : Icons.add_rounded, size: 20, color: ffTheme.primary),
                 ],
               ),
               if (_open) ...[
                 const SizedBox(height: 8),
-                Text(widget.a, style: ffTheme.bodySmall.override(color: ffTheme.secondaryText, lineHeight: 1.5)),
+                Text(widget.a, style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText, height: 1.5)),
               ],
             ],
           ),

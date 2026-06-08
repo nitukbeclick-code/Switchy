@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../flutter_flow/flutter_flow_theme.dart';
-import '../../flutter_flow/flutter_flow_util.dart';
-import '../../flutter_flow/flutter_flow_widgets.dart';
+import '../../theme/app_theme.dart';
+import '../../core/nav.dart';
+import '../../widgets/app_button.dart';
 import '../../app_state.dart';
 import '../../components/logo_widget/logo_widget.dart';
 
@@ -73,7 +73,7 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
 
   @override
   Widget build(BuildContext context) {
-    final ffTheme = FlutterFlowTheme.of(context);
+    final ffTheme = AppTheme.of(context);
 
     return Scaffold(
       backgroundColor: ffTheme.background,
@@ -101,16 +101,16 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
             const SizedBox(height: 20),
 
             // Check button
-            FFButtonWidget(
+            AppButton(
               text: _loading ? 'בודק כיסוי...' : 'בדוק זמינות',
               onPressed: () async => _check(),
-              options: FFButtonOptions(
+              
                 width: double.infinity,
                 height: 52,
                 color: ffTheme.primary,
-                textStyle: ffTheme.titleSmall.override(color: Colors.white),
+                textStyle: ffTheme.titleSmall.copyWith(color: Colors.white),
                 borderRadius: BorderRadius.circular(14),
-              ),
+              
             ),
 
             // Loading state
@@ -131,7 +131,7 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
     );
   }
 
-  Widget _buildHeroCard(FlutterFlowTheme ffTheme) {
+  Widget _buildHeroCard(AppTheme ffTheme) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -176,11 +176,11 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
     ).animate().fadeIn(duration: 350.ms);
   }
 
-  Widget _buildAddressInputs(FlutterFlowTheme ffTheme) {
+  Widget _buildAddressInputs(AppTheme ffTheme) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('עיר', style: ffTheme.labelLarge.override(fontWeight: FontWeight.w600)),
+        Text('עיר', style: ffTheme.labelLarge.copyWith(fontWeight: FontWeight.w600)),
         const SizedBox(height: 8),
         Autocomplete<String>(
           optionsBuilder: (textEditingValue) {
@@ -238,7 +238,7 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
 
         const SizedBox(height: 12),
 
-        Text('רחוב ומספר (אופציונלי)', style: ffTheme.labelLarge.override(fontWeight: FontWeight.w600)),
+        Text('רחוב ומספר (אופציונלי)', style: ffTheme.labelLarge.copyWith(fontWeight: FontWeight.w600)),
         const SizedBox(height: 8),
         TextField(
           controller: _streetCtrl,
@@ -257,12 +257,12 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
     );
   }
 
-  Widget _buildTechFilters(FlutterFlowTheme ffTheme) {
+  Widget _buildTechFilters(AppTheme ffTheme) {
     final filters = ['הכל', 'סיב אופטי', 'כבלים', 'לוויין'];
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('סוג טכנולוגיה', style: ffTheme.labelLarge.override(fontWeight: FontWeight.w600)),
+        Text('סוג טכנולוגיה', style: ffTheme.labelLarge.copyWith(fontWeight: FontWeight.w600)),
         const SizedBox(height: 8),
         Wrap(
           spacing: 8,
@@ -281,7 +281,7 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(color: selected ? ffTheme.primary : ffTheme.alternate, width: selected ? 1.5 : 1),
                 ),
-                child: Text(f, style: ffTheme.labelSmall.override(
+                child: Text(f, style: ffTheme.labelSmall.copyWith(
                   color: selected ? Colors.white : ffTheme.primaryText,
                   fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                 )),
@@ -293,7 +293,7 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
     );
   }
 
-  Widget _buildLoadingState(FlutterFlowTheme ffTheme) {
+  Widget _buildLoadingState(AppTheme ffTheme) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 28),
       child: Column(
@@ -313,14 +313,14 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
             ],
           ),
           const SizedBox(height: 14),
-          Text('בודק זמינות ספקים ב${_cityCtrl.text}...', style: ffTheme.bodyMedium.override(color: ffTheme.secondaryText))
+          Text('בודק זמינות ספקים ב${_cityCtrl.text}...', style: ffTheme.bodyMedium.copyWith(color: ffTheme.secondaryText))
               .animate(onPlay: (c) => c.repeat(reverse: true)).fadeIn(duration: 600.ms),
         ],
       ),
     );
   }
 
-  Widget _buildResultsHeader(FlutterFlowTheme ffTheme) {
+  Widget _buildResultsHeader(AppTheme ffTheme) {
     final available = _filteredProviders.where((p) => p.status == 'זמין').toList();
     final cheapest = available.where((p) => p.price > 0).map((p) => p.price).fold(9999, (a, b) => a < b ? a : b);
     return Row(
@@ -341,7 +341,7 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
               Container(width: 7, height: 7, decoration: BoxDecoration(color: ffTheme.success, shape: BoxShape.circle))
                   .animate(onPlay: (c) => c.repeat(reverse: true)).scale(begin: const Offset(1, 1), end: const Offset(1.3, 1.3), duration: 800.ms),
               const SizedBox(width: 5),
-              Text('${available.length} זמינים • מ-₪$cheapest', style: ffTheme.labelSmall.override(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+              Text('${available.length} זמינים • מ-₪$cheapest', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
             ],
           ),
         ),
@@ -349,7 +349,7 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
     );
   }
 
-  Widget _buildProviderList(FlutterFlowTheme ffTheme) {
+  Widget _buildProviderList(AppTheme ffTheme) {
     final providers = _filteredProviders;
     final available = providers.where((p) => p.status == 'זמין' && p.price > 0).toList();
     final minPrice = available.isEmpty ? 9999 : available.map((p) => p.price).reduce((a, b) => a < b ? a : b);
@@ -372,7 +372,7 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
     );
   }
 
-  Widget _buildProviderCard(_ISP isp, bool isBest, FlutterFlowTheme ffTheme, BuildContext context) {
+  Widget _buildProviderCard(_ISP isp, bool isBest, AppTheme ffTheme, BuildContext context) {
     final isAvailable = isp.status == 'זמין';
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
@@ -395,7 +395,7 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
               ),
               child: Center(
-                child: Text('⭐ מחיר הכי נמוך באזורך', style: ffTheme.labelSmall.override(color: const Color(0xFF0E3A26), fontWeight: FontWeight.w800)),
+                child: Text('⭐ מחיר הכי נמוך באזורך', style: ffTheme.labelSmall.copyWith(color: const Color(0xFF0E3A26), fontWeight: FontWeight.w800)),
               ),
             ),
           Padding(
@@ -420,14 +420,14 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(isp.name, style: ffTheme.titleSmall.override(color: isAvailable ? ffTheme.primaryText : ffTheme.secondaryText)),
+                          Text(isp.name, style: ffTheme.titleSmall.copyWith(color: isAvailable ? ffTheme.primaryText : ffTheme.secondaryText)),
                           Row(
                             children: [
                               _TechBadge(tech: isp.tech, ffTheme: ffTheme),
                               if (isAvailable && isp.reliability > 0) ...[
                                 const SizedBox(width: 6),
                                 Icon(Icons.star_rounded, size: 12, color: const Color(0xFFFFC107)),
-                                Text(' ${isp.reliability}', style: ffTheme.labelSmall.override(color: ffTheme.secondaryText)),
+                                Text(' ${isp.reliability}', style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText)),
                               ],
                             ],
                           ),
@@ -441,10 +441,10 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                             decoration: BoxDecoration(color: ffTheme.accent1, borderRadius: BorderRadius.circular(8)),
-                            child: Text(isp.speed, style: ffTheme.labelSmall.override(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+                            child: Text(isp.speed, style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
                           ),
                           const SizedBox(height: 4),
-                          Text('מ-₪${isp.price}/חודש', style: ffTheme.titleSmall.override(color: ffTheme.primary)),
+                          Text('מ-₪${isp.price}/חודש', style: ffTheme.titleSmall.copyWith(color: ffTheme.primary)),
                         ],
                       )
                     else
@@ -456,7 +456,7 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
                         ),
                         child: Text(
                           isp.status,
-                          style: ffTheme.labelSmall.override(color: isAvailable ? ffTheme.warning : ffTheme.secondaryText, fontWeight: FontWeight.w700),
+                          style: ffTheme.labelSmall.copyWith(color: isAvailable ? ffTheme.warning : ffTheme.secondaryText, fontWeight: FontWeight.w700),
                         ),
                       ),
                   ],
@@ -467,13 +467,13 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
                   const SizedBox(height: 10),
                   GestureDetector(
                     onTap: () {
-                      Provider.of<FFAppState>(context, listen: false).setCategory('internet');
+                      Provider.of<AppState>(context, listen: false).setCategory('internet');
                       context.pushNamed('Results');
                     },
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
-                        Text('ראה מסלולי ${isp.name}', style: ffTheme.labelSmall.override(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+                        Text('ראה מסלולי ${isp.name}', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
                         const SizedBox(width: 4),
                         Icon(Icons.arrow_forward_ios_rounded, size: 11, color: ffTheme.primary),
                       ],
@@ -488,7 +488,7 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
     ).animate().fadeIn(duration: 280.ms).slideX(begin: 0.04, end: 0);
   }
 
-  Widget _buildSummaryCard(FlutterFlowTheme ffTheme, BuildContext context) {
+  Widget _buildSummaryCard(AppTheme ffTheme, BuildContext context) {
     final available = _filteredProviders.where((p) => p.status == 'זמין').toList();
     if (available.isEmpty) return const SizedBox.shrink();
     final cheapest = available.where((p) => p.price > 0).map((p) => p.price).fold(9999, (a, b) => a < b ? a : b);
@@ -528,7 +528,7 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
             width: double.infinity,
             child: ElevatedButton(
               onPressed: () {
-                Provider.of<FFAppState>(context, listen: false).setCategory('internet');
+                Provider.of<AppState>(context, listen: false).setCategory('internet');
                 context.pushNamed('Results');
               },
               style: ElevatedButton.styleFrom(
@@ -538,7 +538,7 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 padding: const EdgeInsets.symmetric(vertical: 12),
               ),
-              child: Text('השווה מסלולי אינטרנט', style: ffTheme.labelMedium.override(color: const Color(0xFF0E3A26), fontWeight: FontWeight.w800)),
+              child: Text('השווה מסלולי אינטרנט', style: ffTheme.labelMedium.copyWith(color: const Color(0xFF0E3A26), fontWeight: FontWeight.w800)),
             ),
           ),
         ],
@@ -571,7 +571,7 @@ class _ISP {
 class _TechBadge extends StatelessWidget {
   const _TechBadge({required this.tech, required this.ffTheme});
   final String tech;
-  final FlutterFlowTheme ffTheme;
+  final AppTheme ffTheme;
 
   Color get _color {
     switch (tech) {
@@ -590,7 +590,7 @@ class _TechBadge extends StatelessWidget {
         color: _color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(4),
       ),
-      child: Text(tech, style: ffTheme.labelSmall.override(color: _color, fontSize: 10, fontWeight: FontWeight.w600)),
+      child: Text(tech, style: ffTheme.labelSmall.copyWith(color: _color, fontSize: 10, fontWeight: FontWeight.w600)),
     );
   }
 }
@@ -598,7 +598,7 @@ class _TechBadge extends StatelessWidget {
 class _StatPill extends StatelessWidget {
   const _StatPill({required this.value, required this.label, required this.ffTheme});
   final String value, label;
-  final FlutterFlowTheme ffTheme;
+  final AppTheme ffTheme;
 
   @override
   Widget build(BuildContext context) {
@@ -619,14 +619,14 @@ class _StatPill extends StatelessWidget {
 class _SummaryPill extends StatelessWidget {
   const _SummaryPill({required this.label, required this.ffTheme});
   final String label;
-  final FlutterFlowTheme ffTheme;
+  final AppTheme ffTheme;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(color: Colors.white.withOpacity(0.15), borderRadius: BorderRadius.circular(8)),
-      child: Text(label, style: ffTheme.labelSmall.override(color: Colors.white, fontSize: 11)),
+      child: Text(label, style: ffTheme.labelSmall.copyWith(color: Colors.white, fontSize: 11)),
     );
   }
 }
@@ -634,7 +634,7 @@ class _SummaryPill extends StatelessWidget {
 class _SpeedBar extends StatelessWidget {
   const _SpeedBar({required this.speed, required this.ffTheme});
   final String speed;
-  final FlutterFlowTheme ffTheme;
+  final AppTheme ffTheme;
 
   double _speedFraction() {
     if (speed.contains('1Gb') || speed.contains('1000')) return 1.0;
@@ -651,7 +651,7 @@ class _SpeedBar extends StatelessWidget {
     final color = fraction >= 0.75 ? ffTheme.success : (fraction >= 0.45 ? ffTheme.primary : ffTheme.warning);
     return Row(
       children: [
-        Text('מהירות:', style: ffTheme.labelSmall.override(color: ffTheme.secondaryText)),
+        Text('מהירות:', style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText)),
         const SizedBox(width: 8),
         Expanded(
           child: ClipRRect(
@@ -665,7 +665,7 @@ class _SpeedBar extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 8),
-        Text(speed, style: ffTheme.labelSmall.override(color: color, fontWeight: FontWeight.w700)),
+        Text(speed, style: ffTheme.labelSmall.copyWith(color: color, fontWeight: FontWeight.w700)),
       ],
     );
   }

@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../flutter_flow/flutter_flow_theme.dart';
-import '../../flutter_flow/flutter_flow_util.dart';
-import '../../flutter_flow/flutter_flow_widgets.dart';
+import '../../theme/app_theme.dart';
+import '../../core/nav.dart';
+import '../../widgets/app_button.dart';
 import '../../app_state.dart';
 import '../../data.dart';
 import '../../models.dart';
@@ -19,8 +19,8 @@ class TrackerWidget extends StatefulWidget {
 class _TrackerWidgetState extends State<TrackerWidget> {
   @override
   Widget build(BuildContext context) {
-    final ffTheme = FlutterFlowTheme.of(context);
-    final appState = Provider.of<FFAppState>(context);
+    final ffTheme = AppTheme.of(context);
+    final appState = Provider.of<AppState>(context);
     final step = appState.trackerStep;
     final plan = appState.leadPlanId != null ? planById(appState.leadPlanId!) : null;
 
@@ -61,18 +61,18 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                 Text('עוד לא התחלתם', style: ffTheme.headlineSmall),
                 const SizedBox(height: 8),
                 Text('בחרו מסלול ושלחו פרטים כדי לעקוב אחר תהליך המעבר',
-                    style: ffTheme.bodyMedium.override(color: ffTheme.secondaryText), textAlign: TextAlign.center),
+                    style: ffTheme.bodyMedium.copyWith(color: ffTheme.secondaryText), textAlign: TextAlign.center),
                 const SizedBox(height: 32),
-                FFButtonWidget(
+                AppButton(
                   text: 'מצא מסלול →',
                   onPressed: () => context.goNamed('Results'),
-                  options: FFButtonOptions(
+                  
                     width: double.infinity,
                     height: 52,
                     color: ffTheme.primary,
-                    textStyle: ffTheme.titleSmall.override(color: Colors.white),
+                    textStyle: ffTheme.titleSmall.copyWith(color: Colors.white),
                     borderRadius: BorderRadius.circular(14),
-                  ),
+                  
                 ),
               ],
             ),
@@ -111,29 +111,29 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                 const SizedBox(height: 12),
                 if (plan != null) ...[
                   Text('${plan.provider} — ₪${plan.price}/${plan.cat == 'abroad' ? 'חבילה' : 'חודש'}',
-                      style: ffTheme.bodyLarge.override(color: ffTheme.secondary, fontWeight: FontWeight.w700))
+                      style: ffTheme.bodyLarge.copyWith(color: ffTheme.secondary, fontWeight: FontWeight.w700))
                       .animate().fadeIn(delay: 450.ms),
                   const SizedBox(height: 10),
                   Text('המעבר הושלם בהצלחה. חיסכון שנתי של ₪${planSaveYear(plan, appState.currentBill(plan.cat))} כבר מתחיל!',
-                      style: ffTheme.bodyMedium.override(color: Colors.white.withOpacity(0.8)),
+                      style: ffTheme.bodyMedium.copyWith(color: Colors.white.withOpacity(0.8)),
                       textAlign: TextAlign.center).animate().fadeIn(delay: 550.ms),
                 ] else ...[
                   const SizedBox(height: 10),
                   Text('המעבר הושלם בהצלחה!',
-                      style: ffTheme.bodyMedium.override(color: Colors.white.withOpacity(0.8)),
+                      style: ffTheme.bodyMedium.copyWith(color: Colors.white.withOpacity(0.8)),
                       textAlign: TextAlign.center).animate().fadeIn(delay: 550.ms),
                 ],
                 const SizedBox(height: 40),
-                FFButtonWidget(
+                AppButton(
                   text: 'חזרה לדף הבית',
                   onPressed: () => context.goNamed('Home'),
-                  options: FFButtonOptions(
+                  
                     width: double.infinity,
                     height: 52,
                     color: ffTheme.secondary,
                     textStyle: GoogleFonts.rubik(fontSize: 15, fontWeight: FontWeight.w700, color: ffTheme.primary),
                     borderRadius: BorderRadius.circular(14),
-                  ),
+                  
                 ).animate().fadeIn(delay: 700.ms),
               ],
             ),
@@ -196,19 +196,19 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('החיסכון הצפוי שלך', style: ffTheme.labelMedium.override(color: ffTheme.secondaryText)),
+                    Text('החיסכון הצפוי שלך', style: ffTheme.labelMedium.copyWith(color: ffTheme.secondaryText)),
                     const SizedBox(height: 8),
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         Text(
                           '₪${planSaveYear(plan, appState.currentBill(plan.cat))}',
-                          style: ffTheme.displaySmall.override(color: ffTheme.primary, fontWeight: FontWeight.w800),
+                          style: ffTheme.displaySmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w800),
                         ).animate(onPlay: (c) => c.repeat()).shimmer(duration: 2000.ms, color: ffTheme.secondary.withOpacity(0.4)),
                         const SizedBox(width: 6),
                         Padding(
                           padding: const EdgeInsets.only(bottom: 4),
-                          child: Text('לשנה', style: ffTheme.bodyMedium.override(color: ffTheme.secondaryText)),
+                          child: Text('לשנה', style: ffTheme.bodyMedium.copyWith(color: ffTheme.secondaryText)),
                         ),
                       ],
                     ),
@@ -225,7 +225,7 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                     const SizedBox(height: 6),
                     Text(
                       step == 0 ? 'ממתין לאישור' : step == 1 ? 'בתהליך אישור (${ (step / 4 * 100).round()}%)' : step >= 3 ? 'כמעט שם! 🎉' : 'בעיצומו (${(step / 4 * 100).round()}%)',
-                      style: ffTheme.labelSmall.override(color: ffTheme.primary),
+                      style: ffTheme.labelSmall.copyWith(color: ffTheme.primary),
                     ),
                   ],
                 ),
@@ -295,7 +295,7 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(s.title, style: ffTheme.titleSmall.override(
+                          Text(s.title, style: ffTheme.titleSmall.copyWith(
                             color: s.done ? ffTheme.primaryText : s.active ? ffTheme.primary : ffTheme.secondaryText,
                             fontWeight: s.active ? FontWeight.w700 : FontWeight.w600,
                           )),
@@ -311,7 +311,7 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                                   child: Text('בתהליך...', style: GoogleFonts.rubik(fontSize: 10, fontWeight: FontWeight.w700, color: Colors.white)),
                                 ),
                                 const SizedBox(width: 8),
-                                Text('~24 שעות', style: ffTheme.labelSmall.override(color: ffTheme.secondaryText)),
+                                Text('~24 שעות', style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText)),
                               ],
                             ),
                           ],
@@ -376,7 +376,7 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                             children: [
                               Container(width: 6, height: 6, decoration: const BoxDecoration(color: Colors.green, shape: BoxShape.circle)),
                               const SizedBox(width: 4),
-                              Text('פנויה עכשיו · תגובה ~5 דקות', style: ffTheme.labelSmall.override(color: Colors.green, fontWeight: FontWeight.w600)),
+                              Text('פנויה עכשיו · תגובה ~5 דקות', style: ffTheme.labelSmall.copyWith(color: Colors.green, fontWeight: FontWeight.w600)),
                             ],
                           ),
                         ],
@@ -394,16 +394,16 @@ class _TrackerWidgetState extends State<TrackerWidget> {
 
             const SizedBox(height: 16),
 
-            FFButtonWidget(
+            AppButton(
               text: 'שליחת הודעה לדנה',
               onPressed: () async => context.pushNamed('Chat'),
-              options: FFButtonOptions(
+              
                 width: double.infinity,
                 height: 52,
                 color: ffTheme.primary,
-                textStyle: ffTheme.titleSmall.override(color: Colors.white),
+                textStyle: ffTheme.titleSmall.copyWith(color: Colors.white),
                 borderRadius: BorderRadius.circular(14),
-              ),
+              
             ).animate().fadeIn(delay: 400.ms),
 
             const SizedBox(height: 8),
@@ -476,7 +476,7 @@ class _StepConfirmButton extends StatelessWidget {
   const _StepConfirmButton({required this.step, required this.onConfirm, required this.ffTheme});
   final int step;
   final VoidCallback onConfirm;
-  final FlutterFlowTheme ffTheme;
+  final AppTheme ffTheme;
 
   static const _labels = [
     'קיבלתי אישור מהספק ✓',
@@ -521,7 +521,7 @@ class _StepConfirmButton extends StatelessWidget {
           children: [
             Icon(Icons.check_circle_outline_rounded, size: 17, color: ffTheme.primary),
             const SizedBox(width: 8),
-            Text(label, style: ffTheme.labelMedium.override(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+            Text(label, style: ffTheme.labelMedium.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
           ],
         ),
       ),

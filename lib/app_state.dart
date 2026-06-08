@@ -3,12 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'data.dart' show planById, planSaveYear;
 
-class FFAppState extends ChangeNotifier {
-  static FFAppState _instance = FFAppState._internal();
-  static FFAppState get instance => _instance;
-  factory FFAppState() => _instance;
-  FFAppState._internal();
-  static void reset() => _instance = FFAppState._internal();
+class AppState extends ChangeNotifier {
+  static AppState _instance = AppState._internal();
+  static AppState get instance => _instance;
+  factory AppState() => _instance;
+  AppState._internal();
+  static void reset() => _instance = AppState._internal();
 
   Future<void> initializePersistedState() async {
     final p = await SharedPreferences.getInstance();

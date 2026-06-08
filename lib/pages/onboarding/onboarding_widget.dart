@@ -2,9 +2,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../flutter_flow/flutter_flow_theme.dart';
-import '../../flutter_flow/flutter_flow_util.dart';
-import '../../flutter_flow/flutter_flow_widgets.dart';
+import '../../theme/app_theme.dart';
+import '../../core/nav.dart';
+import '../../widgets/app_button.dart';
 import '../../app_state.dart';
 
 class OnboardingWidget extends StatefulWidget {
@@ -25,7 +25,7 @@ class _OnboardingWidgetState extends State<OnboardingWidget> {
       _animating = true;
       _controller.nextPage(duration: const Duration(milliseconds: 350), curve: Curves.easeInOut);
     } else {
-      FFAppState().markOnboardingSeen();
+      AppState().markOnboardingSeen();
       context.goNamed('Quiz');
     }
   }
@@ -38,7 +38,7 @@ class _OnboardingWidgetState extends State<OnboardingWidget> {
 
   @override
   Widget build(BuildContext context) {
-    final ffTheme = FlutterFlowTheme.of(context);
+    final ffTheme = AppTheme.of(context);
 
     return Scaffold(
       backgroundColor: ffTheme.background,
@@ -75,10 +75,10 @@ class _OnboardingWidgetState extends State<OnboardingWidget> {
                         const Spacer(),
                         TextButton(
                           onPressed: () {
-                            FFAppState().markOnboardingSeen();
+                            AppState().markOnboardingSeen();
                             context.goNamed('Home');
                           },
-                          child: Text('דלג', style: ffTheme.labelMedium.override(color: Colors.white.withOpacity(0.7))),
+                          child: Text('דלג', style: ffTheme.labelMedium.copyWith(color: Colors.white.withOpacity(0.7))),
                         ),
                       ],
                     ),
@@ -120,16 +120,16 @@ class _OnboardingWidgetState extends State<OnboardingWidget> {
 
               Padding(
                 padding: const EdgeInsets.fromLTRB(24, 0, 24, 32),
-                child: FFButtonWidget(
+                child: AppButton(
                   text: _page == 2 ? 'בואו נתחיל לחסוך! 🚀' : 'הבא →',
                   onPressed: () async => _next(),
-                  options: FFButtonOptions(
+                  
                     width: double.infinity,
                     height: 58,
                     color: ffTheme.primary,
-                    textStyle: ffTheme.titleMedium.override(color: Colors.white),
+                    textStyle: ffTheme.titleMedium.copyWith(color: Colors.white),
                     borderRadius: BorderRadius.circular(18),
-                  ),
+                  
                 ),
               ),
             ],
@@ -144,7 +144,7 @@ class _OnboardingWidgetState extends State<OnboardingWidget> {
 
 class _Page1 extends StatefulWidget {
   const _Page1({required this.ffTheme});
-  final FlutterFlowTheme ffTheme;
+  final AppTheme ffTheme;
 
   @override
   State<_Page1> createState() => _Page1State();
@@ -191,7 +191,7 @@ class _Page1State extends State<_Page1> {
           const SizedBox(height: 12),
           Text(
             'חוסך מוצא לכם את החבילה הכי זולה על סלולר, אינטרנט וטלוויזיה – בשניות.',
-            style: ffTheme.bodyLarge.override(color: ffTheme.secondaryText),
+            style: ffTheme.bodyLarge.copyWith(color: ffTheme.secondaryText),
             textAlign: TextAlign.center,
           ).animate().fadeIn(delay: 250.ms),
           const SizedBox(height: 28),
@@ -231,7 +231,7 @@ class _Page1State extends State<_Page1> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(_testimonials[_tIdx].$1,
-                            style: ffTheme.bodyMedium.override(color: ffTheme.primaryText, fontWeight: FontWeight.w600)),
+                            style: ffTheme.bodyMedium.copyWith(color: ffTheme.primaryText, fontWeight: FontWeight.w600)),
                         const SizedBox(height: 4),
                         Text(_testimonials[_tIdx].$2, style: ffTheme.labelSmall),
                       ],
@@ -265,7 +265,7 @@ class _Page1State extends State<_Page1> {
 
 class _Page2 extends StatelessWidget {
   const _Page2({required this.ffTheme});
-  final FlutterFlowTheme ffTheme;
+  final AppTheme ffTheme;
 
   static const _providers = [
     ('פלאפון', Color(0xFFE07034), Color(0xFFFFF3EC)),
@@ -297,7 +297,7 @@ class _Page2 extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             'השוואה מלאה בין כל מובילי התקשורת — מחירים, תנאים, ביקורות — הכל שקוף.',
-            style: ffTheme.bodyLarge.override(color: ffTheme.secondaryText),
+            style: ffTheme.bodyLarge.copyWith(color: ffTheme.secondaryText),
             textAlign: TextAlign.center,
           ).animate().fadeIn(delay: 250.ms),
           const SizedBox(height: 28),
@@ -338,7 +338,7 @@ class _Page2 extends StatelessWidget {
 
 class _Page3 extends StatelessWidget {
   const _Page3({required this.ffTheme});
-  final FlutterFlowTheme ffTheme;
+  final AppTheme ffTheme;
 
   @override
   Widget build(BuildContext context) {
@@ -357,7 +357,7 @@ class _Page3 extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             'אנחנו מלווים אתכם בכל שלב — מהבחירה ועד ניוד הקו, ללא עלויות נסתרות.',
-            style: ffTheme.bodyLarge.override(color: ffTheme.secondaryText),
+            style: ffTheme.bodyLarge.copyWith(color: ffTheme.secondaryText),
             textAlign: TextAlign.center,
           ).animate().fadeIn(delay: 250.ms),
           const SizedBox(height: 28),
@@ -386,7 +386,7 @@ class _Page3 extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text('הורדה חינמית · אין עמלות נסתרות',
-                    style: ffTheme.bodySmall.override(color: Colors.white60)),
+                    style: ffTheme.bodySmall.copyWith(color: Colors.white60)),
               ],
             ),
           ).animate().fadeIn(delay: 550.ms).scale(begin: const Offset(0.95, 0.95)),
@@ -402,7 +402,7 @@ class _StatChip extends StatelessWidget {
   const _StatChip({required this.value, required this.label, required this.ffTheme});
   final String value;
   final String label;
-  final FlutterFlowTheme ffTheme;
+  final AppTheme ffTheme;
 
   @override
   Widget build(BuildContext context) {
@@ -430,7 +430,7 @@ class _FeatureRow extends StatelessWidget {
   const _FeatureRow({required this.icon, required this.text, required this.ffTheme});
   final IconData icon;
   final String text;
-  final FlutterFlowTheme ffTheme;
+  final AppTheme ffTheme;
 
   @override
   Widget build(BuildContext context) {
@@ -445,7 +445,7 @@ class _FeatureRow extends StatelessWidget {
         children: [
           Icon(icon, color: ffTheme.primary, size: 20),
           const SizedBox(width: 10),
-          Text(text, style: ffTheme.bodyMedium.override(color: ffTheme.primaryText)),
+          Text(text, style: ffTheme.bodyMedium.copyWith(color: ffTheme.primaryText)),
         ],
       ),
     );
@@ -454,7 +454,7 @@ class _FeatureRow extends StatelessWidget {
 
 class _StepTimeline extends StatelessWidget {
   const _StepTimeline({required this.ffTheme});
-  final FlutterFlowTheme ffTheme;
+  final AppTheme ffTheme;
 
   @override
   Widget build(BuildContext context) {
@@ -499,7 +499,7 @@ class _StepTimeline extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(s.$1, style: ffTheme.titleSmall.override(fontSize: 13)),
+                      Text(s.$1, style: ffTheme.titleSmall.copyWith(fontSize: 13)),
                       Text(s.$2, style: ffTheme.labelSmall),
                     ],
                   ),

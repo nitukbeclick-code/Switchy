@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../flutter_flow/flutter_flow_theme.dart';
-import '../../flutter_flow/flutter_flow_util.dart';
-import '../../flutter_flow/flutter_flow_widgets.dart';
+import '../../theme/app_theme.dart';
+import '../../core/nav.dart';
+import '../../widgets/app_button.dart';
 import '../../app_state.dart';
 import '../../data.dart';
 import '../../models.dart';
@@ -15,8 +15,8 @@ class AccountWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ffTheme = FlutterFlowTheme.of(context);
-    final appState = Provider.of<FFAppState>(context);
+    final ffTheme = AppTheme.of(context);
+    final appState = Provider.of<AppState>(context);
     final plan = appState.leadPlanId != null ? planById(appState.leadPlanId!) : null;
 
     return Scaffold(
@@ -107,7 +107,7 @@ class AccountWidget extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('הצטרפו לחוסך בחינם', style: ffTheme.titleSmall.override(color: ffTheme.primary)),
+                            Text('הצטרפו לחוסך בחינם', style: ffTheme.titleSmall.copyWith(color: ffTheme.primary)),
                             Text('שמרו תוצאות, עקבו אחר מחירים ועוד', style: ffTheme.bodySmall),
                           ],
                         ),
@@ -213,7 +213,7 @@ class AccountWidget extends StatelessWidget {
                           const SizedBox(height: 6),
                           Text(
                             ['ממתין לאישור', 'אישור מסלול', 'ניוד בעיצומו', 'כמעט שם! 🎉', 'הושלם ✓'][appState.trackerStep.clamp(0, 4)],
-                            style: ffTheme.labelSmall.override(color: ffTheme.primary),
+                            style: ffTheme.labelSmall.copyWith(color: ffTheme.primary),
                           ),
                           const SizedBox(height: 10),
                           OutlinedButton(
@@ -245,7 +245,7 @@ class AccountWidget extends StatelessWidget {
                             const SizedBox(height: 12),
                             Text('עוד לא בחרתם מסלול?', style: ffTheme.titleSmall),
                             const SizedBox(height: 4),
-                            Text('מצאו את החבילה הזולה ביותר עכשיו', style: ffTheme.bodySmall.override(color: ffTheme.secondaryText)),
+                            Text('מצאו את החבילה הזולה ביותר עכשיו', style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText)),
                             const SizedBox(height: 14),
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 9),
@@ -253,7 +253,7 @@ class AccountWidget extends StatelessWidget {
                                 color: ffTheme.primary,
                                 borderRadius: BorderRadius.circular(10),
                               ),
-                              child: Text('השווה מסלולים', style: ffTheme.labelMedium.override(color: Colors.white, fontWeight: FontWeight.w700)),
+                              child: Text('השווה מסלולים', style: ffTheme.labelMedium.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
                             ),
                           ],
                         ),
@@ -289,14 +289,14 @@ class AccountWidget extends StatelessWidget {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(p.provider, style: ffTheme.titleSmall),
-                                  Text(p.plan, style: ffTheme.bodySmall.override(color: ffTheme.secondaryText), maxLines: 1, overflow: TextOverflow.ellipsis),
+                                  Text(p.plan, style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText), maxLines: 1, overflow: TextOverflow.ellipsis),
                                 ],
                               )),
                               Column(
                                 crossAxisAlignment: CrossAxisAlignment.end,
                                 children: [
-                                  Text('₪${p.price}/${p.cat == 'abroad' ? 'חבילה' : 'חודש'}', style: ffTheme.titleSmall.override(color: ffTheme.primary, fontWeight: FontWeight.w700)),
-                                  if (save > 0) Text('חוסך ₪$save/שנה', style: ffTheme.labelSmall.override(color: ffTheme.success)),
+                                  Text('₪${p.price}/${p.cat == 'abroad' ? 'חבילה' : 'חודש'}', style: ffTheme.titleSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+                                  if (save > 0) Text('חוסך ₪$save/שנה', style: ffTheme.labelSmall.copyWith(color: ffTheme.success)),
                                 ],
                               ),
                               const SizedBox(width: 8),
@@ -344,10 +344,10 @@ class AccountWidget extends StatelessWidget {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text('גלה כמה תוכל לחסוך!',
-                                      style: ffTheme.titleSmall.override(color: Colors.white)),
+                                      style: ffTheme.titleSmall.copyWith(color: Colors.white)),
                                   const SizedBox(height: 2),
                                   Text('שאלון קצר — תוצאות מותאמות אישית',
-                                      style: ffTheme.bodySmall.override(color: Colors.white70)),
+                                      style: ffTheme.bodySmall.copyWith(color: Colors.white70)),
                                 ],
                               ),
                             ),
@@ -358,7 +358,7 @@ class AccountWidget extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(10),
                               ),
                               child: Text('התחל ←',
-                                  style: ffTheme.labelSmall.override(
+                                  style: ffTheme.labelSmall.copyWith(
                                       color: const Color(0xFF0E3A26),
                                       fontWeight: FontWeight.w700)),
                             ),
@@ -381,11 +381,11 @@ class AccountWidget extends StatelessWidget {
                           const SizedBox(width: 10),
                           Expanded(
                             child: Text('תקציב השאלון: ₪${appState.quizBudget}${appState.quizCat == 'abroad' ? '/חבילה' : '/חודש'}',
-                                style: ffTheme.bodyMedium.override(color: ffTheme.primary)),
+                                style: ffTheme.bodyMedium.copyWith(color: ffTheme.primary)),
                           ),
                           GestureDetector(
                             onTap: () => context.goNamed('Results'),
-                            child: Text('לתוצאות', style: ffTheme.labelSmall.override(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+                            child: Text('לתוצאות', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
                           ),
                         ],
                       ),
@@ -401,7 +401,7 @@ class AccountWidget extends StatelessWidget {
                         const Spacer(),
                         GestureDetector(
                           onTap: () => context.goNamed('Results'),
-                          child: Text('כל המסלולים', style: ffTheme.labelSmall.override(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+                          child: Text('כל המסלולים', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
                         ),
                       ],
                     ),
@@ -432,12 +432,12 @@ class AccountWidget extends StatelessWidget {
                                     children: [
                                       LogoWidget(provider: p.provider, size: 24),
                                       const SizedBox(width: 6),
-                                      Expanded(child: Text(p.provider, style: ffTheme.labelSmall.override(fontWeight: FontWeight.w700), overflow: TextOverflow.ellipsis)),
+                                      Expanded(child: Text(p.provider, style: ffTheme.labelSmall.copyWith(fontWeight: FontWeight.w700), overflow: TextOverflow.ellipsis)),
                                     ],
                                   ),
                                   const SizedBox(height: 5),
-                                  Text('₪${p.price}/${p.cat == 'abroad' ? 'חבילה' : 'חודש'}', style: ffTheme.titleSmall.override(color: ffTheme.primary)),
-                                  Text(p.plan, style: ffTheme.labelSmall.override(color: ffTheme.secondaryText), maxLines: 1, overflow: TextOverflow.ellipsis),
+                                  Text('₪${p.price}/${p.cat == 'abroad' ? 'חבילה' : 'חודש'}', style: ffTheme.titleSmall.copyWith(color: ffTheme.primary)),
+                                  Text(p.plan, style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText), maxLines: 1, overflow: TextOverflow.ellipsis),
                                 ],
                               ),
                             ),
@@ -455,7 +455,7 @@ class AccountWidget extends StatelessWidget {
                         const Spacer(),
                         GestureDetector(
                           onTap: () => context.pushNamed('Ratings'),
-                          child: Text('כל הדירוגים', style: ffTheme.labelSmall.override(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+                          child: Text('כל הדירוגים', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
                         ),
                       ],
                     ),
@@ -477,10 +477,10 @@ class AccountWidget extends StatelessWidget {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(r['provider'] as String, style: ffTheme.labelMedium.override(fontWeight: FontWeight.w700)),
+                                  Text(r['provider'] as String, style: ffTheme.labelMedium.copyWith(fontWeight: FontWeight.w700)),
                                   if (text.isNotEmpty) ...[
                                     const SizedBox(height: 2),
-                                    Text(text, style: ffTheme.bodySmall.override(color: ffTheme.secondaryText), maxLines: 1, overflow: TextOverflow.ellipsis),
+                                    Text(text, style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText), maxLines: 1, overflow: TextOverflow.ellipsis),
                                   ],
                                 ],
                               ),
@@ -524,7 +524,7 @@ class _QuickLink extends StatelessWidget {
   final IconData icon;
   final String label;
   final VoidCallback onTap;
-  final FlutterFlowTheme ffTheme;
+  final AppTheme ffTheme;
 
   @override
   Widget build(BuildContext context) {
@@ -542,7 +542,7 @@ class _QuickLink extends StatelessWidget {
             children: [
               Icon(icon, color: ffTheme.primary, size: 24),
               const SizedBox(height: 6),
-              Text(label, style: ffTheme.labelSmall.override(color: ffTheme.primaryText)),
+              Text(label, style: ffTheme.labelSmall.copyWith(color: ffTheme.primaryText)),
             ],
           ),
         ),
@@ -557,7 +557,7 @@ class _ActionTile extends StatelessWidget {
   final String title;
   final String subtitle;
   final VoidCallback onTap;
-  final FlutterFlowTheme ffTheme;
+  final AppTheme ffTheme;
 
   @override
   Widget build(BuildContext context) {

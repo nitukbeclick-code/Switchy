@@ -2,9 +2,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
-import '../../flutter_flow/flutter_flow_theme.dart';
-import '../../flutter_flow/flutter_flow_util.dart';
-import '../../flutter_flow/flutter_flow_widgets.dart';
+import '../../theme/app_theme.dart';
+import '../../core/nav.dart';
+import '../../widgets/app_button.dart';
 import '../../app_state.dart';
 import '../../data.dart';
 import '../../components/logo_widget/logo_widget.dart';
@@ -56,8 +56,8 @@ class _LeadWidgetState extends State<LeadWidget> {
 
   @override
   Widget build(BuildContext context) {
-    final ffTheme = FlutterFlowTheme.of(context);
-    final appState = Provider.of<FFAppState>(context, listen: false);
+    final ffTheme = AppTheme.of(context);
+    final appState = Provider.of<AppState>(context, listen: false);
     final plan = planById(widget.planId);
 
     if (_nameCtrl.text.isEmpty && appState.userName.isNotEmpty) {
@@ -166,7 +166,7 @@ class _LeadWidgetState extends State<LeadWidget> {
               const SizedBox(height: 24),
 
               // Submit button
-              FFButtonWidget(
+              AppButton(
                 text: _isSubmitting ? 'שולח...' : 'שלחו פרטים',
                 onPressed: _isSubmitting ? () async {} : () async {
                   if (!_formKey.currentState!.validate()) return;
@@ -183,13 +183,13 @@ class _LeadWidgetState extends State<LeadWidget> {
                   );
                   context.goNamed('Success');
                 },
-                options: FFButtonOptions(
+                
                   width: double.infinity,
                   height: 56,
                   color: _isSubmitting ? ffTheme.alternate : ffTheme.primary,
-                  textStyle: ffTheme.titleMedium.override(color: Colors.white),
+                  textStyle: ffTheme.titleMedium.copyWith(color: Colors.white),
                   borderRadius: BorderRadius.circular(18),
-                ),
+                
               ).animate().fadeIn(delay: 300.ms),
 
               const SizedBox(height: 8),
@@ -197,7 +197,7 @@ class _LeadWidgetState extends State<LeadWidget> {
               Center(
                 child: Text(
                   'ללא התחייבות • שירות חינמי לחלוטין',
-                  style: ffTheme.labelSmall.override(color: ffTheme.secondaryText),
+                  style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText),
                 ),
               ),
             ],
@@ -207,7 +207,7 @@ class _LeadWidgetState extends State<LeadWidget> {
     );
   }
 
-  Widget _buildUrgencyBanner(FlutterFlowTheme ffTheme) {
+  Widget _buildUrgencyBanner(AppTheme ffTheme) {
     final isLive = _countdown > 0;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -228,7 +228,7 @@ class _LeadWidgetState extends State<LeadWidget> {
           Expanded(
             child: Text(
               isLive ? 'נציג זמין עכשיו — יחזור אליך תוך $_countdown שניות' : 'שלחו פרטים ונחזור אליכם בהקדם',
-              style: ffTheme.labelMedium.override(
+              style: ffTheme.labelMedium.copyWith(
                 color: isLive ? ffTheme.primary : ffTheme.warning,
                 fontWeight: FontWeight.w700,
               ),
@@ -239,7 +239,7 @@ class _LeadWidgetState extends State<LeadWidget> {
     ).animate().fadeIn(duration: 350.ms);
   }
 
-  Widget _buildPlanCard(Plan plan, FFAppState appState, FlutterFlowTheme ffTheme) {
+  Widget _buildPlanCard(Plan plan, AppState appState, AppTheme ffTheme) {
     final bill = appState.currentBill(plan.cat);
     final saveYear = planSaveYear(plan, bill);
     return Container(
@@ -265,7 +265,7 @@ class _LeadWidgetState extends State<LeadWidget> {
                   children: [
                     Text(plan.provider, style: ffTheme.titleSmall),
                     Text(plan.plan, style: ffTheme.bodySmall, maxLines: 1, overflow: TextOverflow.ellipsis),
-                    Text('₪${plan.price}/${plan.cat == 'abroad' ? 'חבילה' : 'חודש'}', style: ffTheme.titleMedium.override(color: ffTheme.primary)),
+                    Text('₪${plan.price}/${plan.cat == 'abroad' ? 'חבילה' : 'חודש'}', style: ffTheme.titleMedium.copyWith(color: ffTheme.primary)),
                   ],
                 ),
               ),
@@ -275,8 +275,8 @@ class _LeadWidgetState extends State<LeadWidget> {
                   decoration: BoxDecoration(color: ffTheme.secondary, borderRadius: BorderRadius.circular(10)),
                   child: Column(
                     children: [
-                      Text('חוסך', style: ffTheme.labelSmall.override(color: const Color(0xFF0E3A26))),
-                      Text('₪$saveYear/שנה', style: ffTheme.titleSmall.override(color: const Color(0xFF0E3A26), fontWeight: FontWeight.w800)),
+                      Text('חוסך', style: ffTheme.labelSmall.copyWith(color: const Color(0xFF0E3A26))),
+                      Text('₪$saveYear/שנה', style: ffTheme.titleSmall.copyWith(color: const Color(0xFF0E3A26), fontWeight: FontWeight.w800)),
                     ],
                   ),
                 ),
@@ -293,7 +293,7 @@ class _LeadWidgetState extends State<LeadWidget> {
               ),
               child: Text(
                 '🎉 כ-₪${(saveYear / 12).round()} חיסכון בחודש הראשון!',
-                style: ffTheme.labelMedium.override(color: ffTheme.primary, fontWeight: FontWeight.w700),
+                style: ffTheme.labelMedium.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700),
                 textAlign: TextAlign.center,
               ),
             ),
@@ -303,7 +303,7 @@ class _LeadWidgetState extends State<LeadWidget> {
     ).animate().fadeIn(duration: 350.ms);
   }
 
-  Widget _buildCallbackTimePicker(FlutterFlowTheme ffTheme) {
+  Widget _buildCallbackTimePicker(AppTheme ffTheme) {
     final options = [
       ('now', 'עכשיו', Icons.flash_on_rounded),
       ('noon', 'בצהריים', Icons.wb_sunny_outlined),
@@ -330,7 +330,7 @@ class _LeadWidgetState extends State<LeadWidget> {
                 children: [
                   Icon(opt.$3, size: 18, color: selected ? Colors.white : ffTheme.secondaryText),
                   const SizedBox(height: 4),
-                  Text(opt.$2, style: ffTheme.labelSmall.override(
+                  Text(opt.$2, style: ffTheme.labelSmall.copyWith(
                     color: selected ? Colors.white : ffTheme.primaryText,
                     fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                     fontSize: 11,
@@ -344,7 +344,7 @@ class _LeadWidgetState extends State<LeadWidget> {
     ).animate(delay: 200.ms).fadeIn().slideY(begin: 0.05);
   }
 
-  Widget _buildNextStepsCard(FlutterFlowTheme ffTheme) {
+  Widget _buildNextStepsCard(AppTheme ffTheme) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -365,7 +365,7 @@ class _LeadWidgetState extends State<LeadWidget> {
     ).animate(delay: 180.ms).fadeIn();
   }
 
-  Widget _buildSocialProof(Plan plan, FlutterFlowTheme ffTheme) {
+  Widget _buildSocialProof(Plan plan, AppTheme ffTheme) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
@@ -384,14 +384,14 @@ class _LeadWidgetState extends State<LeadWidget> {
           const SizedBox(width: 8),
           Text(
             '${(plan.reviews % 30) + 14} אנשים בחרו ב${plan.provider} השבוע',
-            style: ffTheme.labelMedium.override(color: ffTheme.warning, fontWeight: FontWeight.w700),
+            style: ffTheme.labelMedium.copyWith(color: ffTheme.warning, fontWeight: FontWeight.w700),
           ),
         ],
       ),
     ).animate().fadeIn(duration: 300.ms);
   }
 
-  InputDecoration _inputDecoration({required String hint, required IconData icon, required FlutterFlowTheme ffTheme}) {
+  InputDecoration _inputDecoration({required String hint, required IconData icon, required AppTheme ffTheme}) {
     return InputDecoration(
       hintText: hint,
       prefixIcon: Icon(icon, color: ffTheme.secondaryText, size: 20),
@@ -410,11 +410,11 @@ class _LeadWidgetState extends State<LeadWidget> {
 class _FieldLabel extends StatelessWidget {
   const _FieldLabel({required this.label, required this.ffTheme});
   final String label;
-  final FlutterFlowTheme ffTheme;
+  final AppTheme ffTheme;
 
   @override
   Widget build(BuildContext context) {
-    return Text(label, style: ffTheme.labelLarge.override(fontWeight: FontWeight.w600));
+    return Text(label, style: ffTheme.labelLarge.copyWith(fontWeight: FontWeight.w600));
   }
 }
 
@@ -422,7 +422,7 @@ class _TimelineStep extends StatelessWidget {
   const _TimelineStep({required this.step, required this.title, required this.sub, required this.ffTheme, this.isLast = false});
   final int step;
   final String title, sub;
-  final FlutterFlowTheme ffTheme;
+  final AppTheme ffTheme;
   final bool isLast;
 
   @override
@@ -435,7 +435,7 @@ class _TimelineStep extends StatelessWidget {
             Container(
               width: 28, height: 28,
               decoration: BoxDecoration(color: ffTheme.primary, shape: BoxShape.circle),
-              child: Center(child: Text('$step', style: ffTheme.labelSmall.override(color: Colors.white, fontWeight: FontWeight.w800))),
+              child: Center(child: Text('$step', style: ffTheme.labelSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w800))),
             ),
             if (!isLast)
               Container(width: 2, height: 28, color: ffTheme.alternate, margin: const EdgeInsets.symmetric(vertical: 3)),
@@ -448,7 +448,7 @@ class _TimelineStep extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: ffTheme.titleSmall.override(fontSize: 13)),
+                Text(title, style: ffTheme.titleSmall.copyWith(fontSize: 13)),
                 Text(sub, style: ffTheme.labelSmall),
               ],
             ),
@@ -463,7 +463,7 @@ class _TrustBadge extends StatelessWidget {
   const _TrustBadge({required this.icon, required this.label, required this.ffTheme});
   final IconData icon;
   final String label;
-  final FlutterFlowTheme ffTheme;
+  final AppTheme ffTheme;
 
   @override
   Widget build(BuildContext context) {
@@ -471,7 +471,7 @@ class _TrustBadge extends StatelessWidget {
       children: [
         Icon(icon, color: ffTheme.primary, size: 22),
         const SizedBox(height: 4),
-        Text(label, style: ffTheme.labelSmall.override(color: ffTheme.secondaryText)),
+        Text(label, style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText)),
       ],
     );
   }

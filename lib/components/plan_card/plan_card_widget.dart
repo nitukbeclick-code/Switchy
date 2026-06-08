@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
-import '../../flutter_flow/flutter_flow_theme.dart';
+import '../../theme/app_theme.dart';
 import '../../app_state.dart';
 import '../../models.dart';
 import '../logo_widget/logo_widget.dart';
@@ -21,7 +21,7 @@ class PlanCardWidget extends StatelessWidget {
   final bool showCompare;
   final bool compact;
 
-  String? _quizMatch(FFAppState appState) {
+  String? _quizMatch(AppState appState) {
     if (!appState.quizCompleted || appState.quizBudget <= 0) return null;
     if (plan.cat != appState.quizCat) return null;
     final diff = plan.price - appState.quizBudget;
@@ -32,8 +32,8 @@ class PlanCardWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final appState = context.watch<FFAppState>();
-    final ffTheme = FlutterFlowTheme.of(context);
+    final appState = context.watch<AppState>();
+    final ffTheme = AppTheme.of(context);
     final savings = ((currentBill - plan.price) * 12).clamp(0, 999999);
     final inCompare = appState.isInCompare(plan.id);
     final isWatching = appState.isWatching(plan.id);
@@ -408,7 +408,7 @@ class _FlagChip extends StatelessWidget {
   const _FlagChip({required this.label, required this.color, required this.ffTheme});
   final String label;
   final Color color;
-  final FlutterFlowTheme ffTheme;
+  final AppTheme ffTheme;
 
   @override
   Widget build(BuildContext context) {

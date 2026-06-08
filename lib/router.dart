@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'app_state.dart';
-import 'flutter_flow/flutter_flow_theme.dart';
+import 'theme/app_theme.dart';
 import 'pages/onboarding/onboarding_widget.dart';
 import 'pages/auth/auth_widget.dart';
 import 'pages/home/home_widget.dart';
@@ -33,7 +33,7 @@ GoRouter createRouter() => GoRouter(
   navigatorKey: _rootNavKey,
   initialLocation: '/onboarding',
   redirect: (context, state) {
-    final appState = Provider.of<FFAppState>(context, listen: false);
+    final appState = Provider.of<AppState>(context, listen: false);
     final isOnboarding = state.uri.path == '/onboarding';
     if (isOnboarding && (appState.isLoggedIn || appState.quizCompleted || appState.seenOnboarding)) {
       return '/home';
@@ -95,8 +95,8 @@ class _ScaffoldWithNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final appState = Provider.of<FFAppState>(context);
-    final ffTheme = FlutterFlowTheme.of(context);
+    final appState = Provider.of<AppState>(context);
+    final ffTheme = AppTheme.of(context);
     final idx = _activeIndex;
 
     return Scaffold(

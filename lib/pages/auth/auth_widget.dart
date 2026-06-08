@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import '../../flutter_flow/flutter_flow_theme.dart';
-import '../../flutter_flow/flutter_flow_util.dart';
-import '../../flutter_flow/flutter_flow_widgets.dart';
+import '../../theme/app_theme.dart';
+import '../../core/nav.dart';
+import '../../widgets/app_button.dart';
 import '../../app_state.dart';
 
 class AuthWidget extends StatefulWidget {
@@ -28,7 +28,7 @@ class _AuthWidgetState extends State<AuthWidget> {
 
   void _submit() {
     if (!_formKey.currentState!.validate()) return;
-    final appState = Provider.of<FFAppState>(context, listen: false);
+    final appState = Provider.of<AppState>(context, listen: false);
     // For login mode, keep existing name if present and user left name blank
     final name = _nameCtrl.text.trim().isNotEmpty
         ? _nameCtrl.text.trim()
@@ -39,7 +39,7 @@ class _AuthWidgetState extends State<AuthWidget> {
 
   @override
   Widget build(BuildContext context) {
-    final ffTheme = FlutterFlowTheme.of(context);
+    final ffTheme = AppTheme.of(context);
 
     return Scaffold(
       backgroundColor: ffTheme.background,
@@ -70,17 +70,17 @@ class _AuthWidgetState extends State<AuthWidget> {
                         const Spacer(),
                         TextButton(
                           onPressed: () => context.goNamed('Home'),
-                          child: Text('דלג', style: ffTheme.bodyMedium.override(color: Colors.white70)),
+                          child: Text('דלג', style: ffTheme.bodyMedium.copyWith(color: Colors.white70)),
                         ),
                       ],
                     ),
                     const SizedBox(height: 12),
                     Text(_isLogin ? '👋 ברוכים הבאים חזרה' : '🎉 הצטרפו לחוסך',
-                        style: ffTheme.headlineMedium.override(color: Colors.white)),
+                        style: ffTheme.headlineMedium.copyWith(color: Colors.white)),
                     const SizedBox(height: 6),
                     Text(
                       _isLogin ? 'התחברו כדי לראות את החיסכון שלכם' : 'הרשמה מהירה — חוסכים עוד היום',
-                      style: ffTheme.bodyMedium.override(color: Colors.white70),
+                      style: ffTheme.bodyMedium.copyWith(color: Colors.white70),
                     ),
                     if (!_isLogin) ...[
                       const SizedBox(height: 16),
@@ -107,7 +107,7 @@ class _AuthWidgetState extends State<AuthWidget> {
                               children: [
                                 const Text('⭐', style: TextStyle(fontSize: 13)),
                                 const SizedBox(width: 5),
-                                Text('60K+ משתמשים פעילים', style: ffTheme.labelSmall.override(color: Colors.white70)),
+                                Text('60K+ משתמשים פעילים', style: ffTheme.labelSmall.copyWith(color: Colors.white70)),
                               ],
                             ),
                           ),
@@ -123,7 +123,7 @@ class _AuthWidgetState extends State<AuthWidget> {
                               children: [
                                 const Text('💰', style: TextStyle(fontSize: 13)),
                                 const SizedBox(width: 5),
-                                Text('₪850 חיסכון ממוצע', style: ffTheme.labelSmall.override(color: Colors.white70)),
+                                Text('₪850 חיסכון ממוצע', style: ffTheme.labelSmall.copyWith(color: Colors.white70)),
                               ],
                             ),
                           ),
@@ -185,16 +185,16 @@ class _AuthWidgetState extends State<AuthWidget> {
 
                       const SizedBox(height: 28),
 
-                      FFButtonWidget(
+                      AppButton(
                         text: _isLogin ? 'כניסה לחשבון' : 'צור חשבון חינם',
                         onPressed: () async => _submit(),
-                        options: FFButtonOptions(
+                        
                           width: double.infinity,
                           height: 56,
                           color: ffTheme.primary,
-                          textStyle: ffTheme.titleMedium.override(color: Colors.white),
+                          textStyle: ffTheme.titleMedium.copyWith(color: Colors.white),
                           borderRadius: BorderRadius.circular(18),
-                        ),
+                        
                       ).animate().fadeIn(delay: 100.ms),
 
                       const SizedBox(height: 20),
@@ -205,7 +205,7 @@ class _AuthWidgetState extends State<AuthWidget> {
                           Expanded(child: Divider(color: ffTheme.alternate)),
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 12),
-                            child: Text('או', style: ffTheme.labelSmall.override(color: ffTheme.secondaryText)),
+                            child: Text('או', style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText)),
                           ),
                           Expanded(child: Divider(color: ffTheme.alternate)),
                         ],
@@ -255,7 +255,7 @@ class _AuthWidgetState extends State<AuthWidget> {
                           onPressed: () => setState(() => _isLogin = !_isLogin),
                           child: Text(
                             _isLogin ? 'עדיין אין חשבון? הצטרפו בחינם' : 'יש לכם כבר חשבון? התחברו',
-                            style: ffTheme.bodyMedium.override(color: ffTheme.primary, fontWeight: FontWeight.w600),
+                            style: ffTheme.bodyMedium.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w600),
                           ),
                         ),
                       ),
@@ -264,7 +264,7 @@ class _AuthWidgetState extends State<AuthWidget> {
                       Center(
                         child: Text(
                           '🔒 המידע שלכם מוגן ומאובטח',
-                          style: ffTheme.labelSmall.override(color: ffTheme.secondaryText),
+                          style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText),
                         ),
                       ),
                     ],
@@ -282,7 +282,7 @@ class _AuthWidgetState extends State<AuthWidget> {
 class _Benefit extends StatelessWidget {
   const _Benefit({required this.text, required this.ffTheme});
   final String text;
-  final FlutterFlowTheme ffTheme;
+  final AppTheme ffTheme;
 
   @override
   Widget build(BuildContext context) {
@@ -291,7 +291,7 @@ class _Benefit extends StatelessWidget {
       children: [
         Icon(Icons.check_circle_rounded, size: 14, color: ffTheme.secondary),
         const SizedBox(width: 4),
-        Text(text, style: ffTheme.labelSmall.override(color: Colors.white70)),
+        Text(text, style: ffTheme.labelSmall.copyWith(color: Colors.white70)),
       ],
     );
   }

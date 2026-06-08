@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-import '../../flutter_flow/flutter_flow_theme.dart';
-import '../../flutter_flow/flutter_flow_util.dart';
+import '../../theme/app_theme.dart';
+import '../../core/nav.dart';
 import '../../app_state.dart';
 import '../../data.dart';
 import '../../models.dart';
@@ -43,13 +43,13 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
   @override
   void initState() {
     super.initState();
-    final appState = FFAppState();
+    final appState = AppState();
     _selectedCat = appState.selectedCat.isNotEmpty ? appState.selectedCat : 'cellular';
     _initFromCat(_selectedCat, appState);
   }
 
-  void _initFromCat(String cat, [FFAppState? appState]) {
-    final state = appState ?? FFAppState();
+  void _initFromCat(String cat, [AppState? appState]) {
+    final state = appState ?? AppState();
     final cfg = _sliderConfig(cat);
     final minVal = cat == 'abroad' ? 5.0 : 20.0;
     final rawBill = state.currentBill(cat).toDouble();
@@ -71,7 +71,7 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
   int get _annualSaving => (_monthlySaving * 12 - _exitFee.round()).clamp(0, 99999);
   double get _breakeven => _monthlySaving > 0 ? _exitFee / _monthlySaving : 0;
 
-  Color _resultColor(FlutterFlowTheme ffTheme) {
+  Color _resultColor(AppTheme ffTheme) {
     if (_annualSaving > 1200) return ffTheme.success;
     if (_annualSaving > 0) return ffTheme.warning;
     return ffTheme.error;
@@ -85,7 +85,7 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
 
   @override
   Widget build(BuildContext context) {
-    final ffTheme = FlutterFlowTheme.of(context);
+    final ffTheme = AppTheme.of(context);
 
     return Scaffold(
       backgroundColor: ffTheme.background,
@@ -140,7 +140,7 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
                         children: [
                           Text(cat.$2, style: const TextStyle(fontSize: 14)),
                           const SizedBox(width: 6),
-                          Text(cat.$3, style: ffTheme.labelMedium.override(
+                          Text(cat.$3, style: ffTheme.labelMedium.copyWith(
                             color: isActive ? Colors.white : ffTheme.primaryText,
                             fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
                           )),
@@ -201,7 +201,7 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
             // Exit fee quick presets
             Row(
               children: [
-                Text('הגדר במהירות: ', style: ffTheme.labelSmall.override(color: ffTheme.secondaryText)),
+                Text('הגדר במהירות: ', style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText)),
                 ...[0, 100, 200, 300, 500].map((fee) {
                   final active = _exitFee.round() == fee;
                   return GestureDetector(
@@ -216,7 +216,7 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
                         border: Border.all(color: active ? ffTheme.primary : ffTheme.alternate),
                       ),
                       child: Text(fee == 0 ? 'ללא' : '₪$fee',
-                        style: ffTheme.labelSmall.override(
+                        style: ffTheme.labelSmall.copyWith(
                           color: active ? Colors.white : ffTheme.primaryText,
                           fontWeight: active ? FontWeight.w700 : FontWeight.w500,
                         )),
@@ -253,7 +253,7 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
                     const SizedBox(height: 14),
                     Text(
                       'נקודת איזון: ${_breakeven.toStringAsFixed(1)} חודשים',
-                      style: ffTheme.bodySmall.override(color: ffTheme.secondaryText),
+                      style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText),
                     ),
                   ],
                 ],
@@ -279,7 +279,7 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
                     Expanded(
                       child: Text(
                         _selectedCat == 'abroad' ? 'כל נסיעה שאתם מחכים עולה לכם ₪$_monthlySaving' : 'כל חודש שאתם מחכים עולה לכם ₪$_monthlySaving',
-                        style: ffTheme.bodyMedium.override(color: ffTheme.warning, fontWeight: FontWeight.w600),
+                        style: ffTheme.bodyMedium.copyWith(color: ffTheme.warning, fontWeight: FontWeight.w600),
                       ),
                     ),
                   ],
@@ -342,7 +342,7 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
                   minimumSize: const Size(double.infinity, 52),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                 ),
-                child: Text('מצא מסלולים מתאימים', style: ffTheme.titleSmall.override(color: Colors.white)),
+                child: Text('מצא מסלולים מתאימים', style: ffTheme.titleSmall.copyWith(color: Colors.white)),
               ).animate().fadeIn(delay: 460.ms),
 
             const SizedBox(height: 32),
@@ -357,7 +357,7 @@ class _SavingsBarChart extends StatelessWidget {
   const _SavingsBarChart({required this.monthlySaving, required this.exitFee, required this.ffTheme});
   final int monthlySaving;
   final double exitFee;
-  final FlutterFlowTheme ffTheme;
+  final AppTheme ffTheme;
 
   @override
   Widget build(BuildContext context) {
@@ -379,7 +379,7 @@ class _SavingsBarChart extends StatelessWidget {
             children: [
               SizedBox(
                 width: 64,
-                child: Text(m.$2, style: ffTheme.labelSmall.override(color: ffTheme.secondaryText, fontSize: 11)),
+                child: Text(m.$2, style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText, fontSize: 11)),
               ),
               Expanded(
                 child: ClipRRect(
@@ -404,7 +404,7 @@ class _SavingsBarChart extends StatelessWidget {
                 width: 52,
                 child: Text(
                   '₪$amount',
-                  style: ffTheme.labelSmall.override(color: ffTheme.primary, fontWeight: FontWeight.w700, fontSize: 11),
+                  style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700, fontSize: 11),
                   textAlign: TextAlign.end,
                 ),
               ),
@@ -420,7 +420,7 @@ class _LeadingPlanCard extends StatelessWidget {
   const _LeadingPlanCard({required this.selectedCat, required this.maxPrice, required this.ffTheme});
   final String selectedCat;
   final int maxPrice;
-  final FlutterFlowTheme ffTheme;
+  final AppTheme ffTheme;
 
   @override
   Widget build(BuildContext context) {
@@ -445,11 +445,11 @@ class _LeadingPlanCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(color: ffTheme.accent1, borderRadius: BorderRadius.circular(8)),
-                child: Text('הצעה מובילה', style: ffTheme.labelSmall.override(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+                child: Text('הצעה מובילה', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
               ),
               if (matching.isEmpty) ...[
                 const SizedBox(width: 8),
-                Text('(הכי זול בקטגוריה)', style: ffTheme.labelSmall.override(color: ffTheme.secondaryText)),
+                Text('(הכי זול בקטגוריה)', style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText)),
               ],
             ],
           ),
@@ -463,15 +463,15 @@ class _LeadingPlanCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(plan.provider, style: ffTheme.titleSmall),
-                    Text(plan.plan, style: ffTheme.bodySmall.override(color: ffTheme.secondaryText), maxLines: 1, overflow: TextOverflow.ellipsis),
+                    Text(plan.plan, style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText), maxLines: 1, overflow: TextOverflow.ellipsis),
                   ],
                 ),
               ),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text('₪${plan.price}', style: ffTheme.headlineSmall.override(color: ffTheme.primary)),
-                  Text(selectedCat == 'abroad' ? 'לחבילה' : 'לחודש', style: ffTheme.labelSmall.override(color: ffTheme.secondaryText)),
+                  Text('₪${plan.price}', style: ffTheme.headlineSmall.copyWith(color: ffTheme.primary)),
+                  Text(selectedCat == 'abroad' ? 'לחבילה' : 'לחודש', style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText)),
                 ],
               ),
             ],
@@ -481,7 +481,7 @@ class _LeadingPlanCard extends StatelessWidget {
             width: double.infinity,
             child: OutlinedButton(
               onPressed: () {
-                Provider.of<FFAppState>(context, listen: false).setCategory(selectedCat);
+                Provider.of<AppState>(context, listen: false).setCategory(selectedCat);
                 context.pushNamed('Results');
               },
               style: OutlinedButton.styleFrom(
@@ -489,7 +489,7 @@ class _LeadingPlanCard extends StatelessWidget {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 padding: const EdgeInsets.symmetric(vertical: 10),
               ),
-              child: Text('הצג מסלול', style: ffTheme.labelMedium.override(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+              child: Text('הצג מסלול', style: ffTheme.labelMedium.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
             ),
           ),
         ],
@@ -503,7 +503,7 @@ class _SliderSection extends StatelessWidget {
   final String label, emoji;
   final double value, min, max;
   final ValueChanged<double> onChanged;
-  final FlutterFlowTheme ffTheme;
+  final AppTheme ffTheme;
 
   @override
   Widget build(BuildContext context) {
@@ -523,7 +523,7 @@ class _SliderSection extends StatelessWidget {
               const SizedBox(width: 8),
               Text(label, style: ffTheme.titleSmall),
               const Spacer(),
-              Text('₪${value.round()}', style: ffTheme.headlineSmall.override(color: ffTheme.primary)),
+              Text('₪${value.round()}', style: ffTheme.headlineSmall.copyWith(color: ffTheme.primary)),
             ],
           ),
           Slider(
@@ -551,7 +551,7 @@ class _ResultStat extends StatelessWidget {
   const _ResultStat({required this.label, required this.value, required this.color, required this.ffTheme});
   final String label, value;
   final Color color;
-  final FlutterFlowTheme ffTheme;
+  final AppTheme ffTheme;
 
   @override
   Widget build(BuildContext context) {
@@ -559,7 +559,7 @@ class _ResultStat extends StatelessWidget {
       children: [
         Text(label, style: ffTheme.labelSmall),
         const SizedBox(height: 4),
-        Text(value, style: ffTheme.headlineSmall.override(color: color)),
+        Text(value, style: ffTheme.headlineSmall.copyWith(color: color)),
       ],
     );
   }
@@ -570,7 +570,7 @@ class _TimelineStat extends StatelessWidget {
   final int months;
   final int monthlySaving;
   final double exitFee;
-  final FlutterFlowTheme ffTheme;
+  final AppTheme ffTheme;
 
   @override
   Widget build(BuildContext context) {
@@ -579,7 +579,7 @@ class _TimelineStat extends StatelessWidget {
       children: [
         Text(
           '₪$amount',
-          style: ffTheme.titleMedium.override(color: ffTheme.primary, fontWeight: FontWeight.w800),
+          style: ffTheme.titleMedium.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w800),
         ),
         const SizedBox(height: 4),
         Text('$months חודשים', style: ffTheme.labelSmall),

@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../flutter_flow/flutter_flow_theme.dart';
-import '../../flutter_flow/flutter_flow_util.dart';
-import '../../flutter_flow/flutter_flow_widgets.dart';
+import '../../theme/app_theme.dart';
+import '../../core/nav.dart';
+import '../../widgets/app_button.dart';
 import '../../app_state.dart';
 import '../../data.dart';
 import '../../models.dart';
@@ -20,7 +20,7 @@ class ProfileWidget extends StatefulWidget {
 class _ProfileWidgetState extends State<ProfileWidget> {
   String _lang = 'עברית';
 
-  void _showEditProfile(BuildContext context, FFAppState appState, FlutterFlowTheme ffTheme) {
+  void _showEditProfile(BuildContext context, AppState appState, AppTheme ffTheme) {
     final nameCtrl = TextEditingController(text: appState.userName);
     final phoneCtrl = TextEditingController(text: appState.userPhone);
 
@@ -74,7 +74,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
               ),
             ),
             const SizedBox(height: 24),
-            FFButtonWidget(
+            AppButton(
               text: 'שמור שינויים',
               onPressed: () async {
                 final name = nameCtrl.text.trim();
@@ -85,16 +85,16 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                   );
                   return;
                 }
-                Provider.of<FFAppState>(ctx, listen: false).login(name: name, phone: phone);
+                Provider.of<AppState>(ctx, listen: false).login(name: name, phone: phone);
                 Navigator.pop(ctx);
               },
-              options: FFButtonOptions(
+              
                 width: double.infinity,
                 height: 52,
                 color: ffTheme.primary,
-                textStyle: ffTheme.titleSmall.override(color: Colors.white),
+                textStyle: ffTheme.titleSmall.copyWith(color: Colors.white),
                 borderRadius: BorderRadius.circular(14),
-              ),
+              
             ),
           ],
         ),
@@ -104,8 +104,8 @@ class _ProfileWidgetState extends State<ProfileWidget> {
 
   @override
   Widget build(BuildContext context) {
-    final ffTheme = FlutterFlowTheme.of(context);
-    final appState = Provider.of<FFAppState>(context);
+    final ffTheme = AppTheme.of(context);
+    final appState = Provider.of<AppState>(context);
 
     return Scaffold(
       backgroundColor: ffTheme.background,
@@ -175,10 +175,10 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(r['provider'] as String, style: ffTheme.labelMedium.override(fontWeight: FontWeight.w700)),
+                                  Text(r['provider'] as String, style: ffTheme.labelMedium.copyWith(fontWeight: FontWeight.w700)),
                                   if (text.isNotEmpty) ...[
                                     const SizedBox(height: 2),
-                                    Text(text, style: ffTheme.bodySmall.override(color: ffTheme.secondaryText), maxLines: 2, overflow: TextOverflow.ellipsis),
+                                    Text(text, style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText), maxLines: 2, overflow: TextOverflow.ellipsis),
                                   ],
                                 ],
                               ),
@@ -252,7 +252,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                                 borderRadius: BorderRadius.circular(10),
                               ),
                               child: Center(
-                                child: Text(lang, style: ffTheme.labelSmall.override(color: active ? Colors.white : ffTheme.secondaryText)),
+                                child: Text(lang, style: ffTheme.labelSmall.copyWith(color: active ? Colors.white : ffTheme.secondaryText)),
                               ),
                             ),
                           ),
@@ -291,7 +291,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                             color: ffTheme.accent2,
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: Text('בקרוב', style: ffTheme.labelSmall.override(color: const Color(0xFF7A5C00), fontWeight: FontWeight.w600)),
+                          child: Text('בקרוב', style: ffTheme.labelSmall.copyWith(color: const Color(0xFF7A5C00), fontWeight: FontWeight.w600)),
                         ),
                       ],
                     ),
@@ -307,7 +307,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                         context.goNamed('Onboarding');
                       },
                       icon: Icon(Icons.logout_rounded, color: ffTheme.error),
-                      label: Text('התנתקות', style: ffTheme.titleSmall.override(color: ffTheme.error)),
+                      label: Text('התנתקות', style: ffTheme.titleSmall.copyWith(color: ffTheme.error)),
                       style: OutlinedButton.styleFrom(
                         side: BorderSide(color: ffTheme.error),
                         minimumSize: const Size(double.infinity, 52),
@@ -327,7 +327,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
 
   // ── Sections ────────────────────────────────────────────────────────────────
 
-  Widget _buildHeroHeader(BuildContext context, FlutterFlowTheme ffTheme, FFAppState appState) {
+  Widget _buildHeroHeader(BuildContext context, AppTheme ffTheme, AppState appState) {
     return SliverAppBar(
       expandedHeight: 200,
       pinned: true,
@@ -401,7 +401,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                 const SizedBox(height: 10),
                 Text(
                   appState.isLoggedIn ? appState.userName : 'אורח',
-                  style: ffTheme.titleMedium.override(color: Colors.white, fontWeight: FontWeight.w700),
+                  style: ffTheme.titleMedium.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 8),
                 // Stats row
@@ -425,7 +425,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
     );
   }
 
-  Widget _buildGuestCard(BuildContext context, FlutterFlowTheme ffTheme) {
+  Widget _buildGuestCard(BuildContext context, AppTheme ffTheme) {
     return GestureDetector(
       onTap: () => context.pushNamed('Auth'),
       child: Container(
@@ -447,8 +447,8 @@ class _ProfileWidgetState extends State<ProfileWidget> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('התחבר לחשבון', style: ffTheme.titleSmall.override(color: Colors.white, fontWeight: FontWeight.w700)),
-                  Text('שמור מסלולים, עקוב אחר חיסכון וקבל התראות', style: ffTheme.bodySmall.override(color: Colors.white70)),
+                  Text('התחבר לחשבון', style: ffTheme.titleSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
+                  Text('שמור מסלולים, עקוב אחר חיסכון וקבל התראות', style: ffTheme.bodySmall.copyWith(color: Colors.white70)),
                 ],
               ),
             ),
@@ -459,7 +459,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
     );
   }
 
-  Widget _buildActivePlanCard(BuildContext context, FlutterFlowTheme ffTheme, FFAppState appState) {
+  Widget _buildActivePlanCard(BuildContext context, AppTheme ffTheme, AppState appState) {
     final plan = planById(appState.leadPlanId!);
     if (plan == null) return const SizedBox();
     return GestureDetector(
@@ -480,10 +480,10 @@ class _ProfileWidgetState extends State<ProfileWidget> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(plan.provider, style: ffTheme.titleSmall.override(fontWeight: FontWeight.w700)),
-                  Text(plan.plan, style: ffTheme.bodySmall.override(color: ffTheme.secondaryText), maxLines: 1, overflow: TextOverflow.ellipsis),
+                  Text(plan.provider, style: ffTheme.titleSmall.copyWith(fontWeight: FontWeight.w700)),
+                  Text(plan.plan, style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText), maxLines: 1, overflow: TextOverflow.ellipsis),
                   const SizedBox(height: 4),
-                  Text('₪${plan.price}/${plan.cat == 'abroad' ? 'חבילה' : 'חודש'}', style: ffTheme.labelSmall.override(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+                  Text('₪${plan.price}/${plan.cat == 'abroad' ? 'חבילה' : 'חודש'}', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
                 ],
               ),
             ),
@@ -498,7 +498,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                 children: [
                   Container(width: 6, height: 6, decoration: BoxDecoration(color: ffTheme.primary, shape: BoxShape.circle)),
                   const SizedBox(width: 5),
-                  Text('בתהליך', style: ffTheme.labelSmall.override(color: ffTheme.primary, fontWeight: FontWeight.w600)),
+                  Text('בתהליך', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w600)),
                 ],
               ),
             ),
@@ -508,7 +508,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
     ).animate().fadeIn(duration: 300.ms).slideY(begin: 0.08);
   }
 
-  Widget _buildWatchlist(BuildContext context, FlutterFlowTheme ffTheme, FFAppState appState) {
+  Widget _buildWatchlist(BuildContext context, AppTheme ffTheme, AppState appState) {
     final plans = appState.watchedPlans
         .map(planById)
         .whereType<Plan>()
@@ -539,17 +539,17 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(plan.provider, style: ffTheme.titleSmall.override(fontWeight: FontWeight.w700)),
-                      Text(plan.plan, style: ffTheme.bodySmall.override(color: ffTheme.secondaryText), maxLines: 1, overflow: TextOverflow.ellipsis),
+                      Text(plan.provider, style: ffTheme.titleSmall.copyWith(fontWeight: FontWeight.w700)),
+                      Text(plan.plan, style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText), maxLines: 1, overflow: TextOverflow.ellipsis),
                     ],
                   ),
                 ),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text('₪${plan.price}/${plan.cat == 'abroad' ? 'חבילה' : 'חודש'}', style: ffTheme.titleSmall.override(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+                    Text('₪${plan.price}/${plan.cat == 'abroad' ? 'חבילה' : 'חודש'}', style: ffTheme.titleSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
                     if (save > 0)
-                      Text('חוסך ₪$save/שנה', style: ffTheme.labelSmall.override(color: ffTheme.success)),
+                      Text('חוסך ₪$save/שנה', style: ffTheme.labelSmall.copyWith(color: ffTheme.success)),
                   ],
                 ),
               ],
@@ -560,7 +560,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
     );
   }
 
-  Widget _buildRecentlyViewed(BuildContext context, FlutterFlowTheme ffTheme, FFAppState appState) {
+  Widget _buildRecentlyViewed(BuildContext context, AppTheme ffTheme, AppState appState) {
     final plans = appState.recentlyViewed
         .map(planById)
         .whereType<Plan>()
@@ -593,13 +593,13 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                     children: [
                       LogoWidget(provider: p.provider, size: 26),
                       const SizedBox(width: 8),
-                      Expanded(child: Text(p.provider, style: ffTheme.labelSmall.override(fontWeight: FontWeight.w700), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                      Expanded(child: Text(p.provider, style: ffTheme.labelSmall.copyWith(fontWeight: FontWeight.w700), maxLines: 1, overflow: TextOverflow.ellipsis)),
                     ],
                   ),
                   const SizedBox(height: 6),
-                  Text('₪${p.price}/${p.cat == 'abroad' ? 'חבילה' : 'חודש'}', style: ffTheme.titleSmall.override(color: ffTheme.primary)),
+                  Text('₪${p.price}/${p.cat == 'abroad' ? 'חבילה' : 'חודש'}', style: ffTheme.titleSmall.copyWith(color: ffTheme.primary)),
                   const SizedBox(height: 2),
-                  Text(p.plan, style: ffTheme.labelSmall.override(color: ffTheme.secondaryText), maxLines: 1, overflow: TextOverflow.ellipsis),
+                  Text(p.plan, style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText), maxLines: 1, overflow: TextOverflow.ellipsis),
                 ],
               ),
             ),
@@ -609,7 +609,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
     );
   }
 
-  Widget _buildQuizSummary(BuildContext context, FlutterFlowTheme ffTheme, FFAppState appState) {
+  Widget _buildQuizSummary(BuildContext context, AppTheme ffTheme, AppState appState) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -629,7 +629,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
     );
   }
 
-  Widget _buildQuizCTA(BuildContext context, FlutterFlowTheme ffTheme) {
+  Widget _buildQuizCTA(BuildContext context, AppTheme ffTheme) {
     return GestureDetector(
       onTap: () => context.pushNamed('Quiz'),
       child: Container(
@@ -646,8 +646,8 @@ class _ProfileWidgetState extends State<ProfileWidget> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('גלה כמה תחסוך', style: ffTheme.titleSmall.override(color: Colors.white)),
-                  Text('ענה על 4 שאלות קצרות', style: ffTheme.bodySmall.override(color: Colors.white70)),
+                  Text('גלה כמה תחסוך', style: ffTheme.titleSmall.copyWith(color: Colors.white)),
+                  Text('ענה על 4 שאלות קצרות', style: ffTheme.bodySmall.copyWith(color: Colors.white70)),
                 ],
               ),
             ),
@@ -658,7 +658,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
     );
   }
 
-  Widget _buildSectionHeader(String title, FlutterFlowTheme ffTheme, {String? actionLabel, VoidCallback? onAction}) {
+  Widget _buildSectionHeader(String title, AppTheme ffTheme, {String? actionLabel, VoidCallback? onAction}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Row(
@@ -668,7 +668,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
           if (actionLabel != null && onAction != null)
             GestureDetector(
               onTap: onAction,
-              child: Text(actionLabel, style: ffTheme.labelSmall.override(color: ffTheme.primary, fontWeight: FontWeight.w600)),
+              child: Text(actionLabel, style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w600)),
             ),
         ],
       ),
@@ -682,15 +682,15 @@ class _HeroStat extends StatelessWidget {
   const _HeroStat({required this.value, required this.label, required this.ffTheme});
   final String value;
   final String label;
-  final FlutterFlowTheme ffTheme;
+  final AppTheme ffTheme;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(value, style: ffTheme.titleMedium.override(color: Colors.white, fontWeight: FontWeight.w800)),
-        Text(label, style: ffTheme.labelSmall.override(color: Colors.white70)),
+        Text(value, style: ffTheme.titleMedium.copyWith(color: Colors.white, fontWeight: FontWeight.w800)),
+        Text(label, style: ffTheme.labelSmall.copyWith(color: Colors.white70)),
       ],
     );
   }
@@ -699,7 +699,7 @@ class _HeroStat extends StatelessWidget {
 class _QuizChip extends StatelessWidget {
   const _QuizChip({required this.text, required this.ffTheme});
   final String text;
-  final FlutterFlowTheme ffTheme;
+  final AppTheme ffTheme;
 
   @override
   Widget build(BuildContext context) {
@@ -710,7 +710,7 @@ class _QuizChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: ffTheme.primary.withOpacity(0.2)),
       ),
-      child: Text(text, style: ffTheme.labelSmall.override(color: ffTheme.primary, fontWeight: FontWeight.w600)),
+      child: Text(text, style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w600)),
     );
   }
 }
@@ -722,7 +722,7 @@ class _ToggleTile extends StatelessWidget {
   final String subtitle;
   final bool value;
   final ValueChanged<bool> onChanged;
-  final FlutterFlowTheme ffTheme;
+  final AppTheme ffTheme;
 
   @override
   Widget build(BuildContext context) {

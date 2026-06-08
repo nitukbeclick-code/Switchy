@@ -4,8 +4,8 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../flutter_flow/flutter_flow_theme.dart';
-import '../../flutter_flow/flutter_flow_util.dart';
+import '../../theme/app_theme.dart';
+import '../../core/nav.dart';
 import '../../app_state.dart';
 import '../../data.dart';
 import '../../models.dart';
@@ -88,7 +88,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
   @override
   void initState() {
     super.initState();
-    final appState = FFAppState();
+    final appState = AppState();
     final persisted = appState.communityPosts.map((m) => CommunityPost(
       id: m['id'] as String,
       author: m['author'] as String,
@@ -131,7 +131,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
 
   // ── Reply thread ─────────────────────────────────────────────────────────────
 
-  void _showReplies(BuildContext context, CommunityPost post, FlutterFlowTheme ffTheme) {
+  void _showReplies(BuildContext context, CommunityPost post, AppTheme ffTheme) {
     final replyCtrl = TextEditingController();
     _replyData.putIfAbsent(post.id, () => []);
 
@@ -169,7 +169,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                               decoration: BoxDecoration(color: ffTheme.primary, borderRadius: BorderRadius.circular(10)),
-                              child: Text('${replies.length}', style: ffTheme.labelSmall.override(color: Colors.white, fontWeight: FontWeight.w700)),
+                              child: Text('${replies.length}', style: ffTheme.labelSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
                             ),
                           ],
                         ),
@@ -206,7 +206,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                           ],
                         ),
                         const SizedBox(height: 8),
-                        Text(post.text, style: ffTheme.bodySmall.override(lineHeight: 1.4), maxLines: 3, overflow: TextOverflow.ellipsis),
+                        Text(post.text, style: ffTheme.bodySmall.copyWith(height: 1.4), maxLines: 3, overflow: TextOverflow.ellipsis),
                       ],
                     ),
                   ),
@@ -222,7 +222,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                               children: [
                                 Icon(Icons.chat_bubble_outline_rounded, size: 52, color: ffTheme.alternate),
                                 const SizedBox(height: 12),
-                                Text('אין תגובות עדיין', style: ffTheme.bodyMedium.override(color: ffTheme.secondaryText)),
+                                Text('אין תגובות עדיין', style: ffTheme.bodyMedium.copyWith(color: ffTheme.secondaryText)),
                                 const SizedBox(height: 4),
                                 Text('היה הראשון לענות!', style: ffTheme.labelSmall),
                               ],
@@ -267,7 +267,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                           onTap: () {
                             final text = replyCtrl.text.trim();
                             if (text.isEmpty) return;
-                            final appState = Provider.of<FFAppState>(ctx, listen: false);
+                            final appState = Provider.of<AppState>(ctx, listen: false);
                             final newReply = _Reply(
                               author: appState.isLoggedIn ? appState.firstName : 'אורח',
                               avatar: appState.isLoggedIn && appState.firstName.isNotEmpty ? appState.firstName[0] : 'א',
@@ -297,7 +297,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
 
   // ── Composer modal ────────────────────────────────────────────────────────────
 
-  void _showComposer(BuildContext context, FFAppState appState, FlutterFlowTheme ffTheme) {
+  void _showComposer(BuildContext context, AppState appState, AppTheme ffTheme) {
     if (!appState.isLoggedIn) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: const Text('יש להתחבר כדי לפרסם פוסט'),
@@ -335,7 +335,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                     const Spacer(),
                     TextButton(
                       onPressed: () => Navigator.pop(ctx),
-                      child: Text('ביטול', style: ffTheme.bodyMedium.override(color: ffTheme.secondaryText)),
+                      child: Text('ביטול', style: ffTheme.bodyMedium.copyWith(color: ffTheme.secondaryText)),
                     ),
                   ],
                 ),
@@ -356,7 +356,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(color: active ? ffTheme.primary : ffTheme.alternate),
                         ),
-                        child: Text(ch, style: ffTheme.labelSmall.override(color: active ? Colors.white : ffTheme.primaryText)),
+                        child: Text(ch, style: ffTheme.labelSmall.copyWith(color: active ? Colors.white : ffTheme.primaryText)),
                       ),
                     );
                   }).toList(),
@@ -428,8 +428,8 @@ class _CommunityWidgetState extends State<CommunityWidget> {
 
   @override
   Widget build(BuildContext context) {
-    final ffTheme = FlutterFlowTheme.of(context);
-    final appState = Provider.of<FFAppState>(context, listen: false);
+    final ffTheme = AppTheme.of(context);
+    final appState = Provider.of<AppState>(context, listen: false);
 
     return Scaffold(
       backgroundColor: ffTheme.background,
@@ -512,7 +512,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                     children: [
                       Icon(Icons.emoji_events_rounded, size: 14, color: ffTheme.primary),
                       const SizedBox(width: 4),
-                      Text('קהילה פעילה', style: ffTheme.labelSmall.override(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+                      Text('קהילה פעילה', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
                     ],
                   ),
                 ),
@@ -543,13 +543,13 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(ch, style: ffTheme.labelMedium.override(color: active ? Colors.white : ffTheme.primaryText, fontWeight: active ? FontWeight.w700 : FontWeight.w500)),
+                        Text(ch, style: ffTheme.labelMedium.copyWith(color: active ? Colors.white : ffTheme.primaryText, fontWeight: active ? FontWeight.w700 : FontWeight.w500)),
                         if (!active) ...[
                           const SizedBox(width: 5),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
                             decoration: BoxDecoration(color: ffTheme.background, borderRadius: BorderRadius.circular(8)),
-                            child: Text('$count', style: ffTheme.labelSmall.override(color: ffTheme.secondaryText, fontSize: 10)),
+                            child: Text('$count', style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText, fontSize: 10)),
                           ),
                         ],
                       ],
@@ -580,7 +580,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                       children: [
                         Icon(_sortByPopular ? Icons.local_fire_department_rounded : Icons.access_time_rounded, size: 13, color: _sortByPopular ? ffTheme.primary : ffTheme.secondaryText),
                         const SizedBox(width: 4),
-                        Text(_sortByPopular ? 'פופולרי' : 'חדש', style: ffTheme.labelSmall.override(color: _sortByPopular ? ffTheme.primary : ffTheme.secondaryText, fontWeight: FontWeight.w600)),
+                        Text(_sortByPopular ? 'פופולרי' : 'חדש', style: ffTheme.labelSmall.copyWith(color: _sortByPopular ? ffTheme.primary : ffTheme.secondaryText, fontWeight: FontWeight.w600)),
                       ],
                     ),
                   ),
@@ -631,8 +631,8 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('עסקת השבוע', style: ffTheme.labelSmall.override(color: ffTheme.secondary, fontWeight: FontWeight.w700)),
-                          Text(p.text.length > 60 ? '${p.text.substring(0, 60)}...' : p.text, style: ffTheme.bodySmall.override(color: Colors.white70, lineHeight: 1.3)),
+                          Text('עסקת השבוע', style: ffTheme.labelSmall.copyWith(color: ffTheme.secondary, fontWeight: FontWeight.w700)),
+                          Text(p.text.length > 60 ? '${p.text.substring(0, 60)}...' : p.text, style: ffTheme.bodySmall.copyWith(color: Colors.white70, height: 1.3)),
                         ],
                       ),
                     ),
@@ -657,12 +657,12 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                         const SizedBox(height: 16),
                         Text(
                           _searchQuery.isNotEmpty ? 'אין תוצאות עבור "$_searchQuery"' : 'אין פוסטים בערוץ זה עדיין',
-                          style: ffTheme.titleSmall.override(color: ffTheme.secondaryText),
+                          style: ffTheme.titleSmall.copyWith(color: ffTheme.secondaryText),
                           textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 8),
                         if (_searchQuery.isEmpty) ...[
-                          Text('היה הראשון לשתף!', style: ffTheme.bodySmall.override(color: ffTheme.secondaryText)),
+                          Text('היה הראשון לשתף!', style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText)),
                           const SizedBox(height: 16),
                           ElevatedButton.icon(
                             onPressed: () => _showComposer(context, appState, ffTheme),
@@ -713,7 +713,7 @@ class _PostCard extends StatefulWidget {
     required this.onReply,
   });
   final CommunityPost post;
-  final FlutterFlowTheme ffTheme;
+  final AppTheme ffTheme;
   final bool bookmarked;
   final int replyCount;
   final ValueChanged<String> onBookmark;
@@ -776,7 +776,7 @@ class _PostCardState extends State<_PostCard> {
                       children: [
                         const Text('🔥', style: TextStyle(fontSize: 11)),
                         const SizedBox(width: 4),
-                        Text('טרנדינג', style: ffTheme.labelSmall.override(color: ffTheme.warning, fontWeight: FontWeight.w700)),
+                        Text('טרנדינג', style: ffTheme.labelSmall.copyWith(color: ffTheme.warning, fontWeight: FontWeight.w700)),
                       ],
                     ),
                   ),
@@ -820,7 +820,7 @@ class _PostCardState extends State<_PostCard> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                       decoration: BoxDecoration(color: ffTheme.background, borderRadius: BorderRadius.circular(8)),
-                      child: Text(post.channel, style: ffTheme.labelSmall.override(color: ffTheme.secondaryText, fontSize: 10)),
+                      child: Text(post.channel, style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText, fontSize: 10)),
                     ),
                     const SizedBox(width: 4),
                     // Bookmark
@@ -845,7 +845,7 @@ class _PostCardState extends State<_PostCard> {
 
                 const SizedBox(height: 10),
                 // Post text
-                Text(post.text, style: ffTheme.bodyMedium.override(lineHeight: 1.5)),
+                Text(post.text, style: ffTheme.bodyMedium.copyWith(height: 1.5)),
 
                 // Plan chip
                 if (post.planId != null) ...[
@@ -864,7 +864,7 @@ class _PostCardState extends State<_PostCard> {
                         children: [
                           Icon(Icons.open_in_new_rounded, size: 12, color: ffTheme.primary),
                           const SizedBox(width: 6),
-                          Text('צפה בחבילה', style: ffTheme.labelSmall.override(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+                          Text('צפה בחבילה', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
                         ],
                       ),
                     ),
@@ -884,7 +884,7 @@ class _PostCardState extends State<_PostCard> {
               children: [
                 // Like
                 Builder(builder: (ctx) {
-                  final appState = Provider.of<FFAppState>(ctx, listen: false);
+                  final appState = Provider.of<AppState>(ctx, listen: false);
                   final liked = appState.hasLiked(post.id);
                   return _ActionBtn(
                     icon: liked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
@@ -944,7 +944,7 @@ class _ActionBtn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ffTheme = FlutterFlowTheme.of(context);
+    final ffTheme = AppTheme.of(context);
     return GestureDetector(
       onTap: onTap,
       child: Padding(
@@ -960,7 +960,7 @@ class _ActionBtn extends StatelessWidget {
             ),
             if (label.isNotEmpty) ...[
               const SizedBox(width: 4),
-              Text(label, style: ffTheme.labelSmall.override(color: color, fontWeight: FontWeight.w600)),
+              Text(label, style: ffTheme.labelSmall.copyWith(color: color, fontWeight: FontWeight.w600)),
             ],
           ],
         ),
@@ -977,12 +977,12 @@ class _StatPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ffTheme = FlutterFlowTheme.of(context);
+    final ffTheme = AppTheme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(value, style: GoogleFonts.rubik(fontSize: 15, fontWeight: FontWeight.w800, color: color)),
-        Text(label, style: ffTheme.labelSmall.override(color: ffTheme.secondaryText, fontSize: 10)),
+        Text(label, style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText, fontSize: 10)),
       ],
     );
   }
@@ -997,7 +997,7 @@ class _Reply {
 class _ReplyBubble extends StatelessWidget {
   const _ReplyBubble({required this.reply, required this.ffTheme});
   final _Reply reply;
-  final FlutterFlowTheme ffTheme;
+  final AppTheme ffTheme;
 
   String _timeAgo(DateTime t) {
     final diff = DateTime.now().difference(t);
@@ -1028,7 +1028,7 @@ class _ReplyBubble extends StatelessWidget {
                   children: [
                     Text(reply.author, style: ffTheme.labelMedium),
                     const SizedBox(width: 8),
-                    Text(_timeAgo(reply.time), style: ffTheme.labelSmall.override(color: ffTheme.secondaryText.withOpacity(0.65), fontSize: 10)),
+                    Text(_timeAgo(reply.time), style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText.withOpacity(0.65), fontSize: 10)),
                   ],
                 ),
                 const SizedBox(height: 4),
@@ -1043,7 +1043,7 @@ class _ReplyBubble extends StatelessWidget {
                     ),
                     border: Border.all(color: ffTheme.alternate),
                   ),
-                  child: Text(reply.text, style: ffTheme.bodySmall.override(lineHeight: 1.4)),
+                  child: Text(reply.text, style: ffTheme.bodySmall.copyWith(height: 1.4)),
                 ),
               ],
             ),

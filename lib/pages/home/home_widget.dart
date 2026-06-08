@@ -1,13 +1,13 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import '../../flutter_flow/flutter_flow_theme.dart';
-import '../../flutter_flow/flutter_flow_util.dart';
+import '../../theme/app_theme.dart';
+import '../../core/nav.dart';
 import '../../app_state.dart';
 import '../../data.dart';
 import '../../models.dart';
 import '../../components/logo_widget/logo_widget.dart';
-import 'home_model.dart';
 
 class HomeWidget extends StatefulWidget {
   const HomeWidget({super.key});
@@ -17,27 +17,54 @@ class HomeWidget extends StatefulWidget {
 }
 
 class _HomeWidgetState extends State<HomeWidget> {
-  late HomeModel _model;
   final ScrollController _scrollController = ScrollController();
+
+  // Rotating social-proof ticker shown under the header.
+  int _tickerIndex = 0;
+  Timer? _tickerTimer;
+
+  static const List<String> _tickers = [
+    '⚡ מאיה מתל אביב חסכה ₪540 לפני 8 דקות',
+    '🔥 3,847 אנשים השוו מחירים החודש',
+    '✓ יוסי מחיפה עבר לגולן וחסך ₪720 לשנה',
+    '💰 דנה מירושלים גילתה תוכנית ב-₪39 במקום ₪119',
+    '⭐ ממוצע חיסכון: ₪850 לשנה לכל משפחה',
+    '📱 23 איש עברו לסלקום הבוקר',
+    '🎉 נועה מבאר שבע: "המעבר לקח פחות מיום!"',
+    '📶 5G זמין ב-₪39/חודש — בדוק זמינות!',
+    '🔔 ירידת מחיר: פלאפון 5G ירד ל-₪79',
+    '✅ 94% שביעות רצון מהמעבר דרך חוסך',
+    '🌐 רון מנתניה חסך ₪960 על אינטרנט גיגה',
+    '📺 מרים מראשון: "HOT → yes חסכה לי ₪600 בשנה"',
+    '🏠 משפחת כהן חסכה ₪2,400 בחבילה משולבת',
+    '✈️ אירלו eSIM: ₪25 ל-10GB אירופה — 80% זול יותר!',
+    '💡 גולן טלקום מדורג ראשון לשביעות לקוחות 2026',
+    '🔥 38 אנשים עברו ספק היום דרך חוסך',
+    '⚡ שי מפתח תקווה חסך ₪1,200 על חבילה משולבת',
+    '📊 ממוצע זמן מעבר: 1.8 ימי עסקים בלבד',
+    '🎯 רמי לוי: 3 קווים ב-₪80 — הצ\'מפיון של 2026',
+    '🌟 60,000 משפחות כבר חסכו דרך חוסך!',
+  ];
 
   @override
   void initState() {
     super.initState();
-    _model = createModel(context, HomeModel.new);
-    _model.startTicker(setState);
+    _tickerTimer = Timer.periodic(const Duration(seconds: 4), (_) {
+      if (mounted) setState(() => _tickerIndex = (_tickerIndex + 1) % _tickers.length);
+    });
   }
 
   @override
   void dispose() {
-    _model.dispose();
+    _tickerTimer?.cancel();
     _scrollController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final ffTheme = FlutterFlowTheme.of(context);
-    final appState = Provider.of<FFAppState>(context);
+    final ffTheme = AppTheme.of(context);
+    final appState = Provider.of<AppState>(context);
     final activeCat = appState.selectedCat;
     final deal = hotDeal(appState.currentBill(activeCat), cat: activeCat);
 
@@ -128,12 +155,12 @@ class _HomeWidgetState extends State<HomeWidget> {
                     children: [
                       Icon(Icons.compare_arrows_rounded, color: ffTheme.secondary, size: 20),
                       const SizedBox(width: 8),
-                      Text('השווה ${appState.comparePlans.length} מסלולים', style: ffTheme.titleSmall.override(color: Colors.white)),
+                      Text('השווה ${appState.comparePlans.length} מסלולים', style: ffTheme.titleSmall.copyWith(color: Colors.white)),
                       const Spacer(),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                         decoration: BoxDecoration(color: ffTheme.secondary, borderRadius: BorderRadius.circular(8)),
-                        child: Text('←', style: ffTheme.labelMedium.override(color: ffTheme.primary, fontWeight: FontWeight.w800)),
+                        child: Text('←', style: ffTheme.labelMedium.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w800)),
                       ),
                     ],
                   ),
@@ -145,7 +172,7 @@ class _HomeWidgetState extends State<HomeWidget> {
     );
   }
 
-  void _showNotifications(BuildContext context, FFAppState appState, FlutterFlowTheme ffTheme) {
+  void _showNotifications(BuildContext context, AppState appState, AppTheme ffTheme) {
     showModalBottomSheet(
       context: context,
       backgroundColor: ffTheme.background,
@@ -172,7 +199,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                     children: [
                       Icon(Icons.notifications_none_rounded, size: 48, color: ffTheme.alternate),
                       const SizedBox(height: 8),
-                      Text('אין התראות', style: ffTheme.bodyMedium.override(color: ffTheme.secondaryText)),
+                      Text('אין התראות', style: ffTheme.bodyMedium.copyWith(color: ffTheme.secondaryText)),
                       const SizedBox(height: 4),
                       Text('הוסף מסלולים למעקב מחירים', style: ffTheme.labelSmall),
                     ],
@@ -203,7 +230,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('עוקב אחר ${p.provider}', style: ffTheme.titleSmall.override(fontSize: 13)),
+                            Text('עוקב אחר ${p.provider}', style: ffTheme.titleSmall.copyWith(fontSize: 13)),
                             Text('₪${p.price}/${p.cat == 'abroad' ? 'חבילה' : 'חודש'} — מחיר עדכני', style: ffTheme.labelSmall),
                           ],
                         ),
@@ -213,7 +240,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                           Navigator.pop(context);
                           context.pushNamed('PlanDetail', pathParameters: {'planId': id});
                         },
-                        child: Text('פרטים', style: ffTheme.labelSmall.override(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+                        child: Text('פרטים', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
                       ),
                     ],
                   ),
@@ -231,7 +258,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                 children: [
                   Icon(Icons.info_outline_rounded, color: ffTheme.primary, size: 18),
                   const SizedBox(width: 10),
-                  Expanded(child: Text('נשלח לך SMS בכל ירידת מחיר', style: ffTheme.bodySmall.override(color: ffTheme.primary))),
+                  Expanded(child: Text('נשלח לך SMS בכל ירידת מחיר', style: ffTheme.bodySmall.copyWith(color: ffTheme.primary))),
                 ],
               ),
             ),
@@ -243,7 +270,7 @@ class _HomeWidgetState extends State<HomeWidget> {
 
   // ── Section builders ─────────────────────────────────────────────────────
 
-  Widget _buildHeader(BuildContext context, FlutterFlowTheme ffTheme, FFAppState appState) {
+  Widget _buildHeader(BuildContext context, AppTheme ffTheme, AppState appState) {
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -266,7 +293,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                   children: [
                     Text(
                       '${_greeting()} ${appState.firstName} 👋',
-                      style: FlutterFlowTheme.of(context).headlineSmall.override(
+                      style: AppTheme.of(context).headlineSmall.copyWith(
                         color: Colors.white,
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
@@ -287,7 +314,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                           children: [
                             Icon(Icons.search_rounded, color: Colors.white.withOpacity(0.7), size: 16),
                             const SizedBox(width: 8),
-                            Text('חפש מסלול...', style: FlutterFlowTheme.of(context).bodySmall.override(color: Colors.white.withOpacity(0.65))),
+                            Text('חפש מסלול...', style: AppTheme.of(context).bodySmall.copyWith(color: Colors.white.withOpacity(0.65))),
                           ],
                         ),
                       ),
@@ -332,7 +359,7 @@ class _HomeWidgetState extends State<HomeWidget> {
     );
   }
 
-  Widget _buildTicker(BuildContext context, FlutterFlowTheme ffTheme) {
+  Widget _buildTicker(BuildContext context, AppTheme ffTheme) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -355,10 +382,10 @@ class _HomeWidgetState extends State<HomeWidget> {
           child: FadeTransition(opacity: animation, child: child),
         ),
         child: Text(
-          _model.tickers[_model.tickerIndex],
-          key: ValueKey(_model.tickerIndex),
-          style: FlutterFlowTheme.of(context).labelMedium.override(
-            color: FlutterFlowTheme.of(context).primaryText,
+          _tickers[_tickerIndex],
+          key: ValueKey(_tickerIndex),
+          style: AppTheme.of(context).labelMedium.copyWith(
+            color: AppTheme.of(context).primaryText,
             fontSize: 13,
             fontWeight: FontWeight.w600,
           ),
@@ -368,8 +395,8 @@ class _HomeWidgetState extends State<HomeWidget> {
     );
   }
 
-  Widget _buildSavingsHero(BuildContext context, FlutterFlowTheme ffTheme) {
-    final appState = Provider.of<FFAppState>(context, listen: false);
+  Widget _buildSavingsHero(BuildContext context, AppTheme ffTheme) {
+    final appState = Provider.of<AppState>(context, listen: false);
     // Calculate actual potential savings from all categories
     final totalSave = categories.fold<int>(0, (sum, c) {
       final bill = appState.currentBill(c.id);
@@ -392,7 +419,7 @@ class _HomeWidgetState extends State<HomeWidget> {
         children: [
           Text(
             'חיסכון פוטנציאלי שנתי',
-            style: ffTheme.labelMedium.override(color: Colors.white.withOpacity(0.60)),
+            style: ffTheme.labelMedium.copyWith(color: Colors.white.withOpacity(0.60)),
           ),
           const SizedBox(height: 8),
           TweenAnimationBuilder<int>(
@@ -403,7 +430,7 @@ class _HomeWidgetState extends State<HomeWidget> {
               final disp = value > 1000 ? '₪${(value / 1000).toStringAsFixed(1)}K' : '₪$value';
               return Text(
                 disp,
-                style: ffTheme.displaySmall.override(
+                style: ffTheme.displaySmall.copyWith(
                   color: ffTheme.secondary,
                   fontWeight: FontWeight.bold,
                 ),
@@ -413,7 +440,7 @@ class _HomeWidgetState extends State<HomeWidget> {
           const SizedBox(height: 4),
           Text(
             totalSave > 0 ? 'חיסכון מחושב לפי חשבונות שלכם' : 'ממוצע לקוחות חוסך',
-            style: ffTheme.bodySmall.override(color: Colors.white.withOpacity(0.50)),
+            style: ffTheme.bodySmall.copyWith(color: Colors.white.withOpacity(0.50)),
           ),
           const SizedBox(height: 20),
           GestureDetector(
@@ -426,7 +453,7 @@ class _HomeWidgetState extends State<HomeWidget> {
               ),
               child: Text(
                 (totalSave > 0 || appState.quizCompleted) ? 'חפש חבילות ←' : 'בדוק כמה תחסוך ←',
-                style: ffTheme.titleSmall.override(color: ffTheme.primary),
+                style: ffTheme.titleSmall.copyWith(color: ffTheme.primary),
               ),
             ),
           ),
@@ -438,7 +465,7 @@ class _HomeWidgetState extends State<HomeWidget> {
         .scale(begin: const Offset(0.95, 0.95), end: const Offset(1.0, 1.0));
   }
 
-  Widget _buildHotDeal(BuildContext context, FlutterFlowTheme ffTheme, Plan deal, FFAppState appState) {
+  Widget _buildHotDeal(BuildContext context, AppTheme ffTheme, Plan deal, AppState appState) {
     final bill = appState.currentBill(deal.cat);
     final saving = planSaveYear(deal, bill > 0 ? bill : 119);
     return Padding(
@@ -493,7 +520,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                           ),
                           child: Text(
                             'חוסך ₪$saving/שנה',
-                            style: ffTheme.labelSmall.override(
+                            style: ffTheme.labelSmall.copyWith(
                               color: ffTheme.primary,
                               fontWeight: FontWeight.w700,
                             ),
@@ -507,7 +534,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                     children: [
                       Text(
                         '₪${deal.price}/חודש',
-                        style: ffTheme.titleMedium.override(color: ffTheme.primary),
+                        style: ffTheme.titleMedium.copyWith(color: ffTheme.primary),
                       ),
                       const SizedBox(height: 8),
                       Container(
@@ -518,7 +545,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                         ),
                         child: Text(
                           'ראה עסקה ←',
-                          style: ffTheme.labelSmall.override(color: Colors.white),
+                          style: ffTheme.labelSmall.copyWith(color: Colors.white),
                         ),
                       ),
                     ],
@@ -532,7 +559,7 @@ class _HomeWidgetState extends State<HomeWidget> {
     );
   }
 
-  Widget _buildQuizMatch(BuildContext context, FlutterFlowTheme ffTheme, FFAppState appState) {
+  Widget _buildQuizMatch(BuildContext context, AppTheme ffTheme, AppState appState) {
     final cat = appState.quizCat;
     final budget = appState.quizBudget;
     final catInfo = categoryById(cat);
@@ -562,7 +589,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                   appState.setCategory(cat);
                   context.goNamed('Results');
                 },
-                child: Text('הכל ←', style: ffTheme.labelSmall.override(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+                child: Text('הכל ←', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
               ),
             ],
           ),
@@ -596,14 +623,14 @@ class _HomeWidgetState extends State<HomeWidget> {
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                               decoration: BoxDecoration(color: ffTheme.accent1, borderRadius: BorderRadius.circular(5)),
-                              child: Text('✓ בתקציב', style: ffTheme.labelSmall.override(color: ffTheme.success, fontSize: 10, fontWeight: FontWeight.w700)),
+                              child: Text('✓ בתקציב', style: ffTheme.labelSmall.copyWith(color: ffTheme.success, fontSize: 10, fontWeight: FontWeight.w700)),
                             ),
                             if (save > 0) ...[
                               const SizedBox(width: 6),
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                 decoration: BoxDecoration(color: ffTheme.secondary, borderRadius: BorderRadius.circular(5)),
-                                child: Text('חוסך ₪$save/שנה', style: ffTheme.labelSmall.override(color: const Color(0xFF0E3A26), fontSize: 10, fontWeight: FontWeight.w800)),
+                                child: Text('חוסך ₪$save/שנה', style: ffTheme.labelSmall.copyWith(color: const Color(0xFF0E3A26), fontSize: 10, fontWeight: FontWeight.w800)),
                               ),
                             ],
                           ],
@@ -614,13 +641,13 @@ class _HomeWidgetState extends State<HomeWidget> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Text('₪${plan.price}', style: ffTheme.titleLarge.override(color: ffTheme.primary)),
+                      Text('₪${plan.price}', style: ffTheme.titleLarge.copyWith(color: ffTheme.primary)),
                       Text(cat == 'abroad' ? 'לחבילה' : 'לחודש', style: ffTheme.labelSmall),
                       const SizedBox(height: 6),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                         decoration: BoxDecoration(color: ffTheme.primary, borderRadius: BorderRadius.circular(8)),
-                        child: Text('בחר ←', style: ffTheme.labelSmall.override(color: Colors.white, fontWeight: FontWeight.w700)),
+                        child: Text('בחר ←', style: ffTheme.labelSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
                       ),
                     ],
                   ),
@@ -633,7 +660,7 @@ class _HomeWidgetState extends State<HomeWidget> {
     );
   }
 
-  Widget _buildTopPick(BuildContext context, FlutterFlowTheme ffTheme, FFAppState appState) {
+  Widget _buildTopPick(BuildContext context, AppTheme ffTheme, AppState appState) {
     // Find the single best plan across all categories where user has a bill set
     Plan? bestPlan;
     int bestSave = 0;
@@ -692,7 +719,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                 decoration: BoxDecoration(color: ffTheme.accent1, borderRadius: BorderRadius.circular(5)),
-                                child: Text('ללא התחייבות', style: ffTheme.labelSmall.override(color: ffTheme.primary, fontSize: 10)),
+                                child: Text('ללא התחייבות', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontSize: 10)),
                               ),
                           ],
                         ),
@@ -702,7 +729,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(color: ffTheme.secondary, borderRadius: BorderRadius.circular(6)),
-                          child: Text('חוסך ₪$bestSave/שנה', style: ffTheme.labelSmall.override(color: const Color(0xFF0E3A26), fontWeight: FontWeight.w800)),
+                          child: Text('חוסך ₪$bestSave/שנה', style: ffTheme.labelSmall.copyWith(color: const Color(0xFF0E3A26), fontWeight: FontWeight.w800)),
                         ),
                       ],
                     ),
@@ -710,13 +737,13 @@ class _HomeWidgetState extends State<HomeWidget> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Text('₪${plan.price}', style: ffTheme.titleLarge.override(color: ffTheme.primary)),
+                      Text('₪${plan.price}', style: ffTheme.titleLarge.copyWith(color: ffTheme.primary)),
                       Text(plan.cat == 'abroad' ? 'לחבילה' : 'לחודש', style: ffTheme.labelSmall),
                       const SizedBox(height: 6),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                         decoration: BoxDecoration(color: ffTheme.primary, borderRadius: BorderRadius.circular(8)),
-                        child: Text('בחר ←', style: ffTheme.labelSmall.override(color: Colors.white, fontWeight: FontWeight.w700)),
+                        child: Text('בחר ←', style: ffTheme.labelSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
                       ),
                     ],
                   ),
@@ -729,7 +756,7 @@ class _HomeWidgetState extends State<HomeWidget> {
     );
   }
 
-  Widget _buildCategoryGrid(BuildContext context, FlutterFlowTheme ffTheme, FFAppState appState) {
+  Widget _buildCategoryGrid(BuildContext context, AppTheme ffTheme, AppState appState) {
     // Calculate actual savings per category
     final Map<String, int> actualSavings = {};
     final Map<String, bool> hasActual = {};
@@ -814,10 +841,10 @@ class _HomeWidgetState extends State<HomeWidget> {
                         ],
                       ),
                       const SizedBox(height: 4),
-                      Text(cat.name, style: ffTheme.labelLarge.override(color: ffTheme.primaryText)),
+                      Text(cat.name, style: ffTheme.labelLarge.copyWith(color: ffTheme.primaryText)),
                       const SizedBox(height: 2),
                       Text('${cat.planCount} מסלולים', style: ffTheme.labelSmall),
-                      Text(savingsText, style: ffTheme.labelSmall.override(color: savingsColor, fontWeight: isPersonalized ? FontWeight.w700 : FontWeight.w500)),
+                      Text(savingsText, style: ffTheme.labelSmall.copyWith(color: savingsColor, fontWeight: isPersonalized ? FontWeight.w700 : FontWeight.w500)),
                     ],
                   ),
                 )
@@ -832,7 +859,7 @@ class _HomeWidgetState extends State<HomeWidget> {
     );
   }
 
-  Widget _buildAIAdvisor(BuildContext context, FlutterFlowTheme ffTheme) {
+  Widget _buildAIAdvisor(BuildContext context, AppTheme ffTheme) {
     return GestureDetector(
       onTap: () => context.pushNamed('AIAdvisor'),
       child: Container(
@@ -860,18 +887,18 @@ class _HomeWidgetState extends State<HomeWidget> {
                     ),
                     child: Text(
                       '✦ חוסך AI',
-                      style: ffTheme.labelSmall.override(color: ffTheme.primary, fontWeight: FontWeight.w700),
+                      style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700),
                     ),
                   ),
                   const SizedBox(height: 8),
                   Text(
                     'שאלו אותנו הכל\nעל מסלולי תקשורת',
-                    style: ffTheme.titleMedium.override(color: Colors.white),
+                    style: ffTheme.titleMedium.copyWith(color: Colors.white),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     'זמין 24/7 · עונה תוך שניות',
-                    style: ffTheme.bodySmall.override(color: Colors.white.withOpacity(0.60)),
+                    style: ffTheme.bodySmall.copyWith(color: Colors.white.withOpacity(0.60)),
                   ),
                 ],
               ),
@@ -889,8 +916,8 @@ class _HomeWidgetState extends State<HomeWidget> {
     _CommunityPreview(user: 'ש', channel: 'TV', text: 'HOT או yes? מה הכי שווה לספורט?', likes: 34, replies: 19),
   ];
 
-  Widget _buildCommunityHighlights(BuildContext context, FlutterFlowTheme ffTheme) {
-    final appState = Provider.of<FFAppState>(context, listen: false);
+  Widget _buildCommunityHighlights(BuildContext context, AppTheme ffTheme) {
+    final appState = Provider.of<AppState>(context, listen: false);
     // Merge user posts (up to 1) with seed posts for a total of 3
     final userPosts = appState.communityPosts.take(1).map((p) => _CommunityPreview(
       user: (p['author'] as String? ?? 'א')[0],
@@ -916,7 +943,7 @@ class _HomeWidgetState extends State<HomeWidget> {
               const Spacer(),
               GestureDetector(
                 onTap: () => context.goNamed('Community'),
-                child: Text('הכל ←', style: ffTheme.labelMedium.override(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+                child: Text('הכל ←', style: ffTheme.labelMedium.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
               ),
             ],
           ),
@@ -947,7 +974,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                       child: Center(
                         child: Text(
                           post.user,
-                          style: ffTheme.labelLarge.override(color: post.isUserPost ? Colors.white : ffTheme.primary, fontWeight: FontWeight.w700),
+                          style: ffTheme.labelLarge.copyWith(color: post.isUserPost ? Colors.white : ffTheme.primary, fontWeight: FontWeight.w700),
                         ),
                       ),
                     ),
@@ -964,20 +991,20 @@ class _HomeWidgetState extends State<HomeWidget> {
                                   color: ffTheme.accent2,
                                   borderRadius: BorderRadius.circular(6),
                                 ),
-                                child: Text(post.channel, style: ffTheme.labelSmall.override(color: const Color(0xFF8A6000), fontSize: 10, fontWeight: FontWeight.w700)),
+                                child: Text(post.channel, style: ffTheme.labelSmall.copyWith(color: const Color(0xFF8A6000), fontSize: 10, fontWeight: FontWeight.w700)),
                               ),
                               if (post.isUserPost) ...[
                                 const SizedBox(width: 6),
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                   decoration: BoxDecoration(color: ffTheme.primary, borderRadius: BorderRadius.circular(6)),
-                                  child: Text('הפוסט שלך', style: ffTheme.labelSmall.override(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w700)),
+                                  child: Text('הפוסט שלך', style: ffTheme.labelSmall.copyWith(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w700)),
                                 ),
                               ],
                             ],
                           ),
                           const SizedBox(height: 4),
-                          Text(post.text, style: ffTheme.bodySmall.override(fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),
+                          Text(post.text, style: ffTheme.bodySmall.copyWith(fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),
                         ],
                       ),
                     ),
@@ -990,7 +1017,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                           children: [
                             Icon(Icons.favorite_rounded, size: 12, color: Colors.red.shade400),
                             const SizedBox(width: 3),
-                            Text('${post.likes}', style: ffTheme.labelSmall.override(color: Colors.red.shade400, fontWeight: FontWeight.w600)),
+                            Text('${post.likes}', style: ffTheme.labelSmall.copyWith(color: Colors.red.shade400, fontWeight: FontWeight.w600)),
                           ],
                         ),
                         const SizedBox(height: 3),
@@ -1014,7 +1041,7 @@ class _HomeWidgetState extends State<HomeWidget> {
     ).animate().fadeIn(delay: 420.ms);
   }
 
-  Widget _buildToolsRow(BuildContext context, FlutterFlowTheme ffTheme) {
+  Widget _buildToolsRow(BuildContext context, AppTheme ffTheme) {
     final tools = [
       _Tool(icon: '📍', label: 'בדיקת כיסוי', route: 'Availability'),
       _Tool(icon: '🧮', label: 'מחשבון מעבר', route: 'SwitchCalc'),
@@ -1065,7 +1092,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                         const SizedBox(height: 6),
                         Text(
                           tool.label,
-                          style: ffTheme.labelSmall.override(color: ffTheme.primaryText),
+                          style: ffTheme.labelSmall.copyWith(color: ffTheme.primaryText),
                           textAlign: TextAlign.center,
                           maxLines: 2,
                         ),
@@ -1081,7 +1108,7 @@ class _HomeWidgetState extends State<HomeWidget> {
     );
   }
 
-  Widget _buildWatchlist(BuildContext context, FlutterFlowTheme ffTheme, FFAppState appState) {
+  Widget _buildWatchlist(BuildContext context, AppTheme ffTheme, AppState appState) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
       child: Column(
@@ -1095,7 +1122,7 @@ class _HomeWidgetState extends State<HomeWidget> {
               const Spacer(),
               TextButton(
                 onPressed: () => context.pushNamed('Account'),
-                child: Text('הכל', style: ffTheme.labelSmall.override(color: ffTheme.primary)),
+                child: Text('הכל', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary)),
               ),
             ],
           ),
@@ -1127,17 +1154,17 @@ class _HomeWidgetState extends State<HomeWidget> {
                           children: [
                             LogoWidget(provider: plan.provider, size: 24),
                             const SizedBox(width: 6),
-                            Expanded(child: Text(plan.provider, style: ffTheme.labelSmall.override(fontWeight: FontWeight.w700), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                            Expanded(child: Text(plan.provider, style: ffTheme.labelSmall.copyWith(fontWeight: FontWeight.w700), maxLines: 1, overflow: TextOverflow.ellipsis)),
                           ],
                         ),
                         const SizedBox(height: 5),
-                        Text('₪${plan.price}/${plan.cat == 'abroad' ? 'חבילה' : 'חודש'}', style: ffTheme.titleSmall.override(color: ffTheme.primary, fontSize: 13, fontWeight: FontWeight.w700)),
+                        Text('₪${plan.price}/${plan.cat == 'abroad' ? 'חבילה' : 'חודש'}', style: ffTheme.titleSmall.copyWith(color: ffTheme.primary, fontSize: 13, fontWeight: FontWeight.w700)),
                         const SizedBox(height: 3),
                         Row(
                           children: [
                             Container(width: 5, height: 5, decoration: BoxDecoration(color: ffTheme.success, shape: BoxShape.circle)),
                             const SizedBox(width: 4),
-                            Text('עוקב', style: ffTheme.labelSmall.override(color: ffTheme.success, fontSize: 10)),
+                            Text('עוקב', style: ffTheme.labelSmall.copyWith(color: ffTheme.success, fontSize: 10)),
                           ],
                         ),
                       ],
@@ -1152,7 +1179,7 @@ class _HomeWidgetState extends State<HomeWidget> {
     );
   }
 
-  Widget _buildRecentlyViewed(BuildContext context, FlutterFlowTheme ffTheme, FFAppState appState) {
+  Widget _buildRecentlyViewed(BuildContext context, AppTheme ffTheme, AppState appState) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
       child: Column(
@@ -1193,13 +1220,13 @@ class _HomeWidgetState extends State<HomeWidget> {
                           children: [
                             LogoWidget(provider: plan.provider, size: 24),
                             const SizedBox(width: 6),
-                            Expanded(child: Text(plan.provider, style: ffTheme.labelSmall.override(fontWeight: FontWeight.w700), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                            Expanded(child: Text(plan.provider, style: ffTheme.labelSmall.copyWith(fontWeight: FontWeight.w700), maxLines: 1, overflow: TextOverflow.ellipsis)),
                           ],
                         ),
                         const SizedBox(height: 5),
-                        Text('₪${plan.price}/${plan.cat == 'abroad' ? 'חבילה' : 'חודש'}', style: ffTheme.titleSmall.override(color: ffTheme.primary, fontSize: 13, fontWeight: FontWeight.w700)),
+                        Text('₪${plan.price}/${plan.cat == 'abroad' ? 'חבילה' : 'חודש'}', style: ffTheme.titleSmall.copyWith(color: ffTheme.primary, fontSize: 13, fontWeight: FontWeight.w700)),
                         const SizedBox(height: 3),
-                        Text(plan.plan, style: ffTheme.labelSmall.override(color: ffTheme.secondaryText), maxLines: 1, overflow: TextOverflow.ellipsis),
+                        Text(plan.plan, style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText), maxLines: 1, overflow: TextOverflow.ellipsis),
                       ],
                     ),
                   ),
@@ -1219,7 +1246,7 @@ class _HomeWidgetState extends State<HomeWidget> {
     'Airalo': 'abroad', 'airalo': 'abroad',
   };
 
-  Widget _buildBrandStrip(BuildContext context, FlutterFlowTheme ffTheme, FFAppState appState) {
+  Widget _buildBrandStrip(BuildContext context, AppTheme ffTheme, AppState appState) {
     final providers = [
       _Provider('פלאפון', const Color(0xFFE07034), const Color(0xFFFFF3EC)),
       _Provider('סלקום', const Color(0xFFCC2244), const Color(0xFFFFECF0)),
@@ -1274,7 +1301,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                   ),
                   child: Text(
                     p.name,
-                    style: ffTheme.labelMedium.override(
+                    style: ffTheme.labelMedium.copyWith(
                       color: p.color,
                       fontWeight: FontWeight.w700,
                     ),

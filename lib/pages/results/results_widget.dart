@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import '../../flutter_flow/flutter_flow_theme.dart';
-import '../../flutter_flow/flutter_flow_util.dart';
+import '../../theme/app_theme.dart';
+import '../../core/nav.dart';
 import '../../app_state.dart';
 import '../../models.dart';
 import '../../data.dart';
@@ -41,7 +41,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
     super.dispose();
   }
 
-  Future<void> _switchCategory(FFAppState appState, String cat) async {
+  Future<void> _switchCategory(AppState appState, String cat) async {
     setState(() { _loading = true; _providerFilter = ''; });
     appState.setCategory(cat);
     _searchController.clear();
@@ -52,8 +52,8 @@ class _ResultsWidgetState extends State<ResultsWidget> {
 
   @override
   Widget build(BuildContext context) {
-    final ffTheme = FlutterFlowTheme.of(context);
-    final appState = Provider.of<FFAppState>(context);
+    final ffTheme = AppTheme.of(context);
+    final appState = Provider.of<AppState>(context);
     final cat = appState.selectedCat;
     final catData = categoryById(cat);
     final bill = appState.currentBill(cat);
@@ -81,7 +81,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
         foregroundColor: Colors.white,
         elevation: 0,
         title: Text(catData?.name ?? 'תוצאות',
-            style: ffTheme.titleLarge.override(color: Colors.white)),
+            style: ffTheme.titleLarge.copyWith(color: Colors.white)),
         actions: [
           IconButton(
             icon: Stack(children: [
@@ -131,7 +131,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                         ),
                         child: Text(
                           c.$2,
-                          style: ffTheme.labelMedium.override(
+                          style: ffTheme.labelMedium.copyWith(
                             color: active ? ffTheme.primary : Colors.white,
                             fontWeight:
                                 active ? FontWeight.w700 : FontWeight.w500,
@@ -213,7 +213,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                                 ),
                                 const SizedBox(width: 5),
                                 Text('עודכן היום',
-                                    style: ffTheme.labelSmall.override(
+                                    style: ffTheme.labelSmall.copyWith(
                                         color: ffTheme.primary,
                                         fontWeight: FontWeight.w600)),
                               ],
@@ -222,13 +222,13 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                           const Spacer(),
                           Text('${plans.length} מסלולים',
                               style: ffTheme.labelMedium
-                                  .override(color: ffTheme.secondaryText)),
+                                  .copyWith(color: ffTheme.secondaryText)),
                           if (appState.activeFilters.isNotEmpty || _providerFilter.isNotEmpty) ...[
                             const SizedBox(width: 8),
                             GestureDetector(
                               onTap: () { appState.clearFilters(); setState(() => _providerFilter = ''); },
                               child: Text('נקה',
-                                  style: ffTheme.labelMedium.override(
+                                  style: ffTheme.labelMedium.copyWith(
                                       color: ffTheme.error,
                                       fontWeight: FontWeight.w700)),
                             ),
@@ -258,7 +258,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                           children: [
                             Text('החשבון שלך:',
                                 style: ffTheme.bodyMedium
-                                    .override(color: ffTheme.secondaryText)),
+                                    .copyWith(color: ffTheme.secondaryText)),
                             const SizedBox(width: 8),
                             GestureDetector(
                               onTap: () => _showBillEditor(context, appState, cat, bill, ffTheme),
@@ -273,7 +273,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                                   children: [
                                     Text('₪$bill',
                                         style: ffTheme.titleMedium
-                                            .override(color: ffTheme.primary)),
+                                            .copyWith(color: ffTheme.primary)),
                                     const SizedBox(width: 4),
                                     Icon(Icons.edit_rounded, size: 12, color: ffTheme.primary),
                                   ],
@@ -342,7 +342,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                             ),
                             child: Text(
                               s.$2,
-                              style: ffTheme.labelMedium.override(
+                              style: ffTheme.labelMedium.copyWith(
                                 color: active
                                     ? Colors.white
                                     : ffTheme.primaryText,
@@ -380,12 +380,12 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                               cat == 'cellular' && appState.quizLines > 1
                                   ? 'שאלון: ${appState.quizLines} קווים, עד ₪${appState.quizBudget}'
                                   : 'שאלון: עד ₪${appState.quizBudget}${cat == 'abroad' ? '/חבילה' : '/חודש'}',
-                              style: ffTheme.labelMedium.override(color: ffTheme.primary),
+                              style: ffTheme.labelMedium.copyWith(color: ffTheme.primary),
                             ),
                           ),
                           GestureDetector(
                             onTap: () => context.pushNamed('Quiz'),
-                            child: Text('עריכה', style: ffTheme.labelSmall.override(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+                            child: Text('עריכה', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
                           ),
                           const SizedBox(width: 8),
                           GestureDetector(
@@ -427,11 +427,11 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                                   Text(
                                     '${topPlan.provider} מומלץ לך',
                                     style: ffTheme.titleSmall
-                                        .override(color: Colors.white),
+                                        .copyWith(color: Colors.white),
                                   ),
                                   Text(
                                     'תחסוך ₪$topSave בשנה',
-                                    style: ffTheme.bodySmall.override(
+                                    style: ffTheme.bodySmall.copyWith(
                                         color: ffTheme.secondary,
                                         fontWeight: FontWeight.w700),
                                   ),
@@ -488,7 +488,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                             : appState.activeFilters.isNotEmpty
                               ? 'הסינונים שבחרת מצמצמים מדי — נסה להסיר חלקם'
                               : 'אין מסלולים בקטגוריה זו כרגע',
-                          style: ffTheme.bodyMedium.override(color: ffTheme.secondaryText),
+                          style: ffTheme.bodyMedium.copyWith(color: ffTheme.secondaryText),
                           textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 28),
@@ -509,7 +509,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                           ),
                         ],
                         const SizedBox(height: 28),
-                        Text('נסה קטגוריה אחרת', style: ffTheme.labelMedium.override(color: ffTheme.secondaryText)),
+                        Text('נסה קטגוריה אחרת', style: ffTheme.labelMedium.copyWith(color: ffTheme.secondaryText)),
                         const SizedBox(height: 12),
                         Wrap(
                           spacing: 8,
@@ -527,7 +527,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                                   border: Border.all(color: ffTheme.primary.withOpacity(0.3)),
                                   boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 4)],
                                 ),
-                                child: Text(c.$2, style: ffTheme.labelSmall.override(color: ffTheme.primary, fontWeight: FontWeight.w600)),
+                                child: Text(c.$2, style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w600)),
                               ),
                             )).toList(),
                         ),
@@ -582,7 +582,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                   children: [
                     Text(
                       'השווה ${appState.comparePlans.length} מסלולים',
-                      style: ffTheme.titleSmall.override(color: Colors.white),
+                      style: ffTheme.titleSmall.copyWith(color: Colors.white),
                     ),
                     const Spacer(),
                     ElevatedButton(
@@ -597,7 +597,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                             horizontal: 16, vertical: 8),
                       ),
                       child: Text('השוואה ←',
-                          style: ffTheme.labelMedium.override(
+                          style: ffTheme.labelMedium.copyWith(
                               color: ffTheme.primary,
                               fontWeight: FontWeight.w700)),
                     ),
@@ -611,7 +611,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
     );
   }
 
-  Widget _buildProviderChips(FlutterFlowTheme ffTheme, List<String> providers) {
+  Widget _buildProviderChips(AppTheme ffTheme, List<String> providers) {
     if (providers.length <= 1) return const SizedBox();
     return SizedBox(
       height: 44,
@@ -626,7 +626,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
     );
   }
 
-  Widget _providerChip(String label, FlutterFlowTheme ffTheme) {
+  Widget _providerChip(String label, AppTheme ffTheme) {
     final isAll = label == 'הכל';
     final active = isAll ? _providerFilter.isEmpty : _providerFilter == label;
     return Padding(
@@ -646,7 +646,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
           ),
           child: Text(
             label,
-            style: ffTheme.labelSmall.override(
+            style: ffTheme.labelSmall.copyWith(
               color: active ? ffTheme.tertiary : ffTheme.primaryText,
               fontWeight: active ? FontWeight.w700 : FontWeight.w500,
             ),
@@ -656,7 +656,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
     );
   }
 
-  Widget _buildQuickFilters(BuildContext context, FFAppState appState, FlutterFlowTheme ffTheme, String cat) {
+  Widget _buildQuickFilters(BuildContext context, AppState appState, AppTheme ffTheme, String cat) {
     const quickFilters = <String, List<(String, String)>>{
       'cellular': [('5G', '5g'), ('ללא התחייבות', 'nocommit'), ('מחיר קבוע', 'fixed'), ('כולל חו"ל', 'abroad'), ('כשר', 'kosher')],
       'internet': [('ללא התחייבות', 'nocommit'), ('סיב אופטי', 'fiber'), ('1,000Mb+', '1g'), ('מחיר קבוע', 'fixed')],
@@ -693,7 +693,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                       Icon(Icons.check_rounded, size: 12, color: ffTheme.primary),
                       const SizedBox(width: 4),
                     ],
-                    Text(chip.$1, style: ffTheme.labelSmall.override(color: active ? ffTheme.primary : ffTheme.primaryText, fontWeight: active ? FontWeight.w700 : FontWeight.w600)),
+                    Text(chip.$1, style: ffTheme.labelSmall.copyWith(color: active ? ffTheme.primary : ffTheme.primaryText, fontWeight: active ? FontWeight.w700 : FontWeight.w600)),
                   ],
                 ),
               ),
@@ -704,7 +704,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
     );
   }
 
-  void _showBillEditor(BuildContext context, FFAppState appState, String cat, int currentBill, FlutterFlowTheme ffTheme) {
+  void _showBillEditor(BuildContext context, AppState appState, String cat, int currentBill, AppTheme ffTheme) {
     final ctrl = TextEditingController(text: currentBill > 0 ? '$currentBill' : '');
     showModalBottomSheet(
       context: context,
@@ -718,17 +718,17 @@ class _ResultsWidgetState extends State<ResultsWidget> {
           children: [
             Text(cat == 'abroad' ? 'עדכן תקציב לחבילה' : 'עדכן חשבון חודשי', style: ffTheme.titleLarge),
             const SizedBox(height: 6),
-            Text(cat == 'abroad' ? 'הכניסו את התקציב שלכם לחבילת חו"ל' : 'הכניסו את הסכום שאתם משלמים כרגע', style: ffTheme.bodySmall.override(color: ffTheme.secondaryText)),
+            Text(cat == 'abroad' ? 'הכניסו את התקציב שלכם לחבילת חו"ל' : 'הכניסו את הסכום שאתם משלמים כרגע', style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText)),
             const SizedBox(height: 16),
             TextField(
               controller: ctrl,
               keyboardType: TextInputType.number,
               autofocus: true,
               textDirection: TextDirection.ltr,
-              style: ffTheme.displaySmall.override(color: ffTheme.primary),
+              style: ffTheme.displaySmall.copyWith(color: ffTheme.primary),
               decoration: InputDecoration(
                 prefixText: '₪',
-                prefixStyle: ffTheme.displaySmall.override(color: ffTheme.primary),
+                prefixStyle: ffTheme.displaySmall.copyWith(color: ffTheme.primary),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.primary, width: 2)),
                 focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.primary, width: 2)),
                 filled: true, fillColor: ffTheme.accent1,
@@ -748,7 +748,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                   padding: const EdgeInsets.symmetric(vertical: 14),
                 ),
-                child: Text('עדכן', style: ffTheme.titleSmall.override(color: Colors.white)),
+                child: Text('עדכן', style: ffTheme.titleSmall.copyWith(color: Colors.white)),
               ),
             ),
           ],
@@ -758,7 +758,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
   }
 
   void _showFilters(
-      BuildContext context, FFAppState appState, FlutterFlowTheme ffTheme) {
+      BuildContext context, AppState appState, AppTheme ffTheme) {
     const Map<String, List<(String, String)>> catFilters = {
       'cellular': [('5G', '5g'), ('ללא התחייבות', 'nocommit'), ('מחיר קבוע', 'fixed'), ('כולל חו"ל', 'abroad'), ('כשר', 'kosher')],
       'internet': [('ללא התחייבות', 'nocommit'), ('סיב אופטי', 'fiber'), ('1,000Mb+', '1g'), ('מחיר קבוע', 'fixed')],
@@ -787,7 +787,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                   },
                   child: Text('נקה הכל',
                       style:
-                          ffTheme.bodyMedium.override(color: ffTheme.error)),
+                          ffTheme.bodyMedium.copyWith(color: ffTheme.error)),
                 ),
               ]),
               const SizedBox(height: 16),
@@ -807,7 +807,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                         },
                         selectedColor: ffTheme.primary,
                         backgroundColor: ffTheme.background,
-                        labelStyle: ffTheme.bodyMedium.override(
+                        labelStyle: ffTheme.bodyMedium.copyWith(
                             color: selected ? Colors.white : ffTheme.primaryText),
                         checkmarkColor: Colors.white,
                       );
@@ -827,7 +827,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                   ),
                   child: Text('הצג תוצאות',
                       style:
-                          ffTheme.titleSmall.override(color: Colors.white)),
+                          ffTheme.titleSmall.copyWith(color: Colors.white)),
                 ),
               ),
               const SizedBox(height: 8),
@@ -844,7 +844,7 @@ class _ActionChip extends StatelessWidget {
   final String label;
   final IconData icon;
   final VoidCallback onTap;
-  final FlutterFlowTheme ffTheme;
+  final AppTheme ffTheme;
 
   @override
   Widget build(BuildContext context) {
@@ -862,7 +862,7 @@ class _ActionChip extends StatelessWidget {
           children: [
             Icon(icon, size: 16, color: Colors.white),
             const SizedBox(width: 8),
-            Text(label, style: ffTheme.labelMedium.override(color: Colors.white, fontWeight: FontWeight.w700)),
+            Text(label, style: ffTheme.labelMedium.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
           ],
         ),
       ),
@@ -875,7 +875,7 @@ class _StepButton extends StatelessWidget {
       {required this.icon, required this.onTap, required this.ffTheme});
   final IconData icon;
   final VoidCallback onTap;
-  final FlutterFlowTheme ffTheme;
+  final AppTheme ffTheme;
 
   @override
   Widget build(BuildContext context) {

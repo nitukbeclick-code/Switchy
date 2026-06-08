@@ -3,8 +3,8 @@ import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../flutter_flow/flutter_flow_theme.dart';
-import '../../flutter_flow/flutter_flow_util.dart';
+import '../../theme/app_theme.dart';
+import '../../core/nav.dart';
 import '../../app_state.dart';
 import '../../data.dart';
 import '../../models.dart';
@@ -21,8 +21,8 @@ class _BillsWidgetState extends State<BillsWidget> {
 
   @override
   Widget build(BuildContext context) {
-    final ffTheme = FlutterFlowTheme.of(context);
-    final appState = Provider.of<FFAppState>(context);
+    final ffTheme = AppTheme.of(context);
+    final appState = Provider.of<AppState>(context);
 
     final activeCats = categories.where((c) => appState.currentBill(c.id) > 0).toList();
     final total = categories.fold<int>(0, (sum, c) => sum + appState.currentBill(c.id));
@@ -48,7 +48,7 @@ class _BillsWidgetState extends State<BillsWidget> {
               icon: Icon(Icons.refresh_rounded, color: ffTheme.secondaryText, size: 20),
               tooltip: 'אפס הכל',
               onPressed: () {
-                final appState = Provider.of<FFAppState>(context, listen: false);
+                final appState = Provider.of<AppState>(context, listen: false);
                 showDialog(
                   context: context,
                   builder: (ctx) => AlertDialog(
@@ -70,7 +70,7 @@ class _BillsWidgetState extends State<BillsWidget> {
             ),
           TextButton(
             onPressed: () => context.pushNamed('Results'),
-            child: Text('השווה עכשיו', style: ffTheme.labelMedium.override(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+            child: Text('השווה עכשיו', style: ffTheme.labelMedium.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
           ),
         ],
       ),
@@ -236,7 +236,7 @@ class _BillsWidgetState extends State<BillsWidget> {
                           const SizedBox(width: 4),
                           Text(c.name, style: ffTheme.labelSmall),
                           const SizedBox(width: 4),
-                          Text('₪${appState.currentBill(c.id)}', style: ffTheme.labelSmall.override(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+                          Text('₪${appState.currentBill(c.id)}', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
                         ],
                       )).toList(),
                     ),
@@ -287,7 +287,7 @@ class _SavingsRing extends StatelessWidget {
   const _SavingsRing({required this.total, required this.totalSavings, required this.ffTheme});
   final int total;
   final int totalSavings;
-  final FlutterFlowTheme ffTheme;
+  final AppTheme ffTheme;
 
   @override
   Widget build(BuildContext context) {
@@ -337,7 +337,7 @@ class _SavingsRing extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text('$pct%', style: GoogleFonts.rubik(fontSize: 18, fontWeight: FontWeight.w800, color: ffTheme.primary)),
-                    Text('חיסכון', style: ffTheme.labelSmall.override(fontSize: 10)),
+                    Text('חיסכון', style: ffTheme.labelSmall.copyWith(fontSize: 10)),
                   ],
                 ),
               ],
@@ -361,7 +361,7 @@ class _SavingsRing extends StatelessWidget {
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(color: ffTheme.primary.withOpacity(0.15)),
                   ),
-                  child: Text('₪$totalSavings חיסכון שנתי', style: ffTheme.labelMedium.override(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+                  child: Text('₪$totalSavings חיסכון שנתי', style: ffTheme.labelMedium.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
                 ),
               ],
             ),
@@ -376,7 +376,7 @@ class _RingLegendRow extends StatelessWidget {
   const _RingLegendRow({required this.color, required this.label, required this.value, required this.ffTheme});
   final Color color;
   final String label, value;
-  final FlutterFlowTheme ffTheme;
+  final AppTheme ffTheme;
 
   @override
   Widget build(BuildContext context) {
@@ -386,7 +386,7 @@ class _RingLegendRow extends StatelessWidget {
         const SizedBox(width: 8),
         Text(label, style: ffTheme.labelSmall),
         const Spacer(),
-        Text(value, style: ffTheme.labelSmall.override(color: ffTheme.primaryText, fontWeight: FontWeight.w700)),
+        Text(value, style: ffTheme.labelSmall.copyWith(color: ffTheme.primaryText, fontWeight: FontWeight.w700)),
       ],
     );
   }
@@ -410,7 +410,7 @@ class _BillCard extends StatelessWidget {
   final VoidCallback onIncrease;
   final ValueChanged<int> onSetValue;
   final VoidCallback onTap;
-  final FlutterFlowTheme ffTheme;
+  final AppTheme ffTheme;
 
   static const Map<String, List<int>> _presets = {
     'cellular': [29, 49, 89, 129],
@@ -452,7 +452,7 @@ class _BillCard extends StatelessWidget {
                     Text(category.name, style: ffTheme.titleSmall),
                     if (currentBill > 0 && yearlySave > 0)
                       Text('חיסכון פוטנציאלי: ₪$yearlySave/שנה',
-                          style: ffTheme.labelSmall.override(color: ffTheme.success, fontWeight: FontWeight.w600)),
+                          style: ffTheme.labelSmall.copyWith(color: ffTheme.success, fontWeight: FontWeight.w600)),
                     if (currentBill == 0)
                       Text('לא בשימוש', style: ffTheme.labelSmall),
                   ],
@@ -466,7 +466,7 @@ class _BillCard extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 10),
                     child: Text(
                       '₪$currentBill',
-                      style: ffTheme.titleSmall.override(
+                      style: ffTheme.titleSmall.copyWith(
                         color: currentBill > 0 ? ffTheme.primary : ffTheme.secondaryText,
                         fontWeight: FontWeight.w700,
                       ),
@@ -496,7 +496,7 @@ class _BillCard extends StatelessWidget {
                   ),
                   child: Text(
                     '₪$preset',
-                    style: ffTheme.labelSmall.override(
+                    style: ffTheme.labelSmall.copyWith(
                       color: isActive ? Colors.white : ffTheme.secondaryText,
                       fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
                     ),
@@ -522,7 +522,7 @@ class _BillCard extends StatelessWidget {
                   children: [
                     Icon(Icons.search_rounded, size: 14, color: ffTheme.primary),
                     const SizedBox(width: 6),
-                    Text('חפש חבילות זולות יותר', style: ffTheme.labelSmall.override(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+                    Text('חפש חבילות זולות יותר', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
                   ],
                 ),
               ),

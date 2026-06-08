@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-import '../../flutter_flow/flutter_flow_theme.dart';
-import '../../flutter_flow/flutter_flow_util.dart';
+import '../../theme/app_theme.dart';
+import '../../core/nav.dart';
 import '../../app_state.dart';
 import '../../data.dart';
 import '../../components/logo_widget/logo_widget.dart';
@@ -61,7 +61,7 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
       allPlans.where((p) => p.provider == provider).fold(0, (s, p) => s + p.reviews);
 
   double _subRatingValue(String provider, String key) {
-    final appState = FFAppState();
+    final appState = AppState();
     final review = appState.reviewFor(provider);
     if (review != null) {
       final v = review[key] as int? ?? 0;
@@ -88,8 +88,8 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
 
   @override
   Widget build(BuildContext context) {
-    final ffTheme = FlutterFlowTheme.of(context);
-    final appState = Provider.of<FFAppState>(context, listen: false);
+    final ffTheme = AppTheme.of(context);
+    final appState = Provider.of<AppState>(context, listen: false);
     final ratings = _providerRatings;
 
     var sorted = ratings.entries.toList();
@@ -214,7 +214,7 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
                                         color: ffTheme.warning,
                                       )),
                                       const SizedBox(width: 4),
-                                      Text(avg.toStringAsFixed(1), style: ffTheme.labelSmall.override(fontWeight: FontWeight.w700)),
+                                      Text(avg.toStringAsFixed(1), style: ffTheme.labelSmall.copyWith(fontWeight: FontWeight.w700)),
                                     ],
                                   ),
                                 ],
@@ -223,7 +223,7 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
-                                Text('$totalReviews', style: ffTheme.titleSmall.override(color: ffTheme.primary)),
+                                Text('$totalReviews', style: ffTheme.titleSmall.copyWith(color: ffTheme.primary)),
                                 Text('ביקורות', style: ffTheme.labelSmall),
                               ],
                             ),
@@ -286,7 +286,7 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
                                 _subRatings.updateAll((_, __) => 0);
                                 _reviewCtrl.clear();
                               }),
-                              child: Text('כתוב ביקורת נוספת', style: ffTheme.labelMedium.override(color: ffTheme.primary)),
+                              child: Text('כתוב ביקורת נוספת', style: ffTheme.labelMedium.copyWith(color: ffTheme.primary)),
                             ),
                           ],
                         ),
@@ -333,7 +333,7 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
                                       padding: const EdgeInsets.only(left: 4),
                                       child: Icon(Icons.check_circle_rounded, size: 13, color: ffTheme.success),
                                     ),
-                                  Text(e.key, style: ffTheme.labelSmall.override(color: active ? Colors.white : ffTheme.primaryText)),
+                                  Text(e.key, style: ffTheme.labelSmall.copyWith(color: active ? Colors.white : ffTheme.primaryText)),
                                 ],
                               ),
                             ),
@@ -370,7 +370,7 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
                             if ((_subRatings[e.key] ?? 0) > 0)
                               Text(
                                 _ratingLabel(_subRatings[e.key]!),
-                                style: ffTheme.labelSmall.override(color: ffTheme.primary, fontWeight: FontWeight.w600),
+                                style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w600),
                               ),
                           ],
                         ),
@@ -405,7 +405,7 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
                             ? () {
                                 final avg = _subRatings.values.where((v) => v > 0).fold(0, (a, b) => a + b) ~/
                                     _subRatings.values.where((v) => v > 0).length;
-                                Provider.of<FFAppState>(context, listen: false).addReview(
+                                Provider.of<AppState>(context, listen: false).addReview(
                                   provider: _selectedProvider!,
                                   overall: avg,
                                   subRatings: Map.of(_subRatings),
@@ -462,7 +462,7 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
                             children: [
                               Row(
                                 children: [
-                                  Text(r['provider'] as String, style: ffTheme.labelMedium.override(fontWeight: FontWeight.w700)),
+                                  Text(r['provider'] as String, style: ffTheme.labelMedium.copyWith(fontWeight: FontWeight.w700)),
                                   const Spacer(),
                                   ...List.generate(5, (i) => Icon(
                                     i < overall ? Icons.star_rounded : Icons.star_outline_rounded,
@@ -504,7 +504,7 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
     }
   }
 
-  Widget _buildPodium(List<MapEntry<String, List<double>>> top, FlutterFlowTheme ffTheme) {
+  Widget _buildPodium(List<MapEntry<String, List<double>>> top, AppTheme ffTheme) {
     final avgs = top.map((e) => e.value.reduce((a, b) => a + b) / e.value.length).toList();
 
     return Container(
@@ -515,7 +515,7 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
       ),
       child: Column(
         children: [
-          Text('מנצחי החודש', style: ffTheme.titleSmall.override(color: ffTheme.secondary, fontWeight: FontWeight.w700)),
+          Text('מנצחי החודש', style: ffTheme.titleSmall.copyWith(color: ffTheme.secondary, fontWeight: FontWeight.w700)),
           const SizedBox(height: 16),
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
@@ -537,7 +537,7 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
 class _SortChip extends StatelessWidget {
   const _SortChip({required this.label, required this.value, required this.current, required this.ffTheme, required this.onTap});
   final String label, value, current;
-  final FlutterFlowTheme ffTheme;
+  final AppTheme ffTheme;
   final VoidCallback onTap;
 
   @override
@@ -553,7 +553,7 @@ class _SortChip extends StatelessWidget {
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: active ? ffTheme.primary : ffTheme.alternate),
         ),
-        child: Text(label, style: ffTheme.labelSmall.override(
+        child: Text(label, style: ffTheme.labelSmall.copyWith(
           color: active ? Colors.white : ffTheme.secondaryText,
           fontWeight: active ? FontWeight.w700 : FontWeight.w500,
           fontSize: 11,
@@ -569,7 +569,7 @@ class _PodiumItem extends StatelessWidget {
   final String provider;
   final double avg;
   final double height;
-  final FlutterFlowTheme ffTheme;
+  final AppTheme ffTheme;
 
   @override
   Widget build(BuildContext context) {
@@ -607,7 +607,7 @@ class _SubBar extends StatelessWidget {
   const _SubBar({required this.label, required this.value, required this.ffTheme});
   final String label;
   final double value;
-  final FlutterFlowTheme ffTheme;
+  final AppTheme ffTheme;
 
   @override
   Widget build(BuildContext context) {
@@ -632,7 +632,7 @@ class _SubBar extends StatelessWidget {
         const SizedBox(width: 8),
         Text(
           (value * 5).toStringAsFixed(1),
-          style: ffTheme.labelSmall.override(fontWeight: FontWeight.w700),
+          style: ffTheme.labelSmall.copyWith(fontWeight: FontWeight.w700),
         ),
       ],
     );

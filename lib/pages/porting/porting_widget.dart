@@ -2,13 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import '../../flutter_flow/flutter_flow_theme.dart';
-import '../../flutter_flow/flutter_flow_util.dart';
-import '../../flutter_flow/flutter_flow_widgets.dart';
+import '../../theme/app_theme.dart';
+import '../../core/nav.dart';
+import '../../widgets/app_button.dart';
 import '../../app_state.dart';
-import 'porting_model.dart';
-
-export 'porting_model.dart';
 
 class PortingWidget extends StatefulWidget {
   const PortingWidget({super.key});
@@ -18,7 +15,21 @@ class PortingWidget extends StatefulWidget {
 }
 
 class _PortingWidgetState extends State<PortingWidget> {
-  late final PortingModel _model;
+  final TextEditingController _phoneController = TextEditingController();
+  final TextEditingController _idController = TextEditingController();
+  String? _selectedProvider;
+  bool _poaAccepted = false;
+  bool _submitted = false;
+
+  bool get _canSubmit {
+    final phone = _phoneController.text.replaceAll(RegExp(r'[\s\-]'), '');
+    return phone.length >= 9 &&
+        phone.length <= 10 &&
+        phone.startsWith('0') &&
+        _idController.text.trim().length == 9 &&
+        _selectedProvider != null &&
+        _poaAccepted;
+  }
 
   static const _providers = [
     'פלאפון',
@@ -40,21 +51,23 @@ class _PortingWidgetState extends State<PortingWidget> {
   @override
   void initState() {
     super.initState();
-    _model = createModel(context, PortingModel.new);
+    final phone = AppState().userPhone;
+    if (phone.isNotEmpty) _phoneController.text = phone.replaceAll('-', '');
   }
 
   @override
   void dispose() {
-    _model.dispose();
+    _phoneController.dispose();
+    _idController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final ffTheme = FlutterFlowTheme.of(context);
-    Provider.of<FFAppState>(context);
+    final ffTheme = AppTheme.of(context);
+    Provider.of<AppState>(context);
 
-    if (_model.submitted) {
+    if (_submitted) {
       return _SuccessState(ffTheme: ffTheme);
     }
 
@@ -69,7 +82,7 @@ class _PortingWidgetState extends State<PortingWidget> {
           onPressed: () => context.safePop(),
         ),
         title: Text('בקשת ניוד מספר',
-            style: ffTheme.titleLarge.override(color: Colors.white)),
+            style: ffTheme.titleLarge.copyWith(color: Colors.white)),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
@@ -91,7 +104,7 @@ class _PortingWidgetState extends State<PortingWidget> {
                     children: [
                       Icon(Icons.info_outline_rounded, color: ffTheme.primary, size: 18),
                       const SizedBox(width: 8),
-                      Text('כיצד עובד הניוד?', style: ffTheme.labelLarge.override(color: ffTheme.primary)),
+                      Text('כיצד עובד הניוד?', style: ffTheme.labelLarge.copyWith(color: ffTheme.primary)),
                     ],
                   ),
                   const SizedBox(height: 14),
@@ -111,7 +124,7 @@ class _PortingWidgetState extends State<PortingWidget> {
                                 child: Icon(item.$1, size: 17, color: ffTheme.primary),
                               ),
                               const SizedBox(height: 5),
-                              Text(item.$2, style: ffTheme.labelSmall.override(color: ffTheme.primary), textAlign: TextAlign.center),
+                              Text(item.$2, style: ffTheme.labelSmall.copyWith(color: ffTheme.primary), textAlign: TextAlign.center),
                             ],
                           ),
                         ),
@@ -130,7 +143,7 @@ class _PortingWidgetState extends State<PortingWidget> {
             Text('מספר לניוד', style: ffTheme.titleSmall),
             const SizedBox(height: 8),
             _buildTextField(
-              controller: _model.phoneController,
+              controller: _phoneController,
               hint: '05X-XXXXXXX',
               keyboardType: TextInputType.phone,
               inputFormatters: [
@@ -147,7 +160,7 @@ class _PortingWidgetState extends State<PortingWidget> {
             Text('מספר תעודת זהות', style: ffTheme.titleSmall),
             const SizedBox(height: 8),
             _buildTextField(
-              controller: _model.idController,
+              controller: _idController,
               hint: '9 ספרות',
               keyboardType: TextInputType.number,
               inputFormatters: [
@@ -167,9 +180,9 @@ class _PortingWidgetState extends State<PortingWidget> {
               spacing: 8,
               runSpacing: 8,
               children: _providers.map((p) {
-                final selected = _model.selectedProvider == p;
+                final selected = _selectedProvider == p;
                 return GestureDetector(
-                  onTap: () => setState(() => _model.selectedProvider = p),
+                  onTap: () => setState(() => _selectedProvider = p),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
                     padding: const EdgeInsets.symmetric(
@@ -193,7 +206,7 @@ class _PortingWidgetState extends State<PortingWidget> {
                     ),
                     child: Text(
                       p,
-                      style: ffTheme.bodyMedium.override(
+                      style: ffTheme.bodyMedium.copyWith(
                           color: selected
                               ? Colors.white
                               : ffTheme.primaryText,
@@ -223,7 +236,7 @@ class _PortingWidgetState extends State<PortingWidget> {
                   const SizedBox(width: 10),
                   Text(
                     'זמן ניוד: עד 3 ימי עסקים',
-                    style: ffTheme.bodySmall.override(
+                    style: ffTheme.bodySmall.copyWith(
                         color: ffTheme.warning,
                         fontWeight: FontWeight.w600),
                   ),
@@ -236,7 +249,7 @@ class _PortingWidgetState extends State<PortingWidget> {
             // POA checkbox
             GestureDetector(
               onTap: () =>
-                  setState(() => _model.poaAccepted = !_model.poaAccepted),
+                  setState(() => _poaAccepted = !_poaAccepted),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -245,17 +258,17 @@ class _PortingWidgetState extends State<PortingWidget> {
                     width: 24,
                     height: 24,
                     decoration: BoxDecoration(
-                      color: _model.poaAccepted
+                      color: _poaAccepted
                           ? ffTheme.primary
                           : Colors.white,
                       borderRadius: BorderRadius.circular(6),
                       border: Border.all(
-                          color: _model.poaAccepted
+                          color: _poaAccepted
                               ? ffTheme.primary
                               : ffTheme.alternate,
                           width: 1.5),
                     ),
-                    child: _model.poaAccepted
+                    child: _poaAccepted
                         ? const Icon(Icons.check_rounded,
                             size: 16, color: Colors.white)
                         : null,
@@ -276,24 +289,24 @@ class _PortingWidgetState extends State<PortingWidget> {
             // Submit button
             AnimatedBuilder(
               animation: Listenable.merge(
-                  [_model.phoneController, _model.idController]),
+                  [_phoneController, _idController]),
               builder: (context, _) {
-                final canSubmit = _model.canSubmit;
-                return FFButtonWidget(
+                final canSubmit = _canSubmit;
+                return AppButton(
                   text: 'שלח בקשת ניוד',
                   onPressed: canSubmit
-                      ? () async => setState(() => _model.submitted = true)
+                      ? () async => setState(() => _submitted = true)
                       : () async {},
-                  options: FFButtonOptions(
+                  
                     height: 56,
                     color:
                         canSubmit ? ffTheme.primary : ffTheme.alternate,
-                    textStyle: ffTheme.titleSmall.override(
+                    textStyle: ffTheme.titleSmall.copyWith(
                         color: canSubmit
                             ? Colors.white
                             : ffTheme.secondaryText),
                     borderRadius: BorderRadius.circular(16),
-                  ),
+                  
                 );
               },
             ).animate(delay: 300.ms).fadeIn(duration: 280.ms),
@@ -310,7 +323,7 @@ class _PortingWidgetState extends State<PortingWidget> {
     required String hint,
     required TextInputType keyboardType,
     required List<TextInputFormatter> inputFormatters,
-    required FlutterFlowTheme ffTheme,
+    required AppTheme ffTheme,
     required IconData prefixIcon,
   }) {
     return TextField(
@@ -347,7 +360,7 @@ class _PortingWidgetState extends State<PortingWidget> {
 
 class _SuccessState extends StatelessWidget {
   const _SuccessState({required this.ffTheme});
-  final FlutterFlowTheme ffTheme;
+  final AppTheme ffTheme;
 
   @override
   Widget build(BuildContext context) {
@@ -378,7 +391,7 @@ class _SuccessState extends StatelessWidget {
 
               Text(
                 'הבקשה נשלחה בהצלחה! ✓',
-                style: ffTheme.headlineMedium.override(color: Colors.white),
+                style: ffTheme.headlineMedium.copyWith(color: Colors.white),
                 textAlign: TextAlign.center,
               ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.2),
 
@@ -386,7 +399,7 @@ class _SuccessState extends StatelessWidget {
 
               Text(
                 'נציג ייצור קשר תוך 24 שעות\nלהשלמת תהליך הניוד',
-                style: ffTheme.bodyLarge.override(color: Colors.white.withOpacity(0.85)),
+                style: ffTheme.bodyLarge.copyWith(color: Colors.white.withOpacity(0.85)),
                 textAlign: TextAlign.center,
               ).animate().fadeIn(delay: 400.ms),
 
@@ -403,30 +416,30 @@ class _SuccessState extends StatelessWidget {
                   children: [
                     Icon(Icons.schedule_rounded, color: ffTheme.secondary, size: 16),
                     const SizedBox(width: 8),
-                    Text('זמן ניוד: 1–3 ימי עסקים', style: ffTheme.labelMedium.override(color: ffTheme.secondary, fontWeight: FontWeight.w600)),
+                    Text('זמן ניוד: 1–3 ימי עסקים', style: ffTheme.labelMedium.copyWith(color: ffTheme.secondary, fontWeight: FontWeight.w600)),
                   ],
                 ),
               ).animate().fadeIn(delay: 450.ms),
 
               const SizedBox(height: 40),
 
-              FFButtonWidget(
+              AppButton(
                 text: 'עקוב אחר הניוד',
                 onPressed: () async => context.goNamed('Tracker'),
-                options: FFButtonOptions(
+                
                   width: double.infinity,
                   height: 56,
                   color: ffTheme.secondary,
-                  textStyle: ffTheme.titleMedium.override(color: ffTheme.primary),
+                  textStyle: ffTheme.titleMedium.copyWith(color: ffTheme.primary),
                   borderRadius: BorderRadius.circular(16),
-                ),
+                
               ).animate().fadeIn(delay: 500.ms),
 
               const SizedBox(height: 12),
 
               TextButton(
                 onPressed: () => context.goNamed('Account'),
-                child: Text('חזרה לאזור האישי', style: ffTheme.bodyMedium.override(color: Colors.white70)),
+                child: Text('חזרה לאזור האישי', style: ffTheme.bodyMedium.copyWith(color: Colors.white70)),
               ).animate().fadeIn(delay: 600.ms),
             ],
           ),

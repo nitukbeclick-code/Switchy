@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../flutter_flow/flutter_flow_theme.dart';
-import '../../flutter_flow/flutter_flow_util.dart';
+import '../../theme/app_theme.dart';
+import '../../core/nav.dart';
 import '../../app_state.dart';
 import '../../data.dart';
 import '../../models.dart';
@@ -42,7 +42,7 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
   @override
   void initState() {
     super.initState();
-    final appState = FFAppState();
+    final appState = AppState();
     final String greeting;
     if (appState.isLoggedIn && appState.firstName.isNotEmpty && appState.firstName != 'אורח') {
       greeting = 'שלום ${appState.firstName}! אני חוסך AI 🤖\nיועץ התקשורת החכם שלך.\n\nמה מחפשים?';
@@ -68,7 +68,7 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
   Future<void> _send(String text) async {
     if (text.trim().isEmpty || _isTyping) return;
     _inputCtrl.clear();
-    final appState = Provider.of<FFAppState>(context, listen: false);
+    final appState = Provider.of<AppState>(context, listen: false);
     setState(() {
       _messages.add(_ChatMsg(text: text, isUser: true, time: DateTime.now()));
       _isTyping = true;
@@ -259,8 +259,8 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
 
   @override
   Widget build(BuildContext context) {
-    final ffTheme = FlutterFlowTheme.of(context);
-    final appState = Provider.of<FFAppState>(context, listen: false);
+    final ffTheme = AppTheme.of(context);
+    final appState = Provider.of<AppState>(context, listen: false);
 
     final quickStarts = [
       '📱 סלולר הכי זול',
@@ -436,7 +436,7 @@ class _ChatMsg {
 class _MessageBubble extends StatelessWidget {
   const _MessageBubble({required this.msg, required this.ffTheme, required this.bill});
   final _ChatMsg msg;
-  final FlutterFlowTheme ffTheme;
+  final AppTheme ffTheme;
   final int bill;
 
   @override
@@ -463,7 +463,7 @@ class _MessageBubble extends StatelessWidget {
                       bottomRight: Radius.circular(18),
                     ),
                   ),
-                  child: Text(msg.text, style: ffTheme.bodyMedium.override(lineHeight: 1.5), textDirection: TextDirection.rtl),
+                  child: Text(msg.text, style: ffTheme.bodyMedium.copyWith(height: 1.5), textDirection: TextDirection.rtl),
                 ),
               ] else ...[
                 Container(
@@ -478,7 +478,7 @@ class _MessageBubble extends StatelessWidget {
                       bottomRight: Radius.circular(4),
                     ),
                   ),
-                  child: Text(msg.text, style: ffTheme.bodyMedium.override(color: Colors.white, lineHeight: 1.5), textDirection: TextDirection.rtl),
+                  child: Text(msg.text, style: ffTheme.bodyMedium.copyWith(color: Colors.white, height: 1.5), textDirection: TextDirection.rtl),
                 ),
               ],
             ],
@@ -494,7 +494,7 @@ class _MessageBubble extends StatelessWidget {
               alignment: Alignment.centerRight,
               child: GestureDetector(
                 onTap: () {
-                  Provider.of<FFAppState>(context, listen: false).setCategory(msg.cat);
+                  Provider.of<AppState>(context, listen: false).setCategory(msg.cat);
                   context.pushNamed('Results');
                 },
                 child: Container(
@@ -507,7 +507,7 @@ class _MessageBubble extends StatelessWidget {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text('ראה את כל המסלולים', style: ffTheme.labelSmall.override(color: ffTheme.primary, fontWeight: FontWeight.w600)),
+                      Text('ראה את כל המסלולים', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w600)),
                       const SizedBox(width: 4),
                       Icon(Icons.arrow_back_ios_rounded, size: 11, color: ffTheme.primary),
                     ],
@@ -524,7 +524,7 @@ class _MessageBubble extends StatelessWidget {
 
 class _TypingBubble extends StatelessWidget {
   const _TypingBubble({required this.ffTheme});
-  final FlutterFlowTheme ffTheme;
+  final AppTheme ffTheme;
 
   @override
   Widget build(BuildContext context) {

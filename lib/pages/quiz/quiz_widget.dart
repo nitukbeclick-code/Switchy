@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../flutter_flow/flutter_flow_theme.dart';
-import '../../flutter_flow/flutter_flow_util.dart';
-import '../../flutter_flow/flutter_flow_widgets.dart';
+import '../../theme/app_theme.dart';
+import '../../core/nav.dart';
+import '../../widgets/app_button.dart';
 import '../../app_state.dart';
 import '../../data.dart';
 
@@ -24,7 +24,7 @@ class _QuizWidgetState extends State<QuizWidget> {
   @override
   void initState() {
     super.initState();
-    final appState = FFAppState();
+    final appState = AppState();
     // Pre-fill from existing quiz state if already completed
     _cat = appState.selectedCat;
     _lines = appState.quizLines;
@@ -50,7 +50,7 @@ class _QuizWidgetState extends State<QuizWidget> {
 
   @override
   Widget build(BuildContext context) {
-    final ffTheme = FlutterFlowTheme.of(context);
+    final ffTheme = AppTheme.of(context);
 
     return Scaffold(
       backgroundColor: ffTheme.background,
@@ -107,16 +107,16 @@ class _QuizWidgetState extends State<QuizWidget> {
                       ),
                     ),
                   Expanded(
-                    child: FFButtonWidget(
+                    child: AppButton(
                       text: _step < 3 ? 'הבא ←' : '🔍 הצג תוצאות',
                       onPressed: () async => _next(),
-                      options: FFButtonOptions(
+                      
                         width: double.infinity,
                         height: 56,
                         color: ffTheme.primary,
-                        textStyle: ffTheme.titleMedium.override(color: Colors.white),
+                        textStyle: ffTheme.titleMedium.copyWith(color: Colors.white),
                         borderRadius: BorderRadius.circular(18),
-                      ),
+                      
                     ),
                   ),
                 ],
@@ -128,7 +128,7 @@ class _QuizWidgetState extends State<QuizWidget> {
     );
   }
 
-  Widget _buildStep(FlutterFlowTheme ffTheme) {
+  Widget _buildStep(AppTheme ffTheme) {
     switch (_step) {
       case 0:
         return _StepCard(
@@ -361,12 +361,12 @@ class _QuizWidgetState extends State<QuizWidget> {
             children: [
               Text(
                 '₪${clampedBudget.round()}${_cat == 'abroad' ? '' : '/חודש'}',
-                style: ffTheme.displayMedium.override(color: ffTheme.primary),
+                style: ffTheme.displayMedium.copyWith(color: ffTheme.primary),
               ),
               const SizedBox(height: 4),
               Text(
                 '$planCount מסלולים בתקציב זה',
-                style: ffTheme.labelMedium.override(
+                style: ffTheme.labelMedium.copyWith(
                   color: planCount > 0 ? ffTheme.success : ffTheme.error,
                   fontWeight: FontWeight.w600,
                 ),
@@ -407,7 +407,7 @@ class _QuizWidgetState extends State<QuizWidget> {
                         border: Border.all(color: active ? ffTheme.primary : ffTheme.alternate),
                       ),
                       child: Text('₪$preset',
-                        style: ffTheme.labelMedium.override(
+                        style: ffTheme.labelMedium.copyWith(
                           color: active ? Colors.white : ffTheme.primaryText,
                           fontWeight: active ? FontWeight.w700 : FontWeight.w500,
                         )),
@@ -456,7 +456,7 @@ class _QuizWidgetState extends State<QuizWidget> {
     if (_step < 3) {
       setState(() => _step++);
     } else {
-      final appState = Provider.of<FFAppState>(context, listen: false);
+      final appState = Provider.of<AppState>(context, listen: false);
       appState.setCategory(_cat);
       appState.setQuizLines(_lines);
       appState.setQuizPriority(_priority);
@@ -493,7 +493,7 @@ class _StepCard extends StatelessWidget {
   final int step;
   final String title;
   final String subtitle;
-  final FlutterFlowTheme ffTheme;
+  final AppTheme ffTheme;
   final Widget child;
 
   @override
@@ -506,7 +506,7 @@ class _StepCard extends StatelessWidget {
           const SizedBox(height: 8),
           Text(title, style: ffTheme.headlineMedium),
           const SizedBox(height: 4),
-          Text(subtitle, style: ffTheme.bodyMedium.override(color: ffTheme.secondaryText)),
+          Text(subtitle, style: ffTheme.bodyMedium.copyWith(color: ffTheme.secondaryText)),
           const SizedBox(height: 32),
           child,
         ],
@@ -521,7 +521,7 @@ class _ChoiceChip extends StatelessWidget {
   final String label;
   final bool selected;
   final VoidCallback onTap;
-  final FlutterFlowTheme ffTheme;
+  final AppTheme ffTheme;
 
   @override
   Widget build(BuildContext context) {
@@ -540,7 +540,7 @@ class _ChoiceChip extends StatelessWidget {
           children: [
             Text(emoji, style: const TextStyle(fontSize: 18)),
             const SizedBox(width: 8),
-            Text(label, style: ffTheme.labelLarge.override(color: selected ? Colors.white : ffTheme.primaryText)),
+            Text(label, style: ffTheme.labelLarge.copyWith(color: selected ? Colors.white : ffTheme.primaryText)),
           ],
         ),
       ),
@@ -554,7 +554,7 @@ class _RadioTile extends StatelessWidget {
   final String label;
   final bool selected;
   final VoidCallback onTap;
-  final FlutterFlowTheme ffTheme;
+  final AppTheme ffTheme;
 
   @override
   Widget build(BuildContext context) {
@@ -573,7 +573,7 @@ class _RadioTile extends StatelessWidget {
           children: [
             Text(emoji, style: const TextStyle(fontSize: 22)),
             const SizedBox(width: 12),
-            Expanded(child: Text(label, style: ffTheme.bodyLarge.override(color: selected ? ffTheme.primary : ffTheme.primaryText))),
+            Expanded(child: Text(label, style: ffTheme.bodyLarge.copyWith(color: selected ? ffTheme.primary : ffTheme.primaryText))),
             if (selected) Icon(Icons.check_circle_rounded, color: ffTheme.primary),
           ],
         ),

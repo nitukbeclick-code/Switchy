@@ -2,9 +2,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../flutter_flow/flutter_flow_theme.dart';
-import '../../flutter_flow/flutter_flow_util.dart';
-import '../../flutter_flow/flutter_flow_widgets.dart';
+import '../../theme/app_theme.dart';
+import '../../core/nav.dart';
+import '../../widgets/app_button.dart';
 import '../../app_state.dart';
 
 class CallbackWidget extends StatefulWidget {
@@ -36,7 +36,7 @@ class _CallbackWidgetState extends State<CallbackWidget> {
   @override
   void initState() {
     super.initState();
-    final appState = FFAppState();
+    final appState = AppState();
     if (appState.userName.isNotEmpty) _nameCtrl.text = appState.userName;
     if (appState.userPhone.isNotEmpty) _phoneCtrl.text = appState.userPhone;
     _expertTimer = Timer.periodic(const Duration(seconds: 3), (_) {
@@ -54,7 +54,7 @@ class _CallbackWidgetState extends State<CallbackWidget> {
 
   @override
   Widget build(BuildContext context) {
-    final ffTheme = FlutterFlowTheme.of(context);
+    final ffTheme = AppTheme.of(context);
 
     if (_submitted) return _buildSuccessState(ffTheme, context);
 
@@ -76,13 +76,13 @@ class _CallbackWidgetState extends State<CallbackWidget> {
             const SizedBox(height: 24),
 
             // Topic selector
-            Text('בנושא מה תרצו לדבר?', style: ffTheme.labelLarge.override(fontWeight: FontWeight.w600)),
+            Text('בנושא מה תרצו לדבר?', style: ffTheme.labelLarge.copyWith(fontWeight: FontWeight.w600)),
             const SizedBox(height: 10),
             _buildTopicChips(ffTheme),
             const SizedBox(height: 20),
 
             // Name field
-            Text('שם מלא', style: ffTheme.labelLarge.override(fontWeight: FontWeight.w600)),
+            Text('שם מלא', style: ffTheme.labelLarge.copyWith(fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
             TextField(
               controller: _nameCtrl,
@@ -92,7 +92,7 @@ class _CallbackWidgetState extends State<CallbackWidget> {
 
             const SizedBox(height: 16),
 
-            Text('מספר טלפון', style: ffTheme.labelLarge.override(fontWeight: FontWeight.w600)),
+            Text('מספר טלפון', style: ffTheme.labelLarge.copyWith(fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
             TextField(
               controller: _phoneCtrl,
@@ -103,7 +103,7 @@ class _CallbackWidgetState extends State<CallbackWidget> {
 
             const SizedBox(height: 20),
 
-            Text('מתי נוח לכם?', style: ffTheme.labelLarge.override(fontWeight: FontWeight.w600)),
+            Text('מתי נוח לכם?', style: ffTheme.labelLarge.copyWith(fontWeight: FontWeight.w600)),
             const SizedBox(height: 10),
             _buildTimingChips(ffTheme),
 
@@ -125,8 +125,8 @@ class _CallbackWidgetState extends State<CallbackWidget> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('שעות פעילות', style: ffTheme.labelMedium.override(fontWeight: FontWeight.w600)),
-                        Text('ימי א׳–ה׳, 9:00–21:00 • שישי 9:00–14:00', style: ffTheme.labelSmall.override(color: ffTheme.secondaryText)),
+                        Text('שעות פעילות', style: ffTheme.labelMedium.copyWith(fontWeight: FontWeight.w600)),
+                        Text('ימי א׳–ה׳, 9:00–21:00 • שישי 9:00–14:00', style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText)),
                       ],
                     ),
                   ),
@@ -141,13 +141,13 @@ class _CallbackWidgetState extends State<CallbackWidget> {
 
             const SizedBox(height: 24),
 
-            FFButtonWidget(
+            AppButton(
               text: _isLoading ? 'שולח...' : 'בקש שיחה חוזרת',
               onPressed: _isLoading ? () async {} : () async {
                 if (_nameCtrl.text.trim().isEmpty || _phoneCtrl.text.trim().isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                     content: const Text('נא למלא שם ומספר טלפון'),
-                    backgroundColor: FlutterFlowTheme.of(context).error,
+                    backgroundColor: AppTheme.of(context).error,
                     behavior: SnackBarBehavior.floating,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     duration: const Duration(seconds: 2),
@@ -158,7 +158,7 @@ class _CallbackWidgetState extends State<CallbackWidget> {
                 if (phoneDigits.length < 9 || phoneDigits.length > 10 || !phoneDigits.startsWith('0')) {
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                     content: const Text('מספר טלפון אינו תקין'),
-                    backgroundColor: FlutterFlowTheme.of(context).error,
+                    backgroundColor: AppTheme.of(context).error,
                     behavior: SnackBarBehavior.floating,
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     duration: const Duration(seconds: 2),
@@ -170,13 +170,13 @@ class _CallbackWidgetState extends State<CallbackWidget> {
                 if (!mounted) return;
                 setState(() { _isLoading = false; _submitted = true; });
               },
-              options: FFButtonOptions(
+              
                 width: double.infinity,
                 height: 56,
                 color: _isLoading ? ffTheme.alternate : ffTheme.primary,
-                textStyle: ffTheme.titleSmall.override(color: Colors.white),
+                textStyle: ffTheme.titleSmall.copyWith(color: Colors.white),
                 borderRadius: BorderRadius.circular(16),
-              ),
+              
             ).animate().fadeIn(delay: 220.ms),
 
             const SizedBox(height: 12),
@@ -187,7 +187,7 @@ class _CallbackWidgetState extends State<CallbackWidget> {
                 children: [
                   Icon(Icons.lock_outline_rounded, size: 13, color: ffTheme.secondaryText),
                   const SizedBox(width: 4),
-                  Text('ללא עלות. פרטייך מוגנים לחלוטין', style: ffTheme.labelSmall.override(color: ffTheme.secondaryText)),
+                  Text('ללא עלות. פרטייך מוגנים לחלוטין', style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText)),
                 ],
               ),
             ),
@@ -199,7 +199,7 @@ class _CallbackWidgetState extends State<CallbackWidget> {
     );
   }
 
-  Widget _buildExpertCard(FlutterFlowTheme ffTheme) {
+  Widget _buildExpertCard(AppTheme ffTheme) {
     final expert = _experts[_expertIndex];
     return AnimatedSwitcher(
       duration: const Duration(milliseconds: 400),
@@ -266,7 +266,7 @@ class _CallbackWidgetState extends State<CallbackWidget> {
     ).animate().fadeIn(duration: 350.ms);
   }
 
-  Widget _buildTopicChips(FlutterFlowTheme ffTheme) {
+  Widget _buildTopicChips(AppTheme ffTheme) {
     return Wrap(
       spacing: 8,
       runSpacing: 8,
@@ -283,7 +283,7 @@ class _CallbackWidgetState extends State<CallbackWidget> {
               border: Border.all(color: active ? ffTheme.primary : ffTheme.alternate),
               boxShadow: active ? [BoxShadow(color: ffTheme.primary.withOpacity(0.2), blurRadius: 8, offset: const Offset(0, 2))] : [],
             ),
-            child: Text(t, style: ffTheme.labelMedium.override(
+            child: Text(t, style: ffTheme.labelMedium.copyWith(
               color: active ? Colors.white : ffTheme.primaryText,
               fontWeight: active ? FontWeight.w700 : FontWeight.w500,
             )),
@@ -293,7 +293,7 @@ class _CallbackWidgetState extends State<CallbackWidget> {
     ).animate().fadeIn(delay: 80.ms);
   }
 
-  Widget _buildTimingChips(FlutterFlowTheme ffTheme) {
+  Widget _buildTimingChips(AppTheme ffTheme) {
     final icons = [Icons.flash_on_rounded, Icons.wb_sunny_outlined, Icons.wb_twilight_outlined, Icons.nights_stay_outlined];
     return Row(
       children: List.generate(_timings.length, (i) {
@@ -316,7 +316,7 @@ class _CallbackWidgetState extends State<CallbackWidget> {
                 children: [
                   Icon(icons[i], size: 18, color: active ? Colors.white : ffTheme.secondaryText),
                   const SizedBox(height: 4),
-                  Text(t, style: ffTheme.labelSmall.override(color: active ? Colors.white : ffTheme.primaryText, fontWeight: active ? FontWeight.w700 : FontWeight.w500, fontSize: 11)),
+                  Text(t, style: ffTheme.labelSmall.copyWith(color: active ? Colors.white : ffTheme.primaryText, fontWeight: active ? FontWeight.w700 : FontWeight.w500, fontSize: 11)),
                 ],
               ),
             ),
@@ -326,7 +326,7 @@ class _CallbackWidgetState extends State<CallbackWidget> {
     ).animate().fadeIn(delay: 140.ms);
   }
 
-  Widget _buildSuccessState(FlutterFlowTheme ffTheme, BuildContext context) {
+  Widget _buildSuccessState(AppTheme ffTheme, BuildContext context) {
     return Scaffold(
       backgroundColor: ffTheme.background,
       body: SafeArea(
@@ -359,7 +359,7 @@ class _CallbackWidgetState extends State<CallbackWidget> {
               const SizedBox(height: 8),
               Text(
                 'נציג ייצור קשר $_timing\nבנושא: $_topic',
-                style: ffTheme.bodyLarge.override(color: ffTheme.secondaryText),
+                style: ffTheme.bodyLarge.copyWith(color: ffTheme.secondaryText),
                 textAlign: TextAlign.center,
               ).animate().fadeIn(delay: 400.ms),
               const SizedBox(height: 24),
@@ -375,26 +375,26 @@ class _CallbackWidgetState extends State<CallbackWidget> {
                   children: [
                     Icon(Icons.access_time_rounded, size: 16, color: ffTheme.primary),
                     const SizedBox(width: 8),
-                    Text('ימי א׳–ה׳, 9:00–21:00', style: ffTheme.labelMedium.override(color: ffTheme.primary, fontWeight: FontWeight.w600)),
+                    Text('ימי א׳–ה׳, 9:00–21:00', style: ffTheme.labelMedium.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w600)),
                   ],
                 ),
               ).animate().fadeIn(delay: 450.ms),
               const SizedBox(height: 32),
-              FFButtonWidget(
+              AppButton(
                 text: 'מעקב אחר התהליך',
                 onPressed: () => context.goNamed('Tracker'),
-                options: FFButtonOptions(
+                
                   width: 240,
                   height: 52,
                   color: ffTheme.primary,
-                  textStyle: ffTheme.titleSmall.override(color: Colors.white),
+                  textStyle: ffTheme.titleSmall.copyWith(color: Colors.white),
                   borderRadius: BorderRadius.circular(14),
-                ),
+                
               ).animate().fadeIn(delay: 500.ms),
               const SizedBox(height: 12),
               TextButton(
                 onPressed: () => context.safePop(),
-                child: Text('חזרה', style: ffTheme.bodyMedium.override(color: ffTheme.secondaryText)),
+                child: Text('חזרה', style: ffTheme.bodyMedium.copyWith(color: ffTheme.secondaryText)),
               ).animate().fadeIn(delay: 600.ms),
             ],
           ),
@@ -403,7 +403,7 @@ class _CallbackWidgetState extends State<CallbackWidget> {
     );
   }
 
-  InputDecoration _inputDecoration(FlutterFlowTheme ffTheme, {required String hint, required IconData icon}) {
+  InputDecoration _inputDecoration(AppTheme ffTheme, {required String hint, required IconData icon}) {
     return InputDecoration(
       hintText: hint,
       filled: true,

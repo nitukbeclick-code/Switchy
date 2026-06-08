@@ -11,6 +11,6 @@ void main() async {
     statusBarBrightness: Brightness.dark,
     statusBarIconBrightness: Brightness.light,
   ));
-  await FFAppState().initializePersistedState();
-  runApp(ChangeNotifierProvider.value(value: FFAppState(), child: const ChosechApp()));
+  await AppState().initializePersistedState();
+  runApp(ChangeNotifierProvider.value(value: AppState(), child: const ChosechApp()));
 }

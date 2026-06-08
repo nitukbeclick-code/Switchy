@@ -3,8 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-import '../../flutter_flow/flutter_flow_theme.dart';
-import '../../flutter_flow/flutter_flow_util.dart';
+import '../../theme/app_theme.dart';
+import '../../core/nav.dart';
 import '../../app_state.dart';
 import '../../data.dart';
 import '../../components/logo_widget/logo_widget.dart';
@@ -31,7 +31,7 @@ class _ChatWidgetState extends State<ChatWidget> {
   @override
   void initState() {
     super.initState();
-    final appState = FFAppState();
+    final appState = AppState();
     final name = appState.isLoggedIn ? appState.firstName : '';
     final greeting = name.isNotEmpty ? 'שלום $name! ' : 'שלום! ';
 
@@ -173,8 +173,8 @@ class _ChatWidgetState extends State<ChatWidget> {
 
   @override
   Widget build(BuildContext context) {
-    final ffTheme = FlutterFlowTheme.of(context);
-    Provider.of<FFAppState>(context, listen: false);
+    final ffTheme = AppTheme.of(context);
+    Provider.of<AppState>(context, listen: false);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF0F2F5),
@@ -215,7 +215,7 @@ class _ChatWidgetState extends State<ChatWidget> {
     );
   }
 
-  PreferredSizeWidget _buildAppBar(FlutterFlowTheme ffTheme, BuildContext context) {
+  PreferredSizeWidget _buildAppBar(AppTheme ffTheme, BuildContext context) {
     return AppBar(
       backgroundColor: ffTheme.primary,
       foregroundColor: Colors.white,
@@ -281,7 +281,7 @@ class _ChatWidgetState extends State<ChatWidget> {
     );
   }
 
-  Widget _buildPlanBanner(FlutterFlowTheme ffTheme, BuildContext context) {
+  Widget _buildPlanBanner(AppTheme ffTheme, BuildContext context) {
     final plan = _contextPlan!;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -297,22 +297,22 @@ class _ChatWidgetState extends State<ChatWidget> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(plan.provider, style: ffTheme.labelLarge.override(color: ffTheme.primary, fontWeight: FontWeight.w700)),
-                Text(plan.plan, style: ffTheme.labelSmall.override(color: ffTheme.secondaryText), maxLines: 1, overflow: TextOverflow.ellipsis),
+                Text(plan.provider, style: ffTheme.labelLarge.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+                Text(plan.plan, style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText), maxLines: 1, overflow: TextOverflow.ellipsis),
               ],
             ),
           ),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(color: ffTheme.primary, borderRadius: BorderRadius.circular(20)),
-            child: Text('₪${plan.price}/${plan.cat == 'abroad' ? 'חבילה' : 'חודש'}', style: ffTheme.labelSmall.override(color: Colors.white, fontWeight: FontWeight.w700)),
+            child: Text('₪${plan.price}/${plan.cat == 'abroad' ? 'חבילה' : 'חודש'}', style: ffTheme.labelSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
           ),
         ],
       ),
     ).animate().fadeIn(duration: 300.ms);
   }
 
-  Widget _buildDateDivider(DateTime time, FlutterFlowTheme ffTheme) {
+  Widget _buildDateDivider(DateTime time, AppTheme ffTheme) {
     final now = DateTime.now();
     final diff = now.difference(time).inDays;
     final label = diff == 0 ? 'היום' : diff == 1 ? 'אתמול' : '${time.day}/${time.month}/${time.year}';
@@ -323,7 +323,7 @@ class _ChatWidgetState extends State<ChatWidget> {
           Expanded(child: Divider(color: Colors.black12)),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
-            child: Text(label, style: ffTheme.labelSmall.override(color: ffTheme.secondaryText)),
+            child: Text(label, style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText)),
           ),
           Expanded(child: Divider(color: Colors.black12)),
         ],
@@ -331,7 +331,7 @@ class _ChatWidgetState extends State<ChatWidget> {
     );
   }
 
-  Widget _buildQuickReplies(FlutterFlowTheme ffTheme) {
+  Widget _buildQuickReplies(AppTheme ffTheme) {
     return SizedBox(
       height: 46,
       child: ListView.separated(
@@ -348,14 +348,14 @@ class _ChatWidgetState extends State<ChatWidget> {
               borderRadius: BorderRadius.circular(20),
               border: Border.all(color: ffTheme.primary.withOpacity(0.3)),
             ),
-            child: Text(_quickReplies[i], style: ffTheme.labelSmall.override(color: ffTheme.primary, fontWeight: FontWeight.w600)),
+            child: Text(_quickReplies[i], style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w600)),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildInputBar(FlutterFlowTheme ffTheme) {
+  Widget _buildInputBar(AppTheme ffTheme) {
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
       decoration: BoxDecoration(
@@ -411,7 +411,7 @@ class _ChatWidgetState extends State<ChatWidget> {
     return '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
   }
 
-  Widget _buildBubble(_Msg msg, FlutterFlowTheme ffTheme, {required bool showAvatar}) {
+  Widget _buildBubble(_Msg msg, AppTheme ffTheme, {required bool showAvatar}) {
     final isUser = msg.isUser;
     return Padding(
       padding: EdgeInsets.only(
@@ -452,9 +452,9 @@ class _ChatWidgetState extends State<ChatWidget> {
                   ),
                   child: Text(
                     msg.text,
-                    style: ffTheme.bodyMedium.override(
+                    style: ffTheme.bodyMedium.copyWith(
                       color: isUser ? Colors.white : ffTheme.primaryText,
-                      lineHeight: 1.5,
+                      height: 1.5,
                     ),
                     textDirection: TextDirection.rtl,
                   ),
@@ -468,7 +468,7 @@ class _ChatWidgetState extends State<ChatWidget> {
               mainAxisSize: MainAxisSize.min,
               mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
               children: [
-                Text(_timeLabel(msg.time), style: ffTheme.labelSmall.override(color: Colors.black38, fontSize: 11)),
+                Text(_timeLabel(msg.time), style: ffTheme.labelSmall.copyWith(color: Colors.black38, fontSize: 11)),
                 if (isUser) ...[
                   const SizedBox(width: 4),
                   Icon(
@@ -485,7 +485,7 @@ class _ChatWidgetState extends State<ChatWidget> {
     ).animate().fadeIn(duration: 250.ms).slideY(begin: 0.08, end: 0);
   }
 
-  Widget _buildTyping(FlutterFlowTheme ffTheme) {
+  Widget _buildTyping(AppTheme ffTheme) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(

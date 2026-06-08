@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../flutter_flow/flutter_flow_theme.dart';
-import '../../flutter_flow/flutter_flow_util.dart';
-import '../../flutter_flow/flutter_flow_widgets.dart';
+import '../../theme/app_theme.dart';
+import '../../core/nav.dart';
+import '../../widgets/app_button.dart';
 import '../../app_state.dart';
 import '../../data.dart';
 
@@ -39,8 +39,8 @@ class _SuccessWidgetState extends State<SuccessWidget> {
 
   @override
   Widget build(BuildContext context) {
-    final ffTheme = FlutterFlowTheme.of(context);
-    final appState = Provider.of<FFAppState>(context);
+    final ffTheme = AppTheme.of(context);
+    final appState = Provider.of<AppState>(context);
     final plan = appState.leadPlanId != null ? planById(appState.leadPlanId!) : null;
 
     return Scaffold(
@@ -110,7 +110,7 @@ class _SuccessWidgetState extends State<SuccessWidget> {
 
               Text(
                 'הבקשה נשלחה בהצלחה',
-                style: ffTheme.bodyLarge.override(color: Colors.white.withOpacity(0.75)),
+                style: ffTheme.bodyLarge.copyWith(color: Colors.white.withOpacity(0.75)),
                 textAlign: TextAlign.center,
               ).animate().fadeIn(delay: 400.ms),
 
@@ -139,7 +139,7 @@ class _SuccessWidgetState extends State<SuccessWidget> {
                                   style: GoogleFonts.rubik(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
                               const SizedBox(height: 2),
                               Text(plan.plan,
-                                  style: ffTheme.bodySmall.override(color: Colors.white.withOpacity(0.7)),
+                                  style: ffTheme.bodySmall.copyWith(color: Colors.white.withOpacity(0.7)),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis),
                             ],
@@ -152,7 +152,7 @@ class _SuccessWidgetState extends State<SuccessWidget> {
                                 style: GoogleFonts.rubik(fontSize: 16, fontWeight: FontWeight.w800, color: ffTheme.secondary)),
                             if (save > 0)
                               Text('חוסך ₪$save/שנה',
-                                  style: ffTheme.labelSmall.override(color: ffTheme.secondary.withOpacity(0.85))),
+                                  style: ffTheme.labelSmall.copyWith(color: ffTheme.secondary.withOpacity(0.85))),
                           ],
                         ),
                       ],
@@ -214,16 +214,16 @@ class _SuccessWidgetState extends State<SuccessWidget> {
 
               const SizedBox(height: 28),
 
-              FFButtonWidget(
+              AppButton(
                 text: 'מעקב אחר התהליך',
                 onPressed: () async => context.goNamed('Tracker'),
-                options: FFButtonOptions(
+                
                   width: double.infinity,
                   height: 56,
                   color: ffTheme.secondary,
                   textStyle: GoogleFonts.rubik(fontSize: 15, fontWeight: FontWeight.w700, color: ffTheme.primary),
                   borderRadius: BorderRadius.circular(16),
-                ),
+                
               ).animate().fadeIn(delay: 800.ms),
 
               const SizedBox(height: 14),
@@ -232,7 +232,7 @@ class _SuccessWidgetState extends State<SuccessWidget> {
                 onPressed: () => context.goNamed('Home'),
                 child: Text(
                   'חזרה לדף הבית',
-                  style: ffTheme.bodyMedium.override(color: Colors.white.withOpacity(0.65)),
+                  style: ffTheme.bodyMedium.copyWith(color: Colors.white.withOpacity(0.65)),
                 ),
               ).animate().fadeIn(delay: 900.ms),
 
@@ -249,7 +249,7 @@ class _CheckItem extends StatelessWidget {
   const _CheckItem({required this.checked, required this.text, required this.ffTheme});
   final bool checked;
   final String text;
-  final FlutterFlowTheme ffTheme;
+  final AppTheme ffTheme;
 
   @override
   Widget build(BuildContext context) {
@@ -282,7 +282,7 @@ class _TrustBadge extends StatelessWidget {
   const _TrustBadge({required this.icon, required this.label, required this.ffTheme});
   final String icon;
   final String label;
-  final FlutterFlowTheme ffTheme;
+  final AppTheme ffTheme;
 
   @override
   Widget build(BuildContext context) {
@@ -290,7 +290,7 @@ class _TrustBadge extends StatelessWidget {
       children: [
         Text(icon, style: const TextStyle(fontSize: 22)),
         const SizedBox(height: 4),
-        Text(label, style: ffTheme.labelSmall.override(color: Colors.white.withOpacity(0.7))),
+        Text(label, style: ffTheme.labelSmall.copyWith(color: Colors.white.withOpacity(0.7))),
       ],
     );
   }

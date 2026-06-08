@@ -169,4 +169,16 @@ void main() {
 
     expect(tester.takeException(), isNull);
   });
+
+  // ── Test 10: Notification center ─────────────────────────────────────────
+  testWidgets('10. Notification center renders without exceptions', (tester) async {
+    await _bootApp(tester);
+    AppState().setCurrentBill('cellular', 200); // produces a savings notification
+
+    _navigateTo(tester, '/notifications');
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(tester.takeException(), isNull);
+  });
 }

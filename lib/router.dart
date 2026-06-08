@@ -28,6 +28,7 @@ import 'pages/porting/porting_widget.dart';
 import 'pages/settings/settings_widget.dart';
 import 'pages/matches/matches_widget.dart';
 import 'pages/renewal/renewal_widget.dart';
+import 'pages/notifications/notification_center_widget.dart';
 
 final _rootNavKey = GlobalKey<NavigatorState>(debugLabel: 'root');
 final _shellNavKey = GlobalKey<NavigatorState>(debugLabel: 'shell');
@@ -73,6 +74,7 @@ GoRouter createRouter() => GoRouter(
         GoRoute(path: '/settings', name: 'Settings', builder: (_, __) => const SettingsWidget()),
         GoRoute(path: '/matches', name: 'Matches', builder: (_, __) => const MatchesWidget()),
         GoRoute(path: '/renewal', name: 'Renewal', builder: (_, __) => const RenewalWidget()),
+        GoRoute(path: '/notifications', name: 'Notifications', builder: (_, __) => const NotificationCenterWidget()),
       ],
     ),
   ],

@@ -85,6 +85,7 @@ class AppState extends ChangeNotifier {
       _myPlans.addAll(list.map((e) => TrackedPlan.fromJson((e as Map).cast<String, dynamic>())));
     }
     _renewalReminders = p.getBool('renewalReminders') ?? false;
+    _dismissedNotifications.addAll(p.getStringList('dismissedNotifications') ?? const []);
     // Advisor history
     final advisorHistoryJson = p.getString('advisorHistory');
     if (advisorHistoryJson != null) {
@@ -136,6 +137,7 @@ class AppState extends ChangeNotifier {
     await p.setString('advisorHistory', jsonEncode(_advisorHistory));
     await p.setString('myPlans', jsonEncode(_myPlans.map((e) => e.toJson()).toList()));
     await p.setBool('renewalReminders', _renewalReminders);
+    await p.setStringList('dismissedNotifications', _dismissedNotifications.toList());
     // Preferences
     await p.setBool('prefPriceAlerts', _prefPriceAlerts);
     await p.setBool('prefRequestUpdates', _prefRequestUpdates);
@@ -414,6 +416,11 @@ class AppState extends ChangeNotifier {
     }
     return best;
   }
+
+  // Notification center — dismissed notification keys (computed alerts the user cleared).
+  final Set<String> _dismissedNotifications = {};
+  bool isNotificationDismissed(String id) => _dismissedNotifications.contains(id);
+  void dismissNotification(String id) { _dismissedNotifications.add(id); notifyListeners(); _persist(); }
 
   void addCommunityPost({required String id, required String author, required String avatar, required String channel, required String text}) {
     _communityPosts.insert(0, {'id': id, 'author': author, 'avatar': avatar, 'channel': channel, 'text': text, 'ts': DateTime.now().toIso8601String()});

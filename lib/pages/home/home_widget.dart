@@ -10,6 +10,7 @@ import '../../data.dart';
 import '../../models.dart';
 import '../../components/logo_widget/logo_widget.dart';
 import '../../services/recommendation_engine.dart';
+import '../../services/notifications.dart';
 
 class HomeWidget extends StatefulWidget {
   const HomeWidget({super.key});
@@ -209,163 +210,6 @@ class _HomeWidgetState extends State<HomeWidget> {
     );
   }
 
-  void _showNotifications(BuildContext context, AppState appState, AppTheme ffTheme) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: ffTheme.background,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (_) => Padding(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Container(width: 40, height: 4, decoration: BoxDecoration(color: ffTheme.alternate, borderRadius: BorderRadius.circular(2))),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Text('התראות', style: ffTheme.titleLarge),
-            const SizedBox(height: 12),
-            if (appState.watchedPlans.isEmpty)
-              Center(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 24),
-                  child: Column(
-                    children: [
-                      Icon(Icons.notifications_none_rounded, size: 48, color: ffTheme.alternate),
-                      const SizedBox(height: 8),
-                      Text('אין התראות', style: ffTheme.bodyMedium.copyWith(color: ffTheme.secondaryText)),
-                      const SizedBox(height: 4),
-                      Text('הוסף מסלולים למעקב מחירים', style: ffTheme.labelSmall),
-                    ],
-                  ),
-                ),
-              )
-            else
-              ...appState.watchedPlans.map((id) {
-                final p = planById(id);
-                if (p == null) return const SizedBox();
-                final better = _betterDealFor(p, appState);
-                return Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      margin: EdgeInsets.only(bottom: better != null ? 4 : 10),
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: ffTheme.alternate),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(color: ffTheme.accent2, borderRadius: BorderRadius.circular(10)),
-                            child: Icon(Icons.trending_down_rounded, color: ffTheme.warning, size: 18),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text('עוקב אחר ${p.provider}', style: ffTheme.titleSmall.copyWith(fontSize: 13)),
-                                Text('₪${p.price}/${p.cat == 'abroad' ? 'חבילה' : 'חודש'} — מחיר עדכני', style: ffTheme.labelSmall),
-                              ],
-                            ),
-                          ),
-                          TextButton(
-                            onPressed: () {
-                              Navigator.pop(context);
-                              context.pushNamed('PlanDetail', pathParameters: {'planId': id});
-                            },
-                            child: Text('פרטים', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
-                          ),
-                        ],
-                      ),
-                    ),
-                    if (better != null)
-                      GestureDetector(
-                        onTap: () {
-                          Navigator.pop(context);
-                          context.pushNamed('PlanDetail', pathParameters: {'planId': better.plan.id});
-                        },
-                        child: Container(
-                          margin: const EdgeInsets.only(bottom: 10),
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                          decoration: BoxDecoration(
-                            color: ffTheme.accent1,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: ffTheme.primary.withOpacity(0.2)),
-                          ),
-                          child: Row(
-                            children: [
-                              const Text('💡', style: TextStyle(fontSize: 15)),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text('מצאנו לך אופציה טובה יותר', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700, fontSize: 12)),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      '${better.plan.provider} · ${better.plan.plan} · ₪${better.plan.price}/${better.plan.cat == 'abroad' ? 'לחבילה' : '/חודש'}',
-                                      style: ffTheme.labelSmall.copyWith(color: ffTheme.primaryText),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: better.annualSaving > 0 ? ffTheme.secondary : ffTheme.primary,
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Text(
-                                  better.annualSaving > 0
-                                      ? 'חוסך ₪${better.annualSaving}/שנה'
-                                      : '${better.scorePct}% התאמה',
-                                  style: ffTheme.labelSmall.copyWith(
-                                    color: better.annualSaving > 0 ? ffTheme.primary : Colors.white,
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 10,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                  ],
-                );
-              }),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: ffTheme.accent1,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: ffTheme.primary.withOpacity(0.15)),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.info_outline_rounded, color: ffTheme.primary, size: 18),
-                  const SizedBox(width: 10),
-                  Expanded(child: Text('נשלח לך SMS בכל ירידת מחיר', style: ffTheme.bodySmall.copyWith(color: ffTheme.primary))),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   // ── Section builders ─────────────────────────────────────────────────────
 
   Widget _buildRenewalAlert(BuildContext context, AppTheme ffTheme, AppState appState) {
@@ -545,21 +389,27 @@ class _HomeWidgetState extends State<HomeWidget> {
                     child: IconButton(
                       icon: const Icon(Icons.notifications_outlined, color: Colors.white, size: 22),
                       tooltip: 'התראות',
-                      onPressed: () => _showNotifications(context, appState, ffTheme),
+                      onPressed: () {
+                        HapticFeedback.lightImpact();
+                        context.pushNamed('Notifications');
+                      },
                       padding: EdgeInsets.zero,
                     ),
                   ),
-                  if (appState.watchedPlans.isNotEmpty)
-                    Positioned(
+                  Builder(builder: (context) {
+                    final count = notificationCount(appState);
+                    if (count == 0) return const SizedBox.shrink();
+                    return Positioned(
                       top: -2,
                       right: -2,
                       child: Container(
                         width: 16,
                         height: 16,
                         decoration: BoxDecoration(color: ffTheme.secondary, shape: BoxShape.circle, border: Border.all(color: ffTheme.primary, width: 1.5)),
-                        child: Center(child: Text('${appState.watchedPlans.length}', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: ffTheme.primary))),
+                        child: Center(child: Text(count > 9 ? '9+' : '$count', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: ffTheme.primary))),
                       ),
-                    ),
+                    );
+                  }),
                 ],
               ),
             ],

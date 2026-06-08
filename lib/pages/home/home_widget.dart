@@ -110,6 +110,9 @@ class _HomeWidgetState extends State<HomeWidget> {
               // ── 2. Social proof ticker ─────────────────────────────────────
               SliverToBoxAdapter(child: _buildTicker(context, ffTheme)),
 
+              // ── 2b. Renewal Radar alert ────────────────────────────────────
+              _buildRenewalAlert(context, ffTheme, appState),
+
               // ── 3. Savings hero card ───────────────────────────────────────
               SliverToBoxAdapter(child: _buildSavingsHero(context, ffTheme)),
 
@@ -364,6 +367,114 @@ class _HomeWidgetState extends State<HomeWidget> {
   }
 
   // ── Section builders ─────────────────────────────────────────────────────
+
+  Widget _buildRenewalAlert(BuildContext context, AppTheme ffTheme, AppState appState) {
+    final r = appState.nextRenewal;
+    if (r == null || r.daysUntilRenewal == null || r.daysUntilRenewal! > 30) {
+      return const SliverToBoxAdapter(child: SizedBox.shrink());
+    }
+
+    final days = r.daysUntilRenewal!;
+    final isExpired = days <= 0;
+    final mainText = isExpired
+        ? 'המבצע שלך הסתיים — כדאי להשוות עכשיו'
+        : '⏰ המבצע שלך ב${r.provider} מסתיים בעוד $days ימים';
+    final subText = isExpired ? '' : 'השווה עכשיו ותחסוך לפני שהמחיר קופץ';
+
+    // Urgency: red-tinted when ≤7 days, amber-tinted otherwise
+    final isUrgent = days <= 7;
+    final gradientColors = isUrgent
+        ? [const Color(0xFF7B1E1E), const Color(0xFFB33030)]
+        : [const Color(0xFF7B5E00), const Color(0xFFB38A00)];
+    final bgColor = isUrgent ? const Color(0xFFFFF0F0) : const Color(0xFFFFF8E1);
+    final borderColor = isUrgent
+        ? const Color(0xFFE53935).withOpacity(0.35)
+        : const Color(0xFFFFB300).withOpacity(0.45);
+
+    return SliverToBoxAdapter(
+      child: GestureDetector(
+        onTap: () {
+          HapticFeedback.lightImpact();
+          appState.setCategory(r.category);
+          context.pushNamed('Renewal');
+        },
+        child: Container(
+          margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: bgColor,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: borderColor, width: 1.5),
+            boxShadow: [
+              BoxShadow(
+                color: (isUrgent ? const Color(0xFFE53935) : const Color(0xFFFFB300)).withOpacity(0.15),
+                blurRadius: 12,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Icon badge
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: gradientColors,
+                    begin: Alignment.topRight,
+                    end: Alignment.bottomLeft,
+                  ),
+                  borderRadius: BorderRadius.circular(13),
+                ),
+                child: const Center(
+                  child: Text('⏰', style: TextStyle(fontSize: 22)),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      mainText,
+                      style: ffTheme.titleSmall.copyWith(
+                        color: isUrgent ? const Color(0xFF7B1E1E) : const Color(0xFF5F4000),
+                        fontWeight: FontWeight.w800,
+                        fontSize: 13.5,
+                      ),
+                    ),
+                    if (subText.isNotEmpty) ...[
+                      const SizedBox(height: 3),
+                      Text(
+                        subText,
+                        style: ffTheme.bodySmall.copyWith(
+                          color: isUrgent ? const Color(0xFF9E2020) : const Color(0xFF7A5500),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(colors: gradientColors, begin: Alignment.topRight, end: Alignment.bottomLeft),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  'השווה ←',
+                  style: ffTheme.labelSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
+                ),
+              ),
+            ],
+          ),
+        ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.1, end: 0),
+      ),
+    );
+  }
 
   Widget _buildHeader(BuildContext context, AppTheme ffTheme, AppState appState) {
     return Container(

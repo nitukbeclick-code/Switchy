@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'data.dart' show planById, planSaveYear;
+import 'models.dart' show TrackedPlan;
 
 class AppState extends ChangeNotifier {
   static AppState _instance = AppState._internal();
@@ -77,6 +78,13 @@ class AppState extends ChangeNotifier {
       final list = jsonDecode(chatHistoryJson) as List<dynamic>;
       _chatHistory.addAll(list.cast<Map<String, dynamic>>());
     }
+    // My plans (renewal radar) + reminder consent
+    final myPlansJson = p.getString('myPlans');
+    if (myPlansJson != null) {
+      final list = jsonDecode(myPlansJson) as List<dynamic>;
+      _myPlans.addAll(list.map((e) => TrackedPlan.fromJson((e as Map).cast<String, dynamic>())));
+    }
+    _renewalReminders = p.getBool('renewalReminders') ?? false;
     // Advisor history
     final advisorHistoryJson = p.getString('advisorHistory');
     if (advisorHistoryJson != null) {
@@ -126,6 +134,8 @@ class AppState extends ChangeNotifier {
     await p.setString('communityReplies', jsonEncode(_communityReplies));
     await p.setString('chatHistory', jsonEncode(_chatHistory));
     await p.setString('advisorHistory', jsonEncode(_advisorHistory));
+    await p.setString('myPlans', jsonEncode(_myPlans.map((e) => e.toJson()).toList()));
+    await p.setBool('renewalReminders', _renewalReminders);
     // Preferences
     await p.setBool('prefPriceAlerts', _prefPriceAlerts);
     await p.setBool('prefRequestUpdates', _prefRequestUpdates);
@@ -354,6 +364,56 @@ class AppState extends ChangeNotifier {
     _persist();
   }
   void clearAdvisorHistory() { _advisorHistory.clear(); notifyListeners(); _persist(); }
+
+  // ── Renewal radar — the user's current plans + promo-end tracking ────────────
+  final List<TrackedPlan> _myPlans = [];
+  List<TrackedPlan> get myPlans => List.unmodifiable(_myPlans);
+
+  bool _renewalReminders = false;
+  bool get renewalReminders => _renewalReminders;
+  void setRenewalReminders(bool v) { _renewalReminders = v; notifyListeners(); _persist(); }
+
+  void addMyPlan({
+    required String category,
+    required String provider,
+    required String planName,
+    required int monthlyPrice,
+    String? promoEndDate,
+    bool joinedViaUs = false,
+  }) {
+    _myPlans.insert(0, TrackedPlan(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      category: category,
+      provider: provider,
+      planName: planName,
+      monthlyPrice: monthlyPrice,
+      promoEndDate: promoEndDate,
+      joinedViaUs: joinedViaUs,
+    ));
+    notifyListeners();
+    _persist();
+  }
+
+  void removeMyPlan(String id) {
+    _myPlans.removeWhere((p) => p.id == id);
+    notifyListeners();
+    _persist();
+  }
+
+  /// The tracked plan whose promo ends soonest in the future (>= today).
+  TrackedPlan? get nextRenewal {
+    TrackedPlan? best;
+    int? bestDays;
+    for (final p in _myPlans) {
+      final d = p.daysUntilRenewal;
+      if (d == null || d < 0) continue;
+      if (bestDays == null || d < bestDays) {
+        bestDays = d;
+        best = p;
+      }
+    }
+    return best;
+  }
 
   void addCommunityPost({required String id, required String author, required String avatar, required String channel, required String text}) {
     _communityPosts.insert(0, {'id': id, 'author': author, 'avatar': avatar, 'channel': channel, 'text': text, 'ts': DateTime.now().toIso8601String()});

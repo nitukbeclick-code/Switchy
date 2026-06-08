@@ -157,4 +157,16 @@ void main() {
 
     expect(tester.takeException(), isNull);
   });
+
+  // ── Test 9: Renewal radar ────────────────────────────────────────────────
+  testWidgets('9. Renewal radar renders without exceptions', (tester) async {
+    await _bootApp(tester);
+    AppState().addMyPlan(category: 'cellular', provider: 'סלקום', planName: '5G 800GB', monthlyPrice: 40, promoEndDate: '2026-12-31');
+
+    _navigateTo(tester, '/renewal');
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(tester.takeException(), isNull);
+  });
 }

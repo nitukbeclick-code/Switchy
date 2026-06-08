@@ -118,6 +118,61 @@ class Plan {
   }
 }
 
+/// A telecom plan the user currently holds — the basis of the renewal radar.
+/// We track the promo-end date so we can proactively alert the user ~3 weeks
+/// before their price jumps and re-compare the whole market for them.
+class TrackedPlan {
+  const TrackedPlan({
+    required this.id,
+    required this.category,
+    required this.provider,
+    required this.planName,
+    required this.monthlyPrice,
+    this.promoEndDate,
+    this.joinedViaUs = false,
+  });
+
+  final String id;
+  final String category; // cellular / internet / tv / triple / abroad
+  final String provider;
+  final String planName;
+  final int monthlyPrice;
+  final String? promoEndDate; // ISO 'yyyy-MM-dd', or null if unknown
+  final bool joinedViaUs;
+
+  DateTime? get promoEnd => promoEndDate == null ? null : DateTime.tryParse(promoEndDate!);
+
+  /// Whole days until the promo ends (negative if already passed, null if unknown).
+  int? get daysUntilRenewal {
+    final end = promoEnd;
+    if (end == null) return null;
+    final today = DateTime.now();
+    return DateTime(end.year, end.month, end.day)
+        .difference(DateTime(today.year, today.month, today.day))
+        .inDays;
+  }
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'category': category,
+        'provider': provider,
+        'planName': planName,
+        'monthlyPrice': monthlyPrice,
+        'promoEndDate': promoEndDate,
+        'joinedViaUs': joinedViaUs,
+      };
+
+  factory TrackedPlan.fromJson(Map<String, dynamic> j) => TrackedPlan(
+        id: j['id'] as String,
+        category: j['category'] as String,
+        provider: j['provider'] as String,
+        planName: j['planName'] as String,
+        monthlyPrice: (j['monthlyPrice'] as num).toInt(),
+        promoEndDate: j['promoEndDate'] as String?,
+        joinedViaUs: j['joinedViaUs'] as bool? ?? false,
+      );
+}
+
 class ChatMessage {
   const ChatMessage({required this.text, required this.isUser, this.planId, required this.timestamp});
   final String text;

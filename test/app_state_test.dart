@@ -421,4 +421,59 @@ void main() {
       expect(notified, isTrue);
     });
   });
+
+  // ── Renewal radar ────────────────────────────────────────────────────────────
+
+  group('renewal radar', () {
+    String inDays(int n) {
+      final d = DateTime.now().add(Duration(days: n));
+      return '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+    }
+
+    test('addMyPlan stores a tracked plan at the front', () {
+      final state = AppState();
+      expect(state.myPlans, isEmpty);
+      state.addMyPlan(category: 'cellular', provider: 'סלקום', planName: '5G 800GB', monthlyPrice: 40, promoEndDate: inDays(18), joinedViaUs: true);
+      expect(state.myPlans.length, equals(1));
+      expect(state.myPlans.first.provider, equals('סלקום'));
+      expect(state.myPlans.first.joinedViaUs, isTrue);
+    });
+
+    test('daysUntilRenewal computes the countdown', () {
+      final state = AppState();
+      state.addMyPlan(category: 'cellular', provider: 'פרטנר', planName: 'x', monthlyPrice: 50, promoEndDate: inDays(21));
+      expect(state.myPlans.first.daysUntilRenewal, equals(21));
+    });
+
+    test('nextRenewal returns the soonest future promo end', () {
+      final state = AppState();
+      state.addMyPlan(category: 'internet', provider: 'בזק', planName: 'a', monthlyPrice: 99, promoEndDate: inDays(40));
+      state.addMyPlan(category: 'cellular', provider: 'גולן טלקום', planName: 'b', monthlyPrice: 39, promoEndDate: inDays(9));
+      state.addMyPlan(category: 'tv', provider: 'yes', planName: 'c', monthlyPrice: 89, promoEndDate: inDays(-5)); // already passed
+      final next = state.nextRenewal;
+      expect(next, isNotNull);
+      expect(next!.provider, equals('גולן טלקום'));
+    });
+
+    test('nextRenewal ignores plans with no promo date and is null when none', () {
+      final state = AppState();
+      state.addMyPlan(category: 'cellular', provider: 'x', planName: 'y', monthlyPrice: 30);
+      expect(state.nextRenewal, isNull);
+    });
+
+    test('removeMyPlan deletes the entry', () {
+      final state = AppState();
+      state.addMyPlan(category: 'cellular', provider: 'x', planName: 'y', monthlyPrice: 30);
+      final id = state.myPlans.first.id;
+      state.removeMyPlan(id);
+      expect(state.myPlans, isEmpty);
+    });
+
+    test('renewalReminders consent defaults false and toggles', () {
+      final state = AppState();
+      expect(state.renewalReminders, isFalse);
+      state.setRenewalReminders(true);
+      expect(state.renewalReminders, isTrue);
+    });
+  });
 }

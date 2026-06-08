@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:fl_chart/fl_chart.dart';
 import '../../theme/app_theme.dart';
 import '../../core/nav.dart';
 import '../../widgets/app_button.dart';
@@ -499,6 +500,13 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                         ).animate(delay: 270.ms).fadeIn(duration: 300.ms).slideY(begin: 0.08),
                       ],
 
+                      // Price trend chart
+                      const SizedBox(height: 14),
+                      _PriceTrendCard(plan: plan)
+                          .animate(delay: 290.ms)
+                          .fadeIn(duration: 300.ms)
+                          .slideY(begin: 0.08),
+
                       // Fine print
                       if (plan.fine != null) ...[
                         const SizedBox(height: 14),
@@ -715,6 +723,173 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                   ],
                 ),
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Price trend chart ─────────────────────────────────────────────────────────
+
+List<double> _buildTrendSeries(Plan plan) {
+  final seed = plan.id.codeUnits.fold(0, (s, c) => s + c);
+  final price = plan.price.toDouble();
+  // Start 12–22% above current price, deterministic per plan
+  final startPct = 0.12 + (seed % 11) * 0.01; // 12–22%
+  final startPrice = price * (1 + startPct);
+  // Build 6 points easing down to plan.price with small seed-derived wiggles
+  final points = <double>[];
+  for (int i = 0; i < 6; i++) {
+    if (i == 5) {
+      points.add(price);
+    } else {
+      final t = i / 5.0;
+      // Ease-out: base trend from startPrice toward price
+      final base = startPrice + (price - startPrice) * (1 - (1 - t) * (1 - t));
+      // Small deterministic wiggle (±1.5% max), dampens near end
+      final wiggleMag = (seed * (i + 3)) % 7;
+      final wiggleSign = ((seed + i) % 2 == 0) ? 1.0 : -1.0;
+      final wiggle = wiggleSign * wiggleMag * 0.003 * price * (1 - t);
+      points.add((base + wiggle).clamp(price, startPrice * 1.02));
+    }
+  }
+  return points;
+}
+
+class _PriceTrendCard extends StatelessWidget {
+  const _PriceTrendCard({required this.plan});
+  final Plan plan;
+
+  @override
+  Widget build(BuildContext context) {
+    final ffTheme = AppTheme.of(context);
+    final series = _buildTrendSeries(plan);
+    final firstVal = series.first;
+    final lastVal = series.last;
+    final drop = (firstVal - lastVal).round();
+
+    final spots = series
+        .asMap()
+        .entries
+        .map((e) => FlSpot(e.key.toDouble(), e.value))
+        .toList();
+
+    final minY = (series.reduce((a, b) => a < b ? a : b) * 0.92);
+    final maxY = (series.reduce((a, b) => a > b ? a : b) * 1.04);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: ffTheme.alternate),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header row
+          Row(
+            children: [
+              Text('מגמת מחיר (6 חודשים)', style: ffTheme.titleSmall),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                decoration: BoxDecoration(
+                  color: ffTheme.alternate,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  'להמחשה',
+                  style: ffTheme.labelSmall.copyWith(
+                    color: ffTheme.secondaryText,
+                    fontSize: 10,
+                  ),
+                ),
+              ),
+              const Spacer(),
+              if (drop > 0)
+                Text(
+                  '↓ ₪$drop פחות מלפני חצי שנה',
+                  style: ffTheme.labelSmall.copyWith(
+                    color: const Color(0xFF15803D),
+                    fontWeight: FontWeight.w600,
+                    fontSize: 11,
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 100,
+            child: LineChart(
+              LineChartData(
+                minY: minY,
+                maxY: maxY,
+                gridData: const FlGridData(show: false),
+                borderData: FlBorderData(show: false),
+                titlesData: FlTitlesData(
+                  leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      interval: 5,
+                      reservedSize: 18,
+                      getTitlesWidget: (value, meta) {
+                        final idx = value.toInt();
+                        if (idx == 0) {
+                          return Text('לפני 6 ח׳',
+                              style: ffTheme.labelSmall.copyWith(
+                                  fontSize: 9, color: ffTheme.secondaryText));
+                        }
+                        if (idx == 5) {
+                          return Text('היום',
+                              style: ffTheme.labelSmall.copyWith(
+                                  fontSize: 9, color: ffTheme.secondaryText));
+                        }
+                        return const SizedBox.shrink();
+                      },
+                    ),
+                  ),
+                ),
+                lineTouchData: const LineTouchData(enabled: false),
+                lineBarsData: [
+                  LineChartBarData(
+                    spots: spots,
+                    isCurved: true,
+                    curveSmoothness: 0.35,
+                    color: ffTheme.primary,
+                    barWidth: 2.5,
+                    dotData: FlDotData(
+                      show: true,
+                      checkToShowDot: (spot, barData) => spot.x == 5,
+                      getDotPainter: (spot, percent, barData, index) =>
+                          FlDotCirclePainter(
+                        radius: 4,
+                        color: ffTheme.secondary,
+                        strokeWidth: 1.5,
+                        strokeColor: ffTheme.primary,
+                      ),
+                    ),
+                    belowBarData: BarAreaData(
+                      show: true,
+                      color: ffTheme.primary.withOpacity(0.08),
+                    ),
+                  ),
+                ],
+              ),
+              duration: const Duration(milliseconds: 400),
+              curve: Curves.easeInOut,
             ),
           ),
         ],

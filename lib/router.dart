@@ -26,6 +26,7 @@ import 'pages/callback/callback_widget.dart';
 import 'pages/website/website_widget.dart';
 import 'pages/porting/porting_widget.dart';
 import 'pages/settings/settings_widget.dart';
+import 'pages/matches/matches_widget.dart';
 
 final _rootNavKey = GlobalKey<NavigatorState>(debugLabel: 'root');
 final _shellNavKey = GlobalKey<NavigatorState>(debugLabel: 'shell');
@@ -69,6 +70,7 @@ GoRouter createRouter() => GoRouter(
         GoRoute(path: '/callback', name: 'Callback', builder: (_, __) => const CallbackWidget()),
         GoRoute(path: '/porting', name: 'Porting', builder: (_, __) => const PortingWidget()),
         GoRoute(path: '/settings', name: 'Settings', builder: (_, __) => const SettingsWidget()),
+        GoRoute(path: '/matches', name: 'Matches', builder: (_, __) => const MatchesWidget()),
       ],
     ),
   ],

@@ -1180,6 +1180,7 @@ class _HomeWidgetState extends State<HomeWidget> {
 
   Widget _buildToolsRow(BuildContext context, AppTheme ffTheme) {
     final tools = [
+      const _Tool(icon: '🎯', label: 'ההתאמות שלי', route: 'Matches'),
       const _Tool(icon: '📍', label: 'בדיקת כיסוי', route: 'Availability'),
       const _Tool(icon: '🧮', label: 'מחשבון מעבר', route: 'SwitchCalc'),
       const _Tool(icon: '📊', label: 'ניהול חשבון', route: 'Bills'),

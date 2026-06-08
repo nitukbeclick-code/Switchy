@@ -143,4 +143,16 @@ void main() {
 
     expect(tester.takeException(), isNull);
   });
+
+  // ── Test 8: Matches hub ──────────────────────────────────────────────────
+  testWidgets('8. Matches hub renders without exceptions', (tester) async {
+    await _bootApp(tester);
+    AppState().setCurrentBill('cellular', 120);
+
+    _navigateTo(tester, '/matches');
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(tester.takeException(), isNull);
+  });
 }

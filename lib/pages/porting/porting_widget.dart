@@ -301,14 +301,29 @@ class _PortingWidgetState extends State<PortingWidget> {
                           final st = Provider.of<AppState>(context, listen: false);
                           final name = st.userName.isNotEmpty ? st.userName : 'משתמש';
                           final phone = _phoneController.text.trim();
-                          appBackend.submitLead(LeadInput(
-                            name: name,
-                            phone: phone,
-                            provider: _selectedProvider,
-                            source: 'porting',
-                            notes: 'ניוד מ: $_selectedProvider | ת.ז: ${_idController.text.trim()}',
-                          )).catchError((_) {});
+                          try {
+                            await appBackend.submitLead(LeadInput(
+                              name: name,
+                              phone: phone,
+                              provider: _selectedProvider,
+                              source: 'porting',
+                              notes: 'ניוד מ: $_selectedProvider | ת.ז: ${_idController.text.trim()}',
+                            )).timeout(const Duration(seconds: 10));
+                          } catch (_) {
+                            // The porting request never reached the team — let
+                            // the user retry instead of showing false success.
+                            if (!context.mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                              content: const Text('שליחת הבקשה נכשלה — בדקו את החיבור ונסו שוב'),
+                              backgroundColor: AppTheme.of(context).error,
+                              behavior: SnackBarBehavior.floating,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              duration: const Duration(seconds: 3),
+                            ));
+                            return;
+                          }
                           appBackend.upsertProfile(name: name, phone: phone).catchError((_) {});
+                          if (!mounted) return;
                           setState(() => _submitted = true);
                         }
                       : () async {},

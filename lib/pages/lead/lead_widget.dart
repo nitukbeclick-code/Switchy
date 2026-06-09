@@ -122,7 +122,10 @@ class _LeadWidgetState extends State<LeadWidget> {
                 keyboardType: TextInputType.phone,
                 textDirection: TextDirection.ltr,
                 decoration: _inputDecoration(hint: '050-0000000', icon: Icons.phone_outlined, ffTheme: ffTheme),
-                validator: (v) => (v == null || v.trim().length < 9) ? 'מספר טלפון לא תקין' : null,
+                validator: (v) {
+                  final digits = (v ?? '').replaceAll(RegExp(r'\D'), '');
+                  return (digits.length < 9 || digits.length > 15) ? 'מספר טלפון לא תקין' : null;
+                },
               ).animate(delay: 120.ms).fadeIn().slideY(begin: 0.05),
 
               const SizedBox(height: 14),
@@ -178,20 +181,13 @@ class _LeadWidgetState extends State<LeadWidget> {
                   HapticFeedback.lightImpact();
                   setState(() => _isSubmitting = true);
                   await Future.delayed(const Duration(milliseconds: 800));
-                  appState.submitLead(
-                    name: _nameCtrl.text.trim(),
-                    phone: _phoneCtrl.text.trim(),
-                    provider: plan?.provider ?? '',
-                    planId: widget.planId,
-                    email: _emailCtrl.text.trim(),
-                    callbackTime: _callbackTime,
-                  );
+                  final name = _nameCtrl.text.trim();
+                  // Normalize to digits/+ — the leads gate rejects dots/parens.
+                  final phone = _phoneCtrl.text.replaceAll(RegExp(r'[^\d+]'), '');
+                  final email = _emailCtrl.text.trim();
                   // Mirror the lead to the backend seam — a no-op locally today,
                   // an insert into the `leads` table once SupabaseBackend is set.
                   try {
-                    final name = _nameCtrl.text.trim();
-                    final phone = _phoneCtrl.text.trim();
-                    final email = _emailCtrl.text.trim();
                     final st = AppState();
                     // Build rep context: current bill + quiz preferences.
                     final bill = plan != null ? st.currentBill(plan.cat) : 0;
@@ -208,14 +204,35 @@ class _LeadWidgetState extends State<LeadWidget> {
                       callbackTime: _callbackTime,
                       source: widget.source,
                       notes: parts.isNotEmpty ? parts.join(' | ') : null,
-                    ));
+                    )).timeout(const Duration(seconds: 10));
                     // Sync the user's identity to their profile row.
                     appBackend.upsertProfile(name: name, phone: phone, email: email.isNotEmpty ? email : null).catchError((_) {});
                   } catch (_) {
-                    // Lead is already captured locally; don't block the user on a
-                    // backend hiccup.
+                    // The lead never reached the team — keep the form so the
+                    // user can retry instead of believing someone will call.
+                    if (!context.mounted) return;
+                    setState(() => _isSubmitting = false);
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                      content: const Text('שליחת הפנייה נכשלה — בדקו את החיבור ונסו שוב'),
+                      backgroundColor: AppTheme.of(context).error,
+                      behavior: SnackBarBehavior.floating,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      duration: const Duration(seconds: 3),
+                    ));
+                    return;
                   }
                   if (!context.mounted) return;
+                  // Record locally (savings headline + tracker step) only after
+                  // the backend accepted the lead — failed retries must not
+                  // inflate the savings number or pin the tracker.
+                  appState.submitLead(
+                    name: name,
+                    phone: phone,
+                    provider: plan?.provider ?? '',
+                    planId: widget.planId,
+                    email: email,
+                    callbackTime: _callbackTime,
+                  );
                   context.goNamed('Success');
                 },
                 

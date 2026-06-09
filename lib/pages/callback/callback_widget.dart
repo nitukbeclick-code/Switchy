@@ -183,15 +183,31 @@ class _CallbackWidgetState extends State<CallbackWidget> {
                 final noteParts = <String>['נושא: $_topic', 'עיתוי: $_timing'];
                 if (bill > 0) noteParts.add('חשבון נוכחי: ₪$bill/חודש');
                 if (st.quizCompleted) noteParts.add('תקציב: ₪${st.quizBudget} | עדיפות: ${st.quizPriority}');
-                appBackend.submitLead(LeadInput(
-                  name: name,
-                  phone: phone,
-                  callbackTime: callbackMap[_timing] ?? 'now',
-                  provider: _topic,
-                  source: 'callback',
-                  notes: noteParts.join(' | '),
-                )).catchError((_) {});
+                try {
+                  await appBackend.submitLead(LeadInput(
+                    name: name,
+                    phone: phone,
+                    callbackTime: callbackMap[_timing] ?? 'now',
+                    provider: _topic,
+                    source: 'callback',
+                    notes: noteParts.join(' | '),
+                  )).timeout(const Duration(seconds: 10));
+                } catch (_) {
+                  // The request never reached the team — let the user retry
+                  // instead of waiting for a call that won't come.
+                  if (!context.mounted) return;
+                  setState(() => _isLoading = false);
+                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                    content: const Text('שליחת הבקשה נכשלה — בדקו את החיבור ונסו שוב'),
+                    backgroundColor: AppTheme.of(context).error,
+                    behavior: SnackBarBehavior.floating,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    duration: const Duration(seconds: 3),
+                  ));
+                  return;
+                }
                 appBackend.upsertProfile(name: name, phone: phone).catchError((_) {});
+                if (!context.mounted) return;
                 Provider.of<AppState>(context, listen: false).login(name: name, phone: phone);
                 await Future.delayed(const Duration(milliseconds: 300));
                 if (!mounted) return;

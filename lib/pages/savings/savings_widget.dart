@@ -32,7 +32,13 @@ class SavingsWidget extends StatelessWidget {
       body: CustomScrollView(
         slivers: [
           SliverToBoxAdapter(
-            child: _Hero(total: summary.totalAnnualPotential, hasBill: summary.hasAnyBill, ffTheme: ffTheme, onBack: () => context.safePop()),
+            child: _Hero(
+              total: summary.totalAnnualPotential,
+              hasBill: summary.hasAnyBill,
+              personalized: appState.billsPersonalized,
+              ffTheme: ffTheme,
+              onBack: () => context.safePop(),
+            ),
           ),
           SliverToBoxAdapter(
             child: Padding(
@@ -118,9 +124,10 @@ class SavingsWidget extends StatelessWidget {
 // ── Hero ────────────────────────────────────────────────────────────────────
 
 class _Hero extends StatelessWidget {
-  const _Hero({required this.total, required this.hasBill, required this.ffTheme, required this.onBack});
+  const _Hero({required this.total, required this.hasBill, required this.personalized, required this.ffTheme, required this.onBack});
   final int total;
   final bool hasBill;
+  final bool personalized;
   final AppTheme ffTheme;
   final VoidCallback onBack;
 
@@ -167,7 +174,9 @@ class _Hero extends StatelessWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      hasBill ? 'לפי המסלולים שאנחנו ממליצים' : 'הזינו את החשבונות שלכם כדי לחשב',
+                      personalized
+                          ? 'לפי המסלולים שאנחנו ממליצים'
+                          : 'הערכה — עדכנו את החשבונות שלכם לחישוב מדויק',
                       style: ffTheme.bodySmall.copyWith(color: Colors.white.withOpacity(0.55)),
                       textAlign: TextAlign.center,
                     ),

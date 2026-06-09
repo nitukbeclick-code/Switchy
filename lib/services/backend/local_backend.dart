@@ -21,6 +21,11 @@ class LocalBackend implements Backend {
   List<LeadInput> get submittedLeads => List.unmodifiable(_leads);
 
   @override
+  Future<void> upsertProfile({required String name, required String phone, String? email}) async {
+    // No-op locally — profile is managed by AppState + SharedPreferences.
+  }
+
+  @override
   Future<void> submitLead(LeadInput lead) async {
     _leads.add(lead);
   }

@@ -22,11 +22,28 @@ class RenewalWidget extends StatefulWidget {
 }
 
 class _RenewalWidgetState extends State<RenewalWidget> {
+  List<TrackedPlan> _remoteOnly = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRemote().catchError((_) {});
+  }
+
+  Future<void> _loadRemote() async {
+    final remote = await appBackend.fetchTrackedPlans();
+    if (!mounted || remote.isEmpty) return;
+    final localIds = AppState().myPlans.map((p) => p.id).toSet();
+    final newOnes = remote.where((p) => !localIds.contains(p.id)).toList();
+    if (newOnes.isEmpty) return;
+    setState(() => _remoteOnly = newOnes);
+  }
+
   @override
   Widget build(BuildContext context) {
     final ffTheme = AppTheme.of(context);
     final appState = Provider.of<AppState>(context);
-    final plans = appState.myPlans;
+    final plans = [...appState.myPlans, ..._remoteOnly];
 
     return Scaffold(
       backgroundColor: ffTheme.background,
@@ -136,6 +153,7 @@ class _RenewalWidgetState extends State<RenewalWidget> {
     if (confirm == true && context.mounted) {
       Provider.of<AppState>(context, listen: false).removeMyPlan(plan.id);
       appBackend.removeTrackedPlan(plan.id).catchError((_) {});
+      setState(() => _remoteOnly.removeWhere((p) => p.id == plan.id));
     }
   }
 }

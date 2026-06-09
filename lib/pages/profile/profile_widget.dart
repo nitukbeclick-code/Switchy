@@ -9,6 +9,7 @@ import '../../app_state.dart';
 import '../../data.dart';
 import '../../models.dart';
 import '../../components/logo_widget/logo_widget.dart';
+import '../../services/backend/local_backend.dart';
 
 class ProfileWidget extends StatefulWidget {
   const ProfileWidget({super.key});
@@ -86,6 +87,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                   return;
                 }
                 Provider.of<AppState>(ctx, listen: false).login(name: name, phone: phone);
+                appBackend.upsertProfile(name: name, phone: phone).catchError((_) {});
                 Navigator.pop(ctx);
               },
               

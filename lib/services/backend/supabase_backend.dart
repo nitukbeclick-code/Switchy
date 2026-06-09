@@ -19,6 +19,18 @@ class SupabaseBackend implements Backend {
   SupabaseClient get _db => Supabase.instance.client;
   String? get _uid => _db.auth.currentUser?.id;
 
+  // ── User profile ─────────────────────────────────────────────────────────────
+  @override
+  Future<void> upsertProfile({required String name, required String phone, String? email}) async {
+    if (_uid == null) return;
+    await _db.from('profiles').upsert({
+      'id': _uid,
+      'name': name,
+      'phone': phone,
+      if (email != null && email.isNotEmpty) 'email': email,
+    }, onConflict: 'id');
+  }
+
   // ── Leads ──────────────────────────────────────────────────────────────────
   @override
   Future<void> submitLead(LeadInput lead) async {

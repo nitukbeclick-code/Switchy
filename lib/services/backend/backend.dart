@@ -153,6 +153,12 @@ class CommunityReply {
 /// Scope here is the user-owned data with clean mappings (leads, tracked plans,
 /// reviews); the community feed (posts/replies/media) is the next domain to add.
 abstract interface class Backend {
+  // ── User profile ─────────────────────────────────────────────────────────────
+  /// Upserts the user's identity into the `profiles` table. No-op when the
+  /// user isn't signed in (anonymous session without a real uid is fine —
+  /// the Supabase anon sign-in sets uid, so this always runs in production).
+  Future<void> upsertProfile({required String name, required String phone, String? email});
+
   // ── Leads ──────────────────────────────────────────────────────────────────
   Future<void> submitLead(LeadInput lead);
 

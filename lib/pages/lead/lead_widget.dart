@@ -188,14 +188,19 @@ class _LeadWidgetState extends State<LeadWidget> {
                   // Mirror the lead to the backend seam — a no-op locally today,
                   // an insert into the `leads` table once SupabaseBackend is set.
                   try {
+                    final name = _nameCtrl.text.trim();
+                    final phone = _phoneCtrl.text.trim();
+                    final email = _emailCtrl.text.trim();
                     await appBackend.submitLead(LeadInput(
-                      name: _nameCtrl.text.trim(),
-                      phone: _phoneCtrl.text.trim(),
-                      email: _emailCtrl.text.trim(),
+                      name: name,
+                      phone: phone,
+                      email: email,
                       provider: plan?.provider,
                       planId: widget.planId,
                       callbackTime: _callbackTime,
                     ));
+                    // Sync the user's identity to their profile row.
+                    appBackend.upsertProfile(name: name, phone: phone, email: email.isNotEmpty ? email : null).catchError((_) {});
                   } catch (_) {
                     // Lead is already captured locally; don't block the user on a
                     // backend hiccup.

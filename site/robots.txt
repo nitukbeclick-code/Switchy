@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://chosech.co.il/sitemap.xml

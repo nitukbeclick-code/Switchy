@@ -35,7 +35,16 @@ Search-and-replace these placeholders:
 |-------------|-------|--------|
 | `972500000000` | `index.html` (WhatsApp links) | your WhatsApp business number |
 | `hello@chosech.co.il` | `index.html` footer | your contact email |
+| `https://chosech.co.il/` | `index.html` (canonical/OG/JSON-LD), `robots.txt`, `sitemap.xml` | your real domain |
 | `SAVE_RATE = 0.45` | `script.js` | tune the calculator's "up to" estimate |
+
+## SEO / technical
+
+Already included: `<link rel="canonical">`, Open Graph + Twitter meta, an SVG
+`favicon.svg`, `site.webmanifest` (installable), `robots.txt`, `sitemap.xml`,
+and JSON-LD structured data (`Organization` + `WebSite` + **`FAQPage`**, which
+is eligible for FAQ rich results — keep it in sync with the visible FAQ).
+After setting your domain, submit `sitemap.xml` in Google Search Console.
 
 The **lead form** is client-side only for now (shows a thank-you). When the
 backend is live, POST `{ name, phone }` to the Supabase `leads` table — see the

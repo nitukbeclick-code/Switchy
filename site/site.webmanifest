@@ -1,0 +1,14 @@
+{
+  "name": "חוסך — השוואת מחירי תקשורת",
+  "short_name": "חוסך",
+  "description": "השוואת מחירים חכמה על סלולר, אינטרנט, טלוויזיה, חבילות וחו״ל.",
+  "lang": "he",
+  "dir": "rtl",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F4F0E8",
+  "theme_color": "#15603E",
+  "icons": [
+    { "src": "favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

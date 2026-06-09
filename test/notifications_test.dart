@@ -31,6 +31,17 @@ void main() {
     expect(notifs.first.kind, equals(NotifKind.renewal)); // most urgent first
   });
 
+  test('a renewal notification deep-links into that plan\'s report', () {
+    final s = AppState();
+    s.addMyPlan(category: 'cellular', provider: 'סלקום', planName: 'p', monthlyPrice: 99, promoEndDate: inDays(10));
+    final id = s.myPlans.first.id;
+    final n = computeNotifications(s).firstWhere((n) => n.kind == NotifKind.renewal);
+    expect(n.routeName, equals('RenewalReport'));
+    expect(n.pathParameters, equals({'trackedId': id}));
+    // planId must stay null so the notification center routes by name, not to PlanDetail.
+    expect(n.planId, isNull);
+  });
+
   test('a renewal more than 30 days out is not surfaced', () {
     final s = AppState();
     s.addMyPlan(category: 'cellular', provider: 'פרטנר', planName: 'x', monthlyPrice: 50, promoEndDate: inDays(120));

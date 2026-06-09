@@ -6,6 +6,8 @@ import '../../theme/app_theme.dart';
 import '../../core/nav.dart';
 import '../../widgets/app_button.dart';
 import '../../app_state.dart';
+import '../../services/backend/backend.dart';
+import '../../services/backend/local_backend.dart';
 
 class PortingWidget extends StatefulWidget {
   const PortingWidget({super.key});
@@ -295,7 +297,20 @@ class _PortingWidgetState extends State<PortingWidget> {
                 return AppButton(
                   text: 'שלח בקשת ניוד',
                   onPressed: canSubmit
-                      ? () async => setState(() => _submitted = true)
+                      ? () async {
+                          final st = Provider.of<AppState>(context, listen: false);
+                          final name = st.userName.isNotEmpty ? st.userName : 'משתמש';
+                          final phone = _phoneController.text.trim();
+                          appBackend.submitLead(LeadInput(
+                            name: name,
+                            phone: phone,
+                            provider: _selectedProvider,
+                            source: 'porting',
+                            notes: 'ניוד מ: $_selectedProvider | ת.ז: ${_idController.text.trim()}',
+                          )).catchError((_) {});
+                          appBackend.upsertProfile(name: name, phone: phone).catchError((_) {});
+                          setState(() => _submitted = true);
+                        }
                       : () async {},
                   
                     height: 56,

@@ -101,7 +101,7 @@ function waLink(phone: unknown): string | null {
 
 async function aiTriage(cfg: Cfg, lead: Record<string, unknown>): Promise<string> {
   const sys = "אתה עוזר מכירות לחברת השוואת תקשורת. נסח בעברית שורה אחת קצרה (עד 18 מילים) שמסכמת את הפנייה ומעריכה כוונת רכישה. בלי הקדמות, רק המשפט.";
-  const user = `פנייה חדשה: שם=${lead.name ?? ""}, ספק=${lead.provider ?? ""}, מסלול=${lead.plan_id ?? ""}, זמן חזרה מועדף=${lead.callback_time ?? ""}.`;
+  const user = `פנייה חדשה: שם=${lead.name ?? ""}, ספק=${lead.provider ?? ""}, מסלול=${lead.plan_id ?? ""}, זמן חזרה מועדף=${lead.callback_time ?? ""}${lead.notes ? `, הקשר: ${lead.notes}` : ""}.`;
   try {
     if (cfg.openai) {
       const r = await fetch("https://api.openai.com/v1/chat/completions", {

@@ -11,6 +11,7 @@
 // without a login screen (enable "Anonymous sign-ins" in the Supabase dashboard).
 // ─────────────────────────────────────────────────────────────────────────────
 
+import 'dart:async';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../models.dart';
 import 'backend.dart';
@@ -18,6 +19,9 @@ import 'backend.dart';
 class SupabaseBackend implements Backend {
   SupabaseClient get _db => Supabase.instance.client;
   String? get _uid => _db.auth.currentUser?.id;
+
+  RealtimeChannel? _leadChannel;
+  StreamController<int>? _leadStepCtrl;
 
   // ── User profile ─────────────────────────────────────────────────────────────
   @override
@@ -39,6 +43,34 @@ class SupabaseBackend implements Backend {
       ...lead.toRow(),
       if (_uid != null) 'user_id': _uid,
     });
+  }
+
+  @override
+  Stream<int> leadStepStream() {
+    if (_uid == null) return Stream.empty();
+    _leadStepCtrl ??= StreamController<int>.broadcast();
+    _leadChannel?.unsubscribe();
+    _leadChannel = _db
+        .channel('lead-tracker-$_uid')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.update,
+          schema: 'public',
+          table: 'leads',
+          filter: PostgresChangeFilter(
+              type: FilterType.eq, column: 'user_id', value: _uid!),
+          callback: (payload) {
+            final status = payload.newRecord['status'] as String? ?? 'new';
+            int step;
+            switch (status) {
+              case 'contacted': step = 2; break;
+              case 'won': step = 4; break;
+              default: step = 1;
+            }
+            _leadStepCtrl?.add(step);
+          },
+        )
+        .subscribe();
+    return _leadStepCtrl!.stream;
   }
 
   // ── Tracked plans ────────────────────────────────────────────────────────────

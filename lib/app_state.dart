@@ -247,6 +247,7 @@ class AppState extends ChangeNotifier {
   int _trackerStep = 0;
   int get trackerStep => _trackerStep;
   void advanceTracker() { if (_trackerStep < 4) { _trackerStep++; notifyListeners(); _persist(); } }
+  void setTrackerStep(int step) { if (step > _trackerStep && step <= 4) { _trackerStep = step; notifyListeners(); _persist(); } }
 
   // Savings
   int _totalSavings = 0;

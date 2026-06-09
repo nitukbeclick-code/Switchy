@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -19,6 +20,22 @@ class TrackerWidget extends StatefulWidget {
 }
 
 class _TrackerWidgetState extends State<TrackerWidget> {
+  StreamSubscription<int>? _leadStepSub;
+
+  @override
+  void initState() {
+    super.initState();
+    _leadStepSub = appBackend.leadStepStream().listen((step) {
+      if (mounted) AppState().setTrackerStep(step);
+    });
+  }
+
+  @override
+  void dispose() {
+    _leadStepSub?.cancel();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final ffTheme = AppTheme.of(context);

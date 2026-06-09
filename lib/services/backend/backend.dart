@@ -162,6 +162,13 @@ abstract interface class Backend {
   // ── Leads ──────────────────────────────────────────────────────────────────
   Future<void> submitLead(LeadInput lead);
 
+  /// Emits an int (1–4) whenever the lead's `status` changes in the DB.
+  /// Maps: 'new'→1, 'contacted'→2, 'won'→4.
+  /// [LocalBackend] returns an empty stream; [SupabaseBackend] opens a
+  /// Realtime channel so the tracker auto-advances when the rep updates
+  /// the lead from the dashboard.
+  Stream<int> leadStepStream();
+
   // ── Renewal radar — tracked plans ────────────────────────────────────────────
   Future<List<TrackedPlan>> fetchTrackedPlans();
   Future<void> addTrackedPlan(TrackedPlan plan);

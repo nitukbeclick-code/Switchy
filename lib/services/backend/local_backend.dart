@@ -31,6 +31,9 @@ class LocalBackend implements Backend {
   }
 
   @override
+  Stream<int> leadStepStream() => Stream.empty();
+
+  @override
   Future<List<TrackedPlan>> fetchTrackedPlans() async =>
       List.unmodifiable(_tracked);
 

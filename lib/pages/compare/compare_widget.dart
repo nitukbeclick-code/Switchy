@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../theme/app_theme.dart';
@@ -64,6 +65,16 @@ class CompareWidget extends StatelessWidget {
         title: Text('השוואת מסלולים',
             style: ffTheme.titleLarge.copyWith(color: Colors.white)),
         actions: [
+          if (plans.isNotEmpty)
+            IconButton(
+              icon: const Icon(Icons.ios_share_rounded, color: Colors.white),
+              tooltip: 'שתף',
+              onPressed: () => Share.share(
+                'השוויתי בחוסך: '
+                '${plans.map((p) => '${p.provider} ${p.plan} ₪${p.price}').join(' מול ')}'
+                ' 💚',
+              ),
+            ),
           if (ids.isNotEmpty)
             TextButton(
               onPressed: appState.clearCompare,

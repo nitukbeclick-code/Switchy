@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<!-- Source for og-image.png. Render at 1200×630:
+     chrome --headless --screenshot=og-image.png --window-size=1200,630 og-card.html -->
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@700;800;900&family=Assistant:wght@500;600&display=swap" rel="stylesheet" />
+<style>
+  * { margin: 0; box-sizing: border-box; }
+  html, body { width: 1200px; height: 630px; }
+  body {
+    font-family: 'Assistant', sans-serif; color: #fff; overflow: hidden;
+    background: radial-gradient(900px 500px at 82% -10%, rgba(201,236,75,.30), transparent 60%), linear-gradient(135deg, #0E3A26, #15603E);
+    padding: 64px 72px; display: flex; flex-direction: column; justify-content: space-between;
+  }
+  .brand { display: flex; align-items: center; gap: 14px; }
+  .mark { width: 56px; height: 56px; display: grid; place-items: center; background: #C9EC4B; color: #0E3A26; border-radius: 15px; font-size: 30px; font-weight: 900; font-family: 'Rubik'; }
+  .brand b { font-family: 'Rubik'; font-size: 40px; font-weight: 800; }
+  .pill { display: inline-block; background: rgba(255,255,255,.14); padding: 8px 18px; border-radius: 999px; font-weight: 600; font-size: 22px; }
+  h1 { font-family: 'Rubik'; font-weight: 900; font-size: 76px; line-height: 1.08; letter-spacing: -1px; margin: 18px 0 14px; }
+  h1 .hl { color: #C9EC4B; }
+  .sub { font-size: 30px; font-weight: 600; opacity: .92; }
+  .sub b { color: #C9EC4B; }
+  .row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .chip { background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.18); padding: 9px 18px; border-radius: 999px; font-weight: 700; font-size: 22px; }
+  .rate { margin-inline-start: auto; font-family: 'Rubik'; font-weight: 800; font-size: 26px; color: #C9EC4B; }
+</style>
+</head>
+<body>
+  <div class="brand"><span class="mark">✦</span><b>חוסך</b></div>
+  <div>
+    <span class="pill">💚 חינם · בלי התחייבות</span>
+    <h1>כל חברות התקשורת<br /><span class="hl">במקום אחד</span></h1>
+    <div class="sub">השוואה חכמה על סלולר, אינטרנט, טלוויזיה וחבילות — <b>חוסכים עד ₪1,200 בשנה</b></div>
+  </div>
+  <div class="row">
+    <span class="chip">פלאפון</span>
+    <span class="chip">סלקום</span>
+    <span class="chip">פרטנר</span>
+    <span class="chip">הוט</span>
+    <span class="chip">גולן</span>
+    <span class="chip">בזק</span>
+    <span class="rate">★ 4.8 · 60K לקוחות</span>
+  </div>
+</body>
+</html>

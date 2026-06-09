@@ -10,6 +10,7 @@ import '../../data.dart';
 import '../../models.dart';
 import '../../components/plan_card/plan_card_widget.dart';
 import '../../services/recommendation_engine.dart';
+import '../../services/savings_summary.dart';
 
 class AIAdvisorWidget extends StatefulWidget {
   const AIAdvisorWidget({super.key});
@@ -269,17 +270,13 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
         reply = 'החשבונות השמורים שלך:\n$lines\n\nרוצה לבדוק כמה תחסוך בכל קטגוריה? אמור לי!';
       }
     } else if (lower.contains('כמה אחסוך') || lower.contains('חיסכון שלי') || lower.contains('כמה חוסך') || lower.contains('כמה אפשר לחסוך')) {
-      final bills = ['cellular', 'internet', 'tv', 'triple'];
+      // Use the same engine as the home hero / savings dashboard / bills, so the
+      // advisor's answer never contradicts those screens.
+      const names = {'cellular': 'סלולר', 'internet': 'אינטרנט', 'tv': 'טלוויזיה', 'triple': 'חבילה משולבת', 'abroad': 'חו"ל'};
       final savings = <String>[];
-      for (final c in bills) {
-        final bill = appState.currentBill(c);
-        if (bill <= 0) continue;
-        final best = filteredPlans(cat: c, sort: 'save', filters: [], query: '', budget: 9999, currentBill: bill).firstOrNull;
-        if (best == null) continue;
-        final save = ((bill - best.price) * 12).clamp(0, 999999);
-        if (save > 0) {
-          final names = {'cellular': 'סלולר', 'internet': 'אינטרנט', 'tv': 'טלוויזיה', 'triple': 'חבילה משולבת'};
-          savings.add('• ${names[c]}: ₪$save/שנה עם ${best.provider}');
+      for (final cs in computeSavings(appState).categories) {
+        if (cs.annualSaving > 0 && cs.best != null) {
+          savings.add('• ${names[cs.categoryId]}: ₪${cs.annualSaving}/שנה עם ${cs.best!.plan.provider}');
         }
       }
       if (savings.isEmpty) {

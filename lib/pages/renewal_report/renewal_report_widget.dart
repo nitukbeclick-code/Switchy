@@ -141,6 +141,7 @@ class _Hero extends StatelessWidget {
                 children: [
                   IconButton(
                     icon: const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white, size: 20),
+                    tooltip: 'חזרה',
                     onPressed: onBack,
                   ),
                   Expanded(
@@ -532,6 +533,7 @@ class _NotFound extends StatelessWidget {
         foregroundColor: Colors.white,
         leading: IconButton(
           icon: const Icon(Icons.arrow_forward_ios_rounded, size: 20),
+          tooltip: 'חזרה',
           onPressed: () => context.safePop(),
         ),
         title: const Text('טבלת השוואה'),

@@ -232,6 +232,7 @@ class _HeroHeader extends StatelessWidget {
               child: IconButton(
                 icon: const Icon(Icons.arrow_back_ios_rounded,
                     color: Colors.white),
+                tooltip: 'חזרה',
                 onPressed: onBack,
               ),
             ),
@@ -310,6 +311,7 @@ class _EmptyState extends StatelessWidget {
         backgroundColor: ffTheme.primary,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_rounded, color: Colors.white),
+          tooltip: 'חזרה',
           onPressed: () => context.safePop(),
         ),
         title: Text(providerName,

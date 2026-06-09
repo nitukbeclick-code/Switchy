@@ -51,6 +51,7 @@ class _SearchWidgetState extends State<SearchWidget> {
         titleSpacing: 0,
         leading: IconButton(
           icon: Icon(Icons.arrow_forward_ios_rounded, color: ffTheme.primaryText, size: 20),
+          tooltip: 'חזרה',
           onPressed: () => context.safePop(),
         ),
         title: Container(

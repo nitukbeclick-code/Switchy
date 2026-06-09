@@ -139,6 +139,7 @@ class _Hero extends StatelessWidget {
                 children: [
                   IconButton(
                     icon: const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white, size: 20),
+                    tooltip: 'חזרה',
                     onPressed: onBack,
                   ),
                   Text('החיסכון שלי',

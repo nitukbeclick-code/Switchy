@@ -39,6 +39,10 @@ The app currently encodes images/voice as base64 data-URIs. For the backend,
 prefer a **Supabase Storage** bucket (e.g. `community-media`) and store the
 public URL in `media_url`. Base64 in a `text` column works but bloats the table.
 
+Run [`storage.sql`](./storage.sql) after the schema to create the bucket and the
+RLS policies (public read; each user can only upload/delete under their own
+`<uid>/` folder).
+
 ## 5. Flutter integration (outline — not wired yet)
 
 1. Add the dependency:

@@ -172,13 +172,23 @@ class _CallbackWidgetState extends State<CallbackWidget> {
                 final phone = _phoneCtrl.text.replaceAll(RegExp(r'[\s\-]'), '');
                 // Map timing chips to callback_time keys used in leads table.
                 final callbackMap = {'בהקדם': 'now', 'בוקר': 'noon', 'אחה"צ': 'evening', 'ערב': 'tomorrow'};
+                final st = AppState();
+                const topicToCat = {
+                  'סלולר': 'cellular', 'אינטרנט': 'internet',
+                  'טלוויזיה': 'tv', 'חבילה משולבת': 'triple',
+                };
+                final catId = topicToCat[_topic];
+                final bill = catId != null ? st.currentBill(catId) : 0;
+                final noteParts = <String>['נושא: $_topic', 'עיתוי: $_timing'];
+                if (bill > 0) noteParts.add('חשבון נוכחי: ₪$bill/חודש');
+                if (st.quizCompleted) noteParts.add('תקציב: ₪${st.quizBudget} | עדיפות: ${st.quizPriority}');
                 appBackend.submitLead(LeadInput(
                   name: name,
                   phone: phone,
                   callbackTime: callbackMap[_timing] ?? 'now',
                   provider: _topic,
                   source: 'callback',
-                  notes: 'נושא: $_topic | עיתוי: $_timing',
+                  notes: noteParts.join(' | '),
                 )).catchError((_) {});
                 appBackend.upsertProfile(name: name, phone: phone).catchError((_) {});
                 Provider.of<AppState>(context, listen: false).login(name: name, phone: phone);

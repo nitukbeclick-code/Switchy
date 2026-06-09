@@ -148,7 +148,7 @@ async function sendEmail(cfg: Cfg, subject: string, html: string): Promise<{ ok:
   } catch (e) { return { ok: false, error: String(e) }; }
 }
 
-const SOURCE_HE: Record<string, string> = { form: "טופס", callback: "בקשת התקשרות", advisor: "יועץ" };
+const SOURCE_HE: Record<string, string> = { form: "טופס", plan: "דף מסלול", compare: "השוואה", advisor: "יועץ AI", callback: "בקשת התקשרות", porting: "ניוד" };
 
 function buildText(lead: Record<string, unknown>, triage: string): string {
   const cb = CALLBACK_HE[String(lead.callback_time ?? "")] ?? String(lead.callback_time ?? "—");

@@ -723,7 +723,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                       child: AppButton(
                         text: 'עברו למסלול הזה ←',
                         onPressed: () async => context.pushNamed('Lead',
-                            pathParameters: {'planId': plan.id}),
+                            pathParameters: {'planId': plan.id}, queryParameters: {'source': 'plan'}),
                         
                           height: 56,
                           color: ffTheme.primary,

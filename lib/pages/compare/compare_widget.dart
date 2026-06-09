@@ -387,7 +387,7 @@ class _CompareTable extends StatelessWidget {
                       child: ElevatedButton(
                         onPressed: () {
                           HapticFeedback.lightImpact();
-                          context.pushNamed('Lead', pathParameters: {'planId': p.id});
+                          context.pushNamed('Lead', pathParameters: {'planId': p.id}, queryParameters: {'source': 'compare'});
                         },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: p.id == winnerId
@@ -634,7 +634,7 @@ class _WinnerSummaryCard extends StatelessWidget {
                 ElevatedButton(
                   onPressed: () {
                     HapticFeedback.lightImpact();
-                    context.pushNamed('Lead', pathParameters: {'planId': winner.id});
+                    context.pushNamed('Lead', pathParameters: {'planId': winner.id}, queryParameters: {'source': 'compare'});
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: ffTheme.secondary,

@@ -26,7 +26,7 @@ class LocalBackend implements Backend {
   }
 
   @override
-  Future<({String name, String phone, String? email, int totalSavings})?> fetchProfile() async => null;
+  Future<({String name, String phone, String? email, int totalSavings, bool renewalReminders})?> fetchProfile() async => null;
 
   @override
   Future<void> addSavings(int amount) async {
@@ -50,6 +50,9 @@ class LocalBackend implements Backend {
   Future<void> upsertQuiz(Map<String, dynamic> quiz) async {
     // No-op locally — quiz is managed by AppState + SharedPreferences.
   }
+
+  @override
+  Future<Map<String, dynamic>?> fetchQuiz() async => null;
 
   @override
   Future<void> setRenewalReminder(bool enabled) async {
@@ -98,6 +101,9 @@ class LocalBackend implements Backend {
   // Note: this is the backend's own store. The live local feed still reads from
   // AppState + seed data; community_widget moves onto appBackend during the
   // Supabase cutover (see supabase/README.md), so the seed feed isn't lost now.
+
+  @override
+  Stream<void> communityChanges() => Stream<void>.empty();
 
   @override
   Future<List<CommunityPost>> fetchPosts({String? channel}) async {

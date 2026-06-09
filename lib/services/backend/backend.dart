@@ -19,7 +19,7 @@ class LeadInput {
   final String? provider;
   final String? planId;
   final String? callbackTime; // now / noon / evening / tomorrow
-  final String? source;       // form | advisor | callback
+  final String? source;       // form | plan | compare | advisor | callback | porting
   final String? notes;        // free-text context for the rep
 
   Map<String, dynamic> toRow() => {
@@ -166,7 +166,7 @@ abstract interface class Backend {
   Future<void> upsertProfile({required String name, required String phone, String? email});
 
   /// Fetches the user's profile row. Returns null if no profile exists yet.
-  Future<({String name, String phone, String? email, int totalSavings})?> fetchProfile();
+  Future<({String name, String phone, String? email, int totalSavings, bool renewalReminders})?> fetchProfile();
 
   /// Increments the user's `total_savings` in the profiles table. Fire-and-forget.
   Future<void> addSavings(int amount);
@@ -179,6 +179,9 @@ abstract interface class Backend {
 
   /// Persists quiz preferences to `profiles.quiz`. Fire-and-forget.
   Future<void> upsertQuiz(Map<String, dynamic> quiz);
+
+  /// Fetches saved quiz preferences from `profiles.quiz`. Returns null if not set.
+  Future<Map<String, dynamic>?> fetchQuiz();
 
   /// Persists the renewal-reminders opt-in flag to `profiles`. Fire-and-forget.
   Future<void> setRenewalReminder(bool enabled);
@@ -208,6 +211,11 @@ abstract interface class Backend {
   Future<List<ReviewInput>> fetchAllReviews();
 
   // ── Community ────────────────────────────────────────────────────────────────
+  /// Emits void whenever community_posts changes in the DB (insert/update/delete).
+  /// [LocalBackend] returns an empty stream; [SupabaseBackend] opens a Realtime
+  /// channel so the feed refreshes automatically when someone posts.
+  Stream<void> communityChanges();
+
   Future<List<CommunityPost>> fetchPosts({String? channel});
   Future<CommunityPost> createPost(PostInput post);
   Future<void> deletePost(String id);

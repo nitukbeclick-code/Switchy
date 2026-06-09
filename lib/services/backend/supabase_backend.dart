@@ -23,6 +23,9 @@ class SupabaseBackend implements Backend {
   RealtimeChannel? _leadChannel;
   StreamController<int>? _leadStepCtrl;
 
+  RealtimeChannel? _communityChannel;
+  StreamController<void>? _communityCtrl;
+
   // ── User profile ─────────────────────────────────────────────────────────────
   @override
   Future<void> upsertProfile({required String name, required String phone, String? email}) async {
@@ -46,11 +49,11 @@ class SupabaseBackend implements Backend {
   }
 
   @override
-  Future<({String name, String phone, String? email, int totalSavings})?> fetchProfile() async {
+  Future<({String name, String phone, String? email, int totalSavings, bool renewalReminders})?> fetchProfile() async {
     if (_uid == null) return null;
     final row = await _db
         .from('profiles')
-        .select('name, phone, email, total_savings')
+        .select('name, phone, email, total_savings, renewal_reminders')
         .eq('id', _uid!)
         .maybeSingle();
     if (row == null) return null;
@@ -62,6 +65,7 @@ class SupabaseBackend implements Backend {
       phone: phone,
       email: row['email'] as String?,
       totalSavings: (row['total_savings'] as num?)?.toInt() ?? 0,
+      renewalReminders: row['renewal_reminders'] as bool? ?? false,
     );
   }
 
@@ -96,6 +100,16 @@ class SupabaseBackend implements Backend {
       'id': _uid,
       'quiz': quiz,
     }, onConflict: 'id');
+  }
+
+  @override
+  Future<Map<String, dynamic>?> fetchQuiz() async {
+    if (_uid == null) return null;
+    final row = await _db.from('profiles').select('quiz').eq('id', _uid!).maybeSingle();
+    if (row == null) return null;
+    final raw = row['quiz'] as Map?;
+    if (raw == null || raw.isEmpty) return null;
+    return Map<String, dynamic>.from(raw);
   }
 
   @override
@@ -226,6 +240,22 @@ class SupabaseBackend implements Backend {
   }
 
   // ── Community ────────────────────────────────────────────────────────────────
+  @override
+  Stream<void> communityChanges() {
+    _communityCtrl ??= StreamController<void>.broadcast();
+    _communityChannel?.unsubscribe();
+    _communityChannel = _db
+        .channel('community-feed')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'community_posts',
+          callback: (_) => _communityCtrl?.add(null),
+        )
+        .subscribe();
+    return _communityCtrl!.stream;
+  }
+
   CommunityPost _postFromRow(Map<String, dynamic> r) => CommunityPost(
         id: r['id'] as String,
         author: r['author'] as String,

@@ -55,8 +55,15 @@ Future<void> _initBackend() async {
   // Supabase wins on reinstall / new device; local prefs win when both have data.
   Future.wait([
     appBackend.fetchProfile().then((p) {
-      if (p != null && !AppState().isLoggedIn) {
+      if (p == null) return;
+      if (!AppState().isLoggedIn) {
         AppState().login(name: p.name, phone: p.phone);
+      }
+      if (p.totalSavings > AppState().totalSavings) {
+        AppState().addSavings(p.totalSavings - AppState().totalSavings);
+      }
+      if (p.renewalReminders && !AppState().renewalReminders) {
+        AppState().setRenewalReminders(true);
       }
     }).catchError((_) {}),
     appBackend.fetchBills().then((remote) {
@@ -65,6 +72,23 @@ Future<void> _initBackend() async {
           AppState().setCurrentBill(e.key, e.value);
         }
       }
+    }).catchError((_) {}),
+    appBackend.fetchQuiz().then((q) {
+      if (q == null || AppState().quizCompleted) return;
+      final budget = (q['budget'] as num?)?.toInt();
+      final priority = q['priority'] as String?;
+      final lines = (q['lines'] as num?)?.toInt();
+      final cat = q['cat'] as String?;
+      if (budget != null) AppState().setQuizBudget(budget);
+      if (priority != null) AppState().setQuizPriority(priority);
+      if (lines != null) AppState().setQuizLines(lines);
+      if (cat != null) AppState().setQuizCat(cat);
+      AppState().setQuizNeeds(
+        wants5G: q['wants5G'] as bool? ?? false,
+        wantsAbroad: q['wantsAbroad'] as bool? ?? false,
+        wantsNoCommit: false,
+      );
+      AppState().setQuizCompleted(true);
     }).catchError((_) {}),
   ]);
 }

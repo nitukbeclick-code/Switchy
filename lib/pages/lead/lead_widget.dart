@@ -14,8 +14,9 @@ import '../../services/backend/local_backend.dart';
 import '../../components/logo_widget/logo_widget.dart';
 
 class LeadWidget extends StatefulWidget {
-  const LeadWidget({super.key, required this.planId});
+  const LeadWidget({super.key, required this.planId, this.source = 'form'});
   final String planId;
+  final String source; // form | advisor | callback
 
   @override
   State<LeadWidget> createState() => _LeadWidgetState();
@@ -205,7 +206,7 @@ class _LeadWidgetState extends State<LeadWidget> {
                       provider: plan?.provider,
                       planId: widget.planId,
                       callbackTime: _callbackTime,
-                      source: 'form',
+                      source: widget.source,
                       notes: parts.isNotEmpty ? parts.join(' | ') : null,
                     ));
                     // Sync the user's identity to their profile row.

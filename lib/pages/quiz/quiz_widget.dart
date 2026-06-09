@@ -583,15 +583,19 @@ class _QuizWidgetState extends State<QuizWidget> {
     appState.setQuizBudget(_budget.round());
     appState.setQuizCat(_cat);
     appState.setQuizCompleted(true);
+    final needs5G = _priority.startsWith('speed') || _priority == 'data';
+    final needsAbroad = _cat == 'abroad' || _priority == 'abroad' || _extraFilter == 'abroad';
     appBackend.upsertQuiz({
       'budget': _budget.round(),
       'priority': _priority,
       'lines': _lines,
       'cat': _cat,
+      'wants5G': needs5G,
+      'wantsAbroad': needsAbroad,
     }).catchError((_) {});
     appState.setQuizNeeds(
-      wants5G: _priority.startsWith('speed') || _priority == 'data',
-      wantsAbroad: _cat == 'abroad' || _priority == 'abroad' || _extraFilter == 'abroad',
+      wants5G: needs5G,
+      wantsAbroad: needsAbroad,
       wantsNoCommit: _priority == 'nocommit' || _extraFilter == 'nocommit',
     );
     appState.clearFilters();

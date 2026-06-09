@@ -74,7 +74,7 @@ create table if not exists public.leads (
   plan_id       text,
   callback_time text,                        -- now / noon / evening / tomorrow
   status        text not null default 'new', -- new / contacted / won / lost
-  source        text,                        -- form / callback / advisor / porting
+  source        text,                        -- form / plan / compare / advisor / callback / porting
   notes         text,                        -- free-text context for the rep
   created_at    timestamptz not null default now()
 );
@@ -299,6 +299,93 @@ as $$
   set total_savings = total_savings + delta
   where id = uid;
 $$;
+
+-- ── Demand analytics views  (service_role reads; no public RLS) ─────────────
+-- Top plans / providers by page-view in the last 30 days.
+create or replace view public.top_plans_30d as
+select plan_id, provider, category,
+  count(*)                                        as view_count,
+  count(distinct coalesce(user_id::text, 'anon')) as unique_viewers
+from public.plan_views
+where viewed_at >= now() - interval '30 days'
+group by plan_id, provider, category
+order by view_count desc;
+
+create or replace view public.top_providers_30d as
+select provider,
+  count(*)                                        as view_count,
+  count(distinct coalesce(user_id::text, 'anon')) as unique_viewers
+from public.plan_views
+where viewed_at >= now() - interval '30 days'
+group by provider
+order by view_count desc;
+
+-- Lead funnel by source (all time).
+create or replace view public.leads_by_source as
+select
+  coalesce(source, 'unknown')                          as source,
+  count(*)                                             as total,
+  count(*) filter (where status = 'new')               as new_leads,
+  count(*) filter (where status = 'contacted')         as contacted,
+  count(*) filter (where status = 'won')               as won,
+  count(*) filter (where status = 'lost')              as lost,
+  min(created_at)                                      as first_at,
+  max(created_at)                                      as last_at
+from public.leads
+group by source
+order by total desc;
+
+-- ── get_upcoming_renewals  (called by renewal-reminders Edge Function) ───────
+-- Returns tracked_plans with promo_end_date within the next N days, joined with
+-- the user's profile. security definer so the Edge Function (service_role) can
+-- call it via the REST API without needing direct table access.
+create or replace function public.get_upcoming_renewals(days integer default 14)
+returns table(
+  id             uuid,
+  user_id        uuid,
+  provider       text,
+  plan_name      text,
+  monthly_price  integer,
+  promo_end_date date,
+  category       text,
+  name           text,
+  phone          text,
+  email          text
+)
+language sql
+security definer
+set search_path = public
+as $$
+  select
+    tp.id, tp.user_id, tp.provider, tp.plan_name,
+    tp.monthly_price, tp.promo_end_date, tp.category,
+    p.name, p.phone, p.email
+  from public.tracked_plans tp
+  left join public.profiles p on p.id = tp.user_id
+  where tp.promo_end_date is not null
+    and tp.promo_end_date between current_date and current_date + (days || ' days')::interval
+  order by tp.promo_end_date;
+$$;
+
+-- ── pg_cron schedule  (renewal digest) ───────────────────────────────────────
+-- Requires: `create extension if not exists pg_cron schema cron;`
+-- Fires daily at 08:00 UTC (11:00 Israel summer / 10:00 winter).
+-- To register: run this select once in the SQL editor.
+--
+--   select cron.schedule(
+--     'renewal-reminders-daily',
+--     '0 8 * * *',
+--     $$
+--       select net.http_post(
+--         url     := 'https://orzitfqmlvopujsoyigr.supabase.co/functions/v1/renewal-reminders',
+--         headers := jsonb_build_object(
+--           'Content-Type',    'application/json',
+--           'x-webhook-secret', (select decrypted_secret from vault.decrypted_secrets where name = 'lead_webhook_secret')
+--         ),
+--         body    := '{"days":14}'::jsonb
+--       )
+--     $$
+--   );
 
 -- Done. Every table has RLS enabled; the anon/authenticated API can only do
 -- what the policies above allow. The service_role key bypasses RLS — keep it

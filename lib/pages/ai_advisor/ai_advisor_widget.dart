@@ -661,7 +661,7 @@ class _MessageBubble extends StatelessWidget {
                 if (msg.planId != null) ...[
                   const SizedBox(width: 8),
                   GestureDetector(
-                    onTap: () => context.pushNamed('Lead', pathParameters: {'planId': msg.planId!}),
+                    onTap: () => context.pushNamed('Lead', pathParameters: {'planId': msg.planId!}, queryParameters: {'source': 'advisor'}),
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
                       decoration: BoxDecoration(

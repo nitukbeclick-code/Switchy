@@ -89,6 +89,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
       DateTime.now().subtract(Duration(days: days, hours: hours, minutes: min));
 
   Timer? _onlineTimer;
+  StreamSubscription<void>? _changesSub;
 
   @override
   void initState() {
@@ -127,6 +128,9 @@ class _CommunityWidgetState extends State<CommunityWidget> {
     });
     _searchCtrl.addListener(() => setState(() => _searchQuery = _searchCtrl.text));
     _loadFromBackend().catchError((_) {});
+    _changesSub = appBackend.communityChanges().listen(
+      (_) => _loadFromBackend().catchError((_) {}),
+    );
   }
 
   Future<void> _loadFromBackend() async {
@@ -143,6 +147,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
   void dispose() {
     _searchCtrl.dispose();
     _onlineTimer?.cancel();
+    _changesSub?.cancel();
     super.dispose();
   }
 

@@ -445,6 +445,13 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                 // When the final step completes, persist the plan to the renewal
                 // radar so it appears in tracked_plans (and renewal notifications).
                 if (step == 3) {
+                  appState.addMyPlan(
+                    category: plan.cat,
+                    provider: plan.provider,
+                    planName: plan.plan,
+                    monthlyPrice: plan.price,
+                    joinedViaUs: true,
+                  );
                   appBackend.addTrackedPlan(TrackedPlan(
                     id: '',
                     category: plan.cat,

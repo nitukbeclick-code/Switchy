@@ -26,6 +26,25 @@ styles) is **legacy and must not be reintroduced.**
 | Buttons      | `lib/widgets/app_button.dart` | `AppButton(...)` — primary CTA with async loading state |
 | App state    | `lib/app_state.dart`          | `AppState` — `ChangeNotifier` + `SharedPreferences`, singleton via `Provider` |
 
+## Services (pure, testable — keep logic out of widgets)
+
+Domain logic lives in `lib/services/` as pure, dependency-light classes so it
+can be unit-tested without pumping widgets. Each is the **single source of truth**
+for its concern; screens render its output, they don't re-derive it (a duplicated
+formula will drift).
+
+| Service | File | Purpose |
+|---------|------|---------|
+| Recommendation engine | `services/recommendation_engine.dart` | `RecommendationEngine.rank/bestMatch/scorePlan` over a `MatchProfile`; explainable score + Hebrew reasons/caveats |
+| Notifications | `services/notifications.dart` | `computeNotifications(AppState)` → renewal / better-deal / savings alerts; each carries a deep-link `routeName` (+ optional `pathParameters`) |
+| Provider ratings | `services/provider_ratings.dart` | `ProviderRatings.forProvider` — avg stars, review count, sub-ratings (catalogue ⊕ the user's own review) |
+| Renewal report | `services/renewal_report.dart` | `RenewalReport.alternatives/bestSaver` — the full comparison table for a tracked plan about to renew |
+| Search | `services/search.dart` | `searchEverything(query)` → ranked provider + plan matches |
+| Savings summary | `services/savings_summary.dart` | `computeSavings(AppState)` — per-category opportunity + total potential |
+| Media | `services/media_service.dart` (+ `media_native_*.dart`) | image/voice/video capture as base64 data-URIs; web-safe via conditional `dart:io` export |
+
+When adding logic, put it here with tests in `test/<service>_test.dart`, then render it.
+
 ## Conventions (follow these going forward)
 
 - **One file per page:** `lib/pages/<name>/<name>_widget.dart`. A page is a
@@ -43,7 +62,13 @@ styles) is **legacy and must not be reintroduced.**
 - **Routing:** `go_router` in `lib/router.dart`. `ShellRoute` hosts the bottom
   nav; full-screen routes (onboarding, auth, website) sit outside it. Navigate
   with `context.goNamed('Name')`, `context.pushNamed('Name', pathParameters: …)`,
-  and `context.safePop()`.
+  and `context.safePop()`. Feature screens pushed over the shell include
+  `Provider` (`/provider/:name`), `RenewalReport` (`/renewal-report/:trackedId`),
+  `Search` (`/search`), `Savings` (`/savings`), plus `Ratings`, `Renewal`,
+  `Notifications`. A `Plan`/provider surface should link to these, not dead-end.
+- **Accessibility:** give icon-only controls a `Semantics(button:true, label:…)`
+  or `IconButton(tooltip:…)`; mark decorative marks (e.g. logo initials) with
+  `ExcludeSemantics`. Assert key labels with `find.bySemanticsLabel(...)`.
 - **State access:** `Provider.of<AppState>(context)` to rebuild on change;
   `Provider.of<AppState>(context, listen: false)` (or `AppState()`) inside
   callbacks. `AppState()` returns the singleton.
@@ -62,10 +87,25 @@ styles) is **legacy and must not be reintroduced.**
 - Each plan has its own category; savings must use `appState.currentBill(plan.cat)`,
   not a single global bill.
 
+## Validation gates (run after every change, in order)
+
+1. `flutter analyze` → must print **No issues found**.
+2. `flutter test` → all pass (track the count; it only goes up).
+3. `flutter build web --no-pub` → must reach **✓ Built build/web**. This is the
+   critical gate for any new plugin: it catches `dart:io`/native code that breaks
+   the web target. Keep native-only code behind a conditional `dart.library.html`
+   export (see `services/media_native_*.dart`).
+
+The Flutter SDK lives at `$HOME/.flutter-sdk/bin` — `export PATH="$HOME/.flutter-sdk/bin:$PATH"`
+first; ignore the "running as root" warning. When dispatching parallel agents,
+give each **disjoint files** and have it self-validate; wait for all completions
+before validating, and code-review each wave's diff before committing.
+
 ## Build & ship
 
 - `flutter pub get`, `flutter run`, `flutter analyze`, `flutter build apk` /
   `flutter build ipa`. No FlutterFlow step anywhere.
 - Dependencies: `provider`, `go_router`, `google_fonts`, `shared_preferences`,
   `flutter_animate`, `fl_chart`, `shimmer`, `cached_network_image`,
-  `url_launcher`, `intl`.
+  `url_launcher`, `intl`; media: `image_picker`, `record`, `audioplayers`,
+  `video_player`, `path_provider`.

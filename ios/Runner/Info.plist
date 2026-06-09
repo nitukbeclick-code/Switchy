@@ -47,5 +47,11 @@
 		<true/>
 		<key>UIStatusBarHidden</key>
 		<false/>
+		<key>NSCameraUsageDescription</key>
+		<string>נדרש כדי לצלם תמונות לשיתוף בקהילה</string>
+		<key>NSMicrophoneUsageDescription</key>
+		<string>נדרש כדי להקליט הודעות קוליות בקהילה</string>
+		<key>NSPhotoLibraryUsageDescription</key>
+		<string>נדרש כדי לבחור תמונות וסרטונים מהגלריה לשיתוף בקהילה</string>
 	</dict>
 </plist>

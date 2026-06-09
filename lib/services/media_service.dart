@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:image_picker/image_picker.dart';
+import 'media_native.dart';
 
 /// Thin wrapper around media capture/selection so the UI doesn't depend on the
 /// plugin directly. Images and short audio are encoded as base64 data-URIs so
@@ -32,6 +33,16 @@ class MediaService {
   static Future<String?> pickVideoPath() async {
     final x = await _picker.pickVideo(source: ImageSource.gallery);
     return x?.path;
+  }
+
+  /// Turn a recorded-audio source into a durable value: on mobile we read the
+  /// file's bytes and return a base64 data-URI (survives restart); on web (or
+  /// if the bytes can't be read) we return the original source for the session.
+  static Future<String> persistableAudio(String source) async {
+    if (source.startsWith('data:')) return source;
+    final bytes = await readFileBytes(source);
+    if (bytes == null) return source;
+    return bytesToDataUri(bytes, mime: 'audio/mp4');
   }
 
   /// Encode raw bytes as a base64 data-URI (e.g. for a recorded voice note).

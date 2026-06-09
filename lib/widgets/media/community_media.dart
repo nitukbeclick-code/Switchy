@@ -6,7 +6,9 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
+import 'package:video_player/video_player.dart';
 
+import '../../services/media_native.dart';
 import '../../services/media_service.dart';
 import '../../theme/app_theme.dart';
 
@@ -280,7 +282,135 @@ class _VoiceMessageBubbleState extends State<VoiceMessageBubble> {
   }
 }
 
-// ─── 3. VoiceRecorderButton ──────────────────────────────────────────────────
+// ─── 3. VideoMessageBubble ───────────────────────────────────────────────────
+
+class VideoMessageBubble extends StatefulWidget {
+  const VideoMessageBubble({
+    super.key,
+    required this.source,
+    this.maxHeight = 260,
+  });
+
+  final String source;
+  final double maxHeight;
+
+  @override
+  State<VideoMessageBubble> createState() => _VideoMessageBubbleState();
+}
+
+class _VideoMessageBubbleState extends State<VideoMessageBubble> {
+  late VideoPlayerController _c;
+  bool _ready = false;
+  bool _error = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _c = makeVideoController(widget.source);
+    _c.initialize().then((_) {
+      if (mounted) setState(() => _ready = true);
+    }).catchError((_) {
+      if (mounted) setState(() => _error = true);
+    });
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  Widget _placeholder(BuildContext context, {bool loading = false}) {
+    final theme = AppTheme.of(context);
+    return Container(
+      height: 120,
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: theme.alternate,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Center(
+        child: loading
+            ? CircularProgressIndicator(color: theme.primary)
+            : Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.play_circle_outline,
+                      color: theme.secondaryText, size: 40),
+                  const SizedBox(height: 6),
+                  Text(
+                    'וידאו',
+                    style: theme.bodySmall.copyWith(color: theme.secondaryText),
+                  ),
+                ],
+              ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = AppTheme.of(context);
+
+    if (_error) return _placeholder(context);
+    if (!_ready) return _placeholder(context, loading: true);
+
+    final aspect =
+        _c.value.aspectRatio == 0 ? 16 / 9 : _c.value.aspectRatio;
+
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(14),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(maxHeight: widget.maxHeight),
+        child: AspectRatio(
+          aspectRatio: aspect,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              VideoPlayer(_c),
+              // Play/pause overlay
+              GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: () => setState(() {
+                  _c.value.isPlaying ? _c.pause() : _c.play();
+                }),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.25),
+                    shape: BoxShape.circle,
+                  ),
+                  padding: const EdgeInsets.all(10),
+                  child: Icon(
+                    _c.value.isPlaying ? Icons.pause : Icons.play_arrow,
+                    color: Colors.white,
+                    size: 32,
+                  ),
+                ),
+              ),
+              // Progress bar at the bottom
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: VideoProgressIndicator(
+                  _c,
+                  allowScrubbing: true,
+                  colors: VideoProgressColors(
+                    playedColor: theme.primary,
+                    bufferedColor: theme.primary.withOpacity(0.3),
+                    backgroundColor: theme.alternate.withOpacity(0.5),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── 4. VoiceRecorderButton ──────────────────────────────────────────────────
 
 class VoiceRecorderButton extends StatefulWidget {
   const VoiceRecorderButton({

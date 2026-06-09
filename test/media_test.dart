@@ -21,6 +21,16 @@ void main() {
     test('dataUriToBytes returns null on garbage', () {
       expect(MediaService.dataUriToBytes('@@@ not base64 @@@'), isNull);
     });
+
+    test('persistableAudio passes through a data-URI', () async {
+      const uri = 'data:audio/mp4;base64,AAAA';
+      expect(await MediaService.persistableAudio(uri), equals(uri));
+    });
+
+    test('persistableAudio falls back to the source when bytes are unreadable', () async {
+      const path = '/no/such/file/voice.m4a';
+      expect(await MediaService.persistableAudio(path), equals(path));
+    });
   });
 
   group('CommunityPost media', () {

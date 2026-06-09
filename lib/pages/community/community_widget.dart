@@ -385,6 +385,8 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                             children: [
                               if (replyPendingType == 'image')
                                 MediaImageBubble(dataUri: replyPendingData!, maxHeight: 120)
+                              else if (replyPendingType == 'video')
+                                VideoMessageBubble(source: replyPendingData!, maxHeight: 160)
                               else
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -437,7 +439,18 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                             // Voice recorder
                             VoiceRecorderButton(
                               onRecorded: (source, durationMs) async {
-                                setSheet(() { replyPendingType = 'audio'; replyPendingData = source; replyPendingDur = durationMs; });
+                                final storable = await MediaService.persistableAudio(source);
+                                setSheet(() { replyPendingType = 'audio'; replyPendingData = storable; replyPendingDur = durationMs; });
+                              },
+                            ),
+                            // Video attach
+                            IconButton(
+                              icon: const Icon(Icons.videocam_rounded),
+                              color: ffTheme.primary,
+                              tooltip: 'וידאו',
+                              onPressed: () async {
+                                final v = await MediaService.pickVideoPath();
+                                if (v != null) setSheet(() { replyPendingType = 'video'; replyPendingData = v; replyPendingDur = null; });
                               },
                             ),
                             const SizedBox(width: 4),
@@ -622,7 +635,17 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                     ),
                     VoiceRecorderButton(
                       onRecorded: (source, durationMs) async {
-                        setSheet(() { pendingType = 'audio'; pendingData = source; pendingDur = durationMs; });
+                        final storable = await MediaService.persistableAudio(source);
+                        setSheet(() { pendingType = 'audio'; pendingData = storable; pendingDur = durationMs; });
+                      },
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.videocam_rounded),
+                      color: ffTheme.primary,
+                      tooltip: 'וידאו',
+                      onPressed: () async {
+                        final v = await MediaService.pickVideoPath();
+                        if (v != null) setSheet(() { pendingType = 'video'; pendingData = v; pendingDur = null; });
                       },
                     ),
                     if (pendingData != null) ...[
@@ -632,6 +655,8 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                           children: [
                             if (pendingType == 'image')
                               MediaImageBubble(dataUri: pendingData!, maxHeight: 100)
+                            else if (pendingType == 'video')
+                              VideoMessageBubble(source: pendingData!, maxHeight: 160)
                             else
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -1238,7 +1263,9 @@ class _PostCardState extends State<_PostCard> {
                   if (post.media == MediaKind.image)
                     MediaImageBubble(dataUri: post.mediaData!)
                   else if (post.media == MediaKind.audio)
-                    VoiceMessageBubble(source: post.mediaData!, durationMs: post.mediaDurationMs),
+                    VoiceMessageBubble(source: post.mediaData!, durationMs: post.mediaDurationMs)
+                  else if (post.mediaType == 'video')
+                    VideoMessageBubble(source: post.mediaData!),
                 ],
 
                 // Plan chip
@@ -1461,7 +1488,9 @@ class _ReplyBubble extends StatelessWidget {
                         if (reply.mediaType == 'image')
                           MediaImageBubble(dataUri: reply.mediaData!, maxHeight: 160)
                         else if (reply.mediaType == 'audio')
-                          VoiceMessageBubble(source: reply.mediaData!, durationMs: reply.mediaDurationMs),
+                          VoiceMessageBubble(source: reply.mediaData!, durationMs: reply.mediaDurationMs)
+                        else if (reply.mediaType == 'video')
+                          VideoMessageBubble(source: reply.mediaData!),
                       ],
                     ],
                   ),

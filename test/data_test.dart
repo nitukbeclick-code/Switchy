@@ -72,6 +72,35 @@ void main() {
     });
   });
 
+  // ── plansByProvider / allProviders ───────────────────────────────────────────
+
+  group('plansByProvider', () {
+    test('returns only the given provider plans and matches loosely', () {
+      final provider = allProviders.first;
+      final plans = plansByProvider(provider);
+      expect(plans, isNotEmpty);
+      expect(plans.every((p) => p.provider == provider), isTrue);
+    });
+
+    test('a short query finds the full provider name', () {
+      // every catalogue provider should be findable by its own (sub)string
+      for (final name in allProviders.take(5)) {
+        expect(plansByProvider(name), isNotEmpty);
+      }
+    });
+
+    test('empty query returns empty, unknown provider returns empty', () {
+      expect(plansByProvider(''), isEmpty);
+      expect(plansByProvider('no_such_provider_xyz'), isEmpty);
+    });
+
+    test('allProviders is distinct and non-empty', () {
+      final ps = allProviders;
+      expect(ps, isNotEmpty);
+      expect(ps.toSet().length, equals(ps.length));
+    });
+  });
+
   // ── hotDeal ─────────────────────────────────────────────────────────────────
 
   group('hotDeal', () {

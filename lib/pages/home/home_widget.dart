@@ -149,7 +149,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                 SliverToBoxAdapter(child: _buildRecentlyViewed(context, ffTheme, appState)),
 
               // ── 9. Brand trust strip ───────────────────────────────────────
-              SliverToBoxAdapter(child: _buildBrandStrip(context, ffTheme, appState)),
+              SliverToBoxAdapter(child: _buildBrandStrip(context, ffTheme)),
 
               // ── 10. Bottom padding for nav + FAB ──────────────────────────
               const SliverToBoxAdapter(child: SizedBox(height: 100)),
@@ -1365,14 +1365,7 @@ class _HomeWidgetState extends State<HomeWidget> {
     );
   }
 
-  static const _providerCat = {
-    'HOT': 'internet', 'הוט': 'internet', 'הוט מובייל': 'internet',
-    'בזק': 'internet', 'גילת': 'internet', 'CCC': 'internet',
-    'yes': 'tv', 'YES': 'tv', 'NextTV': 'tv', 'FreeTV': 'tv',
-    'Airalo': 'abroad', 'airalo': 'abroad',
-  };
-
-  Widget _buildBrandStrip(BuildContext context, AppTheme ffTheme, AppState appState) {
+  Widget _buildBrandStrip(BuildContext context, AppTheme ffTheme) {
     final providers = [
       const _Provider('פלאפון', Color(0xFFE07034), Color(0xFFFFF3EC)),
       const _Provider('סלקום', Color(0xFFCC2244), Color(0xFFFFECF0)),
@@ -1411,13 +1404,11 @@ class _HomeWidgetState extends State<HomeWidget> {
               separatorBuilder: (_, __) => const SizedBox(width: 8),
               itemBuilder: (context, i) {
                 final p = providers[i];
-                final cat = _providerCat[p.name] ?? 'cellular';
                 return GestureDetector(
-                  onTap: () {
-                    appState.setCategory(cat);
-                    appState.setSearch(p.name);
-                    context.pushNamed('Results');
-                  },
+                  onTap: () => context.pushNamed(
+                    'Provider',
+                    pathParameters: {'name': p.name},
+                  ),
                   child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                   decoration: BoxDecoration(

@@ -48,6 +48,23 @@ Category? categoryById(String id) {
 
 List<Plan> plansByCat(String cat) => allPlans.where((p) => p.cat == cat).toList();
 
+/// All plans offered by a provider (matched loosely so 'גולן' finds 'גולן טלקום').
+List<Plan> plansByProvider(String provider) {
+  final q = provider.trim();
+  if (q.isEmpty) return const [];
+  return allPlans.where((p) => p.provider == q || p.provider.contains(q) || q.contains(p.provider)).toList();
+}
+
+/// Distinct provider names in the catalogue, in first-seen order.
+List<String> get allProviders {
+  final seen = <String>{};
+  final out = <String>[];
+  for (final p in allPlans) {
+    if (seen.add(p.provider)) out.add(p.provider);
+  }
+  return out;
+}
+
 Plan? planById(String id) {
   try { return allPlans.firstWhere((p) => p.id == id); } catch (_) { return null; }
 }

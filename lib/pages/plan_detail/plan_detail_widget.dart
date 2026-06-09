@@ -155,8 +155,11 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                             child: LogoWidget(provider: plan.provider, size: 80),
                           ),
                           const SizedBox(height: 10),
-                          Text(plan.provider,
-                              style: ffTheme.titleLarge.copyWith(color: Colors.white)),
+                          GestureDetector(
+                            onTap: () => context.pushNamed('Provider', pathParameters: {'name': plan.provider}),
+                            child: Text(plan.provider,
+                                style: ffTheme.titleLarge.copyWith(color: Colors.white)),
+                          ),
                           const SizedBox(height: 4),
                           Padding(
                             padding: const EdgeInsets.symmetric(horizontal: 40),

@@ -181,4 +181,16 @@ void main() {
 
     expect(tester.takeException(), isNull);
   });
+
+  // ── Test 11: Provider profile ────────────────────────────────────────────
+  testWidgets('11. Provider profile renders without exceptions', (tester) async {
+    await _bootApp(tester);
+
+    final provider = allProviders.first;
+    _navigateTo(tester, '/provider/$provider');
+    await tester.pump(const Duration(milliseconds: 700));
+    await tester.pump(const Duration(milliseconds: 700));
+
+    expect(tester.takeException(), isNull);
+  });
 }

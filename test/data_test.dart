@@ -101,6 +101,50 @@ void main() {
     });
   });
 
+  // ── catalogue integrity ──────────────────────────────────────────────────────
+
+  group('catalogue integrity', () {
+    test('every plan id is unique', () {
+      final ids = allPlans.map((p) => p.id).toList();
+      expect(ids.toSet().length, equals(ids.length),
+          reason: 'duplicate plan id(s) in the catalogue');
+    });
+
+    test('every plan has a positive price', () {
+      for (final p in allPlans) {
+        expect(p.price, greaterThan(0), reason: 'plan ${p.id} has price ${p.price}');
+      }
+    });
+
+    test('every plan has a non-empty provider and plan name', () {
+      for (final p in allPlans) {
+        expect(p.provider.trim(), isNotEmpty, reason: 'plan ${p.id} has empty provider');
+        expect(p.plan.trim(), isNotEmpty, reason: 'plan ${p.id} has empty name');
+      }
+    });
+
+    test('every plan belongs to a known category', () {
+      const valid = {'cellular', 'internet', 'tv', 'triple', 'abroad'};
+      for (final p in allPlans) {
+        expect(valid, contains(p.cat), reason: 'plan ${p.id} has category ${p.cat}');
+      }
+    });
+
+    test("each category's planCount matches the actual number of plans", () {
+      for (final c in categories) {
+        expect(c.planCount, equals(plansByCat(c.id).length),
+            reason: 'planCount drift for ${c.id}');
+      }
+    });
+
+    test('after-promo price, when present, is at least the promo price', () {
+      for (final p in allPlans.where((p) => p.hasPromo)) {
+        expect(p.after, greaterThanOrEqualTo(p.price),
+            reason: 'plan ${p.id} promo ₪${p.price} > after ₪${p.after}');
+      }
+    });
+  });
+
   // ── hotDeal ─────────────────────────────────────────────────────────────────
 
   group('hotDeal', () {

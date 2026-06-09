@@ -853,18 +853,14 @@ class _HomeWidgetState extends State<HomeWidget> {
   }
 
   Widget _buildCategoryGrid(BuildContext context, AppTheme ffTheme, AppState appState) {
-    // Calculate actual savings per category
+    // Per-category savings from the recommendation engine, consistent with the
+    // home hero, the /savings dashboard and the bills screen.
     final Map<String, int> actualSavings = {};
     final Map<String, bool> hasActual = {};
-    for (final cat in categories) {
-      final bill = appState.currentBill(cat.id);
-      if (bill > 0) {
-        final catPlans = plansByCat(cat.id);
-        if (catPlans.isNotEmpty) {
-          final minPrice = catPlans.map((p) => p.price).reduce((a, b) => a < b ? a : b);
-          actualSavings[cat.id] = ((bill - minPrice) * 12).clamp(0, 999999);
-          hasActual[cat.id] = true;
-        }
+    for (final cs in computeSavings(appState).categories) {
+      if (cs.hasBill) {
+        actualSavings[cs.categoryId] = cs.annualSaving;
+        hasActual[cs.categoryId] = true;
       }
     }
 

@@ -47,6 +47,8 @@ class AppState extends ChangeNotifier {
     // Recently viewed
     final recent = p.getStringList('recentlyViewed') ?? [];
     _recentlyViewed.addAll(recent);
+    // Recent searches
+    _recentSearches.addAll(p.getStringList('recentSearches') ?? const []);
     // User reviews
     final reviewsJson = p.getString('userReviews');
     if (reviewsJson != null) {
@@ -130,6 +132,7 @@ class AppState extends ChangeNotifier {
     // Watched & recently viewed
     await p.setStringList('watchedPlans', _watchedPlans.toList());
     await p.setStringList('recentlyViewed', _recentlyViewed);
+    await p.setStringList('recentSearches', _recentSearches);
     await p.setString('userReviews', jsonEncode(_userReviews));
     await p.setString('communityPosts', jsonEncode(_communityPosts));
     await p.setStringList('likedPosts', _likedPosts.toList());
@@ -277,6 +280,20 @@ class AppState extends ChangeNotifier {
     notifyListeners();
     _persist();
   }
+
+  // Recent search queries (most-recent-first, deduped, capped)
+  final List<String> _recentSearches = [];
+  List<String> get recentSearches => List.unmodifiable(_recentSearches);
+  void addRecentSearch(String q) {
+    final t = q.trim();
+    if (t.isEmpty) return;
+    _recentSearches.remove(t);
+    _recentSearches.insert(0, t);
+    if (_recentSearches.length > 8) _recentSearches.removeLast();
+    notifyListeners();
+    _persist();
+  }
+  void clearRecentSearches() { _recentSearches.clear(); notifyListeners(); _persist(); }
 
   // Recently viewed plans
   final List<String> _recentlyViewed = [];

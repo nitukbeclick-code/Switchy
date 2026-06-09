@@ -66,6 +66,42 @@ void main() {
     });
   });
 
+  // ── recent searches ──────────────────────────────────────────────────────────
+
+  group('recentSearches', () {
+    test('adds most-recent-first and trims blanks', () {
+      final s = AppState();
+      s.addRecentSearch('סלקום');
+      s.addRecentSearch('  5G  ');
+      s.addRecentSearch('   '); // ignored
+      expect(s.recentSearches, equals(['5G', 'סלקום']));
+    });
+
+    test('re-searching moves a term to the front without duplicating', () {
+      final s = AppState();
+      s.addRecentSearch('a');
+      s.addRecentSearch('b');
+      s.addRecentSearch('a');
+      expect(s.recentSearches, equals(['a', 'b']));
+    });
+
+    test('caps the history at 8 entries', () {
+      final s = AppState();
+      for (var i = 0; i < 12; i++) {
+        s.addRecentSearch('q$i');
+      }
+      expect(s.recentSearches.length, equals(8));
+      expect(s.recentSearches.first, equals('q11'));
+    });
+
+    test('clearRecentSearches empties the history', () {
+      final s = AppState();
+      s.addRecentSearch('x');
+      s.clearRecentSearches();
+      expect(s.recentSearches, isEmpty);
+    });
+  });
+
   // ── compare toggle — max 3 ──────────────────────────────────────────────────
 
   group('toggleCompare', () {

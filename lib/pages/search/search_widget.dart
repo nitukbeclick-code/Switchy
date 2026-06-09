@@ -73,6 +73,12 @@ class _SearchWidgetState extends State<SearchWidget> {
                   textDirection: TextDirection.rtl,
                   textInputAction: TextInputAction.search,
                   onChanged: _setQuery,
+                  onSubmitted: (v) {
+                    final t = v.trim();
+                    if (t.isNotEmpty) {
+                      Provider.of<AppState>(context, listen: false).addRecentSearch(t);
+                    }
+                  },
                   style: ffTheme.bodyMedium,
                   decoration: InputDecoration(
                     isDense: true,
@@ -99,7 +105,12 @@ class _SearchWidgetState extends State<SearchWidget> {
         ),
       ),
       body: _q.trim().isEmpty
-          ? _Suggestions(ffTheme: ffTheme, onPick: _useSuggestion)
+          ? _Suggestions(
+              ffTheme: ffTheme,
+              onPick: _useSuggestion,
+              recent: appState.recentSearches,
+              onClearRecent: appState.clearRecentSearches,
+            )
           : results.isEmpty
               ? const EmptyState(
                   icon: Icons.search_off_rounded,
@@ -124,7 +135,10 @@ class _SearchWidgetState extends State<SearchWidget> {
                               name: name,
                               planCount: plansByProvider(name).length,
                               ffTheme: ffTheme,
-                              onTap: () => context.pushNamed('Provider', pathParameters: {'name': name}),
+                              onTap: () {
+                                Provider.of<AppState>(context, listen: false).addRecentSearch(_q.trim());
+                                context.pushNamed('Provider', pathParameters: {'name': name});
+                              },
                             ).animate(delay: (i * 40).ms).fadeIn(duration: 240.ms);
                           },
                         ),
@@ -220,9 +234,16 @@ class _ProviderChip extends StatelessWidget {
 // ── Empty-query suggestions ─────────────────────────────────────────────────
 
 class _Suggestions extends StatelessWidget {
-  const _Suggestions({required this.ffTheme, required this.onPick});
+  const _Suggestions({
+    required this.ffTheme,
+    required this.onPick,
+    required this.recent,
+    required this.onClearRecent,
+  });
   final AppTheme ffTheme;
   final void Function(String) onPick;
+  final List<String> recent;
+  final VoidCallback onClearRecent;
 
   @override
   Widget build(BuildContext context) {
@@ -230,6 +251,48 @@ class _Suggestions extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 20, 16, 32),
       children: [
+        if (recent.isNotEmpty) ...[
+          Row(
+            children: [
+              Text('חיפושים אחרונים',
+                  style: ffTheme.titleMedium.copyWith(fontWeight: FontWeight.w800)),
+              const Spacer(),
+              GestureDetector(
+                onTap: onClearRecent,
+                child: Text('נקה',
+                    style: ffTheme.labelMedium.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w600)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: recent
+                .map((q) => GestureDetector(
+                      onTap: () => onPick(q),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: ffTheme.accent1,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.history_rounded, size: 14, color: ffTheme.secondaryText),
+                            const SizedBox(width: 6),
+                            Text(q,
+                                style: GoogleFonts.assistant(
+                                    fontSize: 13, fontWeight: FontWeight.w600, color: ffTheme.primaryText)),
+                          ],
+                        ),
+                      ),
+                    ))
+                .toList(),
+          ),
+          const SizedBox(height: 24),
+        ],
         Text('ספקים פופולריים',
             style: ffTheme.titleMedium.copyWith(fontWeight: FontWeight.w800)),
         const SizedBox(height: 12),

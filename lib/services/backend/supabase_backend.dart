@@ -154,7 +154,7 @@ class SupabaseBackend implements Backend {
 
   @override
   Stream<int> leadStepStream() {
-    if (_uid == null) return Stream.empty();
+    if (_uid == null) return const Stream.empty();
     _leadStepCtrl ??= StreamController<int>.broadcast();
     _leadChannel?.unsubscribe();
     _leadChannel = _db
@@ -164,7 +164,7 @@ class SupabaseBackend implements Backend {
           schema: 'public',
           table: 'leads',
           filter: PostgresChangeFilter(
-              type: FilterType.eq, column: 'user_id', value: _uid!),
+              type: PostgresChangeFilterType.eq, column: 'user_id', value: _uid!),
           callback: (payload) {
             final status = payload.newRecord['status'] as String? ?? 'new';
             int step;

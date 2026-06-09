@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import '../../theme/app_theme.dart';
 import '../../core/nav.dart';
 import '../../widgets/app_button.dart';
@@ -307,7 +308,7 @@ class _CallbackWidgetState extends State<CallbackWidget> {
               color: active ? ffTheme.primary : Colors.white,
               borderRadius: BorderRadius.circular(20),
               border: Border.all(color: active ? ffTheme.primary : ffTheme.alternate),
-              boxShadow: active ? [BoxShadow(color: ffTheme.primary.withOpacity(0.2), blurRadius: 8, offset: const Offset(0, 2))] : [],
+              boxShadow: active ? [BoxShadow(color: ffTheme.primary.withValues(alpha: 0.2), blurRadius: 8, offset: const Offset(0, 2))] : [],
             ),
             child: Text(t, style: ffTheme.labelMedium.copyWith(
               color: active ? Colors.white : ffTheme.primaryText,
@@ -336,7 +337,7 @@ class _CallbackWidgetState extends State<CallbackWidget> {
                 color: active ? ffTheme.primary : Colors.white,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: active ? ffTheme.primary : ffTheme.alternate),
-                boxShadow: active ? [BoxShadow(color: ffTheme.primary.withOpacity(0.2), blurRadius: 8, offset: const Offset(0, 2))] : [],
+                boxShadow: active ? [BoxShadow(color: ffTheme.primary.withValues(alpha: 0.2), blurRadius: 8, offset: const Offset(0, 2))] : [],
               ),
               child: Column(
                 children: [
@@ -366,7 +367,7 @@ class _CallbackWidgetState extends State<CallbackWidget> {
                 children: [
                   Container(
                     width: 120, height: 120,
-                    decoration: BoxDecoration(color: ffTheme.primary.withOpacity(0.08), shape: BoxShape.circle),
+                    decoration: BoxDecoration(color: ffTheme.primary.withValues(alpha: 0.08), shape: BoxShape.circle),
                   ).animate(onPlay: (c) => c.repeat(reverse: true))
                     .scale(begin: const Offset(1, 1), end: const Offset(1.12, 1.12), duration: 1200.ms),
                   Container(
@@ -394,7 +395,7 @@ class _CallbackWidgetState extends State<CallbackWidget> {
                 decoration: BoxDecoration(
                   color: ffTheme.accent1,
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: ffTheme.primary.withOpacity(0.15)),
+                  border: Border.all(color: ffTheme.primary.withValues(alpha: 0.15)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,

@@ -23,6 +23,8 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 // pressing one updates leads.status, which the app's tracker streams live.
 // After a successful send the lead is stamped notified_at — the daily
 // renewal-reminders run re-delivers anything left unstamped (safety net).
+// The team chat can also text the bot: /leads (open leads with buttons),
+// /stats (pipeline by source/status), /help.
 //
 // Deploy: supabase functions deploy notify-lead --no-verify-jwt
 // ─────────────────────────────────────────────────────────────────────────────
@@ -274,7 +276,7 @@ function buildText(lead: Record<string, unknown>, triage: string): string {
     (lead.provider || lead.plan_id) ? `📦 <b>ספק / מסלול:</b> ${esc(lead.provider ?? "—")} / ${esc(lead.plan_id ?? "—")}` : null,
     `⏰ <b>זמן חזרה מועדף:</b> ${esc(cb)}`,
     sourceLabel ? `📌 <b>מקור:</b> ${esc(sourceLabel)}` : null,
-    lead.notes ? `📋 <b>הקשר:</b> ${esc(lead.notes)}` : null,
+    lead.notes ? `📋 <b>הקשר:</b> ${esc(String(lead.notes).slice(0, 1500))}` : null,
     triage ? "" : null,
     triage ? `🤖 <i>${esc(triage)}</i>` : null,
   ];
@@ -296,6 +298,65 @@ function buildHtml(lead: Record<string, unknown>, triage: string): string {
     + `</p>`
     + (triage ? `<p style="background:#F4F0E8;padding:10px;border-radius:8px">🤖 ${esc(triage)}</p>` : "")
     + `</div>`;
+}
+
+// ── Team chat commands (/leads, /stats, /help) ───────────────────────────────
+
+async function fetchRows(path: string): Promise<Record<string, unknown>[]> {
+  try {
+    const r = await serviceFetch(path, { method: "GET" });
+    if (!r || !r.ok) return [];
+    const j = await r.json();
+    return Array.isArray(j) ? j : [];
+  } catch (_) { return []; }
+}
+
+async function handleCommand(cfg: Cfg, cmd: string): Promise<{ ok: boolean; command: string }> {
+  if (cmd === "/leads") {
+    const open = await fetchRows("/rest/v1/leads?status=in.(new,contacted)&order=created_at.desc&limit=5&select=*");
+    if (open.length === 0) {
+      await sendTelegram(cfg, "📭 אין לידים פתוחים — הכול טופל 🎉");
+      return { ok: true, command: cmd };
+    }
+    await sendTelegram(cfg, `📬 <b>${open.length} הלידים הפתוחים האחרונים</b> (חדש / בטיפול):`);
+    // oldest of the batch first so the newest lands closest to the input box
+    for (const lead of open.reverse()) {
+      await sendTelegram(cfg, buildText(lead, ""), leadKeyboard(lead.id));
+    }
+    return { ok: true, command: cmd };
+  }
+  if (cmd === "/stats") {
+    const rows = await fetchRows("/rest/v1/leads_by_source?select=*");
+    if (rows.length === 0) {
+      await sendTelegram(cfg, "📊 אין עדיין לידים במערכת.");
+      return { ok: true, command: cmd };
+    }
+    const tot = (k: string) => rows.reduce((s, r) => s + Number(r[k] ?? 0), 0);
+    const lines = [
+      "📊 <b>סטטיסטיקת לידים — חוסך</b>",
+      "",
+      `סה"כ: <b>${tot("total")}</b> | 🆕 ${tot("new_leads")} | 📞 ${tot("contacted")} | 🏆 ${tot("won")} | ❌ ${tot("lost")}`,
+      "",
+      "<b>לפי מקור:</b>",
+      ...rows.map((r) => {
+        const label = SOURCE_HE[String(r.source ?? "")] ?? String(r.source ?? "");
+        return `• ${esc(label)} — ${r.total} (${r.new_leads} חדשים, ${r.won} נסגרו)`;
+      }),
+    ];
+    await sendTelegram(cfg, lines.join(NL));
+    return { ok: true, command: cmd };
+  }
+  // /help and anything unrecognized
+  await sendTelegram(cfg, [
+    "🤖 <b>הנציג הדיגיטלי של חוסך</b>",
+    "",
+    "/leads — חמשת הלידים הפתוחים האחרונים, עם כפתורי סטטוס",
+    "/stats — סטטיסטיקת הלידים לפי מקור וסטטוס",
+    "/help — ההודעה הזו",
+    "",
+    "<i>כל ליד חדש מגיע לכאן אוטומטית עם כפתורי דיברתי / נסגר / לא רלוונטי.</i>",
+  ].join(NL));
+  return { ok: true, command: cmd };
 }
 
 function json(body: unknown, status = 200): Response {
@@ -366,7 +427,7 @@ Deno.serve(async (req: Request) => {
       const r = await tgApi(cfg, "setWebhook", {
         url: hookUrl,
         secret_token: await tgWebhookToken(cfg.webhookSecret),
-        allowed_updates: ["callback_query"],
+        allowed_updates: ["callback_query", "message"],
       });
       return json({
         ...r,
@@ -388,6 +449,19 @@ Deno.serve(async (req: Request) => {
     }
     let update: Record<string, unknown> = {};
     try { update = await req.json(); } catch (_) { /* empty body */ }
+
+    // Text commands from the team chat (/leads, /stats, /help).
+    const teamMsg = update.message as Record<string, unknown> | undefined;
+    if (teamMsg) {
+      const msgChatId = (teamMsg.chat as Record<string, unknown> | undefined)?.id;
+      if (cfg.tgChat && String(msgChatId ?? "") !== cfg.tgChat) return json({ ok: true, skipped: "wrong chat" });
+      const text = String(teamMsg.text ?? "").trim();
+      if (!text.startsWith("/")) return json({ ok: true, skipped: "not a command" });
+      // group commands arrive as /leads@BotName — strip the mention
+      const cmd = text.split(/[\s@]/)[0].toLowerCase();
+      return json(await handleCommand(cfg, cmd));
+    }
+
     const cb = update.callback_query as Record<string, unknown> | undefined;
     if (!cb) return json({ ok: true, skipped: "not a callback_query" });
     const m = String(cb.data ?? "").match(/^lead:([0-9a-fA-F-]{36}):(contacted|won|lost)$/);

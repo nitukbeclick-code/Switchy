@@ -165,6 +165,22 @@ async function sendTelegram(cfg: Cfg, text: string): Promise<{ ok: boolean; erro
   } catch (e) { return { ok: false, error: String(e) }; }
 }
 
+// Open-lead reminder appended to the daily digest — keeps unhandled leads
+// from going stale silently.
+async function countNewLeads(): Promise<number> {
+  const url = Deno.env.get("SUPABASE_URL") ?? "";
+  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  if (!url || !key) return 0;
+  try {
+    const r = await fetch(`${url}/rest/v1/leads?status=eq.new&select=id`, {
+      method: "HEAD",
+      headers: { "apikey": key, "Authorization": `Bearer ${key}`, "Prefer": "count=exact" },
+    });
+    const total = Number((r.headers.get("content-range") ?? "").split("/")[1]);
+    return Number.isFinite(total) ? total : 0;
+  } catch (_) { return 0; }
+}
+
 // Safety net: re-deliver leads whose INSERT-trigger notification never landed
 // (both Telegram and email failed, or the trigger itself didn't fire).
 // notify-lead stamps notified_at on success, so each lead is re-sent at most
@@ -234,9 +250,13 @@ Deno.serve(async (req: Request) => {
   const days = typeof payload.days === "number" ? Math.min(Math.max(payload.days, 1), 90) : 14;
 
   const rows = await fetchUpcomingRenewals(days);
-  const message = buildDigest(rows, days);
+  const newLeads = await countNewLeads();
+  let message = buildDigest(rows, days);
+  if (newLeads > 0) {
+    message += `${NL}${NL}📬 <b>${newLeads} לידים בסטטוס "חדש"</b> ממתינים לטיפול — שלחו /leads לפירוט.`;
+  }
   const tg = await sendTelegram(cfg, message);
   const leadSweep = await sweepUnnotifiedLeads(cfg);
 
-  return json({ ok: tg.ok, count: rows.length, telegram: tg, lead_sweep: leadSweep });
+  return json({ ok: tg.ok, count: rows.length, new_leads: newLeads, telegram: tg, lead_sweep: leadSweep });
 });

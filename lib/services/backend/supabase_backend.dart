@@ -51,6 +51,15 @@ class SupabaseBackend implements Backend {
   }
 
   @override
+  Future<void> upsertQuiz(Map<String, dynamic> quiz) async {
+    if (_uid == null) return;
+    await _db.from('profiles').upsert({
+      'id': _uid,
+      'quiz': quiz,
+    }, onConflict: 'id');
+  }
+
+  @override
   Future<Map<String, int>?> fetchBills() async {
     if (_uid == null) return null;
     final rows = await _db.from('profiles').select('bills').eq('id', _uid!).maybeSingle();

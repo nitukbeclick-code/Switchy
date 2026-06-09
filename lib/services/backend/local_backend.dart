@@ -39,6 +39,11 @@ class LocalBackend implements Backend {
   Future<Map<String, int>?> fetchBills() async => null;
 
   @override
+  Future<void> upsertQuiz(Map<String, dynamic> quiz) async {
+    // No-op locally — quiz is managed by AppState + SharedPreferences.
+  }
+
+  @override
   Future<void> submitLead(LeadInput lead) async {
     _leads.add(lead);
   }

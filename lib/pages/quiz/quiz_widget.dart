@@ -8,6 +8,7 @@ import '../../widgets/app_button.dart';
 import '../../app_state.dart';
 import '../../data.dart';
 import '../../services/recommendation_engine.dart';
+import '../../services/backend/local_backend.dart';
 
 class QuizWidget extends StatefulWidget {
   const QuizWidget({super.key});
@@ -582,6 +583,12 @@ class _QuizWidgetState extends State<QuizWidget> {
     appState.setQuizBudget(_budget.round());
     appState.setQuizCat(_cat);
     appState.setQuizCompleted(true);
+    appBackend.upsertQuiz({
+      'budget': _budget.round(),
+      'priority': _priority,
+      'lines': _lines,
+      'cat': _cat,
+    }).catchError((_) {});
     appState.setQuizNeeds(
       wants5G: _priority.startsWith('speed') || _priority == 'data',
       wantsAbroad: _cat == 'abroad' || _priority == 'abroad' || _extraFilter == 'abroad',

@@ -174,6 +174,9 @@ abstract interface class Backend {
   /// Fetches saved bills from `profiles.bills`. Returns null if no data.
   Future<Map<String, int>?> fetchBills();
 
+  /// Persists quiz preferences to `profiles.quiz`. Fire-and-forget.
+  Future<void> upsertQuiz(Map<String, dynamic> quiz);
+
   // ── Leads ──────────────────────────────────────────────────────────────────
   Future<void> submitLead(LeadInput lead);
 

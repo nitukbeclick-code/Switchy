@@ -387,6 +387,32 @@ $$;
 --     $$
 --   );
 
+-- ── Storage: community-media cleanup trigger ────────────────────────────────
+-- Deletes the Storage object whenever a community_post or community_reply row
+-- is deleted, preventing orphaned objects in the community-media bucket.
+-- Already live — re-run if the trigger/function is ever dropped.
+--
+--   create or replace function public.delete_community_storage_object()
+--   returns trigger language plpgsql security definer set search_path = public as $$
+--   declare obj_path text;
+--   begin
+--     if old.media_url is not null and old.media_url like '%/community-media/%' then
+--       obj_path := substring(old.media_url from '/community%-media/(.+)$');
+--       if obj_path is not null then
+--         delete from storage.objects where bucket_id = 'community-media' and name = obj_path;
+--       end if;
+--     end if;
+--     return old;
+--   end; $$;
+--
+--   create trigger trg_delete_post_media
+--     after delete on public.community_posts
+--     for each row execute function public.delete_community_storage_object();
+--
+--   create trigger trg_delete_reply_media
+--     after delete on public.community_replies
+--     for each row execute function public.delete_community_storage_object();
+
 -- ── Storage: community-media bucket ─────────────────────────────────────────
 -- Public bucket for community post/reply images, audio, and video.
 -- Max object size: 50 MB. Already created via Supabase MCP execute_sql;

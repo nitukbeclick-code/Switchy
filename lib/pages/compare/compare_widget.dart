@@ -12,6 +12,7 @@ import '../../models.dart';
 import '../../data.dart';
 import '../../components/logo_widget/logo_widget.dart';
 import '../../services/recommendation_engine.dart';
+import '../../services/backend/local_backend.dart';
 
 class CompareWidget extends StatelessWidget {
   const CompareWidget({super.key});
@@ -86,12 +87,19 @@ class CompareWidget extends StatelessWidget {
       ),
       body: plans.length < 2
           ? _EmptyState(ffTheme: ffTheme, hasPlan: plans.length == 1, firstPlan: plans.isEmpty ? null : plans.first)
-          : _CompareTable(
-              plans: plans,
-              appState: appState,
-              ffTheme: ffTheme,
-              winnerId: winnerId,
-              matchMap: matchMap,
+          : Stack(
+              children: [
+                _CompareTable(
+                  plans: plans,
+                  appState: appState,
+                  ffTheme: ffTheme,
+                  winnerId: winnerId,
+                  matchMap: matchMap,
+                ),
+                // Track both compared plans once on mount.
+                for (final p in plans)
+                  _PlanViewTracker(planId: p.id, provider: p.provider, category: p.cat),
+              ],
             ),
     );
   }
@@ -903,4 +911,36 @@ class _RowWidget extends StatelessWidget {
       ),
     );
   }
+}
+
+// ── Plan-view analytics tracker (zero-size, fires once on mount) ───────────────
+
+class _PlanViewTracker extends StatefulWidget {
+  const _PlanViewTracker({
+    required this.planId,
+    required this.provider,
+    required this.category,
+  });
+  final String planId;
+  final String provider;
+  final String category;
+  @override
+  State<_PlanViewTracker> createState() => _PlanViewTrackerState();
+}
+
+class _PlanViewTrackerState extends State<_PlanViewTracker> {
+  @override
+  void initState() {
+    super.initState();
+    appBackend
+        .trackPlanView(
+          planId: widget.planId,
+          provider: widget.provider,
+          category: widget.category,
+        )
+        .catchError((_) {});
+  }
+
+  @override
+  Widget build(BuildContext context) => const SizedBox.shrink();
 }

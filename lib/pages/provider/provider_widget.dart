@@ -10,6 +10,7 @@ import '../../data.dart';
 import '../../components/logo_widget/logo_widget.dart';
 import '../../services/recommendation_engine.dart';
 import '../../services/provider_ratings.dart';
+import '../../services/backend/local_backend.dart';
 
 class ProviderWidget extends StatelessWidget {
   const ProviderWidget({super.key, required this.providerName});
@@ -85,6 +86,16 @@ class ProviderWidget extends StatelessWidget {
           ? _EmptyState(providerName: providerName, ffTheme: ffTheme)
           : CustomScrollView(
               slivers: [
+                // Track the best-matching plan once per page view.
+                if (bestMatch != null)
+                  SliverToBoxAdapter(
+                    child: _PlanViewTracker(
+                      planId: bestMatch.plan.id,
+                      provider: providerName,
+                      category: bestMatch.plan.cat,
+                    ),
+                  ),
+
                 // ── Hero header ──────────────────────────────────────────────
                 SliverToBoxAdapter(
                   child: _HeroHeader(
@@ -828,4 +839,36 @@ class _CommunityCard extends StatelessWidget {
       ),
     );
   }
+}
+
+// ── Plan-view analytics tracker (zero-size, fires once on mount) ───────────────
+
+class _PlanViewTracker extends StatefulWidget {
+  const _PlanViewTracker({
+    required this.planId,
+    required this.provider,
+    required this.category,
+  });
+  final String planId;
+  final String provider;
+  final String category;
+  @override
+  State<_PlanViewTracker> createState() => _PlanViewTrackerState();
+}
+
+class _PlanViewTrackerState extends State<_PlanViewTracker> {
+  @override
+  void initState() {
+    super.initState();
+    appBackend
+        .trackPlanView(
+          planId: widget.planId,
+          provider: widget.provider,
+          category: widget.category,
+        )
+        .catchError((_) {});
+  }
+
+  @override
+  Widget build(BuildContext context) => const SizedBox.shrink();
 }

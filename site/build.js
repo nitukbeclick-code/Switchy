@@ -8,6 +8,12 @@ const path = require('path');
 
 const SITE = 'https://chosech.co.il';
 
+// Real plan catalogue, exported from the app via `flutter test tool/export_plans.dart`.
+const catalogue = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'plans.json'), 'utf8'));
+const plansByCat = {};
+for (const p of catalogue.plans) (plansByCat[p.cat] ||= []).push(p);
+for (const k of Object.keys(plansByCat)) plansByCat[k].sort((a, b) => a.price - b.price);
+
 const categories = [
   {
     slug: 'cellular', name: 'סלולר', icon: '📱',
@@ -108,13 +114,34 @@ const categories = [
 
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
+// Render one real plan as a card. Used on category pages and the all-plans page.
+function planCardHtml(p) {
+  const unit = p.cat === 'abroad' ? 'לחבילה' : 'לחודש';
+  const specs = Object.entries(p.specs || {}).slice(0, 3)
+    .map(([, v]) => `<span class="pchip">${esc(v)}</span>`).join('');
+  const flags = [];
+  if (p.is5G) flags.push('<span class="pflag pflag--5g">5G</span>');
+  if (p.noCommit) flags.push('<span class="pflag">ללא התחייבות</span>');
+  if (p.hasAbroad) flags.push('<span class="pflag">כולל חו״ל</span>');
+  const after = p.after ? `<span class="plan__after">ואז ₪${p.after}</span>` : '';
+  const rating = p.rating ? `<span class="plan__rating">★ ${p.rating}</span>` : '';
+  const text = esc(`${p.provider} ${p.plan} ${(p.feats || []).join(' ')} ${Object.values(p.specs || {}).join(' ')}`).toLowerCase();
+  return `<article class="plan" data-cat="${esc(p.cat)}" data-text="${text}">
+        <div class="plan__top"><span class="plan__provider">${esc(p.provider)}</span><span class="plan__net">${esc(p.net)}</span></div>
+        <div class="plan__name">${esc(p.plan)}</div>
+        ${specs ? `<div class="plan__chips">${specs}</div>` : ''}
+        ${flags.length ? `<div class="plan__flags">${flags.join('')}</div>` : ''}
+        <div class="plan__bottom"><div class="plan__price"><b>₪${p.price}</b> <span>${unit}</span>${after}</div>${rating}</div>
+      </article>`;
+}
+
 const nav = `  <header class="nav" id="nav">
     <div class="container nav__inner">
       <a class="brand" href="index.html" aria-label="חוסך — דף הבית">
         <span class="brand__mark" aria-hidden="true">✦</span><span class="brand__name">חוסך</span>
       </a>
       <nav class="nav__links" aria-label="ניווט ראשי">
-        <a href="index.html#how">איך זה עובד</a>
+        <a href="plans.html">כל החבילות</a>
         <a href="index.html#categories">קטגוריות</a>
         <a href="guides.html">מדריכים</a>
         <a href="index.html#calculator">מחשבון חיסכון</a>
@@ -123,7 +150,7 @@ const nav = `  <header class="nav" id="nav">
       <button class="nav__toggle" id="navToggle" aria-label="פתיחת תפריט" aria-expanded="false" aria-controls="mobileMenu"><span></span><span></span><span></span></button>
     </div>
     <div class="nav__mobile" id="mobileMenu" hidden>
-      <a href="index.html#how">איך זה עובד</a>
+      <a href="plans.html">כל החבילות</a>
       <a href="index.html#categories">קטגוריות</a>
       <a href="guides.html">מדריכים</a>
       <a href="index.html#calculator">מחשבון חיסכון</a>
@@ -172,6 +199,8 @@ function page(c) {
   const chips = c.providers.map((p) => `<span class="chip">${esc(p)}</span>`).join('\n          ');
   const faqs = c.faq.map(([q, a]) => `          <details><summary>${esc(q)}</summary><p>${esc(a)}</p></details>`).join('\n');
   const catGuides = relatedGuides(c.name, null, 2).map(guideCard).join('\n');
+  const catPlans = plansByCat[c.slug] || [];
+  const planCards = catPlans.map(planCardHtml).join('\n      ');
   return `<!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
@@ -220,6 +249,15 @@ ${nav}
         <p class="providers__title">משווים את כל הספקים ב${esc(c.name)}</p>
         <div class="providers__row">
           ${chips}
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="plans">
+      <div class="container">
+        <header class="section__head reveal"><span class="eyebrow">${catPlans.length} מסלולים</span><h2>כל מסלולי ה${esc(c.name)}</h2><p>מהזול ביותר — מחירים מעודכנים מכל החברות.</p></header>
+        <div class="plan-grid">
+      ${planCards}
         </div>
       </div>
     </section>
@@ -659,6 +697,58 @@ ${footer}
 `;
 }
 
+function plansPage() {
+  const url = `${SITE}/plans.html`;
+  const filterBtns = [['all', 'הכל'], ...categories.map((c) => [c.slug, c.name])]
+    .map(([f, label], i) => `<button class="filter-btn${i === 0 ? ' active' : ''}" data-filter="${f}">${esc(label)}</button>`)
+    .join('\n          ');
+  const cards = catalogue.plans.slice().sort((a, b) => a.price - b.price).map(planCardHtml).join('\n        ');
+  return `<!DOCTYPE html>
+<html lang="he" dir="rtl">
+${head('כל החבילות — מחירון מלא של כל חברות התקשורת | חוסך', `מחירון מלא: ${catalogue.plans.length} מסלולי סלולר, אינטרנט, טלוויזיה, חבילות משולבות וחו״ל מכל החברות — ממוין מהזול ביותר. סננו לפי קטגוריה וחפשו.`, url)}
+<body id="top">
+${nav}
+  <main>
+    <section class="lead-hero">
+      <div class="container">
+        <p class="crumbs"><a href="index.html">דף הבית</a> ← כל החבילות</p>
+        <h1>כל החבילות — <span class="hl">מחירון מלא</span></h1>
+        <p>${catalogue.plans.length} מסלולים מכל חברות התקשורת, ממוינים מהזול ביותר. סננו לפי קטגוריה או חפשו ספק/מסלול/תכונה.</p>
+      </div>
+    </section>
+    <section class="section">
+      <div class="container">
+        <div class="filters">
+          ${filterBtns}
+          <input type="search" class="filter-search" id="planSearch" placeholder="חיפוש ספק, מסלול או תכונה…" aria-label="חיפוש בחבילות" />
+        </div>
+        <div class="plan-grid" id="planGrid">
+        ${cards}
+        </div>
+        <p class="plan-empty" id="planEmpty">לא נמצאו חבילות שתואמות את החיפוש.</p>
+      </div>
+    </section>
+    <section class="cta" id="cta">
+      <div class="container cta__inner reveal">
+        <h2>מצאתם משהו מעניין?</h2>
+        <p>השאירו פרטים ונעזור לכם לעבור — חינם, בלי התחייבות.</p>
+        <form class="cta__form" id="leadForm" novalidate>
+          <input type="text" id="leadName" name="name" placeholder="שם מלא" autocomplete="name" required />
+          <input type="tel" id="leadPhone" name="phone" placeholder="טלפון (050-0000000)" autocomplete="tel" inputmode="tel" required />
+          <button class="btn btn--primary btn--lg" type="submit">קבלו השוואה חינם</button>
+        </form>
+        <p class="cta__note" id="leadNote" role="status" aria-live="polite"></p>
+        <a class="cta__wa" href="https://wa.me/972500000000" target="_blank" rel="noopener"><span aria-hidden="true">💬</span> מעדיפים וואטסאפ? דברו איתנו</a>
+      </div>
+    </section>
+  </main>
+${footer}
+  <script src="script.js" defer></script>
+</body>
+</html>
+`;
+}
+
 // ── Write pages ────────────────────────────────────────────────────────────
 for (const c of categories) {
   fs.writeFileSync(path.join(__dirname, `${c.slug}.html`), page(c));
@@ -670,11 +760,13 @@ for (const p of staticPages) {
   fs.writeFileSync(path.join(__dirname, `${p.slug}.html`), staticPage(p));
 }
 fs.writeFileSync(path.join(__dirname, 'guides.html'), guidesIndexPage());
+fs.writeFileSync(path.join(__dirname, 'plans.html'), plansPage());
 fs.writeFileSync(path.join(__dirname, '404.html'), notFoundPage());
 
 // ── Refresh sitemap (home + category pages) ─────────────────────────────────
 const locs = [
   `${SITE}/`,
+  `${SITE}/plans.html`,
   `${SITE}/guides.html`,
   `${SITE}/about.html`,
   ...categories.map((c) => `${SITE}/${c.slug}.html`),
@@ -689,4 +781,4 @@ ${locs.map((l, i) => `  <url>\n    <loc>${l}</loc>\n    <changefreq>weekly</chan
 `;
 fs.writeFileSync(path.join(__dirname, 'sitemap.xml'), sitemap);
 
-console.log(`Generated ${categories.length} category + ${guides.length} guides + ${staticPages.length} static + guides index + 404 + sitemap.xml`);
+console.log(`Generated ${categories.length} category + ${guides.length} guides + ${staticPages.length} static + guides index + plans + 404 + sitemap.xml`);

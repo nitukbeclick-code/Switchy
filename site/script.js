@@ -97,4 +97,32 @@
       }
     });
   }
+
+  // ── All-plans filter (plans.html) ──────────────────────────────────────────
+  const planGrid = $('planGrid');
+  if (planGrid) {
+    const cards = Array.from(planGrid.querySelectorAll('.plan'));
+    const empty = $('planEmpty');
+    const search = $('planSearch');
+    const btns = Array.from(document.querySelectorAll('.filter-btn'));
+    let cat = 'all';
+    const apply = () => {
+      const q = (search && search.value || '').trim().toLowerCase();
+      let shown = 0;
+      for (const card of cards) {
+        const okCat = cat === 'all' || card.dataset.cat === cat;
+        const okText = !q || (card.dataset.text || '').includes(q);
+        const visible = okCat && okText;
+        card.style.display = visible ? '' : 'none';
+        if (visible) shown++;
+      }
+      if (empty) empty.style.display = shown ? 'none' : 'block';
+    };
+    btns.forEach((b) => b.addEventListener('click', () => {
+      btns.forEach((x) => x.classList.toggle('active', x === b));
+      cat = b.dataset.filter;
+      apply();
+    }));
+    if (search) search.addEventListener('input', apply);
+  }
 })();

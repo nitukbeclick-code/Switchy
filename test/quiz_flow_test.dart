@@ -46,6 +46,8 @@ void main() {
     await tapNext(); // → bill step (4 of 5)
 
     expect(find.text('כמה אתם משלמים היום?'), findsOneWidget);
+    // The bill step is step 4 of the now-5-step quiz (guards the counter label).
+    expect(find.text('שלב 4 מתוך 5'), findsOneWidget);
 
     // Pick a known preset distinct from the default bill.
     final preset = find.text('₪89');

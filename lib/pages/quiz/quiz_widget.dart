@@ -857,7 +857,7 @@ class _StepCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('שלב $step מתוך 4', style: ffTheme.labelMedium),
+          Text('שלב $step מתוך 5', style: ffTheme.labelMedium),
           const SizedBox(height: 8),
           Text(title, style: ffTheme.headlineMedium),
           const SizedBox(height: 4),

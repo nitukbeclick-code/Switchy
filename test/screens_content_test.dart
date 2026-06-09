@@ -98,6 +98,23 @@ void main() {
     expect(AppState().recentSearches, contains('בזק'));
   });
 
+  testWidgets('search category chip runs a category search', (tester) async {
+    await _bootApp(tester);
+    _go(tester, '/search');
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    // The empty state offers category browse chips; tap "אינטרנט".
+    expect(find.text('חיפוש לפי קטגוריה'), findsOneWidget);
+    await tester.tap(find.text('אינטרנט').first);
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    // Results now show the plans section.
+    expect(find.text('מסלולים'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('home savings hero is honest about estimate vs personalized', (tester) async {
     await _bootApp(tester);
     _go(tester, '/home');

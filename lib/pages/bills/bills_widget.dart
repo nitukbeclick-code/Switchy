@@ -9,6 +9,7 @@ import '../../app_state.dart';
 import '../../data.dart';
 import '../../models.dart';
 import '../../services/savings_summary.dart';
+import '../../services/backend/local_backend.dart';
 
 class BillsWidget extends StatefulWidget {
   const BillsWidget({super.key});
@@ -19,6 +20,12 @@ class BillsWidget extends StatefulWidget {
 
 class _BillsWidgetState extends State<BillsWidget> {
   int _touchedIndex = -1;
+
+  @override
+  void dispose() {
+    appBackend.upsertBills(AppState().currentBills).catchError((_) {});
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -57,7 +64,7 @@ class _BillsWidgetState extends State<BillsWidget> {
                     actions: [
                       TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('ביטול')),
                       ElevatedButton(
-                        onPressed: () { Navigator.pop(ctx); appState.resetAllBills(); },
+                        onPressed: () { Navigator.pop(ctx); appState.resetAllBills(); appBackend.upsertBills(AppState().currentBills).catchError((_) {}); },
                         style: ElevatedButton.styleFrom(backgroundColor: ffTheme.error, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
                         child: const Text('אפס'),
                       ),

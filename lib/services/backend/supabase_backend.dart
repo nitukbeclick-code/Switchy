@@ -41,6 +41,25 @@ class SupabaseBackend implements Backend {
     await _db.rpc('increment_savings', params: {'uid': _uid, 'delta': amount});
   }
 
+  @override
+  Future<void> upsertBills(Map<String, int> bills) async {
+    if (_uid == null) return;
+    await _db.from('profiles').upsert({
+      'id': _uid,
+      'bills': bills,
+    }, onConflict: 'id');
+  }
+
+  @override
+  Future<Map<String, int>?> fetchBills() async {
+    if (_uid == null) return null;
+    final rows = await _db.from('profiles').select('bills').eq('id', _uid!).maybeSingle();
+    if (rows == null) return null;
+    final raw = rows['bills'] as Map?;
+    if (raw == null || raw.isEmpty) return null;
+    return raw.map((k, v) => MapEntry(k as String, (v as num).toInt()));
+  }
+
   // ── Leads ──────────────────────────────────────────────────────────────────
   @override
   Future<void> submitLead(LeadInput lead) async {

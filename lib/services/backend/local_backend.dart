@@ -31,6 +31,14 @@ class LocalBackend implements Backend {
   }
 
   @override
+  Future<void> upsertBills(Map<String, int> bills) async {
+    // No-op locally — bills are managed by AppState + SharedPreferences.
+  }
+
+  @override
+  Future<Map<String, int>?> fetchBills() async => null;
+
+  @override
   Future<void> submitLead(LeadInput lead) async {
     _leads.add(lead);
   }

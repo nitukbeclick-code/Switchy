@@ -168,6 +168,12 @@ abstract interface class Backend {
   /// Increments the user's `total_savings` in the profiles table. Fire-and-forget.
   Future<void> addSavings(int amount);
 
+  /// Persists the user's personalized bills map to `profiles.bills`. Fire-and-forget.
+  Future<void> upsertBills(Map<String, int> bills);
+
+  /// Fetches saved bills from `profiles.bills`. Returns null if no data.
+  Future<Map<String, int>?> fetchBills();
+
   // ── Leads ──────────────────────────────────────────────────────────────────
   Future<void> submitLead(LeadInput lead);
 

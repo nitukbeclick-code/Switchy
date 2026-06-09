@@ -50,4 +50,15 @@ Future<void> _initBackend() async {
   }
 
   appBackend = SupabaseBackend();
+
+  // Restore personalized bills from Supabase after local prefs are loaded.
+  // Runs after AppState.initializePersistedState so local prefs win on first
+  // install; Supabase wins on reinstall / new device (where local prefs are empty).
+  appBackend.fetchBills().then((remote) {
+    if (remote != null && remote.isNotEmpty) {
+      for (final e in remote.entries) {
+        AppState().setCurrentBill(e.key, e.value);
+      }
+    }
+  }).catchError((_) {});
 }

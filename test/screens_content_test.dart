@@ -61,6 +61,8 @@ void main() {
     expect(find.text('הבחירה שלנו'), findsOneWidget); // top-ranked row marker
     // A ₪190 plan is beatable, so the saver headline should appear.
     expect(find.textContaining('אפשר לחסוך'), findsOneWidget);
+    // Each alternative row carries a provider star rating.
+    expect(find.byIcon(Icons.star_rounded), findsWidgets);
   });
 
   testWidgets('Global search shows provider and plan sections for a query', (tester) async {

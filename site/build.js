@@ -172,7 +172,7 @@ function planCardHtml(p) {
       </article>`;
 }
 
-const nav = `  <header class="nav" id="nav">
+const navHtml = (ctaHref) => `  <header class="nav" id="nav">
     <div class="container nav__inner">
       <a class="brand" href="index.html" aria-label="חוסך — דף הבית">
         <span class="brand__mark" aria-hidden="true">✦</span><span class="brand__name">חוסך</span>
@@ -185,7 +185,7 @@ const nav = `  <header class="nav" id="nav">
         <a href="guides.html">מדריכים</a>
         <a href="index.html#calculator">מחשבון</a>
       </nav>
-      <a class="btn btn--primary nav__cta" href="#cta">השוו עכשיו</a>
+      <a class="btn btn--primary nav__cta" href="${ctaHref}">השוו עכשיו</a>
       <button class="nav__toggle" id="navToggle" aria-label="פתיחת תפריט" aria-expanded="false" aria-controls="mobileMenu"><span></span><span></span><span></span></button>
     </div>
     <div class="nav__mobile" id="mobileMenu" hidden>
@@ -195,9 +195,16 @@ const nav = `  <header class="nav" id="nav">
       <a href="app.html">האפליקציה</a>
       <a href="guides.html">מדריכים</a>
       <a href="index.html#calculator">מחשבון</a>
-      <a class="btn btn--primary" href="#cta">השוו עכשיו</a>
+      <a class="btn btn--primary" href="${ctaHref}">השוו עכשיו</a>
     </div>
   </header>`;
+
+// Pages that render their own lead-form section keep the in-page anchor;
+// article/guide/static/404/providers-index pages have no #cta, so their header
+// CTA points at the homepage's — otherwise it's a dead button exactly where
+// organic-SEO visitors land.
+const nav = navHtml('#cta');
+const navNoCta = navHtml('index.html#cta');
 
 const footer = `  <footer class="footer">
     <div class="container footer__inner">
@@ -550,7 +557,7 @@ function articlePage(g) {
 <html lang="he" dir="rtl">
 ${head(g.title, g.desc, url, articleJsonLd(g))}
 <body id="top">
-${nav}
+${navNoCta}
   <main>
     <article>
       <section class="article-hero">
@@ -597,7 +604,7 @@ function guidesIndexPage() {
 <html lang="he" dir="rtl">
 ${head('מדריכים — איך לחסוך על תקשורת | חוסך', 'מדריכים מקצועיים: איך לעבור ספק, לבחור מסלול סלולר, סיב אופטי מול כבלים ועוד — כל הטיפים כדי לא לשלם יותר מדי.', url)}
 <body id="top">
-${nav}
+${navNoCta}
   <main>
     <section class="article-hero">
       <div class="container">
@@ -687,7 +694,7 @@ function staticPage(p) {
 <html lang="he" dir="rtl">
 ${head(p.title, p.desc, url)}
 <body id="top">
-${nav}
+${navNoCta}
   <main>
     <section class="article-hero">
       <div class="container">
@@ -717,7 +724,7 @@ function notFoundPage() {
 <html lang="he" dir="rtl">
 ${head('הדף לא נמצא — חוסך', 'הדף שחיפשתם לא נמצא.', `${SITE}/404.html`, null, true)}
 <body id="top">
-${nav}
+${navNoCta}
   <main>
     <section class="lead-hero" style="text-align:center">
       <div class="container">
@@ -869,7 +876,7 @@ function providersIndexPage() {
 <html lang="he" dir="rtl">
 ${head('כל הספקים — מסלולים ומחירים לפי חברה | חוסך', 'כל ספקי התקשורת בישראל במקום אחד — סלקום, פרטנר, פלאפון, גולן, בזק, הוט, yes ועוד. בחרו ספק וראו את כל המסלולים שלו.', url)}
 <body id="top">
-${nav}
+${navNoCta}
   <main>
     <section class="lead-hero">
       <div class="container">

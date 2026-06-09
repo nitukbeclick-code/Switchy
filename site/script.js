@@ -87,7 +87,7 @@
   const sendLead = async (lead) => {
     const cfg = window.CHOSECH_SUPABASE;
     if (!cfg || !cfg.url || !cfg.anonKey) return; // backend parked — local-only
-    await fetch(cfg.url.replace(/\/$/, '') + '/rest/v1/leads', {
+    const res = await fetch(cfg.url.replace(/\/$/, '') + '/rest/v1/leads', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -97,26 +97,34 @@
       },
       body: JSON.stringify(lead),
     });
+    // fetch resolves on HTTP errors too — a rejected insert (validation gate,
+    // rate limit) must not be presented to the visitor as success.
+    if (!res.ok) throw new Error('lead rejected: ' + res.status);
   };
   if (form) {
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const name = ($('leadName').value || '').trim();
-      const phone = ($('leadPhone').value || '').trim();
-      if (name.length < 2 || phone.replace(/\D/g, '').length < 9) {
+      // Normalize to digits/+ — the leads gate rejects dots/parens/spaces.
+      const phone = ($('leadPhone').value || '').replace(/[^\d+]/g, '');
+      if (name.length < 2 || name.length > 80 || phone.replace(/\D/g, '').length < 9) {
         if (note) { note.style.color = '#ffd9d9'; note.textContent = 'נא למלא שם וטלפון תקין 🙏'; }
         return;
       }
       const btn = form.querySelector('button[type="submit"]');
       if (btn) btn.disabled = true;
+      let sent = true;
       try {
         await sendLead({ name: name, phone: phone, source: location.pathname });
       } catch (_) {
-        // Network/backend failure shouldn't lose the lead UX — show success and
-        // let the user reach us via WhatsApp; the submission is best-effort.
+        sent = false;
+      }
+      if (btn) btn.disabled = false;
+      if (!sent) {
+        if (note) { note.style.color = '#ffd9d9'; note.textContent = 'השליחה נכשלה — נסו שוב, או כתבו לנו בוואטסאפ 💬'; }
+        return;
       }
       form.reset();
-      if (btn) btn.disabled = false;
       if (note) {
         note.style.color = '';
         note.textContent = 'תודה ' + name.split(' ')[0] + '! נחזור אליך בהקדם 💚';

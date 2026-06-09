@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>חוסך — השוואת מחירי תקשורת חכמה | חוסכים עד ₪1,200 בשנה</title>
+  <meta name="description" content="חוסך משווה עבורכם מחירים על סלולר, אינטרנט, טלוויזיה, חבילות משולבות וחו״ל מכל חברות התקשורת — ומוצא את המסלול הכי משתלם. בחינם, בלי התחייבות." />
+  <meta name="theme-color" content="#15603E" />
+
+  <!-- Open Graph / social -->
+  <meta property="og:type" content="website" />
+  <meta property="og:locale" content="he_IL" />
+  <meta property="og:title" content="חוסך — השוואת מחירי תקשורת חכמה" />
+  <meta property="og:description" content="כל חברות התקשורת במקום אחד. השוו, חסכו עד ₪1,200 בשנה, ועברו בליווי מלא." />
+  <meta name="twitter:card" content="summary_large_image" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- ── Navbar ─────────────────────────────────────────────────────────── -->
+  <header class="nav" id="nav">
+    <div class="container nav__inner">
+      <a class="brand" href="#top" aria-label="חוסך — דף הבית">
+        <span class="brand__mark" aria-hidden="true">✦</span>
+        <span class="brand__name">חוסך</span>
+      </a>
+      <nav class="nav__links" aria-label="ניווט ראשי">
+        <a href="#how">איך זה עובד</a>
+        <a href="#categories">קטגוריות</a>
+        <a href="#calculator">מחשבון חיסכון</a>
+        <a href="#faq">שאלות נפוצות</a>
+      </nav>
+      <a class="btn btn--primary nav__cta" href="#calculator">התחילו לחסוך</a>
+      <button class="nav__toggle" id="navToggle" aria-label="פתיחת תפריט" aria-expanded="false" aria-controls="mobileMenu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+    <div class="nav__mobile" id="mobileMenu" hidden>
+      <a href="#how">איך זה עובד</a>
+      <a href="#categories">קטגוריות</a>
+      <a href="#calculator">מחשבון חיסכון</a>
+      <a href="#faq">שאלות נפוצות</a>
+      <a class="btn btn--primary" href="#calculator">התחילו לחסוך</a>
+    </div>
+  </header>
+
+  <main id="top">
+    <!-- ── Hero ─────────────────────────────────────────────────────────── -->
+    <section class="hero">
+      <div class="container hero__inner">
+        <div class="hero__copy reveal">
+          <span class="pill">💚 חינם · בלי התחייבות</span>
+          <h1>כל חברות התקשורת<br /><span class="hl">במקום אחד</span></h1>
+          <p class="hero__sub">
+            חוסך משווה עבורכם מחירים על סלולר, אינטרנט, טלוויזיה, חבילות משולבות
+            וחו״ל — ומוצא את המסלול הכי משתלם. תחסכו <strong>עד ₪1,200 בשנה</strong>.
+          </p>
+          <div class="hero__cta">
+            <a class="btn btn--primary btn--lg" href="#calculator">בדקו כמה תחסכו ←</a>
+            <a class="btn btn--ghost btn--lg" href="#how">איך זה עובד?</a>
+          </div>
+          <ul class="hero__stats" aria-label="נתונים">
+            <li><b>100+</b><span>מסלולים</span></li>
+            <li><b>60K</b><span>לקוחות</span></li>
+            <li><b>₪1,200</b><span>חיסכון שנתי</span></li>
+            <li><b>4.8★</b><span>דירוג</span></li>
+          </ul>
+        </div>
+
+        <div class="hero__visual reveal" aria-hidden="true">
+          <div class="phone">
+            <div class="phone__notch"></div>
+            <div class="phone__screen">
+              <div class="card card--save">
+                <span class="card__label">חיסכון פוטנציאלי שנתי</span>
+                <span class="card__big" id="heroCounter">₪0</span>
+                <span class="card__hint">מחושב לפי החשבונות שלך</span>
+              </div>
+              <div class="card card--row">
+                <span class="logo logo--cel">סל</span>
+                <div class="card__text"><b>סלקום</b><small>5G ללא הגבלה</small></div>
+                <span class="tag">₪29</span>
+              </div>
+              <div class="card card--row">
+                <span class="logo logo--par">פר</span>
+                <div class="card__text"><b>פרטנר</b><small>סיב 1000Mb</small></div>
+                <span class="tag">₪99</span>
+              </div>
+              <div class="card card--row best">
+                <span class="logo logo--gol">גל</span>
+                <div class="card__text"><b>גולן טלקום</b><small>ההמלצה שלנו</small></div>
+                <span class="tag tag--win">חוסך ₪960</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Providers strip ──────────────────────────────────────────────── -->
+    <section class="providers" aria-label="חברות התקשורת">
+      <div class="container">
+        <p class="providers__title">משווים את כל הגדולות — והקטנות</p>
+        <div class="providers__row">
+          <span class="chip">פלאפון</span>
+          <span class="chip">סלקום</span>
+          <span class="chip">פרטנר</span>
+          <span class="chip">הוט מובייל</span>
+          <span class="chip">גולן טלקום</span>
+          <span class="chip">019 מובייל</span>
+          <span class="chip">רמי לוי</span>
+          <span class="chip">בזק</span>
+          <span class="chip">yes</span>
+          <span class="chip">HOT</span>
+          <span class="chip">We4G</span>
+          <span class="chip">Airalo</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── How it works ─────────────────────────────────────────────────── -->
+    <section class="section" id="how">
+      <div class="container">
+        <header class="section__head reveal">
+          <span class="eyebrow">פשוט כמו 1·2·3</span>
+          <h2>איך זה עובד</h2>
+          <p>שלוש דקות מהשאלון ועד מסלול חדש שמתאים בדיוק לכם.</p>
+        </header>
+        <ol class="steps">
+          <li class="step reveal">
+            <span class="step__num">1</span>
+            <h3>עונים על שאלון קצר</h3>
+            <p>כמה אתם משלמים היום ומה חשוב לכם — מחיר, מהירות, ללא התחייבות. 2 דקות.</p>
+          </li>
+          <li class="step reveal">
+            <span class="step__num">2</span>
+            <h3>מקבלים המלצה חכמה</h3>
+            <p>המנוע שלנו משווה את כל החברות ומדרג עבורכם את המסלולים — עם הסבר למה.</p>
+          </li>
+          <li class="step reveal">
+            <span class="step__num">3</span>
+            <h3>עוברים בליווי מלא</h3>
+            <p>נציג חוזר אליכם, וניוד המספר נעשה תוך 1–3 ימי עסקים — בלי עמלות נסתרות.</p>
+          </li>
+        </ol>
+      </div>
+    </section>
+
+    <!-- ── Categories ───────────────────────────────────────────────────── -->
+    <section class="section section--alt" id="categories">
+      <div class="container">
+        <header class="section__head reveal">
+          <span class="eyebrow">הכל תחת קורת גג אחת</span>
+          <h2>מה משווים</h2>
+        </header>
+        <div class="cats">
+          <article class="cat reveal"><span class="cat__icon">📱</span><h3>סלולר</h3><p>מ-₪15 לחודש</p></article>
+          <article class="cat reveal"><span class="cat__icon">🌐</span><h3>אינטרנט</h3><p>סיב עד גיגה</p></article>
+          <article class="cat reveal"><span class="cat__icon">📺</span><h3>טלוויזיה</h3><p>ערוצים וסטרימינג</p></article>
+          <article class="cat reveal"><span class="cat__icon">🏠</span><h3>חבילה משולבת</h3><p>הכל ביחד, בזול</p></article>
+          <article class="cat reveal"><span class="cat__icon">✈️</span><h3>חו״ל / eSIM</h3><p>גלישה בכל העולם</p></article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Savings calculator ───────────────────────────────────────────── -->
+    <section class="section" id="calculator">
+      <div class="container calc">
+        <div class="calc__copy reveal">
+          <span class="eyebrow">מחשבון חיסכון</span>
+          <h2>כמה אתם משלמים היום?</h2>
+          <p>הזיזו את המחוון ותגלו כמה תוכלו לחסוך בשנה. ההערכה מבוססת על מעבר ממוצע — הסכום המדויק מחושב באפליקציה לפי החשבון האמיתי שלכם.</p>
+        </div>
+        <div class="calc__card reveal">
+          <label class="calc__row">
+            <span>חשבון חודשי נוכחי</span>
+            <output id="billOut">₪220</output>
+          </label>
+          <input type="range" id="billRange" min="50" max="600" step="10" value="220" aria-label="חשבון חודשי נוכחי" />
+          <div class="calc__result">
+            <span class="calc__resultLabel">תוכלו לחסוך עד</span>
+            <span class="calc__resultBig" id="saveOut">₪1,188</span>
+            <span class="calc__resultUnit">בשנה</span>
+          </div>
+          <a class="btn btn--primary btn--block" href="#cta">קבלו את ההמלצה המדויקת ←</a>
+          <p class="calc__fine">* הערכה בלבד. החיסכון בפועל תלוי בחבילה ובספק.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Features ─────────────────────────────────────────────────────── -->
+    <section class="section section--alt" id="features">
+      <div class="container">
+        <header class="section__head reveal">
+          <span class="eyebrow">למה חוסך</span>
+          <h2>לא עוד טבלת אקסל</h2>
+          <p>פלטפורמה חכמה שמלווה אתכם מההשוואה ועד החיסכון — ואחר כך דואגת שלא תשלמו יותר מדי שוב.</p>
+        </header>
+        <div class="features">
+          <article class="feature reveal"><span class="feature__icon">🧠</span><h3>המלצה חכמה ואישית</h3><p>מנוע שמדרג מסלולים לפי מה שחשוב <em>לכם</em> — ומסביר כל המלצה.</p></article>
+          <article class="feature reveal"><span class="feature__icon">⏰</span><h3>התראת חידוש</h3><p>נזכיר לכם ~21 יום לפני שהמבצע נגמר — לפני שהמחיר קופץ.</p></article>
+          <article class="feature reveal"><span class="feature__icon">💬</span><h3>קהילה אמיתית</h3><p>חוות דעת, טיפים ודירוגים מאנשים אמיתיים — לא פרסומות.</p></article>
+          <article class="feature reveal"><span class="feature__icon">🤝</span><h3>מעבר מלווה</h3><p>אנחנו עושים את העבודה — ניוד מספר בלי כאב ראש ובלי עמלות.</p></article>
+          <article class="feature reveal"><span class="feature__icon">🔒</span><h3>חינם ושקוף</h3><p>השירות חינמי לחלוטין. אנחנו מקבלים עמלה מהספק — לא מכם.</p></article>
+          <article class="feature reveal"><span class="feature__icon">⚡</span><h3>תוצאות בשניות</h3><p>כל המחירים מעודכנים ומרוכזים — בלי לרוץ בין אתרים.</p></article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Testimonials ─────────────────────────────────────────────────── -->
+    <section class="section" id="reviews">
+      <div class="container">
+        <header class="section__head reveal">
+          <span class="eyebrow">60,000+ לקוחות מרוצים</span>
+          <h2>מה אומרים עלינו</h2>
+        </header>
+        <div class="quotes">
+          <figure class="quote reveal">
+            <div class="stars">★★★★★</div>
+            <blockquote>עברתי מ-₪150 ל-₪49 בחודש — חסכתי ₪1,212 השנה!</blockquote>
+            <figcaption>מיכאל כ. · סלולר</figcaption>
+          </figure>
+          <figure class="quote reveal">
+            <div class="stars">★★★★★</div>
+            <blockquote>מעבר אינטרנט תוך 3 ימים. ₪960 חיסכון לשנה, בלי כאב ראש.</blockquote>
+            <figcaption>רחל מ. · אינטרנט</figcaption>
+          </figure>
+          <figure class="quote reveal">
+            <div class="stars">★★★★★</div>
+            <blockquote>חבילה משולבת — ₪2,400 פחות בשנה. למה לא עשיתי את זה קודם?</blockquote>
+            <figcaption>עמית ב. · חבילה משולבת</figcaption>
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── FAQ ──────────────────────────────────────────────────────────── -->
+    <section class="section section--alt" id="faq">
+      <div class="container faq">
+        <header class="section__head reveal">
+          <span class="eyebrow">שאלות נפוצות</span>
+          <h2>כל מה שרציתם לדעת</h2>
+        </header>
+        <div class="faq__list reveal">
+          <details>
+            <summary>זה באמת בחינם?</summary>
+            <p>כן, לחלוטין. אנחנו מקבלים עמלה מחברת התקשורת כשאתם עוברים — אתם לא משלמים לנו אגורה, והמחיר שלכם זהה.</p>
+          </details>
+          <details>
+            <summary>המספר שלי נשמר במעבר?</summary>
+            <p>בוודאי. ניוד המספר שומר על המספר הקיים שלכם, והוא מתבצע תוך 1–3 ימי עסקים בליווי שלנו.</p>
+          </details>
+          <details>
+            <summary>אילו חברות אתם משווים?</summary>
+            <p>את כולן — פלאפון, סלקום, פרטנר, הוט, גולן, 019, רמי לוי, בזק, yes ועוד, בכל הקטגוריות.</p>
+          </details>
+          <details>
+            <summary>כמה זמן לוקח התהליך?</summary>
+            <p>השאלון לוקח כ-2 דקות, ההשוואה מיידית. נציג חוזר אליכם תוך שעה (בשעות הפעילות) להשלמת המעבר.</p>
+          </details>
+          <details>
+            <summary>מה ההתראה על חידוש מבצע?</summary>
+            <p>מסלולים רבים זולים בשנה הראשונה ואז קופצים. חוסך עוקב ומזכיר לכם ~21 יום לפני סיום המבצע — כדי שתשוו שוב ולא תשלמו יותר מדי.</p>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── Final CTA ────────────────────────────────────────────────────── -->
+    <section class="cta" id="cta">
+      <div class="container cta__inner reveal">
+        <h2>מוכנים להפסיק לשלם יותר מדי?</h2>
+        <p>גלו בשניות כמה תוכלו לחסוך — חינם, בלי התחייבות.</p>
+        <form class="cta__form" id="leadForm" novalidate>
+          <input type="text" id="leadName" name="name" placeholder="שם מלא" autocomplete="name" required />
+          <input type="tel" id="leadPhone" name="phone" placeholder="טלפון (050-0000000)" autocomplete="tel" inputmode="tel" required />
+          <button class="btn btn--primary btn--lg" type="submit">קבלו השוואה חינם</button>
+        </form>
+        <p class="cta__note" id="leadNote" role="status" aria-live="polite"></p>
+        <a class="cta__wa" href="https://wa.me/972500000000?text=%D7%94%D7%99%D7%99%2C%20%D7%90%D7%A9%D7%9E%D7%97%20%D7%9C%D7%94%D7%A9%D7%95%D7%95%D7%AA%20%D7%9E%D7%A1%D7%9C%D7%95%D7%9C%D7%99%D7%9D" target="_blank" rel="noopener">
+          <span aria-hidden="true">💬</span> מעדיפים וואטסאפ? דברו איתנו
+        </a>
+      </div>
+    </section>
+  </main>
+
+  <!-- ── Footer ───────────────────────────────────────────────────────── -->
+  <footer class="footer">
+    <div class="container footer__inner">
+      <div class="footer__brand">
+        <a class="brand brand--light" href="#top">
+          <span class="brand__mark" aria-hidden="true">✦</span>
+          <span class="brand__name">חוסך</span>
+        </a>
+        <p>השוואת מחירי תקשורת חכמה. משווים, חוסכים, עוברים — בלי כאב ראש.</p>
+      </div>
+      <nav class="footer__links" aria-label="קישורים">
+        <a href="#how">איך זה עובד</a>
+        <a href="#categories">קטגוריות</a>
+        <a href="#calculator">מחשבון</a>
+        <a href="#faq">שאלות נפוצות</a>
+      </nav>
+      <div class="footer__contact">
+        <a href="https://wa.me/972500000000" target="_blank" rel="noopener">וואטסאפ</a>
+        <a href="mailto:hello@chosech.co.il">hello@chosech.co.il</a>
+      </div>
+    </div>
+    <div class="container footer__bottom">
+      <span>© <span id="year"></span> חוסך · כל הזכויות שמורות</span>
+      <span>נבנה באהבה בישראל 💚</span>
+    </div>
+  </footer>
+
+  <script src="script.js" defer></script>
+</body>
+</html>

@@ -7,6 +7,7 @@ import '../../core/nav.dart';
 import '../../app_state.dart';
 import '../../data.dart';
 import '../../components/logo_widget/logo_widget.dart';
+import '../../services/provider_ratings.dart';
 
 class RatingsWidget extends StatefulWidget {
   const RatingsWidget({super.key});
@@ -60,33 +61,10 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
   int _totalReviews(String provider) =>
       allPlans.where((p) => p.provider == provider).fold(0, (s, p) => s + p.reviews);
 
-  double _subRatingValue(String provider, String key) {
-    final appState = AppState();
-    final review = appState.reviewFor(provider);
-    if (review != null) {
-      final v = review[key] as int? ?? 0;
-      if (v > 0) return v.toDouble();
-    }
-    final seed = provider.codeUnits.fold(0, (s, c) => s + c);
-    switch (key) {
-      case 'price': return (3.5 + (seed % 15) / 10).clamp(3.0, 5.0);
-      case 'service': return (3.2 + (seed % 17) / 10).clamp(3.0, 5.0);
-      case 'coverage': return (3.8 + (seed % 12) / 10).clamp(3.5, 5.0);
-      case 'speed': return (3.6 + (seed % 11) / 10).clamp(3.2, 5.0);
-      default: return 4.0;
-    }
-  }
-
-  // Best category for a provider (for navigation)
-  String _primaryCat(String provider) {
-    final plans = allPlans.where((p) => p.provider == provider).toList();
-    if (plans.isEmpty) return 'cellular';
-    final freq = <String, int>{};
-    for (final p in plans) {
-      freq[p.cat] = (freq[p.cat] ?? 0) + 1;
-    }
-    return freq.entries.reduce((a, b) => a.value > b.value ? a : b).key;
-  }
+  // Delegates to the shared ProviderRatings helper so the leaderboard and the
+  // provider profile compute identical sub-ratings (single source of truth).
+  double _subRatingValue(String provider, String key) =>
+      ProviderRatings.subRating(provider, key);
 
   @override
   Widget build(BuildContext context) {
@@ -171,13 +149,9 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
                 final provRatings = entry.value.value;
                 final avg = provRatings.reduce((a, b) => a + b) / provRatings.length;
                 final totalReviews = _totalReviews(provider);
-                final primaryCat = _primaryCat(provider);
 
                 return GestureDetector(
-                  onTap: () {
-                    appState.setCategory(primaryCat);
-                    context.pushNamed('Results');
-                  },
+                  onTap: () => context.pushNamed('Provider', pathParameters: {'name': provider}),
                   child: Container(
                     margin: const EdgeInsets.only(bottom: 12),
                     padding: const EdgeInsets.all(14),
@@ -576,7 +550,9 @@ class _PodiumItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final medalColor = rank == 1 ? const Color(0xFFC9EC4B) : rank == 2 ? const Color(0xFFE5E0D5) : const Color(0xFFFFE0CC);
-    return Column(
+    return GestureDetector(
+      onTap: () => context.pushNamed('Provider', pathParameters: {'name': provider}),
+      child: Column(
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
         Text(rank == 1 ? '🥇' : rank == 2 ? '🥈' : '🥉', style: const TextStyle(fontSize: 22)),
@@ -601,6 +577,7 @@ class _PodiumItem extends StatelessWidget {
           ),
         ),
       ],
+      ),
     );
   }
 }

@@ -8,6 +8,7 @@ import '../../models.dart';
 import '../../data.dart';
 import '../../components/logo_widget/logo_widget.dart';
 import '../../services/recommendation_engine.dart';
+import '../../services/provider_ratings.dart';
 
 class ProviderWidget extends StatelessWidget {
   const ProviderWidget({super.key, required this.providerName});
@@ -35,6 +36,7 @@ class ProviderWidget extends StatelessWidget {
     final appState = Provider.of<AppState>(context);
 
     final plans = plansByProvider(providerName);
+    final rating = ProviderRatings.forProvider(providerName, appState: appState);
 
     // Compute score map once — plan.id → PlanMatch
     final scoreMap = <String, PlanMatch>{};
@@ -80,6 +82,7 @@ class ProviderWidget extends StatelessWidget {
                     providerName: providerName,
                     planCount: plans.length,
                     catCount: catCount,
+                    rating: rating,
                     ffTheme: ffTheme,
                     onBack: () => context.safePop(),
                   ),
@@ -102,6 +105,16 @@ class ProviderWidget extends StatelessWidget {
                               pathParameters: {'planId': bestMatch!.plan.id},
                             ),
                           ).animate().fadeIn(duration: 350.ms).slideY(begin: 0.1),
+                          const SizedBox(height: 20),
+                        ],
+
+                        // ── Ratings panel ────────────────────────────────────
+                        if (rating.hasData) ...[
+                          _RatingPanel(
+                            rating: rating,
+                            ffTheme: ffTheme,
+                            onRate: () => context.pushNamed('Ratings'),
+                          ).animate(delay: 80.ms).fadeIn(duration: 320.ms),
                           const SizedBox(height: 20),
                         ],
 
@@ -187,6 +200,7 @@ class _HeroHeader extends StatelessWidget {
     required this.providerName,
     required this.planCount,
     required this.catCount,
+    required this.rating,
     required this.ffTheme,
     required this.onBack,
   });
@@ -194,6 +208,7 @@ class _HeroHeader extends StatelessWidget {
   final String providerName;
   final int planCount;
   final int catCount;
+  final ProviderRating rating;
   final AppTheme ffTheme;
   final VoidCallback onBack;
 
@@ -238,6 +253,39 @@ class _HeroHeader extends StatelessWidget {
                   .copyWith(color: Colors.white.withOpacity(0.85)),
               textAlign: TextAlign.center,
             ),
+            if (rating.hasData) ...[
+              const SizedBox(height: 10),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  ...List.generate(5, (j) {
+                    final s = rating.stars;
+                    return Icon(
+                      j < s.floor()
+                          ? Icons.star_rounded
+                          : j < s
+                              ? Icons.star_half_rounded
+                              : Icons.star_outline_rounded,
+                      size: 18,
+                      color: ffTheme.secondary,
+                    );
+                  }),
+                  const SizedBox(width: 6),
+                  Text(
+                    rating.stars.toStringAsFixed(1),
+                    style: ffTheme.titleSmall.copyWith(
+                        color: Colors.white, fontWeight: FontWeight.w800),
+                  ),
+                  if (rating.reviewCount > 0)
+                    Text(
+                      ' · ${rating.reviewCount} ביקורות',
+                      style: ffTheme.labelSmall
+                          .copyWith(color: Colors.white.withOpacity(0.8)),
+                    ),
+                ],
+              ),
+            ],
             const SizedBox(height: 20),
           ],
         ),
@@ -423,6 +471,119 @@ class _BestMatchCard extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ── Ratings panel ──────────────────────────────────────────────────────────────
+
+class _RatingPanel extends StatelessWidget {
+  const _RatingPanel({
+    required this.rating,
+    required this.ffTheme,
+    required this.onRate,
+  });
+
+  final ProviderRating rating;
+  final AppTheme ffTheme;
+  final VoidCallback onRate;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: ffTheme.alternate),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.reviews_rounded, color: ffTheme.primary, size: 18),
+              const SizedBox(width: 6),
+              Text('דירוג הלקוחות', style: ffTheme.titleSmall),
+              const Spacer(),
+              if (rating.ratedByUser)
+                Row(
+                  children: [
+                    Icon(Icons.check_circle_rounded,
+                        color: ffTheme.success, size: 14),
+                    const SizedBox(width: 4),
+                    Text('דירגת',
+                        style: ffTheme.labelSmall
+                            .copyWith(color: ffTheme.success)),
+                  ],
+                ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          ...ProviderRatings.subKeys.map((k) {
+            final v = rating.sub[k] ?? 0;
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 48,
+                    child: Text(ProviderRatings.subLabels[k] ?? k,
+                        style: ffTheme.labelSmall),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: (v / 5).clamp(0.0, 1.0),
+                        backgroundColor: ffTheme.alternate,
+                        valueColor: AlwaysStoppedAnimation(
+                            ffTheme.primary.withOpacity(0.75)),
+                        minHeight: 6,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(v.toStringAsFixed(1),
+                      style: ffTheme.labelSmall
+                          .copyWith(fontWeight: FontWeight.w700)),
+                ],
+              ),
+            );
+          }),
+          const SizedBox(height: 6),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: onRate,
+              icon: Icon(
+                rating.ratedByUser
+                    ? Icons.edit_rounded
+                    : Icons.star_rounded,
+                size: 18,
+              ),
+              label: Text(rating.ratedByUser
+                  ? 'עדכנו את הדירוג'
+                  : 'דרגו את ${rating.provider}'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: ffTheme.primary,
+                side: BorderSide(color: ffTheme.primary.withOpacity(0.4)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

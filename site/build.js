@@ -137,10 +137,16 @@ const footer = `  <footer class="footer">
         <a class="brand brand--light" href="index.html"><span class="brand__mark" aria-hidden="true">✦</span><span class="brand__name">חוסך</span></a>
         <p>השוואת מחירי תקשורת חכמה. משווים, חוסכים, עוברים — בלי כאב ראש.</p>
       </div>
-      <nav class="footer__links" aria-label="קטגוריות">
+      <nav class="footer__links footer__col" aria-label="קטגוריות">
+        <h4>קטגוריות</h4>
         <a href="cellular.html">סלולר</a><a href="internet.html">אינטרנט</a><a href="tv.html">טלוויזיה</a><a href="triple.html">חבילה משולבת</a><a href="abroad.html">חו״ל</a>
       </nav>
-      <div class="footer__contact">
+      <nav class="footer__links footer__col" aria-label="החברה">
+        <h4>החברה</h4>
+        <a href="about.html">אודות</a><a href="guides.html">מדריכים</a><a href="privacy.html">מדיניות פרטיות</a><a href="terms.html">תנאי שימוש</a>
+      </nav>
+      <div class="footer__contact footer__col">
+        <h4>יצירת קשר</h4>
         <a href="https://wa.me/972500000000" target="_blank" rel="noopener">וואטסאפ</a>
         <a href="mailto:hello@chosech.co.il">hello@chosech.co.il</a>
       </div>
@@ -320,12 +326,12 @@ function articleJsonLd(g) {
   });
 }
 
-function head(title, desc, url, extraJsonLd) {
+function head(title, desc, url, extraJsonLd, noindex) {
   return `<head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>${esc(title)}</title>
-  <meta name="description" content="${esc(desc)}" />
+  <meta name="description" content="${esc(desc)}" />${noindex ? '\n  <meta name="robots" content="noindex" />' : ''}
   <meta name="theme-color" content="#15603E" />
   <link rel="canonical" href="${url}" />
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
@@ -432,6 +438,123 @@ ${footer}
 `;
 }
 
+// ── Static pages (about / legal) ─────────────────────────────────────────────
+const staticPages = [
+  {
+    slug: 'about', cta: true,
+    title: 'אודות חוסך — מי אנחנו ואיך אנחנו עובדים',
+    desc: 'חוסך היא פלטפורמה ישראלית להשוואת מחירי תקשורת. כך אנחנו עובדים, איך השירות נשאר חינמי, ולמה אפשר לסמוך עלינו.',
+    h1: 'על חוסך', intro: 'משווים, חוסכים, עוברים — בלי כאב ראש.',
+    sections: [
+      { h2: 'מי אנחנו', p: ['חוסך מרכזת את כל מסלולי התקשורת בישראל — סלולר, אינטרנט, טלוויזיה, חבילות משולבות וחו״ל — במקום אחד, ועוזרת לכם למצוא את המסלול המשתלם ביותר ולעבור אליו בקלות.'] },
+      { h2: 'המודל שלנו — והשירות חינמי לכם', p: ['השירות חינמי לחלוטין למשתמשים. אנחנו מקבלים עמלה מחברת התקשורת כשעוברים דרכנו — אבל המחיר שאתם משלמים זהה, והעמלה אינה משפיעה על הדירוג. אנחנו מדרגים מסלולים לפי ההתאמה לכם, לא לפי מי שמשלם לנו.'] },
+      { h2: 'למה לסמוך עלינו', ul: ['מחירים מעודכנים מכל החברות במקום אחד.', 'המלצה מוסברת — רואים בדיוק למה מסלול דורג גבוה.', 'התראת חידוש שמונעת מכם לשלם יותר מדי כשהמבצע נגמר.', 'קהילה וחוות דעת אמיתיות של לקוחות.'] },
+      { h2: 'מה אנחנו עושים בשבילכם', ul: ['משווים את כל השוק בשניות.', 'ממליצים לפי הצרכים והתקציב שלכם.', 'מלווים את המעבר — כולל ניוד מספר בלי עמלות נסתרות.', 'מזכירים לבדוק שוב לפני שמבצע נגמר.'] },
+    ],
+  },
+  {
+    slug: 'privacy',
+    title: 'מדיניות פרטיות — חוסך',
+    desc: 'מדיניות הפרטיות של חוסך — איזה מידע אנחנו אוספים, כיצד אנו משתמשים בו, עם מי הוא משותף ומהן זכויותיכם.',
+    h1: 'מדיניות פרטיות', intro: 'עודכן לאחרונה: יוני 2026',
+    sections: [
+      { h2: 'איזה מידע אנחנו אוספים', ul: ['פרטים שאתם מוסרים: שם, מספר טלפון ואימייל (למשל בטופס השארת פרטים).', 'העדפות וחשבונות שאתם מזינים באפליקציה כדי לקבל המלצה מותאמת.', 'נתוני שימוש בסיסיים (כגון דפים שנצפו) לשיפור השירות.'] },
+      { h2: 'כיצד אנו משתמשים במידע', ul: ['כדי לספק את ההשוואה וההמלצה.', 'כדי ליצור איתכם קשר לגבי מעבר ספק — בהסכמתכם.', 'כדי לשפר את הדיוק והשירות.'] },
+      { h2: 'שיתוף מידע', p: ['איננו מוכרים את המידע שלכם. אנו עשויים לשתף פרטים עם חברת התקשורת שבחרתם — אך ורק לצורך ביצוע המעבר ובהסכמתכם — ועם ספקי שירות טכניים המסייעים בהפעלת הפלטפורמה.'] },
+      { h2: 'שמירה ואבטחה', p: ['אנו שומרים את המידע למשך הזמן הדרוש למתן השירות ובהתאם לדין, ונוקטים אמצעים סבירים לאבטחתו.'] },
+      { h2: 'הזכויות שלכם', p: ['אתם רשאים לעיין במידע שלכם, לתקנו או לבקש את מחיקתו — בפנייה אלינו לכתובת hello@chosech.co.il.'] },
+      { h2: 'עוגיות ושינויים', p: ['האתר עשוי לעשות שימוש בעוגיות בסיסיות לתפעול ולניתוח. נעדכן מדיניות זו מעת לעת, והמשך השימוש מהווה הסכמה לגרסה המעודכנת.'] },
+    ],
+  },
+  {
+    slug: 'terms',
+    title: 'תנאי שימוש — חוסך',
+    desc: 'תנאי השימוש בשירותי חוסך — תיאור השירות, הערכות חיסכון, אחריות המשתמש, קניין רוחני, הגבלת אחריות ודין חל.',
+    h1: 'תנאי שימוש', intro: 'עודכן לאחרונה: יוני 2026',
+    sections: [
+      { h2: 'השירות', p: ['חוסך מספקת השוואת מחירים, המלצות וליווי מעבר בין ספקי תקשורת. השירות ניתן חינם למשתמשים.'] },
+      { h2: 'אין הבטחה לחיסכון מסוים', p: ['הסכומים המוצגים, לרבות במחשבון החיסכון, הם הערכות בלבד. החיסכון בפועל תלוי בחבילה, בספק ובשימוש שלכם. אנו משתדלים לשמור על מחירים מעודכנים, אך ייתכנו אי-דיוקים — יש לאמת את הפרטים מול הספק לפני התקשרות.'] },
+      { h2: 'אחריות המשתמש', p: ['עליכם למסור פרטים נכונים ולהשתמש בשירות בתום לב ובהתאם לדין.'] },
+      { h2: 'קניין רוחני', p: ['התכנים, העיצוב והסימנים באתר הם בבעלות חוסך או מי מטעמה, ואין לעשות בהם שימוש ללא רשות בכתב.'] },
+      { h2: 'הגבלת אחריות', p: ['השירות ניתן כפי שהוא ("as is"). בכפוף לדין, חוסך לא תישא באחריות לנזק עקיף הנובע מהסתמכות על המידע או מהמעבר בין ספקים.'] },
+      { h2: 'דין חל', p: ['על תנאים אלה יחולו דיני מדינת ישראל, וסמכות השיפוט הבלעדית נתונה לבתי המשפט המוסמכים בישראל.'] },
+    ],
+  },
+];
+
+function sectionsHtml(sections) {
+  return sections.map((s) => {
+    let html = `        <h2>${esc(s.h2)}</h2>\n`;
+    if (s.p) html += s.p.map((p) => `        <p>${esc(p)}</p>`).join('\n') + '\n';
+    if (s.ul) html += `        <ul>\n${s.ul.map((li) => `          <li>${esc(li)}</li>`).join('\n')}\n        </ul>\n`;
+    return html;
+  }).join('\n');
+}
+
+function staticPage(p) {
+  const url = `${SITE}/${p.slug}.html`;
+  const cta = p.cta
+    ? `          <div class="article-cta">
+            <h3>מוכנים לחסוך?</h3>
+            <p>השוואה חינם בשניות, בלי התחייבות.</p>
+            <a class="btn btn--lg" style="background:#C9EC4B;color:#0E3A26" href="index.html#calculator">בדקו עכשיו ←</a>
+          </div>`
+    : '';
+  return `<!DOCTYPE html>
+<html lang="he" dir="rtl">
+${head(p.title, p.desc, url)}
+<body id="top">
+${nav}
+  <main>
+    <section class="article-hero">
+      <div class="container">
+        <p class="crumbs"><a href="index.html">דף הבית</a> ← ${esc(p.h1)}</p>
+        <h1>${esc(p.h1)}</h1>
+        ${p.intro ? `<div class="article-meta"><span>${esc(p.intro)}</span></div>` : ''}
+      </div>
+    </section>
+    <section class="section">
+      <div class="container">
+        <div class="prose">
+${sectionsHtml(p.sections)}
+        </div>
+${cta}
+      </div>
+    </section>
+  </main>
+${footer}
+  <script src="script.js" defer></script>
+</body>
+</html>
+`;
+}
+
+function notFoundPage() {
+  return `<!DOCTYPE html>
+<html lang="he" dir="rtl">
+${head('הדף לא נמצא — חוסך', 'הדף שחיפשתם לא נמצא.', `${SITE}/404.html`, null, true)}
+<body id="top">
+${nav}
+  <main>
+    <section class="lead-hero" style="text-align:center">
+      <div class="container">
+        <span class="pill">404</span>
+        <h1>אופס, הדף לא נמצא</h1>
+        <p>הדף שחיפשתם לא קיים או עבר דירה. בואו נחזיר אתכם למסלול.</p>
+        <div class="hero__cta" style="justify-content:center">
+          <a class="btn btn--primary btn--lg" href="index.html">חזרה לדף הבית</a>
+          <a class="btn btn--ghost btn--lg" href="guides.html">למדריכים</a>
+        </div>
+      </div>
+    </section>
+  </main>
+${footer}
+  <script src="script.js" defer></script>
+</body>
+</html>
+`;
+}
+
 // ── Write pages ────────────────────────────────────────────────────────────
 for (const c of categories) {
   fs.writeFileSync(path.join(__dirname, `${c.slug}.html`), page(c));
@@ -439,14 +562,21 @@ for (const c of categories) {
 for (const g of guides) {
   fs.writeFileSync(path.join(__dirname, `${g.slug}.html`), articlePage(g));
 }
+for (const p of staticPages) {
+  fs.writeFileSync(path.join(__dirname, `${p.slug}.html`), staticPage(p));
+}
 fs.writeFileSync(path.join(__dirname, 'guides.html'), guidesIndexPage());
+fs.writeFileSync(path.join(__dirname, '404.html'), notFoundPage());
 
 // ── Refresh sitemap (home + category pages) ─────────────────────────────────
 const locs = [
   `${SITE}/`,
   `${SITE}/guides.html`,
+  `${SITE}/about.html`,
   ...categories.map((c) => `${SITE}/${c.slug}.html`),
   ...guides.map((g) => `${SITE}/${g.slug}.html`),
+  `${SITE}/privacy.html`,
+  `${SITE}/terms.html`,
 ];
 const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
@@ -455,4 +585,4 @@ ${locs.map((l, i) => `  <url>\n    <loc>${l}</loc>\n    <changefreq>weekly</chan
 `;
 fs.writeFileSync(path.join(__dirname, 'sitemap.xml'), sitemap);
 
-console.log(`Generated ${categories.length} category pages + ${guides.length} guides + guides index + sitemap.xml`);
+console.log(`Generated ${categories.length} category + ${guides.length} guides + ${staticPages.length} static + guides index + 404 + sitemap.xml`);

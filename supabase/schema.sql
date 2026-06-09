@@ -76,8 +76,15 @@ create table if not exists public.leads (
   status        text not null default 'new', -- new / contacted / won / lost
   source        text,                        -- form / plan / compare / advisor / callback / porting
   notes         text,                        -- free-text context for the rep
+  notified_at   timestamptz,                 -- stamped by notify-lead once the team was pinged
   created_at    timestamptz not null default now()
 );
+
+-- Reruns on a pre-existing database: add the notification stamp.
+-- One-time after adding the column, mark historical leads as handled so the
+-- daily sweep doesn't replay them:
+--   update public.leads set notified_at = created_at where notified_at is null;
+alter table public.leads add column if not exists notified_at timestamptz;
 
 alter table public.leads enable row level security;
 
@@ -90,6 +97,9 @@ create policy "leads_select_own" on public.leads
 
 create index if not exists leads_user_idx on public.leads (user_id);
 create index if not exists leads_created_idx on public.leads (created_at desc);
+-- partial index for the renewal-reminders unnotified-leads sweep
+create index if not exists leads_unnotified_idx on public.leads (created_at)
+  where notified_at is null;
 
 -- ── tracked_plans  (renewal radar) ───────────────────────────────────────────
 create table if not exists public.tracked_plans (

@@ -196,3 +196,36 @@ curl -H 'x-webhook-secret: <lead_webhook_secret>' \
 ```
 
 Re-deploy after editing the function: `supabase functions deploy notify-lead --no-verify-jwt`.
+
+### Status buttons (interactive bot) + delivery safety net
+
+Each lead message carries inline buttons — **📞 דיברתי / 🏆 נסגר / ❌ לא רלוונטי**.
+Pressing one updates `leads.status` (`contacted` / `won` / `lost`); the app's
+tracker streams that change live (`leadStepStream` maps contacted→step 2,
+won→step 4), and the buttons freeze into a stamp showing who handled the lead.
+
+One-time setup:
+
+```bash
+# 1. schema: make sure leads.notified_at + the sweep index exist (schema.sql),
+#    then mark historical leads as handled so the sweep doesn't replay them:
+#      update public.leads set notified_at = created_at where notified_at is null;
+
+# 2. register the bot webhook (NOTE: while a webhook is set, getUpdates — and
+#    therefore ?action=telegram-chats — is disabled; undo with
+#    ?action=delete-telegram-webhook):
+curl -H 'x-webhook-secret: <lead_webhook_secret>' \
+  'https://orzitfqmlvopujsoyigr.supabase.co/functions/v1/notify-lead?action=set-telegram-webhook'
+```
+
+- **Safety net** — `notify-lead` stamps `leads.notified_at` after a successful
+  send. The daily `renewal-reminders` run re-delivers up to 10 leads that are
+  >10 minutes old and never got stamped (trigger missed, or both Telegram and
+  Resend were down), oldest first.
+- **Webhook auth** — Telegram calls `?action=telegram-update` with a
+  `secret_token` that is the SHA-256 hex digest of `lead_webhook_secret`
+  (Telegram restricts the token charset, so the raw secret can't be used).
+- **Secrets in URLs** — `?action=telegram-chats` now accepts the secret via the
+  `x-webhook-secret` header only; query-string secrets leak into request logs.
+- **Privacy** — lead details sent to the AI triage are disclosed in the site's
+  privacy policy (site/build.js → privacy page, "שיתוף מידע").

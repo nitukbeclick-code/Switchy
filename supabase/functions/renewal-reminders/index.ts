@@ -8,7 +8,9 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 //
 // Auth: x-webhook-secret header (same secret as notify-lead).
 // GET  ?action=health   -> config status
-// POST { days?: number } -> run the digest (default: 14 days look-ahead)
+// POST { days?: number } -> run the digest (default: 14 days look-ahead),
+//                           then re-deliver leads whose notification never
+//                           landed (notified_at is null — see notify-lead)
 // ─────────────────────────────────────────────────────────────────────────────
 
 const NL = String.fromCharCode(10);
@@ -56,6 +58,30 @@ async function resolveCfg(): Promise<Cfg> {
     tgChat: pick("telegram_chat_id", ENV.tgChat),
     webhookSecret: pick("lead_webhook_secret", ENV.webhookSecret),
   };
+}
+
+// Vault lookups hit PostgREST with the service-role key; memoize briefly so
+// anonymous traffic (health probes, 401s) can't amplify into DB load.
+let cfgCache: { cfg: Cfg; at: number } | null = null;
+async function resolveCfgCached(): Promise<Cfg> {
+  if (cfgCache && Date.now() - cfgCache.at < 60_000) return cfgCache.cfg;
+  const cfg = await resolveCfg();
+  cfgCache = { cfg, at: Date.now() };
+  return cfg;
+}
+
+// Constant-time secret comparison: digest both sides to fixed length, then
+// XOR-compare every byte so timing reveals nothing about the expected value.
+async function safeEqual(a: string, b: string): Promise<boolean> {
+  const enc = new TextEncoder();
+  const [da, db] = await Promise.all([
+    crypto.subtle.digest("SHA-256", enc.encode(a)),
+    crypto.subtle.digest("SHA-256", enc.encode(b)),
+  ]);
+  const ua = new Uint8Array(da), ub = new Uint8Array(db);
+  let diff = 0;
+  for (let i = 0; i < ua.length; i++) diff |= ua[i] ^ ub[i];
+  return diff === 0;
 }
 
 type RenewalRow = {
@@ -139,6 +165,39 @@ async function sendTelegram(cfg: Cfg, text: string): Promise<{ ok: boolean; erro
   } catch (e) { return { ok: false, error: String(e) }; }
 }
 
+// Safety net: re-deliver leads whose INSERT-trigger notification never landed
+// (both Telegram and email failed, or the trigger itself didn't fire).
+// notify-lead stamps notified_at on success, so each lead is re-sent at most
+// once per daily run, oldest first, capped at 10 to avoid a flood.
+async function sweepUnnotifiedLeads(cfg: Cfg): Promise<{ pending: number; resent: number }> {
+  const url = Deno.env.get("SUPABASE_URL") ?? "";
+  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  if (!url || !key || !cfg.webhookSecret) return { pending: 0, resent: 0 };
+  // 10-minute grace so the trigger path can finish before we call a lead missed.
+  const cutoff = encodeURIComponent(new Date(Date.now() - 10 * 60 * 1000).toISOString());
+  let rows: Record<string, unknown>[] = [];
+  try {
+    const r = await fetch(
+      `${url}/rest/v1/leads?select=*&notified_at=is.null&created_at=lt.${cutoff}&order=created_at.asc&limit=10`,
+      { headers: { "apikey": key, "Authorization": `Bearer ${key}` } },
+    );
+    if (r.ok) rows = await r.json();
+  } catch (_) { return { pending: 0, resent: 0 }; }
+  let resent = 0;
+  for (const lead of rows) {
+    try {
+      const r = await fetch(`${url}/functions/v1/notify-lead`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-webhook-secret": cfg.webhookSecret },
+        body: JSON.stringify({ record: lead }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (r.ok && (j as Record<string, unknown>).ok) resent++;
+    } catch (_) { /* the next daily run retries */ }
+  }
+  return { pending: rows.length, resent };
+}
+
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -151,7 +210,7 @@ Deno.serve(async (req: Request) => {
     return new Response("ok", { headers: { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*", "Access-Control-Allow-Methods": "GET, POST, OPTIONS" } });
   }
 
-  const cfg = await resolveCfg();
+  const cfg = await resolveCfgCached();
 
   if (req.method === "GET") {
     return json({
@@ -168,7 +227,7 @@ Deno.serve(async (req: Request) => {
 
   const provided = req.headers.get("x-webhook-secret") ?? "";
   if (!cfg.webhookSecret) return json({ ok: false, error: "webhook secret not configured" }, 503);
-  if (provided !== cfg.webhookSecret) return json({ ok: false, error: "unauthorized" }, 401);
+  if (!(await safeEqual(provided, cfg.webhookSecret))) return json({ ok: false, error: "unauthorized" }, 401);
 
   let payload: Record<string, unknown> = {};
   try { payload = await req.json(); } catch (_) {}
@@ -177,6 +236,7 @@ Deno.serve(async (req: Request) => {
   const rows = await fetchUpcomingRenewals(days);
   const message = buildDigest(rows, days);
   const tg = await sendTelegram(cfg, message);
+  const leadSweep = await sweepUnnotifiedLeads(cfg);
 
-  return json({ ok: tg.ok, count: rows.length, telegram: tg });
+  return json({ ok: tg.ok, count: rows.length, telegram: tg, lead_sweep: leadSweep });
 });

@@ -12,9 +12,17 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 // as Edge secrets (managed here) live in Vault, while keys set in the dashboard
 // still work. verify_jwt is disabled; the webhook is authed by a shared secret.
 //
-// GET ?action=health         -> which integrations are configured + source
-// GET ?action=telegram-chats -> recent chats for the bot (find chat_id); gated
-// POST (webhook)             -> { record } from the trigger, or a raw lead
+// GET ?action=health                  -> which integrations are configured + source
+// GET ?action=telegram-chats          -> recent chats for the bot (find chat_id); gated, header-only secret
+// GET ?action=set-telegram-webhook    -> register this function as the bot's webhook; gated
+// GET ?action=delete-telegram-webhook -> unregister (re-enables telegram-chats); gated
+// POST (webhook)                      -> { record } from the trigger, or a raw lead
+// POST ?action=telegram-update        -> Telegram callback_query webhook (status buttons)
+//
+// The lead message carries inline status buttons (דיברתי / נסגר / לא רלוונטי);
+// pressing one updates leads.status, which the app's tracker streams live.
+// After a successful send the lead is stamped notified_at — the daily
+// renewal-reminders run re-delivers anything left unstamped (safety net).
 //
 // Deploy: supabase functions deploy notify-lead --no-verify-jwt
 // ─────────────────────────────────────────────────────────────────────────────
@@ -62,6 +70,16 @@ type Cfg = {
   src: Record<string, string>;
 };
 
+// Vault lookups hit PostgREST with the service-role key; memoize briefly so
+// anonymous traffic (health probes, 401s) can't amplify into DB load.
+let cfgCache: { cfg: Cfg; at: number } | null = null;
+async function resolveCfgCached(): Promise<Cfg> {
+  if (cfgCache && Date.now() - cfgCache.at < 60_000) return cfgCache.cfg;
+  const cfg = await resolveCfg();
+  cfgCache = { cfg, at: Date.now() };
+  return cfg;
+}
+
 async function resolveCfg(): Promise<Cfg> {
   const v = await vaultConfig();
   const pick = (vaultName: string, envVal: string): [string, string] => {
@@ -99,6 +117,104 @@ function waLink(phone: unknown): string | null {
   return `https://wa.me/${d.startsWith("0") ? "972" + d.slice(1) : d}`;
 }
 
+// ── Service-role REST helpers ────────────────────────────────────────────────
+
+async function serviceFetch(path: string, init: RequestInit = {}): Promise<Response | null> {
+  const url = Deno.env.get("SUPABASE_URL") ?? "";
+  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  if (!url || !key) return null;
+  return await fetch(`${url}${path}`, {
+    ...init,
+    headers: {
+      "Content-Type": "application/json", "apikey": key, "Authorization": `Bearer ${key}`,
+      "Prefer": "return=minimal", ...(init.headers ?? {}),
+    },
+  });
+}
+
+// Stamp the lead as notified so the daily sweep in renewal-reminders doesn't
+// re-send it. Fail-soft: a missed stamp costs at most one duplicate message.
+async function markNotified(leadId: unknown): Promise<void> {
+  if (!leadId) return;
+  try {
+    await serviceFetch(`/rest/v1/leads?id=eq.${encodeURIComponent(String(leadId))}`, {
+      method: "PATCH",
+      body: JSON.stringify({ notified_at: new Date().toISOString() }),
+    });
+  } catch (_) { /* the sweep retries */ }
+}
+
+async function updateLeadStatus(leadId: string, status: string): Promise<boolean> {
+  try {
+    // return=representation: a PATCH matching zero rows (deleted lead) still
+    // answers 204 under return=minimal — count the rows to report real success.
+    const r = await serviceFetch(`/rest/v1/leads?id=eq.${encodeURIComponent(leadId)}`, {
+      method: "PATCH",
+      headers: { "Prefer": "return=representation" },
+      body: JSON.stringify({ status }),
+    });
+    if (!r || !r.ok) return false;
+    const rows = await r.json().catch(() => []);
+    return Array.isArray(rows) && rows.length > 0;
+  } catch (_) { return false; }
+}
+
+// ── Telegram helpers ─────────────────────────────────────────────────────────
+
+async function tgApi(cfg: Cfg, method: string, body: Record<string, unknown>): Promise<{ ok: boolean; error?: string }> {
+  if (!cfg.tgToken) return { ok: false, error: "telegram token not set" };
+  try {
+    const r = await fetch(`https://api.telegram.org/bot${cfg.tgToken}/${method}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const j = await r.json().catch(() => ({}));
+    return { ok: r.ok && (j as Record<string, unknown>).ok !== false, error: (j as Record<string, unknown>).description as string | undefined };
+  } catch (e) { return { ok: false, error: String(e) }; }
+}
+
+// Telegram's secret_token charset is restricted to [A-Za-z0-9_-], while
+// lead_webhook_secret is unconstrained — register/verify a hex digest instead.
+async function tgWebhookToken(secret: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(secret));
+  return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+// Constant-time secret comparison: digest both sides to fixed length, then
+// XOR-compare every byte so timing reveals nothing about the expected value.
+async function safeEqual(a: string, b: string): Promise<boolean> {
+  const enc = new TextEncoder();
+  const [da, db] = await Promise.all([
+    crypto.subtle.digest("SHA-256", enc.encode(a)),
+    crypto.subtle.digest("SHA-256", enc.encode(b)),
+  ]);
+  const ua = new Uint8Array(da), ub = new Uint8Array(db);
+  let diff = 0;
+  for (let i = 0; i < ua.length; i++) diff |= ua[i] ^ ub[i];
+  return diff === 0;
+}
+
+const STATUS_HE: Record<string, string> = { contacted: "דיברתי", won: "נסגר", lost: "לא רלוונטי" };
+const STATUS_EMOJI: Record<string, string> = { contacted: "📞", won: "🏆", lost: "❌" };
+
+// Inline status buttons under the lead message. Pressing one fires a
+// callback_query back to this function (?action=telegram-update), which
+// updates leads.status — the app's tracker (leadStepStream) picks it up live.
+function leadKeyboard(leadId: unknown): Record<string, unknown> | undefined {
+  if (!leadId) return undefined;
+  const id = String(leadId);
+  return {
+    inline_keyboard: [
+      [
+        { text: `${STATUS_EMOJI.contacted} דיברתי`, callback_data: `lead:${id}:contacted` },
+        { text: `${STATUS_EMOJI.won} נסגר`, callback_data: `lead:${id}:won` },
+      ],
+      [{ text: `${STATUS_EMOJI.lost} לא רלוונטי`, callback_data: `lead:${id}:lost` }],
+    ],
+  };
+}
+
 async function aiTriage(cfg: Cfg, lead: Record<string, unknown>): Promise<string> {
   const sys = "אתה עוזר מכירות לחברת השוואת תקשורת. נסח בעברית שורה אחת קצרה (עד 18 מילים) שמסכמת את הפנייה ומעריכה כוונת רכישה. בלי הקדמות, רק המשפט.";
   const user = `פנייה חדשה: שם=${lead.name ?? ""}, ספק=${lead.provider ?? ""}, מסלול=${lead.plan_id ?? ""}, זמן חזרה מועדף=${lead.callback_time ?? ""}${lead.notes ? `, הקשר: ${lead.notes}` : ""}.`;
@@ -122,17 +238,12 @@ async function aiTriage(cfg: Cfg, lead: Record<string, unknown>): Promise<string
   return "";
 }
 
-async function sendTelegram(cfg: Cfg, text: string): Promise<{ ok: boolean; error?: string }> {
+async function sendTelegram(cfg: Cfg, text: string, replyMarkup?: Record<string, unknown>): Promise<{ ok: boolean; error?: string }> {
   if (!cfg.tgToken || !cfg.tgChat) return { ok: false, error: "telegram not configured" };
-  try {
-    const r = await fetch(`https://api.telegram.org/bot${cfg.tgToken}/sendMessage`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: cfg.tgChat, text, parse_mode: "HTML", disable_web_page_preview: true }),
-    });
-    const j = await r.json().catch(() => ({}));
-    return { ok: r.ok && j.ok !== false, error: j.description };
-  } catch (e) { return { ok: false, error: String(e) }; }
+  return await tgApi(cfg, "sendMessage", {
+    chat_id: cfg.tgChat, text, parse_mode: "HTML", disable_web_page_preview: true,
+    ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
+  });
 }
 
 async function sendEmail(cfg: Cfg, subject: string, html: string): Promise<{ ok: boolean; error?: string }> {
@@ -201,29 +312,41 @@ Deno.serve(async (req: Request) => {
 
   const url = new URL(req.url);
   const action = url.searchParams.get("action");
-  const cfg = await resolveCfg();
+  const cfg = await resolveCfgCached();
 
   if (req.method === "GET") {
     if (action === "health" || action === null) {
+      // `source` (vault|env|none) is ops metadata — show it only to the team.
+      const authed = !!cfg.webhookSecret &&
+        (await safeEqual(req.headers.get("x-webhook-secret") ?? "", cfg.webhookSecret));
+      const entry = (present: boolean, source: string) => (authed ? { present, source } : { present });
       return json({
         ok: true,
         function: "notify-lead",
         configured: {
-          telegram_bot_token: { present: !!cfg.tgToken, source: cfg.src.telegram_bot_token },
-          telegram_chat_id: { present: !!cfg.tgChat, source: cfg.src.telegram_chat_id },
-          resend_api_key: { present: !!cfg.resend, source: cfg.src.resend_api_key },
-          resend_from: { present: !!cfg.resendFrom, source: cfg.src.resend_from },
-          leads_notify_email: { present: !!cfg.notifyEmail, source: cfg.src.leads_notify_email },
-          ai_key: { present: !!(cfg.openai || cfg.anthropic), source: cfg.openai ? cfg.src.openai_api_key : cfg.src.anthropic_api_key },
-          lead_webhook_secret: { present: !!cfg.webhookSecret, source: cfg.src.lead_webhook_secret },
+          telegram_bot_token: entry(!!cfg.tgToken, cfg.src.telegram_bot_token),
+          telegram_chat_id: entry(!!cfg.tgChat, cfg.src.telegram_chat_id),
+          resend_api_key: entry(!!cfg.resend, cfg.src.resend_api_key),
+          resend_from: entry(!!cfg.resendFrom, cfg.src.resend_from),
+          leads_notify_email: entry(!!cfg.notifyEmail, cfg.src.leads_notify_email),
+          ai_key: entry(!!(cfg.openai || cfg.anthropic), cfg.openai ? cfg.src.openai_api_key : cfg.src.anthropic_api_key),
+          lead_webhook_secret: entry(!!cfg.webhookSecret, cfg.src.lead_webhook_secret),
         },
       });
     }
     if (action === "telegram-chats") {
-      const provided = req.headers.get("x-webhook-secret") ?? url.searchParams.get("secret") ?? "";
-      if (!cfg.webhookSecret || provided !== cfg.webhookSecret) return json({ ok: false, error: "unauthorized" }, 401);
+      // header-only: secrets in query strings leak into request logs
+      const provided = req.headers.get("x-webhook-secret") ?? "";
+      if (!cfg.webhookSecret || !(await safeEqual(provided, cfg.webhookSecret))) return json({ ok: false, error: "unauthorized" }, 401);
       if (!cfg.tgToken) return json({ ok: false, error: "telegram token not set" }, 400);
-      const r = await fetch(`https://api.telegram.org/bot${cfg.tgToken}/getUpdates`);
+      // explicit empty allowed_updates: resets the bot-global filter a previous
+      // setWebhook(allowed_updates:["callback_query"]) leaves behind — without
+      // it, message updates (needed for chat discovery) never arrive again.
+      const r = await fetch(`https://api.telegram.org/bot${cfg.tgToken}/getUpdates`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ allowed_updates: [] }),
+      });
       const j = await r.json();
       const seen: Record<string, unknown> = {};
       for (const u of (j.result ?? [])) {
@@ -232,14 +355,77 @@ Deno.serve(async (req: Request) => {
       }
       return json({ ok: true, telegram_ok: j.ok !== false, error: j.description, hint: "Message the bot or add it to your group, then call again. Use one of these ids as telegram_chat_id.", chats: Object.values(seen) });
     }
+    if (action === "set-telegram-webhook" || action === "delete-telegram-webhook") {
+      const provided = req.headers.get("x-webhook-secret") ?? "";
+      if (!cfg.webhookSecret || !(await safeEqual(provided, cfg.webhookSecret))) return json({ ok: false, error: "unauthorized" }, 401);
+      if (!cfg.tgToken) return json({ ok: false, error: "telegram token not set" }, 400);
+      if (action === "delete-telegram-webhook") return json(await tgApi(cfg, "deleteWebhook", {}));
+      const base = Deno.env.get("SUPABASE_URL") ?? "";
+      if (!base) return json({ ok: false, error: "SUPABASE_URL not available" }, 500);
+      const hookUrl = `${base}/functions/v1/notify-lead?action=telegram-update`;
+      const r = await tgApi(cfg, "setWebhook", {
+        url: hookUrl,
+        secret_token: await tgWebhookToken(cfg.webhookSecret),
+        allowed_updates: ["callback_query"],
+      });
+      return json({
+        ...r,
+        webhook_url: hookUrl,
+        note: "getUpdates (?action=telegram-chats) is disabled while a webhook is set — delete-telegram-webhook re-enables it.",
+      });
+    }
     return json({ ok: false, error: "unknown action" }, 400);
   }
 
   if (req.method !== "POST") return json({ ok: false, error: "method not allowed" }, 405);
 
+  // Telegram webhook updates authenticate with the secret_token registered at
+  // setWebhook (a digest of lead_webhook_secret) — not the x-webhook-secret header.
+  if (action === "telegram-update") {
+    const token = req.headers.get("x-telegram-bot-api-secret-token") ?? "";
+    if (!cfg.webhookSecret || !(await safeEqual(token, await tgWebhookToken(cfg.webhookSecret)))) {
+      return json({ ok: false, error: "unauthorized" }, 401);
+    }
+    let update: Record<string, unknown> = {};
+    try { update = await req.json(); } catch (_) { /* empty body */ }
+    const cb = update.callback_query as Record<string, unknown> | undefined;
+    if (!cb) return json({ ok: true, skipped: "not a callback_query" });
+    const m = String(cb.data ?? "").match(/^lead:([0-9a-fA-F-]{36}):(contacted|won|lost)$/);
+    if (!m) {
+      // includes presses on the frozen "handled" stamp — just stop the spinner
+      await tgApi(cfg, "answerCallbackQuery", { callback_query_id: cb.id });
+      return json({ ok: true, skipped: "unrecognized callback" });
+    }
+    const [, leadId, status] = m;
+    const msg = cb.message as Record<string, unknown> | undefined;
+    const from = cb.from as Record<string, unknown> | undefined;
+    const chatId = (msg?.chat as Record<string, unknown> | undefined)?.id;
+    // Honor presses only from the configured team chat — the bot may be a
+    // member of other chats, but lead status changes belong to the team.
+    if (cfg.tgChat && String(chatId ?? "") !== cfg.tgChat) {
+      await tgApi(cfg, "answerCallbackQuery", { callback_query_id: cb.id });
+      return json({ ok: false, skipped: "wrong chat" });
+    }
+    const updated = await updateLeadStatus(leadId, status);
+    await tgApi(cfg, "answerCallbackQuery", {
+      callback_query_id: cb.id,
+      text: updated ? `הסטטוס עודכן: ${STATUS_HE[status]}` : "העדכון נכשל — נסו שוב",
+    });
+    if (updated && msg && chatId != null) {
+      const who = [from?.first_name, from?.last_name].filter(Boolean).join(" ");
+      // Freeze the buttons into a stamp so the whole team sees it's handled.
+      await tgApi(cfg, "editMessageReplyMarkup", {
+        chat_id: chatId,
+        message_id: msg.message_id,
+        reply_markup: { inline_keyboard: [[{ text: `${STATUS_EMOJI[status]} ${STATUS_HE[status]}${who ? " — " + who : ""}`, callback_data: "handled" }]] },
+      });
+    }
+    return json({ ok: updated });
+  }
+
   const provided = req.headers.get("x-webhook-secret") ?? "";
   if (!cfg.webhookSecret) return json({ ok: false, error: "webhook secret not configured" }, 503);
-  if (provided !== cfg.webhookSecret) return json({ ok: false, error: "unauthorized" }, 401);
+  if (!(await safeEqual(provided, cfg.webhookSecret))) return json({ ok: false, error: "unauthorized" }, 401);
 
   let payload: Record<string, unknown> = {};
   try { payload = await req.json(); } catch (_) { /* empty body */ }
@@ -248,9 +434,10 @@ Deno.serve(async (req: Request) => {
 
   const triage = await aiTriage(cfg, lead);
   const [tg, email] = await Promise.all([
-    sendTelegram(cfg, buildText(lead, triage)),
+    sendTelegram(cfg, buildText(lead, triage), leadKeyboard(lead.id)),
     sendEmail(cfg, "🔔 פנייה חדשה — חוסך", buildHtml(lead, triage)),
   ]);
+  if (tg.ok || email.ok) await markNotified(lead.id);
 
   return json({ ok: tg.ok || email.ok, telegram: tg, email });
 });

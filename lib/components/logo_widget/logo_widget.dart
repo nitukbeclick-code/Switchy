@@ -107,14 +107,19 @@ class LogoWidget extends StatelessWidget {
         shape: BoxShape.circle,
         border: Border.all(color: color.withOpacity(0.25), width: 1.5),
       ),
+      // The initials ("סל", "X"…) are a visual mark, not content — the
+      // provider's full name is shown as adjacent text everywhere this is used,
+      // so hide the fragment from screen readers to avoid cryptic announcements.
       child: Center(
-        child: Text(
-          label,
-          style: GoogleFonts.rubik(
-            fontSize: fontSize,
-            fontWeight: FontWeight.w800,
-            color: color,
-            letterSpacing: -0.5,
+        child: ExcludeSemantics(
+          child: Text(
+            label,
+            style: GoogleFonts.rubik(
+              fontSize: fontSize,
+              fontWeight: FontWeight.w800,
+              color: color,
+              letterSpacing: -0.5,
+            ),
           ),
         ),
       ),

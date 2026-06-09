@@ -184,42 +184,56 @@ class PlanCardWidget extends StatelessWidget {
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          GestureDetector(
-                            onTap: () => appState.toggleWatch(plan.id),
-                            child: Container(
-                              width: 32,
-                              height: 32,
-                              decoration: BoxDecoration(
-                                color: isWatching ? ffTheme.warning.withOpacity(0.1) : ffTheme.background,
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: isWatching ? ffTheme.warning : ffTheme.alternate,
+                          Semantics(
+                            button: true,
+                            label: isWatching ? 'במעקב מחיר — הסר' : 'עקוב אחר מחיר',
+                            child: Tooltip(
+                              message: isWatching ? 'במעקב מחיר' : 'עקוב אחר מחיר',
+                              child: GestureDetector(
+                                onTap: () => appState.toggleWatch(plan.id),
+                                child: Container(
+                                  width: 32,
+                                  height: 32,
+                                  decoration: BoxDecoration(
+                                    color: isWatching ? ffTheme.warning.withOpacity(0.1) : ffTheme.background,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: isWatching ? ffTheme.warning : ffTheme.alternate,
+                                    ),
+                                  ),
+                                  child: Icon(
+                                    isWatching ? Icons.notifications_active_rounded : Icons.notifications_none_rounded,
+                                    size: 15,
+                                    color: isWatching ? ffTheme.warning : ffTheme.secondaryText,
+                                  ),
                                 ),
-                              ),
-                              child: Icon(
-                                isWatching ? Icons.notifications_active_rounded : Icons.notifications_none_rounded,
-                                size: 15,
-                                color: isWatching ? ffTheme.warning : ffTheme.secondaryText,
                               ),
                             ),
                           ),
                           const SizedBox(width: 6),
-                          GestureDetector(
-                            onTap: () => appState.toggleCompare(plan.id),
-                            child: Container(
-                              width: 32,
-                              height: 32,
-                              decoration: BoxDecoration(
-                                color: inCompare ? ffTheme.primary : ffTheme.background,
-                                shape: BoxShape.circle,
-                                border: Border.all(
-                                  color: inCompare ? ffTheme.primary : ffTheme.alternate,
+                          Semantics(
+                            button: true,
+                            label: inCompare ? 'בהשוואה — הסר' : 'הוסף להשוואה',
+                            child: Tooltip(
+                              message: inCompare ? 'בהשוואה' : 'הוסף להשוואה',
+                              child: GestureDetector(
+                                onTap: () => appState.toggleCompare(plan.id),
+                                child: Container(
+                                  width: 32,
+                                  height: 32,
+                                  decoration: BoxDecoration(
+                                    color: inCompare ? ffTheme.primary : ffTheme.background,
+                                    shape: BoxShape.circle,
+                                    border: Border.all(
+                                      color: inCompare ? ffTheme.primary : ffTheme.alternate,
+                                    ),
+                                  ),
+                                  child: Icon(
+                                    inCompare ? Icons.check : Icons.add,
+                                    size: 16,
+                                    color: inCompare ? Colors.white : ffTheme.secondaryText,
+                                  ),
                                 ),
-                              ),
-                              child: Icon(
-                                inCompare ? Icons.check : Icons.add,
-                                size: 16,
-                                color: inCompare ? Colors.white : ffTheme.secondaryText,
                               ),
                             ),
                           ),

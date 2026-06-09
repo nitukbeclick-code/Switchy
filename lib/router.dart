@@ -132,7 +132,14 @@ class _ScaffoldWithNav extends StatelessWidget {
                 final isCompare = i == 1;
                 final compareCount = appState.comparePlans.length;
                 return Expanded(
-                  child: InkWell(
+                  child: Semantics(
+                    button: true,
+                    selected: active,
+                    label: isCompare && compareCount > 0
+                        ? '${tab.label}, $compareCount בהשוואה'
+                        : tab.label,
+                    excludeSemantics: true,
+                    child: InkWell(
                     onTap: () => context.go(tab.route),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -153,6 +160,7 @@ class _ScaffoldWithNav extends StatelessWidget {
                         Text(tab.label, style: TextStyle(fontSize: 10.5, fontWeight: active ? FontWeight.w700 : FontWeight.w500, color: active ? ffTheme.primary : ffTheme.secondaryText)),
                       ],
                     ),
+                  ),
                   ),
                 );
               }),

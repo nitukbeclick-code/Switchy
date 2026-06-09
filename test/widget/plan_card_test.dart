@@ -89,4 +89,32 @@ void main() {
     // savings = (200 - 79) * 12 = 1452
     expect(find.textContaining('חוסך'), findsOneWidget);
   });
+
+  testWidgets('icon-only watch/compare buttons expose accessible labels', (tester) async {
+    final handle = tester.ensureSemantics();
+    await tester.pumpWidget(_wrap(
+      const PlanCardWidget(plan: _testPlan, currentBill: 119),
+    ));
+    await tester.pump();
+
+    expect(find.bySemanticsLabel('עקוב אחר מחיר'), findsOneWidget);
+    expect(find.bySemanticsLabel('הוסף להשוואה'), findsOneWidget);
+
+    handle.dispose();
+  });
+
+  testWidgets('the provider logo initials are hidden from screen readers', (tester) async {
+    final handle = tester.ensureSemantics();
+    await tester.pumpWidget(_wrap(
+      const PlanCardWidget(plan: _testPlan, currentBill: 119),
+    ));
+    await tester.pump();
+
+    // 'פל' is the logo fragment for פלאפון; it must not surface as a label.
+    expect(find.bySemanticsLabel('פל'), findsNothing);
+    // The full provider name is still present as readable text.
+    expect(find.text('פלאפון'), findsOneWidget);
+
+    handle.dispose();
+  });
 }

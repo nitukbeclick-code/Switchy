@@ -1,4 +1,4 @@
-#!/usr/bin/env node
+﻿#!/usr/bin/env node
 /* Generates the per-category SEO landing pages (and refreshes sitemap.xml)
    from the data below + a shared template. No dependencies.
    Run:  node build.js   (from the site/ folder). Commit the generated *.html. */
@@ -161,7 +161,7 @@ function planCardHtml(p) {
   const after = p.after ? `<span class="plan__after">ואז ₪${p.after}</span>` : '';
   const rating = p.rating ? `<span class="plan__rating">★ ${p.rating}</span>` : '';
   const text = esc(`${p.provider} ${p.plan} ${(p.feats || []).join(' ')} ${Object.values(p.specs || {}).join(' ')}`).toLowerCase();
-  const waHref = 'https://wa.me/972500000000?text=' + encodeURIComponent('היי, מעניין אותי ' + p.provider + ' - ' + p.plan + ' (₪' + p.price + ')');
+  const waHref = 'https://wa.me/972505037537?text=' + encodeURIComponent('היי, מעניין אותי ' + p.provider + ' - ' + p.plan + ' (₪' + p.price + ')');
   return `<article class="plan" data-cat="${esc(p.cat)}" data-text="${text}" data-price="${p.price}" data-rating="${p.rating || 0}" data-5g="${p.is5G}" data-nocommit="${p.noCommit}" data-abroad="${p.hasAbroad}">
         <div class="plan__top"><span class="plan__id">${providerLogo(p.provider)}<a class="plan__provider" href="provider-${providerSlug(p.provider)}.html">${esc(p.provider)}</a></span><span class="plan__net">${esc(p.net)}</span></div>
         <div class="plan__name">${esc(p.plan)}</div>
@@ -215,7 +215,7 @@ const footer = `  <footer class="footer">
       </nav>
       <div class="footer__contact footer__col">
         <h4>יצירת קשר</h4>
-        <a href="https://wa.me/972500000000" target="_blank" rel="noopener">וואטסאפ</a>
+        <a href="https://wa.me/972505037537" target="_blank" rel="noopener">וואטסאפ</a>
         <a href="mailto:hello@chosech.co.il">hello@chosech.co.il</a>
       </div>
     </div>
@@ -340,7 +340,7 @@ ${catGuides}
           <button class="btn btn--primary btn--lg" type="submit">קבלו השוואה חינם</button>
         </form>
         <p class="cta__note" id="leadNote" role="status" aria-live="polite"></p>
-        <a class="cta__wa" href="https://wa.me/972500000000" target="_blank" rel="noopener"><span aria-hidden="true">💬</span> מעדיפים וואטסאפ? דברו איתנו</a>
+        <a class="cta__wa" href="https://wa.me/972505037537" target="_blank" rel="noopener"><span aria-hidden="true">💬</span> מעדיפים וואטסאפ? דברו איתנו</a>
       </div>
     </section>
   </main>
@@ -787,7 +787,7 @@ ${nav}
           <button class="btn btn--primary btn--lg" type="submit">קבלו השוואה חינם</button>
         </form>
         <p class="cta__note" id="leadNote" role="status" aria-live="polite"></p>
-        <a class="cta__wa" href="https://wa.me/972500000000" target="_blank" rel="noopener"><span aria-hidden="true">💬</span> מעדיפים וואטסאפ? דברו איתנו</a>
+        <a class="cta__wa" href="https://wa.me/972505037537" target="_blank" rel="noopener"><span aria-hidden="true">💬</span> מעדיפים וואטסאפ? דברו איתנו</a>
       </div>
     </section>
   </main>
@@ -845,7 +845,7 @@ ${nav}
           <button class="btn btn--primary btn--lg" type="submit">קבלו השוואה חינם</button>
         </form>
         <p class="cta__note" id="leadNote" role="status" aria-live="polite"></p>
-        <a class="cta__wa" href="https://wa.me/972500000000" target="_blank" rel="noopener"><span aria-hidden="true">💬</span> מעדיפים וואטסאפ? דברו איתנו</a>
+        <a class="cta__wa" href="https://wa.me/972505037537" target="_blank" rel="noopener"><span aria-hidden="true">💬</span> מעדיפים וואטסאפ? דברו איתנו</a>
       </div>
     </section>
   </main>
@@ -941,7 +941,7 @@ ${nav}
           <button class="btn btn--primary btn--lg" type="submit">קבלו השוואה חינם</button>
         </form>
         <p class="cta__note" id="leadNote" role="status" aria-live="polite"></p>
-        <a class="cta__wa" href="https://wa.me/972500000000" target="_blank" rel="noopener"><span aria-hidden="true">💬</span> מעדיפים וואטסאפ? דברו איתנו</a>
+        <a class="cta__wa" href="https://wa.me/972505037537" target="_blank" rel="noopener"><span aria-hidden="true">💬</span> מעדיפים וואטסאפ? דברו איתנו</a>
       </div>
     </section>
   </main>
@@ -1088,7 +1088,7 @@ ${posts}
           <button class="btn btn--primary btn--lg" type="submit">עדכנו אותי</button>
         </form>
         <p class="cta__note" id="leadNote" role="status" aria-live="polite"></p>
-        <a class="cta__wa" href="https://wa.me/972500000000" target="_blank" rel="noopener"><span aria-hidden="true">💬</span> מעדיפים וואטסאפ? דברו איתנו</a>
+        <a class="cta__wa" href="https://wa.me/972505037537" target="_blank" rel="noopener"><span aria-hidden="true">💬</span> מעדיפים וואטסאפ? דברו איתנו</a>
       </div>
     </section>
   </main>

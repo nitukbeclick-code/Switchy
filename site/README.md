@@ -1,4 +1,4 @@
-# חוסך — landing site
+﻿# חוסך — landing site
 
 A standalone marketing landing page for חוסך. Plain **HTML + CSS + JS**, RTL
 Hebrew, brand-matched (green `#15603E`, lime `#C9EC4B`, cream `#F4F0E8`, Rubik +
@@ -57,7 +57,7 @@ Search-and-replace these placeholders:
 
 | Placeholder | Where | Set to |
 |-------------|-------|--------|
-| `972500000000` | `index.html` (WhatsApp links) | your WhatsApp business number |
+| `972505037537` | `index.html` (WhatsApp links) | your WhatsApp business number |
 | `hello@chosech.co.il` | `index.html` footer | your contact email |
 | `https://chosech.co.il/` | `index.html` (canonical/OG/JSON-LD), `robots.txt`, `sitemap.xml` | your real domain |
 | `SAVE_RATE = 0.45` | `script.js` | tune the calculator's "up to" estimate |

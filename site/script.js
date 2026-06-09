@@ -1,4 +1,4 @@
-/* חוסך — landing interactions. Vanilla JS, no dependencies. */
+﻿/* חוסך — landing interactions. Vanilla JS, no dependencies. */
 (() => {
   'use strict';
   const $ = (id) => document.getElementById(id);
@@ -215,7 +215,7 @@
       specKeys.forEach((k) => {
         rows.push(row(k, chosen.map((p) => (p.specs && p.specs[k] != null) ? escHtml(p.specs[k]) : no)));
       });
-      const wa = (p) => 'https://wa.me/972500000000?text=' +
+      const wa = (p) => 'https://wa.me/972505037537?text=' +
         encodeURIComponent('היי, מעניין אותי ' + p.provider + ' - ' + p.plan + ' (₪' + p.price + ')');
       const ctaRow = `<tr class="cmp-cta-row"><th scope="row"></th>${chosen.map((p) =>
         `<td><a class="plan__cta" target="_blank" rel="noopener" href="${escHtml(wa(p))}">💬 מעוניין/ת ←</a></td>`).join('')}</tr>`;

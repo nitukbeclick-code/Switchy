@@ -8,6 +8,7 @@ import '../../core/nav.dart';
 import '../../app_state.dart';
 import '../../data.dart';
 import '../../models.dart';
+import '../../services/savings_summary.dart';
 
 class BillsWidget extends StatefulWidget {
   const BillsWidget({super.key});
@@ -26,14 +27,11 @@ class _BillsWidgetState extends State<BillsWidget> {
 
     final activeCats = categories.where((c) => appState.currentBill(c.id) > 0).toList();
     final total = categories.fold<int>(0, (sum, c) => sum + appState.currentBill(c.id));
-    final totalSavings = categories.fold<int>(0, (sum, c) {
-      final bill = appState.currentBill(c.id);
-      if (bill <= 0) return sum;
-      final plans = plansByCat(c.id);
-      if (plans.isEmpty) return sum;
-      final minPrice = plans.map((p) => p.price).reduce((a, b) => a < b ? a : b);
-      return sum + ((bill - minPrice) * 12).clamp(0, 999999);
-    });
+    // Use the same recommendation-engine figures as the home hero and the
+    // /savings dashboard, so all three savings surfaces agree.
+    final summary = computeSavings(appState);
+    final savingByCat = {for (final c in summary.categories) c.categoryId: c.annualSaving};
+    final totalSavings = summary.totalAnnualPotential;
 
     return Scaffold(
       backgroundColor: ffTheme.background,
@@ -256,9 +254,7 @@ class _BillsWidgetState extends State<BillsWidget> {
               final i = entry.key;
               final cat = entry.value;
               final bill = appState.currentBill(cat.id);
-              final plans = plansByCat(cat.id);
-              final minPrice = plans.isEmpty ? 0 : plans.map((p) => p.price).reduce((a, b) => a < b ? a : b);
-              final yearlySave = bill > 0 ? ((bill - minPrice) * 12).clamp(0, 999999) : 0;
+              final yearlySave = savingByCat[cat.id] ?? 0;
 
               return _BillCard(
                 category: cat,

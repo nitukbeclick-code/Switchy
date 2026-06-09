@@ -135,6 +135,18 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('provider profile shows the hero, ratings panel and best match', (tester) async {
+    await _bootApp(tester);
+    _go(tester, '/provider/סלקום');
+    await tester.pump(const Duration(milliseconds: 700));
+    await tester.pump(const Duration(milliseconds: 700));
+
+    expect(find.textContaining('מסלולים ב-'), findsOneWidget); // hero plan/category count
+    expect(find.text('דירוג הלקוחות'), findsOneWidget); // ratings panel
+    expect(find.text('ההמלצה אצל סלקום'), findsOneWidget); // best-match card
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('renewal screen opens a tracked plan\'s full comparison table', (tester) async {
     await _bootApp(tester);
     AppState().addMyPlan(category: 'cellular', provider: 'פרטנר', planName: 'מסלול', monthlyPrice: 120, promoEndDate: '2026-12-31');

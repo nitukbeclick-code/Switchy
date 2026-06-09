@@ -282,6 +282,7 @@ a { color: inherit; text-decoration: none; }
 .plan:hover { transform: translateY(-3px); box-shadow: var(--shadow); }
 .plan__top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .plan__provider { font-family: 'Rubik'; font-weight: 800; color: var(--green-d); font-size: 16px; }
+.plan__provider:hover { color: var(--green); text-decoration: underline; }
 .plan__net { background: rgba(21,96,62,.08); color: var(--green); font-weight: 700; font-size: 11px; padding: 3px 8px; border-radius: 8px; white-space: nowrap; }
 .plan__name { color: var(--muted); font-size: 13px; margin-top: 3px; }
 .plan__chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
@@ -294,6 +295,8 @@ a { color: inherit; text-decoration: none; }
 .plan__price span { color: var(--muted); font-size: 12px; }
 .plan__after { display: block; color: var(--muted); font-size: 11px; }
 .plan__rating { color: #f5a623; font-weight: 700; font-size: 13px; white-space: nowrap; }
+.plan__cta { margin-top: 10px; align-self: flex-start; font-family: 'Rubik'; font-weight: 700; font-size: 13px; color: var(--green); text-decoration: none; transition: color .15s; }
+.plan__cta:hover { color: var(--green-d); }
 
 /* filter bar (all-plans page) */
 .filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 22px; }
@@ -301,6 +304,9 @@ a { color: inherit; text-decoration: none; }
 .filter-btn.active { background: var(--green); color: #fff; border-color: var(--green); }
 .filter-search { flex: 1 1 220px; min-width: 0; padding: 10px 16px; border: 1px solid var(--line); border-radius: 999px; font-family: 'Assistant'; font-size: 15px; background: var(--white); }
 .filter-search:focus { outline: 2px solid var(--green); }
+select.filter-search { cursor: pointer; -webkit-appearance: none; appearance: none; padding-inline-end: 36px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%2315603E' d='M6 8 0 0h12z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: left 14px center; }
+.flag-chip { background: var(--white); border: 1px solid var(--line); color: var(--green-d); font-family: 'Rubik'; font-weight: 700; font-size: 13px; padding: 7px 13px; border-radius: 999px; cursor: pointer; transition: background .15s, color .15s, border-color .15s; }
+.flag-chip.active { background: var(--lime); color: var(--green-d); border-color: var(--lime); }
 .plan-empty { text-align: center; color: var(--muted); padding: 40px 0; display: none; }
 .cat-plans-head { display: flex; align-items: baseline; gap: 10px; margin: 30px 0 14px; }
 .cat-plans-head h2 { font-family: 'Rubik'; font-size: 24px; color: var(--green-d); }

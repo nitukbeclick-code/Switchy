@@ -104,18 +104,31 @@
     const cards = Array.from(planGrid.querySelectorAll('.plan'));
     const empty = $('planEmpty');
     const search = $('planSearch');
+    const sort = $('planSort');
     const btns = Array.from(document.querySelectorAll('.filter-btn'));
+    const flagChips = Array.from(document.querySelectorAll('.flag-chip'));
+    const flagKey = { '5g': 'data-5g', nocommit: 'data-nocommit', abroad: 'data-abroad' };
     let cat = 'all';
     const apply = () => {
       const q = (search && search.value || '').trim().toLowerCase();
+      const activeFlags = flagChips.filter((c) => c.classList.contains('active')).map((c) => c.dataset.flag);
       let shown = 0;
+      const visibleCards = [];
       for (const card of cards) {
         const okCat = cat === 'all' || card.dataset.cat === cat;
         const okText = !q || (card.dataset.text || '').includes(q);
-        const visible = okCat && okText;
+        const okFlags = activeFlags.every((f) => card.getAttribute(flagKey[f]) === 'true');
+        const visible = okCat && okText && okFlags;
         card.style.display = visible ? '' : 'none';
-        if (visible) shown++;
+        if (visible) { shown++; visibleCards.push(card); }
       }
+      const mode = (sort && sort.value) || 'price-asc';
+      visibleCards.sort((a, b) => {
+        if (mode === 'price-desc') return Number(b.dataset.price) - Number(a.dataset.price);
+        if (mode === 'rating-desc') return Number(b.dataset.rating) - Number(a.dataset.rating);
+        return Number(a.dataset.price) - Number(b.dataset.price);
+      });
+      visibleCards.forEach((card) => planGrid.appendChild(card));
       if (empty) empty.style.display = shown ? 'none' : 'block';
     };
     btns.forEach((b) => b.addEventListener('click', () => {
@@ -123,6 +136,12 @@
       cat = b.dataset.filter;
       apply();
     }));
+    flagChips.forEach((chip) => chip.addEventListener('click', () => {
+      chip.classList.toggle('active');
+      apply();
+    }));
     if (search) search.addEventListener('input', apply);
+    if (sort) sort.addEventListener('change', apply);
+    apply();
   }
 })();

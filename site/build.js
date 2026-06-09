@@ -114,6 +114,19 @@ const categories = [
 
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
+// Stable URL slug per provider (Hebrew/Latin → ascii).
+const PROVIDER_SLUGS = {
+  'Xphone': 'xphone', 'סלקום': 'cellcom', '019 מובייל': '019mobile', 'פרטנר': 'partner',
+  'גולן טלקום': 'golan', 'רמי לוי': 'rami-levy', 'בזק': 'bezeq', 'הוט מובייל': 'hot-mobile',
+  'HOT': 'hot', 'CCC': 'ccc', 'פלאפון': 'pelephone', 'WeCom': 'wecom', 'STING TV': 'sting-tv',
+  'וואלה מובייל': 'walla-mobile', 'גילת': 'gilat', 'yes': 'yes', 'NextTV': 'nexttv', 'Airalo eSIM': 'airalo',
+};
+function providerSlug(name) {
+  if (PROVIDER_SLUGS[name]) return PROVIDER_SLUGS[name];
+  const ascii = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  return ascii || ('p' + Buffer.from(name, 'utf8').toString('hex').slice(0, 10));
+}
+
 // Render one real plan as a card. Used on category pages and the all-plans page.
 function planCardHtml(p) {
   const unit = p.cat === 'abroad' ? 'לחבילה' : 'לחודש';
@@ -126,12 +139,14 @@ function planCardHtml(p) {
   const after = p.after ? `<span class="plan__after">ואז ₪${p.after}</span>` : '';
   const rating = p.rating ? `<span class="plan__rating">★ ${p.rating}</span>` : '';
   const text = esc(`${p.provider} ${p.plan} ${(p.feats || []).join(' ')} ${Object.values(p.specs || {}).join(' ')}`).toLowerCase();
-  return `<article class="plan" data-cat="${esc(p.cat)}" data-text="${text}">
-        <div class="plan__top"><span class="plan__provider">${esc(p.provider)}</span><span class="plan__net">${esc(p.net)}</span></div>
+  const waHref = 'https://wa.me/972500000000?text=' + encodeURIComponent('היי, מעניין אותי ' + p.provider + ' - ' + p.plan + ' (₪' + p.price + ')');
+  return `<article class="plan" data-cat="${esc(p.cat)}" data-text="${text}" data-price="${p.price}" data-rating="${p.rating || 0}" data-5g="${p.is5G}" data-nocommit="${p.noCommit}" data-abroad="${p.hasAbroad}">
+        <div class="plan__top"><a class="plan__provider" href="provider-${providerSlug(p.provider)}.html">${esc(p.provider)}</a><span class="plan__net">${esc(p.net)}</span></div>
         <div class="plan__name">${esc(p.plan)}</div>
         ${specs ? `<div class="plan__chips">${specs}</div>` : ''}
         ${flags.length ? `<div class="plan__flags">${flags.join('')}</div>` : ''}
         <div class="plan__bottom"><div class="plan__price"><b>₪${p.price}</b> <span>${unit}</span>${after}</div>${rating}</div>
+        <a class="plan__cta" target="_blank" rel="noopener" href="${esc(waHref)}">💬 מעוניין/ת ←</a>
       </article>`;
 }
 
@@ -721,6 +736,14 @@ ${nav}
         <div class="filters">
           ${filterBtns}
           <input type="search" class="filter-search" id="planSearch" placeholder="חיפוש ספק, מסלול או תכונה…" aria-label="חיפוש בחבילות" />
+          <select id="planSort" class="filter-search" style="flex:0 0 auto;max-width:210px" aria-label="מיון חבילות">
+            <option value="price-asc" selected>מהזול ליקר</option>
+            <option value="price-desc">מהיקר לזול</option>
+            <option value="rating-desc">דירוג גבוה תחילה</option>
+          </select>
+          <button class="flag-chip" data-flag="5g">5G</button>
+          <button class="flag-chip" data-flag="nocommit">ללא התחייבות</button>
+          <button class="flag-chip" data-flag="abroad">כולל חו״ל</button>
         </div>
         <div class="plan-grid" id="planGrid">
         ${cards}
@@ -749,9 +772,75 @@ ${footer}
 `;
 }
 
+function providerPage(name, plans) {
+  const slug = providerSlug(name);
+  const url = `${SITE}/provider-${slug}.html`;
+  const cheapest = plans.reduce((m, p) => Math.min(m, p.price), Infinity);
+  const catNames = [...new Set(plans.map((p) => (categories.find((c) => c.slug === p.cat) || {}).name).filter(Boolean))];
+  const cards = plans.map(planCardHtml).join('\n        ');
+  const jsonld = JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'דף הבית', item: SITE + '/' },
+      { '@type': 'ListItem', position: 2, name: 'כל החבילות', item: SITE + '/plans.html' },
+      { '@type': 'ListItem', position: 3, name: name, item: url },
+    ],
+  });
+  return `<!DOCTYPE html>
+<html lang="he" dir="rtl">
+${head(`כל המסלולים של ${name} — מחירים והשוואה | חוסך`, `כל מסלולי ${name} במקום אחד — ${plans.length} מסלולים מ-₪${cheapest}. השוו מחירים, תכונות ודירוגים ומצאו את המשתלם ביותר.`, url, jsonld)}
+<body id="top">
+${nav}
+  <main>
+    <section class="lead-hero">
+      <div class="container">
+        <p class="crumbs"><a href="index.html">דף הבית</a> ← <a href="plans.html">כל החבילות</a> ← ${esc(name)}</p>
+        <h1>כל המסלולים של <span class="hl">${esc(name)}</span></h1>
+        <p>${plans.length} מסלולים${catNames.length ? ` (${esc(catNames.join(' · '))})` : ''} — החל מ-₪${cheapest}. השוו מחירים, תכונות ודירוגים, ומצאו את המסלול המשתלם ביותר.</p>
+        <div class="hero__cta"><a class="btn btn--primary btn--lg" href="#cta">קבלו השוואה חינם ←</a><a class="btn btn--ghost btn--lg" href="plans.html">לכל החבילות</a></div>
+      </div>
+    </section>
+    <section class="section">
+      <div class="container">
+        <div class="plan-grid">
+        ${cards}
+        </div>
+      </div>
+    </section>
+    <section class="cta" id="cta">
+      <div class="container cta__inner reveal">
+        <h2>רוצים לעבור ל${esc(name)} — או ממנו?</h2>
+        <p>השאירו פרטים ונעזור לכם למצוא ולעבור למסלול הכי משתלם, חינם ובלי התחייבות.</p>
+        <form class="cta__form" id="leadForm" novalidate>
+          <input type="text" id="leadName" name="name" placeholder="שם מלא" autocomplete="name" required />
+          <input type="tel" id="leadPhone" name="phone" placeholder="טלפון (050-0000000)" autocomplete="tel" inputmode="tel" required />
+          <button class="btn btn--primary btn--lg" type="submit">קבלו השוואה חינם</button>
+        </form>
+        <p class="cta__note" id="leadNote" role="status" aria-live="polite"></p>
+        <a class="cta__wa" href="https://wa.me/972500000000" target="_blank" rel="noopener"><span aria-hidden="true">💬</span> מעדיפים וואטסאפ? דברו איתנו</a>
+      </div>
+    </section>
+  </main>
+${footer}
+  <script src="script.js" defer></script>
+</body>
+</html>
+`;
+}
+
 // ── Write pages ────────────────────────────────────────────────────────────
 for (const c of categories) {
   fs.writeFileSync(path.join(__dirname, `${c.slug}.html`), page(c));
+}
+
+// Per-provider pages (from the catalogue).
+const providersMap = {};
+for (const p of catalogue.plans) (providersMap[p.provider] ||= []).push(p);
+const providerNames = Object.keys(providersMap).sort();
+for (const name of providerNames) {
+  providersMap[name].sort((a, b) => a.price - b.price);
+  fs.writeFileSync(path.join(__dirname, `provider-${providerSlug(name)}.html`), providerPage(name, providersMap[name]));
 }
 for (const g of guides) {
   fs.writeFileSync(path.join(__dirname, `${g.slug}.html`), articlePage(g));
@@ -771,6 +860,7 @@ const locs = [
   `${SITE}/about.html`,
   ...categories.map((c) => `${SITE}/${c.slug}.html`),
   ...guides.map((g) => `${SITE}/${g.slug}.html`),
+  ...providerNames.map((n) => `${SITE}/provider-${providerSlug(n)}.html`),
   `${SITE}/privacy.html`,
   `${SITE}/terms.html`,
 ];
@@ -781,4 +871,4 @@ ${locs.map((l, i) => `  <url>\n    <loc>${l}</loc>\n    <changefreq>weekly</chan
 `;
 fs.writeFileSync(path.join(__dirname, 'sitemap.xml'), sitemap);
 
-console.log(`Generated ${categories.length} category + ${guides.length} guides + ${staticPages.length} static + guides index + plans + 404 + sitemap.xml`);
+console.log(`Generated ${categories.length} category + ${guides.length} guides + ${staticPages.length} static + guides index + plans + providers + 404 + sitemap.xml`);

@@ -171,6 +171,7 @@ function page(c) {
   const bullets = c.bullets.map(([icon, h, p]) => `        <article class="feature feature--check reveal"><span class="feature__icon">${icon}</span><h3>${esc(h)}</h3><p>${esc(p)}</p></article>`).join('\n');
   const chips = c.providers.map((p) => `<span class="chip">${esc(p)}</span>`).join('\n          ');
   const faqs = c.faq.map(([q, a]) => `          <details><summary>${esc(q)}</summary><p>${esc(a)}</p></details>`).join('\n');
+  const catGuides = relatedGuides(c.name, null, 2).map(guideCard).join('\n');
   return `<!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
@@ -237,6 +238,15 @@ ${bullets}
         <header class="section__head reveal"><span class="eyebrow">שאלות נפוצות</span><h2>שאלות על ${esc(c.name)}</h2></header>
         <div class="faq__list reveal">
 ${faqs}
+        </div>
+      </div>
+    </section>
+
+    <section class="section" aria-label="מדריכים שימושיים">
+      <div class="container">
+        <header class="section__head reveal"><span class="eyebrow">כדאי לדעת</span><h2>מדריכים שימושיים</h2></header>
+        <div class="guide-cards guide-cards--2">
+${catGuides}
         </div>
       </div>
     </section>
@@ -378,6 +388,29 @@ const guides = [
   },
 ];
 
+// Render a single guide card (reused by guides index, article "related", category pages).
+function guideCard(g) {
+  const dateHe = new Date(g.date).toLocaleDateString('he-IL', { year: 'numeric', month: 'long', day: 'numeric' });
+  return `          <a class="guide-card reveal" href="${g.slug}.html">
+            <span class="tag-cat">${esc(g.cat)}</span>
+            <h3>${esc(g.h1)}</h3>
+            <p>${esc(g.desc)}</p>
+            <span class="meta">${dateHe} · ${g.read} דק׳ קריאה</span>
+          </a>`;
+}
+
+// Pick up to `n` guides related to a value, excluding `excludeSlug`.
+// Matches guide.cat against the supplied category name (substring either direction),
+// then fills the remainder with other guides so we always return up to `n`.
+function relatedGuides(catName, excludeSlug, n) {
+  const pool = guides.filter((g) => g.slug !== excludeSlug);
+  const matches = catName
+    ? pool.filter((g) => g.cat === catName || catName.includes(g.cat) || g.cat.includes(catName))
+    : [];
+  const rest = pool.filter((g) => !matches.includes(g));
+  return [...matches, ...rest].slice(0, n);
+}
+
 function articleJsonLd(g) {
   const url = `${SITE}/${g.slug}.html`;
   return JSON.stringify({
@@ -433,6 +466,7 @@ function articlePage(g) {
     return html;
   }).join('\n');
   const dateHe = new Date(g.date).toLocaleDateString('he-IL', { year: 'numeric', month: 'long', day: 'numeric' });
+  const relatedCards = relatedGuides(g.cat, g.slug, 3).map(guideCard).join('\n');
   return `<!DOCTYPE html>
 <html lang="he" dir="rtl">
 ${head(g.title, g.desc, url, articleJsonLd(g))}
@@ -460,6 +494,14 @@ ${body}
           </div>
         </div>
       </section>
+      <section class="section section--alt" aria-label="מדריכים נוספים">
+        <div class="container">
+          <header class="section__head reveal"><span class="eyebrow">להמשך קריאה</span><h2>מדריכים נוספים</h2></header>
+          <div class="guide-cards">
+${relatedCards}
+          </div>
+        </div>
+      </section>
     </article>
   </main>
 ${footer}
@@ -471,15 +513,7 @@ ${footer}
 
 function guidesIndexPage() {
   const url = `${SITE}/guides.html`;
-  const cards = guides.map((g) => {
-    const dateHe = new Date(g.date).toLocaleDateString('he-IL', { year: 'numeric', month: 'long', day: 'numeric' });
-    return `          <a class="guide-card reveal" href="${g.slug}.html">
-            <span class="tag-cat">${esc(g.cat)}</span>
-            <h3>${esc(g.h1)}</h3>
-            <p>${esc(g.desc)}</p>
-            <span class="meta">${dateHe} · ${g.read} דק׳ קריאה</span>
-          </a>`;
-  }).join('\n');
+  const cards = guides.map(guideCard).join('\n');
   return `<!DOCTYPE html>
 <html lang="he" dir="rtl">
 ${head('מדריכים — איך לחסוך על תקשורת | חוסך', 'מדריכים מקצועיים: איך לעבור ספק, לבחור מסלול סלולר, סיב אופטי מול כבלים ועוד — כל הטיפים כדי לא לשלם יותר מדי.', url)}

@@ -387,6 +387,32 @@ $$;
 --     $$
 --   );
 
+-- ── Storage: community-media bucket ─────────────────────────────────────────
+-- Public bucket for community post/reply images, audio, and video.
+-- Max object size: 50 MB. Already created via Supabase MCP execute_sql;
+-- re-run this block if the bucket or policies are missing.
+--
+--   insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+--   values (
+--     'community-media', 'community-media', true, 52428800,
+--     array['image/jpeg','image/png','image/gif','image/webp',
+--           'video/mp4','video/quicktime',
+--           'audio/aac','audio/mpeg','audio/wav','audio/x-m4a']
+--   ) on conflict (id) do nothing;
+--
+--   create policy "community media anon upload" on storage.objects
+--     for insert to anon, authenticated
+--     with check (bucket_id = 'community-media');
+--
+--   create policy "community media public read" on storage.objects
+--     for select to anon, authenticated
+--     using (bucket_id = 'community-media');
+--
+--   create policy "community media owner delete" on storage.objects
+--     for delete to authenticated
+--     using (bucket_id = 'community-media'
+--       and (storage.foldername(name))[1] = auth.uid()::text);
+
 -- Done. Every table has RLS enabled; the anon/authenticated API can only do
 -- what the policies above allow. The service_role key bypasses RLS — keep it
 -- server-side only, never in the Flutter app.

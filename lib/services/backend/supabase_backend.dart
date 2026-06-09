@@ -12,6 +12,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import 'dart:async';
+import 'dart:convert';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../models.dart';
 import 'backend.dart';
@@ -240,6 +241,20 @@ class SupabaseBackend implements Backend {
   }
 
   // ── Community ────────────────────────────────────────────────────────────────
+
+  // Uploads a data-URI to Supabase Storage and returns the public URL.
+  // If [media] is already an HTTP URL (or null), returns it unchanged.
+  Future<String?> _uploadMediaIfNeeded(String? media, String? mediaType) async {
+    if (media == null || !media.startsWith('data:')) return media;
+    final commaIdx = media.indexOf(',');
+    if (commaIdx == -1) return null;
+    final bytes = base64Decode(media.substring(commaIdx + 1));
+    final ext = mediaType == 'image' ? 'jpg' : mediaType == 'video' ? 'mp4' : 'aac';
+    final path = '${_uid ?? 'anon'}/${DateTime.now().microsecondsSinceEpoch}.$ext';
+    await _db.storage.from('community-media').uploadBinary(path, bytes);
+    return _db.storage.from('community-media').getPublicUrl(path);
+  }
+
   @override
   Stream<void> communityChanges() {
     _communityCtrl ??= StreamController<void>.broadcast();
@@ -281,9 +296,19 @@ class SupabaseBackend implements Backend {
 
   @override
   Future<CommunityPost> createPost(PostInput post) async {
+    final mediaUrl = await _uploadMediaIfNeeded(post.media, post.mediaType);
     final row = await _db
         .from('community_posts')
-        .insert({'user_id': _uid, ...post.toRow()})
+        .insert({
+          'user_id': _uid,
+          'author': post.author,
+          'avatar': post.avatar,
+          'channel': post.channel,
+          'body': post.text,
+          'media_type': post.mediaType,
+          'media_url': mediaUrl,
+          'media_duration_ms': post.mediaDurationMs,
+        })
         .select()
         .single();
     return _postFromRow(row);
@@ -316,7 +341,17 @@ class SupabaseBackend implements Backend {
 
   @override
   Future<void> addReply(ReplyInput reply) async {
-    await _db.from('community_replies').insert({'user_id': _uid, ...reply.toRow()});
+    final mediaUrl = await _uploadMediaIfNeeded(reply.media, reply.mediaType);
+    await _db.from('community_replies').insert({
+      'user_id': _uid,
+      'post_id': reply.postId,
+      'author': reply.author,
+      'avatar': reply.avatar,
+      'body': reply.text,
+      'media_type': reply.mediaType,
+      'media_url': mediaUrl,
+      'media_duration_ms': reply.mediaDurationMs,
+    });
   }
 
   @override

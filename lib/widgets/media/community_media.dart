@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:audioplayers/audioplayers.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
@@ -30,10 +31,13 @@ class MediaImageBubble extends StatelessWidget {
     this.maxHeight = 240,
   });
 
+  // Accepts a data-URI (local capture) or an HTTPS URL (Supabase Storage).
   final String dataUri;
   final double maxHeight;
 
-  void _openFullscreen(BuildContext context, Uint8List bytes) {
+  bool get _isNetwork => dataUri.startsWith('http');
+
+  void _openFullscreen(BuildContext context) {
     showDialog<void>(
       context: context,
       builder: (_) => Dialog(
@@ -43,7 +47,9 @@ class MediaImageBubble extends StatelessWidget {
           children: [
             Center(
               child: InteractiveViewer(
-                child: Image.memory(bytes),
+                child: _isNetwork
+                    ? CachedNetworkImage(imageUrl: dataUri)
+                    : Image.memory(MediaService.dataUriToBytes(dataUri)!),
               ),
             ),
             Positioned(
@@ -65,39 +71,48 @@ class MediaImageBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = AppTheme.of(context);
-    final bytes = MediaService.dataUriToBytes(dataUri);
 
-    if (bytes == null) {
-      return Container(
-        height: maxHeight,
-        width: double.infinity,
-        decoration: BoxDecoration(
-          color: theme.alternate,
-          borderRadius: BorderRadius.circular(14),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.broken_image_outlined,
-                color: theme.secondaryText, size: 40),
-            const SizedBox(height: 8),
-            Text('תמונה לא זמינה',
-                style: theme.bodySmall.copyWith(color: theme.secondaryText)),
-          ],
-        ),
+    Widget imageChild;
+    if (_isNetwork) {
+      imageChild = CachedNetworkImage(
+        imageUrl: dataUri,
+        fit: BoxFit.cover,
+        placeholder: (_, __) => const Center(child: CircularProgressIndicator()),
+        errorWidget: (_, __, ___) => Icon(Icons.broken_image_outlined,
+            color: theme.secondaryText, size: 40),
       );
+    } else {
+      final bytes = MediaService.dataUriToBytes(dataUri);
+      if (bytes == null) {
+        return Container(
+          height: maxHeight,
+          width: double.infinity,
+          decoration: BoxDecoration(
+            color: theme.alternate,
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.broken_image_outlined,
+                  color: theme.secondaryText, size: 40),
+              const SizedBox(height: 8),
+              Text('תמונה לא זמינה',
+                  style: theme.bodySmall.copyWith(color: theme.secondaryText)),
+            ],
+          ),
+        );
+      }
+      imageChild = Image.memory(bytes, fit: BoxFit.cover);
     }
 
     return GestureDetector(
-      onTap: () => _openFullscreen(context, bytes),
+      onTap: () => _openFullscreen(context),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(14),
         child: ConstrainedBox(
           constraints: BoxConstraints(maxHeight: maxHeight),
-          child: SizedBox(
-            width: double.infinity,
-            child: Image.memory(bytes, fit: BoxFit.cover),
-          ),
+          child: SizedBox(width: double.infinity, child: imageChild),
         ),
       ),
     );

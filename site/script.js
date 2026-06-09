@@ -77,11 +77,29 @@
     reveals.forEach((el) => el.classList.add('in'));
   }
 
-  // ── Lead form (no backend yet — Supabase parked) ───────────────────────────
+  // ── Lead form ──────────────────────────────────────────────────────────────
+  // Backend is optional and config-driven: set `window.CHOSECH_SUPABASE =
+  // { url, anonKey }` (anon key only — never the service_role key) to POST leads
+  // to the Supabase `leads` table. With no config it falls back to a local
+  // thank-you so the form always works. No keys are committed to the repo.
   const form = $('leadForm');
   const note = $('leadNote');
+  const sendLead = async (lead) => {
+    const cfg = window.CHOSECH_SUPABASE;
+    if (!cfg || !cfg.url || !cfg.anonKey) return; // backend parked — local-only
+    await fetch(cfg.url.replace(/\/$/, '') + '/rest/v1/leads', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: cfg.anonKey,
+        Authorization: 'Bearer ' + cfg.anonKey,
+        Prefer: 'return=minimal',
+      },
+      body: JSON.stringify(lead),
+    });
+  };
   if (form) {
-    form.addEventListener('submit', (e) => {
+    form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const name = ($('leadName').value || '').trim();
       const phone = ($('leadPhone').value || '').trim();
@@ -89,8 +107,16 @@
         if (note) { note.style.color = '#ffd9d9'; note.textContent = 'נא למלא שם וטלפון תקין 🙏'; }
         return;
       }
-      // TODO: when the backend is connected, POST { name, phone } to Supabase `leads`.
+      const btn = form.querySelector('button[type="submit"]');
+      if (btn) btn.disabled = true;
+      try {
+        await sendLead({ name: name, phone: phone, source: location.pathname });
+      } catch (_) {
+        // Network/backend failure shouldn't lose the lead UX — show success and
+        // let the user reach us via WhatsApp; the submission is best-effort.
+      }
       form.reset();
+      if (btn) btn.disabled = false;
       if (note) {
         note.style.color = '';
         note.textContent = 'תודה ' + name.split(' ')[0] + '! נחזור אליך בהקדם 💚';
@@ -143,5 +169,60 @@
     if (search) search.addEventListener('input', apply);
     if (sort) sort.addEventListener('change', apply);
     apply();
+  }
+
+  // ── Side-by-side comparison (compare.html) ──────────────────────────────────
+  const compareTable = $('compareTable');
+  if (compareTable && Array.isArray(window.__PLANS__)) {
+    const escHtml = (s) => String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    const byId = {};
+    window.__PLANS__.forEach((p) => { byId[p.id] = p; });
+    const picks = [0, 1, 2].map((i) => $('cmp' + i)).filter(Boolean);
+    const yes = '<span class="cmp-yes" aria-label="כן">✓</span>';
+    const no = '<span class="cmp-no" aria-label="לא">—</span>';
+    const catName = { cellular: 'סלולר', internet: 'אינטרנט', tv: 'טלוויזיה', triple: 'משולבת', abroad: 'חו״ל' };
+    const render = () => {
+      const chosen = picks.map((s) => byId[s.value]).filter(Boolean);
+      if (!chosen.length) {
+        compareTable.innerHTML = '<p class="cmp-empty">בחרו מסלול אחד לפחות כדי להשוות.</p>';
+        return;
+      }
+      const isAbroad = chosen.some((p) => p.cat === 'abroad');
+      const per = isAbroad ? 'לחבילה' : 'לחודש';
+      // Union of spec keys, preserving first-seen order.
+      const specKeys = [];
+      chosen.forEach((p) => Object.keys(p.specs || {}).forEach((k) => {
+        if (!specKeys.includes(k)) specKeys.push(k);
+      }));
+      const cols = chosen.map((p) => `<th>${escHtml(p.provider)}<small>${escHtml(p.plan)}</small></th>`).join('');
+      const row = (label, cells) =>
+        `<tr><th scope="row">${escHtml(label)}</th>${cells.map((c) => `<td>${c}</td>`).join('')}</tr>`;
+      const priceCell = (p) =>
+        `<span class="cmp-price">₪${escHtml(p.price)}</span><small> ${per}</small>` +
+        (p.after && Number(p.after) !== Number(p.price) ? `<small class="cmp-after">ואז ₪${escHtml(p.after)}</small>` : '');
+      const ratingCell = (p) => p.rating ? '★ ' + escHtml(Number(p.rating).toFixed(1)) : no;
+      const rows = [
+        row('קטגוריה', chosen.map((p) => escHtml(catName[p.cat] || p.cat))),
+        row('מחיר', chosen.map(priceCell)),
+        row('רשת', chosen.map((p) => p.net ? escHtml(p.net) : no)),
+        row('5G', chosen.map((p) => p.is5G ? yes : no)),
+        row('ללא התחייבות', chosen.map((p) => p.noCommit ? yes : no)),
+        row('כולל חו״ל', chosen.map((p) => p.hasAbroad ? yes : no)),
+        row('דירוג', chosen.map(ratingCell)),
+      ];
+      specKeys.forEach((k) => {
+        rows.push(row(k, chosen.map((p) => (p.specs && p.specs[k] != null) ? escHtml(p.specs[k]) : no)));
+      });
+      const wa = (p) => 'https://wa.me/972500000000?text=' +
+        encodeURIComponent('היי, מעניין אותי ' + p.provider + ' - ' + p.plan + ' (₪' + p.price + ')');
+      const ctaRow = `<tr class="cmp-cta-row"><th scope="row"></th>${chosen.map((p) =>
+        `<td><a class="plan__cta" target="_blank" rel="noopener" href="${escHtml(wa(p))}">💬 מעוניין/ת ←</a></td>`).join('')}</tr>`;
+      compareTable.innerHTML =
+        `<table class="cmp-table"><thead><tr><th></th>${cols}</tr></thead><tbody>${rows.join('')}${ctaRow}</tbody></table>`;
+    };
+    picks.forEach((s) => s.addEventListener('change', render));
+    render();
   }
 })();

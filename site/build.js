@@ -112,7 +112,9 @@ const categories = [
   },
 ];
 
-const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+const esc = (s) => String(s)
+  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
 // Stable URL slug per provider (Hebrew/Latin → ascii).
 const PROVIDER_SLUGS = {
@@ -125,6 +127,26 @@ function providerSlug(name) {
   if (PROVIDER_SLUGS[name]) return PROVIDER_SLUGS[name];
   const ascii = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
   return ascii || ('p' + Buffer.from(name, 'utf8').toString('hex').slice(0, 10));
+}
+
+// Brand-colored avatar per provider (initials in the brand color) — mirrors the
+// app's LogoWidget; safe vs. using trademarked logo images.
+const LOGO = [
+  ['סלקום', '#4527A0', 'סל'], ['פרטנר', '#2E7D32', 'פר'], ['פלאפון', '#1565C0', 'פל'],
+  ['גולן', '#00695C', 'גל'], ['הוט מובייל', '#B71C1C', 'הוט'], ['הוט', '#B71C1C', 'הוט'], ['HOT', '#B71C1C', 'HOT'],
+  ['Xphone', '#0277BD', 'X'], ['רמי לוי', '#D32F2F', 'רל'], ['WeCom', '#00838F', 'WC'],
+  ['019', '#6A1B9A', '019'], ['וואלה', '#E64A19', 'וו'], ['בזק', '#1565C0', 'בז'],
+  ['גילת', '#0277BD', 'גי'], ['CCC', '#388E3C', 'CCC'], ['STING', '#AD1457', 'ST'],
+  ['yes', '#0D2B6E', 'yes'], ['NextTV', '#E65100', 'N'], ['Airalo', '#FF6F61', 'Air'],
+];
+function providerLogo(name, size = 36) {
+  let color = '#15603e';
+  let initials = name.trim().slice(0, 2);
+  for (const [key, c, ini] of LOGO) {
+    if (name.includes(key)) { color = c; initials = ini; break; }
+  }
+  const fs = initials.length >= 3 ? Math.round(size * 0.3) : Math.round(size * 0.4);
+  return `<span class="plogo" style="width:${size}px;height:${size}px;background:${color}1a;color:${color};border-color:${color}40;font-size:${fs}px">${esc(initials)}</span>`;
 }
 
 // Render one real plan as a card. Used on category pages and the all-plans page.
@@ -141,7 +163,7 @@ function planCardHtml(p) {
   const text = esc(`${p.provider} ${p.plan} ${(p.feats || []).join(' ')} ${Object.values(p.specs || {}).join(' ')}`).toLowerCase();
   const waHref = 'https://wa.me/972500000000?text=' + encodeURIComponent('היי, מעניין אותי ' + p.provider + ' - ' + p.plan + ' (₪' + p.price + ')');
   return `<article class="plan" data-cat="${esc(p.cat)}" data-text="${text}" data-price="${p.price}" data-rating="${p.rating || 0}" data-5g="${p.is5G}" data-nocommit="${p.noCommit}" data-abroad="${p.hasAbroad}">
-        <div class="plan__top"><a class="plan__provider" href="provider-${providerSlug(p.provider)}.html">${esc(p.provider)}</a><span class="plan__net">${esc(p.net)}</span></div>
+        <div class="plan__top"><span class="plan__id">${providerLogo(p.provider)}<a class="plan__provider" href="provider-${providerSlug(p.provider)}.html">${esc(p.provider)}</a></span><span class="plan__net">${esc(p.net)}</span></div>
         <div class="plan__name">${esc(p.plan)}</div>
         ${specs ? `<div class="plan__chips">${specs}</div>` : ''}
         ${flags.length ? `<div class="plan__flags">${flags.join('')}</div>` : ''}
@@ -157,18 +179,20 @@ const nav = `  <header class="nav" id="nav">
       </a>
       <nav class="nav__links" aria-label="ניווט ראשי">
         <a href="plans.html">כל החבילות</a>
-        <a href="index.html#categories">קטגוריות</a>
+        <a href="providers.html">ספקים</a>
+        <a href="compare.html">השוואה</a>
         <a href="guides.html">מדריכים</a>
-        <a href="index.html#calculator">מחשבון חיסכון</a>
+        <a href="index.html#calculator">מחשבון</a>
       </nav>
       <a class="btn btn--primary nav__cta" href="#cta">השוו עכשיו</a>
       <button class="nav__toggle" id="navToggle" aria-label="פתיחת תפריט" aria-expanded="false" aria-controls="mobileMenu"><span></span><span></span><span></span></button>
     </div>
     <div class="nav__mobile" id="mobileMenu" hidden>
       <a href="plans.html">כל החבילות</a>
-      <a href="index.html#categories">קטגוריות</a>
+      <a href="providers.html">ספקים</a>
+      <a href="compare.html">השוואה</a>
       <a href="guides.html">מדריכים</a>
-      <a href="index.html#calculator">מחשבון חיסכון</a>
+      <a href="index.html#calculator">מחשבון</a>
       <a class="btn btn--primary" href="#cta">השוו עכשיו</a>
     </div>
   </header>`;
@@ -796,6 +820,7 @@ ${nav}
     <section class="lead-hero">
       <div class="container">
         <p class="crumbs"><a href="index.html">דף הבית</a> ← <a href="plans.html">כל החבילות</a> ← ${esc(name)}</p>
+        <div style="margin-bottom:14px">${providerLogo(name, 64)}</div>
         <h1>כל המסלולים של <span class="hl">${esc(name)}</span></h1>
         <p>${plans.length} מסלולים${catNames.length ? ` (${esc(catNames.join(' · '))})` : ''} — החל מ-₪${cheapest}. השוו מחירים, תכונות ודירוגים, ומצאו את המסלול המשתלם ביותר.</p>
         <div class="hero__cta"><a class="btn btn--primary btn--lg" href="#cta">קבלו השוואה חינם ←</a><a class="btn btn--ghost btn--lg" href="plans.html">לכל החבילות</a></div>
@@ -829,6 +854,103 @@ ${footer}
 `;
 }
 
+function providersIndexPage() {
+  const url = `${SITE}/providers.html`;
+  const map = {};
+  for (const p of catalogue.plans) (map[p.provider] ||= []).push(p);
+  const cards = Object.keys(map).sort((a, b) => map[b].length - map[a].length).map((name) => {
+    const ps = map[name];
+    const min = ps.reduce((m, p) => Math.min(m, p.price), Infinity);
+    return `        <a class="provider-card" href="provider-${providerSlug(name)}.html">${providerLogo(name, 46)}<span><b>${esc(name)}</b><small>${ps.length} מסלולים · מ-₪${min}</small></span></a>`;
+  }).join('\n');
+  return `<!DOCTYPE html>
+<html lang="he" dir="rtl">
+${head('כל הספקים — מסלולים ומחירים לפי חברה | חוסך', 'כל ספקי התקשורת בישראל במקום אחד — סלקום, פרטנר, פלאפון, גולן, בזק, הוט, yes ועוד. בחרו ספק וראו את כל המסלולים שלו.', url)}
+<body id="top">
+${nav}
+  <main>
+    <section class="lead-hero">
+      <div class="container">
+        <p class="crumbs"><a href="index.html">דף הבית</a> ← ספקים</p>
+        <h1>כל ה<span class="hl">ספקים</span></h1>
+        <p>כל חברות התקשורת במקום אחד. בחרו ספק כדי לראות את כל המסלולים שלו, מחירים ודירוגים.</p>
+      </div>
+    </section>
+    <section class="section">
+      <div class="container">
+        <div class="provider-grid">
+${cards}
+        </div>
+      </div>
+    </section>
+  </main>
+${footer}
+  <script src="script.js" defer></script>
+</body>
+</html>
+`;
+}
+
+function comparePage() {
+  const url = `${SITE}/compare.html`;
+  const data = catalogue.plans.map((p) => ({
+    id: p.id, cat: p.cat, provider: p.provider, plan: p.plan, price: p.price,
+    after: p.after, net: p.net, is5G: p.is5G, noCommit: p.noCommit, hasAbroad: p.hasAbroad,
+    rating: p.rating, specs: p.specs,
+  }));
+  const optionsFor = (preId) => categories.map((c) => {
+    const opts = (plansByCat[c.slug] || []).map((p) =>
+      `<option value="${esc(p.id)}"${p.id === preId ? ' selected' : ''}>${esc(p.provider)} — ${esc(p.plan)} (₪${p.price})</option>`).join('');
+    return `<optgroup label="${esc(c.name)}">${opts}</optgroup>`;
+  }).join('');
+  const firstTwo = (plansByCat['cellular'] || []).slice(0, 2).map((p) => p.id);
+  const sel = (i, preId) =>
+    `<select class="compare-pick filter-search" id="cmp${i}" aria-label="מסלול ${i + 1}"><option value="">— בחרו מסלול —</option>${optionsFor(preId)}</select>`;
+  return `<!DOCTYPE html>
+<html lang="he" dir="rtl">
+${head('השוואת מסלולים צד לצד | חוסך', 'בחרו עד 3 מסלולים והשוו אותם צד לצד — מחיר, רשת, 5G, התחייבות, חו״ל, דירוג ומפרט. מכל חברות התקשורת.', url)}
+<body id="top">
+${nav}
+  <main>
+    <section class="lead-hero">
+      <div class="container">
+        <p class="crumbs"><a href="index.html">דף הבית</a> ← השוואה</p>
+        <h1>השוואת מסלולים <span class="hl">צד לצד</span></h1>
+        <p>בחרו עד 3 מסלולים והשוו ביניהם — מחיר, רשת, התחייבות, חו״ל, דירוג ומפרט.</p>
+      </div>
+    </section>
+    <section class="section">
+      <div class="container">
+        <div class="compare-picks">
+          ${sel(0, firstTwo[0])}
+          ${sel(1, firstTwo[1])}
+          ${sel(2, '')}
+        </div>
+        <div id="compareTable" class="compare-table-wrap"></div>
+      </div>
+    </section>
+    <section class="cta" id="cta">
+      <div class="container cta__inner reveal">
+        <h2>בחרתם? נעזור לכם לעבור</h2>
+        <p>השאירו פרטים ונדאג לכל המעבר — חינם, בלי התחייבות.</p>
+        <form class="cta__form" id="leadForm" novalidate>
+          <input type="text" id="leadName" name="name" placeholder="שם מלא" autocomplete="name" required />
+          <input type="tel" id="leadPhone" name="phone" placeholder="טלפון (050-0000000)" autocomplete="tel" inputmode="tel" required />
+          <button class="btn btn--primary btn--lg" type="submit">קבלו השוואה חינם</button>
+        </form>
+        <p class="cta__note" id="leadNote" role="status" aria-live="polite"></p>
+        <a class="cta__wa" href="https://wa.me/972500000000" target="_blank" rel="noopener"><span aria-hidden="true">💬</span> מעדיפים וואטסאפ? דברו איתנו</a>
+      </div>
+    </section>
+  </main>
+${footer}
+  <script>window.__PLANS__ = ${JSON.stringify(data)};</script>
+  <script src="script.js" defer></script>
+</body>
+</html>
+`;
+}
+
 // ── Write pages ────────────────────────────────────────────────────────────
 for (const c of categories) {
   fs.writeFileSync(path.join(__dirname, `${c.slug}.html`), page(c));
@@ -850,12 +972,16 @@ for (const p of staticPages) {
 }
 fs.writeFileSync(path.join(__dirname, 'guides.html'), guidesIndexPage());
 fs.writeFileSync(path.join(__dirname, 'plans.html'), plansPage());
+fs.writeFileSync(path.join(__dirname, 'providers.html'), providersIndexPage());
+fs.writeFileSync(path.join(__dirname, 'compare.html'), comparePage());
 fs.writeFileSync(path.join(__dirname, '404.html'), notFoundPage());
 
 // ── Refresh sitemap (home + category pages) ─────────────────────────────────
 const locs = [
   `${SITE}/`,
   `${SITE}/plans.html`,
+  `${SITE}/providers.html`,
+  `${SITE}/compare.html`,
   `${SITE}/guides.html`,
   `${SITE}/about.html`,
   ...categories.map((c) => `${SITE}/${c.slug}.html`),

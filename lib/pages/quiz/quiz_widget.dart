@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../theme/app_theme.dart';
 import '../../core/nav.dart';
 import '../../widgets/app_button.dart';
@@ -779,6 +780,23 @@ class _QuizWidgetState extends State<QuizWidget> {
                   ],
                 ],
               ),
+            ),
+          ),
+
+          // Share affordance — let a delighted user spread the word.
+          const SizedBox(height: 8),
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: TextButton.icon(
+              onPressed: () {
+                HapticFeedback.lightImpact();
+                Share.share(
+                    'מצאתי מסלול ${top.plan.provider} ב-₪${top.plan.price} — ${top.annualSaving > 0 ? 'חוסך ₪${top.annualSaving} בשנה ' : ''}עם חוסך 💚');
+              },
+              icon: Icon(Icons.ios_share_rounded, size: 18, color: ffTheme.primary),
+              label: Text('שתף',
+                  style: ffTheme.labelLarge
+                      .copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
             ),
           ),
 

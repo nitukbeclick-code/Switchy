@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../theme/app_theme.dart';
 import '../../core/nav.dart';
 import '../../app_state.dart';
@@ -269,7 +270,13 @@ class _SaverBanner extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 4),
+            IconButton(
+              tooltip: 'שתף',
+              icon: const Icon(Icons.ios_share_rounded, size: 20, color: Color(0xFF0E3A26)),
+              onPressed: () => Share.share(
+                  'גיליתי שאפשר לחסוך ₪${match.annualSaving} בשנה במעבר ל${match.plan.provider} — עם חוסך 💚'),
+            ),
             const Icon(Icons.arrow_back_ios_rounded, size: 16, color: Color(0xFF0E3A26)),
           ],
         ),

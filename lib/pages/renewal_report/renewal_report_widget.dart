@@ -10,6 +10,7 @@ import '../../models.dart';
 import '../../components/logo_widget/logo_widget.dart';
 import '../../services/recommendation_engine.dart';
 import '../../services/renewal_report.dart';
+import '../../services/reminder_schedule.dart';
 
 /// The full, fresh comparison table for a single tracked plan that is about to
 /// renew — every alternative in its category ranked by fit, with the annual
@@ -443,8 +444,8 @@ class _ReminderCta extends StatelessWidget {
   Widget build(BuildContext context) {
     final appState = Provider.of<AppState>(context);
     final on = appState.renewalReminders;
-    final end = tp.promoEnd;
-    final dateStr = end != null ? DateFormat('d/M/yyyy').format(end) : null;
+    final fire = reminderFireDate(tp);
+    final dateStr = fire != null ? DateFormat('d/M/yyyy').format(fire) : null;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -461,7 +462,7 @@ class _ReminderCta extends StatelessWidget {
                 Expanded(
                   child: Text(
                     dateStr != null
-                        ? 'מצוין! נזכיר לך ~21 יום לפני $dateStr עם טבלה מעודכנת'
+                        ? 'מצוין! נזכיר לך ב-$dateStr עם טבלה מעודכנת'
                         : 'מצוין! נזכיר לך לפני סיום המבצע עם טבלה מעודכנת',
                     style: ffTheme.bodySmall.copyWith(
                         color: ffTheme.primaryText, fontWeight: FontWeight.w600),

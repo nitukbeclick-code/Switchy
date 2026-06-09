@@ -11,6 +11,7 @@ import '../../models.dart';
 import '../../components/logo_widget/logo_widget.dart';
 import '../../widgets/app_button.dart';
 import '../../services/recommendation_engine.dart';
+import '../../services/reminder_schedule.dart';
 
 class RenewalWidget extends StatefulWidget {
   const RenewalWidget({super.key});
@@ -449,6 +450,10 @@ class _ReminderTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final next = appState.renewalReminders ? nextReminder(appState) : null;
+    final subtitle = next != null
+        ? 'התזכורת הבאה: ${DateFormat('d/M/yyyy').format(next.fireDate)} · ${next.plan.provider}'
+        : 'נשלח לך התראה ~21 יום לפני סיום המבצע';
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
@@ -465,7 +470,7 @@ class _ReminderTile extends StatelessWidget {
         subtitle: Padding(
           padding: const EdgeInsets.only(top: 2),
           child: Text(
-            'נשלח לך התראה ~21 יום לפני סיום המבצע',
+            subtitle,
             style: ffTheme.bodySmall
                 .copyWith(color: ffTheme.secondaryText),
           ),

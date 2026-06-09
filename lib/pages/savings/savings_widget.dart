@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../theme/app_theme.dart';
@@ -151,6 +152,15 @@ class _Hero extends StatelessWidget {
                   ),
                   Text('החיסכון שלי',
                       style: GoogleFonts.rubik(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white)),
+                  const Spacer(),
+                  if (personalized && total > 0)
+                    IconButton(
+                      icon: const Icon(Icons.ios_share_rounded, color: Colors.white, size: 22),
+                      tooltip: 'שתף את החיסכון',
+                      onPressed: () => Share.share(
+                        'גיליתי שאפשר לחסוך עד ₪$total בשנה על חשבונות התקשורת — בדקו גם אתם עם חוסך 💚',
+                      ),
+                    ),
                 ],
               ),
               const SizedBox(height: 8),

@@ -41,6 +41,8 @@ void main() {
     expect(find.text('לפי קטגוריה'), findsOneWidget);
     // A high cellular bill must surface at least one annual-saving badge.
     expect(find.textContaining('/שנה'), findsWidgets);
+    // Personalised + positive total → the share action is offered.
+    expect(find.byIcon(Icons.ios_share_rounded), findsOneWidget);
   });
 
   testWidgets('Renewal report shows the table and our top pick', (tester) async {

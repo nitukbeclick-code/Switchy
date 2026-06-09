@@ -101,6 +101,57 @@ create index if not exists leads_created_idx on public.leads (created_at desc);
 create index if not exists leads_unnotified_idx on public.leads (created_at)
   where notified_at is null;
 
+-- ── leads anti-abuse gate ─────────────────────────────────────────────────────
+-- leads_insert_anyone is deliberate (anonymous lead capture), but every INSERT
+-- fans out to Telegram + Resend + a paid AI-triage call, so an unthrottled
+-- anon key is a cost/spam amplifier. Shape-validate and rate-limit at the door:
+--   • per-phone: max 5 leads per 24h (a legit customer re-submitting stays under)
+--   • global:    max 30 leads per hour (protects Telegram/Resend/AI quota)
+create or replace function public.leads_rate_limit()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if length(trim(new.name)) < 2 or length(new.name) > 80 then
+    raise exception 'invalid name';
+  end if;
+  if new.phone !~ '^[+0-9][0-9\-\s]{7,14}$' then
+    raise exception 'invalid phone';
+  end if;
+  -- bound the free-text fields: oversized notes would push the Telegram
+  -- message past its 4096-char limit and silently kill the notification
+  if length(coalesce(new.notes, ''))    > 2000
+     or length(coalesce(new.email, ''))    > 254
+     or length(coalesce(new.provider, '')) > 120
+     or length(coalesce(new.plan_id, ''))  > 120 then
+    raise exception 'field too long';
+  end if;
+  -- compare on digits only, otherwise 050-1234567 / +972501234567 / 0501234567
+  -- count as different phones and the per-phone cap is format-bypassable
+  if (select count(*) from public.leads
+      where regexp_replace(phone, '\D', '', 'g') = regexp_replace(new.phone, '\D', '', 'g')
+        and created_at > now() - interval '1 day') >= 5 then
+    raise exception 'rate limit exceeded';
+  end if;
+  if (select count(*) from public.leads
+      where created_at > now() - interval '1 hour') >= 30 then
+    raise exception 'rate limit exceeded';
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists leads_rate_limit_before_insert on public.leads;
+create trigger leads_rate_limit_before_insert
+  before insert on public.leads
+  for each row execute function public.leads_rate_limit();
+
+-- expression index so the normalized per-phone lookup stays cheap
+create index if not exists leads_phone_norm_idx
+  on public.leads (regexp_replace(phone, '\D', '', 'g'), created_at desc);
+
 -- ── tracked_plans  (renewal radar) ───────────────────────────────────────────
 create table if not exists public.tracked_plans (
   id             uuid primary key default gen_random_uuid(),
@@ -300,15 +351,22 @@ create index if not exists plan_views_provider_idx on public.plan_views (provide
 
 -- Atomically increments a user's total_savings. Called by the Flutter app when
 -- the user confirms they switched plans (tracker step 3 → 4).
+-- SECURITY: definer bypasses RLS, so the function itself must pin the target
+-- row to the caller (`id = auth.uid()`) and bound the delta — otherwise any
+-- caller could mutate any profile. EXECUTE is revoked from anon below.
 create or replace function public.increment_savings(uid uuid, delta integer)
 returns void
 language sql
 security definer
+set search_path = public
 as $$
   update public.profiles
-  set total_savings = total_savings + delta
-  where id = uid;
+  set total_savings = total_savings + least(greatest(delta, 0), 100000)
+  where id = uid and id = auth.uid();
 $$;
+
+revoke execute on function public.increment_savings(uuid, integer) from public, anon;
+grant execute on function public.increment_savings(uuid, integer) to authenticated;
 
 -- ── Demand analytics views  (service_role reads; no public RLS) ─────────────
 -- Top plans / providers by page-view in the last 30 days.
@@ -345,6 +403,13 @@ from public.leads
 group by source
 order by total desc;
 
+-- SECURITY: views run with the owner's rights (RLS-bypassing) and default
+-- privileges grant SELECT to client roles — without an explicit revoke, any
+-- signed-in (incl. anonymous) client could read the whole sales pipeline.
+-- service_role keeps its grant (the bot's /stats command uses it).
+revoke select on public.leads_by_source, public.top_plans_30d, public.top_providers_30d
+  from anon, authenticated;
+
 -- ── get_upcoming_renewals  (called by renewal-reminders Edge Function) ───────
 -- Returns tracked_plans with promo_end_date within the next N days, joined with
 -- the user's profile. security definer so the Edge Function (service_role) can
@@ -376,6 +441,14 @@ as $$
     and tp.promo_end_date between current_date and current_date + (days || ' days')::interval
   order by tp.promo_end_date;
 $$;
+
+-- SECURITY: this definer function dumps every customer's name+phone+email —
+-- without an explicit revoke, EXECUTE on public-schema functions is granted
+-- to PUBLIC, i.e. the anon REST role could exfiltrate the whole list.
+-- Only the Edge Functions (service_role) may call it. The same applies to
+-- get_lead_notify_config() (created in the lead-notify migration).
+revoke execute on function public.get_upcoming_renewals(integer) from public, anon, authenticated;
+grant execute on function public.get_upcoming_renewals(integer) to service_role;
 
 -- ── pg_cron schedule  (renewal digest) ───────────────────────────────────────
 -- Requires: `create extension if not exists pg_cron schema cron;`

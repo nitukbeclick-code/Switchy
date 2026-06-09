@@ -134,6 +134,25 @@ class SupabaseBackend implements Backend {
   }
 
   @override
+  Future<int> fetchLeadStep() async {
+    if (_uid == null) return 0;
+    final row = await _db
+        .from('leads')
+        .select('status')
+        .eq('user_id', _uid!)
+        .order('created_at', ascending: false)
+        .limit(1)
+        .maybeSingle();
+    if (row == null) return 0;
+    final status = row['status'] as String? ?? 'new';
+    switch (status) {
+      case 'contacted': return 2;
+      case 'won': return 4;
+      default: return 1;
+    }
+  }
+
+  @override
   Stream<int> leadStepStream() {
     if (_uid == null) return Stream.empty();
     _leadStepCtrl ??= StreamController<int>.broadcast();

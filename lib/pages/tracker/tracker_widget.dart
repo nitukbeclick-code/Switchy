@@ -25,6 +25,12 @@ class _TrackerWidgetState extends State<TrackerWidget> {
   @override
   void initState() {
     super.initState();
+    // Hydrate current step immediately (handles users who were offline when
+    // the rep updated the lead status).
+    appBackend.fetchLeadStep().then((step) {
+      if (mounted && step > AppState().trackerStep) AppState().setTrackerStep(step);
+    }).catchError((_) {});
+    // Then subscribe for live updates.
     _leadStepSub = appBackend.leadStepStream().listen((step) {
       if (mounted) AppState().setTrackerStep(step);
     });

@@ -65,6 +65,9 @@ class LocalBackend implements Backend {
   }
 
   @override
+  Future<int> fetchLeadStep() async => 0;
+
+  @override
   Stream<int> leadStepStream() => Stream.empty();
 
   @override

@@ -92,4 +92,98 @@ class SupabaseBackend implements Backend {
           text: r['body'] as String? ?? '',
         )).toList();
   }
+
+  // ── Community ────────────────────────────────────────────────────────────────
+  CommunityPost _postFromRow(Map<String, dynamic> r) => CommunityPost(
+        id: r['id'] as String,
+        author: r['author'] as String,
+        avatar: r['avatar'] as String? ?? '',
+        channel: r['channel'] as String,
+        text: r['body'] as String? ?? '',
+        likes: (r['like_count'] as num?)?.toInt() ?? 0,
+        replies: (r['reply_count'] as num?)?.toInt() ?? 0,
+        timestamp: DateTime.parse(r['created_at'] as String),
+        mediaType: r['media_type'] as String?,
+        mediaData: r['media_url'] as String?,
+        mediaDurationMs: r['media_duration_ms'] as int?,
+      );
+
+  @override
+  Future<List<CommunityPost>> fetchPosts({String? channel}) async {
+    // `community_feed` is the view with like_count / reply_count.
+    var query = _db.from('community_feed').select();
+    if (channel != null && channel != 'הכל') query = query.eq('channel', channel);
+    final rows = await query.order('created_at', ascending: false);
+    return (rows as List).map((r) => _postFromRow(r as Map<String, dynamic>)).toList();
+  }
+
+  @override
+  Future<CommunityPost> createPost(PostInput post) async {
+    final row = await _db
+        .from('community_posts')
+        .insert({'user_id': _uid, ...post.toRow()})
+        .select()
+        .single();
+    return _postFromRow(row);
+  }
+
+  @override
+  Future<void> deletePost(String id) async {
+    await _db.from('community_posts').delete().eq('id', id);
+  }
+
+  @override
+  Future<List<CommunityReply>> fetchReplies(String postId) async {
+    final rows = await _db
+        .from('community_replies')
+        .select()
+        .eq('post_id', postId)
+        .order('created_at');
+    return (rows as List).map((r) => CommunityReply(
+          id: r['id'] as String,
+          postId: r['post_id'] as String,
+          author: r['author'] as String,
+          avatar: r['avatar'] as String? ?? '',
+          createdAt: DateTime.parse(r['created_at'] as String),
+          text: r['body'] as String? ?? '',
+          mediaType: r['media_type'] as String?,
+          media: r['media_url'] as String?,
+          mediaDurationMs: r['media_duration_ms'] as int?,
+        )).toList();
+  }
+
+  @override
+  Future<void> addReply(ReplyInput reply) async {
+    await _db.from('community_replies').insert({'user_id': _uid, ...reply.toRow()});
+  }
+
+  @override
+  Future<void> setLike(String postId, bool liked) async {
+    if (liked) {
+      await _db.from('post_likes').upsert({'post_id': postId, 'user_id': _uid});
+    } else {
+      await _db.from('post_likes').delete().eq('post_id', postId).eq('user_id', _uid!);
+    }
+  }
+
+  @override
+  Future<Set<String>> likedPostIds() async {
+    final rows = await _db.from('post_likes').select('post_id').eq('user_id', _uid!);
+    return (rows as List).map((r) => r['post_id'] as String).toSet();
+  }
+
+  @override
+  Future<void> setBookmark(String postId, bool bookmarked) async {
+    if (bookmarked) {
+      await _db.from('post_bookmarks').upsert({'post_id': postId, 'user_id': _uid});
+    } else {
+      await _db.from('post_bookmarks').delete().eq('post_id', postId).eq('user_id', _uid!);
+    }
+  }
+
+  @override
+  Future<Set<String>> bookmarkedPostIds() async {
+    final rows = await _db.from('post_bookmarks').select('post_id').eq('user_id', _uid!);
+    return (rows as List).map((r) => r['post_id'] as String).toSet();
+  }
 }

@@ -9,6 +9,13 @@ class LocalBackend implements Backend {
   final List<LeadInput> _leads = [];
   final List<TrackedPlan> _tracked = [];
   final Map<String, ReviewInput> _reviewByProvider = {}; // unique per provider
+  final List<CommunityPost> _posts = [];
+  final Map<String, List<CommunityReply>> _replies = {};
+  final Set<String> _liked = {};
+  final Set<String> _bookmarked = {};
+  int _seq = 0;
+
+  String _nextId() => '${DateTime.now().microsecondsSinceEpoch}_${_seq++}';
 
   // Exposed for inspection/tests; not part of the Backend contract.
   List<LeadInput> get submittedLeads => List.unmodifiable(_leads);
@@ -43,6 +50,81 @@ class LocalBackend implements Backend {
     final r = _reviewByProvider[provider];
     return r == null ? const [] : [r];
   }
+
+  // ── Community ────────────────────────────────────────────────────────────────
+  // Note: this is the backend's own store. The live local feed still reads from
+  // AppState + seed data; community_widget moves onto appBackend during the
+  // Supabase cutover (see supabase/README.md), so the seed feed isn't lost now.
+
+  @override
+  Future<List<CommunityPost>> fetchPosts({String? channel}) async {
+    final list = channel == null || channel == 'הכל'
+        ? _posts
+        : _posts.where((p) => p.channel == channel).toList();
+    return List.unmodifiable(list);
+  }
+
+  @override
+  Future<CommunityPost> createPost(PostInput post) async {
+    final created = CommunityPost(
+      id: _nextId(),
+      author: post.author,
+      avatar: post.avatar,
+      channel: post.channel,
+      text: post.text,
+      likes: 0,
+      replies: 0,
+      timestamp: DateTime.now(),
+      mediaType: post.mediaType,
+      mediaData: post.media,
+      mediaDurationMs: post.mediaDurationMs,
+    );
+    _posts.insert(0, created); // newest first
+    return created;
+  }
+
+  @override
+  Future<void> deletePost(String id) async {
+    _posts.removeWhere((p) => p.id == id);
+    _replies.remove(id);
+    _liked.remove(id);
+    _bookmarked.remove(id);
+  }
+
+  @override
+  Future<List<CommunityReply>> fetchReplies(String postId) async =>
+      List.unmodifiable(_replies[postId] ?? const []);
+
+  @override
+  Future<void> addReply(ReplyInput reply) async {
+    (_replies[reply.postId] ??= []).add(CommunityReply(
+      id: _nextId(),
+      postId: reply.postId,
+      author: reply.author,
+      avatar: reply.avatar,
+      createdAt: DateTime.now(),
+      text: reply.text,
+      mediaType: reply.mediaType,
+      media: reply.media,
+      mediaDurationMs: reply.mediaDurationMs,
+    ));
+  }
+
+  @override
+  Future<void> setLike(String postId, bool liked) async {
+    liked ? _liked.add(postId) : _liked.remove(postId);
+  }
+
+  @override
+  Future<Set<String>> likedPostIds() async => Set.unmodifiable(_liked);
+
+  @override
+  Future<void> setBookmark(String postId, bool bookmarked) async {
+    bookmarked ? _bookmarked.add(postId) : _bookmarked.remove(postId);
+  }
+
+  @override
+  Future<Set<String>> bookmarkedPostIds() async => Set.unmodifiable(_bookmarked);
 }
 
 /// The backend the app talks to. Flip this one line to `SupabaseBackend()` once

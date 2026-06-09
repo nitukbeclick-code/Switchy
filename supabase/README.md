@@ -72,6 +72,19 @@ RLS policies (public read; each user can only upload/delete under their own
    So wiring the backend later is: add the dep → rename the example → set
    `appBackend`. Screens migrate onto `appBackend` incrementally.
 
+### Which domains are wired
+
+| Domain | In `Backend` | Live today via `appBackend` |
+|--------|:---:|---|
+| Leads | ✅ | ✅ lead form mirrors every submission |
+| Provider reviews | ✅ | ✅ ratings screen mirrors on submit |
+| Tracked plans | ✅ | ✅ renewal screen mirrors add/remove |
+| Community (posts/replies/likes/bookmarks) | ✅ | ⏳ contract + `LocalBackend` + template ready, but the **live feed still reads AppState + seed data** — switch `community_widget` onto `appBackend` during the Supabase cutover so the seed feed isn't lost meanwhile |
+
+The first three are write-mostly, so mirroring them is a safe no-op locally and
+becomes a real server write the moment you flip `appBackend`. Community is
+read-heavy, so its UI migration is intentionally deferred to the cutover.
+
 ## 6. Region / project notes
 
 - Region is **permanent**; **Central EU (Frankfurt)** gives the lowest latency

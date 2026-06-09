@@ -81,4 +81,60 @@ void main() {
       expect(row['body'], 'ok');
     });
   });
+
+  group('community', () {
+    PostInput post(String channel) => PostInput(
+        author: 'דנה', avatar: 'ד', channel: channel, text: 'שלום');
+
+    test('createPost returns a post and fetchPosts lists it (newest first)', () async {
+      final a = await backend.createPost(post('סלולר'));
+      final b = await backend.createPost(post('סלולר'));
+      final list = await backend.fetchPosts();
+      expect(list.map((p) => p.id).toList(), [b.id, a.id]);
+      expect(list.first.author, 'דנה');
+    });
+
+    test('fetchPosts filters by channel (and "הכל" returns all)', () async {
+      await backend.createPost(post('סלולר'));
+      await backend.createPost(post('אינטרנט'));
+      expect((await backend.fetchPosts(channel: 'סלולר')).length, 1);
+      expect((await backend.fetchPosts(channel: 'הכל')).length, 2);
+    });
+
+    test('deletePost removes the post, its replies, like and bookmark', () async {
+      final p = await backend.createPost(post('סלולר'));
+      await backend.addReply(ReplyInput(postId: p.id, author: 'x', avatar: 'x', text: 'r'));
+      await backend.setLike(p.id, true);
+      await backend.setBookmark(p.id, true);
+
+      await backend.deletePost(p.id);
+
+      expect(await backend.fetchPosts(), isEmpty);
+      expect(await backend.fetchReplies(p.id), isEmpty);
+      expect(await backend.likedPostIds(), isNot(contains(p.id)));
+      expect(await backend.bookmarkedPostIds(), isNot(contains(p.id)));
+    });
+
+    test('replies accumulate per post', () async {
+      final p = await backend.createPost(post('סלולר'));
+      await backend.addReply(ReplyInput(postId: p.id, author: 'a', avatar: 'a', text: '1'));
+      await backend.addReply(ReplyInput(postId: p.id, author: 'b', avatar: 'b', text: '2'));
+      final replies = await backend.fetchReplies(p.id);
+      expect(replies.map((r) => r.text).toList(), ['1', '2']);
+      expect(replies.every((r) => r.postId == p.id), isTrue);
+    });
+
+    test('like and bookmark toggle on and off', () async {
+      final p = await backend.createPost(post('סלולר'));
+      await backend.setLike(p.id, true);
+      expect(await backend.likedPostIds(), contains(p.id));
+      await backend.setLike(p.id, false);
+      expect(await backend.likedPostIds(), isNot(contains(p.id)));
+
+      await backend.setBookmark(p.id, true);
+      expect(await backend.bookmarkedPostIds(), contains(p.id));
+      await backend.setBookmark(p.id, false);
+      expect(await backend.bookmarkedPostIds(), isEmpty);
+    });
+  });
 }

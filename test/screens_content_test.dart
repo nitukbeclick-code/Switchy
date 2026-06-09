@@ -97,4 +97,19 @@ void main() {
     expect(find.text('חיפושים אחרונים'), findsOneWidget);
     expect(AppState().recentSearches, contains('בזק'));
   });
+
+  testWidgets('home savings hero is honest about estimate vs personalized', (tester) async {
+    await _bootApp(tester);
+    _go(tester, '/home');
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    // Fresh user hasn't entered a bill → the figure is framed as an estimate.
+    expect(find.textContaining('הערכה'), findsWidgets);
+
+    // Enter a real bill → the hero switches to the personalized framing.
+    AppState().setCurrentBill('cellular', 200);
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text('מחושב לפי החשבונות שלך'), findsOneWidget);
+  });
 }

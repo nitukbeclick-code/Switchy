@@ -8,6 +8,8 @@ import '../../core/nav.dart';
 import '../../widgets/app_button.dart';
 import '../../app_state.dart';
 import '../../data.dart';
+import '../../models.dart';
+import '../../services/backend/local_backend.dart';
 
 class TrackerWidget extends StatefulWidget {
   const TrackerWidget({super.key});
@@ -415,7 +417,21 @@ class _TrackerWidgetState extends State<TrackerWidget> {
             const SizedBox(height: 8),
 
             if (step < 4 && plan != null) ...[
-              _StepConfirmButton(step: step, onConfirm: () => appState.advanceTracker(), ffTheme: ffTheme),
+              _StepConfirmButton(step: step, onConfirm: () {
+                appState.advanceTracker();
+                // When the final step completes, persist the plan to the renewal
+                // radar so it appears in tracked_plans (and renewal notifications).
+                if (step == 3) {
+                  appBackend.addTrackedPlan(TrackedPlan(
+                    id: '',
+                    category: plan.cat,
+                    provider: plan.provider,
+                    planName: plan.plan,
+                    monthlyPrice: plan.price,
+                    joinedViaUs: true,
+                  )).catchError((_) {});
+                }
+              }, ffTheme: ffTheme),
             ],
 
             const SizedBox(height: 12),

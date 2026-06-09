@@ -164,6 +164,7 @@ abstract interface class Backend {
   // ── Provider reviews ─────────────────────────────────────────────────────────
   Future<void> upsertReview(ReviewInput review);
   Future<List<ReviewInput>> reviewsForProvider(String provider);
+  Future<List<ReviewInput>> fetchAllReviews();
 
   // ── Community ────────────────────────────────────────────────────────────────
   Future<List<CommunityPost>> fetchPosts({String? channel});

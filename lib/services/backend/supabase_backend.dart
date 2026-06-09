@@ -92,6 +92,22 @@ class SupabaseBackend implements Backend {
         )).toList();
   }
 
+  @override
+  Future<List<ReviewInput>> fetchAllReviews() async {
+    final rows = await _db.from('provider_reviews').select();
+    return (rows as List).map((r) => ReviewInput(
+          provider: r['provider'] as String,
+          overall: (r['overall'] as num).toInt(),
+          subRatings: {
+            'price': (r['price'] as num?)?.toInt() ?? 0,
+            'service': (r['service'] as num?)?.toInt() ?? 0,
+            'coverage': (r['coverage'] as num?)?.toInt() ?? 0,
+            'speed': (r['speed'] as num?)?.toInt() ?? 0,
+          },
+          text: r['body'] as String? ?? '',
+        )).toList();
+  }
+
   // ── Community ────────────────────────────────────────────────────────────────
   CommunityPost _postFromRow(Map<String, dynamic> r) => CommunityPost(
         id: r['id'] as String,

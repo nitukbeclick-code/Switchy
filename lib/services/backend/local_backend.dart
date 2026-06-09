@@ -51,6 +51,10 @@ class LocalBackend implements Backend {
     return r == null ? const [] : [r];
   }
 
+  @override
+  Future<List<ReviewInput>> fetchAllReviews() async =>
+      List.unmodifiable(_reviewByProvider.values);
+
   // ── Community ────────────────────────────────────────────────────────────────
   // Note: this is the backend's own store. The live local feed still reads from
   // AppState + seed data; community_widget moves onto appBackend during the

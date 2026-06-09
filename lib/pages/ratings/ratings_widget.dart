@@ -30,6 +30,9 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
   String _sortBy = 'rating'; // 'rating' | 'reviews' | 'value'
   late TabController _tabCtrl;
 
+  // Live community reviews from Supabase (provider → reviews)
+  Map<String, List<ReviewInput>> _remoteReviews = {};
+
   static const _cats = ['הכל', 'סלולר', 'אינטרנט', 'טלוויזיה', 'חבילה', 'חו"ל'];
   static const _catIds = {'סלולר': 'cellular', 'אינטרנט': 'internet', 'טלוויזיה': 'tv', 'חבילה': 'triple', 'חו"ל': 'abroad'};
   // Sub-rating labels come from the shared ProviderRatings helper (single source).
@@ -40,6 +43,17 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
     super.initState();
     _tabCtrl = TabController(length: _cats.length, vsync: this);
     _tabCtrl.addListener(() => setState(() => _selectedCat = _cats[_tabCtrl.index]));
+    _loadRemoteReviews().catchError((_) {});
+  }
+
+  Future<void> _loadRemoteReviews() async {
+    final all = await appBackend.fetchAllReviews();
+    if (!mounted || all.isEmpty) return;
+    final grouped = <String, List<ReviewInput>>{};
+    for (final r in all) {
+      grouped.putIfAbsent(r.provider, () => []).add(r);
+    }
+    setState(() => _remoteReviews = grouped);
   }
 
   @override
@@ -61,8 +75,11 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
     return map;
   }
 
-  int _totalReviews(String provider) =>
-      allPlans.where((p) => p.provider == provider).fold(0, (s, p) => s + p.reviews);
+  int _totalReviews(String provider) {
+    final staticCount = allPlans.where((p) => p.provider == provider).fold(0, (s, p) => s + p.reviews);
+    final liveCount = _remoteReviews[provider]?.length ?? 0;
+    return staticCount + liveCount;
+  }
 
   // Delegates to the shared ProviderRatings helper so the leaderboard and the
   // provider profile compute identical sub-ratings (single source of truth).
@@ -471,6 +488,68 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
                     ],
                   ),
                 ).animate().fadeIn(delay: 400.ms),
+              ],
+
+              // Live community reviews from Supabase
+              if (_remoteReviews.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(18),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: ffTheme.alternate),
+                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10)],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.people_alt_rounded, color: ffTheme.primary, size: 20),
+                          const SizedBox(width: 8),
+                          Text('ביקורות מהקהילה', style: ffTheme.titleSmall),
+                          const Spacer(),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(color: ffTheme.secondary, borderRadius: BorderRadius.circular(10)),
+                            child: Text('${_remoteReviews.values.fold(0, (s, l) => s + l.length)} ביקורות',
+                                style: ffTheme.labelSmall.copyWith(color: const Color(0xFF0E3A26), fontWeight: FontWeight.w700)),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      ..._remoteReviews.entries.expand((entry) {
+                        return entry.value.take(2).map((r) => Padding(
+                          padding: const EdgeInsets.only(bottom: 12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Text(entry.key, style: ffTheme.labelMedium.copyWith(fontWeight: FontWeight.w700)),
+                                  const SizedBox(width: 8),
+                                  ...List.generate(5, (i) => Icon(
+                                    i < r.overall ? Icons.star_rounded : Icons.star_outline_rounded,
+                                    size: 12, color: ffTheme.warning,
+                                  )),
+                                  const SizedBox(width: 4),
+                                  Text(r.overall.toString(),
+                                      style: ffTheme.labelSmall.copyWith(fontWeight: FontWeight.w700, color: ffTheme.primary)),
+                                ],
+                              ),
+                              if (r.text.isNotEmpty) ...[
+                                const SizedBox(height: 3),
+                                Text(r.text, style: ffTheme.bodySmall, maxLines: 2, overflow: TextOverflow.ellipsis),
+                              ],
+                              const Divider(height: 14),
+                            ],
+                          ),
+                        ));
+                      }).toList(),
+                    ],
+                  ),
+                ).animate().fadeIn(delay: 450.ms),
               ],
 
               const SizedBox(height: 24),

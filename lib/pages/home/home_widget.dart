@@ -497,14 +497,16 @@ class _HomeWidgetState extends State<HomeWidget> {
           ),
           const SizedBox(height: 4),
           Text(
-            totalSave > 0 ? 'חיסכון מחושב לפי חשבונות שלכם' : 'ממוצע לקוחות חוסך',
+            appState.billsPersonalized
+                ? 'מחושב לפי החשבונות שלך'
+                : 'הערכה — ענו על השאלון לחישוב מדויק',
             style: ffTheme.bodySmall.copyWith(color: Colors.white.withOpacity(0.50)),
           ),
           const SizedBox(height: 20),
           GestureDetector(
             onTap: () {
               HapticFeedback.lightImpact();
-              (totalSave > 0 || appState.quizCompleted) ? context.goNamed('Results') : context.goNamed('Quiz');
+              appState.billsPersonalized ? context.goNamed('Results') : context.goNamed('Quiz');
             },
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
@@ -513,7 +515,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
-                (totalSave > 0 || appState.quizCompleted) ? 'חפש חבילות ←' : 'בדוק כמה תחסוך ←',
+                appState.billsPersonalized ? 'חפש חבילות ←' : 'בדקו כמה תחסכו ←',
                 style: ffTheme.titleSmall.copyWith(color: ffTheme.primary),
               ),
             ),

@@ -44,6 +44,28 @@ void main() {
     });
   });
 
+  // ── billsPersonalized flag ───────────────────────────────────────────────────
+
+  group('billsPersonalized', () {
+    test('defaults to false', () {
+      expect(AppState().billsPersonalized, isFalse);
+    });
+
+    test('becomes true once the user sets a bill', () {
+      final s = AppState();
+      s.setCurrentBill('cellular', 150);
+      expect(s.billsPersonalized, isTrue);
+    });
+
+    test('resetAllBills clears it', () {
+      final s = AppState();
+      s.setCurrentBill('internet', 120);
+      expect(s.billsPersonalized, isTrue);
+      s.resetAllBills();
+      expect(s.billsPersonalized, isFalse);
+    });
+  });
+
   // ── compare toggle — max 3 ──────────────────────────────────────────────────
 
   group('toggleCompare', () {

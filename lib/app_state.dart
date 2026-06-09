@@ -25,6 +25,7 @@ class AppState extends ChangeNotifier {
     _currentBills['tv'] = p.getInt('bill_tv') ?? 130;
     _currentBills['triple'] = p.getInt('bill_triple') ?? 260;
     _currentBills['abroad'] = p.getInt('bill_abroad') ?? 0;
+    _billsPersonalized = p.getBool('billsPersonalized') ?? false;
     // Quiz
     _quizCompleted = p.getBool('quizCompleted') ?? false;
     _quizBudget = p.getInt('quizBudget') ?? 90;
@@ -110,6 +111,7 @@ class AppState extends ChangeNotifier {
     await p.setString('selectedCat', _selectedCat);
     // Bills
     for (final e in _currentBills.entries) { await p.setInt('bill_${e.key}', e.value); }
+    await p.setBool('billsPersonalized', _billsPersonalized);
     // Quiz
     await p.setBool('quizCompleted', _quizCompleted);
     await p.setInt('quizBudget', _quizBudget);
@@ -175,8 +177,13 @@ class AppState extends ChangeNotifier {
   final Map<String, int> _currentBills = {'cellular': 119, 'internet': 140, 'tv': 130, 'triple': 260, 'abroad': 0};
   Map<String, int> get currentBills => Map.unmodifiable(_currentBills);
   int currentBill(String cat) => _currentBills[cat] ?? 0;
-  void setCurrentBill(String cat, int v) { _currentBills[cat] = v.clamp(0, 2000); notifyListeners(); _persist(); }
-  void resetAllBills() { _currentBills.updateAll((_, __) => 0); notifyListeners(); _persist(); }
+  void setCurrentBill(String cat, int v) { _currentBills[cat] = v.clamp(0, 2000); _billsPersonalized = true; notifyListeners(); _persist(); }
+  void resetAllBills() { _currentBills.updateAll((_, __) => 0); _billsPersonalized = false; notifyListeners(); _persist(); }
+
+  /// True once the user has entered at least one real bill (via the quiz or the
+  /// bills editor), so savings figures reflect them — not the seed defaults.
+  bool _billsPersonalized = false;
+  bool get billsPersonalized => _billsPersonalized;
 
   // Quiz
   int _quizLines = 1; String _quizPriority = 'price'; int _quizBudget = 90; bool _quizCompleted = false; String _quizCat = 'cellular';

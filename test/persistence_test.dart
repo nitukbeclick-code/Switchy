@@ -80,6 +80,7 @@ void main() {
 
       expect(r.currentBill('cellular'), 175);
       expect(r.currentBill('internet'), 210);
+      expect(r.billsPersonalized, isTrue); // set a bill above → flag persists
       expect(r.isWatching('cel_x'), isTrue);
       expect(r.myPlans.length, 1);
       expect(r.myPlans.first.provider, 'סלקום');

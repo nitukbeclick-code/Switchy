@@ -76,4 +76,25 @@ void main() {
     expect(find.text('ספקים'), findsOneWidget);
     expect(find.text('מסלולים'), findsOneWidget);
   });
+
+  testWidgets('search remembers a submitted query and shows it on the empty state', (tester) async {
+    await _bootApp(tester);
+
+    _go(tester, '/search');
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    await tester.enterText(find.byType(TextField).first, 'בזק');
+    await tester.pump();
+    await tester.testTextInput.receiveAction(TextInputAction.search);
+    await tester.pump();
+
+    // Clear the field to return to the empty/suggestions state.
+    await tester.tap(find.byIcon(Icons.close_rounded));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    // The recent-searches section appears only when there is history.
+    expect(find.text('חיפושים אחרונים'), findsOneWidget);
+    expect(AppState().recentSearches, contains('בזק'));
+  });
 }

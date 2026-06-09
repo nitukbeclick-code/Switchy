@@ -293,6 +293,37 @@ class _Suggestions extends StatelessWidget {
           ),
           const SizedBox(height: 24),
         ],
+        Text('חיפוש לפי קטגוריה',
+            style: ffTheme.titleMedium.copyWith(fontWeight: FontWeight.w800)),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: categories
+              .map((c) => GestureDetector(
+                    onTap: () => onPick(c.name),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: ffTheme.accent1,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: ffTheme.primary.withOpacity(0.15)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(c.icon, style: const TextStyle(fontSize: 15)),
+                          const SizedBox(width: 6),
+                          Text(c.name,
+                              style: GoogleFonts.assistant(
+                                  fontSize: 13, fontWeight: FontWeight.w700, color: ffTheme.primary)),
+                        ],
+                      ),
+                    ),
+                  ))
+              .toList(),
+        ),
+        const SizedBox(height: 24),
         Text('ספקים פופולריים',
             style: ffTheme.titleMedium.copyWith(fontWeight: FontWeight.w800)),
         const SizedBox(height: 12),

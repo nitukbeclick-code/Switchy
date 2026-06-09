@@ -12,6 +12,8 @@ import '../../data.dart';
 import '../../models.dart';
 import '../../widgets/media/community_media.dart';
 import '../../services/media_service.dart';
+import '../../services/backend/local_backend.dart';
+import '../../services/backend/backend.dart';
 
 class CommunityWidget extends StatefulWidget {
   const CommunityWidget({super.key});
@@ -124,6 +126,17 @@ class _CommunityWidgetState extends State<CommunityWidget> {
       if (mounted) setState(() => _onlineCount = 820 + (DateTime.now().millisecond % 41) - 20);
     });
     _searchCtrl.addListener(() => setState(() => _searchQuery = _searchCtrl.text));
+    _loadFromBackend().catchError((_) {});
+  }
+
+  Future<void> _loadFromBackend() async {
+    try {
+      final remote = await appBackend.fetchPosts();
+      if (!mounted || remote.isEmpty) return;
+      final remoteIds = remote.map((p) => p.id).toSet();
+      final seedOnly = communityPosts.where((p) => !remoteIds.contains(p.id)).toList();
+      setState(() => _posts = [...remote, ...seedOnly]);
+    } catch (_) {}
   }
 
   @override
@@ -159,26 +172,8 @@ class _CommunityWidgetState extends State<CommunityWidget> {
 
   Future<void> _refreshFeed() async {
     HapticFeedback.mediumImpact();
-    await Future.delayed(const Duration(milliseconds: 700));
-    if (!mounted) return;
-    final appState = AppState();
-    final persisted = appState.communityPosts.map((m) => CommunityPost(
-          id: m['id'] as String,
-          author: m['author'] as String,
-          avatar: m['avatar'] as String,
-          channel: m['channel'] as String,
-          text: m['text'] as String,
-          likes: 0,
-          replies: 0,
-          timestamp: DateTime.tryParse(m['ts'] as String? ?? '') ?? DateTime.now(),
-          mediaType: m['mediaType'] as String?,
-          mediaData: m['mediaData'] as String?,
-          mediaDurationMs: m['mediaDurationMs'] as int?,
-        )).toList();
-    setState(() {
-      _posts = [...persisted, ...communityPosts];
-      _onlineCount = 820 + (DateTime.now().millisecond % 41) - 20;
-    });
+    await _loadFromBackend();
+    if (mounted) setState(() => _onlineCount = 820 + (DateTime.now().millisecond % 41) - 20);
   }
 
   void _confirmDelete(BuildContext context, CommunityPost post, AppState appState, AppTheme ffTheme) {
@@ -197,6 +192,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
               HapticFeedback.mediumImpact();
               appState.removeCommunityPost(post.id);
               setState(() => _posts.removeWhere((p) => p.id == post.id));
+              appBackend.deletePost(post.id).catchError((_) {});
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: ffTheme.error,
@@ -249,6 +245,15 @@ class _CommunityWidgetState extends State<CommunityWidget> {
       replyCtrl.clear();
     });
     setState(() {});
+    appBackend.addReply(ReplyInput(
+      postId: postId,
+      author: author,
+      avatar: avatar,
+      text: text,
+      mediaType: pendingType,
+      media: pendingData,
+      mediaDurationMs: pendingDur,
+    )).catchError((_) {});
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (scrollCtrl.hasClients) {
         scrollCtrl.animateTo(scrollCtrl.position.maxScrollExtent,
@@ -259,9 +264,21 @@ class _CommunityWidgetState extends State<CommunityWidget> {
 
   // ── Reply thread ─────────────────────────────────────────────────────────────
 
-  void _showReplies(BuildContext context, CommunityPost post, AppTheme ffTheme) {
-    final replyCtrl = TextEditingController();
+  void _showReplies(BuildContext context, CommunityPost post, AppTheme ffTheme) async {
     _replyData.putIfAbsent(post.id, () => []);
+    try {
+      final remote = await appBackend.fetchReplies(post.id);
+      if (remote.isNotEmpty && mounted) {
+        final remoteReplies = remote.map((r) => _Reply(
+          author: r.author, avatar: r.avatar, text: r.text,
+          time: r.createdAt, mediaType: r.mediaType, mediaData: r.media,
+          mediaDurationMs: r.mediaDurationMs,
+        )).toList();
+        _replyData[post.id] = [...remoteReplies, ...(_mockReplies[post.id] ?? [])];
+      }
+    } catch (_) {}
+    if (!mounted) return;
+    final replyCtrl = TextEditingController();
     String? replyPendingType;
     String? replyPendingData;
     int? replyPendingDur;
@@ -723,6 +740,15 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                         ));
                       });
                       Navigator.pop(ctx);
+                      appBackend.createPost(PostInput(
+                        author: author,
+                        avatar: avatar,
+                        channel: selectedChannel,
+                        text: text,
+                        mediaType: pendingType,
+                        media: pendingData,
+                        mediaDurationMs: pendingDur,
+                      )).catchError((_) {});
                     },
                     icon: const Icon(Icons.send_rounded, size: 18),
                     label: const Text('פרסם'),
@@ -1056,6 +1082,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                           replyCount: _replyData.containsKey(post.id) ? _replyData[post.id]!.length : post.replies,
                           onBookmark: (id) {
                             HapticFeedback.selectionClick();
+                            appBackend.setBookmark(id, !appState.isBookmarked(id)).catchError((_) {});
                             appState.toggleBookmark(id);
                             setState(() {});
                           },
@@ -1315,6 +1342,7 @@ class _PostCardState extends State<_PostCard> {
                     semanticLabel: liked ? 'בטל לייק' : 'אהבתי',
                     onTap: () {
                       HapticFeedback.selectionClick();
+                      appBackend.setLike(post.id, !liked).catchError((_) {});
                       appState.toggleLike(post.id);
                       setState(() { _bouncing = true; });
                       Future.delayed(const Duration(milliseconds: 400), () { if (mounted) setState(() => _bouncing = false); });

@@ -192,6 +192,13 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
         lower.contains('ספק הכי טוב') ||
         lower.contains('ספק מומלץ');
 
+    // Purchase intent — user wants to act, not just browse
+    final isPurchaseIntent = lower.contains('רוצה לעבור') || lower.contains('להצטרף') ||
+        lower.contains('מצטרף') || lower.contains('מצטרפת') || lower.contains('תרשום') ||
+        lower.contains('איך עוברים') || lower.contains('איך עובר') || lower.contains('איך עוברת') ||
+        lower.contains('בפנים') || lower.contains('רוצה להצטרף') || lower.contains('רוצה להתחיל') ||
+        lower.contains('מעוניין') || lower.contains('מעוניינת') || lower.contains('סגור עסקה');
+
     if (isRatingIntent) {
       if (detectedProvider != null) {
         final r = ProviderRatings.forProvider(detectedProvider);
@@ -317,6 +324,19 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
         final lines = plans.map((p) => '• ${p.provider} — ${p.plan} ₪${p.price}').join('\n');
         reply = '🔔 מסלולים במעקב שלך:\n\n$lines\n\nרוצה שאמצא משהו יותר זול באחת הקטגוריות?';
       }
+    } else if (isPurchaseIntent) {
+      final profile = _profileFor(cat);
+      final ranked = RecommendationEngine.rank(profile, limit: 1);
+      final best = ranked.isEmpty ? null : ranked.first;
+      if (best != null) {
+        topPlans = [best.plan];
+        final unit = cat == 'abroad' ? 'לחבילה' : 'לחודש';
+        reply = '🎉 מעולה! אמצא לך את העסקה הכי טובה.\n\n'
+            '🏆 ממליץ על ${best.plan.provider} — ${best.plan.plan} ₪${best.plan.price}/$unit\n\n'
+            'לחץ "דבר עם נציג" למטה — שירות חינמי, ניוד מהיר! 👇';
+      } else {
+        reply = '😊 מעולה! אשמח לעזור לך לעבור.\nלאיזה קטגוריה אתה מחפש? סלולר, אינטרנט, טלוויזיה או חו"ל?';
+      }
     } else {
       reply = 'לא הצלחתי להבין בדיוק. נסו לכתוב למשל:\n\n• "מצא סלולר זול ללא התחייבות"\n• "אינטרנט גיגה בזול"\n• "חבילת חו"ל לאירופה"\n• "5G בפחות מ-₪60"\n• "כמה אני חוסך"';
     }
@@ -369,7 +389,7 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
       '💰 פחות מ-₪50',
       '📺 טלוויזיה + ספורט',
       '🏠 חבילה משולבת',
-      '🔍 חבילות גולן',
+      '🤝 רוצה להצטרף!',
       '💳 כמה אני משלם?',
       '💰 כמה אחסוך?',
     ];
@@ -613,30 +633,53 @@ class _MessageBubble extends StatelessWidget {
               child: PlanCardWidget(plan: e.value, currentBill: bill, showCompare: false),
             )),
             const SizedBox(height: 6),
-            Align(
-              alignment: Alignment.centerRight,
-              child: GestureDetector(
-                onTap: () {
-                  Provider.of<AppState>(context, listen: false).setCategory(msg.cat);
-                  context.pushNamed('Results');
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: ffTheme.primary.withOpacity(0.3)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text('ראה את כל המסלולים', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w600)),
-                      const SizedBox(width: 4),
-                      Icon(Icons.arrow_back_ios_rounded, size: 11, color: ffTheme.primary),
-                    ],
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                GestureDetector(
+                  onTap: () {
+                    Provider.of<AppState>(context, listen: false).setCategory(msg.cat);
+                    context.pushNamed('Results');
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: ffTheme.primary.withOpacity(0.3)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text('ראה הכל', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w600)),
+                        const SizedBox(width: 4),
+                        Icon(Icons.arrow_back_ios_rounded, size: 11, color: ffTheme.primary),
+                      ],
+                    ),
                   ),
                 ),
-              ),
+                if (msg.planId != null) ...[
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: () => context.pushNamed('Lead', pathParameters: {'planId': msg.planId!}),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                      decoration: BoxDecoration(
+                        color: ffTheme.primary,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.phone_forwarded_rounded, size: 13, color: Colors.white),
+                          const SizedBox(width: 5),
+                          Text('דבר עם נציג', style: ffTheme.labelSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ],
             ),
           ],
         ],

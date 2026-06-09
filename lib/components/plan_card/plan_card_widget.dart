@@ -57,7 +57,7 @@ class PlanCardWidget extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 12,
             offset: const Offset(0, 3),
           ),
@@ -136,7 +136,7 @@ class PlanCardWidget extends StatelessWidget {
                                 decoration: BoxDecoration(
                                   color: ffTheme.accent4,
                                   borderRadius: BorderRadius.circular(6),
-                                  border: Border.all(color: ffTheme.info.withOpacity(0.3)),
+                                  border: Border.all(color: ffTheme.info.withValues(alpha: 0.3)),
                                 ),
                                 child: Text(
                                   plan.netLabel,
@@ -152,9 +152,9 @@ class PlanCardWidget extends StatelessWidget {
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                   decoration: BoxDecoration(
-                                    color: matchLabel.startsWith('✓') ? ffTheme.success.withOpacity(0.1) : ffTheme.warning.withOpacity(0.1),
+                                    color: matchLabel.startsWith('✓') ? ffTheme.success.withValues(alpha: 0.1) : ffTheme.warning.withValues(alpha: 0.1),
                                     borderRadius: BorderRadius.circular(6),
-                                    border: Border.all(color: matchLabel.startsWith('✓') ? ffTheme.success.withOpacity(0.4) : ffTheme.warning.withOpacity(0.4)),
+                                    border: Border.all(color: matchLabel.startsWith('✓') ? ffTheme.success.withValues(alpha: 0.4) : ffTheme.warning.withValues(alpha: 0.4)),
                                   ),
                                   child: Text(
                                     matchLabel,
@@ -195,7 +195,7 @@ class PlanCardWidget extends StatelessWidget {
                                   width: 32,
                                   height: 32,
                                   decoration: BoxDecoration(
-                                    color: isWatching ? ffTheme.warning.withOpacity(0.1) : ffTheme.background,
+                                    color: isWatching ? ffTheme.warning.withValues(alpha: 0.1) : ffTheme.background,
                                     shape: BoxShape.circle,
                                     border: Border.all(
                                       color: isWatching ? ffTheme.warning : ffTheme.alternate,
@@ -496,9 +496,9 @@ class _FlagChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: color.withOpacity(0.35)),
+        border: Border.all(color: color.withValues(alpha: 0.35)),
       ),
       child: Text(
         label,

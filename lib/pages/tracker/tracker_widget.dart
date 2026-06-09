@@ -140,12 +140,12 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                       .animate().fadeIn(delay: 450.ms),
                   const SizedBox(height: 10),
                   Text('המעבר הושלם בהצלחה. חיסכון שנתי של ₪${planSaveYear(plan, appState.currentBill(plan.cat))} כבר מתחיל!',
-                      style: ffTheme.bodyMedium.copyWith(color: Colors.white.withOpacity(0.8)),
+                      style: ffTheme.bodyMedium.copyWith(color: Colors.white.withValues(alpha: 0.8)),
                       textAlign: TextAlign.center).animate().fadeIn(delay: 550.ms),
                 ] else ...[
                   const SizedBox(height: 10),
                   Text('המעבר הושלם בהצלחה!',
-                      style: ffTheme.bodyMedium.copyWith(color: Colors.white.withOpacity(0.8)),
+                      style: ffTheme.bodyMedium.copyWith(color: Colors.white.withValues(alpha: 0.8)),
                       textAlign: TextAlign.center).animate().fadeIn(delay: 550.ms),
                 ],
                 const SizedBox(height: 40),
@@ -197,7 +197,7 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text('אנחנו מלווים — לא מנתקים', style: GoogleFonts.rubik(fontSize: 15, fontWeight: FontWeight.w700, color: const Color(0xFF0E3A26))),
-                        Text('נציג אישי ילווה אתכם לכל אורך הדרך', style: GoogleFonts.assistant(fontSize: 12, color: const Color(0xFF0E3A26).withOpacity(0.8))),
+                        Text('נציג אישי ילווה אתכם לכל אורך הדרך', style: GoogleFonts.assistant(fontSize: 12, color: const Color(0xFF0E3A26).withValues(alpha: 0.8))),
                       ],
                     ),
                   ),
@@ -216,7 +216,7 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: ffTheme.alternate),
-                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10)],
+                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10)],
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -229,7 +229,7 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                         Text(
                           '₪${planSaveYear(plan, appState.currentBill(plan.cat))}',
                           style: ffTheme.displaySmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w800),
-                        ).animate(onPlay: (c) => c.repeat()).shimmer(duration: 2000.ms, color: ffTheme.secondary.withOpacity(0.4)),
+                        ).animate(onPlay: (c) => c.repeat()).shimmer(duration: 2000.ms, color: ffTheme.secondary.withValues(alpha: 0.4)),
                         const SizedBox(width: 6),
                         Padding(
                           padding: const EdgeInsets.only(bottom: 4),
@@ -279,7 +279,7 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                                 width: 52,
                                 height: 52,
                                 decoration: BoxDecoration(
-                                  color: ffTheme.primary.withOpacity(0.12),
+                                  color: ffTheme.primary.withValues(alpha: 0.12),
                                   shape: BoxShape.circle,
                                 ),
                               ).animate(onPlay: (c) => c.repeat(reverse: true))
@@ -309,7 +309,7 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                         Container(
                           width: 2,
                           height: s.active ? 50 : 40,
-                          color: s.done ? ffTheme.primary.withOpacity(0.3) : ffTheme.alternate,
+                          color: s.done ? ffTheme.primary.withValues(alpha: 0.3) : ffTheme.alternate,
                         ),
                     ],
                   ),
@@ -366,7 +366,7 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: ffTheme.alternate),
-                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10)],
+                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10)],
                 ),
                 child: Row(
                   children: [
@@ -490,7 +490,7 @@ class _TrackerWidgetState extends State<TrackerWidget> {
               decoration: BoxDecoration(
                 color: ffTheme.accent2,
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: ffTheme.warning.withOpacity(0.3)),
+                border: Border.all(color: ffTheme.warning.withValues(alpha: 0.3)),
               ),
               child: Row(
                 children: [
@@ -572,7 +572,7 @@ class _StepConfirmButton extends StatelessWidget {
         decoration: BoxDecoration(
           color: ffTheme.accent1,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: ffTheme.primary.withOpacity(0.25)),
+          border: Border.all(color: ffTheme.primary.withValues(alpha: 0.25)),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.center,

@@ -509,7 +509,7 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(color: ffTheme.alternate),
-                        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 4, offset: const Offset(0, 1))],
+                        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 4, offset: const Offset(0, 1))],
                       ),
                       child: Text(q, style: ffTheme.labelMedium, textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
                     ),
@@ -524,7 +524,7 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
             decoration: BoxDecoration(
               color: Colors.white,
               border: Border(top: BorderSide(color: ffTheme.alternate)),
-              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, -4))],
+              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, -4))],
             ),
             child: SafeArea(
               top: false,
@@ -650,7 +650,7 @@ class _MessageBubble extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: ffTheme.primary.withOpacity(0.3)),
+                      border: Border.all(color: ffTheme.primary.withValues(alpha: 0.3)),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,

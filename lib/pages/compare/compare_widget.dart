@@ -81,7 +81,7 @@ class CompareWidget extends StatelessWidget {
               onPressed: appState.clearCompare,
               child: Text('נקה הכל',
                   style: ffTheme.labelMedium.copyWith(
-                      color: Colors.white.withOpacity(0.85))),
+                      color: Colors.white.withValues(alpha: 0.85))),
             ),
         ],
       ),
@@ -122,7 +122,7 @@ class _EmptyState extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const SizedBox(height: 20),
-            Icon(Icons.compare_arrows_rounded, size: 80, color: hasPlan ? ffTheme.primary.withOpacity(0.4) : ffTheme.alternate)
+            Icon(Icons.compare_arrows_rounded, size: 80, color: hasPlan ? ffTheme.primary.withValues(alpha: 0.4) : ffTheme.alternate)
                 .animate().fadeIn(duration: 400.ms).scale(begin: const Offset(0.7, 0.7)),
             const SizedBox(height: 24),
             Text(hasPlan ? 'מסלול אחד בסל' : 'בחר 2–3 מסלולים מהתוצאות',
@@ -142,8 +142,8 @@ class _EmptyState extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: ffTheme.primary.withOpacity(0.25)),
-                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8)],
+                  border: Border.all(color: ffTheme.primary.withValues(alpha: 0.25)),
+                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8)],
                 ),
                 child: Row(
                   children: [
@@ -361,9 +361,9 @@ class _CompareTable extends StatelessWidget {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 decoration: BoxDecoration(
-                  color: ffTheme.warning.withOpacity(0.08),
+                  color: ffTheme.warning.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: ffTheme.warning.withOpacity(0.3)),
+                  border: Border.all(color: ffTheme.warning.withValues(alpha: 0.3)),
                 ),
                 child: Row(
                   children: [
@@ -542,7 +542,7 @@ class _WinnerSummaryCard extends StatelessWidget {
                 end: Alignment.bottomLeft,
               ),
               borderRadius: BorderRadius.circular(18),
-              boxShadow: [BoxShadow(color: ffTheme.primary.withOpacity(0.3), blurRadius: 14, offset: const Offset(0, 4))],
+              boxShadow: [BoxShadow(color: ffTheme.primary.withValues(alpha: 0.3), blurRadius: 14, offset: const Offset(0, 4))],
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -564,7 +564,7 @@ class _WinnerSummaryCard extends StatelessWidget {
                   children: [
                     Container(
                       padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(color: Colors.white.withOpacity(0.15), borderRadius: BorderRadius.circular(12)),
+                      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)),
                       child: LogoWidget(provider: winner.provider, size: 40),
                     ),
                     const SizedBox(width: 12),
@@ -594,7 +594,7 @@ class _WinnerSummaryCard extends StatelessWidget {
                     width: double.infinity,
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.10),
+                      color: Colors.white.withValues(alpha: 0.10),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Column(
@@ -748,7 +748,7 @@ class _PlanHeader extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -843,7 +843,7 @@ class _RowWidget extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 2),
       decoration: BoxDecoration(
-        color: isAlt ? ffTheme.accent1.withOpacity(0.5) : Colors.white,
+        color: isAlt ? ffTheme.accent1.withValues(alpha: 0.5) : Colors.white,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(

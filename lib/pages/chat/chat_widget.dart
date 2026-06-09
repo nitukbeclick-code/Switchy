@@ -404,7 +404,7 @@ class _ChatWidgetState extends State<ChatWidget> {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: ffTheme.primary.withOpacity(0.3)),
+              border: Border.all(color: ffTheme.primary.withValues(alpha: 0.3)),
             ),
             child: Text(_quickReplies[i], style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w600)),
           ),
@@ -506,7 +506,7 @@ class _ChatWidgetState extends State<ChatWidget> {
                       bottomLeft: isUser ? const Radius.circular(18) : const Radius.circular(4),
                       bottomRight: isUser ? const Radius.circular(4) : const Radius.circular(18),
                     ),
-                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 6, offset: const Offset(0, 2))],
+                    boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 6, offset: const Offset(0, 2))],
                   ),
                   child: Text(
                     msg.text,
@@ -567,14 +567,14 @@ class _ChatWidgetState extends State<ChatWidget> {
                 bottomRight: Radius.circular(18),
                 bottomLeft: Radius.circular(4),
               ),
-              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 6)],
+              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 6)],
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: List.generate(3, (i) => Container(
                 width: 7, height: 7,
                 margin: EdgeInsets.only(right: i > 0 ? 4 : 0),
-                decoration: BoxDecoration(color: ffTheme.secondaryText.withOpacity(0.5), shape: BoxShape.circle),
+                decoration: BoxDecoration(color: ffTheme.secondaryText.withValues(alpha: 0.5), shape: BoxShape.circle),
               ).animate(onPlay: (c) => c.repeat())
                 .fadeIn(delay: (i * 200).ms, duration: 300.ms)
                 .then().fadeOut(duration: 300.ms)),

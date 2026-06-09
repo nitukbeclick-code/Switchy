@@ -33,7 +33,7 @@ void main() async {
 Future<void> _initBackend() async {
   if (_supabaseUrl.isEmpty || _supabaseAnonKey.isEmpty) return;
 
-  await Supabase.initialize(url: _supabaseUrl, anonKey: _supabaseAnonKey);
+  await Supabase.initialize(url: _supabaseUrl, publishableKey: _supabaseAnonKey);
 
   // Give every device a stable identity so RLS policies scoped to auth.uid()
   // (tracked plans, reviews, community writes) work without a login screen.

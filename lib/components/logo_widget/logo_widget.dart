@@ -103,9 +103,9 @@ class LogoWidget extends StatelessWidget {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
+        color: color.withValues(alpha: 0.12),
         shape: BoxShape.circle,
-        border: Border.all(color: color.withOpacity(0.25), width: 1.5),
+        border: Border.all(color: color.withValues(alpha: 0.25), width: 1.5),
       ),
       // The initials ("סל", "X"…) are a visual mark, not content — the
       // provider's full name is shown as adjacent text everywhere this is used,

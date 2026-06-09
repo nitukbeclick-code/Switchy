@@ -307,7 +307,7 @@ class _Suggestions extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: ffTheme.accent1,
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: ffTheme.primary.withOpacity(0.15)),
+                        border: Border.all(color: ffTheme.primary.withValues(alpha: 0.15)),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,

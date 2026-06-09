@@ -179,7 +179,7 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(color: i == 0 ? ffTheme.secondary : ffTheme.alternate, width: i == 0 ? 2 : 1),
-                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8)],
+                      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8)],
                     ),
                     child: Column(
                       children: [
@@ -250,7 +250,7 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: ffTheme.alternate),
-                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10)],
+                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10)],
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -444,7 +444,7 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(color: ffTheme.alternate),
-                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10)],
+                    boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10)],
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -499,7 +499,7 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(color: ffTheme.alternate),
-                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10)],
+                    boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10)],
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -546,7 +546,7 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
                             ],
                           ),
                         ));
-                      }).toList(),
+                      }),
                     ],
                   ),
                 ).animate().fadeIn(delay: 450.ms),
@@ -694,7 +694,7 @@ class _SubBar extends StatelessWidget {
             child: LinearProgressIndicator(
               value: value,
               backgroundColor: ffTheme.alternate,
-              valueColor: AlwaysStoppedAnimation(ffTheme.primary.withOpacity(0.7)),
+              valueColor: AlwaysStoppedAnimation(ffTheme.primary.withValues(alpha: 0.7)),
               minHeight: 5,
             ),
           ),

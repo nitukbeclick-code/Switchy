@@ -155,12 +155,12 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                         decoration: BoxDecoration(
                           color: active
                               ? Colors.white
-                              : Colors.white.withOpacity(0.18),
+                              : Colors.white.withValues(alpha: 0.18),
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
                             color: active
                                 ? Colors.white
-                                : Colors.white.withOpacity(0.35),
+                                : Colors.white.withValues(alpha: 0.35),
                           ),
                         ),
                         child: Text(
@@ -232,7 +232,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                               color: ffTheme.accent1,
                               borderRadius: BorderRadius.circular(20),
                               border: Border.all(
-                                  color: ffTheme.primary.withOpacity(0.2)),
+                                  color: ffTheme.primary.withValues(alpha: 0.2)),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
@@ -282,7 +282,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                           border: Border.all(color: ffTheme.alternate),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.04),
+                              color: Colors.black.withValues(alpha: 0.04),
                               blurRadius: 8,
                               offset: const Offset(0, 2),
                             ),
@@ -425,7 +425,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                       decoration: BoxDecoration(
                         color: ffTheme.accent1,
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: ffTheme.primary.withOpacity(0.25)),
+                        border: Border.all(color: ffTheme.primary.withValues(alpha: 0.25)),
                       ),
                       child: Row(
                         children: [
@@ -495,7 +495,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                               ),
                             ),
                             Icon(Icons.arrow_forward_ios_rounded,
-                                color: Colors.white.withOpacity(0.7), size: 16),
+                                color: Colors.white.withValues(alpha: 0.7), size: 16),
                           ],
                         ),
                       ),
@@ -526,7 +526,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                           width: 88,
                           height: 88,
                           decoration: BoxDecoration(
-                            color: ffTheme.alternate.withOpacity(0.4),
+                            color: ffTheme.alternate.withValues(alpha: 0.4),
                             shape: BoxShape.circle,
                           ),
                           child: Icon(Icons.search_off_rounded, size: 44, color: ffTheme.secondaryText),
@@ -580,8 +580,8 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                                 decoration: BoxDecoration(
                                   color: Colors.white,
                                   borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(color: ffTheme.primary.withOpacity(0.3)),
-                                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 4)],
+                                  border: Border.all(color: ffTheme.primary.withValues(alpha: 0.3)),
+                                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 4)],
                                 ),
                                 child: Text(c.$2, style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w600)),
                               ),
@@ -674,7 +674,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
-                      color: ffTheme.primary.withOpacity(0.4),
+                      color: ffTheme.primary.withValues(alpha: 0.4),
                       blurRadius: 16,
                       offset: const Offset(0, 4),
                     ),
@@ -742,7 +742,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
           decoration: BoxDecoration(
-            color: active ? ffTheme.tertiary.withOpacity(0.1) : Colors.white,
+            color: active ? ffTheme.tertiary.withValues(alpha: 0.1) : Colors.white,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
               color: active ? ffTheme.tertiary : ffTheme.alternate,
@@ -1021,7 +1021,7 @@ class _MatchBadge extends StatelessWidget {
             borderRadius: BorderRadius.circular(10),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.12),
+                color: Colors.black.withValues(alpha: 0.12),
                 blurRadius: 4,
                 offset: const Offset(0, 1),
               ),
@@ -1041,7 +1041,7 @@ class _MatchBadge extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.88),
+              color: Colors.white.withValues(alpha: 0.88),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
@@ -1075,7 +1075,7 @@ class _ActionChip extends StatelessWidget {
         decoration: BoxDecoration(
           color: ffTheme.primary,
           borderRadius: BorderRadius.circular(22),
-          boxShadow: [BoxShadow(color: ffTheme.primary.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 3))],
+          boxShadow: [BoxShadow(color: ffTheme.primary.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 3))],
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -1111,7 +1111,7 @@ class _StepButton extends StatelessWidget {
         decoration: BoxDecoration(
           color: ffTheme.accent1,
           shape: BoxShape.circle,
-          border: Border.all(color: ffTheme.primary.withOpacity(0.25)),
+          border: Border.all(color: ffTheme.primary.withValues(alpha: 0.25)),
         ),
         child: Icon(icon, size: 18, color: ffTheme.primary),
       ),

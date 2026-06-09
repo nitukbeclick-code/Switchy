@@ -690,7 +690,7 @@ class _QuizWidgetState extends State<QuizWidget> {
                 border: Border.all(color: ffTheme.primary, width: 2),
                 boxShadow: [
                   BoxShadow(
-                      color: ffTheme.primary.withOpacity(0.10),
+                      color: ffTheme.primary.withValues(alpha: 0.10),
                       blurRadius: 12,
                       offset: const Offset(0, 4))
                 ],
@@ -749,7 +749,7 @@ class _QuizWidgetState extends State<QuizWidget> {
                         decoration: BoxDecoration(
                           color: ffTheme.accent1,
                           borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: ffTheme.primary.withOpacity(0.3)),
+                          border: Border.all(color: ffTheme.primary.withValues(alpha: 0.3)),
                         ),
                         child: Text(top.label,
                             style: ffTheme.labelSmall
@@ -781,7 +781,7 @@ class _QuizWidgetState extends State<QuizWidget> {
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                       decoration: BoxDecoration(
-                        color: ffTheme.success.withOpacity(0.10),
+                        color: ffTheme.success.withValues(alpha: 0.10),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text('💰 חיסכון שנתי של ₪${top.annualSaving}',

@@ -32,14 +32,19 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
   void initState() {
     super.initState();
     // Track this plan view for demand analytics
-    final _plan = planById(widget.planId);
-    if (_plan != null) {
+    final viewedPlan = planById(widget.planId);
+    if (viewedPlan != null) {
       appBackend.trackPlanView(
         planId: widget.planId,
-        provider: _plan.provider,
-        category: _plan.cat,
+        provider: viewedPlan.provider,
+        category: viewedPlan.cat,
       ).catchError((_) {});
     }
+    // Record the view once per visit, after the first frame so the
+    // notifyListeners doesn't fire mid-build.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) AppState().viewPlan(widget.planId);
+    });
     // Seed viewer count based on plan id hash to be consistent per plan
     final seed = widget.planId.codeUnits.fold(0, (s, c) => s + c);
     _viewers = 3 + (seed % 12);
@@ -105,9 +110,6 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
       wantsNoCommit: appState.wantsNoCommit,
     );
     final planMatch = RecommendationEngine.scorePlan(plan, matchProfile);
-
-    // Track viewed plan
-    WidgetsBinding.instance.addPostFrameCallback((_) => appState.viewPlan(plan.id));
 
     return Scaffold(
       backgroundColor: ffTheme.background,
@@ -178,7 +180,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                             child: Text(
                               plan.plan,
                               style: ffTheme.bodySmall
-                                  .copyWith(color: Colors.white.withOpacity(0.85)),
+                                  .copyWith(color: Colors.white.withValues(alpha: 0.85)),
                               textAlign: TextAlign.center,
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
@@ -208,7 +210,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                               decoration: BoxDecoration(
                                 color: ffTheme.accent1,
                                 borderRadius: BorderRadius.circular(20),
-                                border: Border.all(color: ffTheme.primary.withOpacity(0.2)),
+                                border: Border.all(color: ffTheme.primary.withValues(alpha: 0.2)),
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
@@ -364,10 +366,10 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                         Container(
                           padding: const EdgeInsets.all(14),
                           decoration: BoxDecoration(
-                            color: ffTheme.warning.withOpacity(0.08),
+                            color: ffTheme.warning.withValues(alpha: 0.08),
                             borderRadius: BorderRadius.circular(14),
                             border: Border.all(
-                                color: ffTheme.warning.withOpacity(0.4)),
+                                color: ffTheme.warning.withValues(alpha: 0.4)),
                           ),
                           child: Row(
                             children: [
@@ -426,7 +428,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                           decoration: BoxDecoration(
                             color: ffTheme.accent1,
                             borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: ffTheme.primary.withOpacity(0.15)),
+                            border: Border.all(color: ffTheme.primary.withValues(alpha: 0.15)),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -452,10 +454,10 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: ffTheme.primary.withOpacity(0.18)),
+                            border: Border.all(color: ffTheme.primary.withValues(alpha: 0.18)),
                             boxShadow: [
                               BoxShadow(
-                                color: ffTheme.primary.withOpacity(0.06),
+                                color: ffTheme.primary.withValues(alpha: 0.06),
                                 blurRadius: 10,
                                 offset: const Offset(0, 2),
                               ),
@@ -549,7 +551,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                             border: Border.all(color: ffTheme.alternate),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.04),
+                                color: Colors.black.withValues(alpha: 0.04),
                                 blurRadius: 8,
                                 offset: const Offset(0, 2),
                               ),
@@ -618,7 +620,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                                 HapticFeedback.selectionClick();
                                 appState.toggleWatch(plan.id);
                               },
-                              activeColor: ffTheme.primary,
+                              activeThumbColor: ffTheme.primary,
                             ),
                           ],
                         ),
@@ -659,7 +661,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                                         color: Colors.white,
                                         borderRadius: BorderRadius.circular(14),
                                         border: Border.all(color: ffTheme.alternate),
-                                        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))],
+                                        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
                                       ),
                                       child: Column(
                                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -711,7 +713,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                       top: BorderSide(color: ffTheme.alternate, width: 1)),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.07),
+                      color: Colors.black.withValues(alpha: 0.07),
                       blurRadius: 16,
                       offset: const Offset(0, -4),
                     ),
@@ -828,7 +830,7 @@ class _PriceTrendCard extends StatelessWidget {
         border: Border.all(color: ffTheme.alternate),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -924,7 +926,7 @@ class _PriceTrendCard extends StatelessWidget {
                     ),
                     belowBarData: BarAreaData(
                       show: true,
-                      color: ffTheme.primary.withOpacity(0.08),
+                      color: ffTheme.primary.withValues(alpha: 0.08),
                     ),
                   ),
                 ],
@@ -979,7 +981,7 @@ class _Card extends StatelessWidget {
         border: Border.all(color: ffTheme.alternate),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -1152,7 +1154,7 @@ class _SpecGrid extends StatelessWidget {
         border: Border.all(color: ffTheme.alternate),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -1232,7 +1234,7 @@ class _CostBreakdownCard extends StatelessWidget {
         border: Border.all(color: ffTheme.alternate),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -1315,7 +1317,7 @@ class _ExtraInfoSection extends StatelessWidget {
         border: Border.all(color: ffTheme.alternate),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -1355,7 +1357,7 @@ class _ExtraInfoSection extends StatelessWidget {
               decoration: BoxDecoration(
                 color: ffTheme.accent1,
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: ffTheme.primary.withOpacity(0.15)),
+                border: Border.all(color: ffTheme.primary.withValues(alpha: 0.15)),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,

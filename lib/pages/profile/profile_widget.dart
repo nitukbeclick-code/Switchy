@@ -372,9 +372,9 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                         width: 72,
                         height: 72,
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
+                          color: Colors.white.withValues(alpha: 0.2),
                           shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white.withOpacity(0.5), width: 2),
+                          border: Border.all(color: Colors.white.withValues(alpha: 0.5), width: 2),
                         ),
                         child: Center(
                           child: Text(
@@ -412,11 +412,11 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     _HeroStat(value: '₪${appState.totalSavings}', label: 'חיסכון', ffTheme: ffTheme),
-                    Container(width: 1, height: 32, color: Colors.white.withOpacity(0.3), margin: const EdgeInsets.symmetric(horizontal: 20)),
+                    Container(width: 1, height: 32, color: Colors.white.withValues(alpha: 0.3), margin: const EdgeInsets.symmetric(horizontal: 20)),
                     _HeroStat(value: appState.leadPlanId != null ? '1' : '0', label: 'מעברים', ffTheme: ffTheme),
-                    Container(width: 1, height: 32, color: Colors.white.withOpacity(0.3), margin: const EdgeInsets.symmetric(horizontal: 20)),
+                    Container(width: 1, height: 32, color: Colors.white.withValues(alpha: 0.3), margin: const EdgeInsets.symmetric(horizontal: 20)),
                     _HeroStat(value: '${appState.watchedPlans.length}', label: 'במעקב', ffTheme: ffTheme),
-                    Container(width: 1, height: 32, color: Colors.white.withOpacity(0.3), margin: const EdgeInsets.symmetric(horizontal: 20)),
+                    Container(width: 1, height: 32, color: Colors.white.withValues(alpha: 0.3), margin: const EdgeInsets.symmetric(horizontal: 20)),
                     _HeroStat(value: '${appState.userReviews.length}', label: 'ביקורות', ffTheme: ffTheme),
                   ],
                 ),
@@ -442,7 +442,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
             Container(
               width: 48,
               height: 48,
-              decoration: BoxDecoration(color: Colors.white.withOpacity(0.2), shape: BoxShape.circle),
+              decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), shape: BoxShape.circle),
               child: const Center(child: Text('👤', style: TextStyle(fontSize: 22))),
             ),
             const SizedBox(width: 14),
@@ -472,8 +472,8 @@ class _ProfileWidgetState extends State<ProfileWidget> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: ffTheme.primary.withOpacity(0.3), width: 1.5),
-          boxShadow: [BoxShadow(color: ffTheme.primary.withOpacity(0.08), blurRadius: 12, offset: const Offset(0, 4))],
+          border: Border.all(color: ffTheme.primary.withValues(alpha: 0.3), width: 1.5),
+          boxShadow: [BoxShadow(color: ffTheme.primary.withValues(alpha: 0.08), blurRadius: 12, offset: const Offset(0, 4))],
         ),
         child: Row(
           children: [
@@ -532,7 +532,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
               color: Colors.white,
               borderRadius: BorderRadius.circular(14),
               border: Border.all(color: ffTheme.alternate),
-              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8, offset: const Offset(0, 2))],
+              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 8, offset: const Offset(0, 2))],
             ),
             child: Row(
               children: [
@@ -587,7 +587,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: ffTheme.alternate),
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 6, offset: const Offset(0, 2))],
+                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 6, offset: const Offset(0, 2))],
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -711,7 +711,7 @@ class _QuizChip extends StatelessWidget {
       decoration: BoxDecoration(
         color: ffTheme.accent1,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: ffTheme.primary.withOpacity(0.2)),
+        border: Border.all(color: ffTheme.primary.withValues(alpha: 0.2)),
       ),
       child: Text(text, style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w600)),
     );
@@ -753,7 +753,7 @@ class _ToggleTile extends StatelessWidget {
           Switch(
             value: value,
             onChanged: onChanged,
-            activeColor: ffTheme.primary,
+            activeThumbColor: ffTheme.primary,
           ),
         ],
       ),

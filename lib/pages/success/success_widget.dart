@@ -61,7 +61,7 @@ class _SuccessWidgetState extends State<SuccessWidget> {
                     width: 120,
                     height: 120,
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.08),
+                      color: Colors.white.withValues(alpha: 0.08),
                       shape: BoxShape.circle,
                     ),
                   ).animate(onPlay: (c) => c.repeat(reverse: true))
@@ -110,7 +110,7 @@ class _SuccessWidgetState extends State<SuccessWidget> {
 
               Text(
                 'הבקשה נשלחה בהצלחה',
-                style: ffTheme.bodyLarge.copyWith(color: Colors.white.withOpacity(0.75)),
+                style: ffTheme.bodyLarge.copyWith(color: Colors.white.withValues(alpha: 0.75)),
                 textAlign: TextAlign.center,
               ).animate().fadeIn(delay: 400.ms),
 
@@ -125,9 +125,9 @@ class _SuccessWidgetState extends State<SuccessWidget> {
                     width: double.infinity,
                     padding: const EdgeInsets.all(18),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.12),
+                      color: Colors.white.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: Colors.white.withOpacity(0.2)),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
                     ),
                     child: Row(
                       children: [
@@ -139,7 +139,7 @@ class _SuccessWidgetState extends State<SuccessWidget> {
                                   style: GoogleFonts.rubik(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
                               const SizedBox(height: 2),
                               Text(plan.plan,
-                                  style: ffTheme.bodySmall.copyWith(color: Colors.white.withOpacity(0.7)),
+                                  style: ffTheme.bodySmall.copyWith(color: Colors.white.withValues(alpha: 0.7)),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis),
                             ],
@@ -152,7 +152,7 @@ class _SuccessWidgetState extends State<SuccessWidget> {
                                 style: GoogleFonts.rubik(fontSize: 16, fontWeight: FontWeight.w800, color: ffTheme.secondary)),
                             if (save > 0)
                               Text('חוסך ₪$save/שנה',
-                                  style: ffTheme.labelSmall.copyWith(color: ffTheme.secondary.withOpacity(0.85))),
+                                  style: ffTheme.labelSmall.copyWith(color: ffTheme.secondary.withValues(alpha: 0.85))),
                           ],
                         ),
                       ],
@@ -167,15 +167,15 @@ class _SuccessWidgetState extends State<SuccessWidget> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.1),
+                  color: Colors.white.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(18),
-                  border: Border.all(color: Colors.white.withOpacity(0.15)),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('מה קורה עכשיו?',
-                        style: GoogleFonts.rubik(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white.withOpacity(0.8))),
+                        style: GoogleFonts.rubik(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white.withValues(alpha: 0.8))),
                     const SizedBox(height: 14),
                     _CheckItem(
                       checked: _checked[0],
@@ -232,7 +232,7 @@ class _SuccessWidgetState extends State<SuccessWidget> {
                 onPressed: () => context.goNamed('Home'),
                 child: Text(
                   'חזרה לדף הבית',
-                  style: ffTheme.bodyMedium.copyWith(color: Colors.white.withOpacity(0.65)),
+                  style: ffTheme.bodyMedium.copyWith(color: Colors.white.withValues(alpha: 0.65)),
                 ),
               ).animate().fadeIn(delay: 900.ms),
 
@@ -263,7 +263,7 @@ class _CheckItem extends StatelessWidget {
             width: 24,
             height: 24,
             decoration: BoxDecoration(
-              color: checked ? ffTheme.secondary : Colors.white.withOpacity(0.15),
+              color: checked ? ffTheme.secondary : Colors.white.withValues(alpha: 0.15),
               shape: BoxShape.circle,
             ),
             child: checked
@@ -290,7 +290,7 @@ class _TrustBadge extends StatelessWidget {
       children: [
         Text(icon, style: const TextStyle(fontSize: 22)),
         const SizedBox(height: 4),
-        Text(label, style: ffTheme.labelSmall.copyWith(color: Colors.white.withOpacity(0.7))),
+        Text(label, style: ffTheme.labelSmall.copyWith(color: Colors.white.withValues(alpha: 0.7))),
       ],
     );
   }

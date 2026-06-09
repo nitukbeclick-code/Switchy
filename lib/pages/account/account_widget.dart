@@ -40,7 +40,7 @@ class AccountWidget extends StatelessWidget {
                         width: 56,
                         height: 56,
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
+                          color: Colors.white.withValues(alpha: 0.2),
                           shape: BoxShape.circle,
                         ),
                         child: Center(
@@ -96,7 +96,7 @@ class AccountWidget extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: ffTheme.accent1,
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: ffTheme.primary.withOpacity(0.2)),
+                    border: Border.all(color: ffTheme.primary.withValues(alpha: 0.2)),
                   ),
                   child: Row(
                     children: [
@@ -171,7 +171,7 @@ class AccountWidget extends StatelessWidget {
                         color: Colors.white,
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(color: ffTheme.alternate),
-                        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10)],
+                        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10)],
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -190,7 +190,7 @@ class AccountWidget extends StatelessWidget {
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                 decoration: BoxDecoration(
-                                  color: appState.trackerStep >= 4 ? ffTheme.success.withOpacity(0.1) : ffTheme.accent1,
+                                  color: appState.trackerStep >= 4 ? ffTheme.success.withValues(alpha: 0.1) : ffTheme.accent1,
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Text(
@@ -280,7 +280,7 @@ class AccountWidget extends StatelessWidget {
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(14),
                             border: Border.all(color: ffTheme.alternate),
-                            boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 6)],
+                            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 6)],
                           ),
                           child: Row(
                             children: [
@@ -334,7 +334,7 @@ class AccountWidget extends StatelessWidget {
                               width: 48,
                               height: 48,
                               decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.15),
+                                color: Colors.white.withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(14),
                               ),
                               child: const Center(child: Text('🎯', style: TextStyle(fontSize: 24))),
@@ -374,7 +374,7 @@ class AccountWidget extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: ffTheme.accent1,
                         borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: ffTheme.primary.withOpacity(0.2)),
+                        border: Border.all(color: ffTheme.primary.withValues(alpha: 0.2)),
                       ),
                       child: Row(
                         children: [
@@ -424,7 +424,7 @@ class AccountWidget extends StatelessWidget {
                                 color: Colors.white,
                                 borderRadius: BorderRadius.circular(14),
                                 border: Border.all(color: ffTheme.alternate),
-                                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 6)],
+                                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 6)],
                               ),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -572,7 +572,7 @@ class _ActionTile extends StatelessWidget {
           color: Colors.white,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: ffTheme.alternate),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8)],
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 8)],
         ),
         child: Row(
           children: [

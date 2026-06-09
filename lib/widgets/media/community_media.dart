@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:typed_data';
 
 import 'package:audioplayers/audioplayers.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -391,7 +390,7 @@ class _VideoMessageBubbleState extends State<VideoMessageBubble> {
                 }),
                 child: Container(
                   decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.25),
+                    color: Colors.black.withValues(alpha: 0.25),
                     shape: BoxShape.circle,
                   ),
                   padding: const EdgeInsets.all(10),
@@ -412,8 +411,8 @@ class _VideoMessageBubbleState extends State<VideoMessageBubble> {
                   allowScrubbing: true,
                   colors: VideoProgressColors(
                     playedColor: theme.primary,
-                    bufferedColor: theme.primary.withOpacity(0.3),
-                    backgroundColor: theme.alternate.withOpacity(0.5),
+                    bufferedColor: theme.primary.withValues(alpha: 0.3),
+                    backgroundColor: theme.alternate.withValues(alpha: 0.5),
                   ),
                 ),
               ),
@@ -526,9 +525,9 @@ class _VoiceRecorderButtonState extends State<VoiceRecorderButton> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           decoration: BoxDecoration(
-            color: theme.error.withOpacity(0.12),
+            color: theme.error.withValues(alpha: 0.12),
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: theme.error.withOpacity(0.4)),
+            border: Border.all(color: theme.error.withValues(alpha: 0.4)),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,

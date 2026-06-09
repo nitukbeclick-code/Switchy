@@ -108,7 +108,7 @@ class _BillsWidgetState extends State<BillsWidget> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.12),
+                        color: Colors.white.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Row(
@@ -149,7 +149,7 @@ class _BillsWidgetState extends State<BillsWidget> {
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: ffTheme.alternate),
-                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 12)],
+                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 12)],
                 ),
                 child: Column(
                   children: [
@@ -304,7 +304,7 @@ class _SavingsRing extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: ffTheme.alternate),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 12)],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 12)],
       ),
       child: Row(
         children: [
@@ -362,7 +362,7 @@ class _SavingsRing extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: ffTheme.accent1,
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: ffTheme.primary.withOpacity(0.15)),
+                    border: Border.all(color: ffTheme.primary.withValues(alpha: 0.15)),
                   ),
                   child: Text('₪$totalSavings חיסכון שנתי', style: ffTheme.labelMedium.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
                 ),
@@ -431,8 +431,8 @@ class _BillCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: currentBill > 0 ? ffTheme.primary.withOpacity(0.2) : ffTheme.alternate),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 10)],
+        border: Border.all(color: currentBill > 0 ? ffTheme.primary.withValues(alpha: 0.2) : ffTheme.alternate),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10)],
       ),
       child: Column(
         children: [
@@ -518,7 +518,7 @@ class _BillCard extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: ffTheme.accent1,
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: ffTheme.primary.withOpacity(0.15)),
+                  border: Border.all(color: ffTheme.primary.withValues(alpha: 0.15)),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,

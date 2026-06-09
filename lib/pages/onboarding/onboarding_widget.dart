@@ -78,7 +78,7 @@ class _OnboardingWidgetState extends State<OnboardingWidget> {
                             AppState().markOnboardingSeen();
                             context.goNamed('Home');
                           },
-                          child: Text('דלג', style: ffTheme.labelMedium.copyWith(color: Colors.white.withOpacity(0.7))),
+                          child: Text('דלג', style: ffTheme.labelMedium.copyWith(color: Colors.white.withValues(alpha: 0.7))),
                         ),
                       ],
                     ),
@@ -220,7 +220,7 @@ class _Page1State extends State<_Page1> {
               decoration: BoxDecoration(
                 color: ffTheme.accent1,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: ffTheme.primary.withOpacity(0.15)),
+                border: Border.all(color: ffTheme.primary.withValues(alpha: 0.15)),
               ),
               child: Row(
                 children: [
@@ -313,7 +313,7 @@ class _Page2 extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: p.$3,
                   borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: p.$2.withOpacity(0.25)),
+                  border: Border.all(color: p.$2.withValues(alpha: 0.25)),
                 ),
                 child: Text(p.$1, style: GoogleFonts.rubik(fontSize: 13, fontWeight: FontWeight.w700, color: p.$2)),
               ).animate(delay: (300 + i * 60).ms).fadeIn(duration: 300.ms).scale(begin: const Offset(0.8, 0.8));
@@ -413,7 +413,7 @@ class _StatChip extends StatelessWidget {
           color: Colors.white,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: ffTheme.alternate),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8)],
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 8)],
         ),
         child: Column(
           children: [
@@ -439,7 +439,7 @@ class _FeatureRow extends StatelessWidget {
       decoration: BoxDecoration(
         color: ffTheme.accent1,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: ffTheme.primary.withOpacity(0.1)),
+        border: Border.all(color: ffTheme.primary.withValues(alpha: 0.1)),
       ),
       child: Row(
         children: [

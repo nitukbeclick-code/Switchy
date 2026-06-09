@@ -282,7 +282,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
         _replyData[post.id] = [...remoteReplies, ...(_mockReplies[post.id] ?? [])];
       }
     } catch (_) {}
-    if (!mounted) return;
+    if (!context.mounted) return;
     final replyCtrl = TextEditingController();
     String? replyPendingType;
     String? replyPendingData;
@@ -338,7 +338,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: ffTheme.primary.withOpacity(0.2)),
+                      border: Border.all(color: ffTheme.primary.withValues(alpha: 0.2)),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -396,7 +396,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                     decoration: BoxDecoration(
                       color: Colors.white,
                       border: Border(top: BorderSide(color: ffTheme.alternate)),
-                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, -4))],
+                      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 8, offset: const Offset(0, -4))],
                     ),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -415,7 +415,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                                   decoration: BoxDecoration(
                                     color: ffTheme.accent1,
                                     borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(color: ffTheme.primary.withOpacity(0.2)),
+                                    border: Border.all(color: ffTheme.primary.withValues(alpha: 0.2)),
                                   ),
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
@@ -685,7 +685,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                                 decoration: BoxDecoration(
                                   color: ffTheme.accent1,
                                   borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(color: ffTheme.primary.withOpacity(0.2)),
+                                  border: Border.all(color: ffTheme.primary.withValues(alpha: 0.2)),
                                 ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
@@ -753,7 +753,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                         mediaType: pendingType,
                         media: pendingData,
                         mediaDurationMs: pendingDur,
-                      )).catchError((_) {});
+                      )).ignore();
                     },
                     icon: const Icon(Icons.send_rounded, size: 18),
                     label: const Text('פרסם'),
@@ -922,7 +922,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                     duration: const Duration(milliseconds: 200),
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
-                      color: _sortByPopular ? ffTheme.primary.withOpacity(0.1) : ffTheme.background,
+                      color: _sortByPopular ? ffTheme.primary.withValues(alpha: 0.1) : ffTheme.background,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: _sortByPopular ? ffTheme.primary : ffTheme.alternate),
                     ),
@@ -948,7 +948,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                       duration: const Duration(milliseconds: 200),
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                       decoration: BoxDecoration(
-                        color: _showBookmarksOnly ? ffTheme.warning.withOpacity(0.12) : ffTheme.background,
+                        color: _showBookmarksOnly ? ffTheme.warning.withValues(alpha: 0.12) : ffTheme.background,
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: _showBookmarksOnly ? ffTheme.warning : ffTheme.alternate),
                       ),
@@ -1156,10 +1156,10 @@ class _PostCardState extends State<_PostCard> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isTrending ? ffTheme.warning.withOpacity(0.5) : ffTheme.alternate,
+          color: isTrending ? ffTheme.warning.withValues(alpha: 0.5) : ffTheme.alternate,
           width: isTrending ? 1.5 : 1,
         ),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8, offset: const Offset(0, 2))],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 8, offset: const Offset(0, 2))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1175,7 +1175,7 @@ class _PostCardState extends State<_PostCard> {
                     margin: const EdgeInsets.only(bottom: 10),
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
-                      color: ffTheme.warning.withOpacity(0.12),
+                      color: ffTheme.warning.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Row(
@@ -1310,7 +1310,7 @@ class _PostCardState extends State<_PostCard> {
                       decoration: BoxDecoration(
                         color: ffTheme.accent1,
                         borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: ffTheme.primary.withOpacity(0.2)),
+                        border: Border.all(color: ffTheme.primary.withValues(alpha: 0.2)),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -1330,7 +1330,7 @@ class _PostCardState extends State<_PostCard> {
           // Action bar
           Container(
             decoration: BoxDecoration(
-              border: Border(top: BorderSide(color: ffTheme.alternate.withOpacity(0.5))),
+              border: Border(top: BorderSide(color: ffTheme.alternate.withValues(alpha: 0.5))),
             ),
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
             child: Row(
@@ -1359,7 +1359,7 @@ class _PostCardState extends State<_PostCard> {
                 _ActionBtn(
                   icon: Icons.chat_bubble_outline_rounded,
                   label: '${widget.replyCount}',
-                  color: ffTheme.primary.withOpacity(0.7),
+                  color: ffTheme.primary.withValues(alpha: 0.7),
                   semanticLabel: 'הגב לפוסט',
                   onTap: widget.onReply,
                 ),
@@ -1496,7 +1496,7 @@ class _ReplyBubble extends StatelessWidget {
                   children: [
                     Text(reply.author, style: ffTheme.labelMedium),
                     const SizedBox(width: 8),
-                    Text(_timeAgo(reply.time), style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText.withOpacity(0.65), fontSize: 10)),
+                    Text(_timeAgo(reply.time), style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText.withValues(alpha: 0.65), fontSize: 10)),
                   ],
                 ),
                 const SizedBox(height: 4),

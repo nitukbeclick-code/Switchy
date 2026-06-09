@@ -300,6 +300,9 @@ class AppState extends ChangeNotifier {
   final List<String> _recentlyViewed = [];
   List<String> get recentlyViewed => List.unmodifiable(_recentlyViewed);
   void viewPlan(String planId) {
+    // No-op when already the most recent view — avoids a notify/persist storm
+    // if a visible page records the view on every rebuild.
+    if (_recentlyViewed.isNotEmpty && _recentlyViewed.first == planId) return;
     _recentlyViewed.remove(planId);
     _recentlyViewed.insert(0, planId);
     if (_recentlyViewed.length > 6) _recentlyViewed.removeLast();

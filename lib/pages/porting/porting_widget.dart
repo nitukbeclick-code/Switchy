@@ -97,7 +97,7 @@ class _PortingWidgetState extends State<PortingWidget> {
               decoration: BoxDecoration(
                 color: ffTheme.accent1,
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: ffTheme.primary.withOpacity(0.2)),
+                border: Border.all(color: ffTheme.primary.withValues(alpha: 0.2)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -122,7 +122,7 @@ class _PortingWidgetState extends State<PortingWidget> {
                             children: [
                               Container(
                                 width: 36, height: 36,
-                                decoration: BoxDecoration(color: ffTheme.primary.withOpacity(0.12), shape: BoxShape.circle),
+                                decoration: BoxDecoration(color: ffTheme.primary.withValues(alpha: 0.12), shape: BoxShape.circle),
                                 child: Icon(item.$1, size: 17, color: ffTheme.primary),
                               ),
                               const SizedBox(height: 5),
@@ -131,7 +131,7 @@ class _PortingWidgetState extends State<PortingWidget> {
                           ),
                         ),
                         if (item != (Icons.check_circle_rounded, 'ניוד הושלם'))
-                          Expanded(child: Divider(color: ffTheme.primary.withOpacity(0.25), thickness: 1.5)),
+                          Expanded(child: Divider(color: ffTheme.primary.withValues(alpha: 0.25), thickness: 1.5)),
                       ],
                     ],
                   ),
@@ -200,7 +200,7 @@ class _PortingWidgetState extends State<PortingWidget> {
                       boxShadow: selected
                           ? [
                               BoxShadow(
-                                  color: ffTheme.primary.withOpacity(0.2),
+                                  color: ffTheme.primary.withValues(alpha: 0.2),
                                   blurRadius: 8,
                                   offset: const Offset(0, 2))
                             ]
@@ -229,7 +229,7 @@ class _PortingWidgetState extends State<PortingWidget> {
               decoration: BoxDecoration(
                 color: ffTheme.accent2,
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: ffTheme.warning.withOpacity(0.25)),
+                border: Border.all(color: ffTheme.warning.withValues(alpha: 0.25)),
               ),
               child: Row(
                 children: [
@@ -414,7 +414,7 @@ class _SuccessState extends StatelessWidget {
 
               Text(
                 'נציג ייצור קשר תוך 24 שעות\nלהשלמת תהליך הניוד',
-                style: ffTheme.bodyLarge.copyWith(color: Colors.white.withOpacity(0.85)),
+                style: ffTheme.bodyLarge.copyWith(color: Colors.white.withValues(alpha: 0.85)),
                 textAlign: TextAlign.center,
               ).animate().fadeIn(delay: 400.ms),
 
@@ -423,7 +423,7 @@ class _SuccessState extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.12),
+                  color: Colors.white.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(

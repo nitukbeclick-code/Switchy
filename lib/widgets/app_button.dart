@@ -63,7 +63,7 @@ class _AppButtonState extends State<AppButton> {
       child: ElevatedButton(
         onPressed: _loading ? null : _handleTap,
         style: ElevatedButton.styleFrom(
-          backgroundColor: _loading ? (widget.disabledColor ?? widget.color.withOpacity(0.6)) : widget.color,
+          backgroundColor: _loading ? (widget.disabledColor ?? widget.color.withValues(alpha: 0.6)) : widget.color,
           foregroundColor: foreground,
           elevation: widget.elevation ?? 0,
           shape: RoundedRectangleBorder(

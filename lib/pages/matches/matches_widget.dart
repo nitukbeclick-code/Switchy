@@ -125,7 +125,7 @@ class MatchesWidget extends StatelessWidget {
           const SizedBox(height: 14),
           Text(
             totalSaving > 0 ? 'חיסכון פוטנציאלי שנתי' : 'התאמות לפי הפרופיל שלך',
-            style: ffTheme.bodySmall.copyWith(color: Colors.white.withOpacity(0.65)),
+            style: ffTheme.bodySmall.copyWith(color: Colors.white.withValues(alpha: 0.65)),
           ),
           const SizedBox(height: 6),
           if (totalSaving > 0)
@@ -159,7 +159,7 @@ class MatchesWidget extends StatelessWidget {
             analyzedCount > 0
                 ? 'ניתחנו $analyzedCount קטגוריות עבורך'
                 : 'ניתחנו את כל הקטגוריות עבורך',
-            style: ffTheme.bodySmall.copyWith(color: Colors.white.withOpacity(0.55)),
+            style: ffTheme.bodySmall.copyWith(color: Colors.white.withValues(alpha: 0.55)),
           ),
         ],
       ),

@@ -191,7 +191,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                   decoration: BoxDecoration(
                     color: ffTheme.primary,
                     borderRadius: BorderRadius.circular(16),
-                    boxShadow: [BoxShadow(color: ffTheme.primary.withOpacity(0.35), blurRadius: 14, offset: const Offset(0, 4))],
+                    boxShadow: [BoxShadow(color: ffTheme.primary.withValues(alpha: 0.35), blurRadius: 14, offset: const Offset(0, 4))],
                   ),
                   child: Row(
                     children: [
@@ -236,8 +236,8 @@ class _HomeWidgetState extends State<HomeWidget> {
         : [const Color(0xFF7B5E00), const Color(0xFFB38A00)];
     final bgColor = isUrgent ? const Color(0xFFFFF0F0) : const Color(0xFFFFF8E1);
     final borderColor = isUrgent
-        ? const Color(0xFFE53935).withOpacity(0.35)
-        : const Color(0xFFFFB300).withOpacity(0.45);
+        ? const Color(0xFFE53935).withValues(alpha: 0.35)
+        : const Color(0xFFFFB300).withValues(alpha: 0.45);
 
     return SliverToBoxAdapter(
       child: GestureDetector(
@@ -254,7 +254,7 @@ class _HomeWidgetState extends State<HomeWidget> {
             border: Border.all(color: borderColor, width: 1.5),
             boxShadow: [
               BoxShadow(
-                color: (isUrgent ? const Color(0xFFE53935) : const Color(0xFFFFB300)).withOpacity(0.15),
+                color: (isUrgent ? const Color(0xFFE53935) : const Color(0xFFFFB300)).withValues(alpha: 0.15),
                 blurRadius: 12,
                 offset: const Offset(0, 3),
               ),
@@ -362,15 +362,15 @@ class _HomeWidgetState extends State<HomeWidget> {
                         margin: const EdgeInsets.only(top: 8),
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
                         decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.15),
+                          color: Colors.white.withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.white.withOpacity(0.25)),
+                          border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
                         ),
                         child: Row(
                           children: [
-                            Icon(Icons.search_rounded, color: Colors.white.withOpacity(0.7), size: 16),
+                            Icon(Icons.search_rounded, color: Colors.white.withValues(alpha: 0.7), size: 16),
                             const SizedBox(width: 8),
-                            Text('חפש ספק או מסלול...', style: AppTheme.of(context).bodySmall.copyWith(color: Colors.white.withOpacity(0.65))),
+                            Text('חפש ספק או מסלול...', style: AppTheme.of(context).bodySmall.copyWith(color: Colors.white.withValues(alpha: 0.65))),
                           ],
                         ),
                       ),
@@ -386,7 +386,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                     width: 44,
                     height: 44,
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.10),
+                      color: Colors.white.withValues(alpha: 0.10),
                       shape: BoxShape.circle,
                     ),
                     child: IconButton(
@@ -428,7 +428,7 @@ class _HomeWidgetState extends State<HomeWidget> {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
+            color: Colors.black.withValues(alpha: 0.06),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -480,7 +480,7 @@ class _HomeWidgetState extends State<HomeWidget> {
         children: [
           Text(
             'חיסכון פוטנציאלי שנתי',
-            style: ffTheme.labelMedium.copyWith(color: Colors.white.withOpacity(0.60)),
+            style: ffTheme.labelMedium.copyWith(color: Colors.white.withValues(alpha: 0.60)),
           ),
           const SizedBox(height: 8),
           TweenAnimationBuilder<int>(
@@ -503,7 +503,7 @@ class _HomeWidgetState extends State<HomeWidget> {
             appState.billsPersonalized
                 ? 'מחושב לפי החשבונות שלך'
                 : 'הערכה — ענו על השאלון לחישוב מדויק',
-            style: ffTheme.bodySmall.copyWith(color: Colors.white.withOpacity(0.50)),
+            style: ffTheme.bodySmall.copyWith(color: Colors.white.withValues(alpha: 0.50)),
           ),
           const SizedBox(height: 20),
           GestureDetector(
@@ -560,7 +560,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                 border: Border.all(color: ffTheme.alternate),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
+                    color: Colors.black.withValues(alpha: 0.05),
                     blurRadius: 10,
                     offset: const Offset(0, 2),
                   ),
@@ -600,7 +600,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text(
-                        '₪${deal.price}/חודש',
+                        '₪${deal.price}/${deal.cat == 'abroad' ? 'חבילה' : 'חודש'}',
                         style: ffTheme.titleMedium.copyWith(color: ffTheme.primary),
                       ),
                       const SizedBox(height: 8),
@@ -672,7 +672,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: ffTheme.secondary, width: 2),
-                boxShadow: [BoxShadow(color: ffTheme.secondary.withOpacity(0.2), blurRadius: 12, offset: const Offset(0, 3))],
+                boxShadow: [BoxShadow(color: ffTheme.secondary.withValues(alpha: 0.2), blurRadius: 12, offset: const Offset(0, 3))],
               ),
               child: Row(
                 children: [
@@ -782,8 +782,8 @@ class _HomeWidgetState extends State<HomeWidget> {
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: ffTheme.primary.withOpacity(0.25), width: 1.5),
-                boxShadow: [BoxShadow(color: ffTheme.primary.withOpacity(0.08), blurRadius: 12, offset: const Offset(0, 3))],
+                border: Border.all(color: ffTheme.primary.withValues(alpha: 0.25), width: 1.5),
+                boxShadow: [BoxShadow(color: ffTheme.primary.withValues(alpha: 0.08), blurRadius: 12, offset: const Offset(0, 3))],
               ),
               child: Row(
                 children: [
@@ -914,7 +914,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.04),
+                        color: Colors.black.withValues(alpha: 0.04),
                         blurRadius: 6,
                         offset: const Offset(0, 1),
                       ),
@@ -997,7 +997,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                   const SizedBox(height: 4),
                   Text(
                     'זמין 24/7 · עונה תוך שניות',
-                    style: ffTheme.bodySmall.copyWith(color: Colors.white.withOpacity(0.60)),
+                    style: ffTheme.bodySmall.copyWith(color: Colors.white.withValues(alpha: 0.60)),
                   ),
                 ],
               ),
@@ -1058,8 +1058,8 @@ class _HomeWidgetState extends State<HomeWidget> {
                 decoration: BoxDecoration(
                   color: post.isUserPost ? ffTheme.accent1 : Colors.white,
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: post.isUserPost ? ffTheme.primary.withOpacity(0.2) : ffTheme.alternate),
-                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 6, offset: const Offset(0, 1))],
+                  border: Border.all(color: post.isUserPost ? ffTheme.primary.withValues(alpha: 0.2) : ffTheme.alternate),
+                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 6, offset: const Offset(0, 1))],
                 ),
                 child: Row(
                   children: [
@@ -1184,7 +1184,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                       border: Border.all(color: ffTheme.alternate),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.04),
+                          color: Colors.black.withValues(alpha: 0.04),
                           blurRadius: 6,
                           offset: const Offset(0, 1),
                         ),
@@ -1254,9 +1254,9 @@ class _HomeWidgetState extends State<HomeWidget> {
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
-                            color: better != null ? ffTheme.primary.withOpacity(0.35) : ffTheme.alternate,
+                            color: better != null ? ffTheme.primary.withValues(alpha: 0.35) : ffTheme.alternate,
                           ),
-                          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 6)],
+                          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 6)],
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1292,7 +1292,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                               color: ffTheme.secondary,
                               shape: BoxShape.circle,
                               border: Border.all(color: Colors.white, width: 1.5),
-                              boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.12), blurRadius: 4)],
+                              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.12), blurRadius: 4)],
                             ),
                             child: const Center(child: Text('💡', style: TextStyle(fontSize: 11))),
                           ),
@@ -1340,7 +1340,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: ffTheme.alternate),
-                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 6)],
+                      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 6)],
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1417,7 +1417,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                   decoration: BoxDecoration(
                     color: p.bg,
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: p.color.withOpacity(0.25)),
+                    border: Border.all(color: p.color.withValues(alpha: 0.25)),
                   ),
                   child: Text(
                     p.name,

@@ -62,7 +62,7 @@ class InfoBanner extends StatelessWidget {
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(borderRadius),
-        border: Border.all(color: accent.withOpacity(0.15)),
+        border: Border.all(color: accent.withValues(alpha: 0.15)),
       ),
       child: Row(
         crossAxisAlignment:
@@ -87,7 +87,7 @@ class InfoBanner extends StatelessWidget {
                   Text(
                     subtitle!,
                     style: ffTheme.labelSmall.copyWith(
-                      color: accent.withOpacity(0.75),
+                      color: accent.withValues(alpha: 0.75),
                     ),
                   ),
                 ],

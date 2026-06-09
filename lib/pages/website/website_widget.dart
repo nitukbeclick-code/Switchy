@@ -155,9 +155,9 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.15),
+                      color: Colors.white.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.white.withOpacity(0.2)),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -197,7 +197,7 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
                                         key: ValueKey(heroSaving),
                                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                                         decoration: BoxDecoration(
-                                          color: ffTheme.secondary.withOpacity(0.2),
+                                          color: ffTheme.secondary.withValues(alpha: 0.2),
                                           borderRadius: BorderRadius.circular(8),
                                         ),
                                         child: Row(
@@ -611,7 +611,7 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
         height: 64,
         decoration: BoxDecoration(
           color: Colors.white,
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 12, offset: const Offset(0, -3))],
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 12, offset: const Offset(0, -3))],
         ),
         child: Row(
           children: [
@@ -670,9 +670,9 @@ class _TrustPill extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.15),
+        color: Colors.white.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withOpacity(0.25)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -771,7 +771,7 @@ class _NumberedStep extends StatelessWidget {
                 height: 36,
                 margin: const EdgeInsets.symmetric(vertical: 3),
                 decoration: BoxDecoration(
-                  color: ffTheme.primary.withOpacity(0.25),
+                  color: ffTheme.primary.withValues(alpha: 0.25),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -818,7 +818,7 @@ class _Testimonial extends StatelessWidget {
         color: ffTheme.background,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: ffTheme.alternate),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -889,7 +889,7 @@ class _FAQState extends State<_FAQ> {
       decoration: BoxDecoration(
         color: ffTheme.background,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _open ? ffTheme.primary.withOpacity(0.3) : ffTheme.alternate),
+        border: Border.all(color: _open ? ffTheme.primary.withValues(alpha: 0.3) : ffTheme.alternate),
       ),
       child: InkWell(
         onTap: () => setState(() => _open = !_open),

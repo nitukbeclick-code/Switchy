@@ -68,7 +68,7 @@ class LocalBackend implements Backend {
   Future<int> fetchLeadStep() async => 0;
 
   @override
-  Stream<int> leadStepStream() => Stream.empty();
+  Stream<int> leadStepStream() => const Stream.empty();
 
   @override
   Future<List<TrackedPlan>> fetchTrackedPlans() async =>
@@ -106,7 +106,7 @@ class LocalBackend implements Backend {
   // Supabase cutover (see supabase/README.md), so the seed feed isn't lost now.
 
   @override
-  Stream<void> communityChanges() => Stream<void>.empty();
+  Stream<void> communityChanges() => const Stream<void>.empty();
 
   @override
   Future<List<CommunityPost>> fetchPosts({String? channel}) async {

@@ -169,7 +169,7 @@ class _Hero extends StatelessWidget {
                   children: [
                     Text(
                       hasBill ? 'חיסכון פוטנציאלי שנתי' : 'גלו כמה אפשר לחסוך',
-                      style: ffTheme.labelMedium.copyWith(color: Colors.white.withOpacity(0.6)),
+                      style: ffTheme.labelMedium.copyWith(color: Colors.white.withValues(alpha: 0.6)),
                     ),
                     const SizedBox(height: 6),
                     TweenAnimationBuilder<int>(
@@ -187,7 +187,7 @@ class _Hero extends StatelessWidget {
                       personalized
                           ? 'לפי המסלולים שאנחנו ממליצים'
                           : 'הערכה — עדכנו את החשבונות שלכם לחישוב מדויק',
-                      style: ffTheme.bodySmall.copyWith(color: Colors.white.withOpacity(0.55)),
+                      style: ffTheme.bodySmall.copyWith(color: Colors.white.withValues(alpha: 0.55)),
                       textAlign: TextAlign.center,
                     ),
                   ],
@@ -213,9 +213,9 @@ class _RealizedCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: ffTheme.success.withOpacity(0.1),
+        color: ffTheme.success.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: ffTheme.success.withOpacity(0.35)),
+        border: Border.all(color: ffTheme.success.withValues(alpha: 0.35)),
       ),
       child: Row(
         children: [

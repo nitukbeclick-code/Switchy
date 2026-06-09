@@ -282,7 +282,7 @@ class _HeroHeader extends StatelessWidget {
             Text(
               '$planCount מסלולים ב-$catCount קטגוריות',
               style: ffTheme.bodyMedium
-                  .copyWith(color: Colors.white.withOpacity(0.85)),
+                  .copyWith(color: Colors.white.withValues(alpha: 0.85)),
               textAlign: TextAlign.center,
             ),
             if (rating.hasData) ...[
@@ -313,7 +313,7 @@ class _HeroHeader extends StatelessWidget {
                     Text(
                       ' · ${rating.reviewCount} ביקורות',
                       style: ffTheme.labelSmall
-                          .copyWith(color: Colors.white.withOpacity(0.8)),
+                          .copyWith(color: Colors.white.withValues(alpha: 0.8)),
                     ),
                 ],
               ),
@@ -398,10 +398,10 @@ class _BestMatchCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: ffTheme.primary.withOpacity(0.25)),
+          border: Border.all(color: ffTheme.primary.withValues(alpha: 0.25)),
           boxShadow: [
             BoxShadow(
-              color: ffTheme.primary.withOpacity(0.08),
+              color: ffTheme.primary.withValues(alpha: 0.08),
               blurRadius: 12,
               offset: const Offset(0, 3),
             ),
@@ -532,7 +532,7 @@ class _RatingPanel extends StatelessWidget {
         border: Border.all(color: ffTheme.alternate),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -580,7 +580,7 @@ class _RatingPanel extends StatelessWidget {
                         value: (v / 5).clamp(0.0, 1.0),
                         backgroundColor: ffTheme.alternate,
                         valueColor: AlwaysStoppedAnimation(
-                            ffTheme.primary.withOpacity(0.75)),
+                            ffTheme.primary.withValues(alpha: 0.75)),
                         minHeight: 6,
                       ),
                     ),
@@ -609,7 +609,7 @@ class _RatingPanel extends StatelessWidget {
                   : 'דרגו את ${rating.provider}'),
               style: OutlinedButton.styleFrom(
                 foregroundColor: ffTheme.primary,
-                side: BorderSide(color: ffTheme.primary.withOpacity(0.4)),
+                side: BorderSide(color: ffTheme.primary.withValues(alpha: 0.4)),
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12)),
                 padding: const EdgeInsets.symmetric(vertical: 10),
@@ -675,7 +675,7 @@ class _PlanCard extends StatelessWidget {
           border: Border.all(color: ffTheme.alternate),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withValues(alpha: 0.04),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -703,7 +703,7 @@ class _PlanCard extends StatelessWidget {
                       color: ffTheme.accent1,
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                          color: ffTheme.primary.withOpacity(0.2)),
+                          color: ffTheme.primary.withValues(alpha: 0.2)),
                     ),
                     child: Text(
                       '${match!.scorePct}% התאמה',
@@ -788,7 +788,7 @@ class _CommunityCard extends StatelessWidget {
         border: Border.all(color: ffTheme.alternate),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 6,
             offset: const Offset(0, 2),
           ),
@@ -801,7 +801,7 @@ class _CommunityCard extends StatelessWidget {
             width: 32,
             height: 32,
             decoration: BoxDecoration(
-              color: ffTheme.primary.withOpacity(0.1),
+              color: ffTheme.primary.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: Center(

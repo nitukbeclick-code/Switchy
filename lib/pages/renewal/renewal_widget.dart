@@ -189,7 +189,7 @@ class _IntroCard extends StatelessWidget {
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.15),
+              color: Colors.white.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(14),
             ),
             child: const Center(
@@ -270,7 +270,7 @@ class _PlanCard extends StatelessWidget {
         border: Border.all(color: ffTheme.alternate),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withOpacity(0.04),
+              color: Colors.black.withValues(alpha: 0.04),
               blurRadius: 10,
               offset: const Offset(0, 3))
         ],
@@ -328,10 +328,10 @@ class _PlanCard extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: _chipColor(days, ffTheme).withOpacity(0.1),
+                      color: _chipColor(days, ffTheme).withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                          color: _chipColor(days, ffTheme).withOpacity(0.4)),
+                          color: _chipColor(days, ffTheme).withValues(alpha: 0.4)),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -376,7 +376,7 @@ class _PlanCard extends StatelessWidget {
                     color: ffTheme.accent1,
                     borderRadius: BorderRadius.circular(12),
                     border:
-                        Border.all(color: ffTheme.primary.withOpacity(0.2)),
+                        Border.all(color: ffTheme.primary.withValues(alpha: 0.2)),
                   ),
                   child: Row(
                     children: [
@@ -490,7 +490,7 @@ class _ReminderTile extends StatelessWidget {
       child: SwitchListTile(
         value: appState.renewalReminders,
         onChanged: (v) { appState.setRenewalReminders(v); appBackend.setRenewalReminder(v).catchError((_) {}); },
-        activeColor: ffTheme.primary,
+        activeThumbColor: ffTheme.primary,
         title: Text('תזכורות חידוש',
             style: ffTheme.titleSmall
                 .copyWith(fontWeight: FontWeight.w700)),
@@ -799,7 +799,7 @@ class _AddPlanSheetState extends State<_AddPlanSheet> {
                   dense: true,
                   value: _joinedViaUs,
                   onChanged: (v) => setState(() => _joinedViaUs = v),
-                  activeColor: ffTheme.primary,
+                  activeThumbColor: ffTheme.primary,
                   title: Text('הצטרפתי דרך חוסך',
                       style: ffTheme.bodyMedium
                           .copyWith(fontWeight: FontWeight.w600)),

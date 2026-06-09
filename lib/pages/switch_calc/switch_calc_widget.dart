@@ -247,9 +247,9 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
               width: double.infinity,
               padding: const EdgeInsets.all(22),
               decoration: BoxDecoration(
-                color: _resultColor(ffTheme).withOpacity(0.08),
+                color: _resultColor(ffTheme).withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: _resultColor(ffTheme).withOpacity(0.3), width: 2),
+                border: Border.all(color: _resultColor(ffTheme).withValues(alpha: 0.3), width: 2),
               ),
               child: Column(
                 children: [
@@ -281,9 +281,9 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 decoration: BoxDecoration(
-                  color: ffTheme.warning.withOpacity(0.08),
+                  color: ffTheme.warning.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: ffTheme.warning.withOpacity(0.3)),
+                  border: Border.all(color: ffTheme.warning.withValues(alpha: 0.3)),
                 ),
                 child: Row(
                   children: [
@@ -409,13 +409,13 @@ class _RecommendedPlanCard extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           gradient: LinearGradient(
-            colors: [ffTheme.primary.withOpacity(0.06), ffTheme.secondary.withOpacity(0.10)],
+            colors: [ffTheme.primary.withValues(alpha: 0.06), ffTheme.secondary.withValues(alpha: 0.10)],
             begin: Alignment.topRight,
             end: Alignment.bottomLeft,
           ),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: ffTheme.primary.withOpacity(0.35), width: 1.5),
-          boxShadow: [BoxShadow(color: ffTheme.primary.withOpacity(0.08), blurRadius: 10, offset: const Offset(0, 3))],
+          border: Border.all(color: ffTheme.primary.withValues(alpha: 0.35), width: 1.5),
+          boxShadow: [BoxShadow(color: ffTheme.primary.withValues(alpha: 0.08), blurRadius: 10, offset: const Offset(0, 3))],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -478,7 +478,7 @@ class _RecommendedPlanCard extends StatelessWidget {
                 children: topReasons.map((r) => Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
-                    color: ffTheme.secondary.withOpacity(0.25),
+                    color: ffTheme.secondary.withValues(alpha: 0.25),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(r, style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w600)),
@@ -600,7 +600,7 @@ class _LeadingPlanCard extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: ffTheme.alternate),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 8, offset: const Offset(0, 2))],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

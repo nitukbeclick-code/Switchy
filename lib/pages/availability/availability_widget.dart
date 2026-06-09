@@ -173,7 +173,7 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
           Container(
             width: 64,
             height: 64,
-            decoration: BoxDecoration(color: Colors.white.withOpacity(0.15), shape: BoxShape.circle),
+            decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.15), shape: BoxShape.circle),
             child: const Center(child: Text('📡', style: TextStyle(fontSize: 32))),
           ),
         ],
@@ -386,8 +386,8 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
         borderRadius: BorderRadius.circular(14),
         border: isBest
             ? Border.all(color: ffTheme.secondary, width: 2)
-            : Border.all(color: isAvailable ? ffTheme.alternate : ffTheme.alternate.withOpacity(0.5)),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 10, offset: const Offset(0, 2))],
+            : Border.all(color: isAvailable ? ffTheme.alternate : ffTheme.alternate.withValues(alpha: 0.5)),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 2))],
       ),
       child: Column(
         children: [
@@ -456,7 +456,7 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
-                          color: isAvailable ? ffTheme.accent2 : ffTheme.alternate.withOpacity(0.5),
+                          color: isAvailable ? ffTheme.accent2 : ffTheme.alternate.withValues(alpha: 0.5),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
@@ -578,8 +578,8 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: ffTheme.primary.withOpacity(0.25), width: 1.5),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 12, offset: const Offset(0, 3))],
+          border: Border.all(color: ffTheme.primary.withValues(alpha: 0.25), width: 1.5),
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 12, offset: const Offset(0, 3))],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -696,7 +696,7 @@ class _TechBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: _color.withOpacity(0.1),
+        color: _color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Text(tech, style: ffTheme.labelSmall.copyWith(color: _color, fontSize: 10, fontWeight: FontWeight.w600)),
@@ -713,7 +713,7 @@ class _StatPill extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(color: Colors.white.withOpacity(0.15), borderRadius: BorderRadius.circular(20)),
+      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(20)),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -734,7 +734,7 @@ class _SummaryPill extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(color: Colors.white.withOpacity(0.15), borderRadius: BorderRadius.circular(8)),
+      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)),
       child: Text(label, style: ffTheme.labelSmall.copyWith(color: Colors.white, fontSize: 11)),
     );
   }

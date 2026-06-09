@@ -175,7 +175,7 @@ class _Hero extends StatelessWidget {
                         children: [
                           Text('המסלול שלך היום',
                               style: GoogleFonts.assistant(
-                                  fontSize: 12, color: Colors.white.withOpacity(0.8))),
+                                  fontSize: 12, color: Colors.white.withValues(alpha: 0.8))),
                           Text('${tp.provider} · ${tp.planName}',
                               style: GoogleFonts.rubik(
                                   fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white),
@@ -191,7 +191,7 @@ class _Hero extends StatelessWidget {
                                 fontSize: 24, fontWeight: FontWeight.w800, color: Colors.white)),
                         Text('$unit · ₪$annual/שנה',
                             style: GoogleFonts.assistant(
-                                fontSize: 11, color: Colors.white.withOpacity(0.8))),
+                                fontSize: 11, color: Colors.white.withValues(alpha: 0.8))),
                       ],
                     ),
                   ],
@@ -204,7 +204,7 @@ class _Hero extends StatelessWidget {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
                     decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.15),
+                      color: Colors.white.withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Row(
@@ -298,7 +298,7 @@ class _NoSaverNote extends StatelessWidget {
       decoration: BoxDecoration(
         color: ffTheme.accent1,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: ffTheme.primary.withOpacity(0.2)),
+        border: Border.all(color: ffTheme.primary.withValues(alpha: 0.2)),
       ),
       child: Row(
         children: [
@@ -353,7 +353,7 @@ class _AlternativeRow extends StatelessWidget {
             width: isTop ? 2 : 1,
           ),
           boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 6, offset: const Offset(0, 2)),
+            BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 6, offset: const Offset(0, 2)),
           ],
         ),
         child: Column(
@@ -473,9 +473,9 @@ class _ReminderCta extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: on ? ffTheme.success.withOpacity(0.08) : Colors.white,
+        color: on ? ffTheme.success.withValues(alpha: 0.08) : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: on ? ffTheme.success.withOpacity(0.4) : ffTheme.alternate),
+        border: Border.all(color: on ? ffTheme.success.withValues(alpha: 0.4) : ffTheme.alternate),
       ),
       child: on
           ? Row(

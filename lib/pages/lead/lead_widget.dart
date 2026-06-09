@@ -192,7 +192,7 @@ class _LeadWidgetState extends State<LeadWidget> {
                     final name = _nameCtrl.text.trim();
                     final phone = _phoneCtrl.text.trim();
                     final email = _emailCtrl.text.trim();
-                    final st = Provider.of<AppState>(context, listen: false);
+                    final st = AppState();
                     // Build rep context: current bill + quiz preferences.
                     final bill = plan != null ? st.currentBill(plan.cat) : 0;
                     final parts = <String>[];
@@ -249,7 +249,7 @@ class _LeadWidgetState extends State<LeadWidget> {
       decoration: BoxDecoration(
         color: isLive ? ffTheme.accent1 : ffTheme.accent2,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: isLive ? ffTheme.primary.withOpacity(0.3) : ffTheme.warning.withOpacity(0.3)),
+        border: Border.all(color: isLive ? ffTheme.primary.withValues(alpha: 0.3) : ffTheme.warning.withValues(alpha: 0.3)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -286,7 +286,7 @@ class _LeadWidgetState extends State<LeadWidget> {
           end: Alignment.bottomLeft,
         ),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: ffTheme.primary.withOpacity(0.2)),
+        border: Border.all(color: ffTheme.primary.withValues(alpha: 0.2)),
       ),
       child: Column(
         children: [
@@ -323,7 +323,7 @@ class _LeadWidgetState extends State<LeadWidget> {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: ffTheme.primary.withOpacity(0.08),
+                color: ffTheme.primary.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Text(
@@ -359,7 +359,7 @@ class _LeadWidgetState extends State<LeadWidget> {
                 color: selected ? ffTheme.primary : Colors.white,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: selected ? ffTheme.primary : ffTheme.alternate, width: selected ? 1.5 : 1),
-                boxShadow: selected ? [BoxShadow(color: ffTheme.primary.withOpacity(0.2), blurRadius: 8, offset: const Offset(0, 2))] : [],
+                boxShadow: selected ? [BoxShadow(color: ffTheme.primary.withValues(alpha: 0.2), blurRadius: 8, offset: const Offset(0, 2))] : [],
               ),
               child: Column(
                 children: [
@@ -406,7 +406,7 @@ class _LeadWidgetState extends State<LeadWidget> {
       decoration: BoxDecoration(
         color: ffTheme.accent2,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: ffTheme.warning.withOpacity(0.25)),
+        border: Border.all(color: ffTheme.warning.withValues(alpha: 0.25)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,

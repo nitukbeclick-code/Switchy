@@ -115,6 +115,26 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('tapping a renewal notification deep-links into that plan\'s report', (tester) async {
+    await _bootApp(tester);
+    final soon = DateTime.now().add(const Duration(days: 10));
+    final iso = '${soon.year.toString().padLeft(4, '0')}-${soon.month.toString().padLeft(2, '0')}-${soon.day.toString().padLeft(2, '0')}';
+    AppState().addMyPlan(category: 'cellular', provider: 'סלקום', planName: '5G 200GB', monthlyPrice: 90, promoEndDate: iso);
+
+    _go(tester, '/notifications');
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.textContaining('מסתיים בעוד'), findsWidgets);
+    await tester.tap(find.textContaining('מסתיים בעוד').first);
+    await tester.pump(const Duration(milliseconds: 700));
+    await tester.pump(const Duration(milliseconds: 700));
+
+    // Landed on the renewal report.
+    expect(find.text('טבלת השוואה מלאה'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('home savings hero is honest about estimate vs personalized', (tester) async {
     await _bootApp(tester);
     _go(tester, '/home');

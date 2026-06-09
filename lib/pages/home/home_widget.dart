@@ -97,6 +97,9 @@ class _HomeWidgetState extends State<HomeWidget> {
     final appState = Provider.of<AppState>(context);
     final activeCat = appState.selectedCat;
     final deal = hotDeal(appState.currentBill(activeCat), cat: activeCat);
+    // Compute the savings summary once and share it with the hero + grid
+    // (each used to recompute it — 5 engine rankings — on every build).
+    final savings = computeSavings(appState);
 
     return Scaffold(
       backgroundColor: ffTheme.background,
@@ -116,7 +119,7 @@ class _HomeWidgetState extends State<HomeWidget> {
               _buildRenewalAlert(context, ffTheme, appState),
 
               // ── 3. Savings hero card ───────────────────────────────────────
-              SliverToBoxAdapter(child: _buildSavingsHero(context, ffTheme)),
+              SliverToBoxAdapter(child: _buildSavingsHero(context, ffTheme, savings)),
 
               // ── 4. Hot deal card ───────────────────────────────────────────
               if (deal != null)
@@ -130,7 +133,7 @@ class _HomeWidgetState extends State<HomeWidget> {
               SliverToBoxAdapter(child: _buildTopPick(context, ffTheme, appState)),
 
               // ── 5. Category grid ───────────────────────────────────────────
-              SliverToBoxAdapter(child: _buildCategoryGrid(context, ffTheme, appState)),
+              SliverToBoxAdapter(child: _buildCategoryGrid(context, ffTheme, appState, savings)),
 
               // ── 6. AI advisor card ─────────────────────────────────────────
               SliverToBoxAdapter(child: _buildAIAdvisor(context, ffTheme)),
@@ -455,11 +458,11 @@ class _HomeWidgetState extends State<HomeWidget> {
     );
   }
 
-  Widget _buildSavingsHero(BuildContext context, AppTheme ffTheme) {
+  Widget _buildSavingsHero(BuildContext context, AppTheme ffTheme, SavingsSummary savings) {
     final appState = Provider.of<AppState>(context, listen: false);
-    // Potential savings from the same engine the /savings dashboard uses, so
-    // tapping the hero never lands on a screen showing a different number.
-    final totalSave = computeSavings(appState).totalAnnualPotential;
+    // Shared summary (same engine the /savings dashboard uses), so tapping the
+    // hero never lands on a screen showing a different number.
+    final totalSave = savings.totalAnnualPotential;
 
     return GestureDetector(
       onTap: () {
@@ -852,12 +855,12 @@ class _HomeWidgetState extends State<HomeWidget> {
     );
   }
 
-  Widget _buildCategoryGrid(BuildContext context, AppTheme ffTheme, AppState appState) {
-    // Per-category savings from the recommendation engine, consistent with the
-    // home hero, the /savings dashboard and the bills screen.
+  Widget _buildCategoryGrid(BuildContext context, AppTheme ffTheme, AppState appState, SavingsSummary savings) {
+    // Per-category savings from the shared summary — consistent with the home
+    // hero, the /savings dashboard and the bills screen.
     final Map<String, int> actualSavings = {};
     final Map<String, bool> hasActual = {};
-    for (final cs in computeSavings(appState).categories) {
+    for (final cs in savings.categories) {
       if (cs.hasBill) {
         actualSavings[cs.categoryId] = cs.annualSaving;
         hasActual[cs.categoryId] = true;

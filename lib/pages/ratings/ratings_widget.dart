@@ -8,6 +8,8 @@ import '../../app_state.dart';
 import '../../data.dart';
 import '../../components/logo_widget/logo_widget.dart';
 import '../../services/provider_ratings.dart';
+import '../../services/backend/backend.dart';
+import '../../services/backend/local_backend.dart';
 
 class RatingsWidget extends StatefulWidget {
   const RatingsWidget({super.key});
@@ -382,12 +384,21 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
                             ? () {
                                 final avg = _subRatings.values.where((v) => v > 0).fold(0, (a, b) => a + b) ~/
                                     _subRatings.values.where((v) => v > 0).length;
-                                Provider.of<AppState>(context, listen: false).addReview(
+                                final review = ReviewInput(
                                   provider: _selectedProvider!,
                                   overall: avg,
                                   subRatings: Map.of(_subRatings),
                                   text: _reviewCtrl.text.trim(),
                                 );
+                                Provider.of<AppState>(context, listen: false).addReview(
+                                  provider: review.provider,
+                                  overall: review.overall,
+                                  subRatings: review.subRatings,
+                                  text: review.text,
+                                );
+                                // Mirror to the backend seam (no-op locally; upsert
+                                // into provider_reviews once SupabaseBackend is set).
+                                appBackend.upsertReview(review).catchError((_) {});
                                 setState(() => _submitted = true);
                               }
                             : null,

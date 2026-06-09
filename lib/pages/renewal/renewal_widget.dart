@@ -12,6 +12,7 @@ import '../../components/logo_widget/logo_widget.dart';
 import '../../widgets/app_button.dart';
 import '../../services/recommendation_engine.dart';
 import '../../services/reminder_schedule.dart';
+import '../../services/backend/local_backend.dart';
 
 class RenewalWidget extends StatefulWidget {
   const RenewalWidget({super.key});
@@ -134,6 +135,7 @@ class _RenewalWidgetState extends State<RenewalWidget> {
     );
     if (confirm == true && context.mounted) {
       Provider.of<AppState>(context, listen: false).removeMyPlan(plan.id);
+      appBackend.removeTrackedPlan(plan.id).catchError((_) {});
     }
   }
 }
@@ -553,7 +555,8 @@ class _AddPlanSheetState extends State<_AddPlanSheet> {
     _formKey.currentState!.save();
     if (_selectedCat == null) return;
 
-    Provider.of<AppState>(context, listen: false).addMyPlan(
+    final appState = Provider.of<AppState>(context, listen: false);
+    appState.addMyPlan(
       category: _selectedCat!,
       provider: _provider.trim(),
       planName: _planName.trim(),
@@ -561,6 +564,10 @@ class _AddPlanSheetState extends State<_AddPlanSheet> {
       promoEndDate: _promoEndDate,
       joinedViaUs: _joinedViaUs,
     );
+    // Mirror the newly added plan to the backend seam.
+    if (appState.myPlans.isNotEmpty) {
+      appBackend.addTrackedPlan(appState.myPlans.first).catchError((_) {});
+    }
     Navigator.pop(context);
   }
 

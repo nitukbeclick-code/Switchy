@@ -11,6 +11,7 @@ import '../../models.dart';
 import '../../components/plan_card/plan_card_widget.dart';
 import '../../services/recommendation_engine.dart';
 import '../../services/savings_summary.dart';
+import '../../services/provider_ratings.dart';
 
 class AIAdvisorWidget extends StatefulWidget {
   const AIAdvisorWidget({super.key});
@@ -184,7 +185,30 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
     // Recommendation intent — "what's best for me / recommend"
     final isRecommendIntent = lower.contains('מה כדאי') || lower.contains('המלצה') || lower.contains('הכי משתלם') || lower.contains('מה הכי טוב') || lower.contains('תמליץ') || lower.contains('מה הכי') || lower.contains('מה כדאי לי') || lower.contains('recommend') || lower.contains('הכי טוב לי') || lower.contains('מה הכי משתלם') || lower.contains('✨ מה הכי משתלם');
 
-    if (isRecommendIntent && detectedProvider == null) {
+    // Rating intent — "how is provider X rated / which provider is best rated"
+    final isRatingIntent = lower.contains('דירוג') ||
+        lower.contains('ביקורות') ||
+        lower.contains('הכי מדורג') ||
+        lower.contains('ספק הכי טוב') ||
+        lower.contains('ספק מומלץ');
+
+    if (isRatingIntent) {
+      if (detectedProvider != null) {
+        final r = ProviderRatings.forProvider(detectedProvider);
+        final subs = ProviderRatings.subKeys
+            .map((k) => '• ${ProviderRatings.subLabels[k]}: ${r.sub[k]!.toStringAsFixed(1)}★')
+            .join('\n');
+        reply = '⭐ דירוג $detectedProvider: ${r.stars.toStringAsFixed(1)}★ (${r.reviewCount} ביקורות)\n\n$subs\n\nרוצה לראות את המסלולים של $detectedProvider? כתבו את שמו.';
+      } else {
+        final ranked = allProviders
+            .map((p) => (name: p, stars: ProviderRatings.averageStars(p)))
+            .where((e) => e.stars > 0)
+            .toList()
+          ..sort((a, b) => b.stars.compareTo(a.stars));
+        final top = ranked.take(3).map((e) => '• ${e.name} — ${e.stars.toStringAsFixed(1)}★').join('\n');
+        reply = '🏆 הספקים המדורגים ביותר:\n\n$top\n\nרוצה דירוג של ספק מסוים? כתבו את שמו.';
+      }
+    } else if (isRecommendIntent && detectedProvider == null) {
       // Determine category from text, fall back to selected
       String recCat = appState.selectedCat;
       if (lower.contains('אינטרנט') || lower.contains('internet')) {

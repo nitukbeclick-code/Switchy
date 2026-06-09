@@ -30,7 +30,8 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
 
   static const _cats = ['הכל', 'סלולר', 'אינטרנט', 'טלוויזיה', 'חבילה', 'חו"ל'];
   static const _catIds = {'סלולר': 'cellular', 'אינטרנט': 'internet', 'טלוויזיה': 'tv', 'חבילה': 'triple', 'חו"ל': 'abroad'};
-  static const _subLabels = {'price': 'מחיר', 'service': 'שירות', 'coverage': 'כיסוי', 'speed': 'מהירות'};
+  // Sub-rating labels come from the shared ProviderRatings helper (single source).
+  static const _subLabels = ProviderRatings.subLabels;
 
   @override
   void initState() {

@@ -1374,7 +1374,7 @@ class _HomeWidgetState extends State<HomeWidget> {
       const _Provider('גולן טלקום', Color(0xFF15603E), Color(0xFFE8F5EE)),
       const _Provider('רמי לוי', Color(0xFFD4232A), Color(0xFFFFF0F0)),
       const _Provider('Xphone', Color(0xFF0066CC), Color(0xFFEEF5FF)),
-      const _Provider('ויקום', Color(0xFF6B21A8), Color(0xFFF5EEFF)),
+      const _Provider('WeCom', Color(0xFF6B21A8), Color(0xFFF5EEFF)),
       const _Provider('וואלה מובייל', Color(0xFF0077B6), Color(0xFFECF6FF)),
       const _Provider('019 מובייל', Color(0xFF6B35C8), Color(0xFFF3EEFF)),
       const _Provider('yes', Color(0xFF1A3A7A), Color(0xFFEEF0FF)),
@@ -1383,7 +1383,7 @@ class _HomeWidgetState extends State<HomeWidget> {
       const _Provider('NextTV', Color(0xFFE07034), Color(0xFFFFF3EC)),
       const _Provider('גילת', Color(0xFF1D6FA4), Color(0xFFECF4FF)),
       const _Provider('CCC', Color(0xFF2E7D32), Color(0xFFEDF7EE)),
-      const _Provider('FreeTV', Color(0xFF1A7A4E), Color(0xFFE8F8EE)),
+      const _Provider('STING TV', Color(0xFF1A7A4E), Color(0xFFE8F8EE)),
       const _Provider('Airalo', Color(0xFF00897B), Color(0xFFE0F2F1)),
     ];
 

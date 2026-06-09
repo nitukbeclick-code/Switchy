@@ -102,9 +102,12 @@ class PlanCardWidget extends StatelessWidget {
                 // Header row
                 Row(
                   children: [
-                    Hero(
-                      tag: 'plan_logo_${plan.id}',
-                      child: LogoWidget(provider: plan.provider, size: 44),
+                    GestureDetector(
+                      onTap: () => context.pushNamed('Provider', pathParameters: {'name': plan.provider}),
+                      child: Hero(
+                        tag: 'plan_logo_${plan.id}',
+                        child: LogoWidget(provider: plan.provider, size: 44),
+                      ),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
@@ -114,14 +117,17 @@ class PlanCardWidget extends StatelessWidget {
                           Row(
                             children: [
                               Flexible(
-                                child: Text(
-                                  plan.provider,
-                                  style: GoogleFonts.rubik(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w700,
-                                    color: ffTheme.primaryText,
+                                child: GestureDetector(
+                                  onTap: () => context.pushNamed('Provider', pathParameters: {'name': plan.provider}),
+                                  child: Text(
+                                    plan.provider,
+                                    style: GoogleFonts.rubik(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w700,
+                                      color: ffTheme.primaryText,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
                                   ),
-                                  overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                               const SizedBox(width: 6),

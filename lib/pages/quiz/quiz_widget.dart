@@ -22,6 +22,7 @@ class _QuizWidgetState extends State<QuizWidget> {
   late String _priority;
   String? _extraFilter; // secondary preference for internet/tv
   late double _budget;
+  late double _currentBill; // what the user pays today — the savings baseline
 
   // Reveal phase
   bool _revealed = false;
@@ -45,6 +46,9 @@ class _QuizWidgetState extends State<QuizWidget> {
             : _defaultBudget(appState.selectedCat);
     final cfg = _budgetConfig(appState.selectedCat);
     _budget = rawBudget.clamp(cfg.$1, cfg.$2);
+    // Seed today's-bill from any saved bill, else a sensible default.
+    _currentBill = (catBill > 0 ? catBill.toDouble() : _defaultBudget(appState.selectedCat))
+        .clamp(cfg.$1, cfg.$2);
   }
 
   static const _cats = [
@@ -72,7 +76,7 @@ class _QuizWidgetState extends State<QuizWidget> {
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(6),
           child: LinearProgressIndicator(
-            value: (_step + 1) / 4,
+            value: (_step + 1) / 5,
             backgroundColor: ffTheme.alternate,
             valueColor: AlwaysStoppedAnimation(ffTheme.primary),
           ),
@@ -140,7 +144,7 @@ class _QuizWidgetState extends State<QuizWidget> {
                     ),
                   Expanded(
                     child: AppButton(
-                      text: _step < 3 ? 'הבא ←' : '🔍 הצג תוצאות',
+                      text: _step < 4 ? 'הבא ←' : '🔍 הצג תוצאות',
                       onPressed: () async {
                         HapticFeedback.lightImpact();
                         await _next();
@@ -180,6 +184,7 @@ class _QuizWidgetState extends State<QuizWidget> {
                 _cat = c.$1;
                 final cfg = _budgetConfig(c.$1);
                 _budget = _budget.clamp(cfg.$1, cfg.$2);
+                _currentBill = _currentBill.clamp(cfg.$1, cfg.$2);
               }),
               ffTheme: ffTheme,
             )).toList(),
@@ -383,12 +388,77 @@ class _QuizWidgetState extends State<QuizWidget> {
           ),
         );
       case 3:
+        final billCfg = _budgetConfig(_cat);
+        final clampedBill = _currentBill.clamp(billCfg.$1, billCfg.$2);
+        return _StepCard(
+          step: 4,
+          title: _cat == 'abroad' ? 'כמה הוצאתם על גלישה בנסיעה האחרונה?' : 'כמה אתם משלמים היום?',
+          subtitle: 'לפי זה נחשב בדיוק כמה תוכלו לחסוך',
+          ffTheme: ffTheme,
+          child: Column(
+            children: [
+              Text(
+                '₪${clampedBill.round()}${_cat == 'abroad' ? '' : '/חודש'}',
+                style: ffTheme.displayMedium.copyWith(color: ffTheme.primary),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'המחיר שאתם משלמים כיום',
+                style: ffTheme.labelMedium.copyWith(color: ffTheme.secondaryText),
+              ),
+              const SizedBox(height: 16),
+              Slider(
+                value: clampedBill,
+                min: billCfg.$1,
+                max: billCfg.$2,
+                divisions: billCfg.$3,
+                activeColor: ffTheme.primary,
+                inactiveColor: ffTheme.alternate,
+                onChanged: (v) => setState(() => _currentBill = v),
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text('₪${billCfg.$1.round()}', style: ffTheme.labelSmall),
+                  Text('₪${billCfg.$2.round()}', style: ffTheme.labelSmall),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                alignment: WrapAlignment.center,
+                children: _budgetPresets(_cat).map((preset) {
+                  final active = clampedBill.round() == preset;
+                  return GestureDetector(
+                    onTap: () => setState(() => _currentBill = preset.toDouble()),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                      decoration: BoxDecoration(
+                        color: active ? ffTheme.primary : Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: active ? ffTheme.primary : ffTheme.alternate),
+                      ),
+                      child: Text('₪$preset',
+                        style: ffTheme.labelMedium.copyWith(
+                          color: active ? Colors.white : ffTheme.primaryText,
+                          fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                        )),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ],
+          ),
+        );
+      case 4:
       default:
         final sliderConfig = _budgetConfig(_cat);
         final clampedBudget = _budget.clamp(sliderConfig.$1, sliderConfig.$2);
         final planCount = plansByCat(_cat).where((p) => p.price <= clampedBudget.round()).length;
         return _StepCard(
-          step: 4,
+          step: 5,
           title: _cat == 'abroad' ? 'מה התקציב לנסיעה?' : 'מה התקציב החודשי?',
           subtitle: _cat == 'abroad' ? 'לפי עלות חבילת הנסיעה' : 'הגדירו את הסכום המקסימלי שאתם מוכנים לשלם',
           ffTheme: ffTheme,
@@ -496,7 +566,7 @@ class _QuizWidgetState extends State<QuizWidget> {
   }
 
   Future<void> _next() async {
-    if (_step < 3) {
+    if (_step < 4) {
       setState(() => _step++);
       return;
     }
@@ -504,6 +574,8 @@ class _QuizWidgetState extends State<QuizWidget> {
 
     final appState = Provider.of<AppState>(context, listen: false);
     appState.setCategory(_cat);
+    // Persist today's bill — the baseline every savings figure is measured against.
+    appState.setCurrentBill(_cat, _currentBill.round());
     appState.setQuizLines(_lines);
     appState.setQuizPriority(_priority);
     appState.setQuizBudget(_budget.round());

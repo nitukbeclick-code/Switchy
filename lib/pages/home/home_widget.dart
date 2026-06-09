@@ -239,8 +239,7 @@ class _HomeWidgetState extends State<HomeWidget> {
       child: GestureDetector(
         onTap: () {
           HapticFeedback.lightImpact();
-          appState.setCategory(r.category);
-          context.pushNamed('Renewal');
+          context.pushNamed('RenewalReport', pathParameters: {'trackedId': r.id});
         },
         child: Container(
           margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
@@ -353,7 +352,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                     GestureDetector(
                       onTap: () {
                         HapticFeedback.lightImpact();
-                        context.goNamed('Results');
+                        context.pushNamed('Search');
                       },
                       child: Container(
                         margin: const EdgeInsets.only(top: 8),
@@ -367,7 +366,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                           children: [
                             Icon(Icons.search_rounded, color: Colors.white.withOpacity(0.7), size: 16),
                             const SizedBox(width: 8),
-                            Text('חפש מסלול...', style: AppTheme.of(context).bodySmall.copyWith(color: Colors.white.withOpacity(0.65))),
+                            Text('חפש ספק או מסלול...', style: AppTheme.of(context).bodySmall.copyWith(color: Colors.white.withOpacity(0.65))),
                           ],
                         ),
                       ),

@@ -9,6 +9,7 @@ import 'package:chosech/app_state.dart';
 import 'package:chosech/data.dart';
 import 'package:chosech/pages/results/results_widget.dart';
 import 'package:chosech/pages/compare/compare_widget.dart';
+import 'package:chosech/pages/search/search_widget.dart';
 
 /// Helper: boot the full app and return the tester after initial pump.
 Future<void> _bootApp(WidgetTester tester) async {
@@ -208,6 +209,25 @@ void main() {
     _navigateTo(tester, '/renewal-report/$id');
     await tester.pump(const Duration(milliseconds: 700));
     await tester.pump(const Duration(milliseconds: 700));
+
+    expect(tester.takeException(), isNull);
+  });
+
+  // ── Test 13: Global search ───────────────────────────────────────────────
+  testWidgets('13. Search screen renders and queries without exceptions', (tester) async {
+    await _bootApp(tester);
+
+    _navigateTo(tester, '/search');
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    expect(find.byType(SearchWidget), findsOneWidget);
+    expect(find.byType(TextField), findsWidgets);
+
+    // Type a query and let results render.
+    await tester.enterText(find.byType(TextField).first, allProviders.first);
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump(const Duration(milliseconds: 300));
 
     expect(tester.takeException(), isNull);
   });

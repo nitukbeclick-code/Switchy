@@ -457,7 +457,7 @@ class _BillCard extends StatelessWidget {
               // Stepper
               Row(
                 children: [
-                  _RoundBtn(icon: Icons.remove, color: ffTheme.alternate, iconColor: ffTheme.secondaryText, onTap: onDecrease),
+                  _RoundBtn(icon: Icons.remove, color: ffTheme.alternate, iconColor: ffTheme.secondaryText, onTap: onDecrease, semanticLabel: 'הפחת ₪10 מ${category.name}'),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 10),
                     child: Text(
@@ -468,7 +468,7 @@ class _BillCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  _RoundBtn(icon: Icons.add, color: ffTheme.primary, iconColor: Colors.white, onTap: onIncrease),
+                  _RoundBtn(icon: Icons.add, color: ffTheme.primary, iconColor: Colors.white, onTap: onIncrease, semanticLabel: 'הוסף ₪10 ל${category.name}'),
                 ],
               ),
             ],
@@ -531,21 +531,26 @@ class _BillCard extends StatelessWidget {
 }
 
 class _RoundBtn extends StatelessWidget {
-  const _RoundBtn({required this.icon, required this.color, required this.iconColor, required this.onTap});
+  const _RoundBtn({required this.icon, required this.color, required this.iconColor, required this.onTap, required this.semanticLabel});
   final IconData icon;
   final Color color;
   final Color iconColor;
   final VoidCallback onTap;
+  final String semanticLabel;
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 34,
-        height: 34,
-        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-        child: Icon(icon, size: 17, color: iconColor),
+    return Semantics(
+      button: true,
+      label: semanticLabel,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          width: 34,
+          height: 34,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          child: Icon(icon, size: 17, color: iconColor),
+        ),
       ),
     );
   }

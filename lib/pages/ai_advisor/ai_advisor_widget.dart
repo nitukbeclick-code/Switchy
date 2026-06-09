@@ -12,6 +12,7 @@ import '../../components/plan_card/plan_card_widget.dart';
 import '../../services/recommendation_engine.dart';
 import '../../services/savings_summary.dart';
 import '../../services/provider_ratings.dart';
+import '../../services/backend/local_backend.dart';
 
 class AIAdvisorWidget extends StatefulWidget {
   const AIAdvisorWidget({super.key});
@@ -347,6 +348,9 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
         _isTyping = false;
         _messages.add(_ChatMsg(text: reply, isUser: false, time: DateTime.now(), planIds: topPlans.map((p) => p.id).toList(), cat: cat));
       });
+      for (final p in topPlans) {
+        appBackend.trackPlanView(planId: p.id, provider: p.provider, category: p.cat).catchError((_) {});
+      }
     }
     _scrollToBottom();
   }

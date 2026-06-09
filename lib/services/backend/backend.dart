@@ -165,6 +165,9 @@ abstract interface class Backend {
   /// the Supabase anon sign-in sets uid, so this always runs in production).
   Future<void> upsertProfile({required String name, required String phone, String? email});
 
+  /// Increments the user's `total_savings` in the profiles table. Fire-and-forget.
+  Future<void> addSavings(int amount);
+
   // ── Leads ──────────────────────────────────────────────────────────────────
   Future<void> submitLead(LeadInput lead);
 

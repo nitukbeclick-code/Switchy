@@ -74,6 +74,8 @@ create table if not exists public.leads (
   plan_id       text,
   callback_time text,                        -- now / noon / evening / tomorrow
   status        text not null default 'new', -- new / contacted / won / lost
+  source        text,                        -- form / callback / advisor / porting
+  notes         text,                        -- free-text context for the rep
   created_at    timestamptz not null default now()
 );
 
@@ -265,6 +267,18 @@ select
   count(*)                        as review_count
 from public.provider_reviews
 group by provider;
+
+-- Atomically increments a user's total_savings. Called by the Flutter app when
+-- the user confirms they switched plans (tracker step 3 → 4).
+create or replace function public.increment_savings(uid uuid, delta integer)
+returns void
+language sql
+security definer
+as $$
+  update public.profiles
+  set total_savings = total_savings + delta
+  where id = uid;
+$$;
 
 -- Done. Every table has RLS enabled; the anon/authenticated API can only do
 -- what the policies above allow. The service_role key bypasses RLS — keep it

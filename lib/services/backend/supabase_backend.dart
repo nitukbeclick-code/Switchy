@@ -35,6 +35,12 @@ class SupabaseBackend implements Backend {
     }, onConflict: 'id');
   }
 
+  @override
+  Future<void> addSavings(int amount) async {
+    if (_uid == null || amount <= 0) return;
+    await _db.rpc('increment_savings', params: {'uid': _uid, 'delta': amount});
+  }
+
   // ── Leads ──────────────────────────────────────────────────────────────────
   @override
   Future<void> submitLead(LeadInput lead) async {

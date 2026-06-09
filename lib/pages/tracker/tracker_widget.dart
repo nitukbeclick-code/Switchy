@@ -447,6 +447,8 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                     monthlyPrice: plan.price,
                     joinedViaUs: true,
                   )).catchError((_) {});
+                  final saving = planSaveYear(plan, appState.currentBill(plan.cat));
+                  if (saving > 0) appBackend.addSavings(saving).catchError((_) {});
                 }
               }, ffTheme: ffTheme),
             ],

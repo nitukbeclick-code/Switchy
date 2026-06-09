@@ -26,6 +26,11 @@ class LocalBackend implements Backend {
   }
 
   @override
+  Future<void> addSavings(int amount) async {
+    // No-op locally.
+  }
+
+  @override
   Future<void> submitLead(LeadInput lead) async {
     _leads.add(lead);
   }

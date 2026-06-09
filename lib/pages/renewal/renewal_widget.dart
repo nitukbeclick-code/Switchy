@@ -67,10 +67,8 @@ class _RenewalWidgetState extends State<RenewalWidget> {
                   plan: e.value,
                   ffTheme: ffTheme,
                   onDelete: () => _confirmDelete(context, appState, e.value),
-                  onCompare: () {
-                    appState.setCategory(e.value.category);
-                    context.pushNamed('Results');
-                  },
+                  onCompare: () => context.pushNamed('RenewalReport',
+                      pathParameters: {'trackedId': e.value.id}),
                   onBestMatch: (planId) => context.pushNamed('PlanDetail',
                       pathParameters: {'planId': planId}),
                 ).animate().fadeIn(delay: (100 + e.key * 80).ms)),
@@ -378,8 +376,8 @@ class _PlanCard extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(12, 0, 12, 14),
             child: OutlinedButton.icon(
               onPressed: onCompare,
-              icon: const Icon(Icons.compare_arrows_rounded, size: 17),
-              label: const Text('השווה עכשיו'),
+              icon: const Icon(Icons.table_chart_rounded, size: 17),
+              label: const Text('טבלת השוואה מלאה'),
               style: OutlinedButton.styleFrom(
                 foregroundColor: ffTheme.primary,
                 side: BorderSide(color: ffTheme.primary),

@@ -193,4 +193,22 @@ void main() {
 
     expect(tester.takeException(), isNull);
   });
+
+  // ── Test 12: Renewal report ──────────────────────────────────────────────
+  testWidgets('12. Renewal report renders without exceptions', (tester) async {
+    await _bootApp(tester);
+    AppState().addMyPlan(
+        category: 'cellular',
+        provider: 'סלקום',
+        planName: '5G 800GB',
+        monthlyPrice: 180,
+        promoEndDate: '2026-12-31');
+    final id = AppState().myPlans.first.id;
+
+    _navigateTo(tester, '/renewal-report/$id');
+    await tester.pump(const Duration(milliseconds: 700));
+    await tester.pump(const Duration(milliseconds: 700));
+
+    expect(tester.takeException(), isNull);
+  });
 }

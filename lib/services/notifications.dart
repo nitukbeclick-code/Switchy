@@ -16,6 +16,7 @@ class AppNotification {
     required this.title,
     required this.body,
     this.routeName,
+    this.pathParameters,
     this.planId,
     this.category,
     this.priority = 0,
@@ -26,6 +27,7 @@ class AppNotification {
   final String title;
   final String body;
   final String? routeName; // go_router route name to open on tap
+  final Map<String, String>? pathParameters; // path params for [routeName]
   final String? planId; // when set, tap should open this plan's detail
   final String? category; // when set, set this category before navigating
   final int priority; // higher sorts first
@@ -47,8 +49,9 @@ List<AppNotification> computeNotifications(AppState s) {
       title: expired
           ? 'המבצע ב${p.provider} הסתיים'
           : 'המבצע ב${p.provider} מסתיים בעוד $d ימים',
-      body: 'השוו עכשיו לפני שהמחיר קופץ — ${p.planName}',
-      routeName: 'Renewal',
+      body: 'טבלת השוואה מלאה מחכה לך — ${p.planName}',
+      routeName: 'RenewalReport',
+      pathParameters: {'trackedId': p.id},
       category: p.category,
       priority: expired ? 1000 : 1000 - d,
     ));

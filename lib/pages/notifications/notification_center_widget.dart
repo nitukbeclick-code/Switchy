@@ -37,7 +37,7 @@ class _NotificationCenterWidgetState extends State<NotificationCenterWidget> {
       if (n.category != null) {
         appState.setCategory(n.category!);
       }
-      context.pushNamed(n.routeName!);
+      context.pushNamed(n.routeName!, pathParameters: n.pathParameters ?? const {});
     }
   }
 

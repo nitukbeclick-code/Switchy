@@ -28,6 +28,7 @@ import 'pages/porting/porting_widget.dart';
 import 'pages/settings/settings_widget.dart';
 import 'pages/matches/matches_widget.dart';
 import 'pages/renewal/renewal_widget.dart';
+import 'pages/renewal_report/renewal_report_widget.dart';
 import 'pages/notifications/notification_center_widget.dart';
 import 'pages/provider/provider_widget.dart';
 
@@ -75,6 +76,7 @@ GoRouter createRouter() => GoRouter(
         GoRoute(path: '/settings', name: 'Settings', builder: (_, __) => const SettingsWidget()),
         GoRoute(path: '/matches', name: 'Matches', builder: (_, __) => const MatchesWidget()),
         GoRoute(path: '/renewal', name: 'Renewal', builder: (_, __) => const RenewalWidget()),
+        GoRoute(path: '/renewal-report/:trackedId', name: 'RenewalReport', builder: (_, s) => RenewalReportWidget(trackedId: s.pathParameters['trackedId']!)),
         GoRoute(path: '/notifications', name: 'Notifications', builder: (_, __) => const NotificationCenterWidget()),
         GoRoute(path: '/provider/:name', name: 'Provider', builder: (_, s) => ProviderWidget(providerName: s.pathParameters['name']!)),
       ],

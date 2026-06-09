@@ -379,6 +379,14 @@ class AppState extends ChangeNotifier {
   final List<TrackedPlan> _myPlans = [];
   List<TrackedPlan> get myPlans => List.unmodifiable(_myPlans);
 
+  /// The tracked plan with [id], or null if it was removed.
+  TrackedPlan? trackedPlanById(String id) {
+    for (final p in _myPlans) {
+      if (p.id == id) return p;
+    }
+    return null;
+  }
+
   bool _renewalReminders = false;
   bool get renewalReminders => _renewalReminders;
   void setRenewalReminders(bool v) { _renewalReminders = v; notifyListeners(); _persist(); }

@@ -15,10 +15,16 @@ python3 -m http.server 8000   # then open http://localhost:8000
 
 ## Deploy (pick one)
 
-- **GitHub Pages:** settings → Pages → serve from the `/site` folder (or copy
-  its contents to the Pages root).
-- **Netlify / Vercel / Cloudflare Pages:** drag-and-drop the `site/` folder, or
-  point the project at it. No build command, publish directory = `site`.
+No build command — publish directory = `site`. A branded `404.html` is served
+automatically by all three hosts below, and security + cache headers ship via
+the included configs.
+
+- **Netlify:** point the site at this repo, base/publish directory = `site`
+  (`netlify.toml` adds the headers + caching).
+- **Vercel:** import the repo, root directory = `site` (`vercel.json` adds the
+  headers + caching).
+- **GitHub Pages:** Settings → Pages → serve from the `/site` folder (headers
+  aren't configurable on Pages, but everything else works).
 
 ## What's inside
 

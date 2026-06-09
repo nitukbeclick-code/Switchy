@@ -11,6 +11,7 @@ import '../../components/logo_widget/logo_widget.dart';
 import '../../services/recommendation_engine.dart';
 import '../../services/renewal_report.dart';
 import '../../services/reminder_schedule.dart';
+import '../../services/provider_ratings.dart';
 
 /// The full, fresh comparison table for a single tracked plan that is about to
 /// renew — every alternative in its category ranked by fit, with the annual
@@ -331,6 +332,7 @@ class _AlternativeRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final plan = match.plan;
     final saving = match.annualSaving;
+    final rating = ProviderRatings.averageStars(plan.provider);
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -370,8 +372,21 @@ class _AlternativeRow extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(plan.provider,
-                          style: ffTheme.bodyMedium.copyWith(fontWeight: FontWeight.w700)),
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(plan.provider,
+                                style: ffTheme.bodyMedium.copyWith(fontWeight: FontWeight.w700),
+                                maxLines: 1, overflow: TextOverflow.ellipsis),
+                          ),
+                          if (rating > 0) ...[
+                            const SizedBox(width: 6),
+                            Icon(Icons.star_rounded, size: 13, color: ffTheme.warning),
+                            Text(rating.toStringAsFixed(1),
+                                style: ffTheme.labelSmall.copyWith(fontWeight: FontWeight.w700, fontSize: 11)),
+                          ],
+                        ],
+                      ),
                       Text(plan.plan,
                           style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText),
                           maxLines: 1, overflow: TextOverflow.ellipsis),

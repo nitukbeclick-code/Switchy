@@ -320,6 +320,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                               onTap: () =>
                                   appState.setCurrentBill(cat, bill - 10),
                               ffTheme: ffTheme,
+                              semanticLabel: 'הפחת ₪10 מהחשבון',
                             ),
                             const SizedBox(width: 8),
                             _StepButton(
@@ -327,6 +328,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                               onTap: () =>
                                   appState.setCurrentBill(cat, bill + 10),
                               ffTheme: ffTheme,
+                              semanticLabel: 'הוסף ₪10 לחשבון',
                             ),
                           ],
                         ),
@@ -1090,14 +1092,18 @@ class _ActionChip extends StatelessWidget {
 
 class _StepButton extends StatelessWidget {
   const _StepButton(
-      {required this.icon, required this.onTap, required this.ffTheme});
+      {required this.icon, required this.onTap, required this.ffTheme, this.semanticLabel});
   final IconData icon;
   final VoidCallback onTap;
   final AppTheme ffTheme;
+  final String? semanticLabel;
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return Semantics(
+      button: true,
+      label: semanticLabel,
+      child: GestureDetector(
       onTap: onTap,
       child: Container(
         width: 32,
@@ -1108,6 +1114,7 @@ class _StepButton extends StatelessWidget {
           border: Border.all(color: ffTheme.primary.withOpacity(0.25)),
         ),
         child: Icon(icon, size: 18, color: ffTheme.primary),
+      ),
       ),
     );
   }

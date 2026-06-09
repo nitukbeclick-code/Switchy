@@ -22,8 +22,9 @@ SearchResults searchEverything(String query, {int planLimit = 40}) {
 
   bool has(String? s) => s != null && s.toLowerCase().contains(q);
 
-  final providers =
-      allProviders.where((p) => has(p) || q.contains(p.toLowerCase())).toList();
+  // Match a provider only when the query is a substring of its name — not the
+  // reverse, which would let a short name (CCC/HOT/yes) match unrelated queries.
+  final providers = allProviders.where(has).toList();
 
   bool matches(Plan p) =>
       has(p.provider) ||

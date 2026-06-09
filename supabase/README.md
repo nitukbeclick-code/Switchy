@@ -60,9 +60,17 @@ RLS policies (public read; each user can only upload/delete under their own
    ```
    Pass them with `--dart-define` (or `--dart-define-from-file`) so keys aren't
    committed.
-3. Introduce a thin repository layer so `AppState` talks to an interface, and
-   the implementation is either local (today) or Supabase (later) — that keeps
-   the swap incremental and testable.
+3. The thin repository layer is already scaffolded in
+   [`lib/services/backend/`](../lib/services/backend/):
+   - `backend.dart` — the `Backend` interface + `LeadInput`/`ReviewInput` (with
+     `toRow()` mappers matching the table columns).
+   - `local_backend.dart` — `LocalBackend` (the on-device default) + the
+     `appBackend` singleton — **flip this one line to `SupabaseBackend()`**.
+   - `supabase_backend.dart.example` — the Supabase implementation, queries
+     mapped 1:1 to this schema. Rename to `.dart` after adding `supabase_flutter`.
+
+   So wiring the backend later is: add the dep → rename the example → set
+   `appBackend`. Screens migrate onto `appBackend` incrementally.
 
 ## 6. Region / project notes
 

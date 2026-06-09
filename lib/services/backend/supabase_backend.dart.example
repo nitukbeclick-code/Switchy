@@ -1,0 +1,95 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// TEMPLATE — not compiled (the `.example` extension keeps it out of the build).
+//
+// When you're ready to connect Supabase:
+//   1. add `supabase_flutter: ^2.5.0` to pubspec.yaml,
+//   2. rename this file to `supabase_backend.dart`,
+//   3. initialise Supabase in main() (see supabase/README.md),
+//   4. set `appBackend = SupabaseBackend();` in local_backend.dart.
+//
+// Every query below maps 1:1 to a table/policy in supabase/schema.sql. RLS does
+// the auth — you never pass user_id for the current user on writes that the
+// policy scopes to auth.uid(); set it explicitly only where the row stores it.
+// ─────────────────────────────────────────────────────────────────────────────
+
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../models.dart';
+import 'backend.dart';
+
+class SupabaseBackend implements Backend {
+  SupabaseClient get _db => Supabase.instance.client;
+  String? get _uid => _db.auth.currentUser?.id;
+
+  // ── Leads ──────────────────────────────────────────────────────────────────
+  @override
+  Future<void> submitLead(LeadInput lead) async {
+    // `leads` allows anon insert; attach user_id when signed in.
+    await _db.from('leads').insert({
+      ...lead.toRow(),
+      if (_uid != null) 'user_id': _uid,
+    });
+  }
+
+  // ── Tracked plans ────────────────────────────────────────────────────────────
+  @override
+  Future<List<TrackedPlan>> fetchTrackedPlans() async {
+    final rows = await _db
+        .from('tracked_plans')
+        .select()
+        .order('created_at', ascending: false);
+    return (rows as List).map((r) => TrackedPlan(
+          id: r['id'] as String,
+          category: r['category'] as String,
+          provider: r['provider'] as String,
+          planName: r['plan_name'] as String,
+          monthlyPrice: (r['monthly_price'] as num).toInt(),
+          promoEndDate: r['promo_end_date'] as String?,
+          joinedViaUs: r['joined_via_us'] as bool? ?? false,
+        )).toList();
+  }
+
+  @override
+  Future<void> addTrackedPlan(TrackedPlan p) async {
+    await _db.from('tracked_plans').insert({
+      'user_id': _uid,
+      'category': p.category,
+      'provider': p.provider,
+      'plan_name': p.planName,
+      'monthly_price': p.monthlyPrice,
+      'promo_end_date': p.promoEndDate,
+      'joined_via_us': p.joinedViaUs,
+    });
+  }
+
+  @override
+  Future<void> removeTrackedPlan(String id) async {
+    await _db.from('tracked_plans').delete().eq('id', id);
+  }
+
+  // ── Provider reviews ─────────────────────────────────────────────────────────
+  @override
+  Future<void> upsertReview(ReviewInput review) async {
+    // unique(user_id, provider) → onConflict upserts the user's existing review.
+    await _db.from('provider_reviews').upsert(
+      {'user_id': _uid, ...review.toRow()},
+      onConflict: 'user_id,provider',
+    );
+  }
+
+  @override
+  Future<List<ReviewInput>> reviewsForProvider(String provider) async {
+    final rows =
+        await _db.from('provider_reviews').select().eq('provider', provider);
+    return (rows as List).map((r) => ReviewInput(
+          provider: r['provider'] as String,
+          overall: (r['overall'] as num).toInt(),
+          subRatings: {
+            'price': (r['price'] as num?)?.toInt() ?? 0,
+            'service': (r['service'] as num?)?.toInt() ?? 0,
+            'coverage': (r['coverage'] as num?)?.toInt() ?? 0,
+            'speed': (r['speed'] as num?)?.toInt() ?? 0,
+          },
+          text: r['body'] as String? ?? '',
+        )).toList();
+  }
+}

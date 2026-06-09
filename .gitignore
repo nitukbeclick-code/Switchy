@@ -5,7 +5,8 @@
 .packages
 .pub-cache/
 .pub/
-pubspec.lock
+# pubspec.lock is committed (Flutter guidance for apps) so CI and release
+# builds resolve the exact same dependency set as local dev.
 
 # ── Build outputs ─────────────────────────────────────────────────────────────
 build/

@@ -127,6 +127,7 @@ class LocalBackend implements Backend {
   Future<Set<String>> bookmarkedPostIds() async => Set.unmodifiable(_bookmarked);
 }
 
-/// The backend the app talks to. Flip this one line to `SupabaseBackend()` once
-/// `supabase_flutter` is wired (see `supabase_backend.dart.example`).
+/// The backend the app talks to. Defaults to on-device storage; `main.dart`
+/// swaps in `SupabaseBackend()` at startup when SUPABASE_URL / SUPABASE_ANON_KEY
+/// are provided, so no-key runs and CI stay fully local.
 Backend appBackend = LocalBackend();

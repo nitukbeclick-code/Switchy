@@ -1,15 +1,14 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// TEMPLATE — not compiled (the `.example` extension keeps it out of the build).
-//
-// When you're ready to connect Supabase:
-//   1. add `supabase_flutter: ^2.5.0` to pubspec.yaml,
-//   2. rename this file to `supabase_backend.dart`,
-//   3. initialise Supabase in main() (see supabase/README.md),
-//   4. set `appBackend = SupabaseBackend();` in local_backend.dart.
+// The live Supabase [Backend]. Activated when SUPABASE_URL / SUPABASE_ANON_KEY
+// are provided at build time — see `main.dart`, which initialises Supabase and
+// sets `appBackend = SupabaseBackend()` only when those defines are present
+// (otherwise the app stays on [LocalBackend], so no-key runs and CI still work).
 //
 // Every query below maps 1:1 to a table/policy in supabase/schema.sql. RLS does
 // the auth — you never pass user_id for the current user on writes that the
 // policy scopes to auth.uid(); set it explicitly only where the row stores it.
+// `main.dart` does an anonymous sign-in at startup so auth.uid() is populated
+// without a login screen (enable "Anonymous sign-ins" in the Supabase dashboard).
 // ─────────────────────────────────────────────────────────────────────────────
 
 import 'package:supabase_flutter/supabase_flutter.dart';

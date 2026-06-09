@@ -62,6 +62,14 @@ macos/Flutter/ephemeral/
 *.jks
 google-services.json
 GoogleService-Info.plist
+# Build-time Supabase config (real values). The committed
+# dart_define.example.json is the template; copy it to dart_define.json.
+/dart_define.json
+
+# ── Supabase CLI ──────────────────────────────────────────────────────────────
+supabase/.branches/
+supabase/.temp/
+supabase/.env
 
 # ── Coverage ──────────────────────────────────────────────────────────────────
 coverage/

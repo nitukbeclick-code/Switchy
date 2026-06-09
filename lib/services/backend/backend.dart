@@ -145,10 +145,10 @@ class CommunityReply {
 
 /// The app's data backend — the seam between the UI and where shared data lives.
 ///
-/// [LocalBackend] keeps everything on-device (today's behaviour). A
-/// `SupabaseBackend` (see `supabase_backend.dart.example`) implements the *same*
-/// contract against the tables in `supabase/schema.sql`, so moving to the server
-/// is a one-line swap of [appBackend] — no screen has to change.
+/// [LocalBackend] keeps everything on-device (the default). `SupabaseBackend`
+/// (see `supabase_backend.dart`) implements the *same* contract against the
+/// tables in `supabase/schema.sql`; `main.dart` swaps in [appBackend] at startup
+/// when Supabase keys are provided — no screen has to change.
 ///
 /// Scope here is the user-owned data with clean mappings (leads, tracked plans,
 /// reviews); the community feed (posts/replies/media) is the next domain to add.

@@ -10,10 +10,12 @@ insert into storage.buckets (id, name, public)
 values ('community-media', 'community-media', true)
 on conflict (id) do nothing;
 
--- Anyone (incl. anon) can read media — the community feed is public.
-drop policy if exists "community_media_read" on storage.objects;
-create policy "community_media_read" on storage.objects
-  for select using (bucket_id = 'community-media');
+-- NOTE: no SELECT policy on purpose. This is a PUBLIC bucket, so objects are
+-- served via their public URL with no RLS SELECT policy required — and the app
+-- only ever reads media through the public URL stored in community_posts.media_url.
+-- A broad `for select using (bucket_id = 'community-media')` would additionally
+-- let clients *list* every file (advisor 0025_public_bucket_allows_listing), so
+-- it is intentionally omitted.
 
 -- Authenticated users may upload only into a folder named after their own uid,
 -- e.g.  community-media/<auth.uid()>/<filename>

@@ -9,6 +9,8 @@ import '../../widgets/app_button.dart';
 import '../../app_state.dart';
 import '../../data.dart';
 import '../../models.dart';
+import '../../services/backend/backend.dart';
+import '../../services/backend/local_backend.dart';
 import '../../components/logo_widget/logo_widget.dart';
 
 class LeadWidget extends StatefulWidget {
@@ -175,7 +177,6 @@ class _LeadWidgetState extends State<LeadWidget> {
                   HapticFeedback.lightImpact();
                   setState(() => _isSubmitting = true);
                   await Future.delayed(const Duration(milliseconds: 800));
-                  if (!context.mounted) return;
                   appState.submitLead(
                     name: _nameCtrl.text.trim(),
                     phone: _phoneCtrl.text.trim(),
@@ -184,6 +185,22 @@ class _LeadWidgetState extends State<LeadWidget> {
                     email: _emailCtrl.text.trim(),
                     callbackTime: _callbackTime,
                   );
+                  // Mirror the lead to the backend seam — a no-op locally today,
+                  // an insert into the `leads` table once SupabaseBackend is set.
+                  try {
+                    await appBackend.submitLead(LeadInput(
+                      name: _nameCtrl.text.trim(),
+                      phone: _phoneCtrl.text.trim(),
+                      email: _emailCtrl.text.trim(),
+                      provider: plan?.provider,
+                      planId: widget.planId,
+                      callbackTime: _callbackTime,
+                    ));
+                  } catch (_) {
+                    // Lead is already captured locally; don't block the user on a
+                    // backend hiccup.
+                  }
+                  if (!context.mounted) return;
                   context.goNamed('Success');
                 },
                 

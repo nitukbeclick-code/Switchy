@@ -36,6 +36,26 @@ class SupabaseBackend implements Backend {
   }
 
   @override
+  Future<({String name, String phone, String? email, int totalSavings})?> fetchProfile() async {
+    if (_uid == null) return null;
+    final row = await _db
+        .from('profiles')
+        .select('name, phone, email, total_savings')
+        .eq('id', _uid!)
+        .maybeSingle();
+    if (row == null) return null;
+    final name = row['name'] as String?;
+    final phone = row['phone'] as String?;
+    if (name == null || name.isEmpty || phone == null || phone.isEmpty) return null;
+    return (
+      name: name,
+      phone: phone,
+      email: row['email'] as String?,
+      totalSavings: (row['total_savings'] as num?)?.toInt() ?? 0,
+    );
+  }
+
+  @override
   Future<void> addSavings(int amount) async {
     if (_uid == null || amount <= 0) return;
     await _db.rpc('increment_savings', params: {'uid': _uid, 'delta': amount});

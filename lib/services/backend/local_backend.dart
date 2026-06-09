@@ -26,6 +26,9 @@ class LocalBackend implements Backend {
   }
 
   @override
+  Future<({String name, String phone, String? email, int totalSavings})?> fetchProfile() async => null;
+
+  @override
   Future<void> addSavings(int amount) async {
     // No-op locally.
   }

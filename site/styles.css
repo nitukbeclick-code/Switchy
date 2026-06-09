@@ -341,6 +341,47 @@ select.filter-search { cursor: pointer; -webkit-appearance: none; appearance: no
   .cmp-table th, .cmp-table td { padding: 10px 9px; font-size: 13.5px; }
 }
 
+/* ── App showcase page (app.html) ────────────────────────────────────────── */
+.lead-hero__cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 6px; }
+.app-group { margin-top: 30px; }
+.app-group .section__head { margin-bottom: 18px; }
+.app-group:first-of-type { margin-top: 8px; }
+
+/* Community feed preview */
+.feed { max-width: 680px; margin: 0 auto; }
+.feed-chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 18px; }
+.feed-chip { background: var(--white); border: 1px solid var(--line); color: var(--green-d); font-family: 'Rubik'; font-weight: 700; font-size: 13px; padding: 7px 14px; border-radius: 999px; cursor: pointer; transition: background .15s, color .15s, border-color .15s; }
+.feed-chip.active { background: var(--green); color: #fff; border-color: var(--green); }
+.feed-list { display: grid; gap: 12px; }
+.feed-post { background: var(--white); border: 1px solid var(--line); border-radius: 16px; padding: 16px 18px; box-shadow: 0 3px 10px rgba(14,58,38,.03); text-align: start; }
+.feed-post__head { display: flex; align-items: center; gap: 8px; font-size: 13px; margin-bottom: 8px; }
+.feed-ava { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--lime); color: var(--green-d); font-family: 'Rubik'; font-weight: 800; flex: none; }
+.feed-author { font-family: 'Rubik'; font-weight: 700; color: var(--green-d); }
+.feed-verified { color: var(--green); font-weight: 900; }
+.feed-chan { background: rgba(21,96,62,.08); color: var(--green); font-weight: 700; padding: 2px 9px; border-radius: 999px; font-size: 12px; }
+.feed-when { margin-inline-start: auto; color: var(--muted); }
+.feed-text { color: var(--ink); line-height: 1.55; }
+.feed-post__foot { display: flex; align-items: center; gap: 14px; margin-top: 10px; font-size: 13px; color: var(--muted); }
+.feed-like { font-weight: 700; }
+.feed-hot { background: rgba(201,236,75,.35); color: var(--green-d); font-weight: 700; padding: 2px 9px; border-radius: 999px; }
+.feed-reply { margin-inline-start: auto; color: var(--green); font-weight: 700; }
+.feed-empty { text-align: center; color: var(--muted); padding: 24px 0; }
+.feed-foot { text-align: center; color: var(--muted); font-size: 13px; margin-top: 16px; }
+
+/* AI advisor preview */
+.ai-demo { max-width: 600px; margin: 0 auto; }
+.ai-chat { display: grid; gap: 12px; background: var(--white); border: 1px solid var(--line); border-radius: 20px; padding: 20px; box-shadow: var(--shadow); }
+.ai-bubble { padding: 12px 16px; border-radius: 16px; line-height: 1.5; max-width: 82%; font-size: 15px; }
+.ai-bubble--bot { background: rgba(21,96,62,.07); color: var(--ink); border-bottom-inline-start: 4px solid var(--green); justify-self: start; border-bottom-left-radius: 4px; }
+.ai-bubble--me { background: var(--green); color: #fff; justify-self: end; border-bottom-right-radius: 4px; }
+.ai-chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 16px; }
+.ai-chip { background: var(--white); border: 1px solid var(--line); color: var(--green-d); font-weight: 600; font-size: 13px; padding: 7px 13px; border-radius: 999px; cursor: pointer; transition: background .15s, border-color .15s; }
+.ai-chip:hover { background: rgba(201,236,75,.25); border-color: var(--lime); }
+.ai-foot { text-align: center; color: var(--muted); font-size: 13px; margin-top: 14px; }
+@media (max-width: 640px) {
+  .ai-bubble { max-width: 90%; }
+}
+
 /* ── Scroll reveal ───────────────────────────────────────────────────── */
 .reveal { opacity: 0; transform: translateY(22px); transition: opacity .6s var(--ease), transform .6s var(--ease); }
 .reveal.in { opacity: 1; transform: none; }

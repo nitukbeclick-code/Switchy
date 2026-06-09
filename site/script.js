@@ -225,4 +225,62 @@
     picks.forEach((s) => s.addEventListener('change', render));
     render();
   }
+
+  // ── Community feed channel filter (app.html) ────────────────────────────────
+  const feedList = $('feedList');
+  if (feedList) {
+    const posts = Array.from(feedList.querySelectorAll('.feed-post'));
+    const chips = Array.from(document.querySelectorAll('.feed-chip'));
+    const empty = $('feedEmpty');
+    const filter = (chan) => {
+      let shown = 0;
+      posts.forEach((p) => {
+        const ok = chan === 'all' || p.dataset.chan === chan;
+        p.hidden = !ok;
+        if (ok) shown++;
+      });
+      if (empty) empty.hidden = shown > 0;
+    };
+    chips.forEach((chip) => chip.addEventListener('click', () => {
+      chips.forEach((c) => c.classList.toggle('active', c === chip));
+      filter(chip.dataset.chan);
+    }));
+  }
+
+  // ── AI advisor demo chips (app.html) ────────────────────────────────────────
+  const aiChat = $('aiChat');
+  if (aiChat) {
+    const replies = {
+      'מה הכי משתלם': 'בלי להיכנס לאפליקציה אני נותן הערכה — אבל בתוך חוסך אני קורא את החשבון האמיתי שלך וממליץ מדויק. בממוצע אנשים חוסכים ₪900–₪1,200 בשנה. 💰',
+      'סלולר': 'יש מסלולי סלולר מ-₪15/חודש, וכמה 5G ללא הגבלה ב-₪29 ללא התחייבות. רוצה שאמצא לך את הזול ביותר לפי השימוש שלך? 📱',
+      'אינטרנט': 'סיב אופטי עד 1000Mb מתחיל סביב ₪89/חודש — שימו לב למחיר אחרי המבצע. אני משווה גם את זה. 🌐',
+      'ללא התחייבות': 'רוב המסלולים הזולים היום הם ללא התחייבות בכלל — אפשר לעבור ולבטל בכל עת. אסנן רק כאלה? ✅',
+      'חו': 'לחו״ל יש eSIM נוחים: למשל 10GB לאירופה סביב ₪35 לחבילה, בלי הפתעות רומינג. ✈️',
+      'פחות מ': 'יש לא מעט מסלולים מתחת ל-₪50 — סלולר, ואפילו אינטרנט בסיסי. נסמן תקציב ונראה הכל. 💸',
+    };
+    const pick = (q) => {
+      for (const key of Object.keys(replies)) if (q.indexOf(key) !== -1) return replies[key];
+      return 'שאלה מצוינת! באפליקציה אני עונה על זה לפי הנתונים האמיתיים שלך וממליץ על המסלול המשתלם ביותר. ✨';
+    };
+    const addBubble = (cls, text) => {
+      const b = document.createElement('div');
+      b.className = 'ai-bubble ' + cls;
+      b.textContent = text;
+      aiChat.appendChild(b);
+      b.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    };
+    document.querySelectorAll('.ai-chip').forEach((chip) => {
+      chip.setAttribute('role', 'button');
+      chip.setAttribute('tabindex', '0');
+      const ask = () => {
+        const q = chip.textContent.replace(/^[^א-ת]+/, '').trim();
+        addBubble('ai-bubble--me', q);
+        setTimeout(() => addBubble('ai-bubble--bot', pick(q)), 450);
+      };
+      chip.addEventListener('click', ask);
+      chip.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); ask(); }
+      });
+    });
+  }
 })();

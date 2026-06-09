@@ -181,6 +181,7 @@ const nav = `  <header class="nav" id="nav">
         <a href="plans.html">כל החבילות</a>
         <a href="providers.html">ספקים</a>
         <a href="compare.html">השוואה</a>
+        <a href="app.html">האפליקציה</a>
         <a href="guides.html">מדריכים</a>
         <a href="index.html#calculator">מחשבון</a>
       </nav>
@@ -191,6 +192,7 @@ const nav = `  <header class="nav" id="nav">
       <a href="plans.html">כל החבילות</a>
       <a href="providers.html">ספקים</a>
       <a href="compare.html">השוואה</a>
+      <a href="app.html">האפליקציה</a>
       <a href="guides.html">מדריכים</a>
       <a href="index.html#calculator">מחשבון</a>
       <a class="btn btn--primary" href="#cta">השוו עכשיו</a>
@@ -209,7 +211,7 @@ const footer = `  <footer class="footer">
       </nav>
       <nav class="footer__links footer__col" aria-label="החברה">
         <h4>החברה</h4>
-        <a href="about.html">אודות</a><a href="guides.html">מדריכים</a><a href="privacy.html">מדיניות פרטיות</a><a href="terms.html">תנאי שימוש</a>
+        <a href="about.html">אודות</a><a href="app.html">האפליקציה</a><a href="guides.html">מדריכים</a><a href="privacy.html">מדיניות פרטיות</a><a href="terms.html">תנאי שימוש</a>
       </nav>
       <div class="footer__contact footer__col">
         <h4>יצירת קשר</h4>
@@ -951,6 +953,152 @@ ${footer}
 `;
 }
 
+// ── App showcase page (mirrors the in-app feature set) ──────────────────────
+// Feature groups — titles & copy match the app's own Hebrew screen names so the
+// site and the app stay in sync.
+const APP_GROUPS = [
+  ['🔎', 'השוואה והמלצה', [
+    ['📝', 'שאלון חיסכון', 'כמה שאלות קצרות על השימוש שלכם — ומקבלים התאמה אישית, לא רשימה גנרית.'],
+    ['✦', 'ההתאמות שלי', 'דאשבורד חכם עם המסלול המומלץ לכל קטגוריה, אחוז התאמה והחיסכון הצפוי.'],
+    ['🤖', 'חוסך AI', 'יועץ התקשורת החכם — שואלים בשפה חופשית ("מה הכי משתלם לי?") ומקבלים תשובה מנומקת.'],
+    ['🧮', 'מחשבון מעבר', 'מזינים חשבון נוכחי, מסלול חדש ודמי ניתוק — ורואים תוך כמה זמן המעבר מחזיר את עצמו.'],
+    ['📍', 'בדיקת זמינות', 'בודקים אילו ספקי אינטרנט וסיב זמינים בכתובת שלכם — מהירות, מחיר ואמינות.'],
+  ]],
+  ['💰', 'חיסכון ומעקב', [
+    ['🧾', 'החשבונות שלי', 'מזינים כמה אתם משלמים בכל קטגוריה ורואים מיד את ההוצאה הכוללת והחיסכון הפוטנציאלי.'],
+    ['📊', 'החיסכון שלי', 'חיסכון שנתי פוטנציאלי, ההזדמנות הכי גדולה שלכם ופירוט מלא לפי קטגוריה.'],
+    ['⏰', 'התראת חידוש', 'מזכירים לכם ~21 יום לפני שהמבצע נגמר — לפני שהמחיר קופץ בחשבון.'],
+    ['📋', 'טבלת השוואה מלאה', 'לקראת חידוש — כל החלופות מדורגות לפי חיסכון והתאמה, עם הסבר לכל המלצה.'],
+    ['🚦', 'מעקב מעבר', 'מעקב שלב-אחר-שלב על המעבר: הצטרפות, אישור, ניוד והשלמה — בזמן אמת.'],
+  ]],
+  ['💬', 'קהילה ואמון', [
+    ['👥', 'קהילת חוסך', 'פיד פעיל עם ערוצים לכל נושא — המלצות, סלולר, אינטרנט, חו״ל ועזרה בניתוק.'],
+    ['💬', 'הצ׳אט הקהילתי', 'שואלים את הקהילה, מגיבים, משתפים תמונה או הקלטה — ומסמנים פוסטים לשמירה.'],
+    ['⭐', 'דירוגי ספקים', 'לוח דירוגים של כל החברות: דירוג כולל, מחיר, שירות, כיסוי ומהירות — מלקוחות אמיתיים.'],
+    ['🎧', 'דנה — ליווי אישי', 'נציגה שמלווה את המעבר בצ׳אט: סטטוס, ניוד מספר וכל שאלה — "מלווים, לא מנתקים".'],
+  ]],
+  ['🤝', 'המעבר עצמו', [
+    ['📱', 'בקשת ניוד מספר', 'שומרים על אותו מספר. ממלאים טופס קצר ואנחנו מבצעים את הניוד מול הספק הישן.'],
+    ['🛟', 'מעבר מלווה', 'אנחנו עושים את העבודה — בלי כאב ראש, בלי עמלות, ועם ערבות שלא תחויבו פעמיים.'],
+  ]],
+];
+
+// Sample community posts for the live feed preview (representative content).
+const COMMUNITY_POSTS = [
+  ['עזרה בניתוק', 'נועה ב.', true, 'עברתי מהוט מובייל לגולן ב-5 דקות, הניוד לקח יומיים והמספר נשאר. ממליצה בחום 🙌', 42, 'לפני שעה'],
+  ['סלולר', 'אורי כהן', false, 'מישהו יודע אם המבצע של 5G ללא הגבלה ב-₪29 עדיין רץ? קיבלתי התראת חידוש מחוסך', 18, 'לפני 3 שעות'],
+  ['אינטרנט', 'דנה לוי', true, 'סיב אופטי גיגה ב-₪89 — אחרי שנה קפץ ל-₪139. עברתי וחסכתי ₪600 בשנה. תבדקו את החשבון!', 67, 'אתמול'],
+  ['חו״ל', 'יוסי מ.', false, 'eSIM לאירופה — 10GB ב-₪35 עבד מצוין בכל המדינות. בלי הפתעות רומינג ✈️', 31, 'אתמול'],
+  ['המלצות', 'משפחת אברהם', true, 'ריכזנו 4 קווים בחבילה משפחתית וחסכנו ₪80 בחודש. הטיפ: עקבו אחרי תאריך החידוש של כל קו', 53, 'לפני יומיים'],
+  ['טלוויזיה', 'רותם ש.', false, 'מישהו השווה בין החבילות המשולבות? שווה לקחת אינטרנט+טלוויזיה יחד או בנפרד?', 12, 'לפני יומיים'],
+];
+
+// AI advisor preview — a short scripted exchange + quick-start chips.
+const AI_CHIPS = ['✨ מה הכי משתלם לי?', '📱 סלולר הכי זול', '🌐 אינטרנט 1000Mb', '✅ ללא התחייבות', '✈️ חבילת חו״ל', '💰 פחות מ-₪50'];
+
+function appPage() {
+  const url = `${SITE}/app.html`;
+  const groups = APP_GROUPS.map(([gIcon, gTitle, items]) => {
+    const cards = items.map(([icon, h, p]) =>
+      `          <article class="feature reveal"><span class="feature__icon">${icon}</span><h3>${esc(h)}</h3><p>${esc(p)}</p></article>`).join('\n');
+    return `      <div class="app-group">
+        <header class="section__head reveal"><span class="eyebrow">${gIcon} ${esc(gTitle)}</span></header>
+        <div class="features">
+${cards}
+        </div>
+      </div>`;
+  }).join('\n');
+
+  const channels = ['הכל', 'המלצות', 'סלולר', 'אינטרנט', 'טלוויזיה', 'חו״ל', 'עזרה בניתוק'];
+  const chanChips = channels.map((c, i) =>
+    `<button class="feed-chip${i === 0 ? ' active' : ''}" data-chan="${i === 0 ? 'all' : esc(c)}">${esc(c)}</button>`).join('');
+  const posts = COMMUNITY_POSTS.map(([chan, author, verified, text, likes, when]) => {
+    const initials = author.trim().charAt(0);
+    const hot = likes >= 40 ? '<span class="feed-hot">🔥 טרנדינג</span>' : '';
+    return `          <article class="feed-post" data-chan="${esc(chan)}">
+            <div class="feed-post__head"><span class="feed-ava" aria-hidden="true">${esc(initials)}</span><span class="feed-author">${esc(author)}${verified ? ' <span class="feed-verified" title="משתמש מאומת">✓</span>' : ''}</span><span class="feed-chan">${esc(chan)}</span><span class="feed-when">${esc(when)}</span></div>
+            <p class="feed-text">${esc(text)}</p>
+            <div class="feed-post__foot"><span class="feed-like">❤ ${likes}</span>${hot}<span class="feed-reply">💬 הגב/י</span></div>
+          </article>`;
+  }).join('\n');
+
+  const aiChips = AI_CHIPS.map((c) => `<span class="ai-chip">${esc(c)}</span>`).join('');
+
+  return `<!DOCTYPE html>
+<html lang="he" dir="rtl">
+${head('האפליקציה של חוסך — כל היכולות | חוסך', 'הכירו את אפליקציית חוסך: חוסך AI, קהילה והצ׳אט הקהילתי, מעקב מעבר, התראות חידוש, דירוגי ספקים, בדיקת זמינות, מחשבון מעבר וניוד מספר — הכל במקום אחד.', url)}
+<body id="top">
+${nav}
+  <main>
+    <section class="lead-hero">
+      <div class="container">
+        <p class="crumbs"><a href="index.html">דף הבית</a> ← האפליקציה</p>
+        <h1>האפליקציה ש<span class="hl">עושה את העבודה</span></h1>
+        <p>חוסך היא לא עוד טבלת השוואה — היא מלווה אתכם מההשוואה ועד החיסכון, ואחר כך דואגת שלא תשלמו יותר מדי שוב. כל היכולות, בעברית, במקום אחד.</p>
+        <div class="lead-hero__cta">
+          <a class="btn btn--primary btn--lg" href="#cta">קבלו גישה מוקדמת</a>
+          <a class="btn btn--ghost btn--lg" href="plans.html">או דפדפו במסלולים</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container">
+        <header class="section__head reveal"><span class="eyebrow">מה יש באפליקציה</span><h2>כל הכלים לחסוך — בלי כאב ראש</h2><p>כל יכולת שתראו כאן קיימת באפליקציה עצמה.</p></header>
+${groups}
+      </div>
+    </section>
+
+    <section class="section section--alt" id="community">
+      <div class="container">
+        <header class="section__head reveal"><span class="eyebrow">💬 קהילת חוסך</span><h2>הצ׳אט הקהילתי — חוכמת ההמון</h2><p>שאלות, טיפים ודירוגים מאנשים אמיתיים שכבר עברו. בחרו ערוץ כדי לראות מה מדברים עליו עכשיו.</p></header>
+        <div class="feed reveal">
+          <div class="feed-chips">${chanChips}</div>
+          <div class="feed-list" id="feedList">
+${posts}
+          </div>
+          <p class="feed-empty" id="feedEmpty" hidden>אין פוסטים בערוץ הזה עדיין — באפליקציה אפשר לפתוח את הראשון.</p>
+          <p class="feed-foot">פיד לדוגמה. הקהילה המלאה — עם פרסום, תגובות, תמונות והקלטות — נמצאת באפליקציה.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container">
+        <header class="section__head reveal"><span class="eyebrow">🤖 חוסך AI</span><h2>יועץ התקשורת החכם שלכם</h2><p>שואלים בשפה חופשית — מקבלים המלצה מנומקת עם חיסכון שנתי.</p></header>
+        <div class="ai-demo reveal">
+          <div class="ai-chat" id="aiChat">
+            <div class="ai-bubble ai-bubble--bot">היי! אני חוסך AI — יועץ התקשורת החכם שלך. מה תרצו לבדוק היום?</div>
+            <div class="ai-bubble ai-bubble--me">מה הכי משתלם לי בסלולר עם 5G?</div>
+            <div class="ai-bubble ai-bubble--bot">מצאתי לך 3 מסלולי 5G מובילים — הזול ביותר ב-₪29/חודש ללא התחייבות, חיסכון שנתי של עד ₪1,080 לעומת חשבון ממוצע. רוצה שאשווה ביניהם? 📊</div>
+          </div>
+          <div class="ai-chips" aria-label="שאלות מהירות לדוגמה">${aiChips}</div>
+          <p class="ai-foot">דמו. השיחה המלאה והחיה — באפליקציה.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="cta" id="cta">
+      <div class="container cta__inner reveal">
+        <h2>רוצים את האפליקציה?</h2>
+        <p>השאירו פרטים ונעדכן אתכם ברגע שהיא זמינה — חינם, בלי התחייבות.</p>
+        <form class="cta__form" id="leadForm" novalidate>
+          <input type="text" id="leadName" name="name" placeholder="שם מלא" autocomplete="name" required />
+          <input type="tel" id="leadPhone" name="phone" placeholder="טלפון (050-0000000)" autocomplete="tel" inputmode="tel" required />
+          <button class="btn btn--primary btn--lg" type="submit">עדכנו אותי</button>
+        </form>
+        <p class="cta__note" id="leadNote" role="status" aria-live="polite"></p>
+        <a class="cta__wa" href="https://wa.me/972500000000" target="_blank" rel="noopener"><span aria-hidden="true">💬</span> מעדיפים וואטסאפ? דברו איתנו</a>
+      </div>
+    </section>
+  </main>
+${footer}
+  <script src="script.js" defer></script>
+</body>
+</html>
+`;
+}
+
 // ── Write pages ────────────────────────────────────────────────────────────
 for (const c of categories) {
   fs.writeFileSync(path.join(__dirname, `${c.slug}.html`), page(c));
@@ -974,6 +1122,7 @@ fs.writeFileSync(path.join(__dirname, 'guides.html'), guidesIndexPage());
 fs.writeFileSync(path.join(__dirname, 'plans.html'), plansPage());
 fs.writeFileSync(path.join(__dirname, 'providers.html'), providersIndexPage());
 fs.writeFileSync(path.join(__dirname, 'compare.html'), comparePage());
+fs.writeFileSync(path.join(__dirname, 'app.html'), appPage());
 fs.writeFileSync(path.join(__dirname, '404.html'), notFoundPage());
 
 // ── Refresh sitemap (home + category pages) ─────────────────────────────────
@@ -982,6 +1131,7 @@ const locs = [
   `${SITE}/plans.html`,
   `${SITE}/providers.html`,
   `${SITE}/compare.html`,
+  `${SITE}/app.html`,
   `${SITE}/guides.html`,
   `${SITE}/about.html`,
   ...categories.map((c) => `${SITE}/${c.slug}.html`),

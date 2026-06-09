@@ -135,6 +135,23 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets('renewal screen opens a tracked plan\'s full comparison table', (tester) async {
+    await _bootApp(tester);
+    AppState().addMyPlan(category: 'cellular', provider: 'פרטנר', planName: 'מסלול', monthlyPrice: 120, promoEndDate: '2026-12-31');
+
+    _go(tester, '/renewal');
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    await tester.tap(find.text('טבלת השוואה מלאה'));
+    await tester.pump(const Duration(milliseconds: 700));
+    await tester.pump(const Duration(milliseconds: 700));
+
+    // The report hero is up ("המסלול שלך היום" is unique to it).
+    expect(find.text('המסלול שלך היום'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('home savings hero is honest about estimate vs personalized', (tester) async {
     await _bootApp(tester);
     _go(tester, '/home');

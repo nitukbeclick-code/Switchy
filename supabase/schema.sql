@@ -268,6 +268,26 @@ select
 from public.provider_reviews
 group by provider;
 
+-- ── plan_views  (demand analytics) ──────────────────────────────────────────
+-- Written on every plan detail page-open. Lets the team rank plans by interest.
+-- RLS: anon insert allowed; no select policy (service_role reads via dashboard).
+create table if not exists public.plan_views (
+  id         uuid primary key default gen_random_uuid(),
+  user_id    uuid references auth.users(id) on delete set null,
+  plan_id    text not null,
+  provider   text not null,
+  category   text not null,
+  viewed_at  timestamptz not null default now()
+);
+
+alter table public.plan_views enable row level security;
+
+create policy "plan_views_insert_anyone" on public.plan_views
+  for insert with check (true);
+
+create index if not exists plan_views_plan_idx on public.plan_views (plan_id, viewed_at desc);
+create index if not exists plan_views_provider_idx on public.plan_views (provider, viewed_at desc);
+
 -- Atomically increments a user's total_savings. Called by the Flutter app when
 -- the user confirms they switched plans (tracker step 3 → 4).
 create or replace function public.increment_savings(uid uuid, delta integer)

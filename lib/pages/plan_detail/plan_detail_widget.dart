@@ -14,6 +14,7 @@ import '../../models.dart';
 import '../../data.dart';
 import '../../components/logo_widget/logo_widget.dart';
 import '../../services/recommendation_engine.dart';
+import '../../services/backend/local_backend.dart';
 
 class PlanDetailWidget extends StatefulWidget {
   const PlanDetailWidget({super.key, required this.planId});
@@ -30,6 +31,15 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
   @override
   void initState() {
     super.initState();
+    // Track this plan view for demand analytics
+    final _plan = planById(widget.planId);
+    if (_plan != null) {
+      appBackend.trackPlanView(
+        planId: widget.planId,
+        provider: _plan.provider,
+        category: _plan.cat,
+      ).catchError((_) {});
+    }
     // Seed viewer count based on plan id hash to be consistent per plan
     final seed = widget.planId.codeUnits.fold(0, (s, c) => s + c);
     _viewers = 3 + (seed % 12);

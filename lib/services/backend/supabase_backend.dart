@@ -36,6 +36,16 @@ class SupabaseBackend implements Backend {
   }
 
   @override
+  Future<void> trackPlanView({required String planId, required String provider, required String category}) async {
+    await _db.from('plan_views').insert({
+      'plan_id': planId,
+      'provider': provider,
+      'category': category,
+      if (_uid != null) 'user_id': _uid,
+    });
+  }
+
+  @override
   Future<({String name, String phone, String? email, int totalSavings})?> fetchProfile() async {
     if (_uid == null) return null;
     final row = await _db

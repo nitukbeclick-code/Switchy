@@ -183,6 +183,10 @@ abstract interface class Backend {
   /// Persists the renewal-reminders opt-in flag to `profiles`. Fire-and-forget.
   Future<void> setRenewalReminder(bool enabled);
 
+  // ── Analytics ────────────────────────────────────────────────────────────────
+  /// Records a plan page-view for demand analytics. Fire-and-forget.
+  Future<void> trackPlanView({required String planId, required String provider, required String category});
+
   // ── Leads ──────────────────────────────────────────────────────────────────
   Future<void> submitLead(LeadInput lead);
 

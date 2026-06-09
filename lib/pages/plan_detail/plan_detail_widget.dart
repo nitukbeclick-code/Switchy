@@ -56,6 +56,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
           backgroundColor: ffTheme.primary,
           leading: IconButton(
             icon: const Icon(Icons.arrow_back_ios_rounded, color: Colors.white),
+            tooltip: 'חזרה',
             onPressed: () => context.pop(),
           ),
         ),
@@ -111,6 +112,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                 backgroundColor: ffTheme.primary,
                 leading: IconButton(
                   icon: const Icon(Icons.arrow_back_ios_rounded, color: Colors.white),
+                  tooltip: 'חזרה',
                   onPressed: () => context.pop(),
                 ),
                 actions: [

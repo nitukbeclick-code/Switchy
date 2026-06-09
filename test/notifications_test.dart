@@ -63,6 +63,13 @@ void main() {
     expect(computeNotifications(s).any((n) => n.kind == NotifKind.savings), isTrue);
   });
 
+  test('default (non-personalized) bills do not produce a savings insight', () {
+    final s = AppState();
+    // Fresh state has seed-default bills but the user never entered one.
+    expect(s.billsPersonalized, isFalse);
+    expect(computeNotifications(s).any((n) => n.kind == NotifKind.savings), isFalse);
+  });
+
   test('dismissing a notification removes it and lowers the count', () {
     final s = AppState();
     s.addMyPlan(category: 'cellular', provider: 'גולן טלקום', planName: 'y', monthlyPrice: 39, promoEndDate: inDays(7));

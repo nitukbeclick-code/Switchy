@@ -76,14 +76,18 @@ List<AppNotification> computeNotifications(AppState s) {
     ));
   }
 
-  // 3) A single top-savings insight across the user's active categories.
+  // 3) A single top-savings insight across the user's active categories — only
+  // once the user has entered a real bill, so we never quote a specific saving
+  // figure based on the seed defaults.
   PlanMatch? topSaving;
-  for (final c in categories) {
-    final bill = s.currentBill(c.id);
-    if (bill <= 0) continue;
-    final m = RecommendationEngine.bestMatch(_profile(s, c.id, bill));
-    if (m == null || m.annualSaving <= 0) continue;
-    if (topSaving == null || m.annualSaving > topSaving.annualSaving) topSaving = m;
+  if (s.billsPersonalized) {
+    for (final c in categories) {
+      final bill = s.currentBill(c.id);
+      if (bill <= 0) continue;
+      final m = RecommendationEngine.bestMatch(_profile(s, c.id, bill));
+      if (m == null || m.annualSaving <= 0) continue;
+      if (topSaving == null || m.annualSaving > topSaving.annualSaving) topSaving = m;
+    }
   }
   if (topSaving != null && topSaving.annualSaving >= 300) {
     out.add(AppNotification(

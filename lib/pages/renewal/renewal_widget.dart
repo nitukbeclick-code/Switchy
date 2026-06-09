@@ -33,8 +33,15 @@ class _RenewalWidgetState extends State<RenewalWidget> {
   Future<void> _loadRemote() async {
     final remote = await appBackend.fetchTrackedPlans();
     if (!mounted || remote.isEmpty) return;
-    final localIds = AppState().myPlans.map((p) => p.id).toSet();
-    final newOnes = remote.where((p) => !localIds.contains(p.id)).toList();
+    // Dedup by content rather than ID — local plans use a timestamp ID while
+    // Supabase generates UUIDs, so they would never match by ID alone.
+    final localKeys = AppState()
+        .myPlans
+        .map((p) => '${p.provider}|${p.planName}|${p.category}')
+        .toSet();
+    final newOnes = remote
+        .where((p) => !localKeys.contains('${p.provider}|${p.planName}|${p.category}'))
+        .toList();
     if (newOnes.isEmpty) return;
     setState(() => _remoteOnly = newOnes);
   }

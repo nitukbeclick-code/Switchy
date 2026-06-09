@@ -6,6 +6,7 @@ import '../../core/nav.dart';
 import '../../app_state.dart';
 import '../../data.dart';
 import '../../services/recommendation_engine.dart';
+import '../../services/savings_summary.dart';
 import '../../widgets/app_card.dart';
 import '../../widgets/stat_pill.dart';
 import '../../widgets/empty_state.dart';
@@ -18,32 +19,25 @@ class MatchesWidget extends StatelessWidget {
     final ffTheme = AppTheme.of(context);
     final appState = Provider.of<AppState>(context);
 
-    // Compute all matches once — no engine calls inside nested builders.
-    final List<({String catId, String catName, String catIcon, PlanMatch match})> catMatches = [];
-    for (final c in categories) {
-      final profile = MatchProfile(
-        category: c.id,
-        currentBill: appState.currentBill(c.id),
-        budget: (appState.quizCompleted && appState.quizCat == c.id) ? appState.quizBudget : 0,
-        priority: priorityFromId(appState.quizPriority),
-        lines: appState.quizLines,
-        wants5G: appState.wants5G,
-        wantsAbroad: appState.wantsAbroad,
-        wantsNoCommit: appState.wantsNoCommit,
-      );
-      final match = RecommendationEngine.bestMatch(profile);
-      if (match != null) {
-        catMatches.add((catId: c.id, catName: c.name, catIcon: c.icon, match: match));
-      }
+    // One source of truth: the same engine figures as the home hero, the
+    // /savings dashboard and the bills screen (see computeSavings) — so the
+    // headline saving here can't disagree with those screens.
+    final summary = computeSavings(appState);
+    final catMatches = <({String catId, String catName, String catIcon, PlanMatch match})>[];
+    for (final cs in summary.categories) {
+      final best = cs.best;
+      if (best == null) continue; // no bill entered for this category
+      final cat = categoryById(cs.categoryId);
+      catMatches.add((
+        catId: cs.categoryId,
+        catName: cat?.name ?? cs.categoryId,
+        catIcon: cat?.icon ?? '•',
+        match: best,
+      ));
     }
 
-    // Total annual saving only for categories where user has a bill.
-    final totalAnnualSaving = catMatches.fold<int>(0, (sum, item) {
-      final hasBill = appState.currentBill(item.catId) > 0;
-      return sum + (hasBill ? item.match.annualSaving : 0);
-    });
-
-    final analyzedCount = categories.where((c) => appState.currentBill(c.id) > 0).length;
+    final totalAnnualSaving = summary.totalAnnualPotential;
+    final analyzedCount = summary.categories.where((c) => c.hasBill).length;
 
     return Scaffold(
       backgroundColor: ffTheme.background,

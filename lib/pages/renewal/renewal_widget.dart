@@ -482,7 +482,7 @@ class _ReminderTile extends StatelessWidget {
       ),
       child: SwitchListTile(
         value: appState.renewalReminders,
-        onChanged: (v) => appState.setRenewalReminders(v),
+        onChanged: (v) { appState.setRenewalReminders(v); appBackend.setRenewalReminder(v).catchError((_) {}); },
         activeColor: ffTheme.primary,
         title: Text('תזכורות חידוש',
             style: ffTheme.titleSmall

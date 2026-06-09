@@ -13,6 +13,7 @@ import '../../services/recommendation_engine.dart';
 import '../../services/renewal_report.dart';
 import '../../services/reminder_schedule.dart';
 import '../../services/provider_ratings.dart';
+import '../../services/backend/local_backend.dart';
 
 /// The full, fresh comparison table for a single tracked plan that is about to
 /// renew — every alternative in its category ranked by fit, with the annual
@@ -516,6 +517,7 @@ class _ReminderCta extends StatelessWidget {
                   child: ElevatedButton.icon(
                     onPressed: () {
                       appState.setRenewalReminders(true);
+                      appBackend.setRenewalReminder(true).catchError((_) {});
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: const Text('תזכורת חידוש הופעלה — נדאג שלא תפספס'),

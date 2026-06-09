@@ -51,6 +51,15 @@ class SupabaseBackend implements Backend {
   }
 
   @override
+  Future<void> setRenewalReminder(bool enabled) async {
+    if (_uid == null) return;
+    await _db.from('profiles').upsert({
+      'id': _uid,
+      'renewal_reminders': enabled,
+    }, onConflict: 'id');
+  }
+
+  @override
   Future<void> upsertQuiz(Map<String, dynamic> quiz) async {
     if (_uid == null) return;
     await _db.from('profiles').upsert({

@@ -177,6 +177,9 @@ abstract interface class Backend {
   /// Persists quiz preferences to `profiles.quiz`. Fire-and-forget.
   Future<void> upsertQuiz(Map<String, dynamic> quiz);
 
+  /// Persists the renewal-reminders opt-in flag to `profiles`. Fire-and-forget.
+  Future<void> setRenewalReminder(bool enabled);
+
   // ── Leads ──────────────────────────────────────────────────────────────────
   Future<void> submitLead(LeadInput lead);
 

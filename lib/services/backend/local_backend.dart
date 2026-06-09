@@ -44,6 +44,11 @@ class LocalBackend implements Backend {
   }
 
   @override
+  Future<void> setRenewalReminder(bool enabled) async {
+    // No-op locally.
+  }
+
+  @override
   Future<void> submitLead(LeadInput lead) async {
     _leads.add(lead);
   }

@@ -231,4 +231,22 @@ void main() {
 
     expect(tester.takeException(), isNull);
   });
+
+  // ── Test 14: Savings snapshot ────────────────────────────────────────────
+  testWidgets('14. Savings snapshot renders without exceptions', (tester) async {
+    await _bootApp(tester);
+    AppState().setCurrentBill('cellular', 200);
+    AppState().addMyPlan(
+        category: 'internet',
+        provider: 'בזק',
+        planName: 'גיגה',
+        monthlyPrice: 230,
+        promoEndDate: '2026-12-31');
+
+    _navigateTo(tester, '/savings');
+    await tester.pump(const Duration(milliseconds: 700));
+    await tester.pump(const Duration(milliseconds: 700));
+
+    expect(tester.takeException(), isNull);
+  });
 }

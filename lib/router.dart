@@ -9,6 +9,7 @@ import 'pages/home/home_widget.dart';
 import 'pages/quiz/quiz_widget.dart';
 import 'pages/results/results_widget.dart';
 import 'pages/search/search_widget.dart';
+import 'pages/savings/savings_widget.dart';
 import 'pages/plan_detail/plan_detail_widget.dart';
 import 'pages/compare/compare_widget.dart';
 import 'pages/lead/lead_widget.dart';
@@ -59,6 +60,7 @@ GoRouter createRouter() => GoRouter(
         GoRoute(path: '/quiz', name: 'Quiz', builder: (_, __) => const QuizWidget()),
         GoRoute(path: '/results', name: 'Results', builder: (_, __) => const ResultsWidget()),
         GoRoute(path: '/search', name: 'Search', builder: (_, __) => const SearchWidget()),
+        GoRoute(path: '/savings', name: 'Savings', builder: (_, __) => const SavingsWidget()),
         GoRoute(path: '/plan/:planId', name: 'PlanDetail', builder: (_, s) => PlanDetailWidget(planId: s.pathParameters['planId']!)),
         GoRoute(path: '/compare', name: 'Compare', builder: (_, __) => const CompareWidget()),
         GoRoute(path: '/lead/:planId', name: 'Lead', builder: (_, s) => LeadWidget(planId: s.pathParameters['planId']!)),

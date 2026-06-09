@@ -466,7 +466,12 @@ class _HomeWidgetState extends State<HomeWidget> {
       return sum + ((bill - minPrice) * 12).clamp(0, 999999);
     });
 
-    return Container(
+    return GestureDetector(
+      onTap: () {
+        HapticFeedback.lightImpact();
+        context.pushNamed('Savings');
+      },
+      child: Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -519,6 +524,7 @@ class _HomeWidgetState extends State<HomeWidget> {
             ),
           ),
         ],
+      ),
       ),
     )
         .animate()

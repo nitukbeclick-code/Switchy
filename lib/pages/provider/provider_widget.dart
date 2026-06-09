@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
 import '../../theme/app_theme.dart';
 import '../../core/nav.dart';
 import '../../app_state.dart';
@@ -70,6 +71,14 @@ class ProviderWidget extends StatelessWidget {
 
     final catCount = presentCatIds.length;
 
+    // Cheapest plan price (guard against empty) for the share growth hook.
+    final cheapest = plans.isEmpty
+        ? 0
+        : plans.map((p) => p.price).reduce((a, b) => a < b ? a : b);
+    final shareText =
+        'בדקו את $providerName בחוסך — דירוג ${rating.stars.toStringAsFixed(1)}★, '
+        '${plans.length} מסלולים מ-₪$cheapest. 💚';
+
     return Scaffold(
       backgroundColor: ffTheme.background,
       body: plans.isEmpty
@@ -85,6 +94,7 @@ class ProviderWidget extends StatelessWidget {
                     rating: rating,
                     ffTheme: ffTheme,
                     onBack: () => context.safePop(),
+                    shareText: shareText,
                   ),
                 ),
 
@@ -203,6 +213,7 @@ class _HeroHeader extends StatelessWidget {
     required this.rating,
     required this.ffTheme,
     required this.onBack,
+    required this.shareText,
   });
 
   final String providerName;
@@ -211,6 +222,7 @@ class _HeroHeader extends StatelessWidget {
   final ProviderRating rating;
   final AppTheme ffTheme;
   final VoidCallback onBack;
+  final String shareText;
 
   @override
   Widget build(BuildContext context) {
@@ -226,15 +238,23 @@ class _HeroHeader extends StatelessWidget {
         bottom: false,
         child: Column(
           children: [
-            // Back button row
-            Align(
-              alignment: AlignmentDirectional.centerStart,
-              child: IconButton(
-                icon: const Icon(Icons.arrow_back_ios_rounded,
-                    color: Colors.white),
-                tooltip: 'חזרה',
-                onPressed: onBack,
-              ),
+            // Back + share row
+            Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.arrow_back_ios_rounded,
+                      color: Colors.white),
+                  tooltip: 'חזרה',
+                  onPressed: onBack,
+                ),
+                const Spacer(),
+                IconButton(
+                  icon: const Icon(Icons.ios_share_rounded,
+                      color: Colors.white),
+                  tooltip: 'שתף',
+                  onPressed: () => Share.share(shareText),
+                ),
+              ],
             ),
             const SizedBox(height: 8),
             LogoWidget(provider: providerName, size: 64)

@@ -70,6 +70,10 @@ GoogleService-Info.plist
 supabase/.branches/
 supabase/.temp/
 supabase/.env
+supabase/functions/.env
+supabase/functions/**/.env
+# but keep committed env *templates* (the .env.* rule above would hide them)
+!**/.env.example
 
 # ── Coverage ──────────────────────────────────────────────────────────────────
 coverage/

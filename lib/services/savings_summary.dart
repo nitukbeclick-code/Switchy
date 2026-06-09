@@ -43,7 +43,6 @@ class SavingsSummary {
   }
 
   bool get hasAnyBill => categories.any((c) => c.hasBill);
-  int get opportunityCount => categories.where((c) => c.hasOpportunity).length;
 }
 
 /// Compute the savings summary for [s] across all categories.

@@ -11,6 +11,7 @@ import '../../models.dart';
 import '../../components/logo_widget/logo_widget.dart';
 import '../../services/recommendation_engine.dart';
 import '../../services/notifications.dart';
+import '../../services/savings_summary.dart';
 
 class HomeWidget extends StatefulWidget {
   const HomeWidget({super.key});
@@ -456,15 +457,9 @@ class _HomeWidgetState extends State<HomeWidget> {
 
   Widget _buildSavingsHero(BuildContext context, AppTheme ffTheme) {
     final appState = Provider.of<AppState>(context, listen: false);
-    // Calculate actual potential savings from all categories
-    final totalSave = categories.fold<int>(0, (sum, c) {
-      final bill = appState.currentBill(c.id);
-      if (bill <= 0) return sum;
-      final plans = plansByCat(c.id);
-      if (plans.isEmpty) return sum;
-      final minPrice = plans.map((p) => p.price).reduce((a, b) => a < b ? a : b);
-      return sum + ((bill - minPrice) * 12).clamp(0, 999999);
-    });
+    // Potential savings from the same engine the /savings dashboard uses, so
+    // tapping the hero never lands on a screen showing a different number.
+    final totalSave = computeSavings(appState).totalAnnualPotential;
 
     return GestureDetector(
       onTap: () {

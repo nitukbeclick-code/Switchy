@@ -155,7 +155,7 @@ class _Hero extends StatelessWidget {
                     ),
                     const SizedBox(height: 6),
                     TweenAnimationBuilder<int>(
-                      tween: IntTween(begin: 0, end: total > 0 ? total : 0),
+                      tween: IntTween(begin: 0, end: total),
                       duration: const Duration(milliseconds: 1400),
                       curve: Curves.easeOutCubic,
                       builder: (_, value, __) => Text(

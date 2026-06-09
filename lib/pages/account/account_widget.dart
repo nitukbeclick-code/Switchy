@@ -151,6 +151,8 @@ class AccountWidget extends StatelessWidget {
                     children: [
                       _QuickLink(icon: Icons.receipt_rounded, label: 'חשבונות', onTap: () => context.pushNamed('Bills'), ffTheme: ffTheme),
                       const SizedBox(width: 10),
+                      _QuickLink(icon: Icons.savings_rounded, label: 'חיסכון', onTap: () => context.pushNamed('Savings'), ffTheme: ffTheme),
+                      const SizedBox(width: 10),
                       _QuickLink(icon: Icons.star_rounded, label: 'דירוגים', onTap: () => context.pushNamed('Ratings'), ffTheme: ffTheme),
                       const SizedBox(width: 10),
                       _QuickLink(icon: Icons.chat_rounded, label: 'קהילה', onTap: () => context.goNamed('Community'), ffTheme: ffTheme),

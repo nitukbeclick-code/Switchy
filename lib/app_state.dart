@@ -338,9 +338,17 @@ class AppState extends ChangeNotifier {
   Map<String, List<Map<String, dynamic>>> get communityReplies => Map.unmodifiable(_communityReplies);
   List<Map<String, dynamic>> repliesFor(String postId) => List.unmodifiable(_communityReplies[postId] ?? const []);
   int replyCountFor(String postId) => _communityReplies[postId]?.length ?? 0;
-  void addCommunityReply({required String postId, required String author, required String avatar, required String text}) {
+  void addCommunityReply({required String postId, required String author, required String avatar, required String text, String? mediaType, String? mediaData, int? mediaDurationMs}) {
     final list = _communityReplies.putIfAbsent(postId, () => []);
-    list.add({'author': author, 'avatar': avatar, 'text': text, 'ts': DateTime.now().toIso8601String()});
+    list.add({
+      'author': author,
+      'avatar': avatar,
+      'text': text,
+      'ts': DateTime.now().toIso8601String(),
+      'mediaType': mediaType,
+      'mediaData': mediaData,
+      'mediaDurationMs': mediaDurationMs,
+    });
     notifyListeners();
     _persist();
   }
@@ -422,8 +430,18 @@ class AppState extends ChangeNotifier {
   bool isNotificationDismissed(String id) => _dismissedNotifications.contains(id);
   void dismissNotification(String id) { _dismissedNotifications.add(id); notifyListeners(); _persist(); }
 
-  void addCommunityPost({required String id, required String author, required String avatar, required String channel, required String text}) {
-    _communityPosts.insert(0, {'id': id, 'author': author, 'avatar': avatar, 'channel': channel, 'text': text, 'ts': DateTime.now().toIso8601String()});
+  void addCommunityPost({required String id, required String author, required String avatar, required String channel, required String text, String? mediaType, String? mediaData, int? mediaDurationMs}) {
+    _communityPosts.insert(0, {
+      'id': id,
+      'author': author,
+      'avatar': avatar,
+      'channel': channel,
+      'text': text,
+      'ts': DateTime.now().toIso8601String(),
+      'mediaType': mediaType,
+      'mediaData': mediaData,
+      'mediaDurationMs': mediaDurationMs,
+    });
     if (_communityPosts.length > 50) _communityPosts.removeLast();
     notifyListeners();
     _persist();

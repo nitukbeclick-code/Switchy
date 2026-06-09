@@ -10,6 +10,8 @@ import '../../core/nav.dart';
 import '../../app_state.dart';
 import '../../data.dart';
 import '../../models.dart';
+import '../../widgets/media/community_media.dart';
+import '../../services/media_service.dart';
 
 class CommunityWidget extends StatefulWidget {
   const CommunityWidget({super.key});
@@ -99,6 +101,9 @@ class _CommunityWidgetState extends State<CommunityWidget> {
       likes: 0,
       replies: 0,
       timestamp: DateTime.tryParse(m['ts'] as String? ?? '') ?? DateTime.now(),
+      mediaType: m['mediaType'] as String?,
+      mediaData: m['mediaData'] as String?,
+      mediaDurationMs: m['mediaDurationMs'] as int?,
     )).toList();
     _posts = [...persisted, ...communityPosts];
     _replyData.addAll(_mockReplies);
@@ -109,6 +114,9 @@ class _CommunityWidgetState extends State<CommunityWidget> {
         avatar: m['avatar'] as String? ?? 'א',
         text: m['text'] as String? ?? '',
         time: DateTime.tryParse(m['ts'] as String? ?? '') ?? DateTime.now(),
+        mediaType: m['mediaType'] as String?,
+        mediaData: m['mediaData'] as String?,
+        mediaDurationMs: m['mediaDurationMs'] as int?,
       )).toList();
       _replyData.putIfAbsent(postId, () => []).addAll(converted);
     });
@@ -163,6 +171,9 @@ class _CommunityWidgetState extends State<CommunityWidget> {
           likes: 0,
           replies: 0,
           timestamp: DateTime.tryParse(m['ts'] as String? ?? '') ?? DateTime.now(),
+          mediaType: m['mediaType'] as String?,
+          mediaData: m['mediaData'] as String?,
+          mediaDurationMs: m['mediaDurationMs'] as int?,
         )).toList();
     setState(() {
       _posts = [...persisted, ...communityPosts];
@@ -206,16 +217,35 @@ class _CommunityWidgetState extends State<CommunityWidget> {
     required TextEditingController replyCtrl,
     required String postId,
     required ScrollController scrollCtrl,
+    String? pendingType,
+    String? pendingData,
+    int? pendingDur,
   }) {
     final text = replyCtrl.text.trim();
-    if (text.isEmpty) return;
+    if (text.isEmpty && pendingData == null) return;
     HapticFeedback.lightImpact();
     final appState = Provider.of<AppState>(ctx, listen: false);
     final author = appState.isLoggedIn ? appState.firstName : 'אורח';
     final avatar = appState.isLoggedIn && appState.firstName.isNotEmpty ? appState.firstName[0] : 'א';
-    appState.addCommunityReply(postId: postId, author: author, avatar: avatar, text: text);
+    appState.addCommunityReply(
+      postId: postId,
+      author: author,
+      avatar: avatar,
+      text: text,
+      mediaType: pendingType,
+      mediaData: pendingData,
+      mediaDurationMs: pendingDur,
+    );
     setSheet(() {
-      replies.add(_Reply(author: author, avatar: avatar, text: text, time: DateTime.now()));
+      replies.add(_Reply(
+        author: author,
+        avatar: avatar,
+        text: text,
+        time: DateTime.now(),
+        mediaType: pendingType,
+        mediaData: pendingData,
+        mediaDurationMs: pendingDur,
+      ));
       replyCtrl.clear();
     });
     setState(() {});
@@ -232,6 +262,9 @@ class _CommunityWidgetState extends State<CommunityWidget> {
   void _showReplies(BuildContext context, CommunityPost post, AppTheme ffTheme) {
     final replyCtrl = TextEditingController();
     _replyData.putIfAbsent(post.id, () => []);
+    String? replyPendingType;
+    String? replyPendingData;
+    int? replyPendingDur;
 
     showModalBottomSheet(
       context: context,
@@ -343,51 +376,125 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                       border: Border(top: BorderSide(color: ffTheme.alternate)),
                       boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 8, offset: const Offset(0, -4))],
                     ),
-                    child: Row(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Expanded(
-                          child: TextField(
-                            controller: replyCtrl,
-                            textDirection: TextDirection.rtl,
-                            textInputAction: TextInputAction.send,
-                            onSubmitted: (_) => _submitReply(
-                              ctx: ctx,
-                              setSheet: setSheet,
-                              replies: replies,
-                              replyCtrl: replyCtrl,
-                              postId: post.id,
-                              scrollCtrl: scrollCtrl,
-                            ),
-                            decoration: InputDecoration(
-                              hintText: 'כתוב תגובה...',
-                              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                              filled: true,
-                              fillColor: ffTheme.background,
-                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide(color: ffTheme.alternate)),
-                              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide(color: ffTheme.alternate)),
-                              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide(color: ffTheme.primary)),
-                            ),
+                        // Pending attachment preview
+                        if (replyPendingData != null) ...[
+                          Stack(
+                            children: [
+                              if (replyPendingType == 'image')
+                                MediaImageBubble(dataUri: replyPendingData!, maxHeight: 120)
+                              else
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: ffTheme.accent1,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: ffTheme.primary.withOpacity(0.2)),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.mic, size: 16, color: ffTheme.primary),
+                                      const SizedBox(width: 6),
+                                      Text('הודעה קולית', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary)),
+                                    ],
+                                  ),
+                                ),
+                              Positioned(
+                                top: 4,
+                                left: 4,
+                                child: GestureDetector(
+                                  onTap: () => setSheet(() {
+                                    replyPendingType = null;
+                                    replyPendingData = null;
+                                    replyPendingDur = null;
+                                  }),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(3),
+                                    decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
+                                    child: const Icon(Icons.close, color: Colors.white, size: 14),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                        const SizedBox(width: 10),
-                        Semantics(
-                          button: true,
-                          label: 'שלח תגובה',
-                          child: GestureDetector(
-                            onTap: () => _submitReply(
-                              ctx: ctx,
-                              setSheet: setSheet,
-                              replies: replies,
-                              replyCtrl: replyCtrl,
-                              postId: post.id,
-                              scrollCtrl: scrollCtrl,
+                          const SizedBox(height: 8),
+                        ],
+                        Row(
+                          children: [
+                            // Image from gallery
+                            IconButton(
+                              icon: const Icon(Icons.image_outlined),
+                              color: ffTheme.primary,
+                              tooltip: 'צרף תמונה',
+                              onPressed: () async {
+                                final uri = await MediaService.pickImageDataUri();
+                                if (uri != null) setSheet(() { replyPendingType = 'image'; replyPendingData = uri; replyPendingDur = null; });
+                              },
                             ),
-                            child: Container(
-                              width: 44, height: 44,
-                              decoration: BoxDecoration(color: ffTheme.primary, shape: BoxShape.circle),
-                              child: const Icon(Icons.send_rounded, color: Colors.white, size: 20),
+                            // Voice recorder
+                            VoiceRecorderButton(
+                              onRecorded: (source, durationMs) async {
+                                setSheet(() { replyPendingType = 'audio'; replyPendingData = source; replyPendingDur = durationMs; });
+                              },
                             ),
-                          ),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: TextField(
+                                controller: replyCtrl,
+                                textDirection: TextDirection.rtl,
+                                textInputAction: TextInputAction.send,
+                                onSubmitted: (_) => _submitReply(
+                                  ctx: ctx,
+                                  setSheet: setSheet,
+                                  replies: replies,
+                                  replyCtrl: replyCtrl,
+                                  postId: post.id,
+                                  scrollCtrl: scrollCtrl,
+                                  pendingType: replyPendingType,
+                                  pendingData: replyPendingData,
+                                  pendingDur: replyPendingDur,
+                                ),
+                                decoration: InputDecoration(
+                                  hintText: 'כתוב תגובה...',
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                                  filled: true,
+                                  fillColor: ffTheme.background,
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide(color: ffTheme.alternate)),
+                                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide(color: ffTheme.alternate)),
+                                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide(color: ffTheme.primary)),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Semantics(
+                              button: true,
+                              label: 'שלח תגובה',
+                              child: GestureDetector(
+                                onTap: () {
+                                  _submitReply(
+                                    ctx: ctx,
+                                    setSheet: setSheet,
+                                    replies: replies,
+                                    replyCtrl: replyCtrl,
+                                    postId: post.id,
+                                    scrollCtrl: scrollCtrl,
+                                    pendingType: replyPendingType,
+                                    pendingData: replyPendingData,
+                                    pendingDur: replyPendingDur,
+                                  );
+                                  setSheet(() { replyPendingType = null; replyPendingData = null; replyPendingDur = null; });
+                                },
+                                child: Container(
+                                  width: 44, height: 44,
+                                  decoration: BoxDecoration(color: ffTheme.primary, shape: BoxShape.circle),
+                                  child: const Icon(Icons.send_rounded, color: Colors.white, size: 20),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -414,6 +521,9 @@ class _CommunityWidgetState extends State<CommunityWidget> {
     }
     final ctrl = TextEditingController();
     String selectedChannel = _activeChannel == 'הכל' ? 'המלצות' : _activeChannel;
+    String? pendingType;
+    String? pendingData;
+    int? pendingDur;
 
     showModalBottomSheet(
       context: context,
@@ -487,18 +597,91 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                     focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: ffTheme.primary, width: 1.5)),
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 10),
+
+                // Media attach row
+                Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.image_outlined),
+                      color: ffTheme.primary,
+                      tooltip: 'תמונה מהגלריה',
+                      onPressed: () async {
+                        final uri = await MediaService.pickImageDataUri();
+                        if (uri != null) setSheet(() { pendingType = 'image'; pendingData = uri; pendingDur = null; });
+                      },
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.camera_alt_outlined),
+                      color: ffTheme.primary,
+                      tooltip: 'צלם תמונה',
+                      onPressed: () async {
+                        final uri = await MediaService.pickImageDataUri(fromCamera: true);
+                        if (uri != null) setSheet(() { pendingType = 'image'; pendingData = uri; pendingDur = null; });
+                      },
+                    ),
+                    VoiceRecorderButton(
+                      onRecorded: (source, durationMs) async {
+                        setSheet(() { pendingType = 'audio'; pendingData = source; pendingDur = durationMs; });
+                      },
+                    ),
+                    if (pendingData != null) ...[
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Stack(
+                          children: [
+                            if (pendingType == 'image')
+                              MediaImageBubble(dataUri: pendingData!, maxHeight: 100)
+                            else
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                decoration: BoxDecoration(
+                                  color: ffTheme.accent1,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: ffTheme.primary.withOpacity(0.2)),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Icon(Icons.mic, size: 16, color: ffTheme.primary),
+                                    const SizedBox(width: 6),
+                                    Text('הודעה קולית', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary)),
+                                  ],
+                                ),
+                              ),
+                            Positioned(
+                              top: 4,
+                              left: 4,
+                              child: GestureDetector(
+                                onTap: () => setSheet(() { pendingType = null; pendingData = null; pendingDur = null; }),
+                                child: Container(
+                                  padding: const EdgeInsets.all(3),
+                                  decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
+                                  child: const Icon(Icons.close, color: Colors.white, size: 14),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 12),
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
                     onPressed: () {
                       final text = ctrl.text.trim();
-                      if (text.isEmpty) return;
+                      if (text.isEmpty && pendingData == null) return;
                       HapticFeedback.lightImpact();
                       final id = DateTime.now().millisecondsSinceEpoch.toString();
                       final author = appState.isLoggedIn ? appState.firstName : 'אורח';
                       final avatar = appState.isLoggedIn && appState.firstName.isNotEmpty ? appState.firstName[0] : 'א';
-                      appState.addCommunityPost(id: id, author: author, avatar: avatar, channel: selectedChannel, text: text);
+                      appState.addCommunityPost(
+                        id: id, author: author, avatar: avatar, channel: selectedChannel, text: text,
+                        mediaType: pendingType, mediaData: pendingData, mediaDurationMs: pendingDur,
+                      );
                       setState(() {
                         _posts.insert(0, CommunityPost(
                           id: id,
@@ -509,6 +692,9 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                           likes: 0,
                           replies: 0,
                           timestamp: DateTime.now(),
+                          mediaType: pendingType,
+                          mediaData: pendingData,
+                          mediaDurationMs: pendingDur,
                         ));
                       });
                       Navigator.pop(ctx);
@@ -1043,7 +1229,17 @@ class _PostCardState extends State<_PostCard> {
 
                 const SizedBox(height: 10),
                 // Post text
-                Text(post.text, style: ffTheme.bodyMedium.copyWith(height: 1.5)),
+                if (post.text.isNotEmpty)
+                  Text(post.text, style: ffTheme.bodyMedium.copyWith(height: 1.5)),
+
+                // Media
+                if (post.hasMedia) ...[
+                  const SizedBox(height: 10),
+                  if (post.media == MediaKind.image)
+                    MediaImageBubble(dataUri: post.mediaData!)
+                  else if (post.media == MediaKind.audio)
+                    VoiceMessageBubble(source: post.mediaData!, durationMs: post.mediaDurationMs),
+                ],
 
                 // Plan chip
                 if (post.planId != null) ...[
@@ -1192,7 +1388,18 @@ class _StatPill extends StatelessWidget {
 class _Reply {
   final String author, avatar, text;
   final DateTime time;
-  const _Reply({required this.author, required this.avatar, required this.text, required this.time});
+  final String? mediaType;
+  final String? mediaData;
+  final int? mediaDurationMs;
+  const _Reply({
+    required this.author,
+    required this.avatar,
+    required this.text,
+    required this.time,
+    this.mediaType,
+    this.mediaData,
+    this.mediaDurationMs,
+  });
 }
 
 class _ReplyBubble extends StatelessWidget {
@@ -1244,7 +1451,20 @@ class _ReplyBubble extends StatelessWidget {
                     ),
                     border: Border.all(color: ffTheme.alternate),
                   ),
-                  child: Text(reply.text, style: ffTheme.bodySmall.copyWith(height: 1.4)),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (reply.text.isNotEmpty)
+                        Text(reply.text, style: ffTheme.bodySmall.copyWith(height: 1.4)),
+                      if (reply.mediaData != null) ...[
+                        if (reply.text.isNotEmpty) const SizedBox(height: 8),
+                        if (reply.mediaType == 'image')
+                          MediaImageBubble(dataUri: reply.mediaData!, maxHeight: 160)
+                        else if (reply.mediaType == 'audio')
+                          VoiceMessageBubble(source: reply.mediaData!, durationMs: reply.mediaDurationMs),
+                      ],
+                    ],
+                  ),
                 ),
               ],
             ),

@@ -181,8 +181,44 @@ class ChatMessage {
   final DateTime timestamp;
 }
 
+/// The kind of attachment on a community post / reply / chat message.
+enum MediaKind { image, video, audio }
+
+MediaKind? mediaKindFromString(String? s) {
+  switch (s) {
+    case 'image':
+      return MediaKind.image;
+    case 'video':
+      return MediaKind.video;
+    case 'audio':
+      return MediaKind.audio;
+    default:
+      return null;
+  }
+}
+
+extension MediaKindX on MediaKind {
+  String get id => name; // 'image' | 'video' | 'audio'
+}
+
 class CommunityPost {
-  const CommunityPost({required this.id, required this.author, required this.avatar, required this.channel, required this.text, required this.likes, required this.replies, required this.timestamp, this.planId, this.isVerified = false, this.isTeam = false});
+  const CommunityPost({
+    required this.id,
+    required this.author,
+    required this.avatar,
+    required this.channel,
+    required this.text,
+    required this.likes,
+    required this.replies,
+    required this.timestamp,
+    this.planId,
+    this.isVerified = false,
+    this.isTeam = false,
+    // ── Rich media (WhatsApp-style attachments) ──────────────────────────────
+    this.mediaType,
+    this.mediaData,
+    this.mediaDurationMs,
+  });
   final String id;
   final String author;
   final String avatar;
@@ -194,4 +230,16 @@ class CommunityPost {
   final String? planId;
   final bool isVerified;
   final bool isTeam;
+
+  /// 'image' | 'video' | 'audio' (null = text-only).
+  final String? mediaType;
+
+  /// For image/audio: a base64 data-URI. For video: a file path/URI.
+  final String? mediaData;
+
+  /// Audio length in milliseconds (voice messages).
+  final int? mediaDurationMs;
+
+  MediaKind? get media => mediaType == null || mediaData == null ? null : mediaKindFromString(mediaType);
+  bool get hasMedia => media != null;
 }

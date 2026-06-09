@@ -38,6 +38,21 @@ void main() {
       expect(r.plans, isNotEmpty);
     });
 
+    test('a category name surfaces that category\'s plans', () {
+      // Other categories may also mention "אינטרנט" (e.g. triple bundles), so
+      // assert inclusion rather than exclusivity.
+      final internet = searchEverything('אינטרנט', planLimit: 999);
+      final internetHits = internet.plans.where((p) => p.cat == 'internet').toList();
+      expect(internetHits, isNotEmpty);
+      expect(internetHits.length, equals(plansByCat('internet').length));
+
+      final tvHits = searchEverything('טלוויזיה', planLimit: 999)
+          .plans
+          .where((p) => p.cat == 'tv')
+          .toList();
+      expect(tvHits.length, equals(plansByCat('tv').length));
+    });
+
     test('gibberish returns no results', () {
       expect(searchEverything('zzxyq_not_a_thing_123').isEmpty, isTrue);
     });

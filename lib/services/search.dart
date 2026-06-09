@@ -29,6 +29,7 @@ SearchResults searchEverything(String query, {int planLimit = 40}) {
   bool matches(Plan p) =>
       has(p.provider) ||
       has(p.plan) ||
+      has(categoryById(p.cat)?.name) || // e.g. typing "אינטרנט" finds internet plans
       p.feats.any(has) ||
       p.specs.values.any(has) ||
       p.specs.keys.any(has);

@@ -191,6 +191,13 @@ class _LeadWidgetState extends State<LeadWidget> {
                     final name = _nameCtrl.text.trim();
                     final phone = _phoneCtrl.text.trim();
                     final email = _emailCtrl.text.trim();
+                    final st = Provider.of<AppState>(context, listen: false);
+                    // Build rep context: current bill + quiz preferences.
+                    final bill = plan != null ? st.currentBill(plan.cat) : 0;
+                    final parts = <String>[];
+                    if (bill > 0) parts.add('חשבון נוכחי: ₪$bill/חודש');
+                    if (plan != null) parts.add('חסכון שנתי צפוי: ₪${planSaveYear(plan, bill)}');
+                    if (st.quizCompleted) parts.add('תקציב: ₪${st.quizBudget} | עדיפות: ${st.quizPriority} | קווים: ${st.quizLines}');
                     await appBackend.submitLead(LeadInput(
                       name: name,
                       phone: phone,
@@ -198,6 +205,8 @@ class _LeadWidgetState extends State<LeadWidget> {
                       provider: plan?.provider,
                       planId: widget.planId,
                       callbackTime: _callbackTime,
+                      source: 'form',
+                      notes: parts.isNotEmpty ? parts.join(' | ') : null,
                     ));
                     // Sync the user's identity to their profile row.
                     appBackend.upsertProfile(name: name, phone: phone, email: email.isNotEmpty ? email : null).catchError((_) {});

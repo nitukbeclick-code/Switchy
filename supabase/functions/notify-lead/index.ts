@@ -148,9 +148,12 @@ async function sendEmail(cfg: Cfg, subject: string, html: string): Promise<{ ok:
   } catch (e) { return { ok: false, error: String(e) }; }
 }
 
+const SOURCE_HE: Record<string, string> = { form: "טופס", callback: "בקשת התקשרות", advisor: "יועץ" };
+
 function buildText(lead: Record<string, unknown>, triage: string): string {
   const cb = CALLBACK_HE[String(lead.callback_time ?? "")] ?? String(lead.callback_time ?? "—");
   const wa = waLink(lead.phone);
+  const sourceLabel = SOURCE_HE[String(lead.source ?? "")] ?? (lead.source ? String(lead.source) : null);
   const lines: (string | null)[] = [
     "🔔 <b>פנייה חדשה — חוסך</b>",
     "",
@@ -159,6 +162,8 @@ function buildText(lead: Record<string, unknown>, triage: string): string {
     lead.email ? `📧 <b>אימייל:</b> ${esc(lead.email)}` : null,
     (lead.provider || lead.plan_id) ? `📦 <b>ספק / מסלול:</b> ${esc(lead.provider ?? "—")} / ${esc(lead.plan_id ?? "—")}` : null,
     `⏰ <b>זמן חזרה מועדף:</b> ${esc(cb)}`,
+    sourceLabel ? `📌 <b>מקור:</b> ${esc(sourceLabel)}` : null,
+    lead.notes ? `📋 <b>הקשר:</b> ${esc(lead.notes)}` : null,
     triage ? "" : null,
     triage ? `🤖 <i>${esc(triage)}</i>` : null,
   ];
@@ -167,13 +172,17 @@ function buildText(lead: Record<string, unknown>, triage: string): string {
 
 function buildHtml(lead: Record<string, unknown>, triage: string): string {
   const cb = CALLBACK_HE[String(lead.callback_time ?? "")] ?? String(lead.callback_time ?? "—");
+  const sourceLabel = SOURCE_HE[String(lead.source ?? "")] ?? (lead.source ? String(lead.source) : null);
   return `<div dir="rtl" style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#15281e">`
     + `<h2 style="color:#15603E">🔔 פנייה חדשה — חוסך</h2>`
     + `<p><b>שם:</b> ${esc(lead.name)}<br>`
     + `<b>טלפון:</b> ${esc(lead.phone)}<br>`
     + (lead.email ? `<b>אימייל:</b> ${esc(lead.email)}<br>` : "")
     + `<b>ספק / מסלול:</b> ${esc(lead.provider ?? "—")} / ${esc(lead.plan_id ?? "—")}<br>`
-    + `<b>זמן חזרה מועדף:</b> ${esc(cb)}</p>`
+    + `<b>זמן חזרה מועדף:</b> ${esc(cb)}<br>`
+    + (sourceLabel ? `<b>מקור:</b> ${esc(sourceLabel)}<br>` : "")
+    + (lead.notes ? `<b>הקשר:</b> ${esc(String(lead.notes))}<br>` : "")
+    + `</p>`
     + (triage ? `<p style="background:#F4F0E8;padding:10px;border-radius:8px">🤖 ${esc(triage)}</p>` : "")
     + `</div>`;
 }

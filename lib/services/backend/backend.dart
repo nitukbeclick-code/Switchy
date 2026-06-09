@@ -9,6 +9,8 @@ class LeadInput {
     this.provider,
     this.planId,
     this.callbackTime,
+    this.source,
+    this.notes,
   });
 
   final String name;
@@ -17,6 +19,8 @@ class LeadInput {
   final String? provider;
   final String? planId;
   final String? callbackTime; // now / noon / evening / tomorrow
+  final String? source;       // form | advisor | callback
+  final String? notes;        // free-text context for the rep
 
   Map<String, dynamic> toRow() => {
         'name': name,
@@ -25,6 +29,8 @@ class LeadInput {
         'provider': provider,
         'plan_id': planId,
         'callback_time': callbackTime,
+        'source': source,
+        'notes': notes,
       };
 }
 

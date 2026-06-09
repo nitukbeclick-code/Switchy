@@ -5,6 +5,7 @@ import '../../theme/app_theme.dart';
 import '../../core/nav.dart';
 import '../../widgets/app_button.dart';
 import '../../app_state.dart';
+import '../../services/backend/local_backend.dart';
 
 class AuthWidget extends StatefulWidget {
   const AuthWidget({super.key});
@@ -33,7 +34,9 @@ class _AuthWidgetState extends State<AuthWidget> {
     final name = _nameCtrl.text.trim().isNotEmpty
         ? _nameCtrl.text.trim()
         : (appState.isLoggedIn ? appState.userName : 'משתמש');
-    appState.login(name: name, phone: _phoneCtrl.text.trim());
+    final phone = _phoneCtrl.text.trim();
+    appState.login(name: name, phone: phone);
+    appBackend.upsertProfile(name: name, phone: phone).catchError((_) {});
     context.goNamed('Home');
   }
 

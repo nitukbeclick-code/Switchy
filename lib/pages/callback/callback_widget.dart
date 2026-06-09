@@ -6,6 +6,8 @@ import '../../theme/app_theme.dart';
 import '../../core/nav.dart';
 import '../../widgets/app_button.dart';
 import '../../app_state.dart';
+import '../../services/backend/backend.dart';
+import '../../services/backend/local_backend.dart';
 
 class CallbackWidget extends StatefulWidget {
   const CallbackWidget({super.key});
@@ -166,7 +168,21 @@ class _CallbackWidgetState extends State<CallbackWidget> {
                   return;
                 }
                 setState(() => _isLoading = true);
-                await Future.delayed(const Duration(milliseconds: 600));
+                final name = _nameCtrl.text.trim();
+                final phone = _phoneCtrl.text.replaceAll(RegExp(r'[\s\-]'), '');
+                // Map timing chips to callback_time keys used in leads table.
+                final callbackMap = {'בהקדם': 'now', 'בוקר': 'noon', 'אחה"צ': 'evening', 'ערב': 'tomorrow'};
+                appBackend.submitLead(LeadInput(
+                  name: name,
+                  phone: phone,
+                  callbackTime: callbackMap[_timing] ?? 'now',
+                  provider: _topic,
+                  source: 'callback',
+                  notes: 'נושא: $_topic | עיתוי: $_timing',
+                )).catchError((_) {});
+                appBackend.upsertProfile(name: name, phone: phone).catchError((_) {});
+                Provider.of<AppState>(context, listen: false).login(name: name, phone: phone);
+                await Future.delayed(const Duration(milliseconds: 300));
                 if (!mounted) return;
                 setState(() { _isLoading = false; _submitted = true; });
               },

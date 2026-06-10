@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -103,51 +104,147 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> _persist() async {
+  // ── Incremental persistence ──────────────────────────────────────────────
+  // Writing every SharedPreferences key on every mutation re-serialized all the
+  // base64 community/chat/advisor blobs on a single like or keystroke — slow,
+  // and on web it blew localStorage's ~5MB quota once a few photo posts existed.
+  // Instead each setter marks the logical group(s) it touched via [_markDirty];
+  // a microtask-debounced [_flush] then writes ONLY the dirty groups' keys.
+  // The write logic per group is byte-for-byte identical to the old _persist(),
+  // so stored data and _load() are unchanged — only *when* a key is written.
+  final Set<String> _dirtyKeys = {};
+  bool _flushScheduled = false;
+
+  /// Record that [key]'s logical group changed and schedule a single debounced
+  /// disk flush. Notifications are independent of this — callers still invoke
+  /// notifyListeners() themselves so the UI updates synchronously.
+  void _markDirty(String key) {
+    _dirtyKeys.add(key);
+    if (_flushScheduled) return;
+    _flushScheduled = true;
+    scheduleMicrotask(_flush);
+  }
+
+  /// Write the entries for every dirty group, then clear the dirty set. Only
+  /// the keys whose group was marked since the last flush touch the disk, so an
+  /// unrelated like/search/bill never rewrites the heavy base64 collections.
+  Future<void> _flush() async {
+    _flushScheduled = false;
+    if (_dirtyKeys.isEmpty) return;
+    final dirty = _dirtyKeys.toSet();
+    _dirtyKeys.clear();
     final p = await SharedPreferences.getInstance();
-    await p.setBool('isLoggedIn', _isLoggedIn);
-    await p.setString('userName', _userName);
-    await p.setString('userPhone', _userPhone);
-    await p.setString('userEmail', _userEmail);
-    await p.setInt('totalSavings', _totalSavings);
-    await p.setString('selectedCat', _selectedCat);
-    // Bills
-    for (final e in _currentBills.entries) { await p.setInt('bill_${e.key}', e.value); }
-    await p.setBool('billsPersonalized', _billsPersonalized);
-    // Quiz
-    await p.setBool('quizCompleted', _quizCompleted);
-    await p.setInt('quizBudget', _quizBudget);
-    await p.setString('quizPriority', _quizPriority);
-    await p.setInt('quizLines', _quizLines);
-    await p.setString('quizCat', _quizCat);
-    await p.setBool('wants5G', _wants5G);
-    await p.setBool('wantsAbroad', _wantsAbroad);
-    await p.setBool('wantsNoCommit', _wantsNoCommit);
-    // Lead & tracker
-    if (_leadPlanId != null) await p.setString('leadPlanId', _leadPlanId!);
-    if (_leadProvider != null) await p.setString('leadProvider', _leadProvider!);
-    if (_leadName != null) await p.setString('leadName', _leadName!);
-    if (_leadPhone != null) await p.setString('leadPhone', _leadPhone!);
-    await p.setInt('trackerStep', _trackerStep);
-    // Watched & recently viewed
-    await p.setStringList('watchedPlans', _watchedPlans.toList());
-    await p.setStringList('recentlyViewed', _recentlyViewed);
-    await p.setStringList('recentSearches', _recentSearches);
-    await p.setString('userReviews', jsonEncode(_userReviews));
-    await p.setString('communityPosts', jsonEncode(_communityPosts));
-    await p.setStringList('likedPosts', _likedPosts.toList());
-    await p.setStringList('bookmarkedPosts', _bookmarkedPosts.toList());
-    await p.setString('communityReplies', jsonEncode(_communityReplies));
-    await p.setString('chatHistory', jsonEncode(_chatHistory));
-    await p.setString('advisorHistory', jsonEncode(_advisorHistory));
-    await p.setString('myPlans', jsonEncode(_myPlans.map((e) => e.toJson()).toList()));
-    await p.setBool('renewalReminders', _renewalReminders);
-    await p.setStringList('dismissedNotifications', _dismissedNotifications.toList());
-    // Preferences
-    await p.setBool('prefPriceAlerts', _prefPriceAlerts);
-    await p.setBool('prefRequestUpdates', _prefRequestUpdates);
-    await p.setBool('prefCommunityNotifs', _prefCommunityNotifs);
-    await p.setBool('seenOnboarding', _seenOnboarding);
+    for (final key in dirty) {
+      switch (key) {
+        case 'auth':
+          await p.setBool('isLoggedIn', _isLoggedIn);
+          await p.setString('userName', _userName);
+          await p.setString('userPhone', _userPhone);
+          await p.setString('userEmail', _userEmail);
+          break;
+        case 'totalSavings':
+          await p.setInt('totalSavings', _totalSavings);
+          break;
+        case 'selectedCat':
+          await p.setString('selectedCat', _selectedCat);
+          break;
+        case 'bills':
+          for (final e in _currentBills.entries) { await p.setInt('bill_${e.key}', e.value); }
+          await p.setBool('billsPersonalized', _billsPersonalized);
+          break;
+        case 'quiz':
+          await p.setBool('quizCompleted', _quizCompleted);
+          await p.setInt('quizBudget', _quizBudget);
+          await p.setString('quizPriority', _quizPriority);
+          await p.setInt('quizLines', _quizLines);
+          await p.setString('quizCat', _quizCat);
+          break;
+        case 'quizNeeds':
+          await p.setBool('wants5G', _wants5G);
+          await p.setBool('wantsAbroad', _wantsAbroad);
+          await p.setBool('wantsNoCommit', _wantsNoCommit);
+          break;
+        case 'lead':
+          if (_leadPlanId != null) await p.setString('leadPlanId', _leadPlanId!);
+          if (_leadProvider != null) await p.setString('leadProvider', _leadProvider!);
+          if (_leadName != null) await p.setString('leadName', _leadName!);
+          if (_leadPhone != null) await p.setString('leadPhone', _leadPhone!);
+          break;
+        case 'trackerStep':
+          await p.setInt('trackerStep', _trackerStep);
+          break;
+        case 'watchedPlans':
+          await p.setStringList('watchedPlans', _watchedPlans.toList());
+          break;
+        case 'recentlyViewed':
+          await p.setStringList('recentlyViewed', _recentlyViewed);
+          break;
+        case 'recentSearches':
+          await p.setStringList('recentSearches', _recentSearches);
+          break;
+        case 'userReviews':
+          await p.setString('userReviews', jsonEncode(_userReviews));
+          break;
+        case 'communityPosts':
+          await p.setString('communityPosts', jsonEncode(_communityPosts));
+          break;
+        case 'likedPosts':
+          await p.setStringList('likedPosts', _likedPosts.toList());
+          break;
+        case 'bookmarkedPosts':
+          await p.setStringList('bookmarkedPosts', _bookmarkedPosts.toList());
+          break;
+        case 'communityReplies':
+          await p.setString('communityReplies', jsonEncode(_communityReplies));
+          break;
+        case 'chatHistory':
+          await p.setString('chatHistory', jsonEncode(_chatHistory));
+          break;
+        case 'advisorHistory':
+          await p.setString('advisorHistory', jsonEncode(_advisorHistory));
+          break;
+        case 'myPlans':
+          await p.setString('myPlans', jsonEncode(_myPlans.map((e) => e.toJson()).toList()));
+          break;
+        case 'renewalReminders':
+          await p.setBool('renewalReminders', _renewalReminders);
+          break;
+        case 'dismissedNotifications':
+          await p.setStringList('dismissedNotifications', _dismissedNotifications.toList());
+          break;
+        case 'prefs':
+          await p.setBool('prefPriceAlerts', _prefPriceAlerts);
+          await p.setBool('prefRequestUpdates', _prefRequestUpdates);
+          await p.setBool('prefCommunityNotifs', _prefCommunityNotifs);
+          break;
+        case 'seenOnboarding':
+          await p.setBool('seenOnboarding', _seenOnboarding);
+          break;
+      }
+    }
+  }
+
+  /// Test/diagnostic hook: synchronously drain any pending debounced writes.
+  /// Production code never needs this — the microtask flush runs on its own.
+  @visibleForTesting
+  Future<void> flushPersistence() => _flush();
+
+  // The "light" groups: scalars and small StringLists/JSON. The four heavy
+  // collections (communityPosts, communityReplies, chatHistory, advisorHistory)
+  // can carry base64 media, so they are deliberately EXCLUDED here and written
+  // only by their own setters via _markDirty — a like/search/bill must never
+  // re-serialize a photo blob. [_persist] is the catch-all the light setters
+  // call; it marks every light group dirty (each write is cheap).
+  static const Set<String> _lightGroups = {
+    'auth', 'totalSavings', 'selectedCat', 'bills', 'quiz', 'quizNeeds', 'lead',
+    'trackerStep', 'watchedPlans', 'recentlyViewed', 'recentSearches',
+    'userReviews', 'likedPosts', 'bookmarkedPosts', 'myPlans',
+    'renewalReminders', 'dismissedNotifications', 'prefs', 'seenOnboarding',
+  };
+  void _persist() {
+    for (final k in _lightGroups) {
+      _markDirty(k);
+    }
   }
 
   void update(VoidCallback cb) { cb(); notifyListeners(); }
@@ -378,7 +475,7 @@ class AppState extends ChangeNotifier {
       'mediaDurationMs': mediaDurationMs,
     });
     notifyListeners();
-    _persist();
+    _markDirty('communityReplies');
   }
 
   // Chat history — persisted support-chat messages
@@ -388,9 +485,9 @@ class AppState extends ChangeNotifier {
     _chatHistory.add({'text': text, 'isUser': isUser, 'isRead': isRead, 'ts': DateTime.now().toIso8601String()});
     if (_chatHistory.length > 100) _chatHistory.removeAt(0);
     notifyListeners();
-    _persist();
+    _markDirty('chatHistory');
   }
-  void clearChatHistory() { _chatHistory.clear(); notifyListeners(); _persist(); }
+  void clearChatHistory() { _chatHistory.clear(); notifyListeners(); _markDirty('chatHistory'); }
 
   // Advisor history — persisted AI-advisor conversation messages
   final List<Map<String, dynamic>> _advisorHistory = [];
@@ -399,9 +496,9 @@ class AppState extends ChangeNotifier {
     _advisorHistory.add({'text': text, 'isUser': isUser, 'ts': DateTime.now().toIso8601String()});
     if (_advisorHistory.length > 100) _advisorHistory.removeAt(0);
     notifyListeners();
-    _persist();
+    _markDirty('advisorHistory');
   }
-  void clearAdvisorHistory() { _advisorHistory.clear(); notifyListeners(); _persist(); }
+  void clearAdvisorHistory() { _advisorHistory.clear(); notifyListeners(); _markDirty('advisorHistory'); }
 
   // ── Renewal radar — the user's current plans + promo-end tracking ────────────
   final List<TrackedPlan> _myPlans = [];
@@ -480,7 +577,7 @@ class AppState extends ChangeNotifier {
     });
     if (_communityPosts.length > 50) _communityPosts.removeLast();
     notifyListeners();
-    _persist();
+    _markDirty('communityPosts');
   }
 
   bool isOwnPost(String id) => _communityPosts.any((p) => p['id'] == id);
@@ -491,7 +588,10 @@ class AppState extends ChangeNotifier {
     _likedPosts.remove(id);
     _bookmarkedPosts.remove(id);
     notifyListeners();
-    _persist();
+    _markDirty('communityPosts');
+    _markDirty('communityReplies');
+    _markDirty('likedPosts');
+    _markDirty('bookmarkedPosts');
   }
 
   void addReview({required String provider, required int overall, required Map<String, int> subRatings, required String text}) {

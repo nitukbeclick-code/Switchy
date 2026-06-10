@@ -1,3 +1,4 @@
+import '../app_state.dart';
 import '../models.dart';
 import '../data.dart';
 
@@ -42,6 +43,23 @@ class MatchProfile {
   final bool wants5G;
   final bool wantsAbroad;
   final bool wantsNoCommit;
+
+  /// The canonical way to build a profile for [category] from [appState] — the
+  /// quiz-budget gating rule (budget applies only when the quiz was completed
+  /// for this same category) lives here, not copy-pasted across screens.
+  factory MatchProfile.fromAppState(AppState appState, String category) =>
+      MatchProfile(
+        category: category,
+        currentBill: appState.currentBill(category),
+        budget: (appState.quizCompleted && appState.quizCat == category)
+            ? appState.quizBudget
+            : 0,
+        priority: priorityFromId(appState.quizPriority),
+        lines: appState.quizLines,
+        wants5G: appState.wants5G,
+        wantsAbroad: appState.wantsAbroad,
+        wantsNoCommit: appState.wantsNoCommit,
+      );
 }
 
 /// A scored plan: the match score (0–100), the concrete annual saving, and

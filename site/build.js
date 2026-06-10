@@ -338,6 +338,16 @@ function page(c) {
   const catGuides = relatedGuides(c.name, null, 2).map(guideCard).join('\n');
   const catPlans = plansByCat[c.slug] || [];
   const planCards = catPlans.map(planCardHtml).join('\n      ');
+  const cols = (typeof builtCollections !== 'undefined' ? builtCollections : []).filter((col) => col.catSlug === c.slug);
+  const colsStrip = cols.length ? `
+    <section class="section" aria-label="אוספים">
+      <div class="container">
+        <header class="section__head reveal"><span class="eyebrow">קיצורי דרך</span><h2>אוספים פופולריים ב${esc(c.name)}</h2></header>
+        <div class="providers__row" style="justify-content:center">
+          ${cols.map((col) => `<a class="chip" href="${col.slug}.html">${esc(col.h1)}</a>`).join('\n          ')}
+        </div>
+      </div>
+    </section>` : '';
   return `<!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
@@ -401,6 +411,7 @@ ${nav}
       </div>
     </section>
 
+${colsStrip}
     <section class="section section--alt">
       <div class="container">
         <header class="section__head reveal"><span class="eyebrow">מה כדאי לבדוק</span><h2>איך בוחרים נכון ${esc(c.name)}</h2></header>
@@ -604,6 +615,15 @@ const guides = [
     ],
   },
 ];
+
+// Extra guides authored as JSON content files under content/guides/ — new SEO
+// articles are added by dropping a file there, no edit to this generator needed.
+const extraGuidesDir = path.join(__dirname, 'content', 'guides');
+if (fs.existsSync(extraGuidesDir)) {
+  for (const f of fs.readdirSync(extraGuidesDir).filter((f) => f.endsWith('.json')).sort()) {
+    guides.push(JSON.parse(fs.readFileSync(path.join(extraGuidesDir, f), 'utf8')));
+  }
+}
 
 // Render a single guide card (reused by guides index, article "related", category pages).
 function guideCard(g) {
@@ -907,6 +927,15 @@ function plansPage() {
     .map(([f, label], i) => `<button class="filter-btn${i === 0 ? ' active' : ''}" data-filter="${f}">${esc(label)}</button>`)
     .join('\n          ');
   const cards = catalogue.plans.slice().sort((a, b) => a.price - b.price).map(planCardHtml).join('\n        ');
+  const collectionsSection = builtCollections.length ? `
+    <section class="section section--alt" aria-label="אוספים">
+      <div class="container">
+        <header class="section__head reveal"><span class="eyebrow">קיצורי דרך</span><h2>אוספים פופולריים</h2><p>קפיצה ישירה למה שמחפשים.</p></header>
+        <div class="providers__row">
+          ${builtCollections.map((col) => `<a class="chip" href="${col.slug}.html">${esc(col.h1)}</a>`).join('\n          ')}
+        </div>
+      </div>
+    </section>` : '';
   return `<!DOCTYPE html>
 <html lang="he" dir="rtl">
 ${head('כל החבילות — מחירון מלא של כל חברות התקשורת | חוסך', `מחירון מלא: ${catalogue.plans.length} מסלולי סלולר, אינטרנט, טלוויזיה, חבילות משולבות וחו״ל מכל החברות — ממוין מהזול ביותר. סננו לפי קטגוריה וחפשו.`, url)}
@@ -939,6 +968,7 @@ ${nav}
         <p class="plan-empty" id="planEmpty">לא נמצאו חבילות שתואמות את החיפוש.</p>
       </div>
     </section>
+${collectionsSection}
     <section class="cta" id="cta">
       <div class="container cta__inner reveal">
         <h2>מצאתם משהו מעניין?</h2>
@@ -1246,9 +1276,136 @@ ${footer}
 `;
 }
 
+// ── Collections (best-of landing pages) ─────────────────────────────────────
+// Each is a DISTINCT cross-cutting filter over the real catalogue (never a whole
+// category — that would duplicate the category page). 100% factual: derived from
+// plans.json fields, no fabricated signal. Pages carry ItemList + Breadcrumb JSON-LD.
+const collections = [
+  {
+    slug: 'cellular-5g', catSlug: 'cellular', catName: 'סלולר', eyebrow: '5G',
+    title: 'מסלולי 5G הזולים ביותר — השוואת מחירים מלאה | חוסך',
+    h1: 'מסלולי 5G — מהזול ביותר',
+    desc: 'כל מסלולי ה-5G בשוק במקום אחד, ממוינים מהזול ביותר. מהירות וכיסוי משופרים — לרוב במחיר של מסלול רגיל.',
+    intro: '5G כבר לא יקר יותר. ריכזנו את כל מסלולי ה-5G, ממוינים מהזול ליקר — בדקו תמיד גם את המחיר שאחרי המבצע.',
+    filter: (p) => p.cat === 'cellular' && p.is5G, limit: 15,
+  },
+  {
+    slug: 'plans-no-commitment', catSlug: 'cellular', catName: 'סלולר', eyebrow: 'גמישות מלאה',
+    title: 'מסלולים ללא התחייבות — סלולר ואינטרנט | חוסך',
+    h1: 'מסלולים ללא התחייבות',
+    desc: 'מסלולי סלולר ואינטרנט ללא התחייבות — עוזבים מתי שרוצים. ממוינים מהזול ביותר, מחירים מעודכנים מכל החברות.',
+    intro: 'ללא התחייבות = הכוח בידיים שלכם: אם המחיר קופץ, פשוט עוברים. הנה המסלולים ללא התחייבות בשוק.',
+    filter: (p) => (p.cat === 'cellular' || p.cat === 'internet') && p.noCommit, limit: 18,
+  },
+  {
+    slug: 'internet-giga', catSlug: 'internet', catName: 'אינטרנט', eyebrow: '1000Mb',
+    title: 'אינטרנט גיגה (1000Mb) — השוואת מחירים | חוסך',
+    h1: 'אינטרנט גיגה — 1000Mb',
+    desc: 'מסלולי אינטרנט במהירות גיגה (1000Mb) ממוינים מהזול ביותר — לבתים עם הרבה משתמשים כבדים במקביל.',
+    intro: 'מהירות גיגה משתלמת לבתים עם הרבה משתמשים כבדים. הנה מסלולי הגיגה בשוק, ממוינים מהזול ליקר.',
+    filter: (p) => p.cat === 'internet' && /1000|גיגה|ג׳יגה/.test([p.plan, (p.feats || []).join(' '), JSON.stringify(p.specs || {})].join(' ')),
+    limit: 12,
+  },
+  {
+    slug: 'esim-abroad', catSlug: 'abroad', catName: 'חבילות חו״ל', eyebrow: 'eSIM',
+    title: 'חבילות eSIM לחו״ל — השוואת מחירים | חוסך',
+    h1: 'חבילות eSIM לחו״ל',
+    desc: 'חבילות eSIM דיגיטליות לכל יעד — ממוינות מהזול ביותר. מתקינים מראש, נוחתים ומחוברים, וחוסכים מול רומינג.',
+    intro: 'eSIM זול בהרבה מרומינג רגיל ומותקן עוד לפני שיוצאים מהבית. הנה חבילות ה-eSIM, ממוינות מהזול ליקר.',
+    filter: (p) => p.cat === 'abroad' && /esim|איראלו|airalo/i.test([p.provider, p.plan, p.net, (p.feats || []).join(' ')].join(' ')),
+    limit: 15,
+  },
+  {
+    slug: 'cellular-with-abroad', catSlug: 'cellular', catName: 'סלולר', eyebrow: 'כולל חו״ל',
+    title: 'מסלולי סלולר שכוללים גלישה בחו״ל | חוסך',
+    h1: 'מסלולי סלולר עם גלישה בחו״ל',
+    desc: 'מסלולי סלולר שכוללים גלישה בחו״ל בחבילה — בלי לקנות חבילת רומינג נפרדת. ממוינים מהזול ביותר.',
+    intro: 'חלק מהמסלולים כוללים גלישה בחו״ל כבר בחבילה. אם אתם נוסעים הרבה, זה יכול לחסוך. הנה המסלולים האלה.',
+    filter: (p) => p.cat === 'cellular' && p.hasAbroad, limit: 15,
+  },
+];
+
+function collectionPage(col) {
+  const url = `${SITE}/${col.slug}.html`;
+  const matched = catalogue.plans.filter(col.filter).sort(col.sort || ((a, b) => offerPrice(a) - offerPrice(b)));
+  const shown = col.limit ? matched.slice(0, col.limit) : matched;
+  const planCards = shown.map(planCardHtml).join('\n      ');
+  const crumbs = { '@type': 'BreadcrumbList', itemListElement: [
+    { '@type': 'ListItem', position: 1, name: 'דף הבית', item: SITE + '/' },
+    { '@type': 'ListItem', position: 2, name: 'כל החבילות', item: SITE + '/plans.html' },
+    { '@type': 'ListItem', position: 3, name: col.h1, item: url },
+  ] };
+  const graph = [crumbs];
+  if (shown.length) graph.push(plansItemListJsonLd(shown, url, col.h1));
+  const extraJsonLd = JSON.stringify({ '@context': 'https://schema.org', '@graph': graph });
+  const guidesHtml = relatedGuides(col.catName, null, 2).map(guideCard).join('\n');
+  return `<!DOCTYPE html>
+<html lang="he" dir="rtl">
+${head(col.title, col.desc, url, extraJsonLd)}
+<body id="top">
+${nav}
+  <main id="main">
+    <section class="lead-hero">
+      <div class="container">
+        <p class="crumbs"><a href="index.html">דף הבית</a> ← <a href="plans.html">כל החבילות</a> ← ${esc(col.h1)}</p>
+        <span class="pill">${esc(col.eyebrow)} · השוואה חינם · בלי התחייבות</span>
+        <h1>${esc(col.h1)}</h1>
+        <p>${esc(col.intro)}</p>
+        <div class="hero__cta">
+          <a class="btn btn--primary btn--lg" href="#cta">השוו ותחסכו ←</a>
+          <a class="btn btn--ghost btn--lg" href="${col.catSlug}.html">לכל מסלולי ה${esc(col.catName)}</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="plans">
+      <div class="container">
+        <header class="section__head reveal"><span class="eyebrow">${shown.length} מסלולים</span><h2>${esc(col.h1)}</h2><p>ממוין מהזול ביותר — מחירים מעודכנים מכל החברות.</p></header>
+        <div class="plan-grid">
+      ${planCards}
+        </div>
+      </div>
+    </section>
+${guidesHtml ? `
+    <section class="section section--alt" aria-label="מדריכים">
+      <div class="container">
+        <header class="section__head reveal"><span class="eyebrow">כדאי לדעת</span><h2>מדריכים שימושיים</h2></header>
+        <div class="guide-cards guide-cards--2">
+${guidesHtml}
+        </div>
+      </div>
+    </section>
+` : ''}
+    <section class="cta" id="cta">
+      <div class="container cta__inner reveal">
+        <h2>מצאתם משהו מעניין?</h2>
+        <p>השאירו פרטים ונעזור לכם לעבור — חינם, בלי התחייבות.</p>
+        <form class="cta__form" id="leadForm" novalidate>
+          <input type="text" id="leadName" name="name" placeholder="שם מלא" aria-label="שם מלא" autocomplete="name" required />
+          <input type="tel" id="leadPhone" name="phone" placeholder="טלפון (050-0000000)" aria-label="מספר טלפון" autocomplete="tel" inputmode="tel" required />
+          <button class="btn btn--primary btn--lg" type="submit">קבלו השוואה חינם</button>
+        </form>
+        <p class="cta__note" id="leadNote" role="status" aria-live="polite"></p>
+        <a class="cta__wa" href="https://wa.me/972505037537" target="_blank" rel="noopener"><span aria-hidden="true">💬</span> מעדיפים וואטסאפ? דברו איתנו</a>
+      </div>
+    </section>
+  </main>
+${footer}
+  <script src="${JS_SRC}" defer></script>
+</body>
+</html>
+`;
+}
+
+// Only collections with enough real matches become pages (no thin/empty pages).
+const builtCollections = collections.filter((col) => catalogue.plans.filter(col.filter).length >= 3);
+
 // ── Write pages ────────────────────────────────────────────────────────────
 for (const c of categories) {
   fs.writeFileSync(path.join(__dirname, `${c.slug}.html`), page(c));
+}
+for (const col of builtCollections) {
+  fs.writeFileSync(path.join(__dirname, `${col.slug}.html`), collectionPage(col));
 }
 
 // Per-provider pages (from the catalogue).
@@ -1292,6 +1449,7 @@ const locs = [
   { loc: `${SITE}/guides.html`, lastmod: BUILD_DATE, priority: '0.7', changefreq: 'weekly' },
   { loc: `${SITE}/about.html`, lastmod: BUILD_DATE, priority: '0.5', changefreq: 'monthly' },
   ...categories.map((c) => ({ loc: `${SITE}/${c.slug}.html`, lastmod: CATALOGUE_DATE, priority: '0.9', changefreq: 'daily' })),
+  ...builtCollections.map((col) => ({ loc: `${SITE}/${col.slug}.html`, lastmod: CATALOGUE_DATE, priority: '0.75', changefreq: 'weekly' })),
   ...guides.map((g) => ({ loc: `${SITE}/${g.slug}.html`, lastmod: isoDate(g.date), priority: '0.6', changefreq: 'monthly' })),
   ...providerNames.map((n) => ({ loc: `${SITE}/provider-${providerSlug(n)}.html`, lastmod: CATALOGUE_DATE, priority: '0.7', changefreq: 'weekly' })),
   { loc: `${SITE}/privacy.html`, lastmod: BUILD_DATE, priority: '0.3', changefreq: 'yearly' },
@@ -1304,5 +1462,5 @@ ${locs.map((u) => `  <url>\n    <loc>${u.loc}</loc>\n    <lastmod>${u.lastmod}</
 `;
 fs.writeFileSync(path.join(__dirname, 'sitemap.xml'), sitemap);
 
-console.log(`Generated ${categories.length} category + ${guides.length} guides + ${staticPages.length} static + guides index + plans + providers + 404 + sitemap.xml`);
+console.log(`Generated ${categories.length} category + ${builtCollections.length} collections + ${guides.length} guides + ${staticPages.length} static + guides index + plans + providers + 404 + sitemap.xml`);
 console.log(`Asset fingerprints: styles.css?v=${CSS_V}  script.js?v=${JS_V}  (hand-written index.html must reference these same values)`);

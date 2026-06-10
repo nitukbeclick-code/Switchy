@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/app_snackbar.dart';
 import '../../core/nav.dart';
 import '../../app_state.dart';
 import '../../data.dart';
@@ -548,13 +549,8 @@ class _ReminderCta extends StatelessWidget {
                     onPressed: () {
                       appState.setRenewalReminders(true);
                       appBackend.setRenewalReminder(true).catchError((_) {});
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: const Text('תזכורת חידוש הופעלה — נדאג שלא תפספס'),
-                          backgroundColor: ffTheme.primary,
-                          behavior: SnackBarBehavior.floating,
-                        ),
-                      );
+                      AppSnackBar.success(
+                          context, 'תזכורת חידוש הופעלה — נדאג שלא תפספס');
                     },
                     icon: const Icon(Icons.notifications_active_rounded, size: 18),
                     label: const Text('שלחו לי תזכורת'),

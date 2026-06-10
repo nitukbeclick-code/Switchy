@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/app_snackbar.dart';
 import '../../core/nav.dart';
 import '../../widgets/app_button.dart';
 import '../../app_state.dart';
@@ -221,9 +222,9 @@ class _AuthWidgetState extends State<AuthWidget> {
                         children: [
                           Expanded(
                             child: OutlinedButton.icon(
-                              onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('כניסה עם גוגל — בקרוב'), duration: Duration(seconds: 2)),
-                              ),
+                              onPressed: () => AppSnackBar.info(
+                                  context, 'כניסה עם גוגל — בקרוב',
+                                  duration: const Duration(seconds: 2)),
                               style: OutlinedButton.styleFrom(
                                 side: BorderSide(color: ffTheme.alternate),
                                 padding: const EdgeInsets.symmetric(vertical: 13),
@@ -236,9 +237,9 @@ class _AuthWidgetState extends State<AuthWidget> {
                           const SizedBox(width: 12),
                           Expanded(
                             child: OutlinedButton.icon(
-                              onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('כניסה עם Apple — בקרוב'), duration: Duration(seconds: 2)),
-                              ),
+                              onPressed: () => AppSnackBar.info(
+                                  context, 'כניסה עם Apple — בקרוב',
+                                  duration: const Duration(seconds: 2)),
                               style: OutlinedButton.styleFrom(
                                 side: BorderSide(color: ffTheme.alternate),
                                 padding: const EdgeInsets.symmetric(vertical: 13),

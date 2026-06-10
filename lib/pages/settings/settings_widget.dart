@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/app_snackbar.dart';
 import '../../core/nav.dart';
 import '../../app_state.dart';
 import '../../widgets/app_button.dart';
@@ -278,14 +279,7 @@ class SettingsWidget extends StatelessWidget {
 
   void _showSnack(BuildContext context, String message) {
     if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        duration: const Duration(seconds: 2),
-      ),
-    );
+    AppSnackBar.info(context, message, duration: const Duration(seconds: 2));
   }
 }
 

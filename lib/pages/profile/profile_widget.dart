@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/app_snackbar.dart';
 import '../../core/nav.dart';
 import '../../widgets/app_button.dart';
 import '../../app_state.dart';
@@ -82,9 +83,8 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                 final name = nameCtrl.text.trim();
                 final phone = phoneCtrl.text.trim();
                 if (name.isEmpty || phone.isEmpty) {
-                  ScaffoldMessenger.of(ctx).showSnackBar(
-                    const SnackBar(content: Text('אנא מלאו שם ומספר טלפון'), duration: Duration(seconds: 2)),
-                  );
+                  AppSnackBar.error(ctx, 'אנא מלאו שם ומספר טלפון',
+                      duration: const Duration(seconds: 2));
                   return;
                 }
                 Provider.of<AppState>(ctx, listen: false).login(name: name, phone: phone);

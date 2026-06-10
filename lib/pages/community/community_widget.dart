@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/app_snackbar.dart';
 import '../../core/nav.dart';
 import '../../app_state.dart';
 import '../../data.dart';
@@ -541,11 +542,9 @@ class _CommunityWidgetState extends State<CommunityWidget> {
 
   void _showComposer(BuildContext context, AppState appState, AppTheme ffTheme) {
     if (!appState.isLoggedIn) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: const Text('יש להתחבר כדי לפרסם פוסט'),
-        action: SnackBarAction(label: 'כניסה', onPressed: () => context.pushNamed('Auth')),
-        duration: const Duration(seconds: 3),
-      ));
+      AppSnackBar.info(context, 'יש להתחבר כדי לפרסם פוסט',
+          action: SnackBarAction(
+              label: 'כניסה', onPressed: () => context.pushNamed('Auth')));
       return;
     }
     final ctrl = TextEditingController();

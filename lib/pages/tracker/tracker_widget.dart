@@ -264,7 +264,7 @@ class _TrackerWidgetState extends State<TrackerWidget> {
               ),
               child: Row(
                 children: [
-                  const Text('🤝', style: TextStyle(fontSize: 24)),
+                  Icon(Icons.handshake_outlined, size: 24, color: ffTheme.primaryDark),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
@@ -568,7 +568,7 @@ class _TrackerWidgetState extends State<TrackerWidget> {
               ),
               child: Row(
                 children: [
-                  const Text('🛡️', style: TextStyle(fontSize: 24)),
+                  Icon(Icons.shield_outlined, size: 24, color: ffTheme.primaryText),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(

@@ -233,7 +233,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                   borderRadius: BorderRadius.circular(ffTheme.radiusSm),
                 ),
                 child: const Center(
-                  child: Text('⏰', style: TextStyle(fontSize: 22)),
+                  child: Icon(Icons.access_time_rounded, size: 22, color: Colors.white),
                 ),
               ),
               const SizedBox(width: 14),
@@ -476,7 +476,7 @@ class _HomeWidgetState extends State<HomeWidget> {
             padding: const EdgeInsets.only(bottom: 12),
             child: Row(
               children: [
-                const Text('🔥', style: TextStyle(fontSize: 18)),
+                Icon(Icons.local_fire_department_rounded, size: 18, color: ffTheme.primary),
                 const SizedBox(width: 6),
                 Text('עסקה חמה היום', style: ffTheme.titleLarge),
               ],
@@ -515,7 +515,7 @@ class _HomeWidgetState extends State<HomeWidget> {
         children: [
           Row(
             children: [
-              const Text('🎯', style: TextStyle(fontSize: 16)),
+              Icon(Icons.adjust, size: 16, color: ffTheme.primary),
               const SizedBox(width: 6),
               Expanded(child: Text('התאמת השאלון — ${catInfo.name} עד ₪$budget', style: ffTheme.titleLarge)),
               GestureDetector(
@@ -574,7 +574,7 @@ class _HomeWidgetState extends State<HomeWidget> {
         children: [
           Row(
             children: [
-              const Text('🎯', style: TextStyle(fontSize: 16)),
+              Icon(Icons.adjust, size: 16, color: ffTheme.primary),
               const SizedBox(width: 6),
               Text('המלצה אישית ל$topCatName', style: ffTheme.titleLarge),
             ],
@@ -765,7 +765,7 @@ class _HomeWidgetState extends State<HomeWidget> {
         children: [
           Row(
             children: [
-              const Text('💬', style: TextStyle(fontSize: 18)),
+              Icon(Icons.chat_bubble_outline_rounded, size: 18, color: ffTheme.primary),
               const SizedBox(width: 6),
               Text('קהילה', style: ffTheme.titleLarge),
               const Spacer(),
@@ -865,7 +865,7 @@ class _HomeWidgetState extends State<HomeWidget> {
               width: 38,
               height: 38,
               decoration: BoxDecoration(color: ffTheme.primary, shape: BoxShape.circle),
-              child: const Center(child: Text('💬', style: TextStyle(fontSize: 18))),
+              child: const Center(child: Icon(Icons.chat_bubble_outline_rounded, size: 18, color: Colors.white)),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -1039,7 +1039,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                               border: Border.all(color: Colors.white, width: 1.5),
                               boxShadow: ffTheme.shadowSoft,
                             ),
-                            child: const Center(child: Text('💡', style: TextStyle(fontSize: 11))),
+                            child: Center(child: Icon(Icons.lightbulb_outline_rounded, size: 11, color: ffTheme.primary)),
                           ),
                         ),
                     ],

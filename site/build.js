@@ -42,6 +42,64 @@ const plansByCat = {};
 for (const p of catalogue.plans) (plansByCat[p.cat] ||= []).push(p);
 for (const k of Object.keys(plansByCat)) plansByCat[k].sort((a, b) => a.price - b.price);
 
+// ── Monochrome SVG icon set ─────────────────────────────────────────────────
+// Formal brand uses line icons, not emoji (per UI/UX best practice + the
+// white-glass/black-ink identity). Icons inherit `currentColor`; sizing/colour
+// is owned by CSS (.cat__icon svg / .feature__icon svg / .pill svg ...).
+const ICONS = {
+  phone: '<rect x="6" y="2.5" width="12" height="19" rx="2.5"/><line x1="10.5" y1="18.5" x2="13.5" y2="18.5"/>',
+  globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.6 2.4 4 5.5 4 9s-1.4 6.6-4 9c-2.6-2.4-4-5.5-4-9s1.4-6.6 4-9z"/>',
+  tv: '<rect x="3" y="5" width="18" height="12" rx="2"/><path d="M8 21h8M12 17v4"/>',
+  home: '<path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/>',
+  plane: '<path d="M21 14.5 14 12V5.5a2 2 0 0 0-4 0V12l-7 2.5V16l7-1.7V19l-2 1.3V22l4-1 4 1v-1.7L14 19v-4.7l7 1.7z"/>',
+  cpu: '<rect x="6" y="6" width="12" height="12" rx="2"/><rect x="9.5" y="9.5" width="5" height="5" rx="1"/><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/>',
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7.5V12l3 2"/>',
+  chat: '<path d="M21 11.5a8.4 8.4 0 0 1-9 8 9 9 0 0 1-3.8-.8L3 20l1.3-3.9A8 8 0 0 1 3.5 11 8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/>',
+  bot: '<rect x="4" y="8" width="16" height="11" rx="3"/><path d="M12 8V5M8.5 13.5h.01M15.5 13.5h.01M9.5 16.5h5"/><circle cx="12" cy="4" r="1.5"/>',
+  transfer: '<path d="M4 8h13l-3.5-3.5M20 16H7l3.5 3.5"/>',
+  lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+  unlock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.9-1"/>',
+  savings: '<ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6"/><path d="M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"/>',
+  chart: '<path d="M4 4v16h16"/><rect x="7" y="11" width="2.6" height="6"/><rect x="11.7" y="7" width="2.6" height="10"/><rect x="16.4" y="13" width="2.6" height="4"/>',
+  shield: '<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6l8-3z"/>',
+  search: '<circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/>',
+  check: '<circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.5 2.5 5-5"/>',
+  sparkle: '<path d="M12 3l1.9 5.6L19 10l-5.1 1.4L12 17l-1.9-5.6L5 10l5.1-1.4z"/>',
+  receipt: '<path d="M5 3h14v18l-2.5-1.5L14 21l-2-1.5L10 21l-2.5-1.5L5 21z"/><path d="M9 8h6M9 12h6"/>',
+  calculator: '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8M8 12h.01M12 12h.01M16 12h.01M8 16h.01M12 16h.01M16 16h.01"/>',
+  signal: '<path d="M5 18v-3M9.5 18v-6M14 18v-9M18.5 18V6"/>',
+  people: '<circle cx="9" cy="8" r="3"/><path d="M3.5 20a5.5 5.5 0 0 1 11 0"/><path d="M16 5.5a3 3 0 0 1 0 5M20.5 20a5.5 5.5 0 0 0-3.5-5.1"/>',
+  headset: '<path d="M4 13v-1a8 8 0 0 1 16 0v1"/><rect x="3" y="13" width="4" height="6" rx="1.5"/><rect x="17" y="13" width="4" height="6" rx="1.5"/>',
+  bolt: '<path d="M13 2L4 14h7l-1 8 9-12h-7l1-8z"/>',
+  rocket: '<path d="M5 15c-1.5 1.5-2 5-2 5s3.5-.5 5-2"/><path d="M14.5 4.5C18 1 21 3 21 3s2 3-1.5 6.5L13 16l-5-5 6.5-6.5z"/><circle cx="14.5" cy="9.5" r="1.3"/>',
+  pin: '<path d="M12 21s7-6 7-11a7 7 0 0 0-14 0c0 5 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/>',
+  note: '<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 9h6M9 13h6M9 17h4"/>',
+  bell: '<path d="M6 9a6 6 0 0 1 12 0c0 6 2 7 2 7H4s2-1 2-7z"/><path d="M10 20a2 2 0 0 0 4 0"/>',
+};
+const EMOJI_TO_ICON = {
+  '📱': 'phone', '📲': 'phone', '📞': 'phone', '🌐': 'globe', '🌍': 'globe', '⚽': 'globe',
+  '📺': 'tv', '🎬': 'tv', '🏠': 'home', '✈': 'plane', '🧠': 'cpu', '⏰': 'clock',
+  '💬': 'chat', '🤖': 'bot', '🚦': 'transfer', '🔄': 'transfer', '🔒': 'lock', '🔓': 'unlock',
+  '💰': 'savings', '💸': 'savings', '💳': 'savings', '📊': 'chart', '📈': 'chart', '🛡': 'shield',
+  '🔎': 'search', '🔍': 'search', '✅': 'check', '✨': 'sparkle', '🧾': 'receipt', '🧮': 'calculator',
+  '🤝': 'check', '📡': 'signal', '📶': 'signal', '👥': 'people', '🎧': 'headset', '🛟': 'headset',
+  '⚡': 'bolt', '🔌': 'bolt', '🚀': 'rocket', '📍': 'pin', '📝': 'note', '📋': 'note', '🔔': 'bell',
+};
+const svgIcon = (name) =>
+  `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name] || ICONS.sparkle}</svg>`;
+// Map an emoji (or icon name) token to inline SVG. Variation selectors stripped.
+const iconFor = (token) => {
+  if (!token) return '';
+  // Strip variation selectors (U+FE00–U+FE0F), ZWJ (U+200D) and the keycap
+  // combining enclosure (U+20E3) by codepoint — keeps this source ASCII-clean.
+  const strip = new Set([0x200d, 0x20e3]);
+  const t = Array.from(String(token))
+    .filter((ch) => { const c = ch.codePointAt(0); return !(c >= 0xfe00 && c <= 0xfe0f) && !strip.has(c); })
+    .join('');
+  const name = ICONS[t] ? t : EMOJI_TO_ICON[t];
+  return svgIcon(name || 'sparkle');
+};
+
 const categories = [
   {
     slug: 'cellular', name: 'סלולר', icon: '📱',
@@ -370,7 +428,7 @@ function jsonLd(c) {
 
 function page(c) {
   const url = `${SITE}/${c.slug}.html`;
-  const bullets = c.bullets.map(([icon, h, p]) => `        <article class="feature feature--check reveal"><span class="feature__icon">${icon}</span><h3>${esc(h)}</h3><p>${esc(p)}</p></article>`).join('\n');
+  const bullets = c.bullets.map(([icon, h, p]) => `        <article class="feature feature--check reveal"><span class="feature__icon">${iconFor(icon)}</span><h3>${esc(h)}</h3><p>${esc(p)}</p></article>`).join('\n');
   const chips = c.providers.map((p) => `<span class="chip">${esc(p)}</span>`).join('\n          ');
   const faqs = c.faq.map(([q, a]) => `          <details><summary>${esc(q)}</summary><p>${esc(a)}</p></details>`).join('\n');
   const catGuides = relatedGuides(c.name, null, 2).map(guideCard).join('\n');
@@ -421,7 +479,7 @@ ${nav}
     <section class="lead-hero">
       <div class="container">
         <p class="crumbs"><a href="index.html">דף הבית</a> ← ${esc(c.name)}</p>
-        <span class="pill">${c.icon} השוואה חינם · בלי התחייבות</span>
+        <span class="pill pill--ico">${iconFor(c.icon)} השוואה חינם · בלי התחייבות</span>
         <h1>${esc(c.h1[0])}<span class="hl">${esc(c.h1[1])}</span></h1>
         <p>${esc(c.intro)}</p>
         <div class="hero__cta">
@@ -1206,7 +1264,7 @@ function appPage() {
   const url = `${SITE}/app.html`;
   const groups = APP_GROUPS.map(([gIcon, gTitle, items]) => {
     const cards = items.map(([icon, h, p]) =>
-      `          <article class="feature reveal"><span class="feature__icon">${icon}</span><h3>${esc(h)}</h3><p>${esc(p)}</p></article>`).join('\n');
+      `          <article class="feature reveal"><span class="feature__icon">${iconFor(icon)}</span><h3>${esc(h)}</h3><p>${esc(p)}</p></article>`).join('\n');
     return `      <div class="app-group">
         <header class="section__head reveal"><span class="eyebrow">${gIcon} ${esc(gTitle)}</span></header>
         <div class="features">

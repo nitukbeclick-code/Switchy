@@ -298,7 +298,7 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
                 ),
                 child: Row(
                   children: [
-                    const Text('⏰', style: TextStyle(fontSize: 20)),
+                    Icon(Icons.access_time_rounded, size: 20, color: ffTheme.warning),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(

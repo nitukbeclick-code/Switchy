@@ -85,14 +85,14 @@ class _SuccessWidgetState extends State<SuccessWidget> {
                   Positioned(
                     top: 4,
                     right: 4,
-                    child: const Text('✨', style: TextStyle(fontSize: 18))
+                    child: const Icon(Icons.auto_awesome, size: 18, color: Colors.white)
                         .animate(delay: 400.ms).fadeIn().slideY(begin: -0.5),
                   ),
                   // Sparkle bottom-right
                   Positioned(
                     bottom: 4,
                     left: 4,
-                    child: const Text('🎉', style: TextStyle(fontSize: 18))
+                    child: const Icon(Icons.celebration_outlined, size: 18, color: Colors.white)
                         .animate(delay: 600.ms).fadeIn().slideY(begin: 0.5),
                   ),
                 ],

@@ -445,7 +445,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
               width: 48,
               height: 48,
               decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), shape: BoxShape.circle),
-              child: const Center(child: Text('👤', style: TextStyle(fontSize: 22))),
+              child: const Center(child: Icon(Icons.person_outline_rounded, size: 22, color: Colors.white)),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -618,7 +618,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
         ),
         child: Row(
           children: [
-            const Text('🎯', style: TextStyle(fontSize: 24)),
+            const Icon(Icons.adjust, size: 24, color: Colors.white),
             const SizedBox(width: 12),
             Expanded(
               child: Column(

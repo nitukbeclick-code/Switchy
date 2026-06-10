@@ -163,7 +163,7 @@ class SettingsWidget extends StatelessWidget {
                           color: ffTheme.primary,
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: const Center(child: Text('💰', style: TextStyle(fontSize: 22))),
+                        child: const Center(child: Icon(Icons.savings_outlined, size: 22, color: Colors.white)),
                       ),
                       const SizedBox(width: 14),
                       Expanded(

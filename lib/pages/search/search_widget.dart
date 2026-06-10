@@ -641,7 +641,7 @@ class _Suggestions extends StatelessWidget {
           ),
           child: Row(
             children: [
-              const Text('🔎', style: TextStyle(fontSize: 22)),
+              Icon(Icons.search_rounded, size: 22, color: ffTheme.primary),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(

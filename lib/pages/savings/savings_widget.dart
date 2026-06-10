@@ -287,7 +287,7 @@ class _TopOpportunityCard extends StatelessWidget {
         ),
         child: Row(
           children: [
-            const Text('🚀', style: TextStyle(fontSize: 30)),
+            Icon(Icons.rocket_launch_outlined, size: 30, color: ffTheme.primaryDark),
             const SizedBox(width: 12),
             Expanded(
               child: Column(

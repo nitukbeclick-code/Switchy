@@ -370,7 +370,7 @@ class _CallbackWidgetState extends State<CallbackWidget> {
                   ).animate().scale(duration: 600.ms, curve: Curves.elasticOut),
                   PositionedDirectional(
                     top: 4, end: 4,
-                    child: const ExcludeSemantics(child: Text('✨', style: TextStyle(fontSize: 16))).animate(delay: 400.ms).fadeIn().slideY(begin: -0.5),
+                    child: ExcludeSemantics(child: Icon(Icons.auto_awesome, size: 16, color: ffTheme.primary)).animate(delay: 400.ms).fadeIn().slideY(begin: -0.5),
                   ),
                 ],
               ),

@@ -155,7 +155,7 @@ class _Page1 extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(24, 32, 24, 16),
       child: Column(
         children: [
-          const Text('💰', style: TextStyle(fontSize: 72))
+          Icon(Icons.savings_outlined, size: 72, color: ffTheme.primary)
               .animate().scale(duration: 500.ms, curve: Curves.elasticOut),
           const SizedBox(height: 20),
           Text(
@@ -191,7 +191,7 @@ class _Page1 extends StatelessWidget {
             ),
             child: Row(
               children: [
-                const Text('🔎', style: TextStyle(fontSize: 24)),
+                Icon(Icons.search_rounded, size: 24, color: ffTheme.primary),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
@@ -233,7 +233,7 @@ class _Page2 extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(24, 32, 24, 16),
       child: Column(
         children: [
-          const Text('🔍', style: TextStyle(fontSize: 72))
+          Icon(Icons.search_rounded, size: 72, color: ffTheme.primary)
               .animate().scale(duration: 500.ms, curve: Curves.elasticOut),
           const SizedBox(height: 20),
           Text(
@@ -293,7 +293,7 @@ class _Page3 extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(24, 32, 24, 16),
       child: Column(
         children: [
-          const Text('🤝', style: TextStyle(fontSize: 72))
+          Icon(Icons.handshake_outlined, size: 72, color: ffTheme.primary)
               .animate().scale(duration: 500.ms, curve: Curves.elasticOut),
           const SizedBox(height: 20),
           Text(

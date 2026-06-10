@@ -283,7 +283,7 @@ class _SaverBanner extends StatelessWidget {
         ),
         child: Row(
           children: [
-            const Text('🎉', style: TextStyle(fontSize: 30)),
+            Icon(Icons.celebration_outlined, size: 30, color: ffTheme.primaryDark),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -330,7 +330,7 @@ class _NoSaverNote extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Text('👍', style: TextStyle(fontSize: 26)),
+          Icon(Icons.thumb_up_alt_outlined, size: 26, color: ffTheme.primary),
           const SizedBox(width: 12),
           Expanded(
             child: Text(

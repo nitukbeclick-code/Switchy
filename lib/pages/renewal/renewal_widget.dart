@@ -196,7 +196,7 @@ class _IntroCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(14),
             ),
             child: const Center(
-              child: Text('⏰', style: TextStyle(fontSize: 24)),
+              child: Icon(Icons.access_time_rounded, size: 24, color: Colors.white),
             ),
           ),
           const SizedBox(width: 14),
@@ -383,7 +383,7 @@ class _PlanCard extends StatelessWidget {
                   ),
                   child: Row(
                     children: [
-                      const Text('💡', style: TextStyle(fontSize: 18)),
+                      Icon(Icons.lightbulb_outline_rounded, size: 18, color: ffTheme.primary),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Text(
@@ -443,8 +443,8 @@ class _EmptyState extends StatelessWidget {
             color: ffTheme.accent1,
             shape: BoxShape.circle,
           ),
-          child: const Center(
-              child: Text('📡', style: TextStyle(fontSize: 40))),
+          child: Center(
+              child: Icon(Icons.cell_tower_rounded, size: 40, color: ffTheme.primary)),
         ),
         const SizedBox(height: 18),
         Text('עוד לא הוספת מסלולים',

@@ -159,7 +159,7 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
                 // the area before an address is even entered.
                 Row(
                   children: [
-                    const ExcludeSemantics(child: Text('📍', style: TextStyle(fontSize: 14))),
+                    const ExcludeSemantics(child: Icon(Icons.location_on_outlined, size: 14, color: Colors.white70)),
                     const SizedBox(width: 6),
                     Expanded(
                       child: Text(
@@ -176,7 +176,7 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
             width: 64,
             height: 64,
             decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.15), shape: BoxShape.circle),
-            child: const Center(child: ExcludeSemantics(child: Text('📡', style: TextStyle(fontSize: 32)))),
+            child: const Center(child: ExcludeSemantics(child: Icon(Icons.cell_tower_rounded, size: 32, color: Colors.white))),
           ),
         ],
       ),
@@ -316,7 +316,7 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
                 width: 64, height: 64,
                 child: CircularProgressIndicator(color: ffTheme.primary, strokeWidth: 3),
               ).animate(onPlay: (c) => c.repeat()).rotate(duration: 1200.ms),
-              const ExcludeSemantics(child: Text('📡', style: TextStyle(fontSize: 24))),
+              ExcludeSemantics(child: Icon(Icons.cell_tower_rounded, size: 24, color: ffTheme.primary)),
             ],
           ),
           const SizedBox(height: 14),
@@ -518,7 +518,7 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
                   ],
                 ),
               ),
-              const ExcludeSemantics(child: Text('📡', style: TextStyle(fontSize: 28))),
+              const ExcludeSemantics(child: Icon(Icons.cell_tower_rounded, size: 28, color: Colors.white)),
             ],
           ),
           const SizedBox(height: 14),

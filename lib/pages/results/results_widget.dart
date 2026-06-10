@@ -379,7 +379,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 if (isSmart) ...[
-                                  Text('🎯', style: TextStyle(fontSize: active ? 13 : 12)),
+                                  Icon(Icons.adjust, size: active ? 13 : 12, color: ffTheme.primary),
                                   const SizedBox(width: 4),
                                 ],
                                 Text(
@@ -462,7 +462,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                         ),
                         child: Row(
                           children: [
-                            const Text('💡', style: TextStyle(fontSize: 20)),
+                            const Icon(Icons.lightbulb_outline_rounded, size: 20, color: Colors.white),
                             const SizedBox(width: 10),
                             Expanded(
                               child: Column(
@@ -595,7 +595,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                                       child: Row(
                                         mainAxisSize: MainAxisSize.min,
                                         children: [
-                                          const Text('🎯', style: TextStyle(fontSize: 12)),
+                                          Icon(Icons.adjust, size: 12, color: ffTheme.primary),
                                           const SizedBox(width: 4),
                                           Text(
                                             'ההתאמה הטובה ביותר',

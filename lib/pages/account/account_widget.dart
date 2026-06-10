@@ -104,7 +104,7 @@ class AccountWidget extends StatelessWidget {
                   ),
                   child: Row(
                     children: [
-                      const ExcludeSemantics(child: Text('🔓', style: TextStyle(fontSize: 22))),
+                      ExcludeSemantics(child: Icon(Icons.lock_open_rounded, size: 22, color: ffTheme.primary)),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(
@@ -246,7 +246,7 @@ class AccountWidget extends StatelessWidget {
                         ),
                         child: Column(
                           children: [
-                            const ExcludeSemantics(child: Text('🚀', style: TextStyle(fontSize: 40))),
+                            ExcludeSemantics(child: Icon(Icons.rocket_launch_outlined, size: 40, color: ffTheme.primary)),
                             const SizedBox(height: 12),
                             Text('עוד לא בחרתם מסלול?', style: ffTheme.titleSmall),
                             const SizedBox(height: 4),
@@ -325,7 +325,7 @@ class AccountWidget extends StatelessWidget {
                                 color: Colors.white.withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(14),
                               ),
-                              child: const Center(child: ExcludeSemantics(child: Text('🎯', style: TextStyle(fontSize: 24)))),
+                              child: const Center(child: ExcludeSemantics(child: Icon(Icons.adjust, size: 24, color: Colors.white))),
                             ),
                             const SizedBox(width: 14),
                             Expanded(
@@ -366,7 +366,7 @@ class AccountWidget extends StatelessWidget {
                       ),
                       child: Row(
                         children: [
-                          const ExcludeSemantics(child: Text('🎯', style: TextStyle(fontSize: 20))),
+                          ExcludeSemantics(child: Icon(Icons.adjust, size: 20, color: ffTheme.primary)),
                           const SizedBox(width: 10),
                           Expanded(
                             child: Text('תקציב השאלון: ₪${appState.quizBudget}${appState.quizCat == 'abroad' ? '/חבילה' : '/חודש'}',

@@ -171,7 +171,7 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
                                         child: Row(
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
-                                            const Text('💰', style: TextStyle(fontSize: 12)),
+                                            Icon(Icons.savings_outlined, size: 12, color: ffTheme.secondary),
                                             const SizedBox(width: 4),
                                             Text(
                                               'תוכלו לחסוך עד ₪$heroSaving בשנה!',
@@ -283,7 +283,7 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Text('💡', style: TextStyle(fontSize: 13)),
+                          Icon(Icons.lightbulb_outline_rounded, size: 13, color: ffTheme.primaryDark),
                           const SizedBox(width: 6),
                           Text(
                             'לפי החשבון שלך תוכל לחסוך עד ₪$catSaving/שנה',

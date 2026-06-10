@@ -537,6 +537,16 @@ select.filter-search { cursor: pointer; -webkit-appearance: none; appearance: no
 .eyebrow::before { content: ""; width: 22px; height: 2px; border-radius: 2px; background: var(--green); opacity: .8; }
 .section__head .eyebrow { display: inline-flex; }
 
+/* ── Line icons (replace emoji; inherit ink via currentColor) ─────────────── */
+.ico { width: 1em; height: 1em; display: inline-block; vertical-align: middle; flex: none; }
+.cat__icon { color: var(--green); line-height: 0; }
+.cat__icon .ico { width: 34px; height: 34px; }
+.feature__icon { color: var(--green); }
+.feature__icon .ico { width: 28px; height: 28px; }
+.feature--check .feature__icon { color: var(--green-d); }
+.pill--ico { display: inline-flex; align-items: center; gap: 7px; }
+.pill--ico .ico { width: 15px; height: 15px; color: var(--green); }
+
 /* ── Pointer-tracking spotlight on cards ────────────────────────────────────
    A soft ink glow follows the cursor (coords fed by script.js as --mx/--my),
    plus a crisp inset top highlight so each surface catches the light. */

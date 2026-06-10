@@ -963,7 +963,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                 ),
                 child: Row(
                   children: [
-                    const Text('🔥', style: TextStyle(fontSize: 22)),
+                    const Icon(Icons.local_fire_department_rounded, size: 22, color: Colors.white),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Column(
@@ -1147,7 +1147,7 @@ class _PostCardState extends State<_PostCard> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Text('🔥', style: TextStyle(fontSize: 11)),
+                        Icon(Icons.local_fire_department_rounded, size: 11, color: ffTheme.warning),
                         const SizedBox(width: 4),
                         Text('טרנדינג', style: ffTheme.labelSmall.copyWith(color: ffTheme.warning, fontWeight: FontWeight.w700)),
                       ],

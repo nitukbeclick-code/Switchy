@@ -185,7 +185,7 @@ class _BillsWidgetState extends State<BillsWidget> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Text('💡', style: TextStyle(fontSize: 16)),
+                          Icon(Icons.lightbulb_outline_rounded, size: 16, color: ffTheme.secondary),
                           const SizedBox(width: 8),
                           Text('חיסכון פוטנציאלי: ₪$totalSavings/שנה',
                               style: GoogleFonts.rubik(fontSize: 13, fontWeight: FontWeight.w700, color: ffTheme.secondary)),
@@ -345,7 +345,7 @@ class _BillsWidgetState extends State<BillsWidget> {
                 children: [
                   Text('איפה אתם משלמים יותר מדי', style: ffTheme.titleMedium),
                   const SizedBox(width: 8),
-                  Text('🔍', style: GoogleFonts.assistant(fontSize: 16)),
+                  Icon(Icons.search_rounded, size: 16, color: ffTheme.primaryText),
                 ],
               ),
               const SizedBox(height: 4),

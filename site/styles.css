@@ -258,6 +258,17 @@ a.chip:hover { color: var(--green); }
 .cta__wa { display: inline-block; margin-top: 8px; color: #fff; font-weight: 700; opacity: .9; border-bottom: 1px dashed rgba(255,255,255,.5); padding-bottom: 2px; }
 .cta__wa:hover { opacity: 1; }
 
+/* Legal consent (terms / privacy mandatory, marketing optional) — RTL, sits
+   above the submit button on the dark CTA band. Real <label for> + checkbox.
+   The id-based input rules below override the broad `.cta__form input` styling
+   so the checkboxes render as native boxes, not white text fields. */
+.consent { flex: 1 1 100%; display: flex; flex-direction: column; gap: 8px; text-align: start; margin: 2px 0 6px; }
+.consent__row { display: flex; align-items: flex-start; gap: 10px; cursor: pointer; font-size: 13.5px; line-height: 1.45; color: rgba(255,255,255,.92); font-weight: 500; }
+.cta__form .consent__row input[type="checkbox"] { flex: 0 0 auto; width: 20px; height: 20px; min-width: 20px; margin: 1px 0 0; padding: 0; border-radius: 5px; background: none; accent-color: var(--green); cursor: pointer; }
+.cta__form .consent__row input[type="checkbox"]:focus-visible { outline: 3px solid var(--lime); outline-offset: 2px; }
+.consent__row a { color: var(--lime); font-weight: 700; text-decoration: underline; text-underline-offset: 2px; }
+.consent__row a:hover { opacity: .85; }
+
 /* Footer */
 .footer { background: var(--green-d); color: rgba(255,255,255,.8); padding: 48px 0 28px; }
 .footer__inner { display: grid; grid-template-columns: 1.6fr 1fr 1fr 1fr; gap: 30px; }

@@ -31,9 +31,23 @@ void main() {
         email: 'a@b.com',
         password: 'secret123',
         name: 'דנה',
+        acceptedTerms: true,
+        acceptedPrivacy: true,
       );
       expect(out.ok, isFalse);
       expect(out.error, unavailable);
+    });
+
+    test('signUpWithEmail rejects without mandatory legal consent', () async {
+      final out = await AuthService.instance.signUpWithEmail(
+        email: 'a@b.com',
+        password: 'secret123',
+        name: 'דנה',
+        acceptedTerms: false,
+        acceptedPrivacy: true,
+      );
+      expect(out.ok, isFalse);
+      expect(out.error, contains('תנאי השימוש'));
     });
   });
 

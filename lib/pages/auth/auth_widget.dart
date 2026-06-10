@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' show OAuthProvider;
 import '../../theme/app_theme.dart';
 import '../../core/nav.dart';
@@ -27,6 +28,13 @@ class _AuthWidgetState extends State<AuthWidget> {
   bool _busy = false;
   bool _obscure = true;
   bool _faceIdAvailable = false;
+
+  // Legal consent (Israeli Privacy Protection Regs + Spam Law). Terms + privacy
+  // are mandatory to create an account; marketing is opt-in (unchecked default).
+  bool _acceptTerms = false;
+  bool _acceptPrivacy = false;
+  bool _acceptMarketing = false;
+  bool get _consentOk => _acceptTerms && _acceptPrivacy;
 
   final _formKey = GlobalKey<FormState>();
   final _nameCtrl = TextEditingController();
@@ -195,6 +203,103 @@ class _AuthWidgetState extends State<AuthWidget> {
     ).animate().fadeIn(duration: 300.ms);
   }
 
+  Future<void> _openLegal(String page) async {
+    final uri = Uri.parse('https://chosech.co.il/$page');
+    try {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      if (mounted) AppSnackBar.info(context, 'לא ניתן לפתוח את המסמך כרגע');
+    }
+  }
+
+  void _consentMissing() =>
+      AppSnackBar.info(context, 'יש לאשר את תנאי השימוש ומדיניות הפרטיות כדי להמשיך');
+
+  void _oauth(OAuthProvider provider) {
+    // OAuth creates/links an account → require consent first, then arm it so the
+    // server stamps it once the redirect completes (see main.dart listener).
+    if (!_consentOk) {
+      _consentMissing();
+      return;
+    }
+    AuthService.instance.armConsent(marketing: _acceptMarketing);
+    _runAuth(() => AuthService.instance.signInWithOAuth(provider), name: '');
+  }
+
+  /// The legal consent block (mandatory terms + privacy, optional marketing).
+  Widget _consentPanel(AppTheme t) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _consentRow(t,
+            value: _acceptTerms,
+            onChanged: (v) => setState(() => _acceptTerms = v ?? false),
+            lead: 'קראתי ואני מסכים/ה ל',
+            link: 'תנאי השימוש',
+            page: 'terms.html'),
+        _consentRow(t,
+            value: _acceptPrivacy,
+            onChanged: (v) => setState(() => _acceptPrivacy = v ?? false),
+            lead: 'קראתי ואני מסכים/ה ל',
+            link: 'מדיניות הפרטיות',
+            page: 'privacy.html'),
+        _consentRow(t,
+            value: _acceptMarketing,
+            onChanged: (v) => setState(() => _acceptMarketing = v ?? false),
+            lead: 'אני מעוניין/ת לקבל דיוור שיווקי ומבצעים (אופציונלי)'),
+      ],
+    );
+  }
+
+  Widget _consentRow(
+    AppTheme t, {
+    required bool value,
+    required ValueChanged<bool?> onChanged,
+    required String lead,
+    String? link,
+    String? page,
+  }) {
+    final label = Text.rich(
+      TextSpan(
+        text: lead,
+        style: t.bodySmall.copyWith(color: t.secondaryText, height: 1.35),
+        children: link != null
+            ? [
+                TextSpan(
+                  text: link,
+                  style: t.bodySmall.copyWith(
+                      color: t.primary, fontWeight: FontWeight.w700, decoration: TextDecoration.underline),
+                ),
+              ]
+            : null,
+      ),
+    );
+    return Row(
+      children: [
+        SizedBox(
+          width: 40,
+          height: 40,
+          child: Checkbox(
+            value: value,
+            onChanged: onChanged,
+            activeColor: t.primary,
+            visualDensity: VisualDensity.compact,
+            materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+        ),
+        Expanded(
+          child: page != null
+              ? Semantics(
+                  button: true,
+                  label: 'פתח $link',
+                  child: InkWell(onTap: () => _openLegal(page), child: label),
+                )
+              : label,
+        ),
+      ],
+    );
+  }
+
   Widget _chooseBody(AppTheme t) {
     return Column(
       children: [
@@ -208,6 +313,8 @@ class _AuthWidgetState extends State<AuthWidget> {
           ),
           const SizedBox(height: 12),
         ],
+        _consentPanel(t),
+        const SizedBox(height: 14),
         _SocialButton(
           label: 'המשך עם Google',
           glyph: 'G',
@@ -215,7 +322,7 @@ class _AuthWidgetState extends State<AuthWidget> {
           bg: Colors.white,
           fg: t.primaryText,
           bordered: true,
-          onTap: _busy ? null : () => _runAuth(() => AuthService.instance.signInWithOAuth(OAuthProvider.google), name: ''),
+          onTap: _busy ? null : () => _oauth(OAuthProvider.google),
         ),
         const SizedBox(height: 12),
         _SocialButton(
@@ -223,7 +330,7 @@ class _AuthWidgetState extends State<AuthWidget> {
           icon: Icons.facebook_rounded,
           bg: const Color(0xFF1877F2),
           fg: Colors.white,
-          onTap: _busy ? null : () => _runAuth(() => AuthService.instance.signInWithOAuth(OAuthProvider.facebook), name: ''),
+          onTap: _busy ? null : () => _oauth(OAuthProvider.facebook),
         ),
         const SizedBox(height: 18),
         Row(children: [
@@ -299,6 +406,10 @@ class _AuthWidgetState extends State<AuthWidget> {
               ),
             ),
           ],
+          if (isSignup) ...[
+            const SizedBox(height: 14),
+            _consentPanel(t),
+          ],
           const SizedBox(height: 18),
           AppButton(
             text: isSignup ? 'יצירת חשבון' : 'התחברות',
@@ -306,9 +417,19 @@ class _AuthWidgetState extends State<AuthWidget> {
             onPressed: () async {
               if (!_formKey.currentState!.validate()) return;
               if (isSignup) {
+                if (!_consentOk) {
+                  _consentMissing();
+                  return;
+                }
                 await _runAuth(
                   () => AuthService.instance.signUpWithEmail(
-                      email: _emailCtrl.text, password: _passCtrl.text, name: _nameCtrl.text),
+                    email: _emailCtrl.text,
+                    password: _passCtrl.text,
+                    name: _nameCtrl.text,
+                    acceptedTerms: _acceptTerms,
+                    acceptedPrivacy: _acceptPrivacy,
+                    acceptedMarketing: _acceptMarketing,
+                  ),
                   name: _nameCtrl.text,
                 );
               } else {

@@ -282,6 +282,33 @@ const footer = `  <footer class="footer">
     <div class="container footer__bottom"><span>© <span id="year"></span> חוסך · כל הזכויות שמורות</span><span>נבנה באהבה בישראל 💚</span></div>
   </footer>`;
 
+// Shared lead-capture form. Single source of truth for the markup that used to
+// be copy-pasted into every CTA section — so the legal consent block (Privacy
+// Protection Regulations + the Spam/Communications Law) can never drift between
+// pages. The two MANDATORY consents (terms + privacy) gate submission in
+// script.js; the marketing consent is OPTIONAL and unchecked by default (real
+// opt-in, never pre-ticked). Pass the page's own submit-button label.
+// NOTE: index.html is hand-written — keep its form's consent block in sync.
+const leadFormHtml = (submitLabel) => `<form class="cta__form" id="leadForm" novalidate>
+          <input type="text" id="leadName" name="name" placeholder="שם מלא" aria-label="שם מלא" autocomplete="name" required />
+          <input type="tel" id="leadPhone" name="phone" placeholder="טלפון (050-0000000)" aria-label="מספר טלפון" autocomplete="tel" inputmode="tel" required />
+          <div class="consent">
+            <label class="consent__row" for="consentTerms">
+              <input type="checkbox" id="consentTerms" name="consentTerms" required />
+              <span>קראתי ואני מסכים/ה ל<a href="terms.html" target="_blank" rel="noopener">תנאי השימוש</a></span>
+            </label>
+            <label class="consent__row" for="consentPrivacy">
+              <input type="checkbox" id="consentPrivacy" name="consentPrivacy" required />
+              <span>קראתי ואני מסכים/ה ל<a href="privacy.html" target="_blank" rel="noopener">מדיניות הפרטיות</a></span>
+            </label>
+            <label class="consent__row" for="consentMarketing">
+              <input type="checkbox" id="consentMarketing" name="consentMarketing" />
+              <span>אני מעוניין/ת לקבל דיוור שיווקי, מבצעים והטבות (אופציונלי, ניתן לבטל בכל עת)</span>
+            </label>
+          </div>
+          <button class="btn btn--primary btn--lg" type="submit">${esc(submitLabel)}</button>
+        </form>`;
+
 // Offer price for structured data — the exact advertised figure when present,
 // otherwise the rounded int. Always a plain number (schema.org/Offer.price).
 const offerPrice = (p) => (p.priceExact != null ? p.priceExact : p.price);
@@ -454,11 +481,7 @@ ${catGuides}
       <div class="container cta__inner reveal">
         <h2>מוכנים לחסוך על ${esc(c.name)}?</h2>
         <p>השאירו פרטים ונחזור אליכם עם ההשוואה וההמלצה — חינם, בלי התחייבות.</p>
-        <form class="cta__form" id="leadForm" novalidate>
-          <input type="text" id="leadName" name="name" placeholder="שם מלא" aria-label="שם מלא" autocomplete="name" required />
-          <input type="tel" id="leadPhone" name="phone" placeholder="טלפון (050-0000000)" aria-label="מספר טלפון" autocomplete="tel" inputmode="tel" required />
-          <button class="btn btn--primary btn--lg" type="submit">קבלו השוואה חינם</button>
-        </form>
+        ${leadFormHtml('קבלו השוואה חינם')}
         <p class="cta__note" id="leadNote" role="status" aria-live="polite"></p>
         <a class="cta__wa" href="https://wa.me/972505037537" target="_blank" rel="noopener"><span aria-hidden="true">💬</span> מעדיפים וואטסאפ? דברו איתנו</a>
       </div>
@@ -984,11 +1007,7 @@ ${collectionsSection}
       <div class="container cta__inner reveal">
         <h2>מצאתם משהו מעניין?</h2>
         <p>השאירו פרטים ונעזור לכם לעבור — חינם, בלי התחייבות.</p>
-        <form class="cta__form" id="leadForm" novalidate>
-          <input type="text" id="leadName" name="name" placeholder="שם מלא" aria-label="שם מלא" autocomplete="name" required />
-          <input type="tel" id="leadPhone" name="phone" placeholder="טלפון (050-0000000)" aria-label="מספר טלפון" autocomplete="tel" inputmode="tel" required />
-          <button class="btn btn--primary btn--lg" type="submit">קבלו השוואה חינם</button>
-        </form>
+        ${leadFormHtml('קבלו השוואה חינם')}
         <p class="cta__note" id="leadNote" role="status" aria-live="polite"></p>
         <a class="cta__wa" href="https://wa.me/972505037537" target="_blank" rel="noopener"><span aria-hidden="true">💬</span> מעדיפים וואטסאפ? דברו איתנו</a>
       </div>
@@ -1044,11 +1063,7 @@ ${nav}
       <div class="container cta__inner reveal">
         <h2>רוצים לעבור ל${esc(name)} — או ממנו?</h2>
         <p>השאירו פרטים ונעזור לכם למצוא ולעבור למסלול הכי משתלם, חינם ובלי התחייבות.</p>
-        <form class="cta__form" id="leadForm" novalidate>
-          <input type="text" id="leadName" name="name" placeholder="שם מלא" aria-label="שם מלא" autocomplete="name" required />
-          <input type="tel" id="leadPhone" name="phone" placeholder="טלפון (050-0000000)" aria-label="מספר טלפון" autocomplete="tel" inputmode="tel" required />
-          <button class="btn btn--primary btn--lg" type="submit">קבלו השוואה חינם</button>
-        </form>
+        ${leadFormHtml('קבלו השוואה חינם')}
         <p class="cta__note" id="leadNote" role="status" aria-live="polite"></p>
         <a class="cta__wa" href="https://wa.me/972505037537" target="_blank" rel="noopener"><span aria-hidden="true">💬</span> מעדיפים וואטסאפ? דברו איתנו</a>
       </div>
@@ -1140,11 +1155,7 @@ ${nav}
       <div class="container cta__inner reveal">
         <h2>בחרתם? נעזור לכם לעבור</h2>
         <p>השאירו פרטים ונדאג לכל המעבר — חינם, בלי התחייבות.</p>
-        <form class="cta__form" id="leadForm" novalidate>
-          <input type="text" id="leadName" name="name" placeholder="שם מלא" aria-label="שם מלא" autocomplete="name" required />
-          <input type="tel" id="leadPhone" name="phone" placeholder="טלפון (050-0000000)" aria-label="מספר טלפון" autocomplete="tel" inputmode="tel" required />
-          <button class="btn btn--primary btn--lg" type="submit">קבלו השוואה חינם</button>
-        </form>
+        ${leadFormHtml('קבלו השוואה חינם')}
         <p class="cta__note" id="leadNote" role="status" aria-live="polite"></p>
         <a class="cta__wa" href="https://wa.me/972505037537" target="_blank" rel="noopener"><span aria-hidden="true">💬</span> מעדיפים וואטסאפ? דברו איתנו</a>
       </div>
@@ -1270,11 +1281,7 @@ ${groups}
       <div class="container cta__inner reveal">
         <h2>רוצים את האפליקציה?</h2>
         <p>השאירו פרטים ונעדכן אתכם ברגע שהיא זמינה — חינם, בלי התחייבות.</p>
-        <form class="cta__form" id="leadForm" novalidate>
-          <input type="text" id="leadName" name="name" placeholder="שם מלא" aria-label="שם מלא" autocomplete="name" required />
-          <input type="tel" id="leadPhone" name="phone" placeholder="טלפון (050-0000000)" aria-label="מספר טלפון" autocomplete="tel" inputmode="tel" required />
-          <button class="btn btn--primary btn--lg" type="submit">עדכנו אותי</button>
-        </form>
+        ${leadFormHtml('עדכנו אותי')}
         <p class="cta__note" id="leadNote" role="status" aria-live="polite"></p>
         <a class="cta__wa" href="https://wa.me/972505037537" target="_blank" rel="noopener"><span aria-hidden="true">💬</span> מעדיפים וואטסאפ? דברו איתנו</a>
       </div>
@@ -1415,11 +1422,7 @@ ${guidesHtml}
       <div class="container cta__inner reveal">
         <h2>מצאתם משהו מעניין?</h2>
         <p>השאירו פרטים ונעזור לכם לעבור — חינם, בלי התחייבות.</p>
-        <form class="cta__form" id="leadForm" novalidate>
-          <input type="text" id="leadName" name="name" placeholder="שם מלא" aria-label="שם מלא" autocomplete="name" required />
-          <input type="tel" id="leadPhone" name="phone" placeholder="טלפון (050-0000000)" aria-label="מספר טלפון" autocomplete="tel" inputmode="tel" required />
-          <button class="btn btn--primary btn--lg" type="submit">קבלו השוואה חינם</button>
-        </form>
+        ${leadFormHtml('קבלו השוואה חינם')}
         <p class="cta__note" id="leadNote" role="status" aria-live="polite"></p>
         <a class="cta__wa" href="https://wa.me/972505037537" target="_blank" rel="noopener"><span aria-hidden="true">💬</span> מעדיפים וואטסאפ? דברו איתנו</a>
       </div>
@@ -1504,11 +1507,7 @@ ${guidesHtml}
       <div class="container cta__inner reveal">
         <h2>רוצים שנמצא לכם את ההצעה הכי טובה?</h2>
         <p>השאירו פרטים ונחזור אליכם עם ההשוואה וההמלצה — חינם, בלי התחייבות.</p>
-        <form class="cta__form" id="leadForm" novalidate>
-          <input type="text" id="leadName" name="name" placeholder="שם מלא" aria-label="שם מלא" autocomplete="name" required />
-          <input type="tel" id="leadPhone" name="phone" placeholder="טלפון (050-0000000)" aria-label="מספר טלפון" autocomplete="tel" inputmode="tel" required />
-          <button class="btn btn--primary btn--lg" type="submit">קבלו השוואה חינם</button>
-        </form>
+        ${leadFormHtml('קבלו השוואה חינם')}
         <p class="cta__note" id="leadNote" role="status" aria-live="polite"></p>
         <a class="cta__wa" href="https://wa.me/972505037537" target="_blank" rel="noopener"><span aria-hidden="true">💬</span> מעדיפים וואטסאפ? דברו איתנו</a>
       </div>

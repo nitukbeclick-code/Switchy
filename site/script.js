@@ -126,11 +126,30 @@
         if (note) { note.style.color = '#ffd9d9'; note.textContent = 'נא למלא שם וטלפון תקין 🙏'; }
         return;
       }
+      // Legal consent gate (Privacy Protection Regulations + Spam/Communications
+      // Law): terms + privacy are MANDATORY — block submission without both.
+      // Marketing is optional opt-in. The server re-stamps these timestamps
+      // authoritatively; we send them so the consent moment is captured client-side.
+      const termsOk = $('consentTerms') && $('consentTerms').checked;
+      const privacyOk = $('consentPrivacy') && $('consentPrivacy').checked;
+      if (!termsOk || !privacyOk) {
+        if (note) { note.style.color = '#ffd9d9'; note.textContent = 'יש לאשר את תנאי השימוש ומדיניות הפרטיות כדי להמשיך 🙏'; }
+        return;
+      }
+      const now = new Date().toISOString();
+      const marketingAt = $('consentMarketing') && $('consentMarketing').checked ? now : null;
       const btn = form.querySelector('button[type="submit"]');
       if (btn) btn.disabled = true;
       let sent = true;
       try {
-        await sendLead({ name: name, phone: phone, source: location.pathname });
+        await sendLead({
+          name: name,
+          phone: phone,
+          source: location.pathname,
+          terms_accepted_at: now,
+          privacy_accepted_at: now,
+          marketing_accepted_at: marketingAt,
+        });
       } catch (_) {
         sent = false;
       }

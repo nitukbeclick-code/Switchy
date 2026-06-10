@@ -100,6 +100,9 @@ Future<void> _initBackend() async {
       AppState().login(name: display, phone: AppState().userPhone, email: user.email!);
       appBackend.upsertProfile(name: display, phone: AppState().userPhone, email: user.email).catchError((_) {});
     }
+    // If a consent-gated signup/OAuth flow armed it, stamp server-authoritative
+    // legal consent now that the session exists (no-op for a plain login).
+    AuthService.instance.recordConsentIfArmed();
 
     // Complete an interactive OAuth redirect: only navigate for a real, post-
     // startup sign-in while sitting on the auth page (never yank a browsing

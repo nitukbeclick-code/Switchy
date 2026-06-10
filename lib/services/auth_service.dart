@@ -50,11 +50,30 @@ class AuthService {
     required String email,
     required String password,
     required String name,
+    required bool acceptedTerms,
+    required bool acceptedPrivacy,
+    bool acceptedMarketing = false,
   }) async {
+    // Legal gate (Israeli Privacy Protection Regs + Spam Law): terms + privacy
+    // are MANDATORY; the server RPC re-checks them. Marketing is opt-in only.
+    if (!acceptedTerms || !acceptedPrivacy) {
+      return const AuthOutcome.failure('יש לאשר את תנאי השימוש ומדיניות הפרטיות כדי להירשם');
+    }
     final auth = _auth;
     if (auth == null) return const AuthOutcome.failure('שירות ההתחברות אינו זמין כרגע');
     try {
-      final res = await auth.signUp(email: email.trim(), password: password, data: {'name': name.trim()});
+      final nowIso = DateTime.now().toUtc().toIso8601String();
+      final res = await auth.signUp(email: email.trim(), password: password, data: {
+        'name': name.trim(),
+        // A client-side copy of the consent moment, kept in user_metadata so it
+        // survives the email-confirm gap; the RPC stamps the authoritative time + IP.
+        'terms_accepted_at': nowIso,
+        'privacy_accepted_at': nowIso,
+        'marketing_accepted_at': acceptedMarketing ? nowIso : null,
+        'consent_version': consentVersion,
+      });
+      armConsent(marketing: acceptedMarketing);
+      if (res.session != null) await recordConsentIfArmed();
       // With email confirmation ON, session is null until the user confirms.
       final needsConfirm = res.session == null && res.user != null;
       return AuthOutcome(ok: true, needsEmailConfirm: needsConfirm);
@@ -63,6 +82,41 @@ class AuthService {
     } catch (e) {
       return AuthOutcome.failure(_he(e.toString()));
     }
+  }
+
+  // ── Legal consent (Israeli Privacy Protection Regs §13 + Spam Law) ───────────
+  static const consentVersion = '2026-06';
+
+  /// Marketing opt-in captured on the auth screen, recorded once a session lands
+  /// (covers OAuth redirect / email-confirm where there's no session yet). Set
+  /// only by the consent-gated flows, so a plain email LOGIN never records consent.
+  bool pendingMarketingConsent = false;
+  bool _pendingConsentRecord = false;
+  bool _consentRecorded = false;
+
+  /// Arm consent recording before a signup/OAuth flow whose session arrives later.
+  void armConsent({required bool marketing}) {
+    pendingMarketingConsent = marketing;
+    _pendingConsentRecord = true;
+    _consentRecorded = false;
+  }
+
+  /// Stamp server-authoritative consent (time + IP) via the RPC, but only when a
+  /// consent-gated flow armed it. Idempotent and fail-soft — the signup metadata
+  /// already carries a client copy as a fallback.
+  Future<void> recordConsentIfArmed() async {
+    if (!_pendingConsentRecord || _consentRecorded) return;
+    if (_auth == null) return;
+    try {
+      await Supabase.instance.client.rpc('record_registration_consent', params: {
+        'p_terms': true,
+        'p_privacy': true,
+        'p_marketing': pendingMarketingConsent,
+        'p_consent_version': consentVersion,
+      });
+      _consentRecorded = true;
+      _pendingConsentRecord = false;
+    } catch (_) {/* fail-soft — server re-stamps on a later call too */}
   }
 
   Future<AuthOutcome> signInWithEmail({required String email, required String password}) async {

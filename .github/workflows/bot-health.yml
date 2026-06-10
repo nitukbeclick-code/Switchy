@@ -1,0 +1,31 @@
+name: Bot health
+
+# Watches the watcher: a daily probe of both deployed edge functions. A failed
+# run emails the repo owner (default GitHub notification), catching "the bot
+# is silently down" — misconfigured secrets, broken deploys, paused project.
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+jobs:
+  health:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: notify-lead health
+        run: |
+          curl -fsS 'https://orzitfqmlvopujsoyigr.supabase.co/functions/v1/notify-lead?action=health' -o h1.json
+          cat h1.json
+          test "$(jq -r .ok h1.json)" = "true"
+          test "$(jq -r .configured.telegram_bot_token.present h1.json)" = "true"
+          test "$(jq -r .configured.telegram_chat_id.present h1.json)" = "true"
+          test "$(jq -r .configured.lead_webhook_secret.present h1.json)" = "true"
+
+      - name: renewal-reminders health
+        run: |
+          curl -fsS 'https://orzitfqmlvopujsoyigr.supabase.co/functions/v1/renewal-reminders' -o h2.json
+          cat h2.json
+          test "$(jq -r .ok h2.json)" = "true"
+          test "$(jq -r .configured.telegram.present h2.json)" = "true"

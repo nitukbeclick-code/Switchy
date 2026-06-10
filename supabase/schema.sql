@@ -112,6 +112,22 @@ drop policy if exists "leads_select_own" on public.leads;
 create policy "leads_select_own" on public.leads
   for select using (auth.uid() = user_id);
 
+-- COLUMN-SCOPE the SELECT (defence in depth on top of the row-scoping above).
+-- leads_select_own restricts WHICH ROWS a session sees (only its own leads),
+-- but PostgREST's default table-level SELECT grant still lets that session read
+-- EVERY column on those rows via `select=*` — including internal ops/PII columns
+-- (notes, source_ip, claimed_by*, *_at stamps, actual_saving). The app (and the
+-- anonymous/site session that submitted the lead) only ever needs the lead's
+-- STATUS back (see fetchLeadStep: select('status') filtered by user_id, ordered
+-- by created_at). So drop the broad table grant and re-grant SELECT on only the
+-- safe columns. The pure `anon`/site role only INSERTs leads, so it gets no
+-- SELECT at all; the app's anonymous users hold the `authenticated` role.
+-- INSERT stays untouched (the anon lead-capture path and the rate-limit trigger
+-- are unaffected). The sales team still reads everything via the service_role
+-- key, which bypasses RLS and column grants entirely.
+revoke select on public.leads from anon, authenticated;
+grant select (id, status, created_at, user_id) on public.leads to authenticated;
+
 create index if not exists leads_user_idx on public.leads (user_id);
 create index if not exists leads_created_idx on public.leads (created_at desc);
 -- partial index for the renewal-reminders unnotified-leads sweep
@@ -496,8 +512,54 @@ create table if not exists public.plan_views (
 
 alter table public.plan_views enable row level security;
 
+drop policy if exists "plan_views_insert_anyone" on public.plan_views;
 create policy "plan_views_insert_anyone" on public.plan_views
   for insert with check (true);
+
+-- ── plan_views anti-abuse gate ───────────────────────────────────────────────
+-- plan_views_insert_anyone is deliberate (anonymous page-view analytics), but
+-- `with check (true)` accepts ANY row. Two risks, both fixed at the door:
+--   • user_id spoofing — get_hot_browsers() joins plan_views.user_id to
+--     profiles(name, phone), so a forged user_id could surface a victim's
+--     profile in the hot-browser feed and poison the demand analytics. Pin
+--     user_id to the authenticated caller (null for anon inserts, which is the
+--     legitimate site case — see trackPlanView, which only sends user_id when
+--     signed in and always sets it to its own uid).
+--   • unbounded volume / oversized strings — bound the free-text fields and add
+--     a coarse global per-hour circuit breaker. The ceiling is high enough that
+--     real traffic is never blocked; it only caps a flood. No IP column is
+--     stored (keeping the table shape — and the analytics views over it —
+--     unchanged), so this stays a lightweight global guard, simpler than the
+--     per-IP/per-phone logic in leads_rate_limit.
+create or replace function public.plan_views_guard()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  -- never accept a caller-supplied user_id for someone else; anon stays null
+  new.user_id := case when new.user_id = auth.uid() then new.user_id else null end;
+  -- bound the identifier strings (plan_id/provider are short ids; category is a
+  -- fixed enum-ish set) so a flood can't write multi-KB rows
+  if length(coalesce(new.plan_id, ''))  > 120
+     or length(coalesce(new.provider, '')) > 120
+     or length(coalesce(new.category, '')) > 40 then
+    raise exception 'field too long';
+  end if;
+  -- coarse global circuit breaker: caps worst-case insert volume per hour
+  if (select count(*) from public.plan_views
+      where viewed_at > now() - interval '1 hour') >= 5000 then
+    raise exception 'rate limit exceeded';
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists plan_views_guard_before_insert on public.plan_views;
+create trigger plan_views_guard_before_insert
+  before insert on public.plan_views
+  for each row execute function public.plan_views_guard();
 
 create index if not exists plan_views_plan_idx on public.plan_views (plan_id, viewed_at desc);
 create index if not exists plan_views_provider_idx on public.plan_views (provider, viewed_at desc);
@@ -699,30 +761,11 @@ grant execute on function public.get_upcoming_renewals(integer) to service_role;
 --     for each row execute function public.delete_community_storage_object();
 
 -- ── Storage: community-media bucket ─────────────────────────────────────────
--- Public bucket for community post/reply images, audio, and video.
--- Max object size: 50 MB. Already created via Supabase MCP execute_sql;
--- re-run this block if the bucket or policies are missing.
---
---   insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
---   values (
---     'community-media', 'community-media', true, 52428800,
---     array['image/jpeg','image/png','image/gif','image/webp',
---           'video/mp4','video/quicktime',
---           'audio/aac','audio/mpeg','audio/wav','audio/x-m4a']
---   ) on conflict (id) do nothing;
---
---   create policy "community media anon upload" on storage.objects
---     for insert to anon, authenticated
---     with check (bucket_id = 'community-media');
---
---   create policy "community media public read" on storage.objects
---     for select to anon, authenticated
---     using (bucket_id = 'community-media');
---
---   create policy "community media owner delete" on storage.objects
---     for delete to authenticated
---     using (bucket_id = 'community-media'
---       and (storage.foldername(name))[1] = auth.uid()::text);
+-- The community-media bucket and its RLS live in supabase/storage.sql — the
+-- single source of truth. (The previously inlined policy snippet here was both
+-- redundant and weaker than storage.sql: it granted broad `anon` upload and an
+-- object-listing `public read` policy that storage.sql deliberately omits per
+-- advisor 0025_public_bucket_allows_listing. Do not reintroduce it.)
 
 -- Done. Every table has RLS enabled; the anon/authenticated API can only do
 -- what the policies above allow. The service_role key bypasses RLS — keep it

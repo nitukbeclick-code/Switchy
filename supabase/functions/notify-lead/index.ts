@@ -22,7 +22,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 // ─────────────────────────────────────────────────────────────────────────────
 
 import type { Lead, TgUpdate } from "../_shared/types.ts";
-import { resolveCfgCached, safeEqual, tgWebhookToken } from "../_shared/config.ts";
+import { botFullyConfigured, resolveCfgCached, safeEqual, tgWebhookToken } from "../_shared/config.ts";
 import { NL, sendTelegram, tgApi } from "../_shared/telegram.ts";
 import { rpcRows, serviceFetch } from "../_shared/db.ts";
 import { jlog } from "../_shared/log.ts";
@@ -155,6 +155,13 @@ Deno.serve(async (req: Request) => {
     const token = req.headers.get("x-telegram-bot-api-secret-token") ?? "";
     if (!cfg.webhookSecret || !(await safeEqual(token, await tgWebhookToken(cfg.webhookSecret)))) {
       return json({ ok: false, error: "unauthorized" }, 401);
+    }
+    // Fail-close: refuse to act on team chat / callback updates unless the bot
+    // is fully configured — an empty allowlist or unset team chat would mean the
+    // authorization gates default to "deny everyone", so dispatching is pointless
+    // and a misconfiguration must not silently authorize anyone.
+    if (!botFullyConfigured(cfg)) {
+      return json({ ok: false, error: "bot not fully configured" }, 503);
     }
     let update: TgUpdate = {};
     try { update = await req.json() as TgUpdate; } catch (_) { /* empty body */ }

@@ -2,13 +2,13 @@
 //   deno task test
 
 import { assert, assertEquals, assertFalse, assertMatch, assertStringIncludes } from "@std/assert";
-import type { Lead } from "../_shared/types.ts";
+import type { Cfg, Lead } from "../_shared/types.ts";
 import { buildText, defaultDraft, formatTimeline, frozenKeyboard, isWonAskMarkup, keyboardFor, leadIdFromMarkup, leadKeyboard } from "../_shared/leads.ts";
 import { evalCronHealth } from "../_shared/cron_health.ts";
 import { waDraftLink, waLink } from "../_shared/telegram.ts";
-import { safeEqual, tgWebhookToken } from "../_shared/config.ts";
+import { botFullyConfigured, safeEqual, tgWebhookToken } from "../_shared/config.ts";
 import { parseTriage } from "../notify-lead/triage.ts";
-import { parseSavingAmount } from "../notify-lead/callbacks.ts";
+import { allowed, parseSavingAmount } from "../notify-lead/callbacks.ts";
 import { planFollowUps } from "../_shared/followup.ts";
 import { buildDigest, formatMinutes, medianMinutes } from "../_shared/digests.ts";
 
@@ -140,6 +140,35 @@ Deno.test("safeEqual matches equal strings and rejects different ones", async ()
   assert(await safeEqual("topsecret", "topsecret"));
   assertFalse(await safeEqual("topsecret", "topsecreT"));
   assertFalse(await safeEqual("", "topsecret"));
+});
+
+// ── authorization (fail-close) ───────────────────────────────────────────────
+
+// Minimal Cfg for the auth gates — only the fields the predicates read matter.
+const cfgWith = (over: Partial<Cfg>): Cfg => ({
+  tgToken: "t", tgChat: "-100123", resend: "", resendFrom: "", notifyEmail: "",
+  openai: "", anthropic: "", webhookSecret: "s", allowedUserIds: [42], src: {},
+  ...over,
+});
+
+Deno.test("allowed denies everyone when the allowlist is empty (fail-close)", () => {
+  // empty allowlist = bot not fully configured -> nobody is authorized
+  assertFalse(allowed(cfgWith({ allowedUserIds: [] }), 42));
+  assertFalse(allowed(cfgWith({ allowedUserIds: [] }), undefined));
+});
+
+Deno.test("allowed admits only listed user ids when the allowlist is set", () => {
+  assert(allowed(cfgWith({ allowedUserIds: [42] }), 42));
+  assertFalse(allowed(cfgWith({ allowedUserIds: [42] }), 7));
+  assertFalse(allowed(cfgWith({ allowedUserIds: [42] }), undefined));
+});
+
+Deno.test("botFullyConfigured gates the 503 guard: needs both allowlist and team chat", () => {
+  // the unconfigured-bot 503 guard in index.ts returns this predicate's inverse
+  assert(botFullyConfigured(cfgWith({})));
+  assertFalse(botFullyConfigured(cfgWith({ allowedUserIds: [] })));   // no allowlist -> 503
+  assertFalse(botFullyConfigured(cfgWith({ tgChat: "" })));           // no team chat -> 503
+  assertFalse(botFullyConfigured(cfgWith({ allowedUserIds: [], tgChat: "" })));
 });
 
 // ── triage parsing ───────────────────────────────────────────────────────────

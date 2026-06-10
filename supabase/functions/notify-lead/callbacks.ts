@@ -9,8 +9,13 @@ import { handleCommand } from "./commands.ts";
 
 type HandlerResult = Record<string, unknown>;
 
-function allowed(cfg: Cfg, userId: number | undefined): boolean {
-  return cfg.allowedUserIds.length === 0 || cfg.allowedUserIds.includes(userId ?? 0);
+// Exported for unit tests. Fail-close: an empty allowlist means the bot is not
+// fully configured, so nobody is authorized. The config guard in index.ts
+// rejects updates before they reach here, but keep this defensive in case a
+// caller bypasses it.
+export function allowed(cfg: Cfg, userId: number | undefined): boolean {
+  if (cfg.allowedUserIds.length === 0) return false;
+  return cfg.allowedUserIds.includes(userId ?? 0);
 }
 
 // Re-render the message keyboard from current DB state. Status-aware: a lead
@@ -77,8 +82,10 @@ export async function handleCallback(cfg: Cfg, cb: TgCallbackQuery): Promise<Han
   const data = String(cb.data ?? "");
   const msg = cb.message;
   const chatId = msg?.chat?.id;
-  // Honor presses only from the configured team chat.
-  if (cfg.tgChat && String(chatId ?? "") !== cfg.tgChat) {
+  // Honor presses only from the configured team chat. Fail-close: an unset
+  // tgChat rejects (the config guard in index.ts should already have stopped
+  // this, but never trust an unconfigured chat gate to allow).
+  if (!cfg.tgChat || String(chatId ?? "") !== cfg.tgChat) {
     await answer();
     return { ok: false, skipped: "wrong chat" };
   }
@@ -238,7 +245,8 @@ export function parseSavingAmount(text: string): number | null {
 
 export async function handleTeamMessage(cfg: Cfg, msg: TgMessage): Promise<HandlerResult> {
   const chatId = msg.chat?.id;
-  if (cfg.tgChat && String(chatId ?? "") !== cfg.tgChat) return { ok: true, skipped: "wrong chat" };
+  // Fail-close: an unset tgChat rejects rather than accepting any chat.
+  if (!cfg.tgChat || String(chatId ?? "") !== cfg.tgChat) return { ok: true, skipped: "wrong chat" };
   if (!allowed(cfg, msg.from?.id)) return { ok: false, skipped: "user not allowed" };
   const text = String(msg.text ?? "").trim();
 

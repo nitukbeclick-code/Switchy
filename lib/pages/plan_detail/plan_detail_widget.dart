@@ -1280,8 +1280,16 @@ class _ExtraInfoSection extends StatelessWidget {
                   GestureDetector(
                     onTap: () async {
                       try {
+                        final uri = Uri.parse(plan.sourceUrl!);
+                        // Only ever follow http(s) source links. sourceUrl is
+                        // developer-authored today, but guard the sink so a
+                        // future data source can't smuggle in a javascript:/
+                        // file:/intent: scheme. Anything else is ignored.
+                        final scheme = uri.scheme.toLowerCase();
+                        if (scheme != 'http' && scheme != 'https') return;
+                        if (!await canLaunchUrl(uri)) return;
                         await launchUrl(
-                          Uri.parse(plan.sourceUrl!),
+                          uri,
                           mode: LaunchMode.externalApplication,
                         );
                       } catch (_) {}

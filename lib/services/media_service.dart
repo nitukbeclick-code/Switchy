@@ -11,6 +11,12 @@ class MediaService {
   MediaService._();
   static final ImagePicker _picker = ImagePicker();
 
+  /// Hard cap on a single captured media blob (~1.5 MB of raw bytes). Anything
+  /// larger is rejected rather than persisted: a base64 data-URI is ~33% bigger
+  /// than its bytes, and on web these blobs go straight into localStorage, whose
+  /// ~5 MB quota a couple of oversized photos/recordings would blow.
+  static const int _maxMediaBytes = 1572864; // 1.5 * 1024 * 1024
+
   /// Pick (or capture) an image and return it as a downscaled JPEG data-URI,
   /// or null if the user cancelled.
   static Future<String?> pickImageDataUri({
@@ -26,6 +32,7 @@ class MediaService {
     );
     if (x == null) return null;
     final bytes = await x.readAsBytes();
+    if (bytes.lengthInBytes > _maxMediaBytes) return null; // reject oversized
     return bytesToDataUri(bytes, mime: 'image/jpeg');
   }
 
@@ -42,6 +49,9 @@ class MediaService {
     if (source.startsWith('data:')) return source;
     final bytes = await readFileBytes(source);
     if (bytes == null) return source;
+    // Refuse to persist an oversized recording as a base64 blob — fall back to
+    // the session-only source path (same contract as unreadable bytes above).
+    if (bytes.lengthInBytes > _maxMediaBytes) return source;
     return bytesToDataUri(bytes, mime: 'audio/mp4');
   }
 

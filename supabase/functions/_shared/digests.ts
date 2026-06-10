@@ -32,8 +32,8 @@ export function buildDigest(rows: RenewalRow[], days: number, now = new Date()):
     const urgency = d <= 3 ? "🔴" : d <= 7 ? "🟡" : "🟢";
     const cat = CAT_HE[r.category] ?? r.category;
     lines.push(`${urgency} <b>${esc(r.name ?? "ללא שם")}</b> — ${esc(r.phone ?? "")}${waSuffix(r.phone)}`);
-    lines.push(`   📦 ${esc(r.provider)} · ${esc(r.plan_name)} · ₪${r.monthly_price}/חודש · ${cat}`);
-    lines.push(`   📆 מתחדש: ${r.promo_end_date} (עוד ${d} ימים)`);
+    lines.push(`   📦 ${esc(r.provider)} · ${esc(r.plan_name)} · ₪${esc(r.monthly_price)}/חודש · ${esc(cat)}`);
+    lines.push(`   📆 מתחדש: ${esc(r.promo_end_date)} (עוד ${d} ימים)`);
     lines.push("");
   }
   lines.push(`<i>נשלח אוטומטית על ידי מערכת חוסך</i>`);

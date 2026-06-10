@@ -71,7 +71,7 @@ async function runDigest(cfg: Cfg, days: number) {
     if (!r.phone || daysUntil(r.promo_end_date) > 7) continue;
     const sent = await sendTelegram(
       cfg,
-      `☎️ <b>שיחה יזומה:</b> ${esc(r.name ?? "ללא שם")} — ${esc(r.provider)} · ${esc(r.plan_name)} מתחדש ב-${r.promo_end_date}`,
+      `☎️ <b>שיחה יזומה:</b> ${esc(r.name ?? "ללא שם")} — ${esc(r.provider)} · ${esc(r.plan_name)} מתחדש ב-${esc(r.promo_end_date)}`,
       { inline_keyboard: [[{ text: "➕ צור ליד ומעקב", callback_data: `renew:${r.id}:lead` }]] },
     );
     if (sent.ok) buttons++;
@@ -228,7 +228,10 @@ Deno.serve(async (req: Request) => {
       if (cronRows !== null) {
         const h = evalCronHealth(cronRows, Date.now());
         if (!h.ok) {
-          report = `🚨 <b>משימות מתוזמנות תקועות:</b> ${[...h.stale, ...h.failing].join(", ")}${NL}${NL}` + report;
+          // job names come from pg_cron rows (DB-controlled) — escape before
+          // interpolating into the HTML report
+          const stuck = [...h.stale, ...h.failing].map((j) => esc(j)).join(", ");
+          report = `🚨 <b>משימות מתוזמנות תקועות:</b> ${stuck}${NL}${NL}` + report;
         }
       }
       const tg = await sendTelegram(cfg, report);

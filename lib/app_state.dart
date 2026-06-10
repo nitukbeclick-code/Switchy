@@ -136,6 +136,11 @@ class AppState extends ChangeNotifier {
     if (_dirtyKeys.isEmpty) return;
     final dirty = _dirtyKeys.toSet();
     _dirtyKeys.clear();
+    // Guard the disk writes: on web, localStorage has a ~5MB quota and a setter
+    // can throw QuotaExceededError once base64 media accumulates. Swallowing it
+    // here keeps the app alive (the in-memory state is still correct; the write
+    // is simply dropped) instead of crashing on an otherwise harmless mutation.
+    try {
     final p = await SharedPreferences.getInstance();
     for (final key in dirty) {
       switch (key) {
@@ -226,6 +231,11 @@ class AppState extends ChangeNotifier {
           await p.setBool('seenOnboarding', _seenOnboarding);
           break;
       }
+    }
+    } catch (e) {
+      // Persistence is best-effort — never let a storage failure (e.g. a web
+      // QuotaExceededError) propagate and crash the app.
+      debugPrint('AppState._flush: persistence write skipped: $e');
     }
   }
 

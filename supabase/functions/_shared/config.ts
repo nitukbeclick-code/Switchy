@@ -73,6 +73,15 @@ export async function resolveCfgCached(): Promise<Cfg> {
   return cfg;
 }
 
+// Fail-close gate for inbound Telegram updates: the bot may only act on team
+// presses/messages once BOTH an allowlist and a team chat are configured.
+// Without these, the per-handler authorization gates default to "deny", so an
+// update should be rejected (503) rather than processed. Returns false when the
+// allowlist is empty or the team chat id is unset.
+export function botFullyConfigured(cfg: Cfg): boolean {
+  return cfg.allowedUserIds.length > 0 && !!cfg.tgChat;
+}
+
 // Telegram's secret_token charset is restricted to [A-Za-z0-9_-], while
 // lead_webhook_secret is unconstrained — register/verify a hex digest instead.
 export async function tgWebhookToken(secret: string): Promise<string> {

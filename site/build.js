@@ -144,6 +144,17 @@ const esc = (s) => String(s)
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
   .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
+// Safe JSON for embedding INSIDE an inline <script> tag (JSON-LD or a JS literal).
+// Escapes `<` so a string like "</script>" in the data can't break out of the
+// element (CWE-79), and the U+2028/U+2029 line separators that are valid in JSON
+// but illegal mid-string in JS source. Use ONLY for script-context output —
+// file writes and other contexts keep plain JSON.stringify.
+const jsonForScript = (o) =>
+  JSON.stringify(o)
+    .replace(/</g, "\\u003c")
+    .replace(new RegExp("\\u2028", "g"), "\\u2028")
+    .replace(new RegExp("\\u2029", "g"), "\\u2029");
+
 // Display price: prefer the exact advertised price (e.g. 69.90) when it isn't a
 // whole shekel; otherwise the rounded `price` int. The int `price` stays the
 // source of truth for sorting / min ("from ₪X") math — see plansByCat sort.
@@ -327,7 +338,7 @@ function jsonLd(c) {
   const graph = [crumbs, faq];
   const catPlans = plansByCat[c.slug] || [];
   if (catPlans.length) graph.push(plansItemListJsonLd(catPlans, url, `מסלולי ${c.name}`));
-  return JSON.stringify({ '@context': 'https://schema.org', '@graph': graph });
+  return jsonForScript({ '@context': 'https://schema.org', '@graph': graph });
 }
 
 function page(c) {
@@ -672,7 +683,7 @@ function articleJsonLd(g) {
       })),
     });
   }
-  return JSON.stringify({ '@context': 'https://schema.org', '@graph': graph });
+  return jsonForScript({ '@context': 'https://schema.org', '@graph': graph });
 }
 
 function head(title, desc, url, extraJsonLd, noindex) {
@@ -996,7 +1007,7 @@ function providerPage(name, plans) {
   const cheapest = plans.reduce((m, p) => Math.min(m, p.price), Infinity);
   const catNames = [...new Set(plans.map((p) => (categories.find((c) => c.slug === p.cat) || {}).name).filter(Boolean))];
   const cards = plans.map(planCardHtml).join('\n        ');
-  const jsonld = JSON.stringify({
+  const jsonld = jsonForScript({
     '@context': 'https://schema.org',
     '@graph': [
       { '@type': 'BreadcrumbList', itemListElement: [
@@ -1140,7 +1151,7 @@ ${nav}
     </section>
   </main>
 ${footer}
-  <script>window.__PLANS__ = ${JSON.stringify(data)};</script>
+  <script>window.__PLANS__ = ${jsonForScript(data)};</script>
   <script src="${JS_SRC}" defer></script>
 </body>
 </html>
@@ -1361,7 +1372,7 @@ function collectionPage(col) {
   ] };
   const graph = [crumbs];
   if (shown.length) graph.push(plansItemListJsonLd(shown, url, col.h1));
-  const extraJsonLd = JSON.stringify({ '@context': 'https://schema.org', '@graph': graph });
+  const extraJsonLd = jsonForScript({ '@context': 'https://schema.org', '@graph': graph });
   const guidesHtml = relatedGuides(col.catName, null, 2).map(guideCard).join('\n');
   return `<!DOCTYPE html>
 <html lang="he" dir="rtl">
@@ -1445,7 +1456,7 @@ function calculatorPage(c) {
     { '@type': 'ListItem', position: 2, name: c.name, item: `${SITE}/${c.slug}.html` },
     { '@type': 'ListItem', position: 3, name: h1, item: url },
   ] };
-  const extraJsonLd = JSON.stringify({ '@context': 'https://schema.org', '@graph': [crumbs] });
+  const extraJsonLd = jsonForScript({ '@context': 'https://schema.org', '@graph': [crumbs] });
   const guidesHtml = relatedGuides(c.name, null, 2).map(guideCard).join('\n');
   return `<!DOCTYPE html>
 <html lang="he" dir="rtl">

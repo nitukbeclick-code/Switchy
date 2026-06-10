@@ -114,6 +114,14 @@ class AuthService {
     try {
       await _auth?.signOut();
     } catch (_) {/* fail-soft */}
+    // Clear the biometric gate so a stale "armed" flag can't lock (or be
+    // bypassed for) a different/empty session after sign-out. Fail-soft: a
+    // pref write failure must never block the sign-out itself.
+    try {
+      _biometricEnabledCached = false;
+      _unlockedThisSession = false;
+      await setBiometricEnabled(false);
+    } catch (_) {/* fail-soft */}
   }
 
   // ── Biometric (Face ID / fingerprint) — mobile only ─────────────────────────

@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'app_state.dart';
 import 'app.dart';
 import 'router.dart';
 import 'services/auth_service.dart';
+import 'services/secure_session_store.dart';
 import 'services/backend/local_backend.dart';
 import 'services/backend/supabase_backend.dart';
 
@@ -44,7 +46,16 @@ bool _appStarted = false;
 Future<void> _initBackend() async {
   if (_supabaseUrl.isEmpty || _supabaseAnonKey.isEmpty) return;
 
-  await Supabase.initialize(url: _supabaseUrl, publishableKey: _supabaseAnonKey);
+  await Supabase.initialize(
+    url: _supabaseUrl,
+    publishableKey: _supabaseAnonKey,
+    // Mobile: persist the session in the Keychain/Keystore (secure enclave),
+    // not plaintext SharedPreferences. Web: null → default storage (CSP is the
+    // web mitigation), which also keeps the `flutter build web` gate green.
+    authOptions: FlutterAuthClientOptions(
+      localStorage: kIsWeb ? null : SecureSessionStore(),
+    ),
+  );
 
   // Give every device a stable identity so RLS policies scoped to auth.uid()
   // (tracked plans, reviews, community writes) work without a login screen.

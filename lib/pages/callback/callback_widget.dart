@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../theme/app_theme.dart';
 import '../../core/nav.dart';
 import '../../widgets/app_button.dart';
+import '../../widgets/app_snackbar.dart';
 import '../../app_state.dart';
 import '../../services/backend/backend.dart';
 import '../../services/backend/local_backend.dart';
@@ -148,24 +149,14 @@ class _CallbackWidgetState extends State<CallbackWidget> {
               text: _isLoading ? 'שולח...' : 'בקש שיחה חוזרת',
               onPressed: _isLoading ? () async {} : () async {
                 if (_nameCtrl.text.trim().isEmpty || _phoneCtrl.text.trim().isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                    content: const Text('נא למלא שם ומספר טלפון'),
-                    backgroundColor: AppTheme.of(context).error,
-                    behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    duration: const Duration(seconds: 2),
-                  ));
+                  AppSnackBar.error(context, 'נא למלא שם ומספר טלפון',
+                      duration: const Duration(seconds: 2));
                   return;
                 }
                 final phoneDigits = _phoneCtrl.text.replaceAll(RegExp(r'[\s\-]'), '');
                 if (phoneDigits.length < 9 || phoneDigits.length > 10 || !phoneDigits.startsWith('0')) {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                    content: const Text('מספר טלפון אינו תקין'),
-                    backgroundColor: AppTheme.of(context).error,
-                    behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    duration: const Duration(seconds: 2),
-                  ));
+                  AppSnackBar.error(context, 'מספר טלפון אינו תקין',
+                      duration: const Duration(seconds: 2));
                   return;
                 }
                 setState(() => _isLoading = true);
@@ -197,13 +188,7 @@ class _CallbackWidgetState extends State<CallbackWidget> {
                   // instead of waiting for a call that won't come.
                   if (!context.mounted) return;
                   setState(() => _isLoading = false);
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                    content: const Text('שליחת הבקשה נכשלה — בדקו את החיבור ונסו שוב'),
-                    backgroundColor: AppTheme.of(context).error,
-                    behavior: SnackBarBehavior.floating,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    duration: const Duration(seconds: 3),
-                  ));
+                  AppSnackBar.error(context, 'שליחת הבקשה נכשלה — בדקו את החיבור ונסו שוב');
                   return;
                 }
                 appBackend.upsertProfile(name: name, phone: phone).catchError((_) {});

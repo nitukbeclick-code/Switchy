@@ -11,6 +11,7 @@ import '../../app_state.dart';
 import '../../data.dart';
 import '../../models.dart';
 import '../../widgets/media/community_media.dart';
+import '../../widgets/empty_state.dart';
 import '../../services/media_service.dart';
 import '../../services/backend/local_backend.dart';
 import '../../services/backend/backend.dart';
@@ -369,17 +370,10 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                   // Reply list
                   Expanded(
                     child: replies.isEmpty
-                        ? Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.chat_bubble_outline_rounded, size: 52, color: ffTheme.alternate),
-                                const SizedBox(height: 12),
-                                Text('אין תגובות עדיין', style: ffTheme.bodyMedium.copyWith(color: ffTheme.secondaryText)),
-                                const SizedBox(height: 4),
-                                Text('היה הראשון לענות!', style: ffTheme.labelSmall),
-                              ],
-                            ),
+                        ? const EmptyState(
+                            icon: Icons.chat_bubble_outline_rounded,
+                            headline: 'אין תגובות עדיין',
+                            subtitle: 'היה הראשון לענות!',
                           )
                         : ListView.builder(
                             controller: scrollCtrl,

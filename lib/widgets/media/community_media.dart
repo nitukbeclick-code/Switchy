@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:audioplayers/audioplayers.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -23,7 +24,7 @@ String _mmss(int ms) {
 
 // ─── 1. MediaImageBubble ─────────────────────────────────────────────────────
 
-class MediaImageBubble extends StatelessWidget {
+class MediaImageBubble extends StatefulWidget {
   const MediaImageBubble({
     super.key,
     required this.dataUri,
@@ -34,7 +35,37 @@ class MediaImageBubble extends StatelessWidget {
   final String dataUri;
   final double maxHeight;
 
-  bool get _isNetwork => dataUri.startsWith('http');
+  @override
+  State<MediaImageBubble> createState() => _MediaImageBubbleState();
+}
+
+class _MediaImageBubbleState extends State<MediaImageBubble> {
+  // Decoded once and reused across rebuilds — decoding a base64 data-URI on
+  // every build defeats the image cache and burns CPU/memory. Network images
+  // skip this and go through CachedNetworkImage instead.
+  Uint8List? _bytes;
+
+  bool get _isNetwork => widget.dataUri.startsWith('http');
+
+  @override
+  void initState() {
+    super.initState();
+    _decode();
+  }
+
+  @override
+  void didUpdateWidget(MediaImageBubble oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Re-decode only when the source actually changes (widget reused with new
+    // data); otherwise the memoized bytes stand.
+    if (oldWidget.dataUri != widget.dataUri) {
+      _decode();
+    }
+  }
+
+  void _decode() {
+    _bytes = _isNetwork ? null : MediaService.dataUriToBytes(widget.dataUri);
+  }
 
   void _openFullscreen(BuildContext context) {
     showDialog<void>(
@@ -50,8 +81,8 @@ class MediaImageBubble extends StatelessWidget {
             Center(
               child: InteractiveViewer(
                 child: _isNetwork
-                    ? CachedNetworkImage(imageUrl: dataUri)
-                    : Image.memory(MediaService.dataUriToBytes(dataUri)!),
+                    ? CachedNetworkImage(imageUrl: widget.dataUri)
+                    : Image.memory(_bytes!),
               ),
             ),
             Positioned(
@@ -78,17 +109,18 @@ class MediaImageBubble extends StatelessWidget {
     Widget imageChild;
     if (_isNetwork) {
       imageChild = CachedNetworkImage(
-        imageUrl: dataUri,
+        imageUrl: widget.dataUri,
         fit: BoxFit.cover,
-        placeholder: (_, __) => const Center(child: CircularProgressIndicator()),
+        placeholder: (_, __) =>
+            const Center(child: CircularProgressIndicator()),
         errorWidget: (_, __, ___) => Icon(Icons.broken_image_outlined,
             color: theme.secondaryText, size: 40),
       );
     } else {
-      final bytes = MediaService.dataUriToBytes(dataUri);
+      final bytes = _bytes;
       if (bytes == null) {
         return Container(
-          height: maxHeight,
+          height: widget.maxHeight,
           width: double.infinity,
           decoration: BoxDecoration(
             color: theme.alternate,
@@ -117,7 +149,7 @@ class MediaImageBubble extends StatelessWidget {
         child: ClipRRect(
           borderRadius: BorderRadius.circular(14),
           child: ConstrainedBox(
-            constraints: BoxConstraints(maxHeight: maxHeight),
+            constraints: BoxConstraints(maxHeight: widget.maxHeight),
             child: SizedBox(width: double.infinity, child: imageChild),
           ),
         ),

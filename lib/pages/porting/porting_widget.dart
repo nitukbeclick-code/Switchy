@@ -5,6 +5,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../theme/app_theme.dart';
 import '../../core/nav.dart';
 import '../../widgets/app_button.dart';
+import '../../widgets/app_snackbar.dart';
 import '../../app_state.dart';
 import '../../services/backend/backend.dart';
 import '../../services/backend/local_backend.dart';
@@ -314,13 +315,7 @@ class _PortingWidgetState extends State<PortingWidget> {
                             // The porting request never reached the team — let
                             // the user retry instead of showing false success.
                             if (!context.mounted) return;
-                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                              content: const Text('שליחת הבקשה נכשלה — בדקו את החיבור ונסו שוב'),
-                              backgroundColor: AppTheme.of(context).error,
-                              behavior: SnackBarBehavior.floating,
-                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              duration: const Duration(seconds: 3),
-                            ));
+                            AppSnackBar.error(context, 'שליחת הבקשה נכשלה — בדקו את החיבור ונסו שוב');
                             return;
                           }
                           appBackend.upsertProfile(name: name, phone: phone).catchError((_) {});

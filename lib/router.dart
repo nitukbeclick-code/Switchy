@@ -121,11 +121,17 @@ class _ScaffoldWithNav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final appState = Provider.of<AppState>(context);
     final ffTheme = AppTheme.of(context);
     final idx = _activeIndex;
 
-    return Scaffold(
+    // Subscribe ONLY to the compare-count slice so the shell (and its bottom
+    // nav / compare badge) rebuilds when plans are added/removed from the
+    // compare tray — not on every unrelated AppState notify (search keystroke,
+    // bill tap, etc.). The Selector recomputes the int and only rebuilds its
+    // child when that int changes.
+    return Selector<AppState, int>(
+      selector: (_, appState) => appState.comparePlans.length,
+      builder: (context, compareCount, _) => Scaffold(
       body: child,
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
@@ -142,7 +148,6 @@ class _ScaffoldWithNav extends StatelessWidget {
                 final tab = _tabs[i];
                 final active = i == idx;
                 final isCompare = i == 1;
-                final compareCount = appState.comparePlans.length;
                 return Expanded(
                   child: Semantics(
                     button: true,
@@ -179,6 +184,7 @@ class _ScaffoldWithNav extends StatelessWidget {
             ),
           ),
         ),
+      ),
       ),
     );
   }

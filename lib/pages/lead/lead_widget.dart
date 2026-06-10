@@ -6,6 +6,7 @@ import 'package:provider/provider.dart';
 import '../../theme/app_theme.dart';
 import '../../core/nav.dart';
 import '../../widgets/app_button.dart';
+import '../../widgets/app_snackbar.dart';
 import '../../app_state.dart';
 import '../../data.dart';
 import '../../models.dart';
@@ -212,13 +213,7 @@ class _LeadWidgetState extends State<LeadWidget> {
                     // user can retry instead of believing someone will call.
                     if (!context.mounted) return;
                     setState(() => _isSubmitting = false);
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                      content: const Text('שליחת הפנייה נכשלה — בדקו את החיבור ונסו שוב'),
-                      backgroundColor: AppTheme.of(context).error,
-                      behavior: SnackBarBehavior.floating,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      duration: const Duration(seconds: 3),
-                    ));
+                    AppSnackBar.error(context, 'שליחת הפנייה נכשלה — בדקו את החיבור ונסו שוב');
                     return;
                   }
                   if (!context.mounted) return;

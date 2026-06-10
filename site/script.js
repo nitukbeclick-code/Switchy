@@ -162,7 +162,7 @@
       form.reset();
       if (note) {
         note.style.color = '';
-        note.textContent = 'תודה ' + name.split(' ')[0] + '! נחזור אליך בהקדם 💚';
+        note.textContent = 'תודה ' + name.split(' ')[0] + '! נחזור אליך בהקדם ✦';
       }
     });
   }
@@ -302,6 +302,66 @@
       chip.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); ask(); }
       });
+    });
+  }
+
+  // ══ Premium interactions ══════════════════════════════════════════════════
+  // All of these are progressive enhancement: they no-op under reduced-motion
+  // or when the target elements are absent, and never block the core flows.
+
+  // ── Scroll-progress bar (injected, not in markup) ──────────────────────────
+  if (!reduceMotion) {
+    const bar = document.createElement('div');
+    bar.className = 'scroll-progress';
+    bar.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(bar);
+    let ticking = false;
+    const setProgress = () => {
+      const h = document.documentElement;
+      const max = h.scrollHeight - h.clientHeight;
+      bar.style.setProperty('--p', max > 0 ? (h.scrollTop / max).toFixed(4) : '0');
+      ticking = false;
+    };
+    window.addEventListener('scroll', () => {
+      if (!ticking) { ticking = true; requestAnimationFrame(setProgress); }
+    }, { passive: true });
+    setProgress();
+  }
+
+  // ── Staggered reveals: index each .reveal within its own section ───────────
+  // Per-section (sections don't nest), so each band cascades in from 0 rather
+  // than continuing a global counter.
+  document.querySelectorAll('section, .footer').forEach((scope) => {
+    let i = 0;
+    scope.querySelectorAll('.reveal').forEach((el) => {
+      if (!el.style.getPropertyValue('--i')) el.style.setProperty('--i', String(Math.min(i++, 6)));
+    });
+  });
+
+  // ── Pointer-tracking spotlight on cards (feeds CSS --mx/--my) ──────────────
+  if (!reduceMotion && window.matchMedia('(hover: hover)').matches) {
+    const spotlightSel = '.feature, .step, .cat, .guide-card, .plan, .provider-card';
+    document.addEventListener('pointermove', (e) => {
+      const card = e.target.closest && e.target.closest(spotlightSel);
+      if (!card) return;
+      const r = card.getBoundingClientRect();
+      card.style.setProperty('--mx', ((e.clientX - r.left) / r.width * 100).toFixed(1) + '%');
+      card.style.setProperty('--my', ((e.clientY - r.top) / r.height * 100).toFixed(1) + '%');
+    }, { passive: true });
+  }
+
+  // ── Magnetic primary CTAs — the button leans toward the cursor ─────────────
+  if (!reduceMotion && window.matchMedia('(hover: hover)').matches) {
+    document.querySelectorAll('.btn--primary').forEach((btn) => {
+      btn.classList.add('magnetic');
+      const strength = 0.28;
+      btn.addEventListener('pointermove', (e) => {
+        const r = btn.getBoundingClientRect();
+        const x = (e.clientX - (r.left + r.width / 2)) * strength;
+        const y = (e.clientY - (r.top + r.height / 2)) * strength;
+        btn.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
+      });
+      btn.addEventListener('pointerleave', () => { btn.style.transform = ''; });
     });
   }
 

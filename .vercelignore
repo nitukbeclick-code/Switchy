@@ -1,0 +1,7 @@
+# Preview deploys only the static marketing site (served from ./site via
+# vercel.json outputDirectory). Everything else — the Flutter app source,
+# build artifacts, backend SQL/functions — is excluded from the upload.
+*
+!site
+!site/**
+!vercel.json

@@ -7,11 +7,12 @@ import '../theme/app_theme.dart';
 /// loading state: while [onPressed] is awaiting, the label is swapped for a
 /// spinner and taps are ignored. Pass an [icon] to render it before the label.
 ///
-/// When [color] is the brand green ([AppColors.primary]) and no [borderSide]
-/// is supplied, the button reads as the primary CTA: it is filled with the
-/// fresh green→leaf [AppTheme.freshGradient] and lifted by the lime-green
+/// When [color] is the brand ink ([AppColors.primary]) and no [borderSide] is
+/// supplied, the button reads as the primary CTA: it is filled with the
+/// ink→slate [AppTheme.freshGradient] and lifted by the soft ink
 /// [AppTheme.shadowPrimary] glow. Any other [color] (or an outlined/ghost
-/// variant with a [borderSide]) keeps the calm solid-fill styling.
+/// variant with a [borderSide]) keeps the calm solid-fill styling. Either way it
+/// gains a subtle tactile scale-down while pressed.
 class AppButton extends StatefulWidget {
   const AppButton({
     super.key,
@@ -50,6 +51,7 @@ class AppButton extends StatefulWidget {
 
 class _AppButtonState extends State<AppButton> {
   bool _loading = false;
+  bool _pressed = false;
 
   Future<void> _handleTap() async {
     if (_loading) return;
@@ -59,6 +61,10 @@ class _AppButtonState extends State<AppButton> {
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  void _setPressed(bool v) {
+    if (_pressed != v) setState(() => _pressed = v);
   }
 
   @override
@@ -104,7 +110,7 @@ class _AppButtonState extends State<AppButton> {
             ),
     );
 
-    return SizedBox(
+    final sized = SizedBox(
       width: widget.width,
       height: widget.height,
       child: useGradient
@@ -117,6 +123,23 @@ class _AppButtonState extends State<AppButton> {
               child: button,
             )
           : button,
+    );
+
+    // Tactile press feedback — a subtle scale-down while held. Kept on a
+    // Listener (not a GestureDetector) so it never swallows the underlying
+    // ElevatedButton's tap, and it goes flat under reduced-motion.
+    final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    if (reduceMotion || _loading) return sized;
+    return Listener(
+      onPointerDown: (_) => _setPressed(true),
+      onPointerUp: (_) => _setPressed(false),
+      onPointerCancel: (_) => _setPressed(false),
+      child: AnimatedScale(
+        scale: _pressed ? ffTheme.pressScale : 1.0,
+        duration: _pressed ? ffTheme.motionFast : ffTheme.motionMedium,
+        curve: _pressed ? ffTheme.easeOut : ffTheme.spring,
+        child: sized,
+      ),
     );
   }
 }

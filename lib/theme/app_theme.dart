@@ -146,6 +146,27 @@ class AppTheme {
   double get radiusXl => 28;
   double get radiusPill => 999;
 
+  // ── Motion — one shared vocabulary of durations + curves ────────────────────
+  // Centralised so every screen animates with the same cadence: quick for taps,
+  // medium for reveals, slow for hero/page transitions. [spring] gives a subtle
+  // overshoot for tactile press/scale; [emphasized] is the smooth decel curve.
+  Duration get motionFast => const Duration(milliseconds: 180);
+  Duration get motionMedium => const Duration(milliseconds: 320);
+  Duration get motionSlow => const Duration(milliseconds: 560);
+  Curve get easeOut => const Cubic(0.22, 1, 0.36, 1); // matches the site --ease
+  Curve get spring => const Cubic(0.34, 1.56, 0.64, 1); // gentle overshoot
+  Curve get emphasized => Curves.easeOutCubic;
+  /// The scale a surface shrinks to while pressed (tactile feedback).
+  double get pressScale => 0.97;
+
+  /// A faint top-to-bottom glass wash for full-screen scaffolds — lifts plain
+  /// backgrounds off flat white without introducing any colour.
+  LinearGradient get surfaceWash => const LinearGradient(
+        colors: [Color(0xFFF7F9FA), Color(0xFFF1F4F6)],
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+      );
+
   // Type scale — each style resolves its GoogleFonts face exactly once and is
   // then cached. The getters previously called GoogleFonts.rubik()/assistant()
   // on *every* access, so a hot screen re-allocated dozens of identical styles

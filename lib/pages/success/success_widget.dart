@@ -259,7 +259,7 @@ class _CheckItem extends StatelessWidget {
       child: Row(
         children: [
           AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
+            duration: ffTheme.motionMedium,
             width: 24,
             height: 24,
             decoration: BoxDecoration(

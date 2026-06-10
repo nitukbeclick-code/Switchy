@@ -6,6 +6,7 @@ import '../../theme/app_theme.dart';
 import '../../core/nav.dart';
 import '../../app_state.dart';
 import '../../data.dart';
+import '../../widgets/pressable.dart';
 import '../../components/logo_widget/logo_widget.dart';
 import '../../components/plan_card/mini_plan_card.dart';
 
@@ -91,7 +92,7 @@ class AccountWidget extends StatelessWidget {
           // Login CTA banner for guests
           if (!appState.isLoggedIn)
             SliverToBoxAdapter(
-              child: GestureDetector(
+              child: Pressable(
                 onTap: () => context.pushNamed('Auth'),
                 child: Container(
                   margin: const EdgeInsets.fromLTRB(20, 12, 20, 0),
@@ -233,7 +234,7 @@ class AccountWidget extends StatelessWidget {
                       ),
                     ).animate().fadeIn(delay: 300.ms)
                   else
-                    GestureDetector(
+                    Pressable(
                       onTap: () => context.goNamed('Results'),
                       child: Container(
                         width: double.infinity,
@@ -303,7 +304,7 @@ class AccountWidget extends StatelessWidget {
                   // Quiz CTA or summary
                   if (!appState.quizCompleted) ...[
                     const SizedBox(height: 20),
-                    GestureDetector(
+                    Pressable(
                       onTap: () => context.pushNamed('Quiz'),
                       child: Container(
                         padding: const EdgeInsets.all(18),
@@ -401,7 +402,7 @@ class AccountWidget extends StatelessWidget {
                         children: appState.recentlyViewed.map((id) {
                           final p = planById(id);
                           if (p == null) return const SizedBox();
-                          return GestureDetector(
+                          return Pressable(
                             onTap: () => context.pushNamed('PlanDetail', pathParameters: {'planId': id}),
                             child: Container(
                               width: 140,
@@ -518,7 +519,7 @@ class _QuickLink extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Expanded(
-      child: GestureDetector(
+      child: Pressable(
         onTap: onTap,
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 14),
@@ -550,7 +551,7 @@ class _ActionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return Pressable(
       onTap: onTap,
       child: Container(
         margin: const EdgeInsets.only(bottom: 10),

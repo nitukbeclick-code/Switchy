@@ -108,7 +108,7 @@ class _OnboardingWidgetState extends State<OnboardingWidget> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: List.generate(3, (i) => AnimatedContainer(
-                    duration: const Duration(milliseconds: 300),
+                    duration: ffTheme.motionMedium,
                     margin: const EdgeInsets.symmetric(horizontal: 4),
                     width: i == _page ? 28 : 8,
                     height: 8,

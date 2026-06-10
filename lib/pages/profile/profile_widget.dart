@@ -9,6 +9,7 @@ import '../../widgets/app_button.dart';
 import '../../app_state.dart';
 import '../../data.dart';
 import '../../models.dart';
+import '../../widgets/pressable.dart';
 import '../../components/logo_widget/logo_widget.dart';
 import '../../components/plan_card/mini_plan_card.dart';
 import '../../services/backend/local_backend.dart';
@@ -247,7 +248,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                           child: GestureDetector(
                             onTap: () => setState(() => _lang = lang),
                             child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 200),
+                              duration: ffTheme.motionFast,
                               margin: const EdgeInsets.symmetric(horizontal: 3),
                               padding: const EdgeInsets.symmetric(vertical: 8),
                               decoration: BoxDecoration(
@@ -430,7 +431,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
   }
 
   Widget _buildGuestCard(BuildContext context, AppTheme ffTheme) {
-    return GestureDetector(
+    return Pressable(
       onTap: () => context.pushNamed('Auth'),
       child: Container(
         padding: const EdgeInsets.all(16),
@@ -466,7 +467,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
   Widget _buildActivePlanCard(BuildContext context, AppTheme ffTheme, AppState appState) {
     final plan = planById(appState.leadPlanId!);
     if (plan == null) return const SizedBox();
-    return GestureDetector(
+    return Pressable(
       onTap: () => context.pushNamed('Tracker'),
       child: Container(
         padding: const EdgeInsets.all(14),
@@ -552,7 +553,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
         separatorBuilder: (_, __) => const SizedBox(width: 10),
         itemBuilder: (ctx, i) {
           final p = plans[i];
-          return GestureDetector(
+          return Pressable(
             onTap: () => context.pushNamed('PlanDetail', pathParameters: {'planId': p.id}),
             child: Container(
               width: 130,
@@ -607,7 +608,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
   }
 
   Widget _buildQuizCTA(BuildContext context, AppTheme ffTheme) {
-    return GestureDetector(
+    return Pressable(
       onTap: () => context.pushNamed('Quiz'),
       child: Container(
         padding: const EdgeInsets.all(16),

@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
+import 'pressable.dart';
 
 /// The standard white rounded card container used across the app.
 ///
-/// Provides consistent background color, border, corner radius and drop shadow
-/// that match the existing card pattern (white bg, [AppTheme.alternate] border,
-/// soft green-tinted [AppTheme.shadowCard]). Wrap any content in [child].
+/// Provides consistent background, hairline border, corner radius and the soft
+/// diffuse [AppTheme.glassDecoration] surface. When [onTap] is supplied the card
+/// gains tactile [Pressable] scale-on-press feedback. Wrap any content in [child].
 class AppCard extends StatelessWidget {
   /// The widget to place inside the card.
   final Widget child;
@@ -53,7 +54,7 @@ class AppCard extends StatelessWidget {
     );
 
     if (onTap != null) {
-      return GestureDetector(onTap: onTap, child: card);
+      return Pressable(onTap: onTap, child: card);
     }
     return card;
   }

@@ -7,6 +7,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../theme/app_theme.dart';
 import '../../core/nav.dart';
 import '../../widgets/app_button.dart';
+import '../../widgets/pressable.dart';
 import '../../app_state.dart';
 import '../../data.dart';
 import '../../models.dart';
@@ -428,7 +429,7 @@ class _TrackerWidgetState extends State<TrackerWidget> {
             const SizedBox(height: 24),
 
             // Rep card
-            GestureDetector(
+            Pressable(
               onTap: () {
                 HapticFeedback.lightImpact();
                 context.pushNamed('Chat');
@@ -615,7 +616,7 @@ class _StepConfirmButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final label = step < _labels.length ? _labels[step] : _labels.last;
-    return GestureDetector(
+    return Pressable(
       onTap: () {
         showDialog(
           context: context,

@@ -643,8 +643,8 @@ class _ResultsWidgetState extends State<ResultsWidget> {
               offset: appState.comparePlans.isEmpty
                   ? const Offset(0, 2)
                   : Offset.zero,
-              duration: const Duration(milliseconds: 300),
-              curve: Curves.easeOutCubic,
+              duration: ffTheme.motionMedium,
+              curve: ffTheme.emphasized,
               child: Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(

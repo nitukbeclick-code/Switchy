@@ -1,36 +1,58 @@
 <!DOCTYPE html>
-<!-- Source for og-image.png. Render at 1200×630:
-     chrome --headless --screenshot=og-image.png --window-size=1200,630 og-card.html -->
+<!-- Source for og-image.png (social share card). Render at 1200×630:
+     chrome --headless --screenshot=og-image.png --window-size=1200,630 og-card.html
+     Brand: white-glass + black ink, formal monochrome. -->
 <html lang="he" dir="rtl">
 <head>
 <meta charset="UTF-8" />
-<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@700;800;900&family=Assistant:wght@500;600&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Rubik:wght@700;800;900&family=Assistant:wght@500;600;700&display=swap" rel="stylesheet" />
 <style>
   * { margin: 0; box-sizing: border-box; }
   html, body { width: 1200px; height: 630px; }
   body {
-    font-family: 'Assistant', sans-serif; color: #fff; overflow: hidden;
-    background: radial-gradient(900px 500px at 82% -10%, rgba(229,231,235,.16), transparent 60%), linear-gradient(135deg, #000000, #111827);
-    padding: 64px 72px; display: flex; flex-direction: column; justify-content: space-between;
+    font-family: 'Assistant', sans-serif; color: #fff; overflow: hidden; position: relative;
+    background:
+      radial-gradient(820px 480px at 84% -12%, rgba(229,231,235,.18), transparent 58%),
+      radial-gradient(620px 420px at 6% 110%, rgba(120,130,150,.14), transparent 60%),
+      linear-gradient(150deg, #000000 0%, #0B0F14 45%, #111827 100%);
+    padding: 58px 66px; display: flex; flex-direction: column; justify-content: space-between;
   }
-  .brand { display: flex; align-items: center; gap: 14px; }
-  .mark { width: 56px; height: 56px; display: grid; place-items: center; background: #E5E7EB; color: #111827; border-radius: 15px; font-size: 30px; font-weight: 900; font-family: 'Rubik'; }
-  .brand b { font-family: 'Rubik'; font-size: 40px; font-weight: 800; }
-  .pill { display: inline-block; background: rgba(255,255,255,.14); padding: 8px 18px; border-radius: 999px; font-weight: 600; font-size: 22px; }
-  h1 { font-family: 'Rubik'; font-weight: 900; font-size: 76px; line-height: 1.08; letter-spacing: -1px; margin: 18px 0 14px; }
-  h1 .hl { color: #fff; }
-  .sub { font-size: 30px; font-weight: 600; opacity: .92; }
-  .sub b { color: #fff; }
-  .row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-  .chip { background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.18); padding: 9px 18px; border-radius: 999px; font-weight: 700; font-size: 22px; }
-  .rate { margin-inline-start: auto; font-family: 'Rubik'; font-weight: 800; font-size: 26px; color: #E5E7EB; }
+  /* Fine engineered dot-grid, fading out — formal texture. */
+  body::before {
+    content: ""; position: absolute; inset: 0; pointer-events: none;
+    background-image: radial-gradient(rgba(255,255,255,.10) 1px, transparent 1.6px);
+    background-size: 30px 30px;
+    -webkit-mask-image: radial-gradient(900px 600px at 80% 0%, #000, transparent 75%);
+  }
+  /* Subtle film grain for tactile depth. */
+  body::after {
+    content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .05; mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+  /* Editorial hairline frame. */
+  .frame { position: absolute; inset: 22px; border: 1px solid rgba(255,255,255,.12); border-radius: 22px; pointer-events: none; }
+  .brand { display: flex; align-items: center; gap: 14px; position: relative; }
+  .mark { width: 56px; height: 56px; display: grid; place-items: center; background: linear-gradient(145deg,#fff,#E5E7EB); color: #111827; border-radius: 15px; font-size: 30px; font-weight: 900; font-family: 'Rubik'; box-shadow: 0 8px 22px rgba(0,0,0,.35); }
+  .brand b { font-family: 'Rubik'; font-size: 40px; font-weight: 800; letter-spacing: -.5px; }
+  .brand .badge { margin-inline-start: auto; font-family: 'Assistant'; font-weight: 700; font-size: 19px; letter-spacing: .12em; text-transform: uppercase; opacity: .55; }
+  .mid { position: relative; }
+  .pill { display: inline-flex; align-items: center; gap: 9px; background: rgba(255,255,255,.10); border: 1px solid rgba(255,255,255,.16); padding: 9px 20px; border-radius: 999px; font-weight: 600; font-size: 21px; backdrop-filter: blur(6px); }
+  .pill::before { content: ""; width: 8px; height: 8px; border-radius: 999px; background: #E5E7EB; box-shadow: 0 0 10px rgba(229,231,235,.7); }
+  h1 { font-family: 'Rubik'; font-weight: 900; font-size: 78px; line-height: 1.06; letter-spacing: -1.5px; margin: 20px 0 16px;
+       background: linear-gradient(160deg,#fff 0%,#fff 55%,#AEB6C2 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+  .sub { font-size: 29px; font-weight: 600; opacity: .9; max-width: 20em; }
+  .sub b { color: #fff; font-weight: 800; }
+  .row { display: flex; align-items: center; gap: 11px; flex-wrap: wrap; position: relative; }
+  .chip { background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.16); padding: 9px 18px; border-radius: 999px; font-weight: 700; font-size: 21px; }
+  .rate { margin-inline-start: auto; font-family: 'Rubik'; font-weight: 800; font-size: 25px; color: #E5E7EB; }
 </style>
 </head>
 <body>
-  <div class="brand"><span class="mark">✦</span><b>חוסך</b></div>
-  <div>
+  <div class="frame"></div>
+  <div class="brand"><span class="mark">✦</span><b>חוסך</b><span class="badge">השוואת תקשורת</span></div>
+  <div class="mid">
     <span class="pill">חינם · בלי התחייבות</span>
-    <h1>כל חברות התקשורת<br /><span class="hl">במקום אחד</span></h1>
+    <h1>כל חברות התקשורת<br />במקום אחד</h1>
     <div class="sub">השוואה חכמה על סלולר, אינטרנט, טלוויזיה וחבילות — <b>חוסכים עד ₪1,200 בשנה</b></div>
   </div>
   <div class="row">

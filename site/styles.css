@@ -18,14 +18,35 @@
   --muted: #4B5563;
   --white: #ffffff;
   --line: #E4E8EC;          /* formal hairline */
+
+  /* Ink scale — a calibrated monochrome ramp the whole system tunes against. */
+  --ink-900: #0B0F14;
+  --ink-800: #111827;
+  --ink-700: #1F2733;
+  --ink-600: #374151;
+  --ink-500: #4B5563;
+  --ink-400: #6B7280;
+  --ink-300: #9CA3AF;
+  --ink-200: #CBD2D9;
+  --ink-100: #E4E8EC;
+  --ink-050: #F0F2F4;
+
   --radius: 20px;           /* friendlier rounding */
   --radius-sm: 12px;
   --radius-lg: 26px;
-  --shadow-sm: 0 4px 14px rgba(15, 27, 34, 0.06);
-  --shadow: 0 12px 34px rgba(15, 27, 34, 0.08);
-  --shadow-lg: 0 26px 64px rgba(15, 27, 34, 0.16);
+
+  /* Layered elevation — a soft ambient wash + a tighter key shadow, so cards
+     read as lifted glass rather than a flat drop. Cool ink-tinted, never black. */
+  --shadow-sm: 0 1px 2px rgba(15,27,34,.04), 0 4px 14px rgba(15,27,34,.05);
+  --shadow: 0 2px 6px rgba(15,27,34,.05), 0 14px 38px rgba(15,27,34,.09);
+  --shadow-lg: 0 6px 16px rgba(15,27,34,.08), 0 30px 70px rgba(15,27,34,.16);
+  --shadow-ink: 0 10px 24px rgba(17,24,39,.26), 0 2px 6px rgba(17,24,39,.18);
+  --ring: 0 0 0 3px rgba(17,24,39,.14);   /* focus ring */
+
   --maxw: 1140px;
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -38,10 +59,41 @@ body {
   background: var(--cream);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
   overflow-x: hidden;
+  position: relative;
 }
 
+/* Fine film grain over the whole page — adds tactile, premium depth without
+   any colour. Pointer-transparent, fixed, and very subtle. */
+body::after {
+  content: ""; position: fixed; inset: 0; z-index: 9999; pointer-events: none;
+  background-image: var(--grain); background-size: 160px; opacity: .025; mix-blend-mode: multiply;
+}
+
+::selection { background: var(--ink-800); color: #fff; }
+
 h1, h2, h3, .brand__name { font-family: 'Rubik', sans-serif; line-height: 1.12; }
+
+/* Ink-gradient headings — a whisper of dimensionality on big display type
+   (ink → charcoal), still strictly monochrome. Applied to hero & section h2. */
+.hero h1, .section__head h2, .lead-hero h1, .cta h2 {
+  background: linear-gradient(160deg, var(--ink-900) 0%, var(--ink-700) 60%, var(--ink-500) 100%);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent; color: var(--ink-900);
+}
+.cta h2 { background: linear-gradient(160deg, #fff 0%, #fff 55%, #c9ced6 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+
+/* Global focus ring — keyboard users get a crisp, on-brand outline. */
+:focus-visible { outline: none; box-shadow: var(--ring); border-radius: 6px; }
+
+/* ── Scroll progress bar (injected by script.js) ─────────────────────────── */
+.scroll-progress {
+  position: fixed; inset: 0 0 auto 0; height: 3px; z-index: 60; transform-origin: right center;
+  transform: scaleX(var(--p, 0)); background: linear-gradient(90deg, var(--ink-800), var(--ink-500));
+  will-change: transform; pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) { .scroll-progress { display: none; } }
 
 .container { width: 100%; max-width: var(--maxw); margin-inline: auto; padding-inline: 20px; }
 
@@ -51,10 +103,11 @@ a { color: inherit; text-decoration: none; }
    Frosted white-glass utility for cards/panels. Falls back to opaque white
    where backdrop-filter is unsupported, so text stays readable. */
 .glass {
-  background: rgba(255, 255, 255, .66);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  border: 1px solid rgba(255, 255, 255, .6);
+  background: rgba(255, 255, 255, .62);
+  backdrop-filter: blur(16px) saturate(135%);
+  -webkit-backdrop-filter: blur(16px) saturate(135%);
+  border: 1px solid rgba(255, 255, 255, .7);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.7), var(--shadow-sm);
 }
 @supports not ((backdrop-filter: blur(14px)) or (-webkit-backdrop-filter: blur(14px))) {
   .glass { background: #fff; }
@@ -62,16 +115,26 @@ a { color: inherit; text-decoration: none; }
 
 /* ── Buttons ─────────────────────────────────────────────────────────── */
 .btn {
+  position: relative; overflow: hidden;
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   font-family: 'Rubik', sans-serif; font-weight: 700; font-size: 15px;
   padding: 13px 24px; border-radius: 16px; border: 0; cursor: pointer;
-  transition: transform .18s var(--ease), box-shadow .18s var(--ease), background .18s;
-  white-space: nowrap;
+  transition: transform .2s var(--ease-spring), box-shadow .2s var(--ease), background .18s;
+  white-space: nowrap; isolation: isolate; will-change: transform;
 }
-.btn--primary { background: var(--green); color: #fff; box-shadow: 0 10px 22px rgba(17,24,39,.28); }
-.btn--primary:hover { transform: translateY(-2px); box-shadow: 0 16px 30px rgba(17,24,39,.34); }
-.btn--ghost { background: var(--mint); color: var(--green); }
-.btn--ghost:hover { background: #DADEE3; }
+/* A diagonal light sheen that sweeps across on hover — a quiet premium tell. */
+.btn::before {
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: linear-gradient(115deg, transparent 30%, rgba(255,255,255,.22) 50%, transparent 70%);
+  transform: translateX(120%); transition: transform .6s var(--ease);
+}
+.btn:hover::before { transform: translateX(-120%); }
+.btn--primary { background: linear-gradient(165deg, var(--ink-700), var(--ink-900)); color: #fff; box-shadow: var(--shadow-ink); }
+.btn--primary:hover { transform: translateY(-2px); box-shadow: 0 18px 34px rgba(17,24,39,.34), 0 3px 8px rgba(17,24,39,.2); }
+.btn--primary:active { transform: translateY(0) scale(.985); }
+.btn--ghost { background: var(--mint); color: var(--green); box-shadow: inset 0 0 0 1px var(--line); }
+.btn--ghost:hover { background: #fff; transform: translateY(-2px); box-shadow: inset 0 0 0 1px var(--ink-200), var(--shadow-sm); }
+.btn--ghost:active { transform: translateY(0) scale(.985); }
 .btn--lg { padding: 16px 30px; font-size: 16px; border-radius: 18px; }
 .btn--block { width: 100%; }
 
@@ -100,8 +163,13 @@ a { color: inherit; text-decoration: none; }
 .brand__name { font-size: 22px; font-weight: 800; color: var(--green-d); }
 .brand--light .brand__name { color: #fff; }
 .nav__links { display: flex; gap: 26px; margin-inline-start: auto; }
-.nav__links a { font-weight: 600; color: var(--muted); transition: color .15s; }
+.nav__links a { position: relative; font-weight: 600; color: var(--muted); transition: color .15s; padding-bottom: 2px; }
+.nav__links a::after {
+  content: ""; position: absolute; inset-inline: 0; bottom: -2px; height: 2px; border-radius: 2px;
+  background: var(--green); transform: scaleX(0); transform-origin: right; transition: transform .25s var(--ease);
+}
 .nav__links a:hover { color: var(--green); }
+.nav__links a:hover::after { transform: scaleX(1); }
 .nav__cta { margin-inline-start: 6px; }
 .nav__toggle { display: none; background: none; border: 0; width: 42px; height: 42px; cursor: pointer; padding: 9px; }
 .nav__toggle span { display: block; height: 2.5px; background: var(--green-d); border-radius: 2px; margin: 4px 0; transition: .25s var(--ease); }
@@ -115,8 +183,18 @@ a { color: inherit; text-decoration: none; }
 /* ── Hero ────────────────────────────────────────────────────────────── */
 .hero { padding: 56px 0 40px; position: relative; }
 .hero::before {
-  content: ""; position: absolute; inset: 0 0 auto 0; height: 520px; z-index: -1;
-  background: radial-gradient(900px 460px at 80% -10%, rgba(17,24,39,.06), transparent 60%);
+  content: ""; position: absolute; inset: 0 0 auto 0; height: 560px; z-index: -1;
+  background:
+    radial-gradient(820px 420px at 82% -12%, rgba(17,24,39,.07), transparent 60%),
+    radial-gradient(620px 380px at 8% 4%, rgba(55,65,81,.05), transparent 62%);
+}
+/* A fine ink dot-grid that fades out downward — engineered, formal texture. */
+.hero::after {
+  content: ""; position: absolute; inset: 0 0 auto 0; height: 560px; z-index: -1; pointer-events: none;
+  background-image: radial-gradient(rgba(17,24,39,.10) 1px, transparent 1.4px);
+  background-size: 26px 26px;
+  -webkit-mask-image: linear-gradient(180deg, rgba(0,0,0,.5), transparent 72%);
+  mask-image: linear-gradient(180deg, rgba(0,0,0,.5), transparent 72%);
 }
 .hero__inner { display: grid; grid-template-columns: 1.05fr .95fr; gap: 48px; align-items: center; }
 .hero h1 { font-size: clamp(34px, 5vw, 58px); font-weight: 900; color: var(--green-d); letter-spacing: -.5px; }
@@ -138,12 +216,25 @@ a { color: inherit; text-decoration: none; }
 /* Phone mockup */
 .hero__visual { display: grid; place-items: center; }
 .phone {
-  width: 290px; background: var(--green-d); border-radius: 38px; padding: 14px;
-  box-shadow: var(--shadow-lg); position: relative; animation: float 6s ease-in-out infinite;
+  width: 290px; background: linear-gradient(155deg, #1b232f, #000); border-radius: 42px; padding: 14px;
+  box-shadow: var(--shadow-lg), inset 0 0 0 1.5px rgba(255,255,255,.08);
+  position: relative; animation: float 6s ease-in-out infinite;
 }
-.phone__notch { width: 120px; height: 22px; background: var(--green-d); border-radius: 0 0 14px 14px; margin: 0 auto 8px; }
-.phone__screen { background: var(--cream); border-radius: 26px; padding: 16px; display: grid; gap: 12px; }
+/* Soft specular highlight raking across the phone glass. */
+.phone::before {
+  content: ""; position: absolute; inset: 0; border-radius: 42px; pointer-events: none;
+  background: linear-gradient(150deg, rgba(255,255,255,.12), transparent 38%);
+}
+/* Reflected glow puddle beneath the floating device. */
+.phone::after {
+  content: ""; position: absolute; left: 12%; right: 12%; bottom: -34px; height: 44px; z-index: -1;
+  background: radial-gradient(closest-side, rgba(17,24,39,.22), transparent 78%);
+  filter: blur(2px); animation: floatShadow 6s ease-in-out infinite;
+}
+.phone__notch { width: 120px; height: 22px; background: #000; border-radius: 0 0 14px 14px; margin: 0 auto 8px; }
+.phone__screen { background: var(--cream); border-radius: 28px; padding: 16px; display: grid; gap: 12px; }
 @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-12px); } }
+@keyframes floatShadow { 0%,100% { transform: scaleX(1); opacity: .55; } 50% { transform: scaleX(.86); opacity: .35; } }
 
 .card { background: #fff; border-radius: 18px; padding: 14px; box-shadow: var(--shadow-sm); }
 .card--save { background: linear-gradient(135deg, var(--green-d), var(--green)); color: #fff; text-align: center; padding: 18px; }
@@ -434,4 +525,69 @@ select.filter-search { cursor: pointer; -webkit-appearance: none; appearance: no
 }
 @media (max-width: 420px) {
   .cats { grid-template-columns: 1fr; }
+}
+
+/* ╔══════════════════════════════════════════════════════════════════════╗
+   ║  PREMIUM LAYER — depth, pointer-reactive surfaces, staggered motion.   ║
+   ║  Strictly monochrome; the richness comes from light, texture & timing. ║
+   ╚══════════════════════════════════════════════════════════════════════╝ */
+
+/* ── Editorial eyebrow: a short ink rule precedes the kicker ─────────────── */
+.eyebrow { display: inline-flex; align-items: center; gap: 9px; }
+.eyebrow::before { content: ""; width: 22px; height: 2px; border-radius: 2px; background: var(--green); opacity: .8; }
+.section__head .eyebrow { display: inline-flex; }
+
+/* ── Pointer-tracking spotlight on cards ────────────────────────────────────
+   A soft ink glow follows the cursor (coords fed by script.js as --mx/--my),
+   plus a crisp inset top highlight so each surface catches the light. */
+.feature, .step, .cat, .guide-card, .plan, .provider-card, .quote {
+  position: relative; isolation: isolate;
+}
+.feature::after, .step::after, .cat::after, .guide-card::after, .plan::after, .provider-card::after {
+  content: ""; position: absolute; inset: 0; z-index: -1; border-radius: inherit; pointer-events: none;
+  background: radial-gradient(220px circle at var(--mx, 50%) var(--my, 0%), rgba(17,24,39,.06), transparent 60%);
+  opacity: 0; transition: opacity .3s var(--ease);
+}
+.feature:hover::after, .step:hover::after, .cat:hover::after, .guide-card:hover::after, .plan:hover::after, .provider-card:hover::after { opacity: 1; }
+.feature, .step, .cat, .guide-card, .plan, .provider-card {
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.7), var(--shadow-sm);
+}
+.feature:hover, .step:hover, .cat:hover, .guide-card:hover, .plan:hover, .provider-card:hover {
+  border-color: var(--ink-200);
+}
+
+/* ── Staggered reveals ──────────────────────────────────────────────────────
+   script.js sets --i per element within a group; cheap, GPU-friendly, and it
+   degrades gracefully (reduced-motion already neutralises .reveal above). */
+.reveal { transition-delay: calc(var(--i, 0) * 65ms); }
+.reveal--blur { filter: blur(6px); }
+.reveal--blur.in { filter: none; }
+
+/* ── Hero savings card: deeper, glassier, with a moving spec highlight ────── */
+.card--save { position: relative; overflow: hidden; box-shadow: var(--shadow-ink); }
+.card--save::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(140deg, rgba(255,255,255,.16), transparent 45%);
+}
+.card__big { letter-spacing: -1px; }
+
+/* ── "Winner" row in the hero phone gets a quiet ink ring pulse ─────────────── */
+.card--row.best { box-shadow: 0 0 0 2px var(--green), var(--shadow-sm); border: 0; }
+
+/* ── Section rhythm: a faint hairline divider option for alt sections ─────── */
+.section--alt { border-block: 1px solid var(--line); }
+
+/* ── Chips & pills: tactile press ───────────────────────────────────────────── */
+.chip:active { transform: translateY(0) scale(.97); }
+.pill { box-shadow: inset 0 0 0 1px var(--line); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+
+/* ── Magnetic primary CTA (JS nudges it toward the cursor) ───────────────── */
+.btn--primary.magnetic { transition: transform .25s var(--ease-spring), box-shadow .2s var(--ease); }
+
+/* ── Honour reduced-motion for all the new flourishes ───────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .phone::after { animation: none; }
+  .btn::before { display: none; }
+  .feature::after, .step::after, .cat::after, .guide-card::after, .plan::after, .provider-card::after { display: none; }
+  .reveal { transition-delay: 0ms !important; }
 }

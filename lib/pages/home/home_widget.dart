@@ -9,6 +9,7 @@ import '../../data.dart';
 import '../../models.dart';
 import '../../components/logo_widget/logo_widget.dart';
 import '../../components/plan_card/mini_plan_card.dart';
+import '../../widgets/pressable.dart';
 import '../../services/recommendation_engine.dart';
 import '../../services/notifications.dart';
 import '../../services/savings_summary.dart';
@@ -691,7 +692,7 @@ class _HomeWidgetState extends State<HomeWidget> {
   }
 
   Widget _buildAIAdvisor(BuildContext context, AppTheme ffTheme) {
-    return GestureDetector(
+    return Pressable(
       onTap: () {
         HapticFeedback.lightImpact();
         context.pushNamed('AIAdvisor');
@@ -847,7 +848,7 @@ class _HomeWidgetState extends State<HomeWidget> {
   }
 
   Widget _buildCommunityCta(BuildContext context, AppTheme ffTheme) {
-    return GestureDetector(
+    return Pressable(
       onTap: () => context.goNamed('Community'),
       child: Container(
         width: double.infinity,
@@ -920,7 +921,7 @@ class _HomeWidgetState extends State<HomeWidget> {
               separatorBuilder: (_, __) => const SizedBox(width: 12),
               itemBuilder: (context, i) {
                 final tool = tools[i];
-                return GestureDetector(
+                return Pressable(
                   onTap: () {
                     HapticFeedback.lightImpact();
                     context.pushNamed(tool.route);
@@ -1075,7 +1076,7 @@ class _HomeWidgetState extends State<HomeWidget> {
               itemBuilder: (_, i) {
                 final plan = planById(appState.recentlyViewed[i]);
                 if (plan == null) return const SizedBox();
-                return GestureDetector(
+                return Pressable(
                   onTap: () => context.pushNamed('PlanDetail', pathParameters: {'planId': plan.id}),
                   child: Container(
                     width: 148,
@@ -1151,7 +1152,7 @@ class _HomeWidgetState extends State<HomeWidget> {
               separatorBuilder: (_, __) => const SizedBox(width: 8),
               itemBuilder: (context, i) {
                 final p = providers[i];
-                return GestureDetector(
+                return Pressable(
                   onTap: () => context.pushNamed(
                     'Provider',
                     pathParameters: {'name': p.name},

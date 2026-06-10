@@ -189,7 +189,8 @@ function planCardHtml(p) {
       </article>`;
 }
 
-const navHtml = (ctaHref) => `  <header class="nav" id="nav">
+const navHtml = (ctaHref) => `  <a class="skip" href="#main">דלג לתוכן</a>
+  <header class="nav" id="nav">
     <div class="container nav__inner">
       <a class="brand" href="index.html" aria-label="חוסך — דף הבית">
         <span class="brand__mark" aria-hidden="true">✦</span><span class="brand__name">חוסך</span>
@@ -295,7 +296,7 @@ function page(c) {
 </head>
 <body id="top">
 ${nav}
-  <main>
+  <main id="main">
     <section class="lead-hero">
       <div class="container">
         <p class="crumbs"><a href="index.html">דף הבית</a> ← ${esc(c.name)}</p>
@@ -359,8 +360,8 @@ ${catGuides}
         <h2>מוכנים לחסוך על ${esc(c.name)}?</h2>
         <p>השאירו פרטים ונחזור אליכם עם ההשוואה וההמלצה — חינם, בלי התחייבות.</p>
         <form class="cta__form" id="leadForm" novalidate>
-          <input type="text" id="leadName" name="name" placeholder="שם מלא" autocomplete="name" required />
-          <input type="tel" id="leadPhone" name="phone" placeholder="טלפון (050-0000000)" autocomplete="tel" inputmode="tel" required />
+          <input type="text" id="leadName" name="name" placeholder="שם מלא" aria-label="שם מלא" autocomplete="name" required />
+          <input type="tel" id="leadPhone" name="phone" placeholder="טלפון (050-0000000)" aria-label="מספר טלפון" autocomplete="tel" inputmode="tel" required />
           <button class="btn btn--primary btn--lg" type="submit">קבלו השוואה חינם</button>
         </form>
         <p class="cta__note" id="leadNote" role="status" aria-live="polite"></p>
@@ -535,9 +536,10 @@ function articleJsonLd(g) {
 function head(title, desc, url, extraJsonLd, noindex) {
   return `<head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />${noindex ? '\n  <base href="/" />' : ''}
   <title>${esc(title)}</title>
   <meta name="description" content="${esc(desc)}" />${noindex ? '\n  <meta name="robots" content="noindex" />' : ''}
+  <style>.skip{position:absolute;left:-999px;top:0;z-index:100;background:#15603E;color:#fff;padding:10px 16px;border-radius:0 0 8px 0}.skip:focus{left:0}</style>
   <meta name="theme-color" content="#15603E" />
   <link rel="canonical" href="${url}" />
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
@@ -575,7 +577,7 @@ function articlePage(g) {
 ${head(g.title, g.desc, url, articleJsonLd(g))}
 <body id="top">
 ${navNoCta}
-  <main>
+  <main id="main">
     <article>
       <section class="article-hero">
         <div class="container">
@@ -622,7 +624,7 @@ function guidesIndexPage() {
 ${head('מדריכים — איך לחסוך על תקשורת | חוסך', 'מדריכים מקצועיים: איך לעבור ספק, לבחור מסלול סלולר, סיב אופטי מול כבלים ועוד — כל הטיפים כדי לא לשלם יותר מדי.', url)}
 <body id="top">
 ${navNoCta}
-  <main>
+  <main id="main">
     <section class="article-hero">
       <div class="container">
         <p class="crumbs"><a href="index.html">דף הבית</a> ← מדריכים</p>
@@ -712,7 +714,7 @@ function staticPage(p) {
 ${head(p.title, p.desc, url)}
 <body id="top">
 ${navNoCta}
-  <main>
+  <main id="main">
     <section class="article-hero">
       <div class="container">
         <p class="crumbs"><a href="index.html">דף הבית</a> ← ${esc(p.h1)}</p>
@@ -742,7 +744,7 @@ function notFoundPage() {
 ${head('הדף לא נמצא — חוסך', 'הדף שחיפשתם לא נמצא.', `${SITE}/404.html`, null, true)}
 <body id="top">
 ${navNoCta}
-  <main>
+  <main id="main">
     <section class="lead-hero" style="text-align:center">
       <div class="container">
         <span class="pill">404</span>
@@ -773,7 +775,7 @@ function plansPage() {
 ${head('כל החבילות — מחירון מלא של כל חברות התקשורת | חוסך', `מחירון מלא: ${catalogue.plans.length} מסלולי סלולר, אינטרנט, טלוויזיה, חבילות משולבות וחו״ל מכל החברות — ממוין מהזול ביותר. סננו לפי קטגוריה וחפשו.`, url)}
 <body id="top">
 ${nav}
-  <main>
+  <main id="main">
     <section class="lead-hero">
       <div class="container">
         <p class="crumbs"><a href="index.html">דף הבית</a> ← כל החבילות</p>
@@ -806,8 +808,8 @@ ${nav}
         <h2>מצאתם משהו מעניין?</h2>
         <p>השאירו פרטים ונעזור לכם לעבור — חינם, בלי התחייבות.</p>
         <form class="cta__form" id="leadForm" novalidate>
-          <input type="text" id="leadName" name="name" placeholder="שם מלא" autocomplete="name" required />
-          <input type="tel" id="leadPhone" name="phone" placeholder="טלפון (050-0000000)" autocomplete="tel" inputmode="tel" required />
+          <input type="text" id="leadName" name="name" placeholder="שם מלא" aria-label="שם מלא" autocomplete="name" required />
+          <input type="tel" id="leadPhone" name="phone" placeholder="טלפון (050-0000000)" aria-label="מספר טלפון" autocomplete="tel" inputmode="tel" required />
           <button class="btn btn--primary btn--lg" type="submit">קבלו השוואה חינם</button>
         </form>
         <p class="cta__note" id="leadNote" role="status" aria-live="polite"></p>
@@ -842,7 +844,7 @@ function providerPage(name, plans) {
 ${head(`כל המסלולים של ${name} — מחירים והשוואה | חוסך`, `כל מסלולי ${name} במקום אחד — ${plans.length} מסלולים מ-₪${cheapest}. השוו מחירים, תכונות ודירוגים ומצאו את המשתלם ביותר.`, url, jsonld)}
 <body id="top">
 ${nav}
-  <main>
+  <main id="main">
     <section class="lead-hero">
       <div class="container">
         <p class="crumbs"><a href="index.html">דף הבית</a> ← <a href="plans.html">כל החבילות</a> ← ${esc(name)}</p>
@@ -864,8 +866,8 @@ ${nav}
         <h2>רוצים לעבור ל${esc(name)} — או ממנו?</h2>
         <p>השאירו פרטים ונעזור לכם למצוא ולעבור למסלול הכי משתלם, חינם ובלי התחייבות.</p>
         <form class="cta__form" id="leadForm" novalidate>
-          <input type="text" id="leadName" name="name" placeholder="שם מלא" autocomplete="name" required />
-          <input type="tel" id="leadPhone" name="phone" placeholder="טלפון (050-0000000)" autocomplete="tel" inputmode="tel" required />
+          <input type="text" id="leadName" name="name" placeholder="שם מלא" aria-label="שם מלא" autocomplete="name" required />
+          <input type="tel" id="leadPhone" name="phone" placeholder="טלפון (050-0000000)" aria-label="מספר טלפון" autocomplete="tel" inputmode="tel" required />
           <button class="btn btn--primary btn--lg" type="submit">קבלו השוואה חינם</button>
         </form>
         <p class="cta__note" id="leadNote" role="status" aria-live="polite"></p>
@@ -894,7 +896,7 @@ function providersIndexPage() {
 ${head('כל הספקים — מסלולים ומחירים לפי חברה | חוסך', 'כל ספקי התקשורת בישראל במקום אחד — סלקום, פרטנר, פלאפון, גולן, בזק, הוט, yes ועוד. בחרו ספק וראו את כל המסלולים שלו.', url)}
 <body id="top">
 ${navNoCta}
-  <main>
+  <main id="main">
     <section class="lead-hero">
       <div class="container">
         <p class="crumbs"><a href="index.html">דף הבית</a> ← ספקים</p>
@@ -937,7 +939,7 @@ function comparePage() {
 ${head('השוואת מסלולים צד לצד | חוסך', 'בחרו עד 3 מסלולים והשוו אותם צד לצד — מחיר, רשת, 5G, התחייבות, חו״ל, דירוג ומפרט. מכל חברות התקשורת.', url)}
 <body id="top">
 ${nav}
-  <main>
+  <main id="main">
     <section class="lead-hero">
       <div class="container">
         <p class="crumbs"><a href="index.html">דף הבית</a> ← השוואה</p>
@@ -960,8 +962,8 @@ ${nav}
         <h2>בחרתם? נעזור לכם לעבור</h2>
         <p>השאירו פרטים ונדאג לכל המעבר — חינם, בלי התחייבות.</p>
         <form class="cta__form" id="leadForm" novalidate>
-          <input type="text" id="leadName" name="name" placeholder="שם מלא" autocomplete="name" required />
-          <input type="tel" id="leadPhone" name="phone" placeholder="טלפון (050-0000000)" autocomplete="tel" inputmode="tel" required />
+          <input type="text" id="leadName" name="name" placeholder="שם מלא" aria-label="שם מלא" autocomplete="name" required />
+          <input type="tel" id="leadPhone" name="phone" placeholder="טלפון (050-0000000)" aria-label="מספר טלפון" autocomplete="tel" inputmode="tel" required />
           <button class="btn btn--primary btn--lg" type="submit">קבלו השוואה חינם</button>
         </form>
         <p class="cta__note" id="leadNote" role="status" aria-live="polite"></p>
@@ -1053,7 +1055,7 @@ ${cards}
 ${head('האפליקציה של חוסך — כל היכולות | חוסך', 'הכירו את אפליקציית חוסך: חוסך AI, קהילה והצ׳אט הקהילתי, מעקב מעבר, התראות חידוש, דירוגי ספקים, בדיקת זמינות, מחשבון מעבר וניוד מספר — הכל במקום אחד.', url)}
 <body id="top">
 ${nav}
-  <main>
+  <main id="main">
     <section class="lead-hero">
       <div class="container">
         <p class="crumbs"><a href="index.html">דף הבית</a> ← האפליקציה</p>
@@ -1107,8 +1109,8 @@ ${posts}
         <h2>רוצים את האפליקציה?</h2>
         <p>השאירו פרטים ונעדכן אתכם ברגע שהיא זמינה — חינם, בלי התחייבות.</p>
         <form class="cta__form" id="leadForm" novalidate>
-          <input type="text" id="leadName" name="name" placeholder="שם מלא" autocomplete="name" required />
-          <input type="tel" id="leadPhone" name="phone" placeholder="טלפון (050-0000000)" autocomplete="tel" inputmode="tel" required />
+          <input type="text" id="leadName" name="name" placeholder="שם מלא" aria-label="שם מלא" autocomplete="name" required />
+          <input type="tel" id="leadPhone" name="phone" placeholder="טלפון (050-0000000)" aria-label="מספר טלפון" autocomplete="tel" inputmode="tel" required />
           <button class="btn btn--primary btn--lg" type="submit">עדכנו אותי</button>
         </form>
         <p class="cta__note" id="leadNote" role="status" aria-live="polite"></p>

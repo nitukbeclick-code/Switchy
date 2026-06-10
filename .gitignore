@@ -76,6 +76,10 @@ supabase/functions/**/.env
 # but keep committed env *templates* (the .env.* rule above would hide them)
 !**/.env.example
 
+# ── Local scratch (prototype dumps, chat logs — never ship) ───────────────────
+project/
+chats/
+
 # ── Coverage ──────────────────────────────────────────────────────────────────
 coverage/
 lcov.info

@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>האפליקציה של חוסך — כל היכולות | חוסך</title>
   <meta name="description" content="הכירו את אפליקציית חוסך: חוסך AI, קהילה והצ׳אט הקהילתי, מעקב מעבר, התראות חידוש, דירוגי ספקים, בדיקת זמינות, מחשבון מעבר וניוד מספר — הכל במקום אחד." />
+  <style>.skip{position:absolute;left:-999px;top:0;z-index:100;background:#15603E;color:#fff;padding:10px 16px;border-radius:0 0 8px 0}.skip:focus{left:0}</style>
   <meta name="theme-color" content="#15603E" />
   <link rel="canonical" href="https://chosech.co.il/app.html" />
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
@@ -26,6 +27,7 @@
   
 </head>
 <body id="top">
+  <a class="skip" href="#main">דלג לתוכן</a>
   <header class="nav" id="nav">
     <div class="container nav__inner">
       <a class="brand" href="index.html" aria-label="חוסך — דף הבית">
@@ -52,7 +54,7 @@
       <a class="btn btn--primary" href="#cta">השוו עכשיו</a>
     </div>
   </header>
-  <main>
+  <main id="main">
     <section class="lead-hero">
       <div class="container">
         <p class="crumbs"><a href="index.html">דף הבית</a> ← האפליקציה</p>
@@ -170,8 +172,8 @@
         <h2>רוצים את האפליקציה?</h2>
         <p>השאירו פרטים ונעדכן אתכם ברגע שהיא זמינה — חינם, בלי התחייבות.</p>
         <form class="cta__form" id="leadForm" novalidate>
-          <input type="text" id="leadName" name="name" placeholder="שם מלא" autocomplete="name" required />
-          <input type="tel" id="leadPhone" name="phone" placeholder="טלפון (050-0000000)" autocomplete="tel" inputmode="tel" required />
+          <input type="text" id="leadName" name="name" placeholder="שם מלא" aria-label="שם מלא" autocomplete="name" required />
+          <input type="tel" id="leadPhone" name="phone" placeholder="טלפון (050-0000000)" aria-label="מספר טלפון" autocomplete="tel" inputmode="tel" required />
           <button class="btn btn--primary btn--lg" type="submit">עדכנו אותי</button>
         </form>
         <p class="cta__note" id="leadNote" role="status" aria-live="polite"></p>

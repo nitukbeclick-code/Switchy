@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>השוואת מסלולים צד לצד | חוסך</title>
   <meta name="description" content="בחרו עד 3 מסלולים והשוו אותם צד לצד — מחיר, רשת, 5G, התחייבות, חו״ל, דירוג ומפרט. מכל חברות התקשורת." />
+  <style>.skip{position:absolute;left:-999px;top:0;z-index:100;background:#15603E;color:#fff;padding:10px 16px;border-radius:0 0 8px 0}.skip:focus{left:0}</style>
   <meta name="theme-color" content="#15603E" />
   <link rel="canonical" href="https://chosech.co.il/compare.html" />
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
@@ -26,6 +27,7 @@
   
 </head>
 <body id="top">
+  <a class="skip" href="#main">דלג לתוכן</a>
   <header class="nav" id="nav">
     <div class="container nav__inner">
       <a class="brand" href="index.html" aria-label="חוסך — דף הבית">
@@ -52,7 +54,7 @@
       <a class="btn btn--primary" href="#cta">השוו עכשיו</a>
     </div>
   </header>
-  <main>
+  <main id="main">
     <section class="lead-hero">
       <div class="container">
         <p class="crumbs"><a href="index.html">דף הבית</a> ← השוואה</p>
@@ -75,8 +77,8 @@
         <h2>בחרתם? נעזור לכם לעבור</h2>
         <p>השאירו פרטים ונדאג לכל המעבר — חינם, בלי התחייבות.</p>
         <form class="cta__form" id="leadForm" novalidate>
-          <input type="text" id="leadName" name="name" placeholder="שם מלא" autocomplete="name" required />
-          <input type="tel" id="leadPhone" name="phone" placeholder="טלפון (050-0000000)" autocomplete="tel" inputmode="tel" required />
+          <input type="text" id="leadName" name="name" placeholder="שם מלא" aria-label="שם מלא" autocomplete="name" required />
+          <input type="tel" id="leadPhone" name="phone" placeholder="טלפון (050-0000000)" aria-label="מספר טלפון" autocomplete="tel" inputmode="tel" required />
           <button class="btn btn--primary btn--lg" type="submit">קבלו השוואה חינם</button>
         </form>
         <p class="cta__note" id="leadNote" role="status" aria-live="polite"></p>

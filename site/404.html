@@ -3,9 +3,11 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <base href="/" />
   <title>הדף לא נמצא — חוסך</title>
   <meta name="description" content="הדף שחיפשתם לא נמצא." />
   <meta name="robots" content="noindex" />
+  <style>.skip{position:absolute;left:-999px;top:0;z-index:100;background:#15603E;color:#fff;padding:10px 16px;border-radius:0 0 8px 0}.skip:focus{left:0}</style>
   <meta name="theme-color" content="#15603E" />
   <link rel="canonical" href="https://chosech.co.il/404.html" />
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
@@ -27,6 +29,7 @@
   
 </head>
 <body id="top">
+  <a class="skip" href="#main">דלג לתוכן</a>
   <header class="nav" id="nav">
     <div class="container nav__inner">
       <a class="brand" href="index.html" aria-label="חוסך — דף הבית">
@@ -53,7 +56,7 @@
       <a class="btn btn--primary" href="index.html#cta">השוו עכשיו</a>
     </div>
   </header>
-  <main>
+  <main id="main">
     <section class="lead-hero" style="text-align:center">
       <div class="container">
         <span class="pill">404</span>

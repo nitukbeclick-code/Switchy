@@ -68,8 +68,10 @@
     ]
   }
   </script>
+  <style>.skip{position:absolute;left:-999px;top:0;z-index:100;background:#15603E;color:#fff;padding:10px 16px;border-radius:0 0 8px 0}.skip:focus{left:0}</style>
 </head>
 <body>
+  <a class="skip" href="#main">דלג לתוכן</a>
   <!-- ── Navbar ─────────────────────────────────────────────────────────── -->
   <header class="nav" id="nav">
     <div class="container nav__inner">
@@ -101,7 +103,7 @@
     </div>
   </header>
 
-  <main id="top">
+  <main id="top"><span id="main"></span>
     <!-- ── Hero ─────────────────────────────────────────────────────────── -->
     <section class="hero">
       <div class="container hero__inner">

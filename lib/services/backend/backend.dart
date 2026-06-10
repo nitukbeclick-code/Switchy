@@ -193,12 +193,14 @@ abstract interface class Backend {
   // ── Leads ──────────────────────────────────────────────────────────────────
   Future<void> submitLead(LeadInput lead);
 
-  /// Returns the current step (1–4) for the user's most-recent lead, or 0 if
-  /// none. Called on tracker mount so offline users see the correct state.
+  /// Returns the current step for the user's most-recent lead, or 0 if none.
+  /// Steps: 1–4 for the in-progress → completed flow, and -1 for a terminal
+  /// 'lost' lead (the rep closed the pipeline). Called on tracker mount so
+  /// offline users see the correct state.
   Future<int> fetchLeadStep();
 
-  /// Emits an int (1–4) whenever the lead's `status` changes in the DB.
-  /// Maps: 'new'→1, 'contacted'→2, 'won'→4.
+  /// Emits an int whenever the lead's `status` changes in the DB.
+  /// Maps: 'new'→1, 'contacted'→2, 'won'→4, 'lost'→-1 (terminal/closed).
   /// [LocalBackend] returns an empty stream; [SupabaseBackend] opens a
   /// Realtime channel so the tracker auto-advances when the rep updates
   /// the lead from the dashboard.

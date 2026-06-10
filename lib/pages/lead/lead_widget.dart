@@ -165,9 +165,9 @@ class _LeadWidgetState extends State<LeadWidget> {
                 children: [
                   _TrustBadge(icon: Icons.lock_outline_rounded, label: 'מאובטח', ffTheme: ffTheme),
                   const SizedBox(width: 20),
-                  _TrustBadge(icon: Icons.star_outline_rounded, label: 'דירוג 4.8', ffTheme: ffTheme),
+                  _TrustBadge(icon: Icons.list_alt_rounded, label: '100+ מסלולים', ffTheme: ffTheme),
                   const SizedBox(width: 20),
-                  _TrustBadge(icon: Icons.people_outline_rounded, label: '60K לקוחות', ffTheme: ffTheme),
+                  _TrustBadge(icon: Icons.payments_outlined, label: 'ללא עלות', ffTheme: ffTheme),
                 ],
               ).animate(delay: 250.ms).fadeIn(),
 

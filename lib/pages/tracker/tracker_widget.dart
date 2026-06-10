@@ -22,17 +22,33 @@ class TrackerWidget extends StatefulWidget {
 class _TrackerWidgetState extends State<TrackerWidget> {
   StreamSubscription<int>? _leadStepSub;
 
+  // A 'lost' lead (step -1) is terminal: the rep closed the pipeline. It can't
+  // flow through AppState.setTrackerStep (which only accepts forward steps 1–4),
+  // so we hold it as page-local state and render a closed screen.
+  bool _leadLost = false;
+
   @override
   void initState() {
     super.initState();
     // Hydrate current step immediately (handles users who were offline when
     // the rep updated the lead status).
     appBackend.fetchLeadStep().then((step) {
-      if (mounted && step > AppState().trackerStep) AppState().setTrackerStep(step);
+      if (!mounted) return;
+      if (step == -1) {
+        setState(() => _leadLost = true);
+      } else if (step > AppState().trackerStep) {
+        AppState().setTrackerStep(step);
+      }
     }).catchError((_) {});
     // Then subscribe for live updates.
     _leadStepSub = appBackend.leadStepStream().listen((step) {
-      if (mounted) AppState().setTrackerStep(step);
+      if (!mounted) return;
+      if (step == -1) {
+        setState(() => _leadLost = true);
+      } else {
+        if (_leadLost) setState(() => _leadLost = false);
+        AppState().setTrackerStep(step);
+      }
     });
   }
 
@@ -55,6 +71,63 @@ class _TrackerWidgetState extends State<TrackerWidget> {
       _TrackerStep(icon: Icons.swap_horiz_rounded, title: 'מדריך ניתוק', subtitle: 'תהליך הניוד בעיצומו', done: step >= 3, active: step == 2),
       _TrackerStep(icon: Icons.check_circle_rounded, title: 'הושלם', subtitle: 'ברוכים הבאים לחבילה החדשה', done: step >= 4),
     ];
+
+    // Terminal 'lost' state — the rep closed the lead. Show a calm, honest
+    // closed screen instead of leaving the user "in progress" forever.
+    if (_leadLost) {
+      return Scaffold(
+        backgroundColor: ffTheme.background,
+        appBar: AppBar(
+          title: const Text('מעקב מעבר'),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          foregroundColor: ffTheme.primaryText,
+        ),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 96,
+                  height: 96,
+                  decoration: BoxDecoration(
+                    color: ffTheme.alternate,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.do_not_disturb_on_outlined, size: 52, color: ffTheme.secondaryText),
+                ).animate().scale(duration: 500.ms, curve: Curves.easeOut),
+                const SizedBox(height: 24),
+                Text('הפנייה נסגרה', style: ffTheme.headlineSmall),
+                const SizedBox(height: 8),
+                Text('הטיפול בפנייה זו הסתיים. אפשר תמיד להתחיל מחדש ולמצוא מסלול שמתאים לכם.',
+                    style: ffTheme.bodyMedium.copyWith(color: ffTheme.secondaryText), textAlign: TextAlign.center),
+                const SizedBox(height: 32),
+                AppButton(
+                  text: 'מצא מסלול חדש →',
+                  onPressed: () async => context.goNamed('Results'),
+
+                    width: double.infinity,
+                    height: 52,
+                    color: ffTheme.primary,
+                    textStyle: ffTheme.titleSmall.copyWith(color: Colors.white),
+                    borderRadius: BorderRadius.circular(14),
+
+                ),
+                const SizedBox(height: 12),
+                TextButton.icon(
+                  onPressed: () => context.pushNamed('Chat'),
+                  icon: const Icon(Icons.chat_rounded, size: 18),
+                  label: const Text('יש שאלה? דברו איתנו'),
+                  style: TextButton.styleFrom(foregroundColor: ffTheme.primary),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
 
     // Empty state — no lead submitted yet
     if (plan == null && step == 0) {

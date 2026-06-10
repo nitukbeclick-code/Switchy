@@ -148,6 +148,7 @@ class SupabaseBackend implements Backend {
     switch (status) {
       case 'contacted': return 2;
       case 'won': return 4;
+      case 'lost': return -1; // terminal — the rep closed the lead
       default: return 1;
     }
   }
@@ -171,6 +172,7 @@ class SupabaseBackend implements Backend {
             switch (status) {
               case 'contacted': step = 2; break;
               case 'won': step = 4; break;
+              case 'lost': step = -1; break; // terminal — the rep closed the lead
               default: step = 1;
             }
             _leadStepCtrl?.add(step);

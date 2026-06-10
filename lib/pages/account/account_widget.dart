@@ -78,7 +78,7 @@ class AccountWidget extends StatelessWidget {
                               color: ffTheme.secondary,
                               borderRadius: BorderRadius.circular(10),
                             ),
-                            child: Text('כניסה', style: GoogleFonts.rubik(fontSize: 13, fontWeight: FontWeight.w700, color: const Color(0xFF0E3A26))),
+                            child: Text('כניסה', style: GoogleFonts.rubik(fontSize: 13, fontWeight: FontWeight.w700, color: ffTheme.primaryDark)),
                           ),
                         ),
                     ],
@@ -133,7 +133,7 @@ class AccountWidget extends StatelessWidget {
                     width: double.infinity,
                     padding: const EdgeInsets.all(20),
                     decoration: BoxDecoration(
-                      gradient: LinearGradient(colors: [const Color(0xFF0E3A26), ffTheme.primary]),
+                      gradient: LinearGradient(colors: [ffTheme.primaryDark, ffTheme.primary]),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Column(
@@ -309,7 +309,7 @@ class AccountWidget extends StatelessWidget {
                         padding: const EdgeInsets.all(18),
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
-                            colors: [const Color(0xFF0E3A26), ffTheme.primary],
+                            colors: [ffTheme.primaryDark, ffTheme.primary],
                             begin: Alignment.topRight,
                             end: Alignment.bottomLeft,
                           ),
@@ -347,7 +347,7 @@ class AccountWidget extends StatelessWidget {
                               ),
                               child: Text('התחל ←',
                                   style: ffTheme.labelSmall.copyWith(
-                                      color: const Color(0xFF0E3A26),
+                                      color: ffTheme.primaryDark,
                                       fontWeight: FontWeight.w700)),
                             ),
                           ],

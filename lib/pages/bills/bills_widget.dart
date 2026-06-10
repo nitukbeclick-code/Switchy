@@ -89,17 +89,17 @@ class _BillsWidgetState extends State<BillsWidget> {
               width: double.infinity,
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                gradient: const LinearGradient(
+                gradient: LinearGradient(
                   begin: Alignment.topRight,
                   end: Alignment.bottomLeft,
-                  colors: [Color(0xFF0E3A26), Color(0xFF15603E)],
+                  colors: [ffTheme.primaryDark, ffTheme.primary],
                 ),
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('הוצאה חודשית כוללת', style: GoogleFonts.assistant(fontSize: 13, color: const Color(0xFFC9EC4B), fontWeight: FontWeight.w600)),
+                  Text('הוצאה חודשית כוללת', style: GoogleFonts.assistant(fontSize: 13, color: ffTheme.secondary, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 6),
                   Text('₪$total', style: GoogleFonts.rubik(fontSize: 48, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: -1.5)),
                   Text('לחודש בכל הקטגוריות', style: GoogleFonts.assistant(fontSize: 12, color: Colors.white60)),
@@ -117,7 +117,7 @@ class _BillsWidgetState extends State<BillsWidget> {
                           const Text('💡', style: TextStyle(fontSize: 16)),
                           const SizedBox(width: 8),
                           Text('חיסכון פוטנציאלי: ₪$totalSavings/שנה',
-                              style: GoogleFonts.rubik(fontSize: 13, fontWeight: FontWeight.w700, color: const Color(0xFFC9EC4B))),
+                              style: GoogleFonts.rubik(fontSize: 13, fontWeight: FontWeight.w700, color: ffTheme.secondary)),
                         ],
                       ),
                     ),
@@ -166,11 +166,11 @@ class _BillsWidgetState extends State<BillsWidget> {
                               });
                             },
                             touchTooltipData: BarTouchTooltipData(
-                              getTooltipColor: (_) => const Color(0xFF0E3A26),
+                              getTooltipColor: (_) => ffTheme.primaryDark,
                               getTooltipItem: (group, groupIndex, rod, rodIndex) {
                                 return BarTooltipItem(
                                   '₪${rod.toY.toInt()}',
-                                  GoogleFonts.rubik(color: const Color(0xFFC9EC4B), fontWeight: FontWeight.w700, fontSize: 13),
+                                  GoogleFonts.rubik(color: ffTheme.secondary, fontWeight: FontWeight.w700, fontSize: 13),
                                 );
                               },
                             ),
@@ -211,7 +211,7 @@ class _BillsWidgetState extends State<BillsWidget> {
                               barRods: [
                                 BarChartRodData(
                                   toY: bill,
-                                  color: isTouch ? const Color(0xFF0E3A26) : const Color(0xFF15603E),
+                                  color: isTouch ? ffTheme.primaryDark : ffTheme.primary,
                                   width: isTouch ? 28 : 24,
                                   borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
                                   backDrawRodData: BackgroundBarChartRodData(

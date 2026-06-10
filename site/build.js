@@ -187,7 +187,7 @@ const LOGO = [
   ['yes', '#0D2B6E', 'yes'], ['NextTV', '#E65100', 'N'], ['Airalo', '#FF6F61', 'Air'],
 ];
 function providerLogo(name, size = 36) {
-  let color = '#15603e';
+  let color = '#0F766E';
   let initials = name.trim().slice(0, 2);
   for (const [key, c, ini] of LOGO) {
     if (name.includes(key)) { color = c; initials = ini; break; }
@@ -366,7 +366,7 @@ function page(c) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>${esc(c.title)}</title>
   <meta name="description" content="${esc(c.desc)}" />
-  <meta name="theme-color" content="#15603E" />
+  <meta name="theme-color" content="#0F766E" />
   <link rel="canonical" href="${url}" />
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="favicon.svg" />
@@ -692,8 +692,8 @@ function head(title, desc, url, extraJsonLd, noindex) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />${noindex ? '\n  <base href="/" />' : ''}
   <title>${esc(title)}</title>
   <meta name="description" content="${esc(desc)}" />${noindex ? '\n  <meta name="robots" content="noindex" />' : ''}
-  <style>.skip{position:absolute;left:-999px;top:0;z-index:100;background:#15603E;color:#fff;padding:10px 16px;border-radius:0 0 8px 0}.skip:focus{left:0}</style>
-  <meta name="theme-color" content="#15603E" />
+  <style>.skip{position:absolute;left:-999px;top:0;z-index:100;background:#0F766E;color:#fff;padding:10px 16px;border-radius:0 0 8px 0}.skip:focus{left:0}</style>
+  <meta name="theme-color" content="#0F766E" />
   <link rel="canonical" href="${url}" />
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="favicon.svg" />
@@ -763,7 +763,7 @@ ${body}
           <div class="article-cta">
             <h3>רוצים לראות כמה תחסכו בפועל?</h3>
             <p>השוואה חינם בשניות, בלי התחייבות.</p>
-            <a class="btn btn--lg" style="background:#C9EC4B;color:#0E3A26" href="index.html#calculator">בדקו עכשיו ←</a>
+            <a class="btn btn--lg" style="background:#5EEAD4;color:#134E4A" href="index.html#calculator">בדקו עכשיו ←</a>
           </div>
         </div>
       </section>
@@ -874,7 +874,7 @@ function staticPage(p) {
     ? `          <div class="article-cta">
             <h3>מוכנים לחסוך?</h3>
             <p>השוואה חינם בשניות, בלי התחייבות.</p>
-            <a class="btn btn--lg" style="background:#C9EC4B;color:#0E3A26" href="index.html#calculator">בדקו עכשיו ←</a>
+            <a class="btn btn--lg" style="background:#5EEAD4;color:#134E4A" href="index.html#calculator">בדקו עכשיו ←</a>
           </div>`
     : '';
   return `<!DOCTYPE html>
@@ -1475,14 +1475,14 @@ ${nav}
 
     <section class="section">
       <div class="container">
-        <div id="calc" data-cheapest="${offerPrice(ch)}" data-cat="${c.slug}" style="max-width:560px;margin:0 auto;background:#fff;border:1px solid #e6e1d6;border-radius:18px;padding:28px 24px;box-shadow:0 6px 24px rgba(0,0,0,.05)">
+        <div id="calc" class="glass" data-cheapest="${offerPrice(ch)}" data-cat="${c.slug}" style="max-width:560px;margin:0 auto;border:1px solid #E7EDF1;border-radius:18px;padding:28px 24px;box-shadow:0 6px 24px rgba(0,0,0,.05)">
           <h2 style="margin:0 0 6px">כמה אתם יכולים לחסוך על ${esc(c.name)}?</h2>
-          <p style="margin:0 0 4px">המסלול הזול ביותר ב${esc(c.name)} כרגע: <span style="color:#15603E;font-weight:700">${esc(ch.provider)} ${esc(ch.plan)} — ${priceText(ch)}</span>.</p>
+          <p style="margin:0 0 4px">המסלול הזול ביותר ב${esc(c.name)} כרגע: <span style="color:#0F766E;font-weight:700">${esc(ch.provider)} ${esc(ch.plan)} — ${priceText(ch)}</span>.</p>
           <div style="display:flex;gap:10px;flex-wrap:wrap;margin:16px 0">
             <input id="calcBill" class="filter-search" type="number" inputmode="numeric" min="0" placeholder="כמה אתם משלמים היום? (₪)" aria-label="הסכום שאתם משלמים היום בשקלים" style="flex:1 1 220px" />
             <button id="calcBtn" class="btn btn--primary" type="button">חשבו חיסכון</button>
           </div>
-          <p id="calcOut" role="status" aria-live="polite" style="display:none;margin:8px 0 0;padding:14px 16px;border-radius:12px;background:#E8F5EE;color:#0E3A26"></p>
+          <p id="calcOut" role="status" aria-live="polite" style="display:none;margin:8px 0 0;padding:14px 16px;border-radius:12px;background:#DFF6F2;color:#134E4A"></p>
           <p style="margin:12px 0 0;font-size:.85rem;color:#6b7280">* הערכה בלבד — החיסכון בפועל תלוי במסלול שתבחרו ובתנאים. מומלץ לאמת מול הספק.</p>
         </div>
         <div style="text-align:center;margin-top:22px">

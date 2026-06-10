@@ -401,7 +401,7 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
               ),
               child: Center(
-                child: Text('⭐ מחיר הכי נמוך באזורך', style: ffTheme.labelSmall.copyWith(color: const Color(0xFF0E3A26), fontWeight: FontWeight.w800)),
+                child: Text('⭐ מחיר הכי נמוך באזורך', style: ffTheme.labelSmall.copyWith(color: ffTheme.primaryDark, fontWeight: FontWeight.w800)),
               ),
             ),
           Padding(
@@ -530,12 +530,12 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: ffTheme.secondary,
-                foregroundColor: const Color(0xFF0E3A26),
+                foregroundColor: ffTheme.primaryDark,
                 elevation: 0,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 padding: const EdgeInsets.symmetric(vertical: 12),
               ),
-              child: Text('השווה מסלולי אינטרנט', style: ffTheme.labelMedium.copyWith(color: const Color(0xFF0E3A26), fontWeight: FontWeight.w800)),
+              child: Text('השווה מסלולי אינטרנט', style: ffTheme.labelMedium.copyWith(color: ffTheme.primaryDark, fontWeight: FontWeight.w800)),
             ),
           ),
         ],

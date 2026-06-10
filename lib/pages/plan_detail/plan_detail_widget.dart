@@ -279,7 +279,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                                 child: Text(
                                   'חוסך ₪$saveYear בשנה',
                                   style: ffTheme.labelMedium.copyWith(
-                                    color: const Color(0xFF0E3A26),
+                                    color: ffTheme.primaryDark,
                                     fontWeight: FontWeight.w700,
                                   ),
                                 ),

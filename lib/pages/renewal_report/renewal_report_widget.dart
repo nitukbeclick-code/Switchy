@@ -140,7 +140,7 @@ class _Hero extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [const Color(0xFF0E3A26), ffTheme.primary],
+          colors: [ffTheme.primaryDark, ffTheme.primary],
           begin: Alignment.topRight,
           end: Alignment.bottomLeft,
         ),
@@ -290,11 +290,11 @@ class _SaverBanner extends StatelessWidget {
                 children: [
                   Text(headline,
                       style: GoogleFonts.rubik(
-                          fontSize: 17, fontWeight: FontWeight.w800, color: const Color(0xFF0E3A26))),
+                          fontSize: 17, fontWeight: FontWeight.w800, color: ffTheme.primaryDark)),
                   const SizedBox(height: 2),
                   Text('מעבר ל${match.plan.provider} · ${match.plan.plan}',
                       style: GoogleFonts.assistant(
-                          fontSize: 13, fontWeight: FontWeight.w600, color: const Color(0xFF0E3A26)),
+                          fontSize: 13, fontWeight: FontWeight.w600, color: ffTheme.primaryDark),
                       maxLines: 1, overflow: TextOverflow.ellipsis),
                 ],
               ),
@@ -302,10 +302,10 @@ class _SaverBanner extends StatelessWidget {
             const SizedBox(width: 4),
             IconButton(
               tooltip: 'שתף',
-              icon: const Icon(Icons.ios_share_rounded, size: 20, color: Color(0xFF0E3A26)),
+              icon: Icon(Icons.ios_share_rounded, size: 20, color: ffTheme.primaryDark),
               onPressed: () => Share.share(shareText),
             ),
-            const Icon(Icons.arrow_back_ios_rounded, size: 16, color: Color(0xFF0E3A26)),
+            Icon(Icons.arrow_back_ios_rounded, size: 16, color: ffTheme.primaryDark),
           ],
         ),
       ),
@@ -469,7 +469,7 @@ class _AlternativeRow extends StatelessWidget {
                     ),
                     child: Text(savingLabel,
                         style: GoogleFonts.rubik(
-                            fontSize: 10.5, fontWeight: FontWeight.w800, color: const Color(0xFF0E3A26))),
+                            fontSize: 10.5, fontWeight: FontWeight.w800, color: ffTheme.primaryDark)),
                   )
                 else
                   Text(

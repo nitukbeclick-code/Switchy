@@ -520,7 +520,7 @@ class _WinnerSummaryCard extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [const Color(0xFF0E3A26), ffTheme.primary],
+                colors: [ffTheme.primaryDark, ffTheme.primary],
                 begin: Alignment.topRight,
                 end: Alignment.bottomLeft,
               ),
@@ -535,7 +535,7 @@ class _WinnerSummaryCard extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(color: ffTheme.secondary, borderRadius: BorderRadius.circular(8)),
-                      child: Text('🏆 ההמלצה שלנו', style: ffTheme.labelSmall.copyWith(color: const Color(0xFF0E3A26), fontWeight: FontWeight.w800)),
+                      child: Text('🏆 ההמלצה שלנו', style: ffTheme.labelSmall.copyWith(color: ffTheme.primaryDark, fontWeight: FontWeight.w800)),
                     ),
                     const Spacer(),
                     if (winnerSave > 0)
@@ -629,7 +629,7 @@ class _WinnerSummaryCard extends StatelessWidget {
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: ffTheme.secondary,
-                    foregroundColor: const Color(0xFF0E3A26),
+                    foregroundColor: ffTheme.primaryDark,
                     minimumSize: const Size(double.infinity, 44),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     elevation: 0,
@@ -758,7 +758,7 @@ class _PlanHeader extends StatelessWidget {
               ),
               child: Text('🏆 זוכה',
                   style: ffTheme.labelSmall.copyWith(
-                      color: const Color(0xFF0E3A26),
+                      color: ffTheme.primaryDark,
                       fontWeight: FontWeight.w700)),
             ),
           LogoWidget(provider: plan.provider, size: 44),
@@ -880,7 +880,7 @@ class _RowWidget extends StatelessWidget {
                           v,
                           style: ffTheme.labelSmall.copyWith(
                             color: isWinner
-                                ? const Color(0xFF0E3A26)
+                                ? ffTheme.primaryDark
                                 : ffTheme.secondaryText,
                             fontWeight: isWinner
                                 ? FontWeight.w700

@@ -38,15 +38,17 @@ class AppCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ffTheme = AppTheme.of(context);
+    // Soft-glass surface: translucent white fill + a bright hairline + the
+    // diffuse glass shadow (no live blur — cheap enough for long lists).
+    var decoration = ffTheme.glassDecoration(radius: borderRadius);
+    // Preserve the API: an explicit borderColor still overrides the hairline.
+    if (borderColor != null) {
+      decoration = decoration.copyWith(border: Border.all(color: borderColor!));
+    }
     final card = Container(
       margin: margin,
       padding: padding,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(borderRadius),
-        border: Border.all(color: borderColor ?? ffTheme.alternate),
-        boxShadow: ffTheme.shadowCard,
-      ),
+      decoration: decoration,
       child: child,
     );
 

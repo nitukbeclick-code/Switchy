@@ -101,10 +101,10 @@ class MatchesWidget extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
+        gradient: LinearGradient(
           begin: Alignment.topRight,
           end: Alignment.bottomLeft,
-          colors: [Color(0xFF0E3A26), Color(0xFF1E7A4E)],
+          colors: [ffTheme.primaryDark, const Color(0xFF1E7A4E)],
         ),
         borderRadius: BorderRadius.circular(20),
       ),

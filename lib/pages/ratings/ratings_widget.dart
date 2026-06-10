@@ -229,7 +229,7 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
                                   color: i == 0 ? ffTheme.secondary : i == 1 ? const Color(0xFFE5E0D5) : i == 2 ? const Color(0xFFFFE8D0) : ffTheme.background,
                                   shape: BoxShape.circle,
                                 ),
-                                child: Center(child: Text('${i + 1}', style: GoogleFonts.rubik(fontSize: 13, fontWeight: FontWeight.w800, color: const Color(0xFF0E3A26)))),
+                                child: Center(child: Text('${i + 1}', style: GoogleFonts.rubik(fontSize: 13, fontWeight: FontWeight.w800, color: ffTheme.primaryDark))),
                               ),
                               const SizedBox(width: 10),
                               LogoWidget(provider: provider, size: 38),
@@ -602,7 +602,7 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                             decoration: BoxDecoration(color: ffTheme.secondary, borderRadius: BorderRadius.circular(10)),
                             child: Text('${_remoteReviews.values.fold(0, (s, l) => s + l.length)} ביקורות',
-                                style: ffTheme.labelSmall.copyWith(color: const Color(0xFF0E3A26), fontWeight: FontWeight.w700)),
+                                style: ffTheme.labelSmall.copyWith(color: ffTheme.primaryDark, fontWeight: FontWeight.w700)),
                           ),
                         ],
                       ),
@@ -665,7 +665,7 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: LinearGradient(colors: [const Color(0xFF0E3A26), ffTheme.primary]),
+        gradient: LinearGradient(colors: [ffTheme.primaryDark, ffTheme.primary]),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
@@ -728,7 +728,7 @@ class _PodiumItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final medalColor = rank == 1 ? const Color(0xFFC9EC4B) : rank == 2 ? const Color(0xFFE5E0D5) : const Color(0xFFFFE0CC);
+    final medalColor = rank == 1 ? ffTheme.secondary : rank == 2 ? const Color(0xFFE5E0D5) : const Color(0xFFFFE0CC);
     final rankLabel = rank == 1 ? 'מקום ראשון' : rank == 2 ? 'מקום שני' : 'מקום שלישי';
     return Semantics(
       button: true,
@@ -756,7 +756,7 @@ class _PodiumItem extends StatelessWidget {
           child: Center(
             child: Text(
               provider.length > 6 ? provider.substring(0, 6) : provider,
-              style: GoogleFonts.rubik(fontSize: 10, fontWeight: FontWeight.w700, color: const Color(0xFF0E3A26)),
+              style: GoogleFonts.rubik(fontSize: 10, fontWeight: FontWeight.w700, color: ffTheme.primaryDark),
               textAlign: TextAlign.center,
             ),
           ),

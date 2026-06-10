@@ -59,7 +59,7 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(color: ffTheme.secondary, borderRadius: BorderRadius.circular(8)),
-                  child: Text('חוסך', style: GoogleFonts.rubik(fontSize: 16, fontWeight: FontWeight.w800, color: const Color(0xFF0E3A26))),
+                  child: Text('חוסך', style: GoogleFonts.rubik(fontSize: 16, fontWeight: FontWeight.w800, color: ffTheme.primaryDark)),
                 ),
                 const Spacer(),
                 TextButton(
@@ -75,7 +75,7 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
                   onPressed: () => context.goNamed('Home'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: ffTheme.secondary,
-                    foregroundColor: const Color(0xFF0E3A26),
+                    foregroundColor: ffTheme.primaryDark,
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
@@ -92,7 +92,7 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
                 gradient: LinearGradient(
                   begin: Alignment.topRight,
                   end: Alignment.bottomLeft,
-                  colors: [const Color(0xFF0E3A26), ffTheme.primary, ffTheme.tertiary],
+                  colors: [ffTheme.primaryDark, ffTheme.primary, ffTheme.tertiary],
                 ),
               ),
               padding: const EdgeInsets.fromLTRB(20, 40, 20, 48),
@@ -193,7 +193,7 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
                               },
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: ffTheme.secondary,
-                                foregroundColor: const Color(0xFF0E3A26),
+                                foregroundColor: ffTheme.primaryDark,
                                 padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                                 elevation: 0,
@@ -316,7 +316,7 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
                           const SizedBox(width: 6),
                           Text(
                             'לפי החשבון שלך תוכל לחסוך עד ₪$catSaving/שנה',
-                            style: GoogleFonts.rubik(fontSize: 12, fontWeight: FontWeight.w700, color: const Color(0xFF0E3A26)),
+                            style: GoogleFonts.rubik(fontSize: 12, fontWeight: FontWeight.w700, color: ffTheme.primaryDark),
                           ),
                         ],
                       ),
@@ -436,7 +436,7 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
             child: Container(
               padding: const EdgeInsets.all(32),
               decoration: BoxDecoration(
-                gradient: LinearGradient(colors: [const Color(0xFF0E3A26), ffTheme.primary]),
+                gradient: LinearGradient(colors: [ffTheme.primaryDark, ffTheme.primary]),
               ),
               child: Column(
                 children: [
@@ -448,7 +448,7 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
                     onPressed: () => context.goNamed('Home'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: ffTheme.secondary,
-                      foregroundColor: const Color(0xFF0E3A26),
+                      foregroundColor: ffTheme.primaryDark,
                       padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 16),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                     ),
@@ -463,10 +463,10 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
           SliverToBoxAdapter(
             child: Container(
               padding: const EdgeInsets.all(20),
-              color: const Color(0xFF0E3A26),
+              color: ffTheme.primaryDark,
               child: Column(
                 children: [
-                  Text('חוסך', style: GoogleFonts.rubik(fontSize: 18, fontWeight: FontWeight.w800, color: const Color(0xFFC9EC4B))),
+                  Text('חוסך', style: GoogleFonts.rubik(fontSize: 18, fontWeight: FontWeight.w800, color: ffTheme.secondary)),
                   const SizedBox(height: 8),
                   Text('© 2026 חוסך. כל הזכויות שמורות.', style: GoogleFonts.assistant(fontSize: 11, color: Colors.white38)),
                   const SizedBox(height: 4),
@@ -572,7 +572,7 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
                   color: ffTheme.secondary,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Text('בדוק עכשיו', style: GoogleFonts.rubik(fontSize: 13, fontWeight: FontWeight.w800, color: const Color(0xFF0E3A26))),
+                child: Text('בדוק עכשיו', style: GoogleFonts.rubik(fontSize: 13, fontWeight: FontWeight.w800, color: ffTheme.primaryDark)),
               ),
             ),
           ],

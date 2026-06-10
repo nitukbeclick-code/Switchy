@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../theme/app_theme.dart';
 
 class LogoWidget extends StatelessWidget {
   const LogoWidget({super.key, required this.provider, this.size = 44});
@@ -59,13 +60,13 @@ class LogoWidget extends StatelessWidget {
     'Airalo': 'Air',
   };
 
-  Color get _color {
+  Color _colorFor(AppTheme t) {
     for (final entry in _colors.entries) {
       if (provider.contains(entry.key) || entry.key.contains(provider)) {
         return entry.value;
       }
     }
-    return const Color(0xFF15603E); // neutral brand green fallback
+    return t.primary; // neutral brand fallback
   }
 
   String get _label {
@@ -94,7 +95,8 @@ class LogoWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = _color;
+    final t = AppTheme.of(context);
+    final color = _colorFor(t);
     final label = _label;
     // Shrink font for longer labels (e.g. 'CCC', 'HOT', '019', 'Air')
     final fontScale = label.length >= 3 ? 0.28 : 0.36;

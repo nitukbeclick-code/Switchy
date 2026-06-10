@@ -958,7 +958,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                 margin: const EdgeInsets.fromLTRB(16, 10, 16, 0),
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(colors: [const Color(0xFF0E3A26), ffTheme.primary]),
+                  gradient: LinearGradient(colors: [ffTheme.primaryDark, ffTheme.primary]),
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Row(

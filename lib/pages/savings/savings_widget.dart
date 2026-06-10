@@ -138,7 +138,7 @@ class _Hero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(color: Color(0xFF0E3A26)),
+      decoration: BoxDecoration(color: ffTheme.primaryDark),
       child: SafeArea(
         bottom: false,
         child: Padding(
@@ -272,20 +272,20 @@ class _TopOpportunityCard extends StatelessWidget {
                 children: [
                   Text('ההזדמנות הכי גדולה שלך · $categoryName',
                       style: GoogleFonts.assistant(
-                          fontSize: 12, fontWeight: FontWeight.w700, color: const Color(0xFF0E3A26))),
+                          fontSize: 12, fontWeight: FontWeight.w700, color: ffTheme.primaryDark)),
                   const SizedBox(height: 2),
                   Text(personalized ? 'חיסכון של ₪$saving בשנה' : 'חיסכון מוערך של ~₪$saving בשנה',
                       style: GoogleFonts.rubik(
-                          fontSize: 18, fontWeight: FontWeight.w800, color: const Color(0xFF0E3A26))),
+                          fontSize: 18, fontWeight: FontWeight.w800, color: ffTheme.primaryDark)),
                   const SizedBox(height: 2),
                   Text(providerAndPlan,
                       style: GoogleFonts.assistant(
-                          fontSize: 12, fontWeight: FontWeight.w600, color: const Color(0xFF0E3A26)),
+                          fontSize: 12, fontWeight: FontWeight.w600, color: ffTheme.primaryDark),
                       maxLines: 1, overflow: TextOverflow.ellipsis),
                 ],
               ),
             ),
-            const Icon(Icons.arrow_back_ios_rounded, size: 16, color: Color(0xFF0E3A26)),
+            Icon(Icons.arrow_back_ios_rounded, size: 16, color: ffTheme.primaryDark),
           ],
         ),
       ),
@@ -349,7 +349,7 @@ class _CategoryRow extends StatelessWidget {
                 ),
                 child: Text(personalized ? '₪${saving.annualSaving}/שנה' : '~₪${saving.annualSaving}/שנה',
                     style: GoogleFonts.rubik(
-                        fontSize: 12, fontWeight: FontWeight.w800, color: const Color(0xFF0E3A26))),
+                        fontSize: 12, fontWeight: FontWeight.w800, color: ffTheme.primaryDark)),
               )
             else if (has)
               Text('מעולה — מחיר תחרותי',

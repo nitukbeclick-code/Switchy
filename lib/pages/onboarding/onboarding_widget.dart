@@ -156,7 +156,7 @@ class _Page1 extends StatelessWidget {
           const SizedBox(height: 20),
           Text(
             'כל המחירים\nבמקום אחד',
-            style: GoogleFonts.rubik(fontSize: 36, fontWeight: FontWeight.w800, color: const Color(0xFF0E3A26), height: 1.15),
+            style: GoogleFonts.rubik(fontSize: 36, fontWeight: FontWeight.w800, color: ffTheme.primaryText, height: 1.15),
             textAlign: TextAlign.center,
           ).animate().fadeIn(delay: 150.ms).slideY(begin: 0.2, end: 0),
           const SizedBox(height: 12),
@@ -232,7 +232,7 @@ class _Page2 extends StatelessWidget {
           const SizedBox(height: 20),
           Text(
             'כל הספקים\nבמקום אחד',
-            style: GoogleFonts.rubik(fontSize: 36, fontWeight: FontWeight.w800, color: const Color(0xFF0E3A26), height: 1.15),
+            style: GoogleFonts.rubik(fontSize: 36, fontWeight: FontWeight.w800, color: ffTheme.primaryText, height: 1.15),
             textAlign: TextAlign.center,
           ).animate().fadeIn(delay: 150.ms).slideY(begin: 0.2, end: 0),
           const SizedBox(height: 12),
@@ -292,7 +292,7 @@ class _Page3 extends StatelessWidget {
           const SizedBox(height: 20),
           Text(
             'מעבר קל\nוחלק',
-            style: GoogleFonts.rubik(fontSize: 36, fontWeight: FontWeight.w800, color: const Color(0xFF0E3A26), height: 1.15),
+            style: GoogleFonts.rubik(fontSize: 36, fontWeight: FontWeight.w800, color: ffTheme.primaryText, height: 1.15),
             textAlign: TextAlign.center,
           ).animate().fadeIn(delay: 150.ms).slideY(begin: 0.2, end: 0),
           const SizedBox(height: 12),
@@ -308,7 +308,7 @@ class _Page3 extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [const Color(0xFF0E3A26), ffTheme.primary],
+                colors: [ffTheme.primaryDark, ffTheme.primary],
                 begin: Alignment.topRight,
                 end: Alignment.bottomLeft,
               ),
@@ -316,7 +316,7 @@ class _Page3 extends StatelessWidget {
             ),
             child: Column(
               children: [
-                const Icon(Icons.verified_rounded, color: Color(0xFFC9EC4B), size: 26),
+                Icon(Icons.verified_rounded, color: ffTheme.secondary, size: 26),
                 const SizedBox(height: 8),
                 Text(
                   'שירות חינמי לחלוטין',

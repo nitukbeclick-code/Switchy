@@ -972,13 +972,13 @@ class _MatchBadge extends StatelessWidget {
   final AppTheme ffTheme;
 
   Color _badgeColor() {
-    if (match.scorePct >= 85) return const Color(0xFFC9EC4B); // secondary-lime
-    if (match.scorePct >= 70) return const Color(0xFF15603E); // primary green
+    if (match.scorePct >= 85) return ffTheme.secondary; // secondary (soft-aqua)
+    if (match.scorePct >= 70) return ffTheme.primary; // primary (teal)
     return const Color(0xFF8E9AA0); // muted
   }
 
   Color _textColor() {
-    if (match.scorePct >= 85) return const Color(0xFF15603E);
+    if (match.scorePct >= 85) return ffTheme.primary;
     return Colors.white;
   }
 

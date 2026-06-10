@@ -296,8 +296,8 @@ class _LeadWidgetState extends State<LeadWidget> {
                   decoration: BoxDecoration(color: ffTheme.secondary, borderRadius: BorderRadius.circular(10)),
                   child: Column(
                     children: [
-                      Text('חוסך', style: ffTheme.labelSmall.copyWith(color: const Color(0xFF0E3A26))),
-                      Text('₪$saveYear/שנה', style: ffTheme.titleSmall.copyWith(color: const Color(0xFF0E3A26), fontWeight: FontWeight.w800)),
+                      Text('חוסך', style: ffTheme.labelSmall.copyWith(color: ffTheme.primaryDark)),
+                      Text('₪$saveYear/שנה', style: ffTheme.titleSmall.copyWith(color: ffTheme.primaryDark, fontWeight: FontWeight.w800)),
                     ],
                   ),
                 ),

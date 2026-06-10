@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'models.dart';
+import 'theme/app_theme.dart';
 import 'data/plans_cellular.dart';
 import 'data/plans_internet.dart';
 import 'data/plans_tv_triple.dart';
@@ -7,7 +8,7 @@ import 'data/plans_tv_triple.dart';
 // ── Categories ────────────────────────────────────────────────────────────────
 
 final List<Category> categories = [
-  const Category(id: 'cellular', name: 'סלולר', icon: '📱', currentBill: 119, color: Color(0xFF15603E), planCount: 59, description: 'חבילות סלולר לנייד'),
+  const Category(id: 'cellular', name: 'סלולר', icon: '📱', currentBill: 119, color: AppColors.primary, planCount: 59, description: 'חבילות סלולר לנייד'),
   const Category(id: 'internet', name: 'אינטרנט', icon: '🌐', currentBill: 140, color: Color(0xFF2563EB), planCount: 30, description: 'אינטרנט ביתי מהיר'),
   const Category(id: 'tv', name: 'טלוויזיה', icon: '📺', currentBill: 130, color: Color(0xFF7C3AED), planCount: 9, description: 'ערוצי טלוויזיה ושידורים'),
   const Category(id: 'triple', name: 'חבילה משולבת', icon: '🏠', currentBill: 260, color: Color(0xFFE07034), planCount: 11, description: 'אינטרנט + טלוויזיה + טלפון'),

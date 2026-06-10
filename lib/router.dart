@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'app_state.dart';
 import 'theme/app_theme.dart';
+import 'widgets/glass_panel.dart';
 import 'pages/onboarding/onboarding_widget.dart';
 import 'pages/auth/auth_widget.dart';
 import 'pages/auth/biometric_gate_widget.dart';
@@ -146,14 +147,19 @@ class _ScaffoldWithNav extends StatelessWidget {
     return Selector<AppState, int>(
       selector: (_, appState) => appState.comparePlans.length,
       builder: (context, compareCount, _) => Scaffold(
+      // Let page content scroll *under* the frosted nav bar so it reads as glass.
+      extendBody: true,
       body: child,
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border(top: BorderSide(color: ffTheme.alternate, width: 1)),
-          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 16, offset: const Offset(0, -4))],
-        ),
-        child: SafeArea(
+      bottomNavigationBar: GlassPanel(
+        // Flat top edge — only the top hairline frames it against scrolled content.
+        borderRadius: BorderRadius.zero,
+        border: false,
+        alpha: 0.7,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            border: Border(top: BorderSide(color: ffTheme.alternate, width: 1)),
+          ),
+          child: SafeArea(
           top: false,
           child: SizedBox(
             height: 64,
@@ -197,6 +203,7 @@ class _ScaffoldWithNav extends StatelessWidget {
               }),
             ),
           ),
+        ),
         ),
       ),
       ),

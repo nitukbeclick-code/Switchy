@@ -178,7 +178,7 @@ class _IntroCard extends StatelessWidget {
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [const Color(0xFF0E3A26), ffTheme.primary],
+          colors: [ffTheme.primaryDark, ffTheme.primary],
           begin: Alignment.topRight,
           end: Alignment.bottomLeft,
         ),

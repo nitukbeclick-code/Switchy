@@ -388,7 +388,7 @@ ${nav}
         <p>${esc(c.intro)}</p>
         <div class="hero__cta">
           <a class="btn btn--primary btn--lg" href="#cta">השוו ותחסכו ←</a>
-          <a class="btn btn--ghost btn--lg" href="index.html#how">איך זה עובד?</a>
+          ${['cellular', 'internet', 'tv', 'triple'].includes(c.slug) ? `<a class="btn btn--ghost btn--lg" href="calc-${c.slug}.html">🧮 מחשבון חיסכון</a>` : '<a class="btn btn--ghost btn--lg" href="index.html#how">איך זה עובד?</a>'}
         </div>
       </div>
     </section>
@@ -1323,6 +1323,30 @@ const collections = [
     intro: 'חלק מהמסלולים כוללים גלישה בחו״ל כבר בחבילה. אם אתם נוסעים הרבה, זה יכול לחסוך. הנה המסלולים האלה.',
     filter: (p) => p.cat === 'cellular' && p.hasAbroad, limit: 15,
   },
+  {
+    slug: 'cellular-budget', catSlug: 'cellular', catName: 'סלולר', eyebrow: 'מתחת ל-₪30',
+    title: 'מסלולי סלולר מתחת ל-₪30 — הזולים ביותר | חוסך',
+    h1: 'מסלולי סלולר מתחת ל-₪30',
+    desc: 'מסלולי הסלולר הזולים ביותר — מתחת ל-₪30 לחודש, ממוינים מהזול ביותר. מחירים מעודכנים מכל החברות.',
+    intro: 'תקציב קטן? ריכזנו את מסלולי הסלולר שעולים פחות מ-₪30 בחודש, ממוינים מהזול ליקר.',
+    filter: (p) => p.cat === 'cellular' && offerPrice(p) < 30, limit: 15,
+  },
+  {
+    slug: 'kosher-plans', catSlug: 'cellular', catName: 'סלולר', eyebrow: 'כשר',
+    title: 'מסלולים כשרים — השוואת מחירים מלאה | חוסך',
+    h1: 'מסלולים כשרים',
+    desc: 'מסלולי סלולר כשרים בפיקוח — ממוינים מהזול ביותר. השוו מחירים ותנאים מכל החברות במקום אחד.',
+    intro: 'מסלולים כשרים בפיקוח, ממוינים מהזול ליקר — כל האפשרויות במקום אחד.',
+    filter: (p) => p.kind === 'kosher', limit: 15,
+  },
+  {
+    slug: 'data-only', catSlug: 'cellular', catName: 'סלולר', eyebrow: 'גלישה בלבד',
+    title: 'מסלולי גלישה בלבד (Data Only) לטאבלט וראוטר | חוסך',
+    h1: 'מסלולי גלישה בלבד (Data Only)',
+    desc: 'מסלולי SIM לגלישה בלבד — מושלמים לטאבלט, לראוטר נייד או כקו נתונים משני. ממוינים מהזול ביותר.',
+    intro: 'צריכים גלישה בלי קו טלפון — לטאבלט, לראוטר נייד או כקו משני? אלה מסלולי הגלישה בלבד בשוק.',
+    filter: (p) => p.kind === 'dataonly', limit: 15,
+  },
 ];
 
 function collectionPage(col) {
@@ -1397,6 +1421,98 @@ ${footer}
 `;
 }
 
+// ── Savings calculators (per-category landing pages) ────────────────────────
+// Each compares against the cheapest REGULAR plan in the category (never a
+// data-only / kosher SIM — those aren't a like-for-like main line). The number
+// is real (from the catalogue); the JS in script.js turns the user's bill into
+// an honest "estimated annual saving". Per-month categories only (not abroad).
+const CALC_SLUGS = ['cellular', 'internet', 'tv', 'triple'];
+
+function cheapestRegular(catSlug) {
+  const list = (plansByCat[catSlug] || []).filter((p) => (p.kind || 'regular') === 'regular');
+  return list.slice().sort((a, b) => offerPrice(a) - offerPrice(b))[0] || null;
+}
+
+function calculatorPage(c) {
+  const ch = cheapestRegular(c.slug);
+  if (!ch) return null;
+  const url = `${SITE}/calc-${c.slug}.html`;
+  const title = `מחשבון חיסכון ${c.name} — כמה אתם משלמים מדי? | חוסך`;
+  const desc = `מחשבון חיסכון ${c.name}: הזינו כמה אתם משלמים היום וגלו בכמה אפשר לחסוך בשנה מול המסלול הזול ביותר בשוק. חינם, בלי התחייבות.`;
+  const h1 = `מחשבון חיסכון ${c.name}`;
+  const crumbs = { '@type': 'BreadcrumbList', itemListElement: [
+    { '@type': 'ListItem', position: 1, name: 'דף הבית', item: SITE + '/' },
+    { '@type': 'ListItem', position: 2, name: c.name, item: `${SITE}/${c.slug}.html` },
+    { '@type': 'ListItem', position: 3, name: h1, item: url },
+  ] };
+  const extraJsonLd = JSON.stringify({ '@context': 'https://schema.org', '@graph': [crumbs] });
+  const guidesHtml = relatedGuides(c.name, null, 2).map(guideCard).join('\n');
+  return `<!DOCTYPE html>
+<html lang="he" dir="rtl">
+${head(title, desc, url, extraJsonLd)}
+<body id="top">
+${nav}
+  <main id="main">
+    <section class="lead-hero">
+      <div class="container">
+        <p class="crumbs"><a href="index.html">דף הבית</a> ← <a href="${c.slug}.html">${esc(c.name)}</a> ← מחשבון חיסכון</p>
+        <span class="pill">🧮 מחשבון חינמי · בלי התחייבות</span>
+        <h1>${esc(h1)}</h1>
+        <p>הזינו כמה אתם משלמים היום על ${esc(c.name)}, ונראה לכם הערכה כמה אפשר לחסוך בשנה מול המסלול הזול ביותר בשוק.</p>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container">
+        <div id="calc" data-cheapest="${offerPrice(ch)}" data-cat="${c.slug}" style="max-width:560px;margin:0 auto;background:#fff;border:1px solid #e6e1d6;border-radius:18px;padding:28px 24px;box-shadow:0 6px 24px rgba(0,0,0,.05)">
+          <h2 style="margin:0 0 6px">כמה אתם יכולים לחסוך על ${esc(c.name)}?</h2>
+          <p style="margin:0 0 4px">המסלול הזול ביותר ב${esc(c.name)} כרגע: <span style="color:#15603E;font-weight:700">${esc(ch.provider)} ${esc(ch.plan)} — ${priceText(ch)}</span>.</p>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;margin:16px 0">
+            <input id="calcBill" class="filter-search" type="number" inputmode="numeric" min="0" placeholder="כמה אתם משלמים היום? (₪)" aria-label="הסכום שאתם משלמים היום בשקלים" style="flex:1 1 220px" />
+            <button id="calcBtn" class="btn btn--primary" type="button">חשבו חיסכון</button>
+          </div>
+          <p id="calcOut" role="status" aria-live="polite" style="display:none;margin:8px 0 0;padding:14px 16px;border-radius:12px;background:#E8F5EE;color:#0E3A26"></p>
+          <p style="margin:12px 0 0;font-size:.85rem;color:#6b7280">* הערכה בלבד — החיסכון בפועל תלוי במסלול שתבחרו ובתנאים. מומלץ לאמת מול הספק.</p>
+        </div>
+        <div style="text-align:center;margin-top:22px">
+          <a class="btn btn--primary btn--lg" href="${c.slug}.html">לכל מסלולי ה${esc(c.name)} ←</a>
+        </div>
+      </div>
+    </section>
+${guidesHtml ? `
+    <section class="section section--alt" aria-label="מדריכים">
+      <div class="container">
+        <header class="section__head reveal"><span class="eyebrow">כדאי לדעת</span><h2>מדריכים שימושיים</h2></header>
+        <div class="guide-cards guide-cards--2">
+${guidesHtml}
+        </div>
+      </div>
+    </section>
+` : ''}
+    <section class="cta" id="cta">
+      <div class="container cta__inner reveal">
+        <h2>רוצים שנמצא לכם את ההצעה הכי טובה?</h2>
+        <p>השאירו פרטים ונחזור אליכם עם ההשוואה וההמלצה — חינם, בלי התחייבות.</p>
+        <form class="cta__form" id="leadForm" novalidate>
+          <input type="text" id="leadName" name="name" placeholder="שם מלא" aria-label="שם מלא" autocomplete="name" required />
+          <input type="tel" id="leadPhone" name="phone" placeholder="טלפון (050-0000000)" aria-label="מספר טלפון" autocomplete="tel" inputmode="tel" required />
+          <button class="btn btn--primary btn--lg" type="submit">קבלו השוואה חינם</button>
+        </form>
+        <p class="cta__note" id="leadNote" role="status" aria-live="polite"></p>
+        <a class="cta__wa" href="https://wa.me/972505037537" target="_blank" rel="noopener"><span aria-hidden="true">💬</span> מעדיפים וואטסאפ? דברו איתנו</a>
+      </div>
+    </section>
+  </main>
+${footer}
+  <script src="${JS_SRC}" defer></script>
+</body>
+</html>
+`;
+}
+const builtCalculators = CALC_SLUGS
+  .map((slug) => categories.find((c) => c.slug === slug))
+  .filter((c) => c && cheapestRegular(c.slug));
+
 // Only collections with enough real matches become pages (no thin/empty pages).
 const builtCollections = collections.filter((col) => catalogue.plans.filter(col.filter).length >= 3);
 
@@ -1406,6 +1522,9 @@ for (const c of categories) {
 }
 for (const col of builtCollections) {
   fs.writeFileSync(path.join(__dirname, `${col.slug}.html`), collectionPage(col));
+}
+for (const c of builtCalculators) {
+  fs.writeFileSync(path.join(__dirname, `calc-${c.slug}.html`), calculatorPage(c));
 }
 
 // Per-provider pages (from the catalogue).
@@ -1450,6 +1569,7 @@ const locs = [
   { loc: `${SITE}/about.html`, lastmod: BUILD_DATE, priority: '0.5', changefreq: 'monthly' },
   ...categories.map((c) => ({ loc: `${SITE}/${c.slug}.html`, lastmod: CATALOGUE_DATE, priority: '0.9', changefreq: 'daily' })),
   ...builtCollections.map((col) => ({ loc: `${SITE}/${col.slug}.html`, lastmod: CATALOGUE_DATE, priority: '0.75', changefreq: 'weekly' })),
+  ...builtCalculators.map((c) => ({ loc: `${SITE}/calc-${c.slug}.html`, lastmod: CATALOGUE_DATE, priority: '0.7', changefreq: 'weekly' })),
   ...guides.map((g) => ({ loc: `${SITE}/${g.slug}.html`, lastmod: isoDate(g.date), priority: '0.6', changefreq: 'monthly' })),
   ...providerNames.map((n) => ({ loc: `${SITE}/provider-${providerSlug(n)}.html`, lastmod: CATALOGUE_DATE, priority: '0.7', changefreq: 'weekly' })),
   { loc: `${SITE}/privacy.html`, lastmod: BUILD_DATE, priority: '0.3', changefreq: 'yearly' },
@@ -1462,5 +1582,5 @@ ${locs.map((u) => `  <url>\n    <loc>${u.loc}</loc>\n    <lastmod>${u.lastmod}</
 `;
 fs.writeFileSync(path.join(__dirname, 'sitemap.xml'), sitemap);
 
-console.log(`Generated ${categories.length} category + ${builtCollections.length} collections + ${guides.length} guides + ${staticPages.length} static + guides index + plans + providers + 404 + sitemap.xml`);
+console.log(`Generated ${categories.length} category + ${builtCollections.length} collections + ${builtCalculators.length} calculators + ${guides.length} guides + ${staticPages.length} static + guides index + plans + providers + 404 + sitemap.xml`);
 console.log(`Asset fingerprints: styles.css?v=${CSS_V}  script.js?v=${JS_V}  (hand-written index.html must reference these same values)`);

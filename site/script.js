@@ -285,4 +285,26 @@
       });
     });
   }
+
+  // ── Savings calculator (calc-*.html) ─────────────────────────────────────
+  const calc = $('calc');
+  if (calc) {
+    const cheapest = Number(calc.dataset.cheapest) || 0;
+    const bill = $('calcBill');
+    const out = $('calcOut');
+    const btn = $('calcBtn');
+    const show = (html) => { if (out) { out.style.display = 'block'; out.innerHTML = html; } };
+    const run = () => {
+      const cur = parseFloat(bill && bill.value);
+      if (!cur || cur <= 0) { show('הזינו את הסכום שאתם משלמים היום.'); return; }
+      const monthly = Math.max(0, cur - cheapest);
+      const yearly = monthly * 12;
+      show(yearly > 0
+        ? 'הערכת חיסכון: עד <b>' + nis(yearly) + '</b> בשנה (' + nis(monthly) + ' בחודש). זו הערכה מול המסלול הזול בשוק — בדקו את ההשוואה המלאה.'
+        : 'אתם כבר משלמים פחות מהמסלול הזול שמצאנו — מצוין! עדיין שווה להשוות מדי פעם.');
+      if (window.plausible) window.plausible('calc_used', { props: { cat: calc.dataset.cat || '' } });
+    };
+    if (btn) btn.addEventListener('click', run);
+    if (bill) bill.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); run(); } });
+  }
 })();

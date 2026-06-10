@@ -307,11 +307,6 @@ class _ChatWidgetState extends State<ChatWidget> {
               Row(
                 children: [
                   Text(_agentOnline ? 'מחוברת' : 'לא מחוברת', style: GoogleFonts.assistant(fontSize: 11, color: Colors.white70)),
-                  const SizedBox(width: 4),
-                  const Text('·', style: TextStyle(color: Colors.white54, fontSize: 11)),
-                  const SizedBox(width: 4),
-                  const Icon(Icons.star_rounded, size: 11, color: Color(0xFFFFC107)),
-                  Text(' 4.9', style: GoogleFonts.assistant(fontSize: 11, color: Colors.white70)),
                 ],
               ),
             ],

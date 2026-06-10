@@ -35,14 +35,14 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
   }
 
   final _allProviders = [
-    const _ISP(name: 'בזק', tech: 'סיב אופטי', status: 'זמין', speed: '1Gb', price: 89, reliability: 4.6),
-    const _ISP(name: 'HOT', tech: 'כבלים', status: 'זמין', speed: '500Mb', price: 79, reliability: 4.3),
-    const _ISP(name: 'סלקום', tech: 'סיב אופטי', status: 'זמין', speed: '1Gb', price: 89, reliability: 4.5),
-    const _ISP(name: 'פרטנר', tech: 'סיב אופטי', status: 'זמין', speed: '500Mb', price: 99, reliability: 4.4),
-    const _ISP(name: 'גילת', tech: 'לוויין', status: 'זמין', speed: '100Mb', price: 149, reliability: 3.8),
-    const _ISP(name: 'CCC', tech: 'סיב אופטי', status: 'זמין', speed: '1Gb', price: 79, reliability: 4.2),
-    const _ISP(name: 'Xphone', tech: 'סיב אופטי', status: 'בקרוב', speed: '—', price: 0, reliability: 0),
-    const _ISP(name: '019 מובייל', tech: 'סיב אופטי', status: 'זמין', speed: '200Mb', price: 119, reliability: 4.0),
+    const _ISP(name: 'בזק', tech: 'סיב אופטי', status: 'זמין', speed: '1Gb', price: 89),
+    const _ISP(name: 'HOT', tech: 'כבלים', status: 'זמין', speed: '500Mb', price: 79),
+    const _ISP(name: 'סלקום', tech: 'סיב אופטי', status: 'זמין', speed: '1Gb', price: 89),
+    const _ISP(name: 'פרטנר', tech: 'סיב אופטי', status: 'זמין', speed: '500Mb', price: 99),
+    const _ISP(name: 'גילת', tech: 'לוויין', status: 'זמין', speed: '100Mb', price: 149),
+    const _ISP(name: 'CCC', tech: 'סיב אופטי', status: 'זמין', speed: '1Gb', price: 79),
+    const _ISP(name: 'Xphone', tech: 'סיב אופטי', status: 'בקרוב', speed: '—', price: 0),
+    const _ISP(name: '019 מובייל', tech: 'סיב אופטי', status: 'זמין', speed: '200Mb', price: 119),
   ];
 
   List<_ISP> get _filteredProviders {
@@ -175,7 +175,7 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
             width: 64,
             height: 64,
             decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.15), shape: BoxShape.circle),
-            child: const Center(child: Text('📡', style: TextStyle(fontSize: 32))),
+            child: const Center(child: ExcludeSemantics(child: Text('📡', style: TextStyle(fontSize: 32)))),
           ),
         ],
       ),
@@ -315,7 +315,7 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
                 width: 64, height: 64,
                 child: CircularProgressIndicator(color: ffTheme.primary, strokeWidth: 3),
               ).animate(onPlay: (c) => c.repeat()).rotate(duration: 1200.ms),
-              const Text('📡', style: TextStyle(fontSize: 24)),
+              const ExcludeSemantics(child: Text('📡', style: TextStyle(fontSize: 24))),
             ],
           ),
           const SizedBox(height: 14),
@@ -427,16 +427,7 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(isp.name, style: ffTheme.titleSmall.copyWith(color: isAvailable ? ffTheme.primaryText : ffTheme.secondaryText)),
-                          Row(
-                            children: [
-                              _TechBadge(tech: isp.tech, ffTheme: ffTheme),
-                              if (isAvailable && isp.reliability > 0) ...[
-                                const SizedBox(width: 6),
-                                const Icon(Icons.star_rounded, size: 12, color: Color(0xFFFFC107)),
-                                Text(' ${isp.reliability}', style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText)),
-                              ],
-                            ],
-                          ),
+                          _TechBadge(tech: isp.tech, ffTheme: ffTheme),
                         ],
                       ),
                     ),
@@ -526,7 +517,7 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
                   ],
                 ),
               ),
-              const Text('📡', style: TextStyle(fontSize: 28)),
+              const ExcludeSemantics(child: Text('📡', style: TextStyle(fontSize: 28))),
             ],
           ),
           const SizedBox(height: 14),
@@ -674,8 +665,7 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
 class _ISP {
   final String name, tech, status, speed;
   final int price;
-  final double reliability;
-  const _ISP({required this.name, required this.tech, required this.status, required this.speed, required this.price, required this.reliability});
+  const _ISP({required this.name, required this.tech, required this.status, required this.speed, required this.price});
 }
 
 class _TechBadge extends StatelessWidget {

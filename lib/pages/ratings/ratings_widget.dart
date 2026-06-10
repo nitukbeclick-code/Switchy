@@ -432,14 +432,20 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
                               button: true,
                               selected: j < (_subRatings[e.key] ?? 0),
                               label: 'דרג ${j + 1} מתוך 5 — ${e.value}',
-                              child: GestureDetector(
+                              child: InkResponse(
                                 onTap: () => setState(() => _subRatings[e.key] = j + 1),
-                                child: Padding(
-                                  padding: const EdgeInsetsDirectional.only(end: 3),
-                                  child: Icon(
-                                    j < (_subRatings[e.key] ?? 0) ? Icons.star_rounded : Icons.star_outline_rounded,
-                                    size: 28,
-                                    color: ffTheme.warning,
+                                radius: 22,
+                                // 44px tap target around the 28px glyph (a11y
+                                // minimum) without enlarging the visual star.
+                                child: SizedBox(
+                                  width: 44,
+                                  height: 44,
+                                  child: Center(
+                                    child: Icon(
+                                      j < (_subRatings[e.key] ?? 0) ? Icons.star_rounded : Icons.star_outline_rounded,
+                                      size: 28,
+                                      color: ffTheme.warning,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -723,12 +729,18 @@ class _PodiumItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final medalColor = rank == 1 ? const Color(0xFFC9EC4B) : rank == 2 ? const Color(0xFFE5E0D5) : const Color(0xFFFFE0CC);
-    return GestureDetector(
+    final rankLabel = rank == 1 ? 'מקום ראשון' : rank == 2 ? 'מקום שני' : 'מקום שלישי';
+    return Semantics(
+      button: true,
+      label: '$rankLabel — $provider',
+      child: GestureDetector(
       onTap: () => context.pushNamed('Provider', pathParameters: {'name': provider}),
       child: Column(
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
-        Text(rank == 1 ? '🥇' : rank == 2 ? '🥈' : '🥉', style: const TextStyle(fontSize: 22)),
+        ExcludeSemantics(
+          child: Text(rank == 1 ? '🥇' : rank == 2 ? '🥈' : '🥉', style: const TextStyle(fontSize: 22)),
+        ),
         const SizedBox(height: 4),
         LogoWidget(provider: provider, size: 36),
         const SizedBox(height: 4),
@@ -750,6 +762,7 @@ class _PodiumItem extends StatelessWidget {
           ),
         ),
       ],
+      ),
       ),
     );
   }

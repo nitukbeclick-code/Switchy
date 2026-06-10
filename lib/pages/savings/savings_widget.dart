@@ -21,6 +21,7 @@ class SavingsWidget extends StatelessWidget {
     final appState = Provider.of<AppState>(context);
     final summary = computeSavings(appState);
     final top = summary.topOpportunity;
+    final personalized = appState.billsPersonalized;
 
     // Tracked plans with a real saver available (near or not).
     final renewals = appState.myPlans
@@ -60,6 +61,7 @@ class SavingsWidget extends StatelessWidget {
                       saving: top.annualSaving,
                       categoryName: categoryById(top.categoryId)?.name ?? top.categoryId,
                       providerAndPlan: '${top.best!.plan.provider} · ${top.best!.plan.plan}',
+                      personalized: personalized,
                       ffTheme: ffTheme,
                       onTap: () => context.pushNamed('PlanDetail',
                           pathParameters: {'planId': top.best!.plan.id}),
@@ -79,6 +81,7 @@ class SavingsWidget extends StatelessWidget {
                         saving: cs,
                         icon: cat?.icon ?? '•',
                         name: cat?.name ?? cs.categoryId,
+                        personalized: personalized,
                         ffTheme: ffTheme,
                         onTap: () {
                           appState.setCategory(cs.categoryId);
@@ -238,12 +241,14 @@ class _TopOpportunityCard extends StatelessWidget {
     required this.saving,
     required this.categoryName,
     required this.providerAndPlan,
+    required this.personalized,
     required this.ffTheme,
     required this.onTap,
   });
   final int saving;
   final String categoryName;
   final String providerAndPlan;
+  final bool personalized;
   final AppTheme ffTheme;
   final VoidCallback onTap;
 
@@ -269,7 +274,7 @@ class _TopOpportunityCard extends StatelessWidget {
                       style: GoogleFonts.assistant(
                           fontSize: 12, fontWeight: FontWeight.w700, color: const Color(0xFF0E3A26))),
                   const SizedBox(height: 2),
-                  Text('חיסכון של ₪$saving בשנה',
+                  Text(personalized ? 'חיסכון של ₪$saving בשנה' : 'חיסכון מוערך של ~₪$saving בשנה',
                       style: GoogleFonts.rubik(
                           fontSize: 18, fontWeight: FontWeight.w800, color: const Color(0xFF0E3A26))),
                   const SizedBox(height: 2),
@@ -295,12 +300,14 @@ class _CategoryRow extends StatelessWidget {
     required this.saving,
     required this.icon,
     required this.name,
+    required this.personalized,
     required this.ffTheme,
     required this.onTap,
   });
   final CategorySaving saving;
   final String icon;
   final String name;
+  final bool personalized;
   final AppTheme ffTheme;
   final VoidCallback onTap;
 
@@ -340,7 +347,7 @@ class _CategoryRow extends StatelessWidget {
                   color: ffTheme.secondary,
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Text('₪${saving.annualSaving}/שנה',
+                child: Text(personalized ? '₪${saving.annualSaving}/שנה' : '~₪${saving.annualSaving}/שנה',
                     style: GoogleFonts.rubik(
                         fontSize: 12, fontWeight: FontWeight.w800, color: const Color(0xFF0E3A26))),
               )

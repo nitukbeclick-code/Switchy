@@ -22,6 +22,20 @@ const JS_V = assetHash('script.js');
 const CSS_HREF = `styles.css?v=${CSS_V}`;
 const JS_SRC = `script.js?v=${JS_V}`;
 
+// ── Cookieless analytics (privacy-respecting, placeholder by default) ────────
+// Plausible-style: no cookies, no cross-site tracking, no personal data. The
+// domain below is a PLACEHOLDER — swap ANALYTICS_DOMAIN for the real account
+// (and uncomment the real endpoint) once analytics is set up. Until then the
+// remote script simply 404s harmlessly; the inline stub still queues calls so
+// `window.plausible('event', …)` from script.js never throws. Conversion
+// events (lead_submit, whatsapp_click) are fired from script.js.
+const ANALYTICS_DOMAIN = 'chosech.co.il';
+const ANALYTICS_SRC = 'https://plausible.io/js/script.outbound-links.tagged-events.js';
+const analyticsTag = () =>
+  `<!-- Cookieless analytics (Plausible-style). Placeholder until configured — no cookies, no personal data. -->
+  <script defer data-domain="${ANALYTICS_DOMAIN}" src="${ANALYTICS_SRC}"></script>
+  <script>window.plausible=window.plausible||function(){(window.plausible.q=window.plausible.q||[]).push(arguments)};</script>`;
+
 // Real plan catalogue, exported from the app via `flutter test tool/export_plans.dart`.
 const catalogue = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'plans.json'), 'utf8'));
 const plansByCat = {};
@@ -184,15 +198,17 @@ function planCardHtml(p) {
   if (p.noCommit) flags.push('<span class="pflag">ללא התחייבות</span>');
   if (p.hasAbroad) flags.push('<span class="pflag">כולל חו״ל</span>');
   const after = p.after ? `<span class="plan__after">ואז ₪${p.after}</span>` : '';
-  const rating = p.rating ? `<span class="plan__rating">★ ${p.rating}</span>` : '';
+  // NOTE: a plan's "rating" is a fabricated placeholder (every plan has 0 real
+  // reviews) — never render it as a star/score. Honest ratings live per-provider
+  // and only surface once a real review exists (see provider_ratings.dart).
   const text = esc(`${p.provider} ${p.plan} ${(p.feats || []).join(' ')} ${Object.values(p.specs || {}).join(' ')}`).toLowerCase();
   const waHref = 'https://wa.me/972505037537?text=' + encodeURIComponent('היי, מעניין אותי ' + p.provider + ' - ' + p.plan + ' (₪' + priceText(p) + ')');
-  return `<article class="plan" data-cat="${esc(p.cat)}" data-text="${text}" data-price="${p.price}" data-rating="${p.rating || 0}" data-5g="${p.is5G}" data-nocommit="${p.noCommit}" data-abroad="${p.hasAbroad}">
+  return `<article class="plan" data-cat="${esc(p.cat)}" data-text="${text}" data-price="${p.price}" data-5g="${p.is5G}" data-nocommit="${p.noCommit}" data-abroad="${p.hasAbroad}">
         <div class="plan__top"><span class="plan__id">${providerLogo(p.provider)}<a class="plan__provider" href="provider-${providerSlug(p.provider)}.html">${esc(p.provider)}</a></span><span class="plan__net">${esc(p.net)}</span></div>
         <div class="plan__name">${esc(p.plan)}</div>
         ${specs ? `<div class="plan__chips">${specs}</div>` : ''}
         ${flags.length ? `<div class="plan__flags">${flags.join('')}</div>` : ''}
-        <div class="plan__bottom"><div class="plan__price"><b>₪${priceText(p)}</b> <span>${unit}</span>${after}</div>${rating}</div>
+        <div class="plan__bottom"><div class="plan__price"><b>₪${priceText(p)}</b> <span>${unit}</span>${after}</div></div>
         <a class="plan__cta" target="_blank" rel="noopener" href="${esc(waHref)}">💬 מעוניין/ת ←</a>
       </article>`;
 }
@@ -255,16 +271,63 @@ const footer = `  <footer class="footer">
     <div class="container footer__bottom"><span>© <span id="year"></span> חוסך · כל הזכויות שמורות</span><span>נבנה באהבה בישראל 💚</span></div>
   </footer>`;
 
+// Offer price for structured data — the exact advertised figure when present,
+// otherwise the rounded int. Always a plain number (schema.org/Offer.price).
+const offerPrice = (p) => (p.priceExact != null ? p.priceExact : p.price);
+
+// Build a Product node (with an Offer) for one real plan. We intentionally emit
+// NO aggregateRating/review here: every plan has 0 real reviews, so a rating
+// would be fabricated — honest structured data carries price/offer only.
+function planProductNode(p, listUrl) {
+  const name = `${p.provider} — ${p.plan}`;
+  const feats = (p.feats || []).join(', ');
+  const node = {
+    '@type': 'Product',
+    name,
+    category: (categories.find((c) => c.slug === p.cat) || {}).name || p.cat,
+    brand: { '@type': 'Brand', name: p.provider },
+    offers: {
+      '@type': 'Offer',
+      price: offerPrice(p),
+      priceCurrency: 'ILS',
+      availability: 'https://schema.org/InStock',
+      url: listUrl,
+      ...(p.after != null ? { description: `מחיר היכרות; ואז ₪${p.after}` } : {}),
+    },
+  };
+  if (feats) node.description = feats;
+  return node;
+}
+
+// ItemList of plan Products for a category or provider page (helps Google read
+// the page as a structured list of offers).
+function plansItemListJsonLd(plans, listUrl, listName) {
+  return {
+    '@type': 'ItemList',
+    name: listName,
+    numberOfItems: plans.length,
+    itemListElement: plans.map((p, i) => ({
+      '@type': 'ListItem',
+      position: i + 1,
+      item: planProductNode(p, listUrl),
+    })),
+  };
+}
+
 function jsonLd(c) {
+  const url = `${SITE}/${c.slug}.html`;
   const faq = { '@type': 'FAQPage', mainEntity: c.faq.map(([q, a]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } })) };
   const crumbs = {
     '@type': 'BreadcrumbList',
     itemListElement: [
       { '@type': 'ListItem', position: 1, name: 'דף הבית', item: SITE + '/' },
-      { '@type': 'ListItem', position: 2, name: c.name, item: `${SITE}/${c.slug}.html` },
+      { '@type': 'ListItem', position: 2, name: c.name, item: url },
     ],
   };
-  return JSON.stringify({ '@context': 'https://schema.org', '@graph': [crumbs, faq] });
+  const graph = [crumbs, faq];
+  const catPlans = plansByCat[c.slug] || [];
+  if (catPlans.length) graph.push(plansItemListJsonLd(catPlans, url, `מסלולי ${c.name}`));
+  return JSON.stringify({ '@context': 'https://schema.org', '@graph': graph });
 }
 
 function page(c) {
@@ -298,8 +361,10 @@ function page(c) {
   <meta name="twitter:image" content="${SITE}/og-image.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="preconnect" href="https://plausible.io" />
   <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="${CSS_HREF}" />
+  ${analyticsTag()}
   <script type="application/ld+json">${jsonLd(c)}</script>
 </head>
 <body id="top">
@@ -399,6 +464,11 @@ const guides = [
       { h2: 'כמה זמן זה לוקח?', p: ['בסלולר הניוד מתבצע לרוב תוך יום-יומיים. באינטרנט וטלוויזיה זה 1–3 ימי עסקים, לעיתים עם תיאום טכנאי. בכל מקרה — אתם ממשיכים להיות מחוברים עד שהמעבר הושלם.'] },
       { h2: 'טעויות נפוצות שעולות כסף', ul: ['להתמקד רק במחיר השנה הראשונה ולהתעלם מהקפיצה אחריה.', 'לא לבדוק התחייבות קיימת ולשלם קנס מיותר.', 'לבחור חבילה גדולה מדי "ליתר ביטחון" במקום לפי השימוש האמיתי.', 'לשכוח להשוות שוב כשנגמר המבצע — כאן נכנסת התראת החידוש של חוסך.'] },
     ],
+    faq: [
+      ['כמה זמן לוקח מעבר ספק?', 'בסלולר הניוד מתבצע לרוב תוך יום-יומיים; באינטרנט וטלוויזיה 1–3 ימי עסקים, לעיתים עם תיאום טכנאי. אתם נשארים מחוברים עד שהמעבר מושלם.'],
+      ['האם המספר שלי נשמר במעבר?', 'כן. ניוד המספר שומר על המספר הקיים — הספק החדש מבצע את הניוד מול הספק הישן, בלי שתצטרכו לבטל ידנית.'],
+      ['האם אשלם קנס אם אעבור?', 'רק אם יש לכם התחייבות פעילה. הרבה מהמסלולים היום הם ללא התחייבות כלל — בדקו מול הספק לפני שאתם עוברים.'],
+    ],
   },
   {
     slug: 'guide-cellular', cat: 'סלולר', date: '2026-06-03', read: 5,
@@ -412,6 +482,11 @@ const guides = [
       { h2: 'התחייבות מול גמישות', p: ['רוב המסלולים המשתלמים היום הם ללא התחייבות — כלומר אפשר לעזוב בכל רגע. זה נותן לכם כוח: אם המחיר קופץ, פשוט עוברים. הימנעו מהתחייבות ארוכה אלא אם היא מגיעה עם הטבה משמעותית.'] },
       { h2: 'מספר קווים ומשפחה', p: ['אם יש כמה קווים בבית, שווה לבדוק מסלולי משפחה או פשוט לחבר כמה קווים זולים בנפרד — לעיתים זה יוצא זול יותר ממסלול "משפחתי" ארוז. השוו את שתי האפשרויות.'] },
       { h2: 'מלכודת המבצע', p: ['הטריק הנפוץ: מחיר נמוך לשנה ואז קפיצה. זה לא בהכרח רע — אבל תכננו מראש. סמנו את תאריך סיום המבצע (חוסך עושה זאת אוטומטית ומזכיר ~21 יום לפני) כדי להשוות שוב ולא לשלם את המחיר המלא.'] },
+    ],
+    faq: [
+      ['כמה גלישה צריך במסלול סלולר?', 'רוב המשתמשים צורכים 10–50GB בחודש. כיום מסלולים רבים מציעים גלישה ללא הגבלה במחיר נמוך, כך שברוב המקרים אין סיבה להתלבט.'],
+      ['האם כדאי 5G או שמספיק 4G?', '5G מהיר ויציב יותר באזורים עמוסים, וההפרש במחיר היום זניח. אם הטלפון תומך — אין סיבה לא לבחור 5G.'],
+      ['כמה עולה מסלול סלולר משתלם?', 'לרוב האנשים מספיק מסלול 5G ללא הגבלה בטווח ₪29–₪49, ללא התחייבות. תמיד בדקו גם את המחיר שאחרי המבצע.'],
     ],
   },
   {
@@ -427,6 +502,11 @@ const guides = [
       { h2: 'תשתית מול ספק — ההבדל שמבלבל', p: ['חשבון האינטרנט מורכב משניים: חברת התשתית (שמביאה את הסיב לבית) וספק האינטרנט (ISP). אפשר לבחור כל אחד בנפרד, ולעיתים חבילה מאוחדת זולה יותר. חוסך משווה את שני הרכיבים יחד.'] },
       { h2: 'מחירים ומלכודת המבצע', p: ['מחירי הסיב במבצע מתחילים נמוך ואז עולים אחרי 12 חודשים. בדקו תמיד מה המחיר הקבוע, לא רק מחיר ההיכרות — וקבעו תזכורת להשוות שוב לפני שהמבצע נגמר.'] },
     ],
+    faq: [
+      ['מה ההבדל בין סיב אופטי לכבלים?', 'סיב אופטי הוא התשתית המהירה והיציבה ביותר, עם מהירויות עד גיגה והשהיה נמוכה. כבלים מהירים וזמינים נרחב אך לעיתים מאטים בשעות עומס.'],
+      ['איזו מהירות אינטרנט באמת צריך?', 'לבית ממוצע עם כמה מכשירים, 300–500Mb נותנים חוויה מצוינת. גיגה משתלם רק לבתים עם הרבה משתמשים כבדים במקביל.'],
+      ['כמה עולה סיב אופטי?', 'מחירי המבצע מתחילים סביב ₪49–₪99 לחודש. זכרו שאתם משלמים על שני רכיבים — תשתית + ספק — ושהמחיר עולה בדרך כלל אחרי 12 חודשים.'],
+    ],
   },
   {
     slug: 'guide-5g', cat: 'סלולר', date: '2026-06-06', read: 4,
@@ -440,6 +520,11 @@ const guides = [
       { h2: 'מתי כדאי לעבור — ומתי פחות', p: ['אם אתם גרים או עובדים באזור עירוני צפוף, מורידים קבצים גדולים או רגישים לעומסי רשת — 5G ישפר לכם את החוויה. לעומת זאת, אם אתם בעיקר גולשים קלות וצורכים מעט נתונים, השדרוג לא בהכרח ישנה לכם משהו מורגש.'] },
       { h2: 'הטלפון והכיסוי שלכם', p: ['שני תנאים צריכים להתקיים: שהמכשיר שלכם תומך ב-5G, ושיש כיסוי 5G באזור שבו אתם נמצאים רוב היום. הכיסוי משתנה בין הספקים ובין אזורים, ובמיוחד בפריפריה כדאי לבדוק את מפת הכיסוי של הספק הספציפי לפני שמתלהבים.'] },
       { h2: 'וכמה זה עולה?', p: ['היום הפער במחיר בין מסלולי 4G ל-5G הצטמצם מאוד, ובמקרים רבים מסלול 5G עולה כמו מסלול 4G או רק מעט יותר. הכלל פשוט: אם ההפרש זניח — קחו 5G; אם משלמים עליו פרמיה גבוהה — שאלו את עצמכם אם אתם באמת תרגישו אותה. בכל מקרה בדקו את המחיר שאחרי תקופת המבצע, לא רק את מחיר ההיכרות.'] },
+    ],
+    faq: [
+      ['האם 5G באמת מהיר יותר מ-4G?', 'כן, במיוחד באזורים עירוניים עמוסים ובהורדות גדולות. בגלישה רגילה, רשתות חברתיות וניווט רוב המשתמשים לא ירגישו הבדל דרמטי.'],
+      ['מתי כדאי לעבור ל-5G?', 'אם הטלפון שלכם תומך, יש כיסוי 5G באזור שלכם, וההפרש במחיר זהה או קרוב למסלול 4G — אין סיבה לא לעבור.'],
+      ['האם 5G צורך יותר סוללה?', 'בחלק מהמכשירים 5G עשוי לצרוך מעט יותר, אך הפער הצטמצם מאוד בדורות החדשים.'],
     ],
   },
   {
@@ -455,6 +540,11 @@ const guides = [
       { h2: 'כמה גלישה לקחת', ul: ['שימוש קל (ניווט, וואטסאפ, מיילים): כמה GB לשבוע מספיקים בדרך כלל.', 'שימוש בינוני (רשתות חברתיות, מפות, תמונות): תכננו יותר, או חבילה עם אפשרות הטענה.', 'שימוש כבד (סטרימינג, שיתוף וידאו, hotspot ללפטופ): קחו חבילה גדולה או ללא הגבלה — לעיתים זול יותר מלהטעין שוב ושוב.', 'טיפ: רוב הצריכה הכבדה אפשר לדחות ל-Wi-Fi במלון, וכך לקחת חבילה קטנה וזולה יותר.'] },
       { h2: 'מה לבדוק לפני שקונים', p: ['ודאו שהיעד נכלל בכיסוי, שתוקף החבילה מכסה את כל ימי הטיול, ומה קורה כשהגלישה נגמרת — האם היא נחסמת או שאפשר להטעין בקלות. השוו את העלות הכוללת מול מה שספק הסלולר הישראלי גובה ברומינג; לרוב ה-eSIM יוצא זול משמעותית, אך תמיד שווה לבדוק לפני שיוצאים.'] },
     ],
+    faq: [
+      ['מה זה eSIM והאם הטלפון שלי תומך?', 'eSIM הוא כרטיס SIM דיגיטלי המוטמע בטלפון. רוב הדגמים מהשנים האחרונות תומכים — אפשר לבדוק בהגדרות. מפעילים בסריקת קוד, בלי כרטיס פיזי.'],
+      ['האם אשמור על המספר הישראלי בחו״ל?', 'כן. ה-eSIM פועל לצד הסים הקיים, כך שתמשיכו לקבל שיחות ו-SMS למספר הישראלי בזמן שאתם גולשים על החבילה המקומית.'],
+      ['כמה גלישה לקחת לטיול?', 'לשימוש קל (ניווט, וואטסאפ) כמה GB לשבוע מספיקים. לשימוש כבד קחו חבילה גדולה או ללא הגבלה — לעיתים זול יותר מלהטעין שוב ושוב.'],
+    ],
   },
   {
     slug: 'guide-cancel-commitment', cat: 'מדריך כללי', date: '2026-06-08', read: 5,
@@ -468,6 +558,11 @@ const guides = [
       { h2: 'מאיפה בכלל מגיע "קנס" היציאה', p: ['כשמקבלים הטבה משמעותית (למשל מכשיר במחיר מסובסד או מבצע ארוך) בתמורה להתחייבות, יציאה מוקדמת עשויה לגרור חיוב שמשקף את ההטבה שכבר נהניתם ממנה. זה לא "עונש" שרירותי אלא לרוב התחשבנות על ההטבה. כדאי להבין מראש איך הסכום מחושב כדי שתוכלו להחליט בעיניים פקוחות.'] },
       { h2: 'דרכים לעבור בלי לשלם מיותר', ul: ['חכו לסיום ההתחייבות — אם נשארו שבועות בודדים, לעיתים פשוט שווה להמתין.', 'חשבו את העלות מול התועלת: אם החיסכון השנתי אצל הספק החדש גדול מסכום היציאה, ייתכן שעדיין כדאי לעבור.', 'בקשו מהספק הנוכחי לשפר את התנאים — לעיתים עצם האיום לעזוב מביא הצעה טובה יותר בלי קנס.', 'הימנעו מהתחייבות חדשה כשאתם מצטרפים, כדי לא לחזור לאותה נקודה בעוד שנה.'] },
       { h2: 'תכנון נכון מונע את הבעיה מראש', p: ['הדרך הטובה ביותר לא לשלם קנס היא לדעת מראש מתי ההתחייבות נגמרת ולתזמן את המעבר בהתאם. סמנו את התאריך (חוסך עושה זאת אוטומטית ומזכיר לכם לפני שהמבצע או ההתחייבות מסתיימים), כדי שתעברו בדיוק כשאתם חופשיים — בלי קנס ובלי לשלם את המחיר המלא חודש מיותר. שימו לב: זו הכוונה כללית בלבד; פרטי ההתחייבות שלכם נקבעים בחוזה מול הספק.'] },
+    ],
+    faq: [
+      ['איך אדע אם יש לי התחייבות פעילה?', 'בדקו בחשבונית או בחוזה ההצטרפות, או התקשרו לשירות הלקוחות ושאלו ישירות: "האם יש לי התחייבות, ועד איזה תאריך?" בקשו לקבל את התשובה בכתב.'],
+      ['האם תמיד יש קנס יציאה?', 'לא. הרבה מהמסלולים היום הם ללא התחייבות כלל, ואז אפשר לעבור מתי שרוצים בלי קנס. קנס מופיע בעיקר כשקיבלתם הטבה משמעותית בתמורה להתחייבות.'],
+      ['האם כדאי לעבור גם אם יש קנס?', 'תלוי בחישוב: אם החיסכון השנתי אצל הספק החדש גדול מסכום היציאה, ייתכן שעדיין כדאי. זו הכוונה כללית בלבד, לא ייעוץ משפטי.'],
     ],
   },
   {
@@ -483,6 +578,11 @@ const guides = [
       { h2: 'מה לשאול את הספק', p: ['ברגע שזיהיתם סעיף שאתם לא מזהים, אל תנחשו — שאלו ישירות. בקשו פירוט מה כולל כל שירות שמופיע בחשבון, מתי הוא הופעל, והאם הוא חלק מהמסלול או תוספת נפרדת. שאלה חשובה במיוחד: "האם המבצע שלי עדיין פעיל, ומתי הוא מסתיים?" — כך תדעו מראש אם המחיר עומד לקפוץ. בקשו לקבל את התשובות בכתב, כדי שיהיה לכם תיעוד.'] },
       { h2: 'איך לפעול אחרי שמצאתם', p: ['ביטול של תוספת מיותרת הוא לרוב פעולה פשוטה מול שירות הלקוחות, ולעיתים אפשר לעשותה גם באזור האישי באתר או באפליקציה. אם גיליתם שמבצע הסתיים והמחיר קפץ — זו בדיוק הנקודה להשוות מול מה שיש בשוק ולשקול מעבר. הרגל טוב הוא לעבור על החשבון פעם ברבעון, ולסמן תזכורת לתאריכי סיום מבצעים (חוסך עושה זאת אוטומטית) כדי שתפעלו לפני הקפיצה ולא אחריה.'] },
     ],
+    faq: [
+      ['אילו חיובים מיותרים הכי נפוצים בחשבון?', 'ביטוח למכשיר שכבר החלפתם, מבצע שהסתיים והמחיר קפץ בשקט, מנויי תוכן ותוספות פרימיום קטנות, וכפילויות כמו אחסון ענן שמשלמים עליו פעמיים.'],
+      ['כל כמה זמן כדאי לעבור על החשבון?', 'פעם ברבעון. עברו עליו שורה-שורה, סמנו כל סעיף שאתם לא מזהים, ובדקו אותו מול הספק. כמה דקות בשנה שוות מאות שקלים.'],
+      ['מה לשאול את הספק על סעיף לא מוכר?', 'בקשו פירוט מה כולל השירות, מתי הופעל, והאם הוא חלק מהמסלול או תוספת. שאלה חשובה: "האם המבצע שלי עדיין פעיל, ומתי הוא מסתיים?"'],
+    ],
   },
   {
     slug: 'guide-family-lines', cat: 'סלולר', date: '2026-06-09', read: 5,
@@ -496,6 +596,11 @@ const guides = [
       { h2: 'מתי כמה קווים נפרדים זולים יותר', p: ['בשנים האחרונות מחירי הקווים הבודדים צנחו, ומסלול 5G ללא הגבלה נמכר במחיר נמוך. התוצאה: לעיתים קרובות מצרף של כמה קווים זולים ונפרדים יוצא זול יותר ממסלול "משפחתי" ארוז שנשמע משתלם בזכות הכותרת. היתרון הנוסף הוא גמישות — כל קו עצמאי, אפשר לשדרג או לעזוב כל אחד בנפרד בלי לגעת בשאר. לפני שמתחייבים לחבילה משפחתית, תמיד שווה לחשב כמה יעלו אותם קווים אם תקנו כל אחד בנפרד.'] },
       { h2: 'איך מנהלים כמה קווים בלי להסתבך', ul: ['רשמו טבלה פשוטה: שם בעל הקו, הספק, המסלול, המחיר ותאריך סיום המבצע.', 'אם הקווים מפוזרים בין כמה ספקים — זה לגיטימי, כל עוד אתם עוקבים אחרי כולם.', 'בדקו פעם ברבעון שאף קו לא "קפץ" במחיר אחרי סיום מבצע.', 'שקלו לרכז את מועדי החידוש כדי שיהיה קל לעקוב — או תנו לכלי מעקב לעשות זאת עבורכם.'] },
       { h2: 'אל תשכחו את תאריכי החידוש', p: ['הבעיה הגדולה עם כמה קווים היא לא המחיר ההתחלתי אלא המעקב: לכל קו יש מבצע משלו שמסתיים בתאריך אחר, ובלי מעקב אחד מהם תמיד יקפוץ במחיר בלי שתשימו לב. זו בדיוק הנקודה שבה ריבוי קווים הופך ליקר. סמנו לכל קו את תאריך סיום המבצע (חוסך עוקב אחרי כל הקווים ומזכיר ~21 יום לפני כל חידוש), כך שתשוו ותפעלו בזמן — לכל קו בנפרד — במקום לגלות את הקפיצה רק בחשבון.'] },
+    ],
+    faq: [
+      ['מה זול יותר — מסלול משפחתי או כמה קווים נפרדים?', 'אין תשובה אחת. לרוב מצרף של כמה קווים זולים ונפרדים יוצא זול יותר ממסלול "משפחתי" ארוז. חשבו את העלות הכוללת לכל הקווים יחד, לא את מחיר הקו הבודד.'],
+      ['מתי מסלול משפחתי כן משתלם?', 'כשהמחיר לקו נמוך משמעותית מקווים נפרדים, כשיש הרבה קווים (4 ומעלה) עם הנחת כמות אמיתית, או כשנוח שהכול בחשבון אחד.'],
+      ['איך עוקבים אחרי כמה קווים בלי להסתבך?', 'רשמו טבלה: בעל הקו, ספק, מסלול, מחיר ותאריך סיום מבצע. בדקו פעם ברבעון שאף קו לא קפץ במחיר — או תנו לכלי מעקב לעשות זאת עבורכם.'],
     ],
   },
 ];
@@ -525,20 +630,29 @@ function relatedGuides(catName, excludeSlug, n) {
 
 function articleJsonLd(g) {
   const url = `${SITE}/${g.slug}.html`;
-  return JSON.stringify({
-    '@context': 'https://schema.org',
-    '@graph': [
-      { '@type': 'BreadcrumbList', itemListElement: [
-        { '@type': 'ListItem', position: 1, name: 'דף הבית', item: SITE + '/' },
-        { '@type': 'ListItem', position: 2, name: 'מדריכים', item: SITE + '/guides.html' },
-        { '@type': 'ListItem', position: 3, name: g.h1, item: url },
-      ] },
-      { '@type': 'Article', headline: g.h1, description: g.desc, datePublished: g.date,
-        inLanguage: 'he-IL', mainEntityOfPage: url,
-        author: { '@type': 'Organization', name: 'חוסך' },
-        publisher: { '@type': 'Organization', name: 'חוסך' } },
-    ],
-  });
+  const graph = [
+    { '@type': 'BreadcrumbList', itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'דף הבית', item: SITE + '/' },
+      { '@type': 'ListItem', position: 2, name: 'מדריכים', item: SITE + '/guides.html' },
+      { '@type': 'ListItem', position: 3, name: g.h1, item: url },
+    ] },
+    { '@type': 'Article', headline: g.h1, description: g.desc, datePublished: g.date,
+      inLanguage: 'he-IL', mainEntityOfPage: url,
+      author: { '@type': 'Organization', name: 'חוסך' },
+      publisher: { '@type': 'Organization', name: 'חוסך' } },
+  ];
+  // Guides that carry explicit Q&A get a FAQPage node — eligible for FAQ rich
+  // results, and a real reflection of the on-page content.
+  if (g.faq && g.faq.length) {
+    graph.push({
+      '@type': 'FAQPage',
+      mainEntity: g.faq.map(([q, a]) => ({
+        '@type': 'Question', name: q,
+        acceptedAnswer: { '@type': 'Answer', text: a },
+      })),
+    });
+  }
+  return JSON.stringify({ '@context': 'https://schema.org', '@graph': graph });
 }
 
 function head(title, desc, url, extraJsonLd, noindex) {
@@ -564,8 +678,10 @@ function head(title, desc, url, extraJsonLd, noindex) {
   <meta name="twitter:image" content="${SITE}/og-image.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="preconnect" href="https://plausible.io" />
   <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="${CSS_HREF}" />
+  ${analyticsTag()}
   ${extraJsonLd ? `<script type="application/ld+json">${extraJsonLd}</script>` : ''}
 </head>`;
 }
@@ -580,6 +696,19 @@ function articlePage(g) {
   }).join('\n');
   const dateHe = new Date(g.date).toLocaleDateString('he-IL', { year: 'numeric', month: 'long', day: 'numeric' });
   const relatedCards = relatedGuides(g.cat, g.slug, 3).map(guideCard).join('\n');
+  // Visible FAQ — kept in sync with the FAQPage JSON-LD (rich-results rules
+  // require the answers to actually appear on the page).
+  const faqSection = (g.faq && g.faq.length)
+    ? `      <section class="section" aria-label="שאלות נפוצות">
+        <div class="container faq">
+          <header class="section__head reveal"><span class="eyebrow">שאלות נפוצות</span><h2>שאלות ותשובות</h2></header>
+          <div class="faq__list reveal">
+${g.faq.map(([q, a]) => `            <details><summary>${esc(q)}</summary><p>${esc(a)}</p></details>`).join('\n')}
+          </div>
+        </div>
+      </section>
+`
+    : '';
   return `<!DOCTYPE html>
 <html lang="he" dir="rtl">
 ${head(g.title, g.desc, url, articleJsonLd(g))}
@@ -607,7 +736,7 @@ ${body}
           </div>
         </div>
       </section>
-      <section class="section section--alt" aria-label="מדריכים נוספים">
+${faqSection}      <section class="section section--alt" aria-label="מדריכים נוספים">
         <div class="container">
           <header class="section__head reveal"><span class="eyebrow">להמשך קריאה</span><h2>מדריכים נוספים</h2></header>
           <div class="guide-cards">
@@ -799,7 +928,6 @@ ${nav}
           <select id="planSort" class="filter-search" style="flex:0 0 auto;max-width:210px" aria-label="מיון חבילות">
             <option value="price-asc" selected>מהזול ליקר</option>
             <option value="price-desc">מהיקר לזול</option>
-            <option value="rating-desc">דירוג גבוה תחילה</option>
           </select>
           <button class="flag-chip" data-flag="5g">5G</button>
           <button class="flag-chip" data-flag="nocommit">ללא התחייבות</button>
@@ -840,16 +968,18 @@ function providerPage(name, plans) {
   const cards = plans.map(planCardHtml).join('\n        ');
   const jsonld = JSON.stringify({
     '@context': 'https://schema.org',
-    '@type': 'BreadcrumbList',
-    itemListElement: [
-      { '@type': 'ListItem', position: 1, name: 'דף הבית', item: SITE + '/' },
-      { '@type': 'ListItem', position: 2, name: 'כל החבילות', item: SITE + '/plans.html' },
-      { '@type': 'ListItem', position: 3, name: name, item: url },
+    '@graph': [
+      { '@type': 'BreadcrumbList', itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'דף הבית', item: SITE + '/' },
+        { '@type': 'ListItem', position: 2, name: 'כל החבילות', item: SITE + '/plans.html' },
+        { '@type': 'ListItem', position: 3, name: name, item: url },
+      ] },
+      plansItemListJsonLd(plans, url, `מסלולי ${name}`),
     ],
   });
   return `<!DOCTYPE html>
 <html lang="he" dir="rtl">
-${head(`כל המסלולים של ${name} — מחירים והשוואה | חוסך`, `כל מסלולי ${name} במקום אחד — ${plans.length} מסלולים מ-₪${cheapest}. השוו מחירים, תכונות ודירוגים ומצאו את המשתלם ביותר.`, url, jsonld)}
+${head(`כל המסלולים של ${name} — מחירים והשוואה | חוסך`, `כל מסלולי ${name} במקום אחד — ${plans.length} מסלולים מ-₪${cheapest}. השוו מחירים ותכונות ומצאו את המשתלם ביותר.`, url, jsonld)}
 <body id="top">
 ${nav}
   <main id="main">
@@ -858,7 +988,7 @@ ${nav}
         <p class="crumbs"><a href="index.html">דף הבית</a> ← <a href="plans.html">כל החבילות</a> ← ${esc(name)}</p>
         <div style="margin-bottom:14px">${providerLogo(name, 64)}</div>
         <h1>כל המסלולים של <span class="hl">${esc(name)}</span></h1>
-        <p>${plans.length} מסלולים${catNames.length ? ` (${esc(catNames.join(' · '))})` : ''} — החל מ-₪${cheapest}. השוו מחירים, תכונות ודירוגים, ומצאו את המסלול המשתלם ביותר.</p>
+        <p>${plans.length} מסלולים${catNames.length ? ` (${esc(catNames.join(' · '))})` : ''} — החל מ-₪${cheapest}. השוו מחירים ותכונות, ומצאו את המסלול המשתלם ביותר.</p>
         <div class="hero__cta"><a class="btn btn--primary btn--lg" href="#cta">קבלו השוואה חינם ←</a><a class="btn btn--ghost btn--lg" href="plans.html">לכל החבילות</a></div>
       </div>
     </section>
@@ -932,7 +1062,7 @@ function comparePage() {
   const data = catalogue.plans.map((p) => ({
     id: p.id, cat: p.cat, provider: p.provider, plan: p.plan, price: p.price, priceExact: p.priceExact,
     after: p.after, net: p.net, is5G: p.is5G, noCommit: p.noCommit, hasAbroad: p.hasAbroad,
-    rating: p.rating, specs: p.specs,
+    specs: p.specs,
   }));
   const optionsFor = (preId) => categories.map((c) => {
     const opts = (plansByCat[c.slug] || []).map((p) =>
@@ -944,7 +1074,7 @@ function comparePage() {
     `<select class="compare-pick filter-search" id="cmp${i}" aria-label="מסלול ${i + 1}"><option value="">— בחרו מסלול —</option>${optionsFor(preId)}</select>`;
   return `<!DOCTYPE html>
 <html lang="he" dir="rtl">
-${head('השוואת מסלולים צד לצד | חוסך', 'בחרו עד 3 מסלולים והשוו אותם צד לצד — מחיר, רשת, 5G, התחייבות, חו״ל, דירוג ומפרט. מכל חברות התקשורת.', url)}
+${head('השוואת מסלולים צד לצד | חוסך', 'בחרו עד 3 מסלולים והשוו אותם צד לצד — מחיר, רשת, 5G, התחייבות, חו״ל ומפרט. מכל חברות התקשורת.', url)}
 <body id="top">
 ${nav}
   <main id="main">
@@ -952,7 +1082,7 @@ ${nav}
       <div class="container">
         <p class="crumbs"><a href="index.html">דף הבית</a> ← השוואה</p>
         <h1>השוואת מסלולים <span class="hl">צד לצד</span></h1>
-        <p>בחרו עד 3 מסלולים והשוו ביניהם — מחיר, רשת, התחייבות, חו״ל, דירוג ומפרט.</p>
+        <p>בחרו עד 3 מסלולים והשוו ביניהם — מחיר, רשת, התחייבות, חו״ל ומפרט.</p>
       </div>
     </section>
     <section class="section">
@@ -1017,16 +1147,6 @@ const APP_GROUPS = [
   ]],
 ];
 
-// Sample community posts for the live feed preview (representative content).
-const COMMUNITY_POSTS = [
-  ['עזרה בניתוק', 'נועה ב.', true, 'עברתי מהוט מובייל לגולן ב-5 דקות, הניוד לקח יומיים והמספר נשאר. ממליצה בחום 🙌', 42, 'לפני שעה'],
-  ['סלולר', 'אורי כהן', false, 'מישהו יודע אם המבצע של 5G ללא הגבלה ב-₪29 עדיין רץ? קיבלתי התראת חידוש מחוסך', 18, 'לפני 3 שעות'],
-  ['אינטרנט', 'דנה לוי', true, 'סיב אופטי גיגה ב-₪89 — אחרי שנה קפץ ל-₪139. עברתי וחסכתי ₪600 בשנה. תבדקו את החשבון!', 67, 'אתמול'],
-  ['חו״ל', 'יוסי מ.', false, 'eSIM לאירופה — 10GB ב-₪35 עבד מצוין בכל המדינות. בלי הפתעות רומינג ✈️', 31, 'אתמול'],
-  ['המלצות', 'משפחת אברהם', true, 'ריכזנו 4 קווים בחבילה משפחתית וחסכנו ₪80 בחודש. הטיפ: עקבו אחרי תאריך החידוש של כל קו', 53, 'לפני יומיים'],
-  ['טלוויזיה', 'רותם ש.', false, 'מישהו השווה בין החבילות המשולבות? שווה לקחת אינטרנט+טלוויזיה יחד או בנפרד?', 12, 'לפני יומיים'],
-];
-
 // AI advisor preview — a short scripted exchange + quick-start chips.
 const AI_CHIPS = ['✨ מה הכי משתלם לי?', '📱 סלולר הכי זול', '🌐 אינטרנט 1000Mb', '✅ ללא התחייבות', '✈️ חבילת חו״ל', '💰 פחות מ-₪50'];
 
@@ -1043,18 +1163,10 @@ ${cards}
       </div>`;
   }).join('\n');
 
-  const channels = ['הכל', 'המלצות', 'סלולר', 'אינטרנט', 'טלוויזיה', 'חו״ל', 'עזרה בניתוק'];
-  const chanChips = channels.map((c, i) =>
-    `<button class="feed-chip${i === 0 ? ' active' : ''}" data-chan="${i === 0 ? 'all' : esc(c)}">${esc(c)}</button>`).join('');
-  const posts = COMMUNITY_POSTS.map(([chan, author, verified, text, likes, when]) => {
-    const initials = author.trim().charAt(0);
-    const hot = likes >= 40 ? '<span class="feed-hot">🔥 טרנדינג</span>' : '';
-    return `          <article class="feed-post" data-chan="${esc(chan)}">
-            <div class="feed-post__head"><span class="feed-ava" aria-hidden="true">${esc(initials)}</span><span class="feed-author">${esc(author)}${verified ? ' <span class="feed-verified" title="משתמש מאומת">✓</span>' : ''}</span><span class="feed-chan">${esc(chan)}</span><span class="feed-when">${esc(when)}</span></div>
-            <p class="feed-text">${esc(text)}</p>
-            <div class="feed-post__foot"><span class="feed-like">❤ ${likes}</span>${hot}<span class="feed-reply">💬 הגב/י</span></div>
-          </article>`;
-  }).join('\n');
+  // Channel list mirrors the in-app community channels — shown as honest "what
+  // you'll find inside" chips, not as a fake live feed with fabricated posts.
+  const channels = ['המלצות', 'סלולר', 'אינטרנט', 'טלוויזיה', 'חו״ל', 'עזרה בניתוק'];
+  const chanChips = channels.map((c) => `<span class="chip">${esc(c)}</span>`).join('\n          ');
 
   const aiChips = AI_CHIPS.map((c) => `<span class="ai-chip">${esc(c)}</span>`).join('');
 
@@ -1085,14 +1197,15 @@ ${groups}
 
     <section class="section section--alt" id="community">
       <div class="container">
-        <header class="section__head reveal"><span class="eyebrow">💬 קהילת חוסך</span><h2>הצ׳אט הקהילתי — חוכמת ההמון</h2><p>שאלות, טיפים ודירוגים מאנשים אמיתיים שכבר עברו. בחרו ערוץ כדי לראות מה מדברים עליו עכשיו.</p></header>
-        <div class="feed reveal">
-          <div class="feed-chips">${chanChips}</div>
-          <div class="feed-list" id="feedList">
-${posts}
+        <header class="section__head reveal"><span class="eyebrow">💬 קהילת חוסך</span><h2>הצ׳אט הקהילתי — חוכמת ההמון</h2><p>צ׳אט קהילתי עם ערוץ לכל נושא: שואלים, מגיבים, משתפים תמונה או הקלטה — ולומדים מאנשים שכבר עברו.</p></header>
+        <div class="cta__inner reveal" style="text-align:center">
+          <div class="providers__row" aria-label="ערוצי הקהילה">
+          ${chanChips}
           </div>
-          <p class="feed-empty" id="feedEmpty" hidden>אין פוסטים בערוץ הזה עדיין — באפליקציה אפשר לפתוח את הראשון.</p>
-          <p class="feed-foot">פיד לדוגמה. הקהילה המלאה — עם פרסום, תגובות, תמונות והקלטות — נמצאת באפליקציה.</p>
+          <p style="margin:18px auto 0;max-width:46ch">הקהילה רק נפתחת — היו מהראשונים לפתוח דיון ולעזור לחברים לחסוך. הצ׳אט המלא, עם פרסום, תגובות, תמונות והקלטות, מחכה לכם באפליקציה.</p>
+          <div class="hero__cta" style="justify-content:center;margin-top:20px">
+            <a class="btn btn--primary btn--lg" href="#cta">הצטרפו לקהילה ←</a>
+          </div>
         </div>
       </div>
     </section>
@@ -1159,24 +1272,34 @@ fs.writeFileSync(path.join(__dirname, 'compare.html'), comparePage());
 fs.writeFileSync(path.join(__dirname, 'app.html'), appPage());
 fs.writeFileSync(path.join(__dirname, '404.html'), notFoundPage());
 
-// ── Refresh sitemap (home + category pages) ─────────────────────────────────
+// ── Refresh sitemap ─────────────────────────────────────────────────────────
+// Each URL carries a <lastmod> and a tiered <priority>/<changefreq>:
+//  • catalogue date (when prices were last exported) for plan-driven pages
+//    (home, category, provider, all-plans, compare);
+//  • the guide's own publish date for articles;
+//  • today's build date for evergreen static pages.
+const isoDate = (d) => new Date(d).toISOString().slice(0, 10); // YYYY-MM-DD
+const CATALOGUE_DATE = isoDate(catalogue.generated || Date.now());
+const BUILD_DATE = isoDate(Date.now());
+// priority/changefreq tiers — home is the apex; conversion + plan pages rank
+// above evergreen content; legal pages sit lowest.
 const locs = [
-  `${SITE}/`,
-  `${SITE}/plans.html`,
-  `${SITE}/providers.html`,
-  `${SITE}/compare.html`,
-  `${SITE}/app.html`,
-  `${SITE}/guides.html`,
-  `${SITE}/about.html`,
-  ...categories.map((c) => `${SITE}/${c.slug}.html`),
-  ...guides.map((g) => `${SITE}/${g.slug}.html`),
-  ...providerNames.map((n) => `${SITE}/provider-${providerSlug(n)}.html`),
-  `${SITE}/privacy.html`,
-  `${SITE}/terms.html`,
+  { loc: `${SITE}/`, lastmod: CATALOGUE_DATE, priority: '1.0', changefreq: 'daily' },
+  { loc: `${SITE}/plans.html`, lastmod: CATALOGUE_DATE, priority: '0.9', changefreq: 'daily' },
+  { loc: `${SITE}/providers.html`, lastmod: CATALOGUE_DATE, priority: '0.8', changefreq: 'weekly' },
+  { loc: `${SITE}/compare.html`, lastmod: CATALOGUE_DATE, priority: '0.8', changefreq: 'weekly' },
+  { loc: `${SITE}/app.html`, lastmod: BUILD_DATE, priority: '0.7', changefreq: 'monthly' },
+  { loc: `${SITE}/guides.html`, lastmod: BUILD_DATE, priority: '0.7', changefreq: 'weekly' },
+  { loc: `${SITE}/about.html`, lastmod: BUILD_DATE, priority: '0.5', changefreq: 'monthly' },
+  ...categories.map((c) => ({ loc: `${SITE}/${c.slug}.html`, lastmod: CATALOGUE_DATE, priority: '0.9', changefreq: 'daily' })),
+  ...guides.map((g) => ({ loc: `${SITE}/${g.slug}.html`, lastmod: isoDate(g.date), priority: '0.6', changefreq: 'monthly' })),
+  ...providerNames.map((n) => ({ loc: `${SITE}/provider-${providerSlug(n)}.html`, lastmod: CATALOGUE_DATE, priority: '0.7', changefreq: 'weekly' })),
+  { loc: `${SITE}/privacy.html`, lastmod: BUILD_DATE, priority: '0.3', changefreq: 'yearly' },
+  { loc: `${SITE}/terms.html`, lastmod: BUILD_DATE, priority: '0.3', changefreq: 'yearly' },
 ];
 const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${locs.map((l, i) => `  <url>\n    <loc>${l}</loc>\n    <changefreq>weekly</changefreq>\n    <priority>${i === 0 ? '1.0' : '0.8'}</priority>\n  </url>`).join('\n')}
+${locs.map((u) => `  <url>\n    <loc>${u.loc}</loc>\n    <lastmod>${u.lastmod}</lastmod>\n    <changefreq>${u.changefreq}</changefreq>\n    <priority>${u.priority}</priority>\n  </url>`).join('\n')}
 </urlset>
 `;
 fs.writeFileSync(path.join(__dirname, 'sitemap.xml'), sitemap);

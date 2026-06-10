@@ -45,9 +45,11 @@ class AccountWidget extends StatelessWidget {
                           shape: BoxShape.circle,
                         ),
                         child: Center(
-                          child: Text(
-                            appState.isLoggedIn && appState.firstName.isNotEmpty ? appState.firstName[0] : '👤',
-                            style: GoogleFonts.rubik(fontSize: 26, fontWeight: FontWeight.w700, color: Colors.white),
+                          child: ExcludeSemantics(
+                            child: Text(
+                              appState.isLoggedIn && appState.firstName.isNotEmpty ? appState.firstName[0] : '👤',
+                              style: GoogleFonts.rubik(fontSize: 26, fontWeight: FontWeight.w700, color: Colors.white),
+                            ),
                           ),
                         ),
                       ),
@@ -101,7 +103,7 @@ class AccountWidget extends StatelessWidget {
                   ),
                   child: Row(
                     children: [
-                      const Text('🔓', style: TextStyle(fontSize: 22)),
+                      const ExcludeSemantics(child: Text('🔓', style: TextStyle(fontSize: 22))),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(
@@ -243,7 +245,7 @@ class AccountWidget extends StatelessWidget {
                         ),
                         child: Column(
                           children: [
-                            const Text('🚀', style: TextStyle(fontSize: 40)),
+                            const ExcludeSemantics(child: Text('🚀', style: TextStyle(fontSize: 40))),
                             const SizedBox(height: 12),
                             Text('עוד לא בחרתם מסלול?', style: ffTheme.titleSmall),
                             const SizedBox(height: 4),
@@ -322,7 +324,7 @@ class AccountWidget extends StatelessWidget {
                                 color: Colors.white.withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(14),
                               ),
-                              child: const Center(child: Text('🎯', style: TextStyle(fontSize: 24))),
+                              child: const Center(child: ExcludeSemantics(child: Text('🎯', style: TextStyle(fontSize: 24)))),
                             ),
                             const SizedBox(width: 14),
                             Expanded(
@@ -363,7 +365,7 @@ class AccountWidget extends StatelessWidget {
                       ),
                       child: Row(
                         children: [
-                          const Text('🎯', style: TextStyle(fontSize: 20)),
+                          const ExcludeSemantics(child: Text('🎯', style: TextStyle(fontSize: 20))),
                           const SizedBox(width: 10),
                           Expanded(
                             child: Text('תקציב השאלון: ₪${appState.quizBudget}${appState.quizCat == 'abroad' ? '/חבילה' : '/חודש'}',
@@ -403,7 +405,7 @@ class AccountWidget extends StatelessWidget {
                             onTap: () => context.pushNamed('PlanDetail', pathParameters: {'planId': id}),
                             child: Container(
                               width: 140,
-                              margin: const EdgeInsets.only(right: 10),
+                              margin: const EdgeInsetsDirectional.only(end: 10),
                               padding: const EdgeInsets.all(12),
                               decoration: BoxDecoration(
                                 color: Colors.white,

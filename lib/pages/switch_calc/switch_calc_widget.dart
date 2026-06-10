@@ -232,7 +232,7 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
                     onTap: () => setState(() => _exitFee = fee.toDouble()),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 180),
-                      margin: const EdgeInsets.only(right: 6),
+                      margin: const EdgeInsetsDirectional.only(end: 6),
                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                       decoration: BoxDecoration(
                         color: active ? ffTheme.primary : Colors.white,

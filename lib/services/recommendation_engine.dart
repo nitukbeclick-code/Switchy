@@ -128,7 +128,7 @@ class RecommendationEngine {
     // ── Sub-scores, each 0..1 ────────────────────────────────────────────────
     final priceScore = _priceScore(plan, profile);
     final savingScore = _savingScore(saving, profile);
-    final ratingScore = (plan.rating / 5).clamp(0.0, 1.0);
+    final ratingScore = _ratingSignal(plan);
     final speedScore = _speedScore(plan);
     final coverageScore = _coverageScore(plan);
     final flexScore = plan.noCommit ? 1.0 : 0.45;
@@ -249,7 +249,17 @@ class RecommendationEngine {
       _ => 0.7,
     };
     // Blend in the provider rating as a real-world coverage/reliability proxy.
-    return (base * 0.7 + (plan.rating / 5) * 0.3).clamp(0.0, 1.0);
+    return (base * 0.7 + _ratingSignal(plan) * 0.3).clamp(0.0, 1.0);
+  }
+
+  /// Honest rating signal on a 0..1 scale. A plan's `rating` field is only a
+  /// real signal once at least one review backs it (`reviews > 0`); until then
+  /// it is a fabricated placeholder, so we return a NEUTRAL midpoint (0.6) that
+  /// neither rewards nor penalises the plan. This keeps ratings out of today's
+  /// ranking while leaving the path wired for a future real-review pipeline.
+  static double _ratingSignal(Plan plan) {
+    if (plan.reviews > 0) return (plan.rating / 5).clamp(0.0, 1.0);
+    return 0.6;
   }
 
   static bool _isGigFiber(Plan plan) {

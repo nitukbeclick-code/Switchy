@@ -24,36 +24,8 @@ class HomeWidget extends StatefulWidget {
 class _HomeWidgetState extends State<HomeWidget> {
   final ScrollController _scrollController = ScrollController();
 
-  // Rotating social-proof ticker shown under the header.
-  int _tickerIndex = 0;
-  Timer? _tickerTimer;
-
-  static const List<String> _tickers = [
-    '🔥 אנשים משווים מחירים בכל יום',
-    '💰 מסלולים סלולריים מתחילים מ-₪39 לחודש',
-    '📶 5G זמין ב-₪39/חודש — בדוק זמינות!',
-    '🌐 השוו מסלולי אינטרנט גיגה ומצאו את הזול ביותר',
-    '📺 השוואת חבילות טלוויזיה — HOT, yes ועוד',
-    '🏠 חבילות משולבות (טריפל) במחיר אחד נוח',
-    '✈️ אירלו eSIM: ₪25 ל-10GB אירופה',
-    '🎯 רמי לוי: 3 קווים ב-₪80',
-    '⭐ דרגו את הספק שלכם ועזרו לאחרים לבחור',
-    '🔔 עקבו אחרי ירידות מחיר אצל הספקים',
-    '🤝 נציג אישי מלווה אתכם לכל אורך המעבר',
-    '🛡️ המעבר ללא עלות וללא התחייבות',
-  ];
-
-  @override
-  void initState() {
-    super.initState();
-    _tickerTimer = Timer.periodic(const Duration(seconds: 4), (_) {
-      if (mounted) setState(() => _tickerIndex = (_tickerIndex + 1) % _tickers.length);
-    });
-  }
-
   @override
   void dispose() {
-    _tickerTimer?.cancel();
     _scrollController.dispose();
     super.dispose();
   }
@@ -95,7 +67,7 @@ class _HomeWidgetState extends State<HomeWidget> {
               SliverToBoxAdapter(child: _buildHeader(context, ffTheme, appState)),
 
               // ── 2. Social proof ticker ─────────────────────────────────────
-              SliverToBoxAdapter(child: _buildTicker(context, ffTheme)),
+              const SliverToBoxAdapter(child: _HomeTicker()),
 
               // ── 2b. Renewal Radar alert ────────────────────────────────────
               _buildRenewalAlert(context, ffTheme, appState),
@@ -406,36 +378,6 @@ class _HomeWidgetState extends State<HomeWidget> {
     );
   }
 
-  Widget _buildTicker(BuildContext context, AppTheme ffTheme) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: ffTheme.shadowSoft,
-        border: const Border(
-          right: BorderSide(color: AppColors.secondary, width: 3),
-        ),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 450),
-        transitionBuilder: (child, animation) => SlideTransition(
-          position: Tween<Offset>(begin: const Offset(0, 0.5), end: Offset.zero).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
-          child: FadeTransition(opacity: animation, child: child),
-        ),
-        child: Text(
-          _tickers[_tickerIndex],
-          key: ValueKey(_tickerIndex),
-          style: AppTheme.of(context).labelMedium.copyWith(
-            color: AppTheme.of(context).primaryText,
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-          ),
-          textAlign: TextAlign.right,
-        ),
-      ),
-    );
-  }
-
   Widget _buildSavingsHero(BuildContext context, AppTheme ffTheme, SavingsSummary savings) {
     final appState = Provider.of<AppState>(context, listen: false);
     // Shared summary (same engine the /savings dashboard uses), so tapping the
@@ -459,7 +401,7 @@ class _HomeWidgetState extends State<HomeWidget> {
         children: [
           Text(
             'חיסכון פוטנציאלי שנתי',
-            style: ffTheme.labelMedium.copyWith(color: Colors.white.withValues(alpha: 0.60)),
+            style: ffTheme.labelMedium.copyWith(color: Colors.white.withValues(alpha: 0.75)),
           ),
           const SizedBox(height: 8),
           TweenAnimationBuilder<int>(
@@ -482,7 +424,7 @@ class _HomeWidgetState extends State<HomeWidget> {
             appState.billsPersonalized
                 ? 'מחושב לפי החשבונות שלך'
                 : 'הערכה — ענו על השאלון לחישוב מדויק',
-            style: ffTheme.bodySmall.copyWith(color: Colors.white.withValues(alpha: 0.50)),
+            style: ffTheme.bodySmall.copyWith(color: Colors.white.withValues(alpha: 0.75)),
           ),
           const SizedBox(height: 20),
           GestureDetector(
@@ -783,25 +725,21 @@ class _HomeWidgetState extends State<HomeWidget> {
     ).animate().fadeIn(delay: 400.ms);
   }
 
-  static const _communityPreviews = [
-    _CommunityPreview(user: 'דן', channel: 'סלולר', text: 'מי עדיף — גולן או רמי לוי ב-2026?', likes: 48, replies: 23),
-    _CommunityPreview(user: 'מ', channel: 'אינטרנט', text: 'עברתי לסלקום גיגה ב-₪89 — כדאי ב-100%', likes: 61, replies: 15),
-    _CommunityPreview(user: 'ש', channel: 'TV', text: 'HOT או yes? מה הכי שווה לספורט?', likes: 34, replies: 19),
-  ];
-
   Widget _buildCommunityHighlights(BuildContext context, AppTheme ffTheme) {
     final appState = Provider.of<AppState>(context, listen: false);
-    // Merge user posts (up to 1) with seed posts for a total of 3
-    final userPosts = appState.communityPosts.take(1).map((p) => _CommunityPreview(
-      user: (p['author'] as String? ?? 'א')[0],
-      channel: p['channel'] as String? ?? 'כללי',
-      text: p['text'] as String? ?? '',
-      likes: 0,
-      replies: 0,
-      isUserPost: true,
-    )).toList();
-    final seedPosts = _communityPreviews.take(3 - userPosts.length).toList();
-    final displayPosts = [...userPosts, ...seedPosts];
+    // Drive the section from REAL user posts only — no fabricated previews with
+    // invented like/reply counts. Consistent with the honestly-empty Community
+    // page: until someone actually posts, we show a single "join the discussion"
+    // CTA instead of pretending there's a buzzing feed.
+    final realPosts = appState.communityPosts
+        .map((p) => _CommunityPreview(
+              user: (p['author'] as String? ?? 'א')[0],
+              channel: p['channel'] as String? ?? 'כללי',
+              text: p['text'] as String? ?? '',
+            ))
+        .where((p) => p.text.isNotEmpty)
+        .take(3)
+        .toList();
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
@@ -812,7 +750,7 @@ class _HomeWidgetState extends State<HomeWidget> {
             children: [
               const Text('💬', style: TextStyle(fontSize: 18)),
               const SizedBox(width: 6),
-              Text('חם בקהילה', style: ffTheme.titleLarge),
+              Text('קהילה', style: ffTheme.titleLarge),
               const Spacer(),
               GestureDetector(
                 onTap: () => context.goNamed('Community'),
@@ -821,52 +759,54 @@ class _HomeWidgetState extends State<HomeWidget> {
             ],
           ),
           const SizedBox(height: 12),
-          ...displayPosts.asMap().entries.map((e) {
-            final i = e.key;
-            final post = e.value;
-            return GestureDetector(
-              onTap: () => context.goNamed('Community'),
-              child: Container(
-                margin: const EdgeInsets.only(bottom: 8),
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: post.isUserPost ? ffTheme.accent1 : Colors.white,
-                  borderRadius: BorderRadius.circular(ffTheme.radiusLg),
-                  border: Border.all(color: post.isUserPost ? ffTheme.primary.withValues(alpha: 0.2) : ffTheme.alternate),
-                  boxShadow: ffTheme.shadowSoft,
-                ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 38,
-                      height: 38,
-                      decoration: BoxDecoration(
-                        color: post.isUserPost ? ffTheme.primary : ffTheme.accent1,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Center(
-                        child: Text(
-                          post.user,
-                          style: ffTheme.labelLarge.copyWith(color: post.isUserPost ? Colors.white : ffTheme.primary, fontWeight: FontWeight.w700),
+          if (realPosts.isEmpty)
+            _buildCommunityCta(context, ffTheme)
+          else
+            ...realPosts.asMap().entries.map((e) {
+              final i = e.key;
+              final post = e.value;
+              return GestureDetector(
+                onTap: () => context.goNamed('Community'),
+                child: Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: ffTheme.accent1,
+                    borderRadius: BorderRadius.circular(ffTheme.radiusLg),
+                    border: Border.all(color: ffTheme.primary.withValues(alpha: 0.2)),
+                    boxShadow: ffTheme.shadowSoft,
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          color: ffTheme.primary,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Center(
+                          child: Text(
+                            post.user,
+                            style: ffTheme.labelLarge.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: ffTheme.accent2,
-                                  borderRadius: BorderRadius.circular(ffTheme.radiusSm),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: ffTheme.accent2,
+                                    borderRadius: BorderRadius.circular(ffTheme.radiusSm),
+                                  ),
+                                  child: Text(post.channel, style: ffTheme.labelSmall.copyWith(color: const Color(0xFF8A6000), fontSize: 10, fontWeight: FontWeight.w700)),
                                 ),
-                                child: Text(post.channel, style: ffTheme.labelSmall.copyWith(color: const Color(0xFF8A6000), fontSize: 10, fontWeight: FontWeight.w700)),
-                              ),
-                              if (post.isUserPost) ...[
                                 const SizedBox(width: 6),
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -874,44 +814,64 @@ class _HomeWidgetState extends State<HomeWidget> {
                                   child: Text('הפוסט שלך', style: ffTheme.labelSmall.copyWith(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w700)),
                                 ),
                               ],
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          Text(post.text, style: ffTheme.bodySmall.copyWith(fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),
-                        ],
+                            ),
+                            const SizedBox(height: 4),
+                            Text(post.text, style: ffTheme.bodySmall.copyWith(fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),
+                          ],
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 10),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.favorite_rounded, size: 12, color: Colors.red.shade400),
-                            const SizedBox(width: 3),
-                            Text('${post.likes}', style: ffTheme.labelSmall.copyWith(color: Colors.red.shade400, fontWeight: FontWeight.w600)),
-                          ],
-                        ),
-                        const SizedBox(height: 3),
-                        Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.chat_bubble_outline_rounded, size: 12, color: ffTheme.secondaryText),
-                            const SizedBox(width: 3),
-                            Text('${post.replies}', style: ffTheme.labelSmall),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ).animate(delay: (i * 60).ms).fadeIn(duration: 300.ms).slideX(begin: 0.04, end: 0),
-            );
-          }),
+                    ],
+                  ),
+                ).animate(delay: (i * 60).ms).fadeIn(duration: 300.ms).slideX(begin: 0.04, end: 0),
+              );
+            }),
         ],
       ),
     ).animate().fadeIn(delay: 420.ms);
+  }
+
+  Widget _buildCommunityCta(BuildContext context, AppTheme ffTheme) {
+    return GestureDetector(
+      onTap: () => context.goNamed('Community'),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: ffTheme.accent1,
+          borderRadius: BorderRadius.circular(ffTheme.radiusLg),
+          border: Border.all(color: ffTheme.primary.withValues(alpha: 0.2)),
+          boxShadow: ffTheme.shadowSoft,
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(color: ffTheme.primary, shape: BoxShape.circle),
+              child: const Center(child: Text('💬', style: TextStyle(fontSize: 18))),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('הצטרפו לדיון', style: ffTheme.titleSmall),
+                  const SizedBox(height: 2),
+                  Text(
+                    'שתפו חוויה או שאלו על מסלולים — ועזרו לאחרים לבחור',
+                    style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Icon(Icons.arrow_back_rounded, color: ffTheme.primary, size: 20),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildToolsRow(BuildContext context, AppTheme ffTheme) {
@@ -1230,8 +1190,83 @@ class _Provider {
 }
 
 class _CommunityPreview {
-  const _CommunityPreview({required this.user, required this.channel, required this.text, required this.likes, required this.replies, this.isUserPost = false});
+  const _CommunityPreview({required this.user, required this.channel, required this.text});
   final String user, channel, text;
-  final int likes, replies;
-  final bool isUserPost;
+}
+
+/// Rotating marketing ticker shown under the header. Lives in its own
+/// StatefulWidget so its 4-second rotation rebuilds only this strip — not the
+/// whole HomeWidget (which would otherwise re-run computeSavings + the
+/// recommendation-engine ranking passes every 4 seconds).
+class _HomeTicker extends StatefulWidget {
+  const _HomeTicker();
+
+  @override
+  State<_HomeTicker> createState() => _HomeTickerState();
+}
+
+class _HomeTickerState extends State<_HomeTicker> {
+  int _index = 0;
+  Timer? _timer;
+
+  static const List<String> _tickers = [
+    '🔥 אנשים משווים מחירים בכל יום',
+    '💰 מסלולים סלולריים מתחילים מ-₪39 לחודש',
+    '📶 5G זמין ב-₪39/חודש — בדוק זמינות!',
+    '🌐 השוו מסלולי אינטרנט גיגה ומצאו את הזול ביותר',
+    '📺 השוואת חבילות טלוויזיה — HOT, yes ועוד',
+    '🏠 חבילות משולבות (טריפל) במחיר אחד נוח',
+    '✈️ אירלו eSIM: ₪25 ל-10GB אירופה',
+    '🎯 רמי לוי: 3 קווים ב-₪80',
+    '⭐ דרגו את הספק שלכם ועזרו לאחרים לבחור',
+    '🔔 עקבו אחרי ירידות מחיר אצל הספקים',
+    '🤝 נציג אישי מלווה אתכם לכל אורך המעבר',
+    '🛡️ המעבר ללא עלות וללא התחייבות',
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _timer = Timer.periodic(const Duration(seconds: 4), (_) {
+      if (mounted) setState(() => _index = (_index + 1) % _tickers.length);
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ffTheme = AppTheme.of(context);
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: ffTheme.shadowSoft,
+        border: const Border(
+          right: BorderSide(color: AppColors.secondary, width: 3),
+        ),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 450),
+        transitionBuilder: (child, animation) => SlideTransition(
+          position: Tween<Offset>(begin: const Offset(0, 0.5), end: Offset.zero).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
+          child: FadeTransition(opacity: animation, child: child),
+        ),
+        child: Text(
+          _tickers[_index],
+          key: ValueKey(_index),
+          style: ffTheme.labelMedium.copyWith(
+            color: ffTheme.primaryText,
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+          ),
+          textAlign: TextAlign.right,
+        ),
+      ),
+    );
+  }
 }

@@ -368,9 +368,9 @@ class _CallbackWidgetState extends State<CallbackWidget> {
                     decoration: BoxDecoration(color: ffTheme.accent1, shape: BoxShape.circle),
                     child: Icon(Icons.phone_in_talk_rounded, color: ffTheme.primary, size: 46),
                   ).animate().scale(duration: 600.ms, curve: Curves.elasticOut),
-                  Positioned(
-                    top: 4, right: 4,
-                    child: const Text('✨', style: TextStyle(fontSize: 16)).animate(delay: 400.ms).fadeIn().slideY(begin: -0.5),
+                  PositionedDirectional(
+                    top: 4, end: 4,
+                    child: const ExcludeSemantics(child: Text('✨', style: TextStyle(fontSize: 16))).animate(delay: 400.ms).fadeIn().slideY(begin: -0.5),
                   ),
                 ],
               ),

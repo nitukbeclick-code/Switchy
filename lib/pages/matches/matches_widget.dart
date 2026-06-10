@@ -38,6 +38,7 @@ class MatchesWidget extends StatelessWidget {
 
     final totalAnnualSaving = summary.totalAnnualPotential;
     final analyzedCount = summary.categories.where((c) => c.hasBill).length;
+    final personalized = appState.billsPersonalized;
 
     return Scaffold(
       backgroundColor: ffTheme.background,
@@ -46,6 +47,7 @@ class MatchesWidget extends StatelessWidget {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
+          tooltip: 'חזרה',
           onPressed: () => context.safePop(),
         ),
         title: Text(
@@ -66,7 +68,7 @@ class MatchesWidget extends StatelessWidget {
               padding: const EdgeInsets.fromLTRB(16, 20, 16, 100),
               children: [
                 // ── Hero summary card ──────────────────────────────────────────
-                _buildHeroCard(context, ffTheme, totalAnnualSaving, analyzedCount)
+                _buildHeroCard(context, ffTheme, totalAnnualSaving, analyzedCount, personalized)
                     .animate()
                     .fadeIn(duration: 500.ms),
                 const SizedBox(height: 24),
@@ -75,7 +77,7 @@ class MatchesWidget extends StatelessWidget {
                 ...catMatches.asMap().entries.map((entry) {
                   final i = entry.key;
                   final item = entry.value;
-                  return _buildMatchCard(context, ffTheme, item.catId, item.catName, item.catIcon, item.match, appState)
+                  return _buildMatchCard(context, ffTheme, item.catId, item.catName, item.catIcon, item.match, appState, personalized)
                       .animate(delay: (120 + i * 80).ms)
                       .fadeIn(duration: 400.ms)
                       .slideY(begin: 0.06, end: 0);
@@ -90,6 +92,7 @@ class MatchesWidget extends StatelessWidget {
     AppTheme ffTheme,
     int totalSaving,
     int analyzedCount,
+    bool personalized,
   ) {
     final savingDisplay = totalSaving > 1000
         ? '₪${(totalSaving / 1000).toStringAsFixed(1)}K'
@@ -128,37 +131,64 @@ class MatchesWidget extends StatelessWidget {
             style: ffTheme.bodySmall.copyWith(color: Colors.white.withValues(alpha: 0.65)),
           ),
           const SizedBox(height: 6),
-          if (totalSaving > 0)
-            TweenAnimationBuilder<int>(
-              tween: IntTween(begin: 0, end: totalSaving),
-              duration: const Duration(milliseconds: 1400),
-              curve: Curves.easeOutCubic,
-              builder: (_, value, __) {
-                final disp = value > 1000
-                    ? '₪${(value / 1000).toStringAsFixed(1)}K'
-                    : '₪$value';
-                return Text(
-                  disp,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              if (totalSaving > 0)
+                TweenAnimationBuilder<int>(
+                  tween: IntTween(begin: 0, end: totalSaving),
+                  duration: const Duration(milliseconds: 1400),
+                  curve: Curves.easeOutCubic,
+                  builder: (_, value, __) {
+                    final disp = value > 1000
+                        ? '₪${(value / 1000).toStringAsFixed(1)}K'
+                        : '₪$value';
+                    return Text(
+                      personalized ? disp : '~$disp',
+                      style: ffTheme.displaySmall.copyWith(
+                        color: AppColors.secondary,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    );
+                  },
+                )
+              else
+                Text(
+                  savingDisplay,
                   style: ffTheme.displaySmall.copyWith(
                     color: AppColors.secondary,
                     fontWeight: FontWeight.bold,
                   ),
-                );
-              },
-            )
-          else
-            Text(
-              savingDisplay,
-              style: ffTheme.displaySmall.copyWith(
-                color: AppColors.secondary,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+                ),
+              if (!personalized && totalSaving > 0) ...[
+                const SizedBox(width: 8),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 6),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.18),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      'הערכה',
+                      style: ffTheme.labelSmall.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
           const SizedBox(height: 8),
           Text(
-            analyzedCount > 0
-                ? 'ניתחנו $analyzedCount קטגוריות עבורך'
-                : 'ניתחנו את כל הקטגוריות עבורך',
+            !personalized && totalSaving > 0
+                ? 'הערכה — עדכנו את החשבונות שלכם לחישוב מדויק'
+                : analyzedCount > 0
+                    ? 'ניתחנו $analyzedCount קטגוריות עבורך'
+                    : 'ניתחנו את כל הקטגוריות עבורך',
             style: ffTheme.bodySmall.copyWith(color: Colors.white.withValues(alpha: 0.55)),
           ),
         ],
@@ -174,6 +204,7 @@ class MatchesWidget extends StatelessWidget {
     String catIcon,
     PlanMatch match,
     AppState appState,
+    bool personalized,
   ) {
     final plan = match.plan;
     final priceLabel = priceUnitLabel(plan);
@@ -252,8 +283,10 @@ class MatchesWidget extends StatelessWidget {
                     if (match.annualSaving > 0) ...[
                       const SizedBox(height: 8),
                       StatPill(
-                        value: '₪${match.annualSaving}',
-                        label: 'לשנה',
+                        value: personalized
+                            ? '₪${match.annualSaving}'
+                            : '~₪${match.annualSaving}',
+                        label: personalized ? 'לשנה' : 'הערכה לשנה',
                       ),
                     ],
                   ],

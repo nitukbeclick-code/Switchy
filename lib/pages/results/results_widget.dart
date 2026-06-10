@@ -7,7 +7,6 @@ import '../../core/nav.dart';
 import '../../app_state.dart';
 import '../../data.dart';
 import '../../components/plan_card/plan_card_widget.dart';
-import '../../components/shimmer_card/shimmer_card_widget.dart';
 import '../../services/recommendation_engine.dart';
 
 class ResultsWidget extends StatefulWidget {
@@ -19,7 +18,6 @@ class ResultsWidget extends StatefulWidget {
 
 class _ResultsWidgetState extends State<ResultsWidget> {
   final _searchController = TextEditingController();
-  bool _loading = false;
   String _providerFilter = '';
   bool _smartSort = false;
 
@@ -44,14 +42,12 @@ class _ResultsWidgetState extends State<ResultsWidget> {
     super.dispose();
   }
 
-  Future<void> _switchCategory(AppState appState, String cat) async {
+  void _switchCategory(AppState appState, String cat) {
     HapticFeedback.selectionClick();
-    setState(() { _loading = true; _providerFilter = ''; });
+    setState(() { _providerFilter = ''; });
     appState.setCategory(cat);
     _searchController.clear();
     appState.setSearch('');
-    await Future.delayed(const Duration(milliseconds: 700));
-    if (mounted) setState(() => _loading = false);
   }
 
   @override
@@ -112,8 +108,8 @@ class _ResultsWidgetState extends State<ResultsWidget> {
             icon: Stack(children: [
               const Icon(Icons.tune_rounded, color: Colors.white),
               if (appState.activeFilters.isNotEmpty)
-                Positioned(
-                  top: 0, right: 0,
+                PositionedDirectional(
+                  top: 0, end: 0,
                   child: Container(
                     width: 8, height: 8,
                     decoration: BoxDecoration(
@@ -137,7 +133,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                 children: _categories.map((c) {
                   final active = appState.selectedCat == c.$1;
                   return Padding(
-                    padding: const EdgeInsets.only(left: 8),
+                    padding: const EdgeInsetsDirectional.only(end: 8),
                     child: GestureDetector(
                       onTap: () => _switchCategory(appState, c.$1),
                       child: AnimatedContainer(
@@ -354,7 +350,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                           ? _smartSort
                           : (!_smartSort && appState.sortMode == s.$1);
                       return Padding(
-                        padding: const EdgeInsets.only(left: 8),
+                        padding: const EdgeInsetsDirectional.only(end: 8),
                         child: GestureDetector(
                           onTap: () {
                             HapticFeedback.selectionClick();
@@ -495,18 +491,8 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                   ),
                 ),
 
-              // Plan list or shimmer or empty state
-              if (_loading)
-                SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
-                  sliver: SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (_, __) => const ShimmerCardWidget(),
-                      childCount: 4,
-                    ),
-                  ),
-                )
-              else if (plans.isEmpty)
+              // Plan list or empty state
+              if (plans.isEmpty)
                 SliverFillRemaining(
                   hasScrollBody: false,
                   child: Padding(
@@ -727,7 +713,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
     final isAll = label == 'הכל';
     final active = isAll ? _providerFilter.isEmpty : _providerFilter == label;
     return Padding(
-      padding: const EdgeInsets.only(left: 8),
+      padding: const EdgeInsetsDirectional.only(end: 8),
       child: GestureDetector(
         onTap: () => setState(() => _providerFilter = isAll ? '' : label),
         child: AnimatedContainer(
@@ -775,7 +761,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
           // "נקה" clear button — shown only when any filter is active
           if (hasActiveFilters)
             Padding(
-              padding: const EdgeInsets.only(left: 8),
+              padding: const EdgeInsetsDirectional.only(end: 8),
               child: GestureDetector(
                 onTap: () {
                   HapticFeedback.selectionClick();
@@ -806,7 +792,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
           ...chips.map((chip) {
             final active = appState.activeFilters.contains(chip.$2);
             return Padding(
-              padding: const EdgeInsets.only(left: 8),
+              padding: const EdgeInsetsDirectional.only(end: 8),
               child: GestureDetector(
                 onTap: () {
                   HapticFeedback.selectionClick();

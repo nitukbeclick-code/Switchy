@@ -133,8 +133,8 @@ List<Plan> filteredPlans({
   if (query.isNotEmpty) {
     final q = query.toLowerCase();
     plans = plans.where((p) =>
-      p.provider.contains(q) ||
-      p.plan.contains(q) ||
+      p.provider.toLowerCase().contains(q) ||
+      p.plan.toLowerCase().contains(q) ||
       p.feats.any((f) => f.toLowerCase().contains(q))
     ).toList();
   }

@@ -453,8 +453,8 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                             child: Text('ד', style: GoogleFonts.rubik(fontSize: 20, fontWeight: FontWeight.w700, color: ffTheme.primary)),
                           ),
                         ),
-                        Positioned(
-                          right: 0, bottom: 0,
+                        PositionedDirectional(
+                          end: 0, bottom: 0,
                           child: Container(
                             width: 14, height: 14,
                             decoration: BoxDecoration(

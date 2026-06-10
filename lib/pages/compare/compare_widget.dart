@@ -227,8 +227,6 @@ class _CompareTable extends StatelessWidget {
             return bill > 0 ? '₪${planSaveYear(p, bill)}' : '—';
           }).toList(),
           isHighlight: true),
-      _Row('דירוג',
-          plans.map((p) => '${p.rating}/5 (${p.reviews})').toList()),
       _Row('רשת', plans.map((p) => p.netLabel).toList()),
       _Row('ללא התחייבות',
           plans.map((p) => p.noCommit ? '✓' : '—').toList()),
@@ -381,7 +379,7 @@ class _CompareTable extends StatelessWidget {
                   ...plans.map((p) => SizedBox(
                     width: 140,
                     child: Padding(
-                      padding: const EdgeInsets.only(left: 10),
+                      padding: const EdgeInsetsDirectional.only(start: 10),
                       child: ElevatedButton(
                         onPressed: () {
                           HapticFeedback.lightImpact();
@@ -439,7 +437,7 @@ class _CompareTable extends StatelessWidget {
                         ...plans.map((p) => SizedBox(
                           width: 150,
                           child: Padding(
-                            padding: const EdgeInsets.only(left: 10),
+                            padding: const EdgeInsetsDirectional.only(start: 10),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: p.feats.map((f) => Padding(
@@ -501,11 +499,6 @@ class _WinnerSummaryCard extends StatelessWidget {
     final minPrice = plans.map((p) => p.price).reduce((a, b) => a < b ? a : b);
     if (winner.price == minPrice && plans.where((p) => p.price == minPrice).length == 1) {
       superlatives.add('המחיר הזול ביותר');
-    }
-
-    final maxRating = plans.map((p) => p.rating).reduce((a, b) => a > b ? a : b);
-    if (winner.rating == maxRating && plans.where((p) => p.rating == maxRating).length == 1) {
-      superlatives.add('הדירוג הגבוה ביותר');
     }
 
     final maxSaving = plans.map((p) => planSaveYear(p, appState.currentBill(p.cat))).reduce((a, b) => a > b ? a : b);
@@ -688,7 +681,7 @@ class _WinnerSummaryCard extends StatelessWidget {
                   ),
                   if (isWinner)
                     Padding(
-                      padding: const EdgeInsets.only(right: 4),
+                      padding: const EdgeInsetsDirectional.only(end: 4),
                       child: Icon(Icons.star_rounded, size: 14, color: ffTheme.secondary),
                     )
                   else
@@ -735,7 +728,7 @@ class _PlanHeader extends StatelessWidget {
       },
       child: Container(
       width: 140,
-      margin: const EdgeInsets.only(left: 10),
+      margin: const EdgeInsetsDirectional.only(start: 10),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: isWinner ? ffTheme.accent1 : Colors.white,

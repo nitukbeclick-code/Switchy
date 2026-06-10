@@ -1,5 +1,6 @@
 import '../app_state.dart';
 import '../data.dart';
+import '../models.dart' show Plan;
 import 'recommendation_engine.dart';
 
 /// The saving opportunity in a single category: what the user pays today and
@@ -43,6 +44,22 @@ class SavingsSummary {
   }
 
   bool get hasAnyBill => categories.any((c) => c.hasBill);
+}
+
+/// Fallback annual saving credited when a lead is submitted for a plan whose
+/// computed yearly saving is not positive (e.g. the user hasn't entered a real
+/// bill yet, so [planSaveYear] returns 0). It is a deliberately modest, generic
+/// "you probably saved something" estimate — roughly ₪45/month — used only to
+/// give the lead-submission flow a non-zero figure to celebrate.
+const int kDefaultLeadSavingFallback = 540;
+
+/// The annual ₪ saving to credit a user's running total when they submit a lead
+/// for [plan] against their [bill] for that category. Uses the real computed
+/// [planSaveYear] when it is positive; otherwise falls back to
+/// [kDefaultLeadSavingFallback]. Pure — no AppState, no persistence.
+int savingsCreditedOnLead(Plan? plan, int bill) {
+  final save = plan != null ? planSaveYear(plan, bill) : 0;
+  return save > 0 ? save : kDefaultLeadSavingFallback;
 }
 
 /// Compute the savings summary for [s] across all categories.

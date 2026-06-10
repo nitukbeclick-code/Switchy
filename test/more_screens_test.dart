@@ -110,10 +110,9 @@ void main() {
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
 
-      // App bar title + the comparison-table row labels (compare_widget.dart
-      // lines 210/221) — 'דירוג' and 'חיסכון שנתי' are unique row labels.
+      // App bar title + a comparison-table row label. The fabricated 'דירוג'
+      // row was removed in the de-fake; 'חיסכון שנתי' is a real comparison row.
       expect(find.text('השוואת מסלולים'), findsOneWidget);
-      expect(find.text('דירוג'), findsWidgets);
       expect(find.text('חיסכון שנתי'), findsWidgets);
       tester.takeException();
     });

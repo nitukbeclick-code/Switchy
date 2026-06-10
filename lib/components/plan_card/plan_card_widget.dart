@@ -31,6 +31,11 @@ class PlanCardWidget extends StatelessWidget {
     return null;
   }
 
+  void _openPlan(BuildContext context, AppState appState) {
+    appState.viewPlan(plan.id);
+    context.push('/plan/${plan.id}');
+  }
+
   @override
   Widget build(BuildContext context) {
     final appState = context.watch<AppState>();
@@ -42,7 +47,17 @@ class PlanCardWidget extends StatelessWidget {
     final displayAfter = plan.hasPromo ? '₪${plan.after}' : null;
     final matchLabel = _quizMatch(appState);
 
-    return Container(
+    // One-line summary read out by screen readers before the inner controls.
+    final cardLabel = [
+      '${plan.provider} — ${plan.plan}',
+      '₪${plan.priceText} ${priceUnitShort(plan)}',
+      if (savings > 0) 'חוסך ₪$savings בשנה',
+    ].join(', ');
+
+    return Semantics(
+      container: true,
+      label: cardLabel,
+      child: Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -97,35 +112,40 @@ class PlanCardWidget extends StatelessWidget {
                 // Header row
                 Row(
                   children: [
-                    GestureDetector(
-                      onTap: () => context.pushNamed('Provider', pathParameters: {'name': plan.provider}),
-                      child: Hero(
-                        tag: 'plan_logo_${plan.id}',
-                        child: LogoWidget(provider: plan.provider, size: 44),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
+                    // Primary tap target: logo + provider + plan name open the
+                    // plan detail. A single secondary affordance below links to
+                    // the provider profile.
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Flexible(
-                                child: GestureDetector(
-                                  onTap: () => context.pushNamed('Provider', pathParameters: {'name': plan.provider}),
-                                  child: Text(
-                                    plan.provider,
-                                    style: GoogleFonts.rubik(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w700,
-                                      color: ffTheme.primaryText,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
+                      child: GestureDetector(
+                        onTap: () => _openPlan(context, appState),
+                        behavior: HitTestBehavior.opaque,
+                        child: Row(
+                          children: [
+                            ExcludeSemantics(
+                              child: Hero(
+                                tag: 'plan_logo_${plan.id}',
+                                child: LogoWidget(provider: plan.provider, size: 44),
                               ),
-                              const SizedBox(width: 6),
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Flexible(
+                                        child: Text(
+                                          plan.provider,
+                                          style: GoogleFonts.rubik(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w700,
+                                            color: ffTheme.primaryText,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 6),
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                 decoration: BoxDecoration(
@@ -163,16 +183,44 @@ class PlanCardWidget extends StatelessWidget {
                               ],
                             ],
                           ),
-                          const SizedBox(height: 2),
-                          Text(
-                            plan.plan,
-                            style: GoogleFonts.assistant(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
-                              color: ffTheme.secondaryText,
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    plan.plan,
+                                    style: GoogleFonts.assistant(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w500,
+                                      color: ffTheme.secondaryText,
+                                    ),
+                                  ),
+                                  // Secondary affordance: open the provider profile.
+                                  const SizedBox(height: 4),
+                                  Semantics(
+                                    button: true,
+                                    label: 'פרופיל ${plan.provider}',
+                                    child: GestureDetector(
+                                      onTap: () => context.pushNamed('Provider', pathParameters: {'name': plan.provider}),
+                                      behavior: HitTestBehavior.opaque,
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            'פרופיל הספק',
+                                            style: GoogleFonts.assistant(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w700,
+                                              color: ffTheme.primary,
+                                            ),
+                                          ),
+                                          Icon(Icons.chevron_left_rounded, size: 14, color: ffTheme.primary),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                     if (showCompare)
@@ -353,32 +401,12 @@ class PlanCardWidget extends StatelessWidget {
 
                   const SizedBox(height: 12),
 
-                  // Rating + action row
+                  // Action row
                   Row(
                     children: [
-                      Row(
-                        children: List.generate(5, (i) => Icon(
-                          i < plan.rating.floor()
-                              ? Icons.star_rounded
-                              : (i < plan.rating ? Icons.star_half_rounded : Icons.star_outline_rounded),
-                          size: 14,
-                          color: ffTheme.warning,
-                        )),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${plan.rating} (${plan.reviews})',
-                        style: GoogleFonts.assistant(
-                          fontSize: 11,
-                          color: ffTheme.secondaryText,
-                        ),
-                      ),
                       const Spacer(),
                       GestureDetector(
-                        onTap: () {
-                          appState.viewPlan(plan.id);
-                          context.push('/plan/${plan.id}');
-                        },
+                        onTap: () => _openPlan(context, appState),
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 9),
                           decoration: BoxDecoration(
@@ -400,10 +428,7 @@ class PlanCardWidget extends StatelessWidget {
                 ] else ...[
                   const SizedBox(height: 10),
                   GestureDetector(
-                    onTap: () {
-                      appState.viewPlan(plan.id);
-                      context.push('/plan/${plan.id}');
-                    },
+                    onTap: () => _openPlan(context, appState),
                     child: Container(
                       padding: const EdgeInsets.symmetric(vertical: 9),
                       decoration: BoxDecoration(
@@ -427,6 +452,7 @@ class PlanCardWidget extends StatelessWidget {
             ),
           ),
         ],
+      ),
       ),
     );
   }

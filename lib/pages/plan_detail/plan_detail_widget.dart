@@ -382,36 +382,8 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
 
                       const SizedBox(height: 14),
 
-                      // Community quality bars
-                      _Card(
-                        title: 'דירוג הקהילה',
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                _StarRow(rating: plan.rating, ffTheme: ffTheme),
-                                const SizedBox(width: 8),
-                                Text(
-                                  '${plan.rating} (${plan.reviews} ביקורות)',
-                                  style: ffTheme.bodySmall,
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 14),
-                            ..._ratingDimensions(plan).asMap().entries.expand((e) => [
-                              if (e.key > 0) const SizedBox(height: 10),
-                              _RatingBar(label: e.value.$1, value: e.value.$2, ffTheme: ffTheme),
-                            ]),
-                          ],
-                        ),
-                      )
-                          .animate(delay: 200.ms)
-                          .fadeIn(duration: 300.ms)
-                          .slideY(begin: 0.08),
-
-                      // Rate provider CTA
-                      const SizedBox(height: 10),
+                      // Rate provider CTA — honest entry point to leave the
+                      // first real review (no fabricated rating shown).
                       GestureDetector(
                         onTap: () => context.pushNamed('Ratings'),
                         child: Container(
@@ -932,28 +904,6 @@ class _PriceTrendCard extends StatelessWidget {
   }
 }
 
-// ── Rating dimensions per category ────────────────────────────────────────────
-
-List<(String, double)> _ratingDimensions(Plan plan) {
-  final r = plan.rating;
-  final seed = plan.id.codeUnits.fold(0, (s, c) => s + c);
-  final v1 = (r / 5.0).clamp(0.0, 1.0);
-  final v2 = ((r * 0.97 + 0.05 + (seed % 5) * 0.01) / 5.0).clamp(0.0, 1.0);
-  final v3 = ((r * 0.92 + 0.10 + (seed % 7) * 0.01) / 5.0).clamp(0.0, 1.0);
-  switch (plan.cat) {
-    case 'internet':
-      return [('מהירות הורדה', v1), ('אמינות החיבור', v2), ('שירות לקוחות', v3)];
-    case 'tv':
-      return [('מגוון ערוצים', v1), ('איכות שידור', v2), ('שירות לקוחות', v3)];
-    case 'triple':
-      return [('ערך לכסף', v1), ('אמינות הרשת', v2), ('שירות לקוחות', v3)];
-    case 'abroad':
-      return [('כיסוי בינלאומי', v1), ('מהירות גלישה', v2), ('שירות לקוחות', v3)];
-    default:
-      return [('כיסוי רשת', v1), ('מהירות גלישה', v2), ('שירות לקוחות', v3)];
-  }
-}
-
 // ── Helper widgets ────────────────────────────────────────────────────────────
 
 class _Card extends StatelessWidget {
@@ -1032,31 +982,6 @@ class _PriceRow extends StatelessWidget {
   }
 }
 
-class _StarRow extends StatelessWidget {
-  const _StarRow({required this.rating, required this.ffTheme});
-  final double rating;
-  final AppTheme ffTheme;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: List.generate(
-        5,
-        (i) => Icon(
-          i < rating.floor()
-              ? Icons.star_rounded
-              : (i < rating
-                  ? Icons.star_half_rounded
-                  : Icons.star_outline_rounded),
-          size: 16,
-          color: ffTheme.warning,
-        ),
-      ),
-    );
-  }
-}
-
 class _SavingsPeriod extends StatelessWidget {
   const _SavingsPeriod({required this.months, required this.saveYear, required this.ffTheme});
   final int months;
@@ -1074,43 +999,6 @@ class _SavingsPeriod extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         Text('$months חודשים', style: ffTheme.labelSmall),
-      ],
-    );
-  }
-}
-
-class _RatingBar extends StatelessWidget {
-  const _RatingBar(
-      {required this.label, required this.value, required this.ffTheme});
-  final String label;
-  final double value;
-  final AppTheme ffTheme;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        SizedBox(
-          width: 100,
-          child: Text(label, style: ffTheme.bodySmall),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: value,
-              backgroundColor: ffTheme.alternate,
-              valueColor: AlwaysStoppedAnimation(ffTheme.primary),
-              minHeight: 6,
-            ),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Text(
-          (value * 5).toStringAsFixed(1),
-          style: ffTheme.labelSmall.copyWith(fontWeight: FontWeight.w700),
-        ),
       ],
     );
   }

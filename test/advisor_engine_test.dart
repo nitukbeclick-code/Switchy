@@ -225,16 +225,16 @@ void main() {
   });
 
   group('rating intent', () {
-    test('provider rating uses the pure catalogue fallback', () {
+    test('provider rating reports an honest no-data state (reviews == 0)', () {
       final r = ask('מה הדירוג של פרטנר');
       expect(r.intent, AdvisorIntent.rating);
       expect(r.detectedProvider, 'פרטנר');
-      final expected = AdvisorProviderRating.fromCatalogue('פרטנר');
-      expect(r.text, contains(expected.stars.toStringAsFixed(1)));
-      // All four Hebrew sub-labels appear.
-      for (final label in AdvisorProviderRating.subLabels.values) {
-        expect(r.text, contains(label));
-      }
+      // No catalogue plan has real reviews, so the advisor must NOT print a
+      // fabricated 0.0★ rating — it shows the honest "no ratings yet" message.
+      expect(AdvisorProviderRating.fromCatalogue('פרטנר').reviewCount, 0);
+      expect(r.text, contains('אין עדיין דירוגים'));
+      expect(r.text, contains('פרטנר'));
+      expect(r.text, isNot(contains('★')));
     });
 
     test('provider rating honours an injected lookup', () {
@@ -309,16 +309,43 @@ void main() {
   });
 
   group('AdvisorProviderRating.fromCatalogue', () {
-    test('averages real catalogue data; placeholder-only providers score 0', () {
+    // Every catalogue plan ships with reviews == 0, so its `rating` field is a
+    // fabricated placeholder. An honest catalogue rating must therefore report
+    // no data for every provider until a real review exists — never average a
+    // placeholder into a star, and never invent the per-dimension sub-scores.
+    test('an unrated provider reports no data: 0 stars, 0 reviews, no sub-scores', () {
       final r = AdvisorProviderRating.fromCatalogue('פרטנר');
-      final plans = plansByProvider('פרטנר');
-      final expected = plans.fold<double>(0, (s, p) => s + p.rating) / plans.length;
-      expect(r.stars, closeTo(expected, 0.0001));
-      expect(r.reviewCount, plans.fold<int>(0, (s, p) => s + p.reviews));
+      // No plan has real reviews → nothing to average → 0 stars.
+      expect(plansByProvider('פרטנר'), isNotEmpty);
+      expect(plansByProvider('פרטנר').every((p) => p.reviews == 0), isTrue);
+      expect(r.stars, 0);
+      expect(r.reviewCount, 0);
+      // Sub-scores are zeroed, not seeded from provider.codeUnits.
+      for (final k in AdvisorProviderRating.subKeys) {
+        expect(r.sub[k], 0, reason: k);
+      }
     });
 
-    test('an unknown provider has zero stars', () {
-      expect(AdvisorProviderRating.fromCatalogue('לא-קיים').stars, 0);
+    test('agrees with the provider profile: no data ⇒ 0 stars / 0 reviews', () {
+      // The advisor fallback must mirror the honest single-source-of-truth
+      // (ProviderRatings.forProvider): with every plan unrated, the provider
+      // has no data, so the advisor reports exactly what the profile would —
+      // 0 stars and 0 reviews. (Asserted directly rather than importing
+      // ProviderRatings, which drags in AppState/SharedPreferences.)
+      final advisor = AdvisorProviderRating.fromCatalogue('סלקום');
+      expect(plansByProvider('סלקום'), isNotEmpty);
+      expect(plansByProvider('סלקום').every((p) => p.reviews == 0), isTrue);
+      expect(advisor.stars, 0);
+      expect(advisor.reviewCount, 0);
+    });
+
+    test('an unknown provider has zero stars and no invented sub-scores', () {
+      final r = AdvisorProviderRating.fromCatalogue('לא-קיים');
+      expect(r.stars, 0);
+      expect(r.reviewCount, 0);
+      for (final k in AdvisorProviderRating.subKeys) {
+        expect(r.sub[k], 0, reason: k);
+      }
     });
   });
 }

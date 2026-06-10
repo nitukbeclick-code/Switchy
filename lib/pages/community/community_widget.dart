@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
@@ -35,6 +36,13 @@ class _CommunityWidgetState extends State<CommunityWidget> {
   // (and the user's own persisted replies) — no fabricated seed conversations.
   final Map<String, List<_Reply>> _replyData = {};
 
+  // Feed windowing: build only the first [_visibleCount] posts and grow the
+  // window as the user nears the bottom. For short feeds this is a no-op
+  // (the window already covers every post); it only matters as content grows.
+  static const _feedPageSize = 20;
+  int _visibleCount = _feedPageSize;
+  final _feedScrollCtrl = ScrollController();
+
   static const _channels = ['הכל', 'המלצות', 'סלולר', 'אינטרנט', 'טלוויזיה', 'חו"ל', 'חבילה משולבת', 'עזרה בניתוק'];
 
   StreamSubscription<void>? _changesSub;
@@ -70,7 +78,11 @@ class _CommunityWidgetState extends State<CommunityWidget> {
       )).toList();
       _replyData.putIfAbsent(postId, () => []).addAll(converted);
     });
-    _searchCtrl.addListener(() => setState(() => _searchQuery = _searchCtrl.text));
+    _searchCtrl.addListener(() => setState(() {
+          _searchQuery = _searchCtrl.text;
+          _visibleCount = _feedPageSize; // new query → reset the window
+        }));
+    _feedScrollCtrl.addListener(_maybeGrowFeed);
     _loadFromBackend().catchError((_) {});
     _changesSub = appBackend.communityChanges().listen(
       (_) => _loadFromBackend().catchError((_) {}),
@@ -90,8 +102,18 @@ class _CommunityWidgetState extends State<CommunityWidget> {
   @override
   void dispose() {
     _searchCtrl.dispose();
+    _feedScrollCtrl.dispose();
     _changesSub?.cancel();
     super.dispose();
+  }
+
+  // Grow the visible window as the user approaches the end of the built list.
+  void _maybeGrowFeed() {
+    if (!_feedScrollCtrl.hasClients) return;
+    final pos = _feedScrollCtrl.position;
+    if (pos.pixels >= pos.maxScrollExtent - 400 && _visibleCount < _filtered.length) {
+      setState(() => _visibleCount += _feedPageSize);
+    }
   }
 
   int _channelCount(String ch) =>
@@ -813,7 +835,10 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                 final active = _activeChannel == ch;
                 final count = _channelCount(ch);
                 return GestureDetector(
-                  onTap: () => setState(() => _activeChannel = ch),
+                  onTap: () => setState(() {
+                    _activeChannel = ch;
+                    _visibleCount = _feedPageSize;
+                  }),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
                     margin: const EdgeInsets.only(right: 8),
@@ -849,7 +874,10 @@ class _CommunityWidgetState extends State<CommunityWidget> {
             child: Row(
               children: [
                 GestureDetector(
-                  onTap: () => setState(() => _sortByPopular = !_sortByPopular),
+                  onTap: () => setState(() {
+                    _sortByPopular = !_sortByPopular;
+                    _visibleCount = _feedPageSize;
+                  }),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -874,7 +902,10 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                   child: GestureDetector(
                     onTap: () {
                       HapticFeedback.selectionClick();
-                      setState(() => _showBookmarksOnly = !_showBookmarksOnly);
+                      setState(() {
+                        _showBookmarksOnly = !_showBookmarksOnly;
+                        _visibleCount = _feedPageSize;
+                      });
                     },
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
@@ -968,7 +999,10 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                                 style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText), textAlign: TextAlign.center),
                             const SizedBox(height: 16),
                             OutlinedButton(
-                              onPressed: () => setState(() => _showBookmarksOnly = false),
+                              onPressed: () => setState(() {
+                                _showBookmarksOnly = false;
+                                _visibleCount = _feedPageSize;
+                              }),
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: ffTheme.primary,
                                 side: BorderSide(color: ffTheme.primary),
@@ -1002,9 +1036,13 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                     onRefresh: _refreshFeed,
                     color: ffTheme.primary,
                     child: ListView.builder(
+                      controller: _feedScrollCtrl,
                       physics: const AlwaysScrollableScrollPhysics(),
                       padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
-                      itemCount: _filtered.length,
+                      // Build only the current window; it grows as the user
+                      // scrolls (see _maybeGrowFeed). For short feeds this equals
+                      // _filtered.length, so behavior is unchanged.
+                      itemCount: math.min(_visibleCount, _filtered.length),
                       itemBuilder: (context, i) {
                         final post = _filtered[i];
                         return _PostCard(

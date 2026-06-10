@@ -27,10 +27,16 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="preconnect" href="https://plausible.io" />
   <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" rel="stylesheet" />
   <!-- ?v= cache-busting hash is owned by build.js (it prints the current
        values on every run) — keep this in sync when styles.css changes. -->
-  <link rel="stylesheet" href="styles.css?v=f19d9f79" />
+  <link rel="stylesheet" href="styles.css?v=55a144eb" />
+
+  <!-- Cookieless analytics (Plausible-style). Placeholder until configured —
+       no cookies, no personal data. Mirrors build.js analyticsTag(). -->
+  <script defer data-domain="chosech.co.il" src="https://plausible.io/js/script.outbound-links.tagged-events.js"></script>
+  <script>window.plausible=window.plausible||function(){(window.plausible.q=window.plausible.q||[]).push(arguments)};</script>
 
   <!-- Structured data: Organization, WebSite, and an FAQ (eligible for rich results). -->
   <script type="application/ld+json">
@@ -113,6 +119,7 @@
           <p class="hero__sub">
             חוסך משווה עבורכם מחירים על סלולר, אינטרנט, טלוויזיה, חבילות משולבות
             וחו״ל — ומוצא את המסלול הכי משתלם. תחסכו <strong>עד ₪1,200 בשנה</strong>.
+            <span class="hero__fineprint">* הערכה בלבד; החיסכון בפועל תלוי בחבילה, בספק ובשימוש שלכם. ראו <a href="terms.html">תנאי שימוש</a>.</span>
           </p>
           <div class="hero__cta">
             <a class="btn btn--primary btn--lg" href="#calculator">בדקו כמה תחסכו ←</a>
@@ -161,19 +168,20 @@
       <div class="container">
         <p class="providers__title">משווים את כל הגדולות — והקטנות</p>
         <div class="providers__row">
-          <span class="chip">פלאפון</span>
-          <span class="chip">סלקום</span>
-          <span class="chip">פרטנר</span>
-          <span class="chip">הוט מובייל</span>
-          <span class="chip">גולן טלקום</span>
-          <span class="chip">019 מובייל</span>
-          <span class="chip">רמי לוי</span>
-          <span class="chip">בזק</span>
-          <span class="chip">yes</span>
-          <span class="chip">HOT</span>
-          <span class="chip">We4G</span>
-          <span class="chip">Airalo</span>
+          <a class="chip" href="provider-pelephone.html">פלאפון</a>
+          <a class="chip" href="provider-cellcom.html">סלקום</a>
+          <a class="chip" href="provider-partner.html">פרטנר</a>
+          <a class="chip" href="provider-hot-mobile.html">הוט מובייל</a>
+          <a class="chip" href="provider-golan.html">גולן טלקום</a>
+          <a class="chip" href="provider-019mobile.html">019 מובייל</a>
+          <a class="chip" href="provider-rami-levy.html">רמי לוי</a>
+          <a class="chip" href="provider-bezeq.html">בזק</a>
+          <a class="chip" href="provider-yes.html">yes</a>
+          <a class="chip" href="provider-hot.html">HOT</a>
+          <a class="chip" href="provider-wecom.html">WeCom</a>
+          <a class="chip" href="provider-airalo.html">Airalo</a>
         </div>
+        <p class="providers__more"><a href="providers.html">לכל הספקים ←</a></p>
       </div>
     </section>
 
@@ -293,6 +301,40 @@
       </div>
     </section>
 
+    <!-- ── Top guides ───────────────────────────────────────────────────── -->
+    <section class="section" id="guides" aria-label="מדריכים מובילים">
+      <div class="container">
+        <header class="section__head reveal">
+          <span class="eyebrow">כדאי לדעת</span>
+          <h2>מדריכים שיחסכו לכם כסף</h2>
+          <p>טיפים מעשיים לפני שמשווים ועוברים — בלי הייפ שיווקי.</p>
+        </header>
+        <div class="guide-cards">
+          <a class="guide-card reveal" href="guide-switching.html">
+            <span class="tag-cat">מדריך כללי</span>
+            <h3>המדריך המלא למעבר ספק — בלי כאב ראש</h3>
+            <p>ניוד מספר, מה לבדוק, כמה זמן זה לוקח וטעויות נפוצות שעולות כסף.</p>
+            <span class="meta">קראו את המדריך ←</span>
+          </a>
+          <a class="guide-card reveal" href="guide-cellular.html">
+            <span class="tag-cat">סלולר</span>
+            <h3>איך לבחור מסלול סלולר ב-2026</h3>
+            <p>כמה GB באמת צריך, 4G מול 5G, התחייבות מול גמישות ומלכודת המבצע.</p>
+            <span class="meta">קראו את המדריך ←</span>
+          </a>
+          <a class="guide-card reveal" href="guide-fiber.html">
+            <span class="tag-cat">אינטרנט</span>
+            <h3>סיב אופטי מול כבלים — וכמה זה עולה</h3>
+            <p>מה ההבדל, איזו מהירות צריך, תשתית מול ספק ומחיר אחרי המבצע.</p>
+            <span class="meta">קראו את המדריך ←</span>
+          </a>
+        </div>
+        <div class="reveal" style="text-align:center;margin-top:28px">
+          <a class="btn btn--ghost btn--lg" href="guides.html">לכל המדריכים ←</a>
+        </div>
+      </div>
+    </section>
+
     <!-- ── FAQ ──────────────────────────────────────────────────────────── -->
     <section class="section section--alt" id="faq">
       <div class="container faq">
@@ -382,6 +424,6 @@
 
   <!-- ?v= cache-busting hash is owned by build.js (it prints the current
        values on every run) — keep this in sync when script.js changes. -->
-  <script src="script.js?v=524aa3df" defer></script>
+  <script src="script.js?v=f1441118" defer></script>
 </body>
 </html>

@@ -1,5 +1,5 @@
 {
-  "generated": "2026-06-10T14:55:39.494486",
+  "generated": "2026-06-10T17:51:27.801515",
   "categories": [
     {
       "id": "cellular",
@@ -51,8 +51,6 @@
         "דקות": "500 דק׳",
         "SMS": "5,000"
       },
-      "rating": 4.2,
-      "reviews": 159,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -78,8 +76,6 @@
         "דקות": "150 דק׳",
         "SMS": "3,500"
       },
-      "rating": 4.1,
-      "reviews": 67,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -105,8 +101,6 @@
         "דקות": "500 דק׳",
         "SMS": "5,000"
       },
-      "rating": 4.2,
-      "reviews": 27,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -133,8 +127,6 @@
         "דקות": "500 דק׳",
         "SMS": "5,000"
       },
-      "rating": 4.0,
-      "reviews": 23,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -162,8 +154,6 @@
         "SMS": "5,000",
         "חו\"ל": "5GB + 50 דק׳/SMS לחודש"
       },
-      "rating": 3.8,
-      "reviews": 381,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -190,8 +180,6 @@
         "SMS": "3,500",
         "חו\"ל": "200 דק׳ ל-42 יעדים"
       },
-      "rating": 4.2,
-      "reviews": 96,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -219,8 +207,6 @@
         "SMS": "5,000",
         "חו\"ל": "400 דק׳ ל-42 יעדים"
       },
-      "rating": 4.1,
-      "reviews": 334,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -248,8 +234,6 @@
         "SMS": "7,000",
         "חו\"ל": "700 דק׳ ל-42 יעדים"
       },
-      "rating": 4.2,
-      "reviews": 268,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -276,8 +260,6 @@
         "דקות": "500 דק׳",
         "SMS": "6,000"
       },
-      "rating": 4.3,
-      "reviews": 316,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -304,8 +286,6 @@
         "דקות": "600 דק׳",
         "SMS": "7,000"
       },
-      "rating": 4.3,
-      "reviews": 370,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -332,8 +312,6 @@
         "SMS": "5,000",
         "חו\"ל": "מסלול Travel"
       },
-      "rating": 3.9,
-      "reviews": 284,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -359,8 +337,6 @@
         "SMS": "3,500",
         "חו\"ל": "מסלול Travel"
       },
-      "rating": 4.1,
-      "reviews": 299,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -387,8 +363,6 @@
         "SMS": "5,000",
         "חו\"ל": "מסלול Travel"
       },
-      "rating": 3.8,
-      "reviews": 253,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -414,8 +388,6 @@
         "דקות": "240 דק׳",
         "חו\"ל": "יש"
       },
-      "rating": 4.5,
-      "reviews": 339,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -442,8 +414,6 @@
         "דקות": "100 דק׳",
         "חו\"ל": "1GB חו\"ל לחודש"
       },
-      "rating": 4.1,
-      "reviews": 224,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -470,8 +440,6 @@
         "דקות": "300 דק׳",
         "חו\"ל": "₪99 הנחה על חבילת חו\"ל"
       },
-      "rating": 4.5,
-      "reviews": 39,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -498,8 +466,6 @@
         "דקות": "500 דק׳",
         "חו\"ל": "יש"
       },
-      "rating": 4.2,
-      "reviews": 175,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -524,8 +490,6 @@
         "נתונים": "500GB",
         "דקות": "50 דק׳"
       },
-      "rating": 4.4,
-      "reviews": 281,
       "priceUnit": "month",
       "kind": "dataonly"
     },
@@ -551,8 +515,6 @@
         "דקות": "500 דק׳",
         "חו\"ל": "חו\"ל כלול"
       },
-      "rating": 4.4,
-      "reviews": 400,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -580,8 +542,6 @@
         "SMS": "7,000",
         "חו\"ל": "500 דק׳ ל-27 יעדים"
       },
-      "rating": 4.1,
-      "reviews": 376,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -609,8 +569,6 @@
         "SMS": "10,000",
         "חו\"ל": "10GB + 100 דק׳/SMS"
       },
-      "rating": 4.0,
-      "reviews": 287,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -638,8 +596,6 @@
         "SMS": "10,000",
         "חו\"ל": "500 דק׳ ל-27 יעדים"
       },
-      "rating": 4.1,
-      "reviews": 318,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -667,8 +623,6 @@
         "SMS": "6,000",
         "חו\"ל": "300 דק׳ ל-27 יעדים"
       },
-      "rating": 3.8,
-      "reviews": 96,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -691,8 +645,6 @@
       "specs": {
         "נתונים": "20GB"
       },
-      "rating": 4.1,
-      "reviews": 33,
       "priceUnit": "month",
       "kind": "dataonly"
     },
@@ -715,8 +667,6 @@
       "specs": {
         "נתונים": "150GB"
       },
-      "rating": 3.7,
-      "reviews": 246,
       "priceUnit": "month",
       "kind": "dataonly"
     },
@@ -742,8 +692,6 @@
         "דקות": "5,000",
         "SMS": "5,000"
       },
-      "rating": 4.2,
-      "reviews": 57,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -770,8 +718,6 @@
         "SMS": "5,000",
         "חו\"ל": "1GB חו\"ל"
       },
-      "rating": 4.3,
-      "reviews": 218,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -799,8 +745,6 @@
         "SMS": "5,000",
         "חו\"ל": "1GB חו\"ל"
       },
-      "rating": 4.6,
-      "reviews": 27,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -826,8 +770,6 @@
         "דקות": "5,000",
         "SMS": "5,000"
       },
-      "rating": 4.2,
-      "reviews": 63,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -854,8 +796,6 @@
         "SMS": "5,000",
         "חו\"ל": "1GB צבירה חו\"ל"
       },
-      "rating": 4.5,
-      "reviews": 135,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -883,8 +823,6 @@
         "SMS": "5,000",
         "חו\"ל": "1GB צבירה חו\"ל"
       },
-      "rating": 4.4,
-      "reviews": 98,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -911,8 +849,6 @@
         "SMS": "5,000",
         "חו\"ל": "3GB חו\"ל"
       },
-      "rating": 4.4,
-      "reviews": 335,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -939,8 +875,6 @@
         "SMS": "5,000",
         "חו\"ל": "5GB חו\"ל"
       },
-      "rating": 4.6,
-      "reviews": 335,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -968,8 +902,6 @@
         "SMS": "5,000",
         "חו\"ל": "5GB חו\"ל"
       },
-      "rating": 4.5,
-      "reviews": 301,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -996,8 +928,6 @@
         "דקות": "ללא הגבלה",
         "SMS": "5,000"
       },
-      "rating": 4.4,
-      "reviews": 332,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -1024,8 +954,6 @@
         "דקות": "ללא הגבלה",
         "SMS": "5,000"
       },
-      "rating": 4.1,
-      "reviews": 20,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -1052,8 +980,6 @@
         "דקות": "ללא הגבלה",
         "SMS": "2,500"
       },
-      "rating": 4.5,
-      "reviews": 38,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -1080,8 +1006,6 @@
         "דקות": "ללא הגבלה",
         "SMS": "2,500"
       },
-      "rating": 4.3,
-      "reviews": 201,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -1107,8 +1031,6 @@
         "דקות": "ללא הגבלה",
         "SMS": "2,500"
       },
-      "rating": 4.4,
-      "reviews": 126,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -1134,8 +1056,6 @@
         "דקות": "ללא הגבלה",
         "SMS": "2,500"
       },
-      "rating": 4.4,
-      "reviews": 44,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -1163,8 +1083,6 @@
         "SMS": "2,500",
         "חו\"ל": "500 דק׳ ליעדים בחו\"ל"
       },
-      "rating": 4.3,
-      "reviews": 181,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -1188,8 +1106,6 @@
       "specs": {
         "דקות": "10,000 ברשת / 5,000 מחוץ"
       },
-      "rating": 4.4,
-      "reviews": 107,
       "priceUnit": "month",
       "kind": "kosher"
     },
@@ -1213,8 +1129,6 @@
       "specs": {
         "דקות": "10,000 ברשת / 4,000 מחוץ"
       },
-      "rating": 4.5,
-      "reviews": 158,
       "priceUnit": "month",
       "kind": "kosher"
     },
@@ -1240,8 +1154,6 @@
         "דקות": "5,000",
         "SMS": "3,000"
       },
-      "rating": 4.1,
-      "reviews": 323,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -1267,8 +1179,6 @@
         "דקות": "3,000",
         "SMS": "3,000"
       },
-      "rating": 4.0,
-      "reviews": 67,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -1295,8 +1205,6 @@
         "דקות": "5,000",
         "SMS": "3,000"
       },
-      "rating": 4.3,
-      "reviews": 212,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -1324,8 +1232,6 @@
         "SMS": "3,000",
         "חו\"ל": "5GB חו\"ל לחודש + תעריף מוזל"
       },
-      "rating": 4.0,
-      "reviews": 287,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -1352,8 +1258,6 @@
         "דקות": "5,000",
         "SMS": "5,000"
       },
-      "rating": 4.0,
-      "reviews": 122,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -1379,8 +1283,6 @@
         "דקות": "5,000",
         "SMS": "5,000"
       },
-      "rating": 4.2,
-      "reviews": 389,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -1406,8 +1308,6 @@
         "דקות": "5,000",
         "SMS": "5,000"
       },
-      "rating": 4.4,
-      "reviews": 274,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -1434,8 +1334,6 @@
         "דקות": "5,000",
         "SMS": "5,000"
       },
-      "rating": 4.2,
-      "reviews": 125,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -1462,8 +1360,6 @@
         "SMS": "5,000",
         "חו\"ל": "100 דק׳ למבחר מדינות"
       },
-      "rating": 4.2,
-      "reviews": 125,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -1490,8 +1386,6 @@
         "SMS": "5,000",
         "חו\"ל": "200 דק׳ למבחר מדינות"
       },
-      "rating": 4.2,
-      "reviews": 311,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -1515,8 +1409,6 @@
       "specs": {
         "נתונים": "2GB"
       },
-      "rating": 4.4,
-      "reviews": 255,
       "priceUnit": "month",
       "kind": "dataonly"
     },
@@ -1541,8 +1433,6 @@
       "specs": {
         "נתונים": "10GB"
       },
-      "rating": 4.0,
-      "reviews": 195,
       "priceUnit": "month",
       "kind": "kosher"
     },
@@ -1567,8 +1457,6 @@
       "specs": {
         "נתונים": "40GB"
       },
-      "rating": 4.0,
-      "reviews": 198,
       "priceUnit": "month",
       "kind": "kosher"
     },
@@ -1594,8 +1482,6 @@
         "נתונים": "400GB",
         "חו\"ל": "שיחות לחו\"ל כלולות"
       },
-      "rating": 3.9,
-      "reviews": 43,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -1621,8 +1507,6 @@
         "נתונים": "300GB",
         "חו\"ל": "שיחות חו\"ל כלולות"
       },
-      "rating": 4.1,
-      "reviews": 219,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -1647,8 +1531,6 @@
         "נתונים": "300GB",
         "חו\"ל": "שיחות חו\"ל כלולות"
       },
-      "rating": 4.2,
-      "reviews": 42,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -1673,8 +1555,6 @@
       "specs": {
         "מהירות": "עד 300/100"
       },
-      "rating": 4.0,
-      "reviews": 197,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -1699,8 +1579,6 @@
       "specs": {
         "מהירות": "עד 1000/100"
       },
-      "rating": 4.2,
-      "reviews": 193,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -1724,8 +1602,6 @@
       "specs": {
         "מהירות": "עד 1000/250"
       },
-      "rating": 4.1,
-      "reviews": 37,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -1749,8 +1625,6 @@
       "specs": {
         "מהירות": "עד 2500/250"
       },
-      "rating": 3.9,
-      "reviews": 139,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -1776,8 +1650,6 @@
         "מהירות": "עד 5000/500",
         "נתב": "+₪39.9/ח׳"
       },
-      "rating": 4.1,
-      "reviews": 202,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -1802,8 +1674,6 @@
         "מהירות": "עד 100/3",
         "נתב": "+₪21.9/ח׳"
       },
-      "rating": 3.9,
-      "reviews": 100,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -1828,8 +1698,6 @@
         "מהירות": "עד 100/10",
         "נתב": "+₪21.9/ח׳"
       },
-      "rating": 3.9,
-      "reviews": 15,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -1853,8 +1721,6 @@
         "מהירות": "עד 200/20",
         "נתב": "+₪21.9/ח׳"
       },
-      "rating": 4.0,
-      "reviews": 174,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -1880,8 +1746,6 @@
         "מהירות": "עד 600/100",
         "נתב": "מגדיל טווח מתקדם + נקודת רשת כלולים"
       },
-      "rating": 3.7,
-      "reviews": 308,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -1907,8 +1771,6 @@
         "מהירות": "עד 1000/100",
         "נתב": "מגדיל טווח + נקודת רשת כלולים"
       },
-      "rating": 3.8,
-      "reviews": 268,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -1934,8 +1796,6 @@
         "מהירות": "עד 1000/100",
         "נתב": "2 מגדילי טווח + 2 נקודות רשת כלולים"
       },
-      "rating": 4.0,
-      "reviews": 394,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -1961,8 +1821,6 @@
         "מהירות": "עד 1000/100",
         "נתב": "כלול"
       },
-      "rating": 3.8,
-      "reviews": 303,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -1987,8 +1845,6 @@
         "מהירות": "עד 2500/250",
         "נתב": "Star Mesh WiFi7 כלול (+₪29.9 אופציה)"
       },
-      "rating": 3.9,
-      "reviews": 64,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -2014,8 +1870,6 @@
         "מהירות": "עד 600/100",
         "נתב": "WiFi7 +₪25/ח׳"
       },
-      "rating": 4.2,
-      "reviews": 103,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -2041,8 +1895,6 @@
         "מהירות": "עד 1000/100",
         "נתב": "WiFi7 כלול"
       },
-      "rating": 4.1,
-      "reviews": 157,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -2068,8 +1920,6 @@
         "מהירות": "עד 2500/250",
         "נתב": "כלול"
       },
-      "rating": 4.3,
-      "reviews": 215,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -2095,8 +1945,6 @@
         "מהירות": "עד 1000/100",
         "נתב": "+₪25/ח׳"
       },
-      "rating": 4.4,
-      "reviews": 109,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -2121,8 +1969,6 @@
       "specs": {
         "מהירות": "עד 300/100"
       },
-      "rating": 4.5,
-      "reviews": 40,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -2147,8 +1993,6 @@
       "specs": {
         "מהירות": "עד 500/50"
       },
-      "rating": 4.2,
-      "reviews": 187,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -2173,8 +2017,6 @@
       "specs": {
         "מהירות": "עד 1000/100"
       },
-      "rating": 4.6,
-      "reviews": 137,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -2199,8 +2041,6 @@
       "specs": {
         "מהירות": "עד 200/20"
       },
-      "rating": 4.4,
-      "reviews": 162,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -2226,8 +2066,6 @@
         "מהירות": "עד 1000/100",
         "נתב": "כלול (WiFi7 +₪10/ח׳)"
       },
-      "rating": 4.6,
-      "reviews": 177,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -2253,8 +2091,6 @@
         "מהירות": "עד 1000/100",
         "נתב": "כלול (WiFi7 +₪10/ח׳)"
       },
-      "rating": 4.3,
-      "reviews": 240,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -2280,8 +2116,6 @@
         "מהירות": "עד 1000/100",
         "נתב": "כלול (WiFi7 +₪10/ח׳)"
       },
-      "rating": 4.3,
-      "reviews": 257,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -2306,8 +2140,6 @@
       "specs": {
         "מהירות": "עד 300Mb"
       },
-      "rating": 4.1,
-      "reviews": 384,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -2331,8 +2163,6 @@
       "specs": {
         "מהירות": "עד 500Mb"
       },
-      "rating": 4.3,
-      "reviews": 141,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -2356,8 +2186,6 @@
       "specs": {
         "מהירות": "עד 1000Mb"
       },
-      "rating": 4.2,
-      "reviews": 400,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -2381,8 +2209,6 @@
       "specs": {
         "מהירות": "עד 40Mb"
       },
-      "rating": 4.3,
-      "reviews": 90,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -2406,8 +2232,6 @@
       "specs": {
         "מהירות": "עד 100Mb"
       },
-      "rating": 4.3,
-      "reviews": 343,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -2431,8 +2255,6 @@
       "specs": {
         "מהירות": "עד 200Mb"
       },
-      "rating": 4.4,
-      "reviews": 26,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -2455,8 +2277,6 @@
       "specs": {
         "ערוצים": "~140"
       },
-      "rating": 3.7,
-      "reviews": 331,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -2482,8 +2302,6 @@
         "ערוצים": "~140",
         "ממירים": "1"
       },
-      "rating": 3.9,
-      "reviews": 148,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -2510,8 +2328,6 @@
         "ממירים": "1",
         "VOD": "30,000+"
       },
-      "rating": 4.3,
-      "reviews": 108,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -2537,8 +2353,6 @@
         "ממירים": "1",
         "VOD": "30,000"
       },
-      "rating": 3.9,
-      "reviews": 121,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -2564,8 +2378,6 @@
         "ממירים": "1",
         "VOD": "40,000+"
       },
-      "rating": 3.9,
-      "reviews": 124,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -2588,8 +2400,6 @@
       "specs": {
         "ערוצים": "~70"
       },
-      "rating": 4.0,
-      "reviews": 142,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -2613,8 +2423,6 @@
         "ערוצים": "~70",
         "VOD": "40,000"
       },
-      "rating": 4.3,
-      "reviews": 30,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -2640,8 +2448,6 @@
         "ממירים": "1",
         "VOD": "40,000"
       },
-      "rating": 4.2,
-      "reviews": 83,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -2665,8 +2471,6 @@
       "specs": {
         "VOD": "~40,000"
       },
-      "rating": 4.0,
-      "reviews": 340,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -2693,8 +2497,6 @@
         "מהירות": "עד 1000",
         "סטרימרים": "2"
       },
-      "rating": 3.9,
-      "reviews": 185,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -2720,8 +2522,6 @@
         "מהירות": "עד 1000",
         "ממירים": "2"
       },
-      "rating": 4.0,
-      "reviews": 286,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -2746,8 +2546,6 @@
         "מהירות": "עד 1000",
         "ממירים": "3"
       },
-      "rating": 4.2,
-      "reviews": 94,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -2771,8 +2569,6 @@
         "מהירות": "עד 1000",
         "ממירים": "3"
       },
-      "rating": 4.1,
-      "reviews": 40,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -2796,8 +2592,6 @@
         "מהירות": "עד 2500",
         "ממירים": "2"
       },
-      "rating": 3.8,
-      "reviews": 62,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -2824,8 +2618,6 @@
         "מהירות": "עד 1000",
         "ממירים": "2"
       },
-      "rating": 3.9,
-      "reviews": 206,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -2852,8 +2644,6 @@
         "מהירות": "עד 1000",
         "ממירים": "2"
       },
-      "rating": 4.0,
-      "reviews": 78,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -2879,8 +2669,6 @@
         "מהירות": "עד 1000",
         "ממירים": "2"
       },
-      "rating": 3.9,
-      "reviews": 224,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -2903,8 +2691,6 @@
       "specs": {
         "מהירות": "עד 1000"
       },
-      "rating": 4.3,
-      "reviews": 359,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -2926,8 +2712,6 @@
       "specs": {
         "מהירות": "עד 2000"
       },
-      "rating": 3.9,
-      "reviews": 41,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -2950,8 +2734,6 @@
       "specs": {
         "מהירות": "עד 1000/100"
       },
-      "rating": 4.2,
-      "reviews": 116,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -2974,8 +2756,6 @@
         "מתאים לנסיעות קצרות"
       ],
       "specs": {},
-      "rating": 3.9,
-      "reviews": 450,
       "priceUnit": "minute",
       "kind": "regular"
     },
@@ -2998,8 +2778,6 @@
         "מינימום יום אחד"
       ],
       "specs": {},
-      "rating": 4.2,
-      "reviews": 890,
       "priceUnit": "day",
       "kind": "regular"
     },
@@ -3022,8 +2800,6 @@
         "ניתן לביטול חודשי"
       ],
       "specs": {},
-      "rating": 4.1,
-      "reviews": 1200,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -3046,8 +2822,6 @@
         "שיתוף עד 3 מכשירים"
       ],
       "specs": {},
-      "rating": 4.3,
-      "reviews": 980,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -3070,8 +2844,6 @@
         "הפעלה מיידית מהאפליקציה"
       ],
       "specs": {},
-      "rating": 4.5,
-      "reviews": 3400,
       "priceUnit": "package",
       "kind": "regular"
     },
@@ -3095,8 +2867,6 @@
         "מתאים לנסיעה קצרה"
       ],
       "specs": {},
-      "rating": 4.5,
-      "reviews": 2100,
       "priceUnit": "package",
       "kind": "regular"
     },
@@ -3120,8 +2890,6 @@
         "ניתן להרחבה מהאפליקציה"
       ],
       "specs": {},
-      "rating": 4.4,
-      "reviews": 1800,
       "priceUnit": "package",
       "kind": "regular"
     },
@@ -3144,8 +2912,6 @@
         "ניתן לביטול בחזרה"
       ],
       "specs": {},
-      "rating": 4.0,
-      "reviews": 760,
       "priceUnit": "day",
       "kind": "regular"
     },
@@ -3168,8 +2934,6 @@
         "שיתוף בין 2 מכשירים"
       ],
       "specs": {},
-      "rating": 4.2,
-      "reviews": 890,
       "priceUnit": "month",
       "kind": "regular"
     },
@@ -3192,8 +2956,6 @@
         "חיסכון מ-30 יום"
       ],
       "specs": {},
-      "rating": 4.1,
-      "reviews": 1100,
       "priceUnit": "day",
       "kind": "regular"
     },
@@ -3216,8 +2978,6 @@
         "ניתן לביטול חודשי"
       ],
       "specs": {},
-      "rating": 3.8,
-      "reviews": 340,
       "priceUnit": "month",
       "kind": "regular"
     }

@@ -2,8 +2,9 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'data.dart' show planById, planSaveYear;
+import 'data.dart' show planById;
 import 'models.dart' show TrackedPlan;
+import 'services/savings_summary.dart' show savingsCreditedOnLead;
 
 class AppState extends ChangeNotifier {
   static AppState _instance = AppState._internal();
@@ -41,6 +42,8 @@ class AppState extends ChangeNotifier {
     _leadProvider = p.getString('leadProvider');
     _leadName = p.getString('leadName');
     _leadPhone = p.getString('leadPhone');
+    _leadEmail = p.getString('leadEmail');
+    _leadCallbackTime = p.getString('leadCallbackTime');
     _trackerStep = p.getInt('trackerStep') ?? 0;
     // Watched plans
     final watched = p.getStringList('watchedPlans') ?? [];
@@ -169,6 +172,8 @@ class AppState extends ChangeNotifier {
           if (_leadProvider != null) await p.setString('leadProvider', _leadProvider!);
           if (_leadName != null) await p.setString('leadName', _leadName!);
           if (_leadPhone != null) await p.setString('leadPhone', _leadPhone!);
+          if (_leadEmail != null) await p.setString('leadEmail', _leadEmail!);
+          if (_leadCallbackTime != null) await p.setString('leadCallbackTime', _leadCallbackTime!);
           break;
         case 'trackerStep':
           await p.setInt('trackerStep', _trackerStep);
@@ -254,11 +259,6 @@ class AppState extends ChangeNotifier {
   String get selectedCat => _selectedCat;
   void setCategory(String cat) { _selectedCat = cat; _activeFilters.clear(); _searchQuery = ''; notifyListeners(); _persist(); }
 
-  // Plan selection
-  String? _selectedPlanId;
-  String? get selectedPlanId => _selectedPlanId;
-  void selectPlan(String? id) { _selectedPlanId = id; notifyListeners(); }
-
   // Compare
   final List<String> _comparePlans = [];
   List<String> get comparePlans => List.unmodifiable(_comparePlans);
@@ -335,8 +335,7 @@ class AppState extends ChangeNotifier {
     _leadName = name; _leadPhone = phone; _leadProvider = provider; _leadPlanId = planId; _leadEmail = email; _leadCallbackTime = callbackTime;
     _trackerStep = 1;
     final plan = planById(planId);
-    final save = plan != null ? planSaveYear(plan, currentBill(plan.cat)) : 0;
-    _totalSavings += save > 0 ? save : 540;
+    _totalSavings += savingsCreditedOnLead(plan, plan != null ? currentBill(plan.cat) : 0);
     notifyListeners(); _persist();
   }
 

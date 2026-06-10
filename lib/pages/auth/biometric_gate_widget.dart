@@ -6,10 +6,12 @@ import '../../widgets/app_button.dart';
 import '../../app_state.dart';
 import '../../services/auth_service.dart';
 
-/// Cold-start Face ID / fingerprint lock. Shown only when a real (logged-in)
-/// user enabled biometric quick-login — the router redirects here before Home.
-/// On success we mark the session unlocked and continue; the user can also fall
-/// back to signing in with a different account.
+/// Quick re-entry gate ("כניסה מהירה"). The Supabase session is already
+/// restored at this point — this screen does NOT secure anything; it only holds
+/// rendering until the returning user confirms with Face ID / fingerprint, so a
+/// shared device doesn't open straight into someone's saved plans. On success we
+/// continue; the user can always fall back to a different account, and after a
+/// few failed attempts we surface a password sign-in so nobody gets stuck.
 class BiometricGateWidget extends StatefulWidget {
   const BiometricGateWidget({super.key});
 
@@ -18,33 +20,52 @@ class BiometricGateWidget extends StatefulWidget {
 }
 
 class _BiometricGateWidgetState extends State<BiometricGateWidget> {
+  static const _maxAttempts = 3;
+
   bool _busy = false;
   bool _failed = false;
+  int _failedAttempts = 0;
+
+  bool get _exhausted => _failedAttempts >= _maxAttempts;
 
   @override
   void initState() {
     super.initState();
-    // Prompt automatically on first frame — the common case is a one-tap unlock.
+    // Prompt automatically on first frame — the common case is a one-tap entry.
     WidgetsBinding.instance.addPostFrameCallback((_) => _unlock());
   }
 
   Future<void> _unlock() async {
-    if (_busy) return;
+    if (_busy || _exhausted) return;
     setState(() {
       _busy = true;
       _failed = false;
     });
     final ok = await AuthService.instance.authenticateBiometric(
-      reason: 'אמתו את זהותכם כדי להיכנס ל"חוסך"',
+      reason: 'כניסה מהירה ל"חוסך"',
     );
     if (!mounted) return;
-    setState(() => _busy = false);
     if (ok) {
+      setState(() => _busy = false);
       AuthService.instance.markUnlocked();
       context.goNamed('Home');
     } else {
-      setState(() => _failed = true);
+      setState(() {
+        _busy = false;
+        _failed = true;
+        _failedAttempts++;
+      });
     }
+  }
+
+  /// Escape hatch — sign out of the restored session and send the user to the
+  /// password sign-in, so a failing sensor never traps them in the app.
+  Future<void> _signInWithPassword() async {
+    await AuthService.instance.signOut();
+    AuthService.instance.markUnlocked(); // don't re-gate after signing out
+    if (!mounted) return;
+    AppState().logout();
+    context.goNamed('Auth');
   }
 
   Future<void> _useAnotherAccount() async {
@@ -90,18 +111,31 @@ class _BiometricGateWidgetState extends State<BiometricGateWidget> {
                     style: t.headlineMedium.copyWith(color: Colors.white), textAlign: TextAlign.center),
                 const SizedBox(height: 8),
                 Text(
-                  _failed ? 'האימות לא הושלם — נסו שוב' : 'אמתו את זהותכם כדי להמשיך',
+                  _exhausted
+                      ? 'לא הצלחנו לזהות אתכם — היכנסו עם סיסמה'
+                      : _failed
+                          ? 'הכניסה המהירה לא הושלמה — נסו שוב'
+                          : 'כניסה מהירה כדי להמשיך',
                   style: t.bodyLarge.copyWith(color: Colors.white.withValues(alpha: 0.85)),
                   textAlign: TextAlign.center,
                 ),
                 const Spacer(),
-                AppButton(
-                  text: _busy ? 'מאמת…' : 'כניסה עם Face ID',
-                  width: double.infinity,
-                  color: Colors.white,
-                  textStyle: t.titleMedium.copyWith(color: t.primary),
-                  onPressed: () async => _unlock(),
-                ),
+                if (_exhausted)
+                  AppButton(
+                    text: 'התחברו עם סיסמה',
+                    width: double.infinity,
+                    color: Colors.white,
+                    textStyle: t.titleMedium.copyWith(color: t.primary),
+                    onPressed: _signInWithPassword,
+                  )
+                else
+                  AppButton(
+                    text: _busy ? 'מאמת…' : 'כניסה מהירה',
+                    width: double.infinity,
+                    color: Colors.white,
+                    textStyle: t.titleMedium.copyWith(color: t.primary),
+                    onPressed: () async => _unlock(),
+                  ),
                 const SizedBox(height: 12),
                 TextButton(
                   onPressed: _busy ? null : _useAnotherAccount,

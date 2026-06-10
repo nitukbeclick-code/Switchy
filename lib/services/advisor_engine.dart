@@ -89,37 +89,29 @@ class AdvisorProviderRating {
     'speed': 'מהירות',
   };
 
-  /// Pure, catalogue-only rating for [provider]: averages plan ratings/reviews
-  /// and derives sub-scores from a deterministic per-provider seed. Matches
-  /// `ProviderRatings` when the user has not left their own review.
+  /// Pure, catalogue-only rating for [provider]. Honest by construction: a
+  /// plan's `rating` is only a real signal when it carries real reviews
+  /// (`reviews > 0`); a plan with `reviews == 0` is unrated and its rating is a
+  /// placeholder that must never be averaged in or fabricated into a star.
+  ///
+  /// Mirrors `ProviderRatings.forProvider` (catalogue-only, no user review):
+  /// the star average is weighted by each plan's real review count, and when no
+  /// plan is really rated every figure is 0 / "no data" — including the
+  /// sub-scores, which are never invented (we have no real per-dimension data
+  /// in the catalogue, only the user's own review handled by `ProviderRatings`).
   static AdvisorProviderRating fromCatalogue(String provider) {
-    final plans = plansByProvider(provider);
-    bool isPlaceholder(Plan p) => p.rating == 4.2 && p.reviews == 0;
-    final stars = (plans.isEmpty || plans.every(isPlaceholder))
+    final rated = plansByProvider(provider).where((p) => p.reviews > 0).toList();
+    final reviews = rated.fold<int>(0, (s, p) => s + p.reviews);
+    final stars = reviews <= 0
         ? 0.0
-        : plans.fold<double>(0, (s, p) => s + p.rating) / plans.length;
-    final reviews = plans.fold<int>(0, (s, p) => s + p.reviews);
-    final seed = provider.codeUnits.fold(0, (s, c) => s + c);
-    double sub(String key) {
-      switch (key) {
-        case 'price':
-          return (3.5 + (seed % 15) / 10).clamp(3.0, 5.0);
-        case 'service':
-          return (3.2 + (seed % 17) / 10).clamp(3.0, 5.0);
-        case 'coverage':
-          return (3.8 + (seed % 12) / 10).clamp(3.5, 5.0);
-        case 'speed':
-          return (3.6 + (seed % 11) / 10).clamp(3.2, 5.0);
-        default:
-          return 4.0;
-      }
-    }
+        : rated.fold<double>(0, (s, p) => s + p.rating * p.reviews) / reviews;
 
     return AdvisorProviderRating(
       provider: provider,
       stars: stars,
       reviewCount: reviews,
-      sub: {for (final k in subKeys) k: sub(k)},
+      // No real per-dimension data in the catalogue — never fabricate sub-scores.
+      sub: {for (final k in subKeys) k: 0.0},
     );
   }
 }
@@ -444,7 +436,7 @@ class AdvisorEngine {
       } else {
         plans.sort((a, b) {
           if (a.highlight != b.highlight) return a.highlight ? -1 : 1;
-          return b.rating.compareTo(a.rating);
+          return a.price.compareTo(b.price);
         });
       }
       topPlans = plans.take(isComparison ? 4 : 3).toList();
@@ -491,12 +483,19 @@ class AdvisorEngine {
       intent = AdvisorIntent.rating;
       if (detectedProvider != null) {
         final r = context.ratingFor(detectedProvider);
-        final subs = AdvisorProviderRating.subKeys
-            .map((k) =>
-                '• ${AdvisorProviderRating.subLabels[k]}: ${r.sub[k]!.toStringAsFixed(1)}★')
-            .join('\n');
-        reply =
-            '⭐ דירוג $detectedProvider: ${r.stars.toStringAsFixed(1)}★ (${r.reviewCount} ביקורות)\n\n$subs\n\nרוצה לראות את המסלולים של $detectedProvider? כתבו את שמו.';
+        if (r.reviewCount == 0) {
+          // Honest no-data state — no fabricated 0.0★, mirroring the provider profile.
+          reply =
+              'אין עדיין דירוגים ל$detectedProvider — היו הראשונים לדרג! '
+              'רוצה לראות את המסלולים של $detectedProvider? כתבו את שמו.';
+        } else {
+          final subs = AdvisorProviderRating.subKeys
+              .map((k) =>
+                  '• ${AdvisorProviderRating.subLabels[k]}: ${r.sub[k]!.toStringAsFixed(1)}★')
+              .join('\n');
+          reply =
+              '⭐ דירוג $detectedProvider: ${r.stars.toStringAsFixed(1)}★ (${r.reviewCount} ביקורות)\n\n$subs\n\nרוצה לראות את המסלולים של $detectedProvider? כתבו את שמו.';
+        }
       } else {
         final ranked = allProviders
             .map((p) => (name: p, stars: context.ratingFor(p).stars))

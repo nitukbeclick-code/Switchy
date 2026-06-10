@@ -77,6 +77,21 @@
     reveals.forEach((el) => el.classList.add('in'));
   }
 
+  // ── Cookieless analytics events ────────────────────────────────────────────
+  // Thin wrapper over the Plausible-style queue (defined inline in <head>).
+  // Privacy-respecting: event names + coarse props only, never personal data.
+  const track = (name, props) => {
+    try { if (typeof window.plausible === 'function') window.plausible(name, props ? { props: props } : undefined); } catch (_) { /* analytics is best-effort */ }
+  };
+
+  // Fire a conversion event whenever a WhatsApp link is clicked (lead intent),
+  // tagging which surface it came from. Delegated so it also covers links that
+  // script.js injects later (compare table CTAs, plan cards).
+  document.addEventListener('click', (e) => {
+    const a = e.target.closest && e.target.closest('a[href*="wa.me"]');
+    if (a) track('whatsapp_click', { source: location.pathname });
+  }, true);
+
   // ── Lead form ──────────────────────────────────────────────────────────────
   // Backend is optional and config-driven: set `window.CHOSECH_SUPABASE =
   // { url, anonKey }` (anon key only — never the service_role key) to POST leads
@@ -124,6 +139,7 @@
         if (note) { note.style.color = '#ffd9d9'; note.textContent = 'השליחה נכשלה — נסו שוב, או כתבו לנו בוואטסאפ 💬'; }
         return;
       }
+      track('lead_submit', { source: location.pathname });
       form.reset();
       if (note) {
         note.style.color = '';
@@ -159,7 +175,6 @@
       const mode = (sort && sort.value) || 'price-asc';
       visibleCards.sort((a, b) => {
         if (mode === 'price-desc') return Number(b.dataset.price) - Number(a.dataset.price);
-        if (mode === 'rating-desc') return Number(b.dataset.rating) - Number(a.dataset.rating);
         return Number(a.dataset.price) - Number(b.dataset.price);
       });
       visibleCards.forEach((card) => planGrid.appendChild(card));
@@ -210,7 +225,8 @@
       const priceCell = (p) =>
         `<span class="cmp-price">₪${escHtml(p.price)}</span><small> ${per}</small>` +
         (p.after && Number(p.after) !== Number(p.price) ? `<small class="cmp-after">ואז ₪${escHtml(p.after)}</small>` : '');
-      const ratingCell = (p) => p.rating ? '★ ' + escHtml(Number(p.rating).toFixed(1)) : no;
+      // No rating row: per-plan "rating" is a fabricated placeholder (0 real
+      // reviews), so we never surface it as a comparison signal.
       const rows = [
         row('קטגוריה', chosen.map((p) => escHtml(catName[p.cat] || p.cat))),
         row('מחיר', chosen.map(priceCell)),
@@ -218,7 +234,6 @@
         row('5G', chosen.map((p) => p.is5G ? yes : no)),
         row('ללא התחייבות', chosen.map((p) => p.noCommit ? yes : no)),
         row('כולל חו״ל', chosen.map((p) => p.hasAbroad ? yes : no)),
-        row('דירוג', chosen.map(ratingCell)),
       ];
       specKeys.forEach((k) => {
         rows.push(row(k, chosen.map((p) => (p.specs && p.specs[k] != null) ? escHtml(p.specs[k]) : no)));
@@ -232,27 +247,6 @@
     };
     picks.forEach((s) => s.addEventListener('change', render));
     render();
-  }
-
-  // ── Community feed channel filter (app.html) ────────────────────────────────
-  const feedList = $('feedList');
-  if (feedList) {
-    const posts = Array.from(feedList.querySelectorAll('.feed-post'));
-    const chips = Array.from(document.querySelectorAll('.feed-chip'));
-    const empty = $('feedEmpty');
-    const filter = (chan) => {
-      let shown = 0;
-      posts.forEach((p) => {
-        const ok = chan === 'all' || p.dataset.chan === chan;
-        p.hidden = !ok;
-        if (ok) shown++;
-      });
-      if (empty) empty.hidden = shown > 0;
-    };
-    chips.forEach((chip) => chip.addEventListener('click', () => {
-      chips.forEach((c) => c.classList.toggle('active', c === chip));
-      filter(chip.dataset.chan);
-    }));
   }
 
   // ── AI advisor demo chips (app.html) ────────────────────────────────────────

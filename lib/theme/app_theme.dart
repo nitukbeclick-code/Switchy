@@ -128,28 +128,50 @@ class AppTheme {
   double get radiusXl => 28;
   double get radiusPill => 999;
 
+  // Type scale — each style resolves its GoogleFonts face exactly once and is
+  // then cached. The getters previously called GoogleFonts.rubik()/assistant()
+  // on *every* access, so a hot screen re-allocated dozens of identical styles
+  // per build; memoizing keeps the call sites unchanged while removing that
+  // per-build allocation churn. Call sites still read e.g.
+  // `AppTheme.of(context).titleLarge.copyWith(...)`.
+
   // Display — Rubik, tight tracking for big numerals & hero headings
-  TextStyle get displayLarge => GoogleFonts.rubik(fontSize: 52, fontWeight: FontWeight.w800, letterSpacing: -0.04, color: AppColors.primaryText);
-  TextStyle get displayMedium => GoogleFonts.rubik(fontSize: 40, fontWeight: FontWeight.w800, letterSpacing: -0.03, color: AppColors.primaryText);
-  TextStyle get displaySmall => GoogleFonts.rubik(fontSize: 32, fontWeight: FontWeight.w800, letterSpacing: -0.02, color: AppColors.primaryText);
+  static final TextStyle _displayLarge = GoogleFonts.rubik(fontSize: 52, fontWeight: FontWeight.w800, letterSpacing: -0.04, color: AppColors.primaryText);
+  static final TextStyle _displayMedium = GoogleFonts.rubik(fontSize: 40, fontWeight: FontWeight.w800, letterSpacing: -0.03, color: AppColors.primaryText);
+  static final TextStyle _displaySmall = GoogleFonts.rubik(fontSize: 32, fontWeight: FontWeight.w800, letterSpacing: -0.02, color: AppColors.primaryText);
+  TextStyle get displayLarge => _displayLarge;
+  TextStyle get displayMedium => _displayMedium;
+  TextStyle get displaySmall => _displaySmall;
 
   // Headlines
-  TextStyle get headlineLarge => GoogleFonts.rubik(fontSize: 28, fontWeight: FontWeight.w800, letterSpacing: -0.02, color: AppColors.primaryText);
-  TextStyle get headlineMedium => GoogleFonts.rubik(fontSize: 24, fontWeight: FontWeight.w700, letterSpacing: -0.01, color: AppColors.primaryText);
-  TextStyle get headlineSmall => GoogleFonts.rubik(fontSize: 20, fontWeight: FontWeight.w700, letterSpacing: -0.01, color: AppColors.primaryText);
+  static final TextStyle _headlineLarge = GoogleFonts.rubik(fontSize: 28, fontWeight: FontWeight.w800, letterSpacing: -0.02, color: AppColors.primaryText);
+  static final TextStyle _headlineMedium = GoogleFonts.rubik(fontSize: 24, fontWeight: FontWeight.w700, letterSpacing: -0.01, color: AppColors.primaryText);
+  static final TextStyle _headlineSmall = GoogleFonts.rubik(fontSize: 20, fontWeight: FontWeight.w700, letterSpacing: -0.01, color: AppColors.primaryText);
+  TextStyle get headlineLarge => _headlineLarge;
+  TextStyle get headlineMedium => _headlineMedium;
+  TextStyle get headlineSmall => _headlineSmall;
 
   // Titles
-  TextStyle get titleLarge => GoogleFonts.rubik(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.primaryText);
-  TextStyle get titleMedium => GoogleFonts.rubik(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.primaryText);
-  TextStyle get titleSmall => GoogleFonts.rubik(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.primaryText);
+  static final TextStyle _titleLarge = GoogleFonts.rubik(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.primaryText);
+  static final TextStyle _titleMedium = GoogleFonts.rubik(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.primaryText);
+  static final TextStyle _titleSmall = GoogleFonts.rubik(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.primaryText);
+  TextStyle get titleLarge => _titleLarge;
+  TextStyle get titleMedium => _titleMedium;
+  TextStyle get titleSmall => _titleSmall;
 
   // Body — Assistant, the Hebrew-first reading face
-  TextStyle get bodyLarge => GoogleFonts.assistant(fontSize: 16, fontWeight: FontWeight.w500, color: AppColors.primaryText);
-  TextStyle get bodyMedium => GoogleFonts.assistant(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.primaryText);
-  TextStyle get bodySmall => GoogleFonts.assistant(fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.secondaryText);
+  static final TextStyle _bodyLarge = GoogleFonts.assistant(fontSize: 16, fontWeight: FontWeight.w500, color: AppColors.primaryText);
+  static final TextStyle _bodyMedium = GoogleFonts.assistant(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.primaryText);
+  static final TextStyle _bodySmall = GoogleFonts.assistant(fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.secondaryText);
+  TextStyle get bodyLarge => _bodyLarge;
+  TextStyle get bodyMedium => _bodyMedium;
+  TextStyle get bodySmall => _bodySmall;
 
   // Labels
-  TextStyle get labelLarge => GoogleFonts.assistant(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.primaryText);
-  TextStyle get labelMedium => GoogleFonts.assistant(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.secondaryText);
-  TextStyle get labelSmall => GoogleFonts.assistant(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.secondaryText);
+  static final TextStyle _labelLarge = GoogleFonts.assistant(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.primaryText);
+  static final TextStyle _labelMedium = GoogleFonts.assistant(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.secondaryText);
+  static final TextStyle _labelSmall = GoogleFonts.assistant(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.secondaryText);
+  TextStyle get labelLarge => _labelLarge;
+  TextStyle get labelMedium => _labelMedium;
+  TextStyle get labelSmall => _labelSmall;
 }

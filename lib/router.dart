@@ -178,8 +178,8 @@ class _ScaffoldWithNav extends StatelessWidget {
                         Stack(clipBehavior: Clip.none, children: [
                           Icon(tab.icon, size: 26, color: active ? ffTheme.primary : ffTheme.secondaryText),
                           if (isCompare && compareCount > 0)
-                            Positioned(
-                              top: -5, right: -8,
+                            PositionedDirectional(
+                              top: -5, end: -8,
                               child: Container(
                                 width: 18, height: 18,
                                 decoration: BoxDecoration(color: ffTheme.secondary, shape: BoxShape.circle),

@@ -38,7 +38,17 @@ class _ChosechAppState extends State<ChosechApp> {
       supportedLocales: const [Locale('he'), Locale('en')],
       theme: _theme(context),
       routerConfig: _router,
-      builder: (ctx, child) => Directionality(textDirection: TextDirection.rtl, child: child!),
+      builder: (ctx, child) => Directionality(
+        textDirection: TextDirection.rtl,
+        // Clamp accessibility text scaling to a sane ceiling so very large
+        // system text can't overflow our fixed-height chips, badges and rows.
+        child: MediaQuery(
+          data: MediaQuery.of(ctx).copyWith(
+            textScaler: MediaQuery.textScalerOf(ctx).clamp(maxScaleFactor: 1.3),
+          ),
+          child: child!,
+        ),
+      ),
     );
   }
 

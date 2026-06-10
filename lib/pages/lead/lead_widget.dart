@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -32,31 +31,11 @@ class _LeadWidgetState extends State<LeadWidget> {
   String _callbackTime = 'now'; // 'now' | 'noon' | 'evening' | 'tomorrow'
   bool _isSubmitting = false;
 
-  // Countdown to "agent available"
-  int _countdown = 47;
-  Timer? _countdownTimer;
-
-  @override
-  void initState() {
-    super.initState();
-    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (!mounted) return;
-      setState(() {
-        if (_countdown > 1) {
-          _countdown--;
-        } else {
-          _countdownTimer?.cancel();
-        }
-      });
-    });
-  }
-
   @override
   void dispose() {
     _nameCtrl.dispose();
     _phoneCtrl.dispose();
     _emailCtrl.dispose();
-    _countdownTimer?.cancel();
     super.dispose();
   }
 
@@ -81,6 +60,7 @@ class _LeadWidgetState extends State<LeadWidget> {
         foregroundColor: ffTheme.primaryText,
         leading: IconButton(
           icon: const Icon(Icons.close_rounded),
+          tooltip: 'סגור',
           onPressed: () => context.safePop(),
         ),
         title: Text('השאירו פרטים', style: ffTheme.titleMedium),
@@ -93,8 +73,8 @@ class _LeadWidgetState extends State<LeadWidget> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Urgency chip — "נציג זמין בעוד X שניות"
-              _buildUrgencyBanner(ffTheme),
+              // Honest availability note — no fake countdown.
+              _buildAvailabilityBanner(ffTheme),
               const SizedBox(height: 20),
 
               // Plan summary card
@@ -152,11 +132,6 @@ class _LeadWidgetState extends State<LeadWidget> {
 
               // What happens next timeline
               _buildNextStepsCard(ffTheme),
-
-              const SizedBox(height: 20),
-
-              // Social proof
-              if (plan != null) _buildSocialProof(plan, ffTheme),
 
               const SizedBox(height: 20),
 
@@ -254,29 +229,28 @@ class _LeadWidgetState extends State<LeadWidget> {
     );
   }
 
-  Widget _buildUrgencyBanner(AppTheme ffTheme) {
-    final isLive = _countdown > 0;
+  Widget _buildAvailabilityBanner(AppTheme ffTheme) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: isLive ? ffTheme.accent1 : ffTheme.accent2,
+        color: ffTheme.accent1,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: isLive ? ffTheme.primary.withValues(alpha: 0.3) : ffTheme.warning.withValues(alpha: 0.3)),
+        border: Border.all(color: ffTheme.primary.withValues(alpha: 0.3)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
             width: 8, height: 8,
-            decoration: BoxDecoration(color: isLive ? ffTheme.primary : ffTheme.warning, shape: BoxShape.circle),
+            decoration: BoxDecoration(color: ffTheme.primary, shape: BoxShape.circle),
           ).animate(onPlay: (c) => c.repeat(reverse: true))
             .scale(begin: const Offset(1, 1), end: const Offset(1.5, 1.5), duration: 700.ms),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              isLive ? 'נציג זמין עכשיו — יחזור אליך תוך $_countdown שניות' : 'שלחו פרטים ונחזור אליכם בהקדם',
+              'שלחו פרטים ונציג יחזור אליכם בהקדם — בימי א׳–ה׳, 9:00–21:00',
               style: ffTheme.labelMedium.copyWith(
-                color: isLive ? ffTheme.primary : ffTheme.warning,
+                color: ffTheme.primary,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -410,32 +384,6 @@ class _LeadWidgetState extends State<LeadWidget> {
         ],
       ),
     ).animate(delay: 180.ms).fadeIn();
-  }
-
-  Widget _buildSocialProof(Plan plan, AppTheme ffTheme) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      decoration: BoxDecoration(
-        color: ffTheme.accent2,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: ffTheme.warning.withValues(alpha: 0.25)),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 8, height: 8,
-            decoration: BoxDecoration(color: ffTheme.warning, shape: BoxShape.circle),
-          ).animate(onPlay: (c) => c.repeat(reverse: true))
-            .scale(begin: const Offset(1, 1), end: const Offset(1.4, 1.4), duration: 800.ms),
-          const SizedBox(width: 8),
-          Text(
-            '${(plan.reviews % 30) + 14} אנשים בחרו ב${plan.provider} השבוע',
-            style: ffTheme.labelMedium.copyWith(color: ffTheme.warning, fontWeight: FontWeight.w700),
-          ),
-        ],
-      ),
-    ).animate().fadeIn(duration: 300.ms);
   }
 
   InputDecoration _inputDecoration({required String hint, required IconData icon, required AppTheme ffTheme}) {

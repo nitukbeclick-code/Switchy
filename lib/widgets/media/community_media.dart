@@ -138,7 +138,12 @@ class _MediaImageBubbleState extends State<MediaImageBubble> {
           ),
         );
       }
-      imageChild = Image.memory(bytes, fit: BoxFit.cover);
+      // Captures can be up to 1280px; the bubble is small. Decode at a size
+      // tied to the bubble height (in physical pixels) instead of full
+      // resolution, capped so we never up-decode tiny sources.
+      final dpr = MediaQuery.of(context).devicePixelRatio;
+      final cacheWidth = (widget.maxHeight * dpr).round().clamp(1, 1280);
+      imageChild = Image.memory(bytes, fit: BoxFit.cover, cacheWidth: cacheWidth);
     }
 
     return Semantics(

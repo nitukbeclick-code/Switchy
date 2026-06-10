@@ -27,8 +27,6 @@ void main() {
           'hasAbroad': p.hasAbroad,
           'feats': p.feats,
           'specs': p.specs,
-          'rating': p.rating,
-          'reviews': p.reviews,
           'priceUnit': p.unit, // month / package / day / minute (resolved default)
           'kind': p.kind,      // regular / dataonly / kosher
         }).toList();

@@ -70,7 +70,7 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
             ),
             actions: [
               Container(
-                margin: const EdgeInsets.only(left: 16, top: 8, bottom: 8),
+                margin: const EdgeInsetsDirectional.only(start: 16, top: 8, bottom: 8),
                 child: ElevatedButton(
                   onPressed: () => context.goNamed('Home'),
                   style: ElevatedButton.styleFrom(
@@ -280,7 +280,7 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
                           onTap: () => setState(() => _activeCat = cat.id),
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 200),
-                            margin: const EdgeInsets.only(left: 8),
+                            margin: const EdgeInsetsDirectional.only(start: 8),
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
                             decoration: BoxDecoration(
                               color: active ? ffTheme.primary : Colors.white,
@@ -566,7 +566,7 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
                 context.goNamed('Home');
               },
               child: Container(
-                margin: const EdgeInsets.only(left: 16),
+                margin: const EdgeInsetsDirectional.only(start: 16),
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                 decoration: BoxDecoration(
                   color: ffTheme.secondary,

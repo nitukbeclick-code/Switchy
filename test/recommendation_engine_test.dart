@@ -110,25 +110,58 @@ void main() {
     });
   });
 
-  group('priority weighting', () {
-    test('service priority rewards a higher-rated plan more than price priority does', () {
-      final plans = plansByCat('cellular');
-      final cheap = plans.reduce((a, b) => a.price < b.price ? a : b);
-      final topRated = plans.reduce((a, b) => a.rating >= b.rating ? a : b);
-      // Only meaningful if these are genuinely different plans.
-      if (cheap.id != topRated.id && topRated.rating > cheap.rating) {
-        const priceProfile = MatchProfile(category: 'cellular', currentBill: 150, priority: MatchPriority.price);
-        const serviceProfile = MatchProfile(category: 'cellular', currentBill: 150, priority: MatchPriority.service);
+  group('placeholder ratings do not move ranking', () {
+    // Every catalogue plan has reviews == 0, so its `rating` field is a
+    // fabricated placeholder. The engine must treat it as neutral: a higher
+    // placeholder rating may NOT differentiate ranking today.
 
-        double gap(Plan a, Plan b, MatchProfile prof) =>
-            RecommendationEngine.scorePlan(b, prof).score -
-            RecommendationEngine.scorePlan(a, prof).score;
-
-        final priceGap = gap(cheap, topRated, priceProfile);
-        final serviceGap = gap(cheap, topRated, serviceProfile);
-        // Under "service", the rating advantage should weigh more heavily.
-        expect(serviceGap, greaterThan(priceGap));
+    test('all catalogue plans are unrated (reviews == 0) — guards the premise', () {
+      for (final cat in ['cellular', 'internet', 'tv', 'triple', 'abroad']) {
+        for (final p in plansByCat(cat)) {
+          expect(p.reviews, 0,
+              reason: 'a real review would make `rating` a live signal and '
+                  'these honesty assertions would need revisiting');
+        }
       }
+    });
+
+    // A synthetic, unrated (reviews == 0) cellular plan we fully control.
+    Plan cellular({required int price, required double rating}) => Plan(
+          id: 'syn_${price}_${rating.toString().replaceAll('.', '')}',
+          cat: 'cellular',
+          provider: 'בדיקה',
+          net: '4G',
+          plan: 'מסלול בדיקה',
+          price: price,
+          rating: rating,
+          reviews: 0,
+        );
+
+    test('two identical plans differing only in placeholder rating rank equally', () {
+      const profile = MatchProfile(category: 'cellular', currentBill: 150);
+      // Identical everything but the fabricated rating.
+      final low = RecommendationEngine.scorePlan(cellular(price: 59, rating: 3.0), profile);
+      final high = RecommendationEngine.scorePlan(cellular(price: 59, rating: 5.0), profile);
+      expect(high.score, equals(low.score));
+      // …and under every priority — rating is neutral regardless of weighting.
+      for (final pr in MatchPriority.values) {
+        final prof = MatchProfile(category: 'cellular', currentBill: 150, priority: pr);
+        expect(
+          RecommendationEngine.scorePlan(cellular(price: 59, rating: 5.0), prof).score,
+          equals(RecommendationEngine.scorePlan(cellular(price: 59, rating: 3.0), prof).score),
+          reason: 'placeholder rating must not move score under $pr',
+        );
+      }
+    });
+
+    test('a cheaper plan still outranks a higher-rated pricier one', () {
+      // Even under "service" — the priority that historically leaned on rating.
+      const profile = MatchProfile(
+          category: 'cellular', currentBill: 200, priority: MatchPriority.service);
+      final cheap = RecommendationEngine.scorePlan(cellular(price: 39, rating: 3.0), profile);
+      final pricy = RecommendationEngine.scorePlan(cellular(price: 99, rating: 5.0), profile);
+      // The fabricated rating must not let the pricier plan win.
+      expect(cheap.score, greaterThan(pricy.score));
     });
   });
 

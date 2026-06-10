@@ -435,7 +435,7 @@ class _AlternativeRow extends StatelessWidget {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text('₪${plan.price}',
+                    Text('₪${plan.priceText}',
                         style: ffTheme.titleSmall.copyWith(
                             color: ffTheme.primary, fontWeight: FontWeight.w800)),
                     Text(plan.hasPromo ? 'ואז ₪${plan.after}' : priceUnitLabel(plan),

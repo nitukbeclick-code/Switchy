@@ -641,7 +641,7 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Text('₪${plan.price}', style: ffTheme.titleMedium.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w800)),
+                      Text('₪${plan.priceText}', style: ffTheme.titleMedium.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w800)),
                       Text(priceUnit, style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText, fontSize: 11)),
                       const SizedBox(height: 6),
                       Icon(Icons.arrow_forward_ios_rounded, size: 14, color: ffTheme.primary),

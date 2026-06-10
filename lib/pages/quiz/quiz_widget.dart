@@ -720,7 +720,7 @@ class _QuizWidgetState extends State<QuizWidget> {
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          Text('₪${top.plan.price}',
+                          Text('₪${top.plan.priceText}',
                               style: ffTheme.headlineSmall
                                   .copyWith(color: ffTheme.primary, fontWeight: FontWeight.w800)),
                           Text(priceUnit,
@@ -803,7 +803,7 @@ class _QuizWidgetState extends State<QuizWidget> {
               onPressed: () {
                 HapticFeedback.lightImpact();
                 Share.share(
-                    'מצאתי מסלול ${top.plan.provider} ב-₪${top.plan.price} — ${top.annualSaving > 0 ? 'חוסך ₪${top.annualSaving} בשנה ' : ''}עם חוסך 💚');
+                    'מצאתי מסלול ${top.plan.provider} ב-₪${top.plan.priceText} — ${top.annualSaving > 0 ? 'חוסך ₪${top.annualSaving} בשנה ' : ''}עם חוסך 💚');
               },
               icon: Icon(Icons.ios_share_rounded, size: 18, color: ffTheme.primary),
               label: Text('שתף',
@@ -844,7 +844,7 @@ class _QuizWidgetState extends State<QuizWidget> {
                             ],
                           ),
                         ),
-                        Text('₪${alt.plan.price}',
+                        Text('₪${alt.plan.priceText}',
                             style: ffTheme.titleMedium
                                 .copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
                         const SizedBox(width: 10),

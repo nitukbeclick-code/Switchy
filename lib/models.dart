@@ -19,6 +19,7 @@ class Plan {
     required this.net,
     required this.plan,
     required this.price,
+    this.priceExact,
     this.after,
     this.term,
     this.intro,
@@ -45,7 +46,16 @@ class Plan {
   final String provider;
   final String net;
   final String plan;
+
+  /// The rounded whole-shekel price — kept as an int for sorting/back-compat.
+  /// Display uses [priceText] and money math uses [priceValue], both of which
+  /// honor [priceExact] when present.
   final int price;
+
+  /// The exact advertised price when it isn't a whole shekel (e.g. 69.9 for a
+  /// plan marketed as "₪69.90"). Israeli telecom prices almost always end in
+  /// .90; rounding them in the headline makes every plan look more expensive.
+  final double? priceExact;
   final int? after;
   final int? term;
   final String? intro;
@@ -94,6 +104,16 @@ class Plan {
 
   bool get hasPromo => after != null && after! > price;
   bool get noCommit => term == null || term == 0;
+
+  /// The price for money math (savings, comparisons) — exact when known.
+  double get priceValue => priceExact ?? price.toDouble();
+
+  /// The price as shown to the user: '69.90' when fractional, '70' when whole.
+  /// Use everywhere a plan's headline price is rendered (with the ₪ prefix).
+  String get priceText {
+    final v = priceValue;
+    return v == v.roundToDouble() ? v.toInt().toString() : v.toStringAsFixed(2);
+  }
 
   /// True for ordinary subscriber plans — the only kind that competes on
   /// "savings vs. your current bill" (see [kind]).

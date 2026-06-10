@@ -38,7 +38,7 @@ class PlanCardWidget extends StatelessWidget {
     final savings = ((currentBill - plan.price) * 12).clamp(0, 999999);
     final inCompare = appState.isInCompare(plan.id);
     final isWatching = appState.isWatching(plan.id);
-    final displayPrice = '₪${plan.price}';
+    final displayPrice = '₪${plan.priceText}';
     final displayAfter = plan.hasPromo ? '₪${plan.after}' : null;
     final matchLabel = _quizMatch(appState);
 

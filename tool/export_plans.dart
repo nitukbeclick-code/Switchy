@@ -19,6 +19,7 @@ void main() {
           'provider': p.provider,
           'plan': p.plan,
           'price': p.price,
+          'priceExact': p.priceExact,
           'after': p.hasPromo ? p.after : null,
           'net': p.netLabel,
           'is5G': p.is5G,

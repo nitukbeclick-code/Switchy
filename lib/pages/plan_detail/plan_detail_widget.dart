@@ -125,7 +125,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                     onPressed: () {
                       HapticFeedback.selectionClick();
                       final unit = priceUnitShort(plan);
-                      Share.share('${plan.provider} — ${plan.plan}\n₪${plan.price}/$unit\n\nמצאתי בחוסך 💚');
+                      Share.share('${plan.provider} — ${plan.plan}\n₪${plan.priceText}/$unit\n\nמצאתי בחוסך 💚');
                     },
                   ),
                   IconButton(
@@ -233,7 +233,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                                   crossAxisAlignment: CrossAxisAlignment.end,
                                   children: [
                                     Text(
-                                      '₪${plan.price}',
+                                      '₪${plan.priceText}',
                                       style: ffTheme.displaySmall.copyWith(
                                           color: ffTheme.primary,
                                           fontWeight: FontWeight.w800),
@@ -324,7 +324,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                           children: [
                             _PriceRow(
                                 label: 'מחיר מבצע',
-                                value: '₪${plan.price}',
+                                value: '₪${plan.priceText}',
                                 ffTheme: ffTheme),
                             if (plan.hasPromo)
                               _PriceRow(
@@ -665,7 +665,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                                             ],
                                           ),
                                           const SizedBox(height: 6),
-                                          Text('₪${p.price}/${priceUnitShort(p)}', style: ffTheme.titleSmall.copyWith(color: ffTheme.primary)),
+                                          Text('₪${p.priceText}/${priceUnitShort(p)}', style: ffTheme.titleSmall.copyWith(color: ffTheme.primary)),
                                           const SizedBox(height: 3),
                                           if (pSave > 0)
                                             Text('חוסך ₪$pSave/שנה', style: ffTheme.labelSmall.copyWith(color: ffTheme.success))
@@ -1239,7 +1239,7 @@ class _CostBreakdownCard extends StatelessWidget {
           // Monthly/package price row
           _PriceRow(
             label: 'מחיר $unit',
-            value: '₪${plan.price}',
+            value: '₪${plan.priceText}',
             ffTheme: ffTheme,
           ),
           // Promo info

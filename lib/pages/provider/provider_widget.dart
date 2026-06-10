@@ -449,7 +449,7 @@ class _BestMatchCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      '₪${plan.price}',
+                      '₪${plan.priceText}',
                       style: ffTheme.titleLarge.copyWith(
                           color: ffTheme.primary,
                           fontWeight: FontWeight.w800),
@@ -712,7 +712,7 @@ class _PlanCard extends StatelessWidget {
             Row(
               children: [
                 Text(
-                  '₪${plan.price} $unit',
+                  '₪${plan.priceText} $unit',
                   style: ffTheme.titleSmall.copyWith(
                       color: ffTheme.primary, fontWeight: FontWeight.w700),
                 ),

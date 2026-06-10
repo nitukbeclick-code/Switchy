@@ -72,7 +72,9 @@ Plan? planById(String id) {
 }
 
 int planSaveYear(Plan p, int currentBill) {
-  return ((currentBill - p.price) * 12).clamp(0, 999999);
+  // Use the exact price so the saving is accurate to the agora even when the
+  // headline price is rounded for sorting.
+  return ((currentBill - p.priceValue) * 12).round().clamp(0, 999999);
 }
 
 /// תווית יחידת המחיר המלאה — 'לחודש' / 'לחבילה' / 'ליום' / 'לדקה'.

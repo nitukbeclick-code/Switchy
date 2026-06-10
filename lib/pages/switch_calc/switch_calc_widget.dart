@@ -470,7 +470,7 @@ class _RecommendedPlanCard extends StatelessWidget {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text('₪${plan.price}',
+                    Text('₪${plan.priceText}',
                         style: ffTheme.headlineSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w800)),
                     Text(priceLabel,
                         style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText)),
@@ -515,7 +515,7 @@ class _RecommendedPlanCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
-                  'השתמש במחיר המומלץ (₪${plan.price})',
+                  'השתמש במחיר המומלץ (₪${plan.priceText})',
                   textAlign: TextAlign.center,
                   style: ffTheme.labelMedium.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
                 ),
@@ -644,7 +644,7 @@ class _LeadingPlanCard extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text('₪${plan.price}', style: ffTheme.headlineSmall.copyWith(color: ffTheme.primary)),
+                  Text('₪${plan.priceText}', style: ffTheme.headlineSmall.copyWith(color: ffTheme.primary)),
                   Text(priceUnitLabel(plan), style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText)),
                 ],
               ),

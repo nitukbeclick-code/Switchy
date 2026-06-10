@@ -84,7 +84,7 @@ class MiniPlanCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    '₪${plan.price}/${priceUnitShort(plan)}',
+                    '₪${plan.priceText}/${priceUnitShort(plan)}',
                     style: ffTheme.titleMedium.copyWith(color: ffTheme.primary),
                   ),
                   if (showCta) ...[

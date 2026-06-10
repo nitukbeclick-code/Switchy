@@ -130,6 +130,14 @@ const esc = (s) => String(s)
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
   .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
+// Display price: prefer the exact advertised price (e.g. 69.90) when it isn't a
+// whole shekel; otherwise the rounded `price` int. The int `price` stays the
+// source of truth for sorting / min ("from ₪X") math — see plansByCat sort.
+const priceText = (p) =>
+  p.priceExact != null
+    ? (Number.isInteger(p.priceExact) ? p.priceExact : p.priceExact.toFixed(2))
+    : p.price;
+
 // Stable URL slug per provider (Hebrew/Latin → ascii).
 const PROVIDER_SLUGS = {
   'Xphone': 'xphone', 'סלקום': 'cellcom', '019 מובייל': '019mobile', 'פרטנר': 'partner',
@@ -178,13 +186,13 @@ function planCardHtml(p) {
   const after = p.after ? `<span class="plan__after">ואז ₪${p.after}</span>` : '';
   const rating = p.rating ? `<span class="plan__rating">★ ${p.rating}</span>` : '';
   const text = esc(`${p.provider} ${p.plan} ${(p.feats || []).join(' ')} ${Object.values(p.specs || {}).join(' ')}`).toLowerCase();
-  const waHref = 'https://wa.me/972505037537?text=' + encodeURIComponent('היי, מעניין אותי ' + p.provider + ' - ' + p.plan + ' (₪' + p.price + ')');
+  const waHref = 'https://wa.me/972505037537?text=' + encodeURIComponent('היי, מעניין אותי ' + p.provider + ' - ' + p.plan + ' (₪' + priceText(p) + ')');
   return `<article class="plan" data-cat="${esc(p.cat)}" data-text="${text}" data-price="${p.price}" data-rating="${p.rating || 0}" data-5g="${p.is5G}" data-nocommit="${p.noCommit}" data-abroad="${p.hasAbroad}">
         <div class="plan__top"><span class="plan__id">${providerLogo(p.provider)}<a class="plan__provider" href="provider-${providerSlug(p.provider)}.html">${esc(p.provider)}</a></span><span class="plan__net">${esc(p.net)}</span></div>
         <div class="plan__name">${esc(p.plan)}</div>
         ${specs ? `<div class="plan__chips">${specs}</div>` : ''}
         ${flags.length ? `<div class="plan__flags">${flags.join('')}</div>` : ''}
-        <div class="plan__bottom"><div class="plan__price"><b>₪${p.price}</b> <span>${unit}</span>${after}</div>${rating}</div>
+        <div class="plan__bottom"><div class="plan__price"><b>₪${priceText(p)}</b> <span>${unit}</span>${after}</div>${rating}</div>
         <a class="plan__cta" target="_blank" rel="noopener" href="${esc(waHref)}">💬 מעוניין/ת ←</a>
       </article>`;
 }
@@ -922,13 +930,13 @@ ${footer}
 function comparePage() {
   const url = `${SITE}/compare.html`;
   const data = catalogue.plans.map((p) => ({
-    id: p.id, cat: p.cat, provider: p.provider, plan: p.plan, price: p.price,
+    id: p.id, cat: p.cat, provider: p.provider, plan: p.plan, price: p.price, priceExact: p.priceExact,
     after: p.after, net: p.net, is5G: p.is5G, noCommit: p.noCommit, hasAbroad: p.hasAbroad,
     rating: p.rating, specs: p.specs,
   }));
   const optionsFor = (preId) => categories.map((c) => {
     const opts = (plansByCat[c.slug] || []).map((p) =>
-      `<option value="${esc(p.id)}"${p.id === preId ? ' selected' : ''}>${esc(p.provider)} — ${esc(p.plan)} (₪${p.price})</option>`).join('');
+      `<option value="${esc(p.id)}"${p.id === preId ? ' selected' : ''}>${esc(p.provider)} — ${esc(p.plan)} (₪${priceText(p)})</option>`).join('');
     return `<optgroup label="${esc(c.name)}">${opts}</optgroup>`;
   }).join('');
   const firstTwo = (plansByCat['cellular'] || []).slice(0, 2).map((p) => p.id);

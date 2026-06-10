@@ -1037,7 +1037,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                               ],
                             ),
                             const SizedBox(height: 5),
-                            Text('₪${plan.price}/${priceUnitShort(plan)}', style: ffTheme.titleSmall.copyWith(color: ffTheme.primary, fontSize: 13, fontWeight: FontWeight.w700)),
+                            Text('₪${plan.priceText}/${priceUnitShort(plan)}', style: ffTheme.titleSmall.copyWith(color: ffTheme.primary, fontSize: 13, fontWeight: FontWeight.w700)),
                             const SizedBox(height: 3),
                             Row(
                               children: [
@@ -1121,7 +1121,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                           ],
                         ),
                         const SizedBox(height: 5),
-                        Text('₪${plan.price}/${priceUnitShort(plan)}', style: ffTheme.titleSmall.copyWith(color: ffTheme.primary, fontSize: 13, fontWeight: FontWeight.w700)),
+                        Text('₪${plan.priceText}/${priceUnitShort(plan)}', style: ffTheme.titleSmall.copyWith(color: ffTheme.primary, fontSize: 13, fontWeight: FontWeight.w700)),
                         const SizedBox(height: 3),
                         Text(plan.plan, style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText), maxLines: 1, overflow: TextOverflow.ellipsis),
                       ],

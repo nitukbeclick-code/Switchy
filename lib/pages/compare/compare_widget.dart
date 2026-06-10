@@ -62,7 +62,7 @@ class CompareWidget extends StatelessWidget {
               tooltip: 'שתף',
               onPressed: () => Share.share(
                 'השוויתי בחוסך: '
-                '${plans.map((p) => '${p.provider} ${p.plan} ₪${p.price}').join(' מול ')}'
+                '${plans.map((p) => '${p.provider} ${p.plan} ₪${p.priceText}').join(' מול ')}'
                 ' 💚',
               ),
             ),
@@ -146,7 +146,7 @@ class _EmptyState extends StatelessWidget {
                         Text(firstPlan!.plan, style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText), maxLines: 1, overflow: TextOverflow.ellipsis),
                       ],
                     )),
-                    Text('₪${firstPlan!.price}', style: ffTheme.titleMedium.copyWith(color: ffTheme.primary)),
+                    Text('₪${firstPlan!.priceText}', style: ffTheme.titleMedium.copyWith(color: ffTheme.primary)),
                   ],
                 ),
               ).animate().fadeIn(delay: 250.ms),
@@ -216,7 +216,7 @@ class _CompareTable extends StatelessWidget {
     final specKeys = _specKeyUnion(plans);
 
     final rows = <_Row>[
-      _Row('מחיר', plans.map((p) => '₪${p.price}/${priceUnitShort(p)}').toList()),
+      _Row('מחיר', plans.map((p) => '₪${p.priceText}/${priceUnitShort(p)}').toList()),
       _Row('לאחר מבצע',
           plans.map((p) => p.hasPromo ? '₪${p.after}' : 'קבוע').toList()),
       _Row('התחייבות',
@@ -570,7 +570,7 @@ class _WinnerSummaryCard extends StatelessWidget {
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        Text('₪${winner.price}', style: GoogleFonts.rubik(fontSize: 28, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: -1)),
+                        Text('₪${winner.priceText}', style: GoogleFonts.rubik(fontSize: 28, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: -1)),
                         Text(priceUnitLabel(winner), style: GoogleFonts.assistant(fontSize: 11, color: Colors.white60)),
                       ],
                     ),
@@ -681,7 +681,7 @@ class _WinnerSummaryCard extends StatelessWidget {
                   const SizedBox(width: 8),
                   SizedBox(
                     width: 56,
-                    child: Text('₪${p.price}', style: ffTheme.labelSmall.copyWith(
+                    child: Text('₪${p.priceText}', style: ffTheme.labelSmall.copyWith(
                       color: isWinner ? ffTheme.primary : ffTheme.primaryText,
                       fontWeight: isWinner ? FontWeight.w800 : FontWeight.w600,
                     ), textAlign: TextAlign.end),

@@ -2,217 +2,169 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // renewal-reminders — חוסך
-// Triggered daily at 08:00 UTC by pg_cron + pg_net (see supabase/schema.sql).
-// Queries tracked_plans for upcoming promo expirations and sends the sales team
-// a Telegram digest so they can proactively call customers before the promo ends.
+// The bot's scheduled brain. pg_cron POSTs here with a `mode` (see the
+// schedule block in supabase/schema.sql); auth is the shared x-webhook-secret.
 //
-// Auth: x-webhook-secret header (same secret as notify-lead).
-// GET  ?action=health   -> config status
-// POST { days?: number } -> run the digest (default: 14 days look-ahead),
-//                           then re-deliver leads whose notification never
-//                           landed (notified_at is null — see notify-lead)
+// GET  ?action=health        -> config status
+// POST {mode:"digest",days?} -> daily renewal digest + per-renewal "create
+//                               lead" buttons for the urgent ones + open-lead
+//                               count (default mode; legacy {days} works)
+// POST {mode:"sweep"}        -> re-deliver unnotified leads (every 10 min);
+//                               claim-before-send so overlapping runs and the
+//                               trigger race can't duplicate
+// POST {mode:"follow-up"}    -> hourly: SLA escalations (2h→6h→daily ladder)
+//                               + "the customer asked for evening" pings
+// POST {mode:"weekly"}       -> weekly business report (also /weekly in chat)
+//
+// Deploy: supabase functions deploy renewal-reminders --no-verify-jwt
 // ─────────────────────────────────────────────────────────────────────────────
 
-const NL = String.fromCharCode(10);
+import type { Cfg, Lead, RenewalRow } from "../_shared/types.ts";
+import { resolveCfgCached, safeEqual } from "../_shared/config.ts";
+import { esc, NL, sendTelegram } from "../_shared/telegram.ts";
+import { fetchRows, patchCount, rpcRows, serviceFetch } from "../_shared/db.ts";
+import { jlog } from "../_shared/log.ts";
+import { buildText, CALLBACK_HE, leadKeyboard } from "../_shared/leads.ts";
+import { buildDigest, daysUntil } from "../_shared/digests.ts";
+import { buildWeeklyReport } from "../_shared/weekly.ts";
+import { israelHourOf, planFollowUps } from "../_shared/followup.ts";
 
-function firstEnv(names: string[]): string {
-  for (const n of names) {
-    const v = Deno.env.get(n);
-    if (v && v.trim() !== "") return v.trim();
-  }
-  return "";
+const enc = encodeURIComponent;
+
+async function fetchUpcomingRenewals(days: number): Promise<RenewalRow[] | null> {
+  return await rpcRows<RenewalRow>("get_upcoming_renewals", { days });
 }
 
-const ENV = {
-  tgToken: firstEnv(["TELEGRAM_BOT_TOKEN", "TELEGRAM_TOKEN", "TG_BOT_TOKEN", "BOT_TOKEN"]),
-  tgChat: firstEnv(["TELEGRAM_CHAT_ID", "TELEGRAM_CHAT", "TG_CHAT_ID", "CHAT_ID"]),
-  webhookSecret: firstEnv(["LEAD_WEBHOOK_SECRET", "WEBHOOK_SECRET"]),
-};
-
-async function vaultConfig(): Promise<Record<string, string>> {
-  const url = Deno.env.get("SUPABASE_URL") ?? "";
-  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-  if (!url || !key) return {};
-  try {
-    const r = await fetch(`${url}/rest/v1/rpc/get_lead_notify_config`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "apikey": key, "Authorization": `Bearer ${key}` },
-      body: "{}",
-    });
-    if (r.ok) {
-      const j = await r.json();
-      if (j && typeof j === "object") return j as Record<string, string>;
-    }
-  } catch (_) {}
-  return {};
-}
-
-type Cfg = { tgToken: string; tgChat: string; webhookSecret: string; };
-
-async function resolveCfg(): Promise<Cfg> {
-  const v = await vaultConfig();
-  const pick = (vaultName: string, envVal: string) =>
-    String(v[vaultName] ?? "").trim() || envVal;
-  return {
-    tgToken: pick("telegram_bot_token", ENV.tgToken),
-    tgChat: pick("telegram_chat_id", ENV.tgChat),
-    webhookSecret: pick("lead_webhook_secret", ENV.webhookSecret),
-  };
-}
-
-// Vault lookups hit PostgREST with the service-role key; memoize briefly so
-// anonymous traffic (health probes, 401s) can't amplify into DB load.
-let cfgCache: { cfg: Cfg; at: number } | null = null;
-async function resolveCfgCached(): Promise<Cfg> {
-  if (cfgCache && Date.now() - cfgCache.at < 60_000) return cfgCache.cfg;
-  const cfg = await resolveCfg();
-  cfgCache = { cfg, at: Date.now() };
-  return cfg;
-}
-
-// Constant-time secret comparison: digest both sides to fixed length, then
-// XOR-compare every byte so timing reveals nothing about the expected value.
-async function safeEqual(a: string, b: string): Promise<boolean> {
-  const enc = new TextEncoder();
-  const [da, db] = await Promise.all([
-    crypto.subtle.digest("SHA-256", enc.encode(a)),
-    crypto.subtle.digest("SHA-256", enc.encode(b)),
-  ]);
-  const ua = new Uint8Array(da), ub = new Uint8Array(db);
-  let diff = 0;
-  for (let i = 0; i < ua.length; i++) diff |= ua[i] ^ ub[i];
-  return diff === 0;
-}
-
-type RenewalRow = {
-  provider: string;
-  plan_name: string;
-  monthly_price: number;
-  promo_end_date: string;
-  category: string;
-  name: string | null;
-  phone: string | null;
-};
-
-async function fetchUpcomingRenewals(days: number): Promise<RenewalRow[]> {
-  const url = Deno.env.get("SUPABASE_URL") ?? "";
-  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-  if (!url || !key) return [];
-  try {
-    const r = await fetch(`${url}/rest/v1/rpc/get_upcoming_renewals`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "apikey": key, "Authorization": `Bearer ${key}` },
-      body: JSON.stringify({ days }),
-    });
-    if (!r.ok) return [];
-    const j = await r.json();
-    return Array.isArray(j) ? (j as RenewalRow[]) : [];
-  } catch (_) { return []; }
-}
-
-const CAT_HE: Record<string, string> = {
-  cellular: "סלולר", internet: "אינטרנט", tv: "טלוויזיה",
-  triple: "חבילה משולבת", abroad: "חו\"ל",
-};
-
-function esc(s: unknown): string {
-  return String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-}
-
-function waLink(phone: string | null): string {
-  if (!phone) return "";
-  const d = phone.replace(/[^0-9]/g, "");
-  if (d.length < 9) return "";
-  const intl = d.startsWith("0") ? "972" + d.slice(1) : d;
-  return ` — <a href="https://wa.me/${intl}">WhatsApp</a>`;
-}
-
-function daysUntil(dateStr: string): number {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const target = new Date(dateStr);
-  return Math.ceil((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-}
-
-function buildDigest(rows: RenewalRow[], days: number): string {
-  if (rows.length === 0) {
-    return `📅 <b>חידושים קרובים — חוסך</b>${NL}${NL}אין מסלולים המתחדשים ב-${days} הימים הקרובים.`;
-  }
-  const lines: string[] = [`📅 <b>חידושים קרובים — חוסך (${days} ימים)</b>`, ""];
-  for (const r of rows) {
-    const d = daysUntil(r.promo_end_date);
-    const urgency = d <= 3 ? "🔴" : d <= 7 ? "🟡" : "🟢";
-    const cat = CAT_HE[r.category] ?? r.category;
-    lines.push(`${urgency} <b>${esc(r.name ?? "ללא שם")}</b> — ${esc(r.phone ?? "")}${waLink(r.phone)}`);
-    lines.push(`   📦 ${esc(r.provider)} · ${esc(r.plan_name)} · ₪${r.monthly_price}/חודש · ${cat}`);
-    lines.push(`   📆 מתחדש: ${r.promo_end_date} (עוד ${d} ימים)`);
-    lines.push("");
-  }
-  lines.push(`<i>נשלח אוטומטית על ידי מערכת חוסך</i>`);
-  return lines.join(NL);
-}
-
-async function sendTelegram(cfg: Cfg, text: string): Promise<{ ok: boolean; error?: string }> {
-  if (!cfg.tgToken || !cfg.tgChat) return { ok: false, error: "telegram not configured" };
-  try {
-    const r = await fetch(`https://api.telegram.org/bot${cfg.tgToken}/sendMessage`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: cfg.tgChat, text, parse_mode: "HTML", disable_web_page_preview: true }),
-    });
-    const j = await r.json().catch(() => ({}));
-    return { ok: r.ok && (j as Record<string, unknown>).ok !== false, error: (j as Record<string, unknown>).description as string | undefined };
-  } catch (e) { return { ok: false, error: String(e) }; }
-}
-
-// Open-lead reminder appended to the daily digest — keeps unhandled leads
-// from going stale silently.
 async function countNewLeads(): Promise<number> {
-  const url = Deno.env.get("SUPABASE_URL") ?? "";
-  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-  if (!url || !key) return 0;
   try {
-    const r = await fetch(`${url}/rest/v1/leads?status=eq.new&select=id`, {
+    const r = await serviceFetch("/rest/v1/leads?status=eq.new&select=id", {
       method: "HEAD",
-      headers: { "apikey": key, "Authorization": `Bearer ${key}`, "Prefer": "count=exact" },
+      headers: { "Prefer": "count=exact" },
     });
+    if (!r) return 0;
     const total = Number((r.headers.get("content-range") ?? "").split("/")[1]);
     return Number.isFinite(total) ? total : 0;
   } catch (_) { return 0; }
 }
 
-// Safety net: re-deliver leads whose INSERT-trigger notification never landed
-// (both Telegram and email failed, or the trigger itself didn't fire).
-// notify-lead stamps notified_at on success, so each lead is re-sent at most
-// once per daily run, oldest first, capped at 10 to avoid a flood.
-async function sweepUnnotifiedLeads(cfg: Cfg): Promise<{ pending: number; resent: number }> {
-  const url = Deno.env.get("SUPABASE_URL") ?? "";
-  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-  if (!url || !key || !cfg.webhookSecret) return { pending: 0, resent: 0 };
-  // 10-minute grace so the trigger path can finish before we call a lead missed.
-  const cutoff = encodeURIComponent(new Date(Date.now() - 10 * 60 * 1000).toISOString());
-  let rows: Record<string, unknown>[] = [];
-  try {
-    const r = await fetch(
-      `${url}/rest/v1/leads?select=*&notified_at=is.null&created_at=lt.${cutoff}&order=created_at.asc&limit=10`,
-      { headers: { "apikey": key, "Authorization": `Bearer ${key}` } },
+// ── mode: digest ─────────────────────────────────────────────────────────────
+
+async function runDigest(cfg: Cfg, days: number) {
+  const rows = await fetchUpcomingRenewals(days);
+  if (rows === null) {
+    // a failed query must not read as "no renewals coming up"
+    const tg = await sendTelegram(cfg, "⚠️ הדייג'סט היומי נכשל (שאילתת החידושים) — נסו /weekly מאוחר יותר.");
+    return { ok: false, error: "renewals query failed", telegram: tg };
+  }
+  const newLeads = await countNewLeads();
+  let message = buildDigest(rows, days);
+  if (newLeads > 0) {
+    message += `${NL}${NL}📬 <b>${newLeads} לידים בסטטוס "חדש"</b> ממתינים לטיפול — שלחו /leads לפירוט.`;
+  }
+  const tg = await sendTelegram(cfg, message);
+  // urgent renewals (≤7 days) with a phone get their own card with a
+  // "create lead" button so proactive calls enter the tracked pipeline
+  let buttons = 0;
+  for (const r of rows) {
+    if (buttons >= 3) break;
+    if (!r.phone || daysUntil(r.promo_end_date) > 7) continue;
+    const sent = await sendTelegram(
+      cfg,
+      `☎️ <b>שיחה יזומה:</b> ${esc(r.name ?? "ללא שם")} — ${esc(r.provider)} · ${esc(r.plan_name)} מתחדש ב-${r.promo_end_date}`,
+      { inline_keyboard: [[{ text: "➕ צור ליד ומעקב", callback_data: `renew:${r.id}:lead` }]] },
     );
-    if (r.ok) rows = await r.json();
-  } catch (_) { return { pending: 0, resent: 0 }; }
-  let resent = 0;
+    if (sent.ok) buttons++;
+  }
+  return { ok: tg.ok, count: rows.length, new_leads: newLeads, renewal_buttons: buttons, telegram: tg };
+}
+
+// ── mode: sweep ──────────────────────────────────────────────────────────────
+
+// Re-deliver leads whose INSERT-trigger notification never landed. Claim each
+// lead (stamp notified_at where still null — atomic) BEFORE sending, so
+// overlapping runs and the trigger race can't double-send; revert the stamp if
+// the delivery then fails so the next run retries. Batch of 5 keeps the run
+// well inside the edge wall-clock limit (each send = triage + Telegram + email).
+async function runSweep(cfg: Cfg) {
+  const url = Deno.env.get("SUPABASE_URL") ?? "";
+  if (!url || !cfg.webhookSecret) return { ok: false, error: "not configured" };
+  // 10-minute grace so the trigger path can finish before we call a lead missed
+  const cutoff = enc(new Date(Date.now() - 10 * 60 * 1000).toISOString());
+  const rows = await fetchRows<Lead>(
+    `/rest/v1/leads?select=*&notified_at=is.null&created_at=lt.${cutoff}&order=created_at.asc&limit=5`,
+  );
+  if (rows === null) return { ok: false, error: "sweep query failed" };
+  let resent = 0, failed = 0;
   for (const lead of rows) {
+    if (!lead.id) continue;
+    const claimTs = new Date().toISOString();
+    const claimed = await patchCount(
+      `/rest/v1/leads?id=eq.${lead.id}&notified_at=is.null`,
+      { notified_at: claimTs },
+    );
+    if (claimed === 0) continue; // someone else delivered it meanwhile
+    let delivered = false;
     try {
       const r = await fetch(`${url}/functions/v1/notify-lead`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-webhook-secret": cfg.webhookSecret },
         body: JSON.stringify({ record: lead }),
       });
-      const j = await r.json().catch(() => ({}));
-      if (r.ok && (j as Record<string, unknown>).ok) resent++;
-    } catch (_) { /* the next daily run retries */ }
+      const j = await r.json().catch(() => ({} as Record<string, unknown>)) as Record<string, unknown>;
+      // delivered = the interactive Telegram card landed; email-only is not
+      // enough (no buttons in chat) and notify-lead won't have re-stamped
+      delivered = r.ok && j.ok === true &&
+        (j.telegram as Record<string, unknown> | undefined)?.ok === true;
+    } catch (e) {
+      jlog({ at: "sweep", lead: lead.id, ok: false, error: String(e) });
+    }
+    if (delivered) {
+      resent++;
+    } else {
+      failed++;
+      // revert ONLY our own claim — notify-lead may have re-stamped a
+      // success this response failed to report
+      await patchCount(`/rest/v1/leads?id=eq.${lead.id}&notified_at=eq.${enc(claimTs)}`, { notified_at: null });
+    }
   }
-  return { pending: rows.length, resent };
+  if (failed > 0) jlog({ at: "sweep", pending: rows.length, resent, failed });
+  return { ok: true, pending: rows.length, resent, failed };
 }
+
+// ── mode: follow-up ──────────────────────────────────────────────────────────
+
+async function runFollowUp(cfg: Cfg) {
+  const now = new Date();
+  const openLeads = await fetchRows<Lead>(
+    "/rest/v1/leads?select=*&status=eq.new&order=created_at.asc&limit=50",
+  );
+  if (openLeads === null) return { ok: false, error: "follow-up query failed" };
+  const plan = planFollowUps(openLeads, now.getTime(), israelHourOf(now));
+  let sent = 0;
+  for (const f of plan) {
+    const lead = f.lead;
+    if (!lead.id) continue;
+    const header = f.kind === "callback"
+      ? `⏰ <b>הגיע הזמן:</b> ${esc(lead.name)} ביקש שיחה ${CALLBACK_HE[String(lead.callback_time ?? "")] ?? ""} — עכשיו החלון.`
+      : `${f.urgency} <b>ליד ממתין ${Math.floor(f.ageHours)} שעות בלי מענה</b>` +
+        (lead.claimed_by ? ` (בטיפול אצל ${esc(lead.claimed_by)})` : "");
+    const r = await sendTelegram(cfg, header + NL + NL + buildText(lead), leadKeyboard(lead));
+    if (r.ok) sent++;
+    // Stamp even when the send failed — otherwise one permanently-unsendable
+    // lead occupies the cap-5 oldest-first queue forever and starves every
+    // other escalation. A callback ping counts as a nudge too (no SLA card an
+    // hour after the ⏰ one).
+    await patchCount(
+      `/rest/v1/leads?id=eq.${lead.id}`,
+      f.kind === "callback"
+        ? { callback_pinged_at: now.toISOString(), nudged_at: now.toISOString() }
+        : { nudged_at: now.toISOString() },
+    );
+  }
+  return { ok: true, open: openLeads.length, planned: plan.length, sent };
+}
+
+// ── HTTP ─────────────────────────────────────────────────────────────────────
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
@@ -232,6 +184,7 @@ Deno.serve(async (req: Request) => {
     return json({
       ok: true,
       function: "renewal-reminders",
+      modes: ["digest", "sweep", "follow-up", "weekly"],
       configured: {
         telegram: { present: !!(cfg.tgToken && cfg.tgChat) },
         webhook_secret: { present: !!cfg.webhookSecret },
@@ -246,17 +199,33 @@ Deno.serve(async (req: Request) => {
   if (!(await safeEqual(provided, cfg.webhookSecret))) return json({ ok: false, error: "unauthorized" }, 401);
 
   let payload: Record<string, unknown> = {};
-  try { payload = await req.json(); } catch (_) {}
+  try { payload = await req.json(); } catch (_) { /* empty body */ }
+  const mode = String(payload.mode ?? "digest");
   const days = typeof payload.days === "number" ? Math.min(Math.max(payload.days, 1), 90) : 14;
 
-  const rows = await fetchUpcomingRenewals(days);
-  const newLeads = await countNewLeads();
-  let message = buildDigest(rows, days);
-  if (newLeads > 0) {
-    message += `${NL}${NL}📬 <b>${newLeads} לידים בסטטוס "חדש"</b> ממתינים לטיפול — שלחו /leads לפירוט.`;
+  switch (mode) {
+    case "sweep":
+      return json(await runSweep(cfg));
+    case "follow-up":
+      return json(await runFollowUp(cfg));
+    case "weekly": {
+      const tg = await sendTelegram(cfg, await buildWeeklyReport());
+      // privacy retention: source_ip is abuse-prevention data — drop it after
+      // 30 days (piggybacks on the weekly run)
+      const ipCutoff = enc(new Date(Date.now() - 30 * 86_400_000).toISOString());
+      const cleared = await patchCount(
+        `/rest/v1/leads?source_ip=not.is.null&created_at=lt.${ipCutoff}`,
+        { source_ip: null },
+      );
+      return json({ ok: tg.ok, telegram: tg, source_ips_cleared: cleared });
+    }
+    case "digest":
+    default: {
+      const result = await runDigest(cfg, days);
+      // the sweep used to ride the daily digest — keep it as a belt-and-braces
+      // pass even though the 10-minute job is the primary safety net
+      const leadSweep = await runSweep(cfg);
+      return json({ ...result, lead_sweep: leadSweep });
+    }
   }
-  const tg = await sendTelegram(cfg, message);
-  const leadSweep = await sweepUnnotifiedLeads(cfg);
-
-  return json({ ok: tg.ok, count: rows.length, new_leads: newLeads, telegram: tg, lead_sweep: leadSweep });
 });

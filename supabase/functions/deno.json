@@ -1,0 +1,12 @@
+{
+  "tasks": {
+    "check": "deno check notify-lead/index.ts renewal-reminders/index.ts",
+    "test": "deno test tests/"
+  },
+  "compilerOptions": {
+    "strict": true
+  },
+  "imports": {
+    "@std/assert": "jsr:@std/assert@^1.0.0"
+  }
+}

@@ -77,6 +77,15 @@ create table if not exists public.leads (
   source        text,                        -- form / plan / compare / advisor / callback / porting
   notes         text,                        -- free-text context for the rep
   notified_at   timestamptz,                 -- stamped by notify-lead once the team was pinged
+  -- bot workflow columns (server-managed; the insert gate nulls client values)
+  claimed_by        text,                    -- Telegram display name of the rep who claimed it
+  claimed_by_tg_id  bigint,
+  claimed_at        timestamptz,
+  contacted_at      timestamptz,             -- first transition to 'contacted' (speed-to-lead KPI)
+  nudged_at         timestamptz,             -- last SLA escalation ping
+  callback_pinged_at timestamptz,            -- "the customer asked for evening" reminder sent
+  actual_saving     integer,                 -- ₪/year captured by the won-flow reply
+  source_ip         text,                    -- set by the insert gate for per-IP rate limiting
   created_at    timestamptz not null default now()
 );
 
@@ -85,6 +94,14 @@ create table if not exists public.leads (
 -- daily sweep doesn't replay them:
 --   update public.leads set notified_at = created_at where notified_at is null;
 alter table public.leads add column if not exists notified_at timestamptz;
+alter table public.leads add column if not exists claimed_by text;
+alter table public.leads add column if not exists claimed_by_tg_id bigint;
+alter table public.leads add column if not exists claimed_at timestamptz;
+alter table public.leads add column if not exists contacted_at timestamptz;
+alter table public.leads add column if not exists nudged_at timestamptz;
+alter table public.leads add column if not exists callback_pinged_at timestamptz;
+alter table public.leads add column if not exists actual_saving integer;
+alter table public.leads add column if not exists source_ip text;
 
 alter table public.leads enable row level security;
 
@@ -106,14 +123,23 @@ create index if not exists leads_unnotified_idx on public.leads (created_at)
 -- fans out to Telegram + Resend + a paid AI-triage call, so an unthrottled
 -- anon key is a cost/spam amplifier. Shape-validate and rate-limit at the door:
 --   • per-phone: max 5 leads per 24h (a legit customer re-submitting stays under)
---   • global:    max 30 leads per hour (protects Telegram/Resend/AI quota)
+--   • per-IP:    max 8 leads per hour (cf-connecting-ip / last XFF hop)
+--   • global:    max 60 leads per hour (cost circuit breaker for Telegram/Resend/AI)
 create or replace function public.leads_rate_limit()
 returns trigger
 language plpgsql
 security definer
 set search_path = public
 as $$
+declare
+  req_headers json;
+  req_ip text;
+  xff text[];
 begin
+  -- bot-workflow columns are server-managed — never accepted from the inserter
+  new.claimed_by := null;      new.claimed_by_tg_id := null;  new.claimed_at := null;
+  new.contacted_at := null;    new.nudged_at := null;         new.callback_pinged_at := null;
+  new.actual_saving := null;   new.notified_at := null;
   if length(trim(new.name)) < 2 or length(new.name) > 80 then
     raise exception 'invalid name';
   end if;
@@ -135,8 +161,33 @@ begin
         and created_at > now() - interval '1 day') >= 5 then
     raise exception 'rate limit exceeded';
   end if;
+  -- per-IP cap — stops one attacker without letting them starve everyone via
+  -- the global cap. Trust order: cf-connecting-ip (CDN-set, unforgeable), then
+  -- the LAST x-forwarded-for hop (appended by infrastructure; the FIRST hop is
+  -- client-supplied and spoofable — never trust it).
+  begin
+    req_headers := nullif(current_setting('request.headers', true), '')::json;
+  exception when others then
+    req_headers := null;
+  end;
+  req_ip := req_headers ->> 'cf-connecting-ip';
+  if req_ip is null then
+    xff := string_to_array(coalesce(req_headers ->> 'x-forwarded-for', ''), ',');
+    if coalesce(array_length(xff, 1), 0) >= 1 then
+      req_ip := xff[array_length(xff, 1)];
+    end if;
+  end if;
+  new.source_ip := nullif(trim(coalesce(req_ip, '')), '');
+  if new.source_ip is not null then
+    if (select count(*) from public.leads
+        where source_ip = new.source_ip
+          and created_at > now() - interval '1 hour') >= 8 then
+      raise exception 'rate limit exceeded';
+    end if;
+  end if;
+  -- global circuit breaker: bounds worst-case Telegram/Resend/AI spend per hour
   if (select count(*) from public.leads
-      where created_at > now() - interval '1 hour') >= 30 then
+      where created_at > now() - interval '1 hour') >= 60 then
     raise exception 'rate limit exceeded';
   end if;
   return new;
@@ -151,6 +202,77 @@ create trigger leads_rate_limit_before_insert
 -- expression index so the normalized per-phone lookup stays cheap
 create index if not exists leads_phone_norm_idx
   on public.leads (regexp_replace(phone, '\D', '', 'g'), created_at desc);
+-- open-lead scans (SLA nudges, callback pings, /leads) touch only status='new'
+create index if not exists leads_open_idx on public.leads (created_at)
+  where status = 'new';
+create index if not exists leads_source_ip_idx on public.leads (source_ip, created_at desc)
+  where source_ip is not null;
+
+-- ── lead_events  (audit trail of bot actions) ────────────────────────────────
+-- Every status change / claim / note / undo / saving capture from the Telegram
+-- bot lands here: who (Telegram identity), what, when. RLS on with NO client
+-- policies — service_role only.
+create table if not exists public.lead_events (
+  id          uuid primary key default gen_random_uuid(),
+  lead_id     uuid not null references public.leads(id) on delete cascade,
+  event       text not null,               -- status_change / claim / note / undo / saving
+  old_status  text,
+  new_status  text,
+  actor_tg_id bigint,
+  actor_name  text,
+  note        text,
+  created_at  timestamptz not null default now()
+);
+alter table public.lead_events enable row level security;
+create index if not exists lead_events_lead_idx on public.lead_events (lead_id, created_at desc);
+
+-- ── search_leads  (bot /search command; service_role only) ───────────────────
+create or replace function public.search_leads(q text)
+returns setof public.leads
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select * from public.leads
+  where case
+    -- digit-ish query with no actual digits ("++", "- -") must match nothing,
+    -- not everything
+    when q ~ '^[0-9+\-\s]+$' and regexp_replace(q, '\D', '', 'g') = '' then false
+    when q ~ '^[0-9+\-\s]+$'
+      then regexp_replace(phone, '\D', '', 'g') like '%' || regexp_replace(q, '\D', '', 'g') || '%'
+    else name ilike '%' || q || '%'
+  end
+  order by created_at desc
+  limit 5;
+$$;
+revoke execute on function public.search_leads(text) from public, anon, authenticated;
+grant execute on function public.search_leads(text) to service_role;
+
+-- ── get_hot_browsers  (signed-in users browsing plans with no lead) ──────────
+create or replace function public.get_hot_browsers()
+returns table(user_id uuid, name text, phone text, views bigint, top_provider text, last_view timestamptz)
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select pv.user_id, p.name, p.phone, count(*) as views,
+         mode() within group (order by pv.provider) as top_provider,
+         max(pv.viewed_at) as last_view
+  from public.plan_views pv
+  join public.profiles p on p.id = pv.user_id
+  where pv.user_id is not null
+    and pv.viewed_at > now() - interval '7 days'
+    and coalesce(p.phone, '') <> ''
+    and not exists (select 1 from public.leads l where l.user_id = pv.user_id)
+  group by pv.user_id, p.name, p.phone
+  having count(*) >= 3
+  order by count(*) desc
+  limit 10;
+$$;
+revoke execute on function public.get_hot_browsers() from public, anon, authenticated;
+grant execute on function public.get_hot_browsers() to service_role;
 
 -- ── tracked_plans  (renewal radar) ───────────────────────────────────────────
 create table if not exists public.tracked_plans (
@@ -450,11 +572,12 @@ $$;
 revoke execute on function public.get_upcoming_renewals(integer) from public, anon, authenticated;
 grant execute on function public.get_upcoming_renewals(integer) to service_role;
 
--- ── pg_cron schedule  (renewal digest) ───────────────────────────────────────
+-- ── pg_cron schedules  (digest, sweeps, weekly report) ──────────────────────
 -- Requires: `create extension if not exists pg_cron schema cron;`
--- Fires daily at 08:00 UTC (11:00 Israel summer / 10:00 winter).
--- To register: run this select once in the SQL editor.
+-- To register: run these selects once in the SQL editor. All POST to the
+-- renewal-reminders function with a `mode`; the shared secret comes from Vault.
 --
+--   -- daily renewal digest, 08:00 UTC (11:00 Israel summer / 10:00 winter)
 --   select cron.schedule(
 --     'renewal-reminders-daily',
 --     '0 8 * * *',
@@ -465,7 +588,55 @@ grant execute on function public.get_upcoming_renewals(integer) to service_role;
 --           'Content-Type',    'application/json',
 --           'x-webhook-secret', (select decrypted_secret from vault.decrypted_secrets where name = 'lead_webhook_secret')
 --         ),
---         body    := '{"days":14}'::jsonb
+--         body    := '{"mode":"digest","days":14}'::jsonb
+--       )
+--     $$
+--   );
+--
+--   -- unnotified-lead delivery sweep, every 10 minutes (was daily-only)
+--   select cron.schedule(
+--     'lead-sweep-10min',
+--     '*/10 * * * *',
+--     $$
+--       select net.http_post(
+--         url     := 'https://orzitfqmlvopujsoyigr.supabase.co/functions/v1/renewal-reminders',
+--         headers := jsonb_build_object(
+--           'Content-Type',    'application/json',
+--           'x-webhook-secret', (select decrypted_secret from vault.decrypted_secrets where name = 'lead_webhook_secret')
+--         ),
+--         body    := '{"mode":"sweep"}'::jsonb
+--       )
+--     $$
+--   );
+--
+--   -- SLA escalations + callback-time-due pings, hourly at :05
+--   select cron.schedule(
+--     'lead-followup-hourly',
+--     '5 * * * *',
+--     $$
+--       select net.http_post(
+--         url     := 'https://orzitfqmlvopujsoyigr.supabase.co/functions/v1/renewal-reminders',
+--         headers := jsonb_build_object(
+--           'Content-Type',    'application/json',
+--           'x-webhook-secret', (select decrypted_secret from vault.decrypted_secrets where name = 'lead_webhook_secret')
+--         ),
+--         body    := '{"mode":"follow-up"}'::jsonb
+--       )
+--     $$
+--   );
+--
+--   -- weekly business digest, Sunday 07:00 UTC (start of the Israeli work week)
+--   select cron.schedule(
+--     'weekly-digest',
+--     '0 7 * * 0',
+--     $$
+--       select net.http_post(
+--         url     := 'https://orzitfqmlvopujsoyigr.supabase.co/functions/v1/renewal-reminders',
+--         headers := jsonb_build_object(
+--           'Content-Type',    'application/json',
+--           'x-webhook-secret', (select decrypted_secret from vault.decrypted_secrets where name = 'lead_webhook_secret')
+--         ),
+--         body    := '{"mode":"weekly"}'::jsonb
 --       )
 --     $$
 --   );

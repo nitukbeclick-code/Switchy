@@ -197,35 +197,54 @@ curl -H 'x-webhook-secret: <lead_webhook_secret>' \
 
 Re-deploy after editing the function: `supabase functions deploy notify-lead --no-verify-jwt`.
 
-### Status buttons (interactive bot) + delivery safety net
+### The interactive bot (v2)
 
-Each lead message carries inline buttons — **📞 דיברתי / 🏆 נסגר / ❌ לא רלוונטי**.
-Pressing one updates `leads.status` (`contacted` / `won` / `lost`); the app's
-tracker streams that change live (`leadStepStream` maps contacted→step 2,
-won→step 4), and the buttons freeze into a stamp showing who handled the lead.
+Lead cards carry buttons: **📞 דיברתי / 🏆 נסגר / ❌ לא רלוונטי** (updates
+`leads.status`, streamed live by the app's tracker), **🙋 אני על זה** (atomic
+claim — second presser gets "כבר בטיפול אצל…"), and **💬 וואטסאפ מוכן** (opens
+WhatsApp with an AI-drafted opener prefilled). After a status press the
+buttons freeze into a who-handled-it stamp with **↩️ בטל** (undo restores the
+previous status from the audit trail). After 🏆 the bot asks "כמה חסכנו לו?" —
+reply with a number to record `leads.actual_saving`. Replying to any lead card
+stores the text as a note in `lead_events`.
 
-One-time setup:
+Chat commands (autocompleted via `setMyCommands`): `/leads` (open leads with
+buttons), `/search <שם או טלפון>`, `/stats` (funnel + median speed-to-lead),
+`/hot` (signed-in browsers with no lead), `/weekly` (business report now),
+`/help`.
+
+Scheduled jobs (pg_cron → `renewal-reminders` with a `mode`, see schema.sql):
+- `digest` daily 08:00 UTC — renewals + "create lead" buttons for urgent ones
+- `sweep` every 10 min — re-delivers unnotified leads (claim-before-send, so
+  overlapping runs can't duplicate; failures revert the stamp and retry)
+- `follow-up` hourly — SLA escalation ladder (2h 🟡 → 6h 🟠 → daily 🔴) plus
+  "the customer asked for בערב" pings at the right Israel-time window
+- `weekly` Sunday 07:00 UTC — funnel WoW, speed-to-lead, top plans, hot browsers
+
+One-time setup: run `upgrade-2026-06-10.sql` in the SQL editor, deploy both
+functions (`--no-verify-jwt`), then register the webhook (required again after
+this upgrade — the bot now subscribes to chat messages too):
 
 ```bash
-# 1. schema: make sure leads.notified_at + the sweep index exist (schema.sql),
-#    then mark historical leads as handled so the sweep doesn't replay them:
-#      update public.leads set notified_at = created_at where notified_at is null;
-
-# 2. register the bot webhook (NOTE: while a webhook is set, getUpdates — and
-#    therefore ?action=telegram-chats — is disabled; undo with
-#    ?action=delete-telegram-webhook):
 curl -H 'x-webhook-secret: <lead_webhook_secret>' \
   'https://orzitfqmlvopujsoyigr.supabase.co/functions/v1/notify-lead?action=set-telegram-webhook'
 ```
 
-- **Safety net** — `notify-lead` stamps `leads.notified_at` after a successful
-  send. The daily `renewal-reminders` run re-delivers up to 10 leads that are
-  >10 minutes old and never got stamped (trigger missed, or both Telegram and
-  Resend were down), oldest first.
+- **Authorization** — actions are pinned to `telegram_chat_id`; optionally set
+  Vault `telegram_allowed_user_ids` (csv of Telegram user ids) to restrict who
+  in the chat may press buttons / run commands.
 - **Webhook auth** — Telegram calls `?action=telegram-update` with a
   `secret_token` that is the SHA-256 hex digest of `lead_webhook_secret`
   (Telegram restricts the token charset, so the raw secret can't be used).
-- **Secrets in URLs** — `?action=telegram-chats` now accepts the secret via the
-  `x-webhook-secret` header only; query-string secrets leak into request logs.
+  `?action=telegram-chats` accepts the secret via header only.
+- **Rotating `lead_webhook_secret`** — order matters: (1) update the Vault
+  secret, (2) wait ≤60s for the functions' config cache to refresh, (3) call
+  `?action=set-telegram-webhook` with the NEW secret to re-register the
+  Telegram `secret_token`. Between (1) and (3) button presses get 401 and
+  Telegram retries them, so nothing is lost.
+- **Monitoring** — CI type-checks and unit-tests the functions on every push
+  (`supabase/functions/deno.json`); `.github/workflows/bot-health.yml` probes
+  both functions daily and fails loudly if config regresses. Both functions
+  emit structured JSON logs (`_shared/log.ts`) for the dashboard log explorer.
 - **Privacy** — lead details sent to the AI triage are disclosed in the site's
   privacy policy (site/build.js → privacy page, "שיתוף מידע").

@@ -164,8 +164,13 @@ class ProviderWidget extends StatelessWidget {
                                     pathParameters: {'planId': p.id},
                                   ),
                                 )
+                                    // cap the stagger: with a large catalogue an
+                                    // unbounded delay outlives the page (and the
+                                    // fixed pumps in the widget tests)
                                     .animate(
-                                        delay: ((i * 4 + pi) * 50 + 100).ms)
+                                        delay: (((i * 4 + pi) * 50 + 100)
+                                                .clamp(0, 600))
+                                            .ms)
                                     .fadeIn(duration: 280.ms)
                                     .slideY(begin: 0.08),
                               );

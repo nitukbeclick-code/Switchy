@@ -8,6 +8,7 @@ import '../../app_state.dart';
 import '../../data.dart';
 import '../../components/logo_widget/logo_widget.dart';
 import '../../services/recommendation_engine.dart';
+import '../../services/switch_economics.dart';
 
 class SwitchCalcWidget extends StatefulWidget {
   const SwitchCalcWidget({super.key});
@@ -67,26 +68,36 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
 
   double _exitFee = 0;
 
-  int get _monthlySaving => (_current - _newPlan).round().clamp(0, 9999);
-  int get _annualSaving => (_monthlySaving * 12 - _exitFee.round()).clamp(0, 99999);
-  double get _breakeven => _monthlySaving > 0 ? _exitFee / _monthlySaving : 0;
+  SwitchEconomics get _econ =>
+      SwitchEconomics(current: _current, newPlan: _newPlan, exitFee: _exitFee);
 
   Color _resultColor(AppTheme ffTheme) {
-    if (_annualSaving > 1200) return ffTheme.success;
-    if (_annualSaving > 0) return ffTheme.warning;
-    return ffTheme.error;
+    switch (_econ.verdict) {
+      case SwitchVerdict.worthIt:
+        return ffTheme.success;
+      case SwitchVerdict.smallSaving:
+        return ffTheme.warning;
+      case SwitchVerdict.notWorthIt:
+        return ffTheme.error;
+    }
   }
 
   String _resultText() {
-    if (_annualSaving > 1200) return '🎉 שווה מאוד לעבור!';
-    if (_annualSaving > 0) return '💡 יש חיסכון קטן';
-    return '❌ לא כדאי לעבור כרגע';
+    switch (_econ.verdict) {
+      case SwitchVerdict.worthIt:
+        return '🎉 שווה מאוד לעבור!';
+      case SwitchVerdict.smallSaving:
+        return '💡 יש חיסכון קטן';
+      case SwitchVerdict.notWorthIt:
+        return '❌ לא כדאי לעבור כרגע';
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final ffTheme = AppTheme.of(context);
     final appState = Provider.of<AppState>(context);
+    final econ = _econ;
     final cat = _selectedCat;
     final profile = MatchProfile(
       category: cat,
@@ -257,15 +268,15 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
                   const SizedBox(height: 20),
                   Row(
                     children: [
-                      Expanded(child: _ResultStat(label: _selectedCat == 'abroad' ? 'חיסכון לחבילה' : 'חיסכון חודשי', value: '₪$_monthlySaving', color: _resultColor(ffTheme), ffTheme: ffTheme)),
+                      Expanded(child: _ResultStat(label: _selectedCat == 'abroad' ? 'חיסכון לחבילה' : 'חיסכון חודשי', value: '₪${econ.monthlySaving}', color: _resultColor(ffTheme), ffTheme: ffTheme)),
                       if (_selectedCat != 'abroad')
-                        Expanded(child: _ResultStat(label: 'חיסכון שנתי', value: '₪$_annualSaving', color: _resultColor(ffTheme), ffTheme: ffTheme)),
+                        Expanded(child: _ResultStat(label: 'חיסכון שנתי', value: '₪${econ.annualSaving}', color: _resultColor(ffTheme), ffTheme: ffTheme)),
                     ],
                   ),
-                  if (_breakeven > 0 && _selectedCat != 'abroad') ...[
+                  if (econ.hasBreakEven && _exitFee > 0 && _selectedCat != 'abroad') ...[
                     const SizedBox(height: 14),
                     Text(
-                      'נקודת איזון: ${_breakeven.toStringAsFixed(1)} חודשים',
+                      'נקודת איזון: ${econ.breakEvenMonths.toStringAsFixed(1)} חודשים',
                       style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText),
                     ),
                   ],
@@ -276,7 +287,7 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
             const SizedBox(height: 24),
 
             // Delay cost warning
-            if (_monthlySaving > 0) ...[
+            if (econ.monthlySaving > 0) ...[
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -291,7 +302,7 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        _selectedCat == 'abroad' ? 'כל נסיעה שאתם מחכים עולה לכם ₪$_monthlySaving' : 'כל חודש שאתם מחכים עולה לכם ₪$_monthlySaving',
+                        _selectedCat == 'abroad' ? 'כל נסיעה שאתם מחכים עולה לכם ₪${econ.monthlySaving}' : 'כל חודש שאתם מחכים עולה לכם ₪${econ.monthlySaving}',
                         style: ffTheme.bodyMedium.copyWith(color: ffTheme.warning, fontWeight: FontWeight.w600),
                       ),
                     ),
@@ -302,7 +313,7 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
             ],
 
             // Savings timeline with bar chart (hidden for abroad — no monthly concept)
-            if (_annualSaving > 0 && _selectedCat != 'abroad') ...[
+            if (econ.annualSaving > 0 && _selectedCat != 'abroad') ...[
               Container(
                 padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
@@ -316,21 +327,20 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
                     Text('חיסכון לאורך זמן', style: ffTheme.titleSmall),
                     const SizedBox(height: 16),
                     _SavingsBarChart(
-                      monthlySaving: _monthlySaving,
-                      exitFee: _exitFee,
+                      econ: econ,
                       ffTheme: ffTheme,
                     ),
                     const Divider(height: 24),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
-                        _TimelineStat(months: 6, monthlySaving: _monthlySaving, exitFee: _exitFee, ffTheme: ffTheme),
+                        _TimelineStat(months: 6, econ: econ, ffTheme: ffTheme),
                         Container(width: 1, height: 48, color: ffTheme.alternate),
-                        _TimelineStat(months: 12, monthlySaving: _monthlySaving, exitFee: _exitFee, ffTheme: ffTheme),
+                        _TimelineStat(months: 12, econ: econ, ffTheme: ffTheme),
                         Container(width: 1, height: 48, color: ffTheme.alternate),
-                        _TimelineStat(months: 24, monthlySaving: _monthlySaving, exitFee: _exitFee, ffTheme: ffTheme),
+                        _TimelineStat(months: 24, econ: econ, ffTheme: ffTheme),
                         Container(width: 1, height: 48, color: ffTheme.alternate),
-                        _TimelineStat(months: 36, monthlySaving: _monthlySaving, exitFee: _exitFee, ffTheme: ffTheme),
+                        _TimelineStat(months: 36, econ: econ, ffTheme: ffTheme),
                       ],
                     ),
                   ],
@@ -363,7 +373,7 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
 
             const SizedBox(height: 12),
 
-            if (_annualSaving > 0)
+            if (econ.annualSaving > 0)
               ElevatedButton(
                 onPressed: () => context.pushNamed('Results'),
                 style: ElevatedButton.styleFrom(
@@ -519,9 +529,8 @@ class _RecommendedPlanCard extends StatelessWidget {
 }
 
 class _SavingsBarChart extends StatelessWidget {
-  const _SavingsBarChart({required this.monthlySaving, required this.exitFee, required this.ffTheme});
-  final int monthlySaving;
-  final double exitFee;
+  const _SavingsBarChart({required this.econ, required this.ffTheme});
+  final SwitchEconomics econ;
   final AppTheme ffTheme;
 
   @override
@@ -532,11 +541,11 @@ class _SavingsBarChart extends StatelessWidget {
       (12, 'שנה'),
       (24, '2 שנים'),
     ];
-    final maxAmount = (monthlySaving * 24 - exitFee).clamp(1, double.infinity);
+    final maxAmount = econ.milestoneAmount(24).clamp(1, double.infinity);
 
     return Column(
       children: milestones.map((m) {
-        final amount = (monthlySaving * m.$1 - exitFee).clamp(0, double.infinity).round();
+        final amount = econ.milestoneAmount(m.$1);
         final fraction = (amount / maxAmount).clamp(0.0, 1.0);
         return Padding(
           padding: const EdgeInsets.only(bottom: 10),
@@ -731,15 +740,14 @@ class _ResultStat extends StatelessWidget {
 }
 
 class _TimelineStat extends StatelessWidget {
-  const _TimelineStat({required this.months, required this.monthlySaving, required this.exitFee, required this.ffTheme});
+  const _TimelineStat({required this.months, required this.econ, required this.ffTheme});
   final int months;
-  final int monthlySaving;
-  final double exitFee;
+  final SwitchEconomics econ;
   final AppTheme ffTheme;
 
   @override
   Widget build(BuildContext context) {
-    final amount = (monthlySaving * months - exitFee).round().clamp(0, 999999);
+    final amount = econ.milestoneAmount(months);
     return Column(
       children: [
         Text(

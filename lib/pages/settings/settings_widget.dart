@@ -23,6 +23,7 @@ class SettingsWidget extends StatelessWidget {
         foregroundColor: ffTheme.primaryText,
         leading: IconButton(
           icon: const Icon(Icons.arrow_forward_ios_rounded),
+          tooltip: 'חזרה',
           onPressed: () => context.safePop(),
         ),
       ),

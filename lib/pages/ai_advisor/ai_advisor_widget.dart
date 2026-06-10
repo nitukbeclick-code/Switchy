@@ -9,7 +9,7 @@ import '../../app_state.dart';
 import '../../data.dart';
 import '../../models.dart';
 import '../../components/plan_card/plan_card_widget.dart';
-import '../../services/recommendation_engine.dart';
+import '../../services/advisor_engine.dart';
 import '../../services/savings_summary.dart';
 import '../../services/provider_ratings.dart';
 import '../../services/backend/local_backend.dart';
@@ -26,22 +26,6 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
   final _scrollCtrl = ScrollController();
   bool _isTyping = false;
   late List<_ChatMsg> _messages;
-
-  static const _providerNames = {
-    'פלאפון': 'פלאפון', 'golan': 'גולן טלקום', 'גולן': 'גולן טלקום',
-    'סלקום': 'סלקום', 'cellcom': 'סלקום',
-    'פרטנר': 'פרטנר', 'partner': 'פרטנר',
-    'הוט': 'הוט מובייל', 'hot': 'הוט מובייל',
-    'רמי לוי': 'רמי לוי', 'rami': 'רמי לוי',
-    'xphone': 'Xphone',
-    'ויקום': 'ויקום', 'vcom': 'ויקום',
-    '019': '019 מובייל',
-    'וואלה': 'וואלה מובייל',
-    'yes': 'yes', 'יס': 'yes',
-    'בזק': 'בזק', 'bezeq': 'בזק',
-    'airalo': 'Airalo eSIM',
-    'freetv': 'FreeTV', 'פריtv': 'FreeTV',
-  };
 
   List<_ChatMsg> _buildSeed() {
     final appState = AppState();
@@ -97,261 +81,24 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
     final typingDelay = 800 + (text.length * 12).clamp(0, 800);
     await Future.delayed(Duration(milliseconds: typingDelay));
 
-    final lower = text.toLowerCase();
-    String cat = 'cellular';
-    String sort = 'match';
-    final List<String> filters = [];
-
-    // Provider detection
-    String? detectedProvider;
-    String? detectedProvider2;
-    for (final entry in _providerNames.entries) {
-      if (lower.contains(entry.key)) {
-        if (detectedProvider == null) {
-          detectedProvider = entry.value;
-        } else if (entry.value != detectedProvider) {
-          detectedProvider2 = entry.value;
-          break;
-        }
-      }
-    }
-
-    // Comparison detection
-    final isComparison = lower.contains('עדיף') || lower.contains('השוואה') || lower.contains('לעומת') || lower.contains('השווה');
-
-    // Category detection — extended Hebrew keyword set
-    if (lower.contains('אינטרנט') || lower.contains('internet') || lower.contains('סיב') || lower.contains('רשת בית') || lower.contains('ברודבנד') || lower.contains('ראוטר') || lower.contains('mb') || lower.contains('gb אינטרנט')) {
-      cat = 'internet';
-    } else if (lower.contains('טלוויזיה') || lower.contains('tv') || lower.contains('ערוצים') || lower.contains('כבלים') || lower.contains('לוויין') || lower.contains('yes') || lower.contains('נטפליקס') || lower.contains('ספורט')) {
-      cat = 'tv';
-    } else if (lower.contains('חו"ל') || lower.contains('חול') || lower.contains('abroad') || lower.contains('נסיעה') || lower.contains('טיול') || lower.contains('esim') || lower.contains('eSIM') || lower.contains('אירופה') || lower.contains('אמריקה') || lower.contains('רואמינג')) {
-      cat = 'abroad';
-    } else if ((lower.contains('חבילה') && (lower.contains('משולב') || lower.contains('הכל') || lower.contains('ביתי') || lower.contains('כולל הכל'))) || lower.contains('triple') || lower.contains('פקיג') || lower.contains('טריפל')) {
-      cat = 'triple';
-    }
-
-    // Sort & filter detection — extended
-    if (lower.contains('זול') || lower.contains('מחיר נמוך') || lower.contains('הכי פחות') || lower.contains('בזול') || lower.contains('תקציב') || lower.contains('חסכוני') || lower.contains('משתלם') || lower.contains('פחות כסף')) sort = 'price';
-    if (lower.contains('5g') || lower.contains('חמישה ג') || lower.contains('הכי מהיר')) filters.add('5g');
-    if (lower.contains('ללא התחייבות') || lower.contains('בלי התחייבות') || lower.contains('גמישות') || lower.contains('חופשי') || lower.contains('לא מחויב') || lower.contains('אפשר לצאת')) filters.add('nocommit');
-    if (lower.contains('סיב אופטי') || lower.contains('fiber') || lower.contains('סיב')) filters.add('fiber');
-    if ((lower.contains('1000') || lower.contains('גיגה')) && cat == 'internet') filters.add('1g');
-    if (lower.contains('ספורט') && cat == 'tv') filters.add('sport');
-    if ((lower.contains('נטפליקס') || lower.contains('netflix')) && (cat == 'tv' || cat == 'triple')) filters.add('netflix');
-
-    // Budget extraction — find any number preceded by ₪ or followed by ₪/שקל
-    final budgetMatch = RegExp(r'₪\s?(\d+)|(\d+)\s?₪|(\d+)\s?שקל|פחות\s?מ\s?-?\s?(\d+)').firstMatch(lower);
-    int? budgetHint;
-    if (budgetMatch != null) {
-      for (int i = 1; i <= budgetMatch.groupCount; i++) {
-        final g = budgetMatch.group(i);
-        if (g != null) { budgetHint = int.tryParse(g); break; }
-      }
-    }
-
-    // Find top matching plans (up to 3)
-    var plans = plansByCat(cat);
-    if (filters.contains('5g')) plans = plans.where((p) => p.is5G).toList();
-    if (filters.contains('nocommit')) plans = plans.where((p) => p.noCommit).toList();
-    if (filters.contains('fiber')) plans = plans.where((p) => p.net == 'fiber').toList();
-    if (filters.contains('1g')) plans = plans.where((p) => p.plan.contains('1000') || p.plan.contains('גיגה')).toList();
-    if (filters.contains('sport')) { final f = plans.where((p) => p.feats.any((feat) => feat.contains('ספורט'))).toList(); if (f.isNotEmpty) plans = f; }
-    if (filters.contains('netflix')) { final f = plans.where((p) => p.feats.any((feat) => feat.contains('Netflix'))).toList(); if (f.isNotEmpty) plans = f; }
-    if (budgetHint != null) {
-      final budgetFiltered = plans.where((p) => p.price <= budgetHint!).toList();
-      if (budgetFiltered.isNotEmpty) plans = budgetFiltered;
-    }
-
-    // Provider filter
-    if (isComparison && detectedProvider != null && detectedProvider2 != null) {
-      plans = plans.where((p) => p.provider == detectedProvider || p.provider == detectedProvider2).toList();
-    } else if (detectedProvider != null) {
-      final provFiltered = plans.where((p) => p.provider == detectedProvider).toList();
-      if (provFiltered.isNotEmpty) plans = provFiltered;
-    }
-
-    List<Plan> topPlans = [];
-    if (plans.isNotEmpty) {
-      if (sort == 'price') {
-        plans.sort((a, b) => a.price.compareTo(b.price));
-      } else {
-        plans.sort((a, b) {
-          if (a.highlight != b.highlight) return a.highlight ? -1 : 1;
-          return b.rating.compareTo(a.rating);
-        });
-      }
-      topPlans = plans.take(isComparison ? 4 : 3).toList();
-    }
-
-    // Build reply text
-    String reply;
-    final isGreeting = lower.contains('שלום') || lower.contains('היי') || lower.contains('hi') || lower.contains('hello') || lower.contains('הי') || lower.contains('מה שלום') || lower.contains('בוקר') || lower.contains('ערב');
-    final isThanks = lower.contains('תודה') || lower.contains('תנקס') || lower.contains('thanks') || lower.contains('כייף') || lower.contains('סבבה');
-
-    // Recommendation intent — "what's best for me / recommend"
-    final isRecommendIntent = lower.contains('מה כדאי') || lower.contains('המלצה') || lower.contains('הכי משתלם') || lower.contains('מה הכי טוב') || lower.contains('תמליץ') || lower.contains('מה הכי') || lower.contains('מה כדאי לי') || lower.contains('recommend') || lower.contains('הכי טוב לי') || lower.contains('מה הכי משתלם') || lower.contains('✨ מה הכי משתלם');
-
-    // Rating intent — "how is provider X rated / which provider is best rated"
-    final isRatingIntent = lower.contains('דירוג') ||
-        lower.contains('ביקורות') ||
-        lower.contains('הכי מדורג') ||
-        lower.contains('ספק הכי טוב') ||
-        lower.contains('ספק מומלץ');
-
-    // Purchase intent — user wants to act, not just browse
-    final isPurchaseIntent = lower.contains('רוצה לעבור') || lower.contains('להצטרף') ||
-        lower.contains('מצטרף') || lower.contains('מצטרפת') || lower.contains('תרשום') ||
-        lower.contains('איך עוברים') || lower.contains('איך עובר') || lower.contains('איך עוברת') ||
-        lower.contains('בפנים') || lower.contains('רוצה להצטרף') || lower.contains('רוצה להתחיל') ||
-        lower.contains('מעוניין') || lower.contains('מעוניינת') || lower.contains('סגור עסקה');
-
-    if (isRatingIntent) {
-      if (detectedProvider != null) {
-        final r = ProviderRatings.forProvider(detectedProvider);
-        final subs = ProviderRatings.subKeys
-            .map((k) => '• ${ProviderRatings.subLabels[k]}: ${r.sub[k]!.toStringAsFixed(1)}★')
-            .join('\n');
-        reply = '⭐ דירוג $detectedProvider: ${r.stars.toStringAsFixed(1)}★ (${r.reviewCount} ביקורות)\n\n$subs\n\nרוצה לראות את המסלולים של $detectedProvider? כתבו את שמו.';
-      } else {
-        final ranked = allProviders
-            .map((p) => (name: p, stars: ProviderRatings.averageStars(p)))
-            .where((e) => e.stars > 0)
-            .toList()
-          ..sort((a, b) => b.stars.compareTo(a.stars));
-        final top = ranked.take(3).map((e) => '• ${e.name} — ${e.stars.toStringAsFixed(1)}★').join('\n');
-        reply = '🏆 הספקים המדורגים ביותר:\n\n$top\n\nרוצה דירוג של ספק מסוים? כתבו את שמו.';
-      }
-    } else if (isRecommendIntent && detectedProvider == null) {
-      // Determine category from text, fall back to selected
-      String recCat = appState.selectedCat;
-      if (lower.contains('אינטרנט') || lower.contains('internet')) {
-        recCat = 'internet';
-      } else if (lower.contains('טלוויזיה') || lower.contains('tv')) {
-        recCat = 'tv';
-      } else if (lower.contains('חו"ל') || lower.contains('חול') || lower.contains('abroad')) {
-        recCat = 'abroad';
-      } else if (lower.contains('משולב') || lower.contains('triple')) {
-        recCat = 'triple';
-      } else if (lower.contains('סלולר') || lower.contains('cellular') || lower.contains('פלאפון')) {
-        recCat = 'cellular';
-      }
-      cat = recCat;
-
-      final profile = _profileFor(recCat);
-      // Score the category once; reuse for both the top pick and the alternative.
-      final ranked = RecommendationEngine.rank(profile, limit: 2);
-      final best = ranked.isEmpty ? null : ranked.first;
-      if (best != null) {
-        final unit = priceUnitLabel(best.plan);
-        final catName = categoryById(recCat)?.name ?? recCat;
-        final labelLine = '${best.label} — ${best.scorePct}%';
-        final topReasons = best.reasons.take(3).map((r) => '• $r').join('\n');
-        final savingLine = best.annualSaving > 0 ? '\n💰 חיסכון שנתי: ₪${best.annualSaving}' : '';
-        final promoNote = best.plan.hasPromo ? '\n⚡ מחיר מבצע! לאחר המבצע: ₪${best.plan.after}/$unit' : '';
-
-        // Alternative plan (reuses the ranking computed above)
-        String altLine = '';
-        if (ranked.length >= 2) {
-          final alt = ranked[1];
-          final altUnit = priceUnitLabel(alt.plan);
-          altLine = '\n\n🥈 אלטרנטיבה: ${alt.plan.provider} — ${alt.plan.plan} ₪${alt.plan.price}/$altUnit (${alt.label})';
-        }
-
-        reply = '✨ הממליץ החכם שלי בקטגורית $catName:\n\n'
-            '🏆 ${best.plan.provider} — ${best.plan.plan}\n'
-            '₪${best.plan.price}/$unit\n'
-            '$labelLine\n'
-            '$topReasons'
-            '$savingLine'
-            '$promoNote'
-            '$altLine\n\n'
-            'רוצה לראות פרטים? כתבו "הצג מסלול"';
-
-        topPlans = [best.plan];
-      } else {
-        reply = 'לא מצאתי מסלולים בקטגוריה הנבחרת. נסו לציין קטגוריה: סלולר, אינטרנט, טלוויזיה, חו"ל.';
-      }
-    } else if (topPlans.isNotEmpty) {
-      final currentBill = appState.currentBill(cat);
-      final best = topPlans.first;
-      final saveYear = ((currentBill - best.price) * 12).clamp(0, 999999);
-      final catName = categoryById(cat)?.name ?? cat;
-      final unit = priceUnitShort(best);
-      final promoNote = best.hasPromo ? '\n⚡ מחיר מבצע! לאחר המבצע: ₪${best.after}/$unit' : '';
-      final commitNote = best.noCommit ? '\n✅ ללא התחייבות' : '\n📅 התחייבות ${best.term} חודשים';
-      final savingsLine = saveYear > 0 ? '\n💰 חיסכון שנתי צפוי: ₪$saveYear' : '';
-      final multiNote = topPlans.length > 1 ? '\n\nמצאתי ${topPlans.length} מסלולים — הנה הכי טוב:' : '\nמצאתי מסלול מעולה עבורך:';
-      final planLine = '${best.plan} — ₪${best.price}/$unit';
-
-      final replyPrefix = isComparison && detectedProvider != null && detectedProvider2 != null
-          ? 'השוואה: $detectedProvider מול $detectedProvider2:'
-          : detectedProvider != null
-              ? 'מסלולי $detectedProvider:'
-              : 'בקטגורית $catName:';
-
-      reply = '$replyPrefix$multiNote\n$planLine$promoNote$commitNote$savingsLine';
-    } else if (isGreeting) {
-      reply = 'שלום! 🤖 אני חוסך AI — יועץ התקשורת החכם שלכם.\n\nאספר לי מה מחפשים ואמצא את המסלול הכי משתלם:\n\n📱 סלולר  🌐 אינטרנט  📺 טלוויזיה  ✈️ חו"ל';
-    } else if (isThanks) {
-      reply = 'בשמחה! 🙌 תמיד פה לעזור.\n\nאחרי שתחליטו, אפשר לסיים את המעבר כולל ניוד מספר ישירות דרך חוסך — בקלות ובלי עמלות נסתרות.';
-    } else if (lower.contains('כמה') && (lower.contains('עולה') || lower.contains('עלות') || lower.contains('מחיר'))) {
-      int minPrice(String c) => plansByCat(c).map((p) => p.price).fold(9999, (a, b) => a < b ? a : b);
-      reply = 'אפשר לכוון אותך! 😊\n\nאיזה שירות אתם מחפשים?\n• 📱 סלולר — מ-₪${minPrice('cellular')}/חודש\n• 🌐 אינטרנט — מ-₪${minPrice('internet')}/חודש (מבצע)\n• 📺 טלוויזיה — מ-₪${minPrice('tv')}/חודש\n• 🏠 חבילה משולבת — מ-₪${minPrice('triple')}/חודש\n• ✈️ חו"ל — מ-₪${minPrice('abroad')}/חבילה\n\nספרו לי עם איזו קטגוריה ואמצא את הכי זול!';
-    } else if (lower.contains('חשבון') || lower.contains('כמה אני משלם') || lower.contains('כמה משלם') || lower.contains('המחיר שלי') || lower.contains('נוכחי')) {
-      final bills = ['cellular', 'internet', 'tv', 'triple', 'abroad'].where((c) => appState.currentBill(c) > 0);
-      if (bills.isEmpty) {
-        reply = 'לא הגדרת עדיין את החשבונות שלך.\nעבור לדף "החשבונות שלי" ↓ כדי להכניס כמה אתה משלם — ואמצא כמה תוכל לחסוך! 💡';
-      } else {
-        final names = {'cellular': 'סלולר', 'internet': 'אינטרנט', 'tv': 'טלוויזיה', 'triple': 'חבילה משולבת', 'abroad': 'חו"ל'};
-        final lines = bills.map((c) => '• ${names[c]}: ₪${appState.currentBill(c)}').join('\n');
-        reply = 'החשבונות השמורים שלך:\n$lines\n\nרוצה לבדוק כמה תחסוך בכל קטגוריה? אמור לי!';
-      }
-    } else if (lower.contains('כמה אחסוך') || lower.contains('חיסכון שלי') || lower.contains('כמה חוסך') || lower.contains('כמה אפשר לחסוך')) {
-      // Use the same engine as the home hero / savings dashboard / bills, so the
-      // advisor's answer never contradicts those screens.
-      const names = {'cellular': 'סלולר', 'internet': 'אינטרנט', 'tv': 'טלוויזיה', 'triple': 'חבילה משולבת', 'abroad': 'חו"ל'};
-      final savings = <String>[];
-      for (final cs in computeSavings(appState).categories) {
-        if (cs.annualSaving > 0 && cs.best != null) {
-          savings.add('• ${names[cs.categoryId]}: ₪${cs.annualSaving}/שנה עם ${cs.best!.plan.provider}');
-        }
-      }
-      if (savings.isEmpty) {
-        reply = 'לא הגדרת חשבונות עדיין. עבור ל"החשבונות שלי" כדי להכניס כמה אתה משלם.';
-      } else {
-        reply = '💰 פוטנציאל החיסכון שלך:\n\n${savings.join('\n')}\n\nרוצה לראות פרטים על מסלול מסוים?';
-      }
-    } else if (lower.contains('רשימת מעקב') || lower.contains('מעקב שלי') || lower.contains('שמרתי') || lower.contains('מסלולים שמרתי')) {
-      final watched = appState.watchedPlans;
-      if (watched.isEmpty) {
-        reply = 'אין לך מסלולים במעקב עדיין.\nכנס לדף פרטי מסלול ולחץ על 🔔 כדי לעקוב אחרי עדכוני מחיר!';
-      } else {
-        final plans = watched.map((id) => planById(id)).whereType<Plan>().take(5).toList();
-        final lines = plans.map((p) => '• ${p.provider} — ${p.plan} ₪${p.price}').join('\n');
-        reply = '🔔 מסלולים במעקב שלך:\n\n$lines\n\nרוצה שאמצא משהו יותר זול באחת הקטגוריות?';
-      }
-    } else if (isPurchaseIntent) {
-      final profile = _profileFor(cat);
-      final ranked = RecommendationEngine.rank(profile, limit: 1);
-      final best = ranked.isEmpty ? null : ranked.first;
-      if (best != null) {
-        topPlans = [best.plan];
-        final unit = priceUnitLabel(best.plan);
-        reply = '🎉 מעולה! אמצא לך את העסקה הכי טובה.\n\n'
-            '🏆 ממליץ על ${best.plan.provider} — ${best.plan.plan} ₪${best.plan.price}/$unit\n\n'
-            'לחץ "דבר עם נציג" למטה — שירות חינמי, ניוד מהיר! 👇';
-      } else {
-        reply = '😊 מעולה! אשמח לעזור לך לעבור.\nלאיזה קטגוריה אתה מחפש? סלולר, אינטרנט, טלוויזיה או חו"ל?';
-      }
-    } else {
-      reply = 'לא הצלחתי להבין בדיוק. נסו לכתוב למשל:\n\n• "מצא סלולר זול ללא התחייבות"\n• "אינטרנט גיגה בזול"\n• "חבילת חו"ל לאירופה"\n• "5G בפחות מ-₪60"\n• "כמה אני חוסך"';
-    }
+    // The advisor's "brain" lives in the pure AdvisorEngine — intent
+    // classification, provider/category/filter/budget detection, the plan
+    // pipeline and every Hebrew reply branch. The widget only builds the
+    // context from AppState and renders the result.
+    final reply = AdvisorEngine.respondTo(text, context: _advisorContext(appState));
+    final topPlans = reply.planIds.map((id) => planById(id)).whereType<Plan>().toList();
 
     if (mounted) {
-      appState.addAdvisorMessage(text: reply, isUser: false);
+      appState.addAdvisorMessage(text: reply.text, isUser: false);
       setState(() {
         _isTyping = false;
-        _messages.add(_ChatMsg(text: reply, isUser: false, time: DateTime.now(), planIds: topPlans.map((p) => p.id).toList(), cat: cat));
+        _messages.add(_ChatMsg(
+          text: reply.text,
+          isUser: false,
+          time: DateTime.now(),
+          planIds: topPlans.map((p) => p.id).toList(),
+          cat: reply.category,
+        ));
       });
       for (final p in topPlans) {
         appBackend.trackPlanView(planId: p.id, provider: p.provider, category: p.cat).catchError((_) {});
@@ -360,16 +107,43 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
     _scrollToBottom();
   }
 
-  MatchProfile _profileFor(String cat) => MatchProfile(
-    category: cat,
-    currentBill: AppState().currentBill(cat),
-    budget: (AppState().quizCompleted && AppState().quizCat == cat) ? AppState().quizBudget : 0,
-    priority: priorityFromId(AppState().quizPriority),
-    lines: AppState().quizLines,
-    wants5G: AppState().wants5G,
-    wantsAbroad: AppState().wantsAbroad,
-    wantsNoCommit: AppState().wantsNoCommit,
-  );
+  /// Build the pure [AdvisorContext] the engine needs from the live [AppState]:
+  /// per-category bills, the browsed category, the watchlist, the quiz/preference
+  /// signals, the precomputed savings, and a rating lookup that blends in the
+  /// user's own review (so the advisor matches the ratings screens).
+  AdvisorContext _advisorContext(AppState appState) => AdvisorContext(
+        bills: {
+          for (final c in const ['cellular', 'internet', 'tv', 'triple', 'abroad'])
+            c: appState.currentBill(c),
+        },
+        selectedCat: appState.selectedCat,
+        watchedPlanIds: appState.watchedPlans,
+        quizCompleted: appState.quizCompleted,
+        quizCat: appState.quizCat,
+        quizBudget: appState.quizBudget,
+        quizPriority: appState.quizPriority,
+        quizLines: appState.quizLines,
+        wants5G: appState.wants5G,
+        wantsAbroad: appState.wantsAbroad,
+        wantsNoCommit: appState.wantsNoCommit,
+        savings: [
+          for (final cs in computeSavings(appState).categories)
+            AdvisorSaving(
+              categoryId: cs.categoryId,
+              annualSaving: cs.annualSaving,
+              bestProvider: cs.best?.plan.provider,
+            ),
+        ],
+        ratingLookup: (p) {
+          final r = ProviderRatings.forProvider(p, appState: appState);
+          return AdvisorProviderRating(
+            provider: r.provider,
+            stars: r.stars,
+            reviewCount: r.reviewCount,
+            sub: r.sub,
+          );
+        },
+      );
 
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {

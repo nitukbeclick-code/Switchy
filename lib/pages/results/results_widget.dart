@@ -62,18 +62,10 @@ class _ResultsWidgetState extends State<ResultsWidget> {
     final catData = categoryById(cat);
     final bill = appState.currentBill(cat);
 
-    final profile = MatchProfile(
-      category: cat,
-      currentBill: appState.currentBill(cat),
-      // Only apply the quiz budget to the category the quiz was taken for —
-      // matching the filteredPlans budget gate below.
-      budget: (appState.quizCompleted && appState.quizCat == cat) ? appState.quizBudget : 0,
-      priority: priorityFromId(appState.quizPriority),
-      lines: appState.quizLines,
-      wants5G: appState.wants5G,
-      wantsAbroad: appState.wantsAbroad,
-      wantsNoCommit: appState.wantsNoCommit,
-    );
+    // The quiz-budget gate (budget applies only when the quiz was taken for this
+    // same category) lives in the factory — matching the filteredPlans budget
+    // gate below.
+    final profile = MatchProfile.fromAppState(appState, cat);
 
     final effectiveSort = _smartSort ? 'match' : appState.sortMode;
 

@@ -9,6 +9,7 @@ import '../../app_state.dart';
 import '../../data.dart';
 import '../../models.dart';
 import '../../components/logo_widget/logo_widget.dart';
+import '../../components/plan_card/mini_plan_card.dart';
 import '../../services/backend/local_backend.dart';
 
 class ProfileWidget extends StatefulWidget {
@@ -523,40 +524,13 @@ class _ProfileWidgetState extends State<ProfileWidget> {
         final plan = e.value;
         final bill = appState.currentBill(plan.cat);
         final save = planSaveYear(plan, bill);
-        return GestureDetector(
-          onTap: () => context.pushNamed('PlanDetail', pathParameters: {'planId': plan.id}),
-          child: Container(
-            margin: const EdgeInsets.only(bottom: 8),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: ffTheme.alternate),
-              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 8, offset: const Offset(0, 2))],
-            ),
-            child: Row(
-              children: [
-                LogoWidget(provider: plan.provider, size: 40),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(plan.provider, style: ffTheme.titleSmall.copyWith(fontWeight: FontWeight.w700)),
-                      Text(plan.plan, style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText), maxLines: 1, overflow: TextOverflow.ellipsis),
-                    ],
-                  ),
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text('₪${plan.price}/${priceUnitShort(plan)}', style: ffTheme.titleSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
-                    if (save > 0)
-                      Text('חוסך ₪$save/שנה', style: ffTheme.labelSmall.copyWith(color: ffTheme.success)),
-                  ],
-                ),
-              ],
-            ),
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: MiniPlanCard(
+            plan: plan,
+            savingsPerYear: save,
+            showCta: false,
+            onTap: () => context.pushNamed('PlanDetail', pathParameters: {'planId': plan.id}),
           ),
         ).animate(delay: (i * 50).ms).fadeIn(duration: 250.ms).slideX(begin: 0.05);
       }).toList(),

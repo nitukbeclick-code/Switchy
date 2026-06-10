@@ -72,6 +72,7 @@ class _QuizWidgetState extends State<QuizWidget> {
         elevation: 0,
         leading: IconButton(
           icon: Icon(Icons.close_rounded, color: ffTheme.primaryText),
+          tooltip: 'סגירה',
           onPressed: () => context.safePop(),
         ),
         title: Text('שאלון חיסכון', style: ffTheme.titleLarge),
@@ -132,7 +133,7 @@ class _QuizWidgetState extends State<QuizWidget> {
                 children: [
                   if (_step > 0)
                     Padding(
-                      padding: const EdgeInsets.only(left: 12),
+                      padding: const EdgeInsetsDirectional.only(end: 12),
                       child: OutlinedButton(
                         onPressed: () => setState(() => _step--),
                         style: OutlinedButton.styleFrom(

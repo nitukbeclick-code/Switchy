@@ -17,20 +17,8 @@ class ProviderWidget extends StatelessWidget {
   final String providerName;
 
   /// Build a MatchProfile tuned to a given plan's category.
-  MatchProfile _profileFor(Plan p, AppState appState) {
-    return MatchProfile(
-      category: p.cat,
-      currentBill: appState.currentBill(p.cat),
-      budget: (appState.quizCompleted && appState.quizCat == p.cat)
-          ? appState.quizBudget
-          : 0,
-      priority: priorityFromId(appState.quizPriority),
-      lines: appState.quizLines,
-      wants5G: appState.wants5G,
-      wantsAbroad: appState.wantsAbroad,
-      wantsNoCommit: appState.wantsNoCommit,
-    );
-  }
+  MatchProfile _profileFor(Plan p, AppState appState) =>
+      MatchProfile.fromAppState(appState, p.cat);
 
   @override
   Widget build(BuildContext context) {

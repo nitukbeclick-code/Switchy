@@ -81,6 +81,7 @@ class _PortingWidgetState extends State<PortingWidget> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_rounded, color: Colors.white),
+          tooltip: 'חזרה',
           onPressed: () => context.safePop(),
         ),
         title: Text('בקשת ניוד מספר',

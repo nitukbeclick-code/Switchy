@@ -67,6 +67,7 @@ class _RenewalWidgetState extends State<RenewalWidget> {
         ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white),
+          tooltip: 'חזרה',
           onPressed: () => context.safePop(),
         ),
       ),

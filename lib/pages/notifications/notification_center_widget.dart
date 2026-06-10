@@ -64,6 +64,7 @@ class _NotificationCenterWidgetState extends State<NotificationCenterWidget> {
         centerTitle: true,
         leading: IconButton(
           icon: Icon(Icons.arrow_back_ios_new_rounded, color: ffTheme.primaryText, size: 20),
+          tooltip: 'חזרה',
           onPressed: () => context.safePop(),
         ),
         title: Text(

@@ -326,7 +326,7 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
                                 children: [
                                   if (appState.hasReviewedProvider(e.key) && !active)
                                     Padding(
-                                      padding: const EdgeInsets.only(left: 4),
+                                      padding: const EdgeInsetsDirectional.only(end: 4),
                                       child: Icon(Icons.check_circle_rounded, size: 13, color: ffTheme.success),
                                     ),
                                   Text(e.key, style: ffTheme.labelSmall.copyWith(color: active ? Colors.white : ffTheme.primaryText)),
@@ -358,7 +358,7 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
                               child: GestureDetector(
                                 onTap: () => setState(() => _subRatings[e.key] = j + 1),
                                 child: Padding(
-                                  padding: const EdgeInsets.only(left: 3),
+                                  padding: const EdgeInsetsDirectional.only(end: 3),
                                   child: Icon(
                                     j < (_subRatings[e.key] ?? 0) ? Icons.star_rounded : Icons.star_outline_rounded,
                                     size: 28,

@@ -17,18 +17,8 @@ import '../../services/backend/local_backend.dart';
 class CompareWidget extends StatelessWidget {
   const CompareWidget({super.key});
 
-  MatchProfile _profileFor(Plan p, AppState appState) => MatchProfile(
-        category: p.cat,
-        currentBill: appState.currentBill(p.cat),
-        budget: (appState.quizCompleted && appState.quizCat == p.cat)
-            ? appState.quizBudget
-            : 0,
-        priority: priorityFromId(appState.quizPriority),
-        lines: appState.quizLines,
-        wants5G: appState.wants5G,
-        wantsAbroad: appState.wantsAbroad,
-        wantsNoCommit: appState.wantsNoCommit,
-      );
+  MatchProfile _profileFor(Plan p, AppState appState) =>
+      MatchProfile.fromAppState(appState, p.cat);
 
   @override
   Widget build(BuildContext context) {

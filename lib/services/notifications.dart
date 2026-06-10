@@ -84,7 +84,7 @@ List<AppNotification> computeNotifications(AppState s) {
     for (final c in categories) {
       final bill = s.currentBill(c.id);
       if (bill <= 0) continue;
-      final m = RecommendationEngine.bestMatch(_profile(s, c.id, bill));
+      final m = RecommendationEngine.bestMatch(MatchProfile.fromAppState(s, c.id));
       if (m == null || m.annualSaving <= 0) continue;
       if (topSaving == null || m.annualSaving > topSaving.annualSaving) topSaving = m;
     }
@@ -110,21 +110,10 @@ List<AppNotification> computeNotifications(AppState s) {
 /// Count of actionable, non-dismissed notifications (for the bell badge).
 int notificationCount(AppState s) => computeNotifications(s).length;
 
-MatchProfile _profile(AppState s, String cat, int bill) => MatchProfile(
-      category: cat,
-      currentBill: bill,
-      budget: (s.quizCompleted && s.quizCat == cat) ? s.quizBudget : 0,
-      priority: priorityFromId(s.quizPriority),
-      lines: s.quizLines,
-      wants5G: s.wants5G,
-      wantsAbroad: s.wantsAbroad,
-      wantsNoCommit: s.wantsNoCommit,
-    );
-
 /// The best alternative to [watched] in its category, or null if none is clearly
 /// better (score margin > 4 and either cheaper or with a positive saving).
 PlanMatch? _betterDeal(AppState s, Plan watched) {
-  final profile = _profile(s, watched.cat, s.currentBill(watched.cat));
+  final profile = MatchProfile.fromAppState(s, watched.cat);
   final watchedScore = RecommendationEngine.scorePlan(watched, profile).score;
   for (final m in RecommendationEngine.rank(profile)) {
     if (m.plan.id == watched.id) continue;

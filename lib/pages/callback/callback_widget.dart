@@ -259,11 +259,13 @@ class _CallbackWidgetState extends State<CallbackWidget> {
         ),
         child: Row(
           children: [
-            Container(
-              width: 56,
-              height: 56,
-              decoration: BoxDecoration(color: ffTheme.secondary, shape: BoxShape.circle),
-              child: Center(child: Text(expert.avatar, style: GoogleFonts.rubik(fontSize: 24, fontWeight: FontWeight.w800, color: ffTheme.primary))),
+            ExcludeSemantics(
+              child: Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(color: ffTheme.secondary, shape: BoxShape.circle),
+                child: Center(child: Text(expert.avatar, style: GoogleFonts.rubik(fontSize: 24, fontWeight: FontWeight.w800, color: ffTheme.primary))),
+              ),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -347,7 +349,7 @@ class _CallbackWidgetState extends State<CallbackWidget> {
             onTap: () => setState(() => _timing = t),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
-              margin: EdgeInsets.only(right: i < _timings.length - 1 ? 8 : 0),
+              margin: EdgeInsetsDirectional.only(end: i < _timings.length - 1 ? 8 : 0),
               padding: const EdgeInsets.symmetric(vertical: 10),
               decoration: BoxDecoration(
                 color: active ? ffTheme.primary : Colors.white,

@@ -483,10 +483,10 @@ class _ChatWidgetState extends State<ChatWidget> {
   Widget _buildBubble(_Msg msg, AppTheme ffTheme, {required bool showAvatar}) {
     final isUser = msg.isUser;
     return Padding(
-      padding: EdgeInsets.only(
+      padding: EdgeInsetsDirectional.only(
         bottom: 4,
-        right: isUser ? 0 : 48,
-        left: isUser ? 48 : 0,
+        start: isUser ? 0 : 48,
+        end: isUser ? 48 : 0,
       ),
       child: Column(
         crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
@@ -500,7 +500,7 @@ class _ChatWidgetState extends State<ChatWidget> {
                   child: Container(
                     width: 30,
                     height: 30,
-                    margin: const EdgeInsets.only(left: 8, bottom: 2),
+                    margin: const EdgeInsetsDirectional.only(end: 8, bottom: 2),
                     decoration: BoxDecoration(color: ffTheme.secondary, shape: BoxShape.circle),
                     child: Center(child: Text('ד', style: GoogleFonts.rubik(fontSize: 13, fontWeight: FontWeight.w800, color: ffTheme.primary))),
                   ),
@@ -534,7 +534,7 @@ class _ChatWidgetState extends State<ChatWidget> {
             ],
           ),
           Padding(
-            padding: EdgeInsets.only(top: 3, right: isUser ? 4 : 38, left: isUser ? 0 : 4),
+            padding: EdgeInsetsDirectional.only(top: 3, start: isUser ? 4 : 38, end: isUser ? 0 : 4),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
@@ -567,7 +567,7 @@ class _ChatWidgetState extends State<ChatWidget> {
             child: Container(
               width: 30,
               height: 30,
-              margin: const EdgeInsets.only(left: 8, bottom: 2),
+              margin: const EdgeInsetsDirectional.only(end: 8, bottom: 2),
               decoration: BoxDecoration(color: ffTheme.secondary, shape: BoxShape.circle),
               child: Center(child: Text('ד', style: GoogleFonts.rubik(fontSize: 13, fontWeight: FontWeight.w800, color: ffTheme.primary))),
             ),
@@ -588,7 +588,7 @@ class _ChatWidgetState extends State<ChatWidget> {
               mainAxisSize: MainAxisSize.min,
               children: List.generate(3, (i) => Container(
                 width: 7, height: 7,
-                margin: EdgeInsets.only(right: i > 0 ? 4 : 0),
+                margin: EdgeInsetsDirectional.only(start: i > 0 ? 4 : 0),
                 decoration: BoxDecoration(color: ffTheme.secondaryText.withValues(alpha: 0.5), shape: BoxShape.circle),
               ).animate(onPlay: (c) => c.repeat())
                 .fadeIn(delay: (i * 200).ms, duration: 300.ms)

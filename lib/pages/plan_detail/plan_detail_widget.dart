@@ -99,16 +99,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
     final inCompare = appState.isInCompare(plan.id);
 
     // Compute match once for this plan
-    final matchProfile = MatchProfile(
-      category: plan.cat,
-      currentBill: bill,
-      budget: (appState.quizCompleted && appState.quizCat == plan.cat) ? appState.quizBudget : 0,
-      priority: priorityFromId(appState.quizPriority),
-      lines: appState.quizLines,
-      wants5G: appState.wants5G,
-      wantsAbroad: appState.wantsAbroad,
-      wantsNoCommit: appState.wantsNoCommit,
-    );
+    final matchProfile = MatchProfile.fromAppState(appState, plan.cat);
     final planMatch = RecommendationEngine.scorePlan(plan, matchProfile);
 
     return Scaffold(

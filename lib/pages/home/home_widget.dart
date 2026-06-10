@@ -9,6 +9,7 @@ import '../../app_state.dart';
 import '../../data.dart';
 import '../../models.dart';
 import '../../components/logo_widget/logo_widget.dart';
+import '../../components/plan_card/mini_plan_card.dart';
 import '../../services/recommendation_engine.dart';
 import '../../services/notifications.dart';
 import '../../services/savings_summary.dart';
@@ -60,18 +61,7 @@ class _HomeWidgetState extends State<HomeWidget> {
   /// Returns the best alternative plan in the same category, or null if none
   /// is clearly better (score delta > 4 AND cheaper or positive annual saving).
   PlanMatch? _betterDealFor(Plan watched, AppState appState) {
-    final profile = MatchProfile(
-      category: watched.cat,
-      currentBill: appState.currentBill(watched.cat),
-      budget: (appState.quizCompleted && appState.quizCat == watched.cat)
-          ? appState.quizBudget
-          : 0,
-      priority: priorityFromId(appState.quizPriority),
-      lines: appState.quizLines,
-      wants5G: appState.wants5G,
-      wantsAbroad: appState.wantsAbroad,
-      wantsNoCommit: appState.wantsNoCommit,
-    );
+    final profile = MatchProfile.fromAppState(appState, watched.cat);
     final watchedScore = RecommendationEngine.scorePlan(watched, profile).score;
     for (final m in RecommendationEngine.rank(profile)) {
       if (m.plan.id == watched.id) continue;
@@ -542,76 +532,11 @@ class _HomeWidgetState extends State<HomeWidget> {
               ],
             ),
           ),
-          GestureDetector(
+          MiniPlanCard(
+            plan: deal,
+            savingsPerYear: saving,
+            ctaLabel: 'ראה עסקה',
             onTap: () => context.pushNamed('PlanDetail', pathParameters: {'planId': deal.id}),
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: ffTheme.alternate),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  LogoWidget(provider: deal.provider, size: 52),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(deal.provider, style: ffTheme.titleSmall),
-                        const SizedBox(height: 2),
-                        Text(deal.plan, style: ffTheme.bodySmall, maxLines: 1, overflow: TextOverflow.ellipsis),
-                        const SizedBox(height: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFC9EC4B),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            'חוסך ₪$saving/שנה',
-                            style: ffTheme.labelSmall.copyWith(
-                              color: ffTheme.primary,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text(
-                        '₪${deal.price}/${priceUnitShort(deal)}',
-                        style: ffTheme.titleMedium.copyWith(color: ffTheme.primary),
-                      ),
-                      const SizedBox(height: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: ffTheme.primary,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          'ראה עסקה ←',
-                          style: ffTheme.labelSmall.copyWith(color: Colors.white),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
           ),
         ],
       ),
@@ -653,66 +578,14 @@ class _HomeWidgetState extends State<HomeWidget> {
             ],
           ),
           const SizedBox(height: 10),
-          GestureDetector(
+          MiniPlanCard(
+            plan: plan,
+            savingsPerYear: save > 0 ? save : null,
+            ctaLabel: 'בחר',
             onTap: () {
               appState.viewPlan(plan.id);
               context.pushNamed('PlanDetail', pathParameters: {'planId': plan.id});
             },
-            child: Container(
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: ffTheme.secondary, width: 2),
-                boxShadow: [BoxShadow(color: ffTheme.secondary.withValues(alpha: 0.2), blurRadius: 12, offset: const Offset(0, 3))],
-              ),
-              child: Row(
-                children: [
-                  LogoWidget(provider: plan.provider, size: 48),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(plan.provider, style: ffTheme.titleSmall),
-                        Text(plan.plan, style: ffTheme.bodySmall, maxLines: 1, overflow: TextOverflow.ellipsis),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(color: ffTheme.accent1, borderRadius: BorderRadius.circular(5)),
-                              child: Text('✓ בתקציב', style: ffTheme.labelSmall.copyWith(color: ffTheme.success, fontSize: 10, fontWeight: FontWeight.w700)),
-                            ),
-                            if (save > 0) ...[
-                              const SizedBox(width: 6),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(color: ffTheme.secondary, borderRadius: BorderRadius.circular(5)),
-                                child: Text('חוסך ₪$save/שנה', style: ffTheme.labelSmall.copyWith(color: const Color(0xFF0E3A26), fontSize: 10, fontWeight: FontWeight.w800)),
-                              ),
-                            ],
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text('₪${plan.price}', style: ffTheme.titleLarge.copyWith(color: ffTheme.primary)),
-                      Text(priceUnitLabel(plan), style: ffTheme.labelSmall),
-                      const SizedBox(height: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                        decoration: BoxDecoration(color: ffTheme.primary, borderRadius: BorderRadius.circular(8)),
-                        child: Text('בחר ←', style: ffTheme.labelSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
           ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.08, end: 0),
         ],
       ),
@@ -721,16 +594,7 @@ class _HomeWidgetState extends State<HomeWidget> {
 
   Widget _buildTopPick(BuildContext context, AppTheme ffTheme, AppState appState) {
     // Build profile helper
-    MatchProfile profileFor(String cat) => MatchProfile(
-      category: cat,
-      currentBill: appState.currentBill(cat),
-      budget: (appState.quizCompleted && appState.quizCat == cat) ? appState.quizBudget : 0,
-      priority: priorityFromId(appState.quizPriority),
-      lines: appState.quizLines,
-      wants5G: appState.wants5G,
-      wantsAbroad: appState.wantsAbroad,
-      wantsNoCommit: appState.wantsNoCommit,
-    );
+    MatchProfile profileFor(String cat) => MatchProfile.fromAppState(appState, cat);
 
     // Find the single best match across active categories (bill > 0); fall back to selectedCat
     final activeCats = categories.where((c) => appState.currentBill(c.id) > 0).toList();
@@ -752,7 +616,6 @@ class _HomeWidgetState extends State<HomeWidget> {
 
     final match = topMatch;
     final plan = match.plan;
-    final topReason = match.reasons.isNotEmpty ? match.reasons.first : null;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
@@ -767,80 +630,11 @@ class _HomeWidgetState extends State<HomeWidget> {
             ],
           ),
           const SizedBox(height: 10),
-          GestureDetector(
+          MiniPlanCard(
+            plan: plan,
+            savingsPerYear: match.annualSaving > 0 ? match.annualSaving : null,
+            ctaLabel: 'בחר',
             onTap: () => context.pushNamed('PlanDetail', pathParameters: {'planId': plan.id}),
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: ffTheme.primary.withValues(alpha: 0.25), width: 1.5),
-                boxShadow: [BoxShadow(color: ffTheme.primary.withValues(alpha: 0.08), blurRadius: 12, offset: const Offset(0, 3))],
-              ),
-              child: Row(
-                children: [
-                  LogoWidget(provider: plan.provider, size: 52),
-                  const SizedBox(width: 14),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Text(plan.provider, style: ffTheme.titleSmall),
-                            const SizedBox(width: 6),
-                            // Match score badge
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: ffTheme.primary,
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Text(
-                                '${match.scorePct}% התאמה',
-                                style: ffTheme.labelSmall.copyWith(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 2),
-                        Text(plan.plan, style: ffTheme.bodySmall, maxLines: 1, overflow: TextOverflow.ellipsis),
-                        if (topReason != null) ...[
-                          const SizedBox(height: 3),
-                          Text(topReason, style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText, fontSize: 11)),
-                        ],
-                        const SizedBox(height: 6),
-                        if (match.annualSaving > 0)
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(color: ffTheme.secondary, borderRadius: BorderRadius.circular(6)),
-                            child: Text('חוסך ₪${match.annualSaving}/שנה', style: ffTheme.labelSmall.copyWith(color: const Color(0xFF0E3A26), fontWeight: FontWeight.w800)),
-                          )
-                        else if (plan.noCommit)
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                            decoration: BoxDecoration(color: ffTheme.accent1, borderRadius: BorderRadius.circular(5)),
-                            child: Text('ללא התחייבות', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontSize: 10)),
-                          ),
-                      ],
-                    ),
-                  ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Text('₪${plan.price}', style: ffTheme.titleLarge.copyWith(color: ffTheme.primary)),
-                      Text(priceUnitLabel(plan), style: ffTheme.labelSmall),
-                      const SizedBox(height: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                        decoration: BoxDecoration(color: ffTheme.primary, borderRadius: BorderRadius.circular(8)),
-                        child: Text('בחר ←', style: ffTheme.labelSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
           ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.08, end: 0),
         ],
       ),

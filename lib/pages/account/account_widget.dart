@@ -7,6 +7,7 @@ import '../../core/nav.dart';
 import '../../app_state.dart';
 import '../../data.dart';
 import '../../components/logo_widget/logo_widget.dart';
+import '../../components/plan_card/mini_plan_card.dart';
 
 class AccountWidget extends StatelessWidget {
   const AccountWidget({super.key});
@@ -271,42 +272,26 @@ class AccountWidget extends StatelessWidget {
                       final p = planById(id);
                       if (p == null) return const SizedBox();
                       final save = planSaveYear(p, appState.currentBill(p.cat));
-                      return GestureDetector(
-                        onTap: () => context.pushNamed('PlanDetail', pathParameters: {'planId': id}),
-                        child: Container(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: ffTheme.alternate),
-                            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 6)],
-                          ),
-                          child: Row(
-                            children: [
-                              LogoWidget(provider: p.provider, size: 38),
-                              const SizedBox(width: 12),
-                              Expanded(child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(p.provider, style: ffTheme.titleSmall),
-                                  Text(p.plan, style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText), maxLines: 1, overflow: TextOverflow.ellipsis),
-                                ],
-                              )),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  Text('₪${p.price}/${priceUnitShort(p)}', style: ffTheme.titleSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
-                                  if (save > 0) Text('חוסך ₪$save/שנה', style: ffTheme.labelSmall.copyWith(color: ffTheme.success)),
-                                ],
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: MiniPlanCard(
+                                plan: p,
+                                savingsPerYear: save,
+                                showCta: false,
+                                onTap: () => context.pushNamed('PlanDetail', pathParameters: {'planId': id}),
                               ),
-                              const SizedBox(width: 8),
-                              GestureDetector(
-                                onTap: () => appState.toggleWatch(id),
-                                child: Icon(Icons.notifications_off_outlined, size: 18, color: ffTheme.secondaryText),
-                              ),
-                            ],
-                          ),
+                            ),
+                            const SizedBox(width: 8),
+                            IconButton(
+                              icon: const Icon(Icons.notifications_off_outlined, size: 18),
+                              color: ffTheme.secondaryText,
+                              tooltip: 'הסר ממעקב',
+                              onPressed: () => appState.toggleWatch(id),
+                            ),
+                          ],
                         ),
                       );
                     }),

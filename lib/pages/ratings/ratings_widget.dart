@@ -351,14 +351,19 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
                               child: Text(e.value, style: ffTheme.labelSmall),
                             ),
                             const SizedBox(width: 8),
-                            ...List.generate(5, (j) => GestureDetector(
-                              onTap: () => setState(() => _subRatings[e.key] = j + 1),
-                              child: Padding(
-                                padding: const EdgeInsets.only(left: 3),
-                                child: Icon(
-                                  j < (_subRatings[e.key] ?? 0) ? Icons.star_rounded : Icons.star_outline_rounded,
-                                  size: 28,
-                                  color: ffTheme.warning,
+                            ...List.generate(5, (j) => Semantics(
+                              button: true,
+                              selected: j < (_subRatings[e.key] ?? 0),
+                              label: 'דרג ${j + 1} מתוך 5 — ${e.value}',
+                              child: GestureDetector(
+                                onTap: () => setState(() => _subRatings[e.key] = j + 1),
+                                child: Padding(
+                                  padding: const EdgeInsets.only(left: 3),
+                                  child: Icon(
+                                    j < (_subRatings[e.key] ?? 0) ? Icons.star_rounded : Icons.star_outline_rounded,
+                                    size: 28,
+                                    color: ffTheme.warning,
+                                  ),
                                 ),
                               ),
                             )),

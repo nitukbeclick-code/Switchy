@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="he" dir="rtl">
 <head>
   <!--
     If you are serving your web app in a path other than the root, change the
@@ -19,6 +19,14 @@
   <meta charset="UTF-8">
   <meta content="IE=Edge" http-equiv="X-UA-Compatible">
   <meta name="description" content="השוואת מחירי תקשורת בישראל — חוסך">
+  <meta name="theme-color" content="#15603E">
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="חוסך — משווים. חוסכים. עוברים.">
+  <meta property="og:description" content="השוואת מחירי תקשורת בישראל — חוסך">
+  <meta property="og:locale" content="he_IL">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary">
 
   <!-- iOS meta tags & icons -->
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -31,8 +39,74 @@
 
   <title>חוסך</title>
   <link rel="manifest" href="manifest.json">
+
+  <style>
+    html, body {
+      background: #15603E;
+      margin: 0;
+      padding: 0;
+      height: 100%;
+    }
+    #splash {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 24px;
+      background: #15603E;
+      transition: opacity 0.4s ease-out;
+    }
+    #splash.splash-hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+    #splash .splash-brand {
+      color: #C9EC4B;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+      font-size: 56px;
+      font-weight: 800;
+      letter-spacing: -1px;
+      line-height: 1;
+    }
+    #splash .splash-tagline {
+      color: #F4F0E8;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+      font-size: 16px;
+      font-weight: 400;
+      opacity: 0.85;
+    }
+    #splash .splash-spinner {
+      width: 36px;
+      height: 36px;
+      border: 4px solid rgba(201, 236, 75, 0.25);
+      border-top-color: #C9EC4B;
+      border-radius: 50%;
+      animation: splash-spin 0.9s linear infinite;
+    }
+    @keyframes splash-spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
 </head>
 <body>
+  <div id="splash" role="status" aria-label="טוען את חוסך">
+    <div class="splash-brand">חוסך</div>
+    <div class="splash-tagline">משווים. חוסכים. עוברים.</div>
+    <div class="splash-spinner"></div>
+  </div>
+  <script>
+    window.addEventListener('flutter-first-frame', function () {
+      var splash = document.getElementById('splash');
+      if (!splash) return;
+      splash.classList.add('splash-hidden');
+      splash.addEventListener('transitionend', function () {
+        if (splash.parentNode) splash.parentNode.removeChild(splash);
+      });
+    });
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

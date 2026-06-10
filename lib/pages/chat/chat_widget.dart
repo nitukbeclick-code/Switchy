@@ -62,8 +62,12 @@ class _ChatWidgetState extends State<ChatWidget> {
         isRead: true,
       );
       _messages = [seed1, seed2];
-      appState.addChatMessage(text: seed1.text, isUser: false, isRead: true);
-      appState.addChatMessage(text: seed2.text, isUser: false, isRead: true);
+      // Persist after the first frame — notifying listeners synchronously here
+      // would mark the AppState provider dirty during the build phase.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        appState.addChatMessage(text: seed1.text, isUser: false, isRead: true);
+        appState.addChatMessage(text: seed2.text, isUser: false, isRead: true);
+      });
     }
   }
 
@@ -262,34 +266,37 @@ class _ChatWidgetState extends State<ChatWidget> {
       elevation: 0,
       leading: IconButton(
         icon: const Icon(Icons.arrow_back_ios_rounded, color: Colors.white, size: 20),
+        tooltip: 'חזרה',
         onPressed: () => context.safePop(),
       ),
       titleSpacing: 0,
       title: Row(
         children: [
-          Stack(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(color: ffTheme.secondary, shape: BoxShape.circle),
-                child: Center(child: Text('ד', style: GoogleFonts.rubik(fontSize: 18, fontWeight: FontWeight.w800, color: ffTheme.primary))),
-              ),
-              if (_agentOnline)
-                Positioned(
-                  bottom: 1,
-                  right: 1,
-                  child: Container(
-                    width: 11,
-                    height: 11,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF25D366),
-                      shape: BoxShape.circle,
-                      border: Border.all(color: ffTheme.primary, width: 1.5),
+          ExcludeSemantics(
+            child: Stack(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(color: ffTheme.secondary, shape: BoxShape.circle),
+                  child: Center(child: Text('ד', style: GoogleFonts.rubik(fontSize: 18, fontWeight: FontWeight.w800, color: ffTheme.primary))),
+                ),
+                if (_agentOnline)
+                  Positioned(
+                    bottom: 1,
+                    right: 1,
+                    child: Container(
+                      width: 11,
+                      height: 11,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF25D366),
+                        shape: BoxShape.circle,
+                        border: Border.all(color: ffTheme.primary, width: 1.5),
+                      ),
                     ),
                   ),
-                ),
-            ],
+              ],
+            ),
           ),
           const SizedBox(width: 10),
           Column(
@@ -443,13 +450,17 @@ class _ChatWidgetState extends State<ChatWidget> {
               ),
             ),
             const SizedBox(width: 8),
-            GestureDetector(
-              onTap: () => _send(_inputCtrl.text),
-              child: Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(color: ffTheme.primary, shape: BoxShape.circle),
-                child: const Icon(Icons.send_rounded, color: Colors.white, size: 20),
+            Semantics(
+              button: true,
+              label: 'שלח הודעה',
+              child: GestureDetector(
+                onTap: () => _send(_inputCtrl.text),
+                child: Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(color: ffTheme.primary, shape: BoxShape.circle),
+                  child: const Icon(Icons.send_rounded, color: Colors.white, size: 20),
+                ),
               ),
             ),
           ],
@@ -485,12 +496,14 @@ class _ChatWidgetState extends State<ChatWidget> {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               if (!isUser && showAvatar) ...[
-                Container(
-                  width: 30,
-                  height: 30,
-                  margin: const EdgeInsets.only(left: 8, bottom: 2),
-                  decoration: BoxDecoration(color: ffTheme.secondary, shape: BoxShape.circle),
-                  child: Center(child: Text('ד', style: GoogleFonts.rubik(fontSize: 13, fontWeight: FontWeight.w800, color: ffTheme.primary))),
+                ExcludeSemantics(
+                  child: Container(
+                    width: 30,
+                    height: 30,
+                    margin: const EdgeInsets.only(left: 8, bottom: 2),
+                    decoration: BoxDecoration(color: ffTheme.secondary, shape: BoxShape.circle),
+                    child: Center(child: Text('ד', style: GoogleFonts.rubik(fontSize: 13, fontWeight: FontWeight.w800, color: ffTheme.primary))),
+                  ),
                 ),
               ] else if (!isUser) ...[
                 const SizedBox(width: 38),
@@ -550,12 +563,14 @@ class _ChatWidgetState extends State<ChatWidget> {
         mainAxisAlignment: MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          Container(
-            width: 30,
-            height: 30,
-            margin: const EdgeInsets.only(left: 8, bottom: 2),
-            decoration: BoxDecoration(color: ffTheme.secondary, shape: BoxShape.circle),
-            child: Center(child: Text('ד', style: GoogleFonts.rubik(fontSize: 13, fontWeight: FontWeight.w800, color: ffTheme.primary))),
+          ExcludeSemantics(
+            child: Container(
+              width: 30,
+              height: 30,
+              margin: const EdgeInsets.only(left: 8, bottom: 2),
+              decoration: BoxDecoration(color: ffTheme.secondary, shape: BoxShape.circle),
+              child: Center(child: Text('ד', style: GoogleFonts.rubik(fontSize: 13, fontWeight: FontWeight.w800, color: ffTheme.primary))),
+            ),
           ),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),

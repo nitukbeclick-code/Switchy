@@ -37,13 +37,22 @@ import 'pages/provider/provider_widget.dart';
 final _rootNavKey = GlobalKey<NavigatorState>(debugLabel: 'root');
 final _shellNavKey = GlobalKey<NavigatorState>(debugLabel: 'shell');
 
-GoRouter createRouter() => GoRouter(
+GoRouter createRouter() {
+  // Returning users skip onboarding — but only on the app's *first* navigation
+  // (cold start). Later explicit navigations to /onboarding (e.g. right after
+  // logout) must actually land there, otherwise logout appears to do nothing.
+  var initialRedirectHandled = false;
+  return GoRouter(
   navigatorKey: _rootNavKey,
   initialLocation: '/onboarding',
   redirect: (context, state) {
     final appState = Provider.of<AppState>(context, listen: false);
     final isOnboarding = state.uri.path == '/onboarding';
-    if (isOnboarding && (appState.isLoggedIn || appState.quizCompleted || appState.seenOnboarding)) {
+    final isFirstNavigation = !initialRedirectHandled;
+    initialRedirectHandled = true;
+    if (isOnboarding &&
+        isFirstNavigation &&
+        (appState.isLoggedIn || appState.quizCompleted || appState.seenOnboarding)) {
       return '/home';
     }
     return null;
@@ -86,7 +95,8 @@ GoRouter createRouter() => GoRouter(
       ],
     ),
   ],
-);
+  );
+}
 
 class _ScaffoldWithNav extends StatelessWidget {
   const _ScaffoldWithNav({required this.child, required this.location});

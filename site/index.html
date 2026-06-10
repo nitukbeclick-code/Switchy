@@ -28,7 +28,9 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css" />
+  <!-- ?v= cache-busting hash is owned by build.js (it prints the current
+       values on every run) — keep this in sync when styles.css changes. -->
+  <link rel="stylesheet" href="styles.css?v=b4346595" />
 
   <!-- Structured data: Organization, WebSite, and an FAQ (eligible for rich results). -->
   <script type="application/ld+json">
@@ -115,10 +117,10 @@
             <a class="btn btn--ghost btn--lg" href="#how">איך זה עובד?</a>
           </div>
           <ul class="hero__stats" aria-label="נתונים">
-            <li><b>100+</b><span>מסלולים</span></li>
-            <li><b>60K</b><span>לקוחות</span></li>
+            <li><b>100+</b><span>מסלולים בהשוואה</span></li>
+            <li><b>15+</b><span>ספקים</span></li>
             <li><b>₪1,200</b><span>חיסכון שנתי</span></li>
-            <li><b>4.8★</b><span>דירוג</span></li>
+            <li><b>5</b><span>קטגוריות</span></li>
           </ul>
         </div>
 
@@ -269,7 +271,7 @@
     <section class="section" id="reviews">
       <div class="container">
         <header class="section__head reveal">
-          <span class="eyebrow">60,000+ לקוחות מרוצים</span>
+          <span class="eyebrow">סיפורי חיסכון</span>
           <h2>מה אומרים עלינו</h2>
         </header>
         <div class="quotes">
@@ -379,6 +381,8 @@
     </div>
   </footer>
 
-  <script src="script.js" defer></script>
+  <!-- ?v= cache-busting hash is owned by build.js (it prints the current
+       values on every run) — keep this in sync when script.js changes. -->
+  <script src="script.js?v=524aa3df" defer></script>
 </body>
 </html>

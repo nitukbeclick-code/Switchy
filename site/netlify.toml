@@ -12,19 +12,23 @@
     Referrer-Policy = "strict-origin-when-cross-origin"
     Permissions-Policy = "camera=(), microphone=(), geolocation=()"
 
+# Paths must start with "/" — slash-less globs never match on Netlify.
+# css/js have stable filenames; immutable is safe because every reference
+# carries a content-hash query (?v=<hash>, owned by build.js) that changes
+# whenever the file does.
 [[headers]]
-  for = "*.css"
+  for = "/*.css"
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
 [[headers]]
-  for = "*.js"
+  for = "/*.js"
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
 [[headers]]
-  for = "*.svg"
+  for = "/*.svg"
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
 [[headers]]
-  for = "*.png"
+  for = "/*.png"
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"

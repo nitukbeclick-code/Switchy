@@ -735,7 +735,15 @@ class _PlanHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return Semantics(
+      button: true,
+      label: 'פתח את פרטי המסלול ${plan.plan} של ${plan.provider}',
+      child: GestureDetector(
+      onTap: () {
+        HapticFeedback.lightImpact();
+        context.pushNamed('PlanDetail', pathParameters: {'planId': plan.id});
+      },
+      child: Container(
       width: 140,
       margin: const EdgeInsets.only(left: 10),
       padding: const EdgeInsets.all(12),
@@ -812,6 +820,8 @@ class _PlanHeader extends StatelessWidget {
             ),
           ),
         ],
+      ),
+      ),
       ),
     );
   }

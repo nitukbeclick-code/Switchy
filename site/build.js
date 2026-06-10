@@ -5,8 +5,22 @@
 'use strict';
 const fs = require('fs');
 const path = require('path');
+const crypto = require('node:crypto');
 
 const SITE = 'https://chosech.co.il';
+
+// Cache-busting fingerprints: the deploy configs (netlify.toml / vercel.json)
+// serve *.css/*.js with `Cache-Control: immutable` for a year, so every
+// reference carries a content-hash query (?v=<hash>) — a changed file gets a
+// new URL and returning visitors fetch it immediately. No file renames needed.
+// NOTE: index.html is hand-written (not generated) — when these hashes change,
+// update its styles.css/script.js references to match (the build prints them).
+const assetHash = (file) =>
+  crypto.createHash('sha256').update(fs.readFileSync(path.join(__dirname, file))).digest('hex').slice(0, 8);
+const CSS_V = assetHash('styles.css');
+const JS_V = assetHash('script.js');
+const CSS_HREF = `styles.css?v=${CSS_V}`;
+const JS_SRC = `script.js?v=${JS_V}`;
 
 // Real plan catalogue, exported from the app via `flutter test tool/export_plans.dart`.
 const catalogue = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'plans.json'), 'utf8'));
@@ -86,7 +100,7 @@ const categories = [
     ],
     providers: ['בזק', 'הוט', 'סלקום', 'פרטנר', 'yes', 'רמי לוי'],
     faq: [
-      ['כמה חוסכים בחבילה משולבת?', 'לקוחות רבים חוסכים ₪1,000–₪2,400 בשנה במעבר לחבילה משולבת לעומת רכישת כל שירות בנפרד.'],
+      ['כמה חוסכים בחבילה משולבת?', 'תלוי במה שאתם משלמים היום — במעבר לחבילה משולבת אפשר לחסוך עד ₪1,700 בשנה לעומת רכישת כל שירות בנפרד. ההשוואה מראה את החיסכון המדויק שלכם.'],
       ['מה כולל טריפל?', 'בדרך כלל אינטרנט (תשתית+ספק), טלוויזיה וקו סלולר אחד או יותר — בחשבון אחד ובמחיר אחד.'],
       ['אפשר להתאים את החבילה?', 'כן — אפשר להוסיף קווים, ערוצי ספורט או מהירות גבוהה יותר. ההמלצה שלנו מותאמת לצרכים שלכם.'],
     ],
@@ -273,7 +287,7 @@ function page(c) {
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="${CSS_HREF}" />
   <script type="application/ld+json">${jsonLd(c)}</script>
 </head>
 <body id="top">
@@ -352,7 +366,7 @@ ${catGuides}
     </section>
   </main>
 ${footer}
-  <script src="script.js" defer></script>
+  <script src="${JS_SRC}" defer></script>
 </body>
 </html>
 `;
@@ -538,7 +552,7 @@ function head(title, desc, url, extraJsonLd, noindex) {
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="${CSS_HREF}" />
   ${extraJsonLd ? `<script type="application/ld+json">${extraJsonLd}</script>` : ''}
 </head>`;
 }
@@ -591,7 +605,7 @@ ${relatedCards}
     </article>
   </main>
 ${footer}
-  <script src="script.js" defer></script>
+  <script src="${JS_SRC}" defer></script>
 </body>
 </html>
 `;
@@ -622,7 +636,7 @@ ${cards}
     </section>
   </main>
 ${footer}
-  <script src="script.js" defer></script>
+  <script src="${JS_SRC}" defer></script>
 </body>
 </html>
 `;
@@ -713,7 +727,7 @@ ${cta}
     </section>
   </main>
 ${footer}
-  <script src="script.js" defer></script>
+  <script src="${JS_SRC}" defer></script>
 </body>
 </html>
 `;
@@ -739,7 +753,7 @@ ${navNoCta}
     </section>
   </main>
 ${footer}
-  <script src="script.js" defer></script>
+  <script src="${JS_SRC}" defer></script>
 </body>
 </html>
 `;
@@ -799,7 +813,7 @@ ${nav}
     </section>
   </main>
 ${footer}
-  <script src="script.js" defer></script>
+  <script src="${JS_SRC}" defer></script>
 </body>
 </html>
 `;
@@ -857,7 +871,7 @@ ${nav}
     </section>
   </main>
 ${footer}
-  <script src="script.js" defer></script>
+  <script src="${JS_SRC}" defer></script>
 </body>
 </html>
 `;
@@ -894,7 +908,7 @@ ${cards}
     </section>
   </main>
 ${footer}
-  <script src="script.js" defer></script>
+  <script src="${JS_SRC}" defer></script>
 </body>
 </html>
 `;
@@ -954,7 +968,7 @@ ${nav}
   </main>
 ${footer}
   <script>window.__PLANS__ = ${JSON.stringify(data)};</script>
-  <script src="script.js" defer></script>
+  <script src="${JS_SRC}" defer></script>
 </body>
 </html>
 `;
@@ -1100,7 +1114,7 @@ ${posts}
     </section>
   </main>
 ${footer}
-  <script src="script.js" defer></script>
+  <script src="${JS_SRC}" defer></script>
 </body>
 </html>
 `;
@@ -1155,3 +1169,4 @@ ${locs.map((l, i) => `  <url>\n    <loc>${l}</loc>\n    <changefreq>weekly</chan
 fs.writeFileSync(path.join(__dirname, 'sitemap.xml'), sitemap);
 
 console.log(`Generated ${categories.length} category + ${guides.length} guides + ${staticPages.length} static + guides index + plans + providers + 404 + sitemap.xml`);
+console.log(`Asset fingerprints: styles.css?v=${CSS_V}  script.js?v=${JS_V}  (hand-written index.html must reference these same values)`);

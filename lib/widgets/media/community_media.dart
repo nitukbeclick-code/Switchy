@@ -39,7 +39,10 @@ class MediaImageBubble extends StatelessWidget {
   void _openFullscreen(BuildContext context) {
     showDialog<void>(
       context: context,
-      builder: (_) => Dialog(
+      // Pop with the dialog's own context: the dialog lives on the root
+      // navigator, while the page context belongs to the shell navigator —
+      // popping the page context would pop the page underneath the dialog.
+      builder: (dialogContext) => Dialog(
         backgroundColor: Colors.black,
         insetPadding: EdgeInsets.zero,
         child: Stack(
@@ -57,7 +60,8 @@ class MediaImageBubble extends StatelessWidget {
               child: SafeArea(
                 child: IconButton(
                   icon: const Icon(Icons.close, color: Colors.white, size: 28),
-                  onPressed: () => Navigator.of(context).pop(),
+                  tooltip: 'סגור תצוגה מלאה',
+                  onPressed: () => Navigator.of(dialogContext).pop(),
                 ),
               ),
             ),
@@ -105,13 +109,17 @@ class MediaImageBubble extends StatelessWidget {
       imageChild = Image.memory(bytes, fit: BoxFit.cover);
     }
 
-    return GestureDetector(
-      onTap: () => _openFullscreen(context),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(14),
-        child: ConstrainedBox(
-          constraints: BoxConstraints(maxHeight: maxHeight),
-          child: SizedBox(width: double.infinity, child: imageChild),
+    return Semantics(
+      button: true,
+      label: 'הצג תמונה בתצוגה מלאה',
+      child: GestureDetector(
+        onTap: () => _openFullscreen(context),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(14),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxHeight: maxHeight),
+            child: SizedBox(width: double.infinity, child: imageChild),
+          ),
         ),
       ),
     );
@@ -246,19 +254,23 @@ class _VoiceMessageBubbleState extends State<VoiceMessageBubble> {
       child: Row(
         children: [
           // Play/pause button
-          GestureDetector(
-            onTap: _toggle,
-            child: Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: theme.primary,
-                shape: BoxShape.circle,
-              ),
-              child: Icon(
-                _playing ? Icons.pause : Icons.play_arrow,
-                color: Colors.white,
-                size: 22,
+          Semantics(
+            button: true,
+            label: _playing ? 'השהה הודעה קולית' : 'נגן הודעה קולית',
+            child: GestureDetector(
+              onTap: _toggle,
+              child: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: theme.primary,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  _playing ? Icons.pause : Icons.play_arrow,
+                  color: Colors.white,
+                  size: 22,
+                ),
               ),
             ),
           ),
@@ -383,21 +395,25 @@ class _VideoMessageBubbleState extends State<VideoMessageBubble> {
             children: [
               VideoPlayer(_c),
               // Play/pause overlay
-              GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTap: () => setState(() {
-                  _c.value.isPlaying ? _c.pause() : _c.play();
-                }),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.25),
-                    shape: BoxShape.circle,
-                  ),
-                  padding: const EdgeInsets.all(10),
-                  child: Icon(
-                    _c.value.isPlaying ? Icons.pause : Icons.play_arrow,
-                    color: Colors.white,
-                    size: 32,
+              Semantics(
+                button: true,
+                label: _c.value.isPlaying ? 'השהה וידאו' : 'נגן וידאו',
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => setState(() {
+                    _c.value.isPlaying ? _c.pause() : _c.play();
+                  }),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.25),
+                      shape: BoxShape.circle,
+                    ),
+                    padding: const EdgeInsets.all(10),
+                    child: Icon(
+                      _c.value.isPlaying ? Icons.pause : Icons.play_arrow,
+                      color: Colors.white,
+                      size: 32,
+                    ),
                   ),
                 ),
               ),

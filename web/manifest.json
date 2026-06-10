@@ -1,9 +1,11 @@
 {
     "name": "חוסך — השוואת מחירי תקשורת",
     "short_name": "חוסך",
+    "dir": "rtl",
+    "lang": "he",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#15603E",
+    "background_color": "#F4F0E8",
     "theme_color": "#15603E",
     "description": "השוואת מחירי סלולר, אינטרנט, טלוויזיה וחבילות — וחיסכון אמיתי.",
     "orientation": "portrait-primary",

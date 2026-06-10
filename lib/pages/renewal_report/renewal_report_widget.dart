@@ -125,7 +125,11 @@ class _Hero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final days = tp.daysUntilRenewal;
-    final annual = tp.monthlyPrice * 12;
+    // Abroad plans are priced per package — annualizing (x12) is meaningless,
+    // so show only the per-package framing for them.
+    final isAbroad = tp.category == 'abroad';
+    final priceCaption =
+        isAbroad ? unit : '$unit · ₪${tp.monthlyPrice * 12}/שנה';
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -189,7 +193,7 @@ class _Hero extends StatelessWidget {
                         Text('₪${tp.monthlyPrice}',
                             style: GoogleFonts.rubik(
                                 fontSize: 24, fontWeight: FontWeight.w800, color: Colors.white)),
-                        Text('$unit · ₪$annual/שנה',
+                        Text(priceCaption,
                             style: GoogleFonts.assistant(
                                 fontSize: 11, color: Colors.white.withValues(alpha: 0.8))),
                       ],

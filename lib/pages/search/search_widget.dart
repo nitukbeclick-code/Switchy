@@ -89,12 +89,16 @@ class _SearchWidgetState extends State<SearchWidget> {
                 ),
               ),
               if (_q.isNotEmpty)
-                GestureDetector(
-                  onTap: () {
-                    _ctrl.clear();
-                    _setQuery('');
-                  },
-                  child: Icon(Icons.close_rounded, size: 18, color: ffTheme.secondaryText),
+                Semantics(
+                  button: true,
+                  label: 'נקה חיפוש',
+                  child: GestureDetector(
+                    onTap: () {
+                      _ctrl.clear();
+                      _setQuery('');
+                    },
+                    child: Icon(Icons.close_rounded, size: 18, color: ffTheme.secondaryText),
+                  ),
                 ),
             ],
           ),

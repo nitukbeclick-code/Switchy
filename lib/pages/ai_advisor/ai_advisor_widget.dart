@@ -67,7 +67,12 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
       )).toList();
     } else {
       _messages = _buildSeed();
-      appState.addAdvisorMessage(text: _messages.first.text, isUser: false);
+      // Persist after the first frame — notifying listeners synchronously here
+      // would mark the AppState provider dirty during the build phase.
+      final seedText = _messages.first.text;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        appState.addAdvisorMessage(text: seedText, isUser: false);
+      });
     }
   }
 
@@ -408,14 +413,16 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
         ),
         title: Row(
           children: [
-            Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                color: ffTheme.secondary,
-                borderRadius: BorderRadius.circular(8),
+            ExcludeSemantics(
+              child: Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: ffTheme.secondary,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Center(child: Text('✦', style: TextStyle(fontSize: 16))),
               ),
-              child: const Center(child: Text('✦', style: TextStyle(fontSize: 16))),
             ),
             const SizedBox(width: 10),
             Column(
@@ -548,16 +555,20 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
                     ),
                   ),
                   const SizedBox(width: 10),
-                  GestureDetector(
-                    onTap: () => _send(_inputCtrl.text),
-                    child: Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: ffTheme.primary,
-                        shape: BoxShape.circle,
+                  Semantics(
+                    button: true,
+                    label: 'שלח הודעה',
+                    child: GestureDetector(
+                      onTap: () => _send(_inputCtrl.text),
+                      child: Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: ffTheme.primary,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.send_rounded, color: Colors.white, size: 20),
                       ),
-                      child: const Icon(Icons.send_rounded, color: Colors.white, size: 20),
                     ),
                   ),
                 ],

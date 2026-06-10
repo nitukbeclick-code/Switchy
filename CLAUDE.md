@@ -55,8 +55,13 @@ When adding logic, put it here with tests in `test/<service>_test.dart`, then re
   `labelSmall`, …) and customise with **`.copyWith(...)`** — never `.override()`.
   For line height use `height:` (standard Flutter), not `lineHeight:`.
 - **Colors:** `AppTheme.of(context).primary` / `.secondary` / `.accent1` … or
-  `AppColors.*` constants. Brand: primary `#15603E` (green), secondary
-  `#C9EC4B` (lime), background `#F4F0E8`.
+  `AppColors.*` constants. Brand ("white glass + soft teal"): primary `#0F766E`
+  (deep teal), secondary `#5EEAD4` (soft aqua), background `#F6F8F9` (cool glass
+  white), text `#0F1B22`. Frosted glass: `AppTheme.glassDecoration()` /
+  `AppTheme.shadowGlass` for soft cards, the `GlassPanel` widget
+  (`lib/widgets/glass_panel.dart`) for real `BackdropFilter` blur (use sparingly).
+  Per-provider/carrier brand colors (the provider tuples) are NOT the app theme —
+  never recolor them to the brand palette.
 - **Fonts:** Rubik for display/headings/titles, Assistant for body/labels
   (via `google_fonts`).
 - **Routing:** `go_router` in `lib/router.dart`. `ShellRoute` hosts the bottom

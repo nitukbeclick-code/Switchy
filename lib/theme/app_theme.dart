@@ -174,10 +174,11 @@ class AppTheme {
   // per-build allocation churn. Call sites still read e.g.
   // `AppTheme.of(context).titleLarge.copyWith(...)`.
 
-  // Display — Rubik, tight tracking for big numerals & hero headings
-  static final TextStyle _displayLarge = GoogleFonts.rubik(fontSize: 52, fontWeight: FontWeight.w800, letterSpacing: -0.04, color: AppColors.primaryText);
-  static final TextStyle _displayMedium = GoogleFonts.rubik(fontSize: 40, fontWeight: FontWeight.w800, letterSpacing: -0.03, color: AppColors.primaryText);
-  static final TextStyle _displaySmall = GoogleFonts.rubik(fontSize: 32, fontWeight: FontWeight.w800, letterSpacing: -0.02, color: AppColors.primaryText);
+  // Display — Rubik, heavy weight + tight tracking for big numerals & hero
+  // headings (the brand's "exaggerated minimalism": oversized, confident type).
+  static final TextStyle _displayLarge = GoogleFonts.rubik(fontSize: 58, fontWeight: FontWeight.w900, letterSpacing: -0.05, height: 1.02, color: AppColors.primaryText);
+  static final TextStyle _displayMedium = GoogleFonts.rubik(fontSize: 44, fontWeight: FontWeight.w900, letterSpacing: -0.04, height: 1.03, color: AppColors.primaryText);
+  static final TextStyle _displaySmall = GoogleFonts.rubik(fontSize: 35, fontWeight: FontWeight.w900, letterSpacing: -0.03, height: 1.05, color: AppColors.primaryText);
   TextStyle get displayLarge => _displayLarge;
   TextStyle get displayMedium => _displayMedium;
   TextStyle get displaySmall => _displaySmall;

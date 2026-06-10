@@ -521,7 +521,18 @@ class _ProgressCard extends StatelessWidget {
                 alignment: BarChartAlignment.spaceEvenly,
                 maxY: safeMax * 1.18,
                 minY: 0,
-                barTouchData: BarTouchData(enabled: false),
+                // Tap a bar to read its exact value (parity with the bills chart).
+                // The values are also always shown in the _ValueTag row below, so
+                // the data never relies on the chart alone.
+                barTouchData: BarTouchData(
+                  touchTooltipData: BarTouchTooltipData(
+                    getTooltipColor: (_) => ffTheme.primaryDark,
+                    getTooltipItem: (group, groupIndex, rod, rodIndex) => BarTooltipItem(
+                      '₪${rod.toY.round()}',
+                      ffTheme.labelMedium.copyWith(color: Colors.white, fontWeight: FontWeight.w800),
+                    ),
+                  ),
+                ),
                 gridData: const FlGridData(show: false),
                 borderData: FlBorderData(show: false),
                 titlesData: FlTitlesData(

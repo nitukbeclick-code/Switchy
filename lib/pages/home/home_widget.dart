@@ -414,7 +414,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                 return Text(
                   disp,
                   style: ffTheme.displaySmall.copyWith(
-                    color: ffTheme.secondary,
+                    color: ffTheme.saving,
                     fontWeight: FontWeight.bold,
                   ),
                 );

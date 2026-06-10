@@ -116,9 +116,9 @@ class _AppButtonState extends State<AppButton> {
       child: useGradient
           ? DecoratedBox(
               decoration: BoxDecoration(
-                gradient: ffTheme.freshGradient,
+                gradient: ffTheme.accentGradient,
                 borderRadius: borderRadius,
-                boxShadow: ffTheme.shadowPrimary,
+                boxShadow: ffTheme.shadowAccent,
               ),
               child: button,
             )

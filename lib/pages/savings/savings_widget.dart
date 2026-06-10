@@ -205,7 +205,7 @@ class _Hero extends StatelessWidget {
                       builder: (_, value, __) => Text(
                         hasBill ? '₪$value' : '₪—',
                         style: ffTheme.displaySmall.copyWith(
-                            color: ffTheme.secondary, fontWeight: FontWeight.bold),
+                            color: hasBill ? ffTheme.saving : ffTheme.secondary, fontWeight: FontWeight.bold),
                       ),
                     ),
                     const SizedBox(height: 4),

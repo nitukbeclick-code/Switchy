@@ -43,6 +43,16 @@ class AppColors {
   static const Color accent3 = Color(0xFFEEF0F3);
   static const Color accent4 = Color(0xFFF0F3F5);
   static const Color mint = Color(0xFFF0F2F4); // alias for accent1, semantic
+
+  // Refined accent system — colour used with intent over the ink/glass base.
+  // brandAccent (indigo) = ACTION: primary CTAs, active states, links, focus.
+  // saving (amber) = VALUE: savings figures, "best value", win states.
+  // Provider/carrier brand colours are separate and never use these.
+  static const Color brandAccent = Color(0xFF4F46E5); // indigo 600
+  static const Color brandAccentDark = Color(0xFF3730A3); // indigo 800 (gradient depth)
+  static const Color brandAccentTint = Color(0xFFEEF0FB); // light indigo surface
+  static const Color saving = Color(0xFFF59E0B); // amber 500
+  static const Color savingDark = Color(0xFFD97706); // amber 600
 }
 
 /// Ergonomic accessor over [AppColors] and the type scale.
@@ -78,6 +88,12 @@ class AppTheme {
   Color get accent3 => AppColors.accent3;
   Color get accent4 => AppColors.accent4;
 
+  // Accent system
+  Color get brandAccent => AppColors.brandAccent;
+  Color get brandAccentTint => AppColors.brandAccentTint;
+  Color get saving => AppColors.saving;
+  Color get savingDark => AppColors.savingDark;
+
   // ── Elevation — soft, layered, cool ink-tinted shadows (not flat black) ─────
   /// Subtle lift for chips, list rows, low-emphasis surfaces.
   List<BoxShadow> get shadowSoft => const [
@@ -98,6 +114,12 @@ class AppTheme {
   /// A soft ink shadow under the primary (black) CTA so it reads "tap me".
   List<BoxShadow> get shadowPrimary => const [
         BoxShadow(color: Color(0x26111827), blurRadius: 20, offset: Offset(0, 8)),
+      ];
+
+  /// An indigo glow under the accent (CTA) gradient so it reads tappable.
+  List<BoxShadow> get shadowAccent => const [
+        BoxShadow(color: Color(0x4D4F46E5), blurRadius: 22, offset: Offset(0, 8)),
+        BoxShadow(color: Color(0x263730A3), blurRadius: 6, offset: Offset(0, 2)),
       ];
 
   /// A soft, diffuse, neutral shadow for frosted-glass surfaces.
@@ -136,6 +158,14 @@ class AppTheme {
         colors: [AppColors.tertiary, AppColors.secondary],
         begin: Alignment.centerRight,
         end: Alignment.centerLeft,
+      );
+
+  /// The indigo ACTION gradient — primary CTAs. The single splash of colour
+  /// that guides the eye through the conversion flow over the ink/glass base.
+  LinearGradient get accentGradient => const LinearGradient(
+        colors: [AppColors.brandAccent, AppColors.brandAccentDark],
+        begin: Alignment.topRight,
+        end: Alignment.bottomLeft,
       );
 
   // ── Radii — one friendly, generous rounding scale ───────────────────────────

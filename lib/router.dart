@@ -182,7 +182,7 @@ class _ScaffoldWithNav extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Stack(clipBehavior: Clip.none, children: [
-                          Icon(tab.icon, size: 26, color: active ? ffTheme.primary : ffTheme.secondaryText),
+                          Icon(tab.icon, size: 26, color: active ? ffTheme.brandAccent : ffTheme.secondaryText),
                           if (isCompare && compareCount > 0)
                             PositionedDirectional(
                               top: -5, end: -8,
@@ -194,7 +194,7 @@ class _ScaffoldWithNav extends StatelessWidget {
                             ),
                         ]),
                         const SizedBox(height: 3),
-                        Text(tab.label, style: TextStyle(fontSize: 10.5, fontWeight: active ? FontWeight.w700 : FontWeight.w500, color: active ? ffTheme.primary : ffTheme.secondaryText)),
+                        Text(tab.label, style: TextStyle(fontSize: 10.5, fontWeight: active ? FontWeight.w700 : FontWeight.w500, color: active ? ffTheme.brandAccent : ffTheme.secondaryText)),
                       ],
                     ),
                   ),

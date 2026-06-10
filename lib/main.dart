@@ -7,6 +7,7 @@ import 'app_state.dart';
 import 'app.dart';
 import 'router.dart';
 import 'services/auth_service.dart';
+import 'services/push_notification_service.dart';
 import 'services/secure_session_store.dart';
 import 'services/backend/local_backend.dart';
 import 'services/backend/supabase_backend.dart';
@@ -32,8 +33,12 @@ void main() async {
   // (no-op on web / when no real session). Must run after the backend is up so
   // a restored Supabase session is already visible.
   await AuthService.instance.warmUpBiometricLock();
+  // Init OS push (no-op on web) so renewal reminders can be (re)scheduled.
+  await PushNotificationService.instance.init();
   runApp(ChangeNotifierProvider.value(value: AppState(), child: const ChosechApp()));
   _appStarted = true;
+  // Reschedule renewal reminders from the restored state (fire-and-forget).
+  PushNotificationService.instance.syncRenewalReminders(AppState());
 }
 
 /// True once `runApp` has been called — used to suppress navigation on the

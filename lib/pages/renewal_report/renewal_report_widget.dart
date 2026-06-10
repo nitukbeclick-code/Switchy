@@ -8,6 +8,7 @@ import '../../theme/app_theme.dart';
 import '../../widgets/app_snackbar.dart';
 import '../../core/nav.dart';
 import '../../app_state.dart';
+import '../../services/push_notification_service.dart';
 import '../../data.dart';
 import '../../models.dart';
 import '../../components/logo_widget/logo_widget.dart';
@@ -546,11 +547,15 @@ class _ReminderCta extends StatelessWidget {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
-                    onPressed: () {
+                    onPressed: () async {
                       appState.setRenewalReminders(true);
                       appBackend.setRenewalReminder(true).catchError((_) {});
-                      AppSnackBar.success(
-                          context, 'תזכורת חידוש הופעלה — נדאג שלא תפספס');
+                      await PushNotificationService.instance.requestPermission();
+                      await PushNotificationService.instance.syncRenewalReminders(appState);
+                      if (context.mounted) {
+                        AppSnackBar.success(
+                            context, 'תזכורת חידוש הופעלה — נדאג שלא תפספס');
+                      }
                     },
                     icon: const Icon(Icons.notifications_active_rounded, size: 18),
                     label: const Text('שלחו לי תזכורת'),

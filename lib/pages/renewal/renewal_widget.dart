@@ -12,6 +12,7 @@ import '../../components/logo_widget/logo_widget.dart';
 import '../../widgets/app_button.dart';
 import '../../services/recommendation_engine.dart';
 import '../../services/reminder_schedule.dart';
+import '../../services/push_notification_service.dart';
 import '../../services/backend/local_backend.dart';
 
 class RenewalWidget extends StatefulWidget {
@@ -162,6 +163,7 @@ class _RenewalWidgetState extends State<RenewalWidget> {
       Provider.of<AppState>(context, listen: false).removeMyPlan(plan.id);
       appBackend.removeTrackedPlan(plan.id).catchError((_) {});
       setState(() => _remoteOnly.removeWhere((p) => p.id == plan.id));
+      PushNotificationService.instance.syncRenewalReminders(AppState());
     }
   }
 }
@@ -490,7 +492,12 @@ class _ReminderTile extends StatelessWidget {
       ),
       child: SwitchListTile(
         value: appState.renewalReminders,
-        onChanged: (v) { appState.setRenewalReminders(v); appBackend.setRenewalReminder(v).catchError((_) {}); },
+        onChanged: (v) async {
+          appState.setRenewalReminders(v);
+          appBackend.setRenewalReminder(v).catchError((_) {});
+          if (v) await PushNotificationService.instance.requestPermission();
+          await PushNotificationService.instance.syncRenewalReminders(appState);
+        },
         activeThumbColor: ffTheme.primary,
         title: Text('תזכורות חידוש',
             style: ffTheme.titleSmall
@@ -590,6 +597,7 @@ class _AddPlanSheetState extends State<_AddPlanSheet> {
       promoEndDate: _promoEndDate,
       joinedViaUs: _joinedViaUs,
     );
+    PushNotificationService.instance.syncRenewalReminders(appState);
     // Mirror the newly added plan to the backend seam.
     if (appState.myPlans.isNotEmpty) {
       appBackend.addTrackedPlan(appState.myPlans.first).catchError((_) {});

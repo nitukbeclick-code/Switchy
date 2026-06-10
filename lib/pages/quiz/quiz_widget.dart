@@ -803,7 +803,7 @@ class _QuizWidgetState extends State<QuizWidget> {
               onPressed: () {
                 HapticFeedback.lightImpact();
                 Share.share(
-                    'מצאתי מסלול ${top.plan.provider} ב-₪${top.plan.priceText} — ${top.annualSaving > 0 ? 'חוסך ₪${top.annualSaving} בשנה ' : ''}עם חוסך 💚');
+                    'מצאתי מסלול ${top.plan.provider} ב-₪${top.plan.priceText} — ${top.annualSaving > 0 ? 'חוסך ₪${top.annualSaving} בשנה ' : ''}עם חוסך');
               },
               icon: Icon(Icons.ios_share_rounded, size: 18, color: ffTheme.primary),
               label: Text('שתף',

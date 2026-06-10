@@ -65,7 +65,7 @@ class ProviderWidget extends StatelessWidget {
         ? 0
         : plans.map((p) => p.price).reduce((a, b) => a < b ? a : b);
     final shareText =
-        'בדקו את $providerName בחוסך — ${plans.length} מסלולים מ-₪$cheapest. 💚';
+        'בדקו את $providerName בחוסך — ${plans.length} מסלולים מ-₪$cheapest.';
 
     return Scaffold(
       backgroundColor: ffTheme.background,

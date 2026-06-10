@@ -458,7 +458,7 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                           child: Container(
                             width: 14, height: 14,
                             decoration: BoxDecoration(
-                              color: Colors.green,
+                              color: const Color(0xFF111827),
                               shape: BoxShape.circle,
                               border: Border.all(color: Colors.white, width: 2),
                             ),
@@ -475,9 +475,9 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                           Text('דנה — הנציגה שלכם', style: ffTheme.titleSmall),
                           Row(
                             children: [
-                              Container(width: 6, height: 6, decoration: const BoxDecoration(color: Colors.green, shape: BoxShape.circle)),
+                              Container(width: 6, height: 6, decoration: const BoxDecoration(color: Color(0xFF111827), shape: BoxShape.circle)),
                               const SizedBox(width: 4),
-                              Text('פנויה עכשיו · תגובה ~5 דקות', style: ffTheme.labelSmall.copyWith(color: Colors.green, fontWeight: FontWeight.w600)),
+                              Text('פנויה עכשיו · תגובה ~5 דקות', style: ffTheme.labelSmall.copyWith(color: const Color(0xFF111827), fontWeight: FontWeight.w600)),
                             ],
                           ),
                         ],

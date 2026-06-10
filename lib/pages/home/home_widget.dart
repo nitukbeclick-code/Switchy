@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -63,13 +62,10 @@ class _HomeWidgetState extends State<HomeWidget> {
           CustomScrollView(
             controller: _scrollController,
             slivers: [
-              // ── 1. Green gradient header ───────────────────────────────────
+              // ── 1. Brand header ────────────────────────────────────────────
               SliverToBoxAdapter(child: _buildHeader(context, ffTheme, appState)),
 
-              // ── 2. Social proof ticker ─────────────────────────────────────
-              const SliverToBoxAdapter(child: _HomeTicker()),
-
-              // ── 2b. Renewal Radar alert ────────────────────────────────────
+              // ── 2. Renewal Radar alert ─────────────────────────────────────
               _buildRenewalAlert(context, ffTheme, appState),
 
               // ── 3. Savings hero card ───────────────────────────────────────
@@ -404,21 +400,33 @@ class _HomeWidgetState extends State<HomeWidget> {
             style: ffTheme.labelMedium.copyWith(color: Colors.white.withValues(alpha: 0.75)),
           ),
           const SizedBox(height: 8),
-          TweenAnimationBuilder<int>(
-            tween: IntTween(begin: 0, end: totalSave > 0 ? totalSave : 1240),
-            duration: const Duration(milliseconds: 1800),
-            curve: Curves.easeOutCubic,
-            builder: (_, value, __) {
-              final disp = value > 1000 ? '₪${(value / 1000).toStringAsFixed(1)}K' : '₪$value';
-              return Text(
-                disp,
-                style: ffTheme.displaySmall.copyWith(
-                  color: ffTheme.secondary,
-                  fontWeight: FontWeight.bold,
-                ),
-              );
-            },
-          ),
+          // Real figure only — when no bill is set we show a dash and prompt the
+          // quiz, never a fabricated "potential saving" number. Mirrors the
+          // /savings dashboard's honest empty state.
+          if (totalSave > 0)
+            TweenAnimationBuilder<int>(
+              tween: IntTween(begin: 0, end: totalSave),
+              duration: const Duration(milliseconds: 1800),
+              curve: Curves.easeOutCubic,
+              builder: (_, value, __) {
+                final disp = value > 1000 ? '₪${(value / 1000).toStringAsFixed(1)}K' : '₪$value';
+                return Text(
+                  disp,
+                  style: ffTheme.displaySmall.copyWith(
+                    color: ffTheme.secondary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                );
+              },
+            )
+          else
+            Text(
+              '₪—',
+              style: ffTheme.displaySmall.copyWith(
+                color: ffTheme.secondary,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           const SizedBox(height: 4),
           Text(
             appState.billsPersonalized
@@ -455,7 +463,9 @@ class _HomeWidgetState extends State<HomeWidget> {
 
   Widget _buildHotDeal(BuildContext context, AppTheme ffTheme, Plan deal, AppState appState) {
     final bill = appState.currentBill(deal.cat);
-    final saving = planSaveYear(deal, bill > 0 ? bill : 119);
+    // Real saving only — derived from the user's own bill. When no bill is set
+    // the saving is 0 and MiniPlanCard hides the badge (no assumed bill).
+    final saving = planSaveYear(deal, bill);
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
       child: Column(
@@ -592,8 +602,13 @@ class _HomeWidgetState extends State<HomeWidget> {
       }
     }
 
-    // Fallback estimates
-    const savingsEst = {'cellular': 850, 'internet': 480, 'tv': 360, 'triple': 1200, 'abroad': 240};
+    // Real catalogue fact for the not-yet-personalised state: the cheapest
+    // current price in the category. No fabricated "average saving" numbers.
+    int cheapestIn(String catId) {
+      final catPlans = plansByCat(catId);
+      if (catPlans.isEmpty) return 0;
+      return catPlans.map((p) => p.price).reduce((a, b) => a < b ? a : b);
+    }
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
@@ -616,10 +631,11 @@ class _HomeWidgetState extends State<HomeWidget> {
               final cat = categories[i];
               final isActive = appState.selectedCat == cat.id;
               final isPersonalized = hasActual[cat.id] == true;
-              final save = isPersonalized ? actualSavings[cat.id]! : savingsEst[cat.id] ?? 0;
+              final save = isPersonalized ? actualSavings[cat.id]! : 0;
+              final cheapest = cheapestIn(cat.id);
               final savingsText = isPersonalized
                   ? (save > 0 ? 'תחסוך ₪$save בשנה' : 'מחיר תחרותי')
-                  : 'ממוצע ₪$save בשנה';
+                  : (cheapest > 0 ? 'מסלולים מ-₪$cheapest' : 'השוואת מחירים');
               final savingsColor = isPersonalized && save > 0 ? ffTheme.success : ffTheme.primary;
 
               return GestureDetector(
@@ -1192,81 +1208,4 @@ class _Provider {
 class _CommunityPreview {
   const _CommunityPreview({required this.user, required this.channel, required this.text});
   final String user, channel, text;
-}
-
-/// Rotating marketing ticker shown under the header. Lives in its own
-/// StatefulWidget so its 4-second rotation rebuilds only this strip — not the
-/// whole HomeWidget (which would otherwise re-run computeSavings + the
-/// recommendation-engine ranking passes every 4 seconds).
-class _HomeTicker extends StatefulWidget {
-  const _HomeTicker();
-
-  @override
-  State<_HomeTicker> createState() => _HomeTickerState();
-}
-
-class _HomeTickerState extends State<_HomeTicker> {
-  int _index = 0;
-  Timer? _timer;
-
-  static const List<String> _tickers = [
-    '🔥 אנשים משווים מחירים בכל יום',
-    '💰 מסלולים סלולריים מתחילים מ-₪39 לחודש',
-    '📶 5G זמין ב-₪39/חודש — בדוק זמינות!',
-    '🌐 השוו מסלולי אינטרנט גיגה ומצאו את הזול ביותר',
-    '📺 השוואת חבילות טלוויזיה — HOT, yes ועוד',
-    '🏠 חבילות משולבות (טריפל) במחיר אחד נוח',
-    '✈️ אירלו eSIM: ₪25 ל-10GB אירופה',
-    '🎯 רמי לוי: 3 קווים ב-₪80',
-    '⭐ דרגו את הספק שלכם ועזרו לאחרים לבחור',
-    '🔔 עקבו אחרי ירידות מחיר אצל הספקים',
-    '🤝 נציג אישי מלווה אתכם לכל אורך המעבר',
-    '🛡️ המעבר ללא עלות וללא התחייבות',
-  ];
-
-  @override
-  void initState() {
-    super.initState();
-    _timer = Timer.periodic(const Duration(seconds: 4), (_) {
-      if (mounted) setState(() => _index = (_index + 1) % _tickers.length);
-    });
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final ffTheme = AppTheme.of(context);
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: ffTheme.shadowSoft,
-        border: const Border(
-          right: BorderSide(color: AppColors.secondary, width: 3),
-        ),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: AnimatedSwitcher(
-        duration: const Duration(milliseconds: 450),
-        transitionBuilder: (child, animation) => SlideTransition(
-          position: Tween<Offset>(begin: const Offset(0, 0.5), end: Offset.zero).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
-          child: FadeTransition(opacity: animation, child: child),
-        ),
-        child: Text(
-          _tickers[_index],
-          key: ValueKey(_index),
-          style: ffTheme.labelMedium.copyWith(
-            color: ffTheme.primaryText,
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-          ),
-          textAlign: TextAlign.right,
-        ),
-      ),
-    );
-  }
 }

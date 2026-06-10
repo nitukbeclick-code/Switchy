@@ -10,39 +10,39 @@ import 'package:google_fonts/google_fonts.dart';
 class AppColors {
   const AppColors._();
 
-  // Brand — "white glass & soft teal": a deep teal core + a darker base for
-  // gradient depth, a brighter teal, a soft-aqua highlight (replaces the harsh
-  // lime), and a muted teal-grey sage.
-  static const Color primary = Color(0xFF0F766E); // deep teal — CTAs, key accents
-  static const Color primaryDark = Color(0xFF134E4A); // depth / gradient base
-  static const Color tertiary = Color(0xFF14B8A6); // brighter teal
-  static const Color secondary = Color(0xFF5EEAD4); // soft aqua highlight
-  static const Color sage = Color(0xFF5E8B84); // muted teal-grey for icons/accents
+  // Brand — "white glass & black ink": a formal, editorial monochrome. Ink
+  // black for CTAs/accents, true black for depth, slate + grey neutrals. NO
+  // green/teal — the look is sharp, official, high-contrast.
+  static const Color primary = Color(0xFF111827); // ink black — CTAs, key accents, borders
+  static const Color primaryDark = Color(0xFF000000); // true black — gradient depth
+  static const Color tertiary = Color(0xFF374151); // slate grey
+  static const Color secondary = Color(0xFFE5E7EB); // light-grey highlight (badges/chips)
+  static const Color sage = Color(0xFF6B7280); // muted grey for icons/accents
 
-  // Surfaces — cool glass white (no longer warm cream); pure-white card surface.
-  static const Color background = Color(0xFFF6F8F9);
+  // Surfaces — cool glass white; pure-white card surface.
+  static const Color background = Color(0xFFF5F7F8);
   static const Color secondaryBackground = Color(0xFFFFFFFF);
 
-  // Text — cool ink on glass white.
-  static const Color primaryText = Color(0xFF0F1B22);
-  static const Color secondaryText = Color(0xFF5A6670);
+  // Text — near-black ink on glass white.
+  static const Color primaryText = Color(0xFF0B0F14);
+  static const Color secondaryText = Color(0xFF4B5563);
 
-  // Lines & borders — cool, airy hairlines.
-  static const Color alternate = Color(0xFFE4EAEE);
-  static const Color lineColor = Color(0xFFE7EDF1);
+  // Lines & borders — crisp, formal dark borders + a subtle inner hairline.
+  static const Color alternate = Color(0xFF222A35); // formal near-black border
+  static const Color lineColor = Color(0xFFE4E8EC); // subtle inner divider
 
-  // Status
-  static const Color error = Color(0xFFE5484D);
-  static const Color warning = Color(0xFFE0850B);
-  static const Color success = Color(0xFF0F766E);
-  static const Color info = Color(0xFF3B82F6);
+  // Status (kept functional — errors/warnings still need their semantic hue)
+  static const Color error = Color(0xFFDC2626);
+  static const Color warning = Color(0xFFB45309);
+  static const Color success = Color(0xFF111827); // formal: success reads as ink, not green
+  static const Color info = Color(0xFF374151);
 
-  // Surface tints — soft, airy washes for tinted cards/chips.
-  static const Color accent1 = Color(0xFFDFF6F2); // soft teal tint
-  static const Color accent2 = Color(0xFFEEF3F6); // cool neutral tint
-  static const Color accent3 = Color(0xFFEFF4F7); // cool neutral tint
-  static const Color accent4 = Color(0xFFE5F0F3); // soft sky tint
-  static const Color mint = Color(0xFFDFF6F2); // alias for accent1, semantic
+  // Surface tints — neutral grey washes for tinted cards/chips (no color).
+  static const Color accent1 = Color(0xFFF0F2F4);
+  static const Color accent2 = Color(0xFFF2F4F6);
+  static const Color accent3 = Color(0xFFEEF0F3);
+  static const Color accent4 = Color(0xFFF0F3F5);
+  static const Color mint = Color(0xFFF0F2F4); // alias for accent1, semantic
 }
 
 /// Ergonomic accessor over [AppColors] and the type scale.
@@ -95,9 +95,9 @@ class AppTheme {
         BoxShadow(color: Color(0x1F0F1B22), blurRadius: 40, offset: Offset(0, 16)),
       ];
 
-  /// A teal glow for the primary CTA so it reads "tap me".
+  /// A soft ink shadow under the primary (black) CTA so it reads "tap me".
   List<BoxShadow> get shadowPrimary => const [
-        BoxShadow(color: Color(0x330F766E), blurRadius: 20, offset: Offset(0, 8)),
+        BoxShadow(color: Color(0x26111827), blurRadius: 20, offset: Offset(0, 8)),
       ];
 
   /// A soft, diffuse, neutral shadow for frosted-glass surfaces.
@@ -124,14 +124,14 @@ class AppTheme {
         end: Alignment.bottomLeft,
       );
 
-  /// A fresh green→leaf wash for lighter hero surfaces.
+  /// An ink→slate wash for lighter hero surfaces.
   LinearGradient get freshGradient => const LinearGradient(
         colors: [AppColors.primary, AppColors.tertiary],
         begin: Alignment.topRight,
         end: Alignment.bottomLeft,
       );
 
-  /// The energetic green→lime accent, for highlight ribbons and badges.
+  /// A subtle slate→grey accent, for highlight ribbons and badges.
   LinearGradient get limeGradient => const LinearGradient(
         colors: [AppColors.tertiary, AppColors.secondary],
         begin: Alignment.centerRight,

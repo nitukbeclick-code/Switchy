@@ -809,7 +809,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFE8F5EE),
+                    color: const Color(0xFFF0F2F4),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Row(
@@ -1338,7 +1338,7 @@ class _PostCardState extends State<_PostCard> {
                   semanticLabel: 'שתף פוסט',
                   onTap: () {
                     HapticFeedback.selectionClick();
-                    Share.share('${post.author}:\n${post.text}\n\nמתוך אפליקציית חוסך 💚');
+                    Share.share('${post.author}:\n${post.text}\n\nמתוך אפליקציית חוסך');
                   },
                 ),
               ],

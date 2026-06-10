@@ -5,6 +5,7 @@ import '../../theme/app_theme.dart';
 import '../../core/nav.dart';
 import '../../widgets/app_button.dart';
 import '../../app_state.dart';
+import '../../data.dart';
 
 class OnboardingWidget extends StatefulWidget {
   const OnboardingWidget({super.key});
@@ -45,14 +46,11 @@ class _OnboardingWidgetState extends State<OnboardingWidget> {
         children: [
           Column(
             children: [
-              // Top brand strip
+              // Top brand strip — formal ink-black hero, white text.
               Container(
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [ffTheme.primary, ffTheme.tertiary],
-                    begin: Alignment.topRight,
-                    end: Alignment.bottomLeft,
-                  ),
+                  gradient: ffTheme.brandGradient,
+                  boxShadow: ffTheme.shadowLifted,
                 ),
                 child: SafeArea(
                   bottom: false,
@@ -64,10 +62,16 @@ class _OnboardingWidgetState extends State<OnboardingWidget> {
                           width: 40,
                           height: 40,
                           decoration: BoxDecoration(
-                            color: ffTheme.secondary,
+                            color: Colors.white,
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: const Center(child: Text('✦', style: TextStyle(fontSize: 20))),
+                          child: Center(
+                            child: Text('₪',
+                                style: GoogleFonts.rubik(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w800,
+                                    color: ffTheme.primaryDark)),
+                          ),
                         ),
                         const SizedBox(width: 10),
                         Text('חוסך', style: GoogleFonts.rubik(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white)),
@@ -166,13 +170,15 @@ class _Page1 extends StatelessWidget {
             textAlign: TextAlign.center,
           ).animate().fadeIn(delay: 250.ms),
           const SizedBox(height: 28),
+          // Real catalogue counts — never fabricated. Sourced from data.dart so
+          // the figures stay honest and update with the catalogue.
           Row(
             children: [
-              _StatChip(value: '100+', label: 'מסלולים', ffTheme: ffTheme),
+              _StatChip(value: '${allPlans.length}', label: 'מסלולים', ffTheme: ffTheme),
               const SizedBox(width: 10),
-              _StatChip(value: '18', label: 'ספקים', ffTheme: ffTheme),
+              _StatChip(value: '${allProviders.length}', label: 'ספקים', ffTheme: ffTheme),
               const SizedBox(width: 10),
-              _StatChip(value: '5', label: 'קטגוריות', ffTheme: ffTheme),
+              _StatChip(value: '${categories.length}', label: 'קטגוריות', ffTheme: ffTheme),
             ],
           ).animate().fadeIn(delay: 350.ms).slideY(begin: 0.1, end: 0),
           const SizedBox(height: 20),
@@ -316,7 +322,7 @@ class _Page3 extends StatelessWidget {
             ),
             child: Column(
               children: [
-                Icon(Icons.verified_rounded, color: ffTheme.secondary, size: 26),
+                const Icon(Icons.verified_rounded, color: Colors.white, size: 26),
                 const SizedBox(height: 8),
                 Text(
                   'שירות חינמי לחלוטין',

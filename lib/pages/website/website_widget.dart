@@ -233,35 +233,6 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
             ).animate().fadeIn(delay: 300.ms),
           ),
 
-          // Press / media band
-          SliverToBoxAdapter(
-            child: Container(
-              color: ffTheme.background,
-              padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-              child: Column(
-                children: [
-                  Text(
-                    'כפי שסוקרנו ב',
-                    style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: ['כלכליסט', 'גלובס', 'מאקו', 'walla!', 'ערוץ 12'].map((name) => Text(
-                      name,
-                      style: GoogleFonts.rubik(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.grey.shade400,
-                        letterSpacing: -0.3,
-                      ),
-                    )).toList(),
-                  ),
-                ],
-              ),
-            ).animate().fadeIn(delay: 350.ms),
-          ),
-
           // Category tabs + plans
           SliverToBoxAdapter(
             child: Padding(

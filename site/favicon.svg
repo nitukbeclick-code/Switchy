@@ -1,4 +1,4 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="חוסך">
-  <rect width="64" height="64" rx="15" fill="#C9EC4B"/>
-  <path d="M32 11 L37.5 26.5 L53 32 L37.5 37.5 L32 53 L26.5 37.5 L11 32 L26.5 26.5 Z" fill="#0E3A26"/>
+  <rect width="64" height="64" rx="15" fill="#111827"/>
+  <path d="M32 11 L37.5 26.5 L53 32 L37.5 37.5 L32 53 L26.5 37.5 L11 32 L26.5 26.5 Z" fill="#F5F7F8"/>
 </svg>

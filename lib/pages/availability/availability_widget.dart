@@ -155,19 +155,20 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
                 const SizedBox(height: 4),
                 Text('גלה אילו ספקי אינטרנט פעילים באזורך', style: GoogleFonts.assistant(fontSize: 13, color: Colors.white70)),
                 const SizedBox(height: 14),
-                Builder(builder: (_) {
-                  final avail = _allProviders.where((p) => p.status == 'זמין' && p.price > 0).toList();
-                  final cheapest = avail.isEmpty ? 0 : avail.map((p) => p.price).reduce((a, b) => a < b ? a : b);
-                  return Row(
-                    children: [
-                      _StatPill(value: '${_allProviders.length}', label: 'ספקים', ffTheme: ffTheme),
-                      const SizedBox(width: 10),
-                      _StatPill(value: '1Gb', label: 'מהירות מקס', ffTheme: ffTheme),
-                      const SizedBox(width: 10),
-                      _StatPill(value: '₪$cheapest', label: 'ממחיר', ffTheme: ffTheme),
-                    ],
-                  );
-                }),
+                // Honest helper line — no pre-asserted price/speed "facts" about
+                // the area before an address is even entered.
+                Row(
+                  children: [
+                    const ExcludeSemantics(child: Text('📍', style: TextStyle(fontSize: 14))),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        'הזינו עיר וכתובת לבדיקה',
+                        style: GoogleFonts.assistant(fontSize: 12, color: Colors.white70, fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
@@ -691,27 +692,6 @@ class _TechBadge extends StatelessWidget {
         borderRadius: BorderRadius.circular(4),
       ),
       child: Text(tech, style: ffTheme.labelSmall.copyWith(color: _color, fontSize: 10, fontWeight: FontWeight.w600)),
-    );
-  }
-}
-
-class _StatPill extends StatelessWidget {
-  const _StatPill({required this.value, required this.label, required this.ffTheme});
-  final String value, label;
-  final AppTheme ffTheme;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(20)),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(value, style: GoogleFonts.rubik(fontSize: 13, fontWeight: FontWeight.w800, color: Colors.white)),
-          Text(label, style: GoogleFonts.assistant(fontSize: 10, color: Colors.white70)),
-        ],
-      ),
     );
   }
 }

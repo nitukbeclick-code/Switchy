@@ -208,7 +208,7 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
                     Container(
                       width: 8,
                       height: 8,
-                      decoration: const BoxDecoration(color: Color(0xFF4CAF50), shape: BoxShape.circle),
+                      decoration: const BoxDecoration(color: Color(0xFF111827), shape: BoxShape.circle),
                     ).animate(onPlay: (c) => c.repeat(reverse: true))
                       .scale(begin: const Offset(1, 1), end: const Offset(1.3, 1.3), duration: 800.ms),
                     const SizedBox(width: 4),

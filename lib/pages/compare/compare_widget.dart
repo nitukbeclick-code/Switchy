@@ -63,7 +63,7 @@ class CompareWidget extends StatelessWidget {
               onPressed: () => Share.share(
                 'השוויתי בחוסך: '
                 '${plans.map((p) => '${p.provider} ${p.plan} ₪${p.priceText}').join(' מול ')}'
-                ' 💚',
+                '',
               ),
             ),
           if (ids.isNotEmpty)
@@ -665,8 +665,10 @@ class _WinnerSummaryCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(6),
                       child: LinearProgressIndicator(
                         value: fraction,
-                        backgroundColor: ffTheme.alternate,
-                        valueColor: AlwaysStoppedAnimation(isWinner ? ffTheme.primary : ffTheme.warning),
+                        // Track stays a pale glass tint; winner is full ink, the
+                        // rest slate — a clean two-step ramp, no colour.
+                        backgroundColor: ffTheme.accent2,
+                        valueColor: AlwaysStoppedAnimation(isWinner ? ffTheme.primary : ffTheme.tertiary),
                         minHeight: isWinner ? 10 : 8,
                       ),
                     ).animate(delay: 200.ms).slideX(begin: -0.3, end: 0, duration: 400.ms),
@@ -775,14 +777,16 @@ class _PlanHeader extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
-                color: isWinner ? ffTheme.primary : ffTheme.alternate,
+                // Winner: ink chip + white text. Others: light-grey chip + dark
+                // text (never grey-on-dark — keeps the % legible).
+                color: isWinner ? ffTheme.primary : ffTheme.secondary,
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Text(
                 '${match!.scorePct}% התאמה',
                 style: ffTheme.labelSmall.copyWith(
-                  color: isWinner ? Colors.white : ffTheme.secondaryText,
-                  fontWeight: isWinner ? FontWeight.w700 : FontWeight.w500,
+                  color: isWinner ? Colors.white : ffTheme.primaryText,
+                  fontWeight: isWinner ? FontWeight.w700 : FontWeight.w600,
                   fontSize: isWinner ? null : 10,
                 ),
                 textAlign: TextAlign.center,

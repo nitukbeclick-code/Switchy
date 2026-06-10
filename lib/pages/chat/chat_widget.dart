@@ -289,7 +289,7 @@ class _ChatWidgetState extends State<ChatWidget> {
                       width: 11,
                       height: 11,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF25D366),
+                        color: const Color(0xFF111827),
                         shape: BoxShape.circle,
                         border: Border.all(color: ffTheme.primary, width: 1.5),
                       ),

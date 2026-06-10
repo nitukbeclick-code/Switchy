@@ -104,7 +104,7 @@ class MatchesWidget extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topRight,
           end: Alignment.bottomLeft,
-          colors: [ffTheme.primaryDark, const Color(0xFF1E7A4E)],
+          colors: [ffTheme.primaryDark, ffTheme.tertiary],
         ),
         borderRadius: BorderRadius.circular(20),
       ),

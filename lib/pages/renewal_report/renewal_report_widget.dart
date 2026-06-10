@@ -271,8 +271,8 @@ class _SaverBanner extends StatelessWidget {
         ? 'אפשר לחסוך ₪$perPackage לחבילה'
         : 'אפשר לחסוך ₪${match.annualSaving} בשנה';
     final shareText = isAbroad
-        ? 'גיליתי שאפשר לחסוך ₪$perPackage לחבילה במעבר ל${match.plan.provider} — עם חוסך 💚'
-        : 'גיליתי שאפשר לחסוך ₪${match.annualSaving} בשנה במעבר ל${match.plan.provider} — עם חוסך 💚';
+        ? 'גיליתי שאפשר לחסוך ₪$perPackage לחבילה במעבר ל${match.plan.provider} — עם חוסך'
+        : 'גיליתי שאפשר לחסוך ₪${match.annualSaving} בשנה במעבר ל${match.plan.provider} — עם חוסך';
     return GestureDetector(
       onTap: onTap,
       child: Container(

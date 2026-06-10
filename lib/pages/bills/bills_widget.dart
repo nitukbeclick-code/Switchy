@@ -75,6 +75,17 @@ List<_Overpay> _overpaysFor(AppState appState, Map<String, int> savingByCat) {
 class _BillsWidgetState extends State<BillsWidget> {
   int _touchedIndex = -1;
 
+  /// A formal monochrome ramp (ink → grey → light) for the per-category bars so
+  /// each category reads as a distinct shade in greyscale. Indexed by position;
+  /// wraps if there are more categories than steps.
+  static const List<Color> _barRamp = [
+    Color(0xFF111827), // ink black
+    Color(0xFF374151), // slate
+    Color(0xFF6B7280), // grey
+    Color(0xFF9CA3AF), // light grey
+    Color(0xFFCBD2D9), // pale grey
+  ];
+
   @override
   void dispose() {
     appBackend.upsertBills(AppState().currentBills).catchError((_) {});
@@ -266,12 +277,13 @@ class _BillsWidgetState extends State<BillsWidget> {
                             final cat = entry.value;
                             final bill = appState.currentBill(cat.id).toDouble();
                             final isTouch = i == _touchedIndex;
+                            final barColor = _barRamp[i % _barRamp.length];
                             return BarChartGroupData(
                               x: i,
                               barRods: [
                                 BarChartRodData(
                                   toY: bill,
-                                  color: isTouch ? ffTheme.primaryDark : ffTheme.primary,
+                                  color: isTouch ? ffTheme.primaryDark : barColor,
                                   width: isTouch ? 28 : 24,
                                   borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
                                   backDrawRodData: BackgroundBarChartRodData(
@@ -289,21 +301,36 @@ class _BillsWidgetState extends State<BillsWidget> {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    // Legend
+                    // Legend — swatch matches each bar's ramp shade.
                     Wrap(
                       spacing: 16,
                       runSpacing: 8,
                       alignment: WrapAlignment.center,
-                      children: activeCats.map((c) => Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(c.icon, style: const TextStyle(fontSize: 14)),
-                          const SizedBox(width: 4),
-                          Text(c.name, style: ffTheme.labelSmall),
-                          const SizedBox(width: 4),
-                          Text('₪${appState.currentBill(c.id)}', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
-                        ],
-                      )).toList(),
+                      children: activeCats.asMap().entries.map((e) {
+                        final i = e.key;
+                        final c = e.value;
+                        final shade = _barRamp[i % _barRamp.length];
+                        return Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 10,
+                              height: 10,
+                              decoration: BoxDecoration(
+                                color: shade,
+                                borderRadius: BorderRadius.circular(3),
+                                border: Border.all(color: ffTheme.alternate.withValues(alpha: 0.25), width: 0.5),
+                              ),
+                            ),
+                            const SizedBox(width: 5),
+                            Text(c.icon, style: const TextStyle(fontSize: 14)),
+                            const SizedBox(width: 4),
+                            Text(c.name, style: ffTheme.labelSmall),
+                            const SizedBox(width: 4),
+                            Text('₪${appState.currentBill(c.id)}', style: ffTheme.labelSmall.copyWith(color: ffTheme.primaryText, fontWeight: FontWeight.w700)),
+                          ],
+                        );
+                      }).toList(),
                     ),
                   ],
                 ),
@@ -430,15 +457,17 @@ class _SavingsRing extends StatelessWidget {
                     sectionsSpace: 3,
                     centerSpaceRadius: 34,
                     sections: [
+                      // Ink for the saving (the emphasised share), pale grey for
+                      // the rest — high-contrast and legible in greyscale.
                       PieChartSectionData(
                         value: savingsPerMonth.toDouble(),
-                        color: ffTheme.secondary,
+                        color: ffTheme.primary,
                         radius: 20,
                         showTitle: false,
                       ),
                       PieChartSectionData(
                         value: keep.toDouble().clamp(1, double.infinity),
-                        color: ffTheme.alternate,
+                        color: ffTheme.secondary,
                         radius: 16,
                         showTitle: false,
                       ),
@@ -462,9 +491,9 @@ class _SavingsRing extends StatelessWidget {
               children: [
                 Text('פוטנציאל החיסכון שלך', style: ffTheme.titleSmall),
                 const SizedBox(height: 10),
-                _RingLegendRow(color: ffTheme.secondary, label: 'אפשר לחסוך', value: '₪$savingsPerMonth/חודש', ffTheme: ffTheme),
+                _RingLegendRow(color: ffTheme.primary, label: 'אפשר לחסוך', value: '₪$savingsPerMonth/חודש', ffTheme: ffTheme),
                 const SizedBox(height: 6),
-                _RingLegendRow(color: ffTheme.alternate, label: 'מחיר שוק', value: '₪$keep/חודש', ffTheme: ffTheme),
+                _RingLegendRow(color: ffTheme.secondary, label: 'מחיר שוק', value: '₪$keep/חודש', ffTheme: ffTheme),
                 const SizedBox(height: 12),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
@@ -494,7 +523,7 @@ class _RingLegendRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Container(width: 10, height: 10, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+        Container(width: 10, height: 10, decoration: BoxDecoration(color: color, shape: BoxShape.circle, border: Border.all(color: ffTheme.alternate.withValues(alpha: 0.25), width: 0.5))),
         const SizedBox(width: 8),
         Text(label, style: ffTheme.labelSmall),
         const Spacer(),

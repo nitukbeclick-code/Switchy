@@ -62,14 +62,11 @@ class PlanCardWidget extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(ffTheme.radiusLg),
-        border: Border(
-          right: BorderSide(
-            color: plan.highlight ? ffTheme.primary : ffTheme.alternate,
-            width: plan.highlight ? 3 : 1,
-          ),
-          left: BorderSide(color: ffTheme.alternate, width: 1),
-          top: BorderSide(color: ffTheme.alternate, width: 1),
-          bottom: BorderSide(color: ffTheme.alternate, width: 1),
+        // Crisp formal frame: a clean ~1px dark border all around; the best
+        // match reads as a slightly heavier ink border (no coloured stripe).
+        border: Border.all(
+          color: plan.highlight ? ffTheme.primary : ffTheme.alternate,
+          width: plan.highlight ? 1.5 : 1,
         ),
         boxShadow: ffTheme.shadowCard,
       ),

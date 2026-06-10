@@ -184,7 +184,7 @@ class _Hero extends StatelessWidget {
                       icon: const Icon(Icons.ios_share_rounded, color: Colors.white, size: 22),
                       tooltip: 'שתף את החיסכון',
                       onPressed: () => Share.share(
-                        'גיליתי שאפשר לחסוך עד ₪$total בשנה על חשבונות התקשורת — בדקו גם אתם עם חוסך 💚',
+                        'גיליתי שאפשר לחסוך עד ₪$total בשנה על חשבונות התקשורת — בדקו גם אתם עם חוסך',
                       ),
                     ),
                 ],
@@ -330,20 +330,18 @@ class _PotentialDonutCard extends StatelessWidget {
   final bool personalized;
   final AppTheme ffTheme;
 
-  // A cohesive teal-family palette for the donut slices; falls back to each
-  // category's own brand colour so slices stay recognisable.
-  static const List<Color> _palette = [
-    AppColors.primary,
-    AppColors.tertiary,
-    AppColors.sage,
-    AppColors.secondary,
-    Color(0xFF0E7490),
+  // A formal monochrome ramp (ink → grey → light) so multi-category slices stay
+  // legible in greyscale without any colour. Assigned by index; wraps cleanly if
+  // there are ever more slices than ramp steps.
+  static const List<Color> _ramp = [
+    Color(0xFF111827), // ink black
+    Color(0xFF374151), // slate
+    Color(0xFF6B7280), // grey
+    Color(0xFF9CA3AF), // light grey
+    Color(0xFFCBD2D9), // pale grey
   ];
 
-  Color _sliceColor(int i, CategorySaving cs) {
-    if (i < _palette.length) return _palette[i];
-    return categoryById(cs.categoryId)?.color ?? AppColors.primary;
-  }
+  Color _sliceColor(int i, CategorySaving cs) => _ramp[i % _ramp.length];
 
   @override
   Widget build(BuildContext context) {
@@ -458,7 +456,11 @@ class _LegendRow extends StatelessWidget {
         Container(
           width: 11,
           height: 11,
-          decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(3)),
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(3),
+            border: Border.all(color: ffTheme.alternate.withValues(alpha: 0.25), width: 0.5),
+          ),
         ),
         const SizedBox(width: 8),
         Expanded(
@@ -544,7 +546,9 @@ class _ProgressCard extends StatelessWidget {
                   ),
                 ),
                 barGroups: [
-                  _bar(0, potential.toDouble(), ffTheme.secondary, ffTheme),
+                  // Two-step ink ramp: slate for the potential, full ink for what
+                  // was realised — clearly distinct in greyscale.
+                  _bar(0, potential.toDouble(), ffTheme.tertiary, ffTheme),
                   _bar(1, realized.toDouble(), ffTheme.primary, ffTheme),
                 ],
               ),
@@ -559,7 +563,7 @@ class _ProgressCard extends StatelessWidget {
                   text: potential > 0
                       ? (personalized ? '₪$potential' : '~₪$potential')
                       : '—',
-                  color: ffTheme.primaryText,
+                  color: ffTheme.tertiary,
                   ffTheme: ffTheme),
               _ValueTag(
                   label: 'כבר נחסך',

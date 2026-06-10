@@ -476,7 +476,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                                   Text(
                                     'תחסוך ₪$topSave בשנה',
                                     style: ffTheme.bodySmall.copyWith(
-                                        color: ffTheme.secondary,
+                                        color: Colors.white,
                                         fontWeight: FontWeight.w700),
                                   ),
                                 ],
@@ -972,9 +972,9 @@ class _MatchBadge extends StatelessWidget {
   final AppTheme ffTheme;
 
   Color _badgeColor() {
-    if (match.scorePct >= 85) return ffTheme.secondary; // secondary (soft-aqua)
-    if (match.scorePct >= 70) return ffTheme.primary; // primary (teal)
-    return const Color(0xFF8E9AA0); // muted
+    if (match.scorePct >= 85) return ffTheme.secondary; // light-grey highlight (black text)
+    if (match.scorePct >= 70) return ffTheme.primary; // ink black (white text)
+    return ffTheme.sage; // muted grey
   }
 
   Color _textColor() {
@@ -997,6 +997,7 @@ class _MatchBadge extends StatelessWidget {
           decoration: BoxDecoration(
             color: badgeColor,
             borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: ffTheme.alternate.withValues(alpha: 0.12)),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withValues(alpha: 0.12),
@@ -1016,18 +1017,26 @@ class _MatchBadge extends StatelessWidget {
         ),
         if (topReason != null) ...[
           const SizedBox(height: 3),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.88),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              topReason,
-              style: ffTheme.labelSmall.copyWith(
-                color: ffTheme.primary,
-                fontSize: 9,
-                fontWeight: FontWeight.w600,
+          ConstrainedBox(
+            // Cap the reason chip so a long Hebrew reason never overflows the
+            // card edge — it ellipsises instead.
+            constraints: const BoxConstraints(maxWidth: 150),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: ffTheme.alternate.withValues(alpha: 0.18)),
+              ),
+              child: Text(
+                topReason,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: ffTheme.labelSmall.copyWith(
+                  color: ffTheme.primary,
+                  fontSize: 9,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ),

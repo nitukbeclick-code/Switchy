@@ -1,8 +1,9 @@
 ﻿# חוסך — landing site
 
 A standalone marketing landing page for חוסך. Plain **HTML + CSS + JS**, RTL
-Hebrew, brand-matched (green `#15603E`, lime `#C9EC4B`, cream `#F4F0E8`, Rubik +
-Assistant). No framework, no build step, no dependencies.
+Hebrew, brand-matched (ink `#111827`, light-grey highlight `#E5E7EB`, glass-white
+`#F5F7F8` background, near-black text `#0B0F14`, Rubik + Assistant). No framework,
+no build step, no dependencies.
 
 ## Run locally
 

@@ -11,6 +11,9 @@ class LeadInput {
     this.callbackTime,
     this.source,
     this.notes,
+    this.termsAcceptedAt,
+    this.privacyAcceptedAt,
+    this.marketingAcceptedAt,
   });
 
   final String name;
@@ -21,6 +24,12 @@ class LeadInput {
   final String? callbackTime; // now / noon / evening / tomorrow
   final String? source;       // form | plan | compare | advisor | callback | porting
   final String? notes;        // free-text context for the rep
+  // Legal consent (Israeli Privacy/Spam Law) — ISO timestamps; the server's
+  // leads_consent_stamp trigger re-stamps them authoritatively. Mandatory
+  // terms+privacy are gated client-side; marketing is null unless opted in.
+  final String? termsAcceptedAt;
+  final String? privacyAcceptedAt;
+  final String? marketingAcceptedAt;
 
   Map<String, dynamic> toRow() => {
         'name': name,
@@ -31,6 +40,9 @@ class LeadInput {
         'callback_time': callbackTime,
         'source': source,
         'notes': notes,
+        'terms_accepted_at': termsAcceptedAt,
+        'privacy_accepted_at': privacyAcceptedAt,
+        'marketing_accepted_at': marketingAcceptedAt,
       };
 }
 

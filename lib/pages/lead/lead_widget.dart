@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../theme/app_theme.dart';
 import '../../core/nav.dart';
 import '../../widgets/app_button.dart';
@@ -30,6 +31,81 @@ class _LeadWidgetState extends State<LeadWidget> {
 
   String _callbackTime = 'now'; // 'now' | 'noon' | 'evening' | 'tomorrow'
   bool _isSubmitting = false;
+
+  // Legal consent (Israeli Privacy Protection Regs + Spam Law): terms+privacy
+  // mandatory to submit a lead; marketing is opt-in (unchecked default).
+  bool _acceptTerms = false;
+  bool _acceptPrivacy = false;
+  bool _acceptMarketing = false;
+
+  Future<void> _openLegal(String page) async {
+    try {
+      await launchUrl(Uri.parse('https://chosech.co.il/$page'), mode: LaunchMode.externalApplication);
+    } catch (_) {
+      if (mounted) AppSnackBar.info(context, 'לא ניתן לפתוח את המסמך כרגע');
+    }
+  }
+
+  Widget _consentRow(AppTheme t,
+      {required bool value,
+      required ValueChanged<bool?> onChanged,
+      required String lead,
+      String? link,
+      String? page}) {
+    final label = Text.rich(TextSpan(
+      text: lead,
+      style: t.bodySmall.copyWith(color: t.secondaryText, height: 1.35),
+      children: link != null
+          ? [
+              TextSpan(
+                text: link,
+                style: t.bodySmall.copyWith(
+                    color: t.primary, fontWeight: FontWeight.w700, decoration: TextDecoration.underline),
+              )
+            ]
+          : null,
+    ));
+    return Row(children: [
+      SizedBox(
+        width: 40,
+        height: 40,
+        child: Checkbox(
+          value: value,
+          onChanged: onChanged,
+          activeColor: t.primary,
+          visualDensity: VisualDensity.compact,
+          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        ),
+      ),
+      Expanded(
+        child: page != null
+            ? Semantics(button: true, label: 'פתח $link', child: InkWell(onTap: () => _openLegal(page), child: label))
+            : label,
+      ),
+    ]);
+  }
+
+  Widget _consentPanel(AppTheme t) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _consentRow(t,
+              value: _acceptTerms,
+              onChanged: (v) => setState(() => _acceptTerms = v ?? false),
+              lead: 'קראתי ואני מסכים/ה ל',
+              link: 'תנאי השימוש',
+              page: 'terms.html'),
+          _consentRow(t,
+              value: _acceptPrivacy,
+              onChanged: (v) => setState(() => _acceptPrivacy = v ?? false),
+              lead: 'קראתי ואני מסכים/ה ל',
+              link: 'מדיניות הפרטיות',
+              page: 'privacy.html'),
+          _consentRow(t,
+              value: _acceptMarketing,
+              onChanged: (v) => setState(() => _acceptMarketing = v ?? false),
+              lead: 'אני מעוניין/ת לקבל דיוור שיווקי ומבצעים (אופציונלי)'),
+        ],
+      );
 
   @override
   void dispose() {
@@ -147,13 +223,19 @@ class _LeadWidgetState extends State<LeadWidget> {
                 ],
               ).animate(delay: 250.ms).fadeIn(),
 
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
+              _consentPanel(ffTheme),
+              const SizedBox(height: 16),
 
               // Submit button
               AppButton(
                 text: _isSubmitting ? 'שולח...' : 'שלחו פרטים',
                 onPressed: _isSubmitting ? () async {} : () async {
                   if (!_formKey.currentState!.validate()) return;
+                  if (!_acceptTerms || !_acceptPrivacy) {
+                    AppSnackBar.info(context, 'יש לאשר את תנאי השימוש ומדיניות הפרטיות כדי לשלוח');
+                    return;
+                  }
                   HapticFeedback.lightImpact();
                   setState(() => _isSubmitting = true);
                   await Future.delayed(const Duration(milliseconds: 800));
@@ -171,6 +253,7 @@ class _LeadWidgetState extends State<LeadWidget> {
                     if (bill > 0) parts.add('חשבון נוכחי: ₪$bill/חודש');
                     if (plan != null) parts.add('חסכון שנתי צפוי: ₪${planSaveYear(plan, bill)}');
                     if (st.quizCompleted) parts.add('תקציב: ₪${st.quizBudget} | עדיפות: ${st.quizPriority} | קווים: ${st.quizLines}');
+                    final nowIso = DateTime.now().toUtc().toIso8601String();
                     await appBackend.submitLead(LeadInput(
                       name: name,
                       phone: phone,
@@ -180,6 +263,10 @@ class _LeadWidgetState extends State<LeadWidget> {
                       callbackTime: _callbackTime,
                       source: widget.source,
                       notes: parts.isNotEmpty ? parts.join(' | ') : null,
+                      // Legal consent (server re-stamps these authoritatively).
+                      termsAcceptedAt: nowIso,
+                      privacyAcceptedAt: nowIso,
+                      marketingAcceptedAt: _acceptMarketing ? nowIso : null,
                     )).timeout(const Duration(seconds: 10));
                     // Sync the user's identity to their profile row.
                     appBackend.upsertProfile(name: name, phone: phone, email: email.isNotEmpty ? email : null).catchError((_) {});

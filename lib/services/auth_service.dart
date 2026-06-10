@@ -166,8 +166,10 @@ class AuthService {
 
   Future<void> signOut() async {
     try {
-      await _auth?.signOut();
-    } catch (_) {/* fail-soft */}
+      // Global scope so the refresh token is REVOKED server-side, not just
+      // cleared locally — protects a shared/lost device or an exfiltrated token.
+      await _auth?.signOut(scope: SignOutScope.global);
+    } catch (_) {/* fail-soft — still clear local state below */}
     // Clear the biometric gate so a stale "armed" flag can't lock (or be
     // bypassed for) a different/empty session after sign-out. Fail-soft: a
     // pref write failure must never block the sign-out itself.

@@ -40,7 +40,7 @@ create policy "profiles_insert_own" on public.profiles
   for insert with check (auth.uid() = id);
 drop policy if exists "profiles_update_own" on public.profiles;
 create policy "profiles_update_own" on public.profiles
-  for update using (auth.uid() = id);
+  for update using (auth.uid() = id) with check (auth.uid() = id);
 
 drop trigger if exists profiles_set_updated_at on public.profiles;
 create trigger profiles_set_updated_at before update on public.profiles
@@ -369,7 +369,7 @@ create policy "posts_insert_own" on public.community_posts
   for insert with check (auth.uid() = user_id);
 drop policy if exists "posts_update_own" on public.community_posts;
 create policy "posts_update_own" on public.community_posts
-  for update using (auth.uid() = user_id);
+  for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
 drop policy if exists "posts_delete_own" on public.community_posts;
 create policy "posts_delete_own" on public.community_posts
   for delete using (auth.uid() = user_id);
@@ -465,7 +465,7 @@ create policy "reviews_insert_own" on public.provider_reviews
   for insert with check (auth.uid() = user_id);
 drop policy if exists "reviews_update_own" on public.provider_reviews;
 create policy "reviews_update_own" on public.provider_reviews
-  for update using (auth.uid() = user_id);
+  for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
 drop policy if exists "reviews_delete_own" on public.provider_reviews;
 create policy "reviews_delete_own" on public.provider_reviews
   for delete using (auth.uid() = user_id);

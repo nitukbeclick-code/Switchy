@@ -16,7 +16,14 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 /// device re-authenticates once after this lands — acceptable pre-launch.
 class SecureSessionStore extends LocalStorage {
   SecureSessionStore({FlutterSecureStorage? storage})
-      : _storage = storage ?? const FlutterSecureStorage();
+      : _storage = storage ??
+            const FlutterSecureStorage(
+              // Android uses Keystore-backed ciphers by default (the old
+              // encryptedSharedPreferences flag is deprecated/auto-migrated).
+              // iOS: Keychain, readable only after first unlock and never
+              // synced/restored to another device.
+              iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock_this_device),
+            );
 
   final FlutterSecureStorage _storage;
   static const _key = 'supabase.auth.session';

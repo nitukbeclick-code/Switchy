@@ -48,6 +48,7 @@ as $$
 declare
   v_uid uuid := auth.uid();
   v_ip  inet;
+  v_xff text;
 begin
   if v_uid is null then
     raise exception 'not_authenticated';
@@ -57,12 +58,14 @@ begin
     raise exception 'terms_and_privacy_required';
   end if;
 
-  -- Best-effort caller IP from the CDN-set headers (cf-connecting-ip is trusted;
-  -- the first X-Forwarded-For hop is the original client otherwise).
+  -- Best-effort caller IP. Prefer cf-connecting-ip (CDN-set, trusted); otherwise
+  -- the LAST X-Forwarded-For hop — the one the trusted edge appended — to match
+  -- the leads gate and avoid trusting a client-spoofable first hop.
   begin
+    v_xff := current_setting('request.headers', true)::json ->> 'x-forwarded-for';
     v_ip := coalesce(
       nullif(current_setting('request.headers', true)::json ->> 'cf-connecting-ip', ''),
-      nullif(split_part(current_setting('request.headers', true)::json ->> 'x-forwarded-for', ',', 1), '')
+      nullif(trim(split_part(v_xff, ',', array_length(string_to_array(v_xff, ','), 1))), '')
     )::inet;
   exception when others then
     v_ip := null;
@@ -147,6 +150,15 @@ declare
 begin
   if p_event is null or length(p_event) = 0 or length(p_event) > 64 then
     raise exception 'invalid_event';
+  end if;
+  -- Bound the payload and throttle per caller so an authenticated (incl. a free
+  -- anonymous) JWT can't flood the Reg.13 audit table or bloat storage.
+  if pg_column_size(coalesce(p_detail, '{}'::jsonb)) > 2048 then
+    raise exception 'detail_too_large';
+  end if;
+  if (select count(*) from public.security_audit_log
+        where user_id = auth.uid() and created_at > now() - interval '1 minute') >= 20 then
+    raise exception 'rate_limited';
   end if;
   begin
     v_ip := nullif(current_setting('request.headers', true)::json ->> 'cf-connecting-ip', '')::inet;

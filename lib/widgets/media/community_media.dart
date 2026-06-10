@@ -536,7 +536,10 @@ class _VoiceRecorderButtonState extends State<VoiceRecorderButton> {
     final theme = AppTheme.of(context);
 
     if (_recording) {
-      return GestureDetector(
+      return Semantics(
+        button: true,
+        label: 'עצור הקלטה',
+        child: GestureDetector(
         onTap: _stop,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
@@ -566,6 +569,7 @@ class _VoiceRecorderButtonState extends State<VoiceRecorderButton> {
               Icon(Icons.stop_circle_outlined, color: theme.error, size: 20),
             ],
           ),
+        ),
         ),
       );
     }

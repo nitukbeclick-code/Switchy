@@ -148,7 +148,7 @@ class _SuccessWidgetState extends State<SuccessWidget> {
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
-                            Text('₪${plan.price}/${plan.cat == 'abroad' ? 'חבילה' : 'חודש'}',
+                            Text('₪${plan.price}/${priceUnitShort(plan)}',
                                 style: GoogleFonts.rubik(fontSize: 16, fontWeight: FontWeight.w800, color: ffTheme.secondary)),
                             if (save > 0)
                               Text('חוסך ₪$save/שנה',

@@ -400,7 +400,7 @@ class _RecommendedPlanCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final plan = match.plan;
-    final priceLabel = selectedCat == 'abroad' ? 'לחבילה' : '/חודש';
+    final priceLabel = priceUnitLabel(plan);
     final topReasons = match.reasons.take(2).toList();
 
     return GestureDetector(
@@ -636,7 +636,7 @@ class _LeadingPlanCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text('₪${plan.price}', style: ffTheme.headlineSmall.copyWith(color: ffTheme.primary)),
-                  Text(selectedCat == 'abroad' ? 'לחבילה' : 'לחודש', style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText)),
+                  Text(priceUnitLabel(plan), style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText)),
                 ],
               ),
             ],

@@ -6,6 +6,7 @@ import '../../theme/app_theme.dart';
 import '../../core/nav.dart';
 import '../../widgets/app_button.dart';
 import '../../app_state.dart';
+import '../../data.dart';
 import '../../components/logo_widget/logo_widget.dart';
 import '../../services/recommendation_engine.dart';
 
@@ -568,7 +569,7 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
     if (match == null) return const SizedBox.shrink();
 
     final plan = match.plan;
-    final priceUnit = plan.cat == 'abroad' ? 'לחבילה' : '/חודש';
+    final priceUnit = priceUnitLabel(plan);
     final topReasons = match.reasons.take(2).toList();
 
     return GestureDetector(

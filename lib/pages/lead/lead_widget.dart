@@ -317,7 +317,7 @@ class _LeadWidgetState extends State<LeadWidget> {
                   children: [
                     Text(plan.provider, style: ffTheme.titleSmall),
                     Text(plan.plan, style: ffTheme.bodySmall, maxLines: 1, overflow: TextOverflow.ellipsis),
-                    Text('₪${plan.price}/${plan.cat == 'abroad' ? 'חבילה' : 'חודש'}', style: ffTheme.titleMedium.copyWith(color: ffTheme.primary)),
+                    Text('₪${plan.price}/${priceUnitShort(plan)}', style: ffTheme.titleMedium.copyWith(color: ffTheme.primary)),
                   ],
                 ),
               ),

@@ -164,8 +164,11 @@ function providerLogo(name, size = 36) {
 }
 
 // Render one real plan as a card. Used on category pages and the all-plans page.
+const UNIT_HE = { month: 'לחודש', package: 'לחבילה', day: 'ליום', minute: 'לדקה' };
 function planCardHtml(p) {
-  const unit = p.cat === 'abroad' ? 'לחבילה' : 'לחודש';
+  // priceUnit comes from the app catalogue export (tool/export_plans.dart) —
+  // abroad plans mix per-package/day/minute/month pricing, so never assume.
+  const unit = UNIT_HE[p.priceUnit] || (p.cat === 'abroad' ? 'לחבילה' : 'לחודש');
   const specs = Object.entries(p.specs || {}).slice(0, 3)
     .map(([, v]) => `<span class="pchip">${esc(v)}</span>`).join('');
   const flags = [];

@@ -387,7 +387,7 @@ class _BestMatchCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final plan = match.plan;
-    final unit = plan.cat == 'abroad' ? 'לחבילה' : 'לחודש';
+    final unit = priceUnitLabel(plan);
     final topReason =
         match.reasons.isNotEmpty ? match.reasons.first : match.plan.plan;
 
@@ -662,7 +662,7 @@ class _PlanCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final unit = plan.cat == 'abroad' ? 'לחבילה' : 'לחודש';
+    final unit = priceUnitLabel(plan);
     final specEntries = plan.specs.entries.take(2).toList();
 
     return GestureDetector(

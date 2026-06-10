@@ -665,7 +665,7 @@ class _QuizWidgetState extends State<QuizWidget> {
 
   Widget _buildReveal(AppTheme ffTheme) {
     final top = _recs.first;
-    final priceUnit = _cat == 'abroad' ? 'לחבילה' : '/חודש';
+    final priceUnit = priceUnitLabel(top.plan);
     return SingleChildScrollView(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

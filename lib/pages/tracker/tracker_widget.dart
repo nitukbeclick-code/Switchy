@@ -135,7 +135,7 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                     textAlign: TextAlign.center).animate().fadeIn(delay: 300.ms).slideY(begin: 0.2),
                 const SizedBox(height: 12),
                 if (plan != null) ...[
-                  Text('${plan.provider} — ₪${plan.price}/${plan.cat == 'abroad' ? 'חבילה' : 'חודש'}',
+                  Text('${plan.provider} — ₪${plan.price}/${priceUnitShort(plan)}',
                       style: ffTheme.bodyLarge.copyWith(color: ffTheme.secondary, fontWeight: FontWeight.w700))
                       .animate().fadeIn(delay: 450.ms),
                   const SizedBox(height: 10),

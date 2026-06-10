@@ -154,16 +154,26 @@ void main() {
       expect(deal, isNotNull);
     });
 
-    test('returned plan maximises annual saving', () {
+    test('returned plan maximises annual saving among regular plans', () {
       const bill = 119;
       final deal = hotDeal(bill, cat: 'cellular');
       expect(deal, isNotNull);
 
-      // Verify no other cellular plan has a bigger saving
-      final cellular = plansByCat('cellular');
+      // Verify no other *regular* cellular plan has a bigger saving.
+      // (dataonly/kosher plans are not eligible — see the test below.)
+      final cellular = plansByCat('cellular').where((p) => p.isRegular);
       for (final p in cellular) {
         expect(planSaveYear(p, bill), lessThanOrEqualTo(planSaveYear(deal!, bill)));
       }
+    });
+
+    test('never crowns a dataonly or kosher plan as the flagship deal', () {
+      // An ₪11 tablet/IoT data-only SIM "saves" the most vs. a ₪119 bill but
+      // is not a replacement for a regular line — it must never win.
+      final deal = hotDeal(119, cat: 'cellular');
+      expect(deal, isNotNull);
+      expect(deal!.isRegular, isTrue,
+          reason: 'hot deal must be a regular plan, got ${deal.kind} (${deal.id})');
     });
 
     test('returns null when no plan is cheaper than bill=0', () {
@@ -256,7 +266,7 @@ void main() {
       }
     });
 
-    test('sort by save with currentBill produces descending saving order', () {
+    test('sort by save ranks regular plans by saving, non-regular last', () {
       const bill = 119;
       final plans = filteredPlans(
         cat: 'cellular',
@@ -266,12 +276,35 @@ void main() {
         budget: 0,
         currentBill: bill,
       );
-      for (var i = 0; i < plans.length - 1; i++) {
+      // Regular plans are in descending saving order.
+      final regular = plans.where((p) => p.isRegular).toList();
+      for (var i = 0; i < regular.length - 1; i++) {
         expect(
-          planSaveYear(plans[i], bill),
-          greaterThanOrEqualTo(planSaveYear(plans[i + 1], bill)),
+          planSaveYear(regular[i], bill),
+          greaterThanOrEqualTo(planSaveYear(regular[i + 1], bill)),
         );
       }
+      // dataonly/kosher plans still appear — but only after every regular plan.
+      final firstNonRegular = plans.indexWhere((p) => !p.isRegular);
+      final lastRegular = plans.lastIndexWhere((p) => p.isRegular);
+      expect(firstNonRegular, greaterThan(-1),
+          reason: 'non-regular plans must remain in the full results list');
+      expect(lastRegular, lessThan(firstNonRegular),
+          reason: 'non-regular plans must sort after all regular plans');
+    });
+
+    test('dataonly and kosher plans still appear in the results list', () {
+      final plans = filteredPlans(
+        cat: 'cellular',
+        sort: 'save',
+        filters: [],
+        query: '',
+        budget: 0,
+        currentBill: 119,
+      );
+      final ids = plans.map((p) => p.id).toSet();
+      expect(ids, contains('cel_hotmobile_dataonly20'));
+      expect(ids, contains('cel_ramilevy_maxkasher'));
     });
 
     test('query that matches nothing returns empty list', () {
@@ -319,6 +352,179 @@ void main() {
     test('hasAbroad reflects flags list', () {
       const p = Plan(id: 'x', cat: 'cellular', provider: 'p', net: '4G', plan: 'pl', price: 35, flags: ['abroad']);
       expect(p.hasAbroad, isTrue);
+    });
+
+    test('kind defaults to regular', () {
+      const p = Plan(id: 'x', cat: 'cellular', provider: 'p', net: '4G', plan: 'pl', price: 30);
+      expect(p.kind, equals('regular'));
+      expect(p.isRegular, isTrue);
+      const d = Plan(id: 'x', cat: 'cellular', provider: 'p', net: '4G', plan: 'pl', price: 11, kind: 'dataonly');
+      expect(d.isRegular, isFalse);
+    });
+  });
+
+  // ── community deep-links ─────────────────────────────────────────────────────
+
+  group('community posts', () {
+    test('every post planId resolves via planById', () {
+      for (final post in communityPosts.where((p) => p.planId != null)) {
+        expect(planById(post.planId!), isNotNull,
+            reason: 'post ${post.id} deep-links to missing plan ${post.planId}');
+      }
+    });
+
+    test('the featured team post (first team post with a planId) is live', () {
+      final featured =
+          communityPosts.firstWhere((p) => p.isTeam && p.planId != null);
+      expect(planById(featured.planId!), isNotNull);
+    });
+  });
+
+  // ── filter coverage ──────────────────────────────────────────────────────────
+
+  group('filter coverage', () {
+    // Mirrors the quick-filter chips the results screen offers per category
+    // (lib/pages/results/results_widget.dart) — every chip must be reachable.
+    const filterDefs = <String, List<String>>{
+      'cellular': ['5g', 'nocommit', 'fixed', 'abroad', 'kosher'],
+      'internet': ['nocommit', 'fiber', '1g', 'fixed'],
+      'tv': ['streaming', 'sport', 'netflix'],
+      'triple': ['netflix', 'sport', 'nocommit'],
+      'abroad': ['esim', 'nocommit'],
+    };
+
+    test('every filter def matches at least one plan in its category', () {
+      filterDefs.forEach((cat, filters) {
+        for (final f in filters) {
+          final plans = filteredPlans(
+              cat: cat, sort: 'price', filters: [f], query: '', budget: 0);
+          expect(plans, isNotEmpty,
+              reason: "filter '$f' in category '$cat' is a dead end");
+        }
+      });
+    });
+
+    test('1g filter derives speed from structured specs, not plan names', () {
+      final plans = filteredPlans(
+          cat: 'internet', sort: 'price', filters: ['1g'], query: '', budget: 0);
+      final ids = plans.map((p) => p.id).toSet();
+      // The gigabit fiber plans the old name-matching used to miss.
+      for (final id in [
+        'net_cellcom_fiber1g',
+        'net_cellcom_fiber25g',
+        'net_gilat_1g_online',
+        'net_gilat_1g_year',
+        'net_gilat_1g_lifetime',
+      ]) {
+        expect(ids, contains(id), reason: '$id is a gigabit fiber plan');
+      }
+      for (final p in plans) {
+        expect(planDownloadMbps(p), greaterThanOrEqualTo(1000),
+            reason: '${p.id} matched 1g without a gigabit download speed');
+      }
+    });
+
+    test('planDownloadMbps parses the structured speed spec', () {
+      Plan p(String? speed) => Plan(
+          id: 'x', cat: 'internet', provider: 'p', net: 'fiber', plan: 'pl',
+          price: 99, specs: speed == null ? const {} : {'מהירות': speed});
+      expect(planDownloadMbps(p('עד 1000/100')), 1000);
+      expect(planDownloadMbps(p('עד 2500/250')), 2500);
+      expect(planDownloadMbps(p('עד 100/3')), 100);
+      expect(planDownloadMbps(p('עד 1000Mb')), 1000);
+      expect(planDownloadMbps(p(null)), 0);
+    });
+  });
+
+  // ── pricing units ────────────────────────────────────────────────────────────
+
+  group('pricing units', () {
+    test('every abroad plan declares an explicit price unit', () {
+      for (final p in plansByCat('abroad')) {
+        expect(p.priceUnit, isNotNull,
+            reason: '${p.id} must not fall back to the category default');
+        expect(['package', 'day', 'month', 'minute'], contains(p.priceUnit),
+            reason: '${p.id} has unknown unit ${p.priceUnit}');
+      }
+    });
+
+    test('abroad tariffs carry their real pricing model', () {
+      expect(planById('ab_019')!.unit, 'minute');
+      for (final id in ['ab_cellcom', 'ab_hot', 'ab_golan']) {
+        expect(planById(id)!.unit, 'day', reason: '$id is a per-day tariff');
+      }
+      for (final id in ['ab_partner', 'ab_pelephone', 'ab_partner_3g', 'ab_019_world']) {
+        expect(planById(id)!.unit, 'month', reason: '$id is a monthly subscription');
+      }
+      for (final id in ['ab_airalo', 'ab_airalo_3g', 'ab_airalo_global']) {
+        expect(planById(id)!.unit, 'package', reason: '$id is a one-off package');
+      }
+    });
+
+    test('priceUnitLabel / priceUnitShort cover every unit incl. defaults', () {
+      Plan p(String cat, [String? unit]) => Plan(
+          id: 'x', cat: cat, provider: 'p', net: '4G', plan: 'pl',
+          price: 10, priceUnit: unit);
+      // Defaults preserve the historical behavior of every call site:
+      expect(priceUnitLabel(p('cellular')), 'לחודש');
+      expect(priceUnitLabel(p('internet')), 'לחודש');
+      expect(priceUnitLabel(p('abroad')), 'לחבילה');
+      // Explicit units:
+      expect(priceUnitLabel(p('abroad', 'day')), 'ליום');
+      expect(priceUnitLabel(p('abroad', 'minute')), 'לדקה');
+      expect(priceUnitLabel(p('abroad', 'month')), 'לחודש');
+      expect(priceUnitLabel(p('abroad', 'package')), 'לחבילה');
+      expect(priceUnitShort(p('cellular')), 'חודש');
+      expect(priceUnitShort(p('abroad')), 'חבילה');
+      expect(priceUnitShort(p('abroad', 'day')), 'יום');
+      expect(priceUnitShort(p('abroad', 'minute')), 'דקה');
+    });
+
+    test('minute tariffs sort last in price-ascending order', () {
+      final plans = filteredPlans(
+          cat: 'abroad', sort: 'price', filters: [], query: '', budget: 0);
+      expect(plans.first.unit, isNot('minute'),
+          reason: 'a ₪1/minute tariff is not the cheapest package');
+      final firstMinute = plans.indexWhere((p) => p.unit == 'minute');
+      final lastOther = plans.lastIndexWhere((p) => p.unit != 'minute');
+      expect(firstMinute, greaterThan(-1),
+          reason: 'minute tariffs must remain in the list');
+      expect(lastOther, lessThan(firstMinute),
+          reason: 'minute tariffs must sort after all package/day/month plans');
+    });
+  });
+
+  // ── catalogue ratings ────────────────────────────────────────────────────────
+
+  group('catalogue ratings', () {
+    test('ratings are differentiated, not a flat 4.2 placeholder', () {
+      final sourced = allPlans.where((p) => p.cat != 'abroad').toList();
+      final distinct = sourced.map((p) => p.rating).toSet();
+      expect(distinct.length, greaterThan(3),
+          reason: 'sourced plans must not share a single placeholder rating');
+      expect(sourced.any((p) => p.rating == 4.2 && p.reviews == 0), isFalse,
+          reason: 'no plan may keep the 4.2/0-reviews placeholder');
+    });
+
+    test('every plan has a plausible rating and a real review count', () {
+      for (final p in allPlans) {
+        expect(p.rating, inInclusiveRange(3.5, 5.0),
+            reason: '${p.id} rating ${p.rating}');
+        expect(p.reviews, greaterThan(0), reason: '${p.id} has no reviews');
+      }
+    });
+
+    test("a provider's sourced plans cluster around a shared base", () {
+      final byProvider = <String, List<double>>{};
+      for (final p in allPlans.where((p) => p.cat != 'abroad')) {
+        byProvider.putIfAbsent(p.provider, () => []).add(p.rating);
+      }
+      byProvider.forEach((provider, ratings) {
+        final lo = ratings.reduce((a, b) => a < b ? a : b);
+        final hi = ratings.reduce((a, b) => a > b ? a : b);
+        expect(hi - lo, lessThanOrEqualTo(0.5),
+            reason: '$provider ratings spread too wide ($lo..$hi)');
+      });
     });
   });
 }

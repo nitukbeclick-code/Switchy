@@ -242,7 +242,7 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
       final ranked = RecommendationEngine.rank(profile, limit: 2);
       final best = ranked.isEmpty ? null : ranked.first;
       if (best != null) {
-        final unit = recCat == 'abroad' ? 'לחבילה' : 'לחודש';
+        final unit = priceUnitLabel(best.plan);
         final catName = categoryById(recCat)?.name ?? recCat;
         final labelLine = '${best.label} — ${best.scorePct}%';
         final topReasons = best.reasons.take(3).map((r) => '• $r').join('\n');
@@ -253,7 +253,7 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
         String altLine = '';
         if (ranked.length >= 2) {
           final alt = ranked[1];
-          final altUnit = recCat == 'abroad' ? 'לחבילה' : 'לחודש';
+          final altUnit = priceUnitLabel(alt.plan);
           altLine = '\n\n🥈 אלטרנטיבה: ${alt.plan.provider} — ${alt.plan.plan} ₪${alt.plan.price}/$altUnit (${alt.label})';
         }
 
@@ -276,7 +276,7 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
       final best = topPlans.first;
       final saveYear = ((currentBill - best.price) * 12).clamp(0, 999999);
       final catName = categoryById(cat)?.name ?? cat;
-      final unit = best.cat == 'abroad' ? 'חבילה' : 'חודש';
+      final unit = priceUnitShort(best);
       final promoNote = best.hasPromo ? '\n⚡ מחיר מבצע! לאחר המבצע: ₪${best.after}/$unit' : '';
       final commitNote = best.noCommit ? '\n✅ ללא התחייבות' : '\n📅 התחייבות ${best.term} חודשים';
       final savingsLine = saveYear > 0 ? '\n💰 חיסכון שנתי צפוי: ₪$saveYear' : '';
@@ -336,7 +336,7 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
       final best = ranked.isEmpty ? null : ranked.first;
       if (best != null) {
         topPlans = [best.plan];
-        final unit = cat == 'abroad' ? 'לחבילה' : 'לחודש';
+        final unit = priceUnitLabel(best.plan);
         reply = '🎉 מעולה! אמצא לך את העסקה הכי טובה.\n\n'
             '🏆 ממליץ על ${best.plan.provider} — ${best.plan.plan} ₪${best.plan.price}/$unit\n\n'
             'לחץ "דבר עם נציג" למטה — שירות חינמי, ניוד מהיר! 👇';

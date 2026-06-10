@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import '../../theme/app_theme.dart';
 import '../../app_state.dart';
+import '../../data.dart';
 import '../../models.dart';
 import '../logo_widget/logo_widget.dart';
 
@@ -274,7 +275,7 @@ class PlanCardWidget extends StatelessWidget {
                           ),
                         ),
                         Text(
-                          plan.cat == 'abroad' ? 'לחבילה' : 'לחודש',
+                          priceUnitLabel(plan),
                           style: GoogleFonts.assistant(
                             fontSize: 12,
                             color: ffTheme.secondaryText,

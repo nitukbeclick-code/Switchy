@@ -7,6 +7,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../theme/app_theme.dart';
 import '../../core/nav.dart';
 import '../../app_state.dart';
+import '../../data.dart';
 import '../../models.dart';
 import '../../components/logo_widget/logo_widget.dart';
 import '../../services/recommendation_engine.dart';
@@ -32,7 +33,10 @@ class RenewalReportWidget extends StatelessWidget {
 
     final matches = RenewalReport.alternatives(tp, appState, limit: 12);
     final bestSaver = RenewalReport.bestSaver(tp, appState);
-    final unit = tp.category == 'abroad' ? 'לחבילה' : 'לחודש';
+    // Abroad plans are priced per package — every saving in this report must be
+    // framed per package, never per month/year.
+    final isAbroad = tp.category == 'abroad';
+    final unit = isAbroad ? 'לחבילה' : 'לחודש';
 
     return Scaffold(
       backgroundColor: ffTheme.background,
@@ -51,6 +55,8 @@ class RenewalReportWidget extends StatelessWidget {
                   if (bestSaver != null)
                     _SaverBanner(
                       match: bestSaver,
+                      isAbroad: isAbroad,
+                      currentPrice: tp.monthlyPrice,
                       ffTheme: ffTheme,
                       onTap: () => context.pushNamed('PlanDetail',
                           pathParameters: {'planId': bestSaver.plan.id}),
@@ -84,7 +90,7 @@ class RenewalReportWidget extends StatelessWidget {
                         rank: i + 1,
                         match: m,
                         currentPrice: tp.monthlyPrice,
-                        unit: unit,
+                        isAbroad: isAbroad,
                         isTop: i == 0,
                         ffTheme: ffTheme,
                         onTap: () => context.pushNamed('PlanDetail',
@@ -241,13 +247,30 @@ class _Hero extends StatelessWidget {
 // ── Headline saver banner ───────────────────────────────────────────────────
 
 class _SaverBanner extends StatelessWidget {
-  const _SaverBanner({required this.match, required this.ffTheme, required this.onTap});
+  const _SaverBanner({
+    required this.match,
+    required this.isAbroad,
+    required this.currentPrice,
+    required this.ffTheme,
+    required this.onTap,
+  });
   final PlanMatch match;
+  final bool isAbroad;
+  final int currentPrice;
   final AppTheme ffTheme;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
+    // Abroad plans are per-package: annualizing the saving (x12) is
+    // meaningless, so frame it per package instead.
+    final perPackage = currentPrice - match.plan.price;
+    final headline = isAbroad
+        ? 'אפשר לחסוך ₪$perPackage לחבילה'
+        : 'אפשר לחסוך ₪${match.annualSaving} בשנה';
+    final shareText = isAbroad
+        ? 'גיליתי שאפשר לחסוך ₪$perPackage לחבילה במעבר ל${match.plan.provider} — עם חוסך 💚'
+        : 'גיליתי שאפשר לחסוך ₪${match.annualSaving} בשנה במעבר ל${match.plan.provider} — עם חוסך 💚';
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -264,7 +287,7 @@ class _SaverBanner extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('אפשר לחסוך ₪${match.annualSaving} בשנה',
+                  Text(headline,
                       style: GoogleFonts.rubik(
                           fontSize: 17, fontWeight: FontWeight.w800, color: const Color(0xFF0E3A26))),
                   const SizedBox(height: 2),
@@ -279,8 +302,7 @@ class _SaverBanner extends StatelessWidget {
             IconButton(
               tooltip: 'שתף',
               icon: const Icon(Icons.ios_share_rounded, size: 20, color: Color(0xFF0E3A26)),
-              onPressed: () => Share.share(
-                  'גיליתי שאפשר לחסוך ₪${match.annualSaving} בשנה במעבר ל${match.plan.provider} — עם חוסך 💚'),
+              onPressed: () => Share.share(shareText),
             ),
             const Icon(Icons.arrow_back_ios_rounded, size: 16, color: Color(0xFF0E3A26)),
           ],
@@ -327,7 +349,7 @@ class _AlternativeRow extends StatelessWidget {
     required this.rank,
     required this.match,
     required this.currentPrice,
-    required this.unit,
+    required this.isAbroad,
     required this.isTop,
     required this.ffTheme,
     required this.onTap,
@@ -335,7 +357,7 @@ class _AlternativeRow extends StatelessWidget {
   final int rank;
   final PlanMatch match;
   final int currentPrice;
-  final String unit;
+  final bool isAbroad;
   final bool isTop;
   final AppTheme ffTheme;
   final VoidCallback onTap;
@@ -344,6 +366,10 @@ class _AlternativeRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final plan = match.plan;
     final saving = match.annualSaving;
+    // Per-package framing for abroad — never annualize a per-package price.
+    final savingLabel = isAbroad
+        ? 'חוסך ₪${currentPrice - plan.price} לחבילה'
+        : 'חוסך ₪$saving/שנה';
     final rating = ProviderRatings.averageStars(plan.provider);
     return GestureDetector(
       onTap: onTap,
@@ -411,7 +437,7 @@ class _AlternativeRow extends StatelessWidget {
                     Text('₪${plan.price}',
                         style: ffTheme.titleSmall.copyWith(
                             color: ffTheme.primary, fontWeight: FontWeight.w800)),
-                    Text(plan.hasPromo ? 'ואז ₪${plan.after}' : unit,
+                    Text(plan.hasPromo ? 'ואז ₪${plan.after}' : priceUnitLabel(plan),
                         style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText, fontSize: 10)),
                   ],
                 ),
@@ -440,7 +466,7 @@ class _AlternativeRow extends StatelessWidget {
                       color: ffTheme.secondary,
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: Text('חוסך ₪$saving/שנה',
+                    child: Text(savingLabel,
                         style: GoogleFonts.rubik(
                             fontSize: 10.5, fontWeight: FontWeight.w800, color: const Color(0xFF0E3A26))),
                   )

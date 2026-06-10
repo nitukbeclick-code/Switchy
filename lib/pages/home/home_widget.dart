@@ -600,7 +600,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text(
-                        '₪${deal.price}/${deal.cat == 'abroad' ? 'חבילה' : 'חודש'}',
+                        '₪${deal.price}/${priceUnitShort(deal)}',
                         style: ffTheme.titleMedium.copyWith(color: ffTheme.primary),
                       ),
                       const SizedBox(height: 8),
@@ -709,7 +709,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text('₪${plan.price}', style: ffTheme.titleLarge.copyWith(color: ffTheme.primary)),
-                      Text(cat == 'abroad' ? 'לחבילה' : 'לחודש', style: ffTheme.labelSmall),
+                      Text(priceUnitLabel(plan), style: ffTheme.labelSmall),
                       const SizedBox(height: 6),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -837,7 +837,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
                       Text('₪${plan.price}', style: ffTheme.titleLarge.copyWith(color: ffTheme.primary)),
-                      Text(plan.cat == 'abroad' ? 'לחבילה' : 'לחודש', style: ffTheme.labelSmall),
+                      Text(priceUnitLabel(plan), style: ffTheme.labelSmall),
                       const SizedBox(height: 6),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -1269,7 +1269,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                               ],
                             ),
                             const SizedBox(height: 5),
-                            Text('₪${plan.price}/${plan.cat == 'abroad' ? 'חבילה' : 'חודש'}', style: ffTheme.titleSmall.copyWith(color: ffTheme.primary, fontSize: 13, fontWeight: FontWeight.w700)),
+                            Text('₪${plan.price}/${priceUnitShort(plan)}', style: ffTheme.titleSmall.copyWith(color: ffTheme.primary, fontSize: 13, fontWeight: FontWeight.w700)),
                             const SizedBox(height: 3),
                             Row(
                               children: [
@@ -1353,7 +1353,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                           ],
                         ),
                         const SizedBox(height: 5),
-                        Text('₪${plan.price}/${plan.cat == 'abroad' ? 'חבילה' : 'חודש'}', style: ffTheme.titleSmall.copyWith(color: ffTheme.primary, fontSize: 13, fontWeight: FontWeight.w700)),
+                        Text('₪${plan.price}/${priceUnitShort(plan)}', style: ffTheme.titleSmall.copyWith(color: ffTheme.primary, fontSize: 13, fontWeight: FontWeight.w700)),
                         const SizedBox(height: 3),
                         Text(plan.plan, style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText), maxLines: 1, overflow: TextOverflow.ellipsis),
                       ],

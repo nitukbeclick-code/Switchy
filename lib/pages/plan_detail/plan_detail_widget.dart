@@ -133,7 +133,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                     tooltip: 'שתף מסלול',
                     onPressed: () {
                       HapticFeedback.selectionClick();
-                      final unit = plan.cat == 'abroad' ? 'חבילה' : 'חודש';
+                      final unit = priceUnitShort(plan);
                       Share.share('${plan.provider} — ${plan.plan}\n₪${plan.price}/$unit\n\nמצאתי בחוסך 💚');
                     },
                   ),
@@ -250,7 +250,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                                     const SizedBox(width: 4),
                                     Padding(
                                       padding: const EdgeInsets.only(bottom: 6),
-                                      child: Text(plan.cat == 'abroad' ? '/חבילה' : '/חודש',
+                                      child: Text('/${priceUnitShort(plan)}',
                                           style: ffTheme.bodySmall.copyWith(
                                               color: ffTheme.secondaryText)),
                                     ),
@@ -674,7 +674,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                                             ],
                                           ),
                                           const SizedBox(height: 6),
-                                          Text('₪${p.price}/${plan.cat == 'abroad' ? 'חבילה' : 'חודש'}', style: ffTheme.titleSmall.copyWith(color: ffTheme.primary)),
+                                          Text('₪${p.price}/${priceUnitShort(p)}', style: ffTheme.titleSmall.copyWith(color: ffTheme.primary)),
                                           const SizedBox(height: 3),
                                           if (pSave > 0)
                                             Text('חוסך ₪$pSave/שנה', style: ffTheme.labelSmall.copyWith(color: ffTheme.success))
@@ -1221,7 +1221,7 @@ class _CostBreakdownCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final ffTheme = AppTheme.of(context);
     final isAbroad = plan.cat == 'abroad';
-    final unit = isAbroad ? 'לחבילה' : 'לחודש';
+    final unit = priceUnitLabel(plan);
     final estimateMonths = (plan.term != null && plan.term! > 0) ? plan.term! : 12;
     final estimatedTotal = plan.price * estimateMonths;
     final feeEntries = plan.fees.entries.toList();

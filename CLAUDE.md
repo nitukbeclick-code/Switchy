@@ -81,8 +81,13 @@ When adding logic, put it here with tests in `test/<service>_test.dart`, then re
 
 - Plan categories: `cellular`, `internet`, `tv`, `triple`, `abroad`
   (see `lib/data.dart`, `lib/models.dart`).
-- **Abroad plans are priced per-package** — always show **`לחבילה`**, never
-  `לחודש`. Every other category shows `לחודש`.
+- **Plan price suffixes are owned by `priceUnitLabel(plan)` / `priceUnitShort(plan)`**
+  (`lib/data.dart`), driven by `Plan.priceUnit` (`month`/`package`/`day`/`minute`).
+  Never hardcode the suffix or the old `cat == 'abroad'` ternary. Abroad plans
+  default to per-package (`לחבילה`) when `priceUnit` is unset; some abroad plans
+  are legitimately per-day/per-minute/monthly. Bills (חשבון) are always monthly.
+  `TrackedPlan` (renewal radar) has no `priceUnit` and is monthly except abroad —
+  its two ternaries in renewal/renewal_report are deliberate.
 - Annual saving: `planSaveYear(plan, bill)` = `((bill - plan.price) * 12).clamp(0, …)`.
 - Each plan has its own category; savings must use `appState.currentBill(plan.cat)`,
   not a single global bill.

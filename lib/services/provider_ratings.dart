@@ -1,5 +1,6 @@
-import '../data.dart';
 import '../app_state.dart';
+import '../data.dart';
+import '../models.dart';
 
 /// Aggregate rating for a single provider, blended from the catalogue (each
 /// plan carries its own [Plan.rating] / [Plan.reviews]) and the signed-in
@@ -35,10 +36,17 @@ class ProviderRatings {
     'speed': 'מהירות',
   };
 
-  /// Average star rating across a provider's plans, 0 if it has none.
+  /// A catalogue entry that was never really rated: the historical seed
+  /// placeholder of 4.2 stars with zero reviews. A provider whose plans are
+  /// *all* placeholders has no rating data — averaging them would put every
+  /// such provider in a meaningless 4.2 tie on the leaderboard.
+  static bool _isPlaceholder(Plan p) => p.rating == 4.2 && p.reviews == 0;
+
+  /// Average star rating across a provider's plans, 0 if it has none
+  /// (or only placeholder data — see [_isPlaceholder]).
   static double averageStars(String provider) {
     final plans = plansByProvider(provider);
-    if (plans.isEmpty) return 0;
+    if (plans.isEmpty || plans.every(_isPlaceholder)) return 0;
     final sum = plans.fold<double>(0, (s, p) => s + p.rating);
     return sum / plans.length;
   }

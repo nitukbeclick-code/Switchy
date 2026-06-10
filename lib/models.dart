@@ -28,6 +28,8 @@ class Plan {
     this.feats = const [],
     this.fine,
     this.highlight = false,
+    this.kind = 'regular',
+    this.priceUnit,
     // ── Rich real-world detail (all optional, backward compatible) ──────────
     this.specs = const {},
     this.fineLines = const [],
@@ -53,6 +55,17 @@ class Plan {
   final List<String> feats;
   final String? fine;
   final bool highlight;
+
+  /// Plan subtype: 'regular' (default), 'dataonly' (SIM דאטה לטאבלט/IoT) or
+  /// 'kosher' (מסלול כשר). Non-regular plans are not a substitute for a regular
+  /// line, so they never compete for the hot deal and are pushed to the end of
+  /// savings-based sorts — but they still appear in the full results list.
+  final String kind;
+
+  /// Pricing unit: 'month' | 'package' | 'day' | 'minute'. When null the
+  /// category default applies — abroad plans are per-package, everything else
+  /// is monthly (this preserves the historical 'לחבילה'/'לחודש' behavior).
+  final String? priceUnit;
 
   /// Structured key specs as label → value (e.g. 'נתונים' → '100GB',
   /// 'דקות' → 'ללא הגבלה', 'מהירות' → '1000Mb'). Drives the quick-spec grid.
@@ -81,6 +94,15 @@ class Plan {
 
   bool get hasPromo => after != null && after! > price;
   bool get noCommit => term == null || term == 0;
+
+  /// True for ordinary subscriber plans — the only kind that competes on
+  /// "savings vs. your current bill" (see [kind]).
+  bool get isRegular => kind == 'regular';
+
+  /// The effective pricing unit, including the per-category default:
+  /// abroad → 'package', everything else → 'month'.
+  String get unit => priceUnit ?? (cat == 'abroad' ? 'package' : 'month');
+
   bool get is5G => flags.contains('5g');
   bool get hasAbroad => flags.contains('abroad');
   bool get isFixed => flags.contains('fixed');

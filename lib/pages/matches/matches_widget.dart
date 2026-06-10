@@ -176,8 +176,7 @@ class MatchesWidget extends StatelessWidget {
     AppState appState,
   ) {
     final plan = match.plan;
-    final isAbroad = catId == 'abroad';
-    final priceLabel = isAbroad ? 'לחבילה' : '/חודש';
+    final priceLabel = priceUnitLabel(plan);
     final topReason = match.reasons.isNotEmpty ? match.reasons.first : null;
 
     return AppCard(

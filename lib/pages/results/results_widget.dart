@@ -911,7 +911,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
     const Map<String, List<(String, String)>> catFilters = {
       'cellular': [('5G', '5g'), ('ללא התחייבות', 'nocommit'), ('מחיר קבוע', 'fixed'), ('כולל חו"ל', 'abroad'), ('כשר', 'kosher')],
       'internet': [('ללא התחייבות', 'nocommit'), ('סיב אופטי', 'fiber'), ('1,000Mb+', '1g'), ('מחיר קבוע', 'fixed')],
-      'tv': [('סטרימינג', 'streaming'), ('לוויין', 'satellite'), ('ספורט', 'sport'), ('Netflix', 'netflix')],
+      'tv': [('סטרימינג', 'streaming'), ('ספורט', 'sport'), ('Netflix', 'netflix')],
       'triple': [('Netflix', 'netflix'), ('ספורט', 'sport'), ('ללא התחייבות', 'nocommit')],
       'abroad': [('eSIM', 'esim'), ('ללא התחייבות', 'nocommit')],
     };

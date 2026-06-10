@@ -28,6 +28,8 @@ void main() {
           'specs': p.specs,
           'rating': p.rating,
           'reviews': p.reviews,
+          'priceUnit': p.unit, // month / package / day / minute (resolved default)
+          'kind': p.kind,      // regular / dataonly / kosher
         }).toList();
 
     final out = {

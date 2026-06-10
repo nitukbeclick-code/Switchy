@@ -9,7 +9,7 @@ import 'data/plans_tv_triple.dart';
 final List<Category> categories = [
   const Category(id: 'cellular', name: 'סלולר', icon: '📱', currentBill: 119, color: Color(0xFF15603E), planCount: 59, description: 'חבילות סלולר לנייד'),
   const Category(id: 'internet', name: 'אינטרנט', icon: '🌐', currentBill: 140, color: Color(0xFF2563EB), planCount: 30, description: 'אינטרנט ביתי מהיר'),
-  const Category(id: 'tv', name: 'טלוויזיה', icon: '📺', currentBill: 130, color: Color(0xFF7C3AED), planCount: 6, description: 'ערוצי טלוויזיה ושידורים'),
+  const Category(id: 'tv', name: 'טלוויזיה', icon: '📺', currentBill: 130, color: Color(0xFF7C3AED), planCount: 9, description: 'ערוצי טלוויזיה ושידורים'),
   const Category(id: 'triple', name: 'חבילה משולבת', icon: '🏠', currentBill: 260, color: Color(0xFFE07034), planCount: 11, description: 'אינטרנט + טלוויזיה + טלפון'),
   const Category(id: 'abroad', name: 'חבילות חו"ל', icon: '✈️', currentBill: 0, color: Color(0xFF0891B2), planCount: 11, description: 'גלישה ושיחות בחו"ל'),
 ];
@@ -18,18 +18,20 @@ final List<Category> categories = [
 // Cellular / internet / TV / triple are real provider data, sourced in
 // lib/data/plans_*.dart. Abroad (eSIM / roaming) remains a curated seed.
 
+// priceUnit: תעריף לדקה / ליום / מנוי חודשי / חבילה חד-פעמית — אסור לערבב
+// אותם באותו מיון מחיר כאילו כולם "לחבילה" (ראו priceUnitLabel למטה).
 const List<Plan> abroadPlans = [
-  Plan(id: 'ab_019', cat: 'abroad', provider: '019 מובייל', net: 'international', plan: 'תעריף לדקה — אירופה', price: 1, rating: 3.9, reviews: 450, flags: [], feats: ['₪0.99 לדקה באירופה', '₪1.90 לMB גלישה', 'ללא מנוי חודשי', 'מתאים לנסיעות קצרות']),
-  Plan(id: 'ab_golan', cat: 'abroad', provider: 'גולן טלקום', net: 'international', plan: '₪9.90/יום — כל אירופה', price: 10, rating: 4.2, reviews: 890, flags: ['nocommit'], feats: ['גלישה + שיחות ב-₪9.90/יום', 'כל אירופה', 'הפעלה ב-SMS', 'מינימום יום אחד']),
-  Plan(id: 'ab_partner', cat: 'abroad', provider: 'פרטנר', net: 'international', plan: 'World Pack 1GB חודשי', price: 29, rating: 4.1, reviews: 1200, flags: ['nocommit'], feats: ['1GB גלישה בחו"ל', '60 דקות שיחות', '90+ מדינות', 'ניתן לביטול חודשי'], highlight: true),
-  Plan(id: 'ab_pelephone', cat: 'abroad', provider: 'פלאפון', net: 'international', plan: 'World 5GB חודשי', price: 49, rating: 4.3, reviews: 980, flags: [], feats: ['5GB גלישה', '200 דקות שיחות', '130+ מדינות', 'שיתוף עד 3 מכשירים']),
-  Plan(id: 'ab_airalo', cat: 'abroad', provider: 'Airalo eSIM', net: 'esim', plan: 'eSIM אירופה 10GB', price: 25, rating: 4.5, reviews: 3400, flags: ['nocommit'], feats: ['10GB גלישה', 'eSIM דיגיטלי', '30+ מדינות אירופה', 'הפעלה מיידית מהאפליקציה']),
-  Plan(id: 'ab_airalo_3g', cat: 'abroad', provider: 'Airalo eSIM', net: 'esim', plan: 'eSIM אירופה 3GB', price: 13, rating: 4.5, reviews: 2100, flags: ['nocommit'], feats: ['3GB גלישה', 'eSIM דיגיטלי', '30+ מדינות אירופה', 'הפעלה מיידית מהאפליקציה', 'מתאים לנסיעה קצרה'], highlight: true),
-  Plan(id: 'ab_airalo_global', cat: 'abroad', provider: 'Airalo eSIM', net: 'esim', plan: 'eSIM גלובל 5GB', price: 37, rating: 4.4, reviews: 1800, flags: ['nocommit'], feats: ['5GB גלישה', 'eSIM דיגיטלי', '100+ מדינות ברחבי העולם', 'הפעלה מיידית', 'ניתן להרחבה מהאפליקציה']),
-  Plan(id: 'ab_hot', cat: 'abroad', provider: 'הוט מובייל', net: 'international', plan: '₪8.90/יום — אירופה', price: 9, rating: 4.0, reviews: 760, flags: ['nocommit'], feats: ['גלישה + שיחות ב-₪8.90/יום', 'כל אירופה + ארה"ב', 'הפעלה אוטומטית בנחיתה', 'ניתן לביטול בחזרה']),
-  Plan(id: 'ab_partner_3g', cat: 'abroad', provider: 'פרטנר', net: 'international', plan: 'World Pack 3GB חודשי', price: 49, rating: 4.2, reviews: 890, flags: ['nocommit'], feats: ['3GB גלישה בחו"ל', '120 דקות שיחות', '90+ מדינות', 'שיתוף בין 2 מכשירים'], highlight: true),
-  Plan(id: 'ab_cellcom', cat: 'abroad', provider: 'סלקום', net: 'international', plan: '₪7.90/יום — כל אירופה', price: 8, rating: 4.1, reviews: 1100, flags: ['nocommit'], feats: ['גלישה + שיחות ב-₪7.90/יום', 'כל אירופה + טורקיה', 'הפעלה ב-SMS', 'חיסכון מ-30 יום']),
-  Plan(id: 'ab_019_world', cat: 'abroad', provider: '019 מובייל', net: 'international', plan: '2GB גלישה חודשי', price: 19, rating: 3.8, reviews: 340, flags: ['nocommit'], feats: ['2GB גלישה', '60 דקות שיחות', '80+ מדינות', 'ניתן לביטול חודשי']),
+  Plan(id: 'ab_019', cat: 'abroad', provider: '019 מובייל', net: 'international', plan: 'תעריף לדקה — אירופה', price: 1, priceUnit: 'minute', rating: 3.9, reviews: 450, flags: [], feats: ['₪0.99 לדקה באירופה', '₪1.90 לMB גלישה', 'ללא מנוי חודשי', 'מתאים לנסיעות קצרות']),
+  Plan(id: 'ab_golan', cat: 'abroad', provider: 'גולן טלקום', net: 'international', plan: '₪9.90/יום — כל אירופה', price: 10, priceUnit: 'day', rating: 4.2, reviews: 890, flags: ['nocommit'], feats: ['גלישה + שיחות ב-₪9.90/יום', 'כל אירופה', 'הפעלה ב-SMS', 'מינימום יום אחד']),
+  Plan(id: 'ab_partner', cat: 'abroad', provider: 'פרטנר', net: 'international', plan: 'World Pack 1GB חודשי', price: 29, priceUnit: 'month', rating: 4.1, reviews: 1200, flags: ['nocommit'], feats: ['1GB גלישה בחו"ל', '60 דקות שיחות', '90+ מדינות', 'ניתן לביטול חודשי'], highlight: true),
+  Plan(id: 'ab_pelephone', cat: 'abroad', provider: 'פלאפון', net: 'international', plan: 'World 5GB חודשי', price: 49, priceUnit: 'month', rating: 4.3, reviews: 980, flags: [], feats: ['5GB גלישה', '200 דקות שיחות', '130+ מדינות', 'שיתוף עד 3 מכשירים']),
+  Plan(id: 'ab_airalo', cat: 'abroad', provider: 'Airalo eSIM', net: 'esim', plan: 'eSIM אירופה 10GB', price: 25, priceUnit: 'package', rating: 4.5, reviews: 3400, flags: ['nocommit'], feats: ['10GB גלישה', 'eSIM דיגיטלי', '30+ מדינות אירופה', 'הפעלה מיידית מהאפליקציה']),
+  Plan(id: 'ab_airalo_3g', cat: 'abroad', provider: 'Airalo eSIM', net: 'esim', plan: 'eSIM אירופה 3GB', price: 13, priceUnit: 'package', rating: 4.5, reviews: 2100, flags: ['nocommit'], feats: ['3GB גלישה', 'eSIM דיגיטלי', '30+ מדינות אירופה', 'הפעלה מיידית מהאפליקציה', 'מתאים לנסיעה קצרה'], highlight: true),
+  Plan(id: 'ab_airalo_global', cat: 'abroad', provider: 'Airalo eSIM', net: 'esim', plan: 'eSIM גלובל 5GB', price: 37, priceUnit: 'package', rating: 4.4, reviews: 1800, flags: ['nocommit'], feats: ['5GB גלישה', 'eSIM דיגיטלי', '100+ מדינות ברחבי העולם', 'הפעלה מיידית', 'ניתן להרחבה מהאפליקציה']),
+  Plan(id: 'ab_hot', cat: 'abroad', provider: 'הוט מובייל', net: 'international', plan: '₪8.90/יום — אירופה', price: 9, priceUnit: 'day', rating: 4.0, reviews: 760, flags: ['nocommit'], feats: ['גלישה + שיחות ב-₪8.90/יום', 'כל אירופה + ארה"ב', 'הפעלה אוטומטית בנחיתה', 'ניתן לביטול בחזרה']),
+  Plan(id: 'ab_partner_3g', cat: 'abroad', provider: 'פרטנר', net: 'international', plan: 'World Pack 3GB חודשי', price: 49, priceUnit: 'month', rating: 4.2, reviews: 890, flags: ['nocommit'], feats: ['3GB גלישה בחו"ל', '120 דקות שיחות', '90+ מדינות', 'שיתוף בין 2 מכשירים'], highlight: true),
+  Plan(id: 'ab_cellcom', cat: 'abroad', provider: 'סלקום', net: 'international', plan: '₪7.90/יום — כל אירופה', price: 8, priceUnit: 'day', rating: 4.1, reviews: 1100, flags: ['nocommit'], feats: ['גלישה + שיחות ב-₪7.90/יום', 'כל אירופה + טורקיה', 'הפעלה ב-SMS', 'חיסכון מ-30 יום']),
+  Plan(id: 'ab_019_world', cat: 'abroad', provider: '019 מובייל', net: 'international', plan: '2GB גלישה חודשי', price: 19, priceUnit: 'month', rating: 3.8, reviews: 340, flags: ['nocommit'], feats: ['2GB גלישה', '60 דקות שיחות', '80+ מדינות', 'ניתן לביטול חודשי']),
 ];
 
 final List<Plan> allPlans = [
@@ -73,10 +75,43 @@ int planSaveYear(Plan p, int currentBill) {
   return ((currentBill - p.price) * 12).clamp(0, 999999);
 }
 
+/// תווית יחידת המחיר המלאה — 'לחודש' / 'לחבילה' / 'ליום' / 'לדקה'.
+/// המקור היחיד לאמת לתצוגת מחירים; מסכים לא גוזרים זאת שוב מהקטגוריה.
+String priceUnitLabel(Plan p) {
+  switch (p.unit) {
+    case 'package': return 'לחבילה';
+    case 'day': return 'ליום';
+    case 'minute': return 'לדקה';
+    default: return 'לחודש';
+  }
+}
+
+/// יחידת המחיר המקוצרת — לפורמטים כמו '₪X/חודש'.
+String priceUnitShort(Plan p) {
+  switch (p.unit) {
+    case 'package': return 'חבילה';
+    case 'day': return 'יום';
+    case 'minute': return 'דקה';
+    default: return 'חודש';
+  }
+}
+
+/// מהירות ההורדה (Mbps) מתוך specs['מהירות'] — 'עד 1000/100' → 1000.
+/// מחזיר 0 כשאין נתון מובנה.
+int planDownloadMbps(Plan p) {
+  final spec = p.specs['מהירות'];
+  if (spec == null) return 0;
+  final m = RegExp(r'\d[\d,]*').firstMatch(spec);
+  if (m == null) return 0;
+  return int.tryParse(m.group(0)!.replaceAll(',', '')) ?? 0;
+}
+
 Plan? hotDeal(int currentBill, {String cat = 'cellular'}) {
   Plan? best;
   int bestSave = 0;
-  for (final p in allPlans.where((p) => p.cat == cat)) {
+  // מסלולי דאטה-בלבד / כשר אינם תחליף לקו רגיל — "החיסכון" מולם מטעה,
+  // ולכן הם לא מתמודדים על הדיל החם של עמוד הבית.
+  for (final p in allPlans.where((p) => p.cat == cat && p.isRegular)) {
     final s = planSaveYear(p, currentBill);
     if (s > bestSave) { bestSave = s; best = p; }
   }
@@ -109,25 +144,35 @@ List<Plan> filteredPlans({
       case 'fixed': plans = plans.where((p) => p.isFixed).toList();
       case 'abroad': plans = plans.where((p) => p.hasAbroad).toList();
       case 'fiber': plans = plans.where((p) => p.net == 'fiber').toList();
-      case '1g': plans = plans.where((p) => p.net == 'fiber' && (p.plan.contains('1000') || p.plan.contains('2000') || p.plan.contains('2500') || p.plan.contains('5000') || p.plan.contains('ג׳יגה') || p.feats.any((f) => f.startsWith('1,000Mb') || f.startsWith('2,000Mb') || f.startsWith('2,500Mb') || f.startsWith('5,000Mb')))).toList();
+      // מהירות נגזרת מה-specs המובנים ולא משם המסלול ('Fiber 1GB' וכו׳).
+      case '1g': plans = plans.where((p) => p.net == 'fiber' && planDownloadMbps(p) >= 1000).toList();
       case 'streaming': plans = plans.where((p) => p.net == 'streaming').toList();
       case 'sport': plans = plans.where((p) => p.feats.any((f) => f.contains('ספורט'))).toList();
-      case 'satellite': plans = plans.where((p) => p.net == 'satellite').toList();
       case 'netflix': plans = plans.where((p) => p.feats.any((f) => f.contains('Netflix'))).toList();
       case 'esim': plans = plans.where((p) => p.net == 'esim').toList();
-      case 'kosher': plans = plans.where((p) => p.plan.contains('כשר')).toList();
+      case 'kosher': plans = plans.where((p) => p.kind == 'kosher' || p.plan.contains('כשר')).toList();
     }
   }
 
   if (budget > 0) plans = plans.where((p) => p.price <= budget).toList();
 
   final bill = currentBill ?? 119;
+  // מסלולים שאינם regular (דאטה-בלבד / כשר) לא מדורגים לפי "חיסכון" —
+  // השוואה מול חשבון של קו רגיל חסרת משמעות — אז הם נדחקים לסוף הרשימה
+  // (אך עדיין מופיעים בה).
+  int saveRank(Plan p) => p.isRegular ? planSaveYear(p, bill) : -1;
   switch (sort) {
-    case 'price': plans.sort((a, b) => a.price.compareTo(b.price));
-    case 'save': plans.sort((a, b) => planSaveYear(b, bill).compareTo(planSaveYear(a, bill)));
+    case 'price':
+      // תעריף לדקה (₪1) אינו "החבילה הזולה ביותר" — נדחק לסוף מיון מחיר עולה.
+      plans.sort((a, b) {
+        final aMin = a.unit == 'minute', bMin = b.unit == 'minute';
+        if (aMin != bMin) return aMin ? 1 : -1;
+        return a.price.compareTo(b.price);
+      });
+    case 'save': plans.sort((a, b) => saveRank(b).compareTo(saveRank(a)));
     default:
       plans.sort((a, b) {
-        final sc = planSaveYear(b, bill).compareTo(planSaveYear(a, bill));
+        final sc = saveRank(b).compareTo(saveRank(a));
         return sc != 0 ? sc : b.rating.compareTo(a.rating);
       });
   }
@@ -138,11 +183,11 @@ List<Plan> filteredPlans({
 // Community posts seed data
 List<CommunityPost> get communityPosts => [
   CommunityPost(id: '1', author: 'מאיה כהן', avatar: 'מ', channel: 'המלצות', text: 'עברתי לגולן ב-₪39 במקום ₪119 בפלאפון. חוסך עזר לי עם כל ניתוק. ממליצה בחום!', likes: 34, replies: 8, timestamp: DateTime.now().subtract(const Duration(hours: 2)), isVerified: true),
-  CommunityPost(id: '2', author: 'צוות חוסך', avatar: 'ח', channel: 'המלצות', text: '🔥 עסקה חמה: גולן 400GB ב-₪39 כולל 1GB חו"ל. עדיין חיסכון של ₪720/שנה!', likes: 89, replies: 23, timestamp: DateTime.now().subtract(const Duration(hours: 5)), isTeam: true, planId: 'cel_golan_400'),
+  CommunityPost(id: '2', author: 'צוות חוסך', avatar: 'ח', channel: 'המלצות', text: '🔥 עסקה חמה: גולן 400GB ב-₪39 כולל 1GB חו"ל. עדיין חיסכון של ₪720/שנה!', likes: 89, replies: 23, timestamp: DateTime.now().subtract(const Duration(hours: 5)), isTeam: true, planId: 'cel_golan_400abroad'),
   CommunityPost(id: '3', author: 'יוסי לוי', avatar: 'י', channel: 'סלולר', text: 'שאלה — מי יותר טוב לגבי כיסוי 5G בחיפה? פרטנר או סלקום?', likes: 12, replies: 15, timestamp: DateTime.now().subtract(const Duration(hours: 8))),
   CommunityPost(id: '4', author: 'רחל אברהם', avatar: 'ר', channel: 'עזרה בניתוק', text: 'פלאפון מסרבים לבצע את הניוד. כבר שבוע. מה עושים?', likes: 5, replies: 19, timestamp: DateTime.now().subtract(const Duration(hours: 12))),
   CommunityPost(id: '5', author: 'דן שפירא', avatar: 'ד', channel: 'אינטרנט', text: 'עברתי לסלקום fiber 1GB ב-₪109 ללא התחייבות. מהירות מדהימה! 950Mb בבדיקה.', likes: 27, replies: 6, timestamp: DateTime.now().subtract(const Duration(days: 1))),
-  CommunityPost(id: '6', author: 'נועה גרין', avatar: 'נ', channel: 'המלצות', text: 'חוסך עזר לי לעבור לפרטנר טריפל 1000mb+Netflix — הכל ב-₪215. חסכתי ₪1,100 בשנה!', likes: 41, replies: 11, timestamp: DateTime.now().subtract(const Duration(days: 2)), isVerified: true, planId: 'tri_partner_1g_nflx'),
+  CommunityPost(id: '6', author: 'נועה גרין', avatar: 'נ', channel: 'המלצות', text: 'חוסך עזר לי לעבור ל-yes+Fiber הטריפל — סיב 1000Mb + Netflix, הכל ב-₪209. חסכתי ₪1,100 בשנה!', likes: 41, replies: 11, timestamp: DateTime.now().subtract(const Duration(days: 2)), isVerified: true, planId: 'tri_yes_yes-fiber-triple'),
   CommunityPost(id: '7', author: 'אלי מזרחי', avatar: 'א', channel: 'סלולר', text: 'טיפ: בקשו מפלאפון מחיר שימור לפני שאתם עוזבים. הציעו לי ₪59 אחרי שאמרתי שאני עוזב. בכל זאת עברתי לגולן ב-₪39 😂', likes: 67, replies: 28, timestamp: DateTime.now().subtract(const Duration(days: 2))),
   CommunityPost(id: '8', author: 'צוות חוסך', avatar: 'ח', channel: 'המלצות', text: '📊 דיווח חודשי: 3,847 לקוחות חסכו ₪847 בממוצע החודש! הספק הפופולרי ביותר: גולן טלקום 🏆', likes: 156, replies: 44, timestamp: DateTime.now().subtract(const Duration(days: 3)), isTeam: true),
   CommunityPost(id: '9', author: 'שרית לוין', avatar: 'ש', channel: 'אינטרנט', text: 'שאלה: HOT או בזק לאינטרנט גיגה? יש לי ילדים שמשחקים games אז latency חשוב', likes: 8, replies: 22, timestamp: DateTime.now().subtract(const Duration(days: 3))),
@@ -161,7 +206,7 @@ List<CommunityPost> get communityPosts => [
   CommunityPost(id: '21', author: 'ארז שוהם', avatar: 'א', channel: 'טלוויזיה', text: 'HOT ספורט פרמיום שווה? גם ישראל פריים ליג וגם NBA ב-₪119 לחודש. מי שצופה בכדורגל — שווה כל שקל.', likes: 44, replies: 22, timestamp: DateTime.now().subtract(const Duration(days: 2))),
   CommunityPost(id: '22', author: 'שירה מנצ׳ר', avatar: 'ש', channel: 'טלוויזיה', text: 'FreeTV אנדרואיד — מה מצאתי בחינם: Netflix, Disney+, ערוצי ילדים. אין צורך ב-HOT או yes בכלל 😅', likes: 71, replies: 38, timestamp: DateTime.now().subtract(const Duration(days: 4)), isVerified: true),
   CommunityPost(id: '23', author: 'משה גולן', avatar: 'מ', channel: 'טלוויזיה', text: 'שאלה: yes לוויין ב-₪89 לעומת סלקום TV ב-₪59 — מה כולל יותר? מישהו השווה?', likes: 18, replies: 31, timestamp: DateTime.now().subtract(const Duration(days: 6))),
-  CommunityPost(id: '24', author: 'צוות חוסך', avatar: 'ח', channel: 'טלוויזיה', text: '📺 חדש: פרטנר TV ספורט פרמיום ב-₪129 כולל כל הספורט + VOD. ללא התחייבות — ביטול בלחיצה!', likes: 39, replies: 14, timestamp: DateTime.now().subtract(const Duration(days: 8)), isTeam: true, planId: 'tv_partner_sport'),
+  CommunityPost(id: '24', author: 'צוות חוסך', avatar: 'ח', channel: 'טלוויזיה', text: '📺 חדש: Partner TV + ספורט ב-₪95 כולל כל ערוצי הספורט + VOD. ללא התחייבות — ביטול בלחיצה!', likes: 39, replies: 14, timestamp: DateTime.now().subtract(const Duration(days: 8)), isTeam: true, planId: 'tv_partner_sport'),
   CommunityPost(id: '25', author: 'רות ברנשטיין', avatar: 'ר', channel: 'טלוויזיה', text: 'עברנו מ-HOT ל-FreeTV — חסכנו ₪70/חודש. הילדים לא שמו לב לשינוי. כל הערוצים הכי חשובים עדיין שם.', likes: 62, replies: 17, timestamp: DateTime.now().subtract(const Duration(days: 15)), isVerified: true),
   // Abroad channel posts
   CommunityPost(id: '26', author: 'גיל מירון', avatar: 'ג', channel: 'חו"ל', text: 'נסיעה ל-3 שבועות אירופה: לקחתי Airalo גלובל 5GB ב-₪37. ליטא, פולין, גרמניה, צרפת — עבד בכל מקום. 10/10!', likes: 83, replies: 26, timestamp: DateTime.now().subtract(const Duration(days: 1)), isVerified: true),

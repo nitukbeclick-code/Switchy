@@ -226,7 +226,7 @@ class _CompareTable extends StatelessWidget {
     final specKeys = _specKeyUnion(plans);
 
     final rows = <_Row>[
-      _Row('מחיר', plans.map((p) => p.cat == 'abroad' ? '₪${p.price}/חבילה' : '₪${p.price}/חודש').toList()),
+      _Row('מחיר', plans.map((p) => '₪${p.price}/${priceUnitShort(p)}').toList()),
       _Row('לאחר מבצע',
           plans.map((p) => p.hasPromo ? '₪${p.after}' : 'קבוע').toList()),
       _Row('התחייבות',
@@ -581,7 +581,7 @@ class _WinnerSummaryCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         Text('₪${winner.price}', style: GoogleFonts.rubik(fontSize: 28, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: -1)),
-                        Text(winner.cat == 'abroad' ? 'לחבילה' : 'לחודש', style: GoogleFonts.assistant(fontSize: 11, color: Colors.white60)),
+                        Text(priceUnitLabel(winner), style: GoogleFonts.assistant(fontSize: 11, color: Colors.white60)),
                       ],
                     ),
                   ],

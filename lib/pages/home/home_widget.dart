@@ -146,14 +146,20 @@ class _HomeWidgetState extends State<HomeWidget> {
           Positioned(
             bottom: 24,
             left: 20,
-            child: FloatingActionButton(
-              backgroundColor: ffTheme.secondary,
-              elevation: 4,
-              onPressed: () {
-                HapticFeedback.lightImpact();
-                context.pushNamed('Callback');
-              },
-              child: Icon(Icons.phone_rounded, color: ffTheme.primary, size: 26),
+            child: Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                boxShadow: ffTheme.shadowPrimary,
+              ),
+              child: FloatingActionButton(
+                backgroundColor: ffTheme.secondary,
+                elevation: 0,
+                onPressed: () {
+                  HapticFeedback.lightImpact();
+                  context.pushNamed('Callback');
+                },
+                child: Icon(Icons.phone_rounded, color: ffTheme.primary, size: 26),
+              ),
             ),
           ),
 
@@ -171,9 +177,9 @@ class _HomeWidgetState extends State<HomeWidget> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   decoration: BoxDecoration(
-                    color: ffTheme.primary,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [BoxShadow(color: ffTheme.primary.withValues(alpha: 0.35), blurRadius: 14, offset: const Offset(0, 4))],
+                    gradient: ffTheme.freshGradient,
+                    borderRadius: BorderRadius.circular(ffTheme.radiusMd),
+                    boxShadow: ffTheme.shadowPrimary,
                   ),
                   child: Row(
                     children: [
@@ -183,7 +189,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                       const Spacer(),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                        decoration: BoxDecoration(color: ffTheme.secondary, borderRadius: BorderRadius.circular(8)),
+                        decoration: BoxDecoration(color: ffTheme.secondary, borderRadius: BorderRadius.circular(ffTheme.radiusSm)),
                         child: Text('←', style: ffTheme.labelMedium.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w800)),
                       ),
                     ],
@@ -232,7 +238,7 @@ class _HomeWidgetState extends State<HomeWidget> {
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: bgColor,
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(ffTheme.radiusLg),
             border: Border.all(color: borderColor, width: 1.5),
             boxShadow: [
               BoxShadow(
@@ -255,7 +261,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                     begin: Alignment.topRight,
                     end: Alignment.bottomLeft,
                   ),
-                  borderRadius: BorderRadius.circular(13),
+                  borderRadius: BorderRadius.circular(ffTheme.radiusSm),
                 ),
                 child: const Center(
                   child: Text('⏰', style: TextStyle(fontSize: 22)),
@@ -291,7 +297,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(colors: gradientColors, begin: Alignment.topRight, end: Alignment.bottomLeft),
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(ffTheme.radiusSm),
                 ),
                 child: Text(
                   'השווה ←',
@@ -308,11 +314,7 @@ class _HomeWidgetState extends State<HomeWidget> {
   Widget _buildHeader(BuildContext context, AppTheme ffTheme, AppState appState) {
     return Container(
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topRight,
-          end: Alignment.bottomLeft,
-          colors: [ffTheme.primary, ffTheme.tertiary],
-        ),
+        gradient: ffTheme.freshGradient,
       ),
       child: SafeArea(
         bottom: false,
@@ -345,7 +347,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
                         decoration: BoxDecoration(
                           color: Colors.white.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(ffTheme.radiusMd),
                           border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
                         ),
                         child: Row(
@@ -390,8 +392,8 @@ class _HomeWidgetState extends State<HomeWidget> {
                       child: Container(
                         width: 16,
                         height: 16,
-                        decoration: BoxDecoration(color: ffTheme.secondary, shape: BoxShape.circle, border: Border.all(color: ffTheme.primary, width: 1.5)),
-                        child: Center(child: Text(count > 9 ? '9+' : '$count', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: ffTheme.primary))),
+                        decoration: BoxDecoration(color: ffTheme.secondary, shape: BoxShape.circle, border: Border.all(color: ffTheme.primaryDark, width: 1.5)),
+                        child: Center(child: Text(count > 9 ? '9+' : '$count', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: ffTheme.primaryDark))),
                       ),
                     );
                   }),
@@ -408,15 +410,9 @@ class _HomeWidgetState extends State<HomeWidget> {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        boxShadow: ffTheme.shadowSoft,
         border: const Border(
-          right: BorderSide(color: Color(0xFFC9EC4B), width: 3),
+          right: BorderSide(color: AppColors.secondary, width: 3),
         ),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -455,8 +451,9 @@ class _HomeWidgetState extends State<HomeWidget> {
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: const Color(0xFF0E3A26),
-        borderRadius: BorderRadius.circular(20),
+        gradient: ffTheme.brandGradient,
+        borderRadius: BorderRadius.circular(ffTheme.radiusXl),
+        boxShadow: ffTheme.shadowLifted,
       ),
       child: Column(
         children: [
@@ -497,11 +494,11 @@ class _HomeWidgetState extends State<HomeWidget> {
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               decoration: BoxDecoration(
                 color: ffTheme.secondary,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(ffTheme.radiusMd),
               ),
               child: Text(
                 appState.billsPersonalized ? 'חפש חבילות ←' : 'בדקו כמה תחסכו ←',
-                style: ffTheme.titleSmall.copyWith(color: ffTheme.primary),
+                style: ffTheme.titleSmall.copyWith(color: ffTheme.primaryDark),
               ),
             ),
           ),
@@ -692,19 +689,13 @@ class _HomeWidgetState extends State<HomeWidget> {
                 child: Container(
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: isActive ? const Color(0xFFE8F5EE) : Colors.white,
-                    borderRadius: BorderRadius.circular(14),
+                    color: isActive ? ffTheme.accent1 : Colors.white,
+                    borderRadius: BorderRadius.circular(ffTheme.radiusLg),
                     border: Border.all(
                       color: isActive ? ffTheme.primary : ffTheme.alternate,
                       width: isActive ? 2 : 1,
                     ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.04),
-                        blurRadius: 6,
-                        offset: const Offset(0, 1),
-                      ),
-                    ],
+                    boxShadow: ffTheme.shadowSoft,
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -751,12 +742,9 @@ class _HomeWidgetState extends State<HomeWidget> {
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            colors: [Color(0xFF0E3A26), Color(0xFF1E7A4E)],
-            begin: Alignment.centerRight,
-            end: Alignment.centerLeft,
-          ),
-          borderRadius: BorderRadius.circular(20),
+          gradient: ffTheme.freshGradient,
+          borderRadius: BorderRadius.circular(ffTheme.radiusLg),
+          boxShadow: ffTheme.shadowCard,
         ),
         child: Row(
           children: [
@@ -768,7 +756,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
                       color: ffTheme.secondary,
-                      borderRadius: BorderRadius.circular(6),
+                      borderRadius: BorderRadius.circular(ffTheme.radiusSm),
                     ),
                     child: Text(
                       '✦ חוסך AI',
@@ -843,9 +831,9 @@ class _HomeWidgetState extends State<HomeWidget> {
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
                   color: post.isUserPost ? ffTheme.accent1 : Colors.white,
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(ffTheme.radiusLg),
                   border: Border.all(color: post.isUserPost ? ffTheme.primary.withValues(alpha: 0.2) : ffTheme.alternate),
-                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 6, offset: const Offset(0, 1))],
+                  boxShadow: ffTheme.shadowSoft,
                 ),
                 child: Row(
                   children: [
@@ -874,7 +862,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                                 padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                                 decoration: BoxDecoration(
                                   color: ffTheme.accent2,
-                                  borderRadius: BorderRadius.circular(6),
+                                  borderRadius: BorderRadius.circular(ffTheme.radiusSm),
                                 ),
                                 child: Text(post.channel, style: ffTheme.labelSmall.copyWith(color: const Color(0xFF8A6000), fontSize: 10, fontWeight: FontWeight.w700)),
                               ),
@@ -966,15 +954,9 @@ class _HomeWidgetState extends State<HomeWidget> {
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(ffTheme.radiusLg),
                       border: Border.all(color: ffTheme.alternate),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.04),
-                          blurRadius: 6,
-                          offset: const Offset(0, 1),
-                        ),
-                      ],
+                      boxShadow: ffTheme.shadowSoft,
                     ),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -1038,11 +1020,11 @@ class _HomeWidgetState extends State<HomeWidget> {
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
                           color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(ffTheme.radiusMd),
                           border: Border.all(
                             color: better != null ? ffTheme.primary.withValues(alpha: 0.35) : ffTheme.alternate,
                           ),
-                          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 6)],
+                          boxShadow: ffTheme.shadowSoft,
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1078,7 +1060,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                               color: ffTheme.secondary,
                               shape: BoxShape.circle,
                               border: Border.all(color: Colors.white, width: 1.5),
-                              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.12), blurRadius: 4)],
+                              boxShadow: ffTheme.shadowSoft,
                             ),
                             child: const Center(child: Text('💡', style: TextStyle(fontSize: 11))),
                           ),
@@ -1124,9 +1106,9 @@ class _HomeWidgetState extends State<HomeWidget> {
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(ffTheme.radiusMd),
                       border: Border.all(color: ffTheme.alternate),
-                      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 6)],
+                      boxShadow: ffTheme.shadowSoft,
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1202,7 +1184,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                   decoration: BoxDecoration(
                     color: p.bg,
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(ffTheme.radiusPill),
                     border: Border.all(color: p.color.withValues(alpha: 0.25)),
                   ),
                   child: Text(

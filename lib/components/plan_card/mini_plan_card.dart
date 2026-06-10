@@ -40,15 +40,9 @@ class MiniPlanCard extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(ffTheme.radiusLg),
             border: Border.all(color: ffTheme.alternate),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 2),
-              ),
-            ],
+            boxShadow: ffTheme.shadowCard,
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
@@ -71,12 +65,12 @@ class MiniPlanCard extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
                           color: ffTheme.secondary,
-                          borderRadius: BorderRadius.circular(6),
+                          borderRadius: BorderRadius.circular(ffTheme.radiusMd),
                         ),
                         child: Text(
                           'חוסך ₪$savingsPerYear/שנה',
                           style: ffTheme.labelSmall.copyWith(
-                            color: ffTheme.primary,
+                            color: ffTheme.primaryDark,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
@@ -99,7 +93,7 @@ class MiniPlanCard extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
                         color: ffTheme.primary,
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(ffTheme.radiusMd),
                       ),
                       child: Text(
                         '$ctaLabel ←',

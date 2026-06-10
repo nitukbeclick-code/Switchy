@@ -48,10 +48,11 @@ class EmptyState extends StatelessWidget {
               width: 96,
               height: 96,
               decoration: BoxDecoration(
-                color: ffTheme.accent1,
+                color: ffTheme.mint,
                 shape: BoxShape.circle,
+                boxShadow: ffTheme.shadowSoft,
               ),
-              child: Icon(icon, size: 48, color: ffTheme.primary),
+              child: Icon(icon, size: 48, color: ffTheme.tertiary),
             ),
             const SizedBox(height: 24),
             Text(
@@ -74,7 +75,7 @@ class EmptyState extends StatelessWidget {
                 textStyle: ffTheme.titleSmall.copyWith(color: Colors.white),
                 width: double.infinity,
                 height: 52,
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(ffTheme.radiusMd),
               ),
             ],
           ],

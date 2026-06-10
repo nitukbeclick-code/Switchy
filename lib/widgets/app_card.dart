@@ -5,7 +5,7 @@ import '../theme/app_theme.dart';
 ///
 /// Provides consistent background color, border, corner radius and drop shadow
 /// that match the existing card pattern (white bg, [AppTheme.alternate] border,
-/// subtle `Colors.black.withValues(alpha: 0.04)` shadow). Wrap any content in [child].
+/// soft green-tinted [AppTheme.shadowCard]). Wrap any content in [child].
 class AppCard extends StatelessWidget {
   /// The widget to place inside the card.
   final Widget child;
@@ -13,7 +13,7 @@ class AppCard extends StatelessWidget {
   /// Inner padding. Defaults to `EdgeInsets.all(16)`.
   final EdgeInsetsGeometry padding;
 
-  /// Corner radius. Defaults to `16`.
+  /// Corner radius. Defaults to `20` ([AppTheme.radiusLg]).
   final double borderRadius;
 
   /// Override the border color. Defaults to [AppTheme.alternate].
@@ -29,7 +29,7 @@ class AppCard extends StatelessWidget {
     super.key,
     required this.child,
     this.padding = const EdgeInsets.all(16),
-    this.borderRadius = 16,
+    this.borderRadius = 20,
     this.borderColor,
     this.margin,
     this.onTap,
@@ -45,13 +45,7 @@ class AppCard extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(borderRadius),
         border: Border.all(color: borderColor ?? ffTheme.alternate),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        boxShadow: ffTheme.shadowCard,
       ),
       child: child,
     );

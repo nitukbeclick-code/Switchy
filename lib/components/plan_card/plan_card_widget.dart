@@ -46,7 +46,7 @@ class PlanCardWidget extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(ffTheme.radiusLg),
         border: Border(
           right: BorderSide(
             color: plan.highlight ? ffTheme.primary : ffTheme.alternate,
@@ -56,13 +56,7 @@ class PlanCardWidget extends StatelessWidget {
           top: BorderSide(color: ffTheme.alternate, width: 1),
           bottom: BorderSide(color: ffTheme.alternate, width: 1),
         ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 3),
-          ),
-        ],
+        boxShadow: ffTheme.shadowCard,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -72,10 +66,10 @@ class PlanCardWidget extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
               decoration: BoxDecoration(
-                color: ffTheme.primary,
-                borderRadius: const BorderRadius.only(
-                  topLeft: Radius.circular(13),
-                  topRight: Radius.circular(13),
+                gradient: ffTheme.freshGradient,
+                borderRadius: BorderRadius.only(
+                  topLeft: Radius.circular(ffTheme.radiusLg),
+                  topRight: Radius.circular(ffTheme.radiusLg),
                 ),
               ),
               child: Row(
@@ -136,7 +130,7 @@ class PlanCardWidget extends StatelessWidget {
                                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                 decoration: BoxDecoration(
                                   color: ffTheme.accent4,
-                                  borderRadius: BorderRadius.circular(6),
+                                  borderRadius: BorderRadius.circular(ffTheme.radiusXs),
                                   border: Border.all(color: ffTheme.info.withValues(alpha: 0.3)),
                                 ),
                                 child: Text(
@@ -153,16 +147,16 @@ class PlanCardWidget extends StatelessWidget {
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                   decoration: BoxDecoration(
-                                    color: matchLabel.startsWith('✓') ? ffTheme.success.withValues(alpha: 0.1) : ffTheme.warning.withValues(alpha: 0.1),
-                                    borderRadius: BorderRadius.circular(6),
-                                    border: Border.all(color: matchLabel.startsWith('✓') ? ffTheme.success.withValues(alpha: 0.4) : ffTheme.warning.withValues(alpha: 0.4)),
+                                    color: matchLabel.startsWith('✓') ? ffTheme.mint : ffTheme.warning.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(ffTheme.radiusXs),
+                                    border: Border.all(color: matchLabel.startsWith('✓') ? ffTheme.tertiary.withValues(alpha: 0.35) : ffTheme.warning.withValues(alpha: 0.4)),
                                   ),
                                   child: Text(
                                     matchLabel,
                                     style: GoogleFonts.rubik(
                                       fontSize: 9,
                                       fontWeight: FontWeight.w700,
-                                      color: matchLabel.startsWith('✓') ? ffTheme.success : ffTheme.warning,
+                                      color: matchLabel.startsWith('✓') ? ffTheme.tertiary : ffTheme.warning,
                                     ),
                                   ),
                                 ),
@@ -299,14 +293,14 @@ class PlanCardWidget extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                         decoration: BoxDecoration(
                           color: ffTheme.secondary,
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius: BorderRadius.circular(ffTheme.radiusMd),
                         ),
                         child: Text(
                           'חוסך ₪$savings בשנה',
                           style: GoogleFonts.rubik(
                             fontSize: 12,
                             fontWeight: FontWeight.w800,
-                            color: const Color(0xFF0E3A26),
+                            color: AppColors.primaryDark,
                           ),
                         ),
                       ),
@@ -343,7 +337,7 @@ class PlanCardWidget extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
                           color: ffTheme.background,
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(ffTheme.radiusXs),
                         ),
                         child: Text(
                           feat,
@@ -389,7 +383,7 @@ class PlanCardWidget extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 9),
                           decoration: BoxDecoration(
                             color: ffTheme.primary,
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(ffTheme.radiusMd),
                           ),
                           child: Text(
                             'בחירה',
@@ -414,7 +408,7 @@ class PlanCardWidget extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(vertical: 9),
                       decoration: BoxDecoration(
                         color: ffTheme.primary,
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(ffTheme.radiusMd),
                       ),
                       child: Center(
                         child: Text(
@@ -498,7 +492,7 @@ class _FlagChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(ffTheme.radiusXs),
         border: Border.all(color: color.withValues(alpha: 0.35)),
       ),
       child: Text(

@@ -10,22 +10,25 @@ import 'package:google_fonts/google_fonts.dart';
 class AppColors {
   const AppColors._();
 
-  // Brand
+  // Brand — "natural & fresh": the core green + a deep base for gradients/depth,
+  // a brighter leaf green, the lime highlight, and a soft sage for organic accents.
   static const Color primary = Color(0xFF15603E);
-  static const Color secondary = Color(0xFFC9EC4B);
-  static const Color tertiary = Color(0xFF1E7A4E);
+  static const Color primaryDark = Color(0xFF0E3A26); // depth / gradient base
+  static const Color tertiary = Color(0xFF1E8A57); // brighter leaf green
+  static const Color secondary = Color(0xFFC9EC4B); // lime highlight
+  static const Color sage = Color(0xFF4E8568); // muted green for icons/accents
 
-  // Surfaces
+  // Surfaces — warm cream stays; the card surface is a touch brighter for air.
   static const Color background = Color(0xFFF4F0E8);
-  static const Color secondaryBackground = Color(0xFFFEFCF8);
+  static const Color secondaryBackground = Color(0xFFFFFEFB);
 
-  // Text
+  // Text — warm near-black on cream.
   static const Color primaryText = Color(0xFF1A1816);
   static const Color secondaryText = Color(0xFF6B6760);
 
-  // Lines & borders
-  static const Color alternate = Color(0xFFE5E0D5);
-  static const Color lineColor = Color(0xFFE0DBD0);
+  // Lines & borders — lighter, airier hairlines.
+  static const Color alternate = Color(0xFFE8E3D8);
+  static const Color lineColor = Color(0xFFEAE5DB);
 
   // Status
   static const Color error = Color(0xFFC5533B);
@@ -33,11 +36,12 @@ class AppColors {
   static const Color success = Color(0xFF15603E);
   static const Color info = Color(0xFF3B82F6);
 
-  // Surface tints
-  static const Color accent1 = Color(0xFFE8F5EE);
-  static const Color accent2 = Color(0xFFFFF8E7);
-  static const Color accent3 = Color(0xFFFFECE6);
-  static const Color accent4 = Color(0xFFEEF6FF);
+  // Surface tints — soft, airy washes for tinted cards/chips.
+  static const Color accent1 = Color(0xFFE3F3E9); // fresh mint (green)
+  static const Color accent2 = Color(0xFFFBF3E0); // warm sand
+  static const Color accent3 = Color(0xFFFBEDE6); // soft peach
+  static const Color accent4 = Color(0xFFE9F1F6); // calm sky
+  static const Color mint = Color(0xFFE3F3E9); // alias for accent1, semantic
 }
 
 /// Ergonomic accessor over [AppColors] and the type scale.
@@ -65,10 +69,64 @@ class AppTheme {
   Color get success => AppColors.success;
   Color get info => AppColors.info;
   Color get white => Colors.white;
+  Color get primaryDark => AppColors.primaryDark;
+  Color get sage => AppColors.sage;
+  Color get mint => AppColors.mint;
   Color get accent1 => AppColors.accent1;
   Color get accent2 => AppColors.accent2;
   Color get accent3 => AppColors.accent3;
   Color get accent4 => AppColors.accent4;
+
+  // ── Elevation — soft, layered, green-tinted shadows (not flat black) ────────
+  /// Subtle lift for chips, list rows, low-emphasis surfaces.
+  List<BoxShadow> get shadowSoft => const [
+        BoxShadow(color: Color(0x0F15603E), blurRadius: 14, offset: Offset(0, 4)),
+      ];
+
+  /// The default card shadow — gentle, warm, two-layer.
+  List<BoxShadow> get shadowCard => const [
+        BoxShadow(color: Color(0x140E3A26), blurRadius: 24, offset: Offset(0, 8)),
+        BoxShadow(color: Color(0x0A0E3A26), blurRadius: 6, offset: Offset(0, 2)),
+      ];
+
+  /// Pronounced lift for heroes, FABs, modals.
+  List<BoxShadow> get shadowLifted => const [
+        BoxShadow(color: Color(0x1F0E3A26), blurRadius: 40, offset: Offset(0, 16)),
+      ];
+
+  /// A lime glow for the primary CTA so it reads "tap me".
+  List<BoxShadow> get shadowPrimary => const [
+        BoxShadow(color: Color(0x4015603E), blurRadius: 20, offset: Offset(0, 8)),
+      ];
+
+  // ── Gradients — the brand washes used on heroes, headers, primary CTAs ──────
+  LinearGradient get brandGradient => const LinearGradient(
+        colors: [AppColors.primaryDark, AppColors.primary],
+        begin: Alignment.topRight,
+        end: Alignment.bottomLeft,
+      );
+
+  /// A fresh green→leaf wash for lighter hero surfaces.
+  LinearGradient get freshGradient => const LinearGradient(
+        colors: [AppColors.primary, AppColors.tertiary],
+        begin: Alignment.topRight,
+        end: Alignment.bottomLeft,
+      );
+
+  /// The energetic green→lime accent, for highlight ribbons and badges.
+  LinearGradient get limeGradient => const LinearGradient(
+        colors: [AppColors.tertiary, AppColors.secondary],
+        begin: Alignment.centerRight,
+        end: Alignment.centerLeft,
+      );
+
+  // ── Radii — one friendly, generous rounding scale ───────────────────────────
+  double get radiusXs => 10; // small chips/flags
+  double get radiusSm => 12;
+  double get radiusMd => 16;
+  double get radiusLg => 20;
+  double get radiusXl => 28;
+  double get radiusPill => 999;
 
   // Display — Rubik, tight tracking for big numerals & hero headings
   TextStyle get displayLarge => GoogleFonts.rubik(fontSize: 52, fontWeight: FontWeight.w800, letterSpacing: -0.04, color: AppColors.primaryText);

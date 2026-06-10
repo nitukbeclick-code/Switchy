@@ -29,7 +29,7 @@ class InfoBanner extends StatelessWidget {
   /// Inner padding. Defaults to `EdgeInsets.all(14)`.
   final EdgeInsetsGeometry padding;
 
-  /// Corner radius. Defaults to `14`.
+  /// Corner radius. Defaults to the friendly `radiusMd` (16).
   final double borderRadius;
 
   const InfoBanner({
@@ -41,7 +41,7 @@ class InfoBanner extends StatelessWidget {
     this.backgroundColor,
     this.accentColor,
     this.padding = const EdgeInsets.all(14),
-    this.borderRadius = 14,
+    this.borderRadius = 16,
   });
 
   @override
@@ -62,7 +62,8 @@ class InfoBanner extends StatelessWidget {
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(borderRadius),
-        border: Border.all(color: accent.withValues(alpha: 0.15)),
+        border: Border.all(color: accent.withValues(alpha: 0.12)),
+        boxShadow: ffTheme.shadowSoft,
       ),
       child: Row(
         crossAxisAlignment:

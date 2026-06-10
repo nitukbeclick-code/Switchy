@@ -28,6 +28,7 @@ import { buildText, CALLBACK_HE, leadKeyboard } from "../_shared/leads.ts";
 import { buildDigest, daysUntil } from "../_shared/digests.ts";
 import { buildWeeklyReport } from "../_shared/weekly.ts";
 import { israelHourOf, planFollowUps } from "../_shared/followup.ts";
+import { type CronJobRow, evalCronHealth } from "../_shared/cron_health.ts";
 
 const enc = encodeURIComponent;
 
@@ -181,6 +182,18 @@ Deno.serve(async (req: Request) => {
   const cfg = await resolveCfgCached();
 
   if (req.method === "GET") {
+    const action = new URL(req.url).searchParams.get("action");
+    if (action === "cron-health") {
+      // public-safe watchdog: booleans + our fixed job names only. The
+      // external prober (bot-health.yml) catches "the schedules died silently".
+      const rows = await rpcRows<CronJobRow>("get_cron_health", {});
+      if (rows === null) {
+        // RPC missing (pg_cron not set up yet) or transient — don't page
+        return json({ ok: true, known_jobs: 0, note: "cron health unavailable" });
+      }
+      const health = evalCronHealth(rows, Date.now());
+      return json({ ok: health.ok, known_jobs: health.known, stale: health.stale, failing: health.failing });
+    }
     return json({
       ok: true,
       function: "renewal-reminders",
@@ -209,7 +222,16 @@ Deno.serve(async (req: Request) => {
     case "follow-up":
       return json(await runFollowUp(cfg));
     case "weekly": {
-      const tg = await sendTelegram(cfg, await buildWeeklyReport());
+      let report = await buildWeeklyReport();
+      // surface dead/failing schedules to the team — pg_cron fails silently
+      const cronRows = await rpcRows<CronJobRow>("get_cron_health", {});
+      if (cronRows !== null) {
+        const h = evalCronHealth(cronRows, Date.now());
+        if (!h.ok) {
+          report = `🚨 <b>משימות מתוזמנות תקועות:</b> ${[...h.stale, ...h.failing].join(", ")}${NL}${NL}` + report;
+        }
+      }
+      const tg = await sendTelegram(cfg, report);
       // privacy retention: source_ip is abuse-prevention data — drop it after
       // 30 days (piggybacks on the weekly run)
       const ipCutoff = enc(new Date(Date.now() - 30 * 86_400_000).toISOString());

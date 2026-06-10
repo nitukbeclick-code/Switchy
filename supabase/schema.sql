@@ -274,6 +274,37 @@ $$;
 revoke execute on function public.get_hot_browsers() from public, anon, authenticated;
 grant execute on function public.get_hot_browsers() to service_role;
 
+-- ── get_cron_health  (cron watchdog; service_role only) ─────────────────────
+-- pg_cron failures are silent — this lets the bot and the external prober
+-- detect dead schedules. Guarded: only created when pg_cron is installed.
+do $do$
+begin
+  if exists (select 1 from pg_namespace where nspname = 'cron') then
+    execute $fn$
+      create or replace function public.get_cron_health()
+      returns table(jobname text, schedule text, active boolean, last_start timestamptz, last_status text)
+      language sql
+      stable
+      security definer
+      set search_path = public
+      as $body$
+        select j.jobname, j.schedule, j.active, d.start_time, d.status
+        from cron.job j
+        left join lateral (
+          select start_time, status
+          from cron.job_run_details
+          where jobid = j.jobid
+          order by start_time desc
+          limit 1
+        ) d on true;
+      $body$;
+    $fn$;
+    execute 'revoke execute on function public.get_cron_health() from public, anon, authenticated';
+    execute 'grant execute on function public.get_cron_health() to service_role';
+  end if;
+end
+$do$;
+
 -- ── tracked_plans  (renewal radar) ───────────────────────────────────────────
 create table if not exists public.tracked_plans (
   id             uuid primary key default gen_random_uuid(),

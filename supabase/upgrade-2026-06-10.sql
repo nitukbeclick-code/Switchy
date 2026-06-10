@@ -115,6 +115,35 @@ $$;
 revoke execute on function public.get_hot_browsers() from public, anon, authenticated;
 grant execute on function public.get_hot_browsers() to service_role;
 
+-- 7b. get_cron_health ─ cron watchdog (service_role only; needs pg_cron)
+do $do$
+begin
+  if exists (select 1 from pg_namespace where nspname = 'cron') then
+    execute $fn$
+      create or replace function public.get_cron_health()
+      returns table(jobname text, schedule text, active boolean, last_start timestamptz, last_status text)
+      language sql
+      stable
+      security definer
+      set search_path = public
+      as $body$
+        select j.jobname, j.schedule, j.active, d.start_time, d.status
+        from cron.job j
+        left join lateral (
+          select start_time, status
+          from cron.job_run_details
+          where jobid = j.jobid
+          order by start_time desc
+          limit 1
+        ) d on true;
+      $body$;
+    $fn$;
+    execute 'revoke execute on function public.get_cron_health() from public, anon, authenticated';
+    execute 'grant execute on function public.get_cron_health() to service_role';
+  end if;
+end
+$do$;
+
 -- 8. leads anti-abuse gate v2 ─ shape validation, server-managed columns,
 --    per-phone 5/day (normalized), per-IP 8/hour, global 60/hour breaker
 create or replace function public.leads_rate_limit()

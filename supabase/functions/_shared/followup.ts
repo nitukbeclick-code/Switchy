@@ -72,6 +72,12 @@ function callbackDue(lead: Lead, now: number, israelHour: number): boolean {
   }
 }
 
+// Quiet hours: SLA nudges are for the team, and a 03:00 ping trains everyone
+// to mute the bot. Callback windows are already daytime-bounded.
+function isQuietHour(israelHour: number): boolean {
+  return israelHour >= 22 || israelHour < 8;
+}
+
 // Plan at most `cap` messages per run: callback pings first (time-sensitive,
 // highest conversion), then SLA escalations oldest-first.
 export function planFollowUps(openLeads: Lead[], nowMs: number, israelHour: number, cap = 5): FollowUp[] {
@@ -84,6 +90,7 @@ export function planFollowUps(openLeads: Lead[], nowMs: number, israelHour: numb
       callbacks.push({ lead, kind: "callback", urgency: "⏰", ageHours });
       continue; // a callback ping supersedes an SLA nudge this round
     }
+    if (isQuietHour(israelHour)) continue;
     const sla = slaDue(lead, nowMs);
     if (sla.due) slas.push({ lead, kind: "sla", urgency: sla.urgency, ageHours: sla.ageHours });
   }

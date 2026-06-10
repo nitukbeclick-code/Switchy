@@ -29,3 +29,9 @@ jobs:
           cat h2.json
           test "$(jq -r .ok h2.json)" = "true"
           test "$(jq -r .configured.telegram.present h2.json)" = "true"
+
+      - name: cron schedules health
+        run: |
+          curl -fsS 'https://orzitfqmlvopujsoyigr.supabase.co/functions/v1/renewal-reminders?action=cron-health' -o h3.json
+          cat h3.json
+          test "$(jq -r .ok h3.json)" = "true"

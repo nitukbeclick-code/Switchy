@@ -4,7 +4,7 @@
 import type { Cfg, Lead, RenewalRow, TgCallbackQuery, TgMessage } from "../_shared/types.ts";
 import { esc, NL, sendTelegram, tgApi } from "../_shared/telegram.ts";
 import { fetchRows, insertRow, logEvent, patchCount, rpcRows } from "../_shared/db.ts";
-import { frozenKeyboard, isWonAskMarkup, keyboardFor, leadIdFromMarkup, STATUS_HE, tgDisplayName } from "../_shared/leads.ts";
+import { formatTimeline, frozenKeyboard, isWonAskMarkup, keyboardFor, leadIdFromMarkup, type LeadEvent, STATUS_HE, tgDisplayName } from "../_shared/leads.ts";
 import { handleCommand } from "./commands.ts";
 
 type HandlerResult = Record<string, unknown>;
@@ -86,7 +86,7 @@ export async function handleCallback(cfg: Cfg, cb: TgCallbackQuery): Promise<Han
   const renewM = data.match(/^renew:([0-9a-fA-F-]{36}):lead$/);
   if (renewM) return await handleRenewLead(cfg, answer, renewM[1]);
 
-  const m = data.match(/^lead:([0-9a-fA-F-]{36}):(contacted|won|lost|claim|claimed|undo|wonask|noop)$/);
+  const m = data.match(/^lead:([0-9a-fA-F-]{36}):(contacted|won|lost|claim|claimed|undo|wonask|noop|history)$/);
   if (!m) {
     await answer();
     return { ok: true, skipped: "unrecognized callback" };
@@ -96,6 +96,20 @@ export async function handleCallback(cfg: Cfg, cb: TgCallbackQuery): Promise<Han
 
   if (action === "noop" || action === "wonask") {
     await answer();
+    return { ok: true };
+  }
+
+  if (action === "history") {
+    const [leadRows, evs] = await Promise.all([
+      fetchRows<Lead>(`/rest/v1/leads?id=eq.${leadId}&select=*`),
+      fetchRows<LeadEvent>(`/rest/v1/lead_events?lead_id=eq.${leadId}&order=created_at.asc&limit=30`),
+    ]);
+    if (leadRows === null || evs === null || !leadRows[0]) {
+      await answer("טעינת ההיסטוריה נכשלה");
+      return { ok: false };
+    }
+    await answer();
+    await sendTelegram(cfg, formatTimeline(leadRows[0], evs));
     return { ok: true };
   }
 

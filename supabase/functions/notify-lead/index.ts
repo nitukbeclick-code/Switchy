@@ -23,10 +23,10 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 import type { Lead, TgUpdate } from "../_shared/types.ts";
 import { resolveCfgCached, safeEqual, tgWebhookToken } from "../_shared/config.ts";
-import { sendTelegram, tgApi } from "../_shared/telegram.ts";
-import { serviceFetch } from "../_shared/db.ts";
+import { NL, sendTelegram, tgApi } from "../_shared/telegram.ts";
+import { rpcRows, serviceFetch } from "../_shared/db.ts";
 import { jlog } from "../_shared/log.ts";
-import { buildHtml, buildText, leadKeyboard } from "../_shared/leads.ts";
+import { buildHtml, buildText, leadKeyboard, STATUS_HE } from "../_shared/leads.ts";
 import { aiTriage } from "./triage.ts";
 import { BOT_COMMANDS } from "./commands.ts";
 import { handleCallback, handleTeamMessage } from "./callbacks.ts";
@@ -132,6 +132,11 @@ Deno.serve(async (req: Request) => {
         allowed_updates: ["callback_query", "message"],
       });
       const cmds = await tgApi(cfg, "setMyCommands", { commands: BOT_COMMANDS });
+      // bot profile: what new team members see before the first message
+      await tgApi(cfg, "setMyDescription", {
+        description: "הנציג הדיגיטלי של חוסך — מקבל כל ליד בזמן אמת עם כפתורי סטטוס, שולח תזכורות חכמות, ומפיק דוחות. שלחו /help לרשימת הפקודות.",
+      });
+      await tgApi(cfg, "setMyShortDescription", { short_description: "ניהול הלידים של חוסך בטלגרם" });
       return json({
         ...r,
         commands_registered: cmds.ok,
@@ -167,9 +172,22 @@ Deno.serve(async (req: Request) => {
   const lead = (payload.record ?? payload.lead ?? payload) as Lead;
   if (!lead || (!lead.name && !lead.phone)) return json({ ok: false, error: "no lead in payload" }, 400);
 
+  // Returning customer: same phone seen before — hand the rep the context
+  // (previous date + how that conversation ended) right in the card.
+  let returningLine = "";
+  const digits = String(lead.phone ?? "").replace(/\D/g, "");
+  if (lead.id && digits.length >= 9) {
+    const prev = await rpcRows<Lead>("search_leads", { q: digits });
+    const p = (prev ?? []).find((x) => x.id !== lead.id);
+    if (p) {
+      const prevStatus = STATUS_HE[String(p.status ?? "new")] ?? String(p.status ?? "");
+      returningLine = `🔁 <b>לקוח חוזר</b> — פנייה קודמת ב-${String(p.created_at ?? "").slice(0, 10)} (${prevStatus})${NL}${NL}`;
+    }
+  }
+
   const triage = await aiTriage(cfg, lead);
   const [tg, email] = await Promise.all([
-    sendTelegram(cfg, buildText(lead, triage), leadKeyboard(lead, triage.draft)),
+    sendTelegram(cfg, returningLine + buildText(lead, triage), leadKeyboard(lead, triage.draft)),
     sendEmail(cfg, "🔔 פנייה חדשה — חוסך", buildHtml(lead, triage)),
   ]);
   // stamp only on Telegram success: an email-only delivery has no interactive

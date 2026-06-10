@@ -3,7 +3,8 @@
 
 import { assert, assertEquals, assertFalse, assertMatch, assertStringIncludes } from "@std/assert";
 import type { Lead } from "../_shared/types.ts";
-import { buildText, defaultDraft, frozenKeyboard, isWonAskMarkup, keyboardFor, leadIdFromMarkup, leadKeyboard } from "../_shared/leads.ts";
+import { buildText, defaultDraft, formatTimeline, frozenKeyboard, isWonAskMarkup, keyboardFor, leadIdFromMarkup, leadKeyboard } from "../_shared/leads.ts";
+import { evalCronHealth } from "../_shared/cron_health.ts";
 import { waDraftLink, waLink } from "../_shared/telegram.ts";
 import { safeEqual, tgWebhookToken } from "../_shared/config.ts";
 import { parseTriage } from "../notify-lead/triage.ts";
@@ -224,6 +225,61 @@ Deno.test("planFollowUps caps the batch and puts callbacks first", () => {
 
 Deno.test("planFollowUps ignores non-new leads", () => {
   assertEquals(planFollowUps([lead({ status: "contacted", created_at: hoursAgo(10) })], NOW, 19).length, 0);
+});
+
+Deno.test("planFollowUps suppresses SLA nudges during quiet hours", () => {
+  const old = lead({ created_at: hoursAgo(30) });
+  assertEquals(planFollowUps([old], NOW, 23).length, 0); // night — silence
+  assertEquals(planFollowUps([old], NOW, 7).length, 0);  // early morning
+  assertEquals(planFollowUps([old], NOW, 9).length, 1);  // work hours — fire
+});
+
+// ── timeline + cron watchdog ─────────────────────────────────────────────────
+
+Deno.test("formatTimeline renders the audit trail in order with Hebrew labels", () => {
+  const text = formatTimeline({ ...LEAD, status: "won", actual_saving: 960 }, [
+    { event: "status_change", old_status: "contacted", new_status: "won", actor_name: "דנה", created_at: "2026-06-10T10:00:00Z" },
+    { event: "claim", actor_name: "דנה", created_at: "2026-06-10T08:30:00Z" },
+    { event: "note", note: "<b>ביקש</b> הצעה בכתב", actor_name: "איתן", created_at: "2026-06-10T09:00:00Z" },
+  ]);
+  assertStringIncludes(text, "היסטוריית הליד");
+  assertStringIncludes(text, "₪960");
+  assertFalse(text.includes("<b>ביקש</b>")); // note HTML escaped
+  // chronological: claim before note before the win transition line
+  assert(text.indexOf("בטיפול") < text.indexOf("הצעה בכתב"));
+  assert(text.indexOf("הצעה בכתב") < text.indexOf("דיברתי ← נסגר"));
+});
+
+Deno.test("formatTimeline handles a lead with no events", () => {
+  assertStringIncludes(formatTimeline(LEAD, []), "אין עדיין פעולות");
+});
+
+Deno.test("evalCronHealth flags stale and failing jobs, ignores unregistered", () => {
+  const now = Date.parse("2026-06-10T12:00:00Z");
+  const fresh = (mins: number) => new Date(now - mins * 60000).toISOString();
+  // all healthy
+  const healthy = evalCronHealth([
+    { jobname: "renewal-reminders-daily", schedule: "", active: true, last_start: fresh(60), last_status: "succeeded" },
+    { jobname: "lead-sweep-10min", schedule: "", active: true, last_start: fresh(8), last_status: "succeeded" },
+  ], now);
+  assert(healthy.ok);
+  assertEquals(healthy.known, 2);
+  // sweep silent for 2 hours -> stale
+  const stale = evalCronHealth([
+    { jobname: "lead-sweep-10min", schedule: "", active: true, last_start: fresh(120), last_status: "succeeded" },
+  ], now);
+  assertFalse(stale.ok);
+  assertEquals(stale.stale, ["lead-sweep-10min"]);
+  // last run failed -> failing
+  const failing = evalCronHealth([
+    { jobname: "lead-followup-hourly", schedule: "", active: true, last_start: fresh(30), last_status: "failed" },
+  ], now);
+  assertFalse(failing.ok);
+  assertEquals(failing.failing, ["lead-followup-hourly"]);
+  // nothing registered (pre-setup) -> vacuously ok, known 0
+  const empty = evalCronHealth([], now);
+  assert(empty.ok);
+  assertEquals(empty.known, 0);
 });
 
 // ── digests ──────────────────────────────────────────────────────────────────

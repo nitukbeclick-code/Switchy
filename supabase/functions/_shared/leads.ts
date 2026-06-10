@@ -72,7 +72,10 @@ export function leadKeyboard(lead: Lead, draft = ""): TgInlineKeyboard | undefin
       { text: `${STATUS_EMOJI.contacted} דיברתי`, callback_data: `lead:${id}:contacted` },
       { text: `${STATUS_EMOJI.won} נסגר`, callback_data: `lead:${id}:won` },
     ],
-    [{ text: `${STATUS_EMOJI.lost} לא רלוונטי`, callback_data: `lead:${id}:lost` }],
+    [
+      { text: `${STATUS_EMOJI.lost} לא רלוונטי`, callback_data: `lead:${id}:lost` },
+      { text: "📜 היסטוריה", callback_data: `lead:${id}:history` },
+    ],
   ];
   const actionRow: TgInlineKeyboard["inline_keyboard"][number] = [];
   if (lead.claimed_by) {
@@ -86,15 +89,76 @@ export function leadKeyboard(lead: Lead, draft = ""): TgInlineKeyboard | undefin
   return { inline_keyboard: rows };
 }
 
-// Frozen stamp after a status press: who handled it + undo.
+// Frozen stamp after a status press: who handled it + undo + history.
 export function frozenKeyboard(lead: Lead, status: string, who: string): TgInlineKeyboard {
   const id = String(lead.id ?? "");
   return {
     inline_keyboard: [
       [{ text: `${STATUS_EMOJI[status] ?? "✅"} ${STATUS_HE[status] ?? status}${who ? " — " + who : ""}`.slice(0, 60), callback_data: `lead:${id}:noop` }],
-      [{ text: "↩️ בטל", callback_data: `lead:${id}:undo` }],
+      [
+        { text: "↩️ בטל", callback_data: `lead:${id}:undo` },
+        { text: "📜 היסטוריה", callback_data: `lead:${id}:history` },
+      ],
     ],
   };
+}
+
+export type LeadEvent = {
+  event?: string;
+  old_status?: string | null;
+  new_status?: string | null;
+  actor_name?: string | null;
+  note?: string | null;
+  created_at?: string;
+};
+
+// Full lead timeline for the 📜 button — the audit trail, readable.
+export function formatTimeline(lead: Lead, events: LeadEvent[]): string {
+  const fmtTime = (iso?: string): string => {
+    const t = Date.parse(String(iso ?? ""));
+    if (!Number.isFinite(t)) return "—";
+    return new Intl.DateTimeFormat("he-IL", {
+      timeZone: "Asia/Jerusalem", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
+    }).format(new Date(t));
+  };
+  const status = String(lead.status ?? "new");
+  const lines: string[] = [
+    `📜 <b>היסטוריית הליד — ${esc(lead.name)}</b> (${STATUS_EMOJI[status] ?? ""} ${STATUS_HE[status] ?? status})`,
+    "",
+    `🔔 ${fmtTime(lead.created_at)} — הפנייה התקבלה` +
+      (lead.source ? ` (${esc(SOURCE_HE[String(lead.source)] ?? lead.source)})` : ""),
+  ];
+  const sorted = [...events].sort((a, b) =>
+    Date.parse(String(a.created_at ?? "")) - Date.parse(String(b.created_at ?? "")));
+  for (const ev of sorted.slice(-15)) {
+    const who = esc(ev.actor_name ?? "");
+    const at = fmtTime(ev.created_at);
+    switch (String(ev.event ?? "")) {
+      case "claim":
+        lines.push(`🙋 ${at} — ${who} בטיפול`);
+        break;
+      case "status_change": {
+        const oldHe = STATUS_HE[String(ev.old_status ?? "")] ?? String(ev.old_status ?? "");
+        const newHe = STATUS_HE[String(ev.new_status ?? "")] ?? String(ev.new_status ?? "");
+        lines.push(`${STATUS_EMOJI[String(ev.new_status ?? "")] ?? "✅"} ${at} — ${who}: ${esc(oldHe)} ← ${esc(newHe)}`);
+        break;
+      }
+      case "note":
+        lines.push(`📝 ${at} — ${who}: ${esc(String(ev.note ?? "").slice(0, 200))}`);
+        break;
+      case "undo":
+        lines.push(`↩️ ${at} — ${who} שחזר ל"${esc(STATUS_HE[String(ev.new_status ?? "")] ?? String(ev.new_status ?? ""))}"`);
+        break;
+      case "saving":
+        lines.push(`💰 ${at} — ${who} רשם ₪${esc(ev.note ?? "")}`);
+        break;
+      default:
+        lines.push(`• ${at} — ${esc(ev.event ?? "")}`);
+    }
+  }
+  if (events.length === 0) lines.push("<i>אין עדיין פעולות על הליד הזה.</i>");
+  if (lead.actual_saving) lines.push("", `💰 חיסכון שנתי שנרשם: ₪${lead.actual_saving}`);
+  return lines.join(NL);
 }
 
 // Status-aware keyboard: closed leads (won/lost) get the frozen stamp so a

@@ -4,6 +4,9 @@ import 'package:chosech/app_state.dart';
 import 'package:chosech/data.dart';
 import 'package:chosech/services/provider_ratings.dart';
 
+// Ratings are honest now: the catalogue ships no fabricated review counts, so a
+// provider reports "no data" until a real review (the user's own) backs it.
+// These tests pin that contract — no synthetic averages, no seeded sub-ratings.
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -13,11 +16,8 @@ void main() {
   });
 
   group('ProviderRatings.averageStars', () {
-    test('a real provider scores within (0, 5]', () {
-      final provider = allProviders.first;
-      final avg = ProviderRatings.averageStars(provider);
-      expect(avg, greaterThan(0));
-      expect(avg, lessThanOrEqualTo(5));
+    test('a catalogue provider has no fabricated average (0 until real reviews)', () {
+      expect(ProviderRatings.averageStars(allProviders.first), 0);
     });
 
     test('an unknown provider scores 0', () {
@@ -26,24 +26,32 @@ void main() {
   });
 
   group('ProviderRatings.reviewCount', () {
-    test('is non-negative for a real provider', () {
-      expect(ProviderRatings.reviewCount(allProviders.first),
-          greaterThanOrEqualTo(0));
+    test('is zero for a provider with no real reviews', () {
+      expect(ProviderRatings.reviewCount(allProviders.first), 0);
+    });
+
+    test("counts the user's own review", () {
+      final state = AppState();
+      final provider = allProviders.first;
+      state.addReview(
+        provider: provider,
+        overall: 4,
+        subRatings: {'price': 5, 'service': 4, 'coverage': 3, 'speed': 2},
+        text: 'great value',
+      );
+      expect(ProviderRatings.reviewCount(provider, appState: state), 1);
     });
   });
 
   group('ProviderRatings.subRating', () {
-    test('every dimension is within the seeded range and deterministic', () {
+    test('every dimension is 0 (no data) without a real review', () {
       final provider = allProviders.first;
       for (final k in ProviderRatings.subKeys) {
-        final a = ProviderRatings.subRating(provider, k);
-        final b = ProviderRatings.subRating(provider, k);
-        expect(a, equals(b), reason: '$k should be deterministic');
-        expect(a, inInclusiveRange(3.0, 5.0));
+        expect(ProviderRatings.subRating(provider, k), 0);
       }
     });
 
-    test("a user's own review overrides the seeded sub-rating", () {
+    test("a user's own review supplies the sub-rating", () {
       final state = AppState();
       final provider = allProviders.first;
       state.addReview(
@@ -58,15 +66,17 @@ void main() {
   });
 
   group('ProviderRatings.forProvider', () {
-    test('aggregates stars, count, four sub-keys and user flag', () {
+    test('reports no data until a real review exists, then aggregates it', () {
       final state = AppState();
       final provider = allProviders.first;
-      final r = ProviderRatings.forProvider(provider, appState: state);
 
-      expect(r.provider, provider);
-      expect(r.hasData, isTrue);
-      expect(r.sub.keys.toSet(), ProviderRatings.subKeys.toSet());
-      expect(r.ratedByUser, isFalse);
+      final before = ProviderRatings.forProvider(provider, appState: state);
+      expect(before.provider, provider);
+      expect(before.hasData, isFalse);
+      expect(before.reviewCount, 0);
+      expect(before.stars, 0);
+      expect(before.sub.keys.toSet(), ProviderRatings.subKeys.toSet());
+      expect(before.ratedByUser, isFalse);
 
       state.addReview(
         provider: provider,
@@ -74,9 +84,11 @@ void main() {
         subRatings: {'price': 5, 'service': 5, 'coverage': 5, 'speed': 5},
         text: '',
       );
-      expect(
-          ProviderRatings.forProvider(provider, appState: state).ratedByUser,
-          isTrue);
+      final after = ProviderRatings.forProvider(provider, appState: state);
+      expect(after.hasData, isTrue);
+      expect(after.ratedByUser, isTrue);
+      expect(after.reviewCount, 1);
+      expect(after.stars, 5.0);
     });
 
     test('unknown provider has no data', () {

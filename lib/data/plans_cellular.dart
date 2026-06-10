@@ -12,7 +12,7 @@ const List<Plan> cellularPlans = [
     priceExact: 69.9,
     after: null,
     rating: 4.2,
-    reviews: 159,
+    reviews: 0,
     flags: ['nocommit', '5g', 'fixed'],
     feats: ['5G', '1500GB גלישה', 'נתיב מהיר', 'גלישה חופשית באפליקציות'],
     specs: {
@@ -40,7 +40,7 @@ const List<Plan> cellularPlans = [
     priceExact: 44.9,
     after: null,
     rating: 4.1,
-    reviews: 67,
+    reviews: 0,
     flags: ['nocommit', 'fixed'],
     feats: ['500GB גלישה', '150 דק׳', '3,500 SMS'],
     specs: {
@@ -66,7 +66,7 @@ const List<Plan> cellularPlans = [
     after: 60,
     intro: 'מחיר מבצע לחודשיים',
     rating: 4.2,
-    reviews: 27,
+    reviews: 0,
     flags: ['nocommit', '5g'],
     feats: ['5G', '800GB גלישה', 'גלישה חופשית באפליקציות'],
     specs: {
@@ -92,7 +92,7 @@ const List<Plan> cellularPlans = [
     priceExact: 59.9,
     after: null,
     rating: 4.0,
-    reviews: 23,
+    reviews: 0,
     flags: ['nocommit', '5g', 'fixed'],
     feats: ['5G', '1000GB גלישה', 'נתיב מהיר', 'גלישה חופשית באפליקציות'],
     specs: {
@@ -118,7 +118,7 @@ const List<Plan> cellularPlans = [
     priceExact: 119.9,
     after: null,
     rating: 3.8,
-    reviews: 381,
+    reviews: 0,
     flags: ['nocommit', '5g', 'fixed', 'abroad'],
     feats: ['5G', '1500GB גלישה', '5GB חו"ל + 50 דק׳/SMS', 'שירות תיקונים מורחב'],
     specs: {
@@ -147,7 +147,7 @@ const List<Plan> cellularPlans = [
     priceExact: 34.9,
     after: null,
     rating: 4.2,
-    reviews: 96,
+    reviews: 0,
     flags: ['nocommit', 'abroad'],
     feats: ['400GB גלישה', '200 דק׳ ל-42 יעדים', '3,500 SMS'],
     specs: {
@@ -175,7 +175,7 @@ const List<Plan> cellularPlans = [
     after: 50,
     intro: 'מחיר מבצע ל-3 חודשים',
     rating: 4.1,
-    reviews: 334,
+    reviews: 0,
     flags: ['nocommit', '5g', 'abroad'],
     feats: ['5G', '500GB גלישה', '400 דק׳ ל-42 יעדים', 'Private 5G'],
     specs: {
@@ -203,7 +203,7 @@ const List<Plan> cellularPlans = [
     priceExact: 74.9,
     after: null,
     rating: 4.2,
-    reviews: 268,
+    reviews: 0,
     flags: ['nocommit', '5g', 'fixed', 'abroad'],
     feats: ['5G', '2000GB גלישה', '700 דק׳ ל-42 יעדים', 'eSIM מיידי'],
     specs: {
@@ -234,7 +234,7 @@ const List<Plan> cellularPlans = [
     priceExact: 59.9,
     after: null,
     rating: 4.3,
-    reviews: 316,
+    reviews: 0,
     flags: ['nocommit', '5g', 'fixed'],
     feats: ['5G', '800GB גלישה', 'תיעדוף 5G', 'CyberGuard'],
     specs: {
@@ -261,7 +261,7 @@ const List<Plan> cellularPlans = [
     priceExact: 69.9,
     after: null,
     rating: 4.3,
-    reviews: 370,
+    reviews: 0,
     flags: ['nocommit', '5g', 'fixed'],
     feats: ['5G', '1500GB גלישה', 'CyberGuard', 'קופון אביזרים ₪100'],
     specs: {
@@ -291,7 +291,7 @@ const List<Plan> cellularPlans = [
     after: 50,
     intro: 'מחיר מבצע לחודשיים',
     rating: 3.9,
-    reviews: 284,
+    reviews: 0,
     flags: ['nocommit', '5g', 'abroad'],
     feats: ['5G', '1000GB גלישה', 'גלישה חופשית באפליקציות + AI', 'מסלול Travel'],
     specs: {
@@ -318,7 +318,7 @@ const List<Plan> cellularPlans = [
     priceExact: 39.9,
     after: null,
     rating: 4.1,
-    reviews: 299,
+    reviews: 0,
     flags: ['nocommit', 'fixed', 'abroad'],
     feats: ['400GB גלישה', 'eSIM מיידי', 'מסלול Travel'],
     specs: {
@@ -344,7 +344,7 @@ const List<Plan> cellularPlans = [
     after: 65,
     intro: 'מחיר מבצע לחודשיים',
     rating: 3.8,
-    reviews: 253,
+    reviews: 0,
     flags: ['nocommit', '5g', 'abroad'],
     feats: ['5G', '2000GB גלישה', 'תיעדוף 5G', 'מסלול Travel'],
     specs: {
@@ -374,7 +374,7 @@ const List<Plan> cellularPlans = [
     after: null,
     intro: 'מחיר מבצע ל-12 חודשים',
     rating: 4.5,
-    reviews: 339,
+    reviews: 0,
     flags: ['nocommit', 'abroad'],
     feats: ['300GB נפח מתגלגל', '240 דק׳', 'גלישה בחו"ל'],
     specs: {
@@ -399,7 +399,7 @@ const List<Plan> cellularPlans = [
     after: null,
     intro: 'מחיר מבצע ל-12 חודשים',
     rating: 4.1,
-    reviews: 224,
+    reviews: 0,
     flags: ['nocommit', 'abroad'],
     feats: ['400GB גלישה', '1GB חו"ל לחודש', '100 דק׳', 'חו"ל כלול'],
     specs: {
@@ -423,7 +423,7 @@ const List<Plan> cellularPlans = [
     after: null,
     intro: 'מבצע ₪39 ל-3 חודשים',
     rating: 4.5,
-    reviews: 39,
+    reviews: 0,
     flags: ['nocommit', '5g', 'abroad'],
     feats: ['5G', '750GB גלישה', 'גלישה חופשית באפליקציות', 'הנחה על חבילת חו"ל'],
     specs: {
@@ -448,7 +448,7 @@ const List<Plan> cellularPlans = [
     after: null,
     intro: 'מבצע ₪49 לחודשיים',
     rating: 4.2,
-    reviews: 175,
+    reviews: 0,
     flags: ['nocommit', '5g', 'abroad'],
     feats: ['5G', '1500GB גלישה', '500 דק׳', 'שירות תיקונים'],
     specs: {
@@ -472,7 +472,7 @@ const List<Plan> cellularPlans = [
     price: 40,
     after: null,
     rating: 4.4,
-    reviews: 281,
+    reviews: 0,
     flags: ['nocommit', 'fixed'],
     feats: ['500GB גלישה', 'מסלול דאטה', '50 דק׳'],
     specs: {
@@ -493,7 +493,7 @@ const List<Plan> cellularPlans = [
     price: 129,
     after: null,
     rating: 4.4,
-    reviews: 400,
+    reviews: 0,
     flags: ['nocommit', 'fixed', 'abroad'],
     feats: ['550GB גלישה', '500 דק׳', 'חו"ל כלול'],
     specs: {
@@ -518,7 +518,7 @@ const List<Plan> cellularPlans = [
     priceExact: 69.9,
     after: null,
     rating: 4.1,
-    reviews: 376,
+    reviews: 0,
     flags: ['nocommit', '5g', 'fixed', 'abroad'],
     feats: ['5G', '2500GB גלישה', 'נתיב מהיר', '500 דק׳ ל-27 יעדים'],
     specs: {
@@ -547,7 +547,7 @@ const List<Plan> cellularPlans = [
     priceExact: 109.9,
     after: null,
     rating: 4.0,
-    reviews: 287,
+    reviews: 0,
     flags: ['nocommit', '5g', 'fixed', 'abroad'],
     feats: ['5G', '3000GB גלישה', '10GB חו"ל + 100 דק׳/SMS', 'Cyber'],
     specs: {
@@ -576,7 +576,7 @@ const List<Plan> cellularPlans = [
     priceExact: 79.9,
     after: null,
     rating: 4.1,
-    reviews: 318,
+    reviews: 0,
     flags: ['nocommit', '5g', 'fixed', 'abroad'],
     feats: ['5G', '3000GB גלישה', 'נתיב מהיר', '500 דק׳ ל-27 יעדים'],
     specs: {
@@ -604,7 +604,7 @@ const List<Plan> cellularPlans = [
     priceExact: 59.9,
     after: null,
     rating: 3.8,
-    reviews: 96,
+    reviews: 0,
     flags: ['nocommit', '5g', 'fixed', 'abroad'],
     feats: ['5G', '2000GB גלישה', 'גלישה חופשית באפליקציות', '300 דק׳ ל-27 יעדים'],
     specs: {
@@ -632,7 +632,7 @@ const List<Plan> cellularPlans = [
     priceExact: 10.9,
     after: null,
     rating: 4.1,
-    reviews: 33,
+    reviews: 0,
     flags: ['nocommit', 'fixed'],
     feats: ['20GB גלישה', 'SIM דאטה לטאבלט/לפטופ/מודם'],
     specs: {
@@ -656,7 +656,7 @@ const List<Plan> cellularPlans = [
     priceExact: 21.9,
     after: null,
     rating: 3.7,
-    reviews: 246,
+    reviews: 0,
     flags: ['nocommit', 'fixed'],
     feats: ['150GB גלישה', 'SIM דאטה'],
     specs: {
@@ -681,7 +681,7 @@ const List<Plan> cellularPlans = [
     priceExact: 22.5,
     after: null,
     rating: 4.2,
-    reviews: 57,
+    reviews: 0,
     flags: ['nocommit', 'fixed'],
     feats: ['300GB גלישה', '5,000 דק׳', 'eSIM מיידי'],
     specs: {
@@ -706,7 +706,7 @@ const List<Plan> cellularPlans = [
     priceExact: 29.9,
     after: null,
     rating: 4.3,
-    reviews: 218,
+    reviews: 0,
     flags: ['nocommit', 'fixed', 'abroad'],
     feats: ['500GB גלישה', '1GB חו"ל', 'מחיר קבוע לכל החיים'],
     specs: {
@@ -733,7 +733,7 @@ const List<Plan> cellularPlans = [
     priceExact: 34.9,
     after: null,
     rating: 4.6,
-    reviews: 27,
+    reviews: 0,
     flags: ['nocommit', '5g', 'fixed', 'abroad'],
     feats: ['5G', '500GB גלישה', '1GB חו"ל', 'מחיר קבוע לכל החיים'],
     specs: {
@@ -760,7 +760,7 @@ const List<Plan> cellularPlans = [
     priceExact: 24.9,
     after: null,
     rating: 4.2,
-    reviews: 63,
+    reviews: 0,
     flags: ['nocommit', 'fixed'],
     feats: ['50GB גלישה', '5,000 דק׳', 'החבילה הצעירה'],
     specs: {
@@ -785,7 +785,7 @@ const List<Plan> cellularPlans = [
     priceExact: 29.9,
     after: null,
     rating: 4.5,
-    reviews: 135,
+    reviews: 0,
     flags: ['nocommit', 'fixed', 'abroad'],
     feats: ['500GB נפח נצבר', '5,000 דק׳', '1GB צבירה בחו"ל'],
     specs: {
@@ -812,7 +812,7 @@ const List<Plan> cellularPlans = [
     priceExact: 39.9,
     after: null,
     rating: 4.4,
-    reviews: 98,
+    reviews: 0,
     flags: ['nocommit', '5g', 'fixed', 'abroad'],
     feats: ['5G', '750GB נפח נצבר', '5,000 דק׳', '1GB צבירה בחו"ל'],
     specs: {
@@ -839,7 +839,7 @@ const List<Plan> cellularPlans = [
     priceExact: 42.9,
     after: null,
     rating: 4.4,
-    reviews: 335,
+    reviews: 0,
     flags: ['nocommit', 'fixed', 'abroad'],
     feats: ['גלישה ללא הגבלה', '3GB חו"ל', '5,000 דק׳'],
     specs: {
@@ -865,7 +865,7 @@ const List<Plan> cellularPlans = [
     priceExact: 48.9,
     after: null,
     rating: 4.6,
-    reviews: 335,
+    reviews: 0,
     flags: ['nocommit', 'fixed', 'abroad'],
     feats: ['גלישה ללא הגבלה', '5GB חו"ל', '5,000 דק׳'],
     specs: {
@@ -891,7 +891,7 @@ const List<Plan> cellularPlans = [
     priceExact: 54.9,
     after: null,
     rating: 4.5,
-    reviews: 301,
+    reviews: 0,
     flags: ['nocommit', '5g', 'fixed', 'abroad'],
     feats: ['5G', 'גלישה ללא הגבלה', '5GB חו"ל', '5,000 דק׳'],
     specs: {
@@ -918,7 +918,7 @@ const List<Plan> cellularPlans = [
     price: 35,
     after: null,
     rating: 4.4,
-    reviews: 332,
+    reviews: 0,
     flags: ['nocommit', '5g', 'fixed'],
     feats: ['5G', '600GB גלישה', '5,000 דק׳', '₪80 ל-3 קווים'],
     specs: {
@@ -941,7 +941,7 @@ const List<Plan> cellularPlans = [
     price: 35,
     after: null,
     rating: 4.1,
-    reviews: 20,
+    reviews: 0,
     flags: ['nocommit', '5g', 'fixed'],
     feats: ['5G', '500GB גלישה', '5,000 דק׳', '₪55 לזוג קווים'],
     specs: {
@@ -964,7 +964,7 @@ const List<Plan> cellularPlans = [
     price: 30,
     after: null,
     rating: 4.5,
-    reviews: 38,
+    reviews: 0,
     flags: ['nocommit', '5g', 'fixed'],
     feats: ['5G', '250GB גלישה', '2,500 דק׳', '₪50 לזוג'],
     specs: {
@@ -989,7 +989,7 @@ const List<Plan> cellularPlans = [
     price: 30,
     after: null,
     rating: 4.3,
-    reviews: 201,
+    reviews: 0,
     flags: ['nocommit', '5g', 'fixed'],
     feats: ['5G', '250GB גלישה', '2,500 דק׳', '₪50 לזוג'],
     specs: {
@@ -1012,7 +1012,7 @@ const List<Plan> cellularPlans = [
     price: 55,
     after: null,
     rating: 4.4,
-    reviews: 126,
+    reviews: 0,
     flags: ['nocommit', '5g', 'fixed'],
     feats: ['5G', '1000GB גלישה', '2,500 דק׳'],
     specs: {
@@ -1034,7 +1034,7 @@ const List<Plan> cellularPlans = [
     price: 35,
     after: null,
     rating: 4.4,
-    reviews: 44,
+    reviews: 0,
     flags: ['nocommit', '5g', 'fixed'],
     feats: ['5G', '300GB גלישה', '2,500 דק׳'],
     specs: {
@@ -1056,7 +1056,7 @@ const List<Plan> cellularPlans = [
     price: 50,
     after: null,
     rating: 4.3,
-    reviews: 181,
+    reviews: 0,
     flags: ['nocommit', '5g', 'fixed', 'abroad'],
     feats: ['5G', '500GB גלישה', '500 דק׳ לחו"ל', '2,500 דק׳'],
     specs: {
@@ -1082,7 +1082,7 @@ const List<Plan> cellularPlans = [
     priceExact: 16.9,
     after: null,
     rating: 4.4,
-    reviews: 107,
+    reviews: 0,
     flags: ['nocommit'],
     feats: ['כשר', '10,000 דק׳ ברשת', 'מסלול כשר'],
     specs: {
@@ -1106,7 +1106,7 @@ const List<Plan> cellularPlans = [
     priceExact: 14.9,
     after: null,
     rating: 4.5,
-    reviews: 158,
+    reviews: 0,
     flags: ['nocommit'],
     feats: ['כשר', '10,000 דק׳ ברשת', 'מסלול כשר'],
     specs: {
@@ -1131,7 +1131,7 @@ const List<Plan> cellularPlans = [
     priceExact: 29.9,
     after: null,
     rating: 4.1,
-    reviews: 323,
+    reviews: 0,
     flags: ['nocommit', 'fixed'],
     feats: ['גלישה חופשית דור 4', '5,000 דק׳', 'eSIM מיידי'],
     specs: {
@@ -1157,7 +1157,7 @@ const List<Plan> cellularPlans = [
     priceExact: 32.9,
     after: null,
     rating: 4.0,
-    reviews: 67,
+    reviews: 0,
     flags: ['nocommit', 'fixed'],
     feats: ['150GB גלישה', '3,000 דק׳', 'eSIM מיידי'],
     specs: {
@@ -1181,7 +1181,7 @@ const List<Plan> cellularPlans = [
     price: 35,
     after: null,
     rating: 4.3,
-    reviews: 212,
+    reviews: 0,
     flags: ['nocommit', '5g', 'fixed'],
     feats: ['5G', 'גלישה חופשית', '5,000 דק׳', 'eSIM מיידי'],
     specs: {
@@ -1205,7 +1205,7 @@ const List<Plan> cellularPlans = [
     priceExact: 59.9,
     after: null,
     rating: 4.0,
-    reviews: 287,
+    reviews: 0,
     flags: ['nocommit', '5g', 'fixed', 'abroad'],
     feats: ['5G', 'גלישה חופשית', '5GB חו"ל לחודש', 'eSIM מיידי'],
     specs: {
@@ -1235,7 +1235,7 @@ const List<Plan> cellularPlans = [
     priceExact: 39.9,
     after: null,
     rating: 4.0,
-    reviews: 122,
+    reviews: 0,
     flags: ['nocommit', '5g', 'fixed'],
     feats: ['5G', '300GB גלישה', 'מחיר קבוע לכל החיים', 'eSIM מיידי'],
     specs: {
@@ -1261,7 +1261,7 @@ const List<Plan> cellularPlans = [
     priceExact: 19.8,
     after: null,
     rating: 4.2,
-    reviews: 389,
+    reviews: 0,
     flags: ['nocommit', 'fixed'],
     feats: ['12GB גלישה', 'מחיר קבוע לכל החיים', 'סינון אתרים חינם'],
     specs: {
@@ -1287,7 +1287,7 @@ const List<Plan> cellularPlans = [
     priceExact: 21.9,
     after: null,
     rating: 4.4,
-    reviews: 274,
+    reviews: 0,
     flags: ['nocommit', 'fixed'],
     feats: ['30GB גלישה', 'מחיר קבוע לכל החיים', 'סינון חינם'],
     specs: {
@@ -1313,7 +1313,7 @@ const List<Plan> cellularPlans = [
     priceExact: 25.9,
     after: null,
     rating: 4.2,
-    reviews: 125,
+    reviews: 0,
     flags: ['nocommit', '5g', 'fixed'],
     feats: ['5G', '170GB גלישה', 'מחיר קבוע לכל החיים', 'סינון חינם'],
     specs: {
@@ -1339,7 +1339,7 @@ const List<Plan> cellularPlans = [
     priceExact: 29.9,
     after: null,
     rating: 4.2,
-    reviews: 125,
+    reviews: 0,
     flags: ['nocommit', 'abroad'],
     feats: ['100GB גלישה', '100 דק׳ לחו"ל', 'מחיר קבוע 3 שנים'],
     specs: {
@@ -1366,7 +1366,7 @@ const List<Plan> cellularPlans = [
     priceExact: 31.8,
     after: null,
     rating: 4.2,
-    reviews: 311,
+    reviews: 0,
     flags: ['nocommit', 'abroad'],
     feats: ['200GB גלישה', '200 דק׳ לחו"ל', 'מחיר קבוע 3 שנים'],
     specs: {
@@ -1393,7 +1393,7 @@ const List<Plan> cellularPlans = [
     price: 12,
     after: null,
     rating: 4.4,
-    reviews: 255,
+    reviews: 0,
     flags: ['nocommit', 'fixed'],
     feats: ['2GB גלישה', 'ל-IoT/רכב', 'IP קבוע אפשרי'],
     specs: {
@@ -1417,7 +1417,7 @@ const List<Plan> cellularPlans = [
     price: 25,
     after: null,
     rating: 4.0,
-    reviews: 195,
+    reviews: 0,
     flags: ['nocommit', 'fixed'],
     feats: ['כשר', '10GB גלישה', 'סינון ועד הרבנים', 'ללא עליית מחיר'],
     specs: {
@@ -1441,7 +1441,7 @@ const List<Plan> cellularPlans = [
     price: 42,
     after: null,
     rating: 4.0,
-    reviews: 198,
+    reviews: 0,
     flags: ['nocommit', 'fixed'],
     feats: ['כשר', '40GB גלישה', 'סינון ועד הרבנים', 'ללא עליית מחיר'],
     specs: {
@@ -1468,7 +1468,7 @@ const List<Plan> cellularPlans = [
     after: null,
     intro: 'מחיר מבצע לשנתיים',
     rating: 3.9,
-    reviews: 43,
+    reviews: 0,
     flags: ['nocommit', '5g', 'abroad'],
     feats: ['5G', '400GB גלישה', 'שיחות לחו"ל', 'משלוח חינם'],
     specs: {
@@ -1493,7 +1493,7 @@ const List<Plan> cellularPlans = [
     after: null,
     intro: 'חודש ראשון חינם',
     rating: 4.1,
-    reviews: 219,
+    reviews: 0,
     flags: ['nocommit', 'abroad'],
     feats: ['300GB גלישה', '₪75 ל-3 מנויים', 'שיחות חו"ל', 'חודש ראשון חינם'],
     specs: {
@@ -1519,7 +1519,7 @@ const List<Plan> cellularPlans = [
     after: null,
     intro: 'מחיר לשנה, עד 2 מנויים',
     rating: 4.2,
-    reviews: 42,
+    reviews: 0,
     flags: ['nocommit', 'abroad'],
     feats: ['300GB גלישה', 'שיחות חו"ל', 'משלוח חינם'],
     specs: {

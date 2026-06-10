@@ -4,6 +4,8 @@ import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'app_state.dart';
 import 'app.dart';
+import 'router.dart';
+import 'services/auth_service.dart';
 import 'services/backend/local_backend.dart';
 import 'services/backend/supabase_backend.dart';
 
@@ -24,8 +26,17 @@ void main() async {
 
   await _initBackend();
   await AppState().initializePersistedState();
+  // Cache the Face-ID-armed flag synchronously for the router's cold-start gate
+  // (no-op on web / when no real session). Must run after the backend is up so
+  // a restored Supabase session is already visible.
+  await AuthService.instance.warmUpBiometricLock();
   runApp(ChangeNotifierProvider.value(value: AppState(), child: const ChosechApp()));
+  _appStarted = true;
 }
+
+/// True once `runApp` has been called — used to suppress navigation on the
+/// initial-session event that Supabase replays when the auth listener attaches.
+bool _appStarted = false;
 
 /// Connects to Supabase when build-time keys are present, then routes the app's
 /// shared data through [SupabaseBackend]. With no keys the default
@@ -50,6 +61,42 @@ Future<void> _initBackend() async {
   }
 
   appBackend = SupabaseBackend();
+
+  // Keep AppState's identity mirror in sync with Supabase Auth, and finish an
+  // OAuth (Google/Facebook) sign-in that completes asynchronously via redirect
+  // / deep-link: when a real session arrives while the user waits on the auth
+  // page, mirror the profile and land them on Home.
+  auth.onAuthStateChange.listen((data) {
+    final event = data.event;
+    final user = data.session?.user;
+    final isReal = user != null && user.isAnonymous != true && (user.email?.isNotEmpty ?? false);
+
+    if (event == AuthChangeEvent.signedOut) {
+      if (AppState().isLoggedIn) AppState().logout();
+      return;
+    }
+    if (!isReal) return;
+
+    final meta = user.userMetadata ?? const {};
+    final metaName = (meta['name'] as String?)?.trim();
+    final display = (metaName != null && metaName.isNotEmpty) ? metaName : user.email!.split('@').first;
+    if (!AppState().isLoggedIn || AppState().userEmail != user.email) {
+      AppState().login(name: display, phone: AppState().userPhone, email: user.email!);
+      appBackend.upsertProfile(name: display, phone: AppState().userPhone, email: user.email).catchError((_) {});
+    }
+
+    // Complete an interactive OAuth redirect: only navigate for a real, post-
+    // startup sign-in while sitting on the auth page (never yank a browsing
+    // guest on a token refresh, and never fight the cold-start lock gate).
+    final router = appRouterInstance;
+    if (_appStarted && event == AuthChangeEvent.signedIn && router != null) {
+      final path = router.routerDelegate.currentConfiguration.uri.path;
+      if (path == '/auth') {
+        AppState().markOnboardingSeen();
+        router.goNamed('Home');
+      }
+    }
+  });
 
   // Restore profile + bills from Supabase after local prefs load.
   // Supabase wins on reinstall / new device; local prefs win when both have data.

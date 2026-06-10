@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -26,7 +25,7 @@ class _OnboardingWidgetState extends State<OnboardingWidget> {
       _controller.nextPage(duration: const Duration(milliseconds: 350), curve: Curves.easeInOut);
     } else {
       AppState().markOnboardingSeen();
-      context.goNamed('Quiz');
+      context.goNamed('Auth');
     }
   }
 
@@ -142,40 +141,12 @@ class _OnboardingWidgetState extends State<OnboardingWidget> {
 
 // ── Page 1: Savings value proposition ────────────────────────────────────────
 
-class _Page1 extends StatefulWidget {
+class _Page1 extends StatelessWidget {
   const _Page1({required this.ffTheme});
   final AppTheme ffTheme;
 
   @override
-  State<_Page1> createState() => _Page1State();
-}
-
-class _Page1State extends State<_Page1> {
-  static const _testimonials = [
-    ('"עברתי מ-₪150 ל-₪49 בחודש — חסכתי ₪1,212 השנה!"', 'מיכאל כ. | סלולר'),
-    ('"מעבר אינטרנט ל-yes ב-3 ימים. ₪960 חיסכון לשנה!"', 'רחל מ. | אינטרנט'),
-    ('"חבילה משולבת רמי לוי — ₪2,400 פחות בשנה 🤩"', 'עמית ב. | חבילה משולבת'),
-  ];
-  int _tIdx = 0;
-  Timer? _timer;
-
-  @override
-  void initState() {
-    super.initState();
-    _timer = Timer.periodic(const Duration(seconds: 4), (_) {
-      if (mounted) setState(() => _tIdx = (_tIdx + 1) % _testimonials.length);
-    });
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final ffTheme = widget.ffTheme;
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(24, 32, 24, 16),
       child: Column(
@@ -184,13 +155,13 @@ class _Page1State extends State<_Page1> {
               .animate().scale(duration: 500.ms, curve: Curves.elasticOut),
           const SizedBox(height: 20),
           Text(
-            'חסכו עד\n₪1,200 בשנה',
+            'כל המחירים\nבמקום אחד',
             style: GoogleFonts.rubik(fontSize: 36, fontWeight: FontWeight.w800, color: const Color(0xFF0E3A26), height: 1.15),
             textAlign: TextAlign.center,
           ).animate().fadeIn(delay: 150.ms).slideY(begin: 0.2, end: 0),
           const SizedBox(height: 12),
           Text(
-            'חוסך מוצא לכם את החבילה הכי זולה על סלולר, אינטרנט וטלוויזיה – בשניות.',
+            'חוסך משווה לכם את החבילות של כל הספקים על סלולר, אינטרנט וטלוויזיה – בשניות.',
             style: ffTheme.bodyLarge.copyWith(color: ffTheme.secondaryText),
             textAlign: TextAlign.center,
           ).animate().fadeIn(delay: 250.ms),
@@ -199,62 +170,32 @@ class _Page1State extends State<_Page1> {
             children: [
               _StatChip(value: '100+', label: 'מסלולים', ffTheme: ffTheme),
               const SizedBox(width: 10),
-              _StatChip(value: '60K', label: 'לקוחות', ffTheme: ffTheme),
+              _StatChip(value: '18', label: 'ספקים', ffTheme: ffTheme),
               const SizedBox(width: 10),
-              _StatChip(value: '₪15', label: 'מחיר מינימום', ffTheme: ffTheme),
+              _StatChip(value: '5', label: 'קטגוריות', ffTheme: ffTheme),
             ],
           ).animate().fadeIn(delay: 350.ms).slideY(begin: 0.1, end: 0),
           const SizedBox(height: 20),
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 500),
-            transitionBuilder: (child, anim) => FadeTransition(
-              opacity: anim,
-              child: SlideTransition(
-                position: Tween(begin: const Offset(0, 0.08), end: Offset.zero).animate(anim),
-                child: child,
-              ),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: ffTheme.accent1,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: ffTheme.primary.withValues(alpha: 0.15)),
             ),
-            child: Container(
-              key: ValueKey(_tIdx),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: ffTheme.accent1,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: ffTheme.primary.withValues(alpha: 0.15)),
-              ),
-              child: Row(
-                children: [
-                  const Text('⭐', style: TextStyle(fontSize: 24)),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(_testimonials[_tIdx].$1,
-                            style: ffTheme.bodyMedium.copyWith(color: ffTheme.primaryText, fontWeight: FontWeight.w600)),
-                        const SizedBox(height: 4),
-                        Text(_testimonials[_tIdx].$2, style: ffTheme.labelSmall),
-                      ],
-                    ),
+            child: Row(
+              children: [
+                const Text('🔎', style: TextStyle(fontSize: 24)),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'מחירים שקופים מכל הספקים, ללא עמלות נסתרות — אתם מחליטים מה הכי משתלם.',
+                    style: ffTheme.bodyMedium.copyWith(color: ffTheme.primaryText, fontWeight: FontWeight.w600),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ).animate().fadeIn(delay: 450.ms),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(_testimonials.length, (i) => AnimatedContainer(
-              duration: const Duration(milliseconds: 300),
-              margin: const EdgeInsets.symmetric(horizontal: 3),
-              width: i == _tIdx ? 20 : 6,
-              height: 6,
-              decoration: BoxDecoration(
-                color: i == _tIdx ? ffTheme.primary : ffTheme.alternate,
-                borderRadius: BorderRadius.circular(3),
-              ),
-            )),
-          ),
         ],
       ),
     );
@@ -375,18 +316,15 @@ class _Page3 extends StatelessWidget {
             ),
             child: Column(
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(5, (i) => const Icon(Icons.star_rounded, color: Color(0xFFC9EC4B), size: 18)),
-                ),
+                const Icon(Icons.verified_rounded, color: Color(0xFFC9EC4B), size: 26),
                 const SizedBox(height: 8),
                 Text(
-                  '4.8 | 60,000+ לקוחות מרוצים',
+                  'שירות חינמי לחלוטין',
                   style: GoogleFonts.rubik(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white),
                 ),
                 const SizedBox(height: 4),
-                Text('הורדה חינמית · אין עמלות נסתרות',
-                    style: ffTheme.bodySmall.copyWith(color: Colors.white60)),
+                Text('אין עמלות נסתרות · המספר נשמר · ליווי עד סיום הניוד',
+                    style: ffTheme.bodySmall.copyWith(color: Colors.white60), textAlign: TextAlign.center),
               ],
             ),
           ).animate().fadeIn(delay: 550.ms).scale(begin: const Offset(0.95, 0.95)),

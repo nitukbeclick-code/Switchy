@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:chosech/data.dart';
 import 'package:chosech/models.dart';
+import 'package:chosech/services/provider_ratings.dart';
 
 void main() {
   // ── planSaveYear ────────────────────────────────────────────────────────────
@@ -363,20 +364,25 @@ void main() {
     });
   });
 
-  // ── community deep-links ─────────────────────────────────────────────────────
+  // ── community feed ───────────────────────────────────────────────────────────
 
   group('community posts', () {
-    test('every post planId resolves via planById', () {
+    // The community feed ships with NO seeded posts: we never fabricate social
+    // proof. Real posts arrive from the backend / the user's own submissions,
+    // and until then the UI shows an honest empty state.
+    test('the seed community feed is empty', () {
+      expect(communityPosts, isEmpty,
+          reason: 'no invented testimonials / "team report" posts may be seeded');
+    });
+
+    test('any post that ever ships still deep-links to a real plan', () {
+      // Guards the invariant for real posts: a planId, when present, must
+      // resolve. Vacuously true while the seed is empty, but protects against a
+      // future regression that re-introduces a post with a dangling planId.
       for (final post in communityPosts.where((p) => p.planId != null)) {
         expect(planById(post.planId!), isNotNull,
             reason: 'post ${post.id} deep-links to missing plan ${post.planId}');
       }
-    });
-
-    test('the featured team post (first team post with a planId) is live', () {
-      final featured =
-          communityPosts.firstWhere((p) => p.isTeam && p.planId != null);
-      expect(planById(featured.planId!), isNotNull);
     });
   });
 
@@ -495,36 +501,42 @@ void main() {
   });
 
   // ── catalogue ratings ────────────────────────────────────────────────────────
+  //
+  // Catalogue plans carry NO seeded review counts (reviews == 0): the old
+  // star/review figures were fabricated. A provider therefore reports "no data"
+  // until a real review backs it, and the UI shows "אין עדיין דירוגים" instead
+  // of a made-up average.
 
   group('catalogue ratings', () {
-    test('ratings are differentiated, not a flat 4.2 placeholder', () {
-      final sourced = allPlans.where((p) => p.cat != 'abroad').toList();
-      final distinct = sourced.map((p) => p.rating).toSet();
-      expect(distinct.length, greaterThan(3),
-          reason: 'sourced plans must not share a single placeholder rating');
-      expect(sourced.any((p) => p.rating == 4.2 && p.reviews == 0), isFalse,
-          reason: 'no plan may keep the 4.2/0-reviews placeholder');
-    });
-
-    test('every plan has a plausible rating and a real review count', () {
+    test('no plan ships a fabricated review count', () {
       for (final p in allPlans) {
-        expect(p.rating, inInclusiveRange(3.5, 5.0),
-            reason: '${p.id} rating ${p.rating}');
-        expect(p.reviews, greaterThan(0), reason: '${p.id} has no reviews');
+        expect(p.reviews, equals(0),
+            reason: '${p.id} must not seed a fabricated review count');
       }
     });
 
-    test("a provider's sourced plans cluster around a shared base", () {
-      final byProvider = <String, List<double>>{};
-      for (final p in allPlans.where((p) => p.cat != 'abroad')) {
-        byProvider.putIfAbsent(p.provider, () => []).add(p.rating);
+    test('a real provider reports no rating data (no real reviews yet)', () {
+      final provider = allProviders.first;
+      expect(ProviderRatings.averageStars(provider), equals(0),
+          reason: 'an unreviewed provider must not expose a star average');
+      final r = ProviderRatings.forProvider(provider);
+      expect(r.hasData, isFalse, reason: 'no real reviews ⇒ hasData is false');
+      expect(r.reviewCount, equals(0));
+      expect(r.stars, equals(0));
+    });
+
+    test('an unknown provider also reports no data', () {
+      expect(ProviderRatings.averageStars('no_such_provider_xyz'), equals(0));
+      final r = ProviderRatings.forProvider('no_such_provider_xyz');
+      expect(r.hasData, isFalse);
+      expect(r.reviewCount, equals(0));
+    });
+
+    test('every provider in the catalogue is currently a no-data provider', () {
+      for (final provider in allProviders) {
+        expect(ProviderRatings.forProvider(provider).hasData, isFalse,
+            reason: '$provider has no real reviews, so it must show no data');
       }
-      byProvider.forEach((provider, ratings) {
-        final lo = ratings.reduce((a, b) => a < b ? a : b);
-        final hi = ratings.reduce((a, b) => a > b ? a : b);
-        expect(hi - lo, lessThanOrEqualTo(0.5),
-            reason: '$provider ratings spread too wide ($lo..$hi)');
-      });
     });
   });
 }

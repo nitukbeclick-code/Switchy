@@ -7,6 +7,7 @@ import '../../core/nav.dart';
 import '../../app_state.dart';
 import '../../data.dart';
 import '../../components/logo_widget/logo_widget.dart';
+import '../../widgets/empty_state.dart';
 import '../../services/provider_ratings.dart';
 import '../../services/backend/backend.dart';
 import '../../services/backend/local_backend.dart';
@@ -63,54 +64,83 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
     super.dispose();
   }
 
-  Map<String, List<double>> get _providerRatings {
+  // Every provider in the selected category, even before it has any reviews —
+  // the catalogue (which providers exist, in which category) is a real fact, so
+  // we list them honestly and only show a star average once REAL reviews exist.
+  List<String> get _providersInCat {
     final plans = _selectedCat == 'הכל'
         ? allPlans
         : allPlans.where((p) => p.cat == (_catIds[_selectedCat] ?? '')).toList();
-
-    final map = <String, List<double>>{};
+    final seen = <String>{};
+    final out = <String>[];
     for (final plan in plans) {
-      map.putIfAbsent(plan.provider, () => []).add(plan.rating);
+      if (seen.add(plan.provider)) out.add(plan.provider);
     }
-    return map;
+    return out;
   }
 
-  int _totalReviews(String provider) {
-    final staticCount = allPlans.where((p) => p.provider == provider).fold(0, (s, p) => s + p.reviews);
-    final liveCount = _remoteReviews[provider]?.length ?? 0;
-    return staticCount + liveCount;
+  // All real reviews for a provider: live community reviews from the backend
+  // plus the signed-in user's own review. Per-plan catalogue "reviews" counts
+  // were fabricated and are intentionally NOT counted here.
+  List<ReviewInput> _realReviews(String provider, AppState appState) {
+    final out = <ReviewInput>[..._remoteReviews[provider] ?? const []];
+    final own = appState.reviewFor(provider);
+    if (own != null) {
+      out.add(ReviewInput(
+        provider: provider,
+        overall: own['overall'] as int? ?? 0,
+        subRatings: {
+          for (final k in ProviderRatings.subKeys) k: own[k] as int? ?? 0,
+        },
+        text: own['text'] as String? ?? '',
+      ));
+    }
+    return out;
   }
 
-  // Delegates to the shared ProviderRatings helper so the leaderboard and the
-  // provider profile compute identical sub-ratings (single source of truth).
-  double _subRatingValue(String provider, String key) =>
-      ProviderRatings.subRating(provider, key);
+  int _totalReviews(String provider, AppState appState) =>
+      _realReviews(provider, appState).length;
+
+  // Average overall stars across REAL reviews only, or 0 when there are none.
+  double _avgStars(String provider, AppState appState) {
+    final reviews = _realReviews(provider, appState).where((r) => r.overall > 0).toList();
+    if (reviews.isEmpty) return 0;
+    return reviews.fold<int>(0, (s, r) => s + r.overall) / reviews.length;
+  }
+
+  // Average of one sub-dimension across REAL reviews, or 0 when unrated.
+  double _subRatingValue(String provider, String key, AppState appState) {
+    final values = _realReviews(provider, appState)
+        .map((r) => r.subRatings[key] ?? 0)
+        .where((v) => v > 0)
+        .toList();
+    if (values.isEmpty) return 0;
+    return values.reduce((a, b) => a + b) / values.length;
+  }
 
   @override
   Widget build(BuildContext context) {
     final ffTheme = AppTheme.of(context);
     final appState = Provider.of<AppState>(context, listen: false);
-    final ratings = _providerRatings;
+    final providers = _providersInCat;
 
-    final sorted = ratings.entries.toList();
+    // Only providers with at least one REAL review are ranked with stars; the
+    // rest are listed below under an honest "no ratings yet" state.
+    final rated = providers.where((p) => _totalReviews(p, appState) > 0).toList();
+    final unrated = providers.where((p) => _totalReviews(p, appState) == 0).toList();
+
     if (_sortBy == 'rating') {
-      sorted.sort((a, b) {
-        final avgA = a.value.reduce((x, y) => x + y) / a.value.length;
-        final avgB = b.value.reduce((x, y) => x + y) / b.value.length;
-        return avgB.compareTo(avgA);
-      });
+      rated.sort((a, b) => _avgStars(b, appState).compareTo(_avgStars(a, appState)));
     } else if (_sortBy == 'reviews') {
-      sorted.sort((a, b) => _totalReviews(b.key).compareTo(_totalReviews(a.key)));
+      rated.sort((a, b) => _totalReviews(b, appState).compareTo(_totalReviews(a, appState)));
     } else {
       // value = rating / price ratio (guard against zero price)
-      sorted.sort((a, b) {
-        final avgA = a.value.reduce((x, y) => x + y) / a.value.length;
-        final avgB = b.value.reduce((x, y) => x + y) / b.value.length;
-        final pricedA = allPlans.where((p) => p.provider == a.key && p.price > 0).map((p) => p.price);
-        final pricedB = allPlans.where((p) => p.provider == b.key && p.price > 0).map((p) => p.price);
+      rated.sort((a, b) {
+        final pricedA = allPlans.where((p) => p.provider == a && p.price > 0).map((p) => p.price);
+        final pricedB = allPlans.where((p) => p.provider == b && p.price > 0).map((p) => p.price);
         final minPriceA = pricedA.isEmpty ? 1 : pricedA.reduce((x, y) => x < y ? x : y);
         final minPriceB = pricedB.isEmpty ? 1 : pricedB.reduce((x, y) => x < y ? x : y);
-        return (avgB / minPriceB).compareTo(avgA / minPriceA);
+        return (_avgStars(b, appState) / minPriceB).compareTo(_avgStars(a, appState) / minPriceA);
       });
     }
 
@@ -142,9 +172,9 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Top 3 podium
-              if (sorted.length >= 3) ...[
-                _buildPodium(sorted.take(3).toList(), ffTheme),
+              // Top 3 podium — only once at least 3 providers have REAL reviews.
+              if (rated.length >= 3) ...[
+                _buildPodium(rated.take(3).map((p) => MapEntry(p, _avgStars(p, appState))).toList(), ffTheme),
                 const SizedBox(height: 20),
               ],
 
@@ -162,84 +192,131 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
               ),
               const SizedBox(height: 12),
 
-              // Full leaderboard
-              ...sorted.asMap().entries.map((entry) {
-                final i = entry.key;
-                final provider = entry.value.key;
-                final provRatings = entry.value.value;
-                final avg = provRatings.reduce((a, b) => a + b) / provRatings.length;
-                final totalReviews = _totalReviews(provider);
+              // No real reviews anywhere yet → honest empty state for the board.
+              if (rated.isEmpty)
+                const EmptyState(
+                  icon: Icons.reviews_outlined,
+                  headline: 'אין עדיין דירוגים',
+                  subtitle: 'עדיין לא התקבלו ביקורות אמיתיות על ספקים בקטגוריה זו. היו הראשונים לדרג למטה.',
+                )
+              else
+                // Ranked leaderboard — real reviews only.
+                ...rated.asMap().entries.map((entry) {
+                  final i = entry.key;
+                  final provider = entry.value;
+                  final avg = _avgStars(provider, appState);
+                  final totalReviews = _totalReviews(provider, appState);
 
-                return GestureDetector(
-                  onTap: () => context.pushNamed('Provider', pathParameters: {'name': provider}),
-                  child: Container(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: i == 0 ? ffTheme.secondary : ffTheme.alternate, width: i == 0 ? 2 : 1),
-                      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8)],
-                    ),
-                    child: Column(
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              width: 32,
-                              height: 32,
-                              decoration: BoxDecoration(
-                                color: i == 0 ? ffTheme.secondary : i == 1 ? const Color(0xFFE5E0D5) : i == 2 ? const Color(0xFFFFE8D0) : ffTheme.background,
-                                shape: BoxShape.circle,
+                  return GestureDetector(
+                    onTap: () => context.pushNamed('Provider', pathParameters: {'name': provider}),
+                    child: Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: i == 0 ? ffTheme.secondary : ffTheme.alternate, width: i == 0 ? 2 : 1),
+                        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8)],
+                      ),
+                      child: Column(
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                width: 32,
+                                height: 32,
+                                decoration: BoxDecoration(
+                                  color: i == 0 ? ffTheme.secondary : i == 1 ? const Color(0xFFE5E0D5) : i == 2 ? const Color(0xFFFFE8D0) : ffTheme.background,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Center(child: Text('${i + 1}', style: GoogleFonts.rubik(fontSize: 13, fontWeight: FontWeight.w800, color: const Color(0xFF0E3A26)))),
                               ),
-                              child: Center(child: Text('${i + 1}', style: GoogleFonts.rubik(fontSize: 13, fontWeight: FontWeight.w800, color: const Color(0xFF0E3A26)))),
-                            ),
-                            const SizedBox(width: 10),
-                            LogoWidget(provider: provider, size: 38),
+                              const SizedBox(width: 10),
+                              LogoWidget(provider: provider, size: 38),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(provider, style: ffTheme.titleSmall, overflow: TextOverflow.ellipsis),
+                                    Row(
+                                      children: [
+                                        ...List.generate(5, (j) => Icon(
+                                          j < avg.floor() ? Icons.star_rounded : j < avg ? Icons.star_half_rounded : Icons.star_outline_rounded,
+                                          size: 13,
+                                          color: ffTheme.warning,
+                                        )),
+                                        const SizedBox(width: 4),
+                                        Text(avg.toStringAsFixed(1), style: ffTheme.labelSmall.copyWith(fontWeight: FontWeight.w700)),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Text('$totalReviews', style: ffTheme.titleSmall.copyWith(color: ffTheme.primary)),
+                                  Text(totalReviews == 1 ? 'ביקורת' : 'ביקורות', style: ffTheme.labelSmall),
+                                ],
+                              ),
+                              const SizedBox(width: 6),
+                              Icon(Icons.arrow_forward_ios_rounded, size: 14, color: ffTheme.secondaryText),
+                            ],
+                          ),
+                          // Sub-dimension bars — shown only for dimensions that
+                          // were actually rated in a real review.
+                          ...() {
+                            final bars = <Widget>[];
+                            for (final key in ProviderRatings.subKeys) {
+                              final v = _subRatingValue(provider, key, appState);
+                              if (v <= 0) continue;
+                              bars.add(const SizedBox(height: 6));
+                              bars.add(_SubBar(label: _subLabels[key]!, value: v / 5, ffTheme: ffTheme));
+                            }
+                            if (bars.isNotEmpty) bars.insert(0, const SizedBox(height: 6));
+                            return bars;
+                          }(),
+                        ],
+                      ),
+                    ),
+                  ).animate(delay: (i * 60).ms).fadeIn(duration: 350.ms).slideX(begin: 0.05, end: 0);
+                }),
+
+              // Providers without real reviews yet — listed honestly.
+              if (unrated.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Text('ממתינים לדירוג ראשון', style: ffTheme.titleSmall.copyWith(color: ffTheme.secondaryText)),
+                const SizedBox(height: 10),
+                ...unrated.map((provider) => GestureDetector(
+                      onTap: () => context.pushNamed('Provider', pathParameters: {'name': provider}),
+                      child: Container(
+                        margin: const EdgeInsets.only(bottom: 10),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: ffTheme.alternate),
+                        ),
+                        child: Row(
+                          children: [
+                            LogoWidget(provider: provider, size: 34),
                             const SizedBox(width: 10),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(provider, style: ffTheme.titleSmall, overflow: TextOverflow.ellipsis),
-                                  Row(
-                                    children: [
-                                      ...List.generate(5, (j) => Icon(
-                                        j < avg.floor() ? Icons.star_rounded : j < avg ? Icons.star_half_rounded : Icons.star_outline_rounded,
-                                        size: 13,
-                                        color: ffTheme.warning,
-                                      )),
-                                      const SizedBox(width: 4),
-                                      Text(avg.toStringAsFixed(1), style: ffTheme.labelSmall.copyWith(fontWeight: FontWeight.w700)),
-                                    ],
-                                  ),
+                                  Text('אין עדיין דירוגים', style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText)),
                                 ],
                               ),
                             ),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Text('$totalReviews', style: ffTheme.titleSmall.copyWith(color: ffTheme.primary)),
-                                Text('ביקורות', style: ffTheme.labelSmall),
-                              ],
-                            ),
-                            const SizedBox(width: 6),
                             Icon(Icons.arrow_forward_ios_rounded, size: 14, color: ffTheme.secondaryText),
                           ],
                         ),
-                        const SizedBox(height: 12),
-                        _SubBar(label: 'מחיר', value: _subRatingValue(provider, 'price') / 5, ffTheme: ffTheme),
-                        const SizedBox(height: 6),
-                        _SubBar(label: 'שירות', value: _subRatingValue(provider, 'service') / 5, ffTheme: ffTheme),
-                        const SizedBox(height: 6),
-                        _SubBar(label: 'כיסוי', value: _subRatingValue(provider, 'coverage') / 5, ffTheme: ffTheme),
-                        const SizedBox(height: 6),
-                        _SubBar(label: 'מהירות', value: _subRatingValue(provider, 'speed') / 5, ffTheme: ffTheme),
-                      ],
-                    ),
-                  ),
-                ).animate(delay: (i * 60).ms).fadeIn(duration: 350.ms).slideX(begin: 0.05, end: 0);
-              }),
+                      ),
+                    )),
+              ],
 
               const SizedBox(height: 24),
 
@@ -293,13 +370,13 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
                       Wrap(
                         spacing: 8,
                         runSpacing: 8,
-                        children: sorted.take(10).map((e) {
-                          final active = _selectedProvider == e.key;
+                        children: providers.take(12).map((e) {
+                          final active = _selectedProvider == e;
                           return GestureDetector(
                             onTap: () {
-                              final existing = appState.reviewFor(e.key);
+                              final existing = appState.reviewFor(e);
                               setState(() {
-                                _selectedProvider = e.key;
+                                _selectedProvider = e;
                                 _submitted = false;
                                 if (existing != null) {
                                   _subRatings['price'] = existing['price'] as int? ?? 0;
@@ -324,12 +401,12 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  if (appState.hasReviewedProvider(e.key) && !active)
+                                  if (appState.hasReviewedProvider(e) && !active)
                                     Padding(
                                       padding: const EdgeInsetsDirectional.only(end: 4),
                                       child: Icon(Icons.check_circle_rounded, size: 13, color: ffTheme.success),
                                     ),
-                                  Text(e.key, style: ffTheme.labelSmall.copyWith(color: active ? Colors.white : ffTheme.primaryText)),
+                                  Text(e, style: ffTheme.labelSmall.copyWith(color: active ? Colors.white : ffTheme.primaryText)),
                                 ],
                               ),
                             ),
@@ -576,8 +653,8 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
     }
   }
 
-  Widget _buildPodium(List<MapEntry<String, List<double>>> top, AppTheme ffTheme) {
-    final avgs = top.map((e) => e.value.reduce((a, b) => a + b) / e.value.length).toList();
+  Widget _buildPodium(List<MapEntry<String, double>> top, AppTheme ffTheme) {
+    final avgs = top.map((e) => e.value).toList();
 
     return Container(
       padding: const EdgeInsets.all(16),

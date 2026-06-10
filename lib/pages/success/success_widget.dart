@@ -200,15 +200,15 @@ class _SuccessWidgetState extends State<SuccessWidget> {
 
               const SizedBox(height: 24),
 
-              // Trust badges
+              // Trust badges — all verifiable, no invented ratings/counts.
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   _TrustBadge(icon: '🔒', label: 'מאובטח', ffTheme: ffTheme),
                   const SizedBox(width: 24),
-                  _TrustBadge(icon: '⭐', label: 'דירוג 4.8', ffTheme: ffTheme),
+                  _TrustBadge(icon: '💸', label: 'ללא עלות', ffTheme: ffTheme),
                   const SizedBox(width: 24),
-                  _TrustBadge(icon: '👥', label: '60K לקוחות', ffTheme: ffTheme),
+                  _TrustBadge(icon: '🤝', label: 'ליווי אישי', ffTheme: ffTheme),
                 ],
               ).animate().fadeIn(delay: 750.ms),
 

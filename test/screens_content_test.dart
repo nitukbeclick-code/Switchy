@@ -63,8 +63,8 @@ void main() {
     expect(find.text('הבחירה שלנו'), findsOneWidget); // top-ranked row marker
     // A ₪190 plan is beatable, so the saver headline should appear.
     expect(find.textContaining('אפשר לחסוך'), findsOneWidget);
-    // Each alternative row carries a provider star rating.
-    expect(find.byIcon(Icons.star_rounded), findsWidgets);
+    // Ratings are honest now — with no real reviews, rows show no provider stars.
+    expect(find.byIcon(Icons.star_rounded), findsNothing);
   });
 
   testWidgets('Global search shows provider and plan sections for a query', (tester) async {
@@ -141,6 +141,14 @@ void main() {
 
   testWidgets('provider profile shows the hero, ratings panel and best match', (tester) async {
     await _bootApp(tester);
+    // The ratings panel is honestly hidden until a real review exists — add one
+    // so this test can verify the panel renders when there IS data.
+    AppState().addReview(
+      provider: 'סלקום',
+      overall: 5,
+      subRatings: {'price': 5, 'service': 5, 'coverage': 4, 'speed': 4},
+      text: 'מצוין',
+    );
     _go(tester, '/provider/סלקום');
     await tester.pump(const Duration(milliseconds: 700));
     await tester.pump(const Duration(milliseconds: 700));

@@ -158,11 +158,8 @@ class RecommendationEngine {
 
     if (saving > 0) reasons.add('חוסך ₪$saving בשנה');
     if (profile.budget > 0 && plan.price <= profile.budget) reasons.add('בתוך התקציב שלך');
-    if (plan.rating >= 4.5) {
-      reasons.add('מדורג ${plan.rating.toStringAsFixed(1)}★ — מהגבוהים');
-    } else if (plan.rating >= 4.2 && profile.priority == MatchPriority.service) {
-      reasons.add('שירות מדורג ${plan.rating.toStringAsFixed(1)}★');
-    }
+    // No rating-based reason: plan.rating is a placeholder (reviews == 0), so a
+    // "מדורג X★" claim would be fabricated social proof.
     if (plan.is5G) reasons.add('5G מהיר');
     if (_isGigFiber(plan)) reasons.add('סיב אופטי במהירות גיגה');
     if (plan.noCommit) reasons.add('ללא התחייבות — ביטול בכל עת');

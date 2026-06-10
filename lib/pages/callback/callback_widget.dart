@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -25,17 +24,9 @@ class _CallbackWidgetState extends State<CallbackWidget> {
   String _topic = 'סלולר';
   bool _submitted = false;
   bool _isLoading = false;
-  int _expertIndex = 0;
-  Timer? _expertTimer;
 
   static const _timings = ['בהקדם', 'בוקר', 'אחה"צ', 'ערב'];
   static const _topics = ['סלולר', 'אינטרנט', 'טלוויזיה', 'חבילה משולבת', 'ניתוק', 'אחר'];
-
-  static const _experts = [
-    _Expert(name: 'דנה כהן', title: 'מומחית סלולר', rating: '4.9', handled: '1,240 לקוחות', avatar: 'ד'),
-    _Expert(name: 'איתן לוי', title: 'מומחה אינטרנט ו-TV', rating: '4.8', handled: '980 לקוחות', avatar: 'א'),
-    _Expert(name: 'ריקי מזרחי', title: 'מומחית חבילות', rating: '5.0', handled: '650 לקוחות', avatar: 'ר'),
-  ];
 
   @override
   void initState() {
@@ -43,16 +34,12 @@ class _CallbackWidgetState extends State<CallbackWidget> {
     final appState = AppState();
     if (appState.userName.isNotEmpty) _nameCtrl.text = appState.userName;
     if (appState.userPhone.isNotEmpty) _phoneCtrl.text = appState.userPhone;
-    _expertTimer = Timer.periodic(const Duration(seconds: 3), (_) {
-      if (mounted) setState(() => _expertIndex = (_expertIndex + 1) % _experts.length);
-    });
   }
 
   @override
   void dispose() {
     _nameCtrl.dispose();
     _phoneCtrl.dispose();
-    _expertTimer?.cancel();
     super.dispose();
   }
 
@@ -75,8 +62,9 @@ class _CallbackWidgetState extends State<CallbackWidget> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Expert showcase
-            _buildExpertCard(ffTheme),
+            // Honest value-prop card — a human rep will call back. No invented
+            // names, ratings, or handled-counts.
+            _buildCallbackCard(ffTheme),
             const SizedBox(height: 24),
 
             // Topic selector
@@ -227,71 +215,73 @@ class _CallbackWidgetState extends State<CallbackWidget> {
     );
   }
 
-  Widget _buildExpertCard(AppTheme ffTheme) {
-    final expert = _experts[_expertIndex];
-    return AnimatedSwitcher(
-      duration: const Duration(milliseconds: 400),
-      transitionBuilder: (child, anim) => FadeTransition(
-        opacity: anim,
-        child: SlideTransition(position: Tween(begin: const Offset(0, 0.05), end: Offset.zero).animate(anim), child: child),
+  Widget _buildCallbackCard(AppTheme ffTheme) {
+    const valueProps = [
+      ('חינם', Icons.payments_outlined),
+      ('ללא התחייבות', Icons.thumb_up_outlined),
+      ('ליווי מלא', Icons.support_agent_outlined),
+    ];
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(colors: [ffTheme.primary, ffTheme.tertiary], begin: Alignment.topRight, end: Alignment.bottomLeft),
+        borderRadius: BorderRadius.circular(16),
       ),
-      child: Container(
-        key: ValueKey(_expertIndex),
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(colors: [ffTheme.primary, ffTheme.tertiary], begin: Alignment.topRight, end: Alignment.bottomLeft),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Row(
-          children: [
-            ExcludeSemantics(
-              child: Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(color: ffTheme.secondary, shape: BoxShape.circle),
-                child: Center(child: Text(expert.avatar, style: GoogleFonts.rubik(fontSize: 24, fontWeight: FontWeight.w800, color: ffTheme.primary))),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              ExcludeSemantics(
+                child: Container(
+                  width: 52,
+                  height: 52,
+                  decoration: BoxDecoration(color: ffTheme.secondary, shape: BoxShape.circle),
+                  child: Icon(Icons.headset_mic_rounded, size: 26, color: ffTheme.primary),
+                ),
               ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text(expert.name, style: GoogleFonts.rubik(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
-                      const SizedBox(width: 6),
-                      const Icon(Icons.verified_rounded, size: 14, color: Color(0xFFC9EC4B)),
-                    ],
-                  ),
-                  Text(expert.title, style: GoogleFonts.assistant(fontSize: 12, color: Colors.white70)),
-                  const SizedBox(height: 6),
-                  Row(
-                    children: [
-                      const Icon(Icons.star_rounded, size: 13, color: Color(0xFFFFC107)),
-                      const SizedBox(width: 2),
-                      Text(expert.rating, style: GoogleFonts.assistant(fontSize: 12, color: Colors.white)),
-                      const SizedBox(width: 10),
-                      const Icon(Icons.people_rounded, size: 13, color: Colors.white60),
-                      const SizedBox(width: 3),
-                      Text(expert.handled, style: GoogleFonts.assistant(fontSize: 11, color: Colors.white70)),
-                    ],
-                  ),
-                ],
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('נציג אנושי יחזור אליכם',
+                        style: GoogleFonts.rubik(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
+                    const SizedBox(height: 4),
+                    Text('משאירים פרטים, ומומחה מטעמנו מתקשר בזמן שנוח לכם',
+                        style: GoogleFonts.assistant(fontSize: 12, color: Colors.white70)),
+                  ],
+                ),
               ),
-            ),
-            Column(
-              children: [
-                Container(
-                  width: 10, height: 10,
-                  decoration: const BoxDecoration(color: Color(0xFF25D366), shape: BoxShape.circle),
-                ).animate(onPlay: (c) => c.repeat(reverse: true)).scale(begin: const Offset(1, 1), end: const Offset(1.4, 1.4), duration: 800.ms),
-                const SizedBox(height: 3),
-                Text('זמין', style: GoogleFonts.assistant(fontSize: 10, color: Colors.white70)),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              for (final (label, icon) in valueProps) ...[
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Column(
+                      children: [
+                        Icon(icon, size: 18, color: ffTheme.secondary),
+                        const SizedBox(height: 4),
+                        Text(label,
+                            textAlign: TextAlign.center,
+                            style: GoogleFonts.assistant(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white)),
+                      ],
+                    ),
+                  ),
+                ),
+                if (label != valueProps.last.$1) const SizedBox(width: 8),
               ],
-            ),
-          ],
-        ),
+            ],
+          ),
+        ],
       ),
     ).animate().fadeIn(duration: 350.ms);
   }
@@ -444,9 +434,4 @@ class _CallbackWidgetState extends State<CallbackWidget> {
       focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.primary, width: 1.5)),
     );
   }
-}
-
-class _Expert {
-  final String name, title, rating, handled, avatar;
-  const _Expert({required this.name, required this.title, required this.rating, required this.handled, required this.avatar});
 }

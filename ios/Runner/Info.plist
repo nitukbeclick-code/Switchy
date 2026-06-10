@@ -53,5 +53,20 @@
 		<string>נדרש כדי להקליט הודעות קוליות בקהילה</string>
 		<key>NSPhotoLibraryUsageDescription</key>
 		<string>נדרש כדי לבחור תמונות וסרטונים מהגלריה לשיתוף בקהילה</string>
+		<key>NSFaceIDUsageDescription</key>
+		<string>כניסה מהירה ומאובטחת לחשבון שלך באמצעות Face ID</string>
+		<key>CFBundleURLTypes</key>
+		<array>
+			<dict>
+				<key>CFBundleTypeRole</key>
+				<string>Editor</string>
+				<key>CFBundleURLName</key>
+				<string>io.supabase.chosech</string>
+				<key>CFBundleURLSchemes</key>
+				<array>
+					<string>io.supabase.chosech</string>
+				</array>
+			</dict>
+		</array>
 	</dict>
 </plist>

@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -27,36 +26,6 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
     'triple': 349,
     'abroad': 0,
   };
-  int _tickerIndex = 0;
-  Timer? _tickerTimer;
-
-  static const _liveActivities = [
-    {'name': 'דן', 'city': 'תל אביב', 'cat': 'סלולר', 'save': '960'},
-    {'name': 'מאיה', 'city': 'ירושלים', 'cat': 'אינטרנט', 'save': '1,440'},
-    {'name': 'יוסי', 'city': 'חיפה', 'cat': 'סלולר', 'save': '720'},
-    {'name': 'נועה', 'city': 'פ"ת', 'cat': 'TV', 'save': '840'},
-    {'name': 'אמיר', 'city': 'ראשל"צ', 'cat': 'סלולר', 'save': '1,080'},
-    {'name': 'רחל', 'city': 'באר שבע', 'cat': 'אינטרנט', 'save': '600'},
-    {'name': 'שי', 'city': 'נתניה', 'cat': 'חבילה', 'save': '1,800'},
-    {'name': 'לירון', 'city': 'אשדוד', 'cat': 'סלולר', 'save': '1,200'},
-    {'name': 'גלי', 'city': 'רמת גן', 'cat': 'אינטרנט', 'save': '780'},
-    {'name': 'עידו', 'city': 'מודיעין', 'cat': 'חבילה', 'save': '2,160'},
-    {'name': 'תמר', 'city': 'הרצליה', 'cat': 'TV', 'save': '480'},
-  ];
-
-  @override
-  void initState() {
-    super.initState();
-    _tickerTimer = Timer.periodic(const Duration(seconds: 3), (_) {
-      if (mounted) setState(() => _tickerIndex = (_tickerIndex + 1) % _liveActivities.length);
-    });
-  }
-
-  @override
-  void dispose() {
-    _tickerTimer?.cancel();
-    super.dispose();
-  }
 
   int _potentialSaving(String cat, int bill) {
     final catPlans = plansByCat(cat);
@@ -74,7 +43,6 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
     final heroSaving = _potentialSaving('cellular', heroBill);
     final catBill = (_catBills[_activeCat] ?? 0).round();
     final catSaving = _potentialSaving(_activeCat, catBill);
-    final act = _liveActivities[_tickerIndex];
 
     return Scaffold(
       backgroundColor: ffTheme.background,
@@ -137,7 +105,7 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
                   ).animate().fadeIn(duration: 500.ms).slideY(begin: 0.2, end: 0),
                   const SizedBox(height: 12),
                   Text(
-                    'חסכנו לאלפי ישראלים יותר מ-₪850 בשנה',
+                    'כל מסלולי הסלולר, האינטרנט והטלוויזיה במקום אחד — שקוף ואמין',
                     style: GoogleFonts.assistant(fontSize: 14, color: Colors.white70),
                   ).animate().fadeIn(delay: 100.ms),
                   const SizedBox(height: 18),
@@ -247,62 +215,19 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
             ),
           ),
 
-          // Stats bar
+          // Stats bar — real catalogue facts only (verifiable from the data set).
           SliverToBoxAdapter(
             child: Container(
               color: Colors.white,
               padding: const EdgeInsets.symmetric(vertical: 20),
-              child: Column(
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  const Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      _AnimatedStat(end: 60000, prefix: '', suffix: '+', label: 'לקוחות'),
-                      _StatDivider(),
-                      _AnimatedStat(end: 850, prefix: '₪', suffix: '', label: 'חיסכון ממוצע'),
-                      _StatDivider(),
-                      _AnimatedStat(end: 100, prefix: '', suffix: '+', label: 'מסלולים'),
-                      _StatDivider(),
-                      _Stat(value: '4.8★', label: 'דירוג'),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  // Live activity ticker
-                  Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 20),
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF4F0E8),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: 7,
-                          height: 7,
-                          decoration: const BoxDecoration(color: Color(0xFF15603E), shape: BoxShape.circle),
-                        ).animate(onPlay: (c) => c.repeat(reverse: true))
-                          .scale(begin: const Offset(1, 1), end: const Offset(1.5, 1.5), duration: 900.ms),
-                        const SizedBox(width: 8),
-                        AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 600),
-                          transitionBuilder: (child, anim) => FadeTransition(
-                            opacity: anim,
-                            child: SlideTransition(
-                              position: Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero).animate(anim),
-                              child: child,
-                            ),
-                          ),
-                          child: Text(
-                            key: ValueKey(_tickerIndex),
-                            '${act['name']} מ${act['city']} חסך ₪${act['save']} בשנה ב${act['cat']}',
-                            style: GoogleFonts.assistant(fontSize: 12, fontWeight: FontWeight.w600, color: const Color(0xFF15603E)),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                  _AnimatedStat(end: 100, prefix: '', suffix: '+', label: 'מסלולים'),
+                  _StatDivider(),
+                  _AnimatedStat(end: 18, prefix: '', suffix: '', label: 'ספקים'),
+                  _StatDivider(),
+                  _AnimatedStat(end: 5, prefix: '', suffix: '', label: 'קטגוריות'),
                 ],
               ),
             ).animate().fadeIn(delay: 300.ms),
@@ -435,7 +360,7 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
             ).animate().fadeIn(delay: 400.ms),
           ),
 
-          // Testimonials
+          // Why חוסך — honest value props, no fabricated testimonials.
           SliverToBoxAdapter(
             child: Container(
               padding: const EdgeInsets.fromLTRB(20, 28, 20, 28),
@@ -443,26 +368,23 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      Text('מה אומרים הלקוחות שלנו', style: ffTheme.headlineMedium),
-                      const Spacer(),
-                      Row(
-                        children: List.generate(5, (_) => Icon(Icons.star_rounded, size: 14, color: ffTheme.warning)),
-                      ),
-                    ],
-                  ),
+                  Text('למה חוסך?', style: ffTheme.headlineMedium),
                   const SizedBox(height: 16),
-                  const SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: [
-                        _Testimonial(name: 'מאיה כהן', city: 'תל אביב', saving: 960, provider: 'גולן', text: 'חסכתי ₪80 לחודש בסלולר. הכל היה פשוט, ניוד המספר היה חלק לגמרי. ממליצה בחום!'),
-                        _Testimonial(name: 'דן שפירא', city: 'חיפה', saving: 1200, provider: 'סלקום', text: 'מצאתי אינטרנט גיגה ב-₪99 ללא התחייבות. 3 שנים שמשלמים יותר, היום הפסקנו.'),
-                        _Testimonial(name: 'נועה גרין', city: 'ירושלים', saving: 1440, provider: 'פרטנר', text: 'עברנו לחבילה משולבת עם Netflix. חוסכים ₪120 לחודש על אינטרנט + TV.'),
-                        _Testimonial(name: 'יוסי לוי', city: 'ראשל"צ', saving: 720, provider: 'הוט', text: 'שירות מהיר. הנציג עשה הכל בשבילי, לא הייתי צריך לעשות כלום.'),
-                      ],
-                    ),
+                  const _ValueProp(
+                    icon: Icons.account_balance_wallet_outlined,
+                    title: 'שירות חינמי לחלוטין',
+                    text: 'אנחנו מרוויחים עמלה מהספקים — לא ממך. אין עלות נסתרת.',
+                  ),
+                  const _ValueProp(
+                    icon: Icons.visibility_outlined,
+                    title: 'השוואה שקופה',
+                    text: 'כל המסלולים מ-18 הספקים ב-5 הקטגוריות, אותם נתונים לכולם.',
+                  ),
+                  const _ValueProp(
+                    icon: Icons.handshake_outlined,
+                    title: 'ליווי אישי במעבר',
+                    text: 'נציג אנושי מלווה אותך מהבחירה ועד ניוד המספר — ללא התחייבות.',
+                    isLast: true,
                   ),
                 ],
               ),
@@ -520,7 +442,7 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
                 children: [
                   Text('מוכנים לחסוך?', style: GoogleFonts.rubik(fontSize: 28, fontWeight: FontWeight.w800, color: Colors.white)),
                   const SizedBox(height: 8),
-                  Text('הצטרפו ל-60,000 ישראלים שכבר חוסכים', style: GoogleFonts.assistant(fontSize: 14, color: Colors.white70)),
+                  Text('השוו את כל המסלולים ומצאו את המתאים לכם — בחינם', style: GoogleFonts.assistant(fontSize: 14, color: Colors.white70)),
                   const SizedBox(height: 20),
                   ElevatedButton(
                     onPressed: () => context.goNamed('Home'),
@@ -714,22 +636,6 @@ class _AnimatedStat extends StatelessWidget {
   }
 }
 
-class _Stat extends StatelessWidget {
-  const _Stat({required this.value, required this.label});
-  final String value, label;
-
-  @override
-  Widget build(BuildContext context) {
-    final ffTheme = AppTheme.of(context);
-    return Column(
-      children: [
-        Text(value, style: GoogleFonts.rubik(fontSize: 18, fontWeight: FontWeight.w800, color: ffTheme.primary)),
-        Text(label, style: ffTheme.labelSmall),
-      ],
-    );
-  }
-}
-
 class _StatDivider extends StatelessWidget {
   const _StatDivider();
 
@@ -802,54 +708,41 @@ class _NumberedStep extends StatelessWidget {
   }
 }
 
-class _Testimonial extends StatelessWidget {
-  const _Testimonial({required this.name, required this.city, required this.saving, required this.provider, required this.text});
-  final String name, city, provider, text;
-  final int saving;
+class _ValueProp extends StatelessWidget {
+  const _ValueProp({
+    required this.icon,
+    required this.title,
+    required this.text,
+    this.isLast = false,
+  });
+  final IconData icon;
+  final String title, text;
+  final bool isLast;
 
   @override
   Widget build(BuildContext context) {
     final ffTheme = AppTheme.of(context);
-    return Container(
-      width: 260,
-      margin: const EdgeInsets.only(left: 12, bottom: 4),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: ffTheme.background,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: ffTheme.alternate),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
-      ),
-      child: Column(
+    return Padding(
+      padding: EdgeInsets.only(bottom: isLast ? 0 : 14),
+      child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(color: ffTheme.accent1, shape: BoxShape.circle),
-                child: Center(child: Text(name[0], style: GoogleFonts.rubik(fontSize: 16, fontWeight: FontWeight.w700, color: ffTheme.primary))),
-              ),
-              const SizedBox(width: 10),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(name, style: ffTheme.labelLarge),
-                  Text(city, style: ffTheme.labelSmall),
-                ],
-              ),
-              const Spacer(),
-              Row(children: List.generate(5, (_) => Icon(Icons.star_rounded, size: 12, color: ffTheme.warning))),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Text(text, style: ffTheme.bodySmall.copyWith(height: 1.5), maxLines: 3, overflow: TextOverflow.ellipsis),
-          const SizedBox(height: 10),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(color: ffTheme.secondary, borderRadius: BorderRadius.circular(8)),
-            child: Text('חסך ₪$saving/שנה → $provider', style: ffTheme.labelSmall.copyWith(color: const Color(0xFF0E3A26), fontWeight: FontWeight.w700)),
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(color: ffTheme.accent1, borderRadius: BorderRadius.circular(12)),
+            child: Icon(icon, size: 22, color: ffTheme.primary),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: ffTheme.titleSmall),
+                const SizedBox(height: 3),
+                Text(text, style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText, height: 1.4)),
+              ],
+            ),
           ),
         ],
       ),

@@ -4,8 +4,25 @@ import 'package:google_fonts/google_fonts.dart';
 import 'theme/app_theme.dart';
 import 'router.dart';
 
-class ChosechApp extends StatelessWidget {
+class ChosechApp extends StatefulWidget {
   const ChosechApp({super.key});
+
+  @override
+  State<ChosechApp> createState() => _ChosechAppState();
+}
+
+class _ChosechAppState extends State<ChosechApp> {
+  // One router per app instance, created once. Exposed via [appRouterInstance]
+  // so the auth-state listener in main.dart can navigate after an OAuth
+  // redirect. A fresh app (each test's pumpWidget) gets its own router, keeping
+  // tests isolated — a shared global router leaked navigation state between them.
+  late final _router = createRouter();
+
+  @override
+  void initState() {
+    super.initState();
+    appRouterInstance = _router;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -20,7 +37,7 @@ class ChosechApp extends StatelessWidget {
       ],
       supportedLocales: const [Locale('he'), Locale('en')],
       theme: _theme(context),
-      routerConfig: createRouter(),
+      routerConfig: _router,
       builder: (ctx, child) => Directionality(textDirection: TextDirection.rtl, child: child!),
     );
   }

@@ -5,6 +5,7 @@ import '../../theme/app_theme.dart';
 import '../../widgets/app_snackbar.dart';
 import '../../core/nav.dart';
 import '../../app_state.dart';
+import '../../services/auth_service.dart';
 import '../../widgets/app_button.dart';
 
 class SettingsWidget extends StatelessWidget {
@@ -144,6 +145,9 @@ class SettingsWidget extends StatelessWidget {
 
             const SizedBox(height: 24),
 
+            // ── Security (Face ID) — mobile + biometric + real account only ─
+            _BiometricSection(ffTheme: ffTheme),
+
             // ── Section 3: About ──────────────────────────────────────────
             _SectionHeader(title: 'אודות', ffTheme: ffTheme),
             _Card(
@@ -232,6 +236,8 @@ class SettingsWidget extends StatelessWidget {
                     ),
                   );
                   if (confirmed == true && context.mounted) {
+                    await AuthService.instance.signOut();
+                    if (!context.mounted) return;
                     Provider.of<AppState>(context, listen: false).logout();
                     context.goNamed('Home');
                   }
@@ -280,6 +286,91 @@ class SettingsWidget extends StatelessWidget {
   void _showSnack(BuildContext context, String message) {
     if (!context.mounted) return;
     AppSnackBar.info(context, message, duration: const Duration(seconds: 2));
+  }
+}
+
+// ── Security: Face ID quick-login toggle ────────────────────────────────────────
+// Self-hiding: renders nothing unless we're on a biometric-capable mobile device
+// AND the user is a real (logged-in) account. So it never appears on web or for
+// guests, and the widget tree stays clean.
+class _BiometricSection extends StatefulWidget {
+  const _BiometricSection({required this.ffTheme});
+  final AppTheme ffTheme;
+
+  @override
+  State<_BiometricSection> createState() => _BiometricSectionState();
+}
+
+class _BiometricSectionState extends State<_BiometricSection> {
+  bool _available = false;
+  bool _enabled = false;
+  bool _loaded = false;
+  bool _busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final available = await AuthService.instance.biometricAvailable();
+    final enabled = await AuthService.instance.biometricEnabled;
+    if (!mounted) return;
+    setState(() {
+      _available = available && AuthService.instance.isRealUser;
+      _enabled = enabled;
+      _loaded = true;
+    });
+  }
+
+  Future<void> _toggle(bool v) async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    // Verify the user can actually pass biometric before arming — avoids
+    // locking them out at the cold-start gate.
+    if (v) {
+      final ok = await AuthService.instance
+          .authenticateBiometric(reason: 'אמתו כדי להפעיל כניסה מהירה');
+      if (!ok) {
+        if (mounted) {
+          setState(() => _busy = false);
+          AppSnackBar.error(context, 'האימות נכשל — הכניסה המהירה לא הופעלה');
+        }
+        return;
+      }
+    }
+    await AuthService.instance.setBiometricEnabled(v);
+    if (!mounted) return;
+    setState(() {
+      _enabled = v;
+      _busy = false;
+    });
+    AppSnackBar.success(context, v ? 'כניסה מהירה עם Face ID הופעלה' : 'כניסה מהירה כובתה');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ffTheme = widget.ffTheme;
+    if (!_loaded || !_available) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _SectionHeader(title: 'אבטחה', ffTheme: ffTheme),
+        _Card(
+          ffTheme: ffTheme,
+          child: _ToggleRow(
+            icon: Icons.fingerprint_rounded,
+            title: 'כניסה מהירה עם Face ID',
+            subtitle: 'אמתו ביומטרית במקום סיסמה בכל כניסה',
+            value: _enabled,
+            onChanged: _toggle,
+            ffTheme: ffTheme,
+          ),
+        ).animate().fadeIn(duration: 350.ms),
+        const SizedBox(height: 24),
+      ],
+    );
   }
 }
 

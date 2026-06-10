@@ -5,6 +5,8 @@ import 'app_state.dart';
 import 'theme/app_theme.dart';
 import 'pages/onboarding/onboarding_widget.dart';
 import 'pages/auth/auth_widget.dart';
+import 'pages/auth/biometric_gate_widget.dart';
+import 'services/auth_service.dart';
 import 'pages/home/home_widget.dart';
 import 'pages/quiz/quiz_widget.dart';
 import 'pages/results/results_widget.dart';
@@ -37,6 +39,12 @@ import 'pages/provider/provider_widget.dart';
 final _rootNavKey = GlobalKey<NavigatorState>(debugLabel: 'root');
 final _shellNavKey = GlobalKey<NavigatorState>(debugLabel: 'shell');
 
+/// The current app's router, set by [ChosechApp] at construction. Exposed so
+/// non-widget code — the auth-state listener in `main.dart` — can navigate (e.g.
+/// land Home after an OAuth redirect completes). Null before the app is built
+/// (e.g. early in tests); callers must null-check.
+GoRouter? appRouterInstance;
+
 GoRouter createRouter() {
   // Returning users skip onboarding — but only on the app's *first* navigation
   // (cold start). Later explicit navigations to /onboarding (e.g. right after
@@ -46,6 +54,11 @@ GoRouter createRouter() {
   navigatorKey: _rootNavKey,
   initialLocation: '/onboarding',
   redirect: (context, state) {
+    // Biometric cold-start gate — a real user who armed Face ID must unlock
+    // before reaching any screen. Always false on web (mobile-only surface).
+    if (AuthService.instance.needsBiometricUnlock && state.uri.path != '/lock') {
+      return '/lock';
+    }
     final appState = Provider.of<AppState>(context, listen: false);
     final isOnboarding = state.uri.path == '/onboarding';
     final isFirstNavigation = !initialRedirectHandled;
@@ -60,6 +73,7 @@ GoRouter createRouter() {
   routes: [
     GoRoute(path: '/onboarding', name: 'Onboarding', parentNavigatorKey: _rootNavKey, builder: (_, __) => const OnboardingWidget()),
     GoRoute(path: '/auth', name: 'Auth', parentNavigatorKey: _rootNavKey, builder: (_, __) => const AuthWidget()),
+    GoRoute(path: '/lock', name: 'Lock', parentNavigatorKey: _rootNavKey, builder: (_, __) => const BiometricGateWidget()),
     GoRoute(path: '/website', name: 'Website', parentNavigatorKey: _rootNavKey, builder: (_, __) => const WebsiteWidget()),
     ShellRoute(
       navigatorKey: _shellNavKey,

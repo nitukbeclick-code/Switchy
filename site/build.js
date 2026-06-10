@@ -256,7 +256,12 @@ function providerLogo(name, size = 36) {
 
 // Render one real plan as a card. Used on category pages and the all-plans page.
 const UNIT_HE = { month: 'לחודש', package: 'לחבילה', day: 'ליום', minute: 'לדקה' };
-function planCardHtml(p) {
+function planCardHtml(p, best) {
+  // `best` highlights the value anchor — passed ONLY as an explicit boolean from
+  // the single-category listing (sorted cheapest-first), so the label "lowest
+  // price" is factual. Strict === true guard: other callers use .map(planCardHtml)
+  // which passes the array index as arg 2; that number must never trip the badge.
+  const isBest = best === true;
   // priceUnit comes from the app catalogue export (tool/export_plans.dart) —
   // abroad plans mix per-package/day/minute/month pricing, so never assume.
   const unit = UNIT_HE[p.priceUnit] || (p.cat === 'abroad' ? 'לחבילה' : 'לחודש');
@@ -272,13 +277,14 @@ function planCardHtml(p) {
   // and only surface once a real review exists (see provider_ratings.dart).
   const text = esc(`${p.provider} ${p.plan} ${(p.feats || []).join(' ')} ${Object.values(p.specs || {}).join(' ')}`).toLowerCase();
   const waHref = 'https://wa.me/972505037537?text=' + encodeURIComponent('היי, מעניין אותי ' + p.provider + ' - ' + p.plan + ' (₪' + priceText(p) + ')');
-  return `<article class="plan" data-cat="${esc(p.cat)}" data-text="${text}" data-price="${p.price}" data-5g="${p.is5G}" data-nocommit="${p.noCommit}" data-abroad="${p.hasAbroad}">
+  return `<article class="plan${isBest ? ' plan--best' : ''}" data-cat="${esc(p.cat)}" data-text="${text}" data-price="${p.price}" data-5g="${p.is5G}" data-nocommit="${p.noCommit}" data-abroad="${p.hasAbroad}">
+        ${isBest ? '<span class="plan__badge">המחיר הנמוך ביותר</span>' : ''}
         <div class="plan__top"><span class="plan__id">${providerLogo(p.provider)}<a class="plan__provider" href="provider-${providerSlug(p.provider)}.html">${esc(p.provider)}</a></span><span class="plan__net">${esc(p.net)}</span></div>
         <div class="plan__name">${esc(p.plan)}</div>
         ${specs ? `<div class="plan__chips">${specs}</div>` : ''}
         ${flags.length ? `<div class="plan__flags">${flags.join('')}</div>` : ''}
         <div class="plan__bottom"><div class="plan__price"><b>₪${priceText(p)}</b> <span>${unit}</span>${after}</div></div>
-        <a class="plan__cta" target="_blank" rel="noopener" href="${esc(waHref)}">💬 מעוניין/ת ←</a>
+        <a class="plan__cta" target="_blank" rel="noopener" href="${esc(waHref)}">${iconFor('💬')} מעוניין/ת ←</a>
       </article>`;
 }
 
@@ -433,7 +439,10 @@ function page(c) {
   const faqs = c.faq.map(([q, a]) => `          <details><summary>${esc(q)}</summary><p>${esc(a)}</p></details>`).join('\n');
   const catGuides = relatedGuides(c.name, null, 2).map(guideCard).join('\n');
   const catPlans = plansByCat[c.slug] || [];
-  const planCards = catPlans.map(planCardHtml).join('\n      ');
+  // Cards are sorted cheapest-first (plansByCat sort), so card 0 is honestly the
+  // lowest price in this category — badge it as the value anchor (only when the
+  // list is long enough for the highlight to mean something).
+  const planCards = catPlans.map((p, i) => planCardHtml(p, i === 0 && catPlans.length > 2)).join('\n      ');
   const cols = (typeof builtCollections !== 'undefined' ? builtCollections : []).filter((col) => col.catSlug === c.slug);
   const colsStrip = cols.length ? `
     <section class="section" aria-label="אוספים">

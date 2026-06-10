@@ -44,6 +44,15 @@ class SavingsSummary {
   }
 
   bool get hasAnyBill => categories.any((c) => c.hasBill);
+
+  /// Only the categories where there is a real, positive saving opportunity,
+  /// largest first — the slices that make up the potential-saving donut. Pure;
+  /// derived entirely from [categories], so it never invents a figure.
+  List<CategorySaving> get opportunities {
+    final list = categories.where((c) => c.hasOpportunity).toList()
+      ..sort((a, b) => b.annualSaving.compareTo(a.annualSaving));
+    return list;
+  }
 }
 
 /// Fallback annual saving credited when a lead is submitted for a plan whose

@@ -18,6 +18,60 @@ class BillsWidget extends StatefulWidget {
   State<BillsWidget> createState() => _BillsWidgetState();
 }
 
+/// A single category's "are you overpaying?" benchmark, derived ONLY from the
+/// user's own entered bill and the REAL catalogue. [cheapest] is the cheapest
+/// comparable (regular, monthly-priced) plan in the category; [annualSaving] is
+/// the recommendation engine's figure for that category so every savings surface
+/// agrees. Pure — no fabricated benchmarks.
+class _Overpay {
+  const _Overpay({
+    required this.category,
+    required this.bill,
+    required this.cheapest,
+    required this.annualSaving,
+  });
+
+  final Category category;
+  final int bill;
+  final Plan cheapest;
+  final int annualSaving;
+
+  /// ₪/month the user pays above the cheapest real plan (never negative).
+  int get monthlyGap => (bill - cheapest.priceValue).round().clamp(0, 999999);
+
+  /// How much higher the bill is than the cheapest plan, as a percentage.
+  int get overPct =>
+      cheapest.priceValue <= 0 ? 0 : ((monthlyGap / cheapest.priceValue) * 100).round();
+}
+
+/// Build the overpay benchmark for every category where the user has entered a
+/// bill and a cheaper REAL, comparable (regular + monthly) plan exists. Abroad
+/// (per-day / per-package pricing) is naturally excluded because its plans
+/// aren't monthly — comparing a monthly bill to a per-day rate would mislead.
+/// Sorted by annual saving, biggest opportunity first.
+List<_Overpay> _overpaysFor(AppState appState, Map<String, int> savingByCat) {
+  final out = <_Overpay>[];
+  for (final cat in categories) {
+    final bill = appState.currentBill(cat.id);
+    if (bill <= 0) continue;
+    // Cheapest comparable real plan: an ordinary monthly subscriber line.
+    Plan? cheapest;
+    for (final p in plansByCat(cat.id)) {
+      if (!p.isRegular || p.unit != 'month') continue;
+      if (cheapest == null || p.priceValue < cheapest.priceValue) cheapest = p;
+    }
+    if (cheapest == null || cheapest.priceValue >= bill) continue;
+    out.add(_Overpay(
+      category: cat,
+      bill: bill,
+      cheapest: cheapest,
+      annualSaving: savingByCat[cat.id] ?? 0,
+    ));
+  }
+  out.sort((a, b) => b.annualSaving.compareTo(a.annualSaving));
+  return out;
+}
+
 class _BillsWidgetState extends State<BillsWidget> {
   int _touchedIndex = -1;
 
@@ -39,6 +93,12 @@ class _BillsWidgetState extends State<BillsWidget> {
     final summary = computeSavings(appState);
     final savingByCat = {for (final c in summary.categories) c.categoryId: c.annualSaving};
     final totalSavings = summary.totalAnnualPotential;
+
+    // "איפה אתם משלמים יותר מדי" — real catalogue benchmarks, biggest first.
+    final overpays = _overpaysFor(appState, savingByCat);
+    final worst = overpays.isNotEmpty ? overpays.first : null;
+    // Until the user personalises their bills, every saving is an estimate.
+    final estimate = !appState.billsPersonalized;
 
     return Scaffold(
       backgroundColor: ffTheme.background,
@@ -217,7 +277,7 @@ class _BillsWidgetState extends State<BillsWidget> {
                                   backDrawRodData: BackgroundBarChartRodData(
                                     show: true,
                                     toY: activeCats.map((c) => appState.currentBill(c.id).toDouble()).reduce((a, b) => a > b ? a : b) * 1.3,
-                                    color: const Color(0xFFF4F0E8),
+                                    color: ffTheme.accent2,
                                   ),
                                 ),
                               ],
@@ -248,6 +308,55 @@ class _BillsWidgetState extends State<BillsWidget> {
                   ],
                 ),
               ).animate().fadeIn(delay: 150.ms),
+
+              const SizedBox(height: 24),
+            ],
+
+            // ── "איפה אתם משלמים יותר מדי" — overpay insights ─────────────────
+            if (overpays.isNotEmpty) ...[
+              Row(
+                children: [
+                  Text('איפה אתם משלמים יותר מדי', style: ffTheme.titleMedium),
+                  const SizedBox(width: 8),
+                  Text('🔍', style: GoogleFonts.assistant(fontSize: 16)),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                estimate
+                    ? 'השוואה לחבילה הזולה ביותר בקטלוג — הערכה עד שתעדכנו את הסכומים'
+                    : 'השוואה לחבילה הזולה ביותר בקטלוג בכל קטגוריה',
+                style: ffTheme.bodySmall,
+              ),
+              const SizedBox(height: 12),
+              ...overpays.asMap().entries.map((entry) {
+                final i = entry.key;
+                final o = entry.value;
+                return _OverpayCard(
+                  overpay: o,
+                  isWorst: i == 0,
+                  estimate: estimate,
+                  ffTheme: ffTheme,
+                  onCompare: () {
+                    appState.setCategory(o.category.id);
+                    context.pushNamed('Results');
+                  },
+                ).animate(delay: (i * 80).ms).fadeIn(duration: 350.ms).slideY(begin: 0.06, end: 0);
+              }),
+
+              // Single strong CTA — fix the worst category.
+              if (worst != null && worst.annualSaving > 0) ...[
+                const SizedBox(height: 6),
+                _WorstCategoryCta(
+                  worst: worst,
+                  estimate: estimate,
+                  ffTheme: ffTheme,
+                  onTap: () {
+                    appState.setCategory(worst.category.id);
+                    context.pushNamed('Results');
+                  },
+                ).animate().fadeIn(delay: 250.ms).slideY(begin: 0.08, end: 0),
+              ],
 
               const SizedBox(height: 24),
             ],
@@ -391,6 +500,287 @@ class _RingLegendRow extends StatelessWidget {
         const Spacer(),
         Text(value, style: ffTheme.labelSmall.copyWith(color: ffTheme.primaryText, fontWeight: FontWeight.w700)),
       ],
+    );
+  }
+}
+
+/// One category's overpay insight: the gap to the cheapest REAL plan, a tidy
+/// per-category breakdown bar (your bill vs that plan), the estimated annual
+/// saving, and a compare CTA. All numbers are real catalogue prices + the
+/// user's own bill; the saving is marked an estimate until bills are personalised.
+class _OverpayCard extends StatelessWidget {
+  const _OverpayCard({
+    required this.overpay,
+    required this.isWorst,
+    required this.estimate,
+    required this.ffTheme,
+    required this.onCompare,
+  });
+
+  final _Overpay overpay;
+  final bool isWorst;
+  final bool estimate;
+  final AppTheme ffTheme;
+  final VoidCallback onCompare;
+
+  @override
+  Widget build(BuildContext context) {
+    final o = overpay;
+    final cat = o.category;
+    // Bar fractions: the cheapest plan as a share of the (larger) current bill.
+    const billFrac = 1.0;
+    final cheapFrac = o.bill > 0 ? (o.cheapest.priceValue / o.bill).clamp(0.04, 1.0) : 0.0;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(16),
+      decoration: ffTheme.glassDecoration(alpha: 0.72).copyWith(
+        border: Border.all(
+          color: isWorst ? ffTheme.primary.withValues(alpha: 0.35) : Colors.white.withValues(alpha: 0.55),
+          width: isWorst ? 1.4 : 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(color: ffTheme.accent1, borderRadius: BorderRadius.circular(12)),
+                child: Center(child: Text(cat.icon, style: const TextStyle(fontSize: 20))),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(cat.name, style: ffTheme.titleSmall),
+                        if (isWorst) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              gradient: ffTheme.limeGradient,
+                              borderRadius: BorderRadius.circular(ffTheme.radiusPill),
+                            ),
+                            child: Text('הכי כדאי',
+                                style: ffTheme.labelSmall.copyWith(color: ffTheme.primaryDark, fontWeight: FontWeight.w700, fontSize: 10)),
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    Text('משלמים ₪${o.monthlyGap} יותר מהזולה ביותר${o.overPct > 0 ? ' (+${o.overPct}%)' : ''}',
+                        style: ffTheme.labelSmall.copyWith(color: ffTheme.warning, fontWeight: FontWeight.w700)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          // ── Per-category breakdown: your bill vs the cheapest real plan ──────
+          _BenchmarkBar(
+            label: 'אתם משלמים',
+            amount: '₪${o.bill}',
+            frac: billFrac,
+            color: ffTheme.warning,
+            ffTheme: ffTheme,
+          ),
+          const SizedBox(height: 8),
+          _BenchmarkBar(
+            label: 'הזולה בקטלוג',
+            sublabel: o.cheapest.provider,
+            amount: '₪${o.cheapest.priceText}',
+            frac: cheapFrac.toDouble(),
+            color: ffTheme.primary,
+            ffTheme: ffTheme,
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                  decoration: BoxDecoration(
+                    color: ffTheme.accent1,
+                    borderRadius: BorderRadius.circular(ffTheme.radiusSm),
+                    border: Border.all(color: ffTheme.primary.withValues(alpha: 0.15)),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.savings_rounded, size: 16, color: ffTheme.primary),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          o.annualSaving > 0
+                              ? 'חיסכון${estimate ? ' (הערכה)' : ''}: ₪${o.annualSaving} בשנה'
+                              : 'בדקו חבילות זולות יותר',
+                          style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Semantics(
+                button: true,
+                label: 'השווה חבילות ${cat.name}',
+                child: GestureDetector(
+                  onTap: onCompare,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: ffTheme.primary,
+                      borderRadius: BorderRadius.circular(ffTheme.radiusSm),
+                      boxShadow: ffTheme.shadowPrimary,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text('השווה', style: ffTheme.labelMedium.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
+                        const SizedBox(width: 4),
+                        const Icon(Icons.arrow_back_rounded, size: 14, color: Colors.white),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A labelled proportional bar — the building block of the per-category
+/// breakdown ("אתם משלמים" vs "הזולה בקטלוג").
+class _BenchmarkBar extends StatelessWidget {
+  const _BenchmarkBar({
+    required this.label,
+    required this.amount,
+    required this.frac,
+    required this.color,
+    required this.ffTheme,
+    this.sublabel,
+  });
+
+  final String label;
+  final String? sublabel;
+  final String amount;
+  final double frac;
+  final Color color;
+  final AppTheme ffTheme;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(label, style: ffTheme.labelSmall.copyWith(fontWeight: FontWeight.w700, color: ffTheme.primaryText)),
+            if (sublabel != null) ...[
+              const SizedBox(width: 6),
+              Flexible(child: Text('· $sublabel', style: ffTheme.labelSmall, overflow: TextOverflow.ellipsis)),
+            ],
+            const Spacer(),
+            Text(amount, style: ffTheme.labelMedium.copyWith(color: color, fontWeight: FontWeight.w800)),
+          ],
+        ),
+        const SizedBox(height: 5),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(ffTheme.radiusPill),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return Stack(
+                children: [
+                  Container(height: 9, width: double.infinity, color: ffTheme.accent2),
+                  Container(
+                    height: 9,
+                    width: (constraints.maxWidth * frac).clamp(0.0, constraints.maxWidth),
+                    decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(ffTheme.radiusPill)),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// The single strong call-to-action: switch the worst-overpaying category.
+class _WorstCategoryCta extends StatelessWidget {
+  const _WorstCategoryCta({
+    required this.worst,
+    required this.estimate,
+    required this.ffTheme,
+    required this.onTap,
+  });
+
+  final _Overpay worst;
+  final bool estimate;
+  final AppTheme ffTheme;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: 'עברו לחבילה זולה יותר ב${worst.category.name} וחסכו עד ₪${worst.annualSaving} בשנה',
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(18),
+          decoration: BoxDecoration(
+            gradient: ffTheme.brandGradient,
+            borderRadius: BorderRadius.circular(ffTheme.radiusLg),
+            boxShadow: ffTheme.shadowPrimary,
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Center(child: Text(worst.category.icon, style: const TextStyle(fontSize: 22))),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('התחילו מ${worst.category.name}',
+                        style: ffTheme.titleSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w800)),
+                    const SizedBox(height: 2),
+                    Text(
+                      'הקטגוריה שבה משלמים הכי הרבה מעבר לשוק — חיסכון${estimate ? ' מוערך' : ''} עד ₪${worst.annualSaving}/שנה',
+                      style: GoogleFonts.assistant(fontSize: 12, color: Colors.white.withValues(alpha: 0.85), height: 1.3),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(color: ffTheme.secondary, shape: BoxShape.circle),
+                child: Icon(Icons.arrow_back_rounded, size: 18, color: ffTheme.primaryDark),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

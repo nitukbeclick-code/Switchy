@@ -1,4 +1,4 @@
-import 'dart:async';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
@@ -25,9 +25,6 @@ class PlanDetailWidget extends StatefulWidget {
 }
 
 class _PlanDetailWidgetState extends State<PlanDetailWidget> {
-  int _viewers = 0;
-  Timer? _viewerTimer;
-
   @override
   void initState() {
     super.initState();
@@ -45,18 +42,6 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) AppState().viewPlan(widget.planId);
     });
-    // Seed viewer count based on plan id hash to be consistent per plan
-    final seed = widget.planId.codeUnits.fold(0, (s, c) => s + c);
-    _viewers = 3 + (seed % 12);
-    _viewerTimer = Timer.periodic(const Duration(seconds: 8), (_) {
-      if (mounted) setState(() => _viewers = 3 + (DateTime.now().second % 14));
-    });
-  }
-
-  @override
-  void dispose() {
-    _viewerTimer?.cancel();
-    super.dispose();
   }
 
   @override
@@ -190,37 +175,6 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      // Live viewers badge
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 10),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                              decoration: BoxDecoration(
-                                color: ffTheme.accent1,
-                                borderRadius: BorderRadius.circular(20),
-                                border: Border.all(color: ffTheme.primary.withValues(alpha: 0.2)),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Container(
-                                    width: 6, height: 6,
-                                    decoration: const BoxDecoration(color: Colors.green, shape: BoxShape.circle),
-                                  ).animate(onPlay: (c) => c.repeat(reverse: true))
-                                    .scale(begin: const Offset(1, 1), end: const Offset(1.4, 1.4), duration: 800.ms),
-                                  const SizedBox(width: 6),
-                                  Text('$_viewers אנשים צופים עכשיו',
-                                    style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w600)),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-
                       // Price hero card
                       _Card(
                         child: Row(
@@ -409,77 +363,21 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                         ),
                       ).animate(delay: 250.ms).fadeIn(duration: 300.ms),
 
-                      // ── Smart match card ──────────────────────────────────
-                      if (planMatch.reasons.isNotEmpty || planMatch.caveats.isNotEmpty) ...[
-                        const SizedBox(height: 14),
-                        Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: ffTheme.primary.withValues(alpha: 0.18)),
-                            boxShadow: [
-                              BoxShadow(
-                                color: ffTheme.primary.withValues(alpha: 0.06),
-                                blurRadius: 10,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Text('✨', style: ffTheme.titleSmall),
-                                  const SizedBox(width: 6),
-                                  Text('למה זה מתאים לך', style: ffTheme.titleSmall),
-                                  const Spacer(),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: ffTheme.primary,
-                                      borderRadius: BorderRadius.circular(20),
-                                    ),
-                                    child: Text(
-                                      '${planMatch.scorePct}% · ${planMatch.label}',
-                                      style: ffTheme.labelSmall.copyWith(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              if (planMatch.reasons.isNotEmpty) ...[
-                                const SizedBox(height: 12),
-                                ...planMatch.reasons.map((r) => Padding(
-                                  padding: const EdgeInsets.only(bottom: 7),
-                                  child: Row(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Icon(Icons.check_circle_rounded, color: ffTheme.success, size: 17),
-                                      const SizedBox(width: 8),
-                                      Expanded(child: Text(r, style: ffTheme.bodySmall.copyWith(fontWeight: FontWeight.w500))),
-                                    ],
-                                  ),
-                                )),
-                              ],
-                              if (planMatch.caveats.isNotEmpty) ...[
-                                const SizedBox(height: 6),
-                                ...planMatch.caveats.map((c) => Padding(
-                                  padding: const EdgeInsets.only(bottom: 5),
-                                  child: Row(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Icon(Icons.info_outline_rounded, color: ffTheme.secondaryText, size: 15),
-                                      const SizedBox(width: 7),
-                                      Expanded(child: Text(c, style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText, fontSize: 12))),
-                                    ],
-                                  ),
-                                )),
-                              ],
-                            ],
-                          ),
-                        ).animate(delay: 270.ms).fadeIn(duration: 300.ms).slideY(begin: 0.08),
-                      ],
+                      // ── "למה המסלול הזה מתאים לך" — fit panel ──────────────
+                      const SizedBox(height: 14),
+                      _FitPanel(
+                        match: planMatch,
+                        annualSaving: saveYear,
+                        billsPersonalized: appState.billsPersonalized,
+                        inCompare: inCompare,
+                        onCompare: () {
+                          HapticFeedback.selectionClick();
+                          appState.toggleCompare(plan.id);
+                        },
+                      )
+                          .animate(delay: 270.ms)
+                          .fadeIn(duration: 300.ms)
+                          .slideY(begin: 0.08),
 
                       // ── Quick-spec grid ─────────────────────────────────
                       if (plan.specs.isNotEmpty) ...[
@@ -735,6 +633,359 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
       ),
     );
   }
+}
+
+// ── "למה המסלול הזה מתאים לך" — fit panel ────────────────────────────────────
+//
+// A tasteful glass panel that explains, honestly, why this plan fits the user.
+// Everything shown is real: the match score + reasons + caveats come straight
+// from RecommendationEngine.scorePlan (no re-derived math), and the annual
+// saving is the engine's own figure — marked "הערכה" whenever the user hasn't
+// personalised their bill, so we never imply a precise number we can't back.
+
+class _FitPanel extends StatelessWidget {
+  const _FitPanel({
+    required this.match,
+    required this.annualSaving,
+    required this.billsPersonalized,
+    required this.inCompare,
+    required this.onCompare,
+  });
+
+  final PlanMatch match;
+  final int annualSaving;
+  final bool billsPersonalized;
+  final bool inCompare;
+  final VoidCallback onCompare;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppTheme.of(context);
+    final hasSaving = annualSaving > 0;
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.72),
+        borderRadius: BorderRadius.circular(t.radiusLg),
+        border: Border.all(color: t.primary.withValues(alpha: 0.16)),
+        boxShadow: t.shadowGlass,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header: title + score ring/meter
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('למה המסלול הזה מתאים לך', style: t.titleMedium),
+                    const SizedBox(height: 4),
+                    Text(
+                      match.label,
+                      style: t.bodySmall.copyWith(
+                        color: t.primary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              _ScoreRing(percent: match.scorePct),
+            ],
+          ),
+
+          // Real annual saving — honest estimate framing.
+          if (hasSaving) ...[
+            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: t.accent1,
+                borderRadius: BorderRadius.circular(t.radiusSm),
+                border: Border.all(color: t.primary.withValues(alpha: 0.12)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.savings_rounded, size: 18, color: t.primary),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text.rich(
+                      TextSpan(
+                        style: t.bodySmall.copyWith(color: t.primaryText),
+                        children: [
+                          const TextSpan(text: 'חיסכון שנתי מול החשבון שלך: '),
+                          TextSpan(
+                            text: '₪$annualSaving',
+                            style: t.bodyMedium.copyWith(
+                              color: t.primary,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  if (!billsPersonalized) ...[
+                    const SizedBox(width: 6),
+                    _EstimateTag(t: t),
+                  ],
+                ],
+              ),
+            ),
+          ],
+
+          // Reasons (real ✓ list from the engine)
+          if (match.reasons.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            ...match.reasons.map((r) => Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.check_circle_rounded,
+                          color: t.success, size: 18),
+                      const SizedBox(width: 9),
+                      Expanded(
+                        child: Text(
+                          r,
+                          style: t.bodyMedium.copyWith(
+                              fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ],
+                  ),
+                )),
+          ],
+
+          // Caveats (honest cons)
+          if (match.caveats.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            ...match.caveats.map((c) => Padding(
+                  padding: const EdgeInsets.only(bottom: 7),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Icon(Icons.info_outline_rounded,
+                          color: t.secondaryText, size: 16),
+                      const SizedBox(width: 9),
+                      Expanded(
+                        child: Text(
+                          c,
+                          style: t.bodySmall.copyWith(
+                              color: t.secondaryText),
+                        ),
+                      ),
+                    ],
+                  ),
+                )),
+          ],
+
+          // Honest empty state — when the engine has nothing concrete to say
+          // (no bill set, no standout features) we don't fabricate praise.
+          if (match.reasons.isEmpty && match.caveats.isEmpty) ...[
+            const SizedBox(height: 12),
+            Text(
+              'הוסיפו את החשבון הנוכחי שלכם כדי לראות עד כמה המסלול מתאים ומה ניתן לחסוך.',
+              style: t.bodySmall.copyWith(color: t.secondaryText),
+            ),
+          ],
+
+          // "השוואה" CTA — toggles this plan in/out of the compare tray.
+          const SizedBox(height: 16),
+          Semantics(
+            button: true,
+            label: inCompare ? 'הסר מההשוואה' : 'הוסף להשוואה',
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: onCompare,
+                borderRadius: BorderRadius.circular(t.radiusSm),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  width: double.infinity,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: inCompare
+                        ? t.primary
+                        : t.primary.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(t.radiusSm),
+                    border: Border.all(
+                      color: inCompare
+                          ? t.primary
+                          : t.primary.withValues(alpha: 0.28),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        inCompare
+                            ? Icons.check_rounded
+                            : Icons.compare_arrows_rounded,
+                        size: 18,
+                        color: inCompare ? Colors.white : t.primary,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        inCompare ? 'נוסף להשוואה' : 'הוסף להשוואה',
+                        style: t.titleSmall.copyWith(
+                          color: inCompare ? Colors.white : t.primary,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Small "הערכה" pill, used to mark figures that aren't personalised yet.
+class _EstimateTag extends StatelessWidget {
+  const _EstimateTag({required this.t});
+  final AppTheme t;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+      decoration: BoxDecoration(
+        color: t.warning.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Text(
+        'הערכה',
+        style: t.labelSmall.copyWith(
+          color: t.warning,
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+}
+
+/// A circular match-score meter — the engine's real 0–100 score drawn as a
+/// teal progress ring with the percentage in the centre.
+class _ScoreRing extends StatelessWidget {
+  const _ScoreRing({required this.percent});
+  final int percent;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppTheme.of(context);
+    return Semantics(
+      label: 'ציון התאמה $percent אחוז',
+      child: ExcludeSemantics(
+        child: SizedBox(
+          width: 64,
+          height: 64,
+          child: TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0, end: (percent / 100).clamp(0.0, 1.0)),
+          duration: const Duration(milliseconds: 700),
+          curve: Curves.easeOutCubic,
+          builder: (context, value, _) {
+            return CustomPaint(
+              painter: _RingPainter(
+                progress: value,
+                track: t.primary.withValues(alpha: 0.12),
+                fill: t.primary,
+                cap: t.secondary,
+              ),
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      '${(value * 100).round()}%',
+                      style: t.titleSmall.copyWith(
+                        color: t.primary,
+                        fontWeight: FontWeight.w800,
+                        height: 1,
+                      ),
+                    ),
+                    Text(
+                      'התאמה',
+                      style: t.labelSmall.copyWith(
+                        color: t.secondaryText,
+                        fontSize: 9,
+                        height: 1.1,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+      ),
+    );
+  }
+}
+
+class _RingPainter extends CustomPainter {
+  _RingPainter({
+    required this.progress,
+    required this.track,
+    required this.fill,
+    required this.cap,
+  });
+
+  final double progress; // 0..1
+  final Color track;
+  final Color fill;
+  final Color cap;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const stroke = 6.0;
+    final rect = Offset.zero & size;
+    final center = rect.center;
+    final radius = (size.shortestSide - stroke) / 2;
+
+    final trackPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = stroke
+      ..strokeCap = StrokeCap.round
+      ..color = track;
+    canvas.drawCircle(center, radius, trackPaint);
+
+    if (progress <= 0) return;
+
+    final sweep = 2 * math.pi * progress;
+    final arcRect = Rect.fromCircle(center: center, radius: radius);
+    final fillPaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = stroke
+      ..strokeCap = StrokeCap.round
+      ..shader = SweepGradient(
+        startAngle: 0,
+        endAngle: 2 * math.pi,
+        colors: [fill, cap],
+        transform: const GradientRotation(-math.pi / 2),
+      ).createShader(arcRect);
+    // Start at 12 o'clock, sweep clockwise.
+    canvas.drawArc(arcRect, -math.pi / 2, sweep, false, fillPaint);
+  }
+
+  @override
+  bool shouldRepaint(_RingPainter old) =>
+      old.progress != progress ||
+      old.fill != fill ||
+      old.track != track ||
+      old.cap != cap;
 }
 
 // ── Price trend chart ─────────────────────────────────────────────────────────

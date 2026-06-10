@@ -96,6 +96,7 @@ void main() {
     // Clear the field to return to the empty/suggestions state.
     await tester.tap(find.byIcon(Icons.close_rounded));
     await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump(const Duration(milliseconds: 300)); // flush staggered reveal timers
 
     // The recent-searches section appears only when there is history.
     expect(find.text('חיפושים אחרונים'), findsOneWidget);
@@ -109,7 +110,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
 
     // The empty state offers category browse chips; tap "אינטרנט".
-    expect(find.text('חיפוש לפי קטגוריה'), findsOneWidget);
+    expect(find.text('עיון לפי קטגוריה'), findsOneWidget);
     await tester.tap(find.text('אינטרנט').first);
     await tester.pump(const Duration(milliseconds: 300));
     await tester.pump(const Duration(milliseconds: 300));

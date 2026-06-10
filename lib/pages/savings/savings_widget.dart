@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:fl_chart/fl_chart.dart';
 import '../../theme/app_theme.dart';
 import '../../core/nav.dart';
 import '../../app_state.dart';
@@ -66,6 +67,28 @@ class SavingsWidget extends StatelessWidget {
                       onTap: () => context.pushNamed('PlanDetail',
                           pathParameters: {'planId': top.best!.plan.id}),
                     ).animate().fadeIn(duration: 320.ms).slideY(begin: 0.08),
+                    const SizedBox(height: 20),
+                  ],
+
+                  // Donut: potential annual saving split by category (real values).
+                  if (summary.opportunities.isNotEmpty) ...[
+                    _PotentialDonutCard(
+                      opportunities: summary.opportunities,
+                      total: summary.totalAnnualPotential,
+                      personalized: personalized,
+                      ffTheme: ffTheme,
+                    ).animate().fadeIn(duration: 340.ms).slideY(begin: 0.06),
+                    const SizedBox(height: 16),
+                  ],
+
+                  // Progress bar: potential vs already-realized savings.
+                  if (summary.totalAnnualPotential > 0 || appState.totalSavings > 0) ...[
+                    _ProgressCard(
+                      potential: summary.totalAnnualPotential,
+                      realized: appState.totalSavings,
+                      personalized: personalized,
+                      ffTheme: ffTheme,
+                    ).animate(delay: 60.ms).fadeIn(duration: 340.ms).slideY(begin: 0.06),
                     const SizedBox(height: 20),
                   ],
 
@@ -289,6 +312,328 @@ class _TopOpportunityCard extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+// ── Potential donut (by category) ───────────────────────────────────────────
+
+class _PotentialDonutCard extends StatelessWidget {
+  const _PotentialDonutCard({
+    required this.opportunities,
+    required this.total,
+    required this.personalized,
+    required this.ffTheme,
+  });
+  final List<CategorySaving> opportunities;
+  final int total;
+  final bool personalized;
+  final AppTheme ffTheme;
+
+  // A cohesive teal-family palette for the donut slices; falls back to each
+  // category's own brand colour so slices stay recognisable.
+  static const List<Color> _palette = [
+    AppColors.primary,
+    AppColors.tertiary,
+    AppColors.sage,
+    AppColors.secondary,
+    Color(0xFF0E7490),
+  ];
+
+  Color _sliceColor(int i, CategorySaving cs) {
+    if (i < _palette.length) return _palette[i];
+    return categoryById(cs.categoryId)?.color ?? AppColors.primary;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final sections = <PieChartSectionData>[];
+    for (var i = 0; i < opportunities.length; i++) {
+      final cs = opportunities[i];
+      sections.add(PieChartSectionData(
+        value: cs.annualSaving.toDouble(),
+        color: _sliceColor(i, cs),
+        radius: 26,
+        showTitle: false,
+      ));
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: ffTheme.glassDecoration(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text('פוטנציאל לפי קטגוריה',
+                  style: ffTheme.titleSmall.copyWith(fontWeight: FontWeight.w800)),
+              const Spacer(),
+              if (!personalized)
+                _EstimateChip(ffTheme: ffTheme),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              // Donut with the total in the hole.
+              SizedBox(
+                width: 116,
+                height: 116,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    PieChart(
+                      PieChartData(
+                        sections: sections,
+                        sectionsSpace: 2,
+                        centerSpaceRadius: 32,
+                        startDegreeOffset: -90,
+                      ),
+                    ),
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(personalized ? '₪$total' : '~₪$total',
+                            style: GoogleFonts.rubik(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                                color: ffTheme.primaryText)),
+                        Text('לשנה',
+                            style: ffTheme.labelSmall
+                                .copyWith(color: ffTheme.secondaryText)),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 16),
+              // Legend.
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    for (var i = 0; i < opportunities.length; i++)
+                      Padding(
+                        padding: EdgeInsets.only(
+                            bottom: i == opportunities.length - 1 ? 0 : 8),
+                        child: _LegendRow(
+                          color: _sliceColor(i, opportunities[i]),
+                          name: categoryById(opportunities[i].categoryId)?.name ??
+                              opportunities[i].categoryId,
+                          amount: opportunities[i].annualSaving,
+                          personalized: personalized,
+                          ffTheme: ffTheme,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LegendRow extends StatelessWidget {
+  const _LegendRow({
+    required this.color,
+    required this.name,
+    required this.amount,
+    required this.personalized,
+    required this.ffTheme,
+  });
+  final Color color;
+  final String name;
+  final int amount;
+  final bool personalized;
+  final AppTheme ffTheme;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 11,
+          height: 11,
+          decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(3)),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(name,
+              style: ffTheme.bodySmall.copyWith(
+                  color: ffTheme.primaryText, fontWeight: FontWeight.w600),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis),
+        ),
+        const SizedBox(width: 6),
+        Text(personalized ? '₪$amount' : '~₪$amount',
+            style: ffTheme.labelMedium
+                .copyWith(color: ffTheme.primaryText, fontWeight: FontWeight.w800)),
+      ],
+    );
+  }
+}
+
+// ── Potential vs realized progress ──────────────────────────────────────────
+
+class _ProgressCard extends StatelessWidget {
+  const _ProgressCard({
+    required this.potential,
+    required this.realized,
+    required this.personalized,
+    required this.ffTheme,
+  });
+  final int potential;
+  final int realized;
+  final bool personalized;
+  final AppTheme ffTheme;
+
+  @override
+  Widget build(BuildContext context) {
+    // Scale both bars to the larger of the two so the chart is always honest.
+    final maxVal = (potential > realized ? potential : realized).toDouble();
+    final safeMax = maxVal <= 0 ? 1.0 : maxVal;
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: ffTheme.glassDecoration(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text('פוטנציאל מול מומש',
+                  style: ffTheme.titleSmall.copyWith(fontWeight: FontWeight.w800)),
+              const Spacer(),
+              if (!personalized && potential > 0) _EstimateChip(ffTheme: ffTheme),
+            ],
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            height: 150,
+            child: BarChart(
+              BarChartData(
+                alignment: BarChartAlignment.spaceEvenly,
+                maxY: safeMax * 1.18,
+                minY: 0,
+                barTouchData: BarTouchData(enabled: false),
+                gridData: const FlGridData(show: false),
+                borderData: FlBorderData(show: false),
+                titlesData: FlTitlesData(
+                  leftTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 26,
+                      getTitlesWidget: (value, meta) {
+                        final label = value == 0 ? 'פוטנציאל' : 'מומש';
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 6),
+                          child: Text(label,
+                              style: ffTheme.labelSmall.copyWith(
+                                  color: ffTheme.secondaryText,
+                                  fontWeight: FontWeight.w700)),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+                barGroups: [
+                  _bar(0, potential.toDouble(), ffTheme.secondary, ffTheme),
+                  _bar(1, realized.toDouble(), ffTheme.primary, ffTheme),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _ValueTag(
+                  label: 'פוטנציאל',
+                  text: potential > 0
+                      ? (personalized ? '₪$potential' : '~₪$potential')
+                      : '—',
+                  color: ffTheme.primaryText,
+                  ffTheme: ffTheme),
+              _ValueTag(
+                  label: 'כבר נחסך',
+                  text: realized > 0 ? '₪$realized' : '—',
+                  color: ffTheme.primary,
+                  ffTheme: ffTheme),
+            ],
+          ),
+          if (realized == 0) ...[
+            const SizedBox(height: 8),
+            Text('עוד לא מומש חיסכון — כל מעבר נספר כאן',
+                style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText)),
+          ],
+        ],
+      ),
+    );
+  }
+
+  BarChartGroupData _bar(int x, double y, Color color, AppTheme t) {
+    return BarChartGroupData(
+      x: x,
+      barRods: [
+        BarChartRodData(
+          toY: y,
+          width: 46,
+          color: color,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+        ),
+      ],
+    );
+  }
+}
+
+class _ValueTag extends StatelessWidget {
+  const _ValueTag({
+    required this.label,
+    required this.text,
+    required this.color,
+    required this.ffTheme,
+  });
+  final String label;
+  final String text;
+  final Color color;
+  final AppTheme ffTheme;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text(text,
+            style: GoogleFonts.rubik(
+                fontSize: 17, fontWeight: FontWeight.w800, color: color)),
+        const SizedBox(height: 2),
+        Text(label, style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText)),
+      ],
+    );
+  }
+}
+
+class _EstimateChip extends StatelessWidget {
+  const _EstimateChip({required this.ffTheme});
+  final AppTheme ffTheme;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+      decoration: BoxDecoration(
+        color: ffTheme.accent2,
+        borderRadius: BorderRadius.circular(ffTheme.radiusPill),
+      ),
+      child: Text('הערכה',
+          style: ffTheme.labelSmall.copyWith(
+              color: ffTheme.secondaryText, fontWeight: FontWeight.w700)),
     );
   }
 }

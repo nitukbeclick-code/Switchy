@@ -24,16 +24,18 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 import type { Lead, MeetingRow, TgUpdate } from "../_shared/types.ts";
 import { botFullyConfigured, resolveCfgCached, safeEqual, tgWebhookToken } from "../_shared/config.ts";
-import { NL, sendTelegram, tgApi } from "../_shared/telegram.ts";
-import { rpcRows, serviceFetch } from "../_shared/db.ts";
+import { sendTelegram, tgApi } from "../_shared/telegram.ts";
+import { fetchRows, rpcRows, serviceFetch } from "../_shared/db.ts";
 import { sendEmail } from "../_shared/email.ts";
 import { jlog } from "../_shared/log.ts";
-import { buildHtml, buildText, leadKeyboard, STATUS_HE } from "../_shared/leads.ts";
+import { buildHtml, buildText, leadKeyboard } from "../_shared/leads.ts";
 import { buildMeetingText, meetingKeyboard } from "../_shared/meetings.ts";
+import { buildReturningLine, type PriorLead, type PriorMeeting } from "../_shared/agenda.ts";
 import { zoomConfigured } from "../_shared/zoom.ts";
 import { aiTriage } from "./triage.ts";
 import { BOT_COMMANDS } from "./commands.ts";
 import { handleCallback, handleTeamMessage } from "./callbacks.ts";
+import { handleConsoleAct, handleConsoleData, renderConsoleHtml } from "./console.ts";
 
 // Stamp the row as notified so the sweep doesn't re-send it. Fail-soft: a
 // missed stamp costs at most one duplicate message.
@@ -45,6 +47,25 @@ async function markNotified(table: "leads" | "meetings", id: unknown): Promise<v
       body: JSON.stringify({ notified_at: new Date().toISOString() }),
     });
   } catch (_) { /* the sweep retries */ }
+}
+
+// Returning-customer context for a phone: prior leads (via search_leads) and
+// prior meetings (normalized-phone match), excluding the row being notified.
+// Fail-soft: any query failure yields no line rather than blocking the card.
+async function returningLineFor(
+  phone: unknown, table: "leads" | "meetings", selfId: unknown,
+): Promise<string> {
+  const digits = String(phone ?? "").replace(/\D/g, "");
+  if (digits.length < 9) return "";
+  const [leads, meetings] = await Promise.all([
+    rpcRows<PriorLead & { id?: string }>("search_leads", { q: digits }),
+    fetchRows<PriorMeeting & { id?: string }>(
+      `/rest/v1/meetings?select=id,meeting_date,starts_at,created_at,status&phone=ilike.*${encodeURIComponent(digits.slice(-9))}*&order=created_at.desc&limit=20`,
+    ),
+  ]);
+  const priorLeads = (leads ?? []).filter((x) => !(table === "leads" && x.id === selfId));
+  const priorMeetings = (meetings ?? []).filter((x) => !(table === "meetings" && x.id === selfId));
+  return buildReturningLine(priorLeads, priorMeetings);
 }
 
 function json(body: unknown, status = 200): Response {
@@ -83,6 +104,13 @@ Deno.serve(async (req: Request) => {
           telegram_allowed_user_ids: entry(cfg.allowedUserIds.length > 0, cfg.src.telegram_allowed_user_ids),
           zoom_s2s: entry(zoomConfigured(cfg), cfg.src.zoom_account_id),
         },
+      });
+    }
+    if (action === "console") {
+      // The rep console Mini App page. Public HTML (carries no data); the data
+      // routes below authenticate via the Telegram initData the page sends.
+      return new Response(renderConsoleHtml(), {
+        headers: { "Content-Type": "text/html; charset=utf-8" },
       });
     }
     if (action === "telegram-chats") {
@@ -125,9 +153,18 @@ Deno.serve(async (req: Request) => {
         description: "הנציג הדיגיטלי של חוסך — מקבל כל ליד בזמן אמת עם כפתורי סטטוס, שולח תזכורות חכמות, ומפיק דוחות. שלחו /help לרשימת הפקודות.",
       });
       await tgApi(cfg, "setMyShortDescription", { short_description: "ניהול הלידים של חוסך בטלגרם" });
+      // Menu button → the rep console Mini App (one tap in the chat).
+      const menu = await tgApi(cfg, "setChatMenuButton", {
+        menu_button: {
+          type: "web_app",
+          text: "לוח הפגישות",
+          web_app: { url: `${base}/functions/v1/notify-lead?action=console` },
+        },
+      });
       return json({
         ...r,
         commands_registered: cmds.ok,
+        menu_button_set: menu.ok,
         webhook_url: hookUrl,
         note: "getUpdates (?action=telegram-chats) is disabled while a webhook is set — delete-telegram-webhook re-enables it.",
       });
@@ -158,6 +195,19 @@ Deno.serve(async (req: Request) => {
     return json({ ok: true, skipped: "unhandled update type" });
   }
 
+  // Rep console data/actions authenticate via Telegram initData (inside the
+  // handlers), NOT the x-webhook-secret — so they sit ABOVE the secret gate.
+  if (action === "console-data") {
+    let body: { initData?: string } = {};
+    try { body = await req.json(); } catch (_) { /* empty */ }
+    return handleConsoleData(cfg, body.initData ?? "");
+  }
+  if (action === "console-act") {
+    let body: { initData?: string; id?: string; act?: string; payload?: string } = {};
+    try { body = await req.json(); } catch (_) { /* empty */ }
+    return handleConsoleAct(cfg, body);
+  }
+
   const provided = req.headers.get("x-webhook-secret") ?? "";
   if (!cfg.webhookSecret) return json({ ok: false, error: "webhook secret not configured" }, 503);
   if (!(await safeEqual(provided, cfg.webhookSecret))) return json({ ok: false, error: "unauthorized" }, 401);
@@ -171,7 +221,8 @@ Deno.serve(async (req: Request) => {
   if (payload.table === "meetings" || (record && record.meeting_date)) {
     const meeting = (record ?? payload) as MeetingRow;
     if (!meeting || (!meeting.name && !meeting.phone)) return json({ ok: false, error: "no meeting in payload" }, 400);
-    const tg = await sendTelegram(cfg, buildMeetingText(meeting), meetingKeyboard(meeting));
+    const returning = meeting.id ? await returningLineFor(meeting.phone, "meetings", meeting.id) : "";
+    const tg = await sendTelegram(cfg, returning + buildMeetingText(meeting), meetingKeyboard(meeting));
     if (tg.ok) await markNotified("meetings", meeting.id);
     jlog({ at: "notify-meeting", meeting: meeting.id, telegram: tg.ok });
     return json({ ok: tg.ok, telegram: { ok: tg.ok, error: tg.error } });
@@ -181,17 +232,8 @@ Deno.serve(async (req: Request) => {
   if (!lead || (!lead.name && !lead.phone)) return json({ ok: false, error: "no lead in payload" }, 400);
 
   // Returning customer: same phone seen before — hand the rep the context
-  // (previous date + how that conversation ended) right in the card.
-  let returningLine = "";
-  const digits = String(lead.phone ?? "").replace(/\D/g, "");
-  if (lead.id && digits.length >= 9) {
-    const prev = await rpcRows<Lead>("search_leads", { q: digits });
-    const p = (prev ?? []).find((x) => x.id !== lead.id);
-    if (p) {
-      const prevStatus = STATUS_HE[String(p.status ?? "new")] ?? String(p.status ?? "");
-      returningLine = `🔁 <b>לקוח חוזר</b> — פנייה קודמת ב-${String(p.created_at ?? "").slice(0, 10)} (${prevStatus})${NL}${NL}`;
-    }
-  }
+  // (previous lead outcome + previous meeting outcome) right in the card.
+  const returningLine = lead.id ? await returningLineFor(lead.phone, "leads", lead.id) : "";
 
   const triage = await aiTriage(cfg, lead);
   const [tg, email] = await Promise.all([

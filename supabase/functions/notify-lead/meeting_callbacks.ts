@@ -9,7 +9,9 @@ import { tgDisplayName } from "../_shared/leads.ts";
 import {
   buildMeetingCustomerEmailHtml, formatMeetingTimeline, formatMeetingWhen, frozenMeetingKeyboard,
   linkAskMarkup, linkAskText, MEETING_STATUS_HE, type MeetingEvent, meetingKeyboardFor, parseZoomLink,
+  rescheduleAskMarkup, rescheduleAskText,
 } from "../_shared/meetings.ts";
+import { parseReschedule } from "../_shared/reschedule.ts";
 import { createZoomMeeting, deleteZoomMeeting, zoomConfigured } from "../_shared/zoom.ts";
 import { sendCustomerEmail } from "../_shared/email.ts";
 import { allowed } from "./callbacks.ts";
@@ -74,7 +76,7 @@ export async function handleMeetingCallback(cfg: Cfg, cb: TgCallbackQuery): Prom
     return { ok: false, skipped: "wrong chat" };
   }
 
-  const m = data.match(/^meet:([0-9a-fA-F-]{36}):(confirm|norep|cancel|claim|claimed|linkask|noop|history)$/);
+  const m = data.match(/^meet:([0-9a-fA-F-]{36}):(confirm|norep|cancel|claim|claimed|linkask|reschedule|noop|history)$/);
   if (!m) {
     await answer();
     return { ok: true, skipped: "unrecognized callback" };
@@ -91,6 +93,24 @@ export async function handleMeetingCallback(cfg: Cfg, cb: TgCallbackQuery): Prom
     // the button is just a fingerprint for the reply flow — explain it
     await answer("השיבו (reply) להודעה זו עם קישור Zoom — https://zoom.us/...");
     return { ok: true };
+  }
+
+  if (action === "reschedule") {
+    // only a live (pending) or confirmed meeting can be moved — terminal
+    // statuses (cancelled/expired/no_rep/completed) have nothing to reschedule
+    const rows = await fetchRows<MeetingRow>(`/rest/v1/meetings?id=eq.${meetingId}&select=status,name`);
+    if (rows === null) {
+      await answer("הבדיקה נכשלה — נסו שוב");
+      return { ok: false };
+    }
+    const st = String(rows[0]?.status ?? "");
+    if (st !== "pending" && st !== "confirmed") {
+      await answer("אי אפשר לשנות מועד לפגישה שאינה פעילה");
+      return { ok: false, skipped: "not reschedulable" };
+    }
+    await answer("השיבו עם מועד חדש");
+    await sendTelegram(cfg, rescheduleAskText(rows[0] ?? { id: meetingId }), rescheduleAskMarkup(meetingId));
+    return { ok: true, pending: "reschedule" };
   }
 
   if (action === "history") {
@@ -269,5 +289,47 @@ export async function handleMeetingLinkReply(cfg: Cfg, msg: TgMessage, meetingId
   const meeting = rows?.[0];
   const emailed = meeting ? await emailCustomer(cfg, meeting) : false;
   await sendTelegram(cfg, emailed ? "✅ הקישור נשלח ללקוח" : `✅ הקישור נרשם — ${deliveryLine(meeting ?? {}, emailed)}`);
+  return { ok: true, emailed };
+}
+
+// A reply to the reschedule-ask prompt: validate the new slot (same rules as
+// the SQL meetings_guard), PATCH meeting_date/slot/starts_at, log the
+// reschedule, re-render the card and notify the customer by email. Called from
+// handleTeamMessage (callbacks.ts) after its chat/allowlist gates have passed.
+export async function handleMeetingRescheduleReply(cfg: Cfg, msg: TgMessage, meetingId: string, text: string): Promise<HandlerResult> {
+  const parsed = parseReschedule(text, Date.now());
+  if (!parsed.ok) {
+    await sendTelegram(cfg, `🔄 ${parsed.error}`);
+    return { ok: false, skipped: "invalid reschedule" };
+  }
+  const who = tgDisplayName(msg.from);
+  // only move an active meeting — a cancel/expire racing this reply wins
+  const n = await patchCount(
+    `/rest/v1/meetings?id=eq.${meetingId}&status=in.(pending,confirmed)`,
+    { meeting_date: parsed.meetingDate, slot: parsed.slot, starts_at: parsed.startsAt },
+  );
+  if (n === 0) {
+    await sendTelegram(cfg, "הפגישה כבר אינה פעילה (בוטלה או פגה) — המועד לא עודכן.");
+    await refreshMeetingKeyboard(cfg, msg.reply_to_message, meetingId);
+    return { ok: false, skipped: "not active" };
+  }
+  await logMeetingEvent({
+    meeting_id: meetingId, event: "reschedule",
+    note: `${parsed.meetingDate} ${parsed.slot}`,
+    actor_tg_id: msg.from?.id ?? null, actor_name: who,
+  });
+  // fetch AFTER the patch so the card + email render the new time
+  const rows = await fetchRows<MeetingRow>(`/rest/v1/meetings?id=eq.${meetingId}&select=*`);
+  const meeting = rows?.[0];
+  await sendTelegram(
+    cfg,
+    `🔄 <b>הפגישה עם ${esc(meeting?.name ?? "")} נדחתה</b> ל${esc(formatMeetingWhen(meeting ?? { meeting_date: parsed.meetingDate, slot: parsed.slot }))}.`,
+    meeting ? meetingKeyboardFor(meeting) : undefined,
+  );
+  // notify the customer (email only — same as confirm) when there's an address
+  const emailed = meeting ? await emailCustomer(cfg, meeting) : false;
+  if (meeting?.email) {
+    await sendTelegram(cfg, emailed ? "📧 הלקוח עודכן במייל על המועד החדש" : "⚠️ עדכון המייל ללקוח נכשל — עדכנו ידנית");
+  }
   return { ok: true, emailed };
 }

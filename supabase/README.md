@@ -290,3 +290,35 @@ Status + join link reach the customer via Realtime into the app (status card on
 home + the meeting screen), an in-app notification, OS push reminders at T-30
 and at start (mobile), and a confirmation email (Resend) when an address was
 given.
+
+### Rep console (Telegram Mini App)
+
+The reps get a full meeting-management **page** that opens from inside the bot
+(no separate login) — `functions/notify-lead/console.ts` serves it and two JSON
+endpoints, all on the existing function:
+
+```
+GET  ?action=console        → the Mini App HTML (today / pending / week board)
+POST ?action=console-data   → { initData }                    → board JSON
+POST ?action=console-act    → { initData, id, act, payload? } → confirm / sendlink
+                                                                 / reschedule / cancel
+```
+
+- **Auth**: both POST routes call `authorizeRep()` (`_shared/webapp.ts`), which
+  HMAC-validates the Telegram `initData` against the bot token and then checks
+  the user against the `telegram_allowed_user_ids` allowlist — the same trust
+  the bot commands require. No new secrets.
+- **One-time setup** (registers the page as the bot's menu button so reps tap it
+  in the chat):
+  ```bash
+  curl "https://api.telegram.org/bot<TOKEN>/setChatMenuButton" \
+    -H 'Content-Type: application/json' \
+    -d '{"menu_button":{"type":"web_app","text":"לוח הפגישות",
+         "web_app":{"url":"https://orzitfqmlvopujsoyigr.supabase.co/functions/v1/notify-lead?action=console"}}}'
+  ```
+- **Actions** reuse the same service-role PATCH + Zoom-create + customer-email
+  path as the bot buttons (atomic `status=eq.pending` guards, lost-race safe),
+  so the console and the bot can't disagree. Confirm auto-creates the Zoom
+  meeting when configured, else the page prompts the rep for a link.
+- **Local preview**: `python tool/extract_console_preview.py` renders the page
+  with sample data to `build/rep-console-preview.html` (no Telegram needed).

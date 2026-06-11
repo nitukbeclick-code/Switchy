@@ -66,15 +66,49 @@ export function meetingKeyboard(m: MeetingRow): TgInlineKeyboard | undefined {
         { text: "❌ ביטול", callback_data: `meet:${id}:cancel` },
       ],
       [claimBtn, { text: "📜 היסטוריה", callback_data: `meet:${id}:history` }],
+      [{ text: "🔄 שינוי מועד", callback_data: `meet:${id}:reschedule` }],
     ],
   };
 }
 
 // Frozen stamp after a final status — a single noop button (like the leads
 // frozen keyboard, without undo: meeting transitions are terminal here).
+// Confirmed meetings additionally keep a reschedule button: a confirmed slot is
+// the one a rep most often needs to move, so it must not be frozen out.
 export function frozenMeetingKeyboard(m: MeetingRow, statusLabel: string): TgInlineKeyboard {
   const id = String(m.id ?? "");
-  return { inline_keyboard: [[{ text: statusLabel.slice(0, 60), callback_data: `meet:${id}:noop` }]] };
+  const rows: TgInlineKeyboard["inline_keyboard"] = [[{ text: statusLabel.slice(0, 60), callback_data: `meet:${id}:noop` }]];
+  if (String(m.status ?? "") === "confirmed" && id) {
+    rows.push([{ text: "🔄 שינוי מועד", callback_data: `meet:${id}:reschedule` }]);
+  }
+  return { inline_keyboard: rows };
+}
+
+// The reschedule-ask prompt: the rep replies with a new 'YYYY-MM-DD HH:MM'.
+// The meet:<id>:reschedule callback_data is the prompt's fingerprint (mirrors
+// the link-ask flow), so a reply can resolve the meeting from the markup.
+export function rescheduleAskText(m: MeetingRow): string {
+  return `🔄 השיבו (reply) להודעה זו עם מועד חדש לפגישה עם ${esc(m.name ?? "הלקוח")} — בפורמט <code>YYYY-MM-DD HH:MM</code> (שעון ישראל), למשל <code>2026-06-18 14:30</code>.`;
+}
+
+export function rescheduleAskMarkup(meetingId: string): TgInlineKeyboard {
+  return { inline_keyboard: [[{ text: "🔄 ממתין למועד חדש", callback_data: `meet:${meetingId}:reschedule` }]] };
+}
+
+// Returns the meeting id when the replied-to message is the reschedule-ask
+// prompt (mirrors isLinkAskMarkup). Distinguished from the live card's
+// reschedule button: that button is on a confirmed/frozen card, the prompt is
+// its OWN message whose only button is this one — both resolve to the same id,
+// which is all the reply handler needs.
+export function isRescheduleAskMarkup(markup?: { inline_keyboard?: { callback_data?: string }[][] }): string | null {
+  const rows = markup?.inline_keyboard ?? [];
+  // a reschedule-ask prompt is a single-button message; the live confirmed card
+  // carries other meet: buttons alongside it, so require it to be the sole row.
+  if (rows.length === 1 && rows[0].length === 1) {
+    const mm = String(rows[0][0].callback_data ?? "").match(/^meet:([0-9a-fA-F-]{36}):reschedule$/);
+    if (mm) return mm[1];
+  }
+  return null;
 }
 
 // Status-aware keyboard: only pending meetings get live buttons; anything else
@@ -161,6 +195,9 @@ export function formatMeetingTimeline(m: MeetingRow, events: MeetingEvent[]): st
       }
       case "link_set":
         lines.push(`🔗 ${at} — ${who} קבע קישור Zoom`);
+        break;
+      case "reschedule":
+        lines.push(`🔄 ${at} — ${who} שינה מועד ל${esc(ev.note ?? "")}`);
         break;
       case "reminder":
         lines.push(`⏳ ${at} — נשלחה תזכורת לנציגים`);

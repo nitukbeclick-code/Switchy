@@ -29,6 +29,7 @@ import { jlog } from "../_shared/log.ts";
 import { buildText, CALLBACK_HE, leadKeyboard } from "../_shared/leads.ts";
 import { buildMeetingText, formatMeetingTime, formatMeetingWhen, meetingKeyboardFor } from "../_shared/meetings.ts";
 import { buildDigest, daysUntil } from "../_shared/digests.ts";
+import { agendaIsEmpty, buildAgenda } from "../_shared/agenda.ts";
 import { buildWeeklyReport } from "../_shared/weekly.ts";
 import { israelDateOf, israelHourOf, planFollowUps } from "../_shared/followup.ts";
 import { planMeetingFollowUps } from "../_shared/meeting_followup.ts";
@@ -85,6 +86,31 @@ async function runDigest(cfg: Cfg, days: number) {
     }
   }
   const tg = await sendTelegram(cfg, message);
+
+  // Morning agenda push: today's confirmed + pending meetings and uncontacted
+  // leads, as one tidy /today briefing. Reuses the ±24/36h window already
+  // fetched above for confirmed meetings; pending + uncontacted are cheap adds.
+  // Skip entirely when there's nothing actionable (no spam on quiet mornings).
+  let agendaSent = false;
+  {
+    const winStart = enc(new Date(Date.now() - 24 * 3_600_000).toISOString());
+    const winEnd = enc(new Date(Date.now() + 36 * 3_600_000).toISOString());
+    const [pendingMeetings, uncontacted] = await Promise.all([
+      fetchRows<MeetingRow>(`/rest/v1/meetings?select=*&status=eq.pending&starts_at=gte.${winStart}&starts_at=lt.${winEnd}&order=starts_at.asc&limit=30`),
+      fetchRows<Lead>(`/rest/v1/leads?select=*&status=eq.new&order=created_at.asc&limit=30`),
+    ]);
+    const agendaInput = {
+      confirmed: confirmedMeetings ?? [],
+      pending: pendingMeetings ?? [],
+      uncontacted: uncontacted ?? [],
+    };
+    const now = Date.now();
+    if (!agendaIsEmpty(agendaInput, now)) {
+      const at = await sendTelegram(cfg, buildAgenda(agendaInput, now));
+      agendaSent = at.ok;
+    }
+  }
+
   // urgent renewals (≤7 days) with a phone get their own card with a
   // "create lead" button so proactive calls enter the tracked pipeline
   let buttons = 0;
@@ -98,7 +124,7 @@ async function runDigest(cfg: Cfg, days: number) {
     );
     if (sent.ok) buttons++;
   }
-  return { ok: tg.ok, count: rows.length, new_leads: newLeads, meetings_today: todaysMeetings.length, renewal_buttons: buttons, telegram: tg };
+  return { ok: tg.ok, count: rows.length, new_leads: newLeads, meetings_today: todaysMeetings.length, agenda_sent: agendaSent, renewal_buttons: buttons, telegram: tg };
 }
 
 // ── mode: sweep ──────────────────────────────────────────────────────────────

@@ -9,6 +9,7 @@ import { waDraftLink, waLink } from "../_shared/telegram.ts";
 import { botFullyConfigured, safeEqual, tgWebhookToken } from "../_shared/config.ts";
 import { parseTriage } from "../notify-lead/triage.ts";
 import { allowed, parseSavingAmount } from "../notify-lead/callbacks.ts";
+import { baresPhone } from "../notify-lead/commands.ts";
 import { planFollowUps } from "../_shared/followup.ts";
 import { buildDigest, formatMinutes, medianMinutes } from "../_shared/digests.ts";
 
@@ -107,6 +108,16 @@ Deno.test("parseSavingAmount accepts only a lone amount, not digits in prose", (
   assertEquals(parseSavingAmount("חסכנו 100 בחודש, 1200 בשנה"), null);
   assertEquals(parseSavingAmount("050-1234567"), null);
   assertEquals(parseSavingAmount("0"), null);
+});
+
+Deno.test("baresPhone recognises a lone phone number, not prose or commands", () => {
+  assertEquals(baresPhone("0501234567"), "0501234567");
+  assertEquals(baresPhone("050-123-4567"), "0501234567");
+  assertEquals(baresPhone(" +972 50 1234567 "), "972501234567");
+  assertEquals(baresPhone("/customer 0501234567"), null); // a command, not bare
+  assertEquals(baresPhone("דנה כהן"), null);
+  assertEquals(baresPhone("12345"), null);                // too short
+  assertEquals(baresPhone(""), null);
 });
 
 // ── WhatsApp links ───────────────────────────────────────────────────────────

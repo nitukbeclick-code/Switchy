@@ -5,8 +5,8 @@ import { assert, assertEquals, assertFalse, assertStringIncludes } from "@std/as
 import type { Cfg, MeetingRow } from "../_shared/types.ts";
 import {
   buildMeetingCustomerEmailHtml, buildMeetingText, formatMeetingTime, formatMeetingWhen,
-  frozenMeetingKeyboard, isLinkAskMarkup, linkAskMarkup, linkAskText, meetingKeyboard,
-  meetingKeyboardFor, parseZoomLink,
+  frozenMeetingKeyboard, isLinkAskMarkup, isRescheduleAskMarkup, linkAskMarkup, linkAskText,
+  meetingKeyboard, meetingKeyboardFor, parseZoomLink, rescheduleAskMarkup, rescheduleAskText,
 } from "../_shared/meetings.ts";
 import { planMeetingFollowUps } from "../_shared/meeting_followup.ts";
 import { buildZoomMeetingBody, zoomConfigured } from "../_shared/zoom.ts";
@@ -103,6 +103,31 @@ Deno.test("linkAsk markup round-trips the meeting id", () => {
   assertEquals(isLinkAskMarkup(meetingKeyboard(MEETING)), null);
   assertEquals(isLinkAskMarkup(undefined), null);
   assertStringIncludes(linkAskText(MEETING), "דנה כהן");
+});
+
+// ── reschedule flow ──────────────────────────────────────────────────────────
+
+Deno.test("meetingKeyboard carries a reschedule button on the live card", () => {
+  const kb = meetingKeyboard(MEETING)!;
+  assert(kb.inline_keyboard.flat().some((b) => b.callback_data === `meet:${MEETING.id}:reschedule`));
+});
+
+Deno.test("frozenMeetingKeyboard keeps a reschedule button only for confirmed meetings", () => {
+  const confirmed = frozenMeetingKeyboard({ ...MEETING, status: "confirmed" }, "✅ מאושרת");
+  assert(confirmed.inline_keyboard.flat().some((b) => b.callback_data === `meet:${MEETING.id}:reschedule`));
+  // cancelled / other terminal states do not get a reschedule button
+  const cancelled = frozenMeetingKeyboard({ ...MEETING, status: "cancelled" }, "❌ בוטלה");
+  assertFalse(cancelled.inline_keyboard.flat().some((b) => b.callback_data === `meet:${MEETING.id}:reschedule`));
+});
+
+Deno.test("rescheduleAsk markup round-trips the meeting id and is distinct from the live card", () => {
+  const id = String(MEETING.id);
+  assertEquals(isRescheduleAskMarkup(rescheduleAskMarkup(id)), id);
+  // the live multi-button card is NOT a reschedule-ask prompt (sole-button rule)
+  assertEquals(isRescheduleAskMarkup(meetingKeyboard(MEETING)), null);
+  assertEquals(isRescheduleAskMarkup(linkAskMarkup(id)), null);
+  assertEquals(isRescheduleAskMarkup(undefined), null);
+  assertStringIncludes(rescheduleAskText(MEETING), "דנה כהן");
 });
 
 Deno.test("parseZoomLink accepts only real https Zoom URLs", () => {

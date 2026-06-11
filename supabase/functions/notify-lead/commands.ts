@@ -1,4 +1,5 @@
-// Team chat commands: /leads, /meetings, /stats, /search, /hot, /weekly, /help.
+// Team chat commands: /today, /agenda, /week, /leads, /meetings, /stats,
+// /search, /customer, /hot, /weekly, /help.
 
 import type { Cfg, Lead, MeetingRow } from "../_shared/types.ts";
 import { esc, NL, sendTelegram, waLink } from "../_shared/telegram.ts";
@@ -7,6 +8,7 @@ import { buildText, keyboardFor, SOURCE_HE, STATUS_EMOJI, STATUS_HE } from "../_
 import { buildMeetingText, MEETING_STATUS_EMOJI, MEETING_STATUS_HE, meetingKeyboardFor } from "../_shared/meetings.ts";
 import { formatMinutes, medianMinutes } from "../_shared/digests.ts";
 import { buildWeeklyReport } from "../_shared/weekly.ts";
+import { buildAgenda, buildDossier, buildStats, buildWeek, type DossierInput } from "../_shared/agenda.ts";
 
 type CmdResult = { ok: boolean; command: string; failures?: number };
 
@@ -31,7 +33,101 @@ async function reportQueryFailure(cfg: Cfg, cmd: string): Promise<CmdResult> {
   return { ok: false, command: cmd };
 }
 
+const enc = encodeURIComponent;
+
+// A bare phone token in the team chat (e.g. "0501234567" or "+972501234567").
+// 9–15 digits, optional leading +, separators allowed. Returns the digits.
+export function baresPhone(text: string): string | null {
+  const t = text.trim();
+  if (!/^\+?[0-9][0-9\-\s]{7,15}$/.test(t)) return null;
+  const digits = t.replace(/\D/g, "");
+  return digits.length >= 9 && digits.length <= 15 ? digits : null;
+}
+
+// Today's agenda: confirmed + pending meetings (±24h, trimmed to the Israel day
+// by buildAgenda) and uncontacted (status=new) leads. Returns null on a failed
+// query so the caller can say "try again" instead of "nothing today".
+async function fetchAgenda(): Promise<{ confirmed: MeetingRow[]; pending: MeetingRow[]; uncontacted: Lead[] } | null> {
+  const winStart = enc(new Date(Date.now() - 24 * 3_600_000).toISOString());
+  const winEnd = enc(new Date(Date.now() + 36 * 3_600_000).toISOString());
+  const [confirmed, pending, uncontacted] = await Promise.all([
+    fetchRows<MeetingRow>(`/rest/v1/meetings?select=*&status=eq.confirmed&starts_at=gte.${winStart}&starts_at=lt.${winEnd}&order=starts_at.asc&limit=30`),
+    fetchRows<MeetingRow>(`/rest/v1/meetings?select=*&status=eq.pending&starts_at=gte.${winStart}&starts_at=lt.${winEnd}&order=starts_at.asc&limit=30`),
+    fetchRows<Lead>(`/rest/v1/leads?select=*&status=eq.new&order=created_at.asc&limit=30`),
+  ]);
+  if (confirmed === null || pending === null || uncontacted === null) return null;
+  return { confirmed, pending, uncontacted };
+}
+
+// Compose a customer-360 dossier from existing tables (no new SQL): resolve the
+// phone to lead/meeting rows + (when those carry a user_id) the profile name,
+// tracked plans and reviews. Returns null on a failed query.
+export async function fetchDossier(phoneDigits: string): Promise<DossierInput | null> {
+  const [leads, meetings] = await Promise.all([
+    rpcRows<Lead>("search_leads", { q: phoneDigits }),
+    // meetings have no search RPC — match on the normalized phone column
+    fetchRows<MeetingRow>(`/rest/v1/meetings?select=*&phone=ilike.*${enc(phoneDigits.slice(-9))}*&order=created_at.desc&limit=50`),
+  ]);
+  if (leads === null || meetings === null) return null;
+  // a user_id anchors the profile / tracked plans / reviews lookups
+  const userId = leads.map((l) => l.user_id).find(Boolean) ?? meetings.map((m) => m.user_id).find(Boolean) ?? null;
+  let profileName: string | null = null;
+  let tracked: DossierInput["tracked"] = [];
+  let reviews: DossierInput["reviews"] = [];
+  if (userId) {
+    const [prof, trk, rev] = await Promise.all([
+      fetchRows<{ name?: string | null }>(`/rest/v1/profiles?select=name&id=eq.${enc(String(userId))}`),
+      fetchRows<{ category?: string; provider?: string; plan_name?: string; monthly_price?: number; promo_end_date?: string | null }>(
+        `/rest/v1/tracked_plans?select=category,provider,plan_name,monthly_price,promo_end_date&user_id=eq.${enc(String(userId))}&order=created_at.desc&limit=20`),
+      fetchRows<{ provider?: string; overall?: number; body?: string }>(
+        `/rest/v1/provider_reviews?select=provider,overall,body&user_id=eq.${enc(String(userId))}&order=created_at.desc&limit=20`),
+    ]);
+    profileName = prof?.[0]?.name ?? null;
+    tracked = trk ?? [];
+    reviews = rev ?? [];
+  }
+  return { query: phoneDigits, profileName, leads, meetings, tracked, reviews };
+}
+
+async function sendDossier(cfg: Cfg, phoneDigits: string): Promise<CmdResult> {
+  const d = await fetchDossier(phoneDigits);
+  if (d === null) return await reportQueryFailure(cfg, "/customer");
+  if (d.leads.length === 0 && d.meetings.length === 0) {
+    await sendTelegram(cfg, `🗂️ לא נמצא לקוח עם הטלפון <code>${esc(phoneDigits)}</code>.`);
+    return { ok: true, command: "/customer" };
+  }
+  await sendTelegram(cfg, buildDossier(d));
+  return { ok: true, command: "/customer" };
+}
+
 export async function handleCommand(cfg: Cfg, cmd: string, args: string): Promise<CmdResult> {
+  if (cmd === "/today" || cmd === "/agenda") {
+    const data = await fetchAgenda();
+    if (data === null) return await reportQueryFailure(cfg, cmd);
+    await sendTelegram(cfg, buildAgenda(data, Date.now()));
+    return { ok: true, command: cmd };
+  }
+
+  if (cmd === "/week") {
+    const winStart = enc(new Date(Date.now() - 24 * 3_600_000).toISOString());
+    const winEnd = enc(new Date(Date.now() + 8 * 86_400_000).toISOString());
+    const meetings = await fetchRows<MeetingRow>(
+      `/rest/v1/meetings?select=*&status=eq.confirmed&starts_at=gte.${winStart}&starts_at=lt.${winEnd}&order=starts_at.asc&limit=100`,
+    );
+    if (meetings === null) return await reportQueryFailure(cfg, cmd);
+    await sendTelegram(cfg, buildWeek(meetings, Date.now()));
+    return { ok: true, command: cmd };
+  }
+
+  if (cmd === "/customer") {
+    const digits = baresPhone(args.trim());
+    if (!digits) {
+      await sendTelegram(cfg, "🗂️ שימוש: <code>/customer 0501234567</code> (או פשוט שלחו מספר טלפון)");
+      return { ok: true, command: cmd };
+    }
+    return await sendDossier(cfg, digits);
+  }
+
   if (cmd === "/leads") {
     const open = await fetchRows<Lead>("/rest/v1/leads?status=in.(new,contacted)&order=created_at.desc&limit=5&select=*");
     if (open === null) return await reportQueryFailure(cfg, cmd);
@@ -88,19 +184,24 @@ export async function handleCommand(cfg: Cfg, cmd: string, args: string): Promis
   }
 
   if (cmd === "/stats") {
-    const [rows, contacted] = await Promise.all([
+    const sevenAgo = enc(new Date(Date.now() - 7 * 86_400_000).toISOString());
+    const [rows, contacted, weekLeads, weekMeetings] = await Promise.all([
       fetchRows<Record<string, unknown>>("/rest/v1/leads_by_source?select=*"),
       fetchRows<Lead>("/rest/v1/leads?contacted_at=not.is.null&select=created_at,contacted_at&order=created_at.desc&limit=200"),
+      fetchRows<Lead>(`/rest/v1/leads?select=status,created_at,contacted_at,actual_saving&created_at=gte.${sevenAgo}&limit=1000`),
+      fetchRows<MeetingRow>(`/rest/v1/meetings?select=status,created_at&created_at=gte.${sevenAgo}&limit=1000`),
     ]);
     if (rows === null) return await reportQueryFailure(cfg, cmd);
     if (rows.length === 0) {
       await sendTelegram(cfg, "📊 אין עדיין לידים במערכת.");
       return { ok: true, command: cmd };
     }
+    // this-week funnel first (the most actionable view)
+    await sendTelegram(cfg, buildStats({ weekLeads: weekLeads ?? [], weekMeetings: weekMeetings ?? [] }));
     const tot = (k: string) => rows.reduce((s, r) => s + Number(r[k] ?? 0), 0);
     const med = medianMinutes(contacted ?? []);
     const lines = [
-      "📊 <b>סטטיסטיקת לידים — חוסך</b>",
+      "📊 <b>סטטיסטיקת לידים — חוסך (כל הזמנים)</b>",
       "",
       `סה"כ: <b>${tot("total")}</b> | 🆕 ${tot("new_leads")} | 📞 ${tot("contacted")} | 🏆 ${tot("won")} | ❌ ${tot("lost")}`,
       med !== null ? `⚡ מהירות תגובה חציונית: <b>${formatMinutes(med)}</b>` : null,
@@ -144,24 +245,32 @@ export async function handleCommand(cfg: Cfg, cmd: string, args: string): Promis
   await sendTelegram(cfg, [
     "🤖 <b>הנציג הדיגיטלי של חוסך</b>",
     "",
+    "/today — סדר היום: פגישות מאושרות וממתינות + לידים שלא טופלו",
+    "/agenda — כינוי ל-/today",
+    "/week — הפגישות המאושרות ב-7 הימים הקרובים, לפי יום",
     "/leads — הלידים הפתוחים האחרונים, עם כפתורי סטטוס",
     "/meetings — פגישות הווידאו הקרובות, עם כפתורי אישור",
     "/search <code>שם או טלפון</code> — איתור ליד ישן",
-    "/stats — המשפך לפי מקור + מהירות תגובה",
+    "/customer <code>טלפון</code> — תיק לקוח מלא (אפשר גם לשלוח מספר טלפון)",
+    "/stats — המשפך השבועי + המשפך לפי מקור + מהירות תגובה",
     "/hot — גולשים שצפו במסלולים ולא השאירו פנייה",
     "/weekly — הדוח העסקי השבועי, עכשיו",
     "/help — ההודעה הזו",
     "",
-    "<i>טיפים: כפתור 🙋 תופס בעלות על ליד; תשובה (reply) להודעת ליד נשמרת כהערה; אחרי 🏆 השיבו עם סכום החיסכון.</i>",
+    "<i>טיפים: כפתור 🙋 תופס בעלות על ליד; תשובה (reply) להודעת ליד נשמרת כהערה; אחרי 🏆 השיבו עם סכום החיסכון; כפתור 🔄 על כרטיס פגישה מאפשר לשנות מועד.</i>",
   ].join(NL));
   return { ok: true, command: cmd };
 }
 
 export const BOT_COMMANDS = [
+  { command: "today", description: "סדר היום — פגישות ולידים פתוחים" },
+  { command: "agenda", description: "כינוי ל-/today" },
+  { command: "week", description: "פגישות מאושרות ב-7 הימים הקרובים" },
   { command: "leads", description: "לידים פתוחים עם כפתורי סטטוס" },
   { command: "meetings", description: "פגישות וידאו קרובות" },
   { command: "search", description: "חיפוש ליד לפי שם או טלפון" },
-  { command: "stats", description: "משפך הלידים ומהירות תגובה" },
+  { command: "customer", description: "תיק לקוח מלא לפי טלפון" },
+  { command: "stats", description: "המשפך השבועי ומהירות תגובה" },
   { command: "hot", description: "גולשים חמים בלי פנייה" },
   { command: "weekly", description: "הדוח השבועי עכשיו" },
   { command: "help", description: "עזרה" },

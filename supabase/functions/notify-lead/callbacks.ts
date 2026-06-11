@@ -5,9 +5,9 @@ import type { Cfg, Lead, RenewalRow, TgCallbackQuery, TgMessage } from "../_shar
 import { esc, NL, sendTelegram, tgApi } from "../_shared/telegram.ts";
 import { fetchRows, insertRow, logEvent, patchCount, rpcRows } from "../_shared/db.ts";
 import { formatTimeline, frozenKeyboard, isWonAskMarkup, keyboardFor, leadIdFromMarkup, type LeadEvent, STATUS_HE, tgDisplayName } from "../_shared/leads.ts";
-import { isLinkAskMarkup } from "../_shared/meetings.ts";
-import { handleCommand } from "./commands.ts";
-import { handleMeetingCallback, handleMeetingLinkReply } from "./meeting_callbacks.ts";
+import { isLinkAskMarkup, isRescheduleAskMarkup } from "../_shared/meetings.ts";
+import { baresPhone, handleCommand } from "./commands.ts";
+import { handleMeetingCallback, handleMeetingLinkReply, handleMeetingRescheduleReply } from "./meeting_callbacks.ts";
 
 type HandlerResult = Record<string, unknown>;
 
@@ -264,6 +264,11 @@ export async function handleTeamMessage(cfg: Cfg, msg: TgMessage): Promise<Handl
     const meetingId = isLinkAskMarkup(reply.reply_markup);
     if (meetingId) return await handleMeetingLinkReply(cfg, msg, meetingId, text);
 
+    // Reschedule-ask replies: the prompt's markup carries the meeting id, the
+    // reply must be a valid 'YYYY-MM-DD HH:MM' (validated inside).
+    const reschedId = isRescheduleAskMarkup(reply.reply_markup);
+    if (reschedId) return await handleMeetingRescheduleReply(cfg, msg, reschedId, text);
+
     const leadId = leadIdFromMarkup(reply.reply_markup);
     if (!leadId || !text) return { ok: true, skipped: "reply without lead context" };
     const who = tgDisplayName(msg.from);
@@ -284,7 +289,12 @@ export async function handleTeamMessage(cfg: Cfg, msg: TgMessage): Promise<Handl
     return { ok: true };
   }
 
-  if (!text.startsWith("/")) return { ok: true, skipped: "not a command" };
+  if (!text.startsWith("/")) {
+    // A bare phone number in the team chat is a shortcut for /customer <phone>.
+    const digits = baresPhone(text);
+    if (digits) return await handleCommand(cfg, "/customer", digits);
+    return { ok: true, skipped: "not a command" };
+  }
   const [cmdTok, ...rest] = text.split(/\s+/);
   const cmd = cmdTok.split("@")[0].toLowerCase();
   return await handleCommand(cfg, cmd, rest.join(" ").trim());

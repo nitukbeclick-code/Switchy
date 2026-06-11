@@ -5,7 +5,9 @@ import type { Cfg, Lead, RenewalRow, TgCallbackQuery, TgMessage } from "../_shar
 import { esc, NL, sendTelegram, tgApi } from "../_shared/telegram.ts";
 import { fetchRows, insertRow, logEvent, patchCount, rpcRows } from "../_shared/db.ts";
 import { formatTimeline, frozenKeyboard, isWonAskMarkup, keyboardFor, leadIdFromMarkup, type LeadEvent, STATUS_HE, tgDisplayName } from "../_shared/leads.ts";
+import { isLinkAskMarkup } from "../_shared/meetings.ts";
 import { handleCommand } from "./commands.ts";
+import { handleMeetingCallback, handleMeetingLinkReply } from "./meeting_callbacks.ts";
 
 type HandlerResult = Record<string, unknown>;
 
@@ -71,6 +73,9 @@ async function handleRenewLead(
 }
 
 export async function handleCallback(cfg: Cfg, cb: TgCallbackQuery): Promise<HandlerResult> {
+  // Meeting cards live in their own namespace and carry the same gates inside.
+  if (String(cb.data ?? "").startsWith("meet:")) return await handleMeetingCallback(cfg, cb);
+
   const answer = (text?: string) =>
     tgApi(cfg, "answerCallbackQuery", { callback_query_id: cb.id, ...(text ? { text } : {}) });
 
@@ -254,6 +259,11 @@ export async function handleTeamMessage(cfg: Cfg, msg: TgMessage): Promise<Handl
   // single number record the actual saving.
   const reply = msg.reply_to_message;
   if (reply) {
+    // Meeting link-ask replies first: the prompt's markup carries the meeting
+    // id, and the reply must be a valid Zoom link (validated inside).
+    const meetingId = isLinkAskMarkup(reply.reply_markup);
+    if (meetingId) return await handleMeetingLinkReply(cfg, msg, meetingId, text);
+
     const leadId = leadIdFromMarkup(reply.reply_markup);
     if (!leadId || !text) return { ok: true, skipped: "reply without lead context" };
     const who = tgDisplayName(msg.from);

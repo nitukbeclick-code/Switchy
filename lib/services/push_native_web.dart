@@ -8,4 +8,9 @@ Future<bool> requestPush() async => false;
 
 Future<void> scheduleReminders(List<ScheduledReminder> reminders) async {}
 
+Future<void> scheduleAll(
+  List<ScheduledReminder> reminders,
+  List<MeetingPushReminder> meetings,
+) async {}
+
 Future<void> cancelAllPush() async {}

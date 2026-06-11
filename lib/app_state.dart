@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'data.dart' show planById;
 import 'models.dart' show TrackedPlan;
+import 'services/backend/backend.dart'
+    show BookedMeeting, MeetingStatus, meetingStatusFromDb, meetingStatusToDb;
 import 'services/savings_summary.dart' show savingsCreditedOnLead;
 
 class AppState extends ChangeNotifier {
@@ -45,6 +47,15 @@ class AppState extends ChangeNotifier {
     _leadEmail = p.getString('leadEmail');
     _leadCallbackTime = p.getString('leadCallbackTime');
     _trackerStep = p.getInt('trackerStep') ?? 0;
+    // Booked video meeting (Zoom)
+    _meetingId = p.getString('meetingId');
+    _meetingProvider = p.getString('meetingProvider');
+    _meetingDate = p.getString('meetingDate');
+    _meetingSlot = p.getString('meetingSlot');
+    _meetingStatus = p.getString('meetingStatus');
+    _meetingJoinUrl = p.getString('meetingJoinUrl');
+    _meetingStartsAtIso = p.getString('meetingStartsAtIso');
+    _meetingCreatedAtIso = p.getString('meetingCreatedAtIso');
     // Watched plans
     final watched = p.getStringList('watchedPlans') ?? [];
     _watchedPlans.addAll(watched);
@@ -180,6 +191,26 @@ class AppState extends ChangeNotifier {
           if (_leadEmail != null) await p.setString('leadEmail', _leadEmail!);
           if (_leadCallbackTime != null) await p.setString('leadCallbackTime', _leadCallbackTime!);
           break;
+        case 'meeting':
+          // null = cleared meeting → remove the key (unlike lead's append-only
+          // fields, a meeting is replaced/cleared as one unit).
+          for (final e in {
+            'meetingId': _meetingId,
+            'meetingProvider': _meetingProvider,
+            'meetingDate': _meetingDate,
+            'meetingSlot': _meetingSlot,
+            'meetingStatus': _meetingStatus,
+            'meetingJoinUrl': _meetingJoinUrl,
+            'meetingStartsAtIso': _meetingStartsAtIso,
+            'meetingCreatedAtIso': _meetingCreatedAtIso,
+          }.entries) {
+            if (e.value == null) {
+              await p.remove(e.key);
+            } else {
+              await p.setString(e.key, e.value!);
+            }
+          }
+          break;
         case 'trackerStep':
           await p.setInt('trackerStep', _trackerStep);
           break;
@@ -252,6 +283,7 @@ class AppState extends ChangeNotifier {
   // call; it marks every light group dirty (each write is cheap).
   static const Set<String> _lightGroups = {
     'auth', 'totalSavings', 'selectedCat', 'bills', 'quiz', 'quizNeeds', 'lead',
+    'meeting',
     'trackerStep', 'watchedPlans', 'recentlyViewed', 'recentSearches',
     'userReviews', 'likedPosts', 'bookmarkedPosts', 'myPlans',
     'renewalReminders', 'dismissedNotifications', 'prefs', 'seenOnboarding',
@@ -347,6 +379,62 @@ class AppState extends ChangeNotifier {
     final plan = planById(planId);
     _totalSavings += savingsCreditedOnLead(plan, plan != null ? currentBill(plan.cat) : 0);
     notifyListeners(); _persist();
+  }
+
+  // ── Booked video meeting (Zoom) ─────────────────────────────────────────────
+  // One open meeting at a time (mirrors the server's one-pending-per-phone
+  // constraint). Stored flat so the status card, computeNotifications and the
+  // push scheduler stay pure over AppState and survive cold starts.
+  String? _meetingId, _meetingProvider, _meetingDate, _meetingSlot,
+      _meetingStatus, _meetingJoinUrl, _meetingStartsAtIso, _meetingCreatedAtIso;
+
+  BookedMeeting? get bookedMeeting {
+    if (_meetingId == null || _meetingDate == null || _meetingSlot == null) return null;
+    return BookedMeeting(
+      id: _meetingId!,
+      status: meetingStatusFromDb(_meetingStatus),
+      provider: _meetingProvider,
+      meetingDate: _meetingDate!,
+      slot: _meetingSlot!,
+      startsAt: DateTime.tryParse(_meetingStartsAtIso ?? '')?.toUtc() ??
+          DateTime.now().toUtc(),
+      joinUrl: _meetingJoinUrl,
+      createdAt: DateTime.tryParse(_meetingCreatedAtIso ?? '') ?? DateTime.now(),
+    );
+  }
+
+  void setBookedMeeting(BookedMeeting m) {
+    _meetingId = m.id;
+    _meetingProvider = m.provider;
+    _meetingDate = m.meetingDate;
+    _meetingSlot = m.slot;
+    _meetingStatus = meetingStatusToDb(m.status);
+    _meetingJoinUrl = m.joinUrl;
+    _meetingStartsAtIso = m.startsAt.toIso8601String();
+    _meetingCreatedAtIso = m.createdAt.toIso8601String();
+    _markDirty('meeting');
+    notifyListeners();
+  }
+
+  void updateMeetingStatus(MeetingStatus status, {String? joinUrl}) {
+    if (_meetingId == null) return;
+    _meetingStatus = meetingStatusToDb(status);
+    if (joinUrl != null) _meetingJoinUrl = joinUrl;
+    _markDirty('meeting');
+    notifyListeners();
+  }
+
+  void clearBookedMeeting() {
+    _meetingId = null;
+    _meetingProvider = null;
+    _meetingDate = null;
+    _meetingSlot = null;
+    _meetingStatus = null;
+    _meetingJoinUrl = null;
+    _meetingStartsAtIso = null;
+    _meetingCreatedAtIso = null;
+    _markDirty('meeting');
+    notifyListeners();
   }
 
   // Tracker

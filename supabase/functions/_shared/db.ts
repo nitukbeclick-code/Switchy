@@ -95,3 +95,16 @@ export async function logEvent(ev: {
 }): Promise<void> {
   await insertRow("lead_events", ev);
 }
+
+// Same contract for the meetings audit trail (meeting_events mirrors lead_events).
+export async function logMeetingEvent(ev: {
+  meeting_id: string;
+  event: string;
+  old_status?: string | null;
+  new_status?: string | null;
+  actor_tg_id?: number | null;
+  actor_name?: string | null;
+  note?: string | null;
+}): Promise<void> {
+  await insertRow("meeting_events", ev);
+}

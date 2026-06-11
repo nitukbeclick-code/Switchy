@@ -23,6 +23,35 @@ export type Lead = {
   created_at?: string;
 };
 
+// public.meetings — Zoom video-consultation bookings; mirrors leads. starts_at
+// is the server-computed Israel-time instant for meeting_date + slot.
+// (Consent timestamps exist on the table but the bot never reads them.)
+export type MeetingRow = {
+  id?: string;
+  user_id?: string | null;
+  name?: string;
+  phone?: string;
+  email?: string | null;
+  provider?: string | null;
+  plan_id?: string | null;
+  meeting_date?: string;        // YYYY-MM-DD
+  slot?: string;                // HH:MM
+  starts_at?: string;           // timestamptz
+  status?: string;              // pending | confirmed | no_rep | cancelled | expired | completed
+  join_url?: string | null;
+  zoom_meeting_id?: string | null;
+  notes?: string | null;
+  source?: string | null;
+  notified_at?: string | null;
+  claimed_by?: string | null;
+  claimed_by_tg_id?: number | null;
+  claimed_at?: string | null;
+  confirmed_at?: string | null;
+  reminded_rep_at?: string | null;
+  created_at?: string;
+  updated_at?: string;
+};
+
 export type RenewalRow = {
   id: string;
   user_id: string | null;
@@ -68,6 +97,10 @@ export type Cfg = {
   openai: string;
   anthropic: string;
   webhookSecret: string;
+  zoomAccountId: string;
+  zoomClientId: string;
+  zoomClientSecret: string;
+  zoomHostEmail: string; // '' = use the token's own user (/users/me)
   allowedUserIds: number[]; // empty = anyone in the team chat may act
   src: Record<string, string>;
 };

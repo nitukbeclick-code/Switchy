@@ -1,5 +1,7 @@
 import '../app_state.dart';
 import '../models.dart';
+import 'backend/backend.dart' show MeetingStatus;
+import 'meeting_slots.dart' show meetingLocalStart;
 
 /// A concrete renewal reminder the app has committed to surface: which tracked
 /// plan, the exact date it should fire (~[daysBefore] before the promo ends),
@@ -70,4 +72,58 @@ List<ScheduledReminder> renewalReminderSchedule(
 ScheduledReminder? nextReminder(AppState s, {int daysBefore = 21, DateTime? now}) {
   final all = renewalReminderSchedule(s, daysBefore: daysBefore, now: now);
   return all.isEmpty ? null : all.first;
+}
+
+// ── Video-meeting push reminders ─────────────────────────────────────────────
+
+/// An exact-moment push for a confirmed Zoom meeting (unlike the date-only
+/// [ScheduledReminder]). [payload] deep-links the tap (the meeting screen).
+class MeetingPushReminder {
+  const MeetingPushReminder({
+    required this.fireAt,
+    required this.title,
+    required this.body,
+    required this.payload,
+  });
+
+  final DateTime fireAt; // exact instant, device-local wall time
+  final String title;
+  final String body;
+  final String payload;
+}
+
+/// Push reminders for the user's booked video meeting: T-30 minutes and at
+/// start. Pure — empty unless the meeting is CONFIRMED with a join link and
+/// still in the future; entries whose moment already passed are dropped.
+List<MeetingPushReminder> meetingReminderSchedule(AppState s, {DateTime? now}) {
+  final m = s.bookedMeeting;
+  if (m == null ||
+      m.status != MeetingStatus.confirmed ||
+      (m.joinUrl == null || m.joinUrl!.isEmpty)) {
+    return const [];
+  }
+  final n = now ?? DateTime.now();
+  // The user's clock is Israel wall time (Israel-only product) — schedule on
+  // the wall-time start, same convention as the renewal reminders.
+  final start = meetingLocalStart(m.meetingDate, m.slot);
+  if (!start.isAfter(n)) return const [];
+
+  final provider = m.provider == null || m.provider!.isEmpty ? '' : ' בנושא ${m.provider}';
+  final out = <MeetingPushReminder>[];
+  final t30 = start.subtract(const Duration(minutes: 30));
+  if (t30.isAfter(n)) {
+    out.add(MeetingPushReminder(
+      fireAt: t30,
+      title: 'הפגישה מתחילה בעוד 30 דקות',
+      body: 'פגישת וידאו עם נציג$provider. הקישור זמין באפליקציה.',
+      payload: 'meeting',
+    ));
+  }
+  out.add(MeetingPushReminder(
+    fireAt: start,
+    title: 'הפגישה מתחילה כעת',
+    body: 'הצטרפו לפגישת הוידאו$provider דרך האפליקציה.',
+    payload: 'meeting',
+  ));
+  return out;
 }

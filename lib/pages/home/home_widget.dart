@@ -9,6 +9,9 @@ import '../../data.dart';
 import '../../models.dart';
 import '../../components/logo_widget/logo_widget.dart';
 import '../../components/plan_card/mini_plan_card.dart';
+import '../../services/backend/backend.dart' show MeetingStatus;
+import '../../services/meeting_slots.dart' show meetingLocalStart;
+import '../meeting/meeting_status_card.dart';
 import '../../widgets/pressable.dart';
 import '../../services/recommendation_engine.dart';
 import '../../services/notifications.dart';
@@ -28,6 +31,20 @@ class _HomeWidgetState extends State<HomeWidget> {
   void dispose() {
     _scrollController.dispose();
     super.dispose();
+  }
+
+  /// Whether the booked video meeting deserves a home card: an open request
+  /// (pending/confirmed) that hasn't ended, or an actionable no-rep/expired.
+  bool _showMeetingCard(AppState s) {
+    final m = s.bookedMeeting;
+    if (m == null) return false;
+    return switch (m.status) {
+      MeetingStatus.pending || MeetingStatus.confirmed => meetingLocalStart(m.meetingDate, m.slot)
+          .add(const Duration(minutes: 30))
+          .isAfter(DateTime.now()),
+      MeetingStatus.noRep || MeetingStatus.expired => true,
+      MeetingStatus.cancelled || MeetingStatus.completed => false,
+    };
   }
 
   /// Returns the best alternative plan in the same category, or null if none
@@ -91,6 +108,18 @@ class _HomeWidgetState extends State<HomeWidget> {
 
               // ── 6b. Community highlights ──────────────────────────────────
               SliverToBoxAdapter(child: _buildCommunityHighlights(context, ffTheme)),
+
+              // ── 6c. Booked video meeting status ───────────────────────────
+              if (_showMeetingCard(appState))
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                    child: MeetingStatusCard(
+                      meeting: appState.bookedMeeting!,
+                      onPickNewSlot: () => context.pushNamed('Meeting'),
+                    ),
+                  ),
+                ),
 
               // ── 7. Tools quick-action row ──────────────────────────────────
               SliverToBoxAdapter(child: _buildToolsRow(context, ffTheme)),
@@ -895,6 +924,7 @@ class _HomeWidgetState extends State<HomeWidget> {
 
   Widget _buildToolsRow(BuildContext context, AppTheme ffTheme) {
     final tools = [
+      const _Tool(icon: Icons.videocam_rounded, label: 'פגישת וידאו', route: 'Meeting'),
       const _Tool(icon: Icons.adjust_rounded, label: 'ההתאמות שלי', route: 'Matches'),
       const _Tool(icon: Icons.savings_rounded, label: 'החיסכון שלי', route: 'Savings'),
       const _Tool(icon: Icons.alarm_rounded, label: 'מעקב חידושים', route: 'Renewal'),

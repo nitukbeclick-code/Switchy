@@ -46,6 +46,112 @@ class LeadInput {
       };
 }
 
+/// Input for booking a Zoom video sales meeting (maps to the `meetings`
+/// table). The server's `meetings_guard()` trigger re-validates the schedule
+/// (tomorrow+, Sun–Thu / Friday-morning slots) and computes the authoritative
+/// UTC instant (`starts_at`) from the Israel wall time — the client never
+/// sends one.
+class MeetingInput {
+  const MeetingInput({
+    required this.name,
+    required this.phone,
+    this.email,
+    this.provider,
+    this.planId,
+    required this.meetingDate, // 'YYYY-MM-DD' (Israel-local calendar date)
+    required this.slot,        // 'HH:MM' on the 30-minute grid
+    this.notes,
+    this.source,               // plan | callback | home | form
+    this.termsAcceptedAt,
+    this.privacyAcceptedAt,
+    this.marketingAcceptedAt,
+  });
+
+  final String name;
+  final String phone;
+  final String? email;
+  final String? provider;
+  final String? planId;
+  final String meetingDate;
+  final String slot;
+  final String? notes;
+  final String? source;
+  final String? termsAcceptedAt;
+  final String? privacyAcceptedAt;
+  final String? marketingAcceptedAt;
+
+  Map<String, dynamic> toRow() => {
+        'name': name,
+        'phone': phone,
+        'email': email,
+        'provider': provider,
+        'plan_id': planId,
+        'meeting_date': meetingDate,
+        'slot': slot,
+        'notes': notes,
+        'source': source,
+        'terms_accepted_at': termsAcceptedAt,
+        'privacy_accepted_at': privacyAcceptedAt,
+        'marketing_accepted_at': marketingAcceptedAt,
+      };
+}
+
+/// Lifecycle of a meeting request. `noRep` ↔ the DB's 'no_rep'.
+enum MeetingStatus { pending, confirmed, noRep, cancelled, expired, completed }
+
+MeetingStatus meetingStatusFromDb(String? s) => switch (s) {
+      'confirmed' => MeetingStatus.confirmed,
+      'no_rep' => MeetingStatus.noRep,
+      'cancelled' => MeetingStatus.cancelled,
+      'expired' => MeetingStatus.expired,
+      'completed' => MeetingStatus.completed,
+      _ => MeetingStatus.pending,
+    };
+
+String meetingStatusToDb(MeetingStatus s) => switch (s) {
+      MeetingStatus.confirmed => 'confirmed',
+      MeetingStatus.noRep => 'no_rep',
+      MeetingStatus.cancelled => 'cancelled',
+      MeetingStatus.expired => 'expired',
+      MeetingStatus.completed => 'completed',
+      MeetingStatus.pending => 'pending',
+    };
+
+/// A meeting as the app reads it back — only the client-granted columns
+/// (status + schedule + join link); rep identity stays server-side.
+class BookedMeeting {
+  const BookedMeeting({
+    required this.id,
+    required this.status,
+    this.provider,
+    required this.meetingDate, // 'YYYY-MM-DD' Israel wall date (display)
+    required this.slot,        // 'HH:MM' Israel wall time (display)
+    required this.startsAt,    // UTC instant (countdowns/reminders)
+    this.joinUrl,
+    required this.createdAt,
+  });
+
+  final String id;
+  final MeetingStatus status;
+  final String? provider;
+  final String meetingDate;
+  final String slot;
+  final DateTime startsAt;
+  final String? joinUrl;
+  final DateTime createdAt;
+
+  BookedMeeting copyWith({MeetingStatus? status, String? joinUrl}) => BookedMeeting(
+        id: id,
+        status: status ?? this.status,
+        provider: provider,
+        meetingDate: meetingDate,
+        slot: slot,
+        startsAt: startsAt,
+        joinUrl: joinUrl ?? this.joinUrl,
+        createdAt: createdAt,
+      );
+}
+
 /// Input for a provider review — one per user per provider (maps to
 /// `provider_reviews`, with the `unique(user_id, provider)` constraint).
 class ReviewInput {
@@ -217,6 +323,20 @@ abstract interface class Backend {
   /// Realtime channel so the tracker auto-advances when the rep updates
   /// the lead from the dashboard.
   Stream<int> leadStepStream();
+
+  // ── Video meetings (Zoom) ────────────────────────────────────────────────────
+  /// Books a video-meeting request. Server-side the `meetings_guard()` trigger
+  /// validates schedule + rate limits and a Telegram card reaches the rep team.
+  Future<void> requestMeeting(MeetingInput input);
+
+  /// The user's newest meeting request, or null if none.
+  Future<BookedMeeting?> fetchLatestMeeting();
+
+  /// Emits the meeting whenever its row changes (rep confirmed and the Zoom
+  /// link landed, no rep was available, it expired…). [LocalBackend] simulates
+  /// a pending→confirmed transition for demo; [SupabaseBackend] opens a
+  /// Realtime channel scoped to the signed-in user.
+  Stream<BookedMeeting> meetingStream();
 
   // ── Renewal radar — tracked plans ────────────────────────────────────────────
   Future<List<TrackedPlan>> fetchTrackedPlans();

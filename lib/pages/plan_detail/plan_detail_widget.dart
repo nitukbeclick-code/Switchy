@@ -457,6 +457,40 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
 
                       const SizedBox(height: 14),
 
+                      // Video-meeting cross-sell — a quote over Zoom with a rep.
+                      _Card(
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(12),
+                            onTap: () => context.pushNamed('Meeting', queryParameters: {
+                              'provider': plan.provider,
+                              'planId': plan.id,
+                              'source': 'plan',
+                            }),
+                            child: Row(
+                              children: [
+                                Icon(Icons.videocam_rounded, color: ffTheme.brandAccent, size: 22),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text('פגישת וידאו עם נציג', style: ffTheme.bodyMedium.copyWith(fontWeight: FontWeight.w700)),
+                                      Text('הצעת מחיר אישית בשיחת Zoom של 30 דקות',
+                                          style: ffTheme.labelSmall),
+                                    ],
+                                  ),
+                                ),
+                                Icon(Icons.chevron_left_rounded, size: 20, color: ffTheme.secondaryText),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ).animate(delay: 270.ms).fadeIn(duration: 300.ms).slideY(begin: 0.08),
+
+                      const SizedBox(height: 14),
+
                       // Price alert card
                       _Card(
                         child: Row(

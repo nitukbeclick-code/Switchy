@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import '../../models.dart';
+import '../meeting_slots.dart';
 import 'backend.dart';
 
 /// On-device [Backend] — the default. Single-user (this device), in-memory plus
@@ -19,6 +22,11 @@ class LocalBackend implements Backend {
 
   // Exposed for inspection/tests; not part of the Backend contract.
   List<LeadInput> get submittedLeads => List.unmodifiable(_leads);
+  List<MeetingInput> get submittedMeetings => List.unmodifiable(_meetings);
+
+  /// Demo pacing: how long after [requestMeeting] the simulated rep "confirms".
+  /// Tests set this to [Duration.zero]; the real flow is Supabase-only.
+  Duration demoConfirmDelay = const Duration(seconds: 6);
 
   @override
   Future<void> upsertProfile({required String name, required String phone, String? email}) async {
@@ -69,6 +77,51 @@ class LocalBackend implements Backend {
 
   @override
   Stream<int> leadStepStream() => const Stream.empty();
+
+  // ── Video meetings (Zoom) — simulated demo flow ─────────────────────────────
+  // Without Supabase there is no rep team; the booking is stored locally and a
+  // pretend confirmation (with a placeholder Zoom link) arrives after
+  // [demoConfirmDelay], so the full pending→confirmed UX can be exercised.
+  // The UI labels this clearly as demo mode.
+
+  final List<MeetingInput> _meetings = [];
+  BookedMeeting? _latestMeeting;
+  StreamController<BookedMeeting>? _meetingCtrl;
+  Timer? _demoTimer;
+
+  @override
+  Future<void> requestMeeting(MeetingInput input) async {
+    _meetings.add(input);
+    final meeting = BookedMeeting(
+      id: _nextId(),
+      status: MeetingStatus.pending,
+      provider: input.provider,
+      meetingDate: input.meetingDate,
+      slot: input.slot,
+      startsAt: meetingLocalStart(input.meetingDate, input.slot).toUtc(),
+      createdAt: DateTime.now(),
+    );
+    _latestMeeting = meeting;
+    _demoTimer?.cancel(); // a re-book supersedes the previous pretend rep
+    _demoTimer = Timer(demoConfirmDelay, () {
+      final m = _latestMeeting;
+      if (m == null || m.id != meeting.id) return; // superseded
+      _latestMeeting = m.copyWith(
+        status: MeetingStatus.confirmed,
+        joinUrl: 'https://zoom.us/j/0000000000',
+      );
+      _meetingCtrl?.add(_latestMeeting!);
+    });
+  }
+
+  @override
+  Future<BookedMeeting?> fetchLatestMeeting() async => _latestMeeting;
+
+  @override
+  Stream<BookedMeeting> meetingStream() {
+    _meetingCtrl ??= StreamController<BookedMeeting>.broadcast();
+    return _meetingCtrl!.stream;
+  }
 
   @override
   Future<List<TrackedPlan>> fetchTrackedPlans() async =>

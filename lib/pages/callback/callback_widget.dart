@@ -208,6 +208,36 @@ class _CallbackWidgetState extends State<CallbackWidget> {
               ),
             ),
 
+            const SizedBox(height: 14),
+
+            // Cross-link: prefer a face-to-face quote? Book a Zoom meeting.
+            Center(
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(10),
+                  onTap: () => context.pushNamed('Meeting', queryParameters: {'source': 'callback'}),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.videocam_rounded, size: 16, color: ffTheme.brandAccent),
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            'מעדיפים פגישת וידאו? קבעו שיחת Zoom עם נציג',
+                            style: ffTheme.labelMedium.copyWith(
+                                color: ffTheme.brandAccent, fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+
             const SizedBox(height: 32),
           ],
         ),

@@ -1,10 +1,12 @@
 import '../app_state.dart';
 import '../data.dart';
 import '../models.dart';
+import 'backend/backend.dart' show MeetingStatus;
+import 'meeting_slots.dart' show formatMeetingDateHe, meetingLocalStart;
 import 'recommendation_engine.dart';
 
 /// The kind of actionable alert, used to pick an icon/accent in the UI.
-enum NotifKind { renewal, betterDeal, savings, info }
+enum NotifKind { renewal, betterDeal, savings, meeting, info }
 
 /// A computed, actionable notification. These are derived on the fly from app
 /// state (tracked plans, watchlist, bills) rather than stored as events, so they
@@ -100,6 +102,61 @@ List<AppNotification> computeNotifications(AppState s) {
       category: topSaving.plan.cat,
       priority: 200,
     ));
+  }
+
+  // 4) Video-meeting status — the user's booked Zoom meeting with a rep.
+  final meeting = s.bookedMeeting;
+  if (meeting != null) {
+    final start = meetingLocalStart(meeting.meetingDate, meeting.slot);
+    final now = DateTime.now();
+    final dateHe = '${formatMeetingDateHe(start)} בשעה ${meeting.slot}';
+    final provider =
+        meeting.provider == null || meeting.provider!.isEmpty ? '' : ' · ${meeting.provider}';
+    switch (meeting.status) {
+      case MeetingStatus.confirmed:
+        if (start.add(const Duration(minutes: 30)).isAfter(now)) {
+          final isToday = start.year == now.year && start.month == now.month && start.day == now.day;
+          out.add(AppNotification(
+            id: 'meeting_confirmed_${meeting.id}',
+            kind: NotifKind.meeting,
+            title: 'פגישת הוידאו אושרה',
+            body: '$dateHe$provider. הקישור זמין במסך הפגישה.',
+            routeName: 'Meeting',
+            priority: isToday ? 1200 : 900,
+          ));
+        }
+      case MeetingStatus.pending:
+        if (start.isAfter(now)) {
+          out.add(AppNotification(
+            id: 'meeting_pending_${meeting.id}',
+            kind: NotifKind.meeting,
+            title: 'בקשת פגישת הוידאו נשלחה',
+            body: '$dateHe$provider. נעדכן כשנציג יאשר את המועד.',
+            routeName: 'Meeting',
+            priority: 400,
+          ));
+        }
+      case MeetingStatus.noRep:
+        out.add(AppNotification(
+          id: 'meeting_norep_${meeting.id}',
+          kind: NotifKind.meeting,
+          title: 'לא נמצא נציג זמין למועד שביקשתם',
+          body: 'בחרו מועד חדש ונשמח לקיים את הפגישה.',
+          routeName: 'Meeting',
+          priority: 800,
+        ));
+      case MeetingStatus.expired:
+        out.add(AppNotification(
+          id: 'meeting_expired_${meeting.id}',
+          kind: NotifKind.meeting,
+          title: 'מועד הפגישה חלף ללא אישור',
+          body: 'ניתן לקבוע מועד חדש במסך הפגישה.',
+          routeName: 'Meeting',
+          priority: 800,
+        ));
+      case MeetingStatus.cancelled || MeetingStatus.completed:
+        break; // terminal, nothing actionable
+    }
   }
 
   out.removeWhere((n) => s.isNotificationDismissed(n.id));

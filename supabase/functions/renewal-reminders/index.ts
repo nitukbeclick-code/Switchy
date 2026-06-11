@@ -8,26 +8,30 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 // GET  ?action=health        -> config status
 // POST {mode:"digest",days?} -> daily renewal digest + per-renewal "create
 //                               lead" buttons for the urgent ones + open-lead
-//                               count (default mode; legacy {days} works)
-// POST {mode:"sweep"}        -> re-deliver unnotified leads (every 10 min);
-//                               claim-before-send so overlapping runs and the
-//                               trigger race can't duplicate
+//                               count + today's confirmed video meetings
+//                               (default mode; legacy {days} works)
+// POST {mode:"sweep"}        -> re-deliver unnotified leads (every 10 min) and
+//                               meeting cards; claim-before-send so overlapping
+//                               runs and the trigger race can't duplicate
 // POST {mode:"follow-up"}    -> hourly: SLA escalations (2h→6h→daily ladder)
 //                               + "the customer asked for evening" pings
+//                               + meeting rep-reminders (≤2h) and expirations
 // POST {mode:"weekly"}       -> weekly business report (also /weekly in chat)
 //
 // Deploy: supabase functions deploy renewal-reminders --no-verify-jwt
 // ─────────────────────────────────────────────────────────────────────────────
 
-import type { Cfg, Lead, RenewalRow } from "../_shared/types.ts";
+import type { Cfg, Lead, MeetingRow, RenewalRow } from "../_shared/types.ts";
 import { resolveCfgCached, safeEqual } from "../_shared/config.ts";
 import { esc, NL, sendTelegram } from "../_shared/telegram.ts";
-import { fetchRows, patchCount, rpcRows, serviceFetch } from "../_shared/db.ts";
+import { fetchRows, logMeetingEvent, patchCount, rpcRows, serviceFetch } from "../_shared/db.ts";
 import { jlog } from "../_shared/log.ts";
 import { buildText, CALLBACK_HE, leadKeyboard } from "../_shared/leads.ts";
+import { buildMeetingText, formatMeetingTime, formatMeetingWhen, meetingKeyboardFor } from "../_shared/meetings.ts";
 import { buildDigest, daysUntil } from "../_shared/digests.ts";
 import { buildWeeklyReport } from "../_shared/weekly.ts";
-import { israelHourOf, planFollowUps } from "../_shared/followup.ts";
+import { israelDateOf, israelHourOf, planFollowUps } from "../_shared/followup.ts";
+import { planMeetingFollowUps } from "../_shared/meeting_followup.ts";
 import { type CronJobRow, evalCronHealth } from "../_shared/cron_health.ts";
 
 const enc = encodeURIComponent;
@@ -62,6 +66,24 @@ async function runDigest(cfg: Cfg, days: number) {
   if (newLeads > 0) {
     message += `${NL}${NL}📬 <b>${newLeads} לידים בסטטוס "חדש"</b> ממתינים לטיפול — שלחו /leads לפירוט.`;
   }
+  // Today's confirmed video meetings (Israel calendar day) — only when non-empty.
+  // The ±24h window over-fetches; the israelDateOf filter trims to today.
+  const winStart = enc(new Date(Date.now() - 24 * 3_600_000).toISOString());
+  const winEnd = enc(new Date(Date.now() + 24 * 3_600_000).toISOString());
+  const confirmedMeetings = await fetchRows<MeetingRow>(
+    `/rest/v1/meetings?select=*&status=eq.confirmed&starts_at=gte.${winStart}&starts_at=lt.${winEnd}&order=starts_at.asc&limit=20`,
+  );
+  const today = israelDateOf(new Date());
+  const todaysMeetings = (confirmedMeetings ?? []).filter((m) => {
+    const t = Date.parse(String(m.starts_at ?? ""));
+    return Number.isFinite(t) && israelDateOf(new Date(t)) === today;
+  });
+  if (todaysMeetings.length > 0) {
+    message += `${NL}${NL}🎥 <b>פגישות וידאו היום:</b>`;
+    for (const m of todaysMeetings) {
+      message += `${NL}• ${esc(formatMeetingTime(m))} — ${esc(m.name ?? "")}${m.provider ? ` (${esc(m.provider)})` : ""}`;
+    }
+  }
   const tg = await sendTelegram(cfg, message);
   // urgent renewals (≤7 days) with a phone get their own card with a
   // "create lead" button so proactive calls enter the tracked pipeline
@@ -76,7 +98,7 @@ async function runDigest(cfg: Cfg, days: number) {
     );
     if (sent.ok) buttons++;
   }
-  return { ok: tg.ok, count: rows.length, new_leads: newLeads, renewal_buttons: buttons, telegram: tg };
+  return { ok: tg.ok, count: rows.length, new_leads: newLeads, meetings_today: todaysMeetings.length, renewal_buttons: buttons, telegram: tg };
 }
 
 // ── mode: sweep ──────────────────────────────────────────────────────────────
@@ -129,7 +151,35 @@ async function runSweep(cfg: Cfg) {
     }
   }
   if (failed > 0) jlog({ at: "sweep", pending: rows.length, resent, failed });
-  return { ok: true, pending: rows.length, resent, failed };
+
+  // Meetings whose INSERT-trigger card never landed — same claim-before-send
+  // discipline, but the card goes out inline (no triage/email leg to re-run).
+  // 2-minute grace: the trigger path is a single Telegram send.
+  const meetCutoff = enc(new Date(Date.now() - 2 * 60 * 1000).toISOString());
+  const meetRows = await fetchRows<MeetingRow>(
+    `/rest/v1/meetings?select=*&notified_at=is.null&created_at=lt.${meetCutoff}&order=created_at.asc&limit=5`,
+  );
+  let meetingsResent = 0, meetingsFailed = 0;
+  if (meetRows !== null) {
+    for (const m of meetRows) {
+      if (!m.id) continue;
+      const claimTs = new Date().toISOString();
+      const claimed = await patchCount(`/rest/v1/meetings?id=eq.${m.id}&notified_at=is.null`, { notified_at: claimTs });
+      if (claimed === 0) continue; // someone else delivered it meanwhile
+      const sent = await sendTelegram(cfg, buildMeetingText(m), meetingKeyboardFor(m));
+      if (sent.ok) {
+        meetingsResent++;
+      } else {
+        meetingsFailed++;
+        await patchCount(`/rest/v1/meetings?id=eq.${m.id}&notified_at=eq.${enc(claimTs)}`, { notified_at: null });
+      }
+    }
+    if (meetingsFailed > 0) jlog({ at: "sweep", meetings_pending: meetRows.length, meetings_resent: meetingsResent, meetings_failed: meetingsFailed });
+  }
+  return {
+    ok: true, pending: rows.length, resent, failed,
+    meetings_pending: meetRows?.length ?? 0, meetings_resent: meetingsResent, meetings_failed: meetingsFailed,
+  };
 }
 
 // ── mode: follow-up ──────────────────────────────────────────────────────────
@@ -162,7 +212,44 @@ async function runFollowUp(cfg: Cfg) {
         : { nudged_at: now.toISOString() },
     );
   }
-  return { ok: true, open: openLeads.length, planned: plan.length, sent };
+
+  // Meeting follow-ups: remind the team about soon-starting unconfirmed
+  // meetings; expire pending meetings whose slot already passed. The lt-48h
+  // horizon covers everything plannable (past + the reminder window).
+  const horizon = enc(new Date(now.getTime() + 48 * 3_600_000).toISOString());
+  const pendingMeetings = await fetchRows<MeetingRow>(
+    `/rest/v1/meetings?select=*&status=eq.pending&starts_at=lt.${horizon}&order=starts_at.asc&limit=50`,
+  );
+  let meetingReminders = 0, meetingsExpired = 0;
+  if (pendingMeetings !== null) {
+    for (const f of planMeetingFollowUps(pendingMeetings, now.getTime())) {
+      const m = f.meeting;
+      if (!m.id) continue;
+      if (f.kind === "rep_reminder") {
+        const r = await sendTelegram(
+          cfg,
+          `⏳ <b>פגישת וידאו בעוד פחות משעתיים וטרם אושרה</b>${NL}${NL}` + buildMeetingText(m),
+          meetingKeyboardFor(m),
+        );
+        if (r.ok) meetingReminders++;
+        // stamp even when the send failed — one permanently-unsendable card
+        // must not re-fire every hour until the meeting expires
+        await patchCount(`/rest/v1/meetings?id=eq.${m.id}`, { reminded_rep_at: now.toISOString() });
+        await logMeetingEvent({ meeting_id: m.id, event: "reminder" });
+      } else {
+        // status=eq.pending guard: a confirm racing this run wins
+        const n = await patchCount(`/rest/v1/meetings?id=eq.${m.id}&status=eq.pending`, { status: "expired" });
+        if (n === 0) continue;
+        meetingsExpired++;
+        await logMeetingEvent({ meeting_id: m.id, event: "status_change", old_status: "pending", new_status: "expired" });
+        await sendTelegram(cfg, `⌛ פגישת הווידאו עם ${esc(m.name ?? "")} (${esc(formatMeetingWhen(m))}) לא אושרה בזמן — סומנה כפג תוקף.`);
+      }
+    }
+  }
+  return {
+    ok: true, open: openLeads.length, planned: plan.length, sent,
+    meeting_reminders: meetingReminders, meetings_expired: meetingsExpired,
+  };
 }
 
 // ── HTTP ─────────────────────────────────────────────────────────────────────

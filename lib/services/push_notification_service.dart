@@ -22,15 +22,23 @@ class PushNotificationService {
   /// it was granted. No-op/false on web.
   Future<bool> requestPermission() => impl.requestPush();
 
-  /// (Re)schedule every renewal reminder from the pure [renewalReminderSchedule].
-  /// Cancels all when the user has opted out. Idempotent — safe to call on every
-  /// startup, opt-in toggle, or tracked-plan change.
-  Future<void> syncRenewalReminders(AppState state) async {
+  /// (Re)schedule EVERYTHING from the pure schedules in one pass: renewal
+  /// reminders (when opted in) + video-meeting reminders. One pass because the
+  /// native impl reschedules from scratch (cancelAll) — separate calls would
+  /// wipe each other's notifications. Idempotent; safe on every startup,
+  /// opt-in toggle, tracked-plan change or meeting update.
+  Future<void> syncAll(AppState state) async {
     if (!_ready) return;
-    if (!state.renewalReminders) {
+    final renewals =
+        state.renewalReminders ? renewalReminderSchedule(state) : const <ScheduledReminder>[];
+    final meetings = meetingReminderSchedule(state);
+    if (renewals.isEmpty && meetings.isEmpty) {
       await impl.cancelAllPush();
       return;
     }
-    await impl.scheduleReminders(renewalReminderSchedule(state));
+    await impl.scheduleAll(renewals, meetings);
   }
+
+  /// Back-compat alias — existing call sites sync everything now.
+  Future<void> syncRenewalReminders(AppState state) => syncAll(state);
 }

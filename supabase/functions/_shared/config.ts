@@ -52,13 +52,23 @@ async function resolveCfg(): Promise<Cfg> {
   const [anthropic, g] = pick("anthropic_api_key", firstEnv(["ANTHROPIC_API_KEY", "ANTHROPIC_KEY", "CLAUDE_API_KEY"]));
   const [webhookSecret, h] = pick("lead_webhook_secret", firstEnv(["LEAD_WEBHOOK_SECRET", "WEBHOOK_SECRET"]));
   const [allowedCsv, i] = pick("telegram_allowed_user_ids", firstEnv(["TELEGRAM_ALLOWED_USER_IDS"]));
+  // Zoom Server-to-Server OAuth — the SQL side adds these keys to the
+  // get_lead_notify_config RPC; we just read whatever it returns + env fallback.
+  const [zoomAccountId, j] = pick("zoom_account_id", firstEnv(["ZOOM_ACCOUNT_ID"]));
+  const [zoomClientId, k] = pick("zoom_client_id", firstEnv(["ZOOM_CLIENT_ID"]));
+  const [zoomClientSecret, l] = pick("zoom_client_secret", firstEnv(["ZOOM_CLIENT_SECRET"]));
+  // Optional: the meeting-host user for S2S calls — some account configurations
+  // reject /v2/users/me/... for account-level tokens; '' falls back to 'me'.
+  const [zoomHostEmail, m] = pick("zoom_host_email", firstEnv(["ZOOM_HOST_EMAIL"]));
   return {
     tgToken, tgChat, resend, resendFrom, notifyEmail, openai, anthropic, webhookSecret,
+    zoomAccountId, zoomClientId, zoomClientSecret, zoomHostEmail,
     allowedUserIds: parseUserIds(allowedCsv),
     src: {
       telegram_bot_token: a, telegram_chat_id: b, resend_api_key: c, resend_from: d,
       leads_notify_email: e, openai_api_key: f, anthropic_api_key: g, lead_webhook_secret: h,
       telegram_allowed_user_ids: i,
+      zoom_account_id: j, zoom_client_id: k, zoom_client_secret: l, zoom_host_email: m,
     },
   };
 }

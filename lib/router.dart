@@ -28,6 +28,7 @@ import 'pages/chat/chat_widget.dart';
 import 'pages/availability/availability_widget.dart';
 import 'pages/switch_calc/switch_calc_widget.dart';
 import 'pages/callback/callback_widget.dart';
+import 'pages/meeting/meeting_widget.dart';
 import 'pages/website/website_widget.dart';
 import 'pages/porting/porting_widget.dart';
 import 'pages/settings/settings_widget.dart';
@@ -100,6 +101,15 @@ GoRouter createRouter() {
         GoRoute(path: '/availability', name: 'Availability', builder: (_, __) => const AvailabilityWidget()),
         GoRoute(path: '/switch-calc', name: 'SwitchCalc', builder: (_, __) => const SwitchCalcWidget()),
         GoRoute(path: '/callback', name: 'Callback', builder: (_, __) => const CallbackWidget()),
+        GoRoute(
+          path: '/meeting',
+          name: 'Meeting',
+          builder: (_, s) => MeetingWidget(
+            provider: s.uri.queryParameters['provider'],
+            planId: s.uri.queryParameters['planId'],
+            source: s.uri.queryParameters['source'] ?? 'form',
+          ),
+        ),
         GoRoute(path: '/porting', name: 'Porting', builder: (_, __) => const PortingWidget()),
         GoRoute(path: '/settings', name: 'Settings', builder: (_, __) => const SettingsWidget()),
         GoRoute(path: '/matches', name: 'Matches', builder: (_, __) => const MatchesWidget()),
@@ -129,7 +139,7 @@ class _ScaffoldWithNav extends StatelessWidget {
   int get _activeIndex {
     if (location.startsWith('/compare')) return 1;
     if (location.startsWith('/community')) return 2;
-    if (location.startsWith('/tracker') || location.startsWith('/lead') || location.startsWith('/success') || location.startsWith('/porting') || location.startsWith('/chat') || location.startsWith('/callback')) return 3;
+    if (location.startsWith('/tracker') || location.startsWith('/lead') || location.startsWith('/success') || location.startsWith('/porting') || location.startsWith('/chat') || location.startsWith('/callback') || location.startsWith('/meeting')) return 3;
     if (location.startsWith('/account') || location.startsWith('/profile') || location.startsWith('/bills') || location.startsWith('/ratings')) return 4;
     return 0;
   }

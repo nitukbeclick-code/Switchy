@@ -182,6 +182,71 @@ class SupabaseBackend implements Backend {
     return _leadStepCtrl!.stream;
   }
 
+  // ── Video meetings (Zoom) ────────────────────────────────────────────────────
+
+  RealtimeChannel? _meetingChannel;
+  StreamController<BookedMeeting>? _meetingCtrl;
+
+  /// Maps a meetings row/payload to [BookedMeeting], reading ONLY the
+  /// client-granted columns — never rep identity / notes / IP (the Realtime
+  /// payload may carry more than the column grant; we deliberately ignore it).
+  BookedMeeting _meetingFromRow(Map<String, dynamic> r) => BookedMeeting(
+        id: r['id'] as String,
+        status: meetingStatusFromDb(r['status'] as String?),
+        provider: r['provider'] as String?,
+        meetingDate: r['meeting_date'] as String? ?? '',
+        slot: r['slot'] as String? ?? '',
+        startsAt: DateTime.tryParse(r['starts_at'] as String? ?? '')?.toUtc() ??
+            DateTime.now().toUtc(),
+        joinUrl: r['join_url'] as String?,
+        createdAt:
+            DateTime.tryParse(r['created_at'] as String? ?? '') ?? DateTime.now(),
+      );
+
+  @override
+  Future<void> requestMeeting(MeetingInput input) async {
+    // `meetings` allows anon insert (same gate pattern as leads); the
+    // meetings_guard trigger validates schedule + rate limits server-side.
+    await _db.from('meetings').insert({
+      ...input.toRow(),
+      if (_uid != null) 'user_id': _uid,
+    });
+  }
+
+  @override
+  Future<BookedMeeting?> fetchLatestMeeting() async {
+    if (_uid == null) return null;
+    final row = await _db
+        .from('meetings')
+        .select('id,status,provider,meeting_date,slot,starts_at,join_url,created_at')
+        .eq('user_id', _uid!)
+        .order('created_at', ascending: false)
+        .limit(1)
+        .maybeSingle();
+    return row == null ? null : _meetingFromRow(row);
+  }
+
+  @override
+  Stream<BookedMeeting> meetingStream() {
+    if (_uid == null) return const Stream.empty();
+    _meetingCtrl ??= StreamController<BookedMeeting>.broadcast();
+    _meetingChannel?.unsubscribe();
+    _meetingChannel = _db
+        .channel('meetings-$_uid')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.update,
+          schema: 'public',
+          table: 'meetings',
+          filter: PostgresChangeFilter(
+              type: PostgresChangeFilterType.eq, column: 'user_id', value: _uid!),
+          callback: (payload) {
+            _meetingCtrl?.add(_meetingFromRow(payload.newRecord));
+          },
+        )
+        .subscribe();
+    return _meetingCtrl!.stream;
+  }
+
   // ── Tracked plans ────────────────────────────────────────────────────────────
   @override
   Future<List<TrackedPlan>> fetchTrackedPlans() async {

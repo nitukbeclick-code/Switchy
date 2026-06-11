@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 import '../../theme/app_theme.dart';
 import '../../core/nav.dart';
 import '../../widgets/app_button.dart';
 import '../../widgets/app_snackbar.dart';
+import '../../widgets/consent_panel.dart';
 import '../../app_state.dart';
 import '../../data.dart';
 import '../../models.dart';
@@ -38,73 +38,13 @@ class _LeadWidgetState extends State<LeadWidget> {
   bool _acceptPrivacy = false;
   bool _acceptMarketing = false;
 
-  Future<void> _openLegal(String page) async {
-    try {
-      await launchUrl(Uri.parse('https://chosech.co.il/$page'), mode: LaunchMode.externalApplication);
-    } catch (_) {
-      if (mounted) AppSnackBar.info(context, 'לא ניתן לפתוח את המסמך כרגע');
-    }
-  }
-
-  Widget _consentRow(AppTheme t,
-      {required bool value,
-      required ValueChanged<bool?> onChanged,
-      required String lead,
-      String? link,
-      String? page}) {
-    final label = Text.rich(TextSpan(
-      text: lead,
-      style: t.bodySmall.copyWith(color: t.secondaryText, height: 1.35),
-      children: link != null
-          ? [
-              TextSpan(
-                text: link,
-                style: t.bodySmall.copyWith(
-                    color: t.primary, fontWeight: FontWeight.w700, decoration: TextDecoration.underline),
-              )
-            ]
-          : null,
-    ));
-    return Row(children: [
-      SizedBox(
-        width: 40,
-        height: 40,
-        child: Checkbox(
-          value: value,
-          onChanged: onChanged,
-          activeColor: t.primary,
-          visualDensity: VisualDensity.compact,
-          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        ),
-      ),
-      Expanded(
-        child: page != null
-            ? Semantics(button: true, label: 'פתח $link', child: InkWell(onTap: () => _openLegal(page), child: label))
-            : label,
-      ),
-    ]);
-  }
-
-  Widget _consentPanel(AppTheme t) => Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _consentRow(t,
-              value: _acceptTerms,
-              onChanged: (v) => setState(() => _acceptTerms = v ?? false),
-              lead: 'קראתי ואני מסכים/ה ל',
-              link: 'תנאי השימוש',
-              page: 'terms.html'),
-          _consentRow(t,
-              value: _acceptPrivacy,
-              onChanged: (v) => setState(() => _acceptPrivacy = v ?? false),
-              lead: 'קראתי ואני מסכים/ה ל',
-              link: 'מדיניות הפרטיות',
-              page: 'privacy.html'),
-          _consentRow(t,
-              value: _acceptMarketing,
-              onChanged: (v) => setState(() => _acceptMarketing = v ?? false),
-              lead: 'אני מעוניין/ת לקבל דיוור שיווקי ומבצעים (אופציונלי)'),
-        ],
+  Widget _consentPanel(AppTheme t) => ConsentPanel(
+        acceptTerms: _acceptTerms,
+        acceptPrivacy: _acceptPrivacy,
+        acceptMarketing: _acceptMarketing,
+        onTermsChanged: (v) => setState(() => _acceptTerms = v),
+        onPrivacyChanged: (v) => setState(() => _acceptPrivacy = v),
+        onMarketingChanged: (v) => setState(() => _acceptMarketing = v),
       );
 
   @override

@@ -46,6 +46,7 @@ class _NotificationCenterWidgetState extends State<NotificationCenterWidget> {
       NotifKind.renewal => (Icons.alarm_rounded, ffTheme.warning),
       NotifKind.betterDeal => (Icons.lightbulb_rounded, ffTheme.primary),
       NotifKind.savings => (Icons.trending_down_rounded, ffTheme.success),
+      NotifKind.meeting => (Icons.videocam_rounded, ffTheme.brandAccent),
       NotifKind.info => (Icons.info_rounded, ffTheme.info),
     };
   }

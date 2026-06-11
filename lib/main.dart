@@ -8,6 +8,7 @@ import 'app_state.dart';
 import 'app.dart';
 import 'router.dart';
 import 'services/auth_service.dart';
+import 'services/meeting_sync.dart';
 import 'services/push_notification_service.dart';
 import 'services/secure_session_store.dart';
 import 'services/backend/local_backend.dart';
@@ -45,6 +46,9 @@ void main() async {
   _appStarted = true;
   // Reschedule renewal reminders from the restored state (fire-and-forget).
   PushNotificationService.instance.syncRenewalReminders(AppState());
+  // App-scope meeting sync: a rep confirmation must land (status + Zoom link +
+  // push reminders) no matter which screen is open. Fire-and-forget.
+  MeetingSync.start();
 }
 
 /// True once `runApp` has been called — used to suppress navigation on the

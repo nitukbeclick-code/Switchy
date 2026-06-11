@@ -248,3 +248,45 @@ curl -H 'x-webhook-secret: <lead_webhook_secret>' \
   emit structured JSON logs (`_shared/log.ts`) for the dashboard log explorer.
 - **Privacy** — lead details sent to the AI triage are disclosed in the site's
   privacy policy (site/build.js → privacy page, "שיתוף מידע").
+
+## 9. Video meetings (Zoom) — "פגישת וידאו עם נציג"
+
+```
+meetings INSERT ──trigger (pg_net)──▶ notify-lead ──▶ Telegram card (אשר ושלח קישור Zoom / אין נציג פנוי / ביטול)
+rep confirms ──▶ Zoom API (S2S OAuth) OR reply-with-link ──▶ PATCH meetings (join_url) ──▶ Realtime → app + customer email
+```
+
+The app's booking wizard (`lib/pages/meeting/`) enforces the same schedule the
+`meetings_guard()` trigger does authoritatively: booking from TOMORROW, Sun–Thu
+09:00–20:30 + Friday 09:00–12:30, 30-minute slots, one open meeting per phone,
+30-day horizon. `starts_at` is computed server-side `at time zone
+'Asia/Jerusalem'` so DST can never drift a meeting.
+
+### Deploy (owner)
+
+1. Run [`meetings-2026-06.sql`](./meetings-2026-06.sql) in the SQL editor
+   (idempotent). ⚠️ It REPLACES `get_lead_notify_config()` — first verify the
+   deployed whitelist with
+   `select prosrc from pg_proc where proname = 'get_lead_notify_config';`
+   and confirm every existing key appears in the new version too.
+2. Redeploy both functions:
+   `supabase functions deploy notify-lead renewal-reminders --no-verify-jwt`.
+3. (Optional — enables AUTOMATIC Zoom link creation) Create a **Server-to-Server
+   OAuth** app at marketplace.zoom.us (scopes: `meeting:write`), then:
+   ```sql
+   select vault.create_secret('<account id>',    'zoom_account_id');
+   select vault.create_secret('<client id>',     'zoom_client_id');
+   select vault.create_secret('<client secret>', 'zoom_client_secret');
+   ```
+   Without these the bot asks the rep to REPLY to the card with their own Zoom
+   link — the feature works end-to-end either way.
+4. No new cron schedules: meetings ride the existing `sweep` (re-delivery),
+   `follow-up` (rep reminder ≤2h before an unconfirmed meeting + auto-expire),
+   and `digest` (today's confirmed meetings) modes.
+
+### Customer comms
+
+Status + join link reach the customer via Realtime into the app (status card on
+home + the meeting screen), an in-app notification, OS push reminders at T-30
+and at start (mobile), and a confirmation email (Resend) when an address was
+given.

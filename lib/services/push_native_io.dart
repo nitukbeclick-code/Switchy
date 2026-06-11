@@ -16,6 +16,14 @@ const _channelId = 'renewal_reminders';
 const _channelName = 'תזכורות חידוש';
 const _channelDesc = 'התראה לפני שמבצע במסלול שלך מסתיים';
 
+const _meetingChannelId = 'meeting_reminders';
+const _meetingChannelName = 'תזכורות פגישה';
+const _meetingChannelDesc = 'תזכורת לפני פגישת וידאו עם נציג';
+
+/// Meeting notification ids live above this offset so they never collide with
+/// the renewal reminders (indexed 0..n).
+const _meetingIdBase = 1000;
+
 bool get _isMobile =>
     defaultTargetPlatform == TargetPlatform.iOS || defaultTargetPlatform == TargetPlatform.android;
 
@@ -44,7 +52,12 @@ Future<void> initPush() async {
 void _onTap(NotificationResponse response) {
   final id = response.payload;
   if (id == null || id.isEmpty) return;
-  // Land the user on the tracked plan's renewal report.
+  // Meeting reminders land on the meeting screen; renewal reminders deep-link
+  // into the tracked plan's renewal report.
+  if (id == 'meeting') {
+    appRouterInstance?.goNamed('Meeting');
+    return;
+  }
   appRouterInstance?.goNamed('RenewalReport', pathParameters: {'trackedId': id});
 }
 
@@ -64,10 +77,19 @@ Future<void> cancelAllPush() async {
   await _plugin.cancelAll();
 }
 
-Future<void> scheduleReminders(List<ScheduledReminder> reminders) async {
+Future<void> scheduleReminders(List<ScheduledReminder> reminders) =>
+    scheduleAll(reminders, const []);
+
+/// Reschedule the WHOLE notification surface from scratch — renewals at 09:00
+/// on their fire dates, meeting reminders at their exact instants. One entry
+/// point so the cancelAll can't wipe a sibling schedule.
+Future<void> scheduleAll(
+  List<ScheduledReminder> reminders,
+  List<MeetingPushReminder> meetings,
+) async {
   if (!_isMobile) return;
   _ensureTz();
-  await _plugin.cancelAll(); // reschedule from scratch — the list is the source of truth
+  await _plugin.cancelAll(); // reschedule from scratch — the lists are the source of truth
   const details = NotificationDetails(
     android: AndroidNotificationDetails(
       _channelId,
@@ -93,6 +115,32 @@ Future<void> scheduleReminders(List<ScheduledReminder> reminders) async {
       notificationDetails: details,
       androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
       payload: r.plan.id,
+    );
+  }
+
+  const meetingDetails = NotificationDetails(
+    android: AndroidNotificationDetails(
+      _meetingChannelId,
+      _meetingChannelName,
+      channelDescription: _meetingChannelDesc,
+      importance: Importance.max,
+      priority: Priority.high,
+    ),
+    iOS: DarwinNotificationDetails(),
+  );
+  for (var i = 0; i < meetings.length; i++) {
+    final m = meetings[i];
+    final when = tz.TZDateTime(tz.local, m.fireAt.year, m.fireAt.month, m.fireAt.day,
+        m.fireAt.hour, m.fireAt.minute);
+    if (!when.isAfter(now)) continue; // pure schedule already filters; belt & braces
+    await _plugin.zonedSchedule(
+      id: _meetingIdBase + i,
+      title: m.title,
+      body: m.body,
+      scheduledDate: when,
+      notificationDetails: meetingDetails,
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      payload: m.payload,
     );
   }
 }

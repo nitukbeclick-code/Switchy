@@ -3,7 +3,8 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 // ─────────────────────────────────────────────────────────────────────────────
 // notify-lead — חוסך
 // The team's Telegram "digital rep". Fired by a Postgres trigger on every
-// INSERT into public.leads; also serves the bot's webhook and chat commands.
+// INSERT into public.leads AND public.meetings ({ table: 'meetings', record });
+// also serves the bot's webhook and chat commands.
 //
 // GET ?action=health                  -> integrations status (sources only with a valid secret)
 // GET ?action=telegram-chats          -> recent chats for the bot (find chat_id); gated
@@ -21,43 +22,29 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 // Deploy: supabase functions deploy notify-lead --no-verify-jwt
 // ─────────────────────────────────────────────────────────────────────────────
 
-import type { Lead, TgUpdate } from "../_shared/types.ts";
+import type { Lead, MeetingRow, TgUpdate } from "../_shared/types.ts";
 import { botFullyConfigured, resolveCfgCached, safeEqual, tgWebhookToken } from "../_shared/config.ts";
 import { NL, sendTelegram, tgApi } from "../_shared/telegram.ts";
 import { rpcRows, serviceFetch } from "../_shared/db.ts";
+import { sendEmail } from "../_shared/email.ts";
 import { jlog } from "../_shared/log.ts";
 import { buildHtml, buildText, leadKeyboard, STATUS_HE } from "../_shared/leads.ts";
+import { buildMeetingText, meetingKeyboard } from "../_shared/meetings.ts";
+import { zoomConfigured } from "../_shared/zoom.ts";
 import { aiTriage } from "./triage.ts";
 import { BOT_COMMANDS } from "./commands.ts";
 import { handleCallback, handleTeamMessage } from "./callbacks.ts";
 
-// Stamp the lead as notified so the sweep doesn't re-send it. Fail-soft: a
+// Stamp the row as notified so the sweep doesn't re-send it. Fail-soft: a
 // missed stamp costs at most one duplicate message.
-async function markNotified(leadId: unknown): Promise<void> {
-  if (!leadId) return;
+async function markNotified(table: "leads" | "meetings", id: unknown): Promise<void> {
+  if (!id) return;
   try {
-    await serviceFetch(`/rest/v1/leads?id=eq.${encodeURIComponent(String(leadId))}`, {
+    await serviceFetch(`/rest/v1/${table}?id=eq.${encodeURIComponent(String(id))}`, {
       method: "PATCH",
       body: JSON.stringify({ notified_at: new Date().toISOString() }),
     });
   } catch (_) { /* the sweep retries */ }
-}
-
-async function sendEmail(cfg: { resend: string; resendFrom: string; notifyEmail: string }, subject: string, html: string): Promise<{ ok: boolean; error?: string }> {
-  if (!cfg.resend || !cfg.resendFrom || !cfg.notifyEmail) return { ok: false, error: "resend not configured" };
-  try {
-    const r = await fetch("https://api.resend.com/emails", {
-      method: "POST",
-      headers: { "Authorization": `Bearer ${cfg.resend}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ from: cfg.resendFrom, to: [cfg.notifyEmail], subject, html }),
-    });
-    const j = await r.json().catch(() => ({} as Record<string, unknown>)) as Record<string, unknown>;
-    if (!r.ok) jlog({ at: "sendEmail", ok: false, status: r.status, error: j?.message ?? j?.name });
-    return { ok: r.ok, error: (j?.message ?? j?.name) as string | undefined };
-  } catch (e) {
-    jlog({ at: "sendEmail", ok: false, error: String(e) });
-    return { ok: false, error: String(e) };
-  }
 }
 
 function json(body: unknown, status = 200): Response {
@@ -94,6 +81,7 @@ Deno.serve(async (req: Request) => {
           ai_key: entry(!!(cfg.openai || cfg.anthropic), cfg.openai ? cfg.src.openai_api_key : cfg.src.anthropic_api_key),
           lead_webhook_secret: entry(!!cfg.webhookSecret, cfg.src.lead_webhook_secret),
           telegram_allowed_user_ids: entry(cfg.allowedUserIds.length > 0, cfg.src.telegram_allowed_user_ids),
+          zoom_s2s: entry(zoomConfigured(cfg), cfg.src.zoom_account_id),
         },
       });
     }
@@ -176,6 +164,19 @@ Deno.serve(async (req: Request) => {
 
   let payload: Record<string, unknown> = {};
   try { payload = await req.json(); } catch (_) { /* empty body */ }
+
+  // Meeting INSERTs share this webhook: the trigger POSTs { table: 'meetings',
+  // record }. No triage/email here — the card with confirm buttons is the job.
+  const record = payload.record as Record<string, unknown> | undefined;
+  if (payload.table === "meetings" || (record && record.meeting_date)) {
+    const meeting = (record ?? payload) as MeetingRow;
+    if (!meeting || (!meeting.name && !meeting.phone)) return json({ ok: false, error: "no meeting in payload" }, 400);
+    const tg = await sendTelegram(cfg, buildMeetingText(meeting), meetingKeyboard(meeting));
+    if (tg.ok) await markNotified("meetings", meeting.id);
+    jlog({ at: "notify-meeting", meeting: meeting.id, telegram: tg.ok });
+    return json({ ok: tg.ok, telegram: { ok: tg.ok, error: tg.error } });
+  }
+
   const lead = (payload.record ?? payload.lead ?? payload) as Lead;
   if (!lead || (!lead.name && !lead.phone)) return json({ ok: false, error: "no lead in payload" }, 400);
 
@@ -199,7 +200,7 @@ Deno.serve(async (req: Request) => {
   ]);
   // stamp only on Telegram success: an email-only delivery has no interactive
   // card, so the sweep should keep retrying the chat path
-  if (tg.ok) await markNotified(lead.id);
+  if (tg.ok) await markNotified("leads", lead.id);
   jlog({ at: "notify", lead: lead.id, telegram: tg.ok, email: email.ok, hot: triage.score >= 4 });
 
   return json({ ok: tg.ok || email.ok, telegram: { ok: tg.ok, error: tg.error }, email });

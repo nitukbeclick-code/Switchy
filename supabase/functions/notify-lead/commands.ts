@@ -1,9 +1,10 @@
-// Team chat commands: /leads, /stats, /search, /hot, /weekly, /help.
+// Team chat commands: /leads, /meetings, /stats, /search, /hot, /weekly, /help.
 
-import type { Cfg, Lead } from "../_shared/types.ts";
+import type { Cfg, Lead, MeetingRow } from "../_shared/types.ts";
 import { esc, NL, sendTelegram, waLink } from "../_shared/telegram.ts";
 import { fetchRows, rpcRows } from "../_shared/db.ts";
 import { buildText, keyboardFor, SOURCE_HE, STATUS_EMOJI, STATUS_HE } from "../_shared/leads.ts";
+import { buildMeetingText, MEETING_STATUS_EMOJI, MEETING_STATUS_HE, meetingKeyboardFor } from "../_shared/meetings.ts";
 import { formatMinutes, medianMinutes } from "../_shared/digests.ts";
 import { buildWeeklyReport } from "../_shared/weekly.ts";
 
@@ -40,6 +41,32 @@ export async function handleCommand(cfg: Cfg, cmd: string, args: string): Promis
     }
     await sendTelegram(cfg, `📬 <b>${open.length} הלידים הפתוחים האחרונים</b> (חדש / בטיפול):`);
     const failures = await sendLeadCards(cfg, open);
+    return { ok: true, command: cmd, failures };
+  }
+
+  if (cmd === "/meetings") {
+    const nowIso = encodeURIComponent(new Date().toISOString());
+    const open = await fetchRows<MeetingRow>(
+      `/rest/v1/meetings?status=in.(pending,confirmed)&starts_at=gt.${nowIso}&order=starts_at.asc&limit=5&select=*`,
+    );
+    if (open === null) return await reportQueryFailure(cfg, cmd);
+    if (open.length === 0) {
+      await sendTelegram(cfg, "🎥 אין פגישות וידאו קרובות.");
+      return { ok: true, command: cmd };
+    }
+    await sendTelegram(cfg, `🎥 <b>${open.length} פגישות הווידאו הקרובות</b> (ממתינות / מאושרות):`);
+    let failures = 0;
+    // latest of the batch first so the soonest lands closest to the input box
+    for (const m of [...open].reverse()) {
+      const status = String(m.status ?? "pending");
+      const head = `${MEETING_STATUS_EMOJI[status] ?? ""} <b>${esc(MEETING_STATUS_HE[status] ?? status)}</b>`;
+      // status-aware keyboard: confirmed meetings stay frozen even in listings
+      const r = await sendTelegram(cfg, head + NL + buildMeetingText(m), meetingKeyboardFor(m));
+      if (!r.ok) failures++;
+    }
+    if (failures > 0) {
+      await sendTelegram(cfg, `⚠️ ${failures} כרטיסים לא נשלחו (תקלת טלגרם) — נסו שוב עוד רגע.`);
+    }
     return { ok: true, command: cmd, failures };
   }
 
@@ -118,6 +145,7 @@ export async function handleCommand(cfg: Cfg, cmd: string, args: string): Promis
     "🤖 <b>הנציג הדיגיטלי של חוסך</b>",
     "",
     "/leads — הלידים הפתוחים האחרונים, עם כפתורי סטטוס",
+    "/meetings — פגישות הווידאו הקרובות, עם כפתורי אישור",
     "/search <code>שם או טלפון</code> — איתור ליד ישן",
     "/stats — המשפך לפי מקור + מהירות תגובה",
     "/hot — גולשים שצפו במסלולים ולא השאירו פנייה",
@@ -131,6 +159,7 @@ export async function handleCommand(cfg: Cfg, cmd: string, args: string): Promis
 
 export const BOT_COMMANDS = [
   { command: "leads", description: "לידים פתוחים עם כפתורי סטטוס" },
+  { command: "meetings", description: "פגישות וידאו קרובות" },
   { command: "search", description: "חיפוש ליד לפי שם או טלפון" },
   { command: "stats", description: "משפך הלידים ומהירות תגובה" },
   { command: "hot", description: "גולשים חמים בלי פנייה" },

@@ -34,12 +34,21 @@ void main() {
     expect(find.byType(LogoWidget), findsOneWidget);
   });
 
-  testWidgets('shows initials text inside the logo', (tester) async {
+  testWidgets('shows initials text for a provider without a logo asset', (tester) async {
+    // An unmapped provider falls back to the coloured initials badge.
     await tester.pumpWidget(_wrap(
-      const LogoWidget(provider: 'גולן'),
+      const LogoWidget(provider: 'מובייל טסט'),
     ));
-    // Should show 2-char initials of the Hebrew word גולן
     expect(find.byType(Text), findsAtLeast(1));
+    expect(find.byType(LogoWidget), findsOneWidget);
+  });
+
+  testWidgets('renders the real logo image for a known provider', (tester) async {
+    // A mapped provider renders its brand logo from assets/providers/.
+    await tester.pumpWidget(_wrap(
+      const LogoWidget(provider: 'פלאפון'),
+    ));
+    expect(find.byType(Image), findsOneWidget);
     expect(find.byType(LogoWidget), findsOneWidget);
   });
 }

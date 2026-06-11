@@ -60,6 +60,16 @@ class LogoWidget extends StatelessWidget {
     'Airalo': 'Air',
   };
 
+  // Real logo image files (assets/providers/, slug-named). Checked by substring
+  // like _colors. Any provider without a file gracefully shows the initials badge.
+  static const Map<String, String> _logoAsset = {
+    'סלקום': 'cellcom.png', 'פרטנר': 'partner.png', 'פלאפון': 'pelephone.png', 'גולן': 'golan.png',
+    'הוט מובייל': 'hot-mobile.png', 'HOT': 'hot.png', 'הוט': 'hot.png', 'Xphone': 'xphone.png',
+    'רמי לוי': 'rami-levy.webp', 'WeCom': 'wecom.png', '019': '019mobile.png', 'וואלה': 'walla-mobile.webp',
+    'בזק': 'bezeq.png', 'גילת': 'gilat.png', 'CCC': 'ccc.png', 'STING': 'sting-tv.png', 'yes': 'yes.png',
+    'NextTV': 'nexttv.png', 'NEXT TV': 'nexttv.png', 'Airalo': 'airalo.png',
+  };
+
   Color _colorFor(AppTheme t) {
     for (final entry in _colors.entries) {
       if (provider.contains(entry.key) || entry.key.contains(provider)) {
@@ -67,6 +77,15 @@ class LogoWidget extends StatelessWidget {
       }
     }
     return t.primary; // neutral brand fallback
+  }
+
+  String? get _logoFile {
+    for (final entry in _logoAsset.entries) {
+      if (provider.contains(entry.key) || entry.key.contains(provider)) {
+        return entry.value;
+      }
+    }
+    return null;
   }
 
   String get _label {
@@ -98,7 +117,38 @@ class LogoWidget extends StatelessWidget {
     final t = AppTheme.of(context);
     final color = _colorFor(t);
     final label = _label;
-    // Shrink font for longer labels (e.g. 'CCC', 'HOT', '019', 'Air')
+    final file = _logoFile;
+
+    // Real brand logo on a white tile (logo contained, never recoloured). Falls
+    // back to the coloured initials badge if the asset is missing.
+    if (file != null) {
+      return Container(
+        width: size,
+        height: size,
+        padding: EdgeInsets.all(size * 0.13),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(size * 0.24),
+          border: Border.all(color: t.lineColor),
+          boxShadow: t.shadowSoft,
+        ),
+        child: ExcludeSemantics(
+          child: Image.asset(
+            'assets/providers/$file',
+            fit: BoxFit.contain,
+            filterQuality: FilterQuality.medium,
+            errorBuilder: (_, __, ___) => _initialsBadge(color, label),
+          ),
+        ),
+      );
+    }
+    return _initialsBadge(color, label);
+  }
+
+  // The coloured initials mark ("סל", "X"…). The provider's full name is shown
+  // as adjacent text everywhere this is used, so the fragment is hidden from
+  // screen readers (ExcludeSemantics) to avoid cryptic announcements.
+  Widget _initialsBadge(Color color, String label) {
     final fontScale = label.length >= 3 ? 0.28 : 0.36;
     final fontSize = size * fontScale;
     return Container(
@@ -109,16 +159,9 @@ class LogoWidget extends StatelessWidget {
         shape: BoxShape.circle,
         border: Border.all(color: color.withValues(alpha: 0.25), width: 1.5),
         boxShadow: [
-          BoxShadow(
-            color: color.withValues(alpha: 0.10),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
+          BoxShadow(color: color.withValues(alpha: 0.10), blurRadius: 8, offset: const Offset(0, 2)),
         ],
       ),
-      // The initials ("סל", "X"…) are a visual mark, not content — the
-      // provider's full name is shown as adjacent text everywhere this is used,
-      // so hide the fragment from screen readers to avoid cryptic announcements.
       child: Center(
         child: ExcludeSemantics(
           child: Text(

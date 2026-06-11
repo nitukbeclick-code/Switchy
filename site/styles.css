@@ -429,6 +429,10 @@ a.chip:hover { color: var(--green); }
 .plan__provider { font-family: 'Rubik'; font-weight: 800; color: var(--green-d); font-size: 16px; }
 .plan__id { display: flex; align-items: center; gap: 9px; min-width: 0; }
 .plogo { display: inline-grid; place-items: center; border-radius: 50%; border: 1.5px solid; border-color: currentColor; font-family: 'Rubik'; font-weight: 800; flex: none; vertical-align: middle; letter-spacing: -.5px; }
+/* Real logo image variant: white rounded tile, logo contained (real brand
+   marks, never recoloured). Falls back to the initials badge when absent. */
+.plogo--img { background: #fff; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; box-shadow: var(--shadow-sm); }
+.plogo--img img { width: 100%; height: 100%; object-fit: contain; padding: 4px; display: block; }
 .provider-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; }
 .provider-card { background: var(--white); border: 1px solid var(--line); border-radius: 18px; padding: 18px; display: flex; align-items: center; gap: 12px; box-shadow: var(--shadow-sm); transition: transform .2s var(--ease), box-shadow .2s; }
 .provider-card:hover { transform: translateY(-3px); box-shadow: var(--shadow); }

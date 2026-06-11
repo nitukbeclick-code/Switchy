@@ -47,6 +47,7 @@ flutter:
   uses-material-design: true
   assets:
     - assets/images/
+    - assets/providers/
 
 # App launcher icons — generated with `dart run flutter_launcher_icons`
 flutter_launcher_icons:

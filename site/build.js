@@ -244,7 +244,20 @@ const LOGO = [
   ['גילת', '#0277BD', 'גי'], ['CCC', '#388E3C', 'CCC'], ['STING', '#AD1457', 'ST'],
   ['yes', '#0D2B6E', 'yes'], ['NextTV', '#E65100', 'N'], ['Airalo', '#FF6F61', 'Air'],
 ];
+// Real provider logo files (in assets/logos/, slug-named). Anything not here
+// gracefully falls back to the coloured initials badge below.
+const LOGO_FILE = {
+  'xphone': 'xphone.png', 'cellcom': 'cellcom.png', '019mobile': '019mobile.png', 'partner': 'partner.png',
+  'golan': 'golan.png', 'rami-levy': 'rami-levy.webp', 'bezeq': 'bezeq.svg', 'hot-mobile': 'hot-mobile.png',
+  'hot': 'hot.svg', 'ccc': 'ccc.png', 'pelephone': 'pelephone.svg', 'wecom': 'wecom.png',
+  'sting-tv': 'sting-tv.png', 'walla-mobile': 'walla-mobile.webp', 'gilat': 'gilat.png', 'yes': 'yes.png',
+  'nexttv': 'nexttv.png', 'airalo': 'airalo.png',
+};
 function providerLogo(name, size = 36) {
+  const file = LOGO_FILE[providerSlug(name)];
+  if (file) {
+    return `<span class="plogo plogo--img" style="width:${size}px;height:${size}px"><img src="assets/logos/${file}" alt="${esc(name)}" loading="lazy" decoding="async"></span>`;
+  }
   let color = '#0F766E';
   let initials = name.trim().slice(0, 2);
   for (const [key, c, ini] of LOGO) {

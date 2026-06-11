@@ -603,7 +603,7 @@ class _Suggestions extends StatelessWidget {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text(c.icon, style: const TextStyle(fontSize: 15)),
+                            Icon(categoryIconData(c.id), size: 15, color: ffTheme.primary),
                             const SizedBox(width: 6),
                             Text(c.name,
                                 style: GoogleFonts.assistant(

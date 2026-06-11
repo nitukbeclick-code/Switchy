@@ -260,7 +260,7 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
                             ),
                             child: Row(
                               children: [
-                                Text(cat.icon, style: const TextStyle(fontSize: 14)),
+                                Icon(categoryIconData(cat.id), size: 14, color: active ? Colors.white : ffTheme.primaryText),
                                 const SizedBox(width: 6),
                                 Text(cat.name, style: ffTheme.labelMedium.copyWith(color: active ? Colors.white : ffTheme.primaryText)),
                               ],

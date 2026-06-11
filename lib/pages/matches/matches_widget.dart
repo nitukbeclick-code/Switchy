@@ -23,7 +23,7 @@ class MatchesWidget extends StatelessWidget {
     // /savings dashboard and the bills screen (see computeSavings) — so the
     // headline saving here can't disagree with those screens.
     final summary = computeSavings(appState);
-    final catMatches = <({String catId, String catName, String catIcon, PlanMatch match})>[];
+    final catMatches = <({String catId, String catName, PlanMatch match})>[];
     for (final cs in summary.categories) {
       final best = cs.best;
       if (best == null) continue; // no bill entered for this category
@@ -31,7 +31,6 @@ class MatchesWidget extends StatelessWidget {
       catMatches.add((
         catId: cs.categoryId,
         catName: cat?.name ?? cs.categoryId,
-        catIcon: cat?.icon ?? '•',
         match: best,
       ));
     }
@@ -77,7 +76,7 @@ class MatchesWidget extends StatelessWidget {
                 ...catMatches.asMap().entries.map((entry) {
                   final i = entry.key;
                   final item = entry.value;
-                  return _buildMatchCard(context, ffTheme, item.catId, item.catName, item.catIcon, item.match, appState, personalized)
+                  return _buildMatchCard(context, ffTheme, item.catId, item.catName, item.match, appState, personalized)
                       .animate(delay: (120 + i * 80).ms)
                       .fadeIn(duration: 400.ms)
                       .slideY(begin: 0.06, end: 0);
@@ -201,7 +200,6 @@ class MatchesWidget extends StatelessWidget {
     AppTheme ffTheme,
     String catId,
     String catName,
-    String catIcon,
     PlanMatch match,
     AppState appState,
     bool personalized,
@@ -219,7 +217,7 @@ class MatchesWidget extends StatelessWidget {
           // Category header
           Row(
             children: [
-              Text(catIcon, style: const TextStyle(fontSize: 20)),
+              Icon(categoryIconData(catId), size: 20, color: ffTheme.secondaryText),
               const SizedBox(width: 8),
               Text(
                 catName,

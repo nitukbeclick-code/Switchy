@@ -625,7 +625,7 @@ class _CategoryHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Text(cat.icon, style: const TextStyle(fontSize: 18)),
+        Icon(categoryIconData(cat.id), size: 18, color: ffTheme.primaryText),
         const SizedBox(width: 8),
         Text(
           cat.name,

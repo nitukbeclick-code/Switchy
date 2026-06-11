@@ -199,6 +199,35 @@ class _BillsWidgetState extends State<BillsWidget> {
 
             const SizedBox(height: 16),
 
+            // Empty state — no bills yet: explain what this screen gives and
+            // point at the editor below instead of showing a bare ₪0 page.
+            if (total == 0)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(18),
+                decoration: ffTheme.glassDecoration(alpha: 0.72),
+                child: Column(
+                  children: [
+                    Container(
+                      width: 52,
+                      height: 52,
+                      decoration: BoxDecoration(color: ffTheme.accent1, borderRadius: BorderRadius.circular(16)),
+                      child: Icon(Icons.receipt_long_rounded, size: 26, color: ffTheme.primary),
+                    ),
+                    const SizedBox(height: 12),
+                    Text('עוד לא הזנתם חשבונות', style: ffTheme.titleSmall, textAlign: TextAlign.center),
+                    const SizedBox(height: 4),
+                    Text(
+                      'בחרו למטה כמה אתם משלמים היום בכל קטגוריה — ונראה לכם מיד איפה אפשר לחסוך.',
+                      style: ffTheme.bodySmall,
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 10),
+                    Icon(Icons.keyboard_double_arrow_down_rounded, size: 20, color: ffTheme.secondaryText),
+                  ],
+                ),
+              ).animate().fadeIn(delay: 120.ms).slideY(begin: 0.05, end: 0),
+
             // Savings ring
             if (total > 0 && totalSavings > 0)
               _SavingsRing(
@@ -259,7 +288,7 @@ class _BillsWidgetState extends State<BillsWidget> {
                                   if (i >= activeCats.length) return const SizedBox();
                                   return Padding(
                                     padding: const EdgeInsets.only(top: 6),
-                                    child: Text(activeCats[i].icon, style: const TextStyle(fontSize: 18)),
+                                    child: Icon(categoryIconData(activeCats[i].id), size: 16, color: ffTheme.secondaryText),
                                   );
                                 },
                               ),
@@ -323,7 +352,7 @@ class _BillsWidgetState extends State<BillsWidget> {
                               ),
                             ),
                             const SizedBox(width: 5),
-                            Text(c.icon, style: const TextStyle(fontSize: 14)),
+                            Icon(categoryIconData(c.id), size: 13, color: ffTheme.secondaryText),
                             const SizedBox(width: 4),
                             Text(c.name, style: ffTheme.labelSmall),
                             const SizedBox(width: 4),
@@ -578,7 +607,7 @@ class _OverpayCard extends StatelessWidget {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(color: ffTheme.accent1, borderRadius: BorderRadius.circular(12)),
-                child: Center(child: Text(cat.icon, style: const TextStyle(fontSize: 20))),
+                child: Center(child: Icon(categoryIconData(cat.id), size: 20, color: ffTheme.primary)),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -659,22 +688,28 @@ class _OverpayCard extends StatelessWidget {
               Semantics(
                 button: true,
                 label: 'השווה חבילות ${cat.name}',
-                child: GestureDetector(
-                  onTap: onCompare,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: ffTheme.primary,
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(ffTheme.radiusSm),
+                    boxShadow: ffTheme.shadowPrimary,
+                  ),
+                  child: Material(
+                    color: ffTheme.primary,
+                    borderRadius: BorderRadius.circular(ffTheme.radiusSm),
+                    child: InkWell(
                       borderRadius: BorderRadius.circular(ffTheme.radiusSm),
-                      boxShadow: ffTheme.shadowPrimary,
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text('השווה', style: ffTheme.labelMedium.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
-                        const SizedBox(width: 4),
-                        const Icon(Icons.arrow_back_rounded, size: 14, color: Colors.white),
-                      ],
+                      onTap: onCompare,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text('השווה', style: ffTheme.labelMedium.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
+                            const SizedBox(width: 4),
+                            const Icon(Icons.arrow_back_rounded, size: 14, color: Colors.white),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -764,17 +799,23 @@ class _WorstCategoryCta extends StatelessWidget {
     return Semantics(
       button: true,
       label: 'עברו לחבילה זולה יותר ב${worst.category.name} וחסכו עד ₪${worst.annualSaving} בשנה',
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
-            gradient: ffTheme.brandGradient,
+      child: Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          gradient: ffTheme.brandGradient,
+          borderRadius: BorderRadius.circular(ffTheme.radiusLg),
+          boxShadow: ffTheme.shadowPrimary,
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
             borderRadius: BorderRadius.circular(ffTheme.radiusLg),
-            boxShadow: ffTheme.shadowPrimary,
-          ),
-          child: Row(
+            splashColor: Colors.white.withValues(alpha: 0.12),
+            highlightColor: Colors.white.withValues(alpha: 0.06),
+            onTap: onTap,
+            child: Padding(
+              padding: const EdgeInsets.all(18),
+              child: Row(
             children: [
               Container(
                 width: 44,
@@ -783,7 +824,7 @@ class _WorstCategoryCta extends StatelessWidget {
                   color: Colors.white.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Center(child: Text(worst.category.icon, style: const TextStyle(fontSize: 22))),
+                child: Center(child: Icon(categoryIconData(worst.category.id), size: 22, color: Colors.white)),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -807,6 +848,8 @@ class _WorstCategoryCta extends StatelessWidget {
                 child: Icon(Icons.arrow_back_rounded, size: 18, color: ffTheme.primaryDark),
               ),
             ],
+              ),
+            ),
           ),
         ),
       ),
@@ -864,7 +907,7 @@ class _BillCard extends StatelessWidget {
                   color: ffTheme.accent1,
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Center(child: Text(category.icon, style: const TextStyle(fontSize: 22))),
+                child: Center(child: Icon(categoryIconData(category.id), size: 22, color: ffTheme.primary)),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -929,23 +972,29 @@ class _BillCard extends StatelessWidget {
           ),
           if (currentBill > 0 && yearlySave > 0) ...[
             const SizedBox(height: 10),
-            GestureDetector(
-              onTap: onTap,
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                decoration: BoxDecoration(
-                  color: ffTheme.accent1,
+            Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: ffTheme.primary.withValues(alpha: 0.15)),
+              ),
+              child: Material(
+                color: ffTheme.accent1,
+                borderRadius: BorderRadius.circular(10),
+                child: InkWell(
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: ffTheme.primary.withValues(alpha: 0.15)),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.search_rounded, size: 14, color: ffTheme.primary),
-                    const SizedBox(width: 6),
-                    Text('חפש חבילות זולות יותר', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
-                  ],
+                  onTap: onTap,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.search_rounded, size: 14, color: ffTheme.primary),
+                        const SizedBox(width: 6),
+                        Text('חפש חבילות זולות יותר', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -966,16 +1015,28 @@ class _RoundBtn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 44×44 tap area (touch-target minimum) around the 34px visual circle,
+    // with a ripple halo so the press is felt as well as seen.
     return Semantics(
       button: true,
       label: semanticLabel,
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          width: 34,
-          height: 34,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-          child: Icon(icon, size: 17, color: iconColor),
+      child: SizedBox(
+        width: 44,
+        height: 44,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            customBorder: const CircleBorder(),
+            onTap: onTap,
+            child: Center(
+              child: Container(
+                width: 34,
+                height: 34,
+                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+                child: Icon(icon, size: 17, color: iconColor),
+              ),
+            ),
+          ),
         ),
       ),
     );

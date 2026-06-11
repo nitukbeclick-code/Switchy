@@ -238,7 +238,6 @@ class _LeadWidgetState extends State<LeadWidget> {
                   }
                   HapticFeedback.lightImpact();
                   setState(() => _isSubmitting = true);
-                  await Future.delayed(const Duration(milliseconds: 800));
                   final name = _nameCtrl.text.trim();
                   // Normalize to digits/+ — the leads gate rejects dots/parens.
                   final phone = _phoneCtrl.text.replaceAll(RegExp(r'[^\d+]'), '');
@@ -290,6 +289,8 @@ class _LeadWidgetState extends State<LeadWidget> {
                     email: email,
                     callbackTime: _callbackTime,
                   );
+                  // Tactile confirmation that the lead actually reached the team.
+                  HapticFeedback.mediumImpact();
                   context.goNamed('Success');
                 },
                 
@@ -399,10 +400,20 @@ class _LeadWidgetState extends State<LeadWidget> {
                 color: ffTheme.primary.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: Text(
-                '🎉 כ-₪${(saveYear / 12).round()} חיסכון בחודש הראשון!',
-                style: ffTheme.labelMedium.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700),
-                textAlign: TextAlign.center,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.savings_rounded, size: 15, color: ffTheme.primary),
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      'כ-₪${(saveYear / 12).round()} חיסכון בחודש הראשון!',
+                      style: ffTheme.labelMedium.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ],
               ),
             ),
           ],

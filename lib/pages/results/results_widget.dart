@@ -246,13 +246,22 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                               style: ffTheme.labelMedium
                                   .copyWith(color: ffTheme.secondaryText)),
                           if (appState.activeFilters.isNotEmpty || _providerFilter.isNotEmpty) ...[
-                            const SizedBox(width: 8),
-                            GestureDetector(
-                              onTap: () { appState.clearFilters(); setState(() => _providerFilter = ''); },
-                              child: Text('נקה',
-                                  style: ffTheme.labelMedium.copyWith(
-                                      color: ffTheme.error,
-                                      fontWeight: FontWeight.w700)),
+                            const SizedBox(width: 2),
+                            // Padded InkWell — a comfortable target with press
+                            // feedback instead of a bare 24px text tap.
+                            Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(8),
+                                onTap: () { appState.clearFilters(); setState(() => _providerFilter = ''); },
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                  child: Text('נקה',
+                                      style: ffTheme.labelMedium.copyWith(
+                                          color: ffTheme.error,
+                                          fontWeight: FontWeight.w700)),
+                                ),
+                              ),
                             ),
                           ],
                         ],
@@ -282,23 +291,28 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                                 style: ffTheme.bodyMedium
                                     .copyWith(color: ffTheme.secondaryText)),
                             const SizedBox(width: 8),
-                            GestureDetector(
-                              onTap: () => _showBillEditor(context, appState, cat, bill, ffTheme),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                decoration: BoxDecoration(
-                                  color: ffTheme.accent1,
+                            Semantics(
+                              button: true,
+                              label: 'ערוך את החשבון החודשי',
+                              child: Material(
+                                color: ffTheme.accent1,
+                                borderRadius: BorderRadius.circular(8),
+                                child: InkWell(
                                   borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text('₪$bill',
-                                        style: ffTheme.titleMedium
-                                            .copyWith(color: ffTheme.primary)),
-                                    const SizedBox(width: 4),
-                                    Icon(Icons.edit_rounded, size: 12, color: ffTheme.primary),
-                                  ],
+                                  onTap: () => _showBillEditor(context, appState, cat, bill, ffTheme),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text('₪$bill',
+                                            style: ffTheme.titleMedium
+                                                .copyWith(color: ffTheme.primary)),
+                                        const SizedBox(width: 4),
+                                        Icon(Icons.edit_rounded, size: 12, color: ffTheme.primary),
+                                      ],
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
@@ -427,14 +441,22 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                               style: ffTheme.labelMedium.copyWith(color: ffTheme.primary),
                             ),
                           ),
-                          GestureDetector(
-                            onTap: () => context.pushNamed('Quiz'),
-                            child: Text('עריכה', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+                          Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(8),
+                              onTap: () => context.pushNamed('Quiz'),
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                child: Text('עריכה', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+                              ),
+                            ),
                           ),
-                          const SizedBox(width: 8),
-                          GestureDetector(
-                            onTap: () => appState.setQuizCompleted(false),
-                            child: Icon(Icons.close_rounded, size: 18, color: ffTheme.secondaryText),
+                          IconButton(
+                            icon: Icon(Icons.close_rounded, size: 18, color: ffTheme.secondaryText),
+                            tooltip: 'הסתר את סינון השאלון',
+                            visualDensity: VisualDensity.compact,
+                            onPressed: () => appState.setQuizCompleted(false),
                           ),
                         ],
                       ),
@@ -447,44 +469,52 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
-                    child: GestureDetector(
-                      onTap: () => context.pushNamed('PlanDetail',
-                          pathParameters: {'planId': topPlan.id}),
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [ffTheme.primary, ffTheme.tertiary],
-                            begin: Alignment.centerRight,
-                            end: Alignment.centerLeft,
-                          ),
-                          borderRadius: BorderRadius.circular(14),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [ffTheme.primary, ffTheme.tertiary],
+                          begin: Alignment.centerRight,
+                          end: Alignment.centerLeft,
                         ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.lightbulb_outline_rounded, size: 20, color: Colors.white),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    '${topPlan.provider} מומלץ לך',
-                                    style: ffTheme.titleSmall
-                                        .copyWith(color: Colors.white),
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(14),
+                          splashColor: Colors.white.withValues(alpha: 0.12),
+                          highlightColor: Colors.white.withValues(alpha: 0.06),
+                          onTap: () => context.pushNamed('PlanDetail',
+                              pathParameters: {'planId': topPlan.id}),
+                          child: Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.lightbulb_outline_rounded, size: 20, color: Colors.white),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        '${topPlan.provider} מומלץ לך',
+                                        style: ffTheme.titleSmall
+                                            .copyWith(color: Colors.white),
+                                      ),
+                                      Text(
+                                        'תחסוך ₪$topSave בשנה',
+                                        style: ffTheme.bodySmall.copyWith(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w700),
+                                      ),
+                                    ],
                                   ),
-                                  Text(
-                                    'תחסוך ₪$topSave בשנה',
-                                    style: ffTheme.bodySmall.copyWith(
-                                        color: Colors.white,
-                                        fontWeight: FontWeight.w700),
-                                  ),
-                                ],
-                              ),
+                                ),
+                                Icon(Icons.arrow_forward_ios_rounded,
+                                    color: Colors.white.withValues(alpha: 0.7), size: 16),
+                              ],
                             ),
-                            Icon(Icons.arrow_forward_ios_rounded,
-                                color: Colors.white.withValues(alpha: 0.7), size: 16),
-                          ],
+                          ),
                         ),
                       ),
                     ).animate().fadeIn(duration: 300.ms).slideX(begin: 0.05),
@@ -1055,22 +1085,28 @@ class _ActionChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-        decoration: BoxDecoration(
-          color: ffTheme.primary,
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: [BoxShadow(color: ffTheme.primary.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 3))],
+      ),
+      child: Material(
+        color: ffTheme.primary,
+        borderRadius: BorderRadius.circular(22),
+        child: InkWell(
           borderRadius: BorderRadius.circular(22),
-          boxShadow: [BoxShadow(color: ffTheme.primary.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 3))],
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 16, color: Colors.white),
-            const SizedBox(width: 8),
-            Text(label, style: ffTheme.labelMedium.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
-          ],
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 16, color: Colors.white),
+                const SizedBox(width: 8),
+                Text(label, style: ffTheme.labelMedium.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -1087,21 +1123,32 @@ class _StepButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // 44×44 tap area around the 32px visual circle + ripple feedback.
     return Semantics(
       button: true,
       label: semanticLabel,
-      child: GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 32,
-        height: 32,
-        decoration: BoxDecoration(
-          color: ffTheme.accent1,
-          shape: BoxShape.circle,
-          border: Border.all(color: ffTheme.primary.withValues(alpha: 0.25)),
+      child: SizedBox(
+        width: 44,
+        height: 44,
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            customBorder: const CircleBorder(),
+            onTap: onTap,
+            child: Center(
+              child: Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: ffTheme.accent1,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: ffTheme.primary.withValues(alpha: 0.25)),
+                ),
+                child: Icon(icon, size: 18, color: ffTheme.primary),
+              ),
+            ),
+          ),
         ),
-        child: Icon(icon, size: 18, color: ffTheme.primary),
-      ),
       ),
     );
   }

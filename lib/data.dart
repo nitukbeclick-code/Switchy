@@ -15,6 +15,26 @@ final List<Category> categories = [
   const Category(id: 'abroad', name: 'חבילות חו"ל', icon: '✈️', currentBill: 0, color: Color(0xFF0891B2), planCount: 11, description: 'גלישה ושיחות בחו"ל'),
 ];
 
+/// The category's monochrome line icon — the brand renders categories with
+/// these, never with the legacy `Category.icon` emoji (kept only as data).
+/// Mirrors the site's SVG icon set (phone/globe/tv/home/plane).
+IconData categoryIconData(String catId) {
+  switch (catId) {
+    case 'cellular':
+      return Icons.smartphone_rounded;
+    case 'internet':
+      return Icons.wifi_rounded;
+    case 'tv':
+      return Icons.tv_rounded;
+    case 'triple':
+      return Icons.home_rounded;
+    case 'abroad':
+      return Icons.flight_takeoff_rounded;
+    default:
+      return Icons.category_rounded;
+  }
+}
+
 // ── Plans ─────────────────────────────────────────────────────────────────────
 // Cellular / internet / TV / triple are real provider data, sourced in
 // lib/data/plans_*.dart. Abroad (eSIM / roaming) remains a curated seed.

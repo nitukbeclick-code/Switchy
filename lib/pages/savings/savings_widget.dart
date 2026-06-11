@@ -102,7 +102,7 @@ class SavingsWidget extends StatelessWidget {
                       padding: const EdgeInsets.only(bottom: 10),
                       child: _CategoryRow(
                         saving: cs,
-                        icon: cat?.icon ?? '•',
+                        catId: cs.categoryId,
                         name: cat?.name ?? cs.categoryId,
                         personalized: personalized,
                         ffTheme: ffTheme,
@@ -658,14 +658,14 @@ class _EstimateChip extends StatelessWidget {
 class _CategoryRow extends StatelessWidget {
   const _CategoryRow({
     required this.saving,
-    required this.icon,
+    required this.catId,
     required this.name,
     required this.personalized,
     required this.ffTheme,
     required this.onTap,
   });
   final CategorySaving saving;
-  final String icon;
+  final String catId;
   final String name;
   final bool personalized;
   final AppTheme ffTheme;
@@ -686,7 +686,7 @@ class _CategoryRow extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Text(icon, style: const TextStyle(fontSize: 22)),
+            Icon(categoryIconData(catId), size: 22, color: ffTheme.primaryText),
             const SizedBox(width: 12),
             Expanded(
               child: Column(

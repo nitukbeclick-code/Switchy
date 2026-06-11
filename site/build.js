@@ -256,7 +256,9 @@ const LOGO_FILE = {
 function providerLogo(name, size = 36) {
   const file = LOGO_FILE[providerSlug(name)];
   if (file) {
-    return `<span class="plogo plogo--img" style="width:${size}px;height:${size}px"><img src="assets/logos/${file}" alt="${esc(name)}" loading="lazy" decoding="async"></span>`;
+    // width/height attrs give the browser the intrinsic ratio before CSS
+    // loads, so lazy-loaded logos can't shift layout (CLS).
+    return `<span class="plogo plogo--img" style="width:${size}px;height:${size}px"><img src="assets/logos/${file}" alt="${esc(name)}" width="${size}" height="${size}" loading="lazy" decoding="async"></span>`;
   }
   let color = '#0F766E';
   let initials = name.trim().slice(0, 2);
@@ -506,7 +508,7 @@ ${nav}
         <p>${esc(c.intro)}</p>
         <div class="hero__cta">
           <a class="btn btn--primary btn--lg" href="#cta">השוו ותחסכו ←</a>
-          ${['cellular', 'internet', 'tv', 'triple'].includes(c.slug) ? `<a class="btn btn--ghost btn--lg" href="calc-${c.slug}.html">🧮 מחשבון חיסכון</a>` : '<a class="btn btn--ghost btn--lg" href="index.html#how">איך זה עובד?</a>'}
+          ${['cellular', 'internet', 'tv', 'triple'].includes(c.slug) ? `<a class="btn btn--ghost btn--lg" href="calc-${c.slug}.html">${svgIcon('calculator')} מחשבון חיסכון</a>` : '<a class="btn btn--ghost btn--lg" href="index.html#how">איך זה עובד?</a>'}
         </div>
       </div>
     </section>
@@ -563,7 +565,7 @@ ${catGuides}
         <p>השאירו פרטים ונחזור אליכם עם ההשוואה וההמלצה — חינם, בלי התחייבות.</p>
         ${leadFormHtml('קבלו השוואה חינם')}
         <p class="cta__note" id="leadNote" role="status" aria-live="polite"></p>
-        <a class="cta__wa" href="https://wa.me/972505037537" target="_blank" rel="noopener"><span aria-hidden="true">💬</span> מעדיפים וואטסאפ? דברו איתנו</a>
+        <a class="cta__wa" href="https://wa.me/972505037537" target="_blank" rel="noopener">${svgIcon('chat')}מעדיפים וואטסאפ? דברו איתנו</a>
       </div>
     </section>
   </main>
@@ -1089,7 +1091,7 @@ ${collectionsSection}
         <p>השאירו פרטים ונעזור לכם לעבור — חינם, בלי התחייבות.</p>
         ${leadFormHtml('קבלו השוואה חינם')}
         <p class="cta__note" id="leadNote" role="status" aria-live="polite"></p>
-        <a class="cta__wa" href="https://wa.me/972505037537" target="_blank" rel="noopener"><span aria-hidden="true">💬</span> מעדיפים וואטסאפ? דברו איתנו</a>
+        <a class="cta__wa" href="https://wa.me/972505037537" target="_blank" rel="noopener">${svgIcon('chat')}מעדיפים וואטסאפ? דברו איתנו</a>
       </div>
     </section>
   </main>
@@ -1145,7 +1147,7 @@ ${nav}
         <p>השאירו פרטים ונעזור לכם למצוא ולעבור למסלול הכי משתלם, חינם ובלי התחייבות.</p>
         ${leadFormHtml('קבלו השוואה חינם')}
         <p class="cta__note" id="leadNote" role="status" aria-live="polite"></p>
-        <a class="cta__wa" href="https://wa.me/972505037537" target="_blank" rel="noopener"><span aria-hidden="true">💬</span> מעדיפים וואטסאפ? דברו איתנו</a>
+        <a class="cta__wa" href="https://wa.me/972505037537" target="_blank" rel="noopener">${svgIcon('chat')}מעדיפים וואטסאפ? דברו איתנו</a>
       </div>
     </section>
   </main>
@@ -1237,7 +1239,7 @@ ${nav}
         <p>השאירו פרטים ונדאג לכל המעבר — חינם, בלי התחייבות.</p>
         ${leadFormHtml('קבלו השוואה חינם')}
         <p class="cta__note" id="leadNote" role="status" aria-live="polite"></p>
-        <a class="cta__wa" href="https://wa.me/972505037537" target="_blank" rel="noopener"><span aria-hidden="true">💬</span> מעדיפים וואטסאפ? דברו איתנו</a>
+        <a class="cta__wa" href="https://wa.me/972505037537" target="_blank" rel="noopener">${svgIcon('chat')}מעדיפים וואטסאפ? דברו איתנו</a>
       </div>
     </section>
   </main>
@@ -1363,7 +1365,7 @@ ${groups}
         <p>השאירו פרטים ונעדכן אתכם ברגע שהיא זמינה — חינם, בלי התחייבות.</p>
         ${leadFormHtml('עדכנו אותי')}
         <p class="cta__note" id="leadNote" role="status" aria-live="polite"></p>
-        <a class="cta__wa" href="https://wa.me/972505037537" target="_blank" rel="noopener"><span aria-hidden="true">💬</span> מעדיפים וואטסאפ? דברו איתנו</a>
+        <a class="cta__wa" href="https://wa.me/972505037537" target="_blank" rel="noopener">${svgIcon('chat')}מעדיפים וואטסאפ? דברו איתנו</a>
       </div>
     </section>
   </main>
@@ -1504,7 +1506,7 @@ ${guidesHtml}
         <p>השאירו פרטים ונעזור לכם לעבור — חינם, בלי התחייבות.</p>
         ${leadFormHtml('קבלו השוואה חינם')}
         <p class="cta__note" id="leadNote" role="status" aria-live="polite"></p>
-        <a class="cta__wa" href="https://wa.me/972505037537" target="_blank" rel="noopener"><span aria-hidden="true">💬</span> מעדיפים וואטסאפ? דברו איתנו</a>
+        <a class="cta__wa" href="https://wa.me/972505037537" target="_blank" rel="noopener">${svgIcon('chat')}מעדיפים וואטסאפ? דברו איתנו</a>
       </div>
     </section>
   </main>
@@ -1550,7 +1552,7 @@ ${nav}
     <section class="lead-hero">
       <div class="container">
         <p class="crumbs"><a href="index.html">דף הבית</a> ← <a href="${c.slug}.html">${esc(c.name)}</a> ← מחשבון חיסכון</p>
-        <span class="pill">🧮 מחשבון חינמי · בלי התחייבות</span>
+        <span class="pill pill--ico">${svgIcon('calculator')} מחשבון חינמי · בלי התחייבות</span>
         <h1>${esc(h1)}</h1>
         <p>הזינו כמה אתם משלמים היום על ${esc(c.name)}, ונראה לכם הערכה כמה אפשר לחסוך בשנה מול המסלול הזול ביותר בשוק.</p>
       </div>
@@ -1561,8 +1563,9 @@ ${nav}
         <div id="calc" class="glass" data-cheapest="${offerPrice(ch)}" data-cat="${c.slug}" style="max-width:560px;margin:0 auto;border:1px solid #E4E8EC;border-radius:18px;padding:28px 24px;box-shadow:0 6px 24px rgba(17,24,39,.05)">
           <h2 style="margin:0 0 6px">כמה אתם יכולים לחסוך על ${esc(c.name)}?</h2>
           <p style="margin:0 0 4px">המסלול הזול ביותר ב${esc(c.name)} כרגע: <span style="color:#0B0F14;font-weight:700">${esc(ch.provider)} ${esc(ch.plan)} — ${priceText(ch)}</span>.</p>
-          <div style="display:flex;gap:10px;flex-wrap:wrap;margin:16px 0">
-            <input id="calcBill" class="filter-search" type="number" inputmode="numeric" min="0" placeholder="כמה אתם משלמים היום? (₪)" aria-label="הסכום שאתם משלמים היום בשקלים" style="flex:1 1 220px" />
+          <label for="calcBill" style="display:block;font-weight:700;margin:14px 0 0">כמה אתם משלמים היום? (₪ לחודש)</label>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;margin:8px 0 16px">
+            <input id="calcBill" class="filter-search" type="number" inputmode="numeric" min="0" placeholder="למשל: 89" style="flex:1 1 220px" />
             <button id="calcBtn" class="btn btn--primary" type="button">חשבו חיסכון</button>
           </div>
           <p id="calcOut" role="status" aria-live="polite" style="display:none;margin:8px 0 0;padding:14px 16px;border-radius:12px;background:#F0F2F4;color:#0B0F14"></p>
@@ -1589,7 +1592,7 @@ ${guidesHtml}
         <p>השאירו פרטים ונחזור אליכם עם ההשוואה וההמלצה — חינם, בלי התחייבות.</p>
         ${leadFormHtml('קבלו השוואה חינם')}
         <p class="cta__note" id="leadNote" role="status" aria-live="polite"></p>
-        <a class="cta__wa" href="https://wa.me/972505037537" target="_blank" rel="noopener"><span aria-hidden="true">💬</span> מעדיפים וואטסאפ? דברו איתנו</a>
+        <a class="cta__wa" href="https://wa.me/972505037537" target="_blank" rel="noopener">${svgIcon('chat')}מעדיפים וואטסאפ? דברו איתנו</a>
       </div>
     </section>
   </main>

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart' show timeDilation;
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'theme/app_theme.dart';
@@ -38,17 +39,24 @@ class _ChosechAppState extends State<ChosechApp> {
       supportedLocales: const [Locale('he'), Locale('en')],
       theme: _theme(context),
       routerConfig: _router,
-      builder: (ctx, child) => Directionality(
-        textDirection: TextDirection.rtl,
-        // Clamp accessibility text scaling to a sane ceiling so very large
-        // system text can't overflow our fixed-height chips, badges and rows.
-        child: MediaQuery(
-          data: MediaQuery.of(ctx).copyWith(
-            textScaler: MediaQuery.textScalerOf(ctx).clamp(maxScaleFactor: 1.3),
+      builder: (ctx, child) {
+        // Honour the OS "reduce motion" setting globally: flutter_animate has
+        // no built-in switch, so collapse EVERY animation (entrances, page
+        // transitions, ripples) to near-instant via the scheduler's clock.
+        // 1.0 restores normal speed the moment the setting is turned off.
+        timeDilation = MediaQuery.of(ctx).disableAnimations ? 0.05 : 1.0;
+        return Directionality(
+          textDirection: TextDirection.rtl,
+          // Clamp accessibility text scaling to a sane ceiling so very large
+          // system text can't overflow our fixed-height chips, badges and rows.
+          child: MediaQuery(
+            data: MediaQuery.of(ctx).copyWith(
+              textScaler: MediaQuery.textScalerOf(ctx).clamp(maxScaleFactor: 1.3),
+            ),
+            child: child!,
           ),
-          child: child!,
-        ),
-      ),
+        );
+      },
     );
   }
 

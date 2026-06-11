@@ -24,7 +24,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="preconnect" href="https://plausible.io" />
   <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css?v=7c34b2b6" />
+  <link rel="stylesheet" href="styles.css?v=8b416246" />
   <!-- Cookieless analytics (Plausible-style). Placeholder until configured — no cookies, no personal data. -->
   <script defer data-domain="chosech.co.il" src="https://plausible.io/js/script.outbound-links.tagged-events.js"></script>
   <script>window.plausible=window.plausible||function(){(window.plausible.q=window.plausible.q||[]).push(arguments)};</script>
@@ -62,7 +62,7 @@
     <section class="lead-hero">
       <div class="container">
         <p class="crumbs"><a href="index.html">דף הבית</a> ← <a href="cellular.html">סלולר</a> ← מחשבון חיסכון</p>
-        <span class="pill">🧮 מחשבון חינמי · בלי התחייבות</span>
+        <span class="pill pill--ico"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8M8 12h.01M12 12h.01M16 12h.01M8 16h.01M12 16h.01M16 16h.01"/></svg> מחשבון חינמי · בלי התחייבות</span>
         <h1>מחשבון חיסכון סלולר</h1>
         <p>הזינו כמה אתם משלמים היום על סלולר, ונראה לכם הערכה כמה אפשר לחסוך בשנה מול המסלול הזול ביותר בשוק.</p>
       </div>
@@ -73,8 +73,9 @@
         <div id="calc" class="glass" data-cheapest="19.8" data-cat="cellular" style="max-width:560px;margin:0 auto;border:1px solid #E4E8EC;border-radius:18px;padding:28px 24px;box-shadow:0 6px 24px rgba(17,24,39,.05)">
           <h2 style="margin:0 0 6px">כמה אתם יכולים לחסוך על סלולר?</h2>
           <p style="margin:0 0 4px">המסלול הזול ביותר בסלולר כרגע: <span style="color:#0B0F14;font-weight:700">019 מובייל לכל החיים 12GB — 19.80</span>.</p>
-          <div style="display:flex;gap:10px;flex-wrap:wrap;margin:16px 0">
-            <input id="calcBill" class="filter-search" type="number" inputmode="numeric" min="0" placeholder="כמה אתם משלמים היום? (₪)" aria-label="הסכום שאתם משלמים היום בשקלים" style="flex:1 1 220px" />
+          <label for="calcBill" style="display:block;font-weight:700;margin:14px 0 0">כמה אתם משלמים היום? (₪ לחודש)</label>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;margin:8px 0 16px">
+            <input id="calcBill" class="filter-search" type="number" inputmode="numeric" min="0" placeholder="למשל: 89" style="flex:1 1 220px" />
             <button id="calcBtn" class="btn btn--primary" type="button">חשבו חיסכון</button>
           </div>
           <p id="calcOut" role="status" aria-live="polite" style="display:none;margin:8px 0 0;padding:14px 16px;border-radius:12px;background:#F0F2F4;color:#0B0F14"></p>
@@ -130,7 +131,7 @@
           <button class="btn btn--primary btn--lg" type="submit">קבלו השוואה חינם</button>
         </form>
         <p class="cta__note" id="leadNote" role="status" aria-live="polite"></p>
-        <a class="cta__wa" href="https://wa.me/972505037537" target="_blank" rel="noopener"><span aria-hidden="true">💬</span> מעדיפים וואטסאפ? דברו איתנו</a>
+        <a class="cta__wa" href="https://wa.me/972505037537" target="_blank" rel="noopener"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8 9 9 0 0 1-3.8-.8L3 20l1.3-3.9A8 8 0 0 1 3.5 11 8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/></svg>מעדיפים וואטסאפ? דברו איתנו</a>
       </div>
     </section>
   </main>
@@ -156,6 +157,6 @@
     </div>
     <div class="container footer__bottom"><span>© <span id="year"></span> חוסך · כל הזכויות שמורות</span><span>נבנה באהבה בישראל</span></div>
   </footer>
-  <script src="script.js?v=ad69263d" defer></script>
+  <script src="script.js?v=ac0555f6" defer></script>
 </body>
 </html>

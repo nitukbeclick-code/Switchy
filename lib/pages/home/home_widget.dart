@@ -662,7 +662,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                     children: [
                       Row(
                         children: [
-                          Text(cat.icon, style: const TextStyle(fontSize: 22)),
+                          Icon(categoryIconData(cat.id), size: 22, color: ffTheme.primary),
                           if (isPersonalized) ...[
                             const Spacer(),
                             Container(

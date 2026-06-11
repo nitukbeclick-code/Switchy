@@ -29,6 +29,16 @@
     menu.querySelectorAll('a').forEach((a) => a.addEventListener('click', () => setMenu(false)));
   }
 
+  // ── Current page in the nav ──────────────────────────────────────────────
+  // aria-current="page" on the matching header link (desktop + mobile);
+  // styles.css highlights it. Hash links (e.g. index.html#calculator) are
+  // skipped — they're section anchors, not the page the user is on.
+  const here = location.pathname.split('/').pop() || 'index.html';
+  document.querySelectorAll('.nav__links a, .nav__mobile a').forEach((a) => {
+    const href = a.getAttribute('href') || '';
+    if (!href.includes('#') && href === here) a.setAttribute('aria-current', 'page');
+  });
+
   // ── Savings calculator ─────────────────────────────────────────────────────
   // Honest "up to" estimate — the exact figure is computed in the app from the
   // user's real bill. ~45% of a typical overpaying bill, annualised, rounded.

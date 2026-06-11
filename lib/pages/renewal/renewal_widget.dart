@@ -668,13 +668,24 @@ class _AddPlanSheetState extends State<_AddPlanSheet> {
                               : ffTheme.alternate,
                         ),
                       ),
-                      child: Text(
-                        '${cat.icon} ${cat.name}',
-                        style: GoogleFonts.assistant(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: selected ? Colors.white : ffTheme.primaryText,
-                        ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            categoryIconData(cat.id),
+                            size: 14,
+                            color: selected ? Colors.white : ffTheme.primaryText,
+                          ),
+                          const SizedBox(width: 5),
+                          Text(
+                            cat.name,
+                            style: GoogleFonts.assistant(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: selected ? Colors.white : ffTheme.primaryText,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   );

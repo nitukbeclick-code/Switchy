@@ -532,14 +532,27 @@ class _WinnerSummaryCard extends StatelessWidget {
               children: [
                 Row(
                   children: [
+                    // The win state wears the VALUE accent (amber), not grey.
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(color: ffTheme.secondary, borderRadius: BorderRadius.circular(8)),
-                      child: Text('🏆 ההמלצה שלנו', style: ffTheme.labelSmall.copyWith(color: ffTheme.primaryDark, fontWeight: FontWeight.w800)),
+                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                      decoration: BoxDecoration(color: ffTheme.saving, borderRadius: BorderRadius.circular(ffTheme.radiusPill)),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.emoji_events_rounded, size: 13, color: Color(0xFF3A2900)),
+                          const SizedBox(width: 4),
+                          Text('ההמלצה שלנו', style: ffTheme.labelSmall.copyWith(color: const Color(0xFF3A2900), fontWeight: FontWeight.w800)),
+                        ],
+                      ),
                     ),
                     const Spacer(),
                     if (winnerSave > 0)
-                      Text('חיסכון ₪$winnerSave/שנה', style: GoogleFonts.rubik(fontSize: 13, fontWeight: FontWeight.w700, color: ffTheme.secondary)),
+                      Text('חיסכון ₪$winnerSave/שנה',
+                          style: GoogleFonts.rubik(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: ffTheme.saving,
+                              fontFeatures: const [FontFeature.tabularFigures()])),
                   ],
                 ),
                 const SizedBox(height: 12),

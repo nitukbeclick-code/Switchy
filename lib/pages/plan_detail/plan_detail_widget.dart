@@ -222,18 +222,21 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                             ),
                             const Spacer(),
                             if (saveYear > 0)
+                              // Savings wear the VALUE accent (amber) — same
+                              // treatment as the plan cards and the site.
                               Container(
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 12, vertical: 8),
                                 decoration: BoxDecoration(
-                                  color: ffTheme.secondary,
-                                  borderRadius: BorderRadius.circular(12),
+                                  color: ffTheme.saving,
+                                  borderRadius: BorderRadius.circular(ffTheme.radiusPill),
                                 ),
                                 child: Text(
                                   'חוסך ₪$saveYear בשנה',
                                   style: ffTheme.labelMedium.copyWith(
-                                    color: ffTheme.primaryDark,
+                                    color: const Color(0xFF3A2900),
                                     fontWeight: FontWeight.w700,
+                                    fontFeatures: const [FontFeature.tabularFigures()],
                                   ),
                                 ),
                               ),

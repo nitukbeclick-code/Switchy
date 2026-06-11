@@ -54,23 +54,26 @@ flutter:
     # in main.dart; filenames must keep the {Family}-{Variant}.ttf convention.
     - assets/google_fonts/
 
-# App launcher icons — generated with `dart run flutter_launcher_icons`
+# App launcher icons — generated with `dart run flutter_launcher_icons`.
+# Brand: ink square + glass-white spark (same identity as site/favicon.svg);
+# source art lives in tool/brand/*.svg (rendered to PNG via headless Chrome).
 flutter_launcher_icons:
   image_path: "assets/icon/icon.png"
   android: true
   ios: true
   web:
     generate: true
-    background_color: "#15603E"
-    theme_color: "#15603E"
-  adaptive_icon_background: "#15603E"
+    background_color: "#F5F7F8"
+    theme_color: "#111827"
+  adaptive_icon_background: "#111827"
   adaptive_icon_foreground: "assets/icon/icon_foreground.png"
 
-# Splash screen — generated with `dart run flutter_native_splash:create`
+# Splash screen — generated with `dart run flutter_native_splash:create`:
+# ink spark on glass white, matching the in-app background.
 flutter_native_splash:
-  color: "#15603E"
+  color: "#F5F7F8"
   image: "assets/splash/splash.png"
   android_12:
-    color: "#15603E"
+    color: "#F5F7F8"
     image: "assets/splash/splash.png"
   web: false

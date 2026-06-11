@@ -103,6 +103,43 @@ void main() {
     handle.dispose();
   });
 
+  testWidgets('matchPct renders the recommendation score inside the card', (tester) async {
+    await tester.pumpWidget(_wrap(
+      const PlanCardWidget(plan: _testPlan, currentBill: 119, matchPct: 87),
+    ));
+    await tester.pump();
+    expect(find.text('87% התאמה'), findsOneWidget);
+  });
+
+  testWidgets('no match chip when matchPct is omitted', (tester) async {
+    await tester.pumpWidget(_wrap(
+      const PlanCardWidget(plan: _testPlan, currentBill: 119),
+    ));
+    await tester.pump();
+    expect(find.textContaining('% התאמה'), findsNothing);
+  });
+
+  testWidgets('bestMatch shows the floating badge and the amber VALUE ring', (tester) async {
+    await tester.pumpWidget(_wrap(
+      const PlanCardWidget(plan: _testPlan, currentBill: 119, bestMatch: true),
+    ));
+    await tester.pump();
+    expect(find.text('ההתאמה הכי טובה'), findsOneWidget);
+    // The card border carries the amber (VALUE) accent, 2px.
+    final box = tester.widgetList<Container>(find.byType(Container)).firstWhere(
+      (c) => c.decoration is BoxDecoration && ((c.decoration as BoxDecoration).border?.top.width ?? 0) == 2,
+    );
+    expect(((box.decoration as BoxDecoration).border!.top.color), const Color(0xFFF59E0B));
+  });
+
+  testWidgets('regular card has no best-match badge', (tester) async {
+    await tester.pumpWidget(_wrap(
+      const PlanCardWidget(plan: _testPlan, currentBill: 119),
+    ));
+    await tester.pump();
+    expect(find.text('ההתאמה הכי טובה'), findsNothing);
+  });
+
   testWidgets('the provider logo initials are hidden from screen readers', (tester) async {
     final handle = tester.ensureSemantics();
     await tester.pumpWidget(_wrap(

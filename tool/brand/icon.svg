@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 64 64" role="img" aria-label="חוסך">
+  <!-- App launcher icon — same identity as site/favicon.svg (ink square +
+       glass-white spark), full-bleed: the OS applies its own corner mask. -->
+  <rect width="64" height="64" fill="#111827"/>
+  <path d="M32 11 L37.5 26.5 L53 32 L37.5 37.5 L32 53 L26.5 37.5 L11 32 L26.5 26.5 Z" fill="#F5F7F8"/>
+</svg>

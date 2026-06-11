@@ -20,7 +20,7 @@ class MiniPlanCard extends StatelessWidget {
 
   final Plan plan;
 
-  /// ₪/year savings badge; null hides the lime badge entirely.
+  /// ₪/year savings badge; null hides the amber VALUE badge entirely.
   final int? savingsPerYear;
   final VoidCallback? onTap;
   final String ctaLabel;
@@ -34,16 +34,20 @@ class MiniPlanCard extends StatelessWidget {
     return Semantics(
       button: onTap != null,
       label: '${plan.provider} — ${plan.plan}',
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(ffTheme.radiusLg),
+          border: Border.all(color: ffTheme.alternate),
+          boxShadow: ffTheme.shadowCard,
+        ),
+        child: Material(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(ffTheme.radiusLg),
+          child: InkWell(
             borderRadius: BorderRadius.circular(ffTheme.radiusLg),
-            border: Border.all(color: ffTheme.alternate),
-            boxShadow: ffTheme.shadowCard,
-          ),
+            onTap: onTap,
+            child: Padding(
+          padding: const EdgeInsets.all(16),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
@@ -61,17 +65,20 @@ class MiniPlanCard extends StatelessWidget {
                         overflow: TextOverflow.ellipsis),
                     if (showBadge) ...[
                       const SizedBox(height: 6),
+                      // Savings wear the VALUE accent (amber) — same treatment
+                      // as the full plan card and the site.
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
-                          color: ffTheme.secondary,
-                          borderRadius: BorderRadius.circular(ffTheme.radiusMd),
+                          color: ffTheme.saving,
+                          borderRadius: BorderRadius.circular(ffTheme.radiusPill),
                         ),
                         child: Text(
                           'חוסך ₪$savingsPerYear/שנה',
                           style: ffTheme.labelSmall.copyWith(
-                            color: ffTheme.primaryDark,
+                            color: const Color(0xFF3A2900),
                             fontWeight: FontWeight.w700,
+                            fontFeatures: const [FontFeature.tabularFigures()],
                           ),
                         ),
                       ),
@@ -104,6 +111,8 @@ class MiniPlanCard extends StatelessWidget {
                 ],
               ),
             ],
+              ),
+            ),
           ),
         ),
       ),

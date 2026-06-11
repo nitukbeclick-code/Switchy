@@ -895,15 +895,15 @@ class _HomeWidgetState extends State<HomeWidget> {
 
   Widget _buildToolsRow(BuildContext context, AppTheme ffTheme) {
     final tools = [
-      const _Tool(icon: '🎯', label: 'ההתאמות שלי', route: 'Matches'),
-      const _Tool(icon: '💰', label: 'החיסכון שלי', route: 'Savings'),
-      const _Tool(icon: '⏰', label: 'מעקב חידושים', route: 'Renewal'),
-      const _Tool(icon: '📍', label: 'בדיקת כיסוי', route: 'Availability'),
-      const _Tool(icon: '🧮', label: 'מחשבון מעבר', route: 'SwitchCalc'),
-      const _Tool(icon: '📊', label: 'ניהול חשבון', route: 'Bills'),
-      const _Tool(icon: '📲', label: 'ניוד מספר', route: 'Porting'),
-      const _Tool(icon: '⭐', label: 'דירוגי ספקים', route: 'Ratings'),
-      const _Tool(icon: '🤖', label: 'יועץ AI', route: 'AIAdvisor'),
+      const _Tool(icon: Icons.adjust_rounded, label: 'ההתאמות שלי', route: 'Matches'),
+      const _Tool(icon: Icons.savings_rounded, label: 'החיסכון שלי', route: 'Savings'),
+      const _Tool(icon: Icons.alarm_rounded, label: 'מעקב חידושים', route: 'Renewal'),
+      const _Tool(icon: Icons.location_on_rounded, label: 'בדיקת כיסוי', route: 'Availability'),
+      const _Tool(icon: Icons.calculate_rounded, label: 'מחשבון מעבר', route: 'SwitchCalc'),
+      const _Tool(icon: Icons.receipt_long_rounded, label: 'ניהול חשבון', route: 'Bills'),
+      const _Tool(icon: Icons.swap_horiz_rounded, label: 'ניוד מספר', route: 'Porting'),
+      const _Tool(icon: Icons.star_rounded, label: 'דירוגי ספקים', route: 'Ratings'),
+      const _Tool(icon: Icons.smart_toy_rounded, label: 'יועץ AI', route: 'AIAdvisor'),
     ];
 
     return Padding(
@@ -940,7 +940,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text(tool.icon, style: const TextStyle(fontSize: 26)),
+                        Icon(tool.icon, size: 26, color: ffTheme.primaryText),
                         const SizedBox(height: 6),
                         Text(
                           tool.label,
@@ -1196,7 +1196,7 @@ String _greeting() {
 
 class _Tool {
   const _Tool({required this.icon, required this.label, required this.route});
-  final String icon;
+  final IconData icon;
   final String label;
   final String route;
 }

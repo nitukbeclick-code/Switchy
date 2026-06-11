@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 64 64" role="img" aria-label="חוסך">
+  <!-- Android adaptive-icon foreground: transparent canvas, the spark kept
+       inside the ~66% safe zone (background colour comes from pubspec). -->
+  <path d="M32 18.6 L35.5 28.5 L45.4 32 L35.5 35.5 L32 45.4 L28.5 35.5 L18.6 32 L28.5 28.5 Z" fill="#F5F7F8"/>
+</svg>

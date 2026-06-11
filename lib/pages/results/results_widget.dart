@@ -22,11 +22,11 @@ class _ResultsWidgetState extends State<ResultsWidget> {
   bool _smartSort = false;
 
   static const _categories = [
-    ('cellular', '📱 סלולר'),
-    ('internet', '🌐 אינטרנט'),
-    ('tv', '📺 טלוויזיה'),
-    ('triple', '🏠 משולב'),
-    ('abroad', '✈️ חו"ל'),
+    ('cellular', 'סלולר'),
+    ('internet', 'אינטרנט'),
+    ('tv', 'טלוויזיה'),
+    ('triple', 'משולב'),
+    ('abroad', 'חו"ל'),
   ];
 
   static const _sorts = [
@@ -151,13 +151,21 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                                 : Colors.white.withValues(alpha: 0.35),
                           ),
                         ),
-                        child: Text(
-                          c.$2,
-                          style: ffTheme.labelMedium.copyWith(
-                            color: active ? ffTheme.primary : Colors.white,
-                            fontWeight:
-                                active ? FontWeight.w700 : FontWeight.w500,
-                          ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(categoryIconData(c.$1), size: 14,
+                                color: active ? ffTheme.primary : Colors.white),
+                            const SizedBox(width: 5),
+                            Text(
+                              c.$2,
+                              style: ffTheme.labelMedium.copyWith(
+                                color: active ? ffTheme.primary : Colors.white,
+                                fontWeight:
+                                    active ? FontWeight.w700 : FontWeight.w500,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
@@ -581,17 +589,32 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                           alignment: WrapAlignment.center,
                           children: _categories
                             .where((c) => c.$1 != cat)
-                            .map((c) => GestureDetector(
-                              onTap: () => _switchCategory(appState, c.$1),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
+                            .map((c) => Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(20),
+                                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 4)],
+                              ),
+                              child: Material(
+                                color: Colors.white,
+                                shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(20),
-                                  border: Border.all(color: ffTheme.primary.withValues(alpha: 0.3)),
-                                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 4)],
+                                  side: BorderSide(color: ffTheme.primary.withValues(alpha: 0.3)),
                                 ),
-                                child: Text(c.$2, style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w600)),
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(20),
+                                  onTap: () => _switchCategory(appState, c.$1),
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(categoryIconData(c.$1), size: 13, color: ffTheme.primary),
+                                        const SizedBox(width: 5),
+                                        Text(c.$2, style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w600)),
+                                      ],
+                                    ),
+                                  ),
+                                ),
                               ),
                             )).toList(),
                         ),
@@ -607,51 +630,15 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                       (context, index) {
                         final plan = plans[index];
                         final match = matchMap[plan.id];
+                        // The engine's top pick wears the in-card "best match"
+                        // treatment; the match score renders inside the card —
+                        // overlaying badges collided with the header controls.
                         final isTopMatch = _smartSort && index == 0 && match != null && match.scorePct >= 70;
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            if (isTopMatch)
-                              Padding(
-                                padding: const EdgeInsets.only(bottom: 4),
-                                child: Row(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                      decoration: BoxDecoration(
-                                        color: ffTheme.secondary,
-                                        borderRadius: BorderRadius.circular(12),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Icon(Icons.adjust, size: 12, color: ffTheme.primary),
-                                          const SizedBox(width: 4),
-                                          Text(
-                                            'ההתאמה הטובה ביותר',
-                                            style: ffTheme.labelSmall.copyWith(
-                                              color: ffTheme.primary,
-                                              fontWeight: FontWeight.w700,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            Stack(
-                              children: [
-                                PlanCardWidget(plan: plan, currentBill: bill),
-                                if (match != null)
-                                  Positioned(
-                                    top: 12,
-                                    left: 12,
-                                    child: _MatchBadge(match: match, ffTheme: ffTheme),
-                                  ),
-                              ],
-                            ),
-                          ],
+                        return PlanCardWidget(
+                          plan: plan,
+                          currentBill: bill,
+                          matchPct: match?.scorePct,
+                          bestMatch: isTopMatch || plan.highlight,
                         )
                             .animate(delay: (index * 60).ms)
                             .fadeIn(duration: 300.ms)
@@ -992,86 +979,6 @@ class _ResultsWidgetState extends State<ResultsWidget> {
           ),
         ),
       ),
-    );
-  }
-}
-
-class _MatchBadge extends StatelessWidget {
-  const _MatchBadge({required this.match, required this.ffTheme});
-  final PlanMatch match;
-  final AppTheme ffTheme;
-
-  Color _badgeColor() {
-    if (match.scorePct >= 85) return ffTheme.secondary; // light-grey highlight (black text)
-    if (match.scorePct >= 70) return ffTheme.primary; // ink black (white text)
-    return ffTheme.sage; // muted grey
-  }
-
-  Color _textColor() {
-    if (match.scorePct >= 85) return ffTheme.primary;
-    return Colors.white;
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final badgeColor = _badgeColor();
-    final textColor = _textColor();
-    final topReason = match.reasons.isNotEmpty ? match.reasons.first : null;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-          decoration: BoxDecoration(
-            color: badgeColor,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: ffTheme.alternate.withValues(alpha: 0.12)),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.12),
-                blurRadius: 4,
-                offset: const Offset(0, 1),
-              ),
-            ],
-          ),
-          child: Text(
-            '${match.scorePct}% התאמה',
-            style: ffTheme.labelSmall.copyWith(
-              color: textColor,
-              fontWeight: FontWeight.w700,
-              fontSize: 10,
-            ),
-          ),
-        ),
-        if (topReason != null) ...[
-          const SizedBox(height: 3),
-          ConstrainedBox(
-            // Cap the reason chip so a long Hebrew reason never overflows the
-            // card edge — it ellipsises instead.
-            constraints: const BoxConstraints(maxWidth: 150),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: ffTheme.alternate.withValues(alpha: 0.18)),
-              ),
-              child: Text(
-                topReason,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: ffTheme.labelSmall.copyWith(
-                  color: ffTheme.primary,
-                  fontSize: 9,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ],
     );
   }
 }

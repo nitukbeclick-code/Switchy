@@ -15,12 +15,24 @@ class PlanCardWidget extends StatelessWidget {
     required this.currentBill,
     this.showCompare = true,
     this.compact = false,
+    this.matchPct,
+    this.bestMatch,
   });
 
   final Plan plan;
   final int currentBill;
   final bool showCompare;
   final bool compact;
+
+  /// Recommendation-engine score (0–100). Rendered as a chip inside the card —
+  /// callers must not overlay badges on top of the card (they collide with the
+  /// watch/compare controls in RTL).
+  final int? matchPct;
+
+  /// Overrides the catalogue `plan.highlight` flag for the "best match"
+  /// treatment (amber VALUE ring + floating badge) — e.g. the smart-sort top
+  /// pick in results.
+  final bool? bestMatch;
 
   String? _quizMatch(AppState appState) {
     if (!appState.quizCompleted || appState.quizBudget <= 0) return null;
@@ -40,6 +52,7 @@ class PlanCardWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final appState = context.watch<AppState>();
     final ffTheme = AppTheme.of(context);
+    final isBest = bestMatch ?? plan.highlight;
     final savings = ((currentBill - plan.price) * 12).clamp(0, 999999);
     final inCompare = appState.isInCompare(plan.id);
     final isWatching = appState.isWatching(plan.id);
@@ -57,50 +70,29 @@ class PlanCardWidget extends StatelessWidget {
     return Semantics(
       container: true,
       label: cardLabel,
-      child: Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      child: Padding(
+      // Room above for the floating badge to overhang the best-match card.
+      padding: EdgeInsets.only(bottom: 12, top: isBest ? 10 : 0),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(ffTheme.radiusLg),
-        // Crisp formal frame: a clean ~1px dark border all around; the best
-        // match reads as a slightly heavier ink border (no coloured stripe).
+        // Crisp formal frame; the best match wears the VALUE accent — a 2px
+        // amber ring + warm glow, mirroring the site's `.plan--best`.
         border: Border.all(
-          color: plan.highlight ? ffTheme.primary : ffTheme.alternate,
-          width: plan.highlight ? 1.5 : 1,
+          color: isBest ? ffTheme.saving : ffTheme.alternate,
+          width: isBest ? 2 : 1,
         ),
-        boxShadow: ffTheme.shadowCard,
+        boxShadow: isBest
+            ? const [BoxShadow(color: Color(0x40D97706), blurRadius: 18, offset: Offset(0, 6))]
+            : ffTheme.shadowCard,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Best match badge
-          if (plan.highlight)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-              decoration: BoxDecoration(
-                gradient: ffTheme.freshGradient,
-                borderRadius: BorderRadius.only(
-                  topLeft: Radius.circular(ffTheme.radiusLg),
-                  topRight: Radius.circular(ffTheme.radiusLg),
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text('★', style: TextStyle(color: ffTheme.secondary, fontSize: 12)),
-                  const SizedBox(width: 5),
-                  Text(
-                    'ההתאמה הכי טובה',
-                    style: GoogleFonts.rubik(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
           Padding(
             padding: const EdgeInsets.all(14),
             child: Column(
@@ -113,9 +105,11 @@ class PlanCardWidget extends StatelessWidget {
                     // plan detail. A single secondary affordance below links to
                     // the provider profile.
                     Expanded(
-                      child: GestureDetector(
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                        borderRadius: BorderRadius.circular(ffTheme.radiusSm),
                         onTap: () => _openPlan(context, appState),
-                        behavior: HitTestBehavior.opaque,
                         child: Row(
                           children: [
                             ExcludeSemantics(
@@ -164,16 +158,16 @@ class PlanCardWidget extends StatelessWidget {
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                   decoration: BoxDecoration(
-                                    color: matchLabel.startsWith('✓') ? ffTheme.mint : ffTheme.warning.withValues(alpha: 0.1),
+                                    color: matchLabel.startsWith('✓') ? ffTheme.success.withValues(alpha: 0.1) : ffTheme.warning.withValues(alpha: 0.1),
                                     borderRadius: BorderRadius.circular(ffTheme.radiusXs),
-                                    border: Border.all(color: matchLabel.startsWith('✓') ? ffTheme.tertiary.withValues(alpha: 0.35) : ffTheme.warning.withValues(alpha: 0.4)),
+                                    border: Border.all(color: matchLabel.startsWith('✓') ? ffTheme.success.withValues(alpha: 0.4) : ffTheme.warning.withValues(alpha: 0.4)),
                                   ),
                                   child: Text(
                                     matchLabel,
                                     style: GoogleFonts.rubik(
                                       fontSize: 9,
                                       fontWeight: FontWeight.w700,
-                                      color: matchLabel.startsWith('✓') ? ffTheme.tertiary : ffTheme.warning,
+                                      color: matchLabel.startsWith('✓') ? ffTheme.success : ffTheme.warning,
                                     ),
                                   ),
                                 ),
@@ -194,22 +188,25 @@ class PlanCardWidget extends StatelessWidget {
                                   Semantics(
                                     button: true,
                                     label: 'פרופיל ${plan.provider}',
-                                    child: GestureDetector(
+                                    child: InkWell(
+                                      borderRadius: BorderRadius.circular(6),
                                       onTap: () => context.pushNamed('Provider', pathParameters: {'name': plan.provider}),
-                                      behavior: HitTestBehavior.opaque,
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Text(
-                                            'פרופיל הספק',
-                                            style: GoogleFonts.assistant(
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.w700,
-                                              color: ffTheme.primary,
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(vertical: 4),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Text(
+                                              'פרופיל הספק',
+                                              style: GoogleFonts.assistant(
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w700,
+                                                color: ffTheme.primary,
+                                              ),
                                             ),
-                                          ),
-                                          Icon(Icons.chevron_left_rounded, size: 14, color: ffTheme.primary),
-                                        ],
+                                            Icon(Icons.chevron_left_rounded, size: 14, color: ffTheme.primary),
+                                          ],
+                                        ),
                                       ),
                                     ),
                                   ),
@@ -218,80 +215,76 @@ class PlanCardWidget extends StatelessWidget {
                             ),
                           ],
                         ),
+                        ),
                       ),
                     ),
                     if (showCompare)
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Semantics(
-                            button: true,
-                            label: isWatching ? 'במעקב מחיר — הסר' : 'עקוב אחר מחיר',
-                            child: Tooltip(
-                              message: isWatching ? 'במעקב מחיר' : 'עקוב אחר מחיר',
-                              child: GestureDetector(
-                                onTap: () => appState.toggleWatch(plan.id),
-                                child: Container(
-                                  width: 32,
-                                  height: 32,
-                                  decoration: BoxDecoration(
-                                    color: isWatching ? ffTheme.warning.withValues(alpha: 0.1) : ffTheme.background,
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: isWatching ? ffTheme.warning : ffTheme.alternate,
-                                    ),
-                                  ),
-                                  child: Icon(
-                                    isWatching ? Icons.notifications_active_rounded : Icons.notifications_none_rounded,
-                                    size: 15,
-                                    color: isWatching ? ffTheme.warning : ffTheme.secondaryText,
-                                  ),
-                                ),
-                              ),
-                            ),
+                          _CardIconButton(
+                            semanticLabel: isWatching ? 'במעקב מחיר — הסר' : 'עקוב אחר מחיר',
+                            tooltip: isWatching ? 'במעקב מחיר' : 'עקוב אחר מחיר',
+                            icon: isWatching ? Icons.notifications_active_rounded : Icons.notifications_none_rounded,
+                            iconSize: 15,
+                            active: isWatching,
+                            fill: isWatching ? ffTheme.warning.withValues(alpha: 0.1) : ffTheme.background,
+                            borderColor: isWatching ? ffTheme.warning : ffTheme.alternate,
+                            iconColor: isWatching ? ffTheme.warning : ffTheme.secondaryText,
+                            onTap: () => appState.toggleWatch(plan.id),
                           ),
-                          const SizedBox(width: 6),
-                          Semantics(
-                            button: true,
-                            label: inCompare ? 'בהשוואה — הסר' : 'הוסף להשוואה',
-                            child: Tooltip(
-                              message: inCompare ? 'בהשוואה' : 'הוסף להשוואה',
-                              child: GestureDetector(
-                                onTap: () => appState.toggleCompare(plan.id),
-                                child: Container(
-                                  width: 32,
-                                  height: 32,
-                                  decoration: BoxDecoration(
-                                    color: inCompare ? ffTheme.primary : ffTheme.background,
-                                    shape: BoxShape.circle,
-                                    border: Border.all(
-                                      color: inCompare ? ffTheme.primary : ffTheme.alternate,
-                                    ),
-                                  ),
-                                  child: Icon(
-                                    inCompare ? Icons.check : Icons.add,
-                                    size: 16,
-                                    color: inCompare ? Colors.white : ffTheme.secondaryText,
-                                  ),
-                                ),
-                              ),
-                            ),
+                          _CardIconButton(
+                            semanticLabel: inCompare ? 'בהשוואה — הסר' : 'הוסף להשוואה',
+                            tooltip: inCompare ? 'בהשוואה' : 'הוסף להשוואה',
+                            icon: inCompare ? Icons.check : Icons.add,
+                            iconSize: 16,
+                            active: inCompare,
+                            fill: inCompare ? ffTheme.primary : ffTheme.background,
+                            borderColor: inCompare ? ffTheme.primary : ffTheme.alternate,
+                            iconColor: inCompare ? Colors.white : ffTheme.secondaryText,
+                            onTap: () => appState.toggleCompare(plan.id),
                           ),
                         ],
                       ),
                   ],
                 ),
 
-                // Spec chips (shown only when plan has specs)
-                if (plan.specs.isNotEmpty) ...[
+                // Spec chips + recommendation score (wraps — never collides
+                // with the header controls).
+                if (plan.specs.isNotEmpty || matchPct != null) ...[
                   const SizedBox(height: 8),
                   Wrap(
                     spacing: 6,
-                    runSpacing: 0,
+                    runSpacing: 4,
                     clipBehavior: Clip.hardEdge,
-                    children: plan.specs.entries.take(3).map((e) =>
-                      _SpecChip(label: e.key, value: e.value, ffTheme: ffTheme),
-                    ).toList(),
+                    children: [
+                      if (matchPct != null)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: ffTheme.primary,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.adjust, size: 11, color: Colors.white),
+                              const SizedBox(width: 4),
+                              Text(
+                                '$matchPct% התאמה',
+                                style: GoogleFonts.rubik(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ...plan.specs.entries.take(3).map((e) =>
+                        _SpecChip(label: e.key, value: e.value, ffTheme: ffTheme),
+                      ),
+                    ],
                   ),
                 ],
 
@@ -311,6 +304,7 @@ class PlanCardWidget extends StatelessWidget {
                             fontWeight: FontWeight.w800,
                             color: ffTheme.primaryText,
                             letterSpacing: -0.5,
+                            fontFeatures: const [FontFeature.tabularFigures()],
                           ),
                         ),
                         Text(
@@ -334,18 +328,21 @@ class PlanCardWidget extends StatelessWidget {
                     ),
                     const Spacer(),
                     if (savings > 0)
+                      // Savings wear the VALUE accent (amber), matching the
+                      // site's savings figures — never the grey highlight.
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
                         decoration: BoxDecoration(
-                          color: ffTheme.secondary,
-                          borderRadius: BorderRadius.circular(ffTheme.radiusMd),
+                          color: ffTheme.saving,
+                          borderRadius: BorderRadius.circular(ffTheme.radiusPill),
                         ),
                         child: Text(
                           'חוסך ₪$savings בשנה',
                           style: GoogleFonts.rubik(
                             fontSize: 12,
                             fontWeight: FontWeight.w800,
-                            color: AppColors.primaryDark,
+                            color: const Color(0xFF3A2900),
+                            fontFeatures: const [FontFeature.tabularFigures()],
                           ),
                         ),
                       ),
@@ -398,51 +395,26 @@ class PlanCardWidget extends StatelessWidget {
 
                   const SizedBox(height: 12),
 
-                  // Action row
+                  // Action row — the best match carries the single indigo
+                  // ACTION accent on the list; siblings stay formal ink.
                   Row(
                     children: [
                       const Spacer(),
-                      GestureDetector(
+                      _ChooseButton(
+                        isBest: isBest,
+                        fullWidth: false,
+                        ffTheme: ffTheme,
                         onTap: () => _openPlan(context, appState),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 9),
-                          decoration: BoxDecoration(
-                            color: ffTheme.primary,
-                            borderRadius: BorderRadius.circular(ffTheme.radiusMd),
-                          ),
-                          child: Text(
-                            'בחירה',
-                            style: GoogleFonts.rubik(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
                       ),
                     ],
                   ),
                 ] else ...[
                   const SizedBox(height: 10),
-                  GestureDetector(
+                  _ChooseButton(
+                    isBest: isBest,
+                    fullWidth: true,
+                    ffTheme: ffTheme,
                     onTap: () => _openPlan(context, appState),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 9),
-                      decoration: BoxDecoration(
-                        color: ffTheme.primary,
-                        borderRadius: BorderRadius.circular(ffTheme.radiusMd),
-                      ),
-                      child: Center(
-                        child: Text(
-                          'בחירה',
-                          style: GoogleFonts.rubik(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ),
                   ),
                 ],
               ],
@@ -450,6 +422,149 @@ class PlanCardWidget extends StatelessWidget {
           ),
         ],
       ),
+          ),
+          // Floating amber "best match" pill overhanging the top edge — the
+          // same VALUE anchor the site uses for its lowest-price badge.
+          if (isBest)
+            PositionedDirectional(
+              top: -10,
+              start: 14,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 4),
+                decoration: BoxDecoration(
+                  color: ffTheme.saving,
+                  borderRadius: BorderRadius.circular(ffTheme.radiusPill),
+                  boxShadow: const [BoxShadow(color: Color(0x57D97706), blurRadius: 14, offset: Offset(0, 6))],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.star_rounded, size: 13, color: Color(0xFF3A2900)),
+                    const SizedBox(width: 4),
+                    Text(
+                      'ההתאמה הכי טובה',
+                      style: GoogleFonts.rubik(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: const Color(0xFF3A2900),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+        ],
+      ),
+      ),
+    );
+  }
+}
+
+/// The card's "בחירה" CTA. The best match carries the indigo ACTION gradient
+/// (the one splash of colour per list); regular cards stay formal ink. Both
+/// give ripple feedback and meet the 44px touch-target minimum.
+class _ChooseButton extends StatelessWidget {
+  const _ChooseButton({
+    required this.isBest,
+    required this.fullWidth,
+    required this.ffTheme,
+    required this.onTap,
+  });
+
+  final bool isBest;
+  final bool fullWidth;
+  final AppTheme ffTheme;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final label = Text(
+      'בחירה',
+      style: GoogleFonts.rubik(
+        fontSize: 14,
+        fontWeight: FontWeight.w700,
+        color: Colors.white,
+      ),
+    );
+    return Container(
+      decoration: BoxDecoration(
+        gradient: isBest ? ffTheme.accentGradient : null,
+        color: isBest ? null : ffTheme.primary,
+        borderRadius: BorderRadius.circular(ffTheme.radiusMd),
+        boxShadow: isBest ? ffTheme.shadowAccent : null,
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(ffTheme.radiusMd),
+          splashColor: Colors.white.withValues(alpha: 0.15),
+          onTap: onTap,
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: fullWidth ? 0 : 22, vertical: 12),
+            child: fullWidth ? Center(child: label) : label,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Watch / compare control: a 44×44 tap target (a11y minimum) around the 32px
+/// visual circle, with ripple feedback.
+class _CardIconButton extends StatelessWidget {
+  const _CardIconButton({
+    required this.semanticLabel,
+    required this.tooltip,
+    required this.icon,
+    required this.iconSize,
+    required this.active,
+    required this.fill,
+    required this.borderColor,
+    required this.iconColor,
+    required this.onTap,
+  });
+
+  final String semanticLabel;
+  final String tooltip;
+  final IconData icon;
+  final double iconSize;
+  final bool active;
+  final Color fill;
+  final Color borderColor;
+  final Color iconColor;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      selected: active,
+      label: semanticLabel,
+      child: Tooltip(
+        message: tooltip,
+        child: SizedBox(
+          width: 44,
+          height: 44,
+          child: Material(
+            color: Colors.transparent,
+            child: InkWell(
+              customBorder: const CircleBorder(),
+              onTap: onTap,
+              child: Center(
+                child: Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: fill,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: borderColor),
+                  ),
+                  child: Icon(icon, size: iconSize, color: iconColor),
+                ),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

@@ -868,7 +868,7 @@ ${body}
           <div class="article-cta">
             <h3>רוצים לראות כמה תחסכו בפועל?</h3>
             <p>השוואה חינם בשניות, בלי התחייבות.</p>
-            <a class="btn btn--lg" style="background:#fff;color:#111827" href="index.html#calculator">בדקו עכשיו ←</a>
+            <a class="btn btn--inverse btn--lg" href="index.html#calculator">בדקו עכשיו ←</a>
           </div>
         </div>
       </section>
@@ -979,7 +979,7 @@ function staticPage(p) {
     ? `          <div class="article-cta">
             <h3>מוכנים לחסוך?</h3>
             <p>השוואה חינם בשניות, בלי התחייבות.</p>
-            <a class="btn btn--lg" style="background:#fff;color:#111827" href="index.html#calculator">בדקו עכשיו ←</a>
+            <a class="btn btn--inverse btn--lg" href="index.html#calculator">בדקו עכשיו ←</a>
           </div>`
     : '';
   return `<!DOCTYPE html>
@@ -1572,7 +1572,7 @@ ${nav}
           <p style="margin:12px 0 0;font-size:.85rem;color:#6b7280">* הערכה בלבד — החיסכון בפועל תלוי במסלול שתבחרו ובתנאים. מומלץ לאמת מול הספק.</p>
         </div>
         <div style="text-align:center;margin-top:22px">
-          <a class="btn btn--primary btn--lg" href="${c.slug}.html">לכל מסלולי ה${esc(c.name)} ←</a>
+          <a class="btn btn--ghost btn--lg" href="${c.slug}.html">לכל מסלולי ה${esc(c.name)} ←</a>
         </div>
       </div>
     </section>

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 
 /// Primary call-to-action button used across the app.
@@ -30,6 +31,42 @@ class AppButton extends StatefulWidget {
     this.padding,
     this.iconPadding,
   });
+
+  /// Secondary action: white fill, hairline border, ink label — sits quietly
+  /// next to a primary without competing for the indigo.
+  const AppButton.secondary({
+    super.key,
+    required this.text,
+    required this.onPressed,
+    this.textStyle,
+    this.icon,
+    this.width,
+    this.height = 52,
+    this.elevation,
+    this.borderRadius,
+    this.disabledColor,
+    this.padding,
+    this.iconPadding,
+  })  : color = Colors.white,
+        borderSide = const BorderSide(color: AppColors.alternate);
+
+  /// Tertiary/ghost action: soft tinted fill, ink label, no shadow — for
+  /// in-card and low-emphasis actions.
+  const AppButton.ghost({
+    super.key,
+    required this.text,
+    required this.onPressed,
+    this.textStyle,
+    this.icon,
+    this.width,
+    this.height = 48,
+    this.elevation,
+    this.borderRadius,
+    this.disabledColor,
+    this.padding,
+    this.iconPadding,
+  })  : color = AppColors.accent1,
+        borderSide = BorderSide.none;
 
   final String text;
   final Future<void> Function() onPressed;
@@ -70,14 +107,22 @@ class _AppButtonState extends State<AppButton> {
   @override
   Widget build(BuildContext context) {
     final ffTheme = AppTheme.of(context);
-    final foreground = widget.textStyle?.color ?? Colors.white;
+    // The "quiet" variants (white secondary / tinted ghost) default to an ink
+    // label; everything else stays white-on-fill.
+    final lightFill = widget.color == Colors.white || widget.color == AppColors.accent1;
+    final foreground =
+        widget.textStyle?.color ?? (lightFill ? AppColors.primaryText : Colors.white);
+    final labelStyle = widget.textStyle ??
+        GoogleFonts.rubik(fontSize: 14, fontWeight: FontWeight.w700, color: foreground);
     final borderRadius = widget.borderRadius ?? BorderRadius.circular(ffTheme.radiusMd);
 
-    // The primary CTA: brand green, no outline. Give it the fresh gradient
-    // wash and the lime-green glow so it reads tappable. Any other colour, or
-    // an outlined/ghost variant, stays on the calm solid-fill path.
-    final isPrimaryCta = widget.borderSide == null && widget.color == AppColors.primary;
-    final useGradient = isPrimaryCta && !_loading;
+    // The primary CTA: brand ink colour, no outline → it earns the indigo
+    // ACTION gradient + glow. Any other colour (or an outlined/ghost variant)
+    // stays on the calm solid-fill path.
+    final isPrimaryCta =
+        (widget.borderSide == null || widget.borderSide == BorderSide.none) &&
+            widget.color == AppColors.primary;
+    final useGradient = isPrimaryCta;
 
     final button = ElevatedButton(
       onPressed: _loading ? null : _handleTap,
@@ -86,6 +131,9 @@ class _AppButtonState extends State<AppButton> {
             ? Colors.transparent
             : (_loading ? (widget.disabledColor ?? widget.color.withValues(alpha: 0.6)) : widget.color),
         foregroundColor: foreground,
+        // Hover/press wash: a light veil over the gradient, an ink veil over
+        // the quiet fills — distinct states on web/desktop too.
+        overlayColor: useGradient ? Colors.white : AppColors.primaryText,
         elevation: useGradient ? 0 : (widget.elevation ?? 0),
         shadowColor: useGradient ? Colors.transparent : null,
         shape: RoundedRectangleBorder(
@@ -105,7 +153,7 @@ class _AppButtonState extends State<AppButton> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 if (widget.icon != null) ...[widget.icon!, SizedBox(width: widget.iconPadding ?? 8)],
-                Text(widget.text, style: widget.textStyle),
+                Text(widget.text, style: labelStyle),
               ],
             ),
     );
@@ -114,13 +162,35 @@ class _AppButtonState extends State<AppButton> {
       width: widget.width,
       height: widget.height,
       child: useGradient
-          ? DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: ffTheme.accentGradient,
-                borderRadius: borderRadius,
-                boxShadow: ffTheme.shadowAccent,
+          // The gradient survives the loading state (dimmed) instead of
+          // snapping to a flat grey — the button keeps its identity while busy.
+          ? AnimatedOpacity(
+              opacity: _loading ? 0.72 : 1,
+              duration: ffTheme.motionFast,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: ffTheme.accentGradient,
+                  borderRadius: borderRadius,
+                  boxShadow: _loading ? null : ffTheme.shadowAccent,
+                ),
+                // Glass edge: a faint top light over the gradient — the same
+                // dimensional tell the site's primaries carry.
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius: borderRadius,
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        Colors.white.withValues(alpha: 0.14),
+                        Colors.white.withValues(alpha: 0),
+                      ],
+                      stops: const [0, 0.42],
+                    ),
+                  ),
+                  child: button,
+                ),
               ),
-              child: button,
             )
           : button,
     );

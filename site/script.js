@@ -133,7 +133,7 @@
       // Normalize to digits/+ — the leads gate rejects dots/parens/spaces.
       const phone = ($('leadPhone').value || '').replace(/[^\d+]/g, '');
       if (name.length < 2 || name.length > 80 || phone.replace(/\D/g, '').length < 9) {
-        if (note) { note.style.color = '#ffd9d9'; note.textContent = 'נא למלא שם וטלפון תקין 🙏'; }
+        if (note) { note.classList.add('cta__note--err'); note.textContent = 'נא למלא שם וטלפון תקין 🙏'; }
         return;
       }
       // Legal consent gate (Privacy Protection Regulations + Spam/Communications
@@ -143,13 +143,13 @@
       const termsOk = $('consentTerms') && $('consentTerms').checked;
       const privacyOk = $('consentPrivacy') && $('consentPrivacy').checked;
       if (!termsOk || !privacyOk) {
-        if (note) { note.style.color = '#ffd9d9'; note.textContent = 'יש לאשר את תנאי השימוש ומדיניות הפרטיות כדי להמשיך 🙏'; }
+        if (note) { note.classList.add('cta__note--err'); note.textContent = 'יש לאשר את תנאי השימוש ומדיניות הפרטיות כדי להמשיך 🙏'; }
         return;
       }
       const now = new Date().toISOString();
       const marketingAt = $('consentMarketing') && $('consentMarketing').checked ? now : null;
       const btn = form.querySelector('button[type="submit"]');
-      if (btn) btn.disabled = true;
+      if (btn) { btn.disabled = true; btn.classList.add('is-loading'); }
       let sent = true;
       try {
         await sendLead({
@@ -163,15 +163,15 @@
       } catch (_) {
         sent = false;
       }
-      if (btn) btn.disabled = false;
+      if (btn) { btn.disabled = false; btn.classList.remove('is-loading'); }
       if (!sent) {
-        if (note) { note.style.color = '#ffd9d9'; note.textContent = 'השליחה נכשלה — נסו שוב, או כתבו לנו בוואטסאפ 💬'; }
+        if (note) { note.classList.add('cta__note--err'); note.textContent = 'השליחה נכשלה — נסו שוב, או כתבו לנו בוואטסאפ 💬'; }
         return;
       }
       track('lead_submit', { source: location.pathname });
       form.reset();
       if (note) {
-        note.style.color = '';
+        note.classList.remove('cta__note--err');
         note.textContent = 'תודה ' + name.split(' ')[0] + '! נחזור אליך בהקדם ✦';
       }
     });
@@ -369,9 +369,11 @@
         const r = btn.getBoundingClientRect();
         const x = (e.clientX - (r.left + r.width / 2)) * strength;
         const y = (e.clientY - (r.top + r.height / 2)) * strength;
-        btn.style.transform = `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px)`;
+        // CSS `translate` composes with the :hover/:active `transform` states —
+        // an inline transform here used to clobber the lift and the press.
+        btn.style.translate = `${x.toFixed(1)}px ${y.toFixed(1)}px`;
       });
-      btn.addEventListener('pointerleave', () => { btn.style.transform = ''; });
+      btn.addEventListener('pointerleave', () => { btn.style.translate = ''; });
     });
   }
 

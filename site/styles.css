@@ -92,8 +92,12 @@ h1, h2, h3, .brand__name { font-family: 'Rubik', sans-serif; line-height: 1.12; 
 }
 .cta h2 { background: linear-gradient(160deg, #fff 0%, #fff 55%, #c9ced6 100%); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
 
-/* Global focus ring — keyboard users get a crisp, on-brand outline. */
-:focus-visible { outline: none; box-shadow: var(--ring); border-radius: 6px; }
+/* Global focus ring — keyboard users get a crisp, on-brand outline. The
+   box-shadow follows each element's OWN radius (no geometry rewrite — a 6px
+   override used to visibly reshape pills and buttons on focus); bare inline
+   links opt into a small radius so the ring hugs the text. */
+:focus-visible { outline: none; box-shadow: var(--ring); }
+a:not([class]):focus-visible { border-radius: 6px; }
 
 /* ── Scroll progress bar (injected by script.js) ─────────────────────────── */
 .scroll-progress {
@@ -136,15 +140,32 @@ a { color: inherit; text-decoration: none; }
   background: linear-gradient(115deg, transparent 30%, rgba(255,255,255,.22) 50%, transparent 70%);
   transform: translateX(120%); transition: transform .6s var(--ease);
 }
-.btn:hover::before { transform: translateX(-120%); }
-.btn--primary { background: linear-gradient(165deg, var(--accent), var(--accent-d)); color: #fff; box-shadow: 0 10px 24px rgba(79,70,229,.32), 0 2px 6px rgba(55,48,163,.24); }
-.btn--primary:hover { transform: translateY(-2px); box-shadow: 0 18px 36px rgba(79,70,229,.4), 0 3px 8px rgba(55,48,163,.26); }
-.btn--primary:active { transform: translateY(0) scale(.985); }
+.btn:hover::before, .btn:focus-visible::before { transform: translateX(-120%); }
+/* Inset top highlight = the glass edge that makes the gradient read dimensional. */
+.btn--primary {
+  background: linear-gradient(165deg, var(--accent), var(--accent-d)); color: #fff;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 10px 24px rgba(79,70,229,.32), 0 2px 6px rgba(55,48,163,.24);
+}
+.btn--primary:hover { transform: translateY(-2px); filter: brightness(1.05); box-shadow: inset 0 1px 0 rgba(255,255,255,.22), 0 18px 36px rgba(79,70,229,.4), 0 3px 8px rgba(55,48,163,.26); }
+.btn--primary:active { transform: translateY(0) scale(.985); filter: brightness(.97); box-shadow: inset 0 2px 4px rgba(0,0,0,.18), 0 6px 14px rgba(79,70,229,.3); }
 .btn--ghost { background: var(--mint); color: var(--green); box-shadow: inset 0 0 0 1px var(--line); }
 .btn--ghost:hover { background: #fff; transform: translateY(-2px); box-shadow: inset 0 0 0 1px var(--ink-200), var(--shadow-sm); }
 .btn--ghost:active { transform: translateY(0) scale(.985); }
+/* White-on-ink — the dark .article-cta bands (was inline-styled, stateless). */
+.btn--inverse { background: #fff; color: var(--ink-800); box-shadow: inset 0 1px 0 rgba(255,255,255,.6), 0 8px 20px rgba(0,0,0,.28); }
+.btn--inverse:hover { transform: translateY(-2px); box-shadow: inset 0 1px 0 rgba(255,255,255,.6), 0 14px 30px rgba(0,0,0,.36); }
+.btn--inverse:active { transform: translateY(0) scale(.985); }
 .btn--lg { padding: 16px 30px; font-size: 16px; border-radius: 18px; }
 .btn--block { width: 100%; }
+/* Disabled + async-send states — a disabled button must LOOK disabled. */
+.btn[disabled], .btn:disabled { opacity: .55; cursor: not-allowed; transform: none !important; filter: none !important; }
+.btn.is-loading { pointer-events: none; }
+.btn.is-loading::after {
+  content: ""; width: 16px; height: 16px; border-radius: 50%;
+  border: 2px solid currentColor; border-inline-start-color: transparent;
+  animation: btn-spin .7s linear infinite;
+}
+@keyframes btn-spin { to { transform: rotate(360deg); } }
 
 .pill {
   display: inline-block; background: var(--accent-t); color: var(--accent);
@@ -182,7 +203,10 @@ a { color: inherit; text-decoration: none; }
 .nav__links a[aria-current="page"] { color: var(--accent); font-weight: 700; }
 .nav__links a[aria-current="page"]::after { transform: scaleX(1); }
 .nav__mobile a[aria-current="page"] { color: var(--accent); font-weight: 700; }
-.nav__cta { margin-inline-start: 6px; }
+/* Compact, quieter nav CTA — it lives on EVERY viewport, so it must not
+   compete with the page-level primaries below it. */
+.nav__cta { margin-inline-start: 6px; padding: 9px 16px; font-size: 14px; border-radius: 12px;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 4px 12px rgba(79,70,229,.24); }
 .nav__toggle { display: none; background: none; border: 0; width: 44px; height: 44px; cursor: pointer; padding: 10px; }
 .nav__toggle span { display: block; height: 2.5px; background: var(--green-d); border-radius: 2px; margin: 4px 0; transition: .25s var(--ease); }
 .nav__toggle[aria-expanded="true"] span:nth-child(1) { transform: translateY(6.5px) rotate(45deg); }
@@ -274,8 +298,8 @@ a { color: inherit; text-decoration: none; }
   font-size: 14px; padding: 9px 16px; border-radius: 999px; box-shadow: var(--shadow-sm); text-decoration: none;
   transition: transform .18s var(--ease), box-shadow .18s var(--ease), border-color .18s;
 }
-.chip:hover { transform: translateY(-2px); border-color: var(--green-2); box-shadow: 0 8px 18px rgba(17,24,39,.10); }
-a.chip:hover { color: var(--green); }
+/* Only LINK chips lift — decorative span.chip must not pretend to be a button. */
+a.chip:hover { transform: translateY(-2px); border-color: var(--green-2); box-shadow: 0 8px 18px rgba(17,24,39,.10); color: var(--green); }
 .providers__more { text-align: center; margin-top: 16px; }
 .providers__more a { color: var(--green); font-weight: 700; text-decoration: none; }
 .providers__more a:hover { text-decoration: underline; }
@@ -457,18 +481,36 @@ a.chip:hover { color: var(--green); }
 .plan__price b { font-family: 'Rubik'; font-size: 24px; font-weight: 800; color: var(--green); }
 .plan__price span { color: var(--muted); font-size: 12px; }
 .plan__after { display: block; color: var(--muted); font-size: 11px; }
-.plan__cta { margin-top: 10px; align-self: flex-start; font-family: 'Rubik'; font-weight: 700; font-size: 13px; color: var(--green); text-decoration: none; transition: color .15s; }
-.plan__cta:hover { color: var(--green-d); }
+/* The site's most-repeated CTA (every plan card) — a real indigo tertiary
+   button: ACTION colour, 44px hit area (negative margin keeps the layout),
+   hover pill + arrow nudge, tactile press. */
+.plan__cta {
+  margin-top: 10px; align-self: flex-start;
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: 'Rubik'; font-weight: 700; font-size: 14px; color: var(--accent);
+  text-decoration: none; padding: 10px 14px; margin-inline-start: -14px; min-height: 44px;
+  border-radius: 12px; transition: background .18s, color .15s, transform .15s var(--ease-spring);
+}
+.plan__cta:hover { background: var(--accent-t); color: var(--accent-d); }
+.plan__cta:hover .ico { transform: translateX(-2px); }
+.plan__cta .ico { transition: transform .2s var(--ease); }
+.plan__cta:active { transform: scale(.97); }
 
 /* filter bar (all-plans page) */
 .filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 22px; }
-.filter-btn { background: var(--white); border: 1px solid var(--line); color: var(--green-d); font-family: 'Rubik'; font-weight: 700; font-size: 14px; padding: 8px 16px; border-radius: 999px; cursor: pointer; transition: background .15s, color .15s, border-color .15s; }
-.filter-btn.active { background: var(--green); color: #fff; border-color: var(--green); }
+.filter-btn { background: var(--white); border: 1px solid var(--line); color: var(--green-d); font-family: 'Rubik'; font-weight: 700; font-size: 14px; padding: 8px 16px; border-radius: 999px; cursor: pointer; transition: background .15s, color .15s, border-color .15s, transform .15s var(--ease-spring), box-shadow .18s; }
+.filter-btn:hover { transform: translateY(-1px); border-color: var(--ink-300); box-shadow: var(--shadow-sm); }
+.filter-btn:active { transform: scale(.97); }
+/* Selected = indigo, the one "active" language across the site (matches the
+   nav's aria-current) — was solid ink here and grey one row below. */
+.filter-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
 .filter-search { flex: 1 1 220px; min-width: 0; padding: 10px 16px; border: 1px solid var(--line); border-radius: 999px; font-family: 'Assistant'; font-size: 15px; background: var(--white); }
 .filter-search:focus { outline: 2px solid var(--green); }
 select.filter-search { cursor: pointer; -webkit-appearance: none; appearance: none; padding-inline-end: 36px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%23111827' d='M6 8 0 0h12z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: left 14px center; }
-.flag-chip { background: var(--white); border: 1px solid var(--line); color: var(--green-d); font-family: 'Rubik'; font-weight: 700; font-size: 13px; padding: 7px 13px; border-radius: 999px; cursor: pointer; transition: background .15s, color .15s, border-color .15s; }
-.flag-chip.active { background: var(--lime); color: var(--green-d); border-color: var(--lime); }
+.flag-chip { background: var(--white); border: 1px solid var(--line); color: var(--green-d); font-family: 'Rubik'; font-weight: 700; font-size: 13px; padding: 8px 14px; border-radius: 999px; cursor: pointer; transition: background .15s, color .15s, border-color .15s, transform .15s var(--ease-spring), box-shadow .18s; }
+.flag-chip:hover { transform: translateY(-1px); border-color: var(--ink-300); box-shadow: var(--shadow-sm); }
+.flag-chip:active { transform: scale(.97); }
+.flag-chip.active { background: var(--accent-t); color: var(--accent); border-color: var(--accent); }
 .plan-empty { text-align: center; color: var(--muted); padding: 40px 0; display: none; }
 .cat-plans-head { display: flex; align-items: baseline; gap: 10px; margin: 30px 0 14px; }
 .cat-plans-head h2 { font-family: 'Rubik'; font-size: 24px; color: var(--green-d); }
@@ -509,8 +551,9 @@ select.filter-search { cursor: pointer; -webkit-appearance: none; appearance: no
 .ai-bubble--bot { background: rgba(17,24,39,.05); color: var(--ink); border-bottom-inline-start: 4px solid var(--green); justify-self: start; border-bottom-left-radius: 4px; }
 .ai-bubble--me { background: var(--green); color: #fff; justify-self: end; border-bottom-right-radius: 4px; }
 .ai-chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 16px; }
-.ai-chip { background: var(--white); border: 1px solid var(--line); color: var(--green-d); font-weight: 600; font-size: 13px; padding: 7px 13px; border-radius: 999px; cursor: pointer; transition: background .15s, border-color .15s; }
-.ai-chip:hover { background: rgba(17,24,39,.06); border-color: var(--lime); }
+.ai-chip { background: var(--white); border: 1px solid var(--line); color: var(--green-d); font-weight: 600; font-size: 13px; padding: 8px 14px; border-radius: 999px; cursor: pointer; transition: background .15s, border-color .15s, transform .15s var(--ease-spring); }
+.ai-chip:hover { background: var(--accent-t); border-color: var(--accent); color: var(--accent); }
+.ai-chip:active { transform: scale(.97); }
 .ai-foot { text-align: center; color: var(--muted); font-size: 13px; margin-top: 14px; }
 @media (max-width: 640px) {
   .ai-bubble { max-width: 90%; }
@@ -619,12 +662,14 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
 /* ── Section rhythm: a faint hairline divider option for alt sections ─────── */
 .section--alt { border-block: 1px solid var(--line); }
 
-/* ── Chips & pills: tactile press ───────────────────────────────────────────── */
-.chip:active { transform: translateY(0) scale(.97); }
+/* ── Chips & pills: tactile press (links only) ─────────────────────────────── */
+a.chip:active { transform: translateY(0) scale(.97); }
 .pill { box-shadow: inset 0 0 0 1px var(--line); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
 
-/* ── Magnetic primary CTA (JS nudges it toward the cursor) ───────────────── */
-.btn--primary.magnetic { transition: transform .25s var(--ease-spring), box-shadow .2s var(--ease); }
+/* ── Magnetic primary CTA (JS nudges it toward the cursor) ─────────────────
+   The nudge rides the CSS `translate` property so it COMPOSES with the
+   :hover lift and :active press transforms instead of clobbering them. */
+.btn--primary.magnetic { transition: transform .25s var(--ease-spring), translate .25s var(--ease-spring), box-shadow .2s var(--ease); }
 
 /* ── Honour reduced-motion for all the new flourishes ───────────────────── */
 @media (prefers-reduced-motion: reduce) {

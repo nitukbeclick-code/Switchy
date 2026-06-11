@@ -4,6 +4,7 @@ import '../app_state.dart';
 import 'backend/backend.dart';
 import 'backend/local_backend.dart' show appBackend;
 import 'push_notification_service.dart';
+import 'telegram_service.dart';
 
 /// App-level mirror of the user's booked video meeting.
 ///
@@ -43,8 +44,30 @@ class MeetingSync {
   static void apply(BookedMeeting m) {
     final s = AppState();
     if (s.bookedMeeting?.id != m.id) return;
+
+    final wasConfirmed = s.bookedMeeting?.status == MeetingStatus.confirmed;
     s.updateMeetingStatus(m.status, joinUrl: m.joinUrl);
+
+    // Send Telegram notification when meeting is newly confirmed
+    if (!wasConfirmed && m.status == MeetingStatus.confirmed) {
+      _sendTelegramConfirmation(m, s);
+    }
+
     PushNotificationService.instance.syncAll(s);
+  }
+
+  /// Send Telegram notification for confirmed meeting (fire-and-forget).
+  static void _sendTelegramConfirmation(BookedMeeting m, AppState s) {
+    final chatId = s.userTelegramChatId;
+    if (chatId.isEmpty || !s.telegramEnabled) return;
+
+    // Fire-and-forget: don't await, don't block UI
+    TelegramService.sendMeetingConfirmed(
+      chatId: chatId,
+      repName: m.repName ?? 'Your Rep',
+      meetingTime: m.startTime?.toString() ?? 'Soon',
+      joinUrl: m.joinUrl ?? 'https://zoom.us',
+    );
   }
 
   /// Fetched-row reconciliation. Re-adopts an open server booking when local

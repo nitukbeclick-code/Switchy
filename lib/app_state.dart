@@ -56,6 +56,9 @@ class AppState extends ChangeNotifier {
     _meetingJoinUrl = p.getString('meetingJoinUrl');
     _meetingStartsAtIso = p.getString('meetingStartsAtIso');
     _meetingCreatedAtIso = p.getString('meetingCreatedAtIso');
+    // Telegram notifications
+    _userTelegramChatId = p.getString('userTelegramChatId') ?? '';
+    _telegramEnabled = p.getBool('telegramEnabled') ?? false;
     // Watched plans
     final watched = p.getStringList('watchedPlans') ?? [];
     _watchedPlans.addAll(watched);
@@ -209,6 +212,15 @@ class AppState extends ChangeNotifier {
             } else {
               await p.setString(e.key, e.value!);
             }
+          }
+          break;
+        case 'telegram':
+          if (_userTelegramChatId.isEmpty) {
+            await p.remove('userTelegramChatId');
+            await p.remove('telegramEnabled');
+          } else {
+            await p.setString('userTelegramChatId', _userTelegramChatId);
+            await p.setBool('telegramEnabled', _telegramEnabled);
           }
           break;
         case 'trackerStep':
@@ -435,6 +447,36 @@ class AppState extends ChangeNotifier {
     _meetingCreatedAtIso = null;
     _markDirty('meeting');
     notifyListeners();
+  }
+
+  // ── Telegram Notifications ─────────────────────────────────────────────────
+  String _userTelegramChatId = '';
+  bool _telegramEnabled = false;
+
+  String get userTelegramChatId => _userTelegramChatId;
+  bool get telegramEnabled => _telegramEnabled;
+
+  void setUserTelegramChatId(String chatId, {bool enabled = true}) {
+    _userTelegramChatId = chatId;
+    _telegramEnabled = enabled;
+    _markDirty('telegram');
+    notifyListeners();
+    _persist();
+  }
+
+  void setTelegramEnabled(bool enabled) {
+    _telegramEnabled = enabled;
+    _markDirty('telegram');
+    notifyListeners();
+    _persist();
+  }
+
+  void clearTelegramData() {
+    _userTelegramChatId = '';
+    _telegramEnabled = false;
+    _markDirty('telegram');
+    notifyListeners();
+    _persist();
   }
 
   // Tracker

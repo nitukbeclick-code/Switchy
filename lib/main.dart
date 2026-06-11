@@ -14,12 +14,9 @@ import 'services/secure_session_store.dart';
 import 'services/backend/local_backend.dart';
 import 'services/backend/supabase_backend.dart';
 
-// Supplied at build time with `--dart-define` (or `--dart-define-from-file`),
-// e.g. `flutter run --dart-define-from-file=dart_define.json`. Empty when not
-// provided — then the app stays on the on-device [LocalBackend], so plain
-// `flutter run`, `flutter test` and CI keep working with no Supabase project.
-const _supabaseUrl = String.fromEnvironment('SUPABASE_URL');
-const _supabaseAnonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
+// Supabase project credentials (SmarPackageAi)
+const _supabaseUrl = 'https://orzitfqmlvopujsoyigr.supabase.co';
+const _supabaseAnonKey = 'sb_publishable_WFNOchgCu1RHauIFCFDTig_dwVEo...'; // TODO: Get from dashboard
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:typed_data';
 import 'package:image_picker/image_picker.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'media_native.dart';
 
 /// Thin wrapper around media capture/selection so the UI doesn't depend on the
@@ -67,6 +68,124 @@ class MediaService {
       return base64Decode(b64);
     } catch (_) {
       return null;
+    }
+  }
+
+  /// Upload an image to Supabase Storage (user-reviews bucket) and return the public URL.
+  /// Returns null if upload fails or user cancelled.
+  static Future<String?> uploadReviewImage({
+    bool fromCamera = false,
+    double maxSide = 1280,
+    int quality = 70,
+  }) async {
+    try {
+      final x = await _picker.pickImage(
+        source: fromCamera ? ImageSource.camera : ImageSource.gallery,
+        maxWidth: maxSide,
+        maxHeight: maxSide,
+        imageQuality: quality,
+      );
+      if (x == null) return null;
+
+      final bytes = await x.readAsBytes();
+      final fileName = '${DateTime.now().millisecondsSinceEpoch}_${x.name}';
+
+      final response = await Supabase.instance.client.storage
+          .from('user-reviews')
+          .uploadBinary(fileName, bytes, fileOptions: const FileOptions(
+            contentType: 'image/jpeg',
+          ));
+
+      return Supabase.instance.client.storage
+          .from('user-reviews')
+          .getPublicUrl(fileName);
+    } catch (e) {
+      print('Error uploading review image: $e');
+      return null;
+    }
+  }
+
+  /// Upload a receipt/bill scan to Supabase Storage (receipts bucket) and return the URL.
+  /// Supports PDF and image formats. Requires authentication.
+  /// Returns null if upload fails or user cancelled.
+  static Future<String?> uploadReceipt() async {
+    try {
+      final x = await _picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 2560,
+        maxHeight: 2560,
+        imageQuality: 85,
+      );
+      if (x == null) return null;
+
+      final bytes = await x.readAsBytes();
+      final fileName =
+          'receipts/${Supabase.instance.client.auth.currentUser?.id ?? 'anon'}/${DateTime.now().millisecondsSinceEpoch}_${x.name}';
+
+      await Supabase.instance.client.storage
+          .from('receipts')
+          .uploadBinary(fileName, bytes, fileOptions: const FileOptions(
+            contentType: 'image/jpeg',
+          ));
+
+      return Supabase.instance.client.storage
+          .from('receipts')
+          .createSignedUrl(fileName, 3600 * 24 * 7); // 7-day signed URL
+    } catch (e) {
+      print('Error uploading receipt: $e');
+      return null;
+    }
+  }
+
+  /// Upload a profile picture to Supabase Storage (profiles bucket) and return the public URL.
+  /// Returns null if upload fails or user cancelled.
+  static Future<String?> uploadProfilePicture({
+    double maxSide = 512,
+    int quality = 85,
+  }) async {
+    try {
+      final x = await _picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: maxSide,
+        maxHeight: maxSide,
+        imageQuality: quality,
+      );
+      if (x == null) return null;
+
+      final bytes = await x.readAsBytes();
+      final userId = Supabase.instance.client.auth.currentUser?.id ?? 'anon';
+      final fileName = 'profile_$userId.jpg';
+
+      // Upsert (replace existing profile picture)
+      await Supabase.instance.client.storage
+          .from('profiles')
+          .uploadBinary(fileName, bytes,
+              fileOptions: const FileOptions(
+                contentType: 'image/jpeg',
+                upsert: true,
+              ));
+
+      return Supabase.instance.client.storage
+          .from('profiles')
+          .getPublicUrl(fileName);
+    } catch (e) {
+      print('Error uploading profile picture: $e');
+      return null;
+    }
+  }
+
+  /// Delete a file from Supabase Storage by URL.
+  /// Returns true if successful, false otherwise.
+  static Future<bool> deleteFile(String fileUrl, {required String bucket}) async {
+    try {
+      final uri = Uri.parse(fileUrl);
+      final filePath = uri.pathSegments.skip(3).join('/');
+
+      await Supabase.instance.client.storage.from(bucket).remove([filePath]);
+      return true;
+    } catch (e) {
+      print('Error deleting file: $e');
+      return false;
     }
   }
 }

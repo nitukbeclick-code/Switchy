@@ -205,7 +205,10 @@ class _Hero extends StatelessWidget {
                       builder: (_, value, __) => Text(
                         hasBill ? '₪$value' : '₪—',
                         style: ffTheme.displaySmall.copyWith(
-                            color: hasBill ? ffTheme.saving : ffTheme.secondary, fontWeight: FontWeight.bold),
+                            color: hasBill ? ffTheme.saving : ffTheme.secondary,
+                            fontWeight: FontWeight.bold,
+                            // Fixed-width digits — the count-up doesn't jitter sideways.
+                            fontFeatures: const [FontFeature.tabularFigures()]),
                       ),
                     ),
                     const SizedBox(height: 4),

@@ -416,6 +416,8 @@ class _HomeWidgetState extends State<HomeWidget> {
                   style: ffTheme.displaySmall.copyWith(
                     color: ffTheme.saving,
                     fontWeight: FontWeight.bold,
+                    // Fixed-width digits — the count-up doesn't jitter sideways.
+                    fontFeatures: const [FontFeature.tabularFigures()],
                   ),
                 );
               },

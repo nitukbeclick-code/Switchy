@@ -934,6 +934,8 @@ class _BillCard extends StatelessWidget {
                       style: ffTheme.titleSmall.copyWith(
                         color: currentBill > 0 ? ffTheme.primary : ffTheme.secondaryText,
                         fontWeight: FontWeight.w700,
+                        // Fixed-width digits so ±10 steps don't nudge the buttons.
+                        fontFeatures: const [FontFeature.tabularFigures()],
                       ),
                     ),
                   ),

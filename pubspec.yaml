@@ -48,6 +48,11 @@ flutter:
   assets:
     - assets/images/
     - assets/providers/
+    # Bundled Rubik/Assistant TTFs (+ OFL licenses). google_fonts resolves
+    # these from the asset manifest instead of fetching from fonts.gstatic —
+    # no FOUT on cold web loads, works offline. Runtime fetching is disabled
+    # in main.dart; filenames must keep the {Family}-{Variant}.ttf convention.
+    - assets/google_fonts/
 
 # App launcher icons — generated with `dart run flutter_launcher_icons`
 flutter_launcher_icons:

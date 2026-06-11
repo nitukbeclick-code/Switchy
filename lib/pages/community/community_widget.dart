@@ -995,7 +995,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                             Text('אין פוסטים שמורים',
                                 style: ffTheme.titleSmall.copyWith(color: ffTheme.secondaryText), textAlign: TextAlign.center),
                             const SizedBox(height: 8),
-                            Text('סמנו 🔖 על פוסטים כדי לשמור אותם לכאן',
+                            Text('סמנו פוסטים בסימנייה כדי לשמור אותם לכאן',
                                 style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText), textAlign: TextAlign.center),
                             const SizedBox(height: 16),
                             OutlinedButton(

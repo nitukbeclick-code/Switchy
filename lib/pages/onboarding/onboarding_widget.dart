@@ -124,7 +124,7 @@ class _OnboardingWidgetState extends State<OnboardingWidget> {
               Padding(
                 padding: const EdgeInsets.fromLTRB(24, 0, 24, 32),
                 child: AppButton(
-                  text: _page == 2 ? 'בואו נתחיל לחסוך! 🚀' : 'הבא →',
+                  text: _page == 2 ? 'בואו נתחיל לחסוך!' : 'הבא →',
                   onPressed: () async => _next(),
                   
                     width: double.infinity,
@@ -403,10 +403,10 @@ class _StepTimeline extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const steps = [
-      ('השאלון', 'מה מחפשים? 2 דקות', '📋'),
-      ('ההשוואה', 'בחרו את המסלול הטוב ביותר', '🔍'),
-      ('הנציג', 'נחזור אליכם תוך שעה', '📞'),
-      ('הניוד', 'מספר שמור, 1–3 ימי עסקים', '✅'),
+      ('השאלון', 'מה מחפשים? 2 דקות', Icons.assignment_rounded),
+      ('ההשוואה', 'בחרו את המסלול הטוב ביותר', Icons.search_rounded),
+      ('הנציג', 'נחזור אליכם תוך שעה', Icons.call_rounded),
+      ('הניוד', 'מספר שמור, 1–3 ימי עסקים', Icons.check_rounded),
     ];
 
     return Container(
@@ -431,7 +431,7 @@ class _StepTimeline extends StatelessWidget {
                     width: 32,
                     height: 32,
                     decoration: BoxDecoration(color: ffTheme.primary, shape: BoxShape.circle),
-                    child: Center(child: Text(s.$3, style: const TextStyle(fontSize: 14))),
+                    child: Center(child: Icon(s.$3, size: 16, color: Colors.white)),
                   ),
                   if (!isLast) Container(width: 2, height: 24, color: ffTheme.alternate, margin: const EdgeInsets.symmetric(vertical: 3)),
                 ],

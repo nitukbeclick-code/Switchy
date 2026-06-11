@@ -204,7 +204,7 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                   child: Icon(Icons.verified_rounded, size: 60, color: ffTheme.primary),
                 ).animate().scale(duration: 600.ms, curve: Curves.elasticOut),
                 const SizedBox(height: 24),
-                Text('ברוכים הבאים\nלחבילה החדשה! 🎉',
+                Text('ברוכים הבאים\nלחבילה החדשה!',
                     style: GoogleFonts.rubik(fontSize: 28, fontWeight: FontWeight.w800, color: Colors.white, height: 1.2),
                     textAlign: TextAlign.center).animate().fadeIn(delay: 300.ms).slideY(begin: 0.2),
                 const SizedBox(height: 12),
@@ -323,7 +323,7 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      step == 0 ? 'ממתין לאישור' : step == 1 ? 'בתהליך אישור (${ (step / 4 * 100).round()}%)' : step >= 3 ? 'כמעט שם! 🎉' : 'בעיצומו (${(step / 4 * 100).round()}%)',
+                      step == 0 ? 'ממתין לאישור' : step == 1 ? 'בתהליך אישור (${ (step / 4 * 100).round()}%)' : step >= 3 ? 'כמעט שם!' : 'בעיצומו (${(step / 4 * 100).round()}%)',
                       style: ffTheme.labelSmall.copyWith(color: ffTheme.primary),
                     ),
                   ],
@@ -607,10 +607,10 @@ class _StepConfirmButton extends StatelessWidget {
   final AppTheme ffTheme;
 
   static const _labels = [
-    'קיבלתי אישור מהספק ✓',
+    'קיבלתי אישור מהספק',
     'הניוד החל — אישרתי פרטים',
-    'המספר נויד בהצלחה 🎉',
-    'הכל עובד! סיימתי ✓',
+    'המספר נויד בהצלחה',
+    'הכל עובד! סיימתי',
   ];
 
   @override

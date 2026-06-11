@@ -38,7 +38,7 @@ class PlanCardWidget extends StatelessWidget {
     if (!appState.quizCompleted || appState.quizBudget <= 0) return null;
     if (plan.cat != appState.quizCat) return null;
     final diff = plan.price - appState.quizBudget;
-    if (diff <= 0) return '✓ מתאים לתקציב';
+    if (diff <= 0) return 'מתאים לתקציב';
     if (diff <= 20) return 'קרוב לתקציב';
     return null;
   }
@@ -155,22 +155,35 @@ class PlanCardWidget extends StatelessWidget {
                               ),
                               if (matchLabel != null) ...[
                                 const SizedBox(width: 6),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: matchLabel.startsWith('✓') ? ffTheme.success.withValues(alpha: 0.1) : ffTheme.warning.withValues(alpha: 0.1),
-                                    borderRadius: BorderRadius.circular(ffTheme.radiusXs),
-                                    border: Border.all(color: matchLabel.startsWith('✓') ? ffTheme.success.withValues(alpha: 0.4) : ffTheme.warning.withValues(alpha: 0.4)),
-                                  ),
-                                  child: Text(
-                                    matchLabel,
-                                    style: GoogleFonts.rubik(
-                                      fontSize: 9,
-                                      fontWeight: FontWeight.w700,
-                                      color: matchLabel.startsWith('✓') ? ffTheme.success : ffTheme.warning,
+                                Builder(builder: (context) {
+                                  final fits = matchLabel == 'מתאים לתקציב';
+                                  final tone = fits ? ffTheme.success : ffTheme.warning;
+                                  return Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: tone.withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(ffTheme.radiusXs),
+                                      border: Border.all(color: tone.withValues(alpha: 0.4)),
                                     ),
-                                  ),
-                                ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        if (fits) ...[
+                                          Icon(Icons.check_rounded, size: 9, color: tone),
+                                          const SizedBox(width: 2),
+                                        ],
+                                        Text(
+                                          matchLabel,
+                                          style: GoogleFonts.rubik(
+                                            fontSize: 9,
+                                            fontWeight: FontWeight.w700,
+                                            color: tone,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                }),
                               ],
                             ],
                           ),

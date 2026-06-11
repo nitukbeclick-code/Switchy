@@ -912,7 +912,9 @@ class _PodiumItem extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
             ExcludeSemantics(
-              child: Text(rank == 1 ? '🥇' : rank == 2 ? '🥈' : '🥉', style: const TextStyle(fontSize: 22)),
+              child: Icon(Icons.emoji_events_rounded,
+                  size: 22,
+                  color: rank == 1 ? t.saving : rank == 2 ? Colors.white70 : Colors.white54),
             ),
             const SizedBox(height: 4),
             ExcludeSemantics(

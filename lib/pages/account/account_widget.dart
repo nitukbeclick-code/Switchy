@@ -47,10 +47,12 @@ class AccountWidget extends StatelessWidget {
                         ),
                         child: Center(
                           child: ExcludeSemantics(
-                            child: Text(
-                              appState.isLoggedIn && appState.firstName.isNotEmpty ? appState.firstName[0] : '👤',
-                              style: GoogleFonts.rubik(fontSize: 26, fontWeight: FontWeight.w700, color: Colors.white),
-                            ),
+                            child: appState.isLoggedIn && appState.firstName.isNotEmpty
+                                ? Text(
+                                    appState.firstName[0],
+                                    style: GoogleFonts.rubik(fontSize: 26, fontWeight: FontWeight.w700, color: Colors.white),
+                                  )
+                                : const Icon(Icons.person_rounded, size: 28, color: Colors.white),
                           ),
                         ),
                       ),
@@ -140,7 +142,7 @@ class AccountWidget extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('חסכת עד כה! 🎉', style: GoogleFonts.assistant(fontSize: 13, color: ffTheme.secondary, fontWeight: FontWeight.w600)),
+                        Text('חסכת עד כה!', style: GoogleFonts.assistant(fontSize: 13, color: ffTheme.secondary, fontWeight: FontWeight.w600)),
                         const SizedBox(height: 6),
                         Text('₪${appState.totalSavings}', style: GoogleFonts.rubik(fontSize: 44, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: -1)),
                         Text('מאז שהצטרפת לחוסך', style: GoogleFonts.assistant(fontSize: 12, color: Colors.white60)),
@@ -198,7 +200,7 @@ class AccountWidget extends StatelessWidget {
                                   borderRadius: BorderRadius.circular(8),
                                 ),
                                 child: Text(
-                                  appState.trackerStep >= 4 ? 'הושלם ✓' : 'בתהליך',
+                                  appState.trackerStep >= 4 ? 'הושלם' : 'בתהליך',
                                   style: GoogleFonts.rubik(fontSize: 11, fontWeight: FontWeight.w700, color: appState.trackerStep >= 4 ? ffTheme.success : ffTheme.primary),
                                 ),
                               ),
@@ -217,7 +219,7 @@ class AccountWidget extends StatelessWidget {
                           ),
                           const SizedBox(height: 6),
                           Text(
-                            ['ממתין לאישור', 'אישור מסלול', 'ניוד בעיצומו', 'כמעט שם! 🎉', 'הושלם ✓'][appState.trackerStep.clamp(0, 4)],
+                            ['ממתין לאישור', 'אישור מסלול', 'ניוד בעיצומו', 'כמעט שם!', 'הושלם'][appState.trackerStep.clamp(0, 4)],
                             style: ffTheme.labelSmall.copyWith(color: ffTheme.primary),
                           ),
                           const SizedBox(height: 10),

@@ -30,7 +30,7 @@ class AdvisorContext {
   /// The category the user last browsed — the recommend-intent fallback.
   final String selectedCat;
 
-  /// Plan ids the user is tracking (🔔), most-recent-first.
+  /// Plan ids the user is tracking, most-recent-first.
   final List<String> watchedPlanIds;
 
   // ── Quiz / preference signals, fed into the recommendation profile ─────────
@@ -467,7 +467,7 @@ class AdvisorEngine {
         lower.contains('recommend') ||
         lower.contains('הכי טוב לי') ||
         lower.contains('מה הכי משתלם') ||
-        lower.contains('✨ מה הכי משתלם');
+        lower.contains('מה הכי משתלם');
 
     final isRatingIntent = lower.contains('דירוג') ||
         lower.contains('ביקורות') ||
@@ -494,7 +494,7 @@ class AdvisorEngine {
                   '• ${AdvisorProviderRating.subLabels[k]}: ${r.sub[k]!.toStringAsFixed(1)}★')
               .join('\n');
           reply =
-              '⭐ דירוג $detectedProvider: ${r.stars.toStringAsFixed(1)}★ (${r.reviewCount} ביקורות)\n\n$subs\n\nרוצה לראות את המסלולים של $detectedProvider? כתבו את שמו.';
+              'דירוג $detectedProvider: ${r.stars.toStringAsFixed(1)}★ (${r.reviewCount} ביקורות)\n\n$subs\n\nרוצה לראות את המסלולים של $detectedProvider? כתבו את שמו.';
         }
       } else {
         final ranked = allProviders
@@ -504,7 +504,7 @@ class AdvisorEngine {
           ..sort((a, b) => b.stars.compareTo(a.stars));
         final top =
             ranked.take(3).map((e) => '• ${e.name} — ${e.stars.toStringAsFixed(1)}★').join('\n');
-        reply = '🏆 הספקים המדורגים ביותר:\n\n$top\n\nרוצה דירוג של ספק מסוים? כתבו את שמו.';
+        reply = 'הספקים המדורגים ביותר:\n\n$top\n\nרוצה דירוג של ספק מסוים? כתבו את שמו.';
       }
     } else if (isRecommendIntent && detectedProvider == null) {
       intent = AdvisorIntent.recommend;
@@ -534,9 +534,9 @@ class AdvisorEngine {
         final catName = categoryById(recCat)?.name ?? recCat;
         final labelLine = '${best.label} — ${best.scorePct}%';
         final topReasons = best.reasons.take(3).map((r) => '• $r').join('\n');
-        final savingLine = best.annualSaving > 0 ? '\n💰 חיסכון שנתי: ₪${best.annualSaving}' : '';
+        final savingLine = best.annualSaving > 0 ? '\nחיסכון שנתי: ₪${best.annualSaving}' : '';
         final promoNote =
-            best.plan.hasPromo ? '\n⚡ מחיר מבצע! לאחר המבצע: ₪${best.plan.after}/$unit' : '';
+            best.plan.hasPromo ? '\nמחיר מבצע! לאחר המבצע: ₪${best.plan.after}/$unit' : '';
 
         // Alternative plan (reuses the ranking computed above)
         String altLine = '';
@@ -544,11 +544,11 @@ class AdvisorEngine {
           final alt = ranked[1];
           final altUnit = priceUnitLabel(alt.plan);
           altLine =
-              '\n\n🥈 אלטרנטיבה: ${alt.plan.provider} — ${alt.plan.plan} ₪${alt.plan.price}/$altUnit (${alt.label})';
+              '\n\nאלטרנטיבה: ${alt.plan.provider} — ${alt.plan.plan} ₪${alt.plan.price}/$altUnit (${alt.label})';
         }
 
-        reply = '✨ הממליץ החכם שלי בקטגורית $catName:\n\n'
-            '🏆 ${best.plan.provider} — ${best.plan.plan}\n'
+        reply = 'הממליץ החכם שלי בקטגורית $catName:\n\n'
+            '${best.plan.provider} — ${best.plan.plan}\n'
             '₪${best.plan.price}/$unit\n'
             '$labelLine\n'
             '$topReasons'
@@ -569,10 +569,10 @@ class AdvisorEngine {
       final saveYear = ((currentBill - best.price) * 12).clamp(0, 999999);
       final catName = categoryById(cat)?.name ?? cat;
       final unit = priceUnitShort(best);
-      final promoNote = best.hasPromo ? '\n⚡ מחיר מבצע! לאחר המבצע: ₪${best.after}/$unit' : '';
+      final promoNote = best.hasPromo ? '\nמחיר מבצע! לאחר המבצע: ₪${best.after}/$unit' : '';
       final commitNote =
-          best.noCommit ? '\n✅ ללא התחייבות' : '\n📅 התחייבות ${best.term} חודשים';
-      final savingsLine = saveYear > 0 ? '\n💰 חיסכון שנתי צפוי: ₪$saveYear' : '';
+          best.noCommit ? '\nללא התחייבות' : '\nהתחייבות ${best.term} חודשים';
+      final savingsLine = saveYear > 0 ? '\nחיסכון שנתי צפוי: ₪$saveYear' : '';
       final multiNote = topPlans.length > 1
           ? '\n\nמצאתי ${topPlans.length} מסלולים — הנה הכי טוב:'
           : '\nמצאתי מסלול מעולה עבורך:';
@@ -588,18 +588,18 @@ class AdvisorEngine {
     } else if (isGreeting) {
       intent = AdvisorIntent.greeting;
       reply =
-          'שלום! 🤖 אני חוסך AI — יועץ התקשורת החכם שלכם.\n\nאספר לי מה מחפשים ואמצא את המסלול הכי משתלם:\n\n📱 סלולר  🌐 אינטרנט  📺 טלוויזיה  ✈️ חו"ל';
+          'שלום! אני חוסך AI — יועץ התקשורת החכם שלכם.\n\nאספר לי מה מחפשים ואמצא את המסלול הכי משתלם:\n\nסלולר · אינטרנט · טלוויזיה · חו"ל';
     } else if (isThanks) {
       intent = AdvisorIntent.thanks;
       reply =
-          'בשמחה! 🙌 תמיד פה לעזור.\n\nאחרי שתחליטו, אפשר לסיים את המעבר כולל ניוד מספר ישירות דרך חוסך — בקלות ובלי עמלות נסתרות.';
+          'בשמחה! תמיד פה לעזור.\n\nאחרי שתחליטו, אפשר לסיים את המעבר כולל ניוד מספר ישירות דרך חוסך — בקלות ובלי עמלות נסתרות.';
     } else if (lower.contains('כמה') &&
         (lower.contains('עולה') || lower.contains('עלות') || lower.contains('מחיר'))) {
       intent = AdvisorIntent.price;
       int minPrice(String c) =>
           plansByCat(c).map((p) => p.price).fold(9999, (a, b) => a < b ? a : b);
       reply =
-          'אפשר לכוון אותך! 😊\n\nאיזה שירות אתם מחפשים?\n• 📱 סלולר — מ-₪${minPrice('cellular')}/חודש\n• 🌐 אינטרנט — מ-₪${minPrice('internet')}/חודש (מבצע)\n• 📺 טלוויזיה — מ-₪${minPrice('tv')}/חודש\n• 🏠 חבילה משולבת — מ-₪${minPrice('triple')}/חודש\n• ✈️ חו"ל — מ-₪${minPrice('abroad')}/חבילה\n\nספרו לי עם איזו קטגוריה ואמצא את הכי זול!';
+          'אפשר לכוון אותך!\n\nאיזה שירות אתם מחפשים?\n• סלולר — מ-₪${minPrice('cellular')}/חודש\n• אינטרנט — מ-₪${minPrice('internet')}/חודש (מבצע)\n• טלוויזיה — מ-₪${minPrice('tv')}/חודש\n• חבילה משולבת — מ-₪${minPrice('triple')}/חודש\n• חו"ל — מ-₪${minPrice('abroad')}/חבילה\n\nספרו לי עם איזו קטגוריה ואמצא את הכי זול!';
     } else if (lower.contains('חשבון') ||
         lower.contains('כמה אני משלם') ||
         lower.contains('כמה משלם') ||
@@ -645,7 +645,7 @@ class AdvisorEngine {
       if (savings.isEmpty) {
         reply = 'לא הגדרת חשבונות עדיין. עבור ל"החשבונות שלי" כדי להכניס כמה אתה משלם.';
       } else {
-        reply = '💰 פוטנציאל החיסכון שלך:\n\n${savings.join('\n')}\n\nרוצה לראות פרטים על מסלול מסוים?';
+        reply = 'פוטנציאל החיסכון שלך:\n\n${savings.join('\n')}\n\nרוצה לראות פרטים על מסלול מסוים?';
       }
     } else if (lower.contains('רשימת מעקב') ||
         lower.contains('מעקב שלי') ||
@@ -655,11 +655,11 @@ class AdvisorEngine {
       final watched = context.watchedPlanIds;
       if (watched.isEmpty) {
         reply =
-            'אין לך מסלולים במעקב עדיין.\nכנס לדף פרטי מסלול ולחץ על 🔔 כדי לעקוב אחרי עדכוני מחיר!';
+            'אין לך מסלולים במעקב עדיין.\nכנס לדף פרטי מסלול ולחץ על הפעמון כדי לעקוב אחרי עדכוני מחיר!';
       } else {
         final wplans = watched.map((id) => planById(id)).whereType<Plan>().take(5).toList();
         final lines = wplans.map((p) => '• ${p.provider} — ${p.plan} ₪${p.price}').join('\n');
-        reply = '🔔 מסלולים במעקב שלך:\n\n$lines\n\nרוצה שאמצא משהו יותר זול באחת הקטגוריות?';
+        reply = 'מסלולים במעקב שלך:\n\n$lines\n\nרוצה שאמצא משהו יותר זול באחת הקטגוריות?';
       }
     } else if (isPurchaseSignal) {
       intent = AdvisorIntent.purchase;
@@ -669,12 +669,12 @@ class AdvisorEngine {
       if (best != null) {
         topPlans = [best.plan];
         final unit = priceUnitLabel(best.plan);
-        reply = '🎉 מעולה! אמצא לך את העסקה הכי טובה.\n\n'
-            '🏆 ממליץ על ${best.plan.provider} — ${best.plan.plan} ₪${best.plan.price}/$unit\n\n'
-            'לחץ "דבר עם נציג" למטה — שירות חינמי, ניוד מהיר! 👇';
+        reply = 'מעולה! אמצא לך את העסקה הכי טובה.\n\n'
+            'ממליץ על ${best.plan.provider} — ${best.plan.plan} ₪${best.plan.price}/$unit\n\n'
+            'לחץ "דבר עם נציג" למטה — שירות חינמי, ניוד מהיר!';
       } else {
         reply =
-            '😊 מעולה! אשמח לעזור לך לעבור.\nלאיזה קטגוריה אתה מחפש? סלולר, אינטרנט, טלוויזיה או חו"ל?';
+            'מעולה! אשמח לעזור לך לעבור.\nלאיזה קטגוריה אתה מחפש? סלולר, אינטרנט, טלוויזיה או חו"ל?';
       }
     } else {
       intent = AdvisorIntent.unknown;

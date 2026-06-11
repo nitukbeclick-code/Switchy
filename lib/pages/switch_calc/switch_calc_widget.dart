@@ -23,11 +23,11 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
   late String _selectedCat;
 
   static const _catInfo = [
-    ('cellular', '📱', 'סלולר'),
-    ('internet', '🌐', 'אינטרנט'),
-    ('tv', '📺', 'טלוויזיה'),
-    ('triple', '🏠', 'משולב'),
-    ('abroad', '✈️', 'חו"ל'),
+    ('cellular', 'סלולר'),
+    ('internet', 'אינטרנט'),
+    ('tv', 'טלוויזיה'),
+    ('triple', 'משולב'),
+    ('abroad', 'חו"ל'),
   ];
 
   // Returns (currentMax, newPlanMax, exitFeeMax) per category
@@ -85,11 +85,11 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
   String _resultText() {
     switch (_econ.verdict) {
       case SwitchVerdict.worthIt:
-        return '🎉 שווה מאוד לעבור!';
+        return 'שווה מאוד לעבור!';
       case SwitchVerdict.smallSaving:
-        return '💡 יש חיסכון קטן';
+        return 'יש חיסכון קטן';
       case SwitchVerdict.notWorthIt:
-        return '❌ לא כדאי לעבור כרגע';
+        return 'לא כדאי לעבור כרגע';
     }
   }
 
@@ -123,7 +123,7 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('מחשבון מעבר', style: GoogleFonts.rubik(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
-            Text(_catInfo.firstWhere((c) => c.$1 == _selectedCat, orElse: () => _catInfo.first).$3,
+            Text(_catInfo.firstWhere((c) => c.$1 == _selectedCat, orElse: () => _catInfo.first).$2,
               style: GoogleFonts.assistant(fontSize: 12, color: Colors.white70)),
           ],
         ),
@@ -162,9 +162,12 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text(cat.$2, style: const TextStyle(fontSize: 14)),
+                          ExcludeSemantics(
+                            child: Icon(categoryIconData(cat.$1), size: 15,
+                              color: isActive ? Colors.white : ffTheme.primary),
+                          ),
                           const SizedBox(width: 6),
-                          Text(cat.$3, style: ffTheme.labelMedium.copyWith(
+                          Text(cat.$2, style: ffTheme.labelMedium.copyWith(
                             color: isActive ? Colors.white : ffTheme.primaryText,
                             fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
                           )),
@@ -185,7 +188,7 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
                 children: [
                   _SliderSection(
                     label: 'חשבון נוכחי',
-                    emoji: '💸',
+                    icon: Icons.receipt_long_rounded,
                     value: _current.clamp(minVal, cfg.$1),
                     min: minVal,
                     max: cfg.$1,
@@ -197,7 +200,7 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
 
                   _SliderSection(
                     label: 'מסלול חדש',
-                    emoji: '✨',
+                    icon: Icons.auto_awesome_rounded,
                     value: _newPlan.clamp(minVal, cfg.$2),
                     min: minVal,
                     max: cfg.$2,
@@ -209,7 +212,7 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
 
                   _SliderSection(
                     label: 'דמי ניתוק',
-                    emoji: '🔓',
+                    icon: Icons.lock_open_rounded,
                     value: _exitFee.clamp(0, cfg.$3),
                     min: 0,
                     max: cfg.$3,
@@ -433,7 +436,11 @@ class _RecommendedPlanCard extends StatelessWidget {
             // Header row: title + score badge
             Row(
               children: [
-                Text('✨ המסלול המומלץ למעבר',
+                ExcludeSemantics(
+                  child: Icon(Icons.auto_awesome_rounded, size: 16, color: ffTheme.primary),
+                ),
+                const SizedBox(width: 6),
+                Text('המסלול המומלץ למעבר',
                     style: ffTheme.titleSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w800)),
                 const Spacer(),
                 Container(
@@ -673,8 +680,9 @@ class _LeadingPlanCard extends StatelessWidget {
 }
 
 class _SliderSection extends StatelessWidget {
-  const _SliderSection({required this.label, required this.emoji, required this.value, required this.min, required this.max, required this.onChanged, required this.ffTheme});
-  final String label, emoji;
+  const _SliderSection({required this.label, required this.icon, required this.value, required this.min, required this.max, required this.onChanged, required this.ffTheme});
+  final String label;
+  final IconData icon;
   final double value, min, max;
   final ValueChanged<double> onChanged;
   final AppTheme ffTheme;
@@ -693,7 +701,7 @@ class _SliderSection extends StatelessWidget {
         children: [
           Row(
             children: [
-              Text(emoji, style: const TextStyle(fontSize: 20)),
+              ExcludeSemantics(child: Icon(icon, size: 20, color: ffTheme.primary)),
               const SizedBox(width: 8),
               Text(label, style: ffTheme.titleSmall),
               const Spacer(),

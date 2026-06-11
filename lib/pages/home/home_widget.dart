@@ -298,7 +298,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      '${_greeting()} ${appState.firstName} 👋',
+                      '${_greeting()} ${appState.firstName}',
                       style: AppTheme.of(context).headlineSmall.copyWith(
                         color: Colors.white,
                         fontSize: 22,

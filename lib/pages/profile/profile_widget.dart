@@ -379,10 +379,12 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                           border: Border.all(color: Colors.white.withValues(alpha: 0.5), width: 2),
                         ),
                         child: Center(
-                          child: Text(
-                            appState.isLoggedIn && appState.firstName.isNotEmpty ? appState.firstName[0] : '👤',
-                            style: GoogleFonts.rubik(fontSize: 30, fontWeight: FontWeight.w700, color: Colors.white),
-                          ),
+                          child: appState.isLoggedIn && appState.firstName.isNotEmpty
+                              ? Text(
+                                  appState.firstName[0],
+                                  style: GoogleFonts.rubik(fontSize: 30, fontWeight: FontWeight.w700, color: Colors.white),
+                                )
+                              : const Icon(Icons.person_rounded, size: 32, color: Colors.white),
                         ),
                       ),
                       if (appState.isLoggedIn)
@@ -599,9 +601,9 @@ class _ProfileWidgetState extends State<ProfileWidget> {
         spacing: 8,
         runSpacing: 6,
         children: [
-          _QuizChip(text: _catLabel(appState.quizCat), ffTheme: ffTheme),
+          _QuizChip(icon: categoryIconData(appState.quizCat), text: _catLabel(appState.quizCat), ffTheme: ffTheme),
           _QuizChip(text: 'תקציב ₪${appState.quizBudget}', ffTheme: ffTheme),
-          _QuizChip(text: _priorityLabel(appState.quizPriority), ffTheme: ffTheme),
+          _QuizChip(icon: _priorityIcon(appState.quizPriority), text: _priorityLabel(appState.quizPriority), ffTheme: ffTheme),
         ],
       ),
     );
@@ -675,8 +677,9 @@ class _HeroStat extends StatelessWidget {
 }
 
 class _QuizChip extends StatelessWidget {
-  const _QuizChip({required this.text, required this.ffTheme});
+  const _QuizChip({required this.text, required this.ffTheme, this.icon});
   final String text;
+  final IconData? icon;
   final AppTheme ffTheme;
 
   @override
@@ -688,7 +691,16 @@ class _QuizChip extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: ffTheme.primary.withValues(alpha: 0.2)),
       ),
-      child: Text(text, style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w600)),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            ExcludeSemantics(child: Icon(icon, size: 13, color: ffTheme.primary)),
+            const SizedBox(width: 4),
+          ],
+          Text(text, style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w600)),
+        ],
+      ),
     );
   }
 }
@@ -737,23 +749,40 @@ class _ToggleTile extends StatelessWidget {
 }
 
 String _catLabel(String cat) => const {
-  'cellular': '📱 סלולר', 'internet': '🌐 אינטרנט',
-  'tv': '📺 טלוויזיה', 'triple': '🏠 משולב', 'abroad': '✈️ חו"ל',
+  'cellular': 'סלולר', 'internet': 'אינטרנט',
+  'tv': 'טלוויזיה', 'triple': 'משולב', 'abroad': 'חו"ל',
 }[cat] ?? cat;
 
 String _priorityLabel(String p) => const {
-  'price': '💰 מחיר',
-  'speed': '⚡ מהירות',
-  'speed_basic': '🏃 עד 200Mb',
-  'speed_fast': '⚡ 500Mb+',
-  'speed_ultra': '🚀 גיגה',
-  'abroad': '✈️ חו"ל',
-  'nocommit': '🔓 ללא התחייבות',
-  'esim': '📲 eSIM',
-  'data': '📶 הרבה גלישה',
-  'channels': '📡 ערוצים',
-  'sport': '⚽ ספורט',
-  'streaming': '🎬 סטרימינג',
-  'netflix': '🎬 Netflix',
-  'reliability': '🛡️ אמינות',
+  'price': 'מחיר',
+  'speed': 'מהירות',
+  'speed_basic': 'עד 200Mb',
+  'speed_fast': '500Mb+',
+  'speed_ultra': 'גיגה',
+  'abroad': 'חו"ל',
+  'nocommit': 'ללא התחייבות',
+  'esim': 'eSIM',
+  'data': 'הרבה גלישה',
+  'channels': 'ערוצים',
+  'sport': 'ספורט',
+  'streaming': 'סטרימינג',
+  'netflix': 'Netflix',
+  'reliability': 'אמינות',
 }[p] ?? p;
+
+IconData? _priorityIcon(String p) => const {
+  'price': Icons.savings_rounded,
+  'speed': Icons.bolt_rounded,
+  'speed_basic': Icons.directions_run_rounded,
+  'speed_fast': Icons.bolt_rounded,
+  'speed_ultra': Icons.rocket_launch_rounded,
+  'abroad': Icons.flight_takeoff_rounded,
+  'nocommit': Icons.lock_open_rounded,
+  'esim': Icons.sim_card_rounded,
+  'data': Icons.signal_cellular_alt_rounded,
+  'channels': Icons.live_tv_rounded,
+  'sport': Icons.sports_soccer_rounded,
+  'streaming': Icons.movie_rounded,
+  'netflix': Icons.movie_rounded,
+  'reliability': Icons.verified_user_rounded,
+}[p];

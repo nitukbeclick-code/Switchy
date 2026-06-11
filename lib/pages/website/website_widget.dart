@@ -323,9 +323,9 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
                 children: [
                   Text('איך זה עובד?', style: ffTheme.headlineMedium),
                   const SizedBox(height: 24),
-                  const _NumberedStep(n: 1, emoji: '🔍', title: 'בחר קטגוריה ומלא פרטים', subtitle: 'ספר לנו על הצרכים שלך — בדיוק 2 דקות'),
-                  const _NumberedStep(n: 2, emoji: '💰', title: 'ראה השוואת מחירים מלאה', subtitle: 'כל הספקים במקום אחד, שקוף ואמין'),
-                  const _NumberedStep(n: 3, emoji: '🤝', title: 'נלווה אותך במעבר', subtitle: 'נציג אישי מנהל את כל התהליך בשבילך', isLast: true),
+                  const _NumberedStep(n: 1, icon: Icons.search_rounded, title: 'בחר קטגוריה ומלא פרטים', subtitle: 'ספר לנו על הצרכים שלך — בדיוק 2 דקות'),
+                  const _NumberedStep(n: 2, icon: Icons.savings_rounded, title: 'ראה השוואת מחירים מלאה', subtitle: 'כל הספקים במקום אחד, שקוף ואמין'),
+                  const _NumberedStep(n: 3, icon: Icons.handshake_rounded, title: 'נלווה אותך במעבר', subtitle: 'נציג אישי מנהל את כל התהליך בשבילך', isLast: true),
                 ],
               ),
             ).animate().fadeIn(delay: 400.ms),
@@ -617,13 +617,14 @@ class _StatDivider extends StatelessWidget {
 class _NumberedStep extends StatelessWidget {
   const _NumberedStep({
     required this.n,
-    required this.emoji,
+    required this.icon,
     required this.title,
     required this.subtitle,
     this.isLast = false,
   });
   final int n;
-  final String emoji, title, subtitle;
+  final IconData icon;
+  final String title, subtitle;
   final bool isLast;
 
   @override
@@ -663,7 +664,7 @@ class _NumberedStep extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Text(emoji, style: const TextStyle(fontSize: 20)),
+                    Icon(icon, size: 20, color: ffTheme.primary),
                     const SizedBox(width: 8),
                     Expanded(child: Text(title, style: ffTheme.titleSmall)),
                   ],

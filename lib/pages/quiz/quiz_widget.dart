@@ -54,11 +54,11 @@ class _QuizWidgetState extends State<QuizWidget> {
   }
 
   static const _cats = [
-    ('cellular', 'סלולר', '📱'),
-    ('internet', 'אינטרנט', '🌐'),
-    ('tv', 'טלוויזיה', '📺'),
-    ('triple', 'חבילה משולבת', '🏠'),
-    ('abroad', 'חו"ל', '✈️'),
+    ('cellular', 'סלולר'),
+    ('internet', 'אינטרנט'),
+    ('tv', 'טלוויזיה'),
+    ('triple', 'חבילה משולבת'),
+    ('abroad', 'חו"ל'),
   ];
 
   @override
@@ -147,7 +147,10 @@ class _QuizWidgetState extends State<QuizWidget> {
                     ),
                   Expanded(
                     child: AppButton(
-                      text: _step < 4 ? 'הבא ←' : '🔍 הצג תוצאות',
+                      text: _step < 4 ? 'הבא ←' : 'הצג תוצאות',
+                      icon: _step < 4
+                          ? null
+                          : const Icon(Icons.search_rounded, size: 20, color: Colors.white),
                       onPressed: () async {
                         HapticFeedback.lightImpact();
                         await _next();
@@ -180,7 +183,7 @@ class _QuizWidgetState extends State<QuizWidget> {
             spacing: 12,
             runSpacing: 12,
             children: _cats.map((c) => _ChoiceChip(
-              emoji: c.$3,
+              icon: categoryIconData(c.$1),
               label: c.$2,
               selected: _cat == c.$1,
               onTap: () => setState(() {
@@ -202,11 +205,11 @@ class _QuizWidgetState extends State<QuizWidget> {
             ffTheme: ffTheme,
             child: Column(
               children: [
-                ('speed_basic', 'מהיר — עד 200Mb', '🏃'),
-                ('speed_fast', 'מהיר מאוד — 500Mb+', '⚡'),
-                ('speed_ultra', 'גיגה — 1000Mb', '🚀'),
+                ('speed_basic', 'מהיר — עד 200Mb', Icons.directions_run_rounded),
+                ('speed_fast', 'מהיר מאוד — 500Mb+', Icons.bolt_rounded),
+                ('speed_ultra', 'גיגה — 1000Mb', Icons.rocket_launch_rounded),
               ].map((p) => _RadioTile(
-                emoji: p.$3,
+                icon: p.$3,
                 label: p.$2,
                 selected: _priority == p.$1,
                 onTap: () => setState(() => _priority = p.$1),
@@ -223,11 +226,11 @@ class _QuizWidgetState extends State<QuizWidget> {
             ffTheme: ffTheme,
             child: Column(
               children: [
-                ('channels', 'מגוון ערוצים רחב', '📡'),
-                ('sport', 'ספורט חי וסדרות', '⚽'),
-                ('price', 'מחיר נמוך', '💰'),
+                ('channels', 'מגוון ערוצים רחב', Icons.settings_input_antenna_rounded),
+                ('sport', 'ספורט חי וסדרות', Icons.sports_soccer_rounded),
+                ('price', 'מחיר נמוך', Icons.savings_rounded),
               ].map((p) => _RadioTile(
-                emoji: p.$3,
+                icon: p.$3,
                 label: p.$2,
                 selected: _priority == p.$1,
                 onTap: () => setState(() => _priority = p.$1),
@@ -244,11 +247,11 @@ class _QuizWidgetState extends State<QuizWidget> {
             ffTheme: ffTheme,
             child: Column(
               children: [
-                ('price', 'נסיעה קצרה — עד שבוע', '🛫'),
-                ('data', 'נסיעה ארוכה — חודש+', '🌍'),
-                ('nocommit', 'נסיעות תכופות', '✈️'),
+                ('price', 'נסיעה קצרה — עד שבוע', Icons.flight_takeoff_rounded),
+                ('data', 'נסיעה ארוכה — חודש+', Icons.public_rounded),
+                ('nocommit', 'נסיעות תכופות', Icons.flight_rounded),
               ].map((p) => _RadioTile(
-                emoji: p.$3,
+                icon: p.$3,
                 label: p.$2,
                 selected: _priority == p.$1,
                 onTap: () => setState(() => _priority = p.$1),
@@ -290,12 +293,12 @@ class _QuizWidgetState extends State<QuizWidget> {
             ffTheme: ffTheme,
             child: Column(
               children: [
-                ('netflix', 'Netflix / VOD כלול', '🎬'),
-                ('sport', 'ערוצי ספורט', '⚽'),
-                ('nocommit', 'ללא התחייבות', '🔓'),
-                ('price', 'מחיר נמוך', '💰'),
+                ('netflix', 'Netflix / VOD כלול', Icons.movie_rounded),
+                ('sport', 'ערוצי ספורט', Icons.sports_soccer_rounded),
+                ('nocommit', 'ללא התחייבות', Icons.lock_open_rounded),
+                ('price', 'מחיר נמוך', Icons.savings_rounded),
               ].map((p) => _RadioTile(
-                emoji: p.$3,
+                icon: p.$3,
                 label: p.$2,
                 selected: _extraFilter == p.$1,
                 onTap: () => setState(() => _extraFilter = p.$1),
@@ -312,12 +315,12 @@ class _QuizWidgetState extends State<QuizWidget> {
             ffTheme: ffTheme,
             child: Column(
               children: [
-                ('nocommit', 'ללא התחייבות', '🔓'),
-                ('price', 'מחיר הכי נמוך', '💰'),
-                ('streaming', 'כולל שירותי סטרימינג', '🎬'),
-                ('reliability', 'אמינות ויציבות', '🛡️'),
+                ('nocommit', 'ללא התחייבות', Icons.lock_open_rounded),
+                ('price', 'מחיר הכי נמוך', Icons.savings_rounded),
+                ('streaming', 'כולל שירותי סטרימינג', Icons.movie_rounded),
+                ('reliability', 'אמינות ויציבות', Icons.shield_rounded),
               ].map((p) => _RadioTile(
-                emoji: p.$3,
+                icon: p.$3,
                 label: p.$2,
                 selected: _extraFilter == p.$1,
                 onTap: () => setState(() => _extraFilter = p.$1),
@@ -334,12 +337,12 @@ class _QuizWidgetState extends State<QuizWidget> {
             ffTheme: ffTheme,
             child: Column(
               children: [
-                ('nocommit', 'ללא התחייבות', '🔓'),
-                ('price', 'מחיר הכי נמוך', '💰'),
-                ('sport', 'ערוצי ספורט', '⚽'),
-                ('netflix', 'Netflix / VOD', '🎬'),
+                ('nocommit', 'ללא התחייבות', Icons.lock_open_rounded),
+                ('price', 'מחיר הכי נמוך', Icons.savings_rounded),
+                ('sport', 'ערוצי ספורט', Icons.sports_soccer_rounded),
+                ('netflix', 'Netflix / VOD', Icons.movie_rounded),
               ].map((p) => _RadioTile(
-                emoji: p.$3,
+                icon: p.$3,
                 label: p.$2,
                 selected: _extraFilter == p.$1,
                 onTap: () => setState(() => _extraFilter = p.$1),
@@ -356,12 +359,12 @@ class _QuizWidgetState extends State<QuizWidget> {
             ffTheme: ffTheme,
             child: Column(
               children: [
-                ('price', 'מחיר נמוך', '💰'),
-                ('data', 'הרבה גלישה', '📶'),
-                ('esim', 'eSIM מיידי', '📲'),
-                ('nocommit', 'גמישות — ביטול חופשי', '🔓'),
+                ('price', 'מחיר נמוך', Icons.savings_rounded),
+                ('data', 'הרבה גלישה', Icons.signal_cellular_alt_rounded),
+                ('esim', 'eSIM מיידי', Icons.sim_card_rounded),
+                ('nocommit', 'גמישות — ביטול חופשי', Icons.lock_open_rounded),
               ].map((p) => _RadioTile(
-                emoji: p.$3,
+                icon: p.$3,
                 label: p.$2,
                 selected: _extraFilter == p.$1,
                 onTap: () => setState(() => _extraFilter = p.$1),
@@ -377,12 +380,12 @@ class _QuizWidgetState extends State<QuizWidget> {
           ffTheme: ffTheme,
           child: Column(
             children: [
-              ('price', 'מחיר נמוך', '💰'),
-              ('speed', 'מהירות גבוהה', '⚡'),
-              ('abroad', 'גלישה בחו"ל', '✈️'),
-              ('nocommit', 'ללא התחייבות', '🔓'),
+              ('price', 'מחיר נמוך', Icons.savings_rounded),
+              ('speed', 'מהירות גבוהה', Icons.bolt_rounded),
+              ('abroad', 'גלישה בחו"ל', Icons.flight_takeoff_rounded),
+              ('nocommit', 'ללא התחייבות', Icons.lock_open_rounded),
             ].map((p) => _RadioTile(
-              emoji: p.$3,
+              icon: p.$3,
               label: p.$2,
               selected: _priority == p.$1,
               onTap: () => setState(() => _priority = p.$1),
@@ -671,7 +674,7 @@ class _QuizWidgetState extends State<QuizWidget> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('🎯 מצאנו לך התאמה!',
+          Text('מצאנו לך התאמה!',
               style: ffTheme.headlineMedium.copyWith(color: ffTheme.primary)),
           const SizedBox(height: 4),
           Text('מבוסס על התשובות שלך',
@@ -785,7 +788,7 @@ class _QuizWidgetState extends State<QuizWidget> {
                         color: ffTheme.success.withValues(alpha: 0.10),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: Text('💰 חיסכון שנתי של ₪${top.annualSaving}',
+                      child: Text('חיסכון שנתי של ₪${top.annualSaving}',
                           style: ffTheme.labelMedium
                               .copyWith(color: ffTheme.success, fontWeight: FontWeight.w700)),
                     ),
@@ -901,8 +904,8 @@ class _StepCard extends StatelessWidget {
 }
 
 class _ChoiceChip extends StatelessWidget {
-  const _ChoiceChip({required this.emoji, required this.label, required this.selected, required this.onTap, required this.ffTheme});
-  final String emoji;
+  const _ChoiceChip({required this.icon, required this.label, required this.selected, required this.onTap, required this.ffTheme});
+  final IconData icon;
   final String label;
   final bool selected;
   final VoidCallback onTap;
@@ -926,7 +929,7 @@ class _ChoiceChip extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(emoji, style: const TextStyle(fontSize: 18)),
+            Icon(icon, size: 20, color: selected ? Colors.white : ffTheme.primaryText),
             const SizedBox(width: 8),
             Text(label, style: ffTheme.labelLarge.copyWith(color: selected ? Colors.white : ffTheme.primaryText)),
           ],
@@ -937,8 +940,8 @@ class _ChoiceChip extends StatelessWidget {
 }
 
 class _RadioTile extends StatelessWidget {
-  const _RadioTile({required this.emoji, required this.label, required this.selected, required this.onTap, required this.ffTheme});
-  final String emoji;
+  const _RadioTile({required this.icon, required this.label, required this.selected, required this.onTap, required this.ffTheme});
+  final IconData icon;
   final String label;
   final bool selected;
   final VoidCallback onTap;
@@ -962,7 +965,7 @@ class _RadioTile extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Text(emoji, style: const TextStyle(fontSize: 22)),
+            Icon(icon, size: 22, color: selected ? ffTheme.primary : ffTheme.primaryText),
             const SizedBox(width: 12),
             Expanded(child: Text(label, style: ffTheme.bodyLarge.copyWith(color: selected ? ffTheme.primary : ffTheme.primaryText))),
             if (selected) Icon(Icons.check_circle_rounded, color: ffTheme.primary),

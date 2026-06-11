@@ -58,7 +58,7 @@ void main() {
 
     await tapNext(); // bill → budget step
 
-    await tester.tap(find.text('🔍 הצג תוצאות'));
+    await tester.tap(find.text('הצג תוצאות'));
     await tester.pump(const Duration(milliseconds: 300));
     // Let the ~700ms "analyzing" delay resolve so no timer is left pending.
     await tester.pump(const Duration(milliseconds: 800));

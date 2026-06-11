@@ -771,10 +771,18 @@ class _PlanHeader extends StatelessWidget {
                 color: ffTheme.secondary,
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: Text('🏆 זוכה',
-                  style: ffTheme.labelSmall.copyWith(
-                      color: ffTheme.primaryDark,
-                      fontWeight: FontWeight.w700)),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.emoji_events_rounded,
+                      size: 13, color: ffTheme.primaryDark),
+                  const SizedBox(width: 4),
+                  Text('זוכה',
+                      style: ffTheme.labelSmall.copyWith(
+                          color: ffTheme.primaryDark,
+                          fontWeight: FontWeight.w700)),
+                ],
+              ),
             ),
           LogoWidget(provider: plan.provider, size: 44),
           const SizedBox(height: 6),

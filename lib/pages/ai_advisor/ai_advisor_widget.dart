@@ -31,9 +31,9 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
     final appState = AppState();
     final String greeting;
     if (appState.isLoggedIn && appState.firstName.isNotEmpty && appState.firstName != 'אורח') {
-      greeting = 'שלום ${appState.firstName}! אני חוסך AI 🤖\nיועץ התקשורת החכם שלך.\n\nמה מחפשים?';
+      greeting = 'שלום ${appState.firstName}! אני חוסך AI\nיועץ התקשורת החכם שלך.\n\nמה מחפשים?';
     } else {
-      greeting = 'שלום! אני חוסך AI 🤖\nיועץ התקשורת החכם שלך.\n\nמה מחפשים?';
+      greeting = 'שלום! אני חוסך AI\nיועץ התקשורת החכם שלך.\n\nמה מחפשים?';
     }
     return [_ChatMsg(text: greeting, isUser: false, time: DateTime.now())];
   }
@@ -163,18 +163,18 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
     final appState = Provider.of<AppState>(context, listen: false);
 
     final quickStarts = [
-      '✨ מה הכי משתלם לי?',
-      '📱 סלולר הכי זול',
-      '🌐 אינטרנט 1000Mb',
-      '✅ ללא התחייבות',
-      '📶 5G מהיר',
-      '✈️ חבילת חו"ל',
-      '💰 פחות מ-₪50',
-      '📺 טלוויזיה + ספורט',
-      '🏠 חבילה משולבת',
-      '🤝 רוצה להצטרף!',
-      '💳 כמה אני משלם?',
-      '💰 כמה אחסוך?',
+      'מה הכי משתלם לי?',
+      'סלולר הכי זול',
+      'אינטרנט 1000Mb',
+      'ללא התחייבות',
+      '5G מהיר',
+      'חבילת חו"ל',
+      'פחות מ-₪50',
+      'טלוויזיה + ספורט',
+      'חבילה משולבת',
+      'רוצה להצטרף!',
+      'כמה אני משלם?',
+      'כמה אחסוך?',
     ];
 
     return Scaffold(

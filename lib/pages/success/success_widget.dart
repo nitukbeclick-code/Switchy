@@ -204,11 +204,11 @@ class _SuccessWidgetState extends State<SuccessWidget> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  _TrustBadge(icon: '🔒', label: 'מאובטח', ffTheme: ffTheme),
+                  _TrustBadge(icon: Icons.lock_rounded, label: 'מאובטח', ffTheme: ffTheme),
                   const SizedBox(width: 24),
-                  _TrustBadge(icon: '💸', label: 'ללא עלות', ffTheme: ffTheme),
+                  _TrustBadge(icon: Icons.money_off_rounded, label: 'ללא עלות', ffTheme: ffTheme),
                   const SizedBox(width: 24),
-                  _TrustBadge(icon: '🤝', label: 'ליווי אישי', ffTheme: ffTheme),
+                  _TrustBadge(icon: Icons.handshake_rounded, label: 'ליווי אישי', ffTheme: ffTheme),
                 ],
               ).animate().fadeIn(delay: 750.ms),
 
@@ -280,7 +280,7 @@ class _CheckItem extends StatelessWidget {
 
 class _TrustBadge extends StatelessWidget {
   const _TrustBadge({required this.icon, required this.label, required this.ffTheme});
-  final String icon;
+  final IconData icon;
   final String label;
   final AppTheme ffTheme;
 
@@ -288,7 +288,7 @@ class _TrustBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Text(icon, style: const TextStyle(fontSize: 22)),
+        Icon(icon, size: 22, color: Colors.white),
         const SizedBox(height: 4),
         Text(label, style: ffTheme.labelSmall.copyWith(color: Colors.white.withValues(alpha: 0.7))),
       ],

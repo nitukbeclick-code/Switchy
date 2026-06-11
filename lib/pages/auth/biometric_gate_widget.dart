@@ -107,7 +107,7 @@ class _BiometricGateWidgetState extends State<BiometricGateWidget> {
                       curve: Curves.easeInOut,
                     ),
                 const SizedBox(height: 28),
-                Text('שלום $name 👋',
+                Text('שלום $name',
                     style: t.headlineMedium.copyWith(color: Colors.white), textAlign: TextAlign.center),
                 const SizedBox(height: 8),
                 Text(

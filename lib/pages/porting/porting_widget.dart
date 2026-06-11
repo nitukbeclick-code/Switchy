@@ -416,7 +416,7 @@ class _SuccessState extends StatelessWidget {
               const SizedBox(height: 32),
 
               Text(
-                'הבקשה נשלחה בהצלחה! ✓',
+                'הבקשה נשלחה בהצלחה!',
                 style: ffTheme.headlineMedium.copyWith(color: Colors.white),
                 textAlign: TextAlign.center,
               ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.2),

@@ -21,6 +21,17 @@ class _ResultsWidgetState extends State<ResultsWidget> {
   String _providerFilter = '';
   bool _smartSort = false;
 
+  // Memo for the per-plan recommendation scores: scoring is pure over the
+  // (profile, plan list) pair, so a rebuild with identical inputs (e.g. an
+  // unrelated AppState notify) reuses the previous map instead of re-ranking
+  // the whole catalogue.
+  String? _matchKey;
+  Map<String, PlanMatch>? _matchMemo;
+
+  static String _profileKey(MatchProfile p) =>
+      '${p.category}|${p.currentBill}|${p.budget}|${p.priority}|${p.lines}|'
+      '${p.wants5G}|${p.wantsAbroad}|${p.wantsNoCommit}';
+
   static const _categories = [
     ('cellular', 'סלולר'),
     ('internet', 'אינטרנט'),
@@ -77,11 +88,20 @@ class _ResultsWidgetState extends State<ResultsWidget> {
         ? rawPlans
         : rawPlans.where((p) => p.provider == _providerFilter).toList();
 
-    // Compute scores once per build; also used for smart-sort ordering.
-    final matchMap = {
-      for (final p in filteredByProvider)
-        p.id: RecommendationEngine.scorePlan(p, profile),
-    };
+    // Compute scores once per (profile, plan-list) — see the memo above.
+    final memoKey =
+        '${_profileKey(profile)}#${filteredByProvider.map((p) => p.id).join(',')}';
+    final Map<String, PlanMatch> matchMap;
+    if (memoKey == _matchKey && _matchMemo != null) {
+      matchMap = _matchMemo!;
+    } else {
+      matchMap = {
+        for (final p in filteredByProvider)
+          p.id: RecommendationEngine.scorePlan(p, profile),
+      };
+      _matchKey = memoKey;
+      _matchMemo = matchMap;
+    }
 
     final plans = _smartSort
         ? (List.of(filteredByProvider)

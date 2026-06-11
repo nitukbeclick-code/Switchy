@@ -555,6 +555,21 @@ select.filter-search { cursor: pointer; -webkit-appearance: none; appearance: no
 .ai-chip:hover { background: var(--accent-t); border-color: var(--accent); color: var(--accent); }
 .ai-chip:active { transform: scale(.97); }
 .ai-foot { text-align: center; color: var(--muted); font-size: 13px; margin-top: 14px; }
+
+/* ── Real app screenshots (app.html "הצצה פנימה") ──────────────────────────── */
+.app-shots { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 280px)); gap: 28px; justify-content: center; }
+.app-shot { margin: 0; text-align: center; }
+.app-shot > img {
+  width: 100%; height: auto; display: block;
+  border-radius: 26px; border: 1px solid var(--line);
+  box-shadow: var(--shadow-lg);
+  background: var(--cream);
+}
+.app-shot figcaption {
+  margin-top: 12px; font-family: 'Rubik'; font-weight: 700; font-size: 14px; color: var(--ink-700);
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.app-shot__zoom { width: 16px; height: 16px; vertical-align: -3px; }
 @media (max-width: 640px) {
   .ai-bubble { max-width: 90%; }
 }

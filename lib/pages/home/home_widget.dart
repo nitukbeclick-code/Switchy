@@ -27,6 +27,26 @@ class HomeWidget extends StatefulWidget {
 class _HomeWidgetState extends State<HomeWidget> {
   final ScrollController _scrollController = ScrollController();
 
+  // Memo for the savings summary: it runs the recommendation engine over all
+  // five categories, but is pure over bills+quiz — recomputing it on every
+  // unrelated AppState notify (a like, a watch toggle, a search) is wasted
+  // work on the busiest screen. Keyed by the exact inputs.
+  String? _savingsKey;
+  SavingsSummary? _savingsMemo;
+
+  String _savingsFingerprint(AppState s) =>
+      '${s.currentBills}|${s.quizCompleted}|${s.quizBudget}|${s.quizPriority}|'
+      '${s.quizLines}|${s.quizCat}|${s.wants5G}|${s.wantsAbroad}|${s.wantsNoCommit}';
+
+  SavingsSummary _savingsFor(AppState s) {
+    final key = _savingsFingerprint(s);
+    if (key != _savingsKey || _savingsMemo == null) {
+      _savingsMemo = computeSavings(s);
+      _savingsKey = key;
+    }
+    return _savingsMemo!;
+  }
+
   @override
   void dispose() {
     _scrollController.dispose();
@@ -70,7 +90,7 @@ class _HomeWidgetState extends State<HomeWidget> {
     final deal = hotDeal(appState.currentBill(activeCat), cat: activeCat);
     // Compute the savings summary once and share it with the hero + grid
     // (each used to recompute it — 5 engine rankings — on every build).
-    final savings = computeSavings(appState);
+    final savings = _savingsFor(appState);
 
     return Scaffold(
       backgroundColor: ffTheme.background,

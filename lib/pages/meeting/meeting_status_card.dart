@@ -5,6 +5,7 @@ import '../../components/logo_widget/logo_widget.dart';
 import '../../services/backend/backend.dart';
 import '../../services/meeting_slots.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/app_button.dart';
 import '../../widgets/app_snackbar.dart';
 
 /// The booked video-meeting status card — rendered purely from a
@@ -120,39 +121,17 @@ class MeetingStatusCard extends StatelessWidget {
             MeetingStatus.confirmed => Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Container(
-                    decoration: BoxDecoration(
-                      gradient: joinOpen ? t.accentGradient : null,
-                      color: joinOpen ? null : t.alternate,
-                      borderRadius: BorderRadius.circular(t.radiusMd),
-                      boxShadow: joinOpen ? t.shadowAccent : null,
-                    ),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(t.radiusMd),
-                        onTap: joinOpen ? () => _join(context) : null,
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 13),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.videocam_rounded,
-                                  size: 18, color: joinOpen ? Colors.white : t.secondaryText),
-                              const SizedBox(width: 8),
-                              Text(
-                                'הצטרפות לפגישת Zoom',
-                                style: GoogleFonts.rubik(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w700,
-                                  color: joinOpen ? Colors.white : t.secondaryText,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
+                  // The shared primary CTA (indigo gradient + glass edge);
+                  // [enabled] keeps it dimmed until 15 minutes before start.
+                  AppButton(
+                    text: 'הצטרפות לפגישת Zoom',
+                    onPressed: () async => _join(context),
+                    enabled: joinOpen,
+                    color: AppColors.primary,
+                    height: 48,
+                    icon: const Icon(Icons.videocam_rounded, size: 18, color: Colors.white),
+                    textStyle: GoogleFonts.rubik(
+                        fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white),
                   ),
                   if (!joinOpen) ...[
                     const SizedBox(height: 6),

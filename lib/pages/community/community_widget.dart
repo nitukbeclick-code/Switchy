@@ -14,6 +14,7 @@ import '../../data.dart';
 import '../../models.dart';
 import '../../widgets/media/community_media.dart';
 import '../../widgets/empty_state.dart';
+import '../../widgets/skeleton.dart';
 import '../../services/media_service.dart';
 import '../../services/backend/local_backend.dart';
 import '../../services/backend/backend.dart';
@@ -89,14 +90,22 @@ class _CommunityWidgetState extends State<CommunityWidget> {
     );
   }
 
+  // Whether the FIRST remote fetch has settled — until then an empty feed
+  // shows shimmer skeletons rather than the "no posts yet" empty state.
+  bool _firstLoadDone = false;
+
   Future<void> _loadFromBackend() async {
     try {
       final remote = await appBackend.fetchPosts();
-      if (!mounted || remote.isEmpty) return;
-      final remoteIds = remote.map((p) => p.id).toSet();
-      final seedOnly = communityPosts.where((p) => !remoteIds.contains(p.id)).toList();
-      setState(() => _posts = [...remote, ...seedOnly]);
-    } catch (_) {}
+      if (!mounted) return;
+      if (remote.isNotEmpty) {
+        final remoteIds = remote.map((p) => p.id).toSet();
+        final seedOnly = communityPosts.where((p) => !remoteIds.contains(p.id)).toList();
+        setState(() => _posts = [...remote, ...seedOnly]);
+      }
+    } catch (_) {/* offline — seeds/local stay */} finally {
+      if (mounted && !_firstLoadDone) setState(() => _firstLoadDone = true);
+    }
   }
 
   @override
@@ -1025,13 +1034,24 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                               ],
                             ),
                           )
-                        : EmptyState(
-                            icon: Icons.forum_outlined,
-                            headline: 'עדיין אין פוסטים',
-                            subtitle: 'היו הראשונים לשתף',
-                            ctaLabel: 'פרסם פוסט',
-                            onCtaTap: () async => _showComposer(context, appState, ffTheme),
-                          ))
+                        : !_firstLoadDone
+                            // First remote page still in flight — ghost cards,
+                            // not a blank screen or a blocking spinner.
+                            ? ListView(
+                                padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                                children: const [
+                                  SkeletonPostCard(),
+                                  SkeletonPostCard(),
+                                  SkeletonPostCard(),
+                                ],
+                              )
+                            : EmptyState(
+                                icon: Icons.forum_outlined,
+                                headline: 'עדיין אין פוסטים',
+                                subtitle: 'היו הראשונים לשתף',
+                                ctaLabel: 'פרסם פוסט',
+                                onCtaTap: () async => _showComposer(context, appState, ffTheme),
+                              ))
                 : RefreshIndicator(
                     onRefresh: _refreshFeed,
                     color: ffTheme.primary,

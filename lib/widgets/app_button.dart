@@ -30,6 +30,7 @@ class AppButton extends StatefulWidget {
     this.disabledColor,
     this.padding,
     this.iconPadding,
+    this.enabled = true,
   });
 
   /// Secondary action: white fill, hairline border, ink label — sits quietly
@@ -47,6 +48,7 @@ class AppButton extends StatefulWidget {
     this.disabledColor,
     this.padding,
     this.iconPadding,
+    this.enabled = true,
   })  : color = Colors.white,
         borderSide = const BorderSide(color: AppColors.alternate);
 
@@ -65,6 +67,7 @@ class AppButton extends StatefulWidget {
     this.disabledColor,
     this.padding,
     this.iconPadding,
+    this.enabled = true,
   })  : color = AppColors.accent1,
         borderSide = BorderSide.none;
 
@@ -81,6 +84,10 @@ class AppButton extends StatefulWidget {
   final Color? disabledColor;
   final EdgeInsetsGeometry? padding;
   final double? iconPadding;
+
+  /// When false the button renders dimmed and ignores taps — for CTAs that
+  /// unlock later (e.g. the Zoom join button before T-15).
+  final bool enabled;
 
   @override
   State<AppButton> createState() => _AppButtonState();
@@ -125,11 +132,15 @@ class _AppButtonState extends State<AppButton> {
     final useGradient = isPrimaryCta;
 
     final button = ElevatedButton(
-      onPressed: _loading ? null : _handleTap,
+      onPressed: (_loading || !widget.enabled) ? null : _handleTap,
       style: ElevatedButton.styleFrom(
         backgroundColor: useGradient
             ? Colors.transparent
             : (_loading ? (widget.disabledColor ?? widget.color.withValues(alpha: 0.6)) : widget.color),
+        disabledBackgroundColor: useGradient
+            ? Colors.transparent
+            : (widget.disabledColor ?? widget.color.withValues(alpha: 0.55)),
+        disabledForegroundColor: foreground.withValues(alpha: 0.7),
         foregroundColor: foreground,
         // Hover/press wash: a light veil over the gradient, an ink veil over
         // the quiet fills — distinct states on web/desktop too.
@@ -165,13 +176,13 @@ class _AppButtonState extends State<AppButton> {
           // The gradient survives the loading state (dimmed) instead of
           // snapping to a flat grey — the button keeps its identity while busy.
           ? AnimatedOpacity(
-              opacity: _loading ? 0.72 : 1,
+              opacity: !widget.enabled ? 0.55 : (_loading ? 0.72 : 1),
               duration: ffTheme.motionFast,
               child: DecoratedBox(
                 decoration: BoxDecoration(
                   gradient: ffTheme.accentGradient,
                   borderRadius: borderRadius,
-                  boxShadow: _loading ? null : ffTheme.shadowAccent,
+                  boxShadow: (_loading || !widget.enabled) ? null : ffTheme.shadowAccent,
                 ),
                 // Glass edge: a faint top light over the gradient — the same
                 // dimensional tell the site's primaries carry.
@@ -199,7 +210,7 @@ class _AppButtonState extends State<AppButton> {
     // Listener (not a GestureDetector) so it never swallows the underlying
     // ElevatedButton's tap, and it goes flat under reduced-motion.
     final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
-    if (reduceMotion || _loading) return sized;
+    if (reduceMotion || _loading || !widget.enabled) return sized;
     return Listener(
       onPointerDown: (_) => _setPressed(true),
       onPointerUp: (_) => _setPressed(false),

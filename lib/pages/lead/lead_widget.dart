@@ -86,6 +86,9 @@ class _LeadWidgetState extends State<LeadWidget> {
         padding: const EdgeInsets.all(20),
         child: Form(
           key: _formKey,
+          // Validate each field when the user LEAVES it (not only on submit,
+          // and not on every keystroke) — the error shows next to the field.
+          autovalidateMode: AutovalidateMode.onUnfocus,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

@@ -5,6 +5,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../theme/app_theme.dart';
 import '../../core/nav.dart';
+import '../../widgets/app_button.dart';
 import '../../app_state.dart';
 import '../../data.dart';
 import '../../models.dart';
@@ -974,31 +975,17 @@ class _BillCard extends StatelessWidget {
           ),
           if (currentBill > 0 && yearlySave > 0) ...[
             const SizedBox(height: 10),
-            Container(
+            // Shared ghost variant — was a hand-rolled InkWell with a ~34px
+            // hit area; now a 44px-tall consistent tertiary button.
+            AppButton.ghost(
+              text: 'חפש חבילות זולות יותר',
+              onPressed: () async => onTap(),
               width: double.infinity,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: ffTheme.primary.withValues(alpha: 0.15)),
-              ),
-              child: Material(
-                color: ffTheme.accent1,
-                borderRadius: BorderRadius.circular(10),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(10),
-                  onTap: onTap,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.search_rounded, size: 14, color: ffTheme.primary),
-                        const SizedBox(width: 6),
-                        Text('חפש חבילות זולות יותר', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
+              height: 44,
+              borderRadius: BorderRadius.circular(10),
+              icon: Icon(Icons.search_rounded, size: 14, color: ffTheme.primary),
+              textStyle: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700),
+              iconPadding: 6,
             ),
           ],
         ],

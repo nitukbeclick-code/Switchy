@@ -252,6 +252,9 @@ class _MeetingWidgetState extends State<MeetingWidget> {
   Widget _buildWizard(AppTheme t) {
     return Form(
       key: _formKey,
+      // Validate each field when the user LEAVES it (not only on submit,
+      // and not on every keystroke) — the error shows next to the field.
+      autovalidateMode: AutovalidateMode.onUnfocus,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -364,14 +367,19 @@ class _MeetingWidgetState extends State<MeetingWidget> {
       ),
       child: Row(
         children: [
+          // The official Zoom mark (brand assets shown as-is, like the
+          // carrier logos) — the meeting really happens on Zoom.
           Container(
             width: 48,
             height: 48,
+            padding: const EdgeInsets.all(7),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.14),
+              color: Colors.white,
               borderRadius: BorderRadius.circular(14),
             ),
-            child: const Icon(Icons.videocam_rounded, size: 24, color: Colors.white),
+            child: ExcludeSemantics(
+              child: Image.asset('assets/images/zoom.png', fit: BoxFit.contain),
+            ),
           ),
           const SizedBox(width: 14),
           Expanded(

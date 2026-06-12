@@ -56,6 +56,11 @@ class AppState extends ChangeNotifier {
     _meetingJoinUrl = p.getString('meetingJoinUrl');
     _meetingStartsAtIso = p.getString('meetingStartsAtIso');
     _meetingCreatedAtIso = p.getString('meetingCreatedAtIso');
+    // Telegram notifications
+    _userTelegramChatId = p.getString('userTelegramChatId') ?? '';
+    _telegramEnabled = p.getBool('telegramEnabled') ?? false;
+    // Support ticket
+    _supportTicketId = p.getString('supportTicketId');
     // Watched plans
     final watched = p.getStringList('watchedPlans') ?? [];
     _watchedPlans.addAll(watched);
@@ -211,6 +216,22 @@ class AppState extends ChangeNotifier {
             }
           }
           break;
+        case 'telegram':
+          if (_userTelegramChatId.isEmpty) {
+            await p.remove('userTelegramChatId');
+            await p.remove('telegramEnabled');
+          } else {
+            await p.setString('userTelegramChatId', _userTelegramChatId);
+            await p.setBool('telegramEnabled', _telegramEnabled);
+          }
+          break;
+        case 'supportTicket':
+          if (_supportTicketId == null) {
+            await p.remove('supportTicketId');
+          } else {
+            await p.setString('supportTicketId', _supportTicketId!);
+          }
+          break;
         case 'trackerStep':
           await p.setInt('trackerStep', _trackerStep);
           break;
@@ -283,7 +304,7 @@ class AppState extends ChangeNotifier {
   // call; it marks every light group dirty (each write is cheap).
   static const Set<String> _lightGroups = {
     'auth', 'totalSavings', 'selectedCat', 'bills', 'quiz', 'quizNeeds', 'lead',
-    'meeting',
+    'meeting', 'telegram', 'supportTicket',
     'trackerStep', 'watchedPlans', 'recentlyViewed', 'recentSearches',
     'userReviews', 'likedPosts', 'bookmarkedPosts', 'myPlans',
     'renewalReminders', 'dismissedNotifications', 'prefs', 'seenOnboarding',
@@ -435,6 +456,47 @@ class AppState extends ChangeNotifier {
     _meetingCreatedAtIso = null;
     _markDirty('meeting');
     notifyListeners();
+  }
+
+  // ── Telegram Notifications ─────────────────────────────────────────────────
+  String _userTelegramChatId = '';
+  bool _telegramEnabled = false;
+
+  String get userTelegramChatId => _userTelegramChatId;
+  bool get telegramEnabled => _telegramEnabled;
+
+  // ── Support Ticket ──────────────────────────────────────────────────────────
+  String? _supportTicketId;
+
+  String? get supportTicketId => _supportTicketId;
+
+  void setSupportTicketId(String? id) {
+    _supportTicketId = id;
+    _markDirty('supportTicket');
+    notifyListeners();
+  }
+
+  void setUserTelegramChatId(String chatId, {bool enabled = true}) {
+    _userTelegramChatId = chatId;
+    _telegramEnabled = enabled;
+    _markDirty('telegram');
+    notifyListeners();
+    _persist();
+  }
+
+  void setTelegramEnabled(bool enabled) {
+    _telegramEnabled = enabled;
+    _markDirty('telegram');
+    notifyListeners();
+    _persist();
+  }
+
+  void clearTelegramData() {
+    _userTelegramChatId = '';
+    _telegramEnabled = false;
+    _markDirty('telegram');
+    notifyListeners();
+    _persist();
   }
 
   // Tracker

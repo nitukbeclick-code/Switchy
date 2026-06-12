@@ -84,6 +84,10 @@ chats/
 coverage/
 lcov.info
 
+# ── Node.js ───────────────────────────────────────────────────────────────────
+node_modules/
+package-lock.json
+
 # ── Claude Code ───────────────────────────────────────────────────────────────
 # Keep settings.json and the SessionStart hook tracked so web sessions are
 # reproducible; ignore only local overrides and transient worktrees.

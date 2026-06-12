@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/app_snackbar.dart';
 import '../../core/nav.dart';
 import '../../app_state.dart';
 import '../../services/auth_service.dart';
+import '../../services/telegram_service.dart';
 import '../../widgets/app_button.dart';
 
 class SettingsWidget extends StatelessWidget {
@@ -68,6 +70,8 @@ class SettingsWidget extends StatelessWidget {
                     onChanged: (v) => Provider.of<AppState>(context, listen: false).setPrefCommunityNotifs(v),
                     ffTheme: ffTheme,
                   ),
+                  _Divider(ffTheme: ffTheme),
+                  _TelegramRow(ffTheme: ffTheme),
                 ],
               ),
             ).animate().fadeIn(duration: 350.ms),
@@ -522,5 +526,181 @@ class _ActionRow extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+// ── Telegram Connection Row ─────────────────────────────────────────────────────
+class _TelegramRow extends StatefulWidget {
+  const _TelegramRow({required this.ffTheme});
+  final AppTheme ffTheme;
+
+  @override
+  State<_TelegramRow> createState() => _TelegramRowState();
+}
+
+class _TelegramRowState extends State<_TelegramRow> {
+  bool _busy = false;
+
+  Future<void> _connectTelegram() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      final appState = Provider.of<AppState>(context, listen: false);
+      final userId = appState.userId;
+      final botUsername = 'chosech_bot';
+      final deepLink = Uri.parse('https://t.me/$botUsername?start=user_$userId');
+
+      if (await canLaunchUrl(deepLink)) {
+        await launchUrl(deepLink, mode: LaunchMode.externalApplication);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('טלגרם נפתח. שלח /start כדי להתחבר')),
+        );
+      } else {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('לא ניתן לפתוח את טלגרם. אנא תקנו אותו תחילה.')),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('שגיאה: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _testTelegram() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      final appState = Provider.of<AppState>(context, listen: false);
+      final success = await TelegramService.testConnection(appState.userTelegramChatId);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(success ? '✅ ההודעה נשלחה בהצלחה!' : '❌ כשל בשליחת הודעה. אנא נסה שוב.'),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('שגיאה: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _disconnectTelegram() async {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('ניתוק טלגרם'),
+        content: const Text('האם אתה בטוח שברצונך לנתק את חשבון הטלגרם שלך?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('ביטול')),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              final appState = Provider.of<AppState>(context, listen: false);
+              appState.clearTelegramData();
+              setState(() {});
+            },
+            child: const Text('נתק', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final appState = Provider.of<AppState>(context);
+    final isConnected = appState.userTelegramChatId.isNotEmpty;
+    final ffTheme = widget.ffTheme;
+
+    if (isConnected) {
+      return InkWell(
+        onTap: () {},
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0088cc).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.send, color: Color(0xFF0088cc), size: 20),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('טלגרם', style: ffTheme.titleSmall),
+                    Text('✅ מחובר', style: ffTheme.bodySmall.copyWith(color: const Color(0xFF22C55E))),
+                  ],
+                ),
+              ),
+              PopupMenuButton(
+                onSelected: (value) {
+                  if (value == 'test') {
+                    _testTelegram();
+                  } else if (value == 'disconnect') {
+                    _disconnectTelegram();
+                  }
+                },
+                itemBuilder: (_) => [
+                  const PopupMenuItem(value: 'test', child: Text('בדוק חיבור')),
+                  const PopupMenuItem(value: 'disconnect', child: Text('נתק')),
+                ],
+              ),
+            ],
+          ),
+        ),
+      );
+    } else {
+      return InkWell(
+        onTap: _busy ? null : _connectTelegram,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: Colors.grey.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(Icons.send, color: Colors.grey[600], size: 20),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('טלגרם', style: ffTheme.titleSmall),
+                    Text('חבר כדי לקבל הודעות', style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText)),
+                  ],
+                ),
+              ),
+              if (_busy)
+                SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+              else
+                Icon(Icons.arrow_back_ios_rounded, size: 14, color: ffTheme.secondaryText),
+            ],
+          ),
+        ),
+      );
+    }
   }
 }

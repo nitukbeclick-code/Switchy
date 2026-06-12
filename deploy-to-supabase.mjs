@@ -7,10 +7,15 @@ import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const SUPABASE_URL = 'https://orzitfqmlvopujsoyigr.supabase.co';
-const SUPABASE_KEY = 'REDACTED_ROTATE_THIS_KEY';
+const SUPABASE_URL = process.env.SUPABASE_URL || 'https://orzitfqmlvopujsoyigr.supabase.co';
+const SUPABASE_KEY = process.env.SUPABASE_KEY;
 const BUCKET_NAME = 'site';
 const SITE_DIR = path.join(__dirname, 'site');
+
+if (!SUPABASE_KEY) {
+  console.error('Error: SUPABASE_KEY environment variable is required');
+  process.exit(1);
+}
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 

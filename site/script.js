@@ -278,7 +278,11 @@
     render();
   }
 
-  // ── AI advisor demo chips (app.html) ────────────────────────────────────────
+  // ── חוסך AI chat (app.html) ─────────────────────────────────────────────────
+  // Live, AI-backed chat grounded in the real plan catalogue when
+  // `window.CHOSECH_SUPABASE` is configured (POSTs to the `site-ai-chat` edge
+  // function). With no config, or on any error, falls back to the canned
+  // keyword replies below — the demo always works.
   const aiChat = $('aiChat');
   if (aiChat) {
     const replies = {
@@ -299,20 +303,87 @@
       b.textContent = text;
       aiChat.appendChild(b);
       b.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      return b;
     };
+    let typingEl = null;
+    const showTyping = () => {
+      typingEl = addBubble('ai-bubble--bot ai-typing', '');
+      typingEl.innerHTML = '<span></span><span></span><span></span>';
+    };
+    const hideTyping = () => {
+      if (typingEl) { typingEl.remove(); typingEl = null; }
+    };
+
+    const MAX_HISTORY = 6;
+    const history = [];
+    const sendChat = async (message, priorHistory) => {
+      const cfg = window.CHOSECH_SUPABASE;
+      if (!cfg || !cfg.url || !cfg.anonKey) return null;
+      const res = await fetch(cfg.url.replace(/\/$/, '') + '/functions/v1/site-ai-chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: cfg.anonKey,
+          Authorization: 'Bearer ' + cfg.anonKey,
+        },
+        body: JSON.stringify({ message, history: priorHistory }),
+      });
+      if (!res.ok) throw new Error('chat rejected: ' + res.status);
+      const data = await res.json();
+      if (!data || !data.reply) throw new Error('chat: empty reply');
+      return data.reply;
+    };
+
+    const aiForm = $('aiForm');
+    const aiInput = $('aiInput');
+    const aiSend = aiForm ? aiForm.querySelector('.ai-send') : null;
+    const setBusy = (busy) => {
+      if (aiInput) aiInput.disabled = busy;
+      if (aiSend) aiSend.disabled = busy;
+    };
+
+    const ask = async (q) => {
+      if (!q) return;
+      addBubble('ai-bubble--me', q);
+      track('ai_chat_message', { source: location.pathname });
+      const priorHistory = history.slice();
+      history.push({ role: 'user', text: q });
+      if (history.length > MAX_HISTORY) history.splice(0, history.length - MAX_HISTORY);
+      setBusy(true);
+      showTyping();
+      let reply;
+      try {
+        reply = await sendChat(q, priorHistory);
+      } catch (_) {
+        reply = null;
+      }
+      hideTyping();
+      if (!reply) reply = pick(q);
+      addBubble('ai-bubble--bot', reply);
+      history.push({ role: 'bot', text: reply });
+      if (history.length > MAX_HISTORY) history.splice(0, history.length - MAX_HISTORY);
+      setBusy(false);
+    };
+
     document.querySelectorAll('.ai-chip').forEach((chip) => {
       chip.setAttribute('role', 'button');
       chip.setAttribute('tabindex', '0');
-      const ask = () => {
-        const q = chip.textContent.replace(/^[^א-ת]+/, '').trim();
-        addBubble('ai-bubble--me', q);
-        setTimeout(() => addBubble('ai-bubble--bot', pick(q)), 450);
-      };
-      chip.addEventListener('click', ask);
+      const onChip = () => ask(chip.textContent.replace(/^[^א-ת]+/, '').trim());
+      chip.addEventListener('click', onChip);
       chip.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); ask(); }
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onChip(); }
       });
     });
+
+    if (aiForm && aiInput) {
+      aiForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const q = aiInput.value.trim();
+        if (!q) return;
+        aiInput.value = '';
+        ask(q);
+      });
+    }
   }
 
   // ══ Premium interactions ══════════════════════════════════════════════════

@@ -158,7 +158,13 @@
             <div class="ai-bubble ai-bubble--bot">מצאתי לך 3 מסלולי 5G מובילים — הזול ביותר ב-₪29/חודש ללא התחייבות, חיסכון שנתי של עד ₪1,080 לעומת חשבון ממוצע. רוצה שאשווה ביניהם? 📊</div>
           </div>
           <div class="ai-chips" aria-label="שאלות מהירות לדוגמה"><span class="ai-chip">✨ מה הכי משתלם לי?</span><span class="ai-chip">📱 סלולר הכי זול</span><span class="ai-chip">🌐 אינטרנט 1000Mb</span><span class="ai-chip">✅ ללא התחייבות</span><span class="ai-chip">✈️ חבילת חו״ל</span><span class="ai-chip">💰 פחות מ-₪50</span></div>
-          <p class="ai-foot">דמו. השיחה המלאה והחיה — באפליקציה.</p>
+          <form class="ai-input-row" id="aiForm">
+            <input class="ai-input" id="aiInput" type="text" placeholder="שאלו כל שאלה — למשל: מה כדאי לי לאינטרנט מהיר וזול?" aria-label="שאלו את חוסך AI" autocomplete="off" maxlength="300" />
+            <button class="ai-send" type="submit" aria-label="שליחה">
+              <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+            </button>
+          </form>
+          <p class="ai-foot">חוסך AI עונה לפי קטלוג המסלולים האמיתי שלנו.</p>
         </div>
       </div>
     </section>
@@ -213,6 +219,7 @@
     </div>
     <div class="container footer__bottom"><span>© <span id="year"></span> חוסך · כל הזכויות שמורות</span><span>נבנה באהבה בישראל</span></div>
   </footer>
+  <script>window.CHOSECH_SUPABASE = { url: 'https://orzitfqmlvopujsoyigr.supabase.co', anonKey: 'sb_publishable_WFNOchgCu1RHauIFCFDT1g_dWVEoHAr' };</script>
   <script src="script.js?v=b0a5ace3" defer></script>
 </body>
 </html>

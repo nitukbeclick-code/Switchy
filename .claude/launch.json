@@ -12,6 +12,12 @@
       "runtimeExecutable": "python",
       "runtimeArgs": ["-m", "http.server", "5174", "--directory", "build/web"],
       "port": 5174
+    },
+    {
+      "name": "site-http",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["http-server", "site", "-p", "5175", "-c-1"],
+      "port": 5175
     }
   ]
 }

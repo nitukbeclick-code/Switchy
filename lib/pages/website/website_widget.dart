@@ -352,6 +352,11 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
                     text: 'כל המסלולים מ-18 הספקים ב-5 הקטגוריות, אותם נתונים לכולם.',
                   ),
                   const _ValueProp(
+                    icon: Icons.notifications_active_outlined,
+                    title: 'התראות חכמות',
+                    text: 'עוקבים אחרי מסלול שאהבתם — ונתריע אם נמצא משהו טוב יותר, כולל לפני שהמבצע שלכם מסתיים.',
+                  ),
+                  const _ValueProp(
                     icon: Icons.handshake_outlined,
                     title: 'ליווי אישי במעבר',
                     text: 'נציג אנושי מלווה אותך מהבחירה ועד ניוד המספר — ללא התחייבות.',
@@ -382,6 +387,115 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
                 ],
               ),
             ),
+          ),
+
+          // Community — showcase the live in-app community feed.
+          SliverToBoxAdapter(
+            child: Container(
+              padding: const EdgeInsets.all(20),
+              color: ffTheme.accent1,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('קהילת חוסך', style: ffTheme.headlineMedium),
+                  const SizedBox(height: 8),
+                  Text(
+                    'שאלות, טיפים והמלצות מאלפי משתמשים שכבר עברו את התהליך — ותשובות אמיתיות מהקהילה',
+                    style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText, height: 1.4),
+                  ),
+                  const SizedBox(height: 16),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: ['המלצות', 'סלולר', 'אינטרנט', 'טלוויזיה', 'חו"ל', 'חבילה משולבת', 'עזרה בניתוק']
+                        .map((c) => Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(color: ffTheme.alternate),
+                              ),
+                              child: Text(c, style: ffTheme.labelMedium),
+                            ))
+                        .toList(),
+                  ),
+                  const SizedBox(height: 20),
+                  Container(
+                    decoration: BoxDecoration(
+                      gradient: ffTheme.accentGradient,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: ffTheme.shadowAccent,
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(16),
+                        onTap: () => context.goNamed('Community'),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+                          child: Text('הצטרפו לדיון בקהילה →', style: GoogleFonts.rubik(fontSize: 15, fontWeight: FontWeight.w800, color: Colors.white)),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ).animate().fadeIn(delay: 380.ms),
+          ),
+
+          // Digital support agent — instant AI answers, one tap to a human
+          // rep over Telegram when needed.
+          SliverToBoxAdapter(
+            child: Container(
+              padding: const EdgeInsets.all(20),
+              color: Colors.white,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('תמיכה חכמה', style: ffTheme.headlineMedium),
+                  const SizedBox(height: 8),
+                  Text(
+                    'צ׳אטבוט תמיכה שעונה על שאלות על המסלול, החיוב והחידוש בכל שעה — ובלחיצה אחת מעביר אתכם לנציג אנושי אמיתי בטלגרם.',
+                    style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText, height: 1.4),
+                  ),
+                  const SizedBox(height: 16),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: ['חבר אותי לנציג אנושי', 'מתי מחדשת התוכנית שלי?', 'יש לי עסקאות טובות יותר?', 'איך אני משנה את התוכנית שלי?']
+                        .map((c) => Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: ffTheme.background,
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(color: ffTheme.alternate),
+                              ),
+                              child: Text(c, style: ffTheme.labelMedium),
+                            ))
+                        .toList(),
+                  ),
+                  const SizedBox(height: 20),
+                  Container(
+                    decoration: BoxDecoration(
+                      gradient: ffTheme.accentGradient,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: ffTheme.shadowAccent,
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(16),
+                        onTap: () => context.pushNamed('support-ticket', pathParameters: {'ticketId': 'new'}),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+                          child: Text('פתחו צ׳אט תמיכה →', style: GoogleFonts.rubik(fontSize: 15, fontWeight: FontWeight.w800, color: Colors.white)),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ).animate().fadeIn(delay: 390.ms),
           ),
 
           // FAQ section

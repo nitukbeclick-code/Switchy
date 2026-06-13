@@ -1,13 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_animate/flutter_animate.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../theme/app_theme.dart';
-import '../../core/nav.dart';
 import '../../app_state.dart';
 import '../../services/support_ticket_service.dart';
-import '../../widgets/app_button.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SupportTicketWidget extends StatefulWidget {
@@ -24,17 +20,18 @@ class SupportTicketWidget extends StatefulWidget {
 
 class _SupportTicketWidgetState extends State<SupportTicketWidget> {
   late SupportTicketService _service;
-  late StreamSubscription<List<SupportMessage>> _messagesSubscription;
-  late StreamSubscription<SupportTicket> _ticketSubscription;
+  StreamSubscription<List<SupportMessage>>? _messagesSubscription;
+  StreamSubscription<SupportTicket>? _ticketSubscription;
 
   final _inputCtrl = TextEditingController();
   final _scrollCtrl = ScrollController();
 
-  bool _isLoading = false;
+  bool _isLoading = true;
   bool _isTyping = false;
   List<SupportMessage> _messages = [];
   SupportTicket? _ticket;
   String? _error;
+  String? _ticketId;
 
   final List<String> _quickReplies = [
     'חבר אותי לנציג אנושי',
@@ -47,11 +44,47 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
   void initState() {
     super.initState();
     _service = SupportTicketService(Supabase.instance.client);
-    _loadTicket();
+    _init();
   }
 
-  void _loadTicket() {
-    _messagesSubscription = _service.messageStream(widget.ticketId).listen(
+  Future<void> _init() async {
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    if (userId == null) {
+      setState(() {
+        _error = 'יש להתחבר כדי לפנות לתמיכה';
+        _isLoading = false;
+      });
+      return;
+    }
+
+    var ticketId = widget.ticketId;
+    if (ticketId == 'new') {
+      try {
+        ticketId = await _service.createOrOpenTicket(userId);
+        if (mounted) {
+          Provider.of<AppState>(context, listen: false).setSupportTicketId(ticketId);
+        }
+      } catch (e) {
+        if (mounted) {
+          setState(() {
+            _error = 'שגיאה ביצירת הפנייה: $e';
+            _isLoading = false;
+          });
+        }
+        return;
+      }
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _ticketId = ticketId;
+      _isLoading = false;
+    });
+    _loadTicket(ticketId);
+  }
+
+  void _loadTicket(String ticketId) {
+    _messagesSubscription = _service.messageStream(ticketId).listen(
       (messages) {
         if (mounted) {
           setState(() {
@@ -63,12 +96,12 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
       },
       onError: (e) {
         if (mounted) {
-          setState(() => _error = 'Error loading messages: $e');
+          setState(() => _error = 'שגיאה בטעינת ההודעות: $e');
         }
       },
     );
 
-    _ticketSubscription = _service.ticketStream(widget.ticketId).listen(
+    _ticketSubscription = _service.ticketStream(ticketId).listen(
       (ticket) {
         if (mounted) {
           setState(() => _ticket = ticket);
@@ -84,14 +117,21 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
   void dispose() {
     _inputCtrl.dispose();
     _scrollCtrl.dispose();
-    _messagesSubscription.cancel();
-    _ticketSubscription.cancel();
+    _messagesSubscription?.cancel();
+    _ticketSubscription?.cancel();
     super.dispose();
   }
 
   Future<void> _sendMessage(String text) async {
     if (text.trim().isEmpty || _isTyping || _isLoading) return;
-    if (_ticket == null) return;
+    final ticketId = _ticketId;
+    if (ticketId == null) return;
+
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    if (userId == null) {
+      setState(() => _error = 'יש להתחבר כדי לפנות לתמיכה');
+      return;
+    }
 
     _inputCtrl.clear();
 
@@ -99,21 +139,13 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
     _scrollToBottom();
 
     try {
-      final appState = Provider.of<AppState>(context, listen: false);
-      final userId = appState.getUserId();
-      if (userId == null) throw Exception('User not logged in');
-
-      final result = await _service.sendMessage(
-        widget.ticketId,
-        userId,
-        text,
-      );
+      final result = await _service.sendMessage(ticketId, userId, text);
 
       if (result['escalated'] == true) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Your request has been escalated to a human representative'),
+              content: Text('הפנייה שלך הועברה לנציג אנושי, הוא יחזור אליך בקרוב'),
               duration: Duration(seconds: 3),
             ),
           );
@@ -121,7 +153,7 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _error = 'Failed to send message: $e');
+        setState(() => _error = 'שליחת ההודעה נכשלה: $e');
       }
     } finally {
       if (mounted) {
@@ -153,7 +185,7 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Support'),
+        title: const Text('תמיכה'),
         backgroundColor: theme.primary,
         elevation: 0,
         actions: [
@@ -162,8 +194,8 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
               padding: const EdgeInsets.all(16.0),
               child: Center(
                 child: Text(
-                  'Connected to support',
-                  style: theme.labelSmall?.copyWith(color: Colors.white),
+                  'מחוברים לנציג',
+                  style: theme.labelSmall.copyWith(color: Colors.white),
                 ),
               ),
             ),
@@ -177,23 +209,26 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
               color: Colors.red.shade100,
               child: Text(
                 _error!,
+                textDirection: TextDirection.rtl,
                 style: TextStyle(color: Colors.red.shade900),
               ),
             ),
           Expanded(
-            child: _messages.isEmpty && !_isLoading
-                ? _buildEmptyState(theme)
-                : ListView.builder(
-                    controller: _scrollCtrl,
-                    padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-                    itemCount: _messages.length + (_isTyping ? 1 : 0),
-                    itemBuilder: (context, index) {
-                      if (index == _messages.length) {
-                        return _buildTypingIndicator(theme);
-                      }
-                      return _buildMessageBubble(_messages[index], theme);
-                    },
-                  ),
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _messages.isEmpty
+                    ? _buildEmptyState(theme)
+                    : ListView.builder(
+                        controller: _scrollCtrl,
+                        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+                        itemCount: _messages.length + (_isTyping ? 1 : 0),
+                        itemBuilder: (context, index) {
+                          if (index == _messages.length) {
+                            return _buildTypingIndicator(theme);
+                          }
+                          return _buildMessageBubble(_messages[index], theme);
+                        },
+                      ),
           ),
           if (_shouldShowQuickReplies())
             _buildQuickReplies(theme),
@@ -203,7 +238,7 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
     );
   }
 
-  Widget _buildEmptyState(AppThemeData theme) {
+  Widget _buildEmptyState(AppTheme theme) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -215,16 +250,16 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
           ),
           const SizedBox(height: 16),
           Text(
-            'Welcome to Support',
+            'ברוכים הבאים לתמיכה',
             style: theme.titleMedium,
           ),
           const SizedBox(height: 8),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Text(
-              'Ask me anything about your plans or account',
+              'שאלו אותנו כל דבר על המסלולים או החשבון שלכם',
               textAlign: TextAlign.center,
-              style: theme.bodySmall?.copyWith(
+              style: theme.bodySmall.copyWith(
                 color: theme.secondary,
               ),
             ),
@@ -234,7 +269,7 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
     );
   }
 
-  Widget _buildMessageBubble(SupportMessage msg, AppThemeData theme) {
+  Widget _buildMessageBubble(SupportMessage msg, AppTheme theme) {
     final isUser = msg.role == 'user';
     final isHuman = msg.role == 'human';
 
@@ -246,7 +281,7 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
     if (isUser) {
       bgColor = theme.primary;
       textColor = Colors.white;
-      alignment = Alignment.centerRight;
+      alignment = Alignment.centerLeft;
       borderRadius = const BorderRadius.only(
         topLeft: Radius.circular(12),
         topRight: Radius.circular(4),
@@ -256,10 +291,10 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
     } else {
       bgColor = isHuman ? theme.saving.withOpacity(0.2) : Colors.grey.shade200;
       textColor = Colors.black87;
-      alignment = Alignment.centerLeft;
+      alignment = Alignment.centerRight;
       borderRadius = const BorderRadius.only(
-        topLeft: Radius.circular(4),
-        topRight: Radius.circular(12),
+        topLeft: Radius.circular(12),
+        topRight: Radius.circular(4),
         bottomLeft: Radius.circular(12),
         bottomRight: Radius.circular(12),
       );
@@ -270,7 +305,7 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 8),
         child: Column(
-          crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+          crossAxisAlignment: isUser ? CrossAxisAlignment.start : CrossAxisAlignment.end,
           children: [
             Container(
               constraints: BoxConstraints(
@@ -283,15 +318,16 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
               ),
               child: Text(
                 msg.messageText,
-                style: theme.bodyMedium?.copyWith(color: textColor),
+                textDirection: TextDirection.rtl,
+                style: theme.bodyMedium.copyWith(color: textColor),
               ),
             ),
             if (isHuman)
               Padding(
                 padding: const EdgeInsets.only(top: 4),
                 child: Text(
-                  'Human Support',
-                  style: theme.labelSmall?.copyWith(
+                  'תמיכה אנושית',
+                  style: theme.labelSmall.copyWith(
                     color: theme.saving,
                     fontWeight: FontWeight.bold,
                   ),
@@ -301,7 +337,7 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
               padding: const EdgeInsets.only(top: 4),
               child: Text(
                 _formatTime(msg.createdAt),
-                style: theme.labelSmall?.copyWith(
+                style: theme.labelSmall.copyWith(
                   color: Colors.grey.shade600,
                   fontSize: 10,
                 ),
@@ -313,9 +349,9 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
     );
   }
 
-  Widget _buildTypingIndicator(AppThemeData theme) {
+  Widget _buildTypingIndicator(AppTheme theme) {
     return Align(
-      alignment: Alignment.centerLeft,
+      alignment: Alignment.centerRight,
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 8),
         child: Container(
@@ -357,7 +393,7 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
     );
   }
 
-  Widget _buildQuickReplies(AppThemeData theme) {
+  Widget _buildQuickReplies(AppTheme theme) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       child: SingleChildScrollView(
@@ -365,12 +401,12 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
         child: Row(
           children: _quickReplies.map((reply) {
             return Padding(
-              padding: const EdgeInsets.only(right: 8),
+              padding: const EdgeInsets.only(left: 8),
               child: InputChip(
                 label: Text(reply, style: theme.labelSmall),
                 onPressed: () => _sendMessage(reply),
                 backgroundColor: theme.primary.withOpacity(0.1),
-                labelStyle: theme.labelSmall?.copyWith(color: theme.primary),
+                labelStyle: theme.labelSmall.copyWith(color: theme.primary),
               ),
             );
           }).toList(),
@@ -379,7 +415,7 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
     );
   }
 
-  Widget _buildInputArea(AppThemeData theme, bool isEscalated) {
+  Widget _buildInputArea(AppTheme theme, bool isEscalated) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -393,10 +429,10 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
           Expanded(
             child: TextField(
               controller: _inputCtrl,
-              enabled: !isEscalated || _ticket?.status == 'human_assigned',
+              enabled: !_isLoading,
               textDirection: TextDirection.rtl,
               decoration: InputDecoration(
-                hintText: 'Type your message...',
+                hintText: 'כתבו הודעה...',
                 hintTextDirection: TextDirection.rtl,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(20),
@@ -405,13 +441,15 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
                 contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               ),
               maxLines: null,
+              onSubmitted: _sendMessage,
             ),
           ),
           const SizedBox(width: 8),
           FloatingActionButton(
             mini: true,
             backgroundColor: theme.primary,
-            onPressed: _isTyping ? null : () => _sendMessage(_inputCtrl.text),
+            tooltip: 'שליחה',
+            onPressed: _isTyping || _isLoading ? null : () => _sendMessage(_inputCtrl.text),
             child: const Icon(Icons.send, color: Colors.white),
           ),
         ],
@@ -427,9 +465,9 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
 
     String dateStr;
     if (msgDate == today) {
-      dateStr = 'Today';
+      dateStr = 'היום';
     } else if (msgDate == yesterday) {
-      dateStr = 'Yesterday';
+      dateStr = 'אתמול';
     } else {
       dateStr = '${time.day}/${time.month}';
     }

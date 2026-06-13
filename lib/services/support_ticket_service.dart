@@ -142,7 +142,7 @@ class SupportTicketService {
         },
       );
 
-      return response as Map<String, dynamic>;
+      return response.data as Map<String, dynamic>;
     } catch (e) {
       throw Exception('Failed to send message: $e');
     }
@@ -173,7 +173,10 @@ class SupportTicketService {
   /// Escalate to human (user taps "talk to human" chip)
   Future<void> escalateToHuman(String ticketId, String userId, String reason) async {
     try {
-      await sendMessage(ticketId, userId, 'চাই দাহ এট লি নকজেগ');
+      final message = reason.trim().isEmpty
+          ? 'חבר אותי לנציג'
+          : 'חבר אותי לנציג: ${reason.trim()}';
+      await sendMessage(ticketId, userId, message);
     } catch (e) {
       throw Exception('Failed to escalate to human: $e');
     }

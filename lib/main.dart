@@ -16,7 +16,7 @@ import 'services/backend/supabase_backend.dart';
 
 // Supabase project credentials (SmarPackageAi)
 const _supabaseUrl = 'https://orzitfqmlvopujsoyigr.supabase.co';
-const _supabaseAnonKey = 'sb_publishable_WFNOchgCu1RHauIFCFDTig_dwVEo...'; // TODO: Get from dashboard
+const _supabaseAnonKey = 'sb_publishable_WFNOchgCu1RHauIFCFDT1g_dWVEoHAr';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

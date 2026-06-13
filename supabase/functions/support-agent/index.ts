@@ -8,6 +8,8 @@ const telegramGroupId = Deno.env.get("TELEGRAM_SUPPORT_GROUP_ID") || "";
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+const ESCALATION_MESSAGE = "הפנייה שלך הועברה לנציג אנושי, הוא יחזור אליך בקרוב";
+
 interface SupportRequest {
   ticketId: string;
   userId: string;
@@ -116,31 +118,29 @@ async function processUserMessage(
 
       const { data: userData } = await supabase
         .from("profiles")
-        .select("full_name")
+        .select("name")
         .eq("id", userId)
         .single();
 
-      const userName = userData?.full_name || "User";
+      const userName = userData?.name || "User";
 
       await sendTelegramNotification(ticketId, userName, userMessage);
 
       await supabase.from("support_messages").insert({
         ticket_id: ticketId,
         role: "agent",
-        message_text:
-          "Your request has been escalated to a human representative. They will respond shortly.",
+        message_text: ESCALATION_MESSAGE,
         metadata: { type: "escalation_notification" },
       });
 
       return {
         success: true,
         escalated: true,
-        agentResponse:
-          "Your request has been escalated to a human representative. They will respond shortly.",
+        agentResponse: ESCALATION_MESSAGE,
       };
     }
 
-    const agentResponse = generateAgentResponse(userMessage);
+    const agentResponse = await generateAgentResponse(userMessage, userId);
 
     const { error: responseError } = await supabase
       .from("support_messages")
@@ -166,17 +166,55 @@ async function processUserMessage(
   }
 }
 
-function generateAgentResponse(userMessage: string): string {
-  const responses = [
-    "Thank you for your question! I'm looking at your account details. One moment please...",
-    "I understand your concern. Let me help you find the best plan for your needs.",
-    "Great question! Based on your usage, I can recommend a few options.",
-    "I'm analyzing your current plan and comparing it with available alternatives.",
-    "If you need more personalized assistance, I can connect you with a human representative.",
+async function generateAgentResponse(
+  userMessage: string,
+  userId: string
+): Promise<string> {
+  const msg = userMessage.toLowerCase();
+
+  if (msg.includes("מחדש") || msg.includes("חידוש") || msg.includes("renew")) {
+    const { data: tracked } = await supabase
+      .from("tracked_plans")
+      .select("provider, plan_name, promo_end_date")
+      .eq("user_id", userId)
+      .not("promo_end_date", "is", null)
+      .order("promo_end_date", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    if (tracked?.promo_end_date) {
+      const date = new Date(tracked.promo_end_date).toLocaleDateString("he-IL");
+      return `המסלול שלך מ-${tracked.provider} (${tracked.plan_name}) מתחדש בתאריך ${date}. נשלח לך תזכורת כ-21 יום לפני כן, ונבדוק אם יש משהו טוב יותר.`;
+    }
+    return "כדי שנוכל לעקוב אחרי תאריך החידוש, סמנו את המסלול שלכם למעקב במסך 'מעקב חידושים' — נתריע לכם כ-21 יום לפני שהמבצע מסתיים.";
+  }
+
+  if (
+    msg.includes("עסקאות") ||
+    msg.includes("הצעות") ||
+    msg.includes("deal") ||
+    msg.includes("הנחה") ||
+    msg.includes("טוב יותר")
+  ) {
+    return "בדקו את מסך 'החיסכון שלי' לפירוט ההזדמנות הגדולה ביותר לחיסכון שלכם, ואת 'ההתאמות שלי' למסלול המומלץ בכל קטגוריה לפי השימוש שלכם.";
+  }
+
+  if (
+    msg.includes("משנה") ||
+    msg.includes("לשנות") ||
+    msg.includes("מעבר") ||
+    msg.includes("change")
+  ) {
+    return "כדי לעבור למסלול חדש, בחרו אותו ולחצו על 'התחל מעבר' — נציג שלנו ינהל את כל התהליך מולכם, כולל ניוד מספר אם צריך, בלי כפל תשלום.";
+  }
+
+  const fallbacks = [
+    "תודה על השאלה! אפשר לבדוק את ההתאמות האישיות שלכם במסך 'ההתאמות שלי'.",
+    "אני כאן כדי לעזור עם המסלולים והחיסכון שלכם — שאלו אותי על חידושים, עסקאות או מעבר מסלול.",
+    "אם תרצו עזרה מעמיקה יותר, אפשר ללחוץ על 'חבר אותי לנציג אנושי' ונציג יחזור אליכם.",
   ];
 
-  const index = Math.floor(Math.random() * responses.length);
-  return responses[index];
+  return fallbacks[Math.floor(Math.random() * fallbacks.length)];
 }
 
 serve(async (req: Request) => {

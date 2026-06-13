@@ -38,6 +38,7 @@ import 'pages/renewal_report/renewal_report_widget.dart';
 import 'pages/notifications/notification_center_widget.dart';
 import 'pages/provider/provider_widget.dart';
 import 'pages/support_ticket/support_ticket_widget.dart';
+import 'widgets/digital_agent_fab.dart';
 
 final _rootNavKey = GlobalKey<NavigatorState>(debugLabel: 'root');
 final _shellNavKey = GlobalKey<NavigatorState>(debugLabel: 'shell');
@@ -78,6 +79,9 @@ GoRouter createRouter() {
     GoRoute(path: '/auth', name: 'Auth', parentNavigatorKey: _rootNavKey, builder: (_, __) => const AuthWidget()),
     GoRoute(path: '/lock', name: 'Lock', parentNavigatorKey: _rootNavKey, builder: (_, __) => const BiometricGateWidget()),
     GoRoute(path: '/website', name: 'Website', parentNavigatorKey: _rootNavKey, builder: (_, __) => const WebsiteWidget()),
+    // Full-screen — sits outside the shell so the support chat doesn't stack
+    // its own AppBar under the bottom nav / agent FAB.
+    GoRoute(path: '/support-ticket/:ticketId', name: 'support-ticket', parentNavigatorKey: _rootNavKey, builder: (_, s) => SupportTicketWidget(ticketId: s.pathParameters['ticketId']!)),
     ShellRoute(
       navigatorKey: _shellNavKey,
       builder: (ctx, state, child) => _ScaffoldWithNav(location: state.uri.path, child: child),
@@ -118,7 +122,6 @@ GoRouter createRouter() {
         GoRoute(path: '/renewal-report/:trackedId', name: 'RenewalReport', builder: (_, s) => RenewalReportWidget(trackedId: s.pathParameters['trackedId']!)),
         GoRoute(path: '/notifications', name: 'Notifications', builder: (_, __) => const NotificationCenterWidget()),
         GoRoute(path: '/provider/:name', name: 'Provider', builder: (_, s) => ProviderWidget(providerName: s.pathParameters['name']!)),
-        GoRoute(path: '/support-ticket/:ticketId', name: 'support-ticket', builder: (_, s) => SupportTicketWidget(ticketId: s.pathParameters['ticketId']!)),
       ],
     ),
   ],
@@ -161,7 +164,23 @@ class _ScaffoldWithNav extends StatelessWidget {
       builder: (context, compareCount, _) => Scaffold(
       // Let page content scroll *under* the frosted nav bar so it reads as glass.
       extendBody: true,
-      body: child,
+      body: Stack(
+        children: [
+          child,
+          // Floating digital-agent entry point — sits above the frosted nav
+          // bar on every shell page so support is always one tap away.
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 80,
+            child: Consumer<AppState>(
+              builder: (context, appState, _) => DigitalAgentFab(
+                ticketId: appState.supportTicketId,
+              ),
+            ),
+          ),
+        ],
+      ),
       bottomNavigationBar: GlassPanel(
         // Flat top edge — only the top hairline frames it against scrolled content.
         borderRadius: BorderRadius.zero,

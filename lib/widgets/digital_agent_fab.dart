@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../app_state.dart';
 import '../theme/app_theme.dart';
 
 class DigitalAgentFab extends StatefulWidget {
@@ -31,6 +29,7 @@ class _DigitalAgentFabState extends State<DigitalAgentFab> {
         child: FloatingActionButton(
           heroTag: 'digital-agent-fab',
           backgroundColor: theme.primary,
+          tooltip: 'פנייה לתמיכה',
           onPressed: () => _openAgentChat(context),
           child: Stack(
             alignment: Alignment.center,
@@ -70,7 +69,7 @@ class _DigitalAgentFabState extends State<DigitalAgentFab> {
 
     if (userId == null || userId.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please log in first')),
+        const SnackBar(content: Text('יש להתחבר כדי לפנות לתמיכה')),
       );
       return;
     }

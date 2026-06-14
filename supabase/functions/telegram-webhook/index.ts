@@ -3,9 +3,13 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
 const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") || "";
 const botToken = Deno.env.get("TELEGRAM_BOT_TOKEN") || "";
 
 const supabase = createClient(supabaseUrl, supabaseKey);
+
+const AI_FALLBACK_REPLY =
+  "אני כרגע לא מצליח להתחבר ל-חוסך AI. נסו שוב בעוד כמה שניות, או הקלידו /help לעזרה.";
 
 interface TelegramUpdate {
   update_id: number;
@@ -46,6 +50,37 @@ async function sendTelegramMessage(
   } catch (error) {
     console.error("Error sending Telegram message:", error);
     return false;
+  }
+}
+
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+async function askChosechAI(message: string): Promise<string | null> {
+  try {
+    const res = await fetch(`${supabaseUrl}/functions/v1/site-ai-chat`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: supabaseAnonKey,
+        Authorization: `Bearer ${supabaseAnonKey}`,
+      },
+      body: JSON.stringify({ message }),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return typeof data?.reply === "string" && data.reply.trim()
+      ? data.reply.trim()
+      : null;
+  } catch (error) {
+    console.error("Error calling site-ai-chat:", error);
+    return null;
   }
 }
 
@@ -129,14 +164,18 @@ serve(async (req: Request) => {
       } else if (text === "/help") {
         await sendTelegramMessage(
           chatId,
-          `<b>Chosech Bot Help</b>\n\n<b>Commands:</b>\n/start - Connect your account\n/help - Show this message\n\nGet notified about:\n✅ Meeting confirmations\n⏰ Renewal reminders\n🎉 Better deals\n💰 Savings opportunities`
+          `<b>Chosech Bot Help</b>\n\n<b>Commands:</b>\n/start - Connect your account\n/help - Show this message\n\nGet notified about:\n✅ Meeting confirmations\n⏰ Renewal reminders\n🎉 Better deals\n💰 Savings opportunities\n\n💬 או שאלו אותי כל שאלה על מסלולים, בעברית — למשל "מה הכי משתלם לי בסלולר עם 5G?"`
         );
-      } else {
+      } else if (text.startsWith("/")) {
         // Unknown command
         await sendTelegramMessage(
           chatId,
           `Unknown command. Type /help for available commands, or connect your account with /start.`
         );
+      } else {
+        // Free-text question → route to חוסך AI (site-ai-chat)
+        const reply = await askChosechAI(text);
+        await sendTelegramMessage(chatId, escapeHtml(reply ?? AI_FALLBACK_REPLY));
       }
     }
 

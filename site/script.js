@@ -4,6 +4,15 @@
   const $ = (id) => document.getElementById(id);
   const nis = (n) => '₪' + Math.round(n).toLocaleString('he-IL');
 
+  // ── Backend config fallback ────────────────────────────────────────────
+  // index.html / app.html set window.CHOSECH_SUPABASE inline. The 53
+  // build.js-generated pages don't — define the same public values here so
+  // sendLead() and the chat widget below work on every page. Anon key only.
+  window.CHOSECH_SUPABASE = window.CHOSECH_SUPABASE || {
+    url: 'https://orzitfqmlvopujsoyigr.supabase.co',
+    anonKey: 'sb_publishable_WFNOchgCu1RHauIFCFDT1g_dWVEoHAr',
+  };
+
   // ── Footer year ──────────────────────────────────────────────────────────
   const year = $('year');
   if (year) year.textContent = new Date().getFullYear();
@@ -385,6 +394,185 @@
       });
     }
   }
+
+  // ── Global support chat widget (every page) ───────────────────────────────
+  // Floating launcher (bottom-left) → chat panel. Same backend as the
+  // app.html chat (site-ai-chat) plus one-click escalation to a human rep
+  // (site-support-escalate — stateless, sends a Telegram notification).
+  (() => {
+    const ESCALATION_KEYWORDS = [
+      'חבר אותי לנציג', 'אדם', 'human', 'representative', 'support', 'עזרה', 'speak to human',
+    ];
+    const ESCALATION_MESSAGE = 'הפנייה שלך הועברה לנציג אנושי, הוא יחזור אליך בקרוב';
+    const CHAT_FALLBACK_REPLY = 'מצטערים, יש לנו בעיה להתחבר כרגע. אפשר ללחוץ על "לדבר עם נציג" ונציג אנושי יחזור אליכם בקרוב. 🙏';
+    const MAX_HISTORY = 6;
+
+    const launcher = document.createElement('button');
+    launcher.id = 'chatLauncher';
+    launcher.className = 'chat-launcher';
+    launcher.type = 'button';
+    launcher.setAttribute('aria-label', 'פתיחת צ׳אט תמיכה');
+    launcher.setAttribute('aria-expanded', 'false');
+    launcher.setAttribute('aria-controls', 'chatPanel');
+    launcher.innerHTML = '<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8 9 9 0 0 1-3.8-.8L3 20l1.3-3.9A8 8 0 0 1 3.5 11 8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/></svg>';
+
+    const panel = document.createElement('div');
+    panel.id = 'chatPanel';
+    panel.className = 'chat-panel';
+    panel.setAttribute('role', 'dialog');
+    panel.setAttribute('aria-label', 'צ׳אט תמיכה של חוסך');
+    panel.hidden = true;
+    panel.innerHTML = `
+      <div class="chat-panel__head">
+        <span class="chat-panel__title">🤖 חוסך — צ׳אט תמיכה</span>
+        <button type="button" class="chat-panel__close" aria-label="סגירה">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+      <div class="chat-panel__body" id="chatBody"></div>
+      <button type="button" class="chat-escalate" id="chatEscalate">🆘 לדבר עם נציג</button>
+      <form class="chat-input-row" id="chatForm">
+        <input class="ai-input" id="chatInput" type="text" placeholder="כתבו לנו הודעה…" aria-label="הקלידו הודעה" autocomplete="off" maxlength="500" />
+        <button class="ai-send" type="submit" aria-label="שליחה">
+          <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+        </button>
+      </form>`;
+
+    document.body.appendChild(launcher);
+    document.body.appendChild(panel);
+
+    const body = panel.querySelector('#chatBody');
+    const form = panel.querySelector('#chatForm');
+    const input = panel.querySelector('#chatInput');
+    const send = panel.querySelector('.ai-send');
+    const close = panel.querySelector('.chat-panel__close');
+    const escalateBtn = panel.querySelector('#chatEscalate');
+
+    // Small scoped copies of app.html's bubble/typing helpers (kept separate
+    // so neither block can regress the other).
+    const addBubble = (cls, text) => {
+      const b = document.createElement('div');
+      b.className = 'ai-bubble ' + cls;
+      b.textContent = text;
+      body.appendChild(b);
+      b.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      return b;
+    };
+    let typingEl = null;
+    const showTyping = () => {
+      typingEl = addBubble('ai-bubble--bot ai-typing', '');
+      typingEl.innerHTML = '<span></span><span></span><span></span>';
+    };
+    const hideTyping = () => { if (typingEl) { typingEl.remove(); typingEl = null; } };
+
+    let opened = false;
+    const setOpen = (open) => {
+      panel.hidden = !open;
+      launcher.setAttribute('aria-expanded', String(open));
+      launcher.classList.toggle('chat-launcher--open', open);
+      if (open) {
+        if (!opened) {
+          opened = true;
+          track('chat_open', { source: location.pathname });
+          addBubble('ai-bubble--bot', 'היי! איך נוכל לעזור היום? 😊');
+        }
+        if (input) input.focus();
+      }
+    };
+    launcher.addEventListener('click', () => setOpen(panel.hidden));
+    if (close) close.addEventListener('click', () => setOpen(false));
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !panel.hidden) setOpen(false);
+    });
+
+    const history = [];
+    const pushHistory = (role, text) => {
+      history.push({ role, text });
+      if (history.length > MAX_HISTORY) history.splice(0, history.length - MAX_HISTORY);
+    };
+
+    const callFn = async (name, payload) => {
+      const cfg = window.CHOSECH_SUPABASE;
+      const res = await fetch(cfg.url.replace(/\/$/, '') + '/functions/v1/' + name, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', apikey: cfg.anonKey, Authorization: 'Bearer ' + cfg.anonKey },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error(name + ' rejected: ' + res.status);
+      return res.json();
+    };
+
+    const setBusy = (busy) => {
+      if (input) input.disabled = busy;
+      if (send) send.disabled = busy;
+      if (escalateBtn) escalateBtn.disabled = busy;
+    };
+
+    const escalate = async (message) => {
+      const priorHistory = history.slice();
+      track('chat_escalation', { source: location.pathname });
+      setBusy(true);
+      showTyping();
+      let reply = ESCALATION_MESSAGE;
+      try {
+        const data = await callFn('site-support-escalate', { message, history: priorHistory, page: location.pathname });
+        if (data && data.reply) reply = data.reply;
+      } catch (_) { /* local ESCALATION_MESSAGE still shown — escalation never looks broken */ }
+      hideTyping();
+      addBubble('ai-bubble--bot', reply);
+      pushHistory('bot', reply);
+      setBusy(false);
+    };
+    if (escalateBtn) {
+      escalateBtn.addEventListener('click', () => {
+        addBubble('ai-bubble--me', 'לדבר עם נציג');
+        escalate('המשתמש לחץ על "לדבר עם נציג".');
+      });
+    }
+
+    const looksLikeEscalation = (q) => {
+      const lower = q.toLowerCase();
+      return ESCALATION_KEYWORDS.some((k) => lower.includes(k.toLowerCase()));
+    };
+
+    const ask = async (q) => {
+      if (!q) return;
+      addBubble('ai-bubble--me', q);
+      const priorHistory = history.slice();
+      pushHistory('user', q);
+
+      if (looksLikeEscalation(q)) {
+        track('chat_message_sent', { source: location.pathname, escalated: true });
+        await escalate(q);
+        return;
+      }
+      track('chat_message_sent', { source: location.pathname, escalated: false });
+
+      setBusy(true);
+      showTyping();
+      let reply;
+      try {
+        const data = await callFn('site-ai-chat', { message: q, history: priorHistory });
+        reply = (data && data.reply) || CHAT_FALLBACK_REPLY;
+      } catch (_) {
+        reply = CHAT_FALLBACK_REPLY;
+      }
+      hideTyping();
+      addBubble('ai-bubble--bot', reply);
+      pushHistory('bot', reply);
+      setBusy(false);
+    };
+
+    if (form && input) {
+      form.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const q = input.value.trim();
+        if (!q) return;
+        input.value = '';
+        ask(q);
+      });
+    }
+  })();
 
   // ══ Premium interactions ══════════════════════════════════════════════════
   // All of these are progressive enhancement: they no-op under reduced-motion

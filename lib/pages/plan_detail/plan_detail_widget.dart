@@ -1,6 +1,8 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:fl_chart/fl_chart.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -8,11 +10,15 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../theme/app_theme.dart';
 import '../../core/nav.dart';
 import '../../widgets/app_button.dart';
+import '../../widgets/skeleton.dart';
+import '../../widgets/empty_state.dart';
 import '../../app_state.dart';
 import '../../models.dart';
 import '../../data.dart';
 import '../../components/logo_widget/logo_widget.dart';
+import '../../widgets/app_snackbar.dart';
 import '../../services/recommendation_engine.dart';
+import '../../services/plan_history.dart';
 import '../../services/backend/local_backend.dart';
 import '../../services/provider_ratings.dart';
 
@@ -345,6 +351,13 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                           .fadeIn(duration: 300.ms)
                           .slideY(begin: 0.08),
 
+                      // ── היסטוריית מחיר — collapsible price sparkline ──────
+                      const SizedBox(height: 14),
+                      _PriceHistoryCard(plan: plan)
+                          .animate(delay: 140.ms)
+                          .fadeIn(duration: 300.ms)
+                          .slideY(begin: 0.08),
+
                       // Warning card (promo)
                       if (plan.hasPromo) ...[
                         const SizedBox(height: 14),
@@ -531,25 +544,67 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
 
                       // Price alert card
                       _Card(
-                        child: Row(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Icon(Icons.notifications_outlined,
-                                color: ffTheme.primary, size: 22),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                'עקוב אחר שינויי מחיר',
-                                style: ffTheme.bodyMedium,
-                              ),
+                            Row(
+                              children: [
+                                Icon(Icons.notifications_outlined,
+                                    color: ffTheme.primary, size: 22),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    'עקוב אחר שינויי מחיר',
+                                    style: ffTheme.bodyMedium,
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.flag_outlined, size: 22),
+                                  color: ffTheme.brandAccent,
+                                  tooltip: 'הגדרת יעד מחיר',
+                                  onPressed: () =>
+                                      _showPriceTargetDialog(context, plan),
+                                ),
+                                Switch(
+                                  value: appState.isWatching(plan.id),
+                                  onChanged: (v) {
+                                    HapticFeedback.selectionClick();
+                                    appState.toggleWatch(plan.id);
+                                  },
+                                  activeThumbColor: ffTheme.primary,
+                                ),
+                              ],
                             ),
-                            Switch(
-                              value: appState.isWatching(plan.id),
-                              onChanged: (v) {
-                                HapticFeedback.selectionClick();
-                                appState.toggleWatch(plan.id);
-                              },
-                              activeThumbColor: ffTheme.primary,
-                            ),
+                            Builder(builder: (_) {
+                              final target = appState.priceTargetFor(plan.id);
+                              if (target == null) return const SizedBox.shrink();
+                              return Padding(
+                                padding: const EdgeInsets.only(top: 4),
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.flag_rounded,
+                                        size: 16, color: ffTheme.brandAccent),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        'יעד מחיר: ₪$target',
+                                        style: ffTheme.labelSmall.copyWith(
+                                            fontWeight: FontWeight.w700),
+                                      ),
+                                    ),
+                                    TextButton(
+                                      onPressed: () {
+                                        HapticFeedback.selectionClick();
+                                        appState.clearPriceTarget(plan.id);
+                                        AppSnackBar.info(
+                                            context, 'יעד המחיר הוסר');
+                                      },
+                                      child: const Text('הסרה'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }),
                           ],
                         ),
                       )
@@ -897,6 +952,79 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
         ],
       ),
     );
+  }
+
+  /// Opens a numeric ₪ dialog to set (or update) a price target for [plan].
+  /// On save we store it via [AppState.setPriceTarget] and confirm with a
+  /// SnackBar; an empty/invalid value is rejected without closing.
+  Future<void> _showPriceTargetDialog(BuildContext context, Plan plan) async {
+    final ffTheme = AppTheme.of(context);
+    final appState = Provider.of<AppState>(context, listen: false);
+    final existing = appState.priceTargetFor(plan.id);
+    final controller =
+        TextEditingController(text: existing != null ? '$existing' : '');
+    final result = await showDialog<int>(
+      context: context,
+      builder: (dialogContext) {
+        String? errorText;
+        return StatefulBuilder(
+          builder: (ctx, setStateDialog) {
+            void submit() {
+              final value = int.tryParse(controller.text.trim());
+              if (value == null || value <= 0) {
+                setStateDialog(() => errorText = 'נא להזין מחיר תקין');
+                return;
+              }
+              Navigator.of(dialogContext).pop(value);
+            }
+
+            return AlertDialog(
+              title: const Text('הגדרת יעד מחיר'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'נודיע לך כשהמסלול יגיע למחיר היעד שתבחר.',
+                    style: ffTheme.labelMedium,
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: controller,
+                    autofocus: true,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                    ],
+                    onSubmitted: (_) => submit(),
+                    decoration: InputDecoration(
+                      prefixText: '₪ ',
+                      labelText: 'מחיר יעד',
+                      errorText: errorText,
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text('ביטול'),
+                ),
+                TextButton(
+                  onPressed: submit,
+                  child: const Text('שמירה'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+    controller.dispose();
+    if (result == null) return;
+    appState.setPriceTarget(plan.id, result);
+    if (!context.mounted) return;
+    AppSnackBar.success(context, 'יעד מחיר נשמר: ₪$result');
   }
 }
 
@@ -1251,6 +1379,250 @@ class _RingPainter extends CustomPainter {
       old.fill != fill ||
       old.track != track ||
       old.cap != cap;
+}
+
+// ── Price history sparkline ───────────────────────────────────────────────────
+//
+// A collapsible card that draws a synthetic — but deterministic — 30-day price
+// history for the plan (see PlanHistory). Collapsed by default to keep the page
+// calm; expanding builds the series (with a brief skeleton) and renders a small
+// fl_chart sparkline plus min / max / current labels. Per-provider brand colors
+// are untouched — the line uses the app's VALUE accent (saving / amber).
+
+class _PriceHistoryCard extends StatefulWidget {
+  const _PriceHistoryCard({required this.plan});
+  final Plan plan;
+
+  @override
+  State<_PriceHistoryCard> createState() => _PriceHistoryCardState();
+}
+
+class _PriceHistoryCardState extends State<_PriceHistoryCard> {
+  bool _expanded = false;
+  bool _building = false;
+  List<PricePoint> _series = const [];
+
+  Future<void> _toggle() async {
+    HapticFeedback.selectionClick();
+    if (_expanded) {
+      setState(() => _expanded = false);
+      return;
+    }
+    setState(() {
+      _expanded = true;
+      _building = true;
+    });
+    // Tiny deferral so the skeleton is perceptible while we compute the series.
+    await Future<void>.delayed(const Duration(milliseconds: 280));
+    if (!mounted) return;
+    final series = PlanHistory.generate(
+      planId: widget.plan.id,
+      basePrice: widget.plan.priceValue.round(),
+      // Anchor "today" at a fixed index — the series is for trend shape only,
+      // so absolute calendar dates don't matter to the sparkline.
+      anchor: 30,
+    );
+    setState(() {
+      _series = series;
+      _building = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppTheme.of(context);
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: t.alternate),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Header (tap to expand/collapse) ──
+          Semantics(
+            button: true,
+            label: _expanded ? 'הסתר היסטוריית מחיר' : 'הצג היסטוריית מחיר',
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(14),
+                onTap: _toggle,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      Icon(Icons.show_chart_rounded,
+                          size: 20, color: t.primary),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text('היסטוריית מחיר', style: t.titleSmall),
+                      ),
+                      Text(
+                        'ב-30 הימים האחרונים',
+                        style: t.labelSmall.copyWith(color: t.secondaryText),
+                      ),
+                      const SizedBox(width: 4),
+                      AnimatedRotation(
+                        turns: _expanded ? 0.5 : 0,
+                        duration: const Duration(milliseconds: 200),
+                        child: Icon(Icons.expand_more_rounded,
+                            color: t.secondaryText),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          // ── Body (only when expanded) ──
+          AnimatedCrossFade(
+            duration: const Duration(milliseconds: 220),
+            crossFadeState: _expanded
+                ? CrossFadeState.showSecond
+                : CrossFadeState.showFirst,
+            firstChild: const SizedBox(width: double.infinity),
+            secondChild: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: _building
+                  ? _buildSkeleton()
+                  : _series.isEmpty
+                      ? const SizedBox(
+                          height: 160,
+                          child: EmptyState(
+                            icon: Icons.show_chart_rounded,
+                            headline: 'אין נתוני מחיר',
+                            subtitle:
+                                'עדיין לא נאספה היסטוריית מחיר עבור מסלול זה.',
+                          ),
+                        )
+                      : _buildChart(t),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSkeleton() {
+    return Shimmer.fromColors(
+      baseColor: const Color(0xFFE9EDF0),
+      highlightColor: const Color(0xFFF7F9FA),
+      child: const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SkeletonBox(width: double.infinity, height: 96, radius: 12),
+          SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              SkeletonBox(width: 60, height: 32),
+              SkeletonBox(width: 60, height: 32),
+              SkeletonBox(width: 60, height: 32),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChart(AppTheme t) {
+    final minP = PlanHistory.minPrice(_series);
+    final maxP = PlanHistory.maxPrice(_series);
+    final curP = PlanHistory.current(_series);
+    // Pad the Y range a touch so the line never hugs the edges.
+    final span = (maxP - minP).abs();
+    final pad = span == 0 ? 2.0 : span * 0.25;
+    final spots = <FlSpot>[
+      for (var i = 0; i < _series.length; i++)
+        FlSpot(i.toDouble(), _series[i].price.toDouble()),
+    ];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SizedBox(
+          height: 96,
+          child: LineChart(
+            LineChartData(
+              minY: minP - pad,
+              maxY: maxP + pad,
+              minX: 0,
+              maxX: (_series.length - 1).toDouble(),
+              titlesData: const FlTitlesData(show: false),
+              borderData: FlBorderData(show: false),
+              gridData: const FlGridData(show: false),
+              lineTouchData: const LineTouchData(enabled: false),
+              lineBarsData: [
+                LineChartBarData(
+                  spots: spots,
+                  isCurved: true,
+                  curveSmoothness: 0.28,
+                  color: t.saving,
+                  barWidth: 2.5,
+                  isStrokeCapRound: true,
+                  dotData: const FlDotData(show: false),
+                  belowBarData: BarAreaData(
+                    show: true,
+                    color: t.saving.withValues(alpha: 0.10),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            _HistoryStat(label: 'נמוך', value: minP, color: t.success, t: t),
+            _HistoryStat(label: 'גבוה', value: maxP, color: t.warning, t: t),
+            _HistoryStat(label: 'נוכחי', value: curP, color: t.primary, t: t),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+/// One labelled price figure (נמוך / גבוה / נוכחי) under the sparkline.
+class _HistoryStat extends StatelessWidget {
+  const _HistoryStat({
+    required this.label,
+    required this.value,
+    required this.color,
+    required this.t,
+  });
+  final String label;
+  final int value;
+  final Color color;
+  final AppTheme t;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text(
+          '₪$value',
+          style: t.titleMedium.copyWith(
+            color: color,
+            fontWeight: FontWeight.w800,
+            fontFeatures: const [FontFeature.tabularFigures()],
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(label, style: t.labelSmall.copyWith(color: t.secondaryText)),
+      ],
+    );
+  }
 }
 
 // ── Helper widgets ────────────────────────────────────────────────────────────

@@ -1285,6 +1285,9 @@ class _CommunityWidgetState extends State<CommunityWidget> {
   Widget build(BuildContext context) {
     final ffTheme = AppTheme.of(context);
     final appState = Provider.of<AppState>(context, listen: false);
+    // Compute the filtered+sorted feed once per build — the getter does a
+    // filter+sort pass and is read in several places below.
+    final filtered = _filtered;
 
     return Scaffold(
       backgroundColor: ffTheme.background,
@@ -1305,7 +1308,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
         elevation: 0,
         actions: [
           Padding(
-            padding: const EdgeInsets.only(left: 16, top: 8, bottom: 8),
+            padding: const EdgeInsetsDirectional.only(start: 16, top: 8, bottom: 8),
             child: ElevatedButton.icon(
               onPressed: () => _showComposer(context, appState, ffTheme),
               icon: const Icon(Icons.edit_rounded, size: 14),
@@ -1488,7 +1491,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                     children: _topicLabels.map((topic) {
                       final active = _topicFilter == topic;
                       return Padding(
-                        padding: const EdgeInsets.only(left: 6),
+                        padding: const EdgeInsetsDirectional.only(start: 6),
                         child: Semantics(
                           button: true,
                           selected: active,
@@ -1592,7 +1595,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
 
           // Posts list
           Expanded(
-            child: _filtered.isEmpty
+            child: filtered.isEmpty
                 ? (_showBookmarksOnly
                     ? Center(
                         child: Column(
@@ -1663,7 +1666,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                       // the main list (the builder offsets by featuredCount).
                       itemCount: () {
                         final featured = _featuredPosts;
-                        final feedCount = math.min(_visibleCount, _filtered.length);
+                        final feedCount = math.min(_visibleCount, filtered.length);
                         return (featured.isNotEmpty ? 1 : 0) + feedCount;
                       }(),
                       itemBuilder: (context, i) {
@@ -1678,7 +1681,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                           ).animate().fadeIn(duration: 400.ms);
                         }
                         final feedIndex = featured.isNotEmpty ? i - 1 : i;
-                        final post = _filtered[feedIndex];
+                        final post = filtered[feedIndex];
                         final isVerified = _isCurrentUserVerified(appState) &&
                             appState.isOwnPost(post.id);
                         return _PostCard(

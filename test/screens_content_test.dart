@@ -80,6 +80,8 @@ void main() {
 
     await tester.enterText(find.byType(TextField).first, allProviders.first);
     await _settle(tester);
+    // Drain the result rows' staggered entrance-animation delay timers.
+    await tester.pump(const Duration(seconds: 2));
 
     expect(find.text('ספקים'), findsOneWidget);
     expect(find.text('מסלולים'), findsOneWidget);
@@ -101,6 +103,7 @@ void main() {
     await tester.tap(find.byIcon(Icons.close_rounded));
     await tester.pump(const Duration(milliseconds: 300));
     await tester.pump(const Duration(milliseconds: 300)); // flush staggered reveal timers
+    await tester.pump(const Duration(seconds: 2)); // drain entrance-animation delay timers
 
     // The recent-searches section appears only when there is history.
     expect(find.text('חיפושים אחרונים'), findsOneWidget);

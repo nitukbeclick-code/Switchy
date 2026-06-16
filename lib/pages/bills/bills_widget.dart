@@ -470,7 +470,7 @@ class _BillsWidgetState extends State<BillsWidget> {
                   context.pushNamed('Results');
                 },
                 ffTheme: ffTheme,
-              ).animate(delay: (i * 70).ms).fadeIn(duration: 350.ms).slideX(begin: 0.05, end: 0);
+              ).animate().fadeIn(delay: (i * 80).ms).slideY(begin: 0.08, end: 0);
             }),
 
             // ── Total savings summary card ─────────────────────────────────

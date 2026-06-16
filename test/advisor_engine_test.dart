@@ -1,4 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:chosech/app_state.dart';
 import 'package:chosech/data.dart';
 import 'package:chosech/services/advisor_engine.dart';
 
@@ -7,6 +9,17 @@ AdvisorReply ask(String text, {AdvisorContext? context}) =>
     AdvisorEngine.respondTo(text, context: context ?? const AdvisorContext());
 
 void main() {
+  // The buildUserContext group below reads a live AppState (bills, quiz,
+  // tracked + watched plans), which is backed by SharedPreferences. The binding
+  // + mock prefs + a fresh singleton per test keep those cases isolated; the
+  // pure respondTo() tests above ignore all of this.
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+    AppState.reset();
+  });
+
   group('category keyword detection', () {
     test('internet keywords map to internet', () {
       for (final q in ['אינטרנט ביתי', 'רוצה סיב אופטי', 'ראוטר חדש', 'internet בבית', 'ברודבנד מהיר']) {
@@ -346,6 +359,178 @@ void main() {
       for (final k in AdvisorProviderRating.subKeys) {
         expect(r.sub[k], 0, reason: k);
       }
+    });
+  });
+
+  group('buildUserContext', () {
+    // A future-dated promo so daysUntilRenewal is a stable positive number,
+    // independent of when the suite runs.
+    String futureDate(int daysAhead) {
+      final d = DateTime.now().add(Duration(days: daysAhead));
+      return '${d.year.toString().padLeft(4, '0')}-'
+          '${d.month.toString().padLeft(2, '0')}-'
+          '${d.day.toString().padLeft(2, '0')}';
+    }
+
+    test('a fresh, emptied profile reports "not set" on every line', () {
+      final s = AppState();
+      s.resetAllBills();
+      final ctx = AdvisorEngine.buildUserContext(s);
+
+      // Bills: no non-zero category → the explicit "not defined" line, no ₪.
+      expect(ctx, contains('חשבונות נוכחיים: לא הוגדרו עדיין'));
+      expect(ctx, isNot(contains('₪')));
+      // Quiz not completed, no tracked plans.
+      expect(ctx, contains('שאלון העדפות: לא הושלם עדיין'));
+      expect(ctx, contains('תוכניות עקובות: אין'));
+      // No watched plans → that optional line is omitted entirely.
+      expect(ctx, isNot(contains('מסלולים במעקב מחיר')));
+    });
+
+    test('multi-category bills render with their Hebrew labels and ₪ amounts',
+        () {
+      final s = AppState();
+      s.resetAllBills();
+      s.setCurrentBill('cellular', 119);
+      s.setCurrentBill('internet', 140);
+      s.setCurrentBill('tv', 130);
+      final ctx = AdvisorEngine.buildUserContext(s);
+
+      expect(ctx, contains('חשבונות נוכחיים:'));
+      expect(ctx, contains('סלולר ₪119'));
+      expect(ctx, contains('אינטרנט ₪140'));
+      expect(ctx, contains('טלוויזיה ₪130'));
+      // A zeroed category must NOT appear.
+      expect(ctx, isNot(contains('חו"ל ₪')));
+      expect(ctx, isNot(contains('לא הוגדרו עדיין')));
+    });
+
+    test('a completed quiz surfaces category, budget, priority, needs & lines',
+        () {
+      final s = AppState();
+      s.setQuizCompleted(true);
+      s.setQuizCat('internet');
+      s.setQuizBudget(180);
+      s.setQuizPriority('speed');
+      s.setQuizLines(3);
+      s.setQuizNeeds(wants5G: true, wantsAbroad: false, wantsNoCommit: true);
+      final ctx = AdvisorEngine.buildUserContext(s);
+
+      expect(ctx, isNot(contains('שאלון העדפות: לא הושלם')));
+      expect(ctx, contains('מחפש: אינטרנט'));
+      expect(ctx, contains('תקציב עד ₪180'));
+      expect(ctx, contains('עדיפות: מהירות'));
+      // Needs join the wanted ones only (5G + nocommit), abroad omitted.
+      expect(ctx, contains('5G'));
+      expect(ctx, contains('ללא התחייבות'));
+      expect(ctx, isNot(contains('עדיפויות: חו"ל')));
+      // quizLines > 1 emits its own line.
+      expect(ctx, contains('מספר קווים: 3'));
+    });
+
+    test('a single-line quiz omits the "מספר קווים" line', () {
+      final s = AppState();
+      s.setQuizCompleted(true);
+      s.setQuizCat('cellular');
+      s.setQuizLines(1);
+      final ctx = AdvisorEngine.buildUserContext(s);
+      expect(ctx, contains('מחפש: סלולר'));
+      expect(ctx, isNot(contains('מספר קווים')));
+    });
+
+    test('tracked plans (renewal radar) list provider, plan & renewal countdown',
+        () {
+      final s = AppState();
+      s.addMyPlan(
+        category: 'cellular',
+        provider: 'גולן טלקום',
+        planName: 'אנלימיטד',
+        monthlyPrice: 39,
+        promoEndDate: futureDate(30),
+      );
+      final ctx = AdvisorEngine.buildUserContext(s);
+
+      expect(ctx, isNot(contains('תוכניות עקובות: אין')));
+      expect(ctx, contains('תוכניות עקובות:'));
+      expect(ctx, contains('גולן טלקום — אנלימיטד ₪39/סלולר'));
+      // Future promo → a "renews in N days" note.
+      expect(ctx, contains('מתחדש בעוד 30 ימים'));
+    });
+
+    test('a tracked plan without a promo date omits the renewal note', () {
+      final s = AppState();
+      s.addMyPlan(
+        category: 'tv',
+        provider: 'yes',
+        planName: 'בסיס',
+        monthlyPrice: 99,
+      );
+      final ctx = AdvisorEngine.buildUserContext(s);
+      expect(ctx, contains('yes — בסיס ₪99/טלוויזיה'));
+      expect(ctx, isNot(contains('מתחדש בעוד')));
+    });
+
+    test('the watched-plans count line appears only when something is watched',
+        () {
+      final s = AppState();
+      final first = allPlans.first.id;
+      final second = allPlans[1].id;
+      s.toggleWatch(first);
+      s.toggleWatch(second);
+      final ctx = AdvisorEngine.buildUserContext(s);
+      expect(ctx, contains('מסלולים במעקב מחיר: 2'));
+    });
+  });
+
+  group('generateContextualReply', () {
+    // Two representative contexts: one with real bills (a ₪ figure and no
+    // "not defined" marker) and one empty — exactly what buildUserContext emits.
+    const withBills = 'חשבונות נוכחיים: סלולר ₪119, אינטרנט ₪140\n'
+        'שאלון העדפות: לא הושלם עדיין\n'
+        'תוכניות עקובות: אין';
+    const empty = 'חשבונות נוכחיים: לא הוגדרו עדיין\n'
+        'שאלון העדפות: לא הושלם עדיין\n'
+        'תוכניות עקובות: אין';
+
+    test('a savings question with bills echoes the profile and offers a calc',
+        () {
+      final reply =
+          AdvisorEngine.generateContextualReply('כמה אני חוסך?', withBills);
+      expect(reply, contains('לפי הפרופיל שלך'));
+      expect(reply, contains('₪119'));
+      expect(reply, contains('כמה אני חוסך'));
+    });
+
+    test('a savings question with no bills nudges to set the bills first', () {
+      final reply =
+          AdvisorEngine.generateContextualReply('כמה אפשר לחסוך?', empty);
+      expect(reply, contains('צריך קודם להגדיר את החשבונות'));
+      expect(reply, contains('החשבונות שלי'));
+      expect(reply, isNot(contains('לפי הפרופיל שלך')));
+    });
+
+    test('a profile question renders the full context block', () {
+      final reply = AdvisorEngine.generateContextualReply(
+          'מה יש לי בפרופיל', withBills);
+      expect(reply, contains('הנה הפרופיל שלך'));
+      expect(reply, contains('₪119'));
+      expect(reply, contains('מה הכי משתלם לי'));
+    });
+
+    test('an unmatched message with bills falls back to a profile-aware prompt',
+        () {
+      final reply =
+          AdvisorEngine.generateContextualReply('בלהבלה לורם', withBills);
+      expect(reply, contains('ראיתי את הפרופיל שלך'));
+      expect(reply, contains('מה הכי משתלם לי?'));
+    });
+
+    test('an unmatched message with no bills falls back to the generic help',
+        () {
+      final reply =
+          AdvisorEngine.generateContextualReply('בלהבלה לורם', empty);
+      expect(reply, contains('לא הצלחתי להבין בדיוק'));
+      expect(reply, isNot(contains('ראיתי את הפרופיל שלך')));
     });
   });
 }

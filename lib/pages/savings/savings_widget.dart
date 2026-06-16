@@ -486,6 +486,12 @@ class _CategoryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final hasBill = saving.hasBill;
     final hasOpp = saving.hasOpportunity;
+    // Category-aware price suffix: abroad plans are priced per-package,
+    // everything else is monthly. Derive from the shared helper
+    // (categoryBudgetSuffix → '/חבילה' | '/חודש') and strip the leading
+    // slash to keep the 'לחבילה'/'לחודש' wording.
+    final priceSuffix =
+        'ל${categoryBudgetSuffix(saving.categoryId).replaceFirst('/', '')}';
     // Savings ratio as a fraction of the current bill (0.0 – 1.0).
     final ratio = (hasBill && saving.currentBill > 0)
         ? (saving.annualSaving / (saving.currentBill * 12)).clamp(0.0, 1.0)
@@ -563,7 +569,7 @@ class _CategoryCard extends StatelessWidget {
                 _PriceCompare(
                   label: 'אתה משלם',
                   value: '₪${saving.currentBill}',
-                  sub: 'לחודש',
+                  sub: priceSuffix,
                   highlight: false,
                   ffTheme: ffTheme,
                 ),
@@ -575,7 +581,7 @@ class _CategoryCard extends StatelessWidget {
                 _PriceCompare(
                   label: 'המומלץ שלנו',
                   value: '₪${saving.best!.plan.price}',
-                  sub: 'לחודש',
+                  sub: priceSuffix,
                   highlight: true,
                   ffTheme: ffTheme,
                 ),

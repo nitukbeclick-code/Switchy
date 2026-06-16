@@ -155,7 +155,7 @@ class SupportTicketService {
         .stream(primaryKey: ['id'])
         .eq('ticket_id', ticketId)
         .order('created_at')
-        .map((list) => list.map((json) => SupportMessage.fromJson(json as Map<String, dynamic>)).toList());
+        .map((list) => list.map((json) => SupportMessage.fromJson(json)).toList());
   }
 
   /// Subscribe to ticket status changes
@@ -166,7 +166,7 @@ class SupportTicketService {
         .eq('id', ticketId)
         .map((list) {
           if (list.isEmpty) throw Exception('Ticket not found');
-          return SupportTicket.fromJson(list.first as Map<String, dynamic>);
+          return SupportTicket.fromJson(list.first);
         });
   }
 
@@ -195,7 +195,7 @@ class SupportTicketService {
           .order('created_at');
 
       return (
-        SupportTicket.fromJson(ticket as Map<String, dynamic>),
+        SupportTicket.fromJson(ticket),
         (messages as List).map((m) => SupportMessage.fromJson(m as Map<String, dynamic>)).toList(),
       );
     } catch (e) {

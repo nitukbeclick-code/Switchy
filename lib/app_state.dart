@@ -64,6 +64,25 @@ class AppState extends ChangeNotifier {
     // Watched plans
     final watched = p.getStringList('watchedPlans') ?? [];
     _watchedPlans.addAll(watched);
+    // Favorites / wishlist
+    final favorites = p.getStringList('favoritePlans') ?? [];
+    _favoritePlans.addAll(favorites);
+    // Price targets (planId -> ₪ goal), stored as a JSON map
+    final priceTargetsJson = p.getString('priceTargets');
+    if (priceTargetsJson != null) {
+      final decoded = jsonDecode(priceTargetsJson) as Map<String, dynamic>;
+      decoded.forEach((planId, value) {
+        _priceTargets[planId] = (value as num).toInt();
+      });
+    }
+    // Alert-tuning prefs
+    _minSavingAlert = p.getInt('minSavingAlert') ?? 5;
+    _alertFrequency = p.getString('alertFrequency') ?? 'immediate';
+    _renewalDaysAhead = p.getInt('renewalDaysAhead') ?? 21;
+    _renewalReminderTime = p.getString('renewalReminderTime') ?? '09:00';
+    // Switch checklist done-set
+    final checklistDone = p.getStringList('switchChecklistDone') ?? [];
+    _switchChecklistDone.addAll(checklistDone);
     // Recently viewed
     final recent = p.getStringList('recentlyViewed') ?? [];
     _recentlyViewed.addAll(recent);
@@ -242,6 +261,21 @@ class AppState extends ChangeNotifier {
         case 'watchedPlans':
           await p.setStringList('watchedPlans', _watchedPlans.toList());
           break;
+        case 'favoritePlans':
+          await p.setStringList('favoritePlans', _favoritePlans.toList());
+          break;
+        case 'priceTargets':
+          await p.setString('priceTargets', jsonEncode(_priceTargets));
+          break;
+        case 'alertTuning':
+          await p.setInt('minSavingAlert', _minSavingAlert);
+          await p.setString('alertFrequency', _alertFrequency);
+          await p.setInt('renewalDaysAhead', _renewalDaysAhead);
+          await p.setString('renewalReminderTime', _renewalReminderTime);
+          break;
+        case 'switchChecklistDone':
+          await p.setStringList('switchChecklistDone', _switchChecklistDone.toList());
+          break;
         case 'recentlyViewed':
           await p.setStringList('recentlyViewed', _recentlyViewed);
           break;
@@ -313,7 +347,9 @@ class AppState extends ChangeNotifier {
   static const Set<String> _lightGroups = {
     'auth', 'totalSavings', 'selectedCat', 'bills', 'quiz', 'quizNeeds', 'lead',
     'meeting', 'telegram', 'supportTicket',
-    'trackerStep', 'watchedPlans', 'recentlyViewed', 'recentSearches',
+    'trackerStep', 'watchedPlans', 'favoritePlans', 'priceTargets',
+    'alertTuning', 'switchChecklistDone',
+    'recentlyViewed', 'recentSearches',
     'userReviews', 'likedPosts', 'bookmarkedPosts', 'myPlans',
     'renewalReminders', 'dismissedNotifications', 'prefs', 'seenOnboarding',
     'themeMode',
@@ -542,6 +578,71 @@ class AppState extends ChangeNotifier {
       _watchedPlans.remove(planId);
     } else {
       _watchedPlans.add(planId);
+    }
+    notifyListeners();
+    _persist();
+  }
+
+  // Favorites / wishlist — mirrors the watch list (a separate, sentiment list:
+  // "plans I love" vs "plans whose price I'm tracking").
+  final Set<String> _favoritePlans = {};
+  List<String> get favoritePlans => List.unmodifiable(_favoritePlans);
+  bool isFavorited(String planId) => _favoritePlans.contains(planId);
+  void toggleFavorite(String planId) {
+    if (_favoritePlans.contains(planId)) {
+      _favoritePlans.remove(planId);
+    } else {
+      _favoritePlans.add(planId);
+    }
+    notifyListeners();
+    _persist();
+  }
+
+  // Price targets — a ₪ goal per plan id; a price-alert fires once the plan
+  // reaches it. A non-positive target removes the entry (no goal = not tracked).
+  final Map<String, int> _priceTargets = {};
+  Map<String, int> get priceTargets => Map.unmodifiable(_priceTargets);
+  int? priceTargetFor(String planId) => _priceTargets[planId];
+  void setPriceTarget(String planId, int price) {
+    if (price <= 0) {
+      _priceTargets.remove(planId);
+    } else {
+      _priceTargets[planId] = price;
+    }
+    notifyListeners();
+    _persist();
+  }
+  void clearPriceTarget(String planId) {
+    _priceTargets.remove(planId);
+    notifyListeners();
+    _persist();
+  }
+
+  // Alert-tuning prefs — thresholds/timing the notification engine reads so the
+  // user controls how aggressive (and how early) their alerts are.
+  int _minSavingAlert = 5;
+  String _alertFrequency = 'immediate';
+  int _renewalDaysAhead = 21;
+  String _renewalReminderTime = '09:00';
+  int get minSavingAlert => _minSavingAlert;
+  String get alertFrequency => _alertFrequency;
+  int get renewalDaysAhead => _renewalDaysAhead;
+  String get renewalReminderTime => _renewalReminderTime;
+  void setMinSavingAlert(int v) { _minSavingAlert = v; notifyListeners(); _persist(); }
+  void setAlertFrequency(String v) { _alertFrequency = v; notifyListeners(); _persist(); }
+  void setRenewalDaysAhead(int v) { _renewalDaysAhead = v; notifyListeners(); _persist(); }
+  void setRenewalReminderTime(String v) { _renewalReminderTime = v; notifyListeners(); _persist(); }
+
+  // Switch checklist — set of completed step keys for the "how to switch
+  // provider" guide, so progress survives across sessions.
+  final Set<String> _switchChecklistDone = {};
+  Set<String> get switchChecklistDone => Set.unmodifiable(_switchChecklistDone);
+  bool isChecklistDone(String key) => _switchChecklistDone.contains(key);
+  void toggleChecklistItem(String key) {
+    if (_switchChecklistDone.contains(key)) {
+      _switchChecklistDone.remove(key);
+    } else {
+      _switchChecklistDone.add(key);
     }
     notifyListeners();
     _persist();

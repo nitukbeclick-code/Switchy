@@ -172,7 +172,7 @@ class _SearchWidgetState extends State<SearchWidget> {
                       _focus.requestFocus();
                     },
                     child: Padding(
-                      padding: const EdgeInsets.only(right: 2, left: 2),
+                      padding: const EdgeInsetsDirectional.only(end: 2, start: 2),
                       child: Icon(Icons.close_rounded, size: 18, color: ffTheme.secondaryText),
                     ),
                   ),
@@ -183,7 +183,7 @@ class _SearchWidgetState extends State<SearchWidget> {
         // Filter icon (with badge) at the end of the AppBar
         actions: [
           Padding(
-            padding: const EdgeInsets.only(left: 8, right: 4),
+            padding: const EdgeInsetsDirectional.only(start: 8, end: 4),
             child: Semantics(
               button: true,
               label: hasFilters ? 'מסנן פעיל, $_activeFilterCount מסננים' : 'מסנן',
@@ -329,7 +329,7 @@ class _FilterPanel extends StatelessWidget {
               children: [
                 // Budget toggle chip (sits at the start)
                 Padding(
-                  padding: const EdgeInsets.only(left: 8),
+                  padding: const EdgeInsetsDirectional.only(start: 8),
                   child: _FilterChip(
                     label: budgetOpen
                         ? (budgetActive ? 'תקציב: עד ₪${maxPrice.round()}' : 'תקציב')
@@ -342,7 +342,7 @@ class _FilterPanel extends StatelessWidget {
                 ),
                 // Category chips
                 ..._catChips.map((c) => Padding(
-                      padding: const EdgeInsets.only(left: 8),
+                      padding: const EdgeInsetsDirectional.only(start: 8),
                       child: _FilterChip(
                         label: c.label,
                         selected: selectedCategory == c.id,
@@ -514,7 +514,7 @@ class _ProviderFilterRow extends StatelessWidget {
               children: [
                 // "כל הספקים" chip
                 Padding(
-                  padding: const EdgeInsets.only(left: 8),
+                  padding: const EdgeInsetsDirectional.only(start: 8),
                   child: _FilterChip(
                     label: 'כל הספקים',
                     selected: selectedProvider == null,
@@ -523,7 +523,7 @@ class _ProviderFilterRow extends StatelessWidget {
                   ),
                 ),
                 ...visible.map((name) => Padding(
-                      padding: const EdgeInsets.only(left: 8),
+                      padding: const EdgeInsetsDirectional.only(start: 8),
                       child: _FilterChip(
                         label: name,
                         selected: selectedProvider == name,
@@ -535,7 +535,7 @@ class _ProviderFilterRow extends StatelessWidget {
                     )),
                 if (hasMore)
                   Padding(
-                    padding: const EdgeInsets.only(left: 8),
+                    padding: const EdgeInsetsDirectional.only(start: 8),
                     child: Semantics(
                       button: true,
                       label: 'הצג עוד ספקים',
@@ -612,7 +612,7 @@ class _ResultsList extends StatelessWidget {
                   app.setCategory(c.id);
                   context.pushNamed('Results');
                 },
-              ).animate(delay: (i.clamp(0, 5) * 30).ms).fadeIn(duration: 220.ms);
+              ).animate(delay: (i * 60).ms).fadeIn(duration: 220.ms).slideY(begin: 0.08);
               i++;
               return widget;
             }).toList(),
@@ -641,7 +641,7 @@ class _ResultsList extends StatelessWidget {
                     onBeforeNavigate();
                     context.pushNamed('Provider', pathParameters: {'name': name});
                   },
-                ).animate(delay: (i.clamp(0, 5) * 30).ms).fadeIn(duration: 220.ms);
+                ).animate(delay: (i * 60).ms).fadeIn(duration: 220.ms).slideY(begin: 0.08);
                 i++;
                 return widget;
               },
@@ -660,7 +660,7 @@ class _ResultsList extends StatelessWidget {
               query: query,
               currentBill: appState.currentBill(p.cat),
               ffTheme: ffTheme,
-            ).animate(delay: (i.clamp(0, 6) * 25).ms).fadeIn(duration: 220.ms);
+            ).animate(delay: (i * 60).ms).fadeIn(duration: 220.ms).slideY(begin: 0.08);
             i++;
             return widget;
           }),
@@ -822,7 +822,7 @@ class _HighlightedPlanCard extends StatelessWidget {
         ),
         if (feature != null)
           Padding(
-            padding: const EdgeInsets.only(bottom: 12, right: 4, left: 4),
+            padding: const EdgeInsetsDirectional.only(bottom: 12, end: 4, start: 4),
             child: Row(
               children: [
                 Icon(Icons.check_circle_outline_rounded, size: 14, color: ffTheme.tertiary),

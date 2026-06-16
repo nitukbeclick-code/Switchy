@@ -9,6 +9,7 @@ import '../../app_state.dart';
 import '../../services/auth_service.dart';
 import '../../services/telegram_service.dart';
 import '../../widgets/app_button.dart';
+import '../../widgets/info_banner.dart';
 
 class SettingsWidget extends StatelessWidget {
   const SettingsWidget({super.key});
@@ -81,6 +82,22 @@ class SettingsWidget extends StatelessWidget {
                 ],
               ),
             ).animate().fadeIn(duration: 350.ms),
+
+            const SizedBox(height: 24),
+
+            // ── Section 1b: Price-alert tuning ────────────────────────────
+            _SectionHeader(title: 'כוונון התראות מחיר', ffTheme: ffTheme),
+            _PriceAlertTuningCard(ffTheme: ffTheme)
+                .animate()
+                .fadeIn(delay: 60.ms, duration: 350.ms),
+
+            const SizedBox(height: 24),
+
+            // ── Section 1c: Renewal reminders ─────────────────────────────
+            _SectionHeader(title: 'תזכורות חידוש', ffTheme: ffTheme),
+            _RenewalReminderCard(ffTheme: ffTheme)
+                .animate()
+                .fadeIn(delay: 80.ms, duration: 350.ms),
 
             const SizedBox(height: 24),
 
@@ -611,6 +628,268 @@ class _ThemeModeCard extends StatelessWidget {
                   );
                 }).toList(),
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Price-alert tuning: min monthly saving + alert frequency ────────────────────
+class _PriceAlertTuningCard extends StatelessWidget {
+  const _PriceAlertTuningCard({required this.ffTheme});
+  final AppTheme ffTheme;
+
+  @override
+  Widget build(BuildContext context) {
+    final appState = Provider.of<AppState>(context);
+    final minSaving = appState.minSavingAlert;
+    final frequency = appState.alertFrequency;
+
+    const freqOptions = [
+      ('immediate', 'מיידי'),
+      ('daily', 'יומי'),
+      ('weekly', 'שבועי'),
+    ];
+
+    return _Card(
+      ffTheme: ffTheme,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Minimum monthly saving slider (₪).
+            Row(
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: ffTheme.accent1,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(Icons.savings_rounded, color: ffTheme.saving, size: 20),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('סף חיסכון חודשי מינימלי', style: ffTheme.titleSmall),
+                      Text(
+                        'התראה רק כשהחיסכון לפחות בגובה זה',
+                        style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText),
+                      ),
+                    ],
+                  ),
+                ),
+                Text(
+                  '₪$minSaving',
+                  style: ffTheme.titleSmall.copyWith(
+                    color: ffTheme.saving,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
+            Slider(
+              value: minSaving.toDouble().clamp(0, 100),
+              min: 0,
+              max: 100,
+              divisions: 20,
+              label: '₪$minSaving',
+              activeColor: ffTheme.saving,
+              onChanged: (v) => Provider.of<AppState>(context, listen: false)
+                  .setMinSavingAlert(v.round()),
+            ),
+            const SizedBox(height: 8),
+            // Alert frequency segmented choice.
+            Text('תדירות התראות', style: ffTheme.titleSmall),
+            const SizedBox(height: 10),
+            Row(
+              children: freqOptions.map((opt) {
+                final (value, label) = opt;
+                final isActive = frequency == value;
+                return Expanded(
+                  child: GestureDetector(
+                    onTap: () => Provider.of<AppState>(context, listen: false)
+                        .setAlertFrequency(value),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+                      margin: const EdgeInsets.symmetric(horizontal: 3),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      decoration: BoxDecoration(
+                        color: isActive ? ffTheme.brandAccent : ffTheme.accent1,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: isActive
+                              ? ffTheme.brandAccent
+                              : ffTheme.alternate.withValues(alpha: 0.4),
+                        ),
+                      ),
+                      child: Text(
+                        label,
+                        textAlign: TextAlign.center,
+                        style: ffTheme.labelMedium.copyWith(
+                          color: isActive ? Colors.white : ffTheme.secondaryText,
+                          fontWeight: isActive ? FontWeight.w700 : FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 14),
+            const InfoBanner(
+              icon: Icons.notifications_active_rounded,
+              title: 'נשלח התראה כשנמצא מסלול שחוסך לך לפחות את הסכום שבחרת.',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Renewal reminders: days-ahead + time-of-day ─────────────────────────────────
+class _RenewalReminderCard extends StatelessWidget {
+  const _RenewalReminderCard({required this.ffTheme});
+  final AppTheme ffTheme;
+
+  Future<void> _pickTime(BuildContext context, String current) async {
+    final parts = current.split(':');
+    final initial = TimeOfDay(
+      hour: int.tryParse(parts.isNotEmpty ? parts[0] : '') ?? 9,
+      minute: int.tryParse(parts.length > 1 ? parts[1] : '') ?? 0,
+    );
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: initial,
+      builder: (ctx, child) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: child ?? const SizedBox.shrink(),
+      ),
+    );
+    if (picked == null || !context.mounted) return;
+    final hh = picked.hour.toString().padLeft(2, '0');
+    final mm = picked.minute.toString().padLeft(2, '0');
+    Provider.of<AppState>(context, listen: false).setRenewalReminderTime('$hh:$mm');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final appState = Provider.of<AppState>(context);
+    final daysAhead = appState.renewalDaysAhead;
+    final reminderTime = appState.renewalReminderTime;
+
+    return _Card(
+      ffTheme: ffTheme,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Days-ahead slider.
+            Row(
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: ffTheme.accent1,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(Icons.event_repeat_rounded, color: ffTheme.primary, size: 20),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('כמה ימים מראש', style: ffTheme.titleSmall),
+                      Text(
+                        'נזכיר לך לפני מועד החידוש',
+                        style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText),
+                      ),
+                    ],
+                  ),
+                ),
+                Text(
+                  '$daysAhead ימים',
+                  style: ffTheme.titleSmall.copyWith(
+                    color: ffTheme.primary,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
+            ),
+            Slider(
+              value: daysAhead.toDouble().clamp(1, 60),
+              min: 1,
+              max: 60,
+              divisions: 59,
+              label: '$daysAhead ימים',
+              activeColor: ffTheme.primary,
+              onChanged: (v) => Provider.of<AppState>(context, listen: false)
+                  .setRenewalDaysAhead(v.round()),
+            ),
+            const SizedBox(height: 8),
+            // Time-of-day control.
+            InkWell(
+              onTap: () => _pickTime(context, reminderTime),
+              borderRadius: BorderRadius.circular(12),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        color: ffTheme.accent1,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(Icons.schedule_rounded, color: ffTheme.primary, size: 20),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('שעת התזכורת', style: ffTheme.titleSmall),
+                          Text(
+                            'מתי לשלוח את התזכורת ביום הנבחר',
+                            style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: ffTheme.brandAccentTint,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: ffTheme.alternate),
+                      ),
+                      child: Text(
+                        reminderTime,
+                        style: ffTheme.titleSmall.copyWith(
+                          color: ffTheme.brandAccent,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+            const InfoBanner(
+              icon: Icons.alarm_rounded,
+              title: 'התזכורת תישלח לפני מועד החידוש בשעה שבחרת, כדי שיהיה לך זמן להשוות מסלולים.',
             ),
           ],
         ),

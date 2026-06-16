@@ -1,4 +1,5 @@
 import 'package:http/http.dart' as http;
+import 'package:flutter/foundation.dart';
 import 'dart:convert';
 
 /// Telegram Bot integration for sending notifications via Telegram.
@@ -20,7 +21,7 @@ class TelegramService {
     bool parseHtml = true,
   }) async {
     if (_botToken.isEmpty) {
-      print('⚠️ Telegram: Bot token not configured');
+      debugPrint('⚠️ Telegram: Bot token not configured');
       return false;
     }
 
@@ -36,14 +37,14 @@ class TelegramService {
       ).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
-        print('✅ Telegram message sent to $chatId');
+        debugPrint('✅ Telegram message sent to $chatId');
         return true;
       } else {
-        print('❌ Telegram error: ${response.statusCode} ${response.body}');
+        debugPrint('❌ Telegram error: ${response.statusCode} ${response.body}');
         return false;
       }
     } catch (e) {
-      print('❌ Telegram error: $e');
+      debugPrint('❌ Telegram error: $e');
       return false;
     }
   }

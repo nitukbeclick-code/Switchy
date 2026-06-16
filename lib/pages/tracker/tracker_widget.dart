@@ -28,6 +28,102 @@ class _TrackerWidgetState extends State<TrackerWidget> {
   // so we hold it as page-local state and render a closed screen.
   bool _leadLost = false;
 
+  // Pre-switch checklist panel — expanded by default so users see the steps.
+  bool _checklistExpanded = true;
+
+  // The pre-switch checklist: stable keys (persisted via AppState) + Hebrew labels.
+  static const List<({String key, String label})> _checklistItems = [
+    (key: 'cancel-old', label: 'ביטול המסלול הישן'),
+    (key: 'port-code', label: 'אימות קוד ניוד'),
+    (key: 'new-sim', label: 'הגדרת SIM/מכשיר חדש'),
+    (key: 'activation', label: 'אישור הפעלה'),
+  ];
+
+  /// Collapsible pre-switch checklist. Checked state persists via AppState
+  /// (isChecklistDone / toggleChecklistItem), so it survives app restarts.
+  Widget _buildChecklist(AppTheme ffTheme, AppState appState) {
+    final doneCount = _checklistItems.where((it) => appState.isChecklistDone(it.key)).length;
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: ffTheme.alternate),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10)],
+      ),
+      child: Column(
+        children: [
+          InkWell(
+            onTap: () => setState(() => _checklistExpanded = !_checklistExpanded),
+            borderRadius: BorderRadius.circular(16),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Icon(Icons.checklist_rounded, size: 22, color: ffTheme.primary),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text("צ'ק-ליסט למעבר", style: ffTheme.titleSmall),
+                        Text('$doneCount מתוך ${_checklistItems.length} הושלמו',
+                            style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText)),
+                      ],
+                    ),
+                  ),
+                  Icon(_checklistExpanded ? Icons.expand_less_rounded : Icons.expand_more_rounded,
+                      color: ffTheme.secondaryText),
+                ],
+              ),
+            ),
+          ),
+          AnimatedCrossFade(
+            duration: 250.ms,
+            crossFadeState:
+                _checklistExpanded ? CrossFadeState.showFirst : CrossFadeState.showSecond,
+            firstChild: Padding(
+              padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+              child: Column(
+                children: _checklistItems.map((it) {
+                  final done = appState.isChecklistDone(it.key);
+                  return InkWell(
+                    onTap: () => appState.toggleChecklistItem(it.key),
+                    borderRadius: BorderRadius.circular(10),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                      child: Row(
+                        children: [
+                          Icon(
+                            done ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded,
+                            color: done ? ffTheme.saving : ffTheme.secondaryText,
+                            size: 24,
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              it.label,
+                              style: ffTheme.bodyMedium.copyWith(
+                                color: done ? ffTheme.secondaryText : ffTheme.primaryText,
+                                decoration: done ? TextDecoration.lineThrough : null,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+            secondChild: const SizedBox(width: double.infinity),
+          ),
+        ],
+      ),
+    ).animate().fadeIn(duration: 350.ms).slideY(begin: 0.06, end: 0);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -280,6 +376,9 @@ class _TrackerWidgetState extends State<TrackerWidget> {
             ).animate().fadeIn(duration: 400.ms),
 
             const SizedBox(height: 16),
+
+            // Pre-switch checklist (persisted) — appears once the lead is in.
+            if (step >= 1) _buildChecklist(ffTheme, appState),
 
             // Savings counter card
             if (plan != null) ...[

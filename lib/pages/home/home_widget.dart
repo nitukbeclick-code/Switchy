@@ -111,8 +111,22 @@ class _HomeWidgetState extends State<HomeWidget> {
 
   @override
   Widget build(BuildContext context) {
+    // The home layout's *structure* is driven by exactly three AppState fields:
+    // the active category, that category's bill, and whether the quiz is done.
+    // A Selector over only those rebuilds this subtree when they change while
+    // skipping the screen's many unrelated notifies (likes, watch toggles,
+    // searches). All section builders + callbacks read the singleton with
+    // listen:false, so behaviour is identical but the rebuild surface shrinks.
+    return Selector<AppState, _HomeDeps>(
+      selector: (_, s) =>
+          _HomeDeps(s.selectedCat, s.currentBill(s.selectedCat), s.quizCompleted),
+      builder: (context, _, __) => _buildBody(context),
+    );
+  }
+
+  Widget _buildBody(BuildContext context) {
     final ffTheme = AppTheme.of(context);
-    final appState = Provider.of<AppState>(context);
+    final appState = AppState();
     final activeCat = appState.selectedCat;
     final deal = hotDeal(appState.currentBill(activeCat), cat: activeCat);
     // Compute the savings summary once and share it with the hero + grid
@@ -210,11 +224,14 @@ class _HomeWidgetState extends State<HomeWidget> {
               child: FloatingActionButton(
                 backgroundColor: ffTheme.secondary,
                 elevation: 0,
+                tooltip: 'בקשת שיחה חוזרת',
                 onPressed: () {
                   HapticFeedback.lightImpact();
                   context.pushNamed('Callback');
                 },
-                child: Icon(Icons.phone_rounded, color: ffTheme.primary, size: 26),
+                child: ExcludeSemantics(
+                  child: Icon(Icons.phone_rounded, color: ffTheme.primary, size: 26),
+                ),
               ),
             ),
           ),
@@ -949,9 +966,11 @@ class _HomeWidgetState extends State<HomeWidget> {
                           shape: BoxShape.circle,
                         ),
                         child: Center(
-                          child: Text(
-                            post.user,
-                            style: ffTheme.labelLarge.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
+                          child: ExcludeSemantics(
+                            child: Text(
+                              post.user,
+                              style: ffTheme.labelLarge.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
+                            ),
                           ),
                         ),
                       ),
@@ -1038,17 +1057,17 @@ class _HomeWidgetState extends State<HomeWidget> {
   }
 
   Widget _buildToolsRow(BuildContext context, AppTheme ffTheme) {
-    final tools = [
-      const _Tool(icon: Icons.videocam_rounded, label: 'פגישת וידאו', route: 'Meeting'),
-      const _Tool(icon: Icons.adjust_rounded, label: 'ההתאמות שלי', route: 'Matches'),
-      const _Tool(icon: Icons.savings_rounded, label: 'החיסכון שלי', route: 'Savings'),
-      const _Tool(icon: Icons.alarm_rounded, label: 'מעקב חידושים', route: 'Renewal'),
-      const _Tool(icon: Icons.location_on_rounded, label: 'בדיקת כיסוי', route: 'Availability'),
-      const _Tool(icon: Icons.calculate_rounded, label: 'מחשבון מעבר', route: 'SwitchCalc'),
-      const _Tool(icon: Icons.receipt_long_rounded, label: 'ניהול חשבון', route: 'Bills'),
-      const _Tool(icon: Icons.swap_horiz_rounded, label: 'ניוד מספר', route: 'Porting'),
-      const _Tool(icon: Icons.star_rounded, label: 'דירוגי ספקים', route: 'Ratings'),
-      const _Tool(icon: Icons.smart_toy_rounded, label: 'יועץ AI', route: 'AIAdvisor'),
+    const tools = [
+      _Tool(icon: Icons.videocam_rounded, label: 'פגישת וידאו', route: 'Meeting'),
+      _Tool(icon: Icons.adjust_rounded, label: 'ההתאמות שלי', route: 'Matches'),
+      _Tool(icon: Icons.savings_rounded, label: 'החיסכון שלי', route: 'Savings'),
+      _Tool(icon: Icons.alarm_rounded, label: 'מעקב חידושים', route: 'Renewal'),
+      _Tool(icon: Icons.location_on_rounded, label: 'בדיקת כיסוי', route: 'Availability'),
+      _Tool(icon: Icons.calculate_rounded, label: 'מחשבון מעבר', route: 'SwitchCalc'),
+      _Tool(icon: Icons.receipt_long_rounded, label: 'ניהול חשבון', route: 'Bills'),
+      _Tool(icon: Icons.swap_horiz_rounded, label: 'ניוד מספר', route: 'Porting'),
+      _Tool(icon: Icons.star_rounded, label: 'דירוגי ספקים', route: 'Ratings'),
+      _Tool(icon: Icons.smart_toy_rounded, label: 'יועץ AI', route: 'AIAdvisor'),
     ];
 
     return Padding(
@@ -1261,25 +1280,25 @@ class _HomeWidgetState extends State<HomeWidget> {
   }
 
   Widget _buildBrandStrip(BuildContext context, AppTheme ffTheme) {
-    final providers = [
-      const _Provider('פלאפון', Color(0xFFE07034), Color(0xFFFFF3EC)),
-      const _Provider('סלקום', Color(0xFFCC2244), Color(0xFFFFECF0)),
-      const _Provider('פרטנר', Color(0xFF2255CC), Color(0xFFEEF2FF)),
-      const _Provider('הוט מובייל', Color(0xFF8B1A1A), Color(0xFFFFECEC)),
-      const _Provider('גולן טלקום', Color(0xFF15603E), Color(0xFFE8F5EE)),
-      const _Provider('רמי לוי', Color(0xFFD4232A), Color(0xFFFFF0F0)),
-      const _Provider('Xphone', Color(0xFF0066CC), Color(0xFFEEF5FF)),
-      const _Provider('WeCom', Color(0xFF6B21A8), Color(0xFFF5EEFF)),
-      const _Provider('וואלה מובייל', Color(0xFF0077B6), Color(0xFFECF6FF)),
-      const _Provider('019 מובייל', Color(0xFF6B35C8), Color(0xFFF3EEFF)),
-      const _Provider('yes', Color(0xFF1A3A7A), Color(0xFFEEF0FF)),
-      const _Provider('בזק', Color(0xFF007B8A), Color(0xFFECFAFB)),
-      const _Provider('HOT', Color(0xFF8B1A1A), Color(0xFFFFECEC)),
-      const _Provider('NextTV', Color(0xFFE07034), Color(0xFFFFF3EC)),
-      const _Provider('גילת', Color(0xFF1D6FA4), Color(0xFFECF4FF)),
-      const _Provider('CCC', Color(0xFF2E7D32), Color(0xFFEDF7EE)),
-      const _Provider('STING TV', Color(0xFF1A7A4E), Color(0xFFE8F8EE)),
-      const _Provider('Airalo', Color(0xFF00897B), Color(0xFFE0F2F1)),
+    const providers = [
+      _Provider('פלאפון', Color(0xFFE07034), Color(0xFFFFF3EC)),
+      _Provider('סלקום', Color(0xFFCC2244), Color(0xFFFFECF0)),
+      _Provider('פרטנר', Color(0xFF2255CC), Color(0xFFEEF2FF)),
+      _Provider('הוט מובייל', Color(0xFF8B1A1A), Color(0xFFFFECEC)),
+      _Provider('גולן טלקום', Color(0xFF15603E), Color(0xFFE8F5EE)),
+      _Provider('רמי לוי', Color(0xFFD4232A), Color(0xFFFFF0F0)),
+      _Provider('Xphone', Color(0xFF0066CC), Color(0xFFEEF5FF)),
+      _Provider('WeCom', Color(0xFF6B21A8), Color(0xFFF5EEFF)),
+      _Provider('וואלה מובייל', Color(0xFF0077B6), Color(0xFFECF6FF)),
+      _Provider('019 מובייל', Color(0xFF6B35C8), Color(0xFFF3EEFF)),
+      _Provider('yes', Color(0xFF1A3A7A), Color(0xFFEEF0FF)),
+      _Provider('בזק', Color(0xFF007B8A), Color(0xFFECFAFB)),
+      _Provider('HOT', Color(0xFF8B1A1A), Color(0xFFFFECEC)),
+      _Provider('NextTV', Color(0xFFE07034), Color(0xFFFFF3EC)),
+      _Provider('גילת', Color(0xFF1D6FA4), Color(0xFFECF4FF)),
+      _Provider('CCC', Color(0xFF2E7D32), Color(0xFFEDF7EE)),
+      _Provider('STING TV', Color(0xFF1A7A4E), Color(0xFFE8F8EE)),
+      _Provider('Airalo', Color(0xFF00897B), Color(0xFFE0F2F1)),
     ];
 
     return Padding(
@@ -1508,4 +1527,24 @@ class _Provider {
 class _CommunityPreview {
   const _CommunityPreview({required this.user, required this.channel, required this.text});
   final String user, channel, text;
+}
+
+/// Immutable selection of the three AppState fields that drive the home layout's
+/// structure. Value equality lets the [Selector] skip rebuilds when unrelated
+/// AppState fields notify.
+class _HomeDeps {
+  const _HomeDeps(this.selectedCat, this.bill, this.quizCompleted);
+  final String selectedCat;
+  final int bill;
+  final bool quizCompleted;
+
+  @override
+  bool operator ==(Object other) =>
+      other is _HomeDeps &&
+      other.selectedCat == selectedCat &&
+      other.bill == bill &&
+      other.quizCompleted == quizCompleted;
+
+  @override
+  int get hashCode => Object.hash(selectedCat, bill, quizCompleted);
 }

@@ -274,7 +274,9 @@ class AccountWidget extends StatelessWidget {
                   if (appState.watchedPlans.isNotEmpty) ...[
                     Text('מסלולים במעקב', style: ffTheme.titleLarge),
                     const SizedBox(height: 10),
-                    ...appState.watchedPlans.map((id) {
+                    ...appState.watchedPlans.asMap().entries.map((entry) {
+                      final i = entry.key;
+                      final id = entry.value;
                       final p = planById(id);
                       if (p == null) return const SizedBox();
                       final save = planSaveYear(p, appState.currentBill(p.cat));
@@ -302,7 +304,7 @@ class AccountWidget extends StatelessWidget {
                             ),
                           ],
                         ),
-                      );
+                      ).animate().fadeIn(delay: (i * 80).ms).slideY(begin: 0.08, end: 0);
                     }),
                     const SizedBox(height: 10),
                   ] else ...[
@@ -486,7 +488,9 @@ class AccountWidget extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 10),
-                    ...appState.userReviews.take(3).map((r) {
+                    ...appState.userReviews.take(3).toList().asMap().entries.map((entry) {
+                      final i = entry.key;
+                      final r = entry.value;
                       final overall = r['overall'] as int? ?? 0;
                       final text = r['text'] as String? ?? '';
                       return Container(
@@ -513,15 +517,15 @@ class AccountWidget extends StatelessWidget {
                             ),
                             Row(
                               mainAxisSize: MainAxisSize.min,
-                              children: List.generate(5, (i) => Icon(
-                                i < overall ? Icons.star_rounded : Icons.star_outline_rounded,
+                              children: List.generate(5, (star) => Icon(
+                                star < overall ? Icons.star_rounded : Icons.star_outline_rounded,
                                 size: 14,
                                 color: ffTheme.warning,
                               )),
                             ),
                           ],
                         ),
-                      );
+                      ).animate().fadeIn(delay: (i * 80).ms).slideY(begin: 0.08, end: 0);
                     }),
                   ],
 
@@ -530,10 +534,10 @@ class AccountWidget extends StatelessWidget {
                   // Quick actions
                   Text('פעולות מהירות', style: ffTheme.titleLarge),
                   const SizedBox(height: 12),
-                  _ActionTile(icon: Icons.alarm_rounded, title: 'מעקב חידושים', subtitle: 'אל תשלם יותר מדי כשהמבצע נגמר', onTap: () => context.pushNamed('Renewal'), ffTheme: ffTheme),
-                  _ActionTile(icon: Icons.compare_arrows_rounded, title: 'השוואה חדשה', subtitle: 'מצא את המסלול הכי מתאים לך', onTap: () => context.goNamed('Results'), ffTheme: ffTheme),
-                  _ActionTile(icon: Icons.auto_awesome_rounded, title: 'יועץ AI', subtitle: 'שאל שאלות על מסלולי תקשורת', onTap: () => context.pushNamed('AIAdvisor'), ffTheme: ffTheme),
-                  _ActionTile(icon: Icons.person_rounded, title: 'הגדרות פרופיל', subtitle: 'עדכן פרטים ועדפות', onTap: () => context.pushNamed('Profile'), ffTheme: ffTheme),
+                  _ActionTile(icon: Icons.alarm_rounded, title: 'מעקב חידושים', subtitle: 'אל תשלם יותר מדי כשהמבצע נגמר', onTap: () => context.pushNamed('Renewal'), ffTheme: ffTheme).animate().fadeIn(delay: 0.ms).slideY(begin: 0.08, end: 0),
+                  _ActionTile(icon: Icons.compare_arrows_rounded, title: 'השוואה חדשה', subtitle: 'מצא את המסלול הכי מתאים לך', onTap: () => context.goNamed('Results'), ffTheme: ffTheme).animate().fadeIn(delay: 80.ms).slideY(begin: 0.08, end: 0),
+                  _ActionTile(icon: Icons.auto_awesome_rounded, title: 'יועץ AI', subtitle: 'שאל שאלות על מסלולי תקשורת', onTap: () => context.pushNamed('AIAdvisor'), ffTheme: ffTheme).animate().fadeIn(delay: 160.ms).slideY(begin: 0.08, end: 0),
+                  _ActionTile(icon: Icons.person_rounded, title: 'הגדרות פרופיל', subtitle: 'עדכן פרטים ועדפות', onTap: () => context.pushNamed('Profile'), ffTheme: ffTheme).animate().fadeIn(delay: 240.ms).slideY(begin: 0.08, end: 0),
                   if (appState.isAdmin)
                     _ActionTile(icon: Icons.admin_panel_settings_rounded, title: 'ניהול מערכת', subtitle: 'לוח בקרה למנהלים', onTap: () => context.pushNamed('Admin'), ffTheme: ffTheme).animate().fadeIn(delay: 350.ms),
 

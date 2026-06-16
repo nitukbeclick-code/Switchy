@@ -393,7 +393,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                       ),
                     ],
                   ),
-                ),
+                ).animate().fadeIn(duration: 300.ms).slideY(begin: 0.08, end: 0),
               ),
 
               // Quick filter chips per category
@@ -690,9 +690,9 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                               ),
                           ],
                         )
-                            .animate(delay: (index * 60).ms)
-                            .fadeIn(duration: 300.ms)
-                            .slideX(begin: 0.05);
+                            .animate()
+                            .fadeIn(delay: (index * 80).ms)
+                            .slideY(begin: 0.08, end: 0);
                       },
                       childCount: plans.length,
                     ),

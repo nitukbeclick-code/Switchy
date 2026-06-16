@@ -41,7 +41,6 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
     const _ISP(name: 'פרטנר', tech: 'סיב אופטי', status: 'זמין', speed: '500Mb', price: 99),
     const _ISP(name: 'גילת', tech: 'לוויין', status: 'זמין', speed: '100Mb', price: 149),
     const _ISP(name: 'CCC', tech: 'סיב אופטי', status: 'זמין', speed: '1Gb', price: 79),
-    const _ISP(name: 'Xphone', tech: 'סיב אופטי', status: 'בקרוב', speed: '—', price: 0),
     const _ISP(name: '019 מובייל', tech: 'סיב אופטי', status: 'זמין', speed: '200Mb', price: 119),
   ];
 
@@ -449,7 +448,7 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
                             child: Text(isp.speed, style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
                           ),
                           const SizedBox(height: 4),
-                          Text('מ-₪${isp.price}/חודש', style: ffTheme.titleSmall.copyWith(color: ffTheme.primary)),
+                          Text('מ-₪${isp.price}$kBillUnit', style: ffTheme.titleSmall.copyWith(color: ffTheme.primary)),
                         ],
                       )
                     else

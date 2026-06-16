@@ -525,7 +525,7 @@ class _CategoryCard extends StatelessWidget {
                             .copyWith(fontWeight: FontWeight.w800)),
                     Text(
                       hasBill
-                          ? 'חשבון נוכחי: ₪${saving.currentBill}/חודש'
+                          ? 'חשבון נוכחי: ₪${saving.currentBill}$kBillUnit'
                           : 'לא הוזן חשבון',
                       style: ffTheme.labelSmall
                           .copyWith(color: ffTheme.secondaryText),

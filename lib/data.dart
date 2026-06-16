@@ -119,6 +119,14 @@ String priceUnitShort(Plan p) {
   }
 }
 
+/// סיומת תקציב לפי קטגוריה — '/חבילה' לחו"ל, אחרת '/חודש'.
+/// לשימוש בשאלון/חשבון/תוצאות שמציגים מחרוזת קטגוריה (לא Plan), ולכן
+/// אינם יכולים לקרוא ל-priceUnitLabel.
+String categoryBudgetSuffix(String cat) => cat == 'abroad' ? '/חבילה' : '/חודש';
+
+/// סיומת חשבון — חשבונות (חשבון) תמיד חודשיים לפי כללי הדומיין.
+const String kBillUnit = '/חודש';
+
 /// מהירות ההורדה (Mbps) מתוך specs['מהירות'] — 'עד 1000/100' → 1000.
 /// מחזיר 0 כשאין נתון מובנה.
 int planDownloadMbps(Plan p) {

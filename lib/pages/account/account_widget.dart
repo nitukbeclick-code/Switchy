@@ -7,6 +7,7 @@ import '../../core/nav.dart';
 import '../../app_state.dart';
 import '../../data.dart';
 import '../../widgets/pressable.dart';
+import '../../widgets/app_snackbar.dart';
 import '../../components/logo_widget/logo_widget.dart';
 import '../../components/plan_card/mini_plan_card.dart';
 
@@ -294,12 +295,46 @@ class AccountWidget extends StatelessWidget {
                               icon: const Icon(Icons.notifications_off_outlined, size: 18),
                               color: ffTheme.secondaryText,
                               tooltip: 'הסר ממעקב',
-                              onPressed: () => appState.toggleWatch(id),
+                              onPressed: () {
+                                appState.toggleWatch(id);
+                                AppSnackBar.success(context, 'הוסר מהמעקב');
+                              },
                             ),
                           ],
                         ),
                       );
                     }),
+                    const SizedBox(height: 10),
+                  ] else ...[
+                    Text('מסלולים במעקב', style: ffTheme.titleLarge),
+                    const SizedBox(height: 10),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: ffTheme.alternate),
+                      ),
+                      child: Column(
+                        children: [
+                          ExcludeSemantics(child: Icon(Icons.notifications_none_rounded, size: 36, color: ffTheme.secondaryText)),
+                          const SizedBox(height: 10),
+                          Text('עדיין לא עוקבים אחרי מסלולים', style: ffTheme.titleSmall),
+                          const SizedBox(height: 4),
+                          Text('עקבו אחרי מסלולים כדי לקבל התראות על מחירים', style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText), textAlign: TextAlign.center),
+                          const SizedBox(height: 14),
+                          OutlinedButton(
+                            onPressed: () => context.goNamed('Results'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: ffTheme.primary,
+                              side: BorderSide(color: ffTheme.primary),
+                            ),
+                            child: const Text('עיון במסלולים'),
+                          ),
+                        ],
+                      ),
+                    ).animate().fadeIn(delay: 300.ms),
                     const SizedBox(height: 10),
                   ],
 
@@ -371,7 +406,7 @@ class AccountWidget extends StatelessWidget {
                           ExcludeSemantics(child: Icon(Icons.adjust, size: 20, color: ffTheme.primary)),
                           const SizedBox(width: 10),
                           Expanded(
-                            child: Text('תקציב השאלון: ₪${appState.quizBudget}${appState.quizCat == 'abroad' ? '/חבילה' : '/חודש'}',
+                            child: Text('תקציב השאלון: ₪${appState.quizBudget}${categoryBudgetSuffix(appState.quizCat)}',
                                 style: ffTheme.bodyMedium.copyWith(color: ffTheme.primary)),
                           ),
                           GestureDetector(
@@ -499,6 +534,8 @@ class AccountWidget extends StatelessWidget {
                   _ActionTile(icon: Icons.compare_arrows_rounded, title: 'השוואה חדשה', subtitle: 'מצא את המסלול הכי מתאים לך', onTap: () => context.goNamed('Results'), ffTheme: ffTheme),
                   _ActionTile(icon: Icons.auto_awesome_rounded, title: 'יועץ AI', subtitle: 'שאל שאלות על מסלולי תקשורת', onTap: () => context.pushNamed('AIAdvisor'), ffTheme: ffTheme),
                   _ActionTile(icon: Icons.person_rounded, title: 'הגדרות פרופיל', subtitle: 'עדכן פרטים ועדפות', onTap: () => context.pushNamed('Profile'), ffTheme: ffTheme),
+                  if (appState.isAdmin)
+                    _ActionTile(icon: Icons.admin_panel_settings_rounded, title: 'ניהול מערכת', subtitle: 'לוח בקרה למנהלים', onTap: () => context.pushNamed('Admin'), ffTheme: ffTheme).animate().fadeIn(delay: 350.ms),
 
                   const SizedBox(height: 24),
                 ],

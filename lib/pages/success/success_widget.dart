@@ -228,6 +228,17 @@ class _SuccessWidgetState extends State<SuccessWidget> {
 
               const SizedBox(height: 14),
 
+              AppButton.ghost(
+                text: 'השוו עוד מסלולים',
+                onPressed: () async => context.goNamed('Results'),
+                width: double.infinity,
+                height: 56,
+                textStyle: GoogleFonts.rubik(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white),
+                borderRadius: BorderRadius.circular(16),
+              ).animate().fadeIn(delay: 850.ms).slideY(begin: 0.2),
+
+              const SizedBox(height: 14),
+
               TextButton(
                 onPressed: () => context.goNamed('Home'),
                 child: Text(

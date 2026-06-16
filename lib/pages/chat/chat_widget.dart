@@ -225,6 +225,9 @@ class _ChatWidgetState extends State<ChatWidget> {
       appBar: _buildAppBar(ffTheme, context),
       body: Column(
         children: [
+          // Demo-thread notice — clarifies the canned 'דנה' replies are not live support
+          _buildDemoBanner(ffTheme),
+
           // Plan context banner
           if (_contextPlan != null) _buildPlanBanner(ffTheme, context),
 
@@ -339,6 +342,33 @@ class _ChatWidgetState extends State<ChatWidget> {
         ),
       ],
     );
+  }
+
+  Widget _buildDemoBanner(AppTheme ffTheme) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.7),
+        border: const Border(bottom: BorderSide(color: Colors.black12)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.smart_toy_outlined, size: 15, color: ffTheme.secondaryText),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              'שיחת הדגמה — התשובות אוטומטיות ואינן מענה אנושי חי',
+              style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText, fontWeight: FontWeight.w600),
+              textDirection: TextDirection.rtl,
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ],
+      ),
+    ).animate().fadeIn(duration: 300.ms);
   }
 
   Widget _buildPlanBanner(AppTheme ffTheme, BuildContext context) {

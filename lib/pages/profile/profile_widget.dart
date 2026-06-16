@@ -22,8 +22,6 @@ class ProfileWidget extends StatefulWidget {
 }
 
 class _ProfileWidgetState extends State<ProfileWidget> {
-  String _lang = 'עברית';
-
   void _showEditProfile(BuildContext context, AppState appState, AppTheme ffTheme) {
     final nameCtrl = TextEditingController(text: appState.userName);
     final phoneCtrl = TextEditingController(text: appState.userPhone);
@@ -91,6 +89,8 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                 Provider.of<AppState>(ctx, listen: false).login(name: name, phone: phone);
                 appBackend.upsertProfile(name: name, phone: phone).catchError((_) {});
                 Navigator.pop(ctx);
+                AppSnackBar.success(context, 'השינויים שמורים',
+                    duration: const Duration(seconds: 2));
               },
               
                 width: double.infinity,
@@ -228,77 +228,6 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                     value: appState.prefCommunityNotifs,
                     onChanged: appState.setPrefCommunityNotifs,
                     ffTheme: ffTheme,
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // Language
-                  _buildSectionHeader('שפה', ffTheme),
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: ffTheme.alternate),
-                    ),
-                    child: Row(
-                      children: ['עברית', 'English', 'العربية'].map((lang) {
-                        final active = _lang == lang;
-                        return Expanded(
-                          child: GestureDetector(
-                            onTap: () => setState(() => _lang = lang),
-                            child: AnimatedContainer(
-                              duration: ffTheme.motionFast,
-                              margin: const EdgeInsets.symmetric(horizontal: 3),
-                              padding: const EdgeInsets.symmetric(vertical: 8),
-                              decoration: BoxDecoration(
-                                color: active ? ffTheme.primary : Colors.transparent,
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Center(
-                                child: Text(lang, style: ffTheme.labelSmall.copyWith(color: active ? Colors.white : ffTheme.secondaryText)),
-                              ),
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // Appearance
-                  _buildSectionHeader('מראה', ffTheme),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: ffTheme.alternate),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.dark_mode_rounded, color: ffTheme.secondaryText, size: 22),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('מצב כהה', style: ffTheme.titleSmall),
-                              Text('ממשק בגוונים כהים', style: ffTheme.bodySmall),
-                            ],
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: ffTheme.accent2,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text('בקרוב', style: ffTheme.labelSmall.copyWith(color: const Color(0xFF7A5C00), fontWeight: FontWeight.w600)),
-                        ),
-                      ],
-                    ),
                   ),
 
                   const SizedBox(height: 28),

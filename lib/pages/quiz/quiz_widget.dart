@@ -404,7 +404,7 @@ class _QuizWidgetState extends State<QuizWidget> {
           child: Column(
             children: [
               Text(
-                '₪${clampedBill.round()}${_cat == 'abroad' ? '' : '/חודש'}',
+                '₪${clampedBill.round()}${categoryBudgetSuffix(_cat)}',
                 style: ffTheme.displayMedium.copyWith(color: ffTheme.primary),
               ),
               const SizedBox(height: 4),
@@ -471,7 +471,7 @@ class _QuizWidgetState extends State<QuizWidget> {
           child: Column(
             children: [
               Text(
-                '₪${clampedBudget.round()}${_cat == 'abroad' ? '' : '/חודש'}',
+                '₪${clampedBudget.round()}${categoryBudgetSuffix(_cat)}',
                 style: ffTheme.displayMedium.copyWith(color: ffTheme.primary),
               ),
               const SizedBox(height: 4),

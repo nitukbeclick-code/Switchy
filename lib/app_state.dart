@@ -119,6 +119,7 @@ class AppState extends ChangeNotifier {
     _prefPriceAlerts = p.getBool('prefPriceAlerts') ?? true;
     _prefRequestUpdates = p.getBool('prefRequestUpdates') ?? true;
     _prefCommunityNotifs = p.getBool('prefCommunityNotifs') ?? false;
+    _isAdmin = p.getBool('isAdmin') ?? false;
     _seenOnboarding = p.getBool('seenOnboarding') ?? false;
     // Theme mode
     final themeModeStr = p.getString('theme_mode') ?? 'dark';
@@ -281,6 +282,7 @@ class AppState extends ChangeNotifier {
           await p.setBool('prefPriceAlerts', _prefPriceAlerts);
           await p.setBool('prefRequestUpdates', _prefRequestUpdates);
           await p.setBool('prefCommunityNotifs', _prefCommunityNotifs);
+          await p.setBool('isAdmin', _isAdmin);
           break;
         case 'seenOnboarding':
           await p.setBool('seenOnboarding', _seenOnboarding);
@@ -583,6 +585,11 @@ class AppState extends ChangeNotifier {
   void setPrefPriceAlerts(bool v) { _prefPriceAlerts = v; notifyListeners(); _persist(); }
   void setPrefRequestUpdates(bool v) { _prefRequestUpdates = v; notifyListeners(); _persist(); }
   void setPrefCommunityNotifs(bool v) { _prefCommunityNotifs = v; notifyListeners(); _persist(); }
+
+  // Admin flag — gates the (otherwise unreachable) '/admin' route.
+  bool _isAdmin = false;
+  bool get isAdmin => _isAdmin;
+  void setIsAdmin(bool v) { _isAdmin = v; notifyListeners(); _persist(); }
 
   // Theme mode
   ThemeMode _themeMode = ThemeMode.dark;

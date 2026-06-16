@@ -231,10 +231,12 @@ class _CommunityWidgetState extends State<CommunityWidget> {
       ));
       _quickPostCtrl.clear();
     });
+    AppSnackBar.success(context, 'הפוסט פורסם בהצלחה!');
     appBackend.createPost(PostInput(
       author: author, avatar: avatar, channel: channel, text: text,
-    )).ignore();
-    AppSnackBar.success(context, 'הפוסט פורסם בהצלחה!');
+    )).then((_) {}).catchError((_) {
+      if (context.mounted) AppSnackBar.error(context, 'הפרסום נכשל, נסו שוב');
+    });
   }
 
   Future<void> _refreshFeed() async {

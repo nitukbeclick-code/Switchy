@@ -720,9 +720,9 @@ class _SavingsRing extends StatelessWidget {
               children: [
                 Text('פוטנציאל החיסכון שלך', style: ffTheme.titleSmall),
                 const SizedBox(height: 10),
-                _RingLegendRow(color: ffTheme.primary, label: 'אפשר לחסוך', value: '₪$savingsPerMonth/חודש', ffTheme: ffTheme),
+                _RingLegendRow(color: ffTheme.primary, label: 'אפשר לחסוך', value: '₪$savingsPerMonth$kBillUnit', ffTheme: ffTheme),
                 const SizedBox(height: 6),
-                _RingLegendRow(color: ffTheme.secondary, label: 'מחיר שוק', value: '₪$keep/חודש', ffTheme: ffTheme),
+                _RingLegendRow(color: ffTheme.secondary, label: 'מחיר שוק', value: '₪$keep$kBillUnit', ffTheme: ffTheme),
                 const SizedBox(height: 12),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),

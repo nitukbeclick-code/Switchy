@@ -56,6 +56,12 @@ class CompareWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final ffTheme = AppTheme.of(context);
     final appState = Provider.of<AppState>(context);
+    // Comparison is fully synchronous: comparePlans is in-memory AppState,
+    // planById() is a synchronous catalogue lookup, and the ranking below is a
+    // pure computation. The table renders on the first frame, so there is no
+    // async loading phase and no skeleton placeholder is needed. The
+    // plans.length < 2 branch is the genuine "nothing to compare" empty state
+    // (the user picks 2–3 plans from results), not a transient loading flash.
     final ids = appState.comparePlans;
     final plans = ids.map((id) => planById(id)).whereType<Plan>().toList();
 

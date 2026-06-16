@@ -241,6 +241,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                       fillColor: Colors.white,
                       prefixIcon: appState.searchQuery.isNotEmpty
                           ? IconButton(
+                              tooltip: 'נקה חיפוש',
                               icon: const Icon(Icons.clear_rounded),
                               onPressed: () {
                                 _searchController.clear();
@@ -508,7 +509,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                             child: Text(
                               cat == 'cellular' && appState.quizLines > 1
                                   ? 'שאלון: ${appState.quizLines} קווים, עד ₪${appState.quizBudget}'
-                                  : 'שאלון: עד ₪${appState.quizBudget}${cat == 'abroad' ? '/חבילה' : '/חודש'}',
+                                  : 'שאלון: עד ₪${appState.quizBudget}${categoryBudgetSuffix(cat)}',
                               style: ffTheme.labelMedium.copyWith(color: ffTheme.primary),
                             ),
                           ),

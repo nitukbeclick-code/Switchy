@@ -192,7 +192,7 @@ class _LeadWidgetState extends State<LeadWidget> {
                     // Build rep context: current bill + quiz preferences.
                     final bill = plan != null ? st.currentBill(plan.cat) : 0;
                     final parts = <String>[];
-                    if (bill > 0) parts.add('חשבון נוכחי: ₪$bill/חודש');
+                    if (bill > 0) parts.add('חשבון נוכחי: ₪$bill$kBillUnit');
                     if (plan != null) parts.add('חסכון שנתי צפוי: ₪${planSaveYear(plan, bill)}');
                     if (st.quizCompleted) parts.add('תקציב: ₪${st.quizBudget} | עדיפות: ${st.quizPriority} | קווים: ${st.quizLines}');
                     final nowIso = DateTime.now().toUtc().toIso8601String();

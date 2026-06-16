@@ -55,7 +55,9 @@ class PushNotificationService {
     required String provider,
     required double oldPrice,
     required double newPrice,
+    required AppState appState,
   }) async {
+    if (!appState.prefPriceAlerts) return;
     if (!_ready) await init();
     final monthly = (oldPrice - newPrice).abs();
     final annual = monthly * 12;
@@ -121,6 +123,28 @@ class PushNotificationService {
       title: notif.title,
       body: notif.body,
       payload: postId,
+    );
+  }
+
+  /// Show an immediate local notification when the status of one of the user's
+  /// support requests / leads changes, if the user has request updates enabled.
+  ///
+  /// The notification id is derived from [requestId] so repeated updates for the
+  /// same request don't stack. [requestId] is also used as the deep-link payload.
+  Future<void> notifyRequestUpdate({
+    required String title,
+    required String body,
+    required AppState appState,
+    String? requestId,
+  }) async {
+    if (!appState.prefRequestUpdates) return;
+    if (!_ready) await init();
+    final payload = requestId ?? title;
+    await impl.showNow(
+      id: payload.hashCode & 0x7fffffff, // keep positive for notification id
+      title: title,
+      body: body,
+      payload: payload,
     );
   }
 

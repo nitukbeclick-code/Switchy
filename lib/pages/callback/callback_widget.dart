@@ -7,6 +7,7 @@ import '../../core/nav.dart';
 import '../../widgets/app_button.dart';
 import '../../widgets/app_snackbar.dart';
 import '../../app_state.dart';
+import '../../data.dart';
 import '../../services/backend/backend.dart';
 import '../../services/backend/local_backend.dart';
 
@@ -160,7 +161,7 @@ class _CallbackWidgetState extends State<CallbackWidget> {
                 final catId = topicToCat[_topic];
                 final bill = catId != null ? st.currentBill(catId) : 0;
                 final noteParts = <String>['נושא: $_topic', 'עיתוי: $_timing'];
-                if (bill > 0) noteParts.add('חשבון נוכחי: ₪$bill/חודש');
+                if (bill > 0) noteParts.add('חשבון נוכחי: ₪$bill$kBillUnit');
                 if (st.quizCompleted) noteParts.add('תקציב: ₪${st.quizBudget} | עדיפות: ${st.quizPriority}');
                 try {
                   await appBackend.submitLead(LeadInput(

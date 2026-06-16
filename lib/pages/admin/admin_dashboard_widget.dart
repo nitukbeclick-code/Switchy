@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 import '../../app_state.dart';
+import '../../data.dart';
 
 import '../../services/savings_summary.dart' show computeSavings;
 import '../../theme/app_theme.dart';
@@ -788,7 +789,7 @@ class _WatchedPlanRow extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(
-                '₪$price/חודש',
+                '₪$price$kBillUnit',
                 style: theme.titleSmall.copyWith(
                   color: Colors.white.withValues(alpha: 0.87),
                   fontSize: 12,

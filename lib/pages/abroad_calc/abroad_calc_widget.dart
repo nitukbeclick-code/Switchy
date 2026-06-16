@@ -454,14 +454,15 @@ class _PlanCard extends StatelessWidget {
     final perDay = days > 0 ? totalCost / days : totalCost;
     final providerColor = _dotColorFor(plan.provider);
 
-    // Per-unit label
+    // Per-unit label — core word from priceUnitLabel(plan), contextual qualifier per unit
+    final unitLabel = priceUnitLabel(plan);
     final String pricingNote;
     if (plan.unit == 'day') {
-      pricingNote = '₪${_formatPrice(plan.priceValue)} ליום × $days ימים';
+      pricingNote = '₪${_formatPrice(plan.priceValue)} $unitLabel × $days ימים';
     } else if (plan.unit == 'month') {
-      pricingNote = '₪${_formatPrice(plan.priceValue)} לחודש (מנוי)';
+      pricingNote = '₪${_formatPrice(plan.priceValue)} $unitLabel (מנוי)';
     } else {
-      pricingNote = '₪${_formatPrice(plan.priceValue)} לחבילה (חד-פעמי)';
+      pricingNote = '₪${_formatPrice(plan.priceValue)} $unitLabel (חד-פעמי)';
     }
 
     return Container(

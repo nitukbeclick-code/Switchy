@@ -559,7 +559,7 @@ class _HomeWidgetState extends State<HomeWidget> {
         children: [
           // Section header row
           Padding(
-            padding: const EdgeInsets.only(left: 16, bottom: 12),
+            padding: const EdgeInsetsDirectional.only(start: 16, bottom: 12),
             child: Row(
               children: [
                 Text('מבצעי אש', style: ffTheme.titleLarge),
@@ -1057,7 +1057,7 @@ class _HomeWidgetState extends State<HomeWidget> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.only(right: 0, bottom: 12),
+            padding: const EdgeInsetsDirectional.only(end: 0, bottom: 12),
             child: Text('כלים שימושיים', style: ffTheme.titleLarge),
           ),
           SizedBox(

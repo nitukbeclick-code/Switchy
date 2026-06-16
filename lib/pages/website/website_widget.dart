@@ -472,7 +472,7 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
             children: [
               Text('מה אתם משלמים $label?', style: ffTheme.labelMedium),
               const Spacer(),
-              Text('₪${bill.round()}/חודש', style: ffTheme.titleSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+              Text('₪${bill.round()}$kBillUnit', style: ffTheme.titleSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
             ],
           ),
           Slider(

@@ -1056,7 +1056,7 @@ class _ChannelChip extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        margin: const EdgeInsets.only(left: 8),
+        margin: const EdgeInsetsDirectional.only(start: 8),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
           color: active ? AppColors.brandAccent : Colors.white,

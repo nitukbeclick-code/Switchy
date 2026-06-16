@@ -536,6 +536,8 @@ class AccountWidget extends StatelessWidget {
                   const SizedBox(height: 12),
                   _ActionTile(icon: Icons.alarm_rounded, title: 'מעקב חידושים', subtitle: 'אל תשלם יותר מדי כשהמבצע נגמר', onTap: () => context.pushNamed('Renewal'), ffTheme: ffTheme).animate().fadeIn(delay: 0.ms).slideY(begin: 0.08, end: 0),
                   _ActionTile(icon: Icons.compare_arrows_rounded, title: 'השוואה חדשה', subtitle: 'מצא את המסלול הכי מתאים לך', onTap: () => context.goNamed('Results'), ffTheme: ffTheme).animate().fadeIn(delay: 80.ms).slideY(begin: 0.08, end: 0),
+                  _ActionTile(icon: Icons.favorite_rounded, title: 'המסלולים השמורים', subtitle: 'המועדפים ששמרת לבדיקה מאוחר יותר', onTap: () => context.pushNamed('Favorites'), ffTheme: ffTheme).animate().fadeIn(delay: 120.ms).slideY(begin: 0.08, end: 0),
+                  _ActionTile(icon: Icons.celebration_rounded, title: 'הסיכום השנתי', subtitle: 'כמה חסכת עם חוסך — וגם לשיתוף', onTap: () => context.pushNamed('AnnualRecap'), ffTheme: ffTheme).animate().fadeIn(delay: 200.ms).slideY(begin: 0.08, end: 0),
                   _ActionTile(icon: Icons.auto_awesome_rounded, title: 'יועץ AI', subtitle: 'שאל שאלות על מסלולי תקשורת', onTap: () => context.pushNamed('AIAdvisor'), ffTheme: ffTheme).animate().fadeIn(delay: 160.ms).slideY(begin: 0.08, end: 0),
                   _ActionTile(icon: Icons.person_rounded, title: 'הגדרות פרופיל', subtitle: 'עדכן פרטים ועדפות', onTap: () => context.pushNamed('Profile'), ffTheme: ffTheme).animate().fadeIn(delay: 240.ms).slideY(begin: 0.08, end: 0),
                   if (appState.isAdmin)

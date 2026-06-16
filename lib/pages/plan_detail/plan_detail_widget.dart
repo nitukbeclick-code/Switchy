@@ -559,6 +559,27 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                                   ),
                                 ),
                                 IconButton(
+                                  icon: Icon(
+                                    appState.isFavorited(plan.id)
+                                        ? Icons.favorite_rounded
+                                        : Icons.favorite_border_rounded,
+                                    size: 22,
+                                  ),
+                                  color: appState.isFavorited(plan.id)
+                                      ? ffTheme.saving
+                                      : ffTheme.secondaryText,
+                                  tooltip: appState.isFavorited(plan.id)
+                                      ? 'הסרה מהמועדפים'
+                                      : 'שמירה למועדפים',
+                                  onPressed: () {
+                                    HapticFeedback.selectionClick();
+                                    final nowFav = !appState.isFavorited(plan.id);
+                                    appState.toggleFavorite(plan.id);
+                                    AppSnackBar.success(context,
+                                        nowFav ? 'נשמר למועדפים' : 'הוסר מהמועדפים');
+                                  },
+                                ),
+                                IconButton(
                                   icon: const Icon(Icons.flag_outlined, size: 22),
                                   color: ffTheme.brandAccent,
                                   tooltip: 'הגדרת יעד מחיר',

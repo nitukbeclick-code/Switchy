@@ -8,6 +8,7 @@ import '../../app_state.dart';
 import '../../data.dart';
 import '../../widgets/pressable.dart';
 import '../../widgets/app_snackbar.dart';
+import '../../widgets/digital_agent_fab.dart';
 import '../../components/logo_widget/logo_widget.dart';
 import '../../components/plan_card/mini_plan_card.dart';
 
@@ -22,6 +23,10 @@ class AccountWidget extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: ffTheme.background,
+      // Digital support agent — reachable from the account surface. Gracefully
+      // asks anonymous users to sign in and degrades cleanly if the support
+      // backend isn't reachable.
+      floatingActionButton: const DigitalAgentFab(),
       body: CustomScrollView(
         slivers: [
           SliverToBoxAdapter(

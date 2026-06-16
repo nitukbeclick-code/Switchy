@@ -170,10 +170,15 @@ class SupportTicketService {
         });
   }
 
-  /// Escalate to human (user taps "talk to human" chip)
+  /// Escalate to human (user taps the "talk to a human" chip). Sends a clear
+  /// Hebrew escalation message; [reason] is appended when provided so the agent
+  /// / human rep has context.
   Future<void> escalateToHuman(String ticketId, String userId, String reason) async {
+    final text = reason.trim().isEmpty
+        ? 'אני רוצה לדבר עם נציג אנושי'
+        : 'אני רוצה לדבר עם נציג אנושי — ${reason.trim()}';
     try {
-      await sendMessage(ticketId, userId, 'চাই দাহ এট লি নকজেগ');
+      await sendMessage(ticketId, userId, text);
     } catch (e) {
       throw Exception('Failed to escalate to human: $e');
     }

@@ -20,13 +20,14 @@ class SupportTicketWidget extends StatefulWidget {
 
 class _SupportTicketWidgetState extends State<SupportTicketWidget> {
   late SupportTicketService _service;
-  late StreamSubscription<List<SupportMessage>> _messagesSubscription;
-  late StreamSubscription<SupportTicket> _ticketSubscription;
+  StreamSubscription<List<SupportMessage>>? _messagesSubscription;
+  StreamSubscription<SupportTicket>? _ticketSubscription;
 
   final _inputCtrl = TextEditingController();
   final _scrollCtrl = ScrollController();
 
-  final bool _isLoading = false;
+  bool _initializing = true;
+  String? _resolvedTicketId;
   bool _isTyping = false;
   List<SupportMessage> _messages = [];
   SupportTicket? _ticket;
@@ -43,11 +44,44 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
   void initState() {
     super.initState();
     _service = SupportTicketService(Supabase.instance.client);
-    _loadTicket();
+    _init();
   }
 
-  void _loadTicket() {
-    _messagesSubscription = _service.messageStream(widget.ticketId).listen(
+  Future<void> _init() async {
+    // Tickets are RLS-scoped to the Supabase auth uid (anonymous users have one
+    // too), so that's the identity we create/open and message against.
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    if (userId == null || userId.isEmpty) {
+      if (mounted) {
+        setState(() {
+          _error = 'יש להתחבר כדי לפתוח צ׳אט תמיכה.';
+          _initializing = false;
+        });
+      }
+      return;
+    }
+    try {
+      // 'new' is the placeholder the FAB passes — resolve it to a real open
+      // ticket; an explicit id is used as-is.
+      final id = widget.ticketId == 'new'
+          ? await _service.createOrOpenTicket(userId)
+          : widget.ticketId;
+      if (!mounted) return;
+      _resolvedTicketId = id;
+      Provider.of<AppState>(context, listen: false).setSupportTicketId(id);
+      _subscribe(id);
+      setState(() => _initializing = false);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = 'שירות התמיכה אינו זמין כעת. נסו שוב מאוחר יותר.';
+        _initializing = false;
+      });
+    }
+  }
+
+  void _subscribe(String ticketId) {
+    _messagesSubscription = _service.messageStream(ticketId).listen(
       (messages) {
         if (mounted) {
           setState(() {
@@ -59,12 +93,12 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
       },
       onError: (e) {
         if (mounted) {
-          setState(() => _error = 'Error loading messages: $e');
+          setState(() => _error = 'שגיאה בטעינת ההודעות.');
         }
       },
     );
 
-    _ticketSubscription = _service.ticketStream(widget.ticketId).listen(
+    _ticketSubscription = _service.ticketStream(ticketId).listen(
       (ticket) {
         if (mounted) {
           setState(() => _ticket = ticket);
@@ -80,14 +114,15 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
   void dispose() {
     _inputCtrl.dispose();
     _scrollCtrl.dispose();
-    _messagesSubscription.cancel();
-    _ticketSubscription.cancel();
+    _messagesSubscription?.cancel();
+    _ticketSubscription?.cancel();
     super.dispose();
   }
 
   Future<void> _sendMessage(String text) async {
-    if (text.trim().isEmpty || _isTyping || _isLoading) return;
-    if (_ticket == null) return;
+    if (text.trim().isEmpty || _isTyping || _initializing) return;
+    final ticketId = _resolvedTicketId;
+    if (ticketId == null) return;
 
     _inputCtrl.clear();
 
@@ -95,34 +130,51 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
     _scrollToBottom();
 
     try {
-      final appState = Provider.of<AppState>(context, listen: false);
-      final userId = appState.isLoggedIn ? appState.userPhone : null;
-      if (userId == null) throw Exception('User not logged in');
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+      if (userId == null || userId.isEmpty) throw Exception('not signed in');
 
-      final result = await _service.sendMessage(
-        widget.ticketId,
-        userId,
-        text,
-      );
+      final result = await _service.sendMessage(ticketId, userId, text);
 
-      if (result['escalated'] == true) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Your request has been escalated to a human representative'),
-              duration: Duration(seconds: 3),
-            ),
-          );
-        }
+      if (result['escalated'] == true && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('הבקשה הועברה לטיפול נציג אנושי'),
+            duration: Duration(seconds: 3),
+          ),
+        );
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _error = 'Failed to send message: $e');
+        setState(() => _error = 'שליחת ההודעה נכשלה. נסו שוב.');
       }
     } finally {
       if (mounted) {
         setState(() => _isTyping = false);
       }
+    }
+  }
+
+  /// Escalate the conversation to a human rep (the dedicated quick-reply chip).
+  Future<void> _escalate() async {
+    final ticketId = _resolvedTicketId;
+    if (ticketId == null || _isTyping) return;
+    setState(() => _isTyping = true);
+    try {
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+      if (userId == null || userId.isEmpty) throw Exception('not signed in');
+      await _service.escalateToHuman(ticketId, userId, '');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('מעבירים אתכם לנציג אנושי…'),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) setState(() => _error = 'המעבר לנציג נכשל. נסו שוב.');
+    } finally {
+      if (mounted) setState(() => _isTyping = false);
     }
   }
 
@@ -149,7 +201,7 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Support'),
+        title: const Text('תמיכה'),
         backgroundColor: theme.primary,
         elevation: 0,
         actions: [
@@ -158,7 +210,7 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
               padding: const EdgeInsets.all(16.0),
               child: Center(
                 child: Text(
-                  'Connected to support',
+                  'מחובר/ת לנציג',
                   style: theme.labelSmall.copyWith(color: Colors.white),
                 ),
               ),
@@ -177,7 +229,9 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
               ),
             ),
           Expanded(
-            child: _messages.isEmpty && !_isLoading
+            child: _initializing
+                ? const Center(child: CircularProgressIndicator())
+                : _messages.isEmpty
                 ? _buildEmptyState(theme)
                 : ListView.builder(
                     controller: _scrollCtrl,
@@ -211,14 +265,14 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
           ),
           const SizedBox(height: 16),
           Text(
-            'Welcome to Support',
+            'שלום, איך אפשר לעזור?',
             style: theme.titleMedium,
           ),
           const SizedBox(height: 8),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
             child: Text(
-              'Ask me anything about your plans or account',
+              'שאלו אותי כל דבר על המסלולים או החשבון שלכם',
               textAlign: TextAlign.center,
               style: theme.bodySmall.copyWith(
                 color: theme.secondary,
@@ -286,7 +340,7 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
               Padding(
                 padding: const EdgeInsets.only(top: 4),
                 child: Text(
-                  'Human Support',
+                  'נציג אנושי',
                   style: theme.labelSmall.copyWith(
                     color: theme.saving,
                     fontWeight: FontWeight.bold,
@@ -364,7 +418,8 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
               padding: const EdgeInsets.only(right: 8),
               child: InputChip(
                 label: Text(reply, style: theme.labelSmall),
-                onPressed: () => _sendMessage(reply),
+                onPressed: () =>
+                    reply == 'חבר אותי לנציג אנושי' ? _escalate() : _sendMessage(reply),
                 backgroundColor: theme.primary.withValues(alpha: 0.1),
                 labelStyle: theme.labelSmall.copyWith(color: theme.primary),
               ),
@@ -392,7 +447,7 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
               enabled: !isEscalated || _ticket?.status == 'human_assigned',
               textDirection: TextDirection.rtl,
               decoration: InputDecoration(
-                hintText: 'Type your message...',
+                hintText: 'הקלידו הודעה...',
                 hintTextDirection: TextDirection.rtl,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(20),
@@ -423,9 +478,9 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
 
     String dateStr;
     if (msgDate == today) {
-      dateStr = 'Today';
+      dateStr = 'היום';
     } else if (msgDate == yesterday) {
-      dateStr = 'Yesterday';
+      dateStr = 'אתמול';
     } else {
       dateStr = '${time.day}/${time.month}';
     }

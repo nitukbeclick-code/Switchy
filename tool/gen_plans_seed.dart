@@ -19,8 +19,11 @@ import 'package:chosech/data.dart';
 
 String _sql(String? v) => v == null ? 'null' : "'${v.replaceAll("'", "''")}'";
 
+// `specs` is NOT NULL (default '{}'), so an empty map must serialise to an
+// empty jsonb object, never null. `fees` is nullable but '{}' reads back the
+// same as null (fetchPlans coalesces), so emit '{}' for both — never null.
 String _jsonb(Map<String, String> m) =>
-    m.isEmpty ? 'null' : "'${jsonEncode(m).replaceAll("'", "''")}'::jsonb";
+    "'${jsonEncode(m).replaceAll("'", "''")}'::jsonb";
 
 String _num(num? v) => v == null ? 'null' : v.toString();
 

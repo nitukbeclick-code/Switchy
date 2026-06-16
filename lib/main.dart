@@ -34,14 +34,32 @@ void main() async {
     statusBarIconBrightness: Brightness.light,
   ));
 
-  await _initBackend();
+  // Startup services are wrapped so a failure in any single one can NEVER stop
+  // the app from rendering. Each is non-critical to first paint: the backend
+  // falls back to on-device data, biometric warmup just affects the lock gate,
+  // and push init only affects reminders. Without these guards a thrown
+  // exception here (e.g. native notification/timezone init on a real device)
+  // would kill main() before runApp() and the app would "not open".
+  try {
+    await _initBackend();
+  } catch (e, s) {
+    debugPrint('startup: _initBackend failed (continuing on local backend): $e\n$s');
+  }
   await AppState().initializePersistedState();
   // Cache the Face-ID-armed flag synchronously for the router's cold-start gate
   // (no-op on web / when no real session). Must run after the backend is up so
   // a restored Supabase session is already visible.
-  await AuthService.instance.warmUpBiometricLock();
+  try {
+    await AuthService.instance.warmUpBiometricLock();
+  } catch (e) {
+    debugPrint('startup: biometric warmup failed (continuing): $e');
+  }
   // Init OS push (no-op on web) so renewal reminders can be (re)scheduled.
-  await PushNotificationService.instance.init();
+  try {
+    await PushNotificationService.instance.init();
+  } catch (e) {
+    debugPrint('startup: push init failed (continuing without notifications): $e');
+  }
   runApp(ChangeNotifierProvider.value(value: AppState(), child: const ChosechApp()));
   _appStarted = true;
   // Reschedule renewal reminders from the restored state (fire-and-forget).

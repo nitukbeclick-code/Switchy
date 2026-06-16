@@ -160,9 +160,16 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                           ),
                           const SizedBox(height: 10),
                           GestureDetector(
+                            behavior: HitTestBehavior.opaque,
                             onTap: () => context.pushNamed('Provider', pathParameters: {'name': plan.provider}),
-                            child: Text(plan.provider,
-                                style: ffTheme.titleLarge.copyWith(color: Colors.white)),
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(minHeight: 44),
+                              child: Center(
+                                widthFactor: 1,
+                                child: Text(plan.provider,
+                                    style: ffTheme.titleLarge.copyWith(color: Colors.white)),
+                              ),
+                            ),
                           ),
                           const SizedBox(height: 4),
                           Padding(

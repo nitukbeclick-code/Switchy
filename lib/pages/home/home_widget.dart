@@ -689,11 +689,18 @@ class _HomeWidgetState extends State<HomeWidget> {
               const SizedBox(width: 6),
               Expanded(child: Text('התאמת השאלון — ${catInfo.name} עד ₪$budget', style: ffTheme.titleLarge)),
               GestureDetector(
+                behavior: HitTestBehavior.opaque,
                 onTap: () {
                   appState.setCategory(cat);
                   context.goNamed('Results');
                 },
-                child: Text('הכל ←', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(minHeight: 44),
+                  child: Center(
+                    widthFactor: 1,
+                    child: Text('הכל ←', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+                  ),
+                ),
               ),
             ],
           ),
@@ -1397,7 +1404,7 @@ class _FlashDealCard extends StatelessWidget {
               color: AppColors.saving,
               child: Row(
                 children: [
-                  const Text('🔥', style: TextStyle(fontSize: 13)),
+                  const Icon(Icons.local_fire_department_rounded, size: 14, color: Colors.white),
                   const SizedBox(width: 4),
                   Text(
                     'מבצע חם',

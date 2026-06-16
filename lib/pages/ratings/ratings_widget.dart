@@ -1225,7 +1225,8 @@ class _ThumbSubRatings extends StatelessWidget {
                   onTap: () => onChanged(key, val == false ? null : false),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 150),
-                    padding: const EdgeInsets.all(8),
+                    alignment: Alignment.center,
+                    constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
                     decoration: BoxDecoration(
                       color: val == false
                           ? t.error.withValues(alpha: 0.12)
@@ -1236,9 +1237,10 @@ class _ThumbSubRatings extends StatelessWidget {
                         width: val == false ? 1.5 : 1,
                       ),
                     ),
-                    child: Text(
-                      '👎',
-                      style: TextStyle(fontSize: val == false ? 20 : 16),
+                    child: Icon(
+                      Icons.thumb_down_alt_rounded,
+                      size: val == false ? 22 : 18,
+                      color: val == false ? t.error : t.sage,
                     ),
                   ),
                 ),
@@ -1253,7 +1255,8 @@ class _ThumbSubRatings extends StatelessWidget {
                   onTap: () => onChanged(key, val == true ? null : true),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 150),
-                    padding: const EdgeInsets.all(8),
+                    alignment: Alignment.center,
+                    constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
                     decoration: BoxDecoration(
                       color: val == true
                           ? AppColors.saving.withValues(alpha: 0.12)
@@ -1264,9 +1267,10 @@ class _ThumbSubRatings extends StatelessWidget {
                         width: val == true ? 1.5 : 1,
                       ),
                     ),
-                    child: Text(
-                      '👍',
-                      style: TextStyle(fontSize: val == true ? 20 : 16),
+                    child: Icon(
+                      Icons.thumb_up_alt_rounded,
+                      size: val == true ? 22 : 18,
+                      color: val == true ? AppColors.savingDark : t.sage,
                     ),
                   ),
                 ),

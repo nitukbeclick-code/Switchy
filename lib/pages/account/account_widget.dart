@@ -432,8 +432,15 @@ class AccountWidget extends StatelessWidget {
                         Text('צפיות אחרונות', style: ffTheme.titleLarge),
                         const Spacer(),
                         GestureDetector(
+                          behavior: HitTestBehavior.opaque,
                           onTap: () => context.goNamed('Results'),
-                          child: Text('כל המסלולים', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(minHeight: 44),
+                            child: Center(
+                              widthFactor: 1,
+                              child: Text('כל המסלולים', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+                            ),
+                          ),
                         ),
                       ],
                     ),

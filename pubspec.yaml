@@ -44,6 +44,15 @@ dev_dependencies:
   flutter_launcher_icons: ^0.13.1
   flutter_native_splash: ^2.4.1
 
+# `record` 5.2.1 pins record_linux ^0.7.0 (→ 0.7.2), but the family resolves
+# record_platform_interface 1.6.0 — and record_linux 0.7.2 doesn't implement
+# that interface (missing startStream), which breaks AOT compilation on Linux
+# build hosts (e.g. GitHub Actions). record_linux 1.3.1 supports ^1.5.0 (incl.
+# 1.6.0). The Linux impl is never used on mobile/web, so this only fixes the
+# build graph; the app's `record` API (5.2.1) is unchanged.
+dependency_overrides:
+  record_linux: 1.3.1
+
 flutter:
   uses-material-design: true
   assets:

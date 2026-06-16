@@ -20,6 +20,38 @@ class CompareWidget extends StatelessWidget {
   MatchProfile _profileFor(Plan p, AppState appState) =>
       MatchProfile.fromAppState(appState, p.cat);
 
+  static String _buildShareText(List<Plan> plans, AppState appState) {
+    final buf = StringBuffer();
+    buf.writeln('📊 השוואת תוכניות — חוסך');
+    buf.writeln();
+
+    for (final p in plans) {
+      buf.writeln('${p.plan} — ${p.provider}');
+      buf.writeln('מחיר: ₪${p.priceText} ${priceUnitLabel(p)}');
+      buf.writeln('דירוג: ★${p.rating.toStringAsFixed(1)}');
+      for (final entry in p.specs.entries.take(4)) {
+        buf.writeln('• ${entry.key}: ${entry.value}');
+      }
+      buf.writeln();
+    }
+
+    if (plans.length >= 2) {
+      final prices = plans.map((p) => p.priceValue).toList();
+      final cheapest = plans.reduce((a, b) => a.priceValue <= b.priceValue ? a : b);
+      final mostExpensive = plans.reduce((a, b) => a.priceValue >= b.priceValue ? a : b);
+      final monthlyDiff = (prices.reduce((a, b) => a > b ? a : b) -
+          prices.reduce((a, b) => a < b ? a : b));
+      final annualDiff = (monthlyDiff * 12).round();
+      final shortUnit = priceUnitShort(plans.first);
+      buf.writeln('💰 הפרש: ₪${monthlyDiff.toStringAsFixed(monthlyDiff == monthlyDiff.roundToDouble() ? 0 : 1)} ל$shortUnit = ₪$annualDiff בשנה');
+      buf.writeln('${cheapest.provider} זול מ-${mostExpensive.provider}');
+      buf.writeln();
+    }
+
+    buf.write('הורד חוסך: https://chosech.app');
+    return buf.toString();
+  }
+
   @override
   Widget build(BuildContext context) {
     final ffTheme = AppTheme.of(context);
@@ -56,16 +88,32 @@ class CompareWidget extends StatelessWidget {
         title: Text('השוואת מסלולים',
             style: ffTheme.titleLarge.copyWith(color: Colors.white)),
         actions: [
-          if (plans.isNotEmpty)
+          if (plans.isNotEmpty) ...[
+            IconButton(
+              icon: const Icon(Icons.copy_rounded, color: Colors.white),
+              tooltip: 'העתק',
+              onPressed: () async {
+                final text = _buildShareText(plans, appState);
+                await Clipboard.setData(ClipboardData(text: text));
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('הועתק ללוח'),
+                      duration: Duration(seconds: 2),
+                    ),
+                  );
+                }
+              },
+            ),
             IconButton(
               icon: const Icon(Icons.ios_share_rounded, color: Colors.white),
-              tooltip: 'שתף',
+              tooltip: 'שתף השוואה',
               onPressed: () => Share.share(
-                'השוויתי בחוסך: '
-                '${plans.map((p) => '${p.provider} ${p.plan} ₪${p.priceText}').join(' מול ')}'
-                '',
+                _buildShareText(plans, appState),
+                subject: 'השוואת תוכניות — חוסך',
               ),
             ),
+          ],
           if (ids.isNotEmpty)
             TextButton(
               onPressed: appState.clearCompare,
@@ -341,6 +389,10 @@ class _CompareTable extends StatelessWidget {
             ),
           ] else
             const SizedBox(height: 16),
+
+          // ── Annual savings banner ────────────────────────────────────────
+          if (plans.length >= 2)
+            _AnnualSavingsBanner(plans: plans, ffTheme: ffTheme),
 
           // Mixed-category notice
           if (mixedCats)
@@ -927,6 +979,58 @@ class _RowWidget extends StatelessWidget {
           }),
         ],
       ),
+    );
+  }
+}
+
+// ── Annual savings banner ──────────────────────────────────────────────────────
+
+class _AnnualSavingsBanner extends StatelessWidget {
+  const _AnnualSavingsBanner({required this.plans, required this.ffTheme});
+  final List<Plan> plans;
+  final AppTheme ffTheme;
+
+  @override
+  Widget build(BuildContext context) {
+    final cheapest = plans.reduce((a, b) => a.priceValue <= b.priceValue ? a : b);
+    final mostExpensive = plans.reduce((a, b) => a.priceValue >= b.priceValue ? a : b);
+    final monthlyDiff = mostExpensive.priceValue - cheapest.priceValue;
+    final annualDiff = (monthlyDiff * 12).round();
+
+    if (annualDiff == 0) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: ffTheme.saving,
+          borderRadius: BorderRadius.circular(14),
+          boxShadow: [
+            BoxShadow(
+              color: ffTheme.saving.withValues(alpha: 0.35),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            const Text('💰', style: TextStyle(fontSize: 22)),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                'הפרש שנתי: ₪$annualDiff בשנה בין ${cheapest.provider} ל-${mostExpensive.provider}',
+                style: ffTheme.titleSmall.copyWith(
+                  color: const Color(0xFF3A2900),
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ).animate().fadeIn(duration: 350.ms).slideY(begin: 0.15, end: 0),
     );
   }
 }

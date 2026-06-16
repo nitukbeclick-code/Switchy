@@ -25,7 +25,9 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
   final _inputCtrl = TextEditingController();
   final _scrollCtrl = ScrollController();
   bool _isTyping = false;
+  bool _profileExpanded = false;
   late List<_ChatMsg> _messages;
+  late String _userContextString;
 
   List<_ChatMsg> _buildSeed() {
     final appState = AppState();
@@ -42,6 +44,10 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
   void initState() {
     super.initState();
     final appState = AppState();
+    // Build the Hebrew profile context string once on init. It's rebuilt each
+    // time the user sends a message (via _advisorContext) for the engine, but
+    // the display string only needs refreshing when the advisor screen opens.
+    _userContextString = AdvisorEngine.buildUserContext(appState);
     final history = appState.advisorHistory;
     if (history.isNotEmpty) {
       _messages = history.map((m) => _ChatMsg(
@@ -85,7 +91,21 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
     // classification, provider/category/filter/budget detection, the plan
     // pipeline and every Hebrew reply branch. The widget only builds the
     // context from AppState and renders the result.
-    final reply = AdvisorEngine.respondTo(text, context: _advisorContext(appState));
+    AdvisorReply reply = AdvisorEngine.respondTo(text, context: _advisorContext(appState));
+
+    // When the engine couldn't classify the intent, fall back to a contextual
+    // reply that references the user's actual profile data.
+    if (reply.intent == AdvisorIntent.unknown) {
+      final contextualText =
+          AdvisorEngine.generateContextualReply(text, _userContextString);
+      reply = AdvisorReply(
+        text: contextualText,
+        intent: AdvisorIntent.unknown,
+        category: reply.category,
+        planIds: reply.planIds,
+      );
+    }
+
     final topPlans = reply.planIds.map((id) => planById(id)).whereType<Plan>().toList();
 
     if (mounted) {
@@ -145,6 +165,98 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
         },
       );
 
+  /// True when all per-category bills are zero (the user hasn't entered any).
+  bool _billsAllZero(AppState appState) =>
+      const ['cellular', 'internet', 'tv', 'triple', 'abroad']
+          .every((c) => appState.currentBill(c) == 0);
+
+  /// A collapsible "פרופיל שלי" card showing the user's context data.
+  Widget _buildProfileCard(AppTheme ffTheme) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeInOut,
+      margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: ffTheme.alternate),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 6, offset: const Offset(0, 2))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Header row — tap to toggle
+          InkWell(
+            onTap: () => setState(() => _profileExpanded = !_profileExpanded),
+            borderRadius: BorderRadius.circular(12),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              child: Row(
+                children: [
+                  Icon(Icons.person_outline_rounded, size: 18, color: ffTheme.primary),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'פרופיל שלי',
+                      style: ffTheme.labelMedium.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: ffTheme.primaryText,
+                      ),
+                      textDirection: TextDirection.rtl,
+                    ),
+                  ),
+                  Icon(
+                    _profileExpanded ? Icons.expand_less_rounded : Icons.expand_more_rounded,
+                    size: 20,
+                    color: ffTheme.secondaryText,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          // Expandable body
+          if (_profileExpanded) ...[
+            Divider(height: 1, color: ffTheme.alternate),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
+              child: Text(
+                _userContextString,
+                style: ffTheme.bodySmall.copyWith(height: 1.7, color: ffTheme.primaryText),
+                textDirection: TextDirection.rtl,
+              ),
+            ),
+          ],
+        ],
+      ),
+    ).animate().fadeIn(duration: 400.ms);
+  }
+
+  /// An info banner nudging the user to fill in their bills.
+  Widget _buildBillsBanner(AppTheme ffTheme) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF7ED),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.5)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.info_outline_rounded, color: Color(0xFFF59E0B), size: 18),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'מלא את החשבונות שלך כדי לקבל המלצות מדויקות יותר',
+              style: ffTheme.bodySmall.copyWith(color: const Color(0xFF92400E), height: 1.4),
+              textDirection: TextDirection.rtl,
+            ),
+          ),
+        ],
+      ),
+    ).animate().fadeIn(duration: 400.ms, delay: 200.ms);
+  }
+
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollCtrl.hasClients) {
@@ -161,6 +273,7 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
   Widget build(BuildContext context) {
     final ffTheme = AppTheme.of(context);
     final appState = Provider.of<AppState>(context, listen: false);
+    final showBillsBanner = _billsAllZero(appState);
 
     final quickStarts = [
       'מה הכי משתלם לי?',
@@ -253,13 +366,30 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
           Expanded(
             child: ListView.builder(
               controller: _scrollCtrl,
-              padding: const EdgeInsets.all(16),
-              itemCount: _messages.length + (_isTyping ? 1 : 0),
+              padding: const EdgeInsets.only(top: 0, left: 16, right: 16, bottom: 16),
+              // +1 for the profile card header item
+              itemCount: _messages.length + (_isTyping ? 1 : 0) + 1,
               itemBuilder: (ctx, i) {
-                if (i == _messages.length && _isTyping) {
+                // Index 0 → profile card (+ optional bills banner)
+                if (i == 0) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _buildProfileCard(ffTheme),
+                        if (showBillsBanner) _buildBillsBanner(ffTheme),
+                        const SizedBox(height: 8),
+                      ],
+                    ),
+                  );
+                }
+                // Shift real indices by 1
+                final msgIdx = i - 1;
+                if (msgIdx == _messages.length && _isTyping) {
                   return _TypingBubble(ffTheme: ffTheme);
                 }
-                final msg = _messages[i];
+                final msg = _messages[msgIdx];
                 return _MessageBubble(msg: msg, ffTheme: ffTheme, bill: appState.currentBill(msg.cat));
               },
             ),

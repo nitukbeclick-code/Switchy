@@ -14,3 +14,14 @@ Future<void> scheduleAll(
 ) async {}
 
 Future<void> cancelAllPush() async {}
+
+/// Web stub — no OS-level immediate notifications in the browser.
+Future<void> showNow({
+  required int id,
+  required String title,
+  required String body,
+  String? payload,
+  String channelId = 'price_alerts',
+  String channelName = 'התראות מחיר',
+  String channelDesc = 'התראות על ירידת מחירים ומבצעים',
+}) async {}

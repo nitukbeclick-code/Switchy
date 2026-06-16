@@ -38,6 +38,7 @@ import 'pages/renewal_report/renewal_report_widget.dart';
 import 'pages/notifications/notification_center_widget.dart';
 import 'pages/provider/provider_widget.dart';
 import 'pages/support_ticket/support_ticket_widget.dart';
+import 'pages/abroad_calc/abroad_calc_widget.dart';
 
 final _rootNavKey = GlobalKey<NavigatorState>(debugLabel: 'root');
 final _shellNavKey = GlobalKey<NavigatorState>(debugLabel: 'shell');
@@ -119,6 +120,7 @@ GoRouter createRouter() {
         GoRoute(path: '/notifications', name: 'Notifications', builder: (_, __) => const NotificationCenterWidget()),
         GoRoute(path: '/provider/:name', name: 'Provider', builder: (_, s) => ProviderWidget(providerName: s.pathParameters['name']!)),
         GoRoute(path: '/support-ticket/:ticketId', name: 'support-ticket', builder: (_, s) => SupportTicketWidget(ticketId: s.pathParameters['ticketId']!)),
+        GoRoute(path: '/abroad-calc', name: 'AbroadCalc', builder: (_, __) => const AbroadCalcWidget()),
       ],
     ),
   ],

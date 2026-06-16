@@ -80,6 +80,39 @@ Future<void> cancelAllPush() async {
 Future<void> scheduleReminders(List<ScheduledReminder> reminders) =>
     scheduleAll(reminders, const []);
 
+/// Show an immediate (not scheduled) local notification. Used for price-drop
+/// and flash-deal alerts that are triggered programmatically at runtime.
+/// [id] should be stable per logical event so repeat calls don't stack.
+Future<void> showNow({
+  required int id,
+  required String title,
+  required String body,
+  String? payload,
+  String channelId = 'price_alerts',
+  String channelName = 'התראות מחיר',
+  String channelDesc = 'התראות על ירידת מחירים ומבצעים',
+}) async {
+  if (!_isMobile) return;
+  if (!_tzReady) _ensureTz(); // harmless if already ready
+  final details = NotificationDetails(
+    android: AndroidNotificationDetails(
+      channelId,
+      channelName,
+      channelDescription: channelDesc,
+      importance: Importance.high,
+      priority: Priority.high,
+    ),
+    iOS: const DarwinNotificationDetails(),
+  );
+  await _plugin.show(
+    id: id,
+    title: title,
+    body: body,
+    notificationDetails: details,
+    payload: payload ?? '',
+  );
+}
+
 /// Reschedule the WHOLE notification surface from scratch — renewals at 09:00
 /// on their fire dates, meeting reminders at their exact instants. One entry
 /// point so the cancelAll can't wipe a sibling schedule.

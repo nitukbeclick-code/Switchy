@@ -3,9 +3,14 @@ import '../data.dart';
 import '../models.dart';
 import 'backend/backend.dart' show MeetingStatus;
 import 'meeting_slots.dart' show formatMeetingDateHe, meetingLocalStart;
+import 'price_change_event.dart';
 import 'recommendation_engine.dart';
 
 /// The kind of actionable alert, used to pick an icon/accent in the UI.
+///
+/// Note: price-drop alerts use [savings] so existing switch expressions on this
+/// enum remain exhaustive. A dedicated [priceDrop] value can be introduced once
+/// all call sites are updated.
 enum NotifKind { renewal, betterDeal, savings, meeting, info }
 
 /// A computed, actionable notification. These are derived on the fly from app
@@ -33,6 +38,31 @@ class AppNotification {
   final String? planId; // when set, tap should open this plan's detail
   final String? category; // when set, set this category before navigating
   final int priority; // higher sorts first
+
+  /// Convenience factory for a price-drop alert derived from a [PriceChangeEvent].
+  /// Deep-links to the plan's detail screen via [routeName] = 'PlanDetail'.
+  factory AppNotification.priceDrop(PriceChangeEvent event) {
+    final monthly = event.saving;
+    final annual = event.savingAnnual;
+    final monthlyStr = monthly == monthly.roundToDouble()
+        ? monthly.toInt().toString()
+        : monthly.toStringAsFixed(2);
+    final annualStr = annual == annual.roundToDouble()
+        ? annual.toInt().toString()
+        : annual.toStringAsFixed(2);
+    final newStr = event.newPrice == event.newPrice.roundToDouble()
+        ? event.newPrice.toInt().toString()
+        : event.newPrice.toStringAsFixed(2);
+    return AppNotification(
+      id: 'price_drop_${event.planId}',
+      kind: NotifKind.savings, // price drops are a savings opportunity
+      title: 'מחיר ירד! ${event.provider}',
+      body: '${event.planName} ירד ל-₪$newStr — חיסכון של ₪$monthlyStr לחודש (₪$annualStr בשנה)',
+      routeName: 'PlanDetail',
+      planId: event.planId,
+      priority: 750 + annual.toInt().clamp(0, 250),
+    );
+  }
 }
 
 /// Builds the list of actionable notifications for [s], newest/most-urgent

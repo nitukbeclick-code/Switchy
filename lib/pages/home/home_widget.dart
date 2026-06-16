@@ -82,6 +82,33 @@ class _HomeWidgetState extends State<HomeWidget> {
     return null;
   }
 
+  /// Flash deal detection: a plan is a flash deal if its price is ≥ 20% below
+  /// the average price for its category.  Calculation is intentionally inline
+  /// (not in a service) and memoised on the plan list which never changes at
+  /// runtime.
+  static final Map<String, double> _catAvgCache = {};
+
+  static double _categoryAvg(String catId) {
+    return _catAvgCache.putIfAbsent(catId, () {
+      final plans = allPlans.where((p) => p.cat == catId).toList();
+      if (plans.isEmpty) return 0;
+      return plans.fold<double>(0, (sum, p) => sum + p.priceValue) / plans.length;
+    });
+  }
+
+  static bool _isFlashDeal(Plan plan) {
+    final avg = _categoryAvg(plan.cat);
+    if (avg <= 0) return false;
+    return plan.priceValue <= avg * 0.80; // ≥20% below average
+  }
+
+  /// Percentage below average, clamped to [0, 99].
+  static int _flashDiscountPct(Plan plan) {
+    final avg = _categoryAvg(plan.cat);
+    if (avg <= 0) return 0;
+    return ((1 - plan.priceValue / avg) * 100).round().clamp(0, 99);
+  }
+
   @override
   Widget build(BuildContext context) {
     final ffTheme = AppTheme.of(context);
@@ -91,6 +118,13 @@ class _HomeWidgetState extends State<HomeWidget> {
     // Compute the savings summary once and share it with the hero + grid
     // (each used to recompute it — 5 engine rankings — on every build).
     final savings = _savingsFor(appState);
+
+    // Flash deals — top 6 across all categories, sorted by discount depth
+    final flashDeals = allPlans
+        .where(_isFlashDeal)
+        .toList()
+      ..sort((a, b) => _flashDiscountPct(b).compareTo(_flashDiscountPct(a)));
+    final topFlashDeals = flashDeals.take(6).toList();
 
     return Scaffold(
       backgroundColor: ffTheme.background,
@@ -108,6 +142,10 @@ class _HomeWidgetState extends State<HomeWidget> {
 
               // ── 3. Savings hero card ───────────────────────────────────────
               SliverToBoxAdapter(child: _buildSavingsHero(context, ffTheme, savings)),
+
+              // ── 3b. Flash deals section ────────────────────────────────────
+              if (topFlashDeals.isNotEmpty)
+                SliverToBoxAdapter(child: _buildFlashDeals(context, ffTheme, topFlashDeals)),
 
               // ── 4. Hot deal card ───────────────────────────────────────────
               if (deal != null)
@@ -511,6 +549,63 @@ class _HomeWidgetState extends State<HomeWidget> {
         .animate()
         .fadeIn(duration: 600.ms)
         .scale(begin: const Offset(0.95, 0.95), end: const Offset(1.0, 1.0));
+  }
+
+  Widget _buildFlashDeals(BuildContext context, AppTheme ffTheme, List<Plan> deals) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 0, 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Section header row
+          Padding(
+            padding: const EdgeInsets.only(left: 16, bottom: 12),
+            child: Row(
+              children: [
+                Text('מבצעי אש', style: ffTheme.titleLarge),
+                const SizedBox(width: 6),
+                const Text('🔥', style: TextStyle(fontSize: 18)),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: AppColors.saving,
+                    borderRadius: BorderRadius.circular(ffTheme.radiusPill),
+                  ),
+                  child: Text(
+                    '${deals.length}',
+                    style: ffTheme.labelSmall.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 11,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Horizontal scroll of flash deal cards
+          SizedBox(
+            height: 210,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: deals.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 10),
+              itemBuilder: (context, i) {
+                final plan = deals[i];
+                final discountPct = _flashDiscountPct(plan);
+                return _FlashDealCard(
+                  plan: plan,
+                  discountPct: discountPct,
+                  ffTheme: ffTheme,
+                  onTap: () => context.pushNamed('PlanDetail', pathParameters: {'planId': plan.id}),
+                ).animate(delay: (i * 70).ms).fadeIn(duration: 350.ms).slideX(begin: 0.1, end: 0);
+              },
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildHotDeal(BuildContext context, AppTheme ffTheme, Plan deal, AppState appState) {
@@ -1229,6 +1324,158 @@ class _HomeWidgetState extends State<HomeWidget> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ── Flash deal card ────────────────────────────────────────────────────────────
+
+class _FlashDealCard extends StatelessWidget {
+  const _FlashDealCard({
+    required this.plan,
+    required this.discountPct,
+    required this.ffTheme,
+    required this.onTap,
+  });
+
+  final Plan plan;
+  final int discountPct;
+  final AppTheme ffTheme;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 160,
+        decoration: BoxDecoration(
+          color: const Color(0xFF111827), // dark slate
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: ffTheme.shadowCard,
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Amber top band
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+              color: AppColors.saving,
+              child: Row(
+                children: [
+                  const Text('🔥', style: TextStyle(fontSize: 13)),
+                  const SizedBox(width: 4),
+                  Text(
+                    'מבצע חם',
+                    style: ffTheme.labelSmall.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Card body
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Plan name
+                    Text(
+                      plan.plan,
+                      style: ffTheme.titleSmall.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 3),
+                    // Provider name
+                    Text(
+                      plan.provider,
+                      style: ffTheme.labelSmall.copyWith(
+                        color: Colors.white.withValues(alpha: 0.55),
+                        fontSize: 11,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const Spacer(),
+                    // Price
+                    Text(
+                      '₪${plan.priceText}',
+                      style: ffTheme.titleLarge.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 22,
+                      ),
+                    ),
+                    Text(
+                      priceUnitLabel(plan),
+                      style: ffTheme.labelSmall.copyWith(
+                        color: Colors.white.withValues(alpha: 0.55),
+                        fontSize: 10,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    // Savings badge
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppColors.saving.withValues(alpha: 0.18),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppColors.saving.withValues(alpha: 0.45)),
+                      ),
+                      child: Text(
+                        'חוסך $discountPct% מהממוצע',
+                        style: ffTheme.labelSmall.copyWith(
+                          color: AppColors.saving,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 10,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    // CTA button
+                    SizedBox(
+                      width: double.infinity,
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: onTap,
+                          borderRadius: BorderRadius.circular(10),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 7),
+                            decoration: BoxDecoration(
+                              gradient: ffTheme.accentGradient,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              'פרטים ←',
+                              textAlign: TextAlign.center,
+                              style: ffTheme.labelSmall.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

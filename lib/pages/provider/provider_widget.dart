@@ -12,9 +12,41 @@ import '../../services/recommendation_engine.dart';
 import '../../services/provider_ratings.dart';
 import '../../services/backend/local_backend.dart';
 
-class ProviderWidget extends StatelessWidget {
+class ProviderWidget extends StatefulWidget {
   const ProviderWidget({super.key, required this.providerName});
   final String providerName;
+
+  @override
+  State<ProviderWidget> createState() => _ProviderWidgetState();
+}
+
+class _ProviderWidgetState extends State<ProviderWidget> {
+  /// When true, only flash-deal plans are shown.
+  bool _showOnlyDeals = false;
+
+  // ── Flash deal helpers (inline, not in services) ──────────────────────────
+
+  static final Map<String, double> _catAvgCache = {};
+
+  static double _categoryAvg(String catId) {
+    return _catAvgCache.putIfAbsent(catId, () {
+      final plans = allPlans.where((p) => p.cat == catId).toList();
+      if (plans.isEmpty) return 0;
+      return plans.fold<double>(0, (sum, p) => sum + p.priceValue) / plans.length;
+    });
+  }
+
+  static bool _isFlashDeal(Plan plan) {
+    final avg = _categoryAvg(plan.cat);
+    if (avg <= 0) return false;
+    return plan.priceValue <= avg * 0.80; // ≥20% below average
+  }
+
+  static int _flashDiscountPct(Plan plan) {
+    final avg = _categoryAvg(plan.cat);
+    if (avg <= 0) return 0;
+    return ((1 - plan.priceValue / avg) * 100).round().clamp(0, 99);
+  }
 
   /// Build a MatchProfile tuned to a given plan's category.
   MatchProfile _profileFor(Plan p, AppState appState) =>
@@ -25,12 +57,12 @@ class ProviderWidget extends StatelessWidget {
     final ffTheme = AppTheme.of(context);
     final appState = Provider.of<AppState>(context);
 
-    final plans = plansByProvider(providerName);
-    final rating = ProviderRatings.forProvider(providerName, appState: appState);
+    final allProviderPlans = plansByProvider(widget.providerName);
+    final rating = ProviderRatings.forProvider(widget.providerName, appState: appState);
 
     // Compute score map once — plan.id → PlanMatch
     final scoreMap = <String, PlanMatch>{};
-    for (final p in plans) {
+    for (final p in allProviderPlans) {
       scoreMap[p.id] = RecommendationEngine.scorePlan(p, _profileFor(p, appState));
     }
 
@@ -42,7 +74,15 @@ class ProviderWidget extends StatelessWidget {
       }
     }
 
-    // Plans grouped by category (only categories this provider has)
+    // Whether this provider has any flash deals at all (drives filter chip visibility)
+    final hasAnyFlashDeals = allProviderPlans.any(_isFlashDeal);
+
+    // The plans shown (filtered when the chip is active)
+    final plans = _showOnlyDeals
+        ? allProviderPlans.where(_isFlashDeal).toList()
+        : allProviderPlans;
+
+    // Plans grouped by category (only categories this provider has in the current view)
     final presentCatIds = plans.map((p) => p.cat).toSet();
     final catGroups = categories
         .where((c) => presentCatIds.contains(c.id))
@@ -51,26 +91,26 @@ class ProviderWidget extends StatelessWidget {
 
     // Community posts mentioning this provider
     final seedMatches = communityPosts
-        .where((post) => post.text.contains(providerName))
+        .where((post) => post.text.contains(widget.providerName))
         .toList();
     final userPostMaps = appState.communityPosts
-        .where((m) => (m['text'] as String? ?? '').contains(providerName))
+        .where((m) => (m['text'] as String? ?? '').contains(widget.providerName))
         .toList();
     final hasCommunity = seedMatches.isNotEmpty || userPostMaps.isNotEmpty;
 
-    final catCount = presentCatIds.length;
+    final catCount = allProviderPlans.map((p) => p.cat).toSet().length;
 
     // Cheapest plan price (guard against empty) for the share growth hook.
-    final cheapest = plans.isEmpty
+    final cheapest = allProviderPlans.isEmpty
         ? 0
-        : plans.map((p) => p.price).reduce((a, b) => a < b ? a : b);
+        : allProviderPlans.map((p) => p.price).reduce((a, b) => a < b ? a : b);
     final shareText =
-        'בדקו את $providerName בחוסך — ${plans.length} מסלולים מ-₪$cheapest.';
+        'בדקו את ${widget.providerName} בחוסך — ${allProviderPlans.length} מסלולים מ-₪$cheapest.';
 
     return Scaffold(
       backgroundColor: ffTheme.background,
-      body: plans.isEmpty
-          ? _EmptyState(providerName: providerName, ffTheme: ffTheme)
+      body: allProviderPlans.isEmpty
+          ? _EmptyState(providerName: widget.providerName, ffTheme: ffTheme)
           : CustomScrollView(
               slivers: [
                 // Track the best-matching plan once per page view.
@@ -78,7 +118,7 @@ class ProviderWidget extends StatelessWidget {
                   SliverToBoxAdapter(
                     child: _PlanViewTracker(
                       planId: bestMatch.plan.id,
-                      provider: providerName,
+                      provider: widget.providerName,
                       category: bestMatch.plan.cat,
                     ),
                   ),
@@ -86,8 +126,8 @@ class ProviderWidget extends StatelessWidget {
                 // ── Hero header ──────────────────────────────────────────────
                 SliverToBoxAdapter(
                   child: _HeroHeader(
-                    providerName: providerName,
-                    planCount: plans.length,
+                    providerName: widget.providerName,
+                    planCount: allProviderPlans.length,
                     catCount: catCount,
                     rating: rating,
                     ffTheme: ffTheme,
@@ -107,7 +147,7 @@ class ProviderWidget extends StatelessWidget {
                           _BestMatchCard(
                             match: bestMatch,
                             ffTheme: ffTheme,
-                            providerName: providerName,
+                            providerName: widget.providerName,
                             onTap: () => context.pushNamed(
                               'PlanDetail',
                               pathParameters: {'planId': bestMatch!.plan.id},
@@ -126,6 +166,47 @@ class ProviderWidget extends StatelessWidget {
                           const SizedBox(height: 20),
                         ],
 
+                        // ── Filter chips ─────────────────────────────────────
+                        if (hasAnyFlashDeals) ...[
+                          Row(
+                            children: [
+                              GestureDetector(
+                                onTap: () => setState(() => _showOnlyDeals = !_showOnlyDeals),
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 200),
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                                  decoration: BoxDecoration(
+                                    color: _showOnlyDeals ? AppColors.saving : Colors.white,
+                                    borderRadius: BorderRadius.circular(ffTheme.radiusPill),
+                                    border: Border.all(
+                                      color: _showOnlyDeals
+                                          ? AppColors.saving
+                                          : ffTheme.alternate.withValues(alpha: 0.35),
+                                      width: 1.5,
+                                    ),
+                                    boxShadow: ffTheme.shadowSoft,
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Text('🔥', style: TextStyle(fontSize: 13)),
+                                      const SizedBox(width: 5),
+                                      Text(
+                                        'מבצעים',
+                                        style: ffTheme.labelMedium.copyWith(
+                                          color: _showOnlyDeals ? Colors.white : ffTheme.primaryText,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                        ],
+
                         // ── Plans by category ────────────────────────────────
                         ...catGroups.asMap().entries.expand((entry) {
                           final i = entry.key;
@@ -140,11 +221,15 @@ class ProviderWidget extends StatelessWidget {
                               final pi = pe.key;
                               final p = pe.value;
                               final match = scoreMap[p.id];
+                              final isFlash = _isFlashDeal(p);
+                              final discountPct = isFlash ? _flashDiscountPct(p) : 0;
                               return Padding(
                                 padding: const EdgeInsets.only(bottom: 10),
                                 child: _PlanCard(
                                   plan: p,
                                   match: match,
+                                  isFlashDeal: isFlash,
+                                  flashDiscountPct: discountPct,
                                   ffTheme: ffTheme,
                                   onTap: () => context.pushNamed(
                                     'PlanDetail',
@@ -169,7 +254,7 @@ class ProviderWidget extends StatelessWidget {
                         if (hasCommunity) ...[
                           const SizedBox(height: 24),
                           Text(
-                            'מהקהילה על $providerName',
+                            'מהקהילה על ${widget.providerName}',
                             style: ffTheme.titleLarge,
                           ).animate().fadeIn(duration: 300.ms),
                           const SizedBox(height: 12),
@@ -645,12 +730,16 @@ class _PlanCard extends StatelessWidget {
     required this.match,
     required this.ffTheme,
     required this.onTap,
+    this.isFlashDeal = false,
+    this.flashDiscountPct = 0,
   });
 
   final Plan plan;
   final PlanMatch? match;
   final AppTheme ffTheme;
   final VoidCallback onTap;
+  final bool isFlashDeal;
+  final int flashDiscountPct;
 
   @override
   Widget build(BuildContext context) {
@@ -659,99 +748,149 @@ class _PlanCard extends StatelessWidget {
 
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: ffTheme.alternate),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    plan.plan,
-                    style: ffTheme.bodyMedium
-                        .copyWith(fontWeight: FontWeight.w600),
-                  ),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(
+                color: isFlashDeal
+                    ? AppColors.saving.withValues(alpha: 0.55)
+                    : ffTheme.alternate,
+                width: isFlashDeal ? 1.5 : 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.04),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
                 ),
-                const SizedBox(width: 8),
-                // Score chip
-                if (match != null)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: ffTheme.accent1,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                          color: ffTheme.primary.withValues(alpha: 0.2)),
-                    ),
-                    child: Text(
-                      '${match!.scorePct}% התאמה',
-                      style: ffTheme.labelSmall.copyWith(
-                          color: ffTheme.primary,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 11),
-                    ),
-                  ),
               ],
             ),
-            const SizedBox(height: 8),
-            Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  '₪${plan.priceText} $unit',
-                  style: ffTheme.titleSmall.copyWith(
-                      color: ffTheme.primary, fontWeight: FontWeight.w700),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        plan.plan,
+                        style: ffTheme.bodyMedium
+                            .copyWith(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    // Score chip
+                    if (match != null)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: ffTheme.accent1,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                              color: ffTheme.primary.withValues(alpha: 0.2)),
+                        ),
+                        child: Text(
+                          '${match!.scorePct}% התאמה',
+                          style: ffTheme.labelSmall.copyWith(
+                              color: ffTheme.primary,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 11),
+                        ),
+                      ),
+                  ],
                 ),
-                if (plan.hasPromo) ...[
-                  const SizedBox(width: 8),
-                  Text(
-                    '← ₪${plan.after} אחרי',
-                    style: ffTheme.labelSmall
-                        .copyWith(color: ffTheme.secondaryText),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Text(
+                      '₪${plan.priceText} $unit',
+                      style: ffTheme.titleSmall.copyWith(
+                          color: ffTheme.primary, fontWeight: FontWeight.w700),
+                    ),
+                    if (plan.hasPromo) ...[
+                      const SizedBox(width: 8),
+                      Text(
+                        '← ₪${plan.after} אחרי',
+                        style: ffTheme.labelSmall
+                            .copyWith(color: ffTheme.secondaryText),
+                      ),
+                    ],
+                    const Spacer(),
+                    Icon(Icons.chevron_left_rounded,
+                        size: 16, color: ffTheme.secondaryText),
+                  ],
+                ),
+                if (specEntries.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 6,
+                    children: specEntries.map((e) {
+                      return Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: ffTheme.background,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: ffTheme.alternate),
+                        ),
+                        child: Text(
+                          '${e.key}: ${e.value}',
+                          style: ffTheme.labelSmall
+                              .copyWith(color: ffTheme.primaryText, fontSize: 11),
+                        ),
+                      );
+                    }).toList(),
                   ),
                 ],
-                const Spacer(),
-                Icon(Icons.chevron_left_rounded,
-                    size: 16, color: ffTheme.secondaryText),
               ],
             ),
-            if (specEntries.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Wrap(
-                spacing: 6,
-                children: specEntries.map((e) {
-                  return Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: ffTheme.background,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: ffTheme.alternate),
+          ),
+          // Flash deal badge — overlaid top-left corner
+          if (isFlashDeal)
+            Positioned(
+              top: -1,
+              right: 10,
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.saving,
+                  borderRadius: const BorderRadius.only(
+                    bottomLeft: Radius.circular(8),
+                    bottomRight: Radius.circular(8),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.saving.withValues(alpha: 0.35),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
                     ),
-                    child: Text(
-                      '${e.key}: ${e.value}',
-                      style: ffTheme.labelSmall
-                          .copyWith(color: ffTheme.primaryText, fontSize: 11),
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('🔥', style: TextStyle(fontSize: 10)),
+                    const SizedBox(width: 3),
+                    Text(
+                      'מבצע · $flashDiscountPct% הנחה',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        height: 1.2,
+                      ),
                     ),
-                  );
-                }).toList(),
+                  ],
+                ),
               ),
-            ],
-          ],
-        ),
+            ),
+        ],
       ),
     );
   }

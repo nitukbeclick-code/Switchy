@@ -19,6 +19,9 @@ import '../../widgets/empty_state.dart';
 /// recent searches plus an honest browse-by-category surface built from the
 /// REAL catalogue (categories + the genuinely cheapest plan in each) — never
 /// invented popularity numbers.
+///
+/// Filter row below the search bar lets users narrow by category, provider,
+/// and budget — all state is local to this widget; no AppState mutations.
 class SearchWidget extends StatefulWidget {
   const SearchWidget({super.key});
 
@@ -26,10 +29,37 @@ class SearchWidget extends StatefulWidget {
   State<SearchWidget> createState() => _SearchWidgetState();
 }
 
+// ── Category filter definition ──────────────────────────────────────────────
+
+class _CatChip {
+  const _CatChip({required this.id, required this.label});
+  final String? id; // null means "הכל"
+  final String label;
+}
+
+const List<_CatChip> _catChips = [
+  _CatChip(id: null, label: 'הכל'),
+  _CatChip(id: 'cellular', label: 'סלולר'),
+  _CatChip(id: 'internet', label: 'אינטרנט'),
+  _CatChip(id: 'tv', label: 'טלוויזיה'),
+  _CatChip(id: 'triple', label: 'חבילה'),
+  _CatChip(id: 'abroad', label: 'חו"ל'),
+];
+
+const double _maxBudget = 500;
+const int _maxProviderChips = 5;
+
 class _SearchWidgetState extends State<SearchWidget> {
   final _ctrl = TextEditingController();
   final _focus = FocusNode();
   String _q = '';
+
+  // ── Filter state ───────────────────────────────────────────────────────────
+  String? _categoryFilter; // null = הכל
+  String? _providerFilter; // null = all providers
+  bool _budgetOpen = false; // slider expanded?
+  double _maxPrice = _maxBudget; // ₪0–₪500
+  bool _showAllProviders = false; // expand "עוד" provider list
 
   @override
   void dispose() {
@@ -54,11 +84,41 @@ class _SearchWidgetState extends State<SearchWidget> {
     }
   }
 
+  // How many active filter dimensions are engaged (for the badge counter).
+  int get _activeFilterCount {
+    var n = 0;
+    if (_categoryFilter != null) n++;
+    if (_providerFilter != null) n++;
+    if (_budgetOpen && _maxPrice < _maxBudget) n++;
+    return n;
+  }
+
+  void _clearAllFilters() {
+    setState(() {
+      _categoryFilter = null;
+      _providerFilter = null;
+      _maxPrice = _maxBudget;
+      _budgetOpen = false;
+      _showAllProviders = false;
+    });
+  }
+
+  // ── Build ──────────────────────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
     final ffTheme = AppTheme.of(context);
     final appState = Provider.of<AppState>(context);
-    final results = searchEverything(_q);
+
+    final maxPrice = (_budgetOpen && _maxPrice < _maxBudget) ? _maxPrice : null;
+    final results = searchEverything(
+      _q,
+      categoryFilter: _categoryFilter,
+      providerFilter: _providerFilter,
+      maxPrice: maxPrice,
+    );
+
+    final hasFilters = _activeFilterCount > 0;
 
     return Scaffold(
       backgroundColor: ffTheme.background,
@@ -120,31 +180,392 @@ class _SearchWidgetState extends State<SearchWidget> {
             ],
           ),
         ),
+        // Filter icon (with badge) at the end of the AppBar
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(left: 8, right: 4),
+            child: Semantics(
+              button: true,
+              label: hasFilters ? 'מסנן פעיל, $_activeFilterCount מסננים' : 'מסנן',
+              child: GestureDetector(
+                onTap: hasFilters ? _clearAllFilters : null,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Icon(
+                      hasFilters ? Icons.filter_alt_rounded : Icons.filter_alt_outlined,
+                      color: hasFilters ? ffTheme.brandAccent : ffTheme.secondaryText,
+                      size: 26,
+                    ),
+                    if (hasFilters)
+                      Positioned(
+                        top: -4,
+                        left: -4,
+                        child: Container(
+                          width: 16,
+                          height: 16,
+                          decoration: BoxDecoration(
+                            color: ffTheme.brandAccent,
+                            shape: BoxShape.circle,
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            '$_activeFilterCount',
+                            style: GoogleFonts.assistant(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                              height: 1,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
           child: Container(height: 1, color: ffTheme.alternate),
         ),
       ),
-      body: _q.trim().isEmpty
-          ? _Suggestions(
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // ── Filter panel (always visible in search mode) ─────────────────
+          _FilterPanel(
+            ffTheme: ffTheme,
+            selectedCategory: _categoryFilter,
+            onCategoryChanged: (id) => setState(() {
+              _categoryFilter = id;
+              _providerFilter = null; // reset provider when category changes
+              _showAllProviders = false;
+            }),
+            budgetOpen: _budgetOpen,
+            maxPrice: _maxPrice,
+            onToggleBudget: () => setState(() => _budgetOpen = !_budgetOpen),
+            onBudgetChanged: (v) => setState(() => _maxPrice = v),
+            activeFilterCount: _activeFilterCount,
+          ),
+
+          // ── Provider chips (only when there are plan results and query active)
+          if (_q.trim().isNotEmpty && results.plans.isNotEmpty)
+            _ProviderFilterRow(
               ffTheme: ffTheme,
-              onPick: _useSuggestion,
-              recent: appState.recentSearches,
-              onClearRecent: appState.clearRecentSearches,
-            )
-          : results.isEmpty
-              ? const EmptyState(
-                  icon: Icons.search_off_rounded,
-                  headline: 'לא נמצאו תוצאות',
-                  subtitle: 'נסו שם ספק, מסלול או תכונה אחרת',
-                )
-              : _ResultsList(
-                  results: results,
-                  query: _q,
-                  ffTheme: ffTheme,
-                  appState: appState,
-                  onBeforeNavigate: _remember,
+              plans: results.plans,
+              selectedProvider: _providerFilter,
+              showAll: _showAllProviders,
+              onProviderChanged: (name) => setState(() => _providerFilter = name),
+              onShowAll: () => setState(() => _showAllProviders = true),
+            ),
+
+          // ── Body ──────────────────────────────────────────────────────────
+          Expanded(
+            child: _q.trim().isEmpty
+                ? _Suggestions(
+                    ffTheme: ffTheme,
+                    onPick: _useSuggestion,
+                    recent: appState.recentSearches,
+                    onClearRecent: appState.clearRecentSearches,
+                  )
+                : (results.isEmpty
+                    ? const EmptyState(
+                        icon: Icons.search_off_rounded,
+                        headline: 'לא נמצאו תוצאות לסינון זה',
+                        subtitle: 'נסו לשנות את המסנן או לחפש שם אחר',
+                      )
+                    : _ResultsList(
+                        results: results,
+                        query: _q,
+                        ffTheme: ffTheme,
+                        appState: appState,
+                        onBeforeNavigate: _remember,
+                      )),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Filter panel — category chips + budget slider ────────────────────────────
+
+class _FilterPanel extends StatelessWidget {
+  const _FilterPanel({
+    required this.ffTheme,
+    required this.selectedCategory,
+    required this.onCategoryChanged,
+    required this.budgetOpen,
+    required this.maxPrice,
+    required this.onToggleBudget,
+    required this.onBudgetChanged,
+    required this.activeFilterCount,
+  });
+
+  final AppTheme ffTheme;
+  final String? selectedCategory;
+  final void Function(String?) onCategoryChanged;
+  final bool budgetOpen;
+  final double maxPrice;
+  final VoidCallback onToggleBudget;
+  final void Function(double) onBudgetChanged;
+  final int activeFilterCount;
+
+  @override
+  Widget build(BuildContext context) {
+    final budgetActive = budgetOpen && maxPrice < _maxBudget;
+    return Container(
+      color: Colors.white,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // ── Category chips row ─────────────────────────────────────────
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
+            child: Row(
+              children: [
+                // Budget toggle chip (sits at the start)
+                Padding(
+                  padding: const EdgeInsets.only(left: 8),
+                  child: _FilterChip(
+                    label: budgetOpen
+                        ? (budgetActive ? 'תקציב: עד ₪${maxPrice.round()}' : 'תקציב')
+                        : 'תקציב',
+                    icon: Icons.tune_rounded,
+                    selected: budgetOpen,
+                    ffTheme: ffTheme,
+                    onTap: onToggleBudget,
+                  ),
                 ),
+                // Category chips
+                ..._catChips.map((c) => Padding(
+                      padding: const EdgeInsets.only(left: 8),
+                      child: _FilterChip(
+                        label: c.label,
+                        selected: selectedCategory == c.id,
+                        ffTheme: ffTheme,
+                        onTap: () => onCategoryChanged(c.id),
+                      ),
+                    )),
+              ],
+            ),
+          ),
+          // ── Budget slider (collapsible) ────────────────────────────────
+          if (budgetOpen)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 2, 16, 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.savings_outlined, size: 14, color: ffTheme.brandAccent),
+                      const SizedBox(width: 6),
+                      Text(
+                        maxPrice >= _maxBudget
+                            ? 'כל התקציבים'
+                            : 'עד ₪${maxPrice.round()} לחודש',
+                        style: ffTheme.labelSmall.copyWith(
+                          color: maxPrice < _maxBudget
+                              ? ffTheme.brandAccent
+                              : ffTheme.secondaryText,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                  SliderTheme(
+                    data: SliderThemeData(
+                      activeTrackColor: ffTheme.brandAccent,
+                      inactiveTrackColor: ffTheme.brandAccentTint,
+                      thumbColor: ffTheme.brandAccent,
+                      overlayColor: ffTheme.brandAccent.withValues(alpha: 0.12),
+                      trackHeight: 3,
+                      thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
+                    ),
+                    child: Slider(
+                      value: maxPrice,
+                      min: 0,
+                      max: _maxBudget,
+                      divisions: 50,
+                      onChanged: onBudgetChanged,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          Container(height: 1, color: ffTheme.lineColor),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Reusable filter chip ─────────────────────────────────────────────────────
+
+class _FilterChip extends StatelessWidget {
+  const _FilterChip({
+    required this.label,
+    required this.selected,
+    required this.ffTheme,
+    required this.onTap,
+    this.icon,
+  });
+
+  final String label;
+  final bool selected;
+  final AppTheme ffTheme;
+  final VoidCallback onTap;
+  final IconData? icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: label,
+      selected: selected,
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: selected ? ffTheme.brandAccent : ffTheme.accent2,
+            borderRadius: BorderRadius.circular(ffTheme.radiusPill),
+            border: Border.all(
+              color: selected ? ffTheme.brandAccent : ffTheme.lineColor,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (icon != null) ...[
+                Icon(
+                  icon,
+                  size: 13,
+                  color: selected ? Colors.white : ffTheme.secondaryText,
+                ),
+                const SizedBox(width: 4),
+              ],
+              Text(
+                label,
+                style: GoogleFonts.assistant(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: selected ? Colors.white : ffTheme.primaryText,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Provider filter chips row ────────────────────────────────────────────────
+
+class _ProviderFilterRow extends StatelessWidget {
+  const _ProviderFilterRow({
+    required this.ffTheme,
+    required this.plans,
+    required this.selectedProvider,
+    required this.showAll,
+    required this.onProviderChanged,
+    required this.onShowAll,
+  });
+
+  final AppTheme ffTheme;
+  final List<Plan> plans;
+  final String? selectedProvider;
+  final bool showAll;
+  final void Function(String?) onProviderChanged;
+  final VoidCallback onShowAll;
+
+  /// Unique provider names, ordered by how many matching plans they have.
+  List<String> get _providers {
+    final counts = <String, int>{};
+    for (final p in plans) {
+      counts[p.provider] = (counts[p.provider] ?? 0) + 1;
+    }
+    final sorted = counts.keys.toList()
+      ..sort((a, b) => counts[b]!.compareTo(counts[a]!));
+    return sorted;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final providers = _providers;
+    final hasMore = providers.length > _maxProviderChips && !showAll;
+    final visible = showAll ? providers : providers.take(_maxProviderChips).toList();
+
+    return Container(
+      color: Colors.white,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.fromLTRB(12, 6, 12, 8),
+            child: Row(
+              children: [
+                // "כל הספקים" chip
+                Padding(
+                  padding: const EdgeInsets.only(left: 8),
+                  child: _FilterChip(
+                    label: 'כל הספקים',
+                    selected: selectedProvider == null,
+                    ffTheme: ffTheme,
+                    onTap: () => onProviderChanged(null),
+                  ),
+                ),
+                ...visible.map((name) => Padding(
+                      padding: const EdgeInsets.only(left: 8),
+                      child: _FilterChip(
+                        label: name,
+                        selected: selectedProvider == name,
+                        ffTheme: ffTheme,
+                        onTap: () => onProviderChanged(
+                          selectedProvider == name ? null : name,
+                        ),
+                      ),
+                    )),
+                if (hasMore)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 8),
+                    child: Semantics(
+                      button: true,
+                      label: 'הצג עוד ספקים',
+                      child: GestureDetector(
+                        onTap: onShowAll,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: ffTheme.brandAccentTint,
+                            borderRadius: BorderRadius.circular(ffTheme.radiusPill),
+                            border: Border.all(color: ffTheme.brandAccent.withValues(alpha: 0.3)),
+                          ),
+                          child: Text(
+                            'עוד +${providers.length - _maxProviderChips}',
+                            style: GoogleFonts.assistant(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: ffTheme.brandAccent,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          Container(height: 1, color: ffTheme.lineColor),
+        ],
+      ),
     );
   }
 }

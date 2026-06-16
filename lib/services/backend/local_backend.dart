@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import '../../data.dart';
 import '../../models.dart';
 import '../meeting_slots.dart';
 import 'backend.dart';
@@ -230,6 +231,24 @@ class LocalBackend implements Backend {
 
   @override
   Future<Set<String>> bookmarkedPostIds() async => Set.unmodifiable(_bookmarked);
+
+  // ── Plan catalogue ────────────────────────────────────────────────────────────
+  @override
+  Future<List<Plan>> fetchPlans({
+    String? category,
+    String? provider,
+    bool flashDealsOnly = false,
+  }) {
+    // Flash-deal flag is not stored on the local Plan model; when flashDealsOnly
+    // is requested in offline mode we return an empty list rather than showing
+    // all plans (which would be misleading).
+    if (flashDealsOnly) return Future.value(const []);
+
+    var plans = allPlans;
+    if (category != null) plans = plans.where((p) => p.cat == category).toList();
+    if (provider != null) plans = plans.where((p) => p.provider == provider).toList();
+    return Future.value(List.unmodifiable(plans));
+  }
 }
 
 /// The backend the app talks to. Defaults to on-device storage; `main.dart`

@@ -5,7 +5,6 @@ import '../../theme/app_theme.dart';
 import '../../core/nav.dart';
 import '../../widgets/app_button.dart';
 import '../../app_state.dart';
-import '../../data.dart';
 
 class OnboardingWidget extends StatefulWidget {
   const OnboardingWidget({super.key});
@@ -14,444 +13,1060 @@ class OnboardingWidget extends StatefulWidget {
   State<OnboardingWidget> createState() => _OnboardingWidgetState();
 }
 
-class _OnboardingWidgetState extends State<OnboardingWidget> {
+class _OnboardingWidgetState extends State<OnboardingWidget>
+    with TickerProviderStateMixin {
   int _page = 0;
-  bool _animating = false;
   final _controller = PageController();
+  late final AnimationController _dotController;
+
+  @override
+  void initState() {
+    super.initState();
+    _dotController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 280),
+    );
+  }
+
+  void _goToQuiz() {
+    AppState().markOnboardingSeen();
+    context.goNamed('Quiz');
+  }
 
   void _next() {
-    if (_animating) return;
     if (_page < 2) {
-      _animating = true;
-      _controller.nextPage(duration: const Duration(milliseconds: 350), curve: Curves.easeInOut);
+      _controller.nextPage(
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeInOutCubic,
+      );
     } else {
-      AppState().markOnboardingSeen();
-      context.goNamed('Auth');
+      _goToQuiz();
+    }
+  }
+
+  void _prev() {
+    if (_page > 0) {
+      _controller.previousPage(
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeInOutCubic,
+      );
     }
   }
 
   @override
   void dispose() {
     _controller.dispose();
+    _dotController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    final ffTheme = AppTheme.of(context);
+    final t = AppTheme.of(context);
+    final isLast = _page == 2;
 
     return Scaffold(
-      backgroundColor: ffTheme.background,
-      body: Stack(
-        children: [
-          Column(
+      backgroundColor: AppColors.background,
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              AppColors.background,
+              AppColors.brandAccentTint.withValues(alpha: 0.35),
+              AppColors.background,
+            ],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
             children: [
-              // Top brand strip — formal ink-black hero, white text.
-              Container(
-                decoration: BoxDecoration(
-                  gradient: ffTheme.brandGradient,
-                  boxShadow: ffTheme.shadowLifted,
-                ),
-                child: SafeArea(
-                  bottom: false,
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Center(
-                            child: Text('₪',
-                                style: GoogleFonts.rubik(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.w800,
-                                    color: ffTheme.primaryDark)),
+              // ── Top bar ──────────────────────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                child: Row(
+                  children: [
+                    // Back arrow (hidden on step 0)
+                    AnimatedOpacity(
+                      opacity: _page > 0 ? 1 : 0,
+                      duration: t.motionMedium,
+                      child: Semantics(
+                        button: true,
+                        label: 'חזרה',
+                        child: GestureDetector(
+                          onTap: _page > 0 ? _prev : null,
+                          child: Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius:
+                                  BorderRadius.circular(t.radiusSm),
+                              border: Border.all(
+                                  color: AppColors.lineColor, width: 1.5),
+                              boxShadow: t.shadowSoft,
+                            ),
+                            child: const Icon(Icons.arrow_forward_ios_rounded,
+                                size: 16, color: AppColors.primaryText),
                           ),
                         ),
-                        const SizedBox(width: 10),
-                        Text('חוסך', style: GoogleFonts.rubik(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white)),
-                        const Spacer(),
-                        TextButton(
-                          onPressed: () {
-                            AppState().markOnboardingSeen();
-                            context.goNamed('Home');
-                          },
-                          child: Text('דלג', style: ffTheme.labelMedium.copyWith(color: Colors.white.withValues(alpha: 0.7))),
+                      ),
+                    ),
+
+                    const Spacer(),
+
+                    // Brand logo mark
+                    Row(
+                      children: [
+                        Container(
+                          width: 34,
+                          height: 34,
+                          decoration: BoxDecoration(
+                            gradient: t.accentGradient,
+                            borderRadius: BorderRadius.circular(10),
+                            boxShadow: t.shadowAccent,
+                          ),
+                          child: Center(
+                            child: Text(
+                              '₪',
+                              style: GoogleFonts.rubik(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w900,
+                                  color: Colors.white),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'חוסך',
+                          style: GoogleFonts.rubik(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.primaryText),
                         ),
                       ],
                     ),
-                  ),
-                ),
-              ),
 
-              // Pages
-              Expanded(
-                child: PageView(
-                  controller: _controller,
-                  onPageChanged: (i) => setState(() { _page = i; _animating = false; }),
-                  children: [
-                    _Page1(ffTheme: ffTheme),
-                    _Page2(ffTheme: ffTheme),
-                    _Page3(ffTheme: ffTheme),
+                    const Spacer(),
+
+                    // Skip link
+                    Semantics(
+                      button: true,
+                      label: 'דלג לשאלון',
+                      child: TextButton(
+                        onPressed: _goToQuiz,
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 12, vertical: 8),
+                        ),
+                        child: Text(
+                          'דלג',
+                          style: t.labelMedium.copyWith(
+                              color: AppColors.brandAccent,
+                              fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
 
-              // Dots + button
-              Padding(
-                padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(3, (i) => AnimatedContainer(
-                    duration: ffTheme.motionMedium,
-                    margin: const EdgeInsets.symmetric(horizontal: 4),
-                    width: i == _page ? 28 : 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      color: i == _page ? ffTheme.primary : ffTheme.alternate,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                  )),
+              // ── Pages ────────────────────────────────────────────────────
+              Expanded(
+                child: PageView(
+                  controller: _controller,
+                  onPageChanged: (i) => setState(() => _page = i),
+                  children: const [
+                    _Step1(),
+                    _Step2(),
+                    _Step3(),
+                  ],
                 ),
               ),
-              const SizedBox(height: 20),
 
+              // ── Dots indicator ───────────────────────────────────────────
               Padding(
-                padding: const EdgeInsets.fromLTRB(24, 0, 24, 32),
-                child: AppButton(
-                  text: _page == 2 ? 'בואו נתחיל לחסוך!' : 'הבא →',
-                  onPressed: () async => _next(),
-                  
-                    width: double.infinity,
-                    height: 58,
-                    color: ffTheme.primary,
-                    textStyle: ffTheme.titleMedium.copyWith(color: Colors.white),
-                    borderRadius: BorderRadius.circular(18),
-                  
+                padding: const EdgeInsets.only(top: 8, bottom: 16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(3, (i) {
+                    final active = i == _page;
+                    return AnimatedContainer(
+                      duration: const Duration(milliseconds: 300),
+                      curve: Curves.easeOut,
+                      margin: const EdgeInsets.symmetric(horizontal: 4),
+                      width: active ? 28 : 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: active
+                            ? AppColors.brandAccent
+                            : AppColors.brandAccent.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    );
+                  }),
                 ),
+              ),
+
+              // ── CTA button ───────────────────────────────────────────────
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 0, 24, 28),
+                child: AppButton(
+                  key: ValueKey(isLast),
+                  text: isLast ? '!יאלה, מתחילים' : 'הבא ←',
+                  onPressed: () async => _next(),
+                  color: AppColors.primary,
+                  width: double.infinity,
+                  height: 58,
+                  textStyle: GoogleFonts.rubik(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white),
+                  borderRadius: BorderRadius.circular(18),
+                ).animate(key: ValueKey('btn_$_page')).fadeIn(duration: 300.ms),
               ),
             ],
           ),
-        ],
+        ),
       ),
     );
   }
 }
 
-// ── Page 1: Savings value proposition ────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// STEP 1 — ברוכים הבאים לחוסך
+// ─────────────────────────────────────────────────────────────────────────────
 
-class _Page1 extends StatelessWidget {
-  const _Page1({required this.ffTheme});
-  final AppTheme ffTheme;
+class _Step1 extends StatelessWidget {
+  const _Step1();
 
   @override
   Widget build(BuildContext context) {
+    final t = AppTheme.of(context);
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(24, 32, 24, 16),
+      padding: const EdgeInsets.fromLTRB(28, 24, 28, 12),
       child: Column(
         children: [
-          Icon(Icons.savings_outlined, size: 72, color: ffTheme.primary)
-              .animate().scale(duration: 500.ms, curve: Curves.elasticOut),
-          const SizedBox(height: 20),
-          Text(
-            'כל המחירים\nבמקום אחד',
-            style: GoogleFonts.rubik(fontSize: 36, fontWeight: FontWeight.w800, color: ffTheme.primaryText, height: 1.15),
-            textAlign: TextAlign.center,
-          ).animate().fadeIn(delay: 150.ms).slideY(begin: 0.2, end: 0),
-          const SizedBox(height: 12),
-          Text(
-            'חוסך משווה לכם את החבילות של כל הספקים על סלולר, אינטרנט וטלוויזיה – בשניות.',
-            style: ffTheme.bodyLarge.copyWith(color: ffTheme.secondaryText),
-            textAlign: TextAlign.center,
-          ).animate().fadeIn(delay: 250.ms),
+          // Illustration — geometric coin stack / savings motif
+          const _IllustrationStep1()
+              .animate()
+              .fadeIn(duration: 600.ms, curve: Curves.easeOut)
+              .slideY(begin: 0.15, end: 0, duration: 600.ms, curve: Curves.easeOut),
+
           const SizedBox(height: 28),
-          // Real catalogue counts — never fabricated. Sourced from data.dart so
-          // the figures stay honest and update with the catalogue.
-          Row(
-            children: [
-              _StatChip(value: '${allPlans.length}', label: 'מסלולים', ffTheme: ffTheme),
-              const SizedBox(width: 10),
-              _StatChip(value: '${allProviders.length}', label: 'ספקים', ffTheme: ffTheme),
-              const SizedBox(width: 10),
-              _StatChip(value: '${categories.length}', label: 'קטגוריות', ffTheme: ffTheme),
-            ],
-          ).animate().fadeIn(delay: 350.ms).slideY(begin: 0.1, end: 0),
-          const SizedBox(height: 20),
+
+          Text(
+            'מצא את הסלולר\nהזול ביותר עבורך',
+            style: GoogleFonts.rubik(
+                fontSize: 32,
+                fontWeight: FontWeight.w800,
+                color: AppColors.primaryText,
+                height: 1.2),
+            textAlign: TextAlign.center,
+          )
+              .animate()
+              .fadeIn(delay: 150.ms, duration: 500.ms)
+              .slideY(begin: 0.2, end: 0, delay: 150.ms, duration: 500.ms),
+
+          const SizedBox(height: 12),
+
+          Text(
+            'אפליקציית ההשוואה החכמה של ישראל',
+            style: t.bodyLarge.copyWith(color: AppColors.secondaryText),
+            textAlign: TextAlign.center,
+          ).animate().fadeIn(delay: 270.ms, duration: 500.ms),
+
+          const SizedBox(height: 28),
+
+          // Accent badge
           Container(
-            padding: const EdgeInsets.all(16),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
             decoration: BoxDecoration(
-              color: ffTheme.accent1,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: ffTheme.primary.withValues(alpha: 0.15)),
+              gradient: t.accentGradient,
+              borderRadius: BorderRadius.circular(t.radiusPill),
+              boxShadow: t.shadowAccent,
             ),
             child: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.search_rounded, size: 24, color: ffTheme.primary),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'מחירים שקופים מכל הספקים, ללא עמלות נסתרות — אתם מחליטים מה הכי משתלם.',
-                    style: ffTheme.bodyMedium.copyWith(color: ffTheme.primaryText, fontWeight: FontWeight.w600),
-                  ),
+                const Icon(Icons.verified_rounded,
+                    color: Colors.white, size: 18),
+                const SizedBox(width: 8),
+                Text(
+                  'חינמי לחלוטין · ללא עמלות נסתרות',
+                  style: GoogleFonts.rubik(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white),
                 ),
               ],
             ),
-          ).animate().fadeIn(delay: 450.ms),
-        ],
-      ),
-    );
-  }
-}
+          )
+              .animate()
+              .fadeIn(delay: 380.ms, duration: 500.ms)
+              .slideY(begin: 0.1, end: 0, delay: 380.ms, duration: 400.ms),
 
-// ── Page 2: Compare all providers ────────────────────────────────────────────
-
-class _Page2 extends StatelessWidget {
-  const _Page2({required this.ffTheme});
-  final AppTheme ffTheme;
-
-  static const _providers = [
-    ('פלאפון', Color(0xFFE07034), Color(0xFFFFF3EC)),
-    ('סלקום', Color(0xFFCC2244), Color(0xFFFFECF0)),
-    ('פרטנר', Color(0xFF2255CC), Color(0xFFEEF2FF)),
-    ('הוט', Color(0xFF8B1A1A), Color(0xFFFFECEC)),
-    ('yes', Color(0xFF1A3A7A), Color(0xFFEEF0FF)),
-    ('בזק', Color(0xFF007B8A), Color(0xFFECFAFB)),
-    ('גולן', Color(0xFF15603E), Color(0xFFE8F5EE)),
-    ('019', Color(0xFF6B35C8), Color(0xFFF3EEFF)),
-    ('רמי לוי', Color(0xFF0D47A1), Color(0xFFE3F2FD)),
-    ('Airalo', Color(0xFF00897B), Color(0xFFE0F2F1)),
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(24, 32, 24, 16),
-      child: Column(
-        children: [
-          Icon(Icons.search_rounded, size: 72, color: ffTheme.primary)
-              .animate().scale(duration: 500.ms, curve: Curves.elasticOut),
           const SizedBox(height: 20),
-          Text(
-            'כל הספקים\nבמקום אחד',
-            style: GoogleFonts.rubik(fontSize: 36, fontWeight: FontWeight.w800, color: ffTheme.primaryText, height: 1.15),
-            textAlign: TextAlign.center,
-          ).animate().fadeIn(delay: 150.ms).slideY(begin: 0.2, end: 0),
-          const SizedBox(height: 12),
-          Text(
-            'השוואה מלאה בין כל מובילי התקשורת — מחירים, תנאים, ביקורות — הכל שקוף.',
-            style: ffTheme.bodyLarge.copyWith(color: ffTheme.secondaryText),
-            textAlign: TextAlign.center,
-          ).animate().fadeIn(delay: 250.ms),
-          const SizedBox(height: 28),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            alignment: WrapAlignment.center,
-            children: _providers.asMap().entries.map((e) {
-              final i = e.key;
-              final p = e.value;
-              return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                decoration: BoxDecoration(
-                  color: p.$3,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: p.$2.withValues(alpha: 0.25)),
-                ),
-                child: Text(p.$1, style: GoogleFonts.rubik(fontSize: 13, fontWeight: FontWeight.w700, color: p.$2)),
-              ).animate(delay: (300 + i * 60).ms).fadeIn(duration: 300.ms).scale(begin: const Offset(0.8, 0.8));
-            }).toList(),
+
+          // Feature rows
+          _FeatureRow(
+            icon: Icons.search_rounded,
+            text: 'השוואה מלאה בין כל ספקי התקשורת',
+            delay: 460.ms,
           ),
-          const SizedBox(height: 20),
-          _FeatureRow(icon: Icons.compare_arrows_rounded, text: 'השוואה ויזואלית צד לצד', ffTheme: ffTheme)
-              .animate().fadeIn(delay: 600.ms),
-          const SizedBox(height: 8),
-          _FeatureRow(icon: Icons.filter_list_rounded, text: 'סינון לפי 5G, ללא התחייבות ועוד', ffTheme: ffTheme)
-              .animate().fadeIn(delay: 680.ms),
-          const SizedBox(height: 8),
-          _FeatureRow(icon: Icons.auto_awesome_rounded, text: 'המלצות AI מותאמות אישית', ffTheme: ffTheme)
-              .animate().fadeIn(delay: 760.ms),
+          const SizedBox(height: 10),
+          _FeatureRow(
+            icon: Icons.auto_awesome_rounded,
+            text: 'המלצות חכמות מותאמות לצריכה שלך',
+            delay: 540.ms,
+          ),
+          const SizedBox(height: 10),
+          _FeatureRow(
+            icon: Icons.savings_outlined,
+            text: 'גלה כמה תחסוך כבר היום',
+            delay: 620.ms,
+          ),
         ],
       ),
     );
   }
 }
 
-// ── Page 3: Easy switch ───────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// STEP 2 — מלא את החשבונות שלך
+// ─────────────────────────────────────────────────────────────────────────────
 
-class _Page3 extends StatelessWidget {
-  const _Page3({required this.ffTheme});
-  final AppTheme ffTheme;
+class _Step2 extends StatelessWidget {
+  const _Step2();
 
   @override
   Widget build(BuildContext context) {
+    final t = AppTheme.of(context);
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(24, 32, 24, 16),
+      padding: const EdgeInsets.fromLTRB(28, 24, 28, 12),
       child: Column(
         children: [
-          Icon(Icons.handshake_outlined, size: 72, color: ffTheme.primary)
-              .animate().scale(duration: 500.ms, curve: Curves.elasticOut),
-          const SizedBox(height: 20),
-          Text(
-            'מעבר קל\nוחלק',
-            style: GoogleFonts.rubik(fontSize: 36, fontWeight: FontWeight.w800, color: ffTheme.primaryText, height: 1.15),
-            textAlign: TextAlign.center,
-          ).animate().fadeIn(delay: 150.ms).slideY(begin: 0.2, end: 0),
-          const SizedBox(height: 12),
-          Text(
-            'אנחנו מלווים אתכם בכל שלב — מהבחירה ועד ניוד הקו, ללא עלויות נסתרות.',
-            style: ffTheme.bodyLarge.copyWith(color: ffTheme.secondaryText),
-            textAlign: TextAlign.center,
-          ).animate().fadeIn(delay: 250.ms),
+          const _IllustrationStep2()
+              .animate()
+              .fadeIn(duration: 600.ms, curve: Curves.easeOut)
+              .slideX(begin: 0.1, end: 0, duration: 600.ms, curve: Curves.easeOut),
+
           const SizedBox(height: 28),
-          _StepTimeline(ffTheme: ffTheme).animate().fadeIn(delay: 350.ms),
-          const SizedBox(height: 20),
+
+          Text(
+            'כמה אתה\nמשלם היום?',
+            style: GoogleFonts.rubik(
+                fontSize: 32,
+                fontWeight: FontWeight.w800,
+                color: AppColors.primaryText,
+                height: 1.2),
+            textAlign: TextAlign.center,
+          )
+              .animate()
+              .fadeIn(delay: 150.ms, duration: 500.ms)
+              .slideY(begin: 0.2, end: 0, delay: 150.ms, duration: 500.ms),
+
+          const SizedBox(height: 12),
+
+          Text(
+            'הכנס את החשבונות הנוכחיים שלך — סלולר, אינטרנט, טלוויזיה',
+            style: t.bodyLarge.copyWith(color: AppColors.secondaryText),
+            textAlign: TextAlign.center,
+          ).animate().fadeIn(delay: 270.ms, duration: 500.ms),
+
+          const SizedBox(height: 28),
+
+          // Category chips
+          Row(
+            children: [
+              _CategoryChip(
+                  emoji: '📱', label: 'סלולר', delay: 380.ms),
+              const SizedBox(width: 10),
+              _CategoryChip(
+                  emoji: '🌐', label: 'אינטרנט', delay: 460.ms),
+              const SizedBox(width: 10),
+              _CategoryChip(
+                  emoji: '📺', label: 'טלוויזיה', delay: 540.ms),
+            ],
+          ),
+
+          const SizedBox(height: 24),
+
+          // Illustrative bill card
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [ffTheme.primaryDark, ffTheme.primary],
-                begin: Alignment.topRight,
-                end: Alignment.bottomLeft,
-              ),
-              borderRadius: BorderRadius.circular(16),
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(t.radiusLg),
+              border: Border.all(color: AppColors.lineColor, width: 1.5),
+              boxShadow: t.shadowCard,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.brandAccentTint,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: const Icon(Icons.receipt_long_rounded,
+                          color: AppColors.brandAccent, size: 20),
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      'החשבונות שלך',
+                      style: GoogleFonts.rubik(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.primaryText),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                const _BillRow(label: 'סלולר', amount: '₪89', isFirst: true),
+                const _BillRow(label: 'אינטרנט', amount: '₪149'),
+                const _BillRow(label: 'טלוויזיה', amount: '₪229'),
+                const Divider(height: 20, color: AppColors.lineColor),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'סה"כ חודשי',
+                      style: GoogleFonts.rubik(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.primaryText),
+                    ),
+                    Text(
+                      '₪467',
+                      style: GoogleFonts.rubik(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                          color: AppColors.primaryText),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          )
+              .animate()
+              .fadeIn(delay: 620.ms, duration: 500.ms)
+              .slideY(begin: 0.1, end: 0, delay: 620.ms, duration: 400.ms),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// STEP 3 — קבל המלצות מותאמות
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _Step3 extends StatelessWidget {
+  const _Step3();
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppTheme.of(context);
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(28, 24, 28, 12),
+      child: Column(
+        children: [
+          const _IllustrationStep3()
+              .animate()
+              .fadeIn(duration: 600.ms, curve: Curves.easeOut)
+              .scale(
+                  begin: const Offset(0.88, 0.88),
+                  end: const Offset(1, 1),
+                  duration: 600.ms,
+                  curve: Curves.easeOutBack),
+
+          const SizedBox(height: 28),
+
+          Text(
+            'חסוך עד אלפי\nשקלים בשנה',
+            style: GoogleFonts.rubik(
+                fontSize: 32,
+                fontWeight: FontWeight.w800,
+                color: AppColors.primaryText,
+                height: 1.2),
+            textAlign: TextAlign.center,
+          )
+              .animate()
+              .fadeIn(delay: 150.ms, duration: 500.ms)
+              .slideY(begin: 0.2, end: 0, delay: 150.ms, duration: 500.ms),
+
+          const SizedBox(height: 12),
+
+          Text(
+            'המנוע החכם שלנו ימצא את התוכנית הכי משתלמת בשבילך',
+            style: t.bodyLarge.copyWith(color: AppColors.secondaryText),
+            textAlign: TextAlign.center,
+          ).animate().fadeIn(delay: 270.ms, duration: 500.ms),
+
+          const SizedBox(height: 24),
+
+          // Savings badge — amber VALUE accent
+          Container(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
+            decoration: BoxDecoration(
+              color: AppColors.saving.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(t.radiusLg),
+              border: Border.all(
+                  color: AppColors.saving.withValues(alpha: 0.35),
+                  width: 1.5),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('✨', style: TextStyle(fontSize: 22)),
+                const SizedBox(width: 10),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'בממוצע חוסכים',
+                      style: GoogleFonts.assistant(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.savingDark),
+                    ),
+                    Text(
+                      '₪1,200 בשנה',
+                      style: GoogleFonts.rubik(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w900,
+                          color: AppColors.savingDark),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          )
+              .animate()
+              .fadeIn(delay: 380.ms, duration: 500.ms)
+              .scale(
+                  begin: const Offset(0.92, 0.92),
+                  end: const Offset(1, 1),
+                  delay: 380.ms,
+                  duration: 400.ms,
+                  curve: Curves.easeOutBack),
+
+          const SizedBox(height: 24),
+
+          // How it works — 3 quick steps
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(t.radiusLg),
+              border: Border.all(color: AppColors.lineColor, width: 1.5),
+              boxShadow: t.shadowCard,
             ),
             child: Column(
               children: [
-                const Icon(Icons.verified_rounded, color: Colors.white, size: 26),
-                const SizedBox(height: 8),
-                Text(
-                  'שירות חינמי לחלוטין',
-                  style: GoogleFonts.rubik(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white),
+                _HowItWorksRow(
+                  step: '1',
+                  icon: Icons.assignment_outlined,
+                  title: 'ממלאים שאלון קצר',
+                  sub: '2 דקות בלבד',
+                  delay: 500.ms,
                 ),
-                const SizedBox(height: 4),
-                Text('אין עמלות נסתרות · המספר נשמר · ליווי עד סיום הניוד',
-                    style: ffTheme.bodySmall.copyWith(color: Colors.white60), textAlign: TextAlign.center),
+                const SizedBox(height: 14),
+                _HowItWorksRow(
+                  step: '2',
+                  icon: Icons.compare_arrows_rounded,
+                  title: 'מקבלים המלצה מותאמת',
+                  sub: 'מחירים ותנאים שקופים',
+                  delay: 590.ms,
+                ),
+                const SizedBox(height: 14),
+                _HowItWorksRow(
+                  step: '3',
+                  icon: Icons.check_circle_outline_rounded,
+                  title: 'חוסכים מיד',
+                  sub: 'ניוד קל ב-1–3 ימי עסקים',
+                  delay: 680.ms,
+                ),
               ],
             ),
-          ).animate().fadeIn(delay: 550.ms).scale(begin: const Offset(0.95, 0.95)),
+          ).animate().fadeIn(delay: 500.ms, duration: 500.ms),
         ],
       ),
     );
   }
 }
 
-// ── Helper widgets ────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// Illustrations — pure geometric / Unicode, no asset files
+// ─────────────────────────────────────────────────────────────────────────────
 
-class _StatChip extends StatelessWidget {
-  const _StatChip({required this.value, required this.label, required this.ffTheme});
-  final String value;
-  final String label;
-  final AppTheme ffTheme;
+class _IllustrationStep1 extends StatelessWidget {
+  const _IllustrationStep1();
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: ffTheme.alternate),
-          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 8)],
-        ),
-        child: Column(
-          children: [
-            Text(value, style: GoogleFonts.rubik(fontSize: 20, fontWeight: FontWeight.w800, color: ffTheme.primary)),
-            Text(label, style: ffTheme.labelSmall),
-          ],
-        ),
+    final t = AppTheme.of(context);
+    return SizedBox(
+      height: 160,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // Outer glow ring
+          Container(
+            width: 148,
+            height: 148,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              color: AppColors.brandAccentTint,
+            ),
+          ),
+          // Middle ring
+          Container(
+            width: 118,
+            height: 118,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: t.accentGradient,
+              boxShadow: t.shadowAccent,
+            ),
+          ),
+          // Centre symbol
+          Text(
+            '₪',
+            style: GoogleFonts.rubik(
+                fontSize: 56,
+                fontWeight: FontWeight.w900,
+                color: Colors.white),
+          ),
+          // Orbiting chip — top right
+          const Positioned(
+            top: 8,
+            right: 4,
+            child: _MiniChip(label: 'סלקום', color: Color(0xFFCC2244)),
+          ),
+          // Orbiting chip — bottom left
+          const Positioned(
+            bottom: 8,
+            left: 4,
+            child: _MiniChip(label: 'פלאפון', color: Color(0xFFE07034)),
+          ),
+        ],
       ),
     );
   }
 }
 
-class _FeatureRow extends StatelessWidget {
-  const _FeatureRow({required this.icon, required this.text, required this.ffTheme});
-  final IconData icon;
-  final String text;
-  final AppTheme ffTheme;
+class _IllustrationStep2 extends StatelessWidget {
+  const _IllustrationStep2();
 
   @override
   Widget build(BuildContext context) {
+    final t = AppTheme.of(context);
+    return SizedBox(
+      height: 160,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // Background circle
+          Container(
+            width: 148,
+            height: 148,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              color: AppColors.brandAccentTint,
+            ),
+          ),
+          // Receipt stack — three layered cards
+          Positioned(
+            top: 22,
+            right: 28,
+            child: _ReceiptCard(
+                color: Colors.white,
+                shadow: t.shadowSoft,
+                rotate: 0.08),
+          ),
+          Positioned(
+            top: 30,
+            left: 28,
+            child: _ReceiptCard(
+                color: AppColors.accent2,
+                shadow: t.shadowSoft,
+                rotate: -0.06),
+          ),
+          // Centre receipt
+          _ReceiptCard(
+            color: Colors.white,
+            shadow: t.shadowCard,
+            rotate: 0,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.receipt_long_rounded,
+                    color: AppColors.brandAccent, size: 30),
+                const SizedBox(height: 4),
+                Text(
+                  '₪467',
+                  style: GoogleFonts.rubik(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.primaryText),
+                ),
+                Text(
+                  'לחודש',
+                  style: GoogleFonts.assistant(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.secondaryText),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _IllustrationStep3 extends StatelessWidget {
+  const _IllustrationStep3();
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppTheme.of(context);
+    return SizedBox(
+      height: 160,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          // Outer amber glow
+          Container(
+            width: 148,
+            height: 148,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: AppColors.saving.withValues(alpha: 0.1),
+            ),
+          ),
+          // Inner circle
+          Container(
+            width: 112,
+            height: 112,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: const LinearGradient(
+                colors: [AppColors.saving, AppColors.savingDark],
+                begin: Alignment.topRight,
+                end: Alignment.bottomLeft,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.saving.withValues(alpha: 0.4),
+                  blurRadius: 22,
+                  offset: const Offset(0, 8),
+                ),
+              ],
+            ),
+          ),
+          // Centre icon
+          const Icon(Icons.savings_rounded, color: Colors.white, size: 48),
+          // Spark badges
+          Positioned(
+            top: 10,
+            right: 10,
+            child: Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppColors.brandAccent,
+                borderRadius: BorderRadius.circular(t.radiusPill),
+              ),
+              child: Text(
+                '-30%',
+                style: GoogleFonts.rubik(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white),
+              ),
+            ),
+          ),
+          Positioned(
+            bottom: 14,
+            left: 6,
+            child: Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: AppColors.primaryText,
+                borderRadius: BorderRadius.circular(t.radiusPill),
+              ),
+              child: Text(
+                '✓ המלצה',
+                style: GoogleFonts.rubik(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Shared small widgets
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _FeatureRow extends StatelessWidget {
+  const _FeatureRow({
+    required this.icon,
+    required this.text,
+    required this.delay,
+  });
+  final IconData icon;
+  final String text;
+  final Duration delay;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppTheme.of(context);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: ffTheme.accent1,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: ffTheme.primary.withValues(alpha: 0.1)),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(t.radiusSm),
+        border: Border.all(color: AppColors.lineColor, width: 1.5),
+        boxShadow: t.shadowSoft,
       ),
       child: Row(
         children: [
-          Icon(icon, color: ffTheme.primary, size: 20),
-          const SizedBox(width: 10),
-          Text(text, style: ffTheme.bodyMedium.copyWith(color: ffTheme.primaryText)),
+          Container(
+            padding: const EdgeInsets.all(7),
+            decoration: BoxDecoration(
+              color: AppColors.brandAccentTint,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, color: AppColors.brandAccent, size: 18),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              text,
+              style: t.bodyMedium.copyWith(
+                  color: AppColors.primaryText,
+                  fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    ).animate().fadeIn(delay: delay, duration: 400.ms).slideY(
+        begin: 0.1, end: 0, delay: delay, duration: 400.ms);
+  }
+}
+
+class _CategoryChip extends StatelessWidget {
+  const _CategoryChip({
+    required this.emoji,
+    required this.label,
+    required this.delay,
+  });
+  final String emoji;
+  final String label;
+  final Duration delay;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppTheme.of(context);
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(t.radiusMd),
+          border: Border.all(
+              color: AppColors.brandAccent.withValues(alpha: 0.25),
+              width: 1.5),
+          boxShadow: t.shadowSoft,
+        ),
+        child: Column(
+          children: [
+            Text(emoji, style: const TextStyle(fontSize: 26)),
+            const SizedBox(height: 6),
+            Text(
+              label,
+              style: GoogleFonts.rubik(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.primaryText),
+            ),
+          ],
+        ),
+      ).animate().fadeIn(delay: delay, duration: 400.ms).scale(
+          begin: const Offset(0.88, 0.88),
+          end: const Offset(1, 1),
+          delay: delay,
+          duration: 400.ms,
+          curve: Curves.easeOutBack),
+    );
+  }
+}
+
+class _BillRow extends StatelessWidget {
+  const _BillRow({
+    required this.label,
+    required this.amount,
+    this.isFirst = false,
+  });
+  final String label;
+  final String amount;
+  final bool isFirst;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: isFirst ? 10 : 10, top: isFirst ? 0 : 0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            label,
+            style: GoogleFonts.assistant(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: AppColors.secondaryText),
+          ),
+          Text(
+            amount,
+            style: GoogleFonts.rubik(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: AppColors.primaryText),
+          ),
         ],
       ),
     );
   }
 }
 
-class _StepTimeline extends StatelessWidget {
-  const _StepTimeline({required this.ffTheme});
-  final AppTheme ffTheme;
+class _HowItWorksRow extends StatelessWidget {
+  const _HowItWorksRow({
+    required this.step,
+    required this.icon,
+    required this.title,
+    required this.sub,
+    required this.delay,
+  });
+  final String step;
+  final IconData icon;
+  final String title;
+  final String sub;
+  final Duration delay;
 
   @override
   Widget build(BuildContext context) {
-    const steps = [
-      ('השאלון', 'מה מחפשים? 2 דקות', Icons.assignment_rounded),
-      ('ההשוואה', 'בחרו את המסלול הטוב ביותר', Icons.search_rounded),
-      ('הנציג', 'נחזור אליכם תוך שעה', Icons.call_rounded),
-      ('הניוד', 'מספר שמור, 1–3 ימי עסקים', Icons.check_rounded),
-    ];
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: ffTheme.alternate),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: steps.asMap().entries.map((e) {
-          final i = e.key;
-          final s = e.value;
-          final isLast = i == steps.length - 1;
-          return Row(
+    final t = AppTheme.of(context);
+    return Row(
+      children: [
+        Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            gradient: t.accentGradient,
+            shape: BoxShape.circle,
+            boxShadow: t.shadowAccent,
+          ),
+          child: Center(
+            child: Text(
+              step,
+              style: GoogleFonts.rubik(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white),
+            ),
+          ),
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Column(
-                children: [
-                  Container(
-                    width: 32,
-                    height: 32,
-                    decoration: BoxDecoration(color: ffTheme.primary, shape: BoxShape.circle),
-                    child: Center(child: Icon(s.$3, size: 16, color: Colors.white)),
-                  ),
-                  if (!isLast) Container(width: 2, height: 24, color: ffTheme.alternate, margin: const EdgeInsets.symmetric(vertical: 3)),
-                ],
+              Text(
+                title,
+                style: t.titleSmall
+                    .copyWith(color: AppColors.primaryText, fontSize: 14),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Padding(
-                  padding: EdgeInsets.only(top: 4, bottom: isLast ? 0 : 22),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(s.$1, style: ffTheme.titleSmall.copyWith(fontSize: 13)),
-                      Text(s.$2, style: ffTheme.labelSmall),
-                    ],
-                  ),
-                ),
-              ),
+              Text(sub,
+                  style:
+                      t.labelSmall.copyWith(color: AppColors.secondaryText)),
             ],
-          );
-        }).toList(),
+          ),
+        ),
+        Icon(icon, color: AppColors.brandAccent, size: 22),
+      ],
+    ).animate().fadeIn(delay: delay, duration: 400.ms).slideX(
+        begin: 0.08, end: 0, delay: delay, duration: 400.ms);
+  }
+}
+
+class _MiniChip extends StatelessWidget {
+  const _MiniChip({required this.label, required this.color});
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withValues(alpha: 0.3), width: 1.5),
+        boxShadow: AppTheme.of(context).shadowSoft,
+      ),
+      child: Text(
+        label,
+        style: GoogleFonts.rubik(
+            fontSize: 11, fontWeight: FontWeight.w700, color: color),
+      ),
+    );
+  }
+}
+
+class _ReceiptCard extends StatelessWidget {
+  const _ReceiptCard({
+    required this.color,
+    required this.shadow,
+    required this.rotate,
+    this.child,
+  });
+  final Color color;
+  final List<BoxShadow> shadow;
+  final double rotate;
+  final Widget? child;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppTheme.of(context);
+    return Transform.rotate(
+      angle: rotate,
+      child: Container(
+        width: 90,
+        height: 110,
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(t.radiusMd),
+          border: Border.all(color: AppColors.lineColor, width: 1),
+          boxShadow: shadow,
+        ),
+        child: child,
       ),
     );
   }

@@ -363,4 +363,16 @@ abstract interface class Backend {
   Future<Set<String>> likedPostIds();
   Future<void> setBookmark(String postId, bool bookmarked);
   Future<Set<String>> bookmarkedPostIds();
+
+  // ── Plan catalogue ────────────────────────────────────────────────────────────
+  /// Fetches plans from the catalogue with optional filters.
+  /// [category] restricts to one of 'cellular','internet','tv','triple','abroad'.
+  /// [provider] filters by exact provider name.
+  /// [flashDealsOnly] returns only rows where is_flash_deal = true.
+  /// Returns an empty list on error so callers can fall back gracefully.
+  Future<List<Plan>> fetchPlans({
+    String? category,
+    String? provider,
+    bool flashDealsOnly = false,
+  });
 }

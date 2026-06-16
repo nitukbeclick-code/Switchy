@@ -41,4 +41,65 @@ class PushNotificationService {
 
   /// Back-compat alias — existing call sites sync everything now.
   Future<void> syncRenewalReminders(AppState state) => syncAll(state);
+
+  /// Show an immediate local notification when a watched plan's price drops.
+  ///
+  /// Calculates the monthly and annual saving from [oldPrice] vs [newPrice] and
+  /// fires a one-shot notification. Safe to call without a prior [init] — it
+  /// will self-initialise if needed. The notification id is derived from
+  /// [planId] so repeated calls for the same plan don't stack.
+  Future<void> notifyPriceDrop({
+    required String planId,
+    required String planName,
+    required String provider,
+    required double oldPrice,
+    required double newPrice,
+  }) async {
+    if (!_ready) await init();
+    final monthly = (oldPrice - newPrice).abs();
+    final annual = monthly * 12;
+    final monthlyStr = monthly == monthly.roundToDouble()
+        ? monthly.toInt().toString()
+        : monthly.toStringAsFixed(2);
+    final annualStr = annual == annual.roundToDouble()
+        ? annual.toInt().toString()
+        : annual.toStringAsFixed(2);
+    final oldStr = oldPrice == oldPrice.roundToDouble()
+        ? oldPrice.toInt().toString()
+        : oldPrice.toStringAsFixed(2);
+    final newStr = newPrice == newPrice.roundToDouble()
+        ? newPrice.toInt().toString()
+        : newPrice.toStringAsFixed(2);
+    await impl.showNow(
+      id: planId.hashCode & 0x7fffffff, // keep positive for notification id
+      title: '📉 מחיר ירד! $provider',
+      body:
+          'תוכנית $planName ירדה מ-₪$oldStr ל-₪$newStr — חיסכון של ₪$monthlyStr לחודש (₪$annualStr בשנה)!',
+      payload: planId,
+    );
+  }
+
+  /// Show an immediate local notification for a time-limited flash deal.
+  ///
+  /// [savingsPercent] is the percentage saving vs the market average.
+  Future<void> notifyFlashDeal({
+    required String planName,
+    required String provider,
+    required double price,
+    required double savingsPercent,
+  }) async {
+    if (!_ready) await init();
+    final priceStr = price == price.roundToDouble()
+        ? price.toInt().toString()
+        : price.toStringAsFixed(2);
+    // Use a stable id derived from the plan name + provider so concurrent flash
+    // deals for different providers don't collide.
+    final id = '$planName:$provider'.hashCode & 0x7fffffff;
+    await impl.showNow(
+      id: id,
+      title: '🔥 מבצע חם! $provider',
+      body:
+          '$planName — ₪$priceStr בלבד! חיסכון של ${savingsPercent.toStringAsFixed(0)}% מהממוצע. מהרו, המבצע לזמן מוגבל!',
+    );
+  }
 }

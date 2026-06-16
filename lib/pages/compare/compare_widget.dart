@@ -223,9 +223,26 @@ class _EmptyState extends StatelessWidget {
   }
 }
 
+// ── Shared column geometry ────────────────────────────────────────────────────
+// One width model threaded through every table section (header, metric rows,
+// specs, CTA, features) so all columns align by construction. On wide screens
+// plan cells are Expanded (fill the width, no horizontal scroll); on narrow
+// screens they are a fixed [planW] inside a single shared horizontal scroll.
+class _ColGeom {
+  const _ColGeom({
+    required this.labelW,
+    required this.planW,
+    required this.isWide,
+  });
+  final double labelW;
+  final double? planW; // null on wide (cells are Expanded)
+  final bool isWide;
+  final double gap = 10;
+}
+
 // ── Compare table ─────────────────────────────────────────────────────────────
 
-class _CompareTable extends StatelessWidget {
+class _CompareTable extends StatefulWidget {
   const _CompareTable({
     required this.plans,
     required this.appState,
@@ -239,10 +256,25 @@ class _CompareTable extends StatelessWidget {
   final String? winnerId;
   final Map<String, PlanMatch> matchMap;
 
+  @override
+  State<_CompareTable> createState() => _CompareTableState();
+}
+
+class _CompareTableState extends State<_CompareTable> {
+  // One controller for the narrow layout so the whole table scrolls as a unit
+  // and the scroll position survives AppState rebuilds (e.g. removing a plan).
+  final ScrollController _hScroll = ScrollController();
+
   // Canonical spec key order; any extra keys are appended alphabetically.
   static const _canonicalSpecOrder = [
     'נתונים', 'דקות', 'SMS', 'מהירות', 'ערוצים', 'ממירים', 'VOD', 'חו"ל',
   ];
+
+  @override
+  void dispose() {
+    _hScroll.dispose();
+    super.dispose();
+  }
 
   /// Returns spec keys present in at least one plan, in canonical order first,
   /// then remaining keys sorted alphabetically.
@@ -262,11 +294,39 @@ class _CompareTable extends StatelessWidget {
     return result;
   }
 
+  /// Plan indices that "win" a comparable row — the single cheapest price, or
+  /// every ✓ on a boolean feature row. Empty when not comparable or tied, so we
+  /// never paint a false "best". The 'חיסכון שנתי' row keeps its own treatment.
+  Set<int> _bestIndices(_Row row, List<Plan> plans) {
+    switch (row.label) {
+      case 'מחיר':
+        final min = plans.map((p) => p.priceValue).reduce((a, b) => a < b ? a : b);
+        final winners = [
+          for (var i = 0; i < plans.length; i++)
+            if (plans[i].priceValue == min) i
+        ];
+        return winners.length == 1 ? winners.toSet() : const <int>{};
+      case '5G':
+      case 'ללא התחייבות':
+      case 'חו"ל':
+        return {
+          for (var i = 0; i < row.values.length; i++)
+            if (row.values[i] == '✓') i
+        };
+      default:
+        return const <int>{};
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final mixedCats = plans.map((p) => p.cat).toSet().length > 1;
+    final plans = widget.plans;
+    final appState = widget.appState;
+    final ffTheme = widget.ffTheme;
+    final winnerId = widget.winnerId;
+    final matchMap = widget.matchMap;
 
-    // Compute spec union once, outside builders.
+    final mixedCats = plans.map((p) => p.cat).toSet().length > 1;
     final specKeys = _specKeyUnion(plans);
 
     final rows = <_Row>[
@@ -292,7 +352,7 @@ class _CompareTable extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // ── Winner summary card ───────────────────────────────────────────
+          // ── Winner summary card (full width) ──────────────────────────────
           _WinnerSummaryCard(
             plans: plans,
             winnerId: winnerId,
@@ -301,106 +361,41 @@ class _CompareTable extends StatelessWidget {
             matchMap: matchMap,
           ),
 
-          // Header row
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-              child: Row(
-                children: [
-                  // Label column
-                  const SizedBox(width: 110),
-                  ...plans.map((p) {
-                    final isWinner = p.id == winnerId;
-                    return _PlanHeader(
-                      plan: p,
-                      isWinner: isWinner,
-                      ffTheme: ffTheme,
-                      appState: appState,
-                      match: matchMap[p.id],
-                    );
-                  }),
-                ],
-              ),
-            ),
-          ),
-
-          // Rows
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: rows.asMap().entries.map((e) {
-                  final idx = e.key;
-                  final row = e.value;
-                  final isAlt = idx.isOdd;
-                  return _RowWidget(
-                    row: row,
-                    plans: plans,
-                    winnerId: winnerId,
-                    ffTheme: ffTheme,
-                    isAlt: isAlt,
-                  );
-                }).toList(),
-              ),
-            ),
-          ),
-
-          // ── Spec rows (מפרט) ────────────────────────────────────────────────
-          if (specKeys.isNotEmpty) ...[
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 6),
-              child: Row(
-                children: [
-                  Icon(Icons.tune_rounded, size: 14, color: ffTheme.secondaryText),
-                  const SizedBox(width: 6),
-                  Text(
-                    'מפרט',
-                    style: ffTheme.labelSmall.copyWith(
-                      color: ffTheme.secondaryText,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.5,
-                    ),
+          // ── Responsive comparison table ───────────────────────────────────
+          LayoutBuilder(builder: (context, constraints) {
+            final isWide = constraints.maxWidth >= 760;
+            final geom = _ColGeom(
+              labelW: isWide ? 120 : 104,
+              planW: isWide ? null : 132,
+              isWide: isWide,
+            );
+            final table = _buildTable(geom, rows, specKeys);
+            if (isWide) {
+              return Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 1160),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: table,
                   ),
-                ],
-              ),
-            ),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: specKeys.asMap().entries.map((e) {
-                    final idx = e.key;
-                    final key = e.value;
-                    final specRow = _Row(
-                      key,
-                      plans.map((p) => p.specs[key] ?? '—').toList(),
-                    );
-                    // Continue alternating tint from where main rows left off.
-                    final isAlt = (rows.length + idx).isOdd;
-                    return _RowWidget(
-                      row: specRow,
-                      plans: plans,
-                      winnerId: winnerId,
-                      ffTheme: ffTheme,
-                      isAlt: isAlt,
-                    );
-                  }).toList(),
                 ),
+              );
+            }
+            return SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              controller: _hScroll,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: table,
               ),
-            ),
-          ] else
-            const SizedBox(height: 16),
+            );
+          }),
 
-          // ── Annual savings banner ────────────────────────────────────────
+          // ── Annual savings banner (full width) ────────────────────────────
           if (plans.length >= 2)
             _AnnualSavingsBanner(plans: plans, ffTheme: ffTheme),
 
-          // Mixed-category notice
+          // Mixed-category notice (full width)
           if (mixedCats)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
@@ -426,104 +421,179 @@ class _CompareTable extends StatelessWidget {
               ),
             ),
 
-          // CTA row
+          const SizedBox(height: 32),
+        ],
+      ),
+    );
+  }
+
+  /// The whole tabular content as one Column — every section shares [geom] so
+  /// columns line up across header / metrics / specs / CTA / features.
+  Widget _buildTable(_ColGeom geom, List<_Row> rows, List<String> specKeys) {
+    final plans = widget.plans;
+    final ffTheme = widget.ffTheme;
+    final winnerId = widget.winnerId;
+
+    Widget planCell(Widget child) => geom.isWide
+        ? Expanded(child: child)
+        : SizedBox(width: geom.planW, child: child);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 16),
+
+        // Header row (plan cards)
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            SizedBox(width: geom.labelW),
+            ...plans.map((p) => planCell(
+                  Padding(
+                    padding: EdgeInsetsDirectional.only(start: geom.gap),
+                    child: _PlanHeader(
+                      plan: p,
+                      isWinner: p.id == winnerId,
+                      ffTheme: ffTheme,
+                      appState: widget.appState,
+                      match: widget.matchMap[p.id],
+                    ),
+                  ),
+                )),
+          ],
+        ),
+        const SizedBox(height: 12),
+
+        // Metric rows
+        ...rows.asMap().entries.map((e) => _RowWidget(
+              row: e.value,
+              plans: plans,
+              winnerId: winnerId,
+              ffTheme: ffTheme,
+              isAlt: e.key.isOdd,
+              geom: geom,
+              best: e.value.isHighlight ? const <int>{} : _bestIndices(e.value, plans),
+            )),
+
+        // Spec rows (מפרט)
+        if (specKeys.isNotEmpty) ...[
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  const SizedBox(width: 110),
-                  ...plans.map((p) => SizedBox(
-                    width: 140,
-                    child: Padding(
-                      padding: const EdgeInsetsDirectional.only(start: 10),
-                      child: ElevatedButton(
-                        onPressed: () {
-                          HapticFeedback.lightImpact();
-                          context.pushNamed('Lead', pathParameters: {'planId': p.id}, queryParameters: {'source': 'compare'});
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: p.id == winnerId
-                              ? ffTheme.primary
-                              : ffTheme.secondaryBackground,
-                          foregroundColor: p.id == winnerId
-                              ? Colors.white
-                              : ffTheme.primaryText,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            side: BorderSide(
-                                color: p.id == winnerId
-                                    ? ffTheme.primary
-                                    : ffTheme.alternate),
-                          ),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                        ),
-                        child: Text(
-                          'בחר ←',
-                          style: ffTheme.titleSmall.copyWith(
+            padding: const EdgeInsets.fromLTRB(0, 8, 0, 6),
+            child: Row(
+              children: [
+                Icon(Icons.tune_rounded, size: 14, color: ffTheme.secondaryText),
+                const SizedBox(width: 6),
+                Text(
+                  'מפרט',
+                  style: ffTheme.labelSmall.copyWith(
+                    color: ffTheme.secondaryText,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          ...specKeys.asMap().entries.map((e) {
+            final idx = e.key;
+            final key = e.value;
+            final specRow = _Row(
+              key,
+              plans.map((p) => p.specs[key] ?? '—').toList(),
+            );
+            final isAlt = (rows.length + idx).isOdd;
+            return _RowWidget(
+              row: specRow,
+              plans: plans,
+              winnerId: winnerId,
+              ffTheme: ffTheme,
+              isAlt: isAlt,
+              geom: geom,
+              best: const <int>{},
+            );
+          }),
+        ],
+
+        const SizedBox(height: 16),
+
+        // CTA row
+        Row(
+          children: [
+            SizedBox(width: geom.labelW),
+            ...plans.map((p) => planCell(
+                  Padding(
+                    padding: EdgeInsetsDirectional.only(start: geom.gap),
+                    child: ElevatedButton(
+                      onPressed: () {
+                        HapticFeedback.lightImpact();
+                        context.pushNamed('Lead', pathParameters: {'planId': p.id}, queryParameters: {'source': 'compare'});
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: p.id == winnerId
+                            ? ffTheme.primary
+                            : ffTheme.secondaryBackground,
+                        foregroundColor: p.id == winnerId
+                            ? Colors.white
+                            : ffTheme.primaryText,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          side: BorderSide(
                               color: p.id == winnerId
-                                  ? Colors.white
-                                  : ffTheme.primaryText),
+                                  ? ffTheme.primary
+                                  : ffTheme.alternate),
                         ),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      child: Text(
+                        'בחר ←',
+                        style: ffTheme.titleSmall.copyWith(
+                            color: p.id == winnerId
+                                ? Colors.white
+                                : ffTheme.primaryText),
+                      ),
+                    ),
+                  ),
+                )),
+          ],
+        ),
+
+        // Features comparison
+        if (plans.any((p) => p.feats.isNotEmpty)) ...[
+          const SizedBox(height: 16),
+          Divider(color: ffTheme.alternate),
+          const SizedBox(height: 8),
+          Text('מה כלול בכל מסלול', style: ffTheme.titleSmall.copyWith(color: ffTheme.secondaryText, fontWeight: FontWeight.w600)),
+          const SizedBox(height: 12),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(width: geom.labelW),
+              ...plans.map((p) => planCell(
+                    Padding(
+                      padding: EdgeInsetsDirectional.only(start: geom.gap),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: p.feats.map((f) => Padding(
+                          padding: const EdgeInsets.only(bottom: 6),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Icon(Icons.check_rounded, size: 14, color: p.id == winnerId ? ffTheme.primary : ffTheme.secondaryText),
+                              const SizedBox(width: 4),
+                              Expanded(child: Text(f, style: ffTheme.labelSmall.copyWith(
+                                color: p.id == winnerId ? ffTheme.primaryText : ffTheme.secondaryText,
+                              ))),
+                            ],
+                          ),
+                        )).toList(),
                       ),
                     ),
                   )),
-                ],
-              ),
-            ),
+            ],
           ),
-
-          // Features comparison
-          if (plans.any((p) => p.feats.isNotEmpty)) ...[
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Divider(color: ffTheme.alternate),
-                  const SizedBox(height: 8),
-                  Text('מה כלול בכל מסלול', style: ffTheme.titleSmall.copyWith(color: ffTheme.secondaryText, fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 12),
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(width: 110),
-                        ...plans.map((p) => SizedBox(
-                          width: 150,
-                          child: Padding(
-                            padding: const EdgeInsetsDirectional.only(start: 10),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: p.feats.map((f) => Padding(
-                                padding: const EdgeInsets.only(bottom: 6),
-                                child: Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Icon(Icons.check_rounded, size: 14, color: p.id == winnerId ? ffTheme.primary : ffTheme.secondaryText),
-                                    const SizedBox(width: 4),
-                                    Expanded(child: Text(f, style: ffTheme.labelSmall.copyWith(
-                                      color: p.id == winnerId ? ffTheme.primaryText : ffTheme.secondaryText,
-                                    ))),
-                                  ],
-                                ),
-                              )).toList(),
-                            ),
-                          ),
-                        )),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ] else
-            const SizedBox(height: 32),
         ],
-      ),
+      ],
     );
   }
 }
@@ -800,8 +870,9 @@ class _PlanHeader extends StatelessWidget {
         context.pushNamed('PlanDetail', pathParameters: {'planId': plan.id});
       },
       child: Container(
-      width: 140,
-      margin: const EdgeInsetsDirectional.only(start: 10),
+      // Width comes from the parent (Expanded on wide / SizedBox(planW) on narrow);
+      // the leading gap comes from the parent Padding — keeps every column aligned.
+      width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: isWinner ? ffTheme.accent1 : Colors.white,
@@ -869,6 +940,8 @@ class _PlanHeader extends StatelessWidget {
                   fontSize: isWinner ? null : 10,
                 ),
                 textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
@@ -907,15 +980,20 @@ class _RowWidget extends StatelessWidget {
     required this.winnerId,
     required this.ffTheme,
     required this.isAlt,
+    required this.geom,
+    this.best = const <int>{},
   });
   final _Row row;
   final List<Plan> plans;
   final String? winnerId;
   final AppTheme ffTheme;
   final bool isAlt;
+  final _ColGeom geom;
+  final Set<int> best;
 
   @override
   Widget build(BuildContext context) {
+    final align = geom.isWide ? TextAlign.end : TextAlign.center;
     return Container(
       margin: const EdgeInsets.only(bottom: 2),
       decoration: BoxDecoration(
@@ -925,7 +1003,7 @@ class _RowWidget extends StatelessWidget {
       child: Row(
         children: [
           SizedBox(
-            width: 110,
+            width: geom.labelW,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
               child: Text(row.label,
@@ -938,50 +1016,61 @@ class _RowWidget extends StatelessWidget {
             final v = e.value;
             final plan = plans[idx];
             final isWinner = plan.id == winnerId;
+            final isBest = best.contains(idx);
 
             Color textColor = ffTheme.primaryText;
             if (v == '✓') textColor = ffTheme.primary;
             if (v == '—') textColor = ffTheme.secondaryText;
             if (row.isHighlight && isWinner) textColor = ffTheme.primary;
 
-            return SizedBox(
-              width: 150,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 10, vertical: 12),
-                child: row.isHighlight
-                    ? Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: isWinner
-                              ? ffTheme.secondary
-                              : ffTheme.background,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          v,
-                          style: ffTheme.labelSmall.copyWith(
-                            color: isWinner
-                                ? ffTheme.primaryDark
-                                : ffTheme.secondaryText,
-                            fontWeight: isWinner
-                                ? FontWeight.w700
-                                : FontWeight.w500,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      )
-                    : Text(
-                        v,
-                        style: ffTheme.bodySmall.copyWith(
-                          color: textColor,
-                          fontWeight: FontWeight.w600,
-                        ),
-                        textAlign: TextAlign.center,
+            final inner = row.isHighlight
+                ? Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: isWinner
+                          ? ffTheme.secondary
+                          : ffTheme.background,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      v,
+                      style: ffTheme.labelSmall.copyWith(
+                        color: isWinner
+                            ? ffTheme.primaryDark
+                            : ffTheme.secondaryText,
+                        fontWeight: isWinner
+                            ? FontWeight.w700
+                            : FontWeight.w500,
                       ),
+                      textAlign: align,
+                    ),
+                  )
+                : Text(
+                    v,
+                    style: ffTheme.bodySmall.copyWith(
+                      color: isBest ? ffTheme.primaryText : textColor,
+                      fontWeight: isBest ? FontWeight.w800 : FontWeight.w600,
+                    ),
+                    textAlign: align,
+                  );
+
+            final cell = Padding(
+              padding: EdgeInsetsDirectional.only(start: geom.gap),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                decoration: isBest
+                    ? BoxDecoration(
+                        color: ffTheme.saving.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(8),
+                      )
+                    : null,
+                child: inner,
               ),
             );
+            return geom.isWide
+                ? Expanded(child: cell)
+                : SizedBox(width: geom.planW, child: cell);
           }),
         ],
       ),

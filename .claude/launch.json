@@ -2,6 +2,12 @@
   "version": "0.0.1",
   "configurations": [
     {
+      "name": "chosech-web",
+      "runtimeExecutable": "C:\\Users\\ariel\\.flutter-sdk\\bin\\cache\\dart-sdk\\bin\\dart.exe",
+      "runtimeArgs": ["C:\\webserve\\serve.dart"],
+      "port": 8080
+    },
+    {
       "name": "site",
       "runtimeExecutable": "python",
       "runtimeArgs": ["-m", "http.server", "5173", "--directory", "site"],

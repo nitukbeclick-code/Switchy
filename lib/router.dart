@@ -39,6 +39,7 @@ import 'pages/notifications/notification_center_widget.dart';
 import 'pages/provider/provider_widget.dart';
 import 'pages/support_ticket/support_ticket_widget.dart';
 import 'pages/abroad_calc/abroad_calc_widget.dart';
+import 'pages/admin/admin_dashboard_widget.dart';
 
 final _rootNavKey = GlobalKey<NavigatorState>(debugLabel: 'root');
 final _shellNavKey = GlobalKey<NavigatorState>(debugLabel: 'shell');
@@ -121,6 +122,7 @@ GoRouter createRouter() {
         GoRoute(path: '/provider/:name', name: 'Provider', builder: (_, s) => ProviderWidget(providerName: s.pathParameters['name']!)),
         GoRoute(path: '/support-ticket/:ticketId', name: 'support-ticket', builder: (_, s) => SupportTicketWidget(ticketId: s.pathParameters['ticketId']!)),
         GoRoute(path: '/abroad-calc', name: 'AbroadCalc', builder: (_, __) => const AbroadCalcWidget()),
+        GoRoute(path: '/admin', name: 'Admin', builder: (_, __) => const AdminDashboardWidget()),
       ],
     ),
   ],

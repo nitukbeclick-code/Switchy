@@ -38,6 +38,12 @@ class SettingsWidget extends StatelessWidget {
           children: [
             const SizedBox(height: 8),
 
+            // ── Section 0: Theme mode ─────────────────────────────────────
+            _SectionHeader(title: 'ערכת נושא', ffTheme: ffTheme),
+            _ThemeModeCard(ffTheme: ffTheme).animate().fadeIn(duration: 350.ms),
+
+            const SizedBox(height: 24),
+
             // ── Section 1: Notifications ──────────────────────────────────
             _SectionHeader(title: 'התראות', ffTheme: ffTheme),
             _Card(
@@ -529,6 +535,90 @@ class _ActionRow extends StatelessWidget {
   }
 }
 
+// ── Theme Mode Selector ────────────────────────────────────────────────────────
+class _ThemeModeCard extends StatelessWidget {
+  const _ThemeModeCard({required this.ffTheme});
+  final AppTheme ffTheme;
+
+  @override
+  Widget build(BuildContext context) {
+    final appState = Provider.of<AppState>(context);
+    final current = appState.themeMode;
+
+    final options = [
+      (ThemeMode.dark, 'כהה', '🌙'),
+      (ThemeMode.light, 'בהיר', '☀️'),
+      (ThemeMode.system, 'אוטומטי', '🔧'),
+    ];
+
+    return _Card(
+      ffTheme: ffTheme,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: ffTheme.brandAccentTint,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(Icons.dark_mode_rounded, color: ffTheme.brandAccent, size: 20),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Row(
+                children: options.map((opt) {
+                  final (mode, label, emoji) = opt;
+                  final isActive = current == mode;
+                  return Expanded(
+                    child: GestureDetector(
+                      onTap: () =>
+                          Provider.of<AppState>(context, listen: false).setThemeMode(mode),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 180),
+                        margin: const EdgeInsets.symmetric(horizontal: 3),
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        decoration: BoxDecoration(
+                          color: isActive
+                              ? ffTheme.brandAccent
+                              : ffTheme.accent1,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: isActive
+                                ? ffTheme.brandAccent
+                                : ffTheme.alternate.withValues(alpha: 0.4),
+                          ),
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(emoji, style: const TextStyle(fontSize: 16)),
+                            const SizedBox(height: 2),
+                            Text(
+                              label,
+                              style: ffTheme.labelSmall.copyWith(
+                                color: isActive ? Colors.white : ffTheme.secondaryText,
+                                fontWeight: isActive ? FontWeight.w700 : FontWeight.w600,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 // ── Telegram Connection Row ─────────────────────────────────────────────────────
 class _TelegramRow extends StatefulWidget {
   const _TelegramRow({required this.ffTheme});
@@ -547,19 +637,19 @@ class _TelegramRowState extends State<_TelegramRow> {
     try {
       final appState = Provider.of<AppState>(context, listen: false);
       final userId = appState.userPhone;
-      final botUsername = 'chosech_bot';
+      const botUsername = 'chosech_bot';
       final deepLink = Uri.parse('https://t.me/$botUsername?start=user_$userId');
 
       if (await canLaunchUrl(deepLink)) {
         await launchUrl(deepLink, mode: LaunchMode.externalApplication);
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('טלגרם נפתח. שלח /start כדי להתחבר')),
+          const SnackBar(content: Text('טלגרם נפתח. שלח /start כדי להתחבר')),
         );
       } else {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('לא ניתן לפתוח את טלגרם. אנא תקנו אותו תחילה.')),
+          const SnackBar(content: Text('לא ניתן לפתוח את טלגרם. אנא תקנו אותו תחילה.')),
         );
       }
     } catch (e) {
@@ -694,7 +784,7 @@ class _TelegramRowState extends State<_TelegramRow> {
                 ),
               ),
               if (_busy)
-                SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
               else
                 Icon(Icons.arrow_back_ios_rounded, size: 14, color: ffTheme.secondaryText),
             ],

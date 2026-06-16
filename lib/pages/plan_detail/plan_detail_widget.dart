@@ -109,7 +109,14 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                     onPressed: () {
                       HapticFeedback.selectionClick();
                       final unit = priceUnitShort(plan);
-                      Share.share('${plan.provider} — ${plan.plan}\n₪${plan.priceText}/$unit\n\nמצאתי בחוסך');
+                      // Key spec: first feat line, trimmed
+                      final keySpec = plan.feats.isNotEmpty ? plan.feats.first : '';
+                      final specPart = keySpec.isNotEmpty ? ' | $keySpec' : '';
+                      final ratingStr = plan.rating.toStringAsFixed(1);
+                      Share.share(
+                        'תוכנית ${plan.plan} של ${plan.provider} — ₪${plan.priceText}/$unit$specPart | דירוג ★$ratingStr\n'
+                        'בדוק דרך חוסך: https://chosech.app',
+                      );
                     },
                   ),
                   IconButton(
@@ -237,6 +244,36 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                                     color: const Color(0xFF3A2900),
                                     fontWeight: FontWeight.w700,
                                     fontFeatures: const [FontFeature.tabularFigures()],
+                                  ),
+                                ),
+                              )
+                            else
+                              GestureDetector(
+                                onTap: () => context.pushNamed('Bills'),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: ffTheme.saving.withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(ffTheme.radiusPill),
+                                    border: Border.all(
+                                        color: ffTheme.saving.withValues(alpha: 0.5)),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(Icons.edit_note_rounded,
+                                          size: 14,
+                                          color: Color(0xFF92400E)),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        'הכנס חשבון לחישוב חיסכון',
+                                        style: ffTheme.labelSmall.copyWith(
+                                          color: const Color(0xFF92400E),
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ),
@@ -519,22 +556,32 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                           .fadeIn(duration: 300.ms)
                           .slideY(begin: 0.08),
 
-                      // Similar plans section
+                      // ── "תוכניות דומות" section ─────────────────────────
                       Builder(builder: (_) {
+                        // ±30% price range filter, same category, exclude self
+                        final priceMin = plan.priceValue * 0.70;
+                        final priceMax = plan.priceValue * 1.30;
                         final similar = allPlans
-                            .where((p) => p.cat == plan.cat && p.id != plan.id)
+                            .where((p) =>
+                                p.cat == plan.cat &&
+                                p.id != plan.id &&
+                                p.priceValue >= priceMin &&
+                                p.priceValue <= priceMax)
                             .toList()
-                          ..sort((a, b) => (a.price - plan.price).abs().compareTo((b.price - plan.price).abs()));
-                        final topSimilar = similar.take(4).toList();
+                          ..sort((a, b) =>
+                              (a.priceValue - plan.priceValue).abs()
+                                  .compareTo((b.priceValue - plan.priceValue).abs()));
+                        final topSimilar = similar.take(3).toList();
                         if (topSimilar.isEmpty) return const SizedBox();
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const SizedBox(height: 20),
-                            Text('מסלולים דומים', style: ffTheme.titleLarge),
+                            Text('תוכניות דומות שכדאי לבדוק',
+                                style: ffTheme.titleMedium.copyWith(fontWeight: FontWeight.w700)),
                             const SizedBox(height: 12),
                             SizedBox(
-                              height: 110,
+                              height: 148,
                               child: ListView.separated(
                                 scrollDirection: Axis.horizontal,
                                 itemCount: topSimilar.length,
@@ -542,46 +589,123 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                                 itemBuilder: (ctx, i) {
                                   final p = topSimilar[i];
                                   final pSave = planSaveYear(p, bill);
+                                  final pInCompare = appState.isInCompare(p.id);
+                                  // Key spec: first feat line
+                                  final keySpec = p.feats.isNotEmpty ? p.feats.first : p.plan;
                                   return GestureDetector(
-                                    onTap: () => context.pushNamed('PlanDetail', pathParameters: {'planId': p.id}),
+                                    onTap: () => context.pushNamed('PlanDetail',
+                                        pathParameters: {'planId': p.id}),
                                     child: Container(
-                                      width: 160,
-                                      padding: const EdgeInsets.all(14),
+                                      width: 170,
+                                      padding: const EdgeInsets.all(12),
                                       decoration: BoxDecoration(
                                         color: Colors.white,
                                         borderRadius: BorderRadius.circular(14),
                                         border: Border.all(color: ffTheme.alternate),
-                                        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
+                                        boxShadow: [
+                                          BoxShadow(
+                                              color: Colors.black.withValues(alpha: 0.04),
+                                              blurRadius: 8,
+                                              offset: const Offset(0, 2))
+                                        ],
                                       ),
                                       child: Column(
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
                                           Row(
                                             children: [
-                                              LogoWidget(provider: p.provider, size: 28),
+                                              LogoWidget(provider: p.provider, size: 26),
                                               const SizedBox(width: 8),
-                                              Expanded(child: Text(p.provider, style: ffTheme.labelSmall.copyWith(fontWeight: FontWeight.w700), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                                              Expanded(
+                                                child: Text(p.provider,
+                                                    style: ffTheme.labelSmall.copyWith(
+                                                        fontWeight: FontWeight.w700),
+                                                    maxLines: 1,
+                                                    overflow: TextOverflow.ellipsis),
+                                              ),
                                             ],
                                           ),
-                                          const SizedBox(height: 6),
-                                          Text('₪${p.priceText}/${priceUnitShort(p)}', style: ffTheme.titleSmall.copyWith(color: ffTheme.primary)),
+                                          const SizedBox(height: 5),
+                                          Text(
+                                            '₪${p.priceText}/${priceUnitShort(p)}',
+                                            style: ffTheme.titleSmall
+                                                .copyWith(color: ffTheme.primary),
+                                          ),
                                           const SizedBox(height: 3),
-                                          if (pSave > 0)
-                                            Text('חוסך ₪$pSave/שנה', style: ffTheme.labelSmall.copyWith(color: ffTheme.success))
-                                          else
-                                            Text(p.plan, style: ffTheme.labelSmall, maxLines: 1, overflow: TextOverflow.ellipsis),
+                                          Text(
+                                            keySpec,
+                                            style: ffTheme.labelSmall.copyWith(
+                                                color: ffTheme.secondaryText),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          if (pSave > 0) ...[
+                                            const SizedBox(height: 3),
+                                            Text(
+                                              'חוסך ₪$pSave/שנה',
+                                              style: ffTheme.labelSmall.copyWith(
+                                                  color: ffTheme.saving,
+                                                  fontWeight: FontWeight.w700),
+                                            ),
+                                          ],
+                                          const Spacer(),
+                                          // "השווה" button
+                                          GestureDetector(
+                                            onTap: () {
+                                              HapticFeedback.selectionClick();
+                                              appState.toggleCompare(p.id);
+                                            },
+                                            child: AnimatedContainer(
+                                              duration: const Duration(milliseconds: 180),
+                                              width: double.infinity,
+                                              padding: const EdgeInsets.symmetric(
+                                                  vertical: 5),
+                                              decoration: BoxDecoration(
+                                                color: pInCompare
+                                                    ? ffTheme.brandAccent
+                                                    : ffTheme.brandAccent
+                                                        .withValues(alpha: 0.10),
+                                                borderRadius: BorderRadius.circular(8),
+                                              ),
+                                              child: Row(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment.center,
+                                                children: [
+                                                  Icon(
+                                                    pInCompare
+                                                        ? Icons.check_rounded
+                                                        : Icons.compare_arrows_rounded,
+                                                    size: 13,
+                                                    color: pInCompare
+                                                        ? Colors.white
+                                                        : ffTheme.brandAccent,
+                                                  ),
+                                                  const SizedBox(width: 4),
+                                                  Text(
+                                                    pInCompare ? 'בהשוואה ✓' : 'השווה',
+                                                    style: ffTheme.labelSmall.copyWith(
+                                                      color: pInCompare
+                                                          ? Colors.white
+                                                          : ffTheme.brandAccent,
+                                                      fontWeight: FontWeight.w700,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
                                         ],
                                       ),
                                     ),
-                                  ).animate(delay: (i * 60).ms).fadeIn(duration: 250.ms);
+                                  ).animate(delay: (320 + i * 60).ms).fadeIn(duration: 250.ms);
                                 },
                               ),
                             ),
                           ],
-                        );
+                        ).animate(delay: 310.ms).fadeIn(duration: 300.ms).slideY(begin: 0.08);
                       }),
 
-                      const SizedBox(height: 100),
+                      const SizedBox(height: 140),
                     ],
                   ),
                 ),
@@ -589,7 +713,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
             ],
           ),
 
-          // Sticky bottom bar
+          // ── Sticky bottom CTA bar ────────────────────────────────────
           Positioned(
             bottom: 0,
             left: 0,
@@ -609,49 +733,153 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                     ),
                   ],
                 ),
-                child: Row(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Expanded(
-                      child: AppButton(
-                        text: 'עברו למסלול הזה ←',
-                        onPressed: () async => context.pushNamed('Lead',
-                            pathParameters: {'planId': plan.id}, queryParameters: {'source': 'plan'}),
-                        
-                          height: 56,
-                          color: ffTheme.primary,
-                          textStyle:
-                              ffTheme.titleSmall.copyWith(color: Colors.white),
-                          borderRadius: BorderRadius.circular(16),
-                        
-                      ),
+                    // ── Primary + compare row ──
+                    Row(
+                      children: [
+                        Expanded(
+                          child: AppButton(
+                            text: 'קבל הצעה ←',
+                            onPressed: () async => context.pushNamed('Lead',
+                                pathParameters: {'planId': plan.id},
+                                queryParameters: {'source': 'plan'}),
+                            height: 52,
+                            color: ffTheme.primary,
+                            textStyle:
+                                ffTheme.titleSmall.copyWith(color: Colors.white),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        // ── "הוסף להשוואה" quick action ──
+                        Semantics(
+                          button: true,
+                          label: inCompare ? 'הסר מהשוואה' : 'הוסף להשוואה',
+                          child: GestureDetector(
+                            onTap: () {
+                              HapticFeedback.selectionClick();
+                              appState.toggleCompare(plan.id);
+                            },
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              width: 52,
+                              height: 52,
+                              decoration: BoxDecoration(
+                                color: inCompare
+                                    ? ffTheme.brandAccent
+                                    : ffTheme.secondaryBackground,
+                                border: Border.all(
+                                    color: inCompare
+                                        ? ffTheme.brandAccent
+                                        : ffTheme.alternate,
+                                    width: 1.5),
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              child: Tooltip(
+                                message: inCompare ? '✓ בהשוואה' : 'הוסף להשוואה',
+                                child: Icon(
+                                  inCompare
+                                      ? Icons.check_rounded
+                                      : Icons.add_rounded,
+                                  color: inCompare
+                                      ? Colors.white
+                                      : ffTheme.brandAccent,
+                                  size: 22,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 12),
-                    GestureDetector(
-                      onTap: () {
-                        HapticFeedback.selectionClick();
-                        appState.toggleCompare(plan.id);
-                      },
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        width: 56,
-                        height: 56,
-                        decoration: BoxDecoration(
-                          color: inCompare
-                              ? ffTheme.primary
-                              : ffTheme.secondaryBackground,
-                          border: Border.all(
-                              color: inCompare
-                                  ? ffTheme.primary
-                                  : ffTheme.alternate,
-                              width: 1.5),
-                          borderRadius: BorderRadius.circular(16),
+                    const SizedBox(height: 8),
+                    // ── Secondary row: meeting + direct provider ──
+                    Row(
+                      children: [
+                        // "קבע פגישה" — video meeting with context
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () {
+                              HapticFeedback.selectionClick();
+                              context.pushNamed('Meeting', queryParameters: {
+                                'provider': plan.provider,
+                                'planId': plan.id,
+                                'source': 'plan_cta',
+                              });
+                            },
+                            child: Container(
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: ffTheme.secondaryBackground,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: ffTheme.alternate),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.videocam_outlined,
+                                      size: 16, color: ffTheme.brandAccent),
+                                  const SizedBox(width: 5),
+                                  Text(
+                                    'קבע פגישה',
+                                    style: ffTheme.labelMedium.copyWith(
+                                      color: ffTheme.brandAccent,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
                         ),
-                        child: Icon(
-                          inCompare ? Icons.check_rounded : Icons.add_rounded,
-                          color: inCompare ? Colors.white : ffTheme.primary,
-                          size: 24,
+                        const SizedBox(width: 10),
+                        // "עבר לספק ישירות" — open provider website
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () async {
+                              HapticFeedback.selectionClick();
+                              // Use plan.sourceUrl when available, otherwise
+                              // derive a best-effort provider homepage from the name.
+                              final rawUrl = plan.sourceUrl ??
+                                  _providerHomepage(plan.provider);
+                              if (rawUrl == null) return;
+                              try {
+                                final uri = Uri.parse(rawUrl);
+                                final scheme = uri.scheme.toLowerCase();
+                                if (scheme != 'http' && scheme != 'https') return;
+                                if (!await canLaunchUrl(uri)) return;
+                                await launchUrl(uri,
+                                    mode: LaunchMode.externalApplication);
+                              } catch (_) {}
+                            },
+                            child: Container(
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: ffTheme.secondaryBackground,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: ffTheme.alternate),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.open_in_new_rounded,
+                                      size: 14, color: ffTheme.secondaryText),
+                                  const SizedBox(width: 5),
+                                  Text(
+                                    'עבר לספק ישירות',
+                                    style: ffTheme.labelMedium.copyWith(
+                                      color: ffTheme.secondaryText,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
+                      ],
                     ),
                   ],
                 ),
@@ -1470,4 +1698,33 @@ class _BulletRow extends StatelessWidget {
       ),
     );
   }
+}
+
+// ── Provider homepage lookup ──────────────────────────────────────────────────
+//
+// Returns a best-effort HTTPS homepage for known Israeli telecom providers.
+// Used as a fallback when `plan.sourceUrl` is null. Never guesses — returns
+// null for unrecognised names so we don't open a garbage URL.
+String? _providerHomepage(String provider) {
+  final p = provider.trim();
+  const map = <String, String>{
+    'סלקום': 'https://www.cellcom.co.il',
+    'פרטנר': 'https://www.partner.co.il',
+    'הוט מובייל': 'https://www.hot.net.il',
+    'הוט': 'https://www.hot.net.il',
+    'גולן טלקום': 'https://www.golan.co.il',
+    'גולן': 'https://www.golan.co.il',
+    'פלאפון': 'https://www.pelephone.co.il',
+    'רמי לוי תקשורת': 'https://www.ramilevi.co.il',
+    'רמי לוי': 'https://www.ramilevi.co.il',
+    '019 מובייל': 'https://www.019mobile.co.il',
+    '019': 'https://www.019mobile.co.il',
+    'יס': 'https://www.yes.co.il',
+    'בזק': 'https://www.bezeq.co.il',
+    'בזק בינלאומי': 'https://www.bezeq-int.co.il',
+    'נטוויז\'ן': 'https://www.netvision.net.il',
+    'Airalo eSIM': 'https://www.airalo.com',
+    'Airalo': 'https://www.airalo.com',
+  };
+  return map[p];
 }

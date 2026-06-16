@@ -26,13 +26,19 @@ class CommunityWidget extends StatefulWidget {
   State<CommunityWidget> createState() => _CommunityWidgetState();
 }
 
+// Sort options for the feed.
+enum _FeedSort { newest, popular, rated }
+
 class _CommunityWidgetState extends State<CommunityWidget> {
   final _searchCtrl = TextEditingController();
+  final _quickPostCtrl = TextEditingController();
   late List<CommunityPost> _posts;
   String _activeChannel = 'הכל';
   String _searchQuery = '';
-  bool _sortByPopular = false;
+  _FeedSort _feedSort = _FeedSort.newest;
   bool _showBookmarksOnly = false;
+  // Active topic filter (null = כולם)
+  String? _topicFilter;
   // Reply threads, keyed by post id. Populated only from real backend content
   // (and the user's own persisted replies) — no fabricated seed conversations.
   final Map<String, List<_Reply>> _replyData = {};
@@ -111,6 +117,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
   @override
   void dispose() {
     _searchCtrl.dispose();
+    _quickPostCtrl.dispose();
     _feedScrollCtrl.dispose();
     _changesSub?.cancel();
     super.dispose();
@@ -128,6 +135,15 @@ class _CommunityWidgetState extends State<CommunityWidget> {
   int _channelCount(String ch) =>
       ch == 'הכל' ? _posts.length : _posts.where((p) => p.channel == ch).length;
 
+  // Topic filter chips: maps display label → channel values they match.
+  static const _topicLabels = ['סלולר', 'אינטרנט', 'טלוויזיה', 'כללי'];
+  static const _topicChannels = {
+    'סלולר': ['סלולר'],
+    'אינטרנט': ['אינטרנט'],
+    'טלוויזיה': ['טלוויזיה'],
+    'כללי': ['המלצות', 'עזרה בניתוק', 'חו"ל', 'חבילה משולבת'],
+  };
+
   List<CommunityPost> get _filtered {
     final appState = AppState();
     var base = _activeChannel == 'הכל'
@@ -136,6 +152,11 @@ class _CommunityWidgetState extends State<CommunityWidget> {
     if (_showBookmarksOnly) {
       base = base.where((p) => appState.isBookmarked(p.id)).toList();
     }
+    // Apply topic filter (independent of channel chips)
+    if (_topicFilter != null) {
+      final allowed = _topicChannels[_topicFilter!] ?? const <String>[];
+      base = base.where((p) => allowed.contains(p.channel)).toList();
+    }
     if (_searchQuery.isNotEmpty) {
       final q = _searchQuery.toLowerCase();
       base = base.where((p) =>
@@ -143,11 +164,72 @@ class _CommunityWidgetState extends State<CommunityWidget> {
           p.author.toLowerCase().contains(q) ||
           p.channel.toLowerCase().contains(q)).toList();
     }
-    if (_sortByPopular) return List.from(base)..sort((a, b) => b.likes.compareTo(a.likes));
-    return base;
+    switch (_feedSort) {
+      case _FeedSort.popular:
+        return List.from(base)..sort((a, b) => b.likes.compareTo(a.likes));
+      case _FeedSort.rated:
+        // "rated" = posts with most replies (community engagement proxy)
+        return List.from(base)..sort((a, b) => b.replies.compareTo(a.replies));
+      case _FeedSort.newest:
+        return base;
+    }
+  }
+
+  /// Posts pinned at the top of the feed: top-2 by likes or the newest
+  /// team post. Returns at most 2 unique posts.
+  List<CommunityPost> get _featuredPosts {
+    if (_posts.isEmpty) return const [];
+    // Team posts always feature first
+    final teamPosts = _posts.where((p) => p.isTeam).take(1).toList();
+    // Top liked non-team post
+    final byLikes = [..._posts]
+      ..sort((a, b) => b.likes.compareTo(a.likes));
+    final topLiked = byLikes.where((p) => !p.isTeam && p.likes >= 5).take(1).toList();
+    final featured = <CommunityPost>[];
+    for (final p in [...teamPosts, ...topLiked]) {
+      if (!featured.any((f) => f.id == p.id)) featured.add(p);
+      if (featured.length >= 2) break;
+    }
+    return featured;
+  }
+
+  /// Whether the current user is a verified customer (completed switch or
+  /// active tracked plan at a late stage).
+  bool _isCurrentUserVerified(AppState appState) {
+    if (!appState.isLoggedIn) return false;
+    return appState.myPlans.isNotEmpty || appState.trackerStep >= 3;
   }
 
   // ── Feed actions ───────────────────────────────────────────────────────────────
+
+  void _submitQuickPost(BuildContext context, AppState appState, AppTheme ffTheme) {
+    final text = _quickPostCtrl.text.trim();
+    if (text.isEmpty) return;
+    if (!appState.isLoggedIn) {
+      AppSnackBar.info(context, 'יש להתחבר כדי לפרסם פוסט',
+          action: SnackBarAction(label: 'כניסה', onPressed: () => context.pushNamed('Auth')));
+      return;
+    }
+    HapticFeedback.lightImpact();
+    final id = DateTime.now().millisecondsSinceEpoch.toString();
+    final author = appState.firstName;
+    final avatar = appState.firstName.isNotEmpty ? appState.firstName[0] : 'א';
+    const channel = 'המלצות';
+    appState.addCommunityPost(
+      id: id, author: author, avatar: avatar, channel: channel, text: text,
+    );
+    setState(() {
+      _posts.insert(0, CommunityPost(
+        id: id, author: author, avatar: avatar, channel: channel, text: text,
+        likes: 0, replies: 0, timestamp: DateTime.now(),
+      ));
+      _quickPostCtrl.clear();
+    });
+    appBackend.createPost(PostInput(
+      author: author, avatar: avatar, channel: channel, text: text,
+    )).ignore();
+    AppSnackBar.success(context, 'הפוסט פורסם בהצלחה!');
+  }
 
   Future<void> _refreshFeed() async {
     HapticFeedback.mediumImpact();
@@ -877,87 +959,125 @@ class _CommunityWidgetState extends State<CommunityWidget> {
             ),
           ),
 
-          // Sort + search row
+          // Sort chips + bookmarks + search
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                GestureDetector(
-                  onTap: () => setState(() {
-                    _sortByPopular = !_sortByPopular;
-                    _visibleCount = _feedPageSize;
-                  }),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: _sortByPopular ? ffTheme.primary.withValues(alpha: 0.1) : ffTheme.background,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: _sortByPopular ? ffTheme.primary : ffTheme.alternate),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(_sortByPopular ? Icons.local_fire_department_rounded : Icons.access_time_rounded, size: 13, color: _sortByPopular ? ffTheme.primary : ffTheme.secondaryText),
-                        const SizedBox(width: 4),
-                        Text(_sortByPopular ? 'פופולרי' : 'חדש', style: ffTheme.labelSmall.copyWith(color: _sortByPopular ? ffTheme.primary : ffTheme.secondaryText, fontWeight: FontWeight.w600)),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Tooltip(
-                  message: 'פוסטים שמורים',
-                  child: GestureDetector(
-                    onTap: () {
-                      HapticFeedback.selectionClick();
-                      setState(() {
-                        _showBookmarksOnly = !_showBookmarksOnly;
+                // Row 1: 3-chip sort bar + bookmark toggle
+                Row(
+                  children: [
+                    _SortChipBar(
+                      current: _feedSort,
+                      ffTheme: ffTheme,
+                      onSelect: (s) => setState(() {
+                        _feedSort = s;
                         _visibleCount = _feedPageSize;
-                      });
-                    },
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: _showBookmarksOnly ? ffTheme.warning.withValues(alpha: 0.12) : ffTheme.background,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: _showBookmarksOnly ? ffTheme.warning : ffTheme.alternate),
-                      ),
-                      child: Icon(
-                        _showBookmarksOnly ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
-                        size: 15,
-                        color: _showBookmarksOnly ? ffTheme.warning : ffTheme.secondaryText,
+                      }),
+                    ),
+                    const SizedBox(width: 8),
+                    Tooltip(
+                      message: 'פוסטים שמורים',
+                      child: GestureDetector(
+                        onTap: () {
+                          HapticFeedback.selectionClick();
+                          setState(() {
+                            _showBookmarksOnly = !_showBookmarksOnly;
+                            _visibleCount = _feedPageSize;
+                          });
+                        },
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: _showBookmarksOnly ? ffTheme.warning.withValues(alpha: 0.12) : ffTheme.background,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: _showBookmarksOnly ? ffTheme.warning : ffTheme.alternate),
+                          ),
+                          child: Icon(
+                            _showBookmarksOnly ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+                            size: 15,
+                            color: _showBookmarksOnly ? ffTheme.warning : ffTheme.secondaryText,
+                          ),
+                        ),
                       ),
                     ),
-                  ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextField(
+                        controller: _searchCtrl,
+                        textDirection: TextDirection.rtl,
+                        decoration: InputDecoration(
+                          hintText: 'חיפוש בפוסטים...',
+                          hintTextDirection: TextDirection.rtl,
+                          prefixIcon: _searchQuery.isEmpty
+                              ? Icon(Icons.search_rounded, color: ffTheme.secondaryText, size: 18)
+                              : GestureDetector(
+                                  onTap: () { _searchCtrl.clear(); setState(() => _searchQuery = ''); },
+                                  child: Icon(Icons.close_rounded, color: ffTheme.secondaryText, size: 18),
+                                ),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          filled: true,
+                          fillColor: Colors.white,
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide(color: ffTheme.alternate)),
+                          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide(color: ffTheme.alternate)),
+                          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide(color: ffTheme.primary)),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: TextField(
-                    controller: _searchCtrl,
-                    textDirection: TextDirection.rtl,
-                    decoration: InputDecoration(
-                      hintText: 'חיפוש בפוסטים...',
-                      hintTextDirection: TextDirection.rtl,
-                      prefixIcon: _searchQuery.isEmpty
-                          ? Icon(Icons.search_rounded, color: ffTheme.secondaryText, size: 18)
-                          : GestureDetector(
-                              onTap: () { _searchCtrl.clear(); setState(() => _searchQuery = ''); },
-                              child: Icon(Icons.close_rounded, color: ffTheme.secondaryText, size: 18),
+                // Row 2: topic filter chips
+                const SizedBox(height: 8),
+                SizedBox(
+                  height: 32,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    children: _topicLabels.map((topic) {
+                      final active = _topicFilter == topic;
+                      return Padding(
+                        padding: const EdgeInsets.only(left: 6),
+                        child: Semantics(
+                          button: true,
+                          selected: active,
+                          label: 'סנן לפי $topic',
+                          child: GestureDetector(
+                            onTap: () => setState(() {
+                              _topicFilter = active ? null : topic;
+                              _visibleCount = _feedPageSize;
+                            }),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 180),
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                              decoration: BoxDecoration(
+                                color: active ? AppColors.brandAccent : Colors.white,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: active ? AppColors.brandAccent : ffTheme.alternate),
+                              ),
+                              child: Text(topic,
+                                  style: ffTheme.labelSmall.copyWith(
+                                    color: active ? Colors.white : ffTheme.secondaryText,
+                                    fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                                  )),
                             ),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      filled: true,
-                      fillColor: Colors.white,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide(color: ffTheme.alternate)),
-                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide(color: ffTheme.alternate)),
-                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide(color: ffTheme.primary)),
-                    ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
                   ),
                 ),
               ],
             ),
           ).animate().fadeIn(duration: 280.ms),
+
+          // Quick-post section
+          _QuickPostSection(
+            ctrl: _quickPostCtrl,
+            ffTheme: ffTheme,
+            isVerified: _isCurrentUserVerified(appState),
+            onSubmit: () => _submitQuickPost(context, appState, ffTheme),
+          ).animate().fadeIn(duration: 320.ms),
 
           // Hot deal banner
           ..._posts.where((p) => p.isTeam && p.planId != null).take(1).map((p) =>
@@ -1059,17 +1179,35 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                       controller: _feedScrollCtrl,
                       physics: const AlwaysScrollableScrollPhysics(),
                       padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
-                      // Build only the current window; it grows as the user
-                      // scrolls (see _maybeGrowFeed). For short feeds this equals
-                      // _filtered.length, so behavior is unchanged.
-                      itemCount: math.min(_visibleCount, _filtered.length),
+                      // The window starts with featured posts (if any), then
+                      // the regular feed. We prepend them without duplicating in
+                      // the main list (the builder offsets by featuredCount).
+                      itemCount: () {
+                        final featured = _featuredPosts;
+                        final feedCount = math.min(_visibleCount, _filtered.length);
+                        return (featured.isNotEmpty ? 1 : 0) + feedCount;
+                      }(),
                       itemBuilder: (context, i) {
-                        final post = _filtered[i];
+                        final featured = _featuredPosts;
+                        // Slot 0 = featured section header+cards (when any exist)
+                        if (featured.isNotEmpty && i == 0) {
+                          return _FeaturedPostsSection(
+                            posts: featured,
+                            ffTheme: ffTheme,
+                            isVerified: _isCurrentUserVerified(appState),
+                            onReply: (p) => _showReplies(context, p, ffTheme),
+                          ).animate().fadeIn(duration: 400.ms);
+                        }
+                        final feedIndex = featured.isNotEmpty ? i - 1 : i;
+                        final post = _filtered[feedIndex];
+                        final isVerified = _isCurrentUserVerified(appState) &&
+                            appState.isOwnPost(post.id);
                         return _PostCard(
                           post: post,
                           ffTheme: ffTheme,
                           bookmarked: appState.isBookmarked(post.id),
                           isOwn: appState.isOwnPost(post.id),
+                          isCurrentUserVerified: isVerified,
                           replyCount: _replyData.containsKey(post.id) ? _replyData[post.id]!.length : post.replies,
                           onBookmark: (id) {
                             HapticFeedback.selectionClick();
@@ -1079,7 +1217,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                           },
                           onReply: () => _showReplies(context, post, ffTheme),
                           onDelete: () => _confirmDelete(context, post, appState, ffTheme),
-                        ).animate(delay: (i * 50).ms).fadeIn(duration: 350.ms).slideY(begin: 0.05, end: 0);
+                        ).animate(delay: (feedIndex * 50).ms).fadeIn(duration: 350.ms).slideY(begin: 0.05, end: 0);
                       },
                     ),
                   ),
@@ -1101,6 +1239,7 @@ class _PostCard extends StatefulWidget {
     required this.onBookmark,
     required this.onReply,
     this.isOwn = false,
+    this.isCurrentUserVerified = false,
     this.onDelete,
   });
   final CommunityPost post;
@@ -1110,6 +1249,7 @@ class _PostCard extends StatefulWidget {
   final ValueChanged<String> onBookmark;
   final VoidCallback onReply;
   final bool isOwn;
+  final bool isCurrentUserVerified;
   final VoidCallback? onDelete;
 
   @override
@@ -1202,6 +1342,13 @@ class _PostCardState extends State<_PostCard> {
                               if (post.isVerified) ...[
                                 const SizedBox(width: 4),
                                 Icon(Icons.verified_rounded, size: 14, color: ffTheme.info),
+                              ],
+                              // "לקוח מאומת" badge for own posts when the user
+                              // is a verified customer (has tracked plans or
+                              // completed the switch flow).
+                              if (widget.isCurrentUserVerified) ...[
+                                const SizedBox(width: 5),
+                                _VerifiedBadge(ffTheme: ffTheme),
                               ],
                             ],
                           ),
@@ -1430,6 +1577,338 @@ class _StatPill extends StatelessWidget {
     );
   }
 }
+
+// ── Sort chip bar ─────────────────────────────────────────────────────────────
+
+class _SortChipBar extends StatelessWidget {
+  const _SortChipBar({required this.current, required this.ffTheme, required this.onSelect});
+  final _FeedSort current;
+  final AppTheme ffTheme;
+  final ValueChanged<_FeedSort> onSelect;
+
+  static const List<_FeedSort> _sortValues = [
+    _FeedSort.newest,
+    _FeedSort.popular,
+    _FeedSort.rated,
+  ];
+  static const List<String> _sortLabels = ['חדש', 'פופולרי', 'מדורג'];
+  static const List<IconData> _sortIcons = [
+    Icons.access_time_rounded,
+    Icons.local_fire_department_rounded,
+    Icons.star_rounded,
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: List.generate(_sortValues.length, (i) {
+        final sort = _sortValues[i];
+        final label = _sortLabels[i];
+        final icon = _sortIcons[i];
+        final active = current == sort;
+        return Padding(
+          padding: const EdgeInsets.only(left: 5),
+          child: Semantics(
+            button: true,
+            selected: active,
+            label: 'מיין לפי $label',
+            child: GestureDetector(
+              onTap: () => onSelect(sort),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: active ? AppColors.brandAccent : ffTheme.background,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: active ? AppColors.brandAccent : ffTheme.alternate),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(icon, size: 12,
+                        color: active ? Colors.white : ffTheme.secondaryText),
+                    const SizedBox(width: 4),
+                    Text(label,
+                        style: ffTheme.labelSmall.copyWith(
+                          color: active ? Colors.white : ffTheme.secondaryText,
+                          fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                        )),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      }),
+    );
+  }
+}
+
+// ── Quick-post section ────────────────────────────────────────────────────────
+
+class _QuickPostSection extends StatefulWidget {
+  const _QuickPostSection({
+    required this.ctrl,
+    required this.ffTheme,
+    required this.isVerified,
+    required this.onSubmit,
+  });
+  final TextEditingController ctrl;
+  final AppTheme ffTheme;
+  final bool isVerified;
+  final VoidCallback onSubmit;
+
+  @override
+  State<_QuickPostSection> createState() => _QuickPostSectionState();
+}
+
+class _QuickPostSectionState extends State<_QuickPostSection> {
+  bool _focused = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = widget.ffTheme;
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _focused ? AppColors.brandAccent : t.alternate),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 8, offset: const Offset(0, 2))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.edit_note_rounded, size: 18, color: AppColors.brandAccent),
+              const SizedBox(width: 8),
+              Text('שתף את החוויה שלך עם הקהילה',
+                  style: t.labelMedium.copyWith(color: t.primaryText, fontWeight: FontWeight.w700)),
+              if (widget.isVerified) ...[
+                const Spacer(),
+                _VerifiedBadge(ffTheme: t),
+              ],
+            ],
+          ),
+          const SizedBox(height: 10),
+          Focus(
+            onFocusChange: (f) => setState(() => _focused = f),
+            child: TextField(
+              controller: widget.ctrl,
+              maxLines: 2,
+              minLines: 1,
+              textDirection: TextDirection.rtl,
+              decoration: InputDecoration(
+                hintText: 'מה על דעתך? טיפ, ביקורת, שאלה...',
+                hintTextDirection: TextDirection.rtl,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                filled: true,
+                fillColor: t.background,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: t.alternate)),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: t.alternate)),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.brandAccent, width: 1.5)),
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Align(
+            alignment: AlignmentDirectional.centerEnd,
+            child: ElevatedButton.icon(
+              onPressed: widget.onSubmit,
+              icon: const Icon(Icons.send_rounded, size: 16),
+              label: const Text('פרסם'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.brandAccent,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                textStyle: GoogleFonts.rubik(fontSize: 13, fontWeight: FontWeight.w700),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Featured posts section ────────────────────────────────────────────────────
+
+class _FeaturedPostsSection extends StatelessWidget {
+  const _FeaturedPostsSection({
+    required this.posts,
+    required this.ffTheme,
+    required this.isVerified,
+    required this.onReply,
+  });
+  final List<CommunityPost> posts;
+  final AppTheme ffTheme;
+  final bool isVerified;
+  final ValueChanged<CommunityPost> onReply;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = ffTheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Row(
+            children: [
+              const Icon(Icons.push_pin_rounded, size: 14, color: AppColors.saving),
+              const SizedBox(width: 6),
+              Text('פוסטים מומלצים',
+                  style: t.labelMedium.copyWith(color: t.secondaryText, fontWeight: FontWeight.w700)),
+            ],
+          ),
+        ),
+        ...posts.map((post) => _FeaturedCard(post: post, ffTheme: t, onReply: () => onReply(post))),
+        const SizedBox(height: 4),
+        Divider(color: t.alternate, height: 20),
+      ],
+    );
+  }
+}
+
+class _FeaturedCard extends StatelessWidget {
+  const _FeaturedCard({required this.post, required this.ffTheme, required this.onReply});
+  final CommunityPost post;
+  final AppTheme ffTheme;
+  final VoidCallback onReply;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = ffTheme;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.saving.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.saving.withValues(alpha: 0.35)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              // "מומלץ" amber badge
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppColors.saving.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('מומלץ', style: t.labelSmall.copyWith(color: AppColors.saving, fontWeight: FontWeight.w700, fontSize: 10)),
+                    const SizedBox(width: 3),
+                    const Text('✨', style: TextStyle(fontSize: 10)),
+                  ],
+                ),
+              ),
+              const Spacer(),
+              // Channel badge
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                decoration: BoxDecoration(color: t.background, borderRadius: BorderRadius.circular(8)),
+                child: Text(post.channel, style: t.labelSmall.copyWith(color: t.secondaryText, fontSize: 10)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 30, height: 30,
+                decoration: BoxDecoration(color: t.accent1, shape: BoxShape.circle),
+                child: Center(child: Text(post.avatar, style: GoogleFonts.rubik(fontSize: 13, fontWeight: FontWeight.w700, color: t.primary))),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(post.author, style: t.labelMedium),
+                    const SizedBox(height: 4),
+                    Text(post.text, style: t.bodySmall.copyWith(height: 1.4), maxLines: 2, overflow: TextOverflow.ellipsis),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Icon(Icons.favorite_rounded, size: 13, color: Colors.red.shade400),
+              const SizedBox(width: 4),
+              Text('${post.likes}', style: t.labelSmall.copyWith(color: t.secondaryText)),
+              const SizedBox(width: 12),
+              Semantics(
+                button: true,
+                label: 'הגב לפוסט מומלץ',
+                child: GestureDetector(
+                  onTap: onReply,
+                  child: Row(
+                    children: [
+                      Icon(Icons.chat_bubble_outline_rounded, size: 13, color: t.primary),
+                      const SizedBox(width: 4),
+                      Text('${post.replies}', style: t.labelSmall.copyWith(color: t.primary)),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Verified customer badge ───────────────────────────────────────────────────
+
+class _VerifiedBadge extends StatelessWidget {
+  const _VerifiedBadge({required this.ffTheme});
+  final AppTheme ffTheme;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: 'לקוח מאומת',
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        decoration: BoxDecoration(
+          color: AppColors.brandAccent.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: AppColors.brandAccent.withValues(alpha: 0.4)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.check_circle_outline_rounded, size: 10, color: AppColors.brandAccent),
+            const SizedBox(width: 3),
+            Text('לקוח מאומת',
+                style: ffTheme.labelSmall.copyWith(
+                  color: AppColors.brandAccent,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 9,
+                )),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Data ──────────────────────────────────────────────────────────────────────
 
 class _Reply {
   final String author, avatar, text;

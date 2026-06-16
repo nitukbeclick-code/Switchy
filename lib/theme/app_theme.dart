@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+// Shared radius constants used by both ThemeData builders.
+const double _radiusMd = 16;
+const double _radiusLg = 20;
+const double _radiusXl = 28;
+
 /// Central design tokens for the חוסך app.
 ///
 /// This is hand-authored, idiomatic Flutter — no FlutterFlow runtime,
@@ -244,4 +249,160 @@ class AppTheme {
   TextStyle get labelLarge => _labelLarge;
   TextStyle get labelMedium => _labelMedium;
   TextStyle get labelSmall => _labelSmall;
+
+  // ── ThemeData factories ─────────────────────────────────────────────────────
+  // These produce MaterialApp theme/darkTheme values.  Widget-level tokens
+  // (AppTheme.of(context).*) remain the single source of truth for colours and
+  // text styles inside widgets; these factories only set the Material defaults
+  // so that system widgets (dialogs, snackbars, inputs) inherit sensible values.
+
+  /// Dark theme — ink #0B0F14 background, glass-white surfaces, indigo accent.
+  static ThemeData darkThemeData() {
+    const Color bg = Color(0xFF0B0F14);
+    const Color surface = Color(0xFF161C24);
+    const Color onSurface = Color(0xFFF5F7F8);
+    const Color border = Color(0xFF222A35);
+    final base = ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.dark,
+      fontFamily: GoogleFonts.assistant().fontFamily,
+    );
+    return base.copyWith(
+      colorScheme: const ColorScheme.dark(
+        primary: AppColors.brandAccent,
+        secondary: AppColors.saving,
+        surface: surface,
+        onSurface: onSurface,
+        error: AppColors.error,
+      ),
+      scaffoldBackgroundColor: bg,
+      canvasColor: bg,
+      textTheme: GoogleFonts.assistantTextTheme(base.textTheme.apply(bodyColor: onSurface, displayColor: onSurface)),
+      appBarTheme: AppBarTheme(
+        backgroundColor: bg,
+        foregroundColor: onSurface,
+        elevation: 0,
+        centerTitle: false,
+        titleTextStyle: GoogleFonts.rubik(fontSize: 18, fontWeight: FontWeight.w700, color: onSurface),
+      ),
+      cardTheme: CardThemeData(
+        color: surface,
+        elevation: 0,
+        margin: EdgeInsets.zero,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(_radiusLg),
+          side: const BorderSide(color: border),
+        ),
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(_radiusXl)),
+      ),
+      bottomSheetTheme: const BottomSheetThemeData(
+        backgroundColor: surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(_radiusXl)),
+        ),
+      ),
+      snackBarTheme: SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: surface,
+        contentTextStyle: GoogleFonts.assistant(color: onSurface),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(_radiusMd)),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: surface,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(_radiusMd),
+          borderSide: const BorderSide(color: border),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(_radiusMd),
+          borderSide: const BorderSide(color: border),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(_radiusMd),
+          borderSide: const BorderSide(color: AppColors.brandAccent, width: 1.5),
+        ),
+      ),
+      dividerTheme: const DividerThemeData(color: border, thickness: 1),
+      iconTheme: const IconThemeData(color: onSurface),
+    );
+  }
+
+  /// Light theme — glass-white #F5F7F8 background, white cards, indigo accent.
+  static ThemeData lightThemeData() {
+    const Color bg = Color(0xFFF5F7F8);
+    const Color surface = Color(0xFFFFFFFF);
+    const Color onSurface = Color(0xFF0B0F14);
+    const Color border = Color(0xFFD1D5DB);
+    final base = ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.light,
+      fontFamily: GoogleFonts.assistant().fontFamily,
+    );
+    return base.copyWith(
+      colorScheme: const ColorScheme.light(
+        primary: AppColors.brandAccent,
+        secondary: AppColors.saving,
+        surface: surface,
+        onSurface: onSurface,
+        error: AppColors.error,
+      ),
+      scaffoldBackgroundColor: bg,
+      canvasColor: bg,
+      textTheme: GoogleFonts.assistantTextTheme(base.textTheme.apply(bodyColor: onSurface, displayColor: onSurface)),
+      appBarTheme: AppBarTheme(
+        backgroundColor: bg,
+        foregroundColor: onSurface,
+        elevation: 0,
+        centerTitle: false,
+        titleTextStyle: GoogleFonts.rubik(fontSize: 18, fontWeight: FontWeight.w700, color: onSurface),
+      ),
+      cardTheme: CardThemeData(
+        color: surface,
+        elevation: 0,
+        margin: EdgeInsets.zero,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(_radiusLg),
+          side: const BorderSide(color: border),
+        ),
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(_radiusXl)),
+      ),
+      bottomSheetTheme: const BottomSheetThemeData(
+        backgroundColor: surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(_radiusXl)),
+        ),
+      ),
+      snackBarTheme: SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: surface,
+        contentTextStyle: GoogleFonts.assistant(color: onSurface),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(_radiusMd)),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: surface,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(_radiusMd),
+          borderSide: const BorderSide(color: border),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(_radiusMd),
+          borderSide: const BorderSide(color: border),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(_radiusMd),
+          borderSide: const BorderSide(color: AppColors.brandAccent, width: 1.5),
+        ),
+      ),
+      dividerTheme: const DividerThemeData(color: border, thickness: 1),
+      iconTheme: const IconThemeData(color: onSurface),
+    );
+  }
 }

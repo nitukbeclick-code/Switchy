@@ -120,6 +120,9 @@ class AppState extends ChangeNotifier {
     _prefRequestUpdates = p.getBool('prefRequestUpdates') ?? true;
     _prefCommunityNotifs = p.getBool('prefCommunityNotifs') ?? false;
     _seenOnboarding = p.getBool('seenOnboarding') ?? false;
+    // Theme mode
+    final themeModeStr = p.getString('theme_mode') ?? 'dark';
+    _themeMode = _themeModeFromString(themeModeStr);
     notifyListeners();
   }
 
@@ -282,6 +285,9 @@ class AppState extends ChangeNotifier {
         case 'seenOnboarding':
           await p.setBool('seenOnboarding', _seenOnboarding);
           break;
+        case 'themeMode':
+          await p.setString('theme_mode', _themeModeToString(_themeMode));
+          break;
       }
     }
     } catch (e) {
@@ -308,6 +314,7 @@ class AppState extends ChangeNotifier {
     'trackerStep', 'watchedPlans', 'recentlyViewed', 'recentSearches',
     'userReviews', 'likedPosts', 'bookmarkedPosts', 'myPlans',
     'renewalReminders', 'dismissedNotifications', 'prefs', 'seenOnboarding',
+    'themeMode',
   };
   void _persist() {
     for (final k in _lightGroups) {
@@ -576,6 +583,31 @@ class AppState extends ChangeNotifier {
   void setPrefPriceAlerts(bool v) { _prefPriceAlerts = v; notifyListeners(); _persist(); }
   void setPrefRequestUpdates(bool v) { _prefRequestUpdates = v; notifyListeners(); _persist(); }
   void setPrefCommunityNotifs(bool v) { _prefCommunityNotifs = v; notifyListeners(); _persist(); }
+
+  // Theme mode
+  ThemeMode _themeMode = ThemeMode.dark;
+  ThemeMode get themeMode => _themeMode;
+  void setThemeMode(ThemeMode mode) {
+    _themeMode = mode;
+    notifyListeners();
+    _markDirty('themeMode');
+  }
+
+  static ThemeMode _themeModeFromString(String s) {
+    switch (s) {
+      case 'light': return ThemeMode.light;
+      case 'system': return ThemeMode.system;
+      default: return ThemeMode.dark;
+    }
+  }
+
+  static String _themeModeToString(ThemeMode m) {
+    switch (m) {
+      case ThemeMode.light: return 'light';
+      case ThemeMode.system: return 'system';
+      case ThemeMode.dark: return 'dark';
+    }
+  }
 
   // Onboarding
   bool _seenOnboarding = false;

@@ -6,6 +6,7 @@ import '../../theme/app_theme.dart';
 import '../../core/nav.dart';
 import '../../app_state.dart';
 import '../../data.dart';
+import '../../models.dart';
 import '../../components/plan_card/plan_card_widget.dart';
 import '../../services/recommendation_engine.dart';
 
@@ -20,6 +21,8 @@ class _ResultsWidgetState extends State<ResultsWidget> {
   final _searchController = TextEditingController();
   String _providerFilter = '';
   bool _smartSort = false;
+  // 'save' | 'price' | 'price_desc' | 'rating' — non-smart sort overrides
+  String? _resultsSortOverride;
 
   // Memo for the per-plan recommendation scores: scoring is pure over the
   // (profile, plan list) pair, so a rebuild with identical inputs (e.g. an
@@ -40,11 +43,15 @@ class _ResultsWidgetState extends State<ResultsWidget> {
     ('abroad', 'חו"ל'),
   ];
 
-  static const _sorts = [
-    ('smart', 'התאמה חכמה'),
-    ('match', 'מומלץ'),
-    ('price', 'הכי זול'),
-    ('save', 'מקסימום חיסכון'),
+  // The "results" sort chips — a superset of the old sort list, now including
+  // directional price sorts and a dedicated rating sort.
+  // Each tuple: (sortKey, label, icon, isSmart)
+  static const List<(String, String, IconData, bool)> _sorts = [
+    ('smart', 'התאמה חכמה', Icons.adjust, true),
+    ('save', 'חיסכון', Icons.savings_outlined, false),
+    ('price', 'מחיר ↑', Icons.arrow_upward_rounded, false),
+    ('price_desc', 'מחיר ↓', Icons.arrow_downward_rounded, false),
+    ('rating', 'דירוג', Icons.star_rounded, false),
   ];
 
   @override
@@ -74,7 +81,18 @@ class _ResultsWidgetState extends State<ResultsWidget> {
     // gate below.
     final profile = MatchProfile.fromAppState(appState, cat);
 
-    final effectiveSort = _smartSort ? 'match' : appState.sortMode;
+    // Resolve effective sort: smart-mode → 'match'; override chip → that value
+    // (mapping 'price_desc' to 'price' for filteredPlans, applied in reverse
+    // after); otherwise fall back to AppState sort.
+    final String effectiveSort;
+    if (_smartSort) {
+      effectiveSort = 'match';
+    } else if (_resultsSortOverride != null) {
+      // 'price_desc' shares filteredPlans' 'price' sort (ascending), we reverse later.
+      effectiveSort = _resultsSortOverride == 'price_desc' ? 'price' : _resultsSortOverride!;
+    } else {
+      effectiveSort = appState.sortMode;
+    }
 
     final rawPlans = filteredPlans(
       cat: cat,
@@ -103,11 +121,20 @@ class _ResultsWidgetState extends State<ResultsWidget> {
       _matchMemo = matchMap;
     }
 
-    final plans = _smartSort
-        ? (List.of(filteredByProvider)
-          ..sort((a, b) =>
-              (matchMap[b.id]?.score ?? 0).compareTo(matchMap[a.id]?.score ?? 0)))
-        : filteredByProvider;
+    List<Plan> plans;
+    if (_smartSort) {
+      plans = List.of(filteredByProvider)
+        ..sort((a, b) =>
+            (matchMap[b.id]?.score ?? 0).compareTo(matchMap[a.id]?.score ?? 0));
+    } else if (_resultsSortOverride == 'price_desc') {
+      // Cheapest-first from filteredPlans; reverse to get most-expensive-first.
+      plans = List.of(filteredByProvider).reversed.toList();
+    } else if (_resultsSortOverride == 'rating') {
+      plans = List.of(filteredByProvider)
+        ..sort((a, b) => b.rating.compareTo(a.rating));
+    } else {
+      plans = filteredByProvider;
+    }
 
     final allCatProviders = plansByCat(cat).map((p) => p.provider).toSet().toList();
 
@@ -378,7 +405,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                 child: _buildProviderChips(ffTheme, allCatProviders),
               ),
 
-              // Sort chips
+              // Sort / filter chips row
               SliverToBoxAdapter(
                 child: SizedBox(
                   height: 52,
@@ -387,20 +414,28 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 16, vertical: 8),
                     children: _sorts.map((s) {
-                      final isSmart = s.$1 == 'smart';
+                      final isSmart = s.$4;
                       final active = isSmart
                           ? _smartSort
-                          : (!_smartSort && appState.sortMode == s.$1);
+                          : (!_smartSort && _resultsSortOverride == s.$1);
+                      final chipColor = isSmart
+                          ? ffTheme.secondary
+                          : AppColors.brandAccent;
                       return Padding(
                         padding: const EdgeInsetsDirectional.only(end: 8),
                         child: GestureDetector(
                           onTap: () {
                             HapticFeedback.selectionClick();
                             if (isSmart) {
-                              setState(() => _smartSort = true);
+                              setState(() {
+                                _smartSort = true;
+                                _resultsSortOverride = null;
+                              });
                             } else {
-                              setState(() => _smartSort = false);
-                              appState.setSortMode(s.$1);
+                              setState(() {
+                                _smartSort = false;
+                                _resultsSortOverride = s.$1;
+                              });
                             }
                           },
                           child: AnimatedContainer(
@@ -409,26 +444,34 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                                 horizontal: 14, vertical: 6),
                             decoration: BoxDecoration(
                               color: active
-                                  ? (isSmart ? ffTheme.secondary : ffTheme.primary)
+                                  ? chipColor
                                   : ffTheme.secondaryBackground,
                               borderRadius: BorderRadius.circular(20),
                               border: Border.all(
                                   color: active
-                                      ? (isSmart ? ffTheme.secondary : ffTheme.primary)
+                                      ? chipColor
                                       : ffTheme.alternate),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                if (isSmart) ...[
-                                  Icon(Icons.adjust, size: active ? 13 : 12, color: ffTheme.primary),
-                                  const SizedBox(width: 4),
-                                ],
+                                Icon(
+                                  s.$3,
+                                  size: 13,
+                                  color: active
+                                      ? (isSmart
+                                          ? ffTheme.primary
+                                          : Colors.white)
+                                      : ffTheme.primaryText,
+                                ),
+                                const SizedBox(width: 4),
                                 Text(
                                   s.$2,
                                   style: ffTheme.labelMedium.copyWith(
                                     color: active
-                                        ? (isSmart ? ffTheme.primary : Colors.white)
+                                        ? (isSmart
+                                            ? ffTheme.primary
+                                            : Colors.white)
                                         : ffTheme.primaryText,
                                     fontWeight: active
                                         ? FontWeight.w700
@@ -487,6 +530,46 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                             onPressed: () => appState.setQuizCompleted(false),
                           ),
                         ],
+                      ),
+                    ).animate().fadeIn(duration: 250.ms),
+                  ),
+                ),
+
+              // Abroad shortcut — sticky chip when user wants abroad plans
+              // and we are not already on the abroad category.
+              if (appState.wantsAbroad && cat != 'abroad')
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                    child: GestureDetector(
+                      onTap: () => context.goNamed('AbroadCalc'),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 14, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE0F2FE),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                              color: const Color(0xFF0891B2)
+                                  .withValues(alpha: 0.4)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.flight_takeoff_rounded,
+                                size: 18, color: Color(0xFF0891B2)),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'יש לך גם תוכניות חו"ל מומלצות ←',
+                                style: ffTheme.labelMedium.copyWith(
+                                    color: const Color(0xFF0369A1),
+                                    fontWeight: FontWeight.w600),
+                              ),
+                            ),
+                            const Icon(Icons.arrow_forward_ios_rounded,
+                                size: 14, color: Color(0xFF0891B2)),
+                          ],
+                        ),
                       ),
                     ).animate().fadeIn(duration: 250.ms),
                   ),
@@ -551,97 +634,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
 
               // Plan list or empty state
               if (plans.isEmpty)
-                SliverFillRemaining(
-                  hasScrollBody: false,
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
-                          width: 88,
-                          height: 88,
-                          decoration: BoxDecoration(
-                            color: ffTheme.alternate.withValues(alpha: 0.4),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(Icons.search_off_rounded, size: 44, color: ffTheme.secondaryText),
-                        ).animate(onPlay: (c) => c.repeat(reverse: true))
-                          .scale(begin: const Offset(1, 1), end: const Offset(1.06, 1.06), duration: 1400.ms, curve: Curves.easeInOut),
-                        const SizedBox(height: 20),
-                        Text(
-                          appState.searchQuery.isNotEmpty ? 'אין תוצאות לחיפוש' : 'לא נמצאו מסלולים',
-                          style: ffTheme.headlineSmall,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          appState.searchQuery.isNotEmpty
-                            ? 'לא מצאנו תוצאות עבור "${appState.searchQuery}"'
-                            : appState.activeFilters.isNotEmpty
-                              ? 'הסינונים שבחרת מצמצמים מדי — נסה להסיר חלקם'
-                              : 'אין מסלולים בקטגוריה זו כרגע',
-                          style: ffTheme.bodyMedium.copyWith(color: ffTheme.secondaryText),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 28),
-                        if (appState.searchQuery.isNotEmpty)
-                          _ActionChip(
-                            label: 'נקה חיפוש',
-                            icon: Icons.clear_rounded,
-                            onTap: () { _searchController.clear(); appState.setSearch(''); },
-                            ffTheme: ffTheme,
-                          ),
-                        if (appState.activeFilters.isNotEmpty) ...[
-                          const SizedBox(height: 10),
-                          _ActionChip(
-                            label: 'נקה את כל הסינונים',
-                            icon: Icons.filter_alt_off_rounded,
-                            onTap: appState.clearFilters,
-                            ffTheme: ffTheme,
-                          ),
-                        ],
-                        const SizedBox(height: 28),
-                        Text('נסה קטגוריה אחרת', style: ffTheme.labelMedium.copyWith(color: ffTheme.secondaryText)),
-                        const SizedBox(height: 12),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          alignment: WrapAlignment.center,
-                          children: _categories
-                            .where((c) => c.$1 != cat)
-                            .map((c) => Container(
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(20),
-                                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 4)],
-                              ),
-                              child: Material(
-                                color: Colors.white,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(20),
-                                  side: BorderSide(color: ffTheme.primary.withValues(alpha: 0.3)),
-                                ),
-                                child: InkWell(
-                                  borderRadius: BorderRadius.circular(20),
-                                  onTap: () => _switchCategory(appState, c.$1),
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(categoryIconData(c.$1), size: 13, color: ffTheme.primary),
-                                        const SizedBox(width: 5),
-                                        Text(c.$2, style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w600)),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            )).toList(),
-                        ),
-                      ],
-                    ),
-                  ),
-                )
+                _buildEnhancedEmpty(context, ffTheme, appState, cat, bill)
               else
                 SliverPadding(
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 120),
@@ -653,12 +646,48 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                         // The engine's top pick wears the in-card "best match"
                         // treatment; the match score renders inside the card —
                         // overlaying badges collided with the header controls.
-                        final isTopMatch = _smartSort && index == 0 && match != null && match.scorePct >= 70;
-                        return PlanCardWidget(
-                          plan: plan,
-                          currentBill: bill,
-                          matchPct: match?.scorePct,
-                          bestMatch: isTopMatch || plan.highlight,
+                        final isTopMatch = _smartSort &&
+                            index == 0 &&
+                            match != null &&
+                            match.scorePct >= 70;
+                        // Annual savings for this plan vs. the user's bill.
+                        final annualSave = bill > 0 ? planSaveYear(plan, bill) : 0;
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            PlanCardWidget(
+                              plan: plan,
+                              currentBill: bill,
+                              matchPct: match?.scorePct,
+                              bestMatch: isTopMatch || plan.highlight,
+                            ),
+                            // Annual savings chip below the card when relevant.
+                            if (annualSave > 0 && plan.isRegular)
+                              Padding(
+                                padding: const EdgeInsets.only(
+                                    right: 4, bottom: 4, top: 2),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 10, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.saving
+                                        .withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                        color: AppColors.saving
+                                            .withValues(alpha: 0.35)),
+                                  ),
+                                  child: Text(
+                                    'חוסך ₪$annualSave בשנה',
+                                    style: ffTheme.labelSmall.copyWith(
+                                      color: AppColors.saving,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                          ],
                         )
                             .animate(delay: (index * 60).ms)
                             .fadeIn(duration: 300.ms)
@@ -727,6 +756,243 @@ class _ResultsWidgetState extends State<ResultsWidget> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  // ── Enhanced empty state ────────────────────────────────────────────────────
+  // When no plans match filters/search, we show a friendlier message and
+  // surface the top 3 "closest" plans from the full catalogue anyway.
+
+  Widget _buildEnhancedEmpty(
+    BuildContext context,
+    AppTheme ffTheme,
+    AppState appState,
+    String cat,
+    int bill,
+  ) {
+    // Fetch up to 3 fallback plans ignoring filters/search.
+    final fallback = filteredPlans(
+      cat: cat,
+      sort: 'save',
+      filters: const [],
+      query: '',
+      budget: 9999,
+      currentBill: bill,
+    ).take(3).toList();
+
+    return SliverFillRemaining(
+      hasScrollBody: false,
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 88,
+              height: 88,
+              decoration: BoxDecoration(
+                color: ffTheme.alternate.withValues(alpha: 0.4),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(Icons.search_off_rounded,
+                  size: 44, color: ffTheme.secondaryText),
+            )
+                .animate(onPlay: (c) => c.repeat(reverse: true))
+                .scale(
+                    begin: const Offset(1, 1),
+                    end: const Offset(1.06, 1.06),
+                    duration: 1400.ms,
+                    curve: Curves.easeInOut),
+            const SizedBox(height: 20),
+            Text(
+              'לא מצאנו תוכנית מושלמת...',
+              style: ffTheme.headlineSmall,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'אבל יש לנו כמה קרובות',
+              style: ffTheme.bodyMedium.copyWith(color: ffTheme.secondaryText),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            if (appState.searchQuery.isNotEmpty)
+              _ActionChip(
+                label: 'נקה חיפוש',
+                icon: Icons.clear_rounded,
+                onTap: () {
+                  _searchController.clear();
+                  appState.setSearch('');
+                },
+                ffTheme: ffTheme,
+              ),
+            if (appState.activeFilters.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              _ActionChip(
+                label: 'נקה את כל הסינונים',
+                icon: Icons.filter_alt_off_rounded,
+                onTap: appState.clearFilters,
+                ffTheme: ffTheme,
+              ),
+            ],
+
+            // Fallback "closest" plans.
+            if (fallback.isNotEmpty) ...[
+              const SizedBox(height: 28),
+              Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: Text(
+                  'אלה הכי קרובות להעדפות שלך',
+                  style: ffTheme.labelMedium
+                      .copyWith(color: ffTheme.secondaryText),
+                ),
+              ),
+              const SizedBox(height: 10),
+              ...fallback.asMap().entries.map((e) {
+                final idx = e.key;
+                final plan = e.value;
+                final annualSave = bill > 0 ? planSaveYear(plan, bill) : 0;
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: ffTheme.alternate),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.04),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(14),
+                    onTap: () => context.pushNamed('PlanDetail',
+                        pathParameters: {'planId': plan.id}),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 12),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 28,
+                            height: 28,
+                            decoration: BoxDecoration(
+                              color: ffTheme.accent1,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Center(
+                              child: Text(
+                                '${idx + 1}',
+                                style: ffTheme.labelSmall.copyWith(
+                                  color: ffTheme.primary,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(plan.provider,
+                                    style: ffTheme.labelLarge
+                                        .copyWith(fontWeight: FontWeight.w700)),
+                                Text(plan.plan,
+                                    style: ffTheme.bodySmall.copyWith(
+                                        color: ffTheme.secondaryText),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis),
+                              ],
+                            ),
+                          ),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(
+                                '₪${plan.priceText}',
+                                style: ffTheme.titleSmall.copyWith(
+                                  color: ffTheme.primary,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                              if (annualSave > 0)
+                                Text(
+                                  'חוסך ₪$annualSave/שנה',
+                                  style: ffTheme.labelSmall.copyWith(
+                                    color: AppColors.saving,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 10,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                )
+                    .animate(delay: (idx * 80).ms)
+                    .fadeIn(duration: 300.ms)
+                    .slideY(begin: 0.05);
+              }),
+            ],
+
+            const SizedBox(height: 28),
+            Text('נסה קטגוריה אחרת',
+                style: ffTheme.labelMedium
+                    .copyWith(color: ffTheme.secondaryText)),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              alignment: WrapAlignment.center,
+              children: _categories
+                  .where((c) => c.$1 != cat)
+                  .map((c) => Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: [
+                            BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.04),
+                                blurRadius: 4)
+                          ],
+                        ),
+                        child: Material(
+                          color: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                            side: BorderSide(
+                                color: ffTheme.primary.withValues(alpha: 0.3)),
+                          ),
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(20),
+                            onTap: () => _switchCategory(appState, c.$1),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 14, vertical: 8),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(categoryIconData(c.$1),
+                                      size: 13, color: ffTheme.primary),
+                                  const SizedBox(width: 5),
+                                  Text(c.$2,
+                                      style: ffTheme.labelSmall.copyWith(
+                                          color: ffTheme.primary,
+                                          fontWeight: FontWeight.w600)),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ))
+                  .toList(),
+            ),
+          ],
+        ),
       ),
     );
   }

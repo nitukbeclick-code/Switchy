@@ -62,6 +62,15 @@ void main() async {
   }
   runApp(ChangeNotifierProvider.value(value: AppState(), child: const ChosechApp()));
   _appStarted = true;
+  // Hydrate the plan catalogue from the backend (live prices/featured/ratings
+  // overlaid onto the bundled seed), then rebuild open screens. Fire-and-forget:
+  // first paint already happened on the seed, and an empty/failed fetch is a
+  // safe no-op — LocalBackend returns the seed, so this is an identity merge
+  // offline. Real prices flow the moment a Supabase catalogue is connected.
+  appBackend
+      .fetchPlans()
+      .then((plans) => AppState().hydrateCatalogWith(plans))
+      .catchError((e) => debugPrint('startup: catalogue hydration failed (using seed): $e'));
   // Reschedule renewal reminders from the restored state (fire-and-forget).
   PushNotificationService.instance.syncRenewalReminders(AppState());
   // Push any price targets already met on cold start (gated + deduped inside).

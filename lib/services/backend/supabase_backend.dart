@@ -551,6 +551,22 @@ class SupabaseBackend implements Backend {
     }
   }
 
+  @override
+  Future<void> updatePlanPrice(String planId, {required int price, double? priceExact}) async {
+    // RLS ("Admins (by email) can modify plans") gates this; a non-admin write
+    // is rejected by Postgres. The plan_prices trigger captures the change to
+    // the ledger. Rethrow so the admin UI can show success/failure.
+    try {
+      await _db.from('plans').update({
+        'price': price,
+        'price_exact': priceExact,
+      }).eq('id', planId);
+    } catch (e) {
+      debugPrint('updatePlanPrice error: $e');
+      rethrow;
+    }
+  }
+
   // ── Price history ──────────────────────────────────────────────────────────
   @override
   Future<List<({DateTime capturedAt, int price})>> fetchPriceHistory(

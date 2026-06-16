@@ -55,13 +55,89 @@ const List<Plan> abroadPlans = [
   Plan(id: 'ab_019_world', cat: 'abroad', provider: '019 מובייל', net: 'international', plan: '2GB גלישה חודשי', price: 19, priceUnit: 'month', rating: 3.8, reviews: 0, flags: ['nocommit'], feats: ['2GB גלישה', '60 דקות שיחות', '80+ מדינות', 'ניתן לביטול חודשי']),
 ];
 
-final List<Plan> allPlans = [
+/// The bundled catalogue shipped with the app — real provider data for
+/// cellular/internet/TV/triple plus the curated abroad seed. This is the merge
+/// base for live hydration and the offline fallback; never mutated.
+final List<Plan> _seedPlans = [
   ...cellularPlans,
   ...internetPlans,
   ...tvPlans,
   ...triplePlans,
   ...abroadPlans,
 ];
+
+/// The live catalogue overlaid by [applyLiveCatalog], or null until the backend
+/// hydrates (offline / no-backend runs leave this null → the seed is used as-is).
+List<Plan>? _liveCatalog;
+
+/// The effective plan catalogue: the hydrated live catalogue once available,
+/// otherwise the bundled [seedPlans]. Every helper below ([planById],
+/// [plansByCat], [allProviders]) and the recommendation engine read through
+/// this, so a single hydration call makes live prices flow across the whole app.
+List<Plan> get allPlans => _liveCatalog ?? _seedPlans;
+
+/// The bundled seed catalogue, unmodified — the merge base + offline fallback.
+List<Plan> get seedPlans => _seedPlans;
+
+/// True once a non-empty live catalogue has been overlaid.
+bool get isCatalogHydrated => _liveCatalog != null;
+
+/// Overlays the backend's [live] catalogue onto the seed and makes it the
+/// effective [allPlans]. Seed order is preserved; each seed plan keeps its rich
+/// static detail (feats/flags/net/commitment) with the backend's volatile
+/// fields ([mergeLivePlan]) layered on top; genuinely-new live plans (no seed
+/// match) are appended. An empty [live] list is ignored so a failed/empty fetch
+/// never blanks the catalogue. Call once at startup after the backend is up.
+void applyLiveCatalog(List<Plan> live) {
+  if (live.isEmpty) return;
+  final liveById = {for (final p in live) p.id: p};
+  final seedIds = <String>{};
+  final merged = <Plan>[];
+  for (final s in _seedPlans) {
+    seedIds.add(s.id);
+    final l = liveById[s.id];
+    merged.add(l == null ? s : mergeLivePlan(s, l));
+  }
+  for (final l in live) {
+    if (!seedIds.contains(l.id)) merged.add(l);
+  }
+  _liveCatalog = List.unmodifiable(merged);
+}
+
+/// Reverts to the bundled seed (tests / sign-out).
+void resetCatalog() => _liveCatalog = null;
+
+/// Replaces a single plan in the effective catalogue in place (an admin price
+/// edit in local mode). Unlike [applyLiveCatalog] this preserves any prior
+/// overrides, so successive edits accumulate. A new id is appended.
+void overridePlan(Plan updated) {
+  final base = List<Plan>.of(allPlans);
+  final idx = base.indexWhere((p) => p.id == updated.id);
+  if (idx >= 0) {
+    base[idx] = updated;
+  } else {
+    base.add(updated);
+  }
+  _liveCatalog = List.unmodifiable(base);
+}
+
+/// Overlays the backend-owned (volatile) fields — price, title, rating, featured
+/// flag, kind, unit, and specs/fees when present — onto the rich [seed] plan,
+/// preserving the seed's static detail (feats, flags, net, commitment, fine
+/// print) that the `plans` table doesn't store. The DB owns "what changes";
+/// the seed owns "what's descriptive".
+Plan mergeLivePlan(Plan seed, Plan live) => seed.copyWith(
+      plan: live.plan,
+      price: live.price,
+      priceExact: live.priceExact,
+      rating: live.rating,
+      reviews: live.reviews,
+      highlight: live.highlight,
+      kind: live.kind,
+      priceUnit: live.priceUnit,
+      specs: live.specs.isNotEmpty ? live.specs : seed.specs,
+      fees: live.fees.isNotEmpty ? live.fees : seed.fees,
+    );
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

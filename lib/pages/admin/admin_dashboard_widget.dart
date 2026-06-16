@@ -6,7 +6,8 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 import '../../app_state.dart';
 import '../../data.dart';
-
+import '../../models.dart' show Plan;
+import '../../services/backend/local_backend.dart' show appBackend;
 import '../../services/savings_summary.dart' show computeSavings;
 import '../../theme/app_theme.dart';
 
@@ -77,6 +78,8 @@ class _AdminDashboardWidgetState extends State<AdminDashboardWidget> {
             _SavingsOpportunity(appState: appState, theme: theme),
             const SizedBox(height: 24),
             _MostWatchedPlans(appState: appState, theme: theme),
+            const SizedBox(height: 24),
+            _PriceManager(theme: theme, onChanged: _refresh),
             const SizedBox(height: 24),
             _RecentActivityFeed(appState: appState, theme: theme),
             const SizedBox(height: 100),
@@ -1057,4 +1060,222 @@ class _ActivityRow extends StatelessWidget {
 
 extension _StringX on String {
   String take(int n) => length <= n ? this : '${substring(0, n)}…';
+}
+
+// ── Section 6 — Price manager (admin price editing) ───────────────────────────
+// Edit a plan's price → appBackend.updatePlanPrice → (Supabase: the plan_prices
+// trigger logs it to the ledger; Local: in-memory override) → re-hydrate the
+// catalogue so every screen + the price-history sparkline reflect it.
+
+class _PriceManager extends StatefulWidget {
+  const _PriceManager({required this.theme, required this.onChanged});
+  final AppTheme theme;
+  final VoidCallback onChanged;
+
+  @override
+  State<_PriceManager> createState() => _PriceManagerState();
+}
+
+class _PriceManagerState extends State<_PriceManager> {
+  final _searchCtrl = TextEditingController();
+  String _query = '';
+  bool _saving = false;
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  List<Plan> get _matches {
+    final q = _query.trim();
+    if (q.isEmpty) return const [];
+    return allPlans
+        .where((p) => p.provider.contains(q) || p.plan.contains(q))
+        .take(6)
+        .toList();
+  }
+
+  Future<void> _edit(Plan plan) async {
+    final t = widget.theme;
+    final ctrl = TextEditingController(text: plan.priceText);
+    final newPrice = await showDialog<double>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A2030),
+        title: Text('עריכת מחיר', style: t.titleMedium.copyWith(color: Colors.white)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('${plan.provider} · ${plan.plan}',
+                style: t.bodySmall.copyWith(color: Colors.white60)),
+            const SizedBox(height: 14),
+            TextField(
+              controller: ctrl,
+              autofocus: true,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              style: t.titleLarge.copyWith(color: Colors.white),
+              decoration: InputDecoration(
+                prefixText: '₪ ',
+                prefixStyle: t.titleLarge.copyWith(color: Colors.white70),
+                filled: true,
+                fillColor: Colors.white10,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('ביטול', style: t.labelLarge.copyWith(color: Colors.white54)),
+          ),
+          TextButton(
+            onPressed: () {
+              final v = double.tryParse(ctrl.text.trim().replaceAll(',', '.'));
+              if (v != null && v > 0) Navigator.pop(ctx, v);
+            },
+            child: Text('שמור',
+                style: t.labelLarge.copyWith(color: AppColors.brandAccent, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
+    ctrl.dispose();
+    if (newPrice == null) return;
+
+    final isWhole = newPrice == newPrice.roundToDouble();
+    setState(() => _saving = true);
+    try {
+      await appBackend.updatePlanPrice(
+        plan.id,
+        price: newPrice.round(),
+        priceExact: isWhole ? null : newPrice,
+      );
+      // Refresh the effective catalogue from the source so every screen + the
+      // history sparkline pick up the new price immediately.
+      final fresh = await appBackend.fetchPlans();
+      AppState().hydrateCatalogWith(fresh);
+      if (!mounted) return;
+      final shown = isWhole ? '${newPrice.round()}' : newPrice.toStringAsFixed(2);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('המחיר של ${plan.plan} עודכן ל-₪$shown')),
+      );
+      widget.onChanged();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('עדכון נכשל: $e'), backgroundColor: AppColors.error),
+      );
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = widget.theme;
+    final matches = _matches;
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF1A2030),
+        borderRadius: BorderRadius.circular(t.radiusLg),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.07)),
+      ),
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.price_change_rounded, color: AppColors.brandAccent, size: 20),
+              const SizedBox(width: 8),
+              Text('ניהול מחירים', style: t.titleMedium.copyWith(color: Colors.white)),
+              const Spacer(),
+              if (_saving)
+                const SizedBox(
+                  width: 16, height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.brandAccent),
+                )
+              else
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(color: Colors.white10, borderRadius: BorderRadius.circular(t.radiusPill)),
+                  child: Text('${allPlans.length} מסלולים', style: t.labelSmall.copyWith(color: Colors.white54)),
+                ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text('עדכון מחיר מתעדכן לכל המשתמשים ונרשם בהיסטוריית המחירים',
+              style: t.labelSmall.copyWith(color: Colors.white38)),
+          const SizedBox(height: 14),
+          TextField(
+            controller: _searchCtrl,
+            onChanged: (v) => setState(() => _query = v),
+            style: t.bodyMedium.copyWith(color: Colors.white),
+            decoration: InputDecoration(
+              hintText: 'חיפוש מסלול או ספק…',
+              hintStyle: t.bodyMedium.copyWith(color: Colors.white38),
+              prefixIcon: const Icon(Icons.search_rounded, color: Colors.white38, size: 20),
+              filled: true,
+              fillColor: Colors.white10,
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+            ),
+          ),
+          const SizedBox(height: 12),
+          if (_query.trim().isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              child: Text('הקלידו שם מסלול או ספק כדי לערוך מחיר',
+                  style: t.bodySmall.copyWith(color: Colors.white38)),
+            )
+          else if (matches.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              child: Text('לא נמצאו מסלולים תואמים', style: t.bodySmall.copyWith(color: Colors.white38)),
+            )
+          else
+            ...matches.map((p) => _priceRow(p, t)),
+        ],
+      ),
+    );
+  }
+
+  Widget _priceRow(Plan p, AppTheme t) {
+    return Semantics(
+      button: true,
+      label: 'ערוך מחיר ${p.plan} של ${p.provider}, מחיר נוכחי ${p.priceText} שקלים',
+      child: InkWell(
+        onTap: _saving ? null : () => _edit(p),
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          constraints: const BoxConstraints(minHeight: 48),
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(p.plan,
+                        style: t.bodyMedium.copyWith(color: Colors.white, fontWeight: FontWeight.w600),
+                        maxLines: 1, overflow: TextOverflow.ellipsis),
+                    Text(p.provider, style: t.labelSmall.copyWith(color: Colors.white38)),
+                  ],
+                ),
+              ),
+              Text('₪${p.priceText}',
+                  style: t.titleSmall.copyWith(color: AppColors.saving, fontWeight: FontWeight.w800)),
+              const SizedBox(width: 8),
+              const Icon(Icons.edit_rounded, color: Colors.white38, size: 18),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }

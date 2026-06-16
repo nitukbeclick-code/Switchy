@@ -1,5 +1,13 @@
 import 'package:flutter/material.dart';
 
+/// Sentinel for copyWith arguments that are nullable yet meaningfully settable
+/// to null — distinguishes "argument omitted" from "set to null".
+const Object _undef = _Undef();
+
+class _Undef {
+  const _Undef();
+}
+
 class Category {
   const Category({required this.id, required this.name, required this.icon, required this.currentBill, required this.color, required this.planCount, required this.description});
   final String id;
@@ -101,6 +109,56 @@ class Plan {
 
   /// When this data was last verified (ISO date string).
   final String? updatedAt;
+
+  /// Returns a copy with the given fields replaced. Used by the catalogue
+  /// hydration ([mergeLivePlan] in data.dart) to overlay the backend-owned
+  /// volatile fields (price, rating, featured flag…) onto a rich seed plan
+  /// without losing its static detail (feats, flags, net, commitment).
+  ///
+  /// [priceExact] and [priceUnit] are nullable *and* meaningfully settable to
+  /// null (a plan can lose its fractional price or revert to monthly), so they
+  /// use a sentinel: omit the argument to keep the current value, pass `null`
+  /// to clear it.
+  Plan copyWith({
+    String? plan,
+    int? price,
+    Object? priceExact = _undef,
+    double? rating,
+    int? reviews,
+    bool? highlight,
+    String? kind,
+    Object? priceUnit = _undef,
+    Map<String, String>? specs,
+    Map<String, String>? fees,
+  }) =>
+      Plan(
+        id: id,
+        cat: cat,
+        provider: provider,
+        net: net,
+        plan: plan ?? this.plan,
+        price: price ?? this.price,
+        priceExact: identical(priceExact, _undef) ? this.priceExact : priceExact as double?,
+        after: after,
+        term: term,
+        intro: intro,
+        rating: rating ?? this.rating,
+        reviews: reviews ?? this.reviews,
+        flags: flags,
+        feats: feats,
+        fine: fine,
+        highlight: highlight ?? this.highlight,
+        kind: kind ?? this.kind,
+        priceUnit: identical(priceUnit, _undef) ? this.priceUnit : priceUnit as String?,
+        specs: specs ?? this.specs,
+        fineLines: fineLines,
+        fees: fees ?? this.fees,
+        terms: terms,
+        eligibility: eligibility,
+        notes: notes,
+        sourceUrl: sourceUrl,
+        updatedAt: updatedAt,
+      );
 
   bool get hasPromo => after != null && after! > price;
   bool get noCommit => term == null || term == 0;

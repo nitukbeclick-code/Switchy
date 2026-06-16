@@ -253,6 +253,15 @@ class LocalBackend implements Backend {
     return Future.value(List.unmodifiable(plans));
   }
 
+  @override
+  Future<void> updatePlanPrice(String planId, {required int price, double? priceExact}) async {
+    // No DB offline — mutate the in-memory catalogue so the admin sees the edit
+    // take effect this session (and the change rides the same hydration path).
+    final cur = planById(planId);
+    if (cur == null) return;
+    overridePlan(cur.copyWith(price: price, priceExact: priceExact));
+  }
+
   // ── Price history ──────────────────────────────────────────────────────────
   // Local/offline mode keeps no price ledger — return empty so the sparkline
   // falls back to its deterministic synthetic series.

@@ -2,8 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'data.dart' show planById;
-import 'models.dart' show TrackedPlan;
+import 'data.dart' show planById, applyLiveCatalog, isCatalogHydrated;
+import 'models.dart' show TrackedPlan, Plan;
 import 'services/backend/backend.dart'
     show BookedMeeting, MeetingStatus, meetingStatusFromDb, meetingStatusToDb;
 import 'services/savings_summary.dart' show savingsCreditedOnLead;
@@ -14,6 +14,16 @@ class AppState extends ChangeNotifier {
   factory AppState() => _instance;
   AppState._internal();
   static void reset() => _instance = AppState._internal();
+
+  /// Overlays the backend's live plan catalogue onto the bundled seed (see
+  /// `applyLiveCatalog` / `mergeLivePlan` in data.dart) and notifies listeners
+  /// so any open screen re-renders with live prices. Fire-and-forget from
+  /// startup; an empty list is a safe no-op (the app stays on the seed), so a
+  /// failed or backend-less fetch never blanks the catalogue.
+  void hydrateCatalogWith(List<Plan> plans) {
+    applyLiveCatalog(plans);
+    if (isCatalogHydrated) notifyListeners();
+  }
 
   Future<void> initializePersistedState() async {
     final p = await SharedPreferences.getInstance();

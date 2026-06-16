@@ -384,6 +384,15 @@ abstract interface class Backend {
     bool flashDealsOnly = false,
   });
 
+  /// Updates a plan's headline price (admin only). On the server this writes the
+  /// `plans` row — guarded by the admin-only RLS policy — and the `plan_prices`
+  /// capture trigger records the change in the ledger, so every user sees the
+  /// new price plus a price-drop notification when it falls. [priceExact] is the
+  /// fractional advertised price (e.g. 38.9), or null for a whole-shekel price.
+  /// Throws on failure so the admin UI can surface it. [LocalBackend] mutates the
+  /// in-memory catalogue so the change is visible for the session.
+  Future<void> updatePlanPrice(String planId, {required int price, double? priceExact});
+
   // ── Price history ──────────────────────────────────────────────────────────
   /// Chronological price points for a plan (oldest→newest, last [days] days),
   /// from the `plan_prices` ledger. Powers the history sparkline and price-drop

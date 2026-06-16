@@ -34,11 +34,15 @@ jobs:
       - run: flutter --version
       - run: flutter pub get
 
-      # Optional: build against the live Supabase backend by adding the keys as
-      # repo secrets (Settings → Secrets → Actions) and uncommenting:
-      #   --dart-define=SUPABASE_URL=${{ secrets.SUPABASE_URL }}
-      #   --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
-      - run: flutter build apk --release
+      # Builds against the live Supabase backend when the SUPABASE_URL /
+      # SUPABASE_ANON_KEY repo secrets are set (Settings → Secrets and variables
+      # → Actions → New repository secret). When a secret is unset it resolves to
+      # an empty string and main.dart's _initBackend() short-circuits, so the app
+      # stays on the on-device LocalBackend and the build always succeeds.
+      - run: >
+          flutter build apk --release
+          --dart-define=SUPABASE_URL=${{ secrets.SUPABASE_URL }}
+          --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
 
       - uses: actions/upload-artifact@v4
         with:

@@ -567,5 +567,18 @@ void main() {
       expect(AppState.isAdminEmail('nope@gmail.com'), isFalse);
       expect(AppState.isAdminEmail(''), isFalse);
     });
+
+    test('every configured admin email is recognised', () {
+      for (final email in const [
+        'uziel10@gmail.com',
+        'inbal2526@gmail.com',
+        'arielgabayyy@gmail.com',
+        'nitukbeclick@gmail.com',
+      ]) {
+        expect(AppState.isAdminEmail(email), isTrue, reason: email);
+        expect(AppState.isAdminEmail(email.toUpperCase()), isTrue, reason: email);
+      }
+      expect(AppState.adminEmails.length, equals(4));
+    });
   });
 }

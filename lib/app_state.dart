@@ -590,7 +590,12 @@ class AppState extends ChangeNotifier {
   // the signed-in email against [adminEmails] inside login()/logout(); the
   // setter remains for manual override (e.g. tests or a future server-driven
   // role). Compare lower-cased — emails are case-insensitive.
-  static const Set<String> adminEmails = {'uziel10@gmail.com'};
+  static const Set<String> adminEmails = {
+    'uziel10@gmail.com',
+    'inbal2526@gmail.com',
+    'arielgabayyy@gmail.com',
+    'nitukbeclick@gmail.com',
+  };
   static bool isAdminEmail(String email) =>
       email.isNotEmpty && adminEmails.contains(email.trim().toLowerCase());
   bool _isAdmin = false;

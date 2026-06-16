@@ -43,7 +43,7 @@ void main() {
     await _settle(tester);
 
     // The share growth hook is present in the Compare AppBar.
-    expect(find.byTooltip('שתף'), findsWidgets);
+    expect(find.byTooltip('שתף השוואה'), findsWidgets);
     expect(find.byIcon(Icons.ios_share_rounded), findsWidgets);
 
     // No unexpected exceptions (benign RenderFlex overflow is tolerated).

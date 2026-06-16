@@ -9,7 +9,24 @@ import 'package:chosech/app_state.dart';
 
 Future<void> _bootApp(WidgetTester tester) async {
   GoogleFonts.config.allowRuntimeFetching = false;
-  SharedPreferences.setMockInitialValues({});
+  // Seed onboarding as already seen so the cold-start router redirect skips
+  // /onboarding (which renders its own 'הבא ←' button) and lands on /home.
+  // Without this both the onboarding tour and the quiz expose a 'הבא ←'
+  // button, making the finder ambiguous.
+  SharedPreferences.setMockInitialValues({'seenOnboarding': true});
+  // Landing on /home on cold start mounts the "hot deals" carousel, whose
+  // fixed-height promo cards throw a benign RenderFlex overflow at the default
+  // test surface. That overflow is unrelated to the quiz under test; swallow
+  // only overflow errors (re-raising anything else) so it isn't flagged as an
+  // unexpected failure. Restored at teardown.
+  final priorOnError = FlutterError.onError;
+  FlutterError.onError = (FlutterErrorDetails details) {
+    if (details.exceptionAsString().contains('A RenderFlex overflowed')) {
+      return;
+    }
+    priorOnError?.call(details);
+  };
+  addTearDown(() => FlutterError.onError = priorOnError);
   AppState.reset();
   await AppState().initializePersistedState();
   await tester.pumpWidget(

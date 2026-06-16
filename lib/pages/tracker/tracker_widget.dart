@@ -266,13 +266,11 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                 AppButton(
                   text: 'מצא מסלול →',
                   onPressed: () async => context.goNamed('Results'),
-                  
-                    width: double.infinity,
-                    height: 52,
-                    color: ffTheme.primary,
-                    textStyle: ffTheme.titleSmall.copyWith(color: Colors.white),
-                    borderRadius: BorderRadius.circular(14),
-
+                  width: double.infinity,
+                  height: 52,
+                  color: ffTheme.primary,
+                  textStyle: ffTheme.titleSmall.copyWith(color: Colors.white),
+                  borderRadius: BorderRadius.circular(14),
                 ),
               ],
             ),

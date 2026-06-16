@@ -48,6 +48,8 @@ class _NotificationCenterWidgetState extends State<NotificationCenterWidget> {
       NotifKind.savings => (Icons.trending_down_rounded, ffTheme.success),
       NotifKind.meeting => (Icons.videocam_rounded, ffTheme.brandAccent),
       NotifKind.info => (Icons.info_rounded, ffTheme.info),
+      NotifKind.communityReply => (Icons.forum_rounded, ffTheme.brandAccent),
+      NotifKind.communityLike => (Icons.favorite_rounded, ffTheme.saving),
     };
   }
 

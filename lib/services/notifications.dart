@@ -11,7 +11,7 @@ import 'recommendation_engine.dart';
 /// Note: price-drop alerts use [savings] so existing switch expressions on this
 /// enum remain exhaustive. A dedicated [priceDrop] value can be introduced once
 /// all call sites are updated.
-enum NotifKind { renewal, betterDeal, savings, meeting, info }
+enum NotifKind { renewal, betterDeal, savings, meeting, info, communityReply, communityLike }
 
 /// A computed, actionable notification. These are derived on the fly from app
 /// state (tracked plans, watchlist, bills) rather than stored as events, so they
@@ -63,6 +63,33 @@ class AppNotification {
       priority: 750 + annual.toInt().clamp(0, 250),
     );
   }
+
+  /// Factory for a community reply alert — someone replied to the user's post.
+  factory AppNotification.communityReply({
+    required String postId,
+    required String authorName,
+    required String snippet,
+  }) => AppNotification(
+    id: 'reply_$postId',
+    kind: NotifKind.communityReply,
+    title: 'תגובה חדשה',
+    body: '$authorName הגיב על הפוסט שלך: «$snippet»',
+    routeName: 'Community',
+    priority: 300,
+  );
+
+  /// Factory for a community like alert — the user's post received likes.
+  factory AppNotification.communityLike({
+    required String postId,
+    required int likerCount,
+  }) => AppNotification(
+    id: 'like_$postId',
+    kind: NotifKind.communityLike,
+    title: 'הפוסט שלך קיבל לייקים',
+    body: 'הפוסט שלך קיבל $likerCount לייקים 🎉',
+    routeName: 'Community',
+    priority: 200,
+  );
 }
 
 /// Builds the list of actionable notifications for [s], newest/most-urgent

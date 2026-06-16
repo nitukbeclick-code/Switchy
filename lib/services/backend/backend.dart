@@ -189,6 +189,7 @@ class PostInput {
     this.mediaType,
     this.media,
     this.mediaDurationMs,
+    this.planId,
   });
 
   final String author;
@@ -198,6 +199,7 @@ class PostInput {
   final String? mediaType; // image | video | audio
   final String? media;
   final int? mediaDurationMs;
+  final String? planId;
 
   Map<String, dynamic> toRow() => {
         'author': author,
@@ -207,6 +209,7 @@ class PostInput {
         'media_type': mediaType,
         'media_url': media,
         'media_duration_ms': mediaDurationMs,
+        'plan_id': planId,
       };
 }
 
@@ -363,6 +366,11 @@ abstract interface class Backend {
   Future<Set<String>> likedPostIds();
   Future<void> setBookmark(String postId, bool bookmarked);
   Future<Set<String>> bookmarkedPostIds();
+
+  /// Reports a post for moderation.
+  /// [postId] — the post being reported.
+  /// [reason] — one of: 'ספאם', 'לא הולם', 'מידע שגוי'.
+  Future<void> reportPost(String postId, String reason);
 
   // ── Plan catalogue ────────────────────────────────────────────────────────────
   /// Fetches plans from the catalogue with optional filters.

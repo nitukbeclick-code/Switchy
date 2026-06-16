@@ -1,4 +1,5 @@
 import '../app_state.dart';
+import 'notifications.dart';
 import 'reminder_schedule.dart';
 import 'push_native.dart' as impl;
 
@@ -76,6 +77,50 @@ class PushNotificationService {
       body:
           'תוכנית $planName ירדה מ-₪$oldStr ל-₪$newStr — חיסכון של ₪$monthlyStr לחודש (₪$annualStr בשנה)!',
       payload: planId,
+    );
+  }
+
+  /// Show an immediate local notification when someone replies to the user's
+  /// community post, if the user has community notifications enabled.
+  Future<void> notifyCommunityReply({
+    required AppState appState,
+    required String postId,
+    required String authorName,
+    required String snippet,
+  }) async {
+    if (!appState.prefCommunityNotifs) return;
+    if (!_ready) await init();
+    final notif = AppNotification.communityReply(
+      postId: postId,
+      authorName: authorName,
+      snippet: snippet,
+    );
+    await impl.showNow(
+      id: postId.hashCode & 0x7fffffff,
+      title: notif.title,
+      body: notif.body,
+      payload: postId,
+    );
+  }
+
+  /// Show an immediate local notification when the user's community post
+  /// receives likes, if the user has community notifications enabled.
+  Future<void> notifyCommunityLike({
+    required AppState appState,
+    required String postId,
+    required int likerCount,
+  }) async {
+    if (!appState.prefCommunityNotifs) return;
+    if (!_ready) await init();
+    final notif = AppNotification.communityLike(
+      postId: postId,
+      likerCount: likerCount,
+    );
+    await impl.showNow(
+      id: 'like_$postId'.hashCode & 0x7fffffff,
+      title: notif.title,
+      body: notif.body,
+      payload: postId,
     );
   }
 

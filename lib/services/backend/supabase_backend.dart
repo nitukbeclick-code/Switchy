@@ -471,6 +471,38 @@ class SupabaseBackend implements Backend {
     return (rows as List).map((r) => r['post_id'] as String).toSet();
   }
 
+  @override
+  Future<void> reportPost(String postId, String reason) async {
+    /*
+      SQL to create the backing table (run once in Supabase dashboard):
+
+      CREATE TABLE IF NOT EXISTS post_reports (
+        id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        post_id     text NOT NULL,
+        reporter_id uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+        reason      text NOT NULL CHECK (reason IN ('ספאם','לא הולם','מידע שגוי')),
+        created_at  timestamptz NOT NULL DEFAULT now()
+      );
+
+      ALTER TABLE post_reports ENABLE ROW LEVEL SECURITY;
+
+      -- Users can insert their own reports
+      CREATE POLICY "users can report posts"
+        ON post_reports FOR INSERT
+        WITH CHECK (reporter_id = auth.uid());
+
+      -- Only service role / admins can read reports
+      CREATE POLICY "admins read reports"
+        ON post_reports FOR SELECT
+        USING (auth.role() = 'service_role');
+    */
+    await _db.from('post_reports').insert({
+      'post_id': postId,
+      'reporter_id': _uid,
+      'reason': reason,
+    });
+  }
+
   // ── Plan catalogue ────────────────────────────────────────────────────────────
   @override
   Future<List<Plan>> fetchPlans({

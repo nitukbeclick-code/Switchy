@@ -232,6 +232,9 @@ class LocalBackend implements Backend {
   @override
   Future<Set<String>> bookmarkedPostIds() async => Set.unmodifiable(_bookmarked);
 
+  @override
+  Future<void> reportPost(String postId, String reason) => Future.value();
+
   // ── Plan catalogue ────────────────────────────────────────────────────────────
   @override
   Future<List<Plan>> fetchPlans({

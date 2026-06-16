@@ -39,6 +39,8 @@ class _CommunityWidgetState extends State<CommunityWidget> {
   bool _showBookmarksOnly = false;
   // Active topic filter (null = כולם)
   String? _topicFilter;
+  // Author filter — shows only posts by this author name (null = כולם)
+  String? _authorFilter;
   // Reply threads, keyed by post id. Populated only from real backend content
   // (and the user's own persisted replies) — no fabricated seed conversations.
   final Map<String, List<_Reply>> _replyData = {};
@@ -157,6 +159,10 @@ class _CommunityWidgetState extends State<CommunityWidget> {
       final allowed = _topicChannels[_topicFilter!] ?? const <String>[];
       base = base.where((p) => allowed.contains(p.channel)).toList();
     }
+    // Apply author filter
+    if (_authorFilter != null) {
+      base = base.where((p) => p.author == _authorFilter).toList();
+    }
     if (_searchQuery.isNotEmpty) {
       final q = _searchQuery.toLowerCase();
       base = base.where((p) =>
@@ -263,6 +269,393 @@ class _CommunityWidgetState extends State<CommunityWidget> {
             child: const Text('מחק'),
           ),
         ],
+      ),
+    );
+  }
+
+  // ── Report Post ────────────────────────────────────────────────────────────────
+
+  void _showReportSheet(BuildContext context, CommunityPost post) {
+    final ffTheme = AppTheme.of(context);
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        decoration: BoxDecoration(
+          color: ffTheme.background,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: ffTheme.alternate, borderRadius: BorderRadius.circular(2)))),
+            const SizedBox(height: 16),
+            Text('דווח על פוסט', style: ffTheme.titleLarge),
+            const SizedBox(height: 4),
+            Text('מדוע אתה מדווח על פוסט זה?', style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText)),
+            const SizedBox(height: 16),
+            for (final entry in [
+              ('spam', 'ספאם'),
+              ('inappropriate', 'לא הולם'),
+              ('misinformation', 'מידע שגוי'),
+            ])
+              ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                leading: Icon(Icons.flag_outlined, color: ffTheme.error, size: 20),
+                title: Text(entry.$2, style: ffTheme.bodyMedium),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                onTap: () async {
+                  Navigator.pop(ctx);
+                  try {
+                    await appBackend.reportPost(post.id, entry.$1);
+                  } catch (_) {}
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('הדיווח נשלח, תודה')),
+                    );
+                  }
+                },
+              ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Edit Post ──────────────────────────────────────────────────────────────────
+
+  void _showEditComposer(BuildContext context, AppState appState, AppTheme ffTheme, CommunityPost post) {
+    final ctrl = TextEditingController(text: post.text);
+    final String selectedChannel = post.channel;
+    final String? pendingType = post.mediaType;
+    final String? pendingData = post.mediaData;
+    final int? pendingDur = post.mediaDurationMs;
+    // Resolve the attached plan if any
+    Plan? attachedPlan;
+    if (post.planId != null) {
+      try {
+        attachedPlan = allPlans.firstWhere((p) => p.id == post.planId);
+      } catch (_) {}
+    }
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheet) => AnimatedPadding(
+          duration: const Duration(milliseconds: 100),
+          padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+          child: Container(
+            decoration: BoxDecoration(
+              color: ffTheme.background,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: ffTheme.alternate, borderRadius: BorderRadius.circular(2)))),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Text('ערוך פוסט', style: ffTheme.titleLarge),
+                    const Spacer(),
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      child: Text('ביטול', style: ffTheme.bodyMedium.copyWith(color: ffTheme.secondaryText)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                Text('תוכן', style: ffTheme.labelLarge),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: ctrl,
+                  maxLines: 4,
+                  minLines: 3,
+                  maxLength: 500,
+                  autofocus: true,
+                  textDirection: TextDirection.rtl,
+                  onChanged: (_) => setSheet(() {}),
+                  decoration: InputDecoration(
+                    hintText: 'שתפו חוויה, טיפ, שאלה...',
+                    filled: true,
+                    fillColor: Colors.white,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: ffTheme.alternate)),
+                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: ffTheme.alternate)),
+                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: ffTheme.primary, width: 1.5)),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                // Plan attachment chip
+                if (attachedPlan != null)
+                  Builder(builder: (_) {
+                    final plan = attachedPlan!;
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Chip(
+                        avatar: CircleAvatar(
+                          backgroundColor: ffTheme.primary,
+                          child: Text(
+                            plan.provider.isNotEmpty ? plan.provider[0] : '?',
+                            style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                        label: Text('${plan.plan} • ₪${plan.price}', style: ffTheme.labelSmall),
+                        deleteIcon: const Icon(Icons.close, size: 14),
+                        onDeleted: () => setSheet(() => attachedPlan = null),
+                      ),
+                    );
+                  }),
+                // Attach plan button
+                GestureDetector(
+                  onTap: () async {
+                    final plan = await _showPlanPickerSheet(context, ffTheme);
+                    if (plan != null) setSheet(() => attachedPlan = plan);
+                  },
+                  child: Chip(
+                    avatar: Icon(Icons.attach_file_rounded, size: 14, color: ffTheme.primary),
+                    label: Text('צרף תוכנית', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary)),
+                    backgroundColor: ffTheme.accent1,
+                    side: BorderSide(color: ffTheme.primary.withValues(alpha: 0.2)),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () async {
+                      final text = ctrl.text.trim();
+                      if (text.isEmpty && pendingData == null) return;
+                      HapticFeedback.lightImpact();
+                      Navigator.pop(ctx);
+                      try {
+                        await appBackend.deletePost(post.id);
+                        final author = appState.firstName;
+                        final avatar = appState.firstName.isNotEmpty ? appState.firstName[0] : 'א';
+                        final newPost = await appBackend.createPost(PostInput(
+                          author: author,
+                          avatar: avatar,
+                          channel: selectedChannel,
+                          text: text,
+                          mediaType: pendingType,
+                          media: pendingData,
+                          mediaDurationMs: pendingDur,
+                          planId: attachedPlan?.id,
+                        ));
+                        setState(() {
+                          _posts.removeWhere((p) => p.id == post.id);
+                          _posts.insert(0, newPost);
+                        });
+                      } catch (_) {
+                        await _loadFromBackend();
+                      }
+                    },
+                    icon: const Icon(Icons.check_rounded, size: 18),
+                    label: const Text('שמור שינויים'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: ffTheme.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      textStyle: GoogleFonts.rubik(fontSize: 15, fontWeight: FontWeight.w700),
+                      elevation: 0,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ).then((_) => ctrl.dispose());
+  }
+
+  // ── Plan picker bottom sheet ────────────────────────────────────────────────────
+
+  Future<Plan?> _showPlanPickerSheet(BuildContext context, AppTheme ffTheme) async {
+    final searchCtrl = TextEditingController();
+    Plan? result;
+    await showModalBottomSheet<Plan>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheet) {
+          final query = searchCtrl.text.toLowerCase();
+          final filtered = allPlans.where((p) =>
+            query.isEmpty ||
+            p.plan.toLowerCase().contains(query) ||
+            p.provider.toLowerCase().contains(query)
+          ).toList();
+          return Container(
+            height: MediaQuery.of(ctx).size.height * 0.75,
+            decoration: BoxDecoration(
+              color: ffTheme.background,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: ffTheme.alternate, borderRadius: BorderRadius.circular(2)))),
+                      const SizedBox(height: 14),
+                      Text('בחר תוכנית לצרף', style: ffTheme.titleLarge),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: searchCtrl,
+                        textDirection: TextDirection.rtl,
+                        autofocus: true,
+                        onChanged: (_) => setSheet(() {}),
+                        decoration: InputDecoration(
+                          hintText: 'חפש תוכנית או ספק...',
+                          hintTextDirection: TextDirection.rtl,
+                          prefixIcon: Icon(Icons.search_rounded, color: ffTheme.secondaryText, size: 18),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          filled: true,
+                          fillColor: Colors.white,
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: ffTheme.alternate)),
+                          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: ffTheme.alternate)),
+                          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: ffTheme.primary)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Expanded(
+                  child: ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                    itemCount: filtered.length,
+                    itemBuilder: (_, i) {
+                      final plan = filtered[i];
+                      return ListTile(
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        leading: CircleAvatar(
+                          backgroundColor: ffTheme.primary,
+                          radius: 16,
+                          child: Text(
+                            plan.provider.isNotEmpty ? plan.provider[0] : '?',
+                            style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                        title: Text(plan.plan, style: ffTheme.labelMedium),
+                        subtitle: Text('${plan.provider} • ₪${plan.price}', style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        onTap: () {
+                          result = plan;
+                          Navigator.pop(ctx);
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+    searchCtrl.dispose();
+    return result;
+  }
+
+  // ── Author mini-profile bottom sheet ──────────────────────────────────────────
+
+  void _showAuthorProfile(BuildContext context, CommunityPost post, AppTheme ffTheme) {
+    final authorPostCount = _posts.where((p) => p.author == post.author).length;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        decoration: BoxDecoration(
+          color: ffTheme.background,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Semantics(
+                  button: true,
+                  label: 'סגור',
+                  child: GestureDetector(
+                    onTap: () => Navigator.pop(ctx),
+                    child: Icon(Icons.close_rounded, color: ffTheme.secondaryText, size: 22),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            CircleAvatar(
+              radius: 32,
+              backgroundColor: ffTheme.primary,
+              child: Text(
+                post.avatar,
+                style: GoogleFonts.rubik(fontSize: 24, fontWeight: FontWeight.w800, color: Colors.white),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(post.author, style: ffTheme.titleLarge),
+                if (post.isVerified) ...[
+                  const SizedBox(width: 6),
+                  Icon(Icons.verified_rounded, size: 18, color: ffTheme.info),
+                ],
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _StatPill(value: '$authorPostCount', label: 'פוסטים', color: ffTheme.primary),
+                if (post.isVerified) ...[
+                  const SizedBox(width: 20),
+                  _StatPill(value: 'מאומת', label: 'סטטוס', color: ffTheme.info),
+                ],
+              ],
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  setState(() {
+                    _authorFilter = post.author;
+                    _visibleCount = _feedPageSize;
+                  });
+                },
+                icon: Icon(Icons.filter_list_rounded, size: 16, color: ffTheme.primary),
+                label: Text(
+                  'ראה את כל הפוסטים של ${post.author}',
+                  style: ffTheme.bodyMedium.copyWith(color: ffTheme.primary),
+                ),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: ffTheme.primary,
+                  side: BorderSide(color: ffTheme.primary),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
       ),
     );
   }
@@ -612,6 +1005,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
     String? pendingType;
     String? pendingData;
     int? pendingDur;
+    Plan? attachedPlan;
 
     showModalBottomSheet(
       context: context,
@@ -686,6 +1080,59 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                   ),
                 ),
                 const SizedBox(height: 10),
+
+                // Plan attachment row
+                Row(
+                  children: [
+                    // Attach plan chip/button
+                    GestureDetector(
+                      onTap: () async {
+                        final plan = await _showPlanPickerSheet(context, ffTheme);
+                        if (plan != null) setSheet(() => attachedPlan = plan);
+                      },
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: attachedPlan != null ? ffTheme.accent1 : Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: attachedPlan != null ? ffTheme.primary : ffTheme.alternate),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.attach_file_rounded, size: 14, color: ffTheme.primary),
+                            const SizedBox(width: 5),
+                            Text('צרף תוכנית 📎', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary)),
+                          ],
+                        ),
+                      ),
+                    ),
+                    if (attachedPlan != null) ...[
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Chip(
+                          avatar: CircleAvatar(
+                            backgroundColor: ffTheme.primary,
+                            child: Text(
+                              attachedPlan!.provider.isNotEmpty ? attachedPlan!.provider[0] : '?',
+                              style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                          label: Text(
+                            '${attachedPlan!.plan} • ₪${attachedPlan!.price}',
+                            style: ffTheme.labelSmall,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          deleteIcon: const Icon(Icons.close, size: 14),
+                          onDeleted: () => setSheet(() => attachedPlan = null),
+                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 8),
 
                 // Media attach row
                 Row(
@@ -795,6 +1242,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                           mediaType: pendingType,
                           mediaData: pendingData,
                           mediaDurationMs: pendingDur,
+                          planId: attachedPlan?.id,
                         ));
                       });
                       Navigator.pop(ctx);
@@ -806,6 +1254,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                         mediaType: pendingType,
                         media: pendingData,
                         mediaDurationMs: pendingDur,
+                        planId: attachedPlan?.id,
                       )).ignore();
                     },
                     icon: const Icon(Icons.send_rounded, size: 18),
@@ -1071,6 +1520,34 @@ class _CommunityWidgetState extends State<CommunityWidget> {
             ),
           ).animate().fadeIn(duration: 280.ms),
 
+          // Author filter banner
+          if (_authorFilter != null)
+            Container(
+              margin: const EdgeInsets.fromLTRB(16, 6, 16, 0),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppColors.brandAccent.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppColors.brandAccent.withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.person_rounded, size: 14, color: AppColors.brandAccent),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'מציג פוסטים של: $_authorFilter',
+                      style: AppTheme.of(context).labelSmall.copyWith(color: AppColors.brandAccent, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () => setState(() { _authorFilter = null; _visibleCount = _feedPageSize; }),
+                    child: const Icon(Icons.close_rounded, size: 16, color: AppColors.brandAccent),
+                  ),
+                ],
+              ),
+            ).animate().fadeIn(duration: 200.ms),
+
           // Quick-post section
           _QuickPostSection(
             ctrl: _quickPostCtrl,
@@ -1217,6 +1694,9 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                           },
                           onReply: () => _showReplies(context, post, ffTheme),
                           onDelete: () => _confirmDelete(context, post, appState, ffTheme),
+                          onReport: () => _showReportSheet(context, post),
+                          onEdit: () => _showEditComposer(context, appState, ffTheme, post),
+                          onAuthorTap: () => _showAuthorProfile(context, post, ffTheme),
                         ).animate(delay: (feedIndex * 50).ms).fadeIn(duration: 350.ms).slideY(begin: 0.05, end: 0);
                       },
                     ),
@@ -1241,6 +1721,9 @@ class _PostCard extends StatefulWidget {
     this.isOwn = false,
     this.isCurrentUserVerified = false,
     this.onDelete,
+    this.onReport,
+    this.onEdit,
+    this.onAuthorTap,
   });
   final CommunityPost post;
   final AppTheme ffTheme;
@@ -1251,6 +1734,9 @@ class _PostCard extends StatefulWidget {
   final bool isOwn;
   final bool isCurrentUserVerified;
   final VoidCallback? onDelete;
+  final VoidCallback? onReport;
+  final VoidCallback? onEdit;
+  final VoidCallback? onAuthorTap;
 
   @override
   State<_PostCard> createState() => _PostCardState();
@@ -1318,10 +1804,17 @@ class _PostCardState extends State<_PostCard> {
                 // Author row
                 Row(
                   children: [
-                    Container(
-                      width: 38, height: 38,
-                      decoration: BoxDecoration(color: ffTheme.accent1, shape: BoxShape.circle),
-                      child: Center(child: Text(post.avatar, style: GoogleFonts.rubik(fontSize: 16, fontWeight: FontWeight.w700, color: ffTheme.primary))),
+                    Semantics(
+                      button: true,
+                      label: 'פרופיל של ${post.author}',
+                      child: GestureDetector(
+                        onTap: widget.onAuthorTap,
+                        child: Container(
+                          width: 38, height: 38,
+                          decoration: BoxDecoration(color: ffTheme.accent1, shape: BoxShape.circle),
+                          child: Center(child: Text(post.avatar, style: GoogleFonts.rubik(fontSize: 16, fontWeight: FontWeight.w700, color: ffTheme.primary))),
+                        ),
+                      ),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
@@ -1330,7 +1823,14 @@ class _PostCardState extends State<_PostCard> {
                         children: [
                           Row(
                             children: [
-                              Flexible(child: Text(post.author, style: ffTheme.labelLarge, overflow: TextOverflow.ellipsis)),
+                              Semantics(
+                                button: true,
+                                label: 'פרופיל של ${post.author}',
+                                child: GestureDetector(
+                                  onTap: widget.onAuthorTap,
+                                  child: Text(post.author, style: ffTheme.labelLarge, overflow: TextOverflow.ellipsis),
+                                ),
+                              ),
                               if (post.isTeam) ...[
                                 const SizedBox(width: 6),
                                 Container(
@@ -1387,33 +1887,61 @@ class _PostCardState extends State<_PostCard> {
                         ),
                       ),
                     ),
-                    // Own-post overflow menu
-                    if (widget.isOwn && widget.onDelete != null)
-                      SizedBox(
-                        height: 28,
-                        width: 28,
-                        child: PopupMenuButton<String>(
-                          padding: EdgeInsets.zero,
-                          tooltip: 'אפשרויות',
-                          icon: Icon(Icons.more_vert_rounded, size: 18, color: ffTheme.secondaryText),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          onSelected: (v) {
-                            if (v == 'delete') widget.onDelete!();
-                          },
-                          itemBuilder: (_) => [
-                            PopupMenuItem<String>(
-                              value: 'delete',
-                              child: Row(
-                                children: [
-                                  Icon(Icons.delete_outline_rounded, size: 18, color: ffTheme.error),
-                                  const SizedBox(width: 8),
-                                  Text('מחק פוסט', style: ffTheme.bodyMedium.copyWith(color: ffTheme.error)),
-                                ],
+                    // Overflow menu — own posts: edit+delete; others: report
+                    SizedBox(
+                      height: 28,
+                      width: 28,
+                      child: PopupMenuButton<String>(
+                        padding: EdgeInsets.zero,
+                        tooltip: 'אפשרויות',
+                        icon: Icon(Icons.more_vert_rounded, size: 18, color: ffTheme.secondaryText),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        onSelected: (v) {
+                          if (v == 'delete') widget.onDelete?.call();
+                          if (v == 'report') widget.onReport?.call();
+                          if (v == 'edit') widget.onEdit?.call();
+                        },
+                        itemBuilder: (_) {
+                          final canEdit = widget.isOwn &&
+                              DateTime.now().difference(post.timestamp).inMinutes < 10;
+                          return [
+                            if (widget.isOwn && widget.onDelete != null)
+                              PopupMenuItem<String>(
+                                value: 'delete',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.delete_outline_rounded, size: 18, color: ffTheme.error),
+                                    const SizedBox(width: 8),
+                                    Text('מחק פוסט', style: ffTheme.bodyMedium.copyWith(color: ffTheme.error)),
+                                  ],
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
+                            if (canEdit && widget.onEdit != null)
+                              PopupMenuItem<String>(
+                                value: 'edit',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.edit_outlined, size: 18, color: ffTheme.primary),
+                                    const SizedBox(width: 8),
+                                    Text('ערוך פוסט', style: ffTheme.bodyMedium.copyWith(color: ffTheme.primary)),
+                                  ],
+                                ),
+                              ),
+                            if (!widget.isOwn)
+                              PopupMenuItem<String>(
+                                value: 'report',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.flag_outlined, size: 18, color: ffTheme.secondaryText),
+                                    const SizedBox(width: 8),
+                                    Text('דווח על פוסט', style: ffTheme.bodyMedium),
+                                  ],
+                                ),
+                              ),
+                          ];
+                        },
                       ),
+                    ),
                   ],
                 ),
 
@@ -1433,28 +1961,51 @@ class _PostCardState extends State<_PostCard> {
                     VideoMessageBubble(source: post.mediaData!),
                 ],
 
-                // Plan chip
+                // Plan chip (tagged plan)
                 if (post.planId != null) ...[
                   const SizedBox(height: 10),
-                  GestureDetector(
-                    onTap: () => context.pushNamed('PlanDetail', pathParameters: {'planId': post.planId!}),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: ffTheme.accent1,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: ffTheme.primary.withValues(alpha: 0.2)),
+                  Builder(builder: (ctx) {
+                    Plan? taggedPlan;
+                    try {
+                      taggedPlan = allPlans.firstWhere((p) => p.id == post.planId);
+                    } catch (_) {}
+                    return GestureDetector(
+                      onTap: () => context.pushNamed('PlanDetail', pathParameters: {'planId': post.planId!}),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: ffTheme.accent1,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: ffTheme.primary.withValues(alpha: 0.25)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (taggedPlan != null)
+                              CircleAvatar(
+                                radius: 10,
+                                backgroundColor: ffTheme.primary,
+                                child: Text(
+                                  taggedPlan.provider.isNotEmpty ? taggedPlan.provider[0] : '?',
+                                  style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700),
+                                ),
+                              )
+                            else
+                              Icon(Icons.link_rounded, size: 14, color: ffTheme.primary),
+                            const SizedBox(width: 6),
+                            Text(
+                              taggedPlan != null
+                                  ? '${taggedPlan.plan} • ₪${taggedPlan.price}'
+                                  : 'צפה בחבילה',
+                              style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700),
+                            ),
+                            const SizedBox(width: 4),
+                            Icon(Icons.open_in_new_rounded, size: 10, color: ffTheme.primary.withValues(alpha: 0.7)),
+                          ],
+                        ),
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.open_in_new_rounded, size: 12, color: ffTheme.primary),
-                          const SizedBox(width: 6),
-                          Text('צפה בחבילה', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
-                        ],
-                      ),
-                    ),
-                  ),
+                    );
+                  }),
                 ],
               ],
             ),

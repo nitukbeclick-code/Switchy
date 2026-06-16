@@ -14,6 +14,7 @@ import '../../data.dart';
 import '../../components/logo_widget/logo_widget.dart';
 import '../../services/recommendation_engine.dart';
 import '../../services/backend/local_backend.dart';
+import '../../services/provider_ratings.dart';
 
 class PlanDetailWidget extends StatefulWidget {
   const PlanDetailWidget({super.key, required this.planId});
@@ -553,6 +554,13 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                         ),
                       )
                           .animate(delay: 280.ms)
+                          .fadeIn(duration: 300.ms)
+                          .slideY(begin: 0.08),
+
+                      // ── ביקורות section ─────────────────────────────────
+                      const SizedBox(height: 14),
+                      _ReviewsSection(provider: plan.provider)
+                          .animate(delay: 300.ms)
                           .fadeIn(duration: 300.ms)
                           .slideY(begin: 0.08),
 
@@ -1694,6 +1702,306 @@ class _BulletRow extends StatelessWidget {
               style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText),
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Reviews section ───────────────────────────────────────────────────────────
+
+/// Embedded review section: star summary, sub-rating bars, top-3 review cards,
+/// and two CTAs linking to the full Ratings page.
+class _ReviewsSection extends StatelessWidget {
+  const _ReviewsSection({required this.provider});
+  final String provider;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppTheme.of(context);
+    final appState = Provider.of<AppState>(context, listen: false);
+    final rating = ProviderRatings.forProvider(provider, appState: appState);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: t.alternate),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Section header
+          Text('ביקורות', style: t.titleSmall),
+          const SizedBox(height: 12),
+
+          // ── 1. Star summary row ───────────────────────────────────────────
+          if (!rating.hasData)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Text(
+                'אין ביקורות עדיין',
+                style: t.bodySmall.copyWith(color: t.secondaryText),
+              ),
+            )
+          else ...[
+            Row(
+              children: [
+                _StarRow(stars: rating.stars, size: 22),
+                const SizedBox(width: 8),
+                Text(
+                  rating.stars.toStringAsFixed(1),
+                  style: t.titleMedium.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: t.primaryText,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  '(${rating.reviewCount} ביקורות)',
+                  style: t.bodySmall.copyWith(color: t.secondaryText),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+
+            // ── 2. Sub-rating bars ────────────────────────────────────────
+            ...ProviderRatings.subKeys.map((key) {
+              final val = rating.sub[key] ?? 0.0;
+              if (val <= 0) return const SizedBox.shrink();
+              final label = ProviderRatings.subLabels[key] ?? key;
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 52,
+                      child: Text(
+                        label,
+                        style: t.labelSmall.copyWith(color: t.secondaryText),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    SizedBox(
+                      width: 120,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: (val / 5.0).clamp(0.0, 1.0),
+                          minHeight: 6,
+                          backgroundColor: t.alternate,
+                          valueColor: AlwaysStoppedAnimation<Color>(t.brandAccent),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      val.toStringAsFixed(1),
+                      style: t.labelSmall.copyWith(
+                        color: t.primaryText,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+            const SizedBox(height: 4),
+          ],
+
+          // ── 3. Top-3 review cards (FutureBuilder) ──────────────────────
+          FutureBuilder<List<dynamic>>(
+            future: appBackend.reviewsForProvider(provider),
+            builder: (context, snapshot) {
+              final reviews = snapshot.data ?? const [];
+              if (reviews.isEmpty) return const SizedBox.shrink();
+              final topReviews = reviews.take(3).toList();
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 8),
+                  ...topReviews.asMap().entries.map((entry) {
+                    final i = entry.key;
+                    final r = entry.value;
+                    final overall = r.overall;
+                    final text = r.text;
+                    final snippet = text.length > 120 ? '${text.substring(0, 120)}...' : text;
+                    const isVerified = true; // local reviews are user-submitted
+                    return Padding(
+                      padding: EdgeInsets.only(bottom: i < topReviews.length - 1 ? 10 : 0),
+                      child: _ReviewCard(
+                        overall: overall,
+                        snippet: snippet,
+                        isVerified: isVerified,
+                      ),
+                    );
+                  }),
+                  const SizedBox(height: 8),
+                ],
+              );
+            },
+          ),
+
+          // ── 4. CTAs ──────────────────────────────────────────────────────
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(color: t.brandAccent),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                  ),
+                  onPressed: () => context.pushNamed('Ratings'),
+                  child: Text(
+                    'ראה את כל הביקורות',
+                    style: t.labelMedium.copyWith(
+                      color: t.brandAccent,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: t.brandAccent,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    elevation: 0,
+                  ),
+                  onPressed: () => context.pushNamed('Ratings'),
+                  child: Text(
+                    'כתוב ביקורת',
+                    style: t.labelMedium.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A row of filled / half / empty star icons for a given [stars] value (0..5).
+class _StarRow extends StatelessWidget {
+  const _StarRow({required this.stars, this.size = 18});
+  final double stars;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppTheme.of(context);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: List.generate(5, (i) {
+        final threshold = i + 1;
+        IconData icon;
+        if (stars >= threshold) {
+          icon = Icons.star_rounded;
+        } else if (stars >= threshold - 0.5) {
+          icon = Icons.star_half_rounded;
+        } else {
+          icon = Icons.star_border_rounded;
+        }
+        return Icon(icon, size: size, color: t.saving);
+      }),
+    );
+  }
+}
+
+/// A compact card showing a single review: star row, author initial, text
+/// snippet, and optional verified badge.
+class _ReviewCard extends StatelessWidget {
+  const _ReviewCard({
+    required this.overall,
+    required this.snippet,
+    this.isVerified = false,
+  });
+  final int overall;
+  final String snippet;
+  final bool isVerified;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppTheme.of(context);
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: t.background,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: t.alternate),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              // Author initial circle
+              Container(
+                width: 30,
+                height: 30,
+                decoration: BoxDecoration(
+                  color: t.brandAccent.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: Text(
+                    'מ',
+                    style: t.labelSmall.copyWith(
+                      color: t.brandAccent,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              _StarRow(stars: overall.toDouble(), size: 14),
+              if (isVerified) ...[
+                const SizedBox(width: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: t.success.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    'מאומת',
+                    style: t.labelSmall.copyWith(
+                      color: t.success,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          if (snippet.isNotEmpty) ...[
+            const SizedBox(height: 7),
+            Text(
+              snippet,
+              style: t.bodySmall.copyWith(color: t.primaryText),
+            ),
+          ],
         ],
       ),
     );

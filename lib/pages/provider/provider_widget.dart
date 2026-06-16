@@ -1,4 +1,6 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
@@ -89,14 +91,13 @@ class _ProviderWidgetState extends State<ProviderWidget> {
         .map((c) => (cat: c, plans: plans.where((p) => p.cat == c.id).toList()))
         .toList();
 
-    // Community posts mentioning this provider
-    final seedMatches = communityPosts
-        .where((post) => post.text.contains(widget.providerName))
+    // Community posts relevant to this provider (for section visibility check)
+    final relevantPostMaps = appState.communityPosts
+        .where((m) =>
+            (m['text'] as String? ?? '').contains(widget.providerName) ||
+            (m['channel'] as String? ?? '') == 'המלצות')
         .toList();
-    final userPostMaps = appState.communityPosts
-        .where((m) => (m['text'] as String? ?? '').contains(widget.providerName))
-        .toList();
-    final hasCommunity = seedMatches.isNotEmpty || userPostMaps.isNotEmpty;
+    final hasCommunity = relevantPostMaps.isNotEmpty;
 
     final catCount = allProviderPlans.map((p) => p.cat).toSet().length;
 
@@ -253,31 +254,10 @@ class _ProviderWidgetState extends State<ProviderWidget> {
                         // ── Community section ────────────────────────────────
                         if (hasCommunity) ...[
                           const SizedBox(height: 24),
-                          Text(
-                            'מהקהילה על ${widget.providerName}',
-                            style: ffTheme.titleLarge,
-                          ).animate().fadeIn(duration: 300.ms),
-                          const SizedBox(height: 12),
-                          ...seedMatches.take(3).toList().asMap().entries.map(
-                            (e) => Padding(
-                              padding: const EdgeInsets.only(bottom: 10),
-                              child: _CommunityCard(
-                                text: e.value.text,
-                                author: e.value.author,
-                                ffTheme: ffTheme,
-                              ).animate(delay: (e.key * 60).ms).fadeIn(duration: 280.ms),
-                            ),
-                          ),
-                          ...userPostMaps.take(3 - seedMatches.take(3).length).toList().asMap().entries.map(
-                            (e) => Padding(
-                              padding: const EdgeInsets.only(bottom: 10),
-                              child: _CommunityCard(
-                                text: e.value['text'] as String? ?? '',
-                                author: e.value['author'] as String? ?? 'משתמש',
-                                ffTheme: ffTheme,
-                              ).animate(delay: ((seedMatches.length + e.key) * 60).ms).fadeIn(duration: 280.ms),
-                            ),
-                          ),
+                          _ProviderCommunitySection(
+                            providerName: widget.providerName,
+                            ffTheme: ffTheme,
+                          ).animate().fadeIn(duration: 320.ms),
                         ],
 
                         const SizedBox(height: 32),
@@ -896,21 +876,243 @@ class _PlanCard extends StatelessWidget {
   }
 }
 
-// ── Community quote card ───────────────────────────────────────────────────────
+// ── Full provider community section ───────────────────────────────────────────
 
-class _CommunityCard extends StatelessWidget {
-  const _CommunityCard({
-    required this.text,
-    required this.author,
+class _ProviderCommunitySection extends StatefulWidget {
+  const _ProviderCommunitySection({
+    required this.providerName,
     required this.ffTheme,
   });
 
-  final String text;
-  final String author;
+  final String providerName;
   final AppTheme ffTheme;
 
   @override
+  State<_ProviderCommunitySection> createState() =>
+      _ProviderCommunitySectionState();
+}
+
+class _ProviderCommunitySectionState
+    extends State<_ProviderCommunitySection> {
+  String? _activeChannel;
+
+  @override
   Widget build(BuildContext context) {
+    final appState = Provider.of<AppState>(context);
+    final ffTheme = widget.ffTheme;
+
+    // All posts mentioning the provider or in the 'המלצות' channel.
+    final allRelevant = appState.communityPosts
+        .where((m) =>
+            (m['text'] as String? ?? '').contains(widget.providerName) ||
+            (m['channel'] as String? ?? '') == 'המלצות')
+        .toList();
+
+    // Collect unique channels from relevant posts (max 5 chips).
+    final channelSet = <String>{};
+    for (final m in allRelevant) {
+      final ch = m['channel'] as String? ?? '';
+      if (ch.isNotEmpty) channelSet.add(ch);
+    }
+    final chips = channelSet.take(5).toList();
+
+    // Apply active channel filter.
+    final filtered = _activeChannel == null
+        ? allRelevant
+        : allRelevant
+            .where((m) => (m['channel'] as String? ?? '') == _activeChannel)
+            .toList();
+
+    // Sort by likes descending (likes key may be absent → 0).
+    final sorted = [...filtered]
+      ..sort((a, b) =>
+          ((b['likes'] as int?) ?? 0).compareTo((a['likes'] as int?) ?? 0));
+
+    final topPosts = sorted.take(5).toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // ── Section header ──────────────────────────────────────────────────
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'מה אומרת הקהילה',
+                style: ffTheme.titleLarge,
+              ),
+            ),
+            GestureDetector(
+              onTap: () => context.pushNamed('Community'),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'ראה עוד בקהילה',
+                    style: ffTheme.labelSmall.copyWith(
+                      color: AppColors.brandAccent,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(width: 2),
+                  const Icon(Icons.arrow_back_ios_rounded,
+                      size: 12, color: AppColors.brandAccent),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+
+        // ── Channel filter chips ────────────────────────────────────────────
+        if (chips.isNotEmpty) ...[
+          SizedBox(
+            height: 36,
+            child: ListView(
+              scrollDirection: Axis.horizontal,
+              children: [
+                // "הכל" chip
+                _ChannelChip(
+                  label: 'הכל',
+                  active: _activeChannel == null,
+                  ffTheme: ffTheme,
+                  onTap: () => setState(() => _activeChannel = null),
+                ),
+                ...chips.map(
+                  (ch) => _ChannelChip(
+                    label: ch,
+                    active: _activeChannel == ch,
+                    ffTheme: ffTheme,
+                    onTap: () => setState(
+                      () => _activeChannel = _activeChannel == ch ? null : ch,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+        ],
+
+        // ── Post cards ──────────────────────────────────────────────────────
+        ...topPosts.asMap().entries.map((entry) {
+          final i = entry.key;
+          final m = entry.value;
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: _ProviderPostCard(
+              postMap: m,
+              ffTheme: ffTheme,
+              onLikeTap: () {
+                HapticFeedback.lightImpact();
+                appState.toggleLike(m['id'] as String? ?? '');
+              },
+              isLiked: appState.hasLiked(m['id'] as String? ?? ''),
+              onReplyTap: () => context.pushNamed('Community'),
+            )
+                .animate(delay: (i * 55).ms)
+                .fadeIn(duration: 280.ms)
+                .slideY(begin: 0.06),
+          );
+        }),
+
+        // ── Bottom CTA ──────────────────────────────────────────────────────
+        const SizedBox(height: 4),
+        OutlinedButton.icon(
+          onPressed: () => context.pushNamed('Community'),
+          icon: const Icon(Icons.forum_rounded, size: 16, color: AppColors.brandAccent),
+          label: const Text('ראה עוד בקהילה'),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: AppColors.brandAccent,
+            side: BorderSide(color: AppColors.brandAccent.withValues(alpha: 0.5)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            padding: const EdgeInsets.symmetric(vertical: 12),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ── Channel filter chip ────────────────────────────────────────────────────────
+
+class _ChannelChip extends StatelessWidget {
+  const _ChannelChip({
+    required this.label,
+    required this.active,
+    required this.ffTheme,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool active;
+  final AppTheme ffTheme;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        margin: const EdgeInsets.only(left: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: active ? AppColors.brandAccent : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: active
+                ? AppColors.brandAccent
+                : ffTheme.alternate.withValues(alpha: 0.5),
+          ),
+        ),
+        child: Text(
+          label,
+          style: ffTheme.labelSmall.copyWith(
+            color: active ? Colors.white : ffTheme.secondaryText,
+            fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Provider community post card ───────────────────────────────────────────────
+
+class _ProviderPostCard extends StatelessWidget {
+  const _ProviderPostCard({
+    required this.postMap,
+    required this.ffTheme,
+    required this.onLikeTap,
+    required this.onReplyTap,
+    required this.isLiked,
+  });
+
+  final Map<String, dynamic> postMap;
+  final AppTheme ffTheme;
+  final VoidCallback onLikeTap;
+  final VoidCallback onReplyTap;
+  final bool isLiked;
+
+  @override
+  Widget build(BuildContext context) {
+    final author = postMap['author'] as String? ?? 'משתמש';
+    final avatarStr = postMap['avatar'] as String? ?? '';
+    final text = postMap['text'] as String? ?? '';
+    final channel = postMap['channel'] as String? ?? '';
+    final likes = (postMap['likes'] as int?) ?? 0;
+    final replies = (postMap['replies'] as int?) ?? 0;
+    final mediaType = postMap['mediaType'] as String?;
+    final mediaData = postMap['mediaData'] as String?;
+    final isVerified = (postMap['isVerified'] as bool?) ?? false;
+
+    // Avatar initial: use the stored avatar string (first char) or derive from author.
+    final avatarChar = avatarStr.isNotEmpty
+        ? avatarStr[0]
+        : (author.isNotEmpty ? author[0] : '?');
+
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -925,47 +1127,254 @@ class _CommunityCard extends StatelessWidget {
           ),
         ],
       ),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 32,
-            height: 32,
-            decoration: BoxDecoration(
-              color: ffTheme.primary.withValues(alpha: 0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Center(
-              child: Text(
-                author.isNotEmpty
-                    ? String.fromCharCode(author.runes.first)
-                    : '?',
-                style: ffTheme.labelMedium.copyWith(
-                    color: ffTheme.primary, fontWeight: FontWeight.w700),
+          // Author row
+          Row(
+            children: [
+              // Avatar circle
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: ffTheme.primary.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: Text(
+                    avatarChar,
+                    style: ffTheme.labelMedium.copyWith(
+                      color: ffTheme.primary,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
               ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        author,
+                        style: ffTheme.labelMedium.copyWith(
+                            fontWeight: FontWeight.w700),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    if (isVerified) ...[
+                      const SizedBox(width: 4),
+                      Icon(Icons.verified_rounded,
+                          size: 13, color: ffTheme.info),
+                    ],
+                  ],
+                ),
+              ),
+              if (channel.isNotEmpty)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: ffTheme.background,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    channel,
+                    style: ffTheme.labelSmall.copyWith(
+                      color: ffTheme.secondaryText,
+                      fontSize: 10,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 10),
+
+          // Post text
+          Text(
+            text,
+            style: ffTheme.bodySmall.copyWith(
+              color: ffTheme.primaryText,
+              height: 1.45,
+            ),
+            maxLines: 3,
+            overflow: TextOverflow.ellipsis,
+          ),
+
+          // Media thumbnail (image only; audio/video show a compact placeholder)
+          if (mediaType != null && mediaData != null) ...[
+            const SizedBox(height: 10),
+            _MediaThumbnail(
+              mediaType: mediaType,
+              mediaData: mediaData,
+              ffTheme: ffTheme,
+            ),
+          ],
+
+          const SizedBox(height: 10),
+
+          // Action row: likes + replies
+          Row(
+            children: [
+              // Like button
+              Semantics(
+                button: true,
+                label: isLiked ? 'הסר לייק' : 'תן לייק',
+                child: GestureDetector(
+                  onTap: onLikeTap,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 200),
+                        child: Icon(
+                          isLiked
+                              ? Icons.favorite_rounded
+                              : Icons.favorite_border_rounded,
+                          key: ValueKey(isLiked),
+                          size: 18,
+                          color:
+                              isLiked ? Colors.red.shade400 : ffTheme.secondaryText,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        '${isLiked ? likes + 1 : likes}',
+                        style: ffTheme.labelSmall.copyWith(
+                          color: isLiked
+                              ? Colors.red.shade400
+                              : ffTheme.secondaryText,
+                          fontWeight:
+                              isLiked ? FontWeight.w700 : FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              // Reply button
+              Semantics(
+                button: true,
+                label: 'עבור לדיון בקהילה',
+                child: GestureDetector(
+                  onTap: onReplyTap,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.chat_bubble_outline_rounded,
+                          size: 16, color: ffTheme.secondaryText),
+                      const SizedBox(width: 4),
+                      Text(
+                        '$replies',
+                        style: ffTheme.labelSmall
+                            .copyWith(color: ffTheme.secondaryText),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Media thumbnail helper ─────────────────────────────────────────────────────
+
+class _MediaThumbnail extends StatelessWidget {
+  const _MediaThumbnail({
+    required this.mediaType,
+    required this.mediaData,
+    required this.ffTheme,
+  });
+
+  final String mediaType;
+  final String mediaData;
+  final AppTheme ffTheme;
+
+  @override
+  Widget build(BuildContext context) {
+    if (mediaType == 'image') {
+      // mediaData is a base64 data-URI: "data:image/...;base64,<data>"
+      try {
+        final commaIdx = mediaData.indexOf(',');
+        final bytes = base64Decode(
+            commaIdx >= 0 ? mediaData.substring(commaIdx + 1) : mediaData);
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: Image.memory(
+            bytes,
+            height: 140,
+            width: double.infinity,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => _MediaPlaceholder(
+              icon: Icons.image_rounded,
+              label: 'תמונה',
+              ffTheme: ffTheme,
             ),
           ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  author,
-                  style: ffTheme.labelSmall
-                      .copyWith(fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  text,
-                  style: ffTheme.bodySmall
-                      .copyWith(color: ffTheme.primaryText),
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
+        );
+      } catch (_) {
+        return _MediaPlaceholder(
+          icon: Icons.image_rounded,
+          label: 'תמונה',
+          ffTheme: ffTheme,
+        );
+      }
+    }
+
+    if (mediaType == 'audio') {
+      return _MediaPlaceholder(
+        icon: Icons.mic_rounded,
+        label: 'הודעה קולית',
+        ffTheme: ffTheme,
+      );
+    }
+
+    if (mediaType == 'video') {
+      return _MediaPlaceholder(
+        icon: Icons.videocam_rounded,
+        label: 'וידאו',
+        ffTheme: ffTheme,
+      );
+    }
+
+    return const SizedBox.shrink();
+  }
+}
+
+class _MediaPlaceholder extends StatelessWidget {
+  const _MediaPlaceholder({
+    required this.icon,
+    required this.label,
+    required this.ffTheme,
+  });
+
+  final IconData icon;
+  final String label;
+  final AppTheme ffTheme;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 60,
+      decoration: BoxDecoration(
+        color: ffTheme.background,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: ffTheme.alternate),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 20, color: ffTheme.secondaryText),
+          const SizedBox(width: 8),
+          Text(label,
+              style: ffTheme.labelSmall
+                  .copyWith(color: ffTheme.secondaryText)),
         ],
       ),
     );

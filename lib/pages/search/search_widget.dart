@@ -876,14 +876,18 @@ class _CategoryResultChip extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(hit.icon, style: const TextStyle(fontSize: 16)),
+              Icon(categoryIconData(hit.id), size: 16, color: ffTheme.primary),
               const SizedBox(width: 8),
-              _Highlighted(
-                text: hit.name,
-                query: query,
-                base: GoogleFonts.assistant(
-                    fontSize: 14, fontWeight: FontWeight.w700, color: ffTheme.primary),
-                highlight: ffTheme.secondary.withValues(alpha: 0.4),
+              Flexible(
+                child: _Highlighted(
+                  text: hit.name,
+                  query: query,
+                  base: GoogleFonts.assistant(
+                      fontSize: 14, fontWeight: FontWeight.w700, color: ffTheme.primary),
+                  highlight: ffTheme.secondary.withValues(alpha: 0.4),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
               const SizedBox(width: 6),
               Icon(Icons.chevron_left_rounded, size: 18, color: ffTheme.primary),

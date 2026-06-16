@@ -188,24 +188,29 @@ class _OnboardingWidgetState extends State<OnboardingWidget>
               // ── Dots indicator ───────────────────────────────────────────
               Padding(
                 padding: const EdgeInsets.only(top: 8, bottom: 16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(3, (i) {
-                    final active = i == _page;
-                    return AnimatedContainer(
-                      duration: const Duration(milliseconds: 300),
-                      curve: Curves.easeOut,
-                      margin: const EdgeInsets.symmetric(horizontal: 4),
-                      width: active ? 28 : 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        color: active
-                            ? AppColors.brandAccent
-                            : AppColors.brandAccent.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                    );
-                  }),
+                child: Semantics(
+                  label: 'שלב ${_page + 1} מתוך 3',
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(3, (i) {
+                      final active = i == _page;
+                      return ExcludeSemantics(
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeOut,
+                          margin: const EdgeInsets.symmetric(horizontal: 4),
+                          width: active ? 28 : 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: active
+                                ? AppColors.brandAccent
+                                : AppColors.brandAccent.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                      );
+                    }),
+                  ),
                 ),
               ),
 
@@ -382,13 +387,19 @@ class _Step2 extends StatelessWidget {
           Row(
             children: [
               _CategoryChip(
-                  emoji: '📱', label: 'סלולר', delay: 380.ms),
+                  icon: Icons.smartphone_rounded,
+                  label: 'סלולר',
+                  delay: 380.ms),
               const SizedBox(width: 10),
               _CategoryChip(
-                  emoji: '🌐', label: 'אינטרנט', delay: 460.ms),
+                  icon: Icons.public_rounded,
+                  label: 'אינטרנט',
+                  delay: 460.ms),
               const SizedBox(width: 10),
               _CategoryChip(
-                  emoji: '📺', label: 'טלוויזיה', delay: 540.ms),
+                  icon: Icons.tv_rounded,
+                  label: 'טלוויזיה',
+                  delay: 540.ms),
             ],
           ),
 
@@ -525,7 +536,8 @@ class _Step3 extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text('✨', style: TextStyle(fontSize: 22)),
+                const Icon(Icons.auto_awesome_rounded,
+                    color: AppColors.savingDark, size: 22),
                 const SizedBox(width: 10),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -874,11 +886,11 @@ class _FeatureRow extends StatelessWidget {
 
 class _CategoryChip extends StatelessWidget {
   const _CategoryChip({
-    required this.emoji,
+    required this.icon,
     required this.label,
     required this.delay,
   });
-  final String emoji;
+  final IconData icon;
   final String label;
   final Duration delay;
 
@@ -886,28 +898,35 @@ class _CategoryChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = AppTheme.of(context);
     return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(t.radiusMd),
-          border: Border.all(
-              color: AppColors.brandAccent.withValues(alpha: 0.25),
-              width: 1.5),
-          boxShadow: t.shadowSoft,
-        ),
-        child: Column(
-          children: [
-            Text(emoji, style: const TextStyle(fontSize: 26)),
-            const SizedBox(height: 6),
-            Text(
-              label,
-              style: GoogleFonts.rubik(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.primaryText),
-            ),
-          ],
+      child: Semantics(
+        label: label,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 14),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(t.radiusMd),
+            border: Border.all(
+                color: AppColors.brandAccent.withValues(alpha: 0.25),
+                width: 1.5),
+            boxShadow: t.shadowSoft,
+          ),
+          child: Column(
+            children: [
+              ExcludeSemantics(
+                child: Icon(icon, color: AppColors.brandAccent, size: 26),
+              ),
+              const SizedBox(height: 6),
+              ExcludeSemantics(
+                child: Text(
+                  label,
+                  style: GoogleFonts.rubik(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primaryText),
+                ),
+              ),
+            ],
+          ),
         ),
       ).animate().fadeIn(delay: delay, duration: 400.ms).scale(
           begin: const Offset(0.88, 0.88),

@@ -181,7 +181,9 @@ class _TrackerWidgetState extends State<TrackerWidget> {
           foregroundColor: ffTheme.primaryText,
         ),
         body: Center(
-          child: Padding(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: Padding(
             padding: const EdgeInsets.all(32),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -222,6 +224,7 @@ class _TrackerWidgetState extends State<TrackerWidget> {
               ],
             ),
           ),
+          ),
         ),
       );
     }
@@ -237,7 +240,9 @@ class _TrackerWidgetState extends State<TrackerWidget> {
           foregroundColor: ffTheme.primaryText,
         ),
         body: Center(
-          child: Padding(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: Padding(
             padding: const EdgeInsets.all(32),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -250,8 +255,8 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                     shape: BoxShape.circle,
                   ),
                   child: Icon(Icons.track_changes_rounded, size: 52, color: ffTheme.primary),
-                ).animate(onPlay: (c) => c.repeat(reverse: true))
-                  .scale(begin: const Offset(1, 1), end: const Offset(1.05, 1.05), duration: 1500.ms, curve: Curves.easeInOut),
+                ).animate()
+                  .scale(begin: const Offset(0.9, 0.9), end: const Offset(1, 1), duration: 500.ms, curve: Curves.easeOut),
                 const SizedBox(height: 24),
                 Text('עוד לא התחלתם', style: ffTheme.headlineSmall),
                 const SizedBox(height: 8),
@@ -267,10 +272,11 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                     color: ffTheme.primary,
                     textStyle: ffTheme.titleSmall.copyWith(color: Colors.white),
                     borderRadius: BorderRadius.circular(14),
-                  
+
                 ),
               ],
             ),
+          ),
           ),
         ),
       );

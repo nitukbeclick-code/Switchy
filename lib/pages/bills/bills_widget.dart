@@ -1227,8 +1227,16 @@ class _BillCard extends StatelessWidget {
               Row(
                 children: [
                   _RoundBtn(icon: Icons.remove, color: ffTheme.alternate, iconColor: ffTheme.secondaryText, onTap: onDecrease, semanticLabel: 'הפחת ₪10 מ${category.name}'),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                  // Once a bill is set the readout sits on a faint action-accent
+                  // pill, so a touched value reads as deliberately set, not 0.
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    margin: const EdgeInsets.symmetric(horizontal: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: isDefined ? ffTheme.accent1 : Colors.transparent,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                     child: Text(
                       '₪$currentBill',
                       style: ffTheme.titleSmall.copyWith(
@@ -1251,21 +1259,36 @@ class _BillCard extends StatelessWidget {
             runSpacing: 6,
             children: (_presets[category.id] ?? [49, 99, 149, 199]).map((preset) {
               final isActive = currentBill == preset;
-              return GestureDetector(
-                onTap: () => onSetValue(preset),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 150),
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: isActive ? ffTheme.primary : ffTheme.background,
+              return Semantics(
+                button: true,
+                selected: isActive,
+                label: 'הגדר ₪$preset ל${category.name}',
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () => onSetValue(preset),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: isActive ? ffTheme.primary : ffTheme.alternate),
-                  ),
-                  child: Text(
-                    '₪$preset',
-                    style: ffTheme.labelSmall.copyWith(
-                      color: isActive ? Colors.white : ffTheme.secondaryText,
-                      fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(minHeight: 44),
+                      child: Center(
+                        widthFactor: 1,
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 150),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: isActive ? ffTheme.primary : ffTheme.background,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: isActive ? ffTheme.primary : ffTheme.alternate),
+                          ),
+                          child: Text(
+                            '₪$preset',
+                            style: ffTheme.labelSmall.copyWith(
+                              color: isActive ? Colors.white : ffTheme.secondaryText,
+                              fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ),

@@ -190,7 +190,13 @@ class _ProviderWidgetState extends State<ProviderWidget> {
                                   child: Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      const Text('🔥', style: TextStyle(fontSize: 13)),
+                                      Icon(
+                                        Icons.local_fire_department_rounded,
+                                        size: 15,
+                                        color: _showOnlyDeals
+                                            ? Colors.white
+                                            : ffTheme.saving,
+                                      ),
                                       const SizedBox(width: 5),
                                       Text(
                                         'מבצעים',
@@ -325,7 +331,11 @@ class _HeroHeader extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 8),
-            LogoWidget(provider: providerName, size: 64)
+            Semantics(
+              image: true,
+              label: 'לוגו $providerName',
+              child: LogoWidget(provider: providerName, size: 64),
+            )
                 .animate()
                 .scale(begin: const Offset(0.7, 0.7), duration: 400.ms, curve: Curves.easeOut),
             const SizedBox(height: 12),
@@ -721,6 +731,13 @@ class _PlanCard extends StatelessWidget {
   final bool isFlashDeal;
   final int flashDiscountPct;
 
+  /// Flash-deal marker — always white on the amber badge, so it's const.
+  static const Widget _flashIcon = Icon(
+    Icons.local_fire_department_rounded,
+    size: 12,
+    color: Colors.white,
+  );
+
   @override
   Widget build(BuildContext context) {
     final unit = priceUnitLabel(plan);
@@ -855,7 +872,7 @@ class _PlanCard extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Text('🔥', style: TextStyle(fontSize: 10)),
+                    _flashIcon,
                     const SizedBox(width: 3),
                     Text(
                       'מבצע · $flashDiscountPct% הנחה',

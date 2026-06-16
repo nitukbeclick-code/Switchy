@@ -468,33 +468,36 @@ class _ToggleRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(
-        children: [
-          Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: ffTheme.accent1,
-              borderRadius: BorderRadius.circular(10),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 44),
+        child: Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: ffTheme.accent1,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: ffTheme.primary, size: 20),
             ),
-            child: Icon(icon, color: ffTheme.primary, size: 20),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: ffTheme.titleSmall),
-                Text(subtitle, style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText)),
-              ],
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: ffTheme.titleSmall),
+                  Text(subtitle, style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText)),
+                ],
+              ),
             ),
-          ),
-          Switch(
-            value: value,
-            onChanged: onChanged,
-            activeThumbColor: ffTheme.primary,
-          ),
-        ],
+            Switch(
+              value: value,
+              onChanged: onChanged,
+              activeThumbColor: ffTheme.primary,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -563,9 +566,9 @@ class _ThemeModeCard extends StatelessWidget {
     final current = appState.themeMode;
 
     final options = [
-      (ThemeMode.dark, 'כהה', '🌙'),
-      (ThemeMode.light, 'בהיר', '☀️'),
-      (ThemeMode.system, 'אוטומטי', '🔧'),
+      (ThemeMode.dark, 'כהה', Icons.dark_mode_rounded),
+      (ThemeMode.light, 'בהיר', Icons.light_mode_rounded),
+      (ThemeMode.system, 'אוטומטי', Icons.brightness_auto_rounded),
     ];
 
     return _Card(
@@ -587,41 +590,52 @@ class _ThemeModeCard extends StatelessWidget {
             Expanded(
               child: Row(
                 children: options.map((opt) {
-                  final (mode, label, emoji) = opt;
+                  final (mode, label, icon) = opt;
                   final isActive = current == mode;
                   return Expanded(
-                    child: GestureDetector(
-                      onTap: () =>
-                          Provider.of<AppState>(context, listen: false).setThemeMode(mode),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 180),
-                        margin: const EdgeInsets.symmetric(horizontal: 3),
-                        padding: const EdgeInsets.symmetric(vertical: 8),
-                        decoration: BoxDecoration(
-                          color: isActive
-                              ? ffTheme.brandAccent
-                              : ffTheme.accent1,
-                          borderRadius: BorderRadius.circular(10),
-                          border: Border.all(
+                    child: Semantics(
+                      button: true,
+                      selected: isActive,
+                      label: label,
+                      child: GestureDetector(
+                        onTap: () =>
+                            Provider.of<AppState>(context, listen: false).setThemeMode(mode),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 180),
+                          margin: const EdgeInsets.symmetric(horizontal: 3),
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          constraints: const BoxConstraints(minHeight: 44),
+                          decoration: BoxDecoration(
                             color: isActive
                                 ? ffTheme.brandAccent
-                                : ffTheme.alternate.withValues(alpha: 0.4),
-                          ),
-                        ),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(emoji, style: const TextStyle(fontSize: 16)),
-                            const SizedBox(height: 2),
-                            Text(
-                              label,
-                              style: ffTheme.labelSmall.copyWith(
-                                color: isActive ? Colors.white : ffTheme.secondaryText,
-                                fontWeight: isActive ? FontWeight.w700 : FontWeight.w600,
-                              ),
-                              textAlign: TextAlign.center,
+                                : ffTheme.accent1,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: isActive
+                                  ? ffTheme.brandAccent
+                                  : ffTheme.alternate.withValues(alpha: 0.4),
                             ),
-                          ],
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                icon,
+                                size: 18,
+                                color: isActive ? Colors.white : ffTheme.secondaryText,
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                label,
+                                style: ffTheme.labelSmall.copyWith(
+                                  color: isActive ? Colors.white : ffTheme.secondaryText,
+                                  fontWeight: isActive ? FontWeight.w700 : FontWeight.w600,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -1014,22 +1028,34 @@ class _TelegramRowState extends State<_TelegramRow> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('טלגרם', style: ffTheme.titleSmall),
-                    Text('✅ מחובר', style: ffTheme.bodySmall.copyWith(color: const Color(0xFF22C55E))),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.check_circle_rounded, size: 14, color: ffTheme.success),
+                        const SizedBox(width: 4),
+                        Text('מחובר', style: ffTheme.bodySmall.copyWith(color: ffTheme.success)),
+                      ],
+                    ),
                   ],
                 ),
               ),
-              PopupMenuButton(
-                onSelected: (value) {
-                  if (value == 'test') {
-                    _testTelegram();
-                  } else if (value == 'disconnect') {
-                    _disconnectTelegram();
-                  }
-                },
-                itemBuilder: (_) => [
-                  const PopupMenuItem(value: 'test', child: Text('בדוק חיבור')),
-                  const PopupMenuItem(value: 'disconnect', child: Text('נתק')),
-                ],
+              Semantics(
+                button: true,
+                label: 'אפשרויות טלגרם',
+                child: PopupMenuButton(
+                  tooltip: 'אפשרויות טלגרם',
+                  onSelected: (value) {
+                    if (value == 'test') {
+                      _testTelegram();
+                    } else if (value == 'disconnect') {
+                      _disconnectTelegram();
+                    }
+                  },
+                  itemBuilder: (_) => [
+                    const PopupMenuItem(value: 'test', child: Text('בדוק חיבור')),
+                    const PopupMenuItem(value: 'disconnect', child: Text('נתק')),
+                  ],
+                ),
               ),
             ],
           ),
@@ -1047,10 +1073,10 @@ class _TelegramRowState extends State<_TelegramRow> {
                 width: 38,
                 height: 38,
                 decoration: BoxDecoration(
-                  color: Colors.grey.withValues(alpha: 0.1),
+                  color: ffTheme.accent1,
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(Icons.send, color: Colors.grey[600], size: 20),
+                child: Icon(Icons.send, color: ffTheme.secondaryText, size: 20),
               ),
               const SizedBox(width: 14),
               Expanded(

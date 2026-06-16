@@ -413,14 +413,19 @@ class _QuizWidgetState extends State<QuizWidget> {
                 style: ffTheme.labelMedium.copyWith(color: ffTheme.secondaryText),
               ),
               const SizedBox(height: 16),
-              Slider(
-                value: clampedBill,
-                min: billCfg.$1,
-                max: billCfg.$2,
-                divisions: billCfg.$3,
-                activeColor: ffTheme.primary,
-                inactiveColor: ffTheme.alternate,
-                onChanged: (v) => setState(() => _currentBill = v),
+              Semantics(
+                slider: true,
+                label: 'המחיר שאתם משלמים כיום',
+                value: '₪${clampedBill.round()}${categoryBudgetSuffix(_cat)}',
+                child: Slider(
+                  value: clampedBill,
+                  min: billCfg.$1,
+                  max: billCfg.$2,
+                  divisions: billCfg.$3,
+                  activeColor: ffTheme.primary,
+                  inactiveColor: ffTheme.alternate,
+                  onChanged: (v) => setState(() => _currentBill = v),
+                ),
               ),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -436,21 +441,29 @@ class _QuizWidgetState extends State<QuizWidget> {
                 alignment: WrapAlignment.center,
                 children: _budgetPresets(_cat).map((preset) {
                   final active = clampedBill.round() == preset;
-                  return GestureDetector(
-                    onTap: () => setState(() => _currentBill = preset.toDouble()),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 180),
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                      decoration: BoxDecoration(
-                        color: active ? ffTheme.primary : Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: active ? ffTheme.primary : ffTheme.alternate),
+                  return Semantics(
+                    button: true,
+                    selected: active,
+                    label: '₪$preset',
+                    child: GestureDetector(
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        setState(() => _currentBill = preset.toDouble());
+                      },
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 180),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                        decoration: BoxDecoration(
+                          color: active ? ffTheme.primary : Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: active ? ffTheme.primary : ffTheme.alternate),
+                        ),
+                        child: Text('₪$preset',
+                          style: ffTheme.labelMedium.copyWith(
+                            color: active ? Colors.white : ffTheme.primaryText,
+                            fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                          )),
                       ),
-                      child: Text('₪$preset',
-                        style: ffTheme.labelMedium.copyWith(
-                          color: active ? Colors.white : ffTheme.primaryText,
-                          fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-                        )),
                     ),
                   );
                 }).toList(),
@@ -483,14 +496,19 @@ class _QuizWidgetState extends State<QuizWidget> {
                 ),
               ),
               const SizedBox(height: 16),
-              Slider(
-                value: clampedBudget,
-                min: sliderConfig.$1,
-                max: sliderConfig.$2,
-                divisions: sliderConfig.$3,
-                activeColor: ffTheme.primary,
-                inactiveColor: ffTheme.alternate,
-                onChanged: (v) => setState(() => _budget = v),
+              Semantics(
+                slider: true,
+                label: _cat == 'abroad' ? 'תקציב לנסיעה' : 'תקציב חודשי',
+                value: '₪${clampedBudget.round()}${categoryBudgetSuffix(_cat)}',
+                child: Slider(
+                  value: clampedBudget,
+                  min: sliderConfig.$1,
+                  max: sliderConfig.$2,
+                  divisions: sliderConfig.$3,
+                  activeColor: ffTheme.primary,
+                  inactiveColor: ffTheme.alternate,
+                  onChanged: (v) => setState(() => _budget = v),
+                ),
               ),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -507,21 +525,29 @@ class _QuizWidgetState extends State<QuizWidget> {
                 alignment: WrapAlignment.center,
                 children: _budgetPresets(_cat).map((preset) {
                   final active = clampedBudget.round() == preset;
-                  return GestureDetector(
-                    onTap: () => setState(() => _budget = preset.toDouble()),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 180),
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                      decoration: BoxDecoration(
-                        color: active ? ffTheme.primary : Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: active ? ffTheme.primary : ffTheme.alternate),
+                  return Semantics(
+                    button: true,
+                    selected: active,
+                    label: '₪$preset',
+                    child: GestureDetector(
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        setState(() => _budget = preset.toDouble());
+                      },
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 180),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                        decoration: BoxDecoration(
+                          color: active ? ffTheme.primary : Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: active ? ffTheme.primary : ffTheme.alternate),
+                        ),
+                        child: Text('₪$preset',
+                          style: ffTheme.labelMedium.copyWith(
+                            color: active ? Colors.white : ffTheme.primaryText,
+                            fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                          )),
                       ),
-                      child: Text('₪$preset',
-                        style: ffTheme.labelMedium.copyWith(
-                          color: active ? Colors.white : ffTheme.primaryText,
-                          fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-                        )),
                     ),
                   );
                 }).toList(),

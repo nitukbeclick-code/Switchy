@@ -2092,22 +2092,26 @@ class _ActionBtn extends StatelessWidget {
       label: semanticLabel,
       child: GestureDetector(
         onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              AnimatedScale(
-                scale: scale,
-                duration: const Duration(milliseconds: 200),
-                curve: Curves.elasticOut,
-                child: Icon(icon, size: 17, color: color),
-              ),
-              if (label.isNotEmpty) ...[
-                const SizedBox(width: 4),
-                Text(label, style: ffTheme.labelSmall.copyWith(color: color, fontWeight: FontWeight.w600)),
+        behavior: HitTestBehavior.opaque,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                AnimatedScale(
+                  scale: scale,
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.elasticOut,
+                  child: Icon(icon, size: 17, color: color),
+                ),
+                if (label.isNotEmpty) ...[
+                  const SizedBox(width: 4),
+                  Text(label, style: ffTheme.labelSmall.copyWith(color: color, fontWeight: FontWeight.w600)),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),

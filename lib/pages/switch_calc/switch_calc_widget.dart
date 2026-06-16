@@ -231,22 +231,42 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
                 Text('הגדר במהירות: ', style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText)),
                 ...[0, 100, 200, 300, 500].map((fee) {
                   final active = _exitFee.round() == fee;
-                  return GestureDetector(
-                    onTap: () => setState(() => _exitFee = fee.toDouble()),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 180),
-                      margin: const EdgeInsetsDirectional.only(end: 6),
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: active ? ffTheme.primary : Colors.white,
+                  final fgColor = active ? Colors.white : ffTheme.primaryText;
+                  return Padding(
+                    padding: const EdgeInsetsDirectional.only(end: 6),
+                    child: Material(
+                      color: active ? ffTheme.primary : Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      child: InkWell(
+                        onTap: () => setState(() => _exitFee = fee.toDouble()),
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: active ? ffTheme.primary : ffTheme.alternate),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 180),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: active ? ffTheme.primary : ffTheme.alternate),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              ExcludeSemantics(
+                                child: Icon(
+                                  fee == 0 ? Icons.block_rounded : Icons.payments_rounded,
+                                  size: 13,
+                                  color: fgColor,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(fee == 0 ? 'ללא' : '₪$fee',
+                                style: ffTheme.labelSmall.copyWith(
+                                  color: fgColor,
+                                  fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                                )),
+                            ],
+                          ),
+                        ),
                       ),
-                      child: Text(fee == 0 ? 'ללא' : '₪$fee',
-                        style: ffTheme.labelSmall.copyWith(
-                          color: active ? Colors.white : ffTheme.primaryText,
-                          fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-                        )),
                     ),
                   );
                 }),
@@ -708,13 +728,18 @@ class _SliderSection extends StatelessWidget {
               Text('₪${value.round()}', style: ffTheme.headlineSmall.copyWith(color: ffTheme.primary)),
             ],
           ),
-          Slider(
-            value: value,
-            min: min,
-            max: max,
-            activeColor: ffTheme.primary,
-            inactiveColor: ffTheme.alternate,
-            onChanged: onChanged,
+          Semantics(
+            slider: true,
+            label: label,
+            value: '₪${value.round()}',
+            child: Slider(
+              value: value,
+              min: min,
+              max: max,
+              activeColor: ffTheme.primary,
+              inactiveColor: ffTheme.alternate,
+              onChanged: onChanged,
+            ),
           ),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,

@@ -410,25 +410,32 @@ class _HomeWidgetState extends State<HomeWidget> {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    GestureDetector(
-                      onTap: () {
-                        HapticFeedback.lightImpact();
-                        context.pushNamed('Search');
-                      },
-                      child: Container(
-                        margin: const EdgeInsets.only(top: 8),
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(ffTheme.radiusMd),
-                          border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(Icons.search_rounded, color: Colors.white.withValues(alpha: 0.7), size: 16),
-                            const SizedBox(width: 8),
-                            Text('חפש ספק או מסלול...', style: AppTheme.of(context).bodySmall.copyWith(color: Colors.white.withValues(alpha: 0.65))),
-                          ],
+                    Semantics(
+                      button: true,
+                      label: 'חיפוש ספק או מסלול',
+                      child: GestureDetector(
+                        onTap: () {
+                          HapticFeedback.lightImpact();
+                          context.pushNamed('Search');
+                        },
+                        child: Container(
+                          margin: const EdgeInsets.only(top: 8),
+                          constraints: const BoxConstraints(minHeight: 44),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(ffTheme.radiusMd),
+                            border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
+                          ),
+                          child: Row(
+                            children: [
+                              ExcludeSemantics(
+                                child: Icon(Icons.search_rounded, color: Colors.white.withValues(alpha: 0.7), size: 16),
+                              ),
+                              const SizedBox(width: 8),
+                              Text('חפש ספק או מסלול...', style: AppTheme.of(context).bodySmall.copyWith(color: Colors.white.withValues(alpha: 0.65))),
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -1087,32 +1094,38 @@ class _HomeWidgetState extends State<HomeWidget> {
               separatorBuilder: (_, __) => const SizedBox(width: 12),
               itemBuilder: (context, i) {
                 final tool = tools[i];
-                return Pressable(
-                  onTap: () {
-                    HapticFeedback.lightImpact();
-                    context.pushNamed(tool.route);
-                  },
-                  child: Container(
-                    width: 110,
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(ffTheme.radiusLg),
-                      border: Border.all(color: ffTheme.alternate),
-                      boxShadow: ffTheme.shadowSoft,
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(tool.icon, size: 26, color: ffTheme.primaryText),
-                        const SizedBox(height: 6),
-                        Text(
-                          tool.label,
-                          style: ffTheme.labelSmall.copyWith(color: ffTheme.primaryText),
-                          textAlign: TextAlign.center,
-                          maxLines: 2,
+                return Semantics(
+                  button: true,
+                  label: tool.label,
+                  child: Pressable(
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      context.pushNamed(tool.route);
+                    },
+                    child: Container(
+                      width: 110,
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(ffTheme.radiusLg),
+                        border: Border.all(color: ffTheme.alternate),
+                        boxShadow: ffTheme.shadowSoft,
+                      ),
+                      child: ExcludeSemantics(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(tool.icon, size: 26, color: ffTheme.primaryText),
+                            const SizedBox(height: 6),
+                            Text(
+                              tool.label,
+                              style: ffTheme.labelSmall.copyWith(color: ffTheme.primaryText),
+                              textAlign: TextAlign.center,
+                              maxLines: 2,
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
                   ),
                 );

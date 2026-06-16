@@ -424,19 +424,22 @@ class _MeetingWidgetState extends State<MeetingWidget> {
                 HapticFeedback.selectionClick();
                 setState(() => _provider = p);
               },
-              child: Padding(
-                padding: const EdgeInsetsDirectional.fromSTEB(6, 5, 12, 5),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    ExcludeSemantics(child: LogoWidget(provider: p, size: 26)),
-                    const SizedBox(width: 7),
-                    Text(p,
-                        style: t.labelMedium.copyWith(
-                          color: active ? Colors.white : t.primaryText,
-                          fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-                        )),
-                  ],
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 44),
+                child: Padding(
+                  padding: const EdgeInsetsDirectional.fromSTEB(6, 5, 12, 5),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ExcludeSemantics(child: LogoWidget(provider: p, size: 26)),
+                      const SizedBox(width: 7),
+                      Text(p,
+                          style: t.labelMedium.copyWith(
+                            color: active ? Colors.white : t.primaryText,
+                            fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                          )),
+                    ],
+                  ),
                 ),
               ),
             ),

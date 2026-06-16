@@ -105,11 +105,16 @@ class _LeadWidgetState extends State<LeadWidget> {
               // Name field
               _FieldLabel(label: 'שם מלא', ffTheme: ffTheme),
               const SizedBox(height: 8),
-              TextFormField(
-                controller: _nameCtrl,
-                textDirection: TextDirection.rtl,
-                decoration: _inputDecoration(hint: 'ישראל ישראלי', icon: Icons.person_outline_rounded, ffTheme: ffTheme),
-                validator: (v) => (v == null || v.trim().isEmpty) ? 'שדה חובה' : null,
+              Semantics(
+                textField: true,
+                label: 'שם מלא',
+                child: TextFormField(
+                  controller: _nameCtrl,
+                  textDirection: TextDirection.rtl,
+                  textInputAction: TextInputAction.next,
+                  decoration: _inputDecoration(hint: 'ישראל ישראלי', icon: Icons.person_outline_rounded, ffTheme: ffTheme),
+                  validator: (v) => (v == null || v.trim().isEmpty) ? 'שדה חובה' : null,
+                ),
               ).animate(delay: 80.ms).fadeIn().slideY(begin: 0.05),
 
               const SizedBox(height: 14),
@@ -117,15 +122,20 @@ class _LeadWidgetState extends State<LeadWidget> {
               // Phone field
               _FieldLabel(label: 'מספר טלפון', ffTheme: ffTheme),
               const SizedBox(height: 8),
-              TextFormField(
-                controller: _phoneCtrl,
-                keyboardType: TextInputType.phone,
-                textDirection: TextDirection.ltr,
-                decoration: _inputDecoration(hint: '050-0000000', icon: Icons.phone_outlined, ffTheme: ffTheme),
-                validator: (v) {
-                  final digits = (v ?? '').replaceAll(RegExp(r'\D'), '');
-                  return (digits.length < 9 || digits.length > 15) ? 'מספר טלפון לא תקין' : null;
-                },
+              Semantics(
+                textField: true,
+                label: 'מספר טלפון',
+                child: TextFormField(
+                  controller: _phoneCtrl,
+                  keyboardType: TextInputType.phone,
+                  textInputAction: TextInputAction.next,
+                  textDirection: TextDirection.ltr,
+                  decoration: _inputDecoration(hint: '050-0000000', icon: Icons.phone_outlined, ffTheme: ffTheme),
+                  validator: (v) {
+                    final digits = (v ?? '').replaceAll(RegExp(r'\D'), '');
+                    return (digits.length < 9 || digits.length > 15) ? 'מספר טלפון לא תקין' : null;
+                  },
+                ),
               ).animate(delay: 120.ms).fadeIn().slideY(begin: 0.05),
 
               const SizedBox(height: 14),
@@ -133,11 +143,16 @@ class _LeadWidgetState extends State<LeadWidget> {
               // Email field (optional)
               _FieldLabel(label: 'אימייל (אופציונלי)', ffTheme: ffTheme),
               const SizedBox(height: 8),
-              TextFormField(
-                controller: _emailCtrl,
-                keyboardType: TextInputType.emailAddress,
-                textDirection: TextDirection.ltr,
-                decoration: _inputDecoration(hint: 'example@email.com', icon: Icons.mail_outline_rounded, ffTheme: ffTheme),
+              Semantics(
+                textField: true,
+                label: 'אימייל (אופציונלי)',
+                child: TextFormField(
+                  controller: _emailCtrl,
+                  keyboardType: TextInputType.emailAddress,
+                  textInputAction: TextInputAction.done,
+                  textDirection: TextDirection.ltr,
+                  decoration: _inputDecoration(hint: 'example@email.com', icon: Icons.mail_outline_rounded, ffTheme: ffTheme),
+                ),
               ).animate(delay: 160.ms).fadeIn().slideY(begin: 0.05),
 
               const SizedBox(height: 20),
@@ -431,6 +446,9 @@ class _LeadWidgetState extends State<LeadWidget> {
     return InputDecoration(
       hintText: hint,
       prefixIcon: Icon(icon, color: ffTheme.secondaryText, size: 20),
+      // Error text sits below the field, themed + RTL like the rest of the form.
+      errorStyle: ffTheme.labelSmall.copyWith(color: ffTheme.error, fontWeight: FontWeight.w600),
+      errorMaxLines: 2,
       filled: true,
       fillColor: Colors.white,
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.alternate)),

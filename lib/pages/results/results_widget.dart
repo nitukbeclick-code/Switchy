@@ -798,13 +798,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
               ),
               child: Icon(Icons.search_off_rounded,
                   size: 44, color: ffTheme.secondaryText),
-            )
-                .animate(onPlay: (c) => c.repeat(reverse: true))
-                .scale(
-                    begin: const Offset(1, 1),
-                    end: const Offset(1.06, 1.06),
-                    duration: 1400.ms,
-                    curve: Curves.easeInOut),
+            ),
             const SizedBox(height: 20),
             Text(
               'לא מצאנו תוכנית מושלמת...',

@@ -222,7 +222,7 @@ class _IntroCard extends StatelessWidget {
 Color _chipColor(int days, AppTheme ffTheme) {
   if (days < 0) return ffTheme.error;
   if (days <= 21) return ffTheme.error;
-  if (days <= 45) return const Color(0xFFF59E0B);
+  if (days <= 45) return ffTheme.warning;
   return ffTheme.secondaryText;
 }
 
@@ -311,11 +311,17 @@ class _PlanCard extends StatelessWidget {
                   ),
                 ),
                 // Delete button
-                IconButton(
-                  icon: Icon(Icons.delete_outline_rounded,
-                      color: ffTheme.secondaryText, size: 22),
-                  tooltip: 'הסר מסלול',
-                  onPressed: onDelete,
+                Semantics(
+                  button: true,
+                  label: 'הסר מסלול',
+                  child: IconButton(
+                    icon: Icon(Icons.delete_outline_rounded,
+                        color: ffTheme.secondaryText, size: 22),
+                    tooltip: 'הסר מסלול',
+                    constraints: const BoxConstraints(
+                        minWidth: 44, minHeight: 44),
+                    onPressed: onDelete,
+                  ),
                 ),
               ],
             ),

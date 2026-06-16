@@ -429,16 +429,20 @@ class _ChatWidgetState extends State<ChatWidget> {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
         itemCount: _quickReplies.length,
         separatorBuilder: (_, __) => const SizedBox(width: 8),
-        itemBuilder: (ctx, i) => GestureDetector(
-          onTap: () => _send(_quickReplies[i]),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: ffTheme.primary.withValues(alpha: 0.3)),
+        itemBuilder: (ctx, i) => Semantics(
+          button: true,
+          label: 'תשובה מהירה: ${_quickReplies[i]}',
+          child: GestureDetector(
+            onTap: () => _send(_quickReplies[i]),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: ffTheme.primary.withValues(alpha: 0.3)),
+              ),
+              child: Text(_quickReplies[i], style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w600)),
             ),
-            child: Text(_quickReplies[i], style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w600)),
           ),
         ),
       ),

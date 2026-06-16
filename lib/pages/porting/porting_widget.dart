@@ -251,40 +251,46 @@ class _PortingWidgetState extends State<PortingWidget> {
             const SizedBox(height: 20),
 
             // POA checkbox
-            GestureDetector(
-              onTap: () =>
-                  setState(() => _poaAccepted = !_poaAccepted),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    width: 24,
-                    height: 24,
-                    decoration: BoxDecoration(
-                      color: _poaAccepted
-                          ? ffTheme.primary
-                          : Colors.white,
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(
-                          color: _poaAccepted
-                              ? ffTheme.primary
-                              : ffTheme.alternate,
-                          width: 1.5),
+            Semantics(
+              checked: _poaAccepted,
+              label: 'אני מסכים/ה לייפוי כוח לביצוע הניוד בשמי',
+              child: GestureDetector(
+                onTap: () =>
+                    setState(() => _poaAccepted = !_poaAccepted),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      width: 24,
+                      height: 24,
+                      decoration: BoxDecoration(
+                        color: _poaAccepted
+                            ? ffTheme.primary
+                            : Colors.white,
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                            color: _poaAccepted
+                                ? ffTheme.primary
+                                : ffTheme.alternate,
+                            width: 1.5),
+                      ),
+                      child: _poaAccepted
+                          ? const Icon(Icons.check_rounded,
+                              size: 16, color: Colors.white)
+                          : null,
                     ),
-                    child: _poaAccepted
-                        ? const Icon(Icons.check_rounded,
-                            size: 16, color: Colors.white)
-                        : null,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'אני מסכים/ה לייפוי כוח לביצוע הניוד בשמי',
-                      style: ffTheme.bodyMedium,
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ExcludeSemantics(
+                        child: Text(
+                          'אני מסכים/ה לייפוי כוח לביצוע הניוד בשמי',
+                          style: ffTheme.bodyMedium,
+                        ),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ).animate(delay: 260.ms).fadeIn(duration: 280.ms),
 
@@ -298,32 +304,31 @@ class _PortingWidgetState extends State<PortingWidget> {
                 final canSubmit = _canSubmit;
                 return AppButton(
                   text: 'שלח בקשת ניוד',
-                  onPressed: canSubmit
-                      ? () async {
-                          final st = Provider.of<AppState>(context, listen: false);
-                          final name = st.userName.isNotEmpty ? st.userName : 'משתמש';
-                          final phone = _phoneController.text.trim();
-                          try {
-                            await appBackend.submitLead(LeadInput(
-                              name: name,
-                              phone: phone,
-                              provider: _selectedProvider,
-                              source: 'porting',
-                              notes: 'ניוד מ: $_selectedProvider | ת.ז: ${_idController.text.trim()}',
-                            )).timeout(const Duration(seconds: 10));
-                          } catch (_) {
-                            // The porting request never reached the team — let
-                            // the user retry instead of showing false success.
-                            if (!context.mounted) return;
-                            AppSnackBar.error(context, 'שליחת הבקשה נכשלה — בדקו את החיבור ונסו שוב');
-                            return;
-                          }
-                          appBackend.upsertProfile(name: name, phone: phone).catchError((_) {});
-                          if (!mounted) return;
-                          setState(() => _submitted = true);
-                        }
-                      : () async {},
-                  
+                  enabled: canSubmit,
+                  onPressed: () async {
+                    final st = Provider.of<AppState>(context, listen: false);
+                    final name = st.userName.isNotEmpty ? st.userName : 'משתמש';
+                    final phone = _phoneController.text.trim();
+                    try {
+                      await appBackend.submitLead(LeadInput(
+                        name: name,
+                        phone: phone,
+                        provider: _selectedProvider,
+                        source: 'porting',
+                        notes: 'ניוד מ: $_selectedProvider | ת.ז: ${_idController.text.trim()}',
+                      )).timeout(const Duration(seconds: 10));
+                    } catch (_) {
+                      // The porting request never reached the team — let
+                      // the user retry instead of showing false success.
+                      if (!context.mounted) return;
+                      AppSnackBar.error(context, 'שליחת הבקשה נכשלה — בדקו את החיבור ונסו שוב');
+                      return;
+                    }
+                    appBackend.upsertProfile(name: name, phone: phone).catchError((_) {});
+                    if (!mounted) return;
+                    setState(() => _submitted = true);
+                  },
+
                     height: 56,
                     color:
                         canSubmit ? ffTheme.primary : ffTheme.alternate,

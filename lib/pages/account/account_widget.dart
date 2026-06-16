@@ -7,6 +7,7 @@ import '../../core/nav.dart';
 import '../../app_state.dart';
 import '../../data.dart';
 import '../../widgets/pressable.dart';
+import '../../widgets/app_button.dart';
 import '../../widgets/app_snackbar.dart';
 import '../../widgets/digital_agent_fab.dart';
 import '../../components/logo_widget/logo_widget.dart';
@@ -348,55 +349,53 @@ class AccountWidget extends StatelessWidget {
                   // Quiz CTA or summary
                   if (!appState.quizCompleted) ...[
                     const SizedBox(height: 20),
-                    Pressable(
-                      onTap: () => context.pushNamed('Quiz'),
-                      child: Container(
-                        padding: const EdgeInsets.all(18),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [ffTheme.primaryDark, ffTheme.primary],
-                            begin: Alignment.topRight,
-                            end: Alignment.bottomLeft,
+                    Container(
+                      padding: const EdgeInsets.all(18),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [ffTheme.primaryDark, ffTheme.primary],
+                          begin: Alignment.topRight,
+                          end: Alignment.bottomLeft,
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 48,
+                            height: 48,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: const Center(child: ExcludeSemantics(child: Icon(Icons.adjust, size: 24, color: Colors.white))),
                           ),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 48,
-                              height: 48,
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                              child: const Center(child: ExcludeSemantics(child: Icon(Icons.adjust, size: 24, color: Colors.white))),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('גלה כמה תוכל לחסוך!',
+                                    style: ffTheme.titleSmall.copyWith(color: Colors.white)),
+                                const SizedBox(height: 2),
+                                Text('שאלון קצר — תוצאות מותאמות אישית',
+                                    style: ffTheme.bodySmall.copyWith(color: Colors.white70)),
+                              ],
                             ),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text('גלה כמה תוכל לחסוך!',
-                                      style: ffTheme.titleSmall.copyWith(color: Colors.white)),
-                                  const SizedBox(height: 2),
-                                  Text('שאלון קצר — תוצאות מותאמות אישית',
-                                      style: ffTheme.bodySmall.copyWith(color: Colors.white70)),
-                                ],
-                              ),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: ffTheme.secondary,
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Text('התחל ←',
-                                  style: ffTheme.labelSmall.copyWith(
-                                      color: ffTheme.primaryDark,
-                                      fontWeight: FontWeight.w700)),
-                            ),
-                          ],
-                        ),
+                          ),
+                          const SizedBox(width: 10),
+                          AppButton(
+                            text: 'התחל ←',
+                            onPressed: () async => context.pushNamed('Quiz'),
+                            color: Colors.white,
+                            height: 40,
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            borderRadius: BorderRadius.circular(10),
+                            textStyle: ffTheme.labelSmall.copyWith(
+                                color: ffTheme.primaryDark,
+                                fontWeight: FontWeight.w700),
+                          ),
+                        ],
                       ),
                     ).animate().fadeIn(delay: 250.ms),
                   ] else ...[

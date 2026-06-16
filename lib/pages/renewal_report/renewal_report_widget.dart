@@ -301,10 +301,15 @@ class _SaverBanner extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 4),
-            IconButton(
-              tooltip: 'שתף',
-              icon: Icon(Icons.ios_share_rounded, size: 20, color: ffTheme.primaryDark),
-              onPressed: () => Share.share(shareText),
+            Semantics(
+              button: true,
+              label: 'שתף את החיסכון',
+              child: IconButton(
+                tooltip: 'שתף',
+                constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+                icon: Icon(Icons.ios_share_rounded, size: 20, color: ffTheme.primaryDark),
+                onPressed: () => Share.share(shareText),
+              ),
             ),
             Icon(Icons.arrow_back_ios_rounded, size: 16, color: ffTheme.primaryDark),
           ],
@@ -403,7 +408,10 @@ class _AlternativeRow extends StatelessWidget {
                             color: ffTheme.primary, fontWeight: FontWeight.w800)),
                   ],
                 ),
-              ),
+              )
+            else
+              // Reserve the badge's footprint so every row's content aligns.
+              const SizedBox(height: 23),
             Row(
               children: [
                 LogoWidget(provider: plan.provider, size: 38),

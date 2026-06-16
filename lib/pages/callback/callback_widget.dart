@@ -357,6 +357,7 @@ class _CallbackWidgetState extends State<CallbackWidget> {
               duration: const Duration(milliseconds: 200),
               margin: EdgeInsetsDirectional.only(end: i < _timings.length - 1 ? 8 : 0),
               padding: const EdgeInsets.symmetric(vertical: 10),
+              constraints: const BoxConstraints(minHeight: 44),
               decoration: BoxDecoration(
                 color: active ? ffTheme.primary : Colors.white,
                 borderRadius: BorderRadius.circular(12),
@@ -364,6 +365,7 @@ class _CallbackWidgetState extends State<CallbackWidget> {
                 boxShadow: active ? [BoxShadow(color: ffTheme.primary.withValues(alpha: 0.2), blurRadius: 8, offset: const Offset(0, 2))] : [],
               ),
               child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(icons[i], size: 18, color: active ? Colors.white : ffTheme.secondaryText),
                   const SizedBox(height: 4),
@@ -459,10 +461,13 @@ class _CallbackWidgetState extends State<CallbackWidget> {
       hintText: hint,
       filled: true,
       fillColor: Colors.white,
-      prefixIcon: Icon(icon, color: ffTheme.secondaryText),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+      prefixIcon: Icon(icon, color: ffTheme.secondaryText, size: 20),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.alternate)),
       enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.alternate)),
       focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.primary, width: 1.5)),
+      errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.error)),
+      focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.error, width: 1.5)),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
     );
   }
 }

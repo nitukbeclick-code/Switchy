@@ -104,36 +104,40 @@ class _MatchesWidgetState extends State<MatchesWidget> {
           if (_compareTray.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(left: 12),
-              child: GestureDetector(
-                onTap: () => context.goNamed('Compare'),
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    const Icon(Icons.compare_arrows_rounded,
-                        color: Colors.white, size: 24),
-                    PositionedDirectional(
-                      top: -4,
-                      end: -6,
-                      child: Container(
-                        width: 16,
-                        height: 16,
-                        decoration: const BoxDecoration(
-                          color: AppColors.saving,
-                          shape: BoxShape.circle,
-                        ),
-                        child: Center(
-                          child: Text(
-                            '${_compareTray.length}',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 9,
-                              fontWeight: FontWeight.w800,
+              child: Semantics(
+                button: true,
+                label: 'פתח השוואת מסלולים (${_compareTray.length})',
+                child: GestureDetector(
+                  onTap: () => context.goNamed('Compare'),
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      const Icon(Icons.compare_arrows_rounded,
+                          color: Colors.white, size: 24),
+                      PositionedDirectional(
+                        top: -4,
+                        end: -6,
+                        child: Container(
+                          width: 16,
+                          height: 16,
+                          decoration: BoxDecoration(
+                            color: ffTheme.saving,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Center(
+                            child: Text(
+                              '${_compareTray.length}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 9,
+                                fontWeight: FontWeight.w800,
+                              ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -214,16 +218,16 @@ class _MatchesWidgetState extends State<MatchesWidget> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                 decoration: BoxDecoration(
-                  color: active ? AppColors.brandAccent : Colors.white,
+                  color: active ? ffTheme.brandAccent : Colors.white,
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
                     color:
-                        active ? AppColors.brandAccent : AppColors.lineColor,
+                        active ? ffTheme.brandAccent : ffTheme.lineColor,
                   ),
                   boxShadow: active
                       ? [
                           BoxShadow(
-                            color: AppColors.brandAccent.withValues(alpha: 0.3),
+                            color: ffTheme.brandAccent.withValues(alpha: 0.3),
                             blurRadius: 6,
                             offset: const Offset(0, 2),
                           )
@@ -237,7 +241,7 @@ class _MatchesWidgetState extends State<MatchesWidget> {
                     fontSize: 13,
                     fontWeight:
                         active ? FontWeight.w700 : FontWeight.w500,
-                    color: active ? Colors.white : AppColors.primaryText,
+                    color: active ? Colors.white : ffTheme.primaryText,
                   ),
                 ),
               ),
@@ -278,13 +282,13 @@ class _MatchesWidgetState extends State<MatchesWidget> {
             padding:
                 const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
             decoration: BoxDecoration(
-              color: AppColors.secondary,
+              color: ffTheme.secondary,
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
               '✦ דאשבורד חכם',
               style: ffTheme.labelSmall.copyWith(
-                color: AppColors.primary,
+                color: ffTheme.primary,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -313,7 +317,7 @@ class _MatchesWidgetState extends State<MatchesWidget> {
                     return Text(
                       personalized ? disp : '~$disp',
                       style: ffTheme.displaySmall.copyWith(
-                        color: AppColors.secondary,
+                        color: ffTheme.secondary,
                         fontWeight: FontWeight.bold,
                       ),
                     );
@@ -323,7 +327,7 @@ class _MatchesWidgetState extends State<MatchesWidget> {
                 Text(
                   savingDisplay,
                   style: ffTheme.displaySmall.copyWith(
-                    color: AppColors.secondary,
+                    color: ffTheme.secondary,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -391,9 +395,9 @@ class _MatchesWidgetState extends State<MatchesWidget> {
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    AppColors.saving,
-                    AppColors.saving.withValues(alpha: 0.4),
-                    AppColors.saving,
+                    ffTheme.saving,
+                    ffTheme.saving.withValues(alpha: 0.4),
+                    ffTheme.saving,
                   ],
                   begin: Alignment.topRight,
                   end: Alignment.bottomLeft,
@@ -417,14 +421,14 @@ class _MatchesWidgetState extends State<MatchesWidget> {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: AppColors.saving,
+                      color: ffTheme.saving,
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Text('🏆',
-                            style: TextStyle(fontSize: 12)),
+                        const Icon(Icons.emoji_events_rounded,
+                            size: 13, color: Colors.white),
                         const SizedBox(width: 5),
                         Text(
                           'ההמלצה שלנו',
@@ -532,12 +536,12 @@ class _MatchesWidgetState extends State<MatchesWidget> {
                               height: 28,
                               decoration: BoxDecoration(
                                 color: inCompare
-                                    ? AppColors.brandAccent
+                                    ? ffTheme.brandAccent
                                     : ffTheme.secondaryBackground,
                                 shape: BoxShape.circle,
                                 border: Border.all(
                                   color: inCompare
-                                      ? AppColors.brandAccent
+                                      ? ffTheme.brandAccent
                                       : ffTheme.alternate,
                                   width: 1.5,
                                 ),
@@ -572,16 +576,16 @@ class _MatchesWidgetState extends State<MatchesWidget> {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
-                          color: AppColors.saving.withValues(alpha: 0.1),
+                          color: ffTheme.saving.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(6),
                           border: Border.all(
                               color:
-                                  AppColors.saving.withValues(alpha: 0.35)),
+                                  ffTheme.saving.withValues(alpha: 0.35)),
                         ),
                         child: Text(
                           r,
                           style: ffTheme.labelSmall.copyWith(
-                            color: AppColors.saving,
+                            color: ffTheme.saving,
                             fontWeight: FontWeight.w600,
                             fontSize: 11,
                           ),
@@ -628,23 +632,27 @@ class _ScoreBadge extends StatelessWidget {
         ),
         const SizedBox(width: 6),
         // "למה?" tappable chip
-        GestureDetector(
-          onTap: () => _showWhySheet(context, ffTheme),
-          child: Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(
-              color: AppColors.brandAccent.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                  color: AppColors.brandAccent.withValues(alpha: 0.4)),
-            ),
-            child: Text(
-              'למה?',
-              style: ffTheme.labelSmall.copyWith(
-                color: AppColors.brandAccent,
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
+        Semantics(
+          button: true,
+          label: 'למה המסלול הזה מתאים',
+          child: GestureDetector(
+            onTap: () => _showWhySheet(context, ffTheme),
+            child: Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: ffTheme.brandAccent.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                    color: ffTheme.brandAccent.withValues(alpha: 0.4)),
+              ),
+              child: Text(
+                'למה?',
+                style: ffTheme.labelSmall.copyWith(
+                  color: ffTheme.brandAccent,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
           ),
@@ -712,11 +720,11 @@ class _ScoreBadge extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: AppColors.brandAccent.withValues(alpha: 0.1),
+                  color: ffTheme.brandAccent.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.lightbulb_outline_rounded,
-                    color: AppColors.brandAccent, size: 20),
+                child: Icon(Icons.lightbulb_outline_rounded,
+                    color: ffTheme.brandAccent, size: 20),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -753,7 +761,7 @@ class _ScoreBadge extends StatelessWidget {
                           size: 18,
                           color: item.isPositive
                               ? const Color(0xFF16A34A)
-                              : AppColors.saving,
+                              : ffTheme.saving,
                         ),
                         const SizedBox(width: 10),
                         Expanded(

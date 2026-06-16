@@ -36,9 +36,18 @@ class _AdminDashboardWidgetState extends State<AdminDashboardWidget> {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'לוח בקרה 📊',
-              style: theme.titleLarge.copyWith(color: Colors.white, fontSize: 20),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'לוח בקרה',
+                  style: theme.titleLarge.copyWith(color: Colors.white, fontSize: 20),
+                ),
+                const SizedBox(width: 6),
+                const ExcludeSemantics(
+                  child: Icon(Icons.dashboard_rounded, color: Colors.white, size: 18),
+                ),
+              ],
             ),
             Text(
               'נתוני עסק בזמן אמת',
@@ -169,7 +178,9 @@ class _MetricCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return Semantics(
+      label: '${data.label}: ${data.value}, ${data.sub}',
+      child: Container(
       decoration: BoxDecoration(
         color: const Color(0xFF1A2030),
         borderRadius: BorderRadius.circular(theme.radiusLg),
@@ -190,7 +201,9 @@ class _MetricCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Icon(data.icon, color: AppColors.brandAccent, size: 22),
+              ExcludeSemantics(
+                child: Icon(data.icon, color: AppColors.brandAccent, size: 22),
+              ),
               Text(
                 data.value,
                 style: theme.displaySmall.copyWith(
@@ -216,6 +229,7 @@ class _MetricCard extends StatelessWidget {
             ],
           ),
         ],
+      ),
       ),
     );
   }
@@ -1003,6 +1017,8 @@ class _ActivityRow extends StatelessWidget {
                             color: Colors.white.withValues(alpha: 0.87),
                             fontSize: 13,
                           ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       if (item.ts != null)

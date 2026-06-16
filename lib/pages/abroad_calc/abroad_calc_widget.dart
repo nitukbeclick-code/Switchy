@@ -24,12 +24,13 @@ const List<_Destination> _destinations = [
 ];
 
 enum _DataLevel {
-  minimal(label: '📱 מינימלי', subtitle: 'WhatsApp, מפות בלבד', mbPerDay: 200),
-  medium(label: '💻 בינוני', subtitle: 'גלישה רגילה + סושיאל', mbPerDay: 1024),
-  heavy(label: '🎬 גבוה', subtitle: 'סטרימינג + ניווט + סושיאל', mbPerDay: 3072);
+  minimal(label: 'מינימלי', icon: Icons.smartphone_rounded, subtitle: 'WhatsApp, מפות בלבד', mbPerDay: 200),
+  medium(label: 'בינוני', icon: Icons.laptop_mac_rounded, subtitle: 'גלישה רגילה + סושיאל', mbPerDay: 1024),
+  heavy(label: 'גבוה', icon: Icons.movie_rounded, subtitle: 'סטרימינג + ניווט + סושיאל', mbPerDay: 3072);
 
-  const _DataLevel({required this.label, required this.subtitle, required this.mbPerDay});
+  const _DataLevel({required this.label, required this.icon, required this.subtitle, required this.mbPerDay});
   final String label;
+  final IconData icon;
   final String subtitle;
   final int mbPerDay; // MB per day
 }
@@ -281,23 +282,28 @@ class _InputCard extends StatelessWidget {
             runSpacing: 8,
             children: _destinations.asMap().entries.map((e) {
               final selected = e.key == selectedDestIndex;
-              return GestureDetector(
-                onTap: () => onDestChanged(e.key),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 180),
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                  decoration: BoxDecoration(
-                    color: selected ? AppColors.brandAccentTint : AppColors.accent1,
-                    borderRadius: BorderRadius.circular(theme.radiusPill),
-                    border: Border.all(
-                      color: selected ? AppColors.brandAccent : Colors.transparent,
-                      width: 1.5,
+              return Semantics(
+                button: true,
+                selected: selected,
+                label: e.value.label,
+                child: GestureDetector(
+                  onTap: () => onDestChanged(e.key),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                    decoration: BoxDecoration(
+                      color: selected ? AppColors.brandAccentTint : AppColors.accent1,
+                      borderRadius: BorderRadius.circular(theme.radiusPill),
+                      border: Border.all(
+                        color: selected ? AppColors.brandAccent : Colors.transparent,
+                        width: 1.5,
+                      ),
                     ),
-                  ),
-                  child: Text(
-                    '${e.value.flag} ${e.value.label}',
-                    style: theme.labelLarge.copyWith(
-                      color: selected ? AppColors.brandAccent : theme.primaryText,
+                    child: Text(
+                      '${e.value.flag} ${e.value.label}',
+                      style: theme.labelLarge.copyWith(
+                        color: selected ? AppColors.brandAccent : theme.primaryText,
+                      ),
                     ),
                   ),
                 ),
@@ -360,37 +366,48 @@ class _InputCard extends StatelessWidget {
           const SizedBox(height: 10),
           ..._DataLevel.values.map((level) {
             final selected = dataLevel == level;
-            return GestureDetector(
-              onTap: () => onDataLevelChanged(level),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
-                margin: const EdgeInsets.only(bottom: 8),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-                decoration: BoxDecoration(
-                  color: selected ? AppColors.brandAccentTint : AppColors.accent1,
-                  borderRadius: BorderRadius.circular(theme.radiusSm),
-                  border: Border.all(
-                    color: selected ? AppColors.brandAccent : Colors.transparent,
-                    width: 1.5,
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(level.label, style: theme.titleSmall.copyWith(
-                            color: selected ? AppColors.brandAccent : theme.primaryText,
-                          )),
-                          const SizedBox(height: 2),
-                          Text(level.subtitle, style: theme.bodySmall),
-                        ],
-                      ),
+            return Semantics(
+              button: true,
+              selected: selected,
+              label: '${level.label} — ${level.subtitle}',
+              child: GestureDetector(
+                onTap: () => onDataLevelChanged(level),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                  decoration: BoxDecoration(
+                    color: selected ? AppColors.brandAccentTint : AppColors.accent1,
+                    borderRadius: BorderRadius.circular(theme.radiusSm),
+                    border: Border.all(
+                      color: selected ? AppColors.brandAccent : Colors.transparent,
+                      width: 1.5,
                     ),
-                    if (selected)
-                      const Icon(Icons.check_circle_rounded, color: AppColors.brandAccent, size: 20),
-                  ],
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        level.icon,
+                        size: 20,
+                        color: selected ? AppColors.brandAccent : theme.secondaryText,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(level.label, style: theme.titleSmall.copyWith(
+                              color: selected ? AppColors.brandAccent : theme.primaryText,
+                            )),
+                            const SizedBox(height: 2),
+                            Text(level.subtitle, style: theme.bodySmall),
+                          ],
+                        ),
+                      ),
+                      if (selected)
+                        const Icon(Icons.check_circle_rounded, color: AppColors.brandAccent, size: 20),
+                    ],
+                  ),
                 ),
               ),
             );
@@ -492,8 +509,10 @@ class _PlanCard extends StatelessWidget {
               ),
               child: Row(
                 children: [
+                  const Icon(Icons.savings_rounded, size: 16, color: AppColors.savingDark),
+                  const SizedBox(width: 6),
                   Text(
-                    '💰 הזול ביותר',
+                    'הזול ביותר',
                     style: theme.labelLarge.copyWith(color: AppColors.savingDark),
                   ),
                 ],
@@ -526,29 +545,43 @@ class _PlanCard extends StatelessWidget {
                       ),
                     ),
                     // Data status chip
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: dataUnknown
-                            ? AppColors.accent1
-                            : (dataEnough
-                                ? const Color(0xFFDCFCE7)
-                                : AppColors.saving.withValues(alpha: 0.12)),
-                        borderRadius: BorderRadius.circular(theme.radiusPill),
-                      ),
-                      child: Text(
-                        dataUnknown
-                            ? '❓ דאטה לא ידוע'
-                            : (dataEnough ? '✅ מספיק דאטה' : '⚠️ ייתכן חיסרון'),
-                        style: theme.labelSmall.copyWith(
+                    Builder(builder: (ctx) {
+                      final Color statusColor = dataUnknown
+                          ? theme.secondaryText
+                          : (dataEnough
+                              ? const Color(0xFF16A34A)
+                              : AppColors.savingDark);
+                      final IconData statusIcon = dataUnknown
+                          ? Icons.help_outline_rounded
+                          : (dataEnough
+                              ? Icons.check_circle_rounded
+                              : Icons.warning_amber_rounded);
+                      final String statusText = dataUnknown
+                          ? 'דאטה לא ידוע'
+                          : (dataEnough ? 'מספיק דאטה' : 'ייתכן חיסרון');
+                      return Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                        decoration: BoxDecoration(
                           color: dataUnknown
-                              ? theme.secondaryText
+                              ? AppColors.accent1
                               : (dataEnough
-                                  ? const Color(0xFF16A34A)
-                                  : AppColors.savingDark),
+                                  ? const Color(0xFFDCFCE7)
+                                  : AppColors.saving.withValues(alpha: 0.12)),
+                          borderRadius: BorderRadius.circular(theme.radiusPill),
                         ),
-                      ),
-                    ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(statusIcon, size: 13, color: statusColor),
+                            const SizedBox(width: 4),
+                            Text(
+                              statusText,
+                              style: theme.labelSmall.copyWith(color: statusColor),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
                   ],
                 ),
 

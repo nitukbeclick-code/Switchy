@@ -274,23 +274,39 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
           spacing: 8,
           children: filters.map((f) {
             final selected = _techFilter == f;
-            return GestureDetector(
-              onTap: () {
-                setState(() { _techFilter = f; _revealedCount = 0; });
-                if (_checked) _restaggerReveal();
-              },
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                decoration: BoxDecoration(
-                  color: selected ? ffTheme.primary : Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: selected ? ffTheme.primary : ffTheme.alternate, width: selected ? 1.5 : 1),
+            return Semantics(
+              button: true,
+              selected: selected,
+              label: 'סינון לפי $f',
+              child: GestureDetector(
+                onTap: () {
+                  setState(() { _techFilter = f; _revealedCount = 0; });
+                  if (_checked) _restaggerReveal();
+                },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                  constraints: const BoxConstraints(minHeight: 44),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: selected ? ffTheme.primary : Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: selected ? ffTheme.primary : ffTheme.alternate, width: selected ? 1.5 : 1),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (selected) ...[
+                        const ExcludeSemantics(child: Icon(Icons.check_rounded, size: 15, color: Colors.white)),
+                        const SizedBox(width: 5),
+                      ],
+                      Text(f, style: ffTheme.labelSmall.copyWith(
+                        color: selected ? Colors.white : ffTheme.primaryText,
+                        fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                      )),
+                    ],
+                  ),
                 ),
-                child: Text(f, style: ffTheme.labelSmall.copyWith(
-                  color: selected ? Colors.white : ffTheme.primaryText,
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                )),
               ),
             );
           }).toList(),
@@ -677,29 +693,45 @@ class _ISP {
   const _ISP({required this.name, required this.tech, required this.status, required this.speed, required this.price});
 }
 
+/// Which semantic theme token a technology badge renders in. Keeps the badge
+/// palette on-brand (ink / indigo / amber) instead of hardcoded off-brand hues,
+/// while staying distinguishable per technology type.
+enum _TechToken { action, value, ink }
+
 class _TechBadge extends StatelessWidget {
   const _TechBadge({required this.tech, required this.ffTheme});
   final String tech;
   final AppTheme ffTheme;
 
-  Color get _color {
-    switch (tech) {
-      case 'סיב אופטי': return const Color(0xFF1565C0);
-      case 'כבלים': return const Color(0xFF6A1B9A);
-      case 'לוויין': return const Color(0xFF00695C);
-      default: return const Color(0xFF4527A0);
+  // Compile-time map of technology → semantic token (resolved to a color from
+  // the live theme in build). Not provider brand marks — these are tech types.
+  static const Map<String, _TechToken> _techTokens = {
+    'סיב אופטי': _TechToken.action,
+    'כבלים': _TechToken.ink,
+    'לוויין': _TechToken.value,
+  };
+
+  Color _color(AppTheme ffTheme) {
+    switch (_techTokens[tech] ?? _TechToken.action) {
+      case _TechToken.action:
+        return ffTheme.brandAccent;
+      case _TechToken.value:
+        return ffTheme.saving;
+      case _TechToken.ink:
+        return ffTheme.info;
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final color = _color(ffTheme);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: _color.withValues(alpha: 0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(4),
       ),
-      child: Text(tech, style: ffTheme.labelSmall.copyWith(color: _color, fontSize: 10, fontWeight: FontWeight.w600)),
+      child: Text(tech, style: ffTheme.labelSmall.copyWith(color: color, fontSize: 10, fontWeight: FontWeight.w600)),
     );
   }
 }

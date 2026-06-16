@@ -392,8 +392,8 @@ class AppState extends ChangeNotifier {
   String get userPhone => _userPhone;
   String get userEmail => _userEmail;
   String get firstName => _userName.isNotEmpty ? _userName.split(' ').first : 'אורח';
-  void login({required String name, required String phone, String email = ''}) { _isLoggedIn = true; _userName = name; _userPhone = phone; _userEmail = email; notifyListeners(); _persist(); }
-  void logout() { _isLoggedIn = false; _userName = ''; _userPhone = ''; _userEmail = ''; notifyListeners(); _persist(); }
+  void login({required String name, required String phone, String email = ''}) { _isLoggedIn = true; _userName = name; _userPhone = phone; _userEmail = email; _isAdmin = isAdminEmail(email); notifyListeners(); _persist(); }
+  void logout() { _isLoggedIn = false; _userName = ''; _userPhone = ''; _userEmail = ''; _isAdmin = false; notifyListeners(); _persist(); }
 
   // Lead
   String? _leadName; String? _leadPhone; String? _leadProvider; String? _leadPlanId; String? _leadEmail; String? _leadCallbackTime;
@@ -586,7 +586,13 @@ class AppState extends ChangeNotifier {
   void setPrefRequestUpdates(bool v) { _prefRequestUpdates = v; notifyListeners(); _persist(); }
   void setPrefCommunityNotifs(bool v) { _prefCommunityNotifs = v; notifyListeners(); _persist(); }
 
-  // Admin flag — gates the (otherwise unreachable) '/admin' route.
+  // Admin flag — gates the (otherwise unreachable) '/admin' route. Derived from
+  // the signed-in email against [adminEmails] inside login()/logout(); the
+  // setter remains for manual override (e.g. tests or a future server-driven
+  // role). Compare lower-cased — emails are case-insensitive.
+  static const Set<String> adminEmails = {'uziel10@gmail.com'};
+  static bool isAdminEmail(String email) =>
+      email.isNotEmpty && adminEmails.contains(email.trim().toLowerCase());
   bool _isAdmin = false;
   bool get isAdmin => _isAdmin;
   void setIsAdmin(bool v) { _isAdmin = v; notifyListeners(); _persist(); }

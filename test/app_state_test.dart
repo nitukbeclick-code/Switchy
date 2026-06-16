@@ -534,4 +534,38 @@ void main() {
       expect(state.renewalReminders, isTrue);
     });
   });
+
+  // -- Admin role derivation --
+
+  group('isAdmin derivation', () {
+    test('defaults to false before any login', () {
+      expect(AppState().isAdmin, isFalse);
+    });
+
+    test('login with an allow-listed email grants admin (case-insensitive)', () {
+      final state = AppState();
+      state.login(name: 'owner', phone: '0500000000', email: 'UZIEL10@Gmail.com');
+      expect(state.isAdmin, isTrue);
+    });
+
+    test('login with a non-admin email does not grant admin', () {
+      final state = AppState();
+      state.login(name: 'user', phone: '0501111111', email: 'someone@example.com');
+      expect(state.isAdmin, isFalse);
+    });
+
+    test('logout clears the admin flag', () {
+      final state = AppState();
+      state.login(name: 'owner', phone: '0500000000', email: 'uziel10@gmail.com');
+      expect(state.isAdmin, isTrue);
+      state.logout();
+      expect(state.isAdmin, isFalse);
+    });
+
+    test('isAdminEmail ignores case and surrounding space', () {
+      expect(AppState.isAdminEmail(' uziel10@gmail.com '), isTrue);
+      expect(AppState.isAdminEmail('nope@gmail.com'), isFalse);
+      expect(AppState.isAdminEmail(''), isFalse);
+    });
+  });
 }

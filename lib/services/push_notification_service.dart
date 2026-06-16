@@ -1,8 +1,11 @@
 import '../app_state.dart';
-import '../data.dart' show planById;
+import '../data.dart' show planById, allPlans;
+import '../models.dart' show Plan;
 import 'notifications.dart';
+import 'price_change_event.dart';
 import 'price_target.dart';
 import 'reminder_schedule.dart';
+import 'backend/local_backend.dart' show appBackend;
 import 'push_native.dart' as impl;
 
 /// App-facing push facade. Platform-agnostic: it computes the (pure) renewal
@@ -94,6 +97,65 @@ class PushNotificationService {
       );
       state.markPriceAlertNotified(id, n.toIso8601String());
     }
+  }
+
+  /// Detect price drops for the user's watched plans: record each on AppState
+  /// (so the notification center surfaces it) and fire a one-shot OS push.
+  /// Compares the current catalogue (real prices when the backend serves them,
+  /// else the static catalogue) against the last-seen baseline, then refreshes
+  /// the baseline. Gated on the Price Alerts toggle. [catalogue] can be injected
+  /// (tests); otherwise it's fetched. No-op push on web.
+  Future<void> syncPriceDrops(AppState state, {List<Plan>? catalogue}) async {
+    if (!state.prefPriceAlerts) return;
+    final all = catalogue ?? await _currentCatalogue();
+    final byId = {for (final p in all) p.id: p};
+    final watched =
+        state.watchedPlans.map((id) => byId[id]).whereType<Plan>().toList();
+    if (watched.isEmpty) return;
+
+    final baseline = <String, int>{};
+    for (final id in state.watchedPlans) {
+      final b = state.lastSeenPrice(id);
+      if (b != null) baseline[id] = b;
+    }
+
+    final result = watchedDrops(
+      watchedPlans: watched,
+      baseline: baseline,
+      minSaving: state.minSavingAlert,
+    );
+
+    for (final id in result.recovered) {
+      state.clearPriceDrop(id);
+    }
+    for (final e in result.drops) {
+      state.recordPriceDrop(
+        planId: e.planId,
+        planName: e.planName,
+        provider: e.provider,
+        oldPrice: e.oldPrice.round(),
+        newPrice: e.newPrice.round(),
+      );
+      await notifyPriceDrop(
+        planId: e.planId,
+        planName: e.planName,
+        provider: e.provider,
+        oldPrice: e.oldPrice,
+        newPrice: e.newPrice,
+        appState: state,
+      );
+    }
+    state.recordSeenPrices(result.newBaseline);
+  }
+
+  /// The live catalogue: real prices from the backend when available, else the
+  /// bundled static catalogue (so detection still has data offline).
+  Future<List<Plan>> _currentCatalogue() async {
+    try {
+      final fetched = await appBackend.fetchPlans();
+      if (fetched.isNotEmpty) return fetched;
+    } catch (_) {}
+    return allPlans;
   }
 
   /// Show an immediate local notification when a watched plan's price drops.

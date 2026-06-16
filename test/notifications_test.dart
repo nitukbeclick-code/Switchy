@@ -462,4 +462,37 @@ void main() {
       expect(ptCount(s), equals(1));
     });
   });
+
+  group('price-drop alerts', () {
+    test('a recorded drop surfaces as a priceDrop notification, gated on the toggle', () {
+      final s = AppState();
+      s.recordPriceDrop(
+          planId: 'p1', planName: 'מסלול', provider: 'סלקום', oldPrice: 100, newPrice: 80);
+      final drops =
+          computeNotifications(s).where((n) => n.id == 'price_drop_p1').toList();
+      expect(drops.length, 1);
+      expect(drops.single.planId, 'p1');
+      expect(drops.single.routeName, 'PlanDetail');
+
+      s.setPrefPriceAlerts(false);
+      expect(computeNotifications(s).where((n) => n.id == 'price_drop_p1'), isEmpty);
+    });
+
+    test('a stale (recovered) drop is not surfaced', () {
+      final s = AppState();
+      // newPrice >= oldPrice → not actually a drop anymore.
+      s.recordPriceDrop(
+          planId: 'p1', planName: 'מסלול', provider: 'סלקום', oldPrice: 80, newPrice: 100);
+      expect(computeNotifications(s).where((n) => n.id == 'price_drop_p1'), isEmpty);
+    });
+
+    test('clearPriceDrop removes it from the center', () {
+      final s = AppState();
+      s.recordPriceDrop(
+          planId: 'p1', planName: 'מסלול', provider: 'סלקום', oldPrice: 100, newPrice: 80);
+      expect(computeNotifications(s).where((n) => n.id == 'price_drop_p1'), isNotEmpty);
+      s.clearPriceDrop('p1');
+      expect(computeNotifications(s).where((n) => n.id == 'price_drop_p1'), isEmpty);
+    });
+  });
 }

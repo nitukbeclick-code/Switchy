@@ -118,4 +118,62 @@ void main() {
       expect(events.single.provider, 'פרטנר');
     });
   });
+
+  group('watchedDrops', () {
+    test('detects a drop below baseline and seeds new baselines', () {
+      final r = watchedDrops(
+        watchedPlans: [plan(id: 'a', price: 80), plan(id: 'b', price: 50)],
+        baseline: {'a': 100}, // a: 100→80 drop; b: first observation
+      );
+      expect(r.drops.length, 1);
+      expect(r.drops.single.planId, 'a');
+      expect(r.drops.single.oldPrice, 100);
+      expect(r.drops.single.newPrice, 80);
+      expect(r.recovered, isEmpty);
+      expect(r.newBaseline, equals({'a': 80, 'b': 50}));
+    });
+
+    test('first observation seeds baseline but never fires a drop', () {
+      final r = watchedDrops(
+        watchedPlans: [plan(id: 'a', price: 40)],
+        baseline: const {},
+      );
+      expect(r.drops, isEmpty);
+      expect(r.newBaseline, equals({'a': 40}));
+    });
+
+    test('respects the minSaving threshold', () {
+      final small = watchedDrops(
+        watchedPlans: [plan(id: 'a', price: 98)],
+        baseline: {'a': 100},
+        minSaving: 5,
+      );
+      expect(small.drops, isEmpty); // saving 2 < 5
+      final ok = watchedDrops(
+        watchedPlans: [plan(id: 'a', price: 98)],
+        baseline: {'a': 100},
+        minSaving: 2,
+      );
+      expect(ok.drops.length, 1);
+    });
+
+    test('marks recovered when the price rose above baseline', () {
+      final r = watchedDrops(
+        watchedPlans: [plan(id: 'a', price: 120)],
+        baseline: {'a': 100},
+      );
+      expect(r.drops, isEmpty);
+      expect(r.recovered, equals(['a']));
+      expect(r.newBaseline, equals({'a': 120}));
+    });
+
+    test('equal price → neither a drop nor a recovery', () {
+      final r = watchedDrops(
+        watchedPlans: [plan(id: 'a', price: 100)],
+        baseline: {'a': 100},
+      );
+      expect(r.drops, isEmpty);
+      expect(r.recovered, isEmpty);
+    });
+  });
 }

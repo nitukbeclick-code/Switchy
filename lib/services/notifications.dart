@@ -201,6 +201,24 @@ List<AppNotification> computeNotifications(AppState s) {
     }
   }
 
+  // 3c) Price-drop alerts — a watched plan whose price fell since we last showed
+  // it, detected by PushNotificationService.syncPriceDrops. Gated on Price Alerts.
+  if (s.prefPriceAlerts) {
+    for (final entry in s.priceDrops.entries) {
+      final d = entry.value;
+      final oldPrice = (d['oldPrice'] as num).toInt();
+      final newPrice = (d['newPrice'] as num).toInt();
+      if (newPrice >= oldPrice) continue; // stale (price recovered)
+      out.add(AppNotification.priceDrop(PriceChangeEvent(
+        planId: entry.key,
+        planName: d['planName'] as String,
+        provider: d['provider'] as String,
+        oldPrice: oldPrice.toDouble(),
+        newPrice: newPrice.toDouble(),
+      )));
+    }
+  }
+
   // 4) Video-meeting status — the user's booked Zoom meeting with a rep.
   final meeting = s.bookedMeeting;
   if (meeting != null) {

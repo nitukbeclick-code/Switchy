@@ -83,6 +83,21 @@ class AppState extends ChangeNotifier {
         _priceAlertNotified[planId] = value as String;
       });
     }
+    // Price-drop baseline + detected drops
+    final lastSeenPricesJson = p.getString('lastSeenPrices');
+    if (lastSeenPricesJson != null) {
+      final decoded = jsonDecode(lastSeenPricesJson) as Map<String, dynamic>;
+      decoded.forEach((planId, value) {
+        _lastSeenPrices[planId] = (value as num).toInt();
+      });
+    }
+    final priceDropsJson = p.getString('priceDrops');
+    if (priceDropsJson != null) {
+      final decoded = jsonDecode(priceDropsJson) as Map<String, dynamic>;
+      decoded.forEach((planId, value) {
+        _priceDrops[planId] = (value as Map).cast<String, dynamic>();
+      });
+    }
     // Alert-tuning prefs
     _minSavingAlert = p.getInt('minSavingAlert') ?? 5;
     _alertFrequency = p.getString('alertFrequency') ?? 'immediate';
@@ -278,6 +293,10 @@ class AppState extends ChangeNotifier {
         case 'priceAlertNotified':
           await p.setString('priceAlertNotified', jsonEncode(_priceAlertNotified));
           break;
+        case 'priceDropState':
+          await p.setString('lastSeenPrices', jsonEncode(_lastSeenPrices));
+          await p.setString('priceDrops', jsonEncode(_priceDrops));
+          break;
         case 'alertTuning':
           await p.setInt('minSavingAlert', _minSavingAlert);
           await p.setString('alertFrequency', _alertFrequency);
@@ -359,7 +378,7 @@ class AppState extends ChangeNotifier {
     'auth', 'totalSavings', 'selectedCat', 'bills', 'quiz', 'quizNeeds', 'lead',
     'meeting', 'telegram', 'supportTicket',
     'trackerStep', 'watchedPlans', 'favoritePlans', 'priceTargets',
-    'priceAlertNotified', 'alertTuning', 'switchChecklistDone',
+    'priceAlertNotified', 'priceDropState', 'alertTuning', 'switchChecklistDone',
     'recentlyViewed', 'recentSearches',
     'userReviews', 'likedPosts', 'bookmarkedPosts', 'myPlans',
     'renewalReminders', 'dismissedNotifications', 'prefs', 'seenOnboarding',
@@ -638,6 +657,46 @@ class AppState extends ChangeNotifier {
     _priceAlertNotified[planId] = isoDate;
     notifyListeners();
     _persist();
+  }
+
+  // Price-drop detection — [_lastSeenPrices] is the baseline (the last price we
+  // showed for each watched plan); [_priceDrops] holds drops the sync detected
+  // (planId -> {planName, provider, oldPrice, newPrice}) for the notification
+  // center. With a static catalogue nothing drops; real drops appear once the
+  // backend serves updated prices.
+  final Map<String, int> _lastSeenPrices = {};
+  int? lastSeenPrice(String planId) => _lastSeenPrices[planId];
+  void recordSeenPrices(Map<String, int> prices) {
+    if (prices.isEmpty) return;
+    _lastSeenPrices.addAll(prices);
+    notifyListeners();
+    _persist();
+  }
+
+  final Map<String, Map<String, dynamic>> _priceDrops = {};
+  Map<String, Map<String, dynamic>> get priceDrops => Map.unmodifiable(_priceDrops);
+  void recordPriceDrop({
+    required String planId,
+    required String planName,
+    required String provider,
+    required int oldPrice,
+    required int newPrice,
+  }) {
+    _priceDrops[planId] = {
+      'planName': planName,
+      'provider': provider,
+      'oldPrice': oldPrice,
+      'newPrice': newPrice,
+    };
+    notifyListeners();
+    _persist();
+  }
+
+  void clearPriceDrop(String planId) {
+    if (_priceDrops.remove(planId) != null) {
+      notifyListeners();
+      _persist();
+    }
   }
 
   // Alert-tuning prefs — thresholds/timing the notification engine reads so the

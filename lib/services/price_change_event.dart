@@ -62,3 +62,39 @@ List<PriceChangeEvent> detectPriceChanges({
   }
   return events;
 }
+
+/// Pure decision for the watched-plan price-drop sync. Compares each watched
+/// plan's current price to the user's [baseline] (the last price we showed):
+///  - a current price below baseline by at least [minSaving] ₪/month → a drop;
+///  - a current price above baseline → "recovered" (clear any stale drop);
+///  - [newBaseline] is every priced watched plan's current price (store after).
+/// A plan with no baseline yet only seeds the baseline — never a drop, so the
+/// first observation never spams the user.
+({List<PriceChangeEvent> drops, List<String> recovered, Map<String, int> newBaseline})
+    watchedDrops({
+  required List<Plan> watchedPlans,
+  required Map<String, int> baseline,
+  int minSaving = 1,
+}) {
+  final drops = <PriceChangeEvent>[];
+  final recovered = <String>[];
+  final newBaseline = <String, int>{};
+  for (final p in watchedPlans) {
+    final current = p.priceValue.round();
+    newBaseline[p.id] = current;
+    final base = baseline[p.id];
+    if (base == null) continue; // first observation — seed baseline only
+    if (current < base && (base - current) >= minSaving) {
+      drops.add(PriceChangeEvent(
+        planId: p.id,
+        planName: p.plan,
+        provider: p.provider,
+        oldPrice: base.toDouble(),
+        newPrice: current.toDouble(),
+      ));
+    } else if (current > base) {
+      recovered.add(p.id);
+    }
+  }
+  return (drops: drops, recovered: recovered, newBaseline: newBaseline);
+}

@@ -48,6 +48,8 @@ void main() async {
   PushNotificationService.instance.syncRenewalReminders(AppState());
   // Push any price targets already met on cold start (gated + deduped inside).
   PushNotificationService.instance.syncPriceAlerts(AppState());
+  // Detect price drops for watched plans vs the last-seen baseline (gated).
+  PushNotificationService.instance.syncPriceDrops(AppState());
   // App-scope meeting sync: a rep confirmation must land (status + Zoom link +
   // push reminders) no matter which screen is open. Fire-and-forget.
   MeetingSync.start();

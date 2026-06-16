@@ -31,8 +31,18 @@ create policy "Only admins/service can write price history"
 -- ── Auto-log price changes ───────────────────────────────────────────────────
 -- Append a ledger row on insert and whenever the price actually changes, so the
 -- history grows automatically as the catalogue is edited (no app code needed).
+-- SECURITY DEFINER: the ledger write must succeed for ANY caller allowed to edit
+-- a plan. Our admins are email-allowlisted (JWT role 'authenticated', not the
+-- 'admin' claim the plan_prices write policy checks), so without DEFINER this
+-- trigger's insert would be rejected by RLS and roll back the admin's price edit.
+-- Running as the function owner (which bypasses RLS) decouples the ledger write
+-- from the editor's role. search_path is pinned for SECURITY DEFINER safety.
 create or replace function public.log_plan_price()
-returns trigger language plpgsql as $$
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
 begin
   if (tg_op = 'INSERT') or (new.price is distinct from old.price) then
     insert into public.plan_prices (plan_id, price) values (new.id, new.price);

@@ -546,7 +546,7 @@ class _TelegramRowState extends State<_TelegramRow> {
     setState(() => _busy = true);
     try {
       final appState = Provider.of<AppState>(context, listen: false);
-      final userId = appState.userId;
+      final userId = appState.userPhone;
       final botUsername = 'chosech_bot';
       final deepLink = Uri.parse('https://t.me/$botUsername?start=user_$userId');
 

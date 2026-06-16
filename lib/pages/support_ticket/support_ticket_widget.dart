@@ -100,7 +100,7 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
 
     try {
       final appState = Provider.of<AppState>(context, listen: false);
-      final userId = appState.getUserId();
+      final userId = appState.isLoggedIn ? appState.userPhone : null;
       if (userId == null) throw Exception('User not logged in');
 
       final result = await _service.sendMessage(
@@ -203,7 +203,7 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
     );
   }
 
-  Widget _buildEmptyState(AppThemeData theme) {
+  Widget _buildEmptyState(AppTheme theme) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -234,7 +234,7 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
     );
   }
 
-  Widget _buildMessageBubble(SupportMessage msg, AppThemeData theme) {
+  Widget _buildMessageBubble(SupportMessage msg, AppTheme theme) {
     final isUser = msg.role == 'user';
     final isHuman = msg.role == 'human';
 
@@ -313,7 +313,7 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
     );
   }
 
-  Widget _buildTypingIndicator(AppThemeData theme) {
+  Widget _buildTypingIndicator(AppTheme theme) {
     return Align(
       alignment: Alignment.centerLeft,
       child: Padding(
@@ -357,7 +357,7 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
     );
   }
 
-  Widget _buildQuickReplies(AppThemeData theme) {
+  Widget _buildQuickReplies(AppTheme theme) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       child: SingleChildScrollView(
@@ -379,7 +379,7 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
     );
   }
 
-  Widget _buildInputArea(AppThemeData theme, bool isEscalated) {
+  Widget _buildInputArea(AppTheme theme, bool isEscalated) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(

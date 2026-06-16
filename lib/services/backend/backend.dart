@@ -383,4 +383,14 @@ abstract interface class Backend {
     String? provider,
     bool flashDealsOnly = false,
   });
+
+  // ── Price history ──────────────────────────────────────────────────────────
+  /// Chronological price points for a plan (oldest→newest, last [days] days),
+  /// from the `plan_prices` ledger. Powers the history sparkline and price-drop
+  /// detection. Returns an empty list when unavailable (no backend / no rows /
+  /// error) so callers fall back to a deterministic synthetic series.
+  Future<List<({DateTime capturedAt, int price})>> fetchPriceHistory(
+    String planId, {
+    int days = 30,
+  });
 }

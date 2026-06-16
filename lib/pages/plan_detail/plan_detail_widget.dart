@@ -1437,16 +1437,26 @@ class _PriceHistoryCardState extends State<_PriceHistoryCard> {
       _expanded = true;
       _building = true;
     });
-    // Tiny deferral so the skeleton is perceptible while we compute the series.
-    await Future<void>.delayed(const Duration(milliseconds: 280));
+    // Prefer the real price ledger; fall back to a deterministic synthetic
+    // series when the backend has no history (offline / not yet populated).
+    List<PricePoint> series;
+    try {
+      final rows = await appBackend.fetchPriceHistory(widget.plan.id);
+      series = rows.length >= 2
+          ? rows.map((r) => PricePoint(r.capturedAt, r.price)).toList()
+          : PlanHistory.generate(
+              planId: widget.plan.id,
+              basePrice: widget.plan.priceValue.round(),
+              anchor: 30,
+            );
+    } catch (_) {
+      series = PlanHistory.generate(
+        planId: widget.plan.id,
+        basePrice: widget.plan.priceValue.round(),
+        anchor: 30,
+      );
+    }
     if (!mounted) return;
-    final series = PlanHistory.generate(
-      planId: widget.plan.id,
-      basePrice: widget.plan.priceValue.round(),
-      // Anchor "today" at a fixed index — the series is for trend shape only,
-      // so absolute calendar dates don't matter to the sparkline.
-      anchor: 30,
-    );
     setState(() {
       _series = series;
       _building = false;

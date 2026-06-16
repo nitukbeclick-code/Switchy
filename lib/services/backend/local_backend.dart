@@ -252,6 +252,16 @@ class LocalBackend implements Backend {
     if (provider != null) plans = plans.where((p) => p.provider == provider).toList();
     return Future.value(List.unmodifiable(plans));
   }
+
+  // ── Price history ──────────────────────────────────────────────────────────
+  // Local/offline mode keeps no price ledger — return empty so the sparkline
+  // falls back to its deterministic synthetic series.
+  @override
+  Future<List<({DateTime capturedAt, int price})>> fetchPriceHistory(
+    String planId, {
+    int days = 30,
+  }) async =>
+      const [];
 }
 
 /// The backend the app talks to. Defaults to on-device storage; `main.dart`

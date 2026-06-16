@@ -550,4 +550,31 @@ class SupabaseBackend implements Backend {
       return const [];
     }
   }
+
+  // ── Price history ──────────────────────────────────────────────────────────
+  @override
+  Future<List<({DateTime capturedAt, int price})>> fetchPriceHistory(
+    String planId, {
+    int days = 30,
+  }) async {
+    try {
+      final since =
+          DateTime.now().toUtc().subtract(Duration(days: days)).toIso8601String();
+      final rows = await _db
+          .from('plan_prices')
+          .select('price, captured_at')
+          .eq('plan_id', planId)
+          .gte('captured_at', since)
+          .order('captured_at', ascending: true);
+      return (rows as List)
+          .map((r) => (
+                capturedAt: DateTime.parse(r['captured_at'] as String),
+                price: (r['price'] as num).round(),
+              ))
+          .toList();
+    } catch (e) {
+      debugPrint('fetchPriceHistory error: $e');
+      return const [];
+    }
+  }
 }

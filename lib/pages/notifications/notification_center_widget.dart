@@ -50,6 +50,7 @@ class _NotificationCenterWidgetState extends State<NotificationCenterWidget> {
       NotifKind.info => (Icons.info_rounded, ffTheme.info),
       NotifKind.communityReply => (Icons.forum_rounded, ffTheme.brandAccent),
       NotifKind.communityLike => (Icons.favorite_rounded, ffTheme.saving),
+      NotifKind.priceTarget => (Icons.flag_rounded, ffTheme.brandAccent),
     };
   }
 

@@ -54,4 +54,74 @@ void main() {
       expect(hits, isEmpty);
     });
   });
+
+  group('PriceTarget.windowDays', () {
+    test('daily=1, weekly=7, immediate(+unknown) effectively never', () {
+      expect(PriceTarget.windowDays('daily'), equals(1));
+      expect(PriceTarget.windowDays('weekly'), equals(7));
+      expect(PriceTarget.windowDays('immediate'), greaterThan(1000000));
+      expect(PriceTarget.windowDays('whatever'), greaterThan(1000000));
+    });
+  });
+
+  group('PriceTarget.dueForPush', () {
+    final now = DateTime(2026, 6, 16, 9);
+    final targets = {'a': 40, 'b': 60}; // a hit (price 30), b miss (price 70)
+    int priceOf(String id) => id == 'a' ? 30 : 70;
+
+    test('only currently-hit targets are ever due', () {
+      final due = PriceTarget.dueForPush(
+        targets: targets,
+        currentPriceOf: priceOf,
+        lastNotifiedIso: const {},
+        frequency: 'immediate',
+        now: now,
+      );
+      expect(due, equals(['a']));
+    });
+
+    test('immediate: once notified, never due again', () {
+      final due = PriceTarget.dueForPush(
+        targets: targets,
+        currentPriceOf: priceOf,
+        lastNotifiedIso: {'a': now.subtract(const Duration(days: 365)).toIso8601String()},
+        frequency: 'immediate',
+        now: now,
+      );
+      expect(due, isEmpty);
+    });
+
+    test('daily: due again once a day has passed, not before', () {
+      final yesterday = now.subtract(const Duration(days: 1, hours: 1));
+      final dueAfter = PriceTarget.dueForPush(
+        targets: targets, currentPriceOf: priceOf,
+        lastNotifiedIso: {'a': yesterday.toIso8601String()},
+        frequency: 'daily', now: now,
+      );
+      expect(dueAfter, equals(['a']));
+
+      final dueWithin = PriceTarget.dueForPush(
+        targets: targets, currentPriceOf: priceOf,
+        lastNotifiedIso: {'a': now.subtract(const Duration(hours: 5)).toIso8601String()},
+        frequency: 'daily', now: now,
+      );
+      expect(dueWithin, isEmpty);
+    });
+
+    test('weekly: suppressed within 7 days, due after', () {
+      final within = PriceTarget.dueForPush(
+        targets: targets, currentPriceOf: priceOf,
+        lastNotifiedIso: {'a': now.subtract(const Duration(days: 3)).toIso8601String()},
+        frequency: 'weekly', now: now,
+      );
+      expect(within, isEmpty);
+
+      final after = PriceTarget.dueForPush(
+        targets: targets, currentPriceOf: priceOf,
+        lastNotifiedIso: {'a': now.subtract(const Duration(days: 8)).toIso8601String()},
+        frequency: 'weekly', now: now,
+      );
+      expect(after, equals(['a']));
+    });
+  });
 }

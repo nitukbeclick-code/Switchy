@@ -415,4 +415,51 @@ void main() {
     expect(notifs.indexOf(better), lessThan(notifs.indexOf(meeting)));
     expect(notifs.indexOf(meeting), lessThan(notifs.indexOf(savings)));
   });
+
+  group('price-target alerts', () {
+    int ptCount(AppState s) =>
+        computeNotifications(s).where((n) => n.kind == NotifKind.priceTarget).length;
+
+    test('fires when a watched plan reaches the ₪ target', () {
+      final s = AppState();
+      final plan = allPlans.first;
+      s.setPriceTarget(plan.id, plan.priceValue.round()); // boundary hit
+      final pt = computeNotifications(s)
+          .where((n) => n.kind == NotifKind.priceTarget)
+          .toList();
+      expect(pt.length, equals(1));
+      expect(pt.first.planId, equals(plan.id));
+      expect(pt.first.id, equals('price_target_${plan.id}'));
+      expect(pt.first.routeName, equals('PlanDetail'));
+    });
+
+    test('does not fire when Price Alerts are off', () {
+      final s = AppState();
+      final plan = allPlans.first;
+      s.setPriceTarget(plan.id, plan.priceValue.round());
+      s.setPrefPriceAlerts(false);
+      expect(ptCount(s), equals(0));
+    });
+
+    test('does not fire when the target is still below the current price', () {
+      final s = AppState();
+      final plan = allPlans.first;
+      s.setPriceTarget(plan.id, plan.priceValue.round() - 5); // unreached
+      expect(ptCount(s), equals(0));
+    });
+
+    test('honors the minimum-saving threshold once a bill is set', () {
+      final s = AppState();
+      final plan = allPlans.first;
+      final price = plan.priceValue.round();
+      s.setPriceTarget(plan.id, price); // hit
+      s.setMinSavingAlert(5);
+      // Saving vs bill is only ₪2 (< 5) → suppressed.
+      s.setCurrentBill(plan.cat, price + 2);
+      expect(ptCount(s), equals(0));
+      // Saving now ₪50 (≥ 5) → fires.
+      s.setCurrentBill(plan.cat, price + 50);
+      expect(ptCount(s), equals(1));
+    });
+  });
 }

@@ -1,5 +1,7 @@
 import '../app_state.dart';
+import '../data.dart' show planById;
 import 'notifications.dart';
+import 'price_target.dart';
 import 'reminder_schedule.dart';
 import 'push_native.dart' as impl;
 
@@ -30,8 +32,13 @@ class PushNotificationService {
   /// opt-in toggle, tracked-plan change or meeting update.
   Future<void> syncAll(AppState state) async {
     if (!_ready) return;
-    final renewals =
-        state.renewalReminders ? renewalReminderSchedule(state) : const <ScheduledReminder>[];
+    final renewals = state.renewalReminders
+        ? renewalReminderSchedule(
+            state,
+            daysBefore: state.renewalDaysAhead,
+            atTime: _parseHHmm(state.renewalReminderTime),
+          )
+        : const <ScheduledReminder>[];
     final meetings = meetingReminderSchedule(state);
     if (renewals.isEmpty && meetings.isEmpty) {
       await impl.cancelAllPush();
@@ -42,6 +49,52 @@ class PushNotificationService {
 
   /// Back-compat alias — existing call sites sync everything now.
   Future<void> syncRenewalReminders(AppState state) => syncAll(state);
+
+  /// Parse a 'HH:mm' reminder-time preference into an (hour, minute) record, or
+  /// null when blank/malformed (callers then keep the date-only default).
+  ({int hour, int minute})? _parseHHmm(String? s) {
+    if (s == null) return null;
+    final parts = s.split(':');
+    if (parts.length != 2) return null;
+    final h = int.tryParse(parts[0]);
+    final m = int.tryParse(parts[1]);
+    if (h == null || m == null || h < 0 || h > 23 || m < 0 || m > 59) return null;
+    return (hour: h, minute: m);
+  }
+
+  /// Fire an OS push for any price target that has been reached, honouring the
+  /// Price Alerts toggle, the minimum-saving threshold and the alert-frequency
+  /// cadence. Records what it pushed so a still-met target isn't re-pushed
+  /// within its window. No-op on web (impl.showNow is a no-op there). Safe to
+  /// call on startup and whenever a target is set.
+  Future<void> syncPriceAlerts(AppState state, {DateTime? now}) async {
+    if (!state.prefPriceAlerts) return;
+    final n = now ?? DateTime.now();
+    final due = PriceTarget.dueForPush(
+      targets: state.priceTargets,
+      currentPriceOf: (id) => planById(id)?.priceValue.round() ?? (1 << 30),
+      lastNotifiedIso: state.priceAlertNotified,
+      frequency: state.alertFrequency,
+      now: n,
+    );
+    if (due.isEmpty) return;
+    if (!_ready) await init();
+    for (final id in due) {
+      final plan = planById(id);
+      if (plan == null) continue;
+      final price = plan.priceValue.round();
+      final bill = state.currentBill(plan.cat);
+      if (bill > 0 && (bill - price) < state.minSavingAlert) continue; // too small
+      final target = state.priceTargetFor(id) ?? price;
+      await impl.showNow(
+        id: 'price_target_$id'.hashCode & 0x7fffffff,
+        title: '🎯 הגעת ליעד המחיר!',
+        body: '${plan.provider} · ${plan.plan} עומד על ₪$price — היעד שלך היה ₪$target',
+        payload: id,
+      );
+      state.markPriceAlertNotified(id, n.toIso8601String());
+    }
+  }
 
   /// Show an immediate local notification when a watched plan's price drops.
   ///

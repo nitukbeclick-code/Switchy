@@ -37,6 +37,31 @@ void main() {
     expect(r.title, contains('פרטנר'));
   });
 
+  test('custom daysBefore + atTime drive the fire date and time-of-day', () {
+    final s = AppState()..setRenewalReminders(true);
+    final end = now.add(const Duration(days: 60));
+    s.addMyPlan(category: 'cellular', provider: 'פרטנר', planName: 'p', monthlyPrice: 50, promoEndDate: iso(end));
+
+    final r = renewalReminderSchedule(
+      s,
+      daysBefore: 14,
+      atTime: (hour: 8, minute: 30),
+      now: now,
+    ).single;
+    final day = DateTime(end.year, end.month, end.day).subtract(const Duration(days: 14));
+    expect(r.fireDate, equals(DateTime(day.year, day.month, day.day, 8, 30)));
+  });
+
+  test('without atTime the fire date stays date-only (midnight)', () {
+    final s = AppState()..setRenewalReminders(true);
+    final end = now.add(const Duration(days: 60));
+    s.addMyPlan(category: 'cellular', provider: 'X', planName: 'p', monthlyPrice: 50, promoEndDate: iso(end));
+
+    final r = renewalReminderSchedule(s, now: now).single;
+    expect(r.fireDate.hour, equals(0));
+    expect(r.fireDate.minute, equals(0));
+  });
+
   test('if the ideal reminder date already passed, it fires today (promo still future)', () {
     final s = AppState()..setRenewalReminders(true);
     // Promo ends in 10 days → 21-days-before is in the past → clamp to today.

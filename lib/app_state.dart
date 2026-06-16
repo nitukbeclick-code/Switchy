@@ -75,6 +75,14 @@ class AppState extends ChangeNotifier {
         _priceTargets[planId] = (value as num).toInt();
       });
     }
+    // Price-alert push dedup (planId -> ISO date last pushed)
+    final priceAlertNotifiedJson = p.getString('priceAlertNotified');
+    if (priceAlertNotifiedJson != null) {
+      final decoded = jsonDecode(priceAlertNotifiedJson) as Map<String, dynamic>;
+      decoded.forEach((planId, value) {
+        _priceAlertNotified[planId] = value as String;
+      });
+    }
     // Alert-tuning prefs
     _minSavingAlert = p.getInt('minSavingAlert') ?? 5;
     _alertFrequency = p.getString('alertFrequency') ?? 'immediate';
@@ -267,6 +275,9 @@ class AppState extends ChangeNotifier {
         case 'priceTargets':
           await p.setString('priceTargets', jsonEncode(_priceTargets));
           break;
+        case 'priceAlertNotified':
+          await p.setString('priceAlertNotified', jsonEncode(_priceAlertNotified));
+          break;
         case 'alertTuning':
           await p.setInt('minSavingAlert', _minSavingAlert);
           await p.setString('alertFrequency', _alertFrequency);
@@ -348,7 +359,7 @@ class AppState extends ChangeNotifier {
     'auth', 'totalSavings', 'selectedCat', 'bills', 'quiz', 'quizNeeds', 'lead',
     'meeting', 'telegram', 'supportTicket',
     'trackerStep', 'watchedPlans', 'favoritePlans', 'priceTargets',
-    'alertTuning', 'switchChecklistDone',
+    'priceAlertNotified', 'alertTuning', 'switchChecklistDone',
     'recentlyViewed', 'recentSearches',
     'userReviews', 'likedPosts', 'bookmarkedPosts', 'myPlans',
     'renewalReminders', 'dismissedNotifications', 'prefs', 'seenOnboarding',
@@ -614,6 +625,17 @@ class AppState extends ChangeNotifier {
   }
   void clearPriceTarget(String planId) {
     _priceTargets.remove(planId);
+    notifyListeners();
+    _persist();
+  }
+
+  // OS-push dedup for price-target alerts — planId -> ISO date last pushed, so a
+  // continuously-met target isn't re-pushed within its [alertFrequency] window.
+  // The live notification-center alert is independent and always reflects state.
+  final Map<String, String> _priceAlertNotified = {};
+  Map<String, String> get priceAlertNotified => Map.unmodifiable(_priceAlertNotified);
+  void markPriceAlertNotified(String planId, String isoDate) {
+    _priceAlertNotified[planId] = isoDate;
     notifyListeners();
     _persist();
   }

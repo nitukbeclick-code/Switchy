@@ -13,6 +13,7 @@ import '../../widgets/app_button.dart';
 import '../../widgets/skeleton.dart';
 import '../../widgets/empty_state.dart';
 import '../../app_state.dart';
+import '../../services/push_notification_service.dart';
 import '../../models.dart';
 import '../../data.dart';
 import '../../components/logo_widget/logo_widget.dart';
@@ -1044,6 +1045,9 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
     controller.dispose();
     if (result == null) return;
     appState.setPriceTarget(plan.id, result);
+    // If the plan already meets the new goal, surface a push right away
+    // (gated + deduped inside; no-op on web).
+    PushNotificationService.instance.syncPriceAlerts(appState);
     if (!context.mounted) return;
     AppSnackBar.success(context, 'יעד מחיר נשמר: ₪$result');
   }

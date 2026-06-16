@@ -39,4 +39,41 @@ class PriceTarget {
     }
     return hits;
   }
+
+  /// Days the OS-push cadence suppresses re-notifying a *still-met* target.
+  /// 'immediate' pushes once at first hit then never again (a continuously-met
+  /// target shouldn't re-fire on every app open); 'daily'/'weekly' re-push on
+  /// that cadence while the target stays met.
+  static int windowDays(String frequency) => switch (frequency) {
+        'daily' => 1,
+        'weekly' => 7,
+        _ => 1 << 30, // 'immediate' (and any unknown): effectively once
+      };
+
+  /// Which met targets are due for an OS push *now*, honouring [frequency] via
+  /// [lastNotifiedIso] (planId -> ISO timestamp of the last push). A target is
+  /// due when it is currently hit AND wasn't pushed within its cadence window.
+  /// Pure — returns the plan ids to push; the caller fires + records them.
+  static List<String> dueForPush({
+    required Map<String, int> targets,
+    required int Function(String planId) currentPriceOf,
+    required Map<String, String> lastNotifiedIso,
+    required String frequency,
+    required DateTime now,
+  }) {
+    final window = windowDays(frequency);
+    final due = <String>[];
+    for (final entry in targets.entries) {
+      if (!isHit(currentPrice: currentPriceOf(entry.key), targetPrice: entry.value)) {
+        continue;
+      }
+      final lastIso = lastNotifiedIso[entry.key];
+      if (lastIso != null) {
+        final last = DateTime.tryParse(lastIso);
+        if (last != null && now.difference(last).inDays < window) continue;
+      }
+      due.add(entry.key);
+    }
+    return due;
+  }
 }

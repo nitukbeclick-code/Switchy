@@ -11,7 +11,7 @@ import 'recommendation_engine.dart';
 /// Note: price-drop alerts use [savings] so existing switch expressions on this
 /// enum remain exhaustive. A dedicated [priceDrop] value can be introduced once
 /// all call sites are updated.
-enum NotifKind { renewal, betterDeal, savings, meeting, info, communityReply, communityLike }
+enum NotifKind { renewal, betterDeal, savings, meeting, info, communityReply, communityLike, priceTarget }
 
 /// A computed, actionable notification. These are derived on the fly from app
 /// state (tracked plans, watchlist, bills) rather than stored as events, so they
@@ -90,6 +90,24 @@ class AppNotification {
     routeName: 'Community',
     priority: 200,
   );
+
+  /// Factory for a price-target alert — a watched plan reached the ₪ goal the
+  /// user set for it. Deep-links to the plan's detail screen.
+  factory AppNotification.priceTarget({
+    required String planId,
+    required String provider,
+    required String planName,
+    required int currentPrice,
+    required int targetPrice,
+  }) => AppNotification(
+    id: 'price_target_$planId',
+    kind: NotifKind.priceTarget,
+    title: '🎯 הגעת ליעד המחיר!',
+    body: '$provider · $planName עומד על ₪$currentPrice — היעד שלך היה ₪$targetPrice',
+    routeName: 'PlanDetail',
+    planId: planId,
+    priority: 700,
+  );
 }
 
 /// Builds the list of actionable notifications for [s], newest/most-urgent
@@ -159,6 +177,28 @@ List<AppNotification> computeNotifications(AppState s) {
       category: topSaving.plan.cat,
       priority: 200,
     ));
+  }
+
+  // 3b) Price-target alerts — a plan reached the ₪ goal the user set for it.
+  // Gated on the Price Alerts toggle; skipped when the monthly saving vs the
+  // user's current bill is below their minimum-saving threshold (no bill set →
+  // always show, since setting a target is an explicit user intent).
+  if (s.prefPriceAlerts) {
+    for (final entry in s.priceTargets.entries) {
+      final plan = planById(entry.key);
+      if (plan == null) continue;
+      final price = plan.priceValue.round();
+      if (price > entry.value) continue; // target not reached yet
+      final bill = s.currentBill(plan.cat);
+      if (bill > 0 && (bill - price) < s.minSavingAlert) continue; // too small to alert
+      out.add(AppNotification.priceTarget(
+        planId: plan.id,
+        provider: plan.provider,
+        planName: plan.plan,
+        currentPrice: price,
+        targetPrice: entry.value,
+      ));
+    }
   }
 
   // 4) Video-meeting status — the user's booked Zoom meeting with a rep.

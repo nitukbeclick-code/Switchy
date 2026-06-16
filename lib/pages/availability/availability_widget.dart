@@ -361,7 +361,7 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(width: 7, height: 7, decoration: BoxDecoration(color: ffTheme.success, shape: BoxShape.circle))
-                  .animate(onPlay: (c) => c.repeat(reverse: true)).scale(begin: const Offset(1, 1), end: const Offset(1.3, 1.3), duration: 800.ms),
+                  .animate().fadeIn(duration: 400.ms),
               const SizedBox(width: 5),
               Text('${available.length} זמינים • מ-₪$cheapest', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
             ],

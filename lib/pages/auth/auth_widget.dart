@@ -116,18 +116,23 @@ class _AuthWidgetState extends State<AuthWidget> {
           child: Column(
             children: [
               _header(t),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(22, 24, 22, 32),
-                child: _busy && _mode == _Mode.choose
-                    ? Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 40),
-                        child: Center(child: CircularProgressIndicator(color: t.primary)),
-                      )
-                    : switch (_mode) {
-                        _Mode.choose => _chooseBody(t),
-                        _Mode.signup => _emailForm(t, isSignup: true),
-                        _Mode.login => _emailForm(t, isSignup: false),
-                      },
+              Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 480),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(22, 24, 22, 32),
+                    child: _busy && _mode == _Mode.choose
+                        ? Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 40),
+                            child: Center(child: CircularProgressIndicator(color: t.primary)),
+                          )
+                        : switch (_mode) {
+                            _Mode.choose => _chooseBody(t),
+                            _Mode.signup => _emailForm(t, isSignup: true),
+                            _Mode.login => _emailForm(t, isSignup: false),
+                          },
+                  ),
+                ),
               ),
             ],
           ),

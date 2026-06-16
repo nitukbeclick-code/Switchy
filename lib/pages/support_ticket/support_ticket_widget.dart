@@ -415,7 +415,7 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
         child: Row(
           children: _quickReplies.map((reply) {
             return Padding(
-              padding: const EdgeInsets.only(right: 8),
+              padding: const EdgeInsetsDirectional.only(end: 8),
               child: InputChip(
                 label: Text(reply, style: theme.labelSmall),
                 onPressed: () =>

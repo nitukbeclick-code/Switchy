@@ -576,8 +576,15 @@ class _ProfileWidgetState extends State<ProfileWidget> {
           Text(title, style: ffTheme.titleMedium),
           if (actionLabel != null && onAction != null)
             GestureDetector(
+              behavior: HitTestBehavior.opaque,
               onTap: onAction,
-              child: Text(actionLabel, style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w600)),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 44),
+                child: Center(
+                  widthFactor: 1,
+                  child: Text(actionLabel, style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w600)),
+                ),
+              ),
             ),
         ],
       ),

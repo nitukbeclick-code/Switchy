@@ -322,8 +322,7 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
                       width: 8,
                       height: 8,
                       decoration: const BoxDecoration(color: Color(0xFF111827), shape: BoxShape.circle),
-                    ).animate(onPlay: (c) => c.repeat(reverse: true))
-                      .scale(begin: const Offset(1, 1), end: const Offset(1.3, 1.3), duration: 800.ms),
+                    ).animate().fadeIn(duration: 400.ms),
                     const SizedBox(width: 4),
                     Text('מחובר עכשיו', style: GoogleFonts.assistant(fontSize: 11, color: Colors.white70)),
                   ],
@@ -556,11 +555,16 @@ class _MessageBubble extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 GestureDetector(
+                  behavior: HitTestBehavior.opaque,
                   onTap: () {
                     Provider.of<AppState>(context, listen: false).setCategory(msg.cat);
                     context.pushNamed('Results');
                   },
-                  child: Container(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(minHeight: 44),
+                    child: Center(
+                      widthFactor: 1,
+                      child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
                     decoration: BoxDecoration(
                       color: Colors.white,
@@ -576,12 +580,19 @@ class _MessageBubble extends StatelessWidget {
                       ],
                     ),
                   ),
+                    ),
+                  ),
                 ),
                 if (msg.planId != null) ...[
                   const SizedBox(width: 8),
                   GestureDetector(
+                    behavior: HitTestBehavior.opaque,
                     onTap: () => context.pushNamed('Lead', pathParameters: {'planId': msg.planId!}, queryParameters: {'source': 'advisor'}),
-                    child: Container(
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(minHeight: 44),
+                      child: Center(
+                        widthFactor: 1,
+                        child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
                       decoration: BoxDecoration(
                         color: ffTheme.primary,
@@ -594,6 +605,8 @@ class _MessageBubble extends StatelessWidget {
                           const SizedBox(width: 5),
                           Text('דבר עם נציג', style: ffTheme.labelSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
                         ],
+                      ),
+                    ),
                       ),
                     ),
                   ),
@@ -629,7 +642,7 @@ class _TypingBubble extends StatelessWidget {
               children: List.generate(3, (i) => Container(
                 width: 8,
                 height: 8,
-                margin: EdgeInsets.only(left: i > 0 ? 4 : 0),
+                margin: EdgeInsetsDirectional.only(start: i > 0 ? 4 : 0),
                 decoration: BoxDecoration(color: ffTheme.primary, shape: BoxShape.circle),
               ).animate(onPlay: (c) => c.repeat())
                 .fadeIn(delay: (i * 200).ms, duration: 300.ms)

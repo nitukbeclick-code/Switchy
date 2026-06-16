@@ -126,8 +126,7 @@ class _CallbackWidgetState extends State<CallbackWidget> {
                   Container(
                     width: 8, height: 8,
                     decoration: BoxDecoration(color: ffTheme.success, shape: BoxShape.circle),
-                  ).animate(onPlay: (c) => c.repeat(reverse: true))
-                    .scale(begin: const Offset(1, 1), end: const Offset(1.5, 1.5), duration: 900.ms),
+                  ).animate().fadeIn(duration: 400.ms),
                 ],
               ),
             ).animate().fadeIn(delay: 180.ms),

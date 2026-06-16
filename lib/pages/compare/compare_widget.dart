@@ -950,12 +950,18 @@ class _PlanHeader extends StatelessWidget {
             button: true,
             label: 'הסר מהשוואה',
             child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
               onTap: () {
                 HapticFeedback.selectionClick();
                 appState.toggleCompare(plan.id);
               },
-              child: Icon(Icons.close_rounded,
-                  size: 18, color: ffTheme.secondaryText),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+                child: Center(
+                  child: Icon(Icons.close_rounded,
+                      size: 18, color: ffTheme.secondaryText),
+                ),
+              ),
             ),
           ),
         ],

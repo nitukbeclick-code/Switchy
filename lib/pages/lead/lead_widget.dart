@@ -289,8 +289,7 @@ class _LeadWidgetState extends State<LeadWidget> {
           Container(
             width: 8, height: 8,
             decoration: BoxDecoration(color: ffTheme.primary, shape: BoxShape.circle),
-          ).animate(onPlay: (c) => c.repeat(reverse: true))
-            .scale(begin: const Offset(1, 1), end: const Offset(1.5, 1.5), duration: 700.ms),
+          ).animate().fadeIn(duration: 400.ms),
           const SizedBox(width: 10),
           Expanded(
             child: Text(

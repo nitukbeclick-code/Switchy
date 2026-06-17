@@ -285,7 +285,7 @@ class _TrackerWidgetState extends State<TrackerWidget> {
     // Completion state
     if (step >= 4) {
       return Scaffold(
-        backgroundColor: ffTheme.primary,
+        backgroundColor: AppColors.primary,
         appBar: AppBar(
           title: const Text('מעקב מעבר'),
           backgroundColor: Colors.transparent,
@@ -755,7 +755,7 @@ class _StepConfirmButton extends StatelessWidget {
                   Navigator.pop(ctx);
                   onConfirm();
                 },
-                style: ElevatedButton.styleFrom(backgroundColor: ffTheme.primary, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
+                style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))),
                 child: const Text('אישור'),
               ),
             ],

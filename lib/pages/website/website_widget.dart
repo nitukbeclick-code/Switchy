@@ -52,7 +52,7 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
           // Sticky nav
           SliverAppBar(
             pinned: true,
-            backgroundColor: ffTheme.primary,
+            backgroundColor: AppColors.primary,
             elevation: 0,
             title: Row(
               children: [

@@ -402,7 +402,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                       padding: const EdgeInsets.only(bottom: 8),
                       child: Chip(
                         avatar: CircleAvatar(
-                          backgroundColor: ffTheme.primary,
+                          backgroundColor: AppColors.primary,
                           child: Text(
                             plan.provider.isNotEmpty ? plan.provider[0] : '?',
                             style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700),
@@ -461,7 +461,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                     icon: const Icon(Icons.check_rounded, size: 18),
                     label: const Text('שמור שינויים'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: ffTheme.primary,
+                      backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -542,7 +542,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                       return ListTile(
                         contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                         leading: CircleAvatar(
-                          backgroundColor: ffTheme.primary,
+                          backgroundColor: AppColors.primary,
                           radius: 16,
                           child: Text(
                             plan.provider.isNotEmpty ? plan.provider[0] : '?',
@@ -603,7 +603,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
             const SizedBox(height: 4),
             CircleAvatar(
               radius: 32,
-              backgroundColor: ffTheme.primary,
+              backgroundColor: AppColors.primary,
               child: Text(
                 post.avatar,
                 style: GoogleFonts.rubik(fontSize: 24, fontWeight: FontWeight.w800, color: Colors.white),
@@ -1115,7 +1115,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                       Expanded(
                         child: Chip(
                           avatar: CircleAvatar(
-                            backgroundColor: ffTheme.primary,
+                            backgroundColor: AppColors.primary,
                             child: Text(
                               attachedPlan!.provider.isNotEmpty ? attachedPlan!.provider[0] : '?',
                               style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700),
@@ -1262,7 +1262,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                     icon: const Icon(Icons.send_rounded, size: 18),
                     label: const Text('פרסם'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: ffTheme.primary,
+                      backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -1990,7 +1990,7 @@ class _PostCardState extends State<_PostCard> {
                             if (taggedPlan != null)
                               CircleAvatar(
                                 radius: 10,
-                                backgroundColor: ffTheme.primary,
+                                backgroundColor: AppColors.primary,
                                 child: Text(
                                   taggedPlan.provider.isNotEmpty ? taggedPlan.provider[0] : '?',
                                   style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700),

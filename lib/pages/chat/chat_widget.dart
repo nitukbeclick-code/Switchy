@@ -264,7 +264,7 @@ class _ChatWidgetState extends State<ChatWidget> {
 
   PreferredSizeWidget _buildAppBar(AppTheme ffTheme, BuildContext context) {
     return AppBar(
-      backgroundColor: ffTheme.primary,
+      backgroundColor: AppColors.primary,
       foregroundColor: Colors.white,
       elevation: 0,
       leading: IconButton(

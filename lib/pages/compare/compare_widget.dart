@@ -89,7 +89,7 @@ class CompareWidget extends StatelessWidget {
     return Scaffold(
       backgroundColor: ffTheme.background,
       appBar: AppBar(
-        backgroundColor: ffTheme.primary,
+        backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         title: Text('השוואת מסלולים',
             style: ffTheme.titleLarge.copyWith(color: Colors.white)),

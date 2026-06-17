@@ -264,7 +264,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
     return SliverAppBar(
       expandedHeight: 200,
       pinned: true,
-      backgroundColor: ffTheme.primary,
+      backgroundColor: AppColors.primary,
       leading: Navigator.canPop(context)
           ? IconButton(
               icon: const Icon(Icons.arrow_back_ios_rounded, color: Colors.white),

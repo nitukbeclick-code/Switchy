@@ -45,7 +45,7 @@ class _SuccessWidgetState extends State<SuccessWidget> {
     final reduceMotion = MediaQuery.of(context).disableAnimations;
 
     return Scaffold(
-      backgroundColor: ffTheme.primary,
+      backgroundColor: AppColors.primary,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),

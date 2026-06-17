@@ -56,7 +56,7 @@ class _RenewalWidgetState extends State<RenewalWidget> {
     return Scaffold(
       backgroundColor: ffTheme.background,
       appBar: AppBar(
-        backgroundColor: ffTheme.primary,
+        backgroundColor: AppColors.primary,
         elevation: 0,
         title: Text(
           'מעקב חידושים',

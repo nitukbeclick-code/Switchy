@@ -27,7 +27,7 @@ class _DigitalAgentFabState extends State<DigitalAgentFab> {
     // floatingActionButtonLocation).
     return FloatingActionButton(
       heroTag: 'digital-agent-fab',
-      backgroundColor: theme.primary,
+      backgroundColor: AppColors.primary,
       tooltip: 'עוזר דיגיטלי',
       onPressed: () => _openAgentChat(context),
       child: Stack(

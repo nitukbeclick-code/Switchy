@@ -264,7 +264,7 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
         headerSliverBuilder: (context, _) => [
           SliverAppBar(
             title: const Text('דירוגי ספקים'),
-            backgroundColor: t.primary,
+            backgroundColor: AppColors.primary,
             foregroundColor: Colors.white,
             floating: true,
             snap: true,

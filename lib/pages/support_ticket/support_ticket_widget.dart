@@ -203,7 +203,7 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('תמיכה'),
-        backgroundColor: theme.primary,
+        backgroundColor: AppColors.primary,
         elevation: 0,
         actions: [
           if (isEscalated)

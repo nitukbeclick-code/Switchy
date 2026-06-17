@@ -60,7 +60,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
     if (plan == null) {
       return Scaffold(
         appBar: AppBar(
-          backgroundColor: ffTheme.primary,
+          backgroundColor: AppColors.primary,
           leading: IconButton(
             icon: const Icon(Icons.arrow_back_ios_rounded, color: Colors.white),
             tooltip: 'חזרה',
@@ -104,7 +104,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
               SliverAppBar(
                 expandedHeight: 200,
                 pinned: true,
-                backgroundColor: ffTheme.primary,
+                backgroundColor: AppColors.primary,
                 leading: IconButton(
                   icon: const Icon(Icons.arrow_back_ios_rounded, color: Colors.white),
                   tooltip: 'חזרה',

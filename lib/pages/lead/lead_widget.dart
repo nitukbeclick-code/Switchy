@@ -256,8 +256,8 @@ class _LeadWidgetState extends State<LeadWidget> {
                   height: 56,
                   color: _isSubmitting ? ffTheme.alternate : ffTheme.primary,
                   textStyle: ffTheme.titleMedium.copyWith(color: Colors.white),
-                  borderRadius: BorderRadius.circular(18),
-                
+                  borderRadius: BorderRadius.circular(ffTheme.radiusLg),
+
               ).animate().fadeIn(delay: 300.ms),
 
               const SizedBox(height: 8),
@@ -316,8 +316,9 @@ class _LeadWidgetState extends State<LeadWidget> {
           begin: Alignment.topRight,
           end: Alignment.bottomLeft,
         ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: ffTheme.primary.withValues(alpha: 0.2)),
+        borderRadius: BorderRadius.circular(ffTheme.radiusMd),
+        border: Border.all(color: ffTheme.alternate.withValues(alpha: 0.12)),
+        boxShadow: ffTheme.shadowSoft,
       ),
       child: Column(
         children: [
@@ -330,43 +331,66 @@ class _LeadWidgetState extends State<LeadWidget> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(plan.provider, style: ffTheme.titleSmall),
+                    const SizedBox(height: 2),
                     Text(plan.plan, style: ffTheme.bodySmall, maxLines: 1, overflow: TextOverflow.ellipsis),
-                    Text('₪${plan.priceText}/${priceUnitShort(plan)}', style: ffTheme.titleMedium.copyWith(color: ffTheme.primary)),
+                    const SizedBox(height: 4),
+                    Text(
+                      '₪${plan.priceText}/${priceUnitShort(plan)}',
+                      style: ffTheme.titleLarge.copyWith(
+                        color: ffTheme.primary,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
+                    ),
                   ],
                 ),
               ),
               if (saveYear > 0)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(color: ffTheme.secondary, borderRadius: BorderRadius.circular(10)),
+                  decoration: BoxDecoration(
+                    color: ffTheme.saving.withValues(alpha: 0.14),
+                    borderRadius: BorderRadius.circular(ffTheme.radiusXs),
+                    border: Border.all(color: ffTheme.saving.withValues(alpha: 0.4)),
+                  ),
                   child: Column(
                     children: [
-                      Text('חוסך', style: ffTheme.labelSmall.copyWith(color: ffTheme.primaryDark)),
-                      Text('₪$saveYear/שנה', style: ffTheme.titleSmall.copyWith(color: ffTheme.primaryDark, fontWeight: FontWeight.w800)),
+                      Text('חוסך', style: ffTheme.labelSmall.copyWith(color: ffTheme.savingDark, fontWeight: FontWeight.w700)),
+                      Text(
+                        '₪$saveYear/שנה',
+                        style: ffTheme.titleSmall.copyWith(
+                          color: ffTheme.savingDark,
+                          fontWeight: FontWeight.w800,
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                        ),
+                      ),
                     ],
                   ),
                 ),
             ],
           ),
           if (saveYear > 0) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
               decoration: BoxDecoration(
-                color: ffTheme.primary.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(8),
+                color: ffTheme.saving.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(ffTheme.radiusSm),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.savings_rounded, size: 15, color: ffTheme.primary),
+                  Icon(Icons.savings_rounded, size: 15, color: ffTheme.savingDark),
                   const SizedBox(width: 6),
                   Flexible(
                     child: Text(
                       'כ-₪${(saveYear / 12).round()} חיסכון בחודש הראשון!',
-                      style: ffTheme.labelMedium.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700),
+                      style: ffTheme.labelMedium.copyWith(
+                        color: ffTheme.savingDark,
+                        fontWeight: FontWeight.w700,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
                       textAlign: TextAlign.center,
                     ),
                   ),

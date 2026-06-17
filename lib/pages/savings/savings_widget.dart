@@ -175,6 +175,39 @@ class SavingsWidget extends StatelessWidget {
   }
 }
 
+// ── Pressable card wrapper (subtle scale press feedback) ───────────────────────
+
+/// Wraps a tappable card so it dips slightly (scale 0.97) while held — physical
+/// feedback that matches the soft-glass surfaces, no ink ripple.
+class _PressableCard extends StatefulWidget {
+  const _PressableCard({required this.child, required this.onTap});
+  final Widget child;
+  final VoidCallback onTap;
+
+  @override
+  State<_PressableCard> createState() => _PressableCardState();
+}
+
+class _PressableCardState extends State<_PressableCard> {
+  bool _down = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: widget.onTap,
+      onTapDown: (_) => setState(() => _down = true),
+      onTapUp: (_) => setState(() => _down = false),
+      onTapCancel: () => setState(() => _down = false),
+      child: AnimatedScale(
+        scale: _down ? 0.97 : 1.0,
+        duration: const Duration(milliseconds: 120),
+        curve: Curves.easeOut,
+        child: widget.child,
+      ),
+    );
+  }
+}
+
 // ── A: Hero ────────────────────────────────────────────────────────────────
 
 class _Hero extends StatelessWidget {
@@ -371,18 +404,32 @@ class _RealizedCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: ffTheme.success.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: ffTheme.success.withValues(alpha: 0.35)),
+        color: AppColors.saving.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(ffTheme.radiusMd),
+        border: Border.all(color: AppColors.saving.withValues(alpha: 0.32)),
       ),
       child: Row(
         children: [
-          Icon(Icons.savings_rounded, color: ffTheme.success, size: 24),
+          const Icon(Icons.savings_rounded, color: AppColors.saving, size: 24),
           const SizedBox(width: 12),
           Expanded(
-            child: Text('כבר חסכת ₪$amount דרך חוסך',
+            child: Text.rich(
+              TextSpan(
                 style: ffTheme.titleSmall.copyWith(
-                    color: ffTheme.primaryText, fontWeight: FontWeight.w700)),
+                    color: ffTheme.primaryText, fontWeight: FontWeight.w700),
+                children: [
+                  const TextSpan(text: 'כבר חסכת '),
+                  TextSpan(
+                    text: '₪$amount',
+                    style: const TextStyle(
+                        color: AppColors.savingDark,
+                        fontWeight: FontWeight.w900,
+                        fontFeatures: [FontFeature.tabularFigures()]),
+                  ),
+                  const TextSpan(text: ' דרך חוסך'),
+                ],
+              ),
+            ),
           ),
         ],
       ),
@@ -410,18 +457,28 @@ class _TopOpportunityCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return _PressableCard(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
-          color: ffTheme.secondary,
-          borderRadius: BorderRadius.circular(16),
+          color: ffTheme.primaryDark,
+          borderRadius: BorderRadius.circular(ffTheme.radiusLg),
+          boxShadow: ffTheme.shadowGlass,
         ),
         child: Row(
           children: [
-            Icon(Icons.rocket_launch_outlined, size: 30, color: ffTheme.primaryDark),
-            const SizedBox(width: 12),
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.10),
+                borderRadius: BorderRadius.circular(ffTheme.radiusSm),
+              ),
+              child: const Icon(Icons.rocket_launch_rounded,
+                  size: 24, color: AppColors.saving),
+            ),
+            const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -431,32 +488,36 @@ class _TopOpportunityCard extends StatelessWidget {
                     style: GoogleFonts.assistant(
                         fontSize: 12,
                         fontWeight: FontWeight.w700,
-                        color: ffTheme.primaryDark),
+                        color: Colors.white.withValues(alpha: 0.7)),
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 4),
                   Text(
                     personalized
                         ? 'חיסכון של ₪$saving בשנה'
                         : 'חיסכון מוערך של ~₪$saving בשנה',
                     style: GoogleFonts.rubik(
-                        fontSize: 18,
+                        fontSize: 19,
                         fontWeight: FontWeight.w800,
-                        color: ffTheme.primaryDark),
+                        color: AppColors.saving,
+                        height: 1.15,
+                        fontFeatures: const [FontFeature.tabularFigures()]),
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 4),
                   Text(
                     providerAndPlan,
                     style: GoogleFonts.assistant(
                         fontSize: 12,
                         fontWeight: FontWeight.w600,
-                        color: ffTheme.primaryDark),
+                        color: Colors.white.withValues(alpha: 0.8)),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
             ),
-            Icon(Icons.arrow_back_ios_rounded, size: 16, color: ffTheme.primaryDark),
+            const SizedBox(width: 8),
+            Icon(Icons.arrow_back_ios_rounded,
+                size: 16, color: Colors.white.withValues(alpha: 0.7)),
           ],
         ),
       ),
@@ -533,8 +594,9 @@ class _CategoryCard extends StatelessWidget {
                       hasBill
                           ? 'חשבון נוכחי: ₪${saving.currentBill}$kBillUnit'
                           : 'לא הוזן חשבון',
-                      style: ffTheme.labelSmall
-                          .copyWith(color: ffTheme.secondaryText),
+                      style: ffTheme.labelSmall.copyWith(
+                          color: ffTheme.secondaryText,
+                          fontFeatures: const [FontFeature.tabularFigures()]),
                     ),
                   ],
                 ),
@@ -610,8 +672,9 @@ class _CategoryCard extends StatelessWidget {
                 Text(
                   '${(ratio * 100).round()}%',
                   style: ffTheme.labelSmall.copyWith(
-                      color: AppColors.saving,
-                      fontWeight: FontWeight.w800),
+                      color: AppColors.savingDark,
+                      fontWeight: FontWeight.w800,
+                      fontFeatures: const [FontFeature.tabularFigures()]),
                 ),
               ],
             ),
@@ -622,7 +685,9 @@ class _CategoryCard extends StatelessWidget {
             ),
           ],
 
-          // ── CTA ────────────────────────────────────────────────────────
+          // ── CTA ── secondary treatment: tinted, not the screen's one
+          //    gradient CTA (that's reserved for share). Indigo ink reads as
+          //    the per-card action without competing with the hero.
           const SizedBox(height: 14),
           GestureDetector(
             onTap: onTap,
@@ -630,19 +695,30 @@ class _CategoryCard extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 11),
               decoration: BoxDecoration(
-                gradient: hasBill ? ffTheme.accentGradient : null,
-                color: hasBill ? null : ffTheme.accent1,
+                color: hasBill ? ffTheme.brandAccentTint : ffTheme.accent1,
                 borderRadius: BorderRadius.circular(ffTheme.radiusMd),
-                boxShadow: hasBill ? ffTheme.shadowAccent : null,
               ),
               child: Center(
-                child: Text(
-                  hasBill ? 'מצא תוכנית' : 'הזן חשבון',
-                  style: GoogleFonts.rubik(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                    color: hasBill ? Colors.white : ffTheme.primaryText,
-                  ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      hasBill ? 'מצא תוכנית' : 'הזן חשבון',
+                      style: GoogleFonts.rubik(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
+                        color: hasBill
+                            ? AppColors.brandAccent
+                            : ffTheme.primaryText,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Icon(Icons.arrow_back_ios_rounded,
+                        size: 12,
+                        color: hasBill
+                            ? AppColors.brandAccent
+                            : ffTheme.primaryText),
+                  ],
                 ),
               ),
             ),
@@ -680,7 +756,8 @@ class _SavingBadge extends StatelessWidget {
             style: GoogleFonts.rubik(
                 fontSize: 16,
                 fontWeight: FontWeight.w900,
-                color: AppColors.saving),
+                color: AppColors.savingDark,
+                fontFeatures: const [FontFeature.tabularFigures()]),
           ),
           Text(
             'בשנה',
@@ -722,7 +799,8 @@ class _PriceCompare extends StatelessWidget {
               style: GoogleFonts.rubik(
                 fontSize: 16,
                 fontWeight: FontWeight.w800,
-                color: highlight ? AppColors.saving : ffTheme.secondaryText,
+                color: highlight ? AppColors.savingDark : ffTheme.secondaryText,
+                fontFeatures: const [FontFeature.tabularFigures()],
               ),
             ),
             const SizedBox(width: 2),
@@ -1112,7 +1190,10 @@ class _ValueTag extends StatelessWidget {
       children: [
         Text(text,
             style: GoogleFonts.rubik(
-                fontSize: 17, fontWeight: FontWeight.w800, color: color)),
+                fontSize: 17,
+                fontWeight: FontWeight.w800,
+                color: color,
+                fontFeatures: const [FontFeature.tabularFigures()])),
         const SizedBox(height: 2),
         Text(label,
             style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText)),
@@ -1162,18 +1243,27 @@ class _RenewalRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
+    return _PressableCard(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: ffTheme.alternate),
+          borderRadius: BorderRadius.circular(ffTheme.radiusMd),
+          border: Border.all(color: ffTheme.lineColor),
+          boxShadow: ffTheme.shadowSoft,
         ),
         child: Row(
           children: [
-            Icon(Icons.alarm_rounded, color: ffTheme.warning, size: 22),
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: ffTheme.warning.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(ffTheme.radiusSm),
+              ),
+              child: Icon(Icons.alarm_rounded, color: ffTheme.warning, size: 22),
+            ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -1184,18 +1274,21 @@ class _RenewalRow extends StatelessWidget {
                           .copyWith(fontWeight: FontWeight.w700),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis),
+                  const SizedBox(height: 2),
                   Text(
                     days == null
                         ? 'חוסך ₪$saving/שנה במעבר'
                         : days! < 0
                             ? 'המבצע הסתיים — חוסך ₪$saving/שנה'
                             : 'מסתיים בעוד $days ימים — חוסך ₪$saving/שנה',
-                    style: ffTheme.labelSmall
-                        .copyWith(color: ffTheme.secondaryText),
+                    style: ffTheme.labelSmall.copyWith(
+                        color: ffTheme.secondaryText,
+                        fontFeatures: const [FontFeature.tabularFigures()]),
                   ),
                 ],
               ),
             ),
+            const SizedBox(width: 8),
             Icon(Icons.chevron_left_rounded,
                 size: 18, color: ffTheme.secondaryText),
           ],

@@ -98,8 +98,8 @@ class _PortingWidgetState extends State<PortingWidget> {
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: ffTheme.accent1,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: ffTheme.primary.withValues(alpha: 0.2)),
+                borderRadius: BorderRadius.circular(ffTheme.radiusMd),
+                border: Border.all(color: ffTheme.alternate.withValues(alpha: 0.1)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -108,10 +108,10 @@ class _PortingWidgetState extends State<PortingWidget> {
                     children: [
                       Icon(Icons.info_outline_rounded, color: ffTheme.primary, size: 18),
                       const SizedBox(width: 8),
-                      Text('כיצד עובד הניוד?', style: ffTheme.labelLarge.copyWith(color: ffTheme.primary)),
+                      Text('כיצד עובד הניוד?', style: ffTheme.titleSmall.copyWith(color: ffTheme.primary)),
                     ],
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 16),
                   Row(
                     children: [
                       for (final item in [
@@ -229,8 +229,8 @@ class _PortingWidgetState extends State<PortingWidget> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
-                color: ffTheme.accent2,
-                borderRadius: BorderRadius.circular(10),
+                color: ffTheme.warning.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(ffTheme.radiusXs),
                 border: Border.all(color: ffTheme.warning.withValues(alpha: 0.25)),
               ),
               child: Row(
@@ -242,7 +242,8 @@ class _PortingWidgetState extends State<PortingWidget> {
                     'זמן ניוד: עד 3 ימי עסקים',
                     style: ffTheme.bodySmall.copyWith(
                         color: ffTheme.warning,
-                        fontWeight: FontWeight.w600),
+                        fontWeight: FontWeight.w600,
+                        fontFeatures: const [FontFeature.tabularFigures()]),
                   ),
                 ],
               ),
@@ -332,12 +333,12 @@ class _PortingWidgetState extends State<PortingWidget> {
                     height: 56,
                     color:
                         canSubmit ? ffTheme.primary : ffTheme.alternate,
-                    textStyle: ffTheme.titleSmall.copyWith(
+                    textStyle: ffTheme.titleMedium.copyWith(
                         color: canSubmit
                             ? Colors.white
                             : ffTheme.secondaryText),
-                    borderRadius: BorderRadius.circular(16),
-                  
+                    borderRadius: BorderRadius.circular(ffTheme.radiusLg),
+
                 );
               },
             ).animate(delay: 300.ms).fadeIn(duration: 280.ms),
@@ -395,6 +396,7 @@ class _SuccessState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
     return Scaffold(
       backgroundColor: ffTheme.primary,
       body: SafeArea(
@@ -403,20 +405,25 @@ class _SuccessState extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Container(
-                width: 100,
-                height: 100,
-                decoration: BoxDecoration(
-                  color: ffTheme.secondary,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(Icons.check_rounded,
-                    size: 60, color: ffTheme.primary),
-              )
-                  .animate()
-                  .scale(
+              () {
+                final mark = Container(
+                  width: 100,
+                  height: 100,
+                  decoration: BoxDecoration(
+                    color: ffTheme.secondary,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.check_rounded,
+                      size: 60, color: ffTheme.primary),
+                );
+                if (reduceMotion) return mark;
+                return mark.animate().scale(
+                      begin: const Offset(0.7, 0.7),
+                      end: const Offset(1, 1),
                       duration: 400.ms,
-                      curve: Curves.elasticOut),
+                      curve: Curves.easeOutBack,
+                    );
+              }(),
 
               const SizedBox(height: 32),
 
@@ -424,15 +431,15 @@ class _SuccessState extends StatelessWidget {
                 'הבקשה נשלחה בהצלחה!',
                 style: ffTheme.headlineMedium.copyWith(color: Colors.white),
                 textAlign: TextAlign.center,
-              ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.2),
+              ).animate(target: reduceMotion ? 1 : null).fadeIn(delay: 300.ms).slideY(begin: 0.2),
 
               const SizedBox(height: 12),
 
               Text(
                 'נציג ייצור קשר תוך 24 שעות\nלהשלמת תהליך הניוד',
-                style: ffTheme.bodyLarge.copyWith(color: Colors.white.withValues(alpha: 0.85)),
+                style: ffTheme.bodyLarge.copyWith(color: Colors.white.withValues(alpha: 0.85), height: 1.4),
                 textAlign: TextAlign.center,
-              ).animate().fadeIn(delay: 400.ms),
+              ).animate(target: reduceMotion ? 1 : null).fadeIn(delay: 400.ms),
 
               const SizedBox(height: 16),
 
@@ -440,38 +447,45 @@ class _SuccessState extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(ffTheme.radiusSm),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(Icons.schedule_rounded, color: ffTheme.secondary, size: 16),
                     const SizedBox(width: 8),
-                    Text('זמן ניוד: 1–3 ימי עסקים', style: ffTheme.labelMedium.copyWith(color: ffTheme.secondary, fontWeight: FontWeight.w600)),
+                    Text(
+                      'זמן ניוד: 1–3 ימי עסקים',
+                      style: ffTheme.labelMedium.copyWith(
+                        color: ffTheme.secondary,
+                        fontWeight: FontWeight.w600,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
+                    ),
                   ],
                 ),
-              ).animate().fadeIn(delay: 450.ms),
+              ).animate(target: reduceMotion ? 1 : null).fadeIn(delay: 450.ms),
 
               const SizedBox(height: 40),
 
               AppButton(
                 text: 'עקוב אחר הניוד',
                 onPressed: () async => context.goNamed('Tracker'),
-                
+
                   width: double.infinity,
                   height: 56,
                   color: ffTheme.secondary,
                   textStyle: ffTheme.titleMedium.copyWith(color: ffTheme.primary),
-                  borderRadius: BorderRadius.circular(16),
-                
-              ).animate().fadeIn(delay: 500.ms),
+                  borderRadius: BorderRadius.circular(ffTheme.radiusLg),
+
+              ).animate(target: reduceMotion ? 1 : null).fadeIn(delay: 500.ms),
 
               const SizedBox(height: 12),
 
               TextButton(
                 onPressed: () => context.goNamed('Account'),
                 child: Text('חזרה לאזור האישי', style: ffTheme.bodyMedium.copyWith(color: Colors.white70)),
-              ).animate().fadeIn(delay: 600.ms),
+              ).animate(target: reduceMotion ? 1 : null).fadeIn(delay: 600.ms),
             ],
           ),
         ),

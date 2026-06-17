@@ -8,6 +8,7 @@ import '../../core/nav.dart';
 import '../../app_state.dart';
 import '../../data.dart';
 import '../../models.dart';
+import '../../widgets/pressable.dart';
 import '../../components/plan_card/plan_card_widget.dart';
 import '../../services/advisor_engine.dart';
 import '../../services/savings_summary.dart';
@@ -173,14 +174,14 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
   /// A collapsible "פרופיל שלי" card showing the user's context data.
   Widget _buildProfileCard(AppTheme ffTheme) {
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 250),
-      curve: Curves.easeInOut,
+      duration: ffTheme.motionMedium,
+      curve: ffTheme.easeOut,
       margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: ffTheme.alternate),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 6, offset: const Offset(0, 2))],
+        borderRadius: BorderRadius.circular(ffTheme.radiusMd),
+        border: Border.all(color: ffTheme.lineColor),
+        boxShadow: ffTheme.shadowSoft,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -188,19 +189,18 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
           // Header row — tap to toggle
           InkWell(
             onTap: () => setState(() => _profileExpanded = !_profileExpanded),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(ffTheme.radiusMd),
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               child: Row(
                 children: [
-                  Icon(Icons.person_outline_rounded, size: 18, color: ffTheme.primary),
+                  Icon(Icons.person_outline_rounded, size: 18, color: ffTheme.secondaryText),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'פרופיל שלי',
-                      style: ffTheme.labelMedium.copyWith(
+                      'הפרופיל שלי',
+                      style: ffTheme.titleSmall.copyWith(
                         fontWeight: FontWeight.w700,
-                        color: ffTheme.primaryText,
                       ),
                       textDirection: TextDirection.rtl,
                     ),
@@ -216,9 +216,9 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
           ),
           // Expandable body
           if (_profileExpanded) ...[
-            Divider(height: 1, color: ffTheme.alternate),
+            Divider(height: 1, color: ffTheme.lineColor),
             Padding(
-              padding: const EdgeInsets.fromLTRB(14, 10, 14, 14),
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 14),
               child: Text(
                 _userContextString,
                 style: ffTheme.bodySmall.copyWith(height: 1.7, color: ffTheme.primaryText),
@@ -231,24 +231,29 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
     ).animate().fadeIn(duration: 400.ms);
   }
 
-  /// An info banner nudging the user to fill in their bills.
+  /// An info banner nudging the user to fill in their bills. Amber = VALUE:
+  /// completing the bills unlocks accurate savings figures.
   Widget _buildBillsBanner(AppTheme ffTheme) {
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      margin: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFF7ED),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFF59E0B).withValues(alpha: 0.5)),
+        color: ffTheme.saving.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(ffTheme.radiusXs),
+        border: Border.all(color: ffTheme.saving.withValues(alpha: 0.45)),
       ),
       child: Row(
         children: [
-          const Icon(Icons.info_outline_rounded, color: Color(0xFFF59E0B), size: 18),
+          Icon(Icons.savings_outlined, color: ffTheme.savingDark, size: 18),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
-              'מלא את החשבונות שלך כדי לקבל המלצות מדויקות יותר',
-              style: ffTheme.bodySmall.copyWith(color: const Color(0xFF92400E), height: 1.4),
+              'מלאו את החשבונות שלכם כדי לקבל המלצות חיסכון מדויקות',
+              style: ffTheme.bodySmall.copyWith(
+                color: ffTheme.savingDark,
+                fontWeight: FontWeight.w600,
+                height: 1.4,
+              ),
               textDirection: TextDirection.rtl,
             ),
           ),
@@ -319,12 +324,18 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
                 Row(
                   children: [
                     Container(
-                      width: 8,
-                      height: 8,
-                      decoration: const BoxDecoration(color: Color(0xFF111827), shape: BoxShape.circle),
+                      width: 7,
+                      height: 7,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(color: Colors.white.withValues(alpha: 0.6), blurRadius: 5),
+                        ],
+                      ),
                     ).animate().fadeIn(duration: 400.ms),
-                    const SizedBox(width: 4),
-                    Text('מחובר עכשיו', style: GoogleFonts.assistant(fontSize: 11, color: Colors.white70)),
+                    const SizedBox(width: 5),
+                    Text('מחובר עכשיו', style: GoogleFonts.assistant(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white70)),
                   ],
                 ),
               ],
@@ -410,31 +421,37 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
                 itemCount: quickStarts.length,
                 itemBuilder: (ctx, i) {
                   final q = quickStarts[i];
-                  return GestureDetector(
+                  return Pressable(
                     onTap: () => _send(q),
                     child: Container(
                       alignment: Alignment.center,
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: ffTheme.alternate),
-                        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 4, offset: const Offset(0, 1))],
+                        borderRadius: BorderRadius.circular(ffTheme.radiusPill),
+                        border: Border.all(color: ffTheme.lineColor),
+                        boxShadow: ffTheme.shadowSoft,
                       ),
-                      child: Text(q, style: ffTheme.labelMedium, textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
+                      child: Text(
+                        q,
+                        style: ffTheme.labelMedium.copyWith(color: ffTheme.primaryText),
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                  );
+                  ).animate().fadeIn(duration: 280.ms, delay: (i * 35).ms).slideY(begin: 0.12, end: 0, duration: 280.ms, delay: (i * 35).ms, curve: ffTheme.easeOut);
                 },
               ),
             ).animate().fadeIn(duration: 500.ms),
 
           // Input bar
           Container(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
             decoration: BoxDecoration(
               color: Colors.white,
-              border: Border(top: BorderSide(color: ffTheme.alternate)),
-              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, -4))],
+              border: Border(top: BorderSide(color: ffTheme.lineColor)),
+              boxShadow: ffTheme.shadowSoft,
             ),
             child: SafeArea(
               top: false,
@@ -444,12 +461,14 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
                     child: TextField(
                       controller: _inputCtrl,
                       textDirection: TextDirection.rtl,
+                      style: ffTheme.bodyMedium,
                       decoration: InputDecoration(
                         hintText: 'שאל על מסלולי תקשורת...',
+                        hintStyle: ffTheme.bodyMedium.copyWith(color: ffTheme.secondaryText),
                         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide(color: ffTheme.alternate)),
-                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide(color: ffTheme.alternate)),
-                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide(color: ffTheme.primary, width: 1.5)),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusXl), borderSide: BorderSide(color: ffTheme.lineColor)),
+                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusXl), borderSide: BorderSide(color: ffTheme.lineColor)),
+                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusXl), borderSide: BorderSide(color: ffTheme.brandAccent, width: 1.5)),
                         filled: true,
                         fillColor: ffTheme.background,
                       ),
@@ -461,14 +480,15 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
                   Semantics(
                     button: true,
                     label: 'שלח הודעה',
-                    child: GestureDetector(
+                    child: Pressable(
                       onTap: () => _send(_inputCtrl.text),
                       child: Container(
                         width: 44,
                         height: 44,
                         decoration: BoxDecoration(
-                          color: ffTheme.primary,
+                          gradient: ffTheme.accentGradient,
                           shape: BoxShape.circle,
+                          boxShadow: ffTheme.shadowAccent,
                         ),
                         child: const Icon(Icons.send_rounded, color: Colors.white, size: 20),
                       ),

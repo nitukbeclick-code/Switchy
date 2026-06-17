@@ -185,40 +185,61 @@ class _BillsWidgetState extends State<BillsWidget> {
 
             const SizedBox(height: 14),
 
-            // Hero total card
+            // Hero total card — the premium ink surface. Stays ink; the one
+            // accent moment is the amber VALUE chip for the savings figure.
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topRight,
-                  end: Alignment.bottomLeft,
-                  colors: [ffTheme.primaryDark, ffTheme.primary],
-                ),
-                borderRadius: BorderRadius.circular(20),
+                gradient: ffTheme.brandGradient,
+                borderRadius: BorderRadius.circular(ffTheme.radiusLg),
+                boxShadow: ffTheme.shadowPrimary,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('הוצאה חודשית כוללת', style: GoogleFonts.assistant(fontSize: 13, color: ffTheme.secondary, fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 6),
-                  Text('₪$total', style: GoogleFonts.rubik(fontSize: 48, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: -1.5)),
-                  Text('לחודש בכל הקטגוריות', style: GoogleFonts.assistant(fontSize: 12, color: Colors.white60)),
+                  Text(
+                    'הוצאה חודשית כוללת',
+                    style: ffTheme.labelMedium.copyWith(
+                      color: Colors.white.withValues(alpha: 0.70),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '₪$total',
+                    style: ffTheme.displayMedium.copyWith(
+                      color: Colors.white,
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'לחודש בכל הקטגוריות',
+                    style: ffTheme.labelSmall.copyWith(color: Colors.white.withValues(alpha: 0.55)),
+                  ),
                   if (totalSavings > 0) ...[
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 16),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(10),
+                        color: AppColors.saving.withValues(alpha: 0.18),
+                        borderRadius: BorderRadius.circular(ffTheme.radiusXs),
+                        border: Border.all(color: AppColors.saving.withValues(alpha: 0.35)),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.lightbulb_outline_rounded, size: 16, color: ffTheme.secondary),
+                          const Icon(Icons.savings_rounded, size: 16, color: AppColors.saving),
                           const SizedBox(width: 8),
-                          Text('חיסכון פוטנציאלי: ₪$totalSavings/שנה',
-                              style: GoogleFonts.rubik(fontSize: 13, fontWeight: FontWeight.w700, color: ffTheme.secondary)),
+                          Text(
+                            'חיסכון פוטנציאלי: ₪$totalSavings/שנה',
+                            style: ffTheme.labelSmall.copyWith(
+                              color: AppColors.saving,
+                              fontWeight: FontWeight.w700,
+                              fontFeatures: const [FontFeature.tabularFigures()],
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -277,9 +298,9 @@ class _BillsWidgetState extends State<BillsWidget> {
                 padding: const EdgeInsets.fromLTRB(12, 20, 12, 12),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(ffTheme.radiusMd),
                   border: Border.all(color: ffTheme.alternate),
-                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 12)],
+                  boxShadow: ffTheme.shadowSoft,
                 ),
                 child: Column(
                   children: [
@@ -386,7 +407,7 @@ class _BillsWidgetState extends State<BillsWidget> {
                             const SizedBox(width: 4),
                             Text(c.name, style: ffTheme.labelSmall),
                             const SizedBox(width: 4),
-                            Text('₪${appState.currentBill(c.id)}', style: ffTheme.labelSmall.copyWith(color: ffTheme.primaryText, fontWeight: FontWeight.w700)),
+                            Text('₪${appState.currentBill(c.id)}', style: ffTheme.labelSmall.copyWith(color: ffTheme.primaryText, fontWeight: FontWeight.w700, fontFeatures: const [FontFeature.tabularFigures()])),
                           ],
                         );
                       }).toList(),
@@ -539,6 +560,7 @@ class _ProgressHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final fraction = total > 0 ? defined / total : 0.0;
+    final complete = defined == total;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -546,22 +568,31 @@ class _ProgressHeader extends StatelessWidget {
           children: [
             Text(
               'הוגדרו $defined מתוך $total קטגוריות',
-              style: ffTheme.labelSmall.copyWith(color: ffTheme.primaryText, fontWeight: FontWeight.w600),
+              style: ffTheme.labelMedium.copyWith(color: ffTheme.primaryText, fontWeight: FontWeight.w600),
             ),
             const Spacer(),
-            if (defined == total)
-              Text('הכל מוגדר ✓', style: ffTheme.labelSmall.copyWith(color: const Color(0xFF16A34A), fontWeight: FontWeight.w700)),
+            if (complete)
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.check_circle_rounded, size: 14, color: ffTheme.success),
+                  const SizedBox(width: 4),
+                  Text('הכל מוגדר', style: ffTheme.labelSmall.copyWith(color: ffTheme.success, fontWeight: FontWeight.w700)),
+                ],
+              ),
           ],
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 8),
         ClipRRect(
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(ffTheme.radiusPill),
           child: LinearProgressIndicator(
             value: fraction,
             minHeight: 6,
             backgroundColor: ffTheme.alternate,
+            // Indigo = ACTION while there's still a category to define; ink once
+            // complete (no action left to drive).
             valueColor: AlwaysStoppedAnimation<Color>(
-              defined == total ? const Color(0xFF16A34A) : AppColors.brandAccent,
+              complete ? ffTheme.success : AppColors.brandAccent,
             ),
           ),
         ),
@@ -664,12 +695,13 @@ class _SavingsRing extends StatelessWidget {
     final keep = total - savingsPerMonth;
 
     return Container(
+      margin: const EdgeInsets.only(bottom: 4),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(ffTheme.radiusLg),
         border: Border.all(color: ffTheme.alternate),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 12)],
+        boxShadow: ffTheme.shadowSoft,
       ),
       child: Row(
         children: [

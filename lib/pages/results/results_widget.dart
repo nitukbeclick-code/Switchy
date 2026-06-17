@@ -299,8 +299,12 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                           ),
                           const Spacer(),
                           Text('${plans.length} מסלולים',
-                              style: ffTheme.labelMedium
-                                  .copyWith(color: ffTheme.secondaryText)),
+                              style: ffTheme.labelMedium.copyWith(
+                                  color: ffTheme.secondaryText,
+                                  fontWeight: FontWeight.w600,
+                                  fontFeatures: const [
+                                    FontFeature.tabularFigures()
+                                  ])),
                           if (appState.activeFilters.isNotEmpty || _providerFilter.isNotEmpty) ...[
                             const SizedBox(width: 2),
                             // Padded InkWell — a comfortable target with press
@@ -331,15 +335,9 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                             horizontal: 16, vertical: 12),
                         decoration: BoxDecoration(
                           color: Colors.white,
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(ffTheme.radiusMd),
                           border: Border.all(color: ffTheme.alternate),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.04),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
+                          boxShadow: ffTheme.shadowGlass,
                         ),
                         child: Row(
                           children: [
@@ -362,8 +360,11 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
                                         Text('₪$bill',
-                                            style: ffTheme.titleMedium
-                                                .copyWith(color: ffTheme.primary)),
+                                            style: ffTheme.titleMedium.copyWith(
+                                                color: ffTheme.primary,
+                                                fontFeatures: const [
+                                                  FontFeature.tabularFigures()
+                                                ])),
                                         const SizedBox(width: 4),
                                         Icon(Icons.edit_rounded, size: 12, color: ffTheme.primary),
                                       ],
@@ -583,17 +584,14 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                     padding: const EdgeInsets.fromLTRB(16, 0, 16, 0),
                     child: Container(
                       decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [ffTheme.primary, ffTheme.tertiary],
-                          begin: Alignment.centerRight,
-                          end: Alignment.centerLeft,
-                        ),
-                        borderRadius: BorderRadius.circular(14),
+                        gradient: ffTheme.brandGradient,
+                        borderRadius: BorderRadius.circular(ffTheme.radiusMd),
+                        boxShadow: ffTheme.shadowPrimary,
                       ),
                       child: Material(
                         color: Colors.transparent,
                         child: InkWell(
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(ffTheme.radiusMd),
                           splashColor: Colors.white.withValues(alpha: 0.12),
                           highlightColor: Colors.white.withValues(alpha: 0.06),
                           onTap: () => context.pushNamed('PlanDetail',
@@ -602,8 +600,11 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                             padding: const EdgeInsets.all(16),
                             child: Row(
                               children: [
-                                const Icon(Icons.lightbulb_outline_rounded, size: 20, color: Colors.white),
-                                const SizedBox(width: 10),
+                                // Amber lightbulb = the one VALUE accent on this
+                                // ink hero; signals the recommendation/savings.
+                                Icon(Icons.lightbulb_rounded,
+                                    size: 20, color: ffTheme.saving),
+                                const SizedBox(width: 12),
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -613,17 +614,21 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                                         style: ffTheme.titleSmall
                                             .copyWith(color: Colors.white),
                                       ),
+                                      const SizedBox(height: 2),
                                       Text(
                                         'תחסוך ₪$topSave בשנה',
                                         style: ffTheme.bodySmall.copyWith(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.w700),
+                                            color: ffTheme.saving,
+                                            fontWeight: FontWeight.w800,
+                                            fontFeatures: const [
+                                              FontFeature.tabularFigures()
+                                            ]),
                                       ),
                                     ],
                                   ),
                                 ),
                                 Icon(Icons.arrow_forward_ios_rounded,
-                                    color: Colors.white.withValues(alpha: 0.7), size: 16),
+                                    color: Colors.white.withValues(alpha: 0.6), size: 14),
                               ],
                             ),
                           ),
@@ -665,15 +670,16 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                             // Annual savings chip below the card when relevant.
                             if (annualSave > 0 && plan.isRegular)
                               Padding(
-                                padding: const EdgeInsets.only(
-                                    right: 4, bottom: 4, top: 2),
+                                padding: const EdgeInsetsDirectional.only(
+                                    start: 4, bottom: 4, top: 2),
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(
                                       horizontal: 10, vertical: 4),
                                   decoration: BoxDecoration(
                                     color: AppColors.saving
                                         .withValues(alpha: 0.12),
-                                    borderRadius: BorderRadius.circular(8),
+                                    borderRadius:
+                                        BorderRadius.circular(ffTheme.radiusXs),
                                     border: Border.all(
                                         color: AppColors.saving
                                             .withValues(alpha: 0.35)),
@@ -681,9 +687,11 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                                   child: Text(
                                     'חוסך ₪$annualSave בשנה',
                                     style: ffTheme.labelSmall.copyWith(
-                                      color: AppColors.saving,
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 11,
+                                      color: AppColors.savingDark,
+                                      fontWeight: FontWeight.w800,
+                                      fontFeatures: const [
+                                        FontFeature.tabularFigures()
+                                      ],
                                     ),
                                   ),
                                 ),
@@ -691,8 +699,10 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                           ],
                         )
                             .animate()
-                            .fadeIn(delay: (index * 80).ms)
-                            .slideY(begin: 0.08, end: 0);
+                            .fadeIn(
+                                delay: (index.clamp(0, 8) * 40).ms,
+                                duration: 280.ms)
+                            .slideY(begin: 0.06, end: 0, curve: Curves.easeOut);
                       },
                       childCount: plans.length,
                     ),
@@ -713,43 +723,50 @@ class _ResultsWidgetState extends State<ResultsWidget> {
               duration: ffTheme.motionMedium,
               curve: ffTheme.emphasized,
               child: Container(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsetsDirectional.fromSTEB(20, 14, 14, 14),
                 decoration: BoxDecoration(
                   color: ffTheme.primary,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: ffTheme.primary.withValues(alpha: 0.4),
-                      blurRadius: 16,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
+                  borderRadius: BorderRadius.circular(ffTheme.radiusMd),
+                  boxShadow: ffTheme.shadowPrimary,
                 ),
                 child: Row(
                   children: [
                     Text(
                       'השווה ${appState.comparePlans.length} מסלולים',
-                      style: ffTheme.titleSmall.copyWith(color: Colors.white),
+                      style: ffTheme.titleSmall.copyWith(
+                          color: Colors.white,
+                          fontFeatures: const [FontFeature.tabularFigures()]),
                     ),
                     const Spacer(),
-                    ElevatedButton(
-                      onPressed: () {
-                        HapticFeedback.lightImpact();
-                        context.goNamed('Compare');
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: ffTheme.secondary,
-                        foregroundColor: ffTheme.primary,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10)),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 8),
+                    // The single primary action on the floating bar — wears the
+                    // indigo ACTION accent so it reads as the next step.
+                    DecoratedBox(
+                      decoration: BoxDecoration(
+                        gradient: ffTheme.accentGradient,
+                        borderRadius: BorderRadius.circular(ffTheme.radiusSm),
+                        boxShadow: ffTheme.shadowAccent,
                       ),
-                      child: Text('השוואה ←',
-                          style: ffTheme.labelMedium.copyWith(
-                              color: ffTheme.primary,
-                              fontWeight: FontWeight.w700)),
+                      child: ElevatedButton(
+                        onPressed: () {
+                          HapticFeedback.lightImpact();
+                          context.goNamed('Compare');
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.transparent,
+                          shadowColor: Colors.transparent,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                              borderRadius:
+                                  BorderRadius.circular(ffTheme.radiusSm)),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 18, vertical: 10),
+                        ),
+                        child: Text('השוואה ←',
+                            style: ffTheme.labelMedium.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w800)),
+                      ),
                     ),
                   ],
                 ),
@@ -851,18 +868,12 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                   margin: const EdgeInsets.only(bottom: 8),
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(ffTheme.radiusMd),
                     border: Border.all(color: ffTheme.alternate),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.04),
-                        blurRadius: 6,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
+                    boxShadow: ffTheme.shadowGlass,
                   ),
                   child: InkWell(
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(ffTheme.radiusMd),
                     onTap: () => context.pushNamed('PlanDetail',
                         pathParameters: {'planId': plan.id}),
                     child: Padding(

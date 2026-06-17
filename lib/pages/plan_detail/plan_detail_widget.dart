@@ -211,34 +211,47 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                                       '₪${plan.priceText}',
                                       style: ffTheme.displaySmall.copyWith(
                                           color: ffTheme.primary,
-                                          fontWeight: FontWeight.w800),
+                                          fontWeight: FontWeight.w800,
+                                          fontFeatures: const [
+                                            FontFeature.tabularFigures()
+                                          ]),
                                     ),
                                     const SizedBox(width: 4),
                                     Padding(
-                                      padding: const EdgeInsets.only(bottom: 6),
+                                      padding: const EdgeInsets.only(bottom: 7),
                                       child: Text('/${priceUnitShort(plan)}',
-                                          style: ffTheme.bodySmall.copyWith(
-                                              color: ffTheme.secondaryText)),
+                                          style: ffTheme.bodyMedium.copyWith(
+                                              color: ffTheme.secondaryText,
+                                              fontWeight: FontWeight.w500)),
                                     ),
                                   ],
                                 ),
                                 if (plan.hasPromo)
-                                  Text(
-                                    '₪${plan.after} אחרי ${plan.intro ?? 'המבצע'}',
-                                    style: ffTheme.bodySmall
-                                        .copyWith(color: ffTheme.secondaryText),
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 2),
+                                    child: Text(
+                                      '₪${plan.after} אחרי ${plan.intro ?? 'המבצע'}',
+                                      style: ffTheme.bodySmall.copyWith(
+                                          color: ffTheme.secondaryText,
+                                          fontFeatures: const [
+                                            FontFeature.tabularFigures()
+                                          ]),
+                                    ),
                                   ),
-                                const SizedBox(height: 8),
+                                const SizedBox(height: 12),
                                 Container(
                                   padding: const EdgeInsets.symmetric(
-                                      horizontal: 10, vertical: 4),
+                                      horizontal: 11, vertical: 5),
                                   decoration: BoxDecoration(
                                     color: ffTheme.background,
-                                    borderRadius: BorderRadius.circular(20),
-                                    border: Border.all(color: ffTheme.alternate),
+                                    borderRadius:
+                                        BorderRadius.circular(ffTheme.radiusPill),
+                                    border:
+                                        Border.all(color: ffTheme.alternate),
                                   ),
                                   child: Text(plan.commitmentLabel,
-                                      style: ffTheme.labelSmall),
+                                      style: ffTheme.labelSmall.copyWith(
+                                          fontWeight: FontWeight.w600)),
                                 ),
                               ],
                             ),
@@ -296,7 +309,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                         ),
                       ).animate().fadeIn(duration: 350.ms).slideY(begin: 0.1),
 
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 16),
 
                       // Features card
                       _Card(
@@ -323,7 +336,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                           .fadeIn(duration: 300.ms)
                           .slideY(begin: 0.08),
 
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 16),
 
                       // Pricing breakdown card
                       _Card(
@@ -360,7 +373,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                           .slideY(begin: 0.08),
 
                       // ── היסטוריית מחיר — collapsible price sparkline ──────
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 16),
                       _PriceHistoryCard(plan: plan)
                           .animate(delay: 140.ms)
                           .fadeIn(duration: 300.ms)
@@ -368,7 +381,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
 
                       // Warning card (promo)
                       if (plan.hasPromo) ...[
-                        const SizedBox(height: 14),
+                        const SizedBox(height: 16),
                         Container(
                           padding: const EdgeInsets.all(14),
                           decoration: BoxDecoration(
@@ -395,7 +408,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                         ).animate(delay: 160.ms).fadeIn(duration: 300.ms),
                       ],
 
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 16),
 
                       // Rate provider CTA — honest entry point to leave the
                       // first real review (no fabricated rating shown).
@@ -425,7 +438,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                       ).animate(delay: 250.ms).fadeIn(duration: 300.ms),
 
                       // ── "למה המסלול הזה מתאים לך" — fit panel ──────────────
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 16),
                       _FitPanel(
                         match: planMatch,
                         annualSaving: saveYear,
@@ -442,7 +455,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
 
                       // ── Quick-spec grid ─────────────────────────────────
                       if (plan.specs.isNotEmpty) ...[
-                        const SizedBox(height: 14),
+                        const SizedBox(height: 16),
                         _SpecGrid(plan: plan)
                             .animate(delay: 285.ms)
                             .fadeIn(duration: 300.ms)
@@ -450,7 +463,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                       ],
 
                       // ── Detailed cost breakdown ──────────────────────────
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 16),
                       _CostBreakdownCard(plan: plan)
                           .animate(delay: 295.ms)
                           .fadeIn(duration: 300.ms)
@@ -458,7 +471,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
 
                       // Fine print
                       if (plan.fine != null) ...[
-                        const SizedBox(height: 14),
+                        const SizedBox(height: 16),
                         Container(
                           decoration: BoxDecoration(
                             color: Colors.white,
@@ -489,7 +502,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
 
                       // ── מידע נוסף / אותיות קטנות (progressive disclosure) ──
                       if (plan.hasExtraInfo) ...[
-                        const SizedBox(height: 14),
+                        const SizedBox(height: 16),
                         _ExtraInfoSection(plan: plan)
                             .animate(delay: 305.ms)
                             .fadeIn(duration: 300.ms)
@@ -498,7 +511,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
 
                       // Savings timeline
                       if (saveYear > 0) ...[
-                        const SizedBox(height: 14),
+                        const SizedBox(height: 16),
                         _Card(
                           title: 'חיסכון לאורך זמן',
                           child: Row(
@@ -514,7 +527,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                         ).animate(delay: 260.ms).fadeIn(duration: 300.ms).slideY(begin: 0.08),
                       ],
 
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 16),
 
                       // Video-meeting cross-sell — a quote over Zoom with a rep.
                       _Card(
@@ -548,7 +561,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                         ),
                       ).animate(delay: 270.ms).fadeIn(duration: 300.ms).slideY(begin: 0.08),
 
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 16),
 
                       // Price alert card
                       _Card(
@@ -642,7 +655,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                           .slideY(begin: 0.08),
 
                       // ── ביקורות section ─────────────────────────────────
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 16),
                       _ReviewsSection(provider: plan.provider)
                           .animate(delay: 300.ms)
                           .fadeIn(duration: 300.ms)
@@ -1126,7 +1139,7 @@ class _FitPanel extends StatelessWidget {
 
           // Real annual saving — honest estimate framing.
           if (hasSaving) ...[
-            const SizedBox(height: 14),
+            const SizedBox(height: 16),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               decoration: BoxDecoration(
@@ -1166,7 +1179,7 @@ class _FitPanel extends StatelessWidget {
 
           // Reasons (real ✓ list from the engine)
           if (match.reasons.isNotEmpty) ...[
-            const SizedBox(height: 14),
+            const SizedBox(height: 16),
             ...match.reasons.map((r) => Padding(
                   padding: const EdgeInsets.only(bottom: 8),
                   child: Row(
@@ -2185,7 +2198,7 @@ class _ReviewsSection extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 16),
 
             // ── 2. Sub-rating bars ────────────────────────────────────────
             ...ProviderRatings.subKeys.map((key) {

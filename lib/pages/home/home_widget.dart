@@ -301,7 +301,7 @@ class _HomeWidgetState extends State<HomeWidget> {
         : const Color(0xFFFFB300).withValues(alpha: 0.45);
 
     return SliverToBoxAdapter(
-      child: GestureDetector(
+      child: Pressable(
         onTap: () {
           HapticFeedback.lightImpact();
           context.pushNamed('RenewalReport', pathParameters: {'trackedId': r.id});
@@ -351,6 +351,8 @@ class _HomeWidgetState extends State<HomeWidget> {
                         color: isUrgent ? const Color(0xFF7B1E1E) : const Color(0xFF5F4000),
                         fontWeight: FontWeight.w800,
                         fontSize: 13.5,
+                        height: 1.3,
+                        fontFeatures: const [FontFeature.tabularFigures()],
                       ),
                     ),
                     if (subText.isNotEmpty) ...[
@@ -473,7 +475,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                         width: 16,
                         height: 16,
                         decoration: BoxDecoration(color: ffTheme.secondary, shape: BoxShape.circle, border: Border.all(color: ffTheme.primaryDark, width: 1.5)),
-                        child: Center(child: Text(count > 9 ? '9+' : '$count', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: ffTheme.primaryDark))),
+                        child: Center(child: Text(count > 9 ? '9+' : '$count', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: ffTheme.primaryDark, fontFeatures: const [FontFeature.tabularFigures()]))),
                       ),
                     );
                   }),
@@ -492,7 +494,7 @@ class _HomeWidgetState extends State<HomeWidget> {
     // hero never lands on a screen showing a different number.
     final totalSave = savings.totalAnnualPotential;
 
-    return GestureDetector(
+    return Pressable(
       onTap: () {
         HapticFeedback.lightImpact();
         context.pushNamed('Savings');
@@ -509,9 +511,12 @@ class _HomeWidgetState extends State<HomeWidget> {
         children: [
           Text(
             'חיסכון פוטנציאלי שנתי',
-            style: ffTheme.labelMedium.copyWith(color: Colors.white.withValues(alpha: 0.75)),
+            style: ffTheme.labelMedium.copyWith(
+              color: Colors.white.withValues(alpha: 0.75),
+              letterSpacing: 0.2,
+            ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           // Real figure only — when no bill is set we show a dash and prompt the
           // quiz, never a fabricated "potential saving" number. Mirrors the
           // /savings dashboard's honest empty state.
@@ -537,16 +542,17 @@ class _HomeWidgetState extends State<HomeWidget> {
             Text(
               '₪—',
               style: ffTheme.displaySmall.copyWith(
-                color: ffTheme.secondary,
+                color: Colors.white.withValues(alpha: 0.55),
                 fontWeight: FontWeight.bold,
+                fontFeatures: const [FontFeature.tabularFigures()],
               ),
             ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
           Text(
             appState.billsPersonalized
                 ? 'מחושב לפי החשבונות שלך'
                 : 'הערכה — ענו על השאלון לחישוב מדויק',
-            style: ffTheme.bodySmall.copyWith(color: Colors.white.withValues(alpha: 0.75)),
+            style: ffTheme.bodySmall.copyWith(color: Colors.white.withValues(alpha: 0.72)),
           ),
           const SizedBox(height: 20),
           GestureDetector(
@@ -555,14 +561,20 @@ class _HomeWidgetState extends State<HomeWidget> {
               appState.billsPersonalized ? context.goNamed('Results') : context.goNamed('Quiz');
             },
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
               decoration: BoxDecoration(
-                color: ffTheme.secondary,
+                gradient: ffTheme.accentGradient,
                 borderRadius: BorderRadius.circular(ffTheme.radiusMd),
+                boxShadow: ffTheme.shadowAccent,
               ),
               child: Text(
                 appState.billsPersonalized ? 'חפש חבילות ←' : 'בדקו כמה תחסכו ←',
-                style: ffTheme.titleSmall.copyWith(color: ffTheme.primaryDark),
+                textAlign: TextAlign.center,
+                style: ffTheme.titleSmall.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
           ),

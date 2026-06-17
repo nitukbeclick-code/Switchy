@@ -277,6 +277,39 @@ class _ProviderWidgetState extends State<ProviderWidget> {
   }
 }
 
+// ── Pressable card wrapper (subtle scale press feedback) ───────────────────────
+
+/// Wraps a tappable card so it dips slightly (scale 0.97) while held — gives
+/// physical feedback without an ink ripple, matching the soft-glass surfaces.
+class _PressableCard extends StatefulWidget {
+  const _PressableCard({required this.child, required this.onTap});
+  final Widget child;
+  final VoidCallback onTap;
+
+  @override
+  State<_PressableCard> createState() => _PressableCardState();
+}
+
+class _PressableCardState extends State<_PressableCard> {
+  bool _down = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: widget.onTap,
+      onTapDown: (_) => setState(() => _down = true),
+      onTapUp: (_) => setState(() => _down = false),
+      onTapCancel: () => setState(() => _down = false),
+      child: AnimatedScale(
+        scale: _down ? 0.97 : 1.0,
+        duration: const Duration(milliseconds: 120),
+        curve: Curves.easeOut,
+        child: widget.child,
+      ),
+    );
+  }
+}
+
 // ── Hero header ───────────────────────────────────────────────────────────────
 
 class _HeroHeader extends StatelessWidget {
@@ -367,20 +400,23 @@ class _HeroHeader extends StatelessWidget {
                               ? Icons.star_half_rounded
                               : Icons.star_outline_rounded,
                       size: 18,
-                      color: ffTheme.secondary,
+                      color: AppColors.saving,
                     );
                   }),
                   const SizedBox(width: 6),
                   Text(
                     rating.stars.toStringAsFixed(1),
                     style: ffTheme.titleSmall.copyWith(
-                        color: Colors.white, fontWeight: FontWeight.w800),
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                        fontFeatures: const [FontFeature.tabularFigures()]),
                   ),
                   if (rating.reviewCount > 0)
                     Text(
                       ' · ${rating.reviewCount} ביקורות',
-                      style: ffTheme.labelSmall
-                          .copyWith(color: Colors.white.withValues(alpha: 0.8)),
+                      style: ffTheme.labelSmall.copyWith(
+                          color: Colors.white.withValues(alpha: 0.8),
+                          fontFeatures: const [FontFeature.tabularFigures()]),
                     ),
                 ],
               ),
@@ -416,20 +452,34 @@ class _EmptyState extends StatelessWidget {
             style: ffTheme.titleMedium.copyWith(color: Colors.white)),
       ),
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.search_off_rounded, size: 64, color: ffTheme.alternate),
-            const SizedBox(height: 16),
-            Text('לא נמצאו מסלולים', style: ffTheme.titleMedium),
-            const SizedBox(height: 8),
-            Text(
-              'אין מסלולים זמינים עבור $providerName',
-              style: ffTheme.bodyMedium
-                  .copyWith(color: ffTheme.secondaryText),
-              textAlign: TextAlign.center,
-            ),
-          ],
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 88,
+                height: 88,
+                decoration: BoxDecoration(
+                  color: ffTheme.accent1,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.search_off_rounded,
+                    size: 40, color: ffTheme.secondaryText),
+              ),
+              const SizedBox(height: 24),
+              Text('לא נמצאו מסלולים',
+                  style: ffTheme.titleLarge
+                      .copyWith(fontWeight: FontWeight.w700)),
+              const SizedBox(height: 8),
+              Text(
+                'אין מסלולים זמינים עבור $providerName',
+                style: ffTheme.bodyMedium
+                    .copyWith(color: ffTheme.secondaryText, height: 1.4),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -458,56 +508,55 @@ class _BestMatchCard extends StatelessWidget {
     final topReason =
         match.reasons.isNotEmpty ? match.reasons.first : match.plan.plan;
 
-    return GestureDetector(
+    return _PressableCard(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: ffTheme.primary.withValues(alpha: 0.25)),
-          boxShadow: [
-            BoxShadow(
-              color: ffTheme.primary.withValues(alpha: 0.08),
-              blurRadius: 12,
-              offset: const Offset(0, 3),
-            ),
-          ],
+          borderRadius: BorderRadius.circular(ffTheme.radiusLg),
+          border: Border.all(color: AppColors.brandAccent.withValues(alpha: 0.30)),
+          boxShadow: ffTheme.shadowSoft,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header
+            // Header — the recommendation is an ACTION surface (indigo accent)
             Row(
               children: [
-                Icon(Icons.auto_awesome_rounded,
-                    color: ffTheme.primary, size: 18),
+                const Icon(Icons.auto_awesome_rounded,
+                    color: AppColors.brandAccent, size: 18),
                 const SizedBox(width: 6),
-                Text(
-                  'ההמלצה אצל $providerName',
-                  style: ffTheme.titleSmall
-                      .copyWith(color: ffTheme.primary),
+                Expanded(
+                  child: Text(
+                    'ההמלצה אצל $providerName',
+                    style: ffTheme.labelMedium.copyWith(
+                        color: AppColors.brandAccent,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.2),
+                  ),
                 ),
-                const Spacer(),
+                const SizedBox(width: 8),
                 Container(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: ffTheme.primary,
-                    borderRadius: BorderRadius.circular(20),
+                    gradient: ffTheme.accentGradient,
+                    borderRadius: BorderRadius.circular(ffTheme.radiusPill),
                   ),
                   child: Text(
                     '${match.scorePct}% · ${match.label}',
                     style: ffTheme.labelSmall.copyWith(
                         color: Colors.white,
                         fontWeight: FontWeight.w700,
-                        fontSize: 11),
+                        fontSize: 11,
+                        fontFeatures: const [FontFeature.tabularFigures()]),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 14),
-            // Plan name + price row
+            // Plan name + price row — name is primary, price is the ink anchor
             Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
@@ -515,7 +564,7 @@ class _BestMatchCard extends StatelessWidget {
                   child: Text(
                     plan.plan,
                     style: ffTheme.titleMedium
-                        .copyWith(fontWeight: FontWeight.w700),
+                        .copyWith(fontWeight: FontWeight.w700, height: 1.2),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -524,9 +573,11 @@ class _BestMatchCard extends StatelessWidget {
                   children: [
                     Text(
                       '₪${plan.priceText}',
-                      style: ffTheme.titleLarge.copyWith(
-                          color: ffTheme.primary,
-                          fontWeight: FontWeight.w800),
+                      style: ffTheme.headlineSmall.copyWith(
+                          color: ffTheme.primaryText,
+                          fontWeight: FontWeight.w800,
+                          height: 1.0,
+                          fontFeatures: const [FontFeature.tabularFigures()]),
                     ),
                     Text(
                       unit,
@@ -538,7 +589,7 @@ class _BestMatchCard extends StatelessWidget {
               ],
             ),
             if (topReason.isNotEmpty) ...[
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
               Row(
                 children: [
                   Icon(Icons.check_circle_rounded,
@@ -549,24 +600,25 @@ class _BestMatchCard extends StatelessWidget {
                       topReason,
                       style: ffTheme.bodySmall.copyWith(
                           color: ffTheme.primaryText,
-                          fontWeight: FontWeight.w500),
+                          fontWeight: FontWeight.w500,
+                          height: 1.35),
                     ),
                   ),
                 ],
               ),
             ],
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 Text(
                   'לפרטים',
                   style: ffTheme.labelSmall.copyWith(
-                      color: ffTheme.primary, fontWeight: FontWeight.w700),
+                      color: AppColors.brandAccent, fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(width: 4),
-                Icon(Icons.chevron_left_rounded,
-                    size: 16, color: ffTheme.primary),
+                const Icon(Icons.chevron_left_rounded,
+                    size: 16, color: AppColors.brandAccent),
               ],
             ),
           ],
@@ -595,24 +647,20 @@ class _RatingPanel extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: ffTheme.alternate),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(ffTheme.radiusMd),
+        border: Border.all(color: ffTheme.lineColor),
+        boxShadow: ffTheme.shadowSoft,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Icon(Icons.reviews_rounded, color: ffTheme.primary, size: 18),
+              Icon(Icons.reviews_rounded, color: ffTheme.primaryText, size: 18),
               const SizedBox(width: 6),
-              Text('דירוג הלקוחות', style: ffTheme.titleSmall),
+              Text('דירוג הלקוחות',
+                  style: ffTheme.titleSmall
+                      .copyWith(fontWeight: FontWeight.w700)),
               const Spacer(),
               if (rating.ratedByUser)
                 Row(
@@ -642,20 +690,21 @@ class _RatingPanel extends StatelessWidget {
                   const SizedBox(width: 8),
                   Expanded(
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: BorderRadius.circular(ffTheme.radiusPill),
                       child: LinearProgressIndicator(
                         value: (v / 5).clamp(0.0, 1.0),
-                        backgroundColor: ffTheme.alternate,
+                        backgroundColor: ffTheme.lineColor,
                         valueColor: AlwaysStoppedAnimation(
-                            ffTheme.primary.withValues(alpha: 0.75)),
+                            ffTheme.primaryText.withValues(alpha: 0.8)),
                         minHeight: 6,
                       ),
                     ),
                   ),
                   const SizedBox(width: 8),
                   Text(v.toStringAsFixed(1),
-                      style: ffTheme.labelSmall
-                          .copyWith(fontWeight: FontWeight.w700)),
+                      style: ffTheme.labelSmall.copyWith(
+                          fontWeight: FontWeight.w700,
+                          fontFeatures: const [FontFeature.tabularFigures()])),
                 ],
               ),
             );
@@ -675,11 +724,11 @@ class _RatingPanel extends StatelessWidget {
                   ? 'עדכנו את הדירוג'
                   : 'דרגו את ${rating.provider}'),
               style: OutlinedButton.styleFrom(
-                foregroundColor: ffTheme.primary,
-                side: BorderSide(color: ffTheme.primary.withValues(alpha: 0.4)),
+                foregroundColor: ffTheme.primaryText,
+                side: BorderSide(color: ffTheme.lineColor),
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-                padding: const EdgeInsets.symmetric(vertical: 10),
+                    borderRadius: BorderRadius.circular(ffTheme.radiusSm)),
+                padding: const EdgeInsets.symmetric(vertical: 11),
               ),
             ),
           ),
@@ -743,7 +792,7 @@ class _PlanCard extends StatelessWidget {
     final unit = priceUnitLabel(plan);
     final specEntries = plan.specs.entries.take(2).toList();
 
-    return GestureDetector(
+    return _PressableCard(
       onTap: onTap,
       child: Stack(
         clipBehavior: Clip.none,
@@ -752,20 +801,14 @@ class _PlanCard extends StatelessWidget {
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(ffTheme.radiusMd),
               border: Border.all(
                 color: isFlashDeal
                     ? AppColors.saving.withValues(alpha: 0.55)
-                    : ffTheme.alternate,
+                    : ffTheme.lineColor,
                 width: isFlashDeal ? 1.5 : 1,
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
+              boxShadow: ffTheme.shadowSoft,
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -780,23 +823,22 @@ class _PlanCard extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(width: 8),
-                    // Score chip
+                    // Match score — the one indigo accent moment on the card
                     if (match != null)
                       Container(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
-                          color: ffTheme.accent1,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                              color: ffTheme.primary.withValues(alpha: 0.2)),
+                          color: ffTheme.brandAccentTint,
+                          borderRadius: BorderRadius.circular(ffTheme.radiusXs),
                         ),
                         child: Text(
                           '${match!.scorePct}% התאמה',
                           style: ffTheme.labelSmall.copyWith(
-                              color: ffTheme.primary,
+                              color: AppColors.brandAccent,
                               fontWeight: FontWeight.w700,
-                              fontSize: 11),
+                              fontSize: 11,
+                              fontFeatures: const [FontFeature.tabularFigures()]),
                         ),
                       ),
                   ],
@@ -807,14 +849,17 @@ class _PlanCard extends StatelessWidget {
                     Text(
                       '₪${plan.priceText} $unit',
                       style: ffTheme.titleSmall.copyWith(
-                          color: ffTheme.primary, fontWeight: FontWeight.w700),
+                          color: ffTheme.primaryText,
+                          fontWeight: FontWeight.w700,
+                          fontFeatures: const [FontFeature.tabularFigures()]),
                     ),
                     if (plan.hasPromo) ...[
                       const SizedBox(width: 8),
                       Text(
                         '← ₪${plan.after} אחרי',
-                        style: ffTheme.labelSmall
-                            .copyWith(color: ffTheme.secondaryText),
+                        style: ffTheme.labelSmall.copyWith(
+                            color: ffTheme.secondaryText,
+                            fontFeatures: const [FontFeature.tabularFigures()]),
                       ),
                     ],
                     const Spacer(),
@@ -823,17 +868,18 @@ class _PlanCard extends StatelessWidget {
                   ],
                 ),
                 if (specEntries.isNotEmpty) ...[
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 10),
                   Wrap(
                     spacing: 6,
+                    runSpacing: 6,
                     children: specEntries.map((e) {
                       return Container(
                         padding: const EdgeInsets.symmetric(
                             horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
                           color: ffTheme.background,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: ffTheme.alternate),
+                          borderRadius: BorderRadius.circular(ffTheme.radiusXs),
+                          border: Border.all(color: ffTheme.lineColor),
                         ),
                         child: Text(
                           '${e.key}: ${e.value}',
@@ -847,27 +893,20 @@ class _PlanCard extends StatelessWidget {
               ],
             ),
           ),
-          // Flash deal badge — overlaid top-left corner
+          // Flash deal badge — the amber VALUE marker, top-end corner
           if (isFlashDeal)
-            Positioned(
+            PositionedDirectional(
               top: -1,
-              right: 10,
+              end: 10,
               child: Container(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   color: AppColors.saving,
-                  borderRadius: const BorderRadius.only(
-                    bottomLeft: Radius.circular(8),
-                    bottomRight: Radius.circular(8),
+                  borderRadius: BorderRadius.only(
+                    bottomLeft: Radius.circular(10),
+                    bottomRight: Radius.circular(10),
                   ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.saving.withValues(alpha: 0.35),
-                      blurRadius: 6,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -876,11 +915,12 @@ class _PlanCard extends StatelessWidget {
                     const SizedBox(width: 3),
                     Text(
                       'מבצע · $flashDiscountPct% הנחה',
-                      style: const TextStyle(
+                      style: ffTheme.labelSmall.copyWith(
                         color: Colors.white,
                         fontSize: 10,
                         fontWeight: FontWeight.w800,
                         height: 1.2,
+                        fontFeatures: const [FontFeature.tabularFigures()],
                       ),
                     ),
                   ],
@@ -1041,9 +1081,9 @@ class _ProviderCommunitySectionState
           label: const Text('ראה עוד בקהילה'),
           style: OutlinedButton.styleFrom(
             foregroundColor: AppColors.brandAccent,
-            side: BorderSide(color: AppColors.brandAccent.withValues(alpha: 0.5)),
-            shape:
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            side: BorderSide(color: AppColors.brandAccent.withValues(alpha: 0.4)),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(ffTheme.radiusSm)),
             padding: const EdgeInsets.symmetric(vertical: 12),
           ),
         ),
@@ -1134,15 +1174,9 @@ class _ProviderPostCard extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: ffTheme.alternate),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(ffTheme.radiusMd),
+        border: Border.all(color: ffTheme.lineColor),
+        boxShadow: ffTheme.shadowSoft,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1155,15 +1189,17 @@ class _ProviderPostCard extends StatelessWidget {
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(
-                  color: ffTheme.primary.withValues(alpha: 0.1),
+                  color: ffTheme.accent1,
                   shape: BoxShape.circle,
                 ),
                 child: Center(
-                  child: Text(
-                    avatarChar,
-                    style: ffTheme.labelMedium.copyWith(
-                      color: ffTheme.primary,
-                      fontWeight: FontWeight.w700,
+                  child: ExcludeSemantics(
+                    child: Text(
+                      avatarChar,
+                      style: ffTheme.labelMedium.copyWith(
+                        color: ffTheme.primaryText,
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                 ),
@@ -1194,7 +1230,7 @@ class _ProviderPostCard extends StatelessWidget {
                       const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
                     color: ffTheme.background,
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(ffTheme.radiusXs),
                   ),
                   child: Text(
                     channel,
@@ -1264,6 +1300,7 @@ class _ProviderPostCard extends StatelessWidget {
                               : ffTheme.secondaryText,
                           fontWeight:
                               isLiked ? FontWeight.w700 : FontWeight.w500,
+                          fontFeatures: const [FontFeature.tabularFigures()],
                         ),
                       ),
                     ],
@@ -1285,8 +1322,9 @@ class _ProviderPostCard extends StatelessWidget {
                       const SizedBox(width: 4),
                       Text(
                         '$replies',
-                        style: ffTheme.labelSmall
-                            .copyWith(color: ffTheme.secondaryText),
+                        style: ffTheme.labelSmall.copyWith(
+                            color: ffTheme.secondaryText,
+                            fontFeatures: const [FontFeature.tabularFigures()]),
                       ),
                     ],
                   ),
@@ -1322,7 +1360,7 @@ class _MediaThumbnail extends StatelessWidget {
         final bytes = base64Decode(
             commaIdx >= 0 ? mediaData.substring(commaIdx + 1) : mediaData);
         return ClipRRect(
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(ffTheme.radiusXs),
           child: Image.memory(
             bytes,
             height: 140,
@@ -1381,8 +1419,8 @@ class _MediaPlaceholder extends StatelessWidget {
       height: 60,
       decoration: BoxDecoration(
         color: ffTheme.background,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: ffTheme.alternate),
+        borderRadius: BorderRadius.circular(ffTheme.radiusXs),
+        border: Border.all(color: ffTheme.lineColor),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,

@@ -1352,16 +1352,16 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                 ),
                 const Spacer(),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF0F2F4),
-                    borderRadius: BorderRadius.circular(10),
+                    color: ffTheme.background,
+                    borderRadius: BorderRadius.circular(ffTheme.radiusXs),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(Icons.emoji_events_rounded, size: 14, color: ffTheme.primary),
-                      const SizedBox(width: 4),
+                      const SizedBox(width: 5),
                       Text('קהילה פעילה', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
                     ],
                   ),
@@ -1569,8 +1569,8 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                 margin: const EdgeInsets.fromLTRB(16, 10, 16, 0),
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(colors: [ffTheme.primaryDark, ffTheme.primary]),
-                  borderRadius: BorderRadius.circular(14),
+                  gradient: ffTheme.brandGradient,
+                  borderRadius: BorderRadius.circular(ffTheme.radiusMd),
                 ),
                 child: Row(
                   children: [
@@ -1581,7 +1581,8 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text('עסקת השבוע', style: ffTheme.labelSmall.copyWith(color: ffTheme.secondary, fontWeight: FontWeight.w700)),
-                          Text(p.text.length > 60 ? '${p.text.substring(0, 60)}...' : p.text, style: ffTheme.bodySmall.copyWith(color: Colors.white70, height: 1.3)),
+                          const SizedBox(height: 2),
+                          Text(p.text, style: ffTheme.bodySmall.copyWith(color: Colors.white70, height: 1.3), maxLines: 1, overflow: TextOverflow.ellipsis),
                         ],
                       ),
                     ),
@@ -1771,12 +1772,12 @@ class _PostCardState extends State<_PostCard> {
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(ffTheme.radiusMd),
         border: Border.all(
           color: isTrending ? ffTheme.warning.withValues(alpha: 0.5) : ffTheme.alternate,
           width: isTrending ? 1.5 : 1,
         ),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 8, offset: const Offset(0, 2))],
+        boxShadow: ffTheme.shadowGlass,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2108,7 +2109,14 @@ class _ActionBtn extends StatelessWidget {
                 ),
                 if (label.isNotEmpty) ...[
                   const SizedBox(width: 4),
-                  Text(label, style: ffTheme.labelSmall.copyWith(color: color, fontWeight: FontWeight.w600)),
+                  Text(
+                    label,
+                    style: ffTheme.labelSmall.copyWith(
+                      color: color,
+                      fontWeight: FontWeight.w600,
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
+                  ),
                 ],
               ],
             ),
@@ -2131,7 +2139,16 @@ class _StatPill extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(value, style: GoogleFonts.rubik(fontSize: 15, fontWeight: FontWeight.w800, color: color)),
+        Text(
+          value,
+          style: GoogleFonts.rubik(
+            fontSize: 16,
+            fontWeight: FontWeight.w800,
+            color: color,
+            height: 1.1,
+            fontFeatures: const [FontFeature.tabularFigures()],
+          ),
+        ),
         Text(label, style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText, fontSize: 10)),
       ],
     );
@@ -2357,19 +2374,19 @@ class _FeaturedCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              // "מומלץ" amber badge
+              // "מומלץ" amber badge — value/win state
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                 decoration: BoxDecoration(
                   color: AppColors.saving.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(t.radiusXs),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
+                    const Icon(Icons.auto_awesome_rounded, size: 11, color: AppColors.saving),
+                    const SizedBox(width: 4),
                     Text('מומלץ', style: t.labelSmall.copyWith(color: AppColors.saving, fontWeight: FontWeight.w700, fontSize: 10)),
-                    const SizedBox(width: 3),
-                    const Text('✨', style: TextStyle(fontSize: 10)),
                   ],
                 ),
               ),
@@ -2409,18 +2426,19 @@ class _FeaturedCard extends StatelessWidget {
             children: [
               Icon(Icons.favorite_rounded, size: 13, color: Colors.red.shade400),
               const SizedBox(width: 4),
-              Text('${post.likes}', style: t.labelSmall.copyWith(color: t.secondaryText)),
+              Text('${post.likes}', style: t.labelSmall.copyWith(color: t.secondaryText, fontFeatures: const [FontFeature.tabularFigures()])),
               const SizedBox(width: 12),
               Semantics(
                 button: true,
                 label: 'הגב לפוסט מומלץ',
                 child: GestureDetector(
                   onTap: onReply,
+                  behavior: HitTestBehavior.opaque,
                   child: Row(
                     children: [
                       Icon(Icons.chat_bubble_outline_rounded, size: 13, color: t.primary),
                       const SizedBox(width: 4),
-                      Text('${post.replies}', style: t.labelSmall.copyWith(color: t.primary)),
+                      Text('${post.replies}', style: t.labelSmall.copyWith(color: t.primary, fontFeatures: const [FontFeature.tabularFigures()])),
                     ],
                   ),
                 ),

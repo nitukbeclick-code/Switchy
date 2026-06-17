@@ -68,8 +68,16 @@ class AccountWidget extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(appState.isLoggedIn ? appState.userName : 'אורח', style: GoogleFonts.rubik(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white)),
-                            Text(appState.isLoggedIn ? appState.userPhone : 'לא מחובר', style: GoogleFonts.assistant(fontSize: 13, color: Colors.white70)),
+                            Text(appState.isLoggedIn ? appState.userName : 'אורח', style: GoogleFonts.rubik(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white, height: 1.2)),
+                            const SizedBox(height: 2),
+                            Text(
+                              appState.isLoggedIn ? appState.userPhone : 'לא מחובר',
+                              style: GoogleFonts.assistant(
+                                fontSize: 13,
+                                color: Colors.white70,
+                                fontFeatures: const [FontFeature.tabularFigures()],
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -149,9 +157,20 @@ class AccountWidget extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('חסכת עד כה!', style: GoogleFonts.assistant(fontSize: 13, color: ffTheme.secondary, fontWeight: FontWeight.w600)),
-                        const SizedBox(height: 6),
-                        Text('₪${appState.totalSavings}', style: GoogleFonts.rubik(fontSize: 44, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: -1)),
+                        Text('חסכת עד כה', style: GoogleFonts.assistant(fontSize: 13, color: Colors.white70, fontWeight: FontWeight.w600, letterSpacing: 0.2)),
+                        const SizedBox(height: 8),
+                        Text(
+                          '₪${appState.totalSavings}',
+                          style: GoogleFonts.rubik(
+                            fontSize: 46,
+                            fontWeight: FontWeight.w800,
+                            color: ffTheme.saving,
+                            letterSpacing: -1.2,
+                            height: 1.0,
+                            fontFeatures: const [FontFeature.tabularFigures()],
+                          ),
+                        ),
+                        const SizedBox(height: 4),
                         Text('מאז שהצטרפת לחוסך', style: GoogleFonts.assistant(fontSize: 12, color: Colors.white60)),
                       ],
                     ),
@@ -182,9 +201,9 @@ class AccountWidget extends StatelessWidget {
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(ffTheme.radiusMd),
                         border: Border.all(color: ffTheme.alternate),
-                        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10)],
+                        boxShadow: ffTheme.shadowSoft,
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -260,12 +279,13 @@ class AccountWidget extends StatelessWidget {
                             Text('עוד לא בחרתם מסלול?', style: ffTheme.titleSmall),
                             const SizedBox(height: 4),
                             Text('מצאו את החבילה הזולה ביותר עכשיו', style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText)),
-                            const SizedBox(height: 14),
+                            const SizedBox(height: 16),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 9),
+                              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 11),
                               decoration: BoxDecoration(
-                                color: ffTheme.primary,
-                                borderRadius: BorderRadius.circular(10),
+                                gradient: ffTheme.accentGradient,
+                                borderRadius: BorderRadius.circular(ffTheme.radiusSm),
+                                boxShadow: ffTheme.shadowAccent,
                               ),
                               child: Text('השווה מסלולים', style: ffTheme.labelMedium.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
                             ),
@@ -474,8 +494,8 @@ class AccountWidget extends StatelessWidget {
                                       Expanded(child: Text(p.provider, style: ffTheme.labelSmall.copyWith(fontWeight: FontWeight.w700), overflow: TextOverflow.ellipsis)),
                                     ],
                                   ),
-                                  const SizedBox(height: 5),
-                                  Text('₪${p.priceText}/${priceUnitShort(p)}', style: ffTheme.titleSmall.copyWith(color: ffTheme.primary)),
+                                  const SizedBox(height: 6),
+                                  Text('₪${p.priceText}/${priceUnitShort(p)}', style: ffTheme.titleSmall.copyWith(color: ffTheme.primary, fontFeatures: const [FontFeature.tabularFigures()])),
                                   Text(p.plan, style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText), maxLines: 1, overflow: TextOverflow.ellipsis),
                                 ],
                               ),

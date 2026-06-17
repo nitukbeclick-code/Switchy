@@ -504,7 +504,9 @@ class _ChooseButton extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         gradient: isBest ? ffTheme.accentGradient : null,
-        color: isBest ? null : ffTheme.primary,
+        // Fixed ink (not the brightness-aware token) so the white label stays
+        // readable in dark, where ffTheme.primary flips to near-white.
+        color: isBest ? null : AppColors.primary,
         borderRadius: BorderRadius.circular(ffTheme.radiusMd),
         boxShadow: isBest ? ffTheme.shadowAccent : null,
       ),

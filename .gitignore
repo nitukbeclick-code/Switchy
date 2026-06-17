@@ -93,3 +93,9 @@ package-lock.json
 # reproducible; ignore only local overrides and transient worktrees.
 .claude/settings.local.json
 .claude/worktrees/
+
+# Cloudflare Wrangler local cache (leaks account id/email — never commit)
+.wrangler/
+# Python coverage.py artifacts (from vendored skills)
+.coverage
+*.coverage

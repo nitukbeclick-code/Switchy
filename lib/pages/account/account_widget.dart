@@ -200,7 +200,7 @@ class AccountWidget extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: ffTheme.secondaryBackground,
                         borderRadius: BorderRadius.circular(ffTheme.radiusMd),
                         border: Border.all(color: ffTheme.alternate),
                         boxShadow: ffTheme.shadowSoft,

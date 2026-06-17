@@ -209,7 +209,7 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
               decoration: InputDecoration(
                 hintText: 'תל אביב, חיפה, ירושלים...',
                 filled: true,
-                fillColor: Colors.white,
+                fillColor: ffTheme.secondaryBackground,
                 prefixIcon: Icon(Icons.location_city_rounded, color: ffTheme.secondaryText),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusSm), borderSide: BorderSide.none),
                 enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusSm), borderSide: BorderSide(color: ffTheme.lineColor)),
@@ -253,7 +253,7 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
           decoration: InputDecoration(
             hintText: 'רחוב דיזנגוף 99',
             filled: true,
-            fillColor: Colors.white,
+            fillColor: ffTheme.secondaryBackground,
             prefixIcon: Icon(Icons.home_rounded, color: ffTheme.secondaryText),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusSm), borderSide: BorderSide.none),
             enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusSm), borderSide: BorderSide(color: ffTheme.lineColor)),
@@ -290,7 +290,7 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
                   constraints: const BoxConstraints(minHeight: 44),
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    color: selected ? ffTheme.primary : Colors.white,
+                    color: selected ? ffTheme.primary : ffTheme.secondaryBackground,
                     borderRadius: BorderRadius.circular(ffTheme.radiusPill),
                     border: Border.all(color: selected ? ffTheme.primary : ffTheme.lineColor, width: selected ? 1.5 : 1),
                   ),
@@ -404,7 +404,7 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ffTheme.secondaryBackground,
         borderRadius: BorderRadius.circular(ffTheme.radiusMd),
         border: isBest
             ? Border.all(color: ffTheme.saving.withValues(alpha: 0.5), width: 1.5)
@@ -445,7 +445,7 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
                         LogoWidget(provider: isp.name, size: 42),
                         if (!isAvailable)
                           Positioned.fill(child: Container(
-                            decoration: BoxDecoration(color: Colors.white54, borderRadius: BorderRadius.circular(8)),
+                            decoration: BoxDecoration(color: ffTheme.secondaryBackground.withValues(alpha: 0.54), borderRadius: BorderRadius.circular(8)),
                           )),
                       ],
                     ),
@@ -610,7 +610,7 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
       child: Container(
         margin: const EdgeInsets.only(top: 8, bottom: 8),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: ffTheme.secondaryBackground,
           borderRadius: BorderRadius.circular(ffTheme.radiusMd),
           border: Border.all(color: ffTheme.brandAccent.withValues(alpha: 0.35), width: 1.5),
           boxShadow: ffTheme.shadowSoft,

@@ -155,7 +155,7 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
                       duration: const Duration(milliseconds: 200),
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                       decoration: BoxDecoration(
-                        color: isActive ? ffTheme.primary : Colors.white,
+                        color: isActive ? ffTheme.primary : ffTheme.secondaryBackground,
                         borderRadius: BorderRadius.circular(ffTheme.radiusPill),
                         border: Border.all(color: isActive ? ffTheme.primary : ffTheme.lineColor),
                       ),
@@ -235,7 +235,7 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
                   return Padding(
                     padding: const EdgeInsetsDirectional.only(end: 6),
                     child: Material(
-                      color: active ? ffTheme.primary : Colors.white,
+                      color: active ? ffTheme.primary : ffTheme.secondaryBackground,
                       borderRadius: BorderRadius.circular(ffTheme.radiusPill),
                       child: InkWell(
                         onTap: () => setState(() => _exitFee = fee.toDouble()),
@@ -354,7 +354,7 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
               Container(
                 padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: ffTheme.secondaryBackground,
                   borderRadius: BorderRadius.circular(ffTheme.radiusMd),
                   border: Border.all(color: ffTheme.lineColor),
                   boxShadow: ffTheme.shadowSoft,
@@ -467,7 +467,7 @@ class _RecommendedPlanCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: ffTheme.secondaryBackground,
           borderRadius: BorderRadius.circular(ffTheme.radiusMd),
           border: Border.all(color: ffTheme.brandAccent.withValues(alpha: 0.35), width: 1.5),
           boxShadow: ffTheme.shadowSoft,
@@ -680,7 +680,7 @@ class _LeadingPlanCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ffTheme.secondaryBackground,
         borderRadius: BorderRadius.circular(ffTheme.radiusMd),
         border: Border.all(color: ffTheme.lineColor),
         boxShadow: ffTheme.shadowSoft,
@@ -763,7 +763,7 @@ class _SliderSection extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ffTheme.secondaryBackground,
         borderRadius: BorderRadius.circular(ffTheme.radiusSm),
         border: Border.all(color: ffTheme.lineColor),
         boxShadow: ffTheme.shadowSoft,

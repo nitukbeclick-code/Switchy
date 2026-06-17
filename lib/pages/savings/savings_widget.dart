@@ -561,7 +561,7 @@ class _CategoryCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ffTheme.secondaryBackground,
         borderRadius: BorderRadius.circular(ffTheme.radiusMd),
         border: Border.all(color: ffTheme.lineColor),
         boxShadow: ffTheme.shadowSoft,
@@ -1248,7 +1248,7 @@ class _RenewalRow extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: ffTheme.secondaryBackground,
           borderRadius: BorderRadius.circular(ffTheme.radiusMd),
           border: Border.all(color: ffTheme.lineColor),
           boxShadow: ffTheme.shadowSoft,
@@ -1349,7 +1349,7 @@ class _FutureMilestoneBanner extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.55),
+        color: ffTheme.secondaryBackground.withValues(alpha: 0.55),
         borderRadius: BorderRadius.circular(ffTheme.radiusMd),
         border: Border.all(
           color: ffTheme.lineColor,

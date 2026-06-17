@@ -100,15 +100,15 @@ class _OnboardingWidgetState extends State<OnboardingWidget>
                             width: 40,
                             height: 40,
                             decoration: BoxDecoration(
-                              color: Colors.white,
+                              color: t.secondaryBackground,
                               borderRadius:
                                   BorderRadius.circular(t.radiusSm),
                               border: Border.all(
-                                  color: AppColors.lineColor, width: 1.5),
+                                  color: t.lineColor, width: 1.5),
                               boxShadow: t.shadowSoft,
                             ),
-                            child: const Icon(Icons.arrow_forward_ios_rounded,
-                                size: 16, color: AppColors.primaryText),
+                            child: Icon(Icons.arrow_forward_ios_rounded,
+                                size: 16, color: t.primaryText),
                           ),
                         ),
                       ),

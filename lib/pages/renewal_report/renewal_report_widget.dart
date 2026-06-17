@@ -407,7 +407,7 @@ class _AlternativeRow extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: ffTheme.secondaryBackground,
           borderRadius: BorderRadius.circular(ffTheme.radiusMd),
           border: Border.all(
             color: isTop ? ffTheme.primary : ffTheme.alternate,
@@ -549,7 +549,7 @@ class _ReminderCta extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: on ? ffTheme.success.withValues(alpha: 0.08) : Colors.white,
+        color: on ? ffTheme.success.withValues(alpha: 0.08) : ffTheme.secondaryBackground,
         borderRadius: BorderRadius.circular(ffTheme.radiusMd),
         border: Border.all(color: on ? ffTheme.success.withValues(alpha: 0.4) : ffTheme.alternate),
         boxShadow: on ? null : ffTheme.shadowSoft,

@@ -47,7 +47,7 @@ class _TrackerWidgetState extends State<TrackerWidget> {
       width: double.infinity,
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ffTheme.secondaryBackground,
         borderRadius: BorderRadius.circular(ffTheme.radiusMd),
         border: Border.all(color: ffTheme.alternate),
         boxShadow: ffTheme.shadowSoft,
@@ -397,7 +397,7 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: ffTheme.secondaryBackground,
                   borderRadius: BorderRadius.circular(ffTheme.radiusMd),
                   border: Border.all(color: ffTheme.alternate),
                   boxShadow: ffTheme.shadowCard,
@@ -555,7 +555,7 @@ class _TrackerWidgetState extends State<TrackerWidget> {
               child: Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: ffTheme.secondaryBackground,
                   borderRadius: BorderRadius.circular(ffTheme.radiusMd),
                   border: Border.all(color: ffTheme.alternate),
                   boxShadow: ffTheme.shadowSoft,
@@ -577,9 +577,9 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                           child: Container(
                             width: 14, height: 14,
                             decoration: BoxDecoration(
-                              color: const Color(0xFF111827),
+                              color: ffTheme.primaryText,
                               shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white, width: 2),
+                              border: Border.all(color: ffTheme.secondaryBackground, width: 2),
                             ),
                           ),
                         ),
@@ -594,11 +594,11 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                           const SizedBox(height: 2),
                           Row(
                             children: [
-                              Container(width: 6, height: 6, decoration: const BoxDecoration(color: Color(0xFF111827), shape: BoxShape.circle)),
+                              Container(width: 6, height: 6, decoration: BoxDecoration(color: ffTheme.primaryText, shape: BoxShape.circle)),
                               const SizedBox(width: 4),
                               Text('פנויה עכשיו · תגובה ~5 דקות',
                                   style: ffTheme.labelSmall.copyWith(
-                                      color: const Color(0xFF111827),
+                                      color: ffTheme.primaryText,
                                       fontWeight: FontWeight.w600,
                                       fontFeatures: const [FontFeature.tabularFigures()])),
                             ],

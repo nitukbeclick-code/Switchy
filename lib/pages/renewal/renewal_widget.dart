@@ -265,7 +265,7 @@ class _PlanCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ffTheme.secondaryBackground,
         borderRadius: BorderRadius.circular(ffTheme.radiusLg),
         border: Border.all(color: ffTheme.lineColor),
         boxShadow: ffTheme.shadowSoft,
@@ -503,7 +503,7 @@ class _ReminderTile extends StatelessWidget {
         : 'נשלח לך התראה ~21 יום לפני סיום המבצע';
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ffTheme.secondaryBackground,
         borderRadius: BorderRadius.circular(ffTheme.radiusMd),
         border: Border.all(color: ffTheme.lineColor),
         boxShadow: ffTheme.shadowSoft,
@@ -630,9 +630,9 @@ class _AddPlanSheetState extends State<_AddPlanSheet> {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
 
     return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      decoration: BoxDecoration(
+        color: ffTheme.secondaryBackground,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
       padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + bottomInset),
       child: Form(

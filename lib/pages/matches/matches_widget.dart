@@ -223,7 +223,7 @@ class _MatchesWidgetState extends State<MatchesWidget> {
                     const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
                   gradient: active ? ffTheme.accentGradient : null,
-                  color: active ? null : Colors.white,
+                  color: active ? null : ffTheme.secondaryBackground,
                   borderRadius: BorderRadius.circular(ffTheme.radiusPill),
                   border: Border.all(
                     color:

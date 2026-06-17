@@ -221,7 +221,7 @@ class _ChatWidgetState extends State<ChatWidget> {
     Provider.of<AppState>(context, listen: false);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF0F2F5),
+      backgroundColor: ffTheme.background,
       appBar: _buildAppBar(ffTheme, context),
       body: Column(
         children: [
@@ -348,8 +348,8 @@ class _ChatWidgetState extends State<ChatWidget> {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.7),
-        border: const Border(bottom: BorderSide(color: Colors.black12)),
+        color: ffTheme.secondaryBackground.withValues(alpha: 0.7),
+        border: Border(bottom: BorderSide(color: ffTheme.alternate)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -416,12 +416,12 @@ class _ChatWidgetState extends State<ChatWidget> {
       padding: const EdgeInsets.symmetric(vertical: 12),
       child: Row(
         children: [
-          const Expanded(child: Divider(color: Colors.black12)),
+          Expanded(child: Divider(color: ffTheme.lineColor)),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Text(label, style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText)),
           ),
-          const Expanded(child: Divider(color: Colors.black12)),
+          Expanded(child: Divider(color: ffTheme.lineColor)),
         ],
       ),
     );
@@ -439,7 +439,7 @@ class _ChatWidgetState extends State<ChatWidget> {
           button: true,
           label: 'תשובה מהירה: ${_quickReplies[i]}',
           child: Material(
-            color: Colors.white,
+            color: ffTheme.secondaryBackground,
             borderRadius: BorderRadius.circular(ffTheme.radiusPill),
             child: InkWell(
               onTap: () => _send(_quickReplies[i]),
@@ -465,9 +465,9 @@ class _ChatWidgetState extends State<ChatWidget> {
   Widget _buildInputBar(AppTheme ffTheme) {
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: Colors.black12)),
+      decoration: BoxDecoration(
+        color: ffTheme.secondaryBackground,
+        border: Border(top: BorderSide(color: ffTheme.alternate)),
       ),
       child: SafeArea(
         top: false,
@@ -481,11 +481,11 @@ class _ChatWidgetState extends State<ChatWidget> {
                   hintText: 'כתוב הודעה...',
                   hintTextDirection: TextDirection.rtl,
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: const BorderSide(color: Colors.black12)),
-                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: const BorderSide(color: Colors.black12)),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide(color: ffTheme.alternate)),
+                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide(color: ffTheme.alternate)),
                   focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide(color: ffTheme.primary, width: 1.5)),
                   filled: true,
-                  fillColor: const Color(0xFFF0F2F5),
+                  fillColor: ffTheme.background,
                 ),
                 onSubmitted: _send,
                 textInputAction: TextInputAction.send,
@@ -561,7 +561,7 @@ class _ChatWidgetState extends State<ChatWidget> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   decoration: BoxDecoration(
-                    color: isUser ? ffTheme.primary : Colors.white,
+                    color: isUser ? ffTheme.primary : ffTheme.secondaryBackground,
                     borderRadius: BorderRadius.only(
                       topLeft: const Radius.circular(18),
                       topRight: const Radius.circular(18),
@@ -591,7 +591,7 @@ class _ChatWidgetState extends State<ChatWidget> {
                 Text(
                   _timeLabel(msg.time),
                   style: ffTheme.labelSmall.copyWith(
-                    color: Colors.black38,
+                    color: ffTheme.secondaryText,
                     fontSize: 11,
                     fontFeatures: const [FontFeature.tabularFigures()],
                   ),
@@ -601,7 +601,7 @@ class _ChatWidgetState extends State<ChatWidget> {
                   Icon(
                     msg.isRead ? Icons.done_all_rounded : Icons.done_rounded,
                     size: 14,
-                    color: msg.isRead ? ffTheme.primary : Colors.black38,
+                    color: msg.isRead ? ffTheme.primary : ffTheme.secondaryText,
                   ),
                 ],
               ],
@@ -631,7 +631,7 @@ class _ChatWidgetState extends State<ChatWidget> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: ffTheme.secondaryBackground,
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(18),
                 topRight: Radius.circular(18),

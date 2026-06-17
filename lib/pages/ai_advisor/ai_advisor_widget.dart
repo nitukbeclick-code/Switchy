@@ -178,7 +178,7 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
       curve: ffTheme.easeOut,
       margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ffTheme.secondaryBackground,
         borderRadius: BorderRadius.circular(ffTheme.radiusMd),
         border: Border.all(color: ffTheme.lineColor),
         boxShadow: ffTheme.shadowSoft,
@@ -427,7 +427,7 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
                       alignment: Alignment.center,
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: ffTheme.secondaryBackground,
                         borderRadius: BorderRadius.circular(ffTheme.radiusPill),
                         border: Border.all(color: ffTheme.lineColor),
                         boxShadow: ffTheme.shadowSoft,
@@ -449,7 +449,7 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
           Container(
             padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: ffTheme.secondaryBackground,
               border: Border(top: BorderSide(color: ffTheme.lineColor)),
               boxShadow: ffTheme.shadowSoft,
             ),
@@ -587,7 +587,7 @@ class _MessageBubble extends StatelessWidget {
                       child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: ffTheme.secondaryBackground,
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(color: ffTheme.primary.withValues(alpha: 0.3)),
                     ),

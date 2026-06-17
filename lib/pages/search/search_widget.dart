@@ -123,7 +123,7 @@ class _SearchWidgetState extends State<SearchWidget> {
     return Scaffold(
       backgroundColor: ffTheme.background,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: ffTheme.secondaryBackground,
         elevation: 0,
         titleSpacing: 0,
         leading: IconButton(
@@ -318,7 +318,7 @@ class _FilterPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final budgetActive = budgetOpen && maxPrice < _maxBudget;
     return Container(
-      color: Colors.white,
+      color: ffTheme.secondaryBackground,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -506,7 +506,7 @@ class _ProviderFilterRow extends StatelessWidget {
     final visible = showAll ? providers : providers.take(_maxProviderChips).toList();
 
     return Container(
-      color: Colors.white,
+      color: ffTheme.secondaryBackground,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -743,7 +743,7 @@ class _Highlighted extends StatelessWidget {
     final low = text.toLowerCase();
     final hlStyle = base.copyWith(
       fontWeight: FontWeight.w800,
-      color: AppColors.primary,
+      color: AppTheme.of(context).primaryText,
       backgroundColor: highlight,
     );
 

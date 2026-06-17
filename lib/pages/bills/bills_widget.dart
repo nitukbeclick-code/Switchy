@@ -297,7 +297,7 @@ class _BillsWidgetState extends State<BillsWidget> {
                 width: double.infinity,
                 padding: const EdgeInsets.fromLTRB(12, 20, 12, 12),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: ffTheme.secondaryBackground,
                   borderRadius: BorderRadius.circular(ffTheme.radiusMd),
                   border: Border.all(color: ffTheme.alternate),
                   boxShadow: ffTheme.shadowSoft,
@@ -698,7 +698,7 @@ class _SavingsRing extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 4),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ffTheme.secondaryBackground,
         borderRadius: BorderRadius.circular(ffTheme.radiusLg),
         border: Border.all(color: ffTheme.alternate),
         boxShadow: ffTheme.shadowSoft,
@@ -1213,7 +1213,7 @@ class _BillCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ffTheme.secondaryBackground,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: isDefined ? ffTheme.primary.withValues(alpha: 0.2) : ffTheme.alternate),
         boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10)],

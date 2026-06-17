@@ -364,7 +364,7 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
     } else {
       // Human-rep replies get the amber VALUE tint so a real person reads as
       // special; the AI assistant sits on a clean white glass card.
-      bgColor = isHuman ? theme.saving.withValues(alpha: 0.12) : Colors.white;
+      bgColor = isHuman ? theme.saving.withValues(alpha: 0.12) : theme.secondaryBackground;
       textColor = theme.primaryText;
       borderColor = isHuman ? theme.saving.withValues(alpha: 0.35) : null;
       alignment = Alignment.centerLeft;
@@ -442,7 +442,7 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: theme.secondaryBackground,
             borderRadius: const BorderRadius.only(
               topLeft: Radius.circular(4),
               topRight: Radius.circular(18),
@@ -512,7 +512,7 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.secondaryBackground,
         border: Border(
           top: BorderSide(color: theme.alternate.withValues(alpha: 0.6)),
         ),

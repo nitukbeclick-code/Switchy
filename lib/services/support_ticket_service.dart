@@ -17,14 +17,16 @@ class SupportMessage {
     required this.createdAt,
   });
 
+  // Defensive: a single malformed/partial row (null field, schema drift) must
+  // degrade to a valid-but-empty message, never throw and blank the whole chat.
   factory SupportMessage.fromJson(Map<String, dynamic> json) {
     return SupportMessage(
-      id: json['id'] as String,
-      ticketId: json['ticket_id'] as String,
-      role: json['role'] as String,
-      messageText: json['message_text'] as String,
+      id: json['id'] as String? ?? '',
+      ticketId: json['ticket_id'] as String? ?? '',
+      role: json['role'] as String? ?? 'agent',
+      messageText: json['message_text'] as String? ?? '',
       metadata: json['metadata'] as Map<String, dynamic>?,
-      createdAt: DateTime.parse(json['created_at'] as String),
+      createdAt: DateTime.tryParse(json['created_at'] as String? ?? '') ?? DateTime.now(),
     );
   }
 
@@ -61,17 +63,19 @@ class SupportTicket {
     required this.updatedAt,
   });
 
+  // Defensive: tolerate null/missing/malformed fields so one bad row never
+  // throws and breaks the support screen (graceful degradation > crash).
   factory SupportTicket.fromJson(Map<String, dynamic> json) {
     return SupportTicket(
-      id: json['id'] as String,
-      userId: json['user_id'] as String,
-      status: json['status'] as String,
+      id: json['id'] as String? ?? '',
+      userId: json['user_id'] as String? ?? '',
+      status: json['status'] as String? ?? 'open',
       agentType: json['agent_type'] as String? ?? 'advisor',
-      escalatedAt: json['escalated_at'] != null ? DateTime.parse(json['escalated_at'] as String) : null,
+      escalatedAt: DateTime.tryParse(json['escalated_at'] as String? ?? ''),
       humanAssignedTo: json['human_assigned_to'] as String?,
       telegramGroupId: json['telegram_group_id'] as String?,
-      createdAt: DateTime.parse(json['created_at'] as String),
-      updatedAt: DateTime.parse(json['updated_at'] as String),
+      createdAt: DateTime.tryParse(json['created_at'] as String? ?? '') ?? DateTime.now(),
+      updatedAt: DateTime.tryParse(json['updated_at'] as String? ?? '') ?? DateTime.now(),
     );
   }
 

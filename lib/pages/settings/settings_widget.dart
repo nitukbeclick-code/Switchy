@@ -248,7 +248,7 @@ class SettingsWidget extends StatelessWidget {
             if (appState.isLoggedIn)
               AppButton(
                 text: 'התנתקות',
-                color: Colors.white,
+                color: ffTheme.secondaryBackground,
                 borderSide: BorderSide(color: ffTheme.error.withValues(alpha: 0.5)),
                 textStyle: ffTheme.labelLarge.copyWith(
                   color: ffTheme.error,
@@ -451,7 +451,7 @@ class _Card extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ffTheme.secondaryBackground,
         borderRadius: BorderRadius.circular(ffTheme.radiusLg),
         border: Border.all(color: ffTheme.alternate),
         boxShadow: ffTheme.shadowGlass,

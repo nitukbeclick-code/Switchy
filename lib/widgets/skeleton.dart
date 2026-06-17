@@ -14,11 +14,12 @@ class SkeletonBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = AppTheme.of(context);
     return Container(
       width: width,
       height: height,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: t.secondaryBackground,
         borderRadius: BorderRadius.circular(radius),
       ),
     );
@@ -37,7 +38,7 @@ class SkeletonPostCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: t.secondaryBackground,
         borderRadius: BorderRadius.circular(t.radiusLg),
         border: Border.all(color: t.alternate.withValues(alpha: 0.4)),
         boxShadow: t.shadowSoft,

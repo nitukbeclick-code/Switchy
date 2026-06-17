@@ -312,7 +312,7 @@ class _LeadWidgetState extends State<LeadWidget> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [ffTheme.accent1, Colors.white],
+          colors: [ffTheme.accent1, ffTheme.secondaryBackground],
           begin: Alignment.topRight,
           end: Alignment.bottomLeft,
         ),
@@ -421,7 +421,7 @@ class _LeadWidgetState extends State<LeadWidget> {
               margin: EdgeInsets.only(right: opt.$1 != 'tomorrow' ? 8 : 0),
               padding: const EdgeInsets.symmetric(vertical: 10),
               decoration: BoxDecoration(
-                color: selected ? ffTheme.primary : Colors.white,
+                color: selected ? ffTheme.primary : ffTheme.secondaryBackground,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: selected ? ffTheme.primary : ffTheme.alternate, width: selected ? 1.5 : 1),
                 boxShadow: selected ? [BoxShadow(color: ffTheme.primary.withValues(alpha: 0.2), blurRadius: 8, offset: const Offset(0, 2))] : [],
@@ -448,7 +448,7 @@ class _LeadWidgetState extends State<LeadWidget> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ffTheme.secondaryBackground,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: ffTheme.alternate),
       ),
@@ -473,7 +473,7 @@ class _LeadWidgetState extends State<LeadWidget> {
       errorStyle: ffTheme.labelSmall.copyWith(color: ffTheme.error, fontWeight: FontWeight.w600),
       errorMaxLines: 2,
       filled: true,
-      fillColor: Colors.white,
+      fillColor: ffTheme.secondaryBackground,
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.alternate)),
       enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.alternate)),
       focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.primary, width: 1.5)),

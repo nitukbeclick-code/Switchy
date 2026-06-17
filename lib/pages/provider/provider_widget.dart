@@ -177,7 +177,7 @@ class _ProviderWidgetState extends State<ProviderWidget> {
                                   duration: const Duration(milliseconds: 200),
                                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
                                   decoration: BoxDecoration(
-                                    color: _showOnlyDeals ? AppColors.saving : Colors.white,
+                                    color: _showOnlyDeals ? AppColors.saving : ffTheme.secondaryBackground,
                                     borderRadius: BorderRadius.circular(ffTheme.radiusPill),
                                     border: Border.all(
                                       color: _showOnlyDeals
@@ -513,7 +513,7 @@ class _BestMatchCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: ffTheme.secondaryBackground,
           borderRadius: BorderRadius.circular(ffTheme.radiusLg),
           border: Border.all(color: AppColors.brandAccent.withValues(alpha: 0.30)),
           boxShadow: ffTheme.shadowSoft,
@@ -646,7 +646,7 @@ class _RatingPanel extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ffTheme.secondaryBackground,
         borderRadius: BorderRadius.circular(ffTheme.radiusMd),
         border: Border.all(color: ffTheme.lineColor),
         boxShadow: ffTheme.shadowSoft,
@@ -800,7 +800,7 @@ class _PlanCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: ffTheme.secondaryBackground,
               borderRadius: BorderRadius.circular(ffTheme.radiusMd),
               border: Border.all(
                 color: isFlashDeal
@@ -1116,7 +1116,7 @@ class _ChannelChip extends StatelessWidget {
         margin: const EdgeInsetsDirectional.only(start: 8),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: active ? AppColors.brandAccent : Colors.white,
+          color: active ? AppColors.brandAccent : ffTheme.secondaryBackground,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: active
@@ -1173,7 +1173,7 @@ class _ProviderPostCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ffTheme.secondaryBackground,
         borderRadius: BorderRadius.circular(ffTheme.radiusMd),
         border: Border.all(color: ffTheme.lineColor),
         boxShadow: ffTheme.shadowSoft,

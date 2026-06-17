@@ -328,7 +328,7 @@ class _AuthWidgetState extends State<AuthWidget> {
           label: 'המשך עם Google',
           glyph: 'G',
           glyphColor: const Color(0xFF4285F4),
-          bg: Colors.white,
+          bg: t.secondaryBackground,
           fg: t.primaryText,
           bordered: true,
           onTap: _busy ? null : () => _oauth(OAuthProvider.google),

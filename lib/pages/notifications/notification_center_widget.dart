@@ -64,7 +64,7 @@ class _NotificationCenterWidgetState extends State<NotificationCenterWidget> {
     return Scaffold(
       backgroundColor: ffTheme.background,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: ffTheme.secondaryBackground,
         elevation: 0,
         centerTitle: true,
         leading: IconButton(

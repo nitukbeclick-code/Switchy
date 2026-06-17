@@ -105,7 +105,7 @@ class _CallbackWidgetState extends State<CallbackWidget> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: ffTheme.secondaryBackground,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: ffTheme.alternate),
               ),
@@ -328,7 +328,7 @@ class _CallbackWidgetState extends State<CallbackWidget> {
             duration: const Duration(milliseconds: 200),
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             decoration: BoxDecoration(
-              color: active ? ffTheme.primary : Colors.white,
+              color: active ? ffTheme.primary : ffTheme.secondaryBackground,
               borderRadius: BorderRadius.circular(20),
               border: Border.all(color: active ? ffTheme.primary : ffTheme.alternate),
               boxShadow: active ? [BoxShadow(color: ffTheme.primary.withValues(alpha: 0.2), blurRadius: 8, offset: const Offset(0, 2))] : [],
@@ -358,7 +358,7 @@ class _CallbackWidgetState extends State<CallbackWidget> {
               padding: const EdgeInsets.symmetric(vertical: 10),
               constraints: const BoxConstraints(minHeight: 44),
               decoration: BoxDecoration(
-                color: active ? ffTheme.primary : Colors.white,
+                color: active ? ffTheme.primary : ffTheme.secondaryBackground,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: active ? ffTheme.primary : ffTheme.alternate),
                 boxShadow: active ? [BoxShadow(color: ffTheme.primary.withValues(alpha: 0.2), blurRadius: 8, offset: const Offset(0, 2))] : [],
@@ -490,7 +490,7 @@ class _CallbackWidgetState extends State<CallbackWidget> {
     return InputDecoration(
       hintText: hint,
       filled: true,
-      fillColor: Colors.white,
+      fillColor: ffTheme.secondaryBackground,
       prefixIcon: Icon(icon, color: ffTheme.secondaryText, size: 20),
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.alternate)),
       enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.alternate)),

@@ -150,7 +150,7 @@ class _AbroadCalcWidgetState extends State<AbroadCalcWidget> {
     return Scaffold(
       backgroundColor: theme.background,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: theme.secondaryBackground,
         elevation: 0,
         surfaceTintColor: Colors.transparent,
         centerTitle: true,
@@ -277,7 +277,7 @@ class _InputCard extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.secondaryBackground,
         borderRadius: BorderRadius.circular(theme.radiusMd),
         border: Border.all(color: theme.lineColor),
         boxShadow: theme.shadowCard,
@@ -304,7 +304,7 @@ class _InputCard extends StatelessWidget {
                     duration: const Duration(milliseconds: 180),
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
                     decoration: BoxDecoration(
-                      color: selected ? AppColors.brandAccentTint : AppColors.accent1,
+                      color: selected ? AppColors.brandAccentTint : theme.accent1,
                       borderRadius: BorderRadius.circular(theme.radiusPill),
                       border: Border.all(
                         color: selected ? AppColors.brandAccent : Colors.transparent,
@@ -392,7 +392,7 @@ class _InputCard extends StatelessWidget {
                   margin: const EdgeInsets.only(bottom: 8),
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
                   decoration: BoxDecoration(
-                    color: selected ? AppColors.brandAccentTint : AppColors.accent1,
+                    color: selected ? AppColors.brandAccentTint : theme.accent1,
                     borderRadius: BorderRadius.circular(theme.radiusSm),
                     border: Border.all(
                       color: selected ? AppColors.brandAccent : Colors.transparent,
@@ -436,7 +436,7 @@ class _InputCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
-              color: AppColors.accent1,
+              color: theme.accent1,
               borderRadius: BorderRadius.circular(theme.radiusSm),
               border: Border.all(color: theme.lineColor),
             ),
@@ -504,7 +504,7 @@ class _PlanCard extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: theme.secondaryBackground,
         borderRadius: BorderRadius.circular(theme.radiusMd),
         border: Border.all(
           color: isCheapest ? AppColors.saving.withValues(alpha: 0.5) : theme.lineColor,
@@ -583,7 +583,7 @@ class _PlanCard extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
                         decoration: BoxDecoration(
                           color: dataUnknown
-                              ? AppColors.accent1
+                              ? theme.accent1
                               : (dataEnough
                                   ? const Color(0xFFDCFCE7)
                                   : AppColors.saving.withValues(alpha: 0.12)),

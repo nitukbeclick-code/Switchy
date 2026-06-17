@@ -387,7 +387,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                   decoration: InputDecoration(
                     hintText: 'שתפו חוויה, טיפ, שאלה...',
                     filled: true,
-                    fillColor: Colors.white,
+                    fillColor: ffTheme.secondaryBackground,
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: ffTheme.alternate)),
                     enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: ffTheme.alternate)),
                     focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: ffTheme.primary, width: 1.5)),
@@ -523,7 +523,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                           prefixIcon: Icon(Icons.search_rounded, color: ffTheme.secondaryText, size: 18),
                           contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                           filled: true,
-                          fillColor: Colors.white,
+                          fillColor: ffTheme.secondaryBackground,
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: ffTheme.alternate)),
                           enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: ffTheme.alternate)),
                           focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: ffTheme.primary)),
@@ -793,7 +793,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                     margin: const EdgeInsets.symmetric(horizontal: 16),
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: ffTheme.secondaryBackground,
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(color: ffTheme.primary.withValues(alpha: 0.2)),
                     ),
@@ -844,7 +844,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                   Container(
                     padding: EdgeInsets.fromLTRB(16, 10, 16, MediaQuery.of(ctx).viewInsets.bottom + 16),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: ffTheme.secondaryBackground,
                       border: Border(top: BorderSide(color: ffTheme.alternate)),
                       boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 8, offset: const Offset(0, -4))],
                     ),
@@ -1052,7 +1052,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                         duration: const Duration(milliseconds: 200),
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
-                          color: active ? ffTheme.primary : Colors.white,
+                          color: active ? ffTheme.primary : ffTheme.secondaryBackground,
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(color: active ? ffTheme.primary : ffTheme.alternate),
                         ),
@@ -1075,7 +1075,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                   decoration: InputDecoration(
                     hintText: 'שתפו חוויה, טיפ, שאלה...',
                     filled: true,
-                    fillColor: Colors.white,
+                    fillColor: ffTheme.secondaryBackground,
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: ffTheme.alternate)),
                     enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: ffTheme.alternate)),
                     focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: ffTheme.primary, width: 1.5)),
@@ -1096,7 +1096,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                         duration: const Duration(milliseconds: 200),
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                         decoration: BoxDecoration(
-                          color: attachedPlan != null ? ffTheme.accent1 : Colors.white,
+                          color: attachedPlan != null ? ffTheme.accent1 : ffTheme.secondaryBackground,
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(color: attachedPlan != null ? ffTheme.primary : ffTheme.alternate),
                         ),
@@ -1329,7 +1329,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
         children: [
           // Stats strip
           Container(
-            color: Colors.white,
+            color: ffTheme.secondaryBackground,
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
             child: Row(
               children: [
@@ -1389,7 +1389,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                     margin: const EdgeInsetsDirectional.only(end: 8),
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: active ? ffTheme.primary : Colors.white,
+                      color: active ? ffTheme.primary : ffTheme.secondaryBackground,
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(color: active ? ffTheme.primary : ffTheme.alternate),
                     ),
@@ -1473,7 +1473,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                                 ),
                           contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                           filled: true,
-                          fillColor: Colors.white,
+                          fillColor: ffTheme.secondaryBackground,
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide(color: ffTheme.alternate)),
                           enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide(color: ffTheme.alternate)),
                           focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide(color: ffTheme.primary)),
@@ -1505,7 +1505,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                               duration: const Duration(milliseconds: 180),
                               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
                               decoration: BoxDecoration(
-                                color: active ? AppColors.brandAccent : Colors.white,
+                                color: active ? AppColors.brandAccent : ffTheme.secondaryBackground,
                                 borderRadius: BorderRadius.circular(16),
                                 border: Border.all(color: active ? AppColors.brandAccent : ffTheme.alternate),
                               ),
@@ -1771,7 +1771,7 @@ class _PostCardState extends State<_PostCard> {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ffTheme.secondaryBackground,
         borderRadius: BorderRadius.circular(ffTheme.radiusMd),
         border: Border.all(
           color: isTrending ? ffTheme.warning.withValues(alpha: 0.5) : ffTheme.alternate,
@@ -2250,7 +2250,7 @@ class _QuickPostSectionState extends State<_QuickPostSection> {
       margin: const EdgeInsets.fromLTRB(16, 10, 16, 0),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: t.secondaryBackground,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: _focused ? AppColors.brandAccent : t.alternate),
         boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 8, offset: const Offset(0, 2))],

@@ -78,7 +78,7 @@ class PlanCardWidget extends StatelessWidget {
         children: [
           Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ffTheme.secondaryBackground,
         borderRadius: BorderRadius.circular(ffTheme.radiusLg),
         // Crisp formal frame; the best match wears the VALUE accent — a 2px
         // amber ring + warm glow, mirroring the site's `.plan--best`.

@@ -51,7 +51,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
               decoration: InputDecoration(
                 hintText: 'ישראל ישראלי',
                 filled: true,
-                fillColor: Colors.white,
+                fillColor: ffTheme.secondaryBackground,
                 prefixIcon: Icon(Icons.person_outline_rounded, color: ffTheme.secondaryText),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusSm), borderSide: BorderSide.none),
                 enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusSm), borderSide: BorderSide(color: ffTheme.alternate)),
@@ -68,7 +68,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
               decoration: InputDecoration(
                 hintText: '050-0000000',
                 filled: true,
-                fillColor: Colors.white,
+                fillColor: ffTheme.secondaryBackground,
                 prefixIcon: Icon(Icons.phone_outlined, color: ffTheme.secondaryText),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusSm), borderSide: BorderSide.none),
                 enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusSm), borderSide: BorderSide(color: ffTheme.alternate)),
@@ -169,7 +169,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                         margin: const EdgeInsets.only(bottom: 8),
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: ffTheme.secondaryBackground,
                           borderRadius: BorderRadius.circular(ffTheme.radiusMd),
                           border: Border.all(color: ffTheme.alternate),
                         ),
@@ -401,7 +401,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: ffTheme.secondaryBackground,
           borderRadius: BorderRadius.circular(ffTheme.radiusMd),
           border: Border.all(color: ffTheme.primary.withValues(alpha: 0.3), width: 1.5),
           boxShadow: ffTheme.shadowSoft,
@@ -488,7 +488,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
               width: 130,
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: ffTheme.secondaryBackground,
                 borderRadius: BorderRadius.circular(ffTheme.radiusSm),
                 border: Border.all(color: ffTheme.alternate),
                 boxShadow: ffTheme.shadowSoft,
@@ -520,7 +520,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ffTheme.secondaryBackground,
         borderRadius: BorderRadius.circular(ffTheme.radiusMd),
         border: Border.all(color: ffTheme.alternate),
       ),
@@ -664,7 +664,7 @@ class _ToggleTile extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ffTheme.secondaryBackground,
         borderRadius: BorderRadius.circular(ffTheme.radiusMd),
         border: Border.all(color: ffTheme.alternate),
       ),

@@ -425,7 +425,7 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
                               curve: Curves.easeOut,
                               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
                               decoration: BoxDecoration(
-                                color: active ? t.brandAccent : Colors.white,
+                                color: active ? t.brandAccent : t.secondaryBackground,
                                 borderRadius: BorderRadius.circular(t.radiusPill),
                                 border: Border.all(color: active ? t.brandAccent : t.alternate),
                                 boxShadow: active ? t.shadowAccent : null,
@@ -546,7 +546,7 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
                           borderSide: BorderSide(color: t.brandAccent, width: 1.5),
                         ),
                         filled: true,
-                        fillColor: Colors.white.withValues(alpha: 0.6),
+                        fillColor: t.secondaryBackground.withValues(alpha: 0.6),
                       ),
                     ),
                     // Character counter
@@ -1070,7 +1070,7 @@ class _SortChip extends StatelessWidget {
           curve: Curves.easeOut,
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
           decoration: BoxDecoration(
-            color: active ? t.brandAccent : Colors.white,
+            color: active ? t.brandAccent : t.secondaryBackground,
             borderRadius: BorderRadius.circular(t.radiusPill),
             border: Border.all(color: active ? t.brandAccent : t.alternate),
           ),

@@ -413,7 +413,7 @@ class _MeetingWidgetState extends State<MeetingWidget> {
           selected: active,
           label: 'ספק $p',
           child: Material(
-            color: active ? t.primary : Colors.white,
+            color: active ? t.primary : t.secondaryBackground,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(t.radiusPill),
               side: BorderSide(color: active ? t.primary : t.alternate),
@@ -467,7 +467,7 @@ class _MeetingWidgetState extends State<MeetingWidget> {
             selected: active,
             label: label,
             child: Material(
-              color: active ? t.primary : Colors.white,
+              color: active ? t.primary : t.secondaryBackground,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(t.radiusMd),
                 side: BorderSide(color: active ? t.primary : t.alternate),
@@ -521,7 +521,7 @@ class _MeetingWidgetState extends State<MeetingWidget> {
           selected: active,
           label: 'שעה $s',
           child: Material(
-            color: active ? t.primary : Colors.white,
+            color: active ? t.primary : t.secondaryBackground,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(t.radiusSm),
               side: BorderSide(color: active ? t.primary : t.alternate),
@@ -553,7 +553,7 @@ class _MeetingWidgetState extends State<MeetingWidget> {
       hintText: hint,
       prefixIcon: Icon(icon, color: t.secondaryText, size: 20),
       filled: true,
-      fillColor: Colors.white,
+      fillColor: t.secondaryBackground,
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: t.alternate)),
       enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: t.alternate)),
       focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: t.primary, width: 1.5)),
@@ -662,7 +662,7 @@ class _NextSteps extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: t.secondaryBackground,
         borderRadius: BorderRadius.circular(t.radiusMd),
         border: Border.all(color: t.lineColor),
         boxShadow: t.shadowSoft,

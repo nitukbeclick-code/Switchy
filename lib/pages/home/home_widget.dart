@@ -837,7 +837,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                 child: Container(
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: isActive ? ffTheme.accent1 : Colors.white,
+                    color: isActive ? ffTheme.accent1 : ffTheme.secondaryBackground,
                     borderRadius: BorderRadius.circular(ffTheme.radiusLg),
                     border: Border.all(
                       color: isActive ? ffTheme.primary : ffTheme.alternate,
@@ -1125,7 +1125,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                       width: 110,
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: ffTheme.secondaryBackground,
                         borderRadius: BorderRadius.circular(ffTheme.radiusLg),
                         border: Border.all(color: ffTheme.alternate),
                         boxShadow: ffTheme.shadowSoft,
@@ -1194,7 +1194,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                         width: 148,
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: ffTheme.secondaryBackground,
                           borderRadius: BorderRadius.circular(ffTheme.radiusMd),
                           border: Border.all(
                             color: better != null ? ffTheme.primary.withValues(alpha: 0.35) : ffTheme.alternate,
@@ -1280,7 +1280,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                     width: 148,
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: ffTheme.secondaryBackground,
                       borderRadius: BorderRadius.circular(ffTheme.radiusMd),
                       border: Border.all(color: ffTheme.alternate),
                       boxShadow: ffTheme.shadowSoft,

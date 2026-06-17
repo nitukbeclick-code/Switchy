@@ -39,7 +39,7 @@ class _FavoritesWidgetState extends State<FavoritesWidget> {
     return Scaffold(
       backgroundColor: ffTheme.background,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: ffTheme.secondaryBackground,
         elevation: 0,
         titleSpacing: 0,
         leading: IconButton(

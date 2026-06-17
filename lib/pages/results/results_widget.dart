@@ -238,7 +238,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                     decoration: InputDecoration(
                       hintText: 'חיפוש ספק או חבילה...',
                       filled: true,
-                      fillColor: Colors.white,
+                      fillColor: ffTheme.secondaryBackground,
                       prefixIcon: appState.searchQuery.isNotEmpty
                           ? IconButton(
                               tooltip: 'נקה חיפוש',
@@ -334,7 +334,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 16, vertical: 12),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: ffTheme.secondaryBackground,
                           borderRadius: BorderRadius.circular(ffTheme.radiusMd),
                           border: Border.all(color: ffTheme.alternate),
                           boxShadow: ffTheme.shadowGlass,
@@ -867,7 +867,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                 return Container(
                   margin: const EdgeInsets.only(bottom: 8),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: ffTheme.secondaryBackground,
                     borderRadius: BorderRadius.circular(ffTheme.radiusMd),
                     border: Border.all(color: ffTheme.alternate),
                     boxShadow: ffTheme.shadowGlass,
@@ -967,7 +967,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                           ],
                         ),
                         child: Material(
-                          color: Colors.white,
+                          color: ffTheme.secondaryBackground,
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(20),
                             side: BorderSide(
@@ -1029,7 +1029,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
           decoration: BoxDecoration(
-            color: active ? ffTheme.tertiary.withValues(alpha: 0.1) : Colors.white,
+            color: active ? ffTheme.tertiary.withValues(alpha: 0.1) : ffTheme.secondaryBackground,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
               color: active ? ffTheme.tertiary : ffTheme.alternate,
@@ -1111,7 +1111,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                   duration: const Duration(milliseconds: 200),
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
                   decoration: BoxDecoration(
-                    color: active ? ffTheme.primary : Colors.white,
+                    color: active ? ffTheme.primary : ffTheme.secondaryBackground,
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
                         color: active ? ffTheme.primary : ffTheme.alternate),

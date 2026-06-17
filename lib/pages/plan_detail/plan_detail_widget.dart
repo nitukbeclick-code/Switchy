@@ -474,7 +474,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                         const SizedBox(height: 16),
                         Container(
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: ffTheme.secondaryBackground,
                             borderRadius: BorderRadius.circular(14),
                             border: Border.all(color: ffTheme.alternate),
                             boxShadow: [
@@ -704,7 +704,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                                       width: 170,
                                       padding: const EdgeInsets.all(12),
                                       decoration: BoxDecoration(
-                                        color: Colors.white,
+                                        color: ffTheme.secondaryBackground,
                                         borderRadius: BorderRadius.circular(14),
                                         border: Border.all(color: ffTheme.alternate),
                                         boxShadow: [
@@ -827,7 +827,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
               child: Container(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: ffTheme.secondaryBackground,
                   border: Border(
                       top: BorderSide(color: ffTheme.alternate, width: 1)),
                   boxShadow: [
@@ -1104,7 +1104,7 @@ class _FitPanel extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.72),
+        color: t.secondaryBackground.withValues(alpha: 0.72),
         borderRadius: BorderRadius.circular(t.radiusLg),
         border: Border.all(color: t.primary.withValues(alpha: 0.16)),
         boxShadow: t.shadowGlass,
@@ -1488,7 +1488,7 @@ class _PriceHistoryCardState extends State<_PriceHistoryCard> {
     final t = AppTheme.of(context);
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: t.secondaryBackground,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: t.alternate),
         boxShadow: [
@@ -1693,7 +1693,7 @@ class _Card extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ffTheme.secondaryBackground,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: ffTheme.alternate),
         boxShadow: [
@@ -1804,7 +1804,7 @@ class _SpecGrid extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ffTheme.secondaryBackground,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: ffTheme.alternate),
         boxShadow: [
@@ -1884,7 +1884,7 @@ class _CostBreakdownCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ffTheme.secondaryBackground,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: ffTheme.alternate),
         boxShadow: [
@@ -1967,7 +1967,7 @@ class _ExtraInfoSection extends StatelessWidget {
     final ffTheme = AppTheme.of(context);
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ffTheme.secondaryBackground,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: ffTheme.alternate),
         boxShadow: [
@@ -2152,7 +2152,7 @@ class _ReviewsSection extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: t.secondaryBackground,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: t.alternate),
         boxShadow: [

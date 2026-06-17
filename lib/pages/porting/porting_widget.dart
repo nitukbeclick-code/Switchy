@@ -192,7 +192,7 @@ class _PortingWidgetState extends State<PortingWidget> {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 14, vertical: 8),
                     decoration: BoxDecoration(
-                      color: selected ? ffTheme.primary : Colors.white,
+                      color: selected ? ffTheme.primary : ffTheme.secondaryBackground,
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
                         color:
@@ -268,7 +268,7 @@ class _PortingWidgetState extends State<PortingWidget> {
                       decoration: BoxDecoration(
                         color: _poaAccepted
                             ? ffTheme.primary
-                            : Colors.white,
+                            : ffTheme.secondaryBackground,
                         borderRadius: BorderRadius.circular(6),
                         border: Border.all(
                             color: _poaAccepted
@@ -367,7 +367,7 @@ class _PortingWidgetState extends State<PortingWidget> {
       decoration: InputDecoration(
         hintText: hint,
         filled: true,
-        fillColor: Colors.white,
+        fillColor: ffTheme.secondaryBackground,
         prefixIcon: Icon(prefixIcon, color: ffTheme.secondaryText, size: 20),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),

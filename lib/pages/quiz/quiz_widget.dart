@@ -467,7 +467,7 @@ class _QuizWidgetState extends State<QuizWidget> {
                         duration: const Duration(milliseconds: 180),
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                         decoration: BoxDecoration(
-                          color: active ? ffTheme.brandAccent : Colors.white,
+                          color: active ? ffTheme.brandAccent : ffTheme.secondaryBackground,
                           borderRadius: BorderRadius.circular(ffTheme.radiusPill),
                           border: Border.all(color: active ? ffTheme.brandAccent : ffTheme.alternate),
                         ),
@@ -552,7 +552,7 @@ class _QuizWidgetState extends State<QuizWidget> {
                         duration: const Duration(milliseconds: 180),
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
                         decoration: BoxDecoration(
-                          color: active ? ffTheme.primary : Colors.white,
+                          color: active ? ffTheme.primary : ffTheme.secondaryBackground,
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(color: active ? ffTheme.primary : ffTheme.alternate),
                         ),

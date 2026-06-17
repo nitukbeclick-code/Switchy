@@ -184,7 +184,7 @@ class _EmptyState extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: ffTheme.secondaryBackground,
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(color: ffTheme.primary.withValues(alpha: 0.25)),
                   boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8)],
@@ -875,7 +875,7 @@ class _PlanHeader extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: isWinner ? ffTheme.accent1 : Colors.white,
+        color: isWinner ? ffTheme.accent1 : ffTheme.secondaryBackground,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: isWinner ? ffTheme.primary : ffTheme.alternate,
@@ -1003,7 +1003,7 @@ class _RowWidget extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 2),
       decoration: BoxDecoration(
-        color: isAlt ? ffTheme.accent1.withValues(alpha: 0.5) : Colors.white,
+        color: isAlt ? ffTheme.accent1.withValues(alpha: 0.5) : ffTheme.secondaryBackground,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(

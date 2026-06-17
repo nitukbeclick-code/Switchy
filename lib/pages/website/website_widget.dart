@@ -228,7 +228,7 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
           // Stats bar — real catalogue facts only (verifiable from the data set).
           SliverToBoxAdapter(
             child: Container(
-              color: Colors.white,
+              color: ffTheme.secondaryBackground,
               padding: const EdgeInsets.symmetric(vertical: 20),
               child: const Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -264,7 +264,7 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
                             margin: const EdgeInsetsDirectional.only(start: 8),
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
                             decoration: BoxDecoration(
-                              color: active ? ffTheme.primary : Colors.white,
+                              color: active ? ffTheme.primary : ffTheme.secondaryBackground,
                               borderRadius: BorderRadius.circular(24),
                               border: Border.all(color: active ? ffTheme.primary : ffTheme.alternate),
                             ),
@@ -346,7 +346,7 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
           SliverToBoxAdapter(
             child: Container(
               padding: const EdgeInsets.fromLTRB(20, 28, 20, 28),
-              color: Colors.white,
+              color: ffTheme.secondaryBackground,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -399,7 +399,7 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
           SliverToBoxAdapter(
             child: Container(
               padding: const EdgeInsets.all(20),
-              color: Colors.white,
+              color: ffTheme.secondaryBackground,
               child: const Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -481,7 +481,7 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ffTheme.secondaryBackground,
         borderRadius: BorderRadius.circular(ffTheme.radiusMd),
         border: Border.all(color: ffTheme.lineColor),
         boxShadow: ffTheme.shadowSoft,
@@ -524,7 +524,7 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
         duration: const Duration(milliseconds: 300),
         height: 66,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: ffTheme.secondaryBackground,
           border: Border(top: BorderSide(color: ffTheme.lineColor)),
           boxShadow: ffTheme.shadowGlass,
         ),
@@ -636,7 +636,8 @@ class _StatDivider extends StatelessWidget {
   const _StatDivider();
 
   @override
-  Widget build(BuildContext context) => Container(width: 1, height: 32, color: AppColors.lineColor);
+  Widget build(BuildContext context) =>
+      Container(width: 1, height: 32, color: AppTheme.of(context).lineColor);
 }
 
 class _NumberedStep extends StatelessWidget {

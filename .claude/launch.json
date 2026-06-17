@@ -9,8 +9,8 @@
     },
     {
       "name": "site",
-      "runtimeExecutable": "python",
-      "runtimeArgs": ["-m", "http.server", "5173", "--directory", "site"],
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["--yes", "http-server", "site", "-p", "5173", "-c-1", "--silent"],
       "port": 5173
     },
     {

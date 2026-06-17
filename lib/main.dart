@@ -11,6 +11,7 @@ import 'services/auth_service.dart';
 import 'services/meeting_sync.dart';
 import 'services/push_notification_service.dart';
 import 'services/secure_session_store.dart';
+import 'services/timeout_http_client.dart';
 import 'services/backend/local_backend.dart';
 import 'services/backend/supabase_backend.dart';
 
@@ -95,6 +96,10 @@ Future<void> _initBackend() async {
   await Supabase.initialize(
     url: _supabaseUrl,
     publishableKey: _supabaseAnonKey,
+    // A network blip must never hang the UI: this timeout client fails every
+    // Supabase request fast (15s) so callers fall back to on-device data / a
+    // retry instead of awaiting forever. One chokepoint for all query sites.
+    httpClient: TimeoutHttpClient(),
     // Mobile: persist the session in the Keychain/Keystore (secure enclave),
     // not plaintext SharedPreferences. Web: null → default storage (CSP is the
     // web mitigation), which also keeps the `flutter build web` gate green.

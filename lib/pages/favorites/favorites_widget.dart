@@ -8,6 +8,7 @@ import '../../data.dart';
 import '../../models.dart';
 import '../../components/logo_widget/logo_widget.dart';
 import '../../widgets/empty_state.dart';
+import '../../widgets/pressable.dart';
 
 /// המסלולים ששמרת — רשימת ה"לב" של המשתמש.
 ///
@@ -102,10 +103,10 @@ class _FavoriteRow extends StatelessWidget {
     return Semantics(
       button: true,
       label: '$catName: ${plan.provider}, ${plan.plan}, ₪${plan.priceText} ${priceUnitShort(plan)}',
-      child: GestureDetector(
+      child: Pressable(
         onTap: onOpen,
         child: Container(
-          margin: const EdgeInsets.only(bottom: 10),
+          margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.all(12),
           decoration: ffTheme.glassDecoration(radius: ffTheme.radiusMd),
           child: Row(
@@ -148,8 +149,11 @@ class _FavoriteRow extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text('₪${plan.priceText}',
-                      style: ffTheme.titleMedium
-                          .copyWith(color: ffTheme.primary, fontWeight: FontWeight.w800)),
+                      style: ffTheme.titleMedium.copyWith(
+                        color: ffTheme.primary,
+                        fontWeight: FontWeight.w800,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      )),
                   Text(priceUnitShort(plan),
                       style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText, fontSize: 10)),
                 ],
@@ -170,7 +174,7 @@ class _FavoriteRow extends StatelessWidget {
                       child: InkWell(
                         customBorder: const CircleBorder(),
                         onTap: onRemove,
-                        child: Icon(Icons.favorite_rounded, size: 22, color: ffTheme.secondary),
+                        child: Icon(Icons.favorite_rounded, size: 22, color: ffTheme.secondaryText),
                       ),
                     ),
                   ),

@@ -141,8 +141,9 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: LinearGradient(colors: [ffTheme.primary, ffTheme.tertiary]),
-        borderRadius: BorderRadius.circular(18),
+        gradient: ffTheme.brandGradient,
+        borderRadius: BorderRadius.circular(ffTheme.radiusLg),
+        boxShadow: ffTheme.shadowPrimary,
       ),
       child: Row(
         children: [
@@ -150,10 +151,10 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('בדוק זמינות בכתובת שלך', style: GoogleFonts.rubik(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white)),
-                const SizedBox(height: 4),
-                Text('גלה אילו ספקי אינטרנט פעילים באזורך', style: GoogleFonts.assistant(fontSize: 13, color: Colors.white70)),
-                const SizedBox(height: 14),
+                Text('בדוק זמינות בכתובת שלך', style: GoogleFonts.rubik(fontSize: 19, fontWeight: FontWeight.w700, color: Colors.white, height: 1.2)),
+                const SizedBox(height: 6),
+                Text('גלה אילו ספקי אינטרנט פעילים באזורך', style: GoogleFonts.assistant(fontSize: 13, color: Colors.white70, height: 1.35)),
+                const SizedBox(height: 16),
                 // Honest helper line — no pre-asserted price/speed "facts" about
                 // the area before an address is even entered.
                 Row(
@@ -209,10 +210,10 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
                 hintText: 'תל אביב, חיפה, ירושלים...',
                 filled: true,
                 fillColor: Colors.white,
-                prefixIcon: const Icon(Icons.location_city_rounded),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.primary, width: 1.5)),
+                prefixIcon: Icon(Icons.location_city_rounded, color: ffTheme.secondaryText),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusSm), borderSide: BorderSide.none),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusSm), borderSide: BorderSide(color: ffTheme.lineColor)),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusSm), borderSide: BorderSide(color: ffTheme.brandAccent, width: 1.5)),
               ),
             );
           },
@@ -220,7 +221,7 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
             alignment: Alignment.topLeft,
             child: Material(
               elevation: 4,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(ffTheme.radiusSm),
               child: SizedBox(
                 width: MediaQuery.of(ctx).size.width - 40,
                 child: ListView.builder(
@@ -253,10 +254,10 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
             hintText: 'רחוב דיזנגוף 99',
             filled: true,
             fillColor: Colors.white,
-            prefixIcon: const Icon(Icons.home_rounded),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.primary, width: 1.5)),
+            prefixIcon: Icon(Icons.home_rounded, color: ffTheme.secondaryText),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusSm), borderSide: BorderSide.none),
+            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusSm), borderSide: BorderSide(color: ffTheme.lineColor)),
+            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusSm), borderSide: BorderSide(color: ffTheme.brandAccent, width: 1.5)),
           ),
         ),
       ],
@@ -290,8 +291,8 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
                     color: selected ? ffTheme.primary : Colors.white,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: selected ? ffTheme.primary : ffTheme.alternate, width: selected ? 1.5 : 1),
+                    borderRadius: BorderRadius.circular(ffTheme.radiusPill),
+                    border: Border.all(color: selected ? ffTheme.primary : ffTheme.lineColor, width: selected ? 1.5 : 1),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -325,18 +326,18 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
             children: [
               Container(
                 width: 64, height: 64,
-                decoration: BoxDecoration(color: ffTheme.accent1, shape: BoxShape.circle),
+                decoration: BoxDecoration(color: ffTheme.brandAccentTint, shape: BoxShape.circle),
               ),
               SizedBox(
                 width: 64, height: 64,
-                child: CircularProgressIndicator(color: ffTheme.primary, strokeWidth: 3),
+                child: CircularProgressIndicator(color: ffTheme.brandAccent, strokeWidth: 3),
               ).animate(onPlay: (c) => c.repeat()).rotate(duration: 1200.ms),
-              ExcludeSemantics(child: Icon(Icons.cell_tower_rounded, size: 24, color: ffTheme.primary)),
+              ExcludeSemantics(child: Icon(Icons.cell_tower_rounded, size: 24, color: ffTheme.brandAccent)),
             ],
           ),
           const SizedBox(height: 14),
           Text('בודק זמינות ספקים ב${_cityCtrl.text}...', style: ffTheme.bodyMedium.copyWith(color: ffTheme.secondaryText))
-              .animate(onPlay: (c) => c.repeat(reverse: true)).fadeIn(duration: 600.ms),
+              .animate().fadeIn(duration: 300.ms),
         ],
       ),
     );
@@ -350,20 +351,24 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
         Expanded(
           child: Text(
             'זמינות ב${_cityCtrl.text}',
-            style: ffTheme.titleMedium,
+            style: ffTheme.titleMedium.copyWith(fontWeight: FontWeight.w700),
             textDirection: TextDirection.rtl,
           ),
         ),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-          decoration: BoxDecoration(color: ffTheme.accent1, borderRadius: BorderRadius.circular(20)),
+          decoration: BoxDecoration(color: ffTheme.accent1, borderRadius: BorderRadius.circular(ffTheme.radiusPill)),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(width: 7, height: 7, decoration: BoxDecoration(color: ffTheme.success, shape: BoxShape.circle))
                   .animate().fadeIn(duration: 400.ms),
               const SizedBox(width: 5),
-              Text('${available.length} זמינים • מ-₪$cheapest', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+              Text('${available.length} זמינים • מ-₪$cheapest', style: ffTheme.labelSmall.copyWith(
+                color: ffTheme.primaryText,
+                fontWeight: FontWeight.w700,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              )),
             ],
           ),
         ),
@@ -400,29 +405,29 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(ffTheme.radiusMd),
         border: isBest
-            ? Border.all(color: ffTheme.secondary, width: 2)
-            : Border.all(color: isAvailable ? ffTheme.alternate : ffTheme.alternate.withValues(alpha: 0.5)),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 2))],
+            ? Border.all(color: ffTheme.saving.withValues(alpha: 0.5), width: 1.5)
+            : Border.all(color: isAvailable ? ffTheme.lineColor : ffTheme.lineColor.withValues(alpha: 0.5)),
+        boxShadow: ffTheme.shadowCard,
       ),
       child: Column(
         children: [
           if (isBest)
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 5),
+              padding: const EdgeInsets.symmetric(vertical: 6),
               decoration: BoxDecoration(
-                color: ffTheme.secondary,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                color: ffTheme.saving.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.vertical(top: Radius.circular(ffTheme.radiusMd)),
               ),
               child: Center(
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.star_rounded, size: 14, color: ffTheme.primaryDark),
-                    const SizedBox(width: 4),
-                    Text('מחיר הכי נמוך באזורך', style: ffTheme.labelSmall.copyWith(color: ffTheme.primaryDark, fontWeight: FontWeight.w800)),
+                    Icon(Icons.star_rounded, size: 14, color: ffTheme.savingDark),
+                    const SizedBox(width: 5),
+                    Text('מחיר הכי נמוך באזורך', style: ffTheme.labelSmall.copyWith(color: ffTheme.savingDark, fontWeight: FontWeight.w800)),
                   ],
                 ),
               ),
@@ -449,7 +454,11 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(isp.name, style: ffTheme.titleSmall.copyWith(color: isAvailable ? ffTheme.primaryText : ffTheme.secondaryText)),
+                          Text(isp.name, style: ffTheme.titleSmall.copyWith(
+                            color: isAvailable ? ffTheme.primaryText : ffTheme.secondaryText,
+                            fontWeight: FontWeight.w700,
+                          )),
+                          const SizedBox(height: 2),
                           _TechBadge(tech: isp.tech, ffTheme: ffTheme),
                         ],
                       ),
@@ -460,11 +469,19 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
                         children: [
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(color: ffTheme.accent1, borderRadius: BorderRadius.circular(8)),
-                            child: Text(isp.speed, style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+                            decoration: BoxDecoration(color: ffTheme.accent1, borderRadius: BorderRadius.circular(ffTheme.radiusXs)),
+                            child: Text(isp.speed, style: ffTheme.labelSmall.copyWith(
+                              color: ffTheme.primaryText,
+                              fontWeight: FontWeight.w700,
+                              fontFeatures: const [FontFeature.tabularFigures()],
+                            )),
                           ),
-                          const SizedBox(height: 4),
-                          Text('מ-₪${isp.price}$kBillUnit', style: ffTheme.titleSmall.copyWith(color: ffTheme.primary)),
+                          const SizedBox(height: 6),
+                          Text('מ-₪${isp.price}$kBillUnit', style: ffTheme.titleSmall.copyWith(
+                            color: ffTheme.primaryText,
+                            fontWeight: FontWeight.w800,
+                            fontFeatures: const [FontFeature.tabularFigures()],
+                          )),
                         ],
                       )
                     else
@@ -472,7 +489,7 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
                           color: isAvailable ? ffTheme.accent2 : ffTheme.alternate.withValues(alpha: 0.5),
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(ffTheme.radiusXs),
                         ),
                         child: Text(
                           isp.status,
@@ -482,10 +499,11 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
                   ],
                 ),
                 if (isAvailable) ...[
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 12),
                   _SpeedBar(speed: isp.speed, ffTheme: ffTheme),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 12),
                   GestureDetector(
+                    behavior: HitTestBehavior.opaque,
                     onTap: () {
                       Provider.of<AppState>(context, listen: false).setCategory('internet');
                       context.pushNamed('Results');
@@ -493,9 +511,9 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
-                        Text('ראה מסלולי ${isp.name}', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+                        Text('ראה מסלולי ${isp.name}', style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccent, fontWeight: FontWeight.w700)),
                         const SizedBox(width: 4),
-                        Icon(Icons.arrow_forward_ios_rounded, size: 11, color: ffTheme.primary),
+                        Icon(Icons.arrow_forward_ios_rounded, size: 11, color: ffTheme.brandAccent),
                       ],
                     ),
                   ),
@@ -517,8 +535,9 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        gradient: LinearGradient(colors: [ffTheme.primary, ffTheme.tertiary]),
-        borderRadius: BorderRadius.circular(14),
+        gradient: ffTheme.brandGradient,
+        borderRadius: BorderRadius.circular(ffTheme.radiusMd),
+        boxShadow: ffTheme.shadowPrimary,
       ),
       child: Column(
         children: [
@@ -528,8 +547,8 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('${available.length} ספקים זמינים ב${_cityCtrl.text}', style: GoogleFonts.rubik(fontSize: 15, fontWeight: FontWeight.w800, color: Colors.white)),
-                    const SizedBox(height: 6),
+                    Text('${available.length} ספקים זמינים ב${_cityCtrl.text}', style: GoogleFonts.rubik(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white, height: 1.2)),
+                    const SizedBox(height: 8),
                     Row(
                       children: [
                         _SummaryPill(label: 'ממחיר ₪$cheapest', ffTheme: ffTheme),
@@ -543,7 +562,7 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
               const ExcludeSemantics(child: Icon(Icons.cell_tower_rounded, size: 28, color: Colors.white)),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton(
@@ -552,13 +571,13 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
                 context.pushNamed('Results');
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: ffTheme.secondary,
-                foregroundColor: ffTheme.primaryDark,
+                backgroundColor: Colors.white,
+                foregroundColor: ffTheme.primaryText,
                 elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(ffTheme.radiusSm)),
+                padding: const EdgeInsets.symmetric(vertical: 13),
               ),
-              child: Text('השווה מסלולי אינטרנט', style: ffTheme.labelMedium.copyWith(color: ffTheme.primaryDark, fontWeight: FontWeight.w800)),
+              child: Text('השווה מסלולי אינטרנט', style: ffTheme.labelMedium.copyWith(color: ffTheme.primaryText, fontWeight: FontWeight.w800)),
             ),
           ),
         ],
@@ -592,9 +611,9 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
         margin: const EdgeInsets.only(top: 8, bottom: 8),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: ffTheme.primary.withValues(alpha: 0.25), width: 1.5),
-          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 12, offset: const Offset(0, 3))],
+          borderRadius: BorderRadius.circular(ffTheme.radiusMd),
+          border: Border.all(color: ffTheme.brandAccent.withValues(alpha: 0.35), width: 1.5),
+          boxShadow: ffTheme.shadowSoft,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -602,21 +621,26 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
             // Header bar
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
-                color: ffTheme.accent1,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
+                color: ffTheme.brandAccentTint,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(ffTheme.radiusMd)),
               ),
               child: Row(
                 children: [
-                  Icon(Icons.auto_awesome_rounded, size: 15, color: ffTheme.primary),
-                  const SizedBox(width: 5),
-                  Text('המסלול המומלץ עבורך', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w800, fontSize: 13)),
+                  Icon(Icons.auto_awesome_rounded, size: 15, color: ffTheme.brandAccent),
+                  const SizedBox(width: 6),
+                  Text('המסלול המומלץ עבורך', style: ffTheme.labelMedium.copyWith(color: ffTheme.brandAccent, fontWeight: FontWeight.w800)),
                   const Spacer(),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
-                    decoration: BoxDecoration(color: ffTheme.primary, borderRadius: BorderRadius.circular(20)),
-                    child: Text('${match.scorePct}% התאמה', style: ffTheme.labelSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 11)),
+                    decoration: BoxDecoration(color: ffTheme.brandAccent, borderRadius: BorderRadius.circular(ffTheme.radiusPill)),
+                    child: Text('${match.scorePct}% התאמה', style: ffTheme.labelSmall.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 11,
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    )),
                   ),
                 ],
               ),
@@ -632,23 +656,27 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(plan.provider, style: ffTheme.titleSmall),
-                        Text(plan.plan, style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText)),
+                        Text(plan.provider, style: ffTheme.titleSmall.copyWith(fontWeight: FontWeight.w700), maxLines: 1, overflow: TextOverflow.ellipsis),
+                        Text(plan.plan, style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText), maxLines: 1, overflow: TextOverflow.ellipsis),
                         if (topReasons.isNotEmpty) ...[
-                          const SizedBox(height: 5),
+                          const SizedBox(height: 6),
                           Wrap(
                             spacing: 6,
                             runSpacing: 4,
                             children: topReasons.map((r) => Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                              decoration: BoxDecoration(color: ffTheme.accent1, borderRadius: BorderRadius.circular(6)),
-                              child: Text(r, style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontSize: 11)),
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(color: ffTheme.accent1, borderRadius: BorderRadius.circular(ffTheme.radiusXs)),
+                              child: Text(r, style: ffTheme.labelSmall.copyWith(color: ffTheme.primaryText, fontSize: 11)),
                             )).toList(),
                           ),
                         ],
                         if (match.annualSaving > 0) ...[
-                          const SizedBox(height: 4),
-                          Text('חיסכון שנתי: ₪${match.annualSaving}', style: ffTheme.labelSmall.copyWith(color: ffTheme.success, fontWeight: FontWeight.w700)),
+                          const SizedBox(height: 6),
+                          Text('חיסכון שנתי: ₪${match.annualSaving}', style: ffTheme.labelSmall.copyWith(
+                            color: ffTheme.savingDark,
+                            fontWeight: FontWeight.w700,
+                            fontFeatures: const [FontFeature.tabularFigures()],
+                          )),
                         ],
                       ],
                     ),
@@ -657,10 +685,14 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Text('₪${plan.priceText}', style: ffTheme.titleMedium.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w800)),
+                      Text('₪${plan.priceText}', style: ffTheme.titleMedium.copyWith(
+                        color: ffTheme.primaryText,
+                        fontWeight: FontWeight.w800,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      )),
                       Text(priceUnit, style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText, fontSize: 11)),
                       const SizedBox(height: 6),
-                      Icon(Icons.arrow_forward_ios_rounded, size: 14, color: ffTheme.primary),
+                      Icon(Icons.arrow_forward_ios_rounded, size: 14, color: ffTheme.brandAccent),
                     ],
                   ),
                 ],
@@ -745,8 +777,12 @@ class _SummaryPill extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)),
-      child: Text(label, style: ffTheme.labelSmall.copyWith(color: Colors.white, fontSize: 11)),
+      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(ffTheme.radiusXs)),
+      child: Text(label, style: ffTheme.labelSmall.copyWith(
+        color: Colors.white,
+        fontSize: 11,
+        fontFeatures: const [FontFeature.tabularFigures()],
+      )),
     );
   }
 }
@@ -785,7 +821,11 @@ class _SpeedBar extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 8),
-        Text(speed, style: ffTheme.labelSmall.copyWith(color: color, fontWeight: FontWeight.w700)),
+        Text(speed, style: ffTheme.labelSmall.copyWith(
+          color: color,
+          fontWeight: FontWeight.w700,
+          fontFeatures: const [FontFeature.tabularFigures()],
+        )),
       ],
     );
   }

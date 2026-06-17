@@ -67,7 +67,7 @@ class RenewalReportWidget extends StatelessWidget {
                     _NoSaverNote(provider: tp.provider, ffTheme: ffTheme)
                         .animate().fadeIn(duration: 340.ms),
 
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 24),
 
                   Row(
                     children: [
@@ -78,7 +78,9 @@ class RenewalReportWidget extends StatelessWidget {
                             style: ffTheme.titleMedium.copyWith(fontWeight: FontWeight.w800)),
                       ),
                       Text('${matches.length} מסלולים',
-                          style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText)),
+                          style: ffTheme.labelSmall.copyWith(
+                              color: ffTheme.secondaryText,
+                              fontFeatures: const [FontFeature.tabularFigures()])),
                     ],
                   ),
                   const SizedBox(height: 12),
@@ -200,10 +202,15 @@ class _Hero extends StatelessWidget {
                       children: [
                         Text('₪${tp.monthlyPrice}',
                             style: GoogleFonts.rubik(
-                                fontSize: 24, fontWeight: FontWeight.w800, color: Colors.white)),
+                                fontSize: 24,
+                                fontWeight: FontWeight.w800,
+                                color: Colors.white,
+                                fontFeatures: const [FontFeature.tabularFigures()])),
                         Text(priceCaption,
                             style: GoogleFonts.assistant(
-                                fontSize: 11, color: Colors.white.withValues(alpha: 0.8))),
+                                fontSize: 11,
+                                color: Colors.white.withValues(alpha: 0.8),
+                                fontFeatures: const [FontFeature.tabularFigures()])),
                       ],
                     ),
                   ],
@@ -231,7 +238,10 @@ class _Hero extends StatelessWidget {
                                   ? 'המבצע מסתיים היום!'
                                   : 'המבצע מסתיים בעוד $days ימים',
                           style: GoogleFonts.assistant(
-                              fontSize: 12.5, fontWeight: FontWeight.w700, color: Colors.white),
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.white,
+                              fontFeatures: const [FontFeature.tabularFigures()]),
                         ),
                       ],
                     ),
@@ -276,14 +286,24 @@ class _SaverBanner extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsetsDirectional.fromSTEB(14, 14, 12, 14),
         decoration: BoxDecoration(
-          color: ffTheme.secondary,
-          borderRadius: BorderRadius.circular(16),
+          color: ffTheme.saving,
+          borderRadius: BorderRadius.circular(ffTheme.radiusMd),
+          border: Border.all(color: ffTheme.savingDark.withValues(alpha: 0.45)),
+          boxShadow: ffTheme.shadowSoft,
         ),
         child: Row(
           children: [
-            Icon(Icons.celebration_outlined, size: 30, color: ffTheme.primaryDark),
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: ffTheme.primaryDark,
+                borderRadius: BorderRadius.circular(ffTheme.radiusSm),
+              ),
+              child: Icon(Icons.savings_rounded, size: 24, color: ffTheme.saving),
+            ),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
@@ -291,8 +311,12 @@ class _SaverBanner extends StatelessWidget {
                 children: [
                   Text(headline,
                       style: GoogleFonts.rubik(
-                          fontSize: 17, fontWeight: FontWeight.w800, color: ffTheme.primaryDark)),
-                  const SizedBox(height: 2),
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          height: 1.1,
+                          color: ffTheme.primaryDark,
+                          fontFeatures: const [FontFeature.tabularFigures()])),
+                  const SizedBox(height: 3),
                   Text('מעבר ל${match.plan.provider} · ${match.plan.plan}',
                       style: GoogleFonts.assistant(
                           fontSize: 13, fontWeight: FontWeight.w600, color: ffTheme.primaryDark),
@@ -330,7 +354,7 @@ class _NoSaverNote extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: ffTheme.accent1,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(ffTheme.radiusMd),
         border: Border.all(color: ffTheme.primary.withValues(alpha: 0.2)),
       ),
       child: Row(
@@ -384,14 +408,12 @@ class _AlternativeRow extends StatelessWidget {
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(ffTheme.radiusMd),
           border: Border.all(
             color: isTop ? ffTheme.primary : ffTheme.alternate,
             width: isTop ? 2 : 1,
           ),
-          boxShadow: [
-            BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 6, offset: const Offset(0, 2)),
-          ],
+          boxShadow: isTop ? ffTheme.shadowCard : ffTheme.shadowSoft,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -431,7 +453,10 @@ class _AlternativeRow extends StatelessWidget {
                             const SizedBox(width: 6),
                             Icon(Icons.star_rounded, size: 13, color: ffTheme.warning),
                             Text(rating.toStringAsFixed(1),
-                                style: ffTheme.labelSmall.copyWith(fontWeight: FontWeight.w700, fontSize: 11)),
+                                style: ffTheme.labelSmall.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 11,
+                                    fontFeatures: const [FontFeature.tabularFigures()])),
                           ],
                         ],
                       ),
@@ -445,10 +470,15 @@ class _AlternativeRow extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text('₪${plan.priceText}',
-                        style: ffTheme.titleSmall.copyWith(
-                            color: ffTheme.primary, fontWeight: FontWeight.w800)),
+                        style: ffTheme.titleMedium.copyWith(
+                            color: ffTheme.primary,
+                            fontWeight: FontWeight.w800,
+                            fontFeatures: const [FontFeature.tabularFigures()])),
                     Text(plan.hasPromo ? 'ואז ₪${plan.after}' : priceUnitLabel(plan),
-                        style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText, fontSize: 10)),
+                        style: ffTheme.labelSmall.copyWith(
+                            color: ffTheme.secondaryText,
+                            fontSize: 10,
+                            fontFeatures: const [FontFeature.tabularFigures()])),
                   ],
                 ),
               ],
@@ -461,24 +491,30 @@ class _AlternativeRow extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
                     color: ffTheme.accent1,
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(ffTheme.radiusXs),
                   ),
                   child: Text('${match.scorePct}% התאמה',
                       style: ffTheme.labelSmall.copyWith(
-                          color: ffTheme.primary, fontWeight: FontWeight.w700, fontSize: 10.5)),
+                          color: ffTheme.primary,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 10.5,
+                          fontFeatures: const [FontFeature.tabularFigures()])),
                 ),
                 const SizedBox(width: 8),
-                // Saving vs current
+                // Saving vs current — the VALUE moment carries the amber accent.
                 if (saving > 0)
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
-                      color: ffTheme.secondary,
-                      borderRadius: BorderRadius.circular(10),
+                      color: ffTheme.saving,
+                      borderRadius: BorderRadius.circular(ffTheme.radiusXs),
                     ),
                     child: Text(savingLabel,
                         style: GoogleFonts.rubik(
-                            fontSize: 10.5, fontWeight: FontWeight.w800, color: ffTheme.primaryDark)),
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w800,
+                            color: ffTheme.primaryDark,
+                            fontFeatures: const [FontFeature.tabularFigures()])),
                   )
                 else
                   Text(
@@ -514,8 +550,9 @@ class _ReminderCta extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: on ? ffTheme.success.withValues(alpha: 0.08) : Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(ffTheme.radiusMd),
         border: Border.all(color: on ? ffTheme.success.withValues(alpha: 0.4) : ffTheme.alternate),
+        boxShadow: on ? null : ffTheme.shadowSoft,
       ),
       child: on
           ? Row(
@@ -528,7 +565,9 @@ class _ReminderCta extends StatelessWidget {
                         ? 'מצוין! נזכיר לך ב-$dateStr עם טבלה מעודכנת'
                         : 'מצוין! נזכיר לך לפני סיום המבצע עם טבלה מעודכנת',
                     style: ffTheme.bodySmall.copyWith(
-                        color: ffTheme.primaryText, fontWeight: FontWeight.w600),
+                        color: ffTheme.primaryText,
+                        fontWeight: FontWeight.w600,
+                        fontFeatures: const [FontFeature.tabularFigures()]),
                   ),
                 ),
               ],
@@ -549,30 +588,42 @@ class _ReminderCta extends StatelessWidget {
                 const SizedBox(height: 6),
                 Text(
                   'נזכיר לך ~21 יום לפני סיום המבצע עם השוואת מחירים עדכנית מכל החברות.',
-                  style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText),
+                  style: ffTheme.bodySmall.copyWith(
+                      color: ffTheme.secondaryText,
+                      fontFeatures: const [FontFeature.tabularFigures()]),
                 ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    onPressed: () async {
-                      appState.setRenewalReminders(true);
-                      appBackend.setRenewalReminder(true).catchError((_) {});
-                      await PushNotificationService.instance.requestPermission();
-                      await PushNotificationService.instance.syncRenewalReminders(appState);
-                      if (context.mounted) {
-                        AppSnackBar.success(
-                            context, 'תזכורת חידוש הופעלה — נדאג שלא תפספס');
-                      }
-                    },
-                    icon: const Icon(Icons.notifications_active_rounded, size: 18),
-                    label: const Text('שלחו לי תזכורת'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: ffTheme.primary,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      textStyle: GoogleFonts.rubik(fontSize: 14, fontWeight: FontWeight.w700),
+                const SizedBox(height: 14),
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: ffTheme.accentGradient,
+                    borderRadius: BorderRadius.circular(ffTheme.radiusSm),
+                    boxShadow: ffTheme.shadowAccent,
+                  ),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () async {
+                        appState.setRenewalReminders(true);
+                        appBackend.setRenewalReminder(true).catchError((_) {});
+                        await PushNotificationService.instance.requestPermission();
+                        await PushNotificationService.instance.syncRenewalReminders(appState);
+                        if (context.mounted) {
+                          AppSnackBar.success(
+                              context, 'תזכורת חידוש הופעלה — נדאג שלא תפספס');
+                        }
+                      },
+                      icon: const Icon(Icons.notifications_active_rounded, size: 18),
+                      label: const Text('שלחו לי תזכורת'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        foregroundColor: Colors.white,
+                        shadowColor: Colors.transparent,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(ffTheme.radiusSm)),
+                        padding: const EdgeInsets.symmetric(vertical: 13),
+                        textStyle: GoogleFonts.rubik(fontSize: 14, fontWeight: FontWeight.w700),
+                      ),
                     ),
                   ),
                 ),

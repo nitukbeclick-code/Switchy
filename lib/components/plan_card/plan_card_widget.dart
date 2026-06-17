@@ -202,7 +202,7 @@ class PlanCardWidget extends StatelessWidget {
                                     button: true,
                                     label: 'פרופיל ${plan.provider}',
                                     child: InkWell(
-                                      borderRadius: BorderRadius.circular(6),
+                                      borderRadius: BorderRadius.circular(ffTheme.radiusXs),
                                       onTap: () => context.pushNamed('Provider', pathParameters: {'name': plan.provider}),
                                       child: Padding(
                                         padding: const EdgeInsets.symmetric(vertical: 4),
@@ -289,6 +289,7 @@ class PlanCardWidget extends StatelessWidget {
                                   fontSize: 11,
                                   fontWeight: FontWeight.w700,
                                   color: Colors.white,
+                                  fontFeatures: const [FontFeature.tabularFigures()],
                                 ),
                               ),
                             ],
@@ -334,6 +335,7 @@ class PlanCardWidget extends StatelessWidget {
                             style: GoogleFonts.assistant(
                               fontSize: 12,
                               color: ffTheme.secondaryText,
+                              fontFeatures: const [FontFeature.tabularFigures()],
                             ),
                           ),
                         ],
@@ -620,6 +622,7 @@ class _SpecChip extends StatelessWidget {
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
                 color: ffTheme.secondaryText,
+                fontFeatures: const [FontFeature.tabularFigures()],
               ),
               overflow: TextOverflow.ellipsis,
               maxLines: 1,

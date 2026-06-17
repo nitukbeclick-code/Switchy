@@ -216,6 +216,7 @@ class _SearchWidgetState extends State<SearchWidget> {
                               fontWeight: FontWeight.w800,
                               color: Colors.white,
                               height: 1,
+                              fontFeatures: const [FontFeature.tabularFigures()],
                             ),
                           ),
                         ),
@@ -373,6 +374,7 @@ class _FilterPanel extends StatelessWidget {
                               ? ffTheme.brandAccent
                               : ffTheme.secondaryText,
                           fontWeight: FontWeight.w700,
+                          fontFeatures: const [FontFeature.tabularFigures()],
                         ),
                       ),
                     ],
@@ -456,6 +458,7 @@ class _FilterChip extends StatelessWidget {
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
                   color: selected ? Colors.white : ffTheme.primaryText,
+                  fontFeatures: const [FontFeature.tabularFigures()],
                 ),
               ),
             ],
@@ -554,6 +557,7 @@ class _ProviderFilterRow extends StatelessWidget {
                               fontSize: 13,
                               fontWeight: FontWeight.w700,
                               color: ffTheme.brandAccent,
+                              fontFeatures: const [FontFeature.tabularFigures()],
                             ),
                           ),
                         ),
@@ -691,7 +695,10 @@ class _SectionLabel extends StatelessWidget {
             borderRadius: BorderRadius.circular(ffTheme.radiusPill),
           ),
           child: Text('$count',
-              style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+              style: ffTheme.labelSmall.copyWith(
+                  color: ffTheme.primary,
+                  fontWeight: FontWeight.w700,
+                  fontFeatures: const [FontFeature.tabularFigures()])),
         ),
       ],
     );
@@ -864,7 +871,7 @@ class _CategoryResultChip extends StatelessWidget {
     return Semantics(
       button: true,
       label: 'קטגוריה ${hit.name}',
-      child: GestureDetector(
+      child: _PressScale(
         onTap: onTap,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -920,7 +927,7 @@ class _ProviderChip extends StatelessWidget {
     return Semantics(
       button: true,
       label: 'ספק $name, $planCount מסלולים',
-      child: GestureDetector(
+      child: _PressScale(
         onTap: onTap,
         child: Container(
           width: 116,
@@ -930,17 +937,22 @@ class _ProviderChip extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               ExcludeSemantics(child: LogoWidget(provider: name, size: 38)),
-              const SizedBox(height: 6),
+              const SizedBox(height: 8),
               _Highlighted(
                 text: name,
                 query: query,
-                base: ffTheme.labelSmall.copyWith(fontWeight: FontWeight.w700),
+                base: ffTheme.labelSmall
+                    .copyWith(fontSize: 12.5, fontWeight: FontWeight.w800, height: 1.1),
                 highlight: ffTheme.secondary.withValues(alpha: 0.4),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
+              const SizedBox(height: 1),
               Text('$planCount מסלולים',
-                  style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText, fontSize: 10)),
+                  style: ffTheme.labelSmall.copyWith(
+                      color: ffTheme.secondaryText,
+                      fontSize: 10,
+                      fontFeatures: const [FontFeature.tabularFigures()])),
             ],
           ),
         ),
@@ -1139,7 +1151,7 @@ class _CheapestRow extends StatelessWidget {
     return Semantics(
       button: true,
       label: '$catName: ${plan.provider}, ${plan.plan}, ₪${plan.priceText} ${priceUnitShort(plan)}',
-      child: GestureDetector(
+      child: _PressScale(
         onTap: () {
           Provider.of<AppState>(context, listen: false).viewPlan(plan.id);
           context.push('/plan/${plan.id}');
@@ -1188,8 +1200,11 @@ class _CheapestRow extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text('₪${plan.priceText}',
-                      style: ffTheme.titleMedium
-                          .copyWith(color: ffTheme.primary, fontWeight: FontWeight.w800)),
+                      style: ffTheme.titleMedium.copyWith(
+                          color: ffTheme.primary,
+                          fontWeight: FontWeight.w800,
+                          height: 1.1,
+                          fontFeatures: const [FontFeature.tabularFigures()])),
                   Text(priceUnitShort(plan),
                       style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText, fontSize: 10)),
                 ],
@@ -1197,6 +1212,40 @@ class _CheapestRow extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+// ── Press-feedback wrapper (visual only — keeps onTap + Semantics intact) ─────
+
+/// Wraps a tappable surface with a subtle 0.97 scale-down on press, so glass
+/// cards acknowledge touch. Replaces a bare [GestureDetector]; [onTap] fires on
+/// release exactly as before.
+class _PressScale extends StatefulWidget {
+  const _PressScale({required this.onTap, required this.child});
+  final VoidCallback onTap;
+  final Widget child;
+
+  @override
+  State<_PressScale> createState() => _PressScaleState();
+}
+
+class _PressScaleState extends State<_PressScale> {
+  bool _down = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: widget.onTap,
+      onTapDown: (_) => setState(() => _down = true),
+      onTapUp: (_) => setState(() => _down = false),
+      onTapCancel: () => setState(() => _down = false),
+      child: AnimatedScale(
+        scale: _down ? 0.97 : 1,
+        duration: const Duration(milliseconds: 120),
+        curve: Curves.easeOut,
+        child: widget.child,
       ),
     );
   }

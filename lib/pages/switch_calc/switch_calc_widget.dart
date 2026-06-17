@@ -135,10 +135,10 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('מחשבון מעבר', style: ffTheme.headlineMedium),
+            Text('מחשבון מעבר', style: ffTheme.headlineMedium.copyWith(fontWeight: FontWeight.w700)),
             const SizedBox(height: 4),
-            Text('חשבו אם המעבר משתלם לכם', style: ffTheme.bodySmall),
-            const SizedBox(height: 16),
+            Text('חשבו אם המעבר משתלם לכם', style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText)),
+            const SizedBox(height: 20),
 
             SizedBox(
               height: 40,
@@ -156,8 +156,8 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                       decoration: BoxDecoration(
                         color: isActive ? ffTheme.primary : Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: isActive ? ffTheme.primary : ffTheme.alternate),
+                        borderRadius: BorderRadius.circular(ffTheme.radiusPill),
+                        border: Border.all(color: isActive ? ffTheme.primary : ffTheme.lineColor),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
@@ -236,16 +236,16 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
                     padding: const EdgeInsetsDirectional.only(end: 6),
                     child: Material(
                       color: active ? ffTheme.primary : Colors.white,
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(ffTheme.radiusPill),
                       child: InkWell(
                         onTap: () => setState(() => _exitFee = fee.toDouble()),
-                        borderRadius: BorderRadius.circular(16),
+                        borderRadius: BorderRadius.circular(ffTheme.radiusPill),
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 180),
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                           decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: active ? ffTheme.primary : ffTheme.alternate),
+                            borderRadius: BorderRadius.circular(ffTheme.radiusPill),
+                            border: Border.all(color: active ? ffTheme.primary : ffTheme.lineColor),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -262,6 +262,7 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
                                 style: ffTheme.labelSmall.copyWith(
                                   color: fgColor,
                                   fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                                  fontFeatures: const [FontFeature.tabularFigures()],
                                 )),
                             ],
                           ),
@@ -282,12 +283,18 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
               padding: const EdgeInsets.all(22),
               decoration: BoxDecoration(
                 color: _resultColor(ffTheme).withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(ffTheme.radiusLg),
                 border: Border.all(color: _resultColor(ffTheme).withValues(alpha: 0.3), width: 2),
               ),
               child: Column(
                 children: [
-                  Text(_resultText(), style: GoogleFonts.rubik(fontSize: 18, fontWeight: FontWeight.w800, color: _resultColor(ffTheme))),
+                  Text(
+                    _resultText(),
+                    style: ffTheme.titleLarge.copyWith(
+                      color: _resultColor(ffTheme),
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
                   const SizedBox(height: 20),
                   Row(
                     children: [
@@ -300,7 +307,10 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
                     const SizedBox(height: 14),
                     Text(
                       'נקודת איזון: ${econ.breakEvenMonths.toStringAsFixed(1)} חודשים',
-                      style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText),
+                      style: ffTheme.bodySmall.copyWith(
+                        color: ffTheme.secondaryText,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
                     ),
                   ],
                 ],
@@ -316,7 +326,7 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 decoration: BoxDecoration(
                   color: ffTheme.warning.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(ffTheme.radiusSm),
                   border: Border.all(color: ffTheme.warning.withValues(alpha: 0.3)),
                 ),
                 child: Row(
@@ -326,7 +336,11 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
                     Expanded(
                       child: Text(
                         _selectedCat == 'abroad' ? 'כל נסיעה שאתם מחכים עולה לכם ₪${econ.monthlySaving}' : 'כל חודש שאתם מחכים עולה לכם ₪${econ.monthlySaving}',
-                        style: ffTheme.bodyMedium.copyWith(color: ffTheme.warning, fontWeight: FontWeight.w600),
+                        style: ffTheme.bodyMedium.copyWith(
+                          color: ffTheme.warning,
+                          fontWeight: FontWeight.w600,
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                        ),
                       ),
                     ),
                   ],
@@ -341,13 +355,14 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
                 padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: ffTheme.alternate),
+                  borderRadius: BorderRadius.circular(ffTheme.radiusMd),
+                  border: Border.all(color: ffTheme.lineColor),
+                  boxShadow: ffTheme.shadowSoft,
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('חיסכון לאורך זמן', style: ffTheme.titleSmall),
+                    Text('חיסכון לאורך זמן', style: ffTheme.titleSmall.copyWith(fontWeight: FontWeight.w700)),
                     const SizedBox(height: 16),
                     _SavingsBarChart(
                       econ: econ,
@@ -397,14 +412,25 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
             const SizedBox(height: 12),
 
             if (econ.annualSaving > 0)
-              ElevatedButton(
-                onPressed: () => context.pushNamed('Results'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: ffTheme.primary,
-                  minimumSize: const Size(double.infinity, 52),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              Material(
+                color: Colors.transparent,
+                borderRadius: BorderRadius.circular(ffTheme.radiusSm),
+                child: InkWell(
+                  onTap: () => context.pushNamed('Results'),
+                  borderRadius: BorderRadius.circular(ffTheme.radiusSm),
+                  child: Ink(
+                    decoration: BoxDecoration(
+                      gradient: ffTheme.accentGradient,
+                      borderRadius: BorderRadius.circular(ffTheme.radiusSm),
+                      boxShadow: ffTheme.shadowAccent,
+                    ),
+                    child: Container(
+                      height: 52,
+                      alignment: Alignment.center,
+                      child: Text('מצא מסלולים מתאימים', style: ffTheme.titleSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
+                    ),
+                  ),
                 ),
-                child: Text('מצא מסלולים מתאימים', style: ffTheme.titleSmall.copyWith(color: Colors.white)),
               ).animate().fadeIn(delay: 480.ms),
 
             const SizedBox(height: 32),
@@ -441,14 +467,10 @@ class _RecommendedPlanCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [ffTheme.primary.withValues(alpha: 0.06), ffTheme.secondary.withValues(alpha: 0.10)],
-            begin: Alignment.topRight,
-            end: Alignment.bottomLeft,
-          ),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: ffTheme.primary.withValues(alpha: 0.35), width: 1.5),
-          boxShadow: [BoxShadow(color: ffTheme.primary.withValues(alpha: 0.08), blurRadius: 10, offset: const Offset(0, 3))],
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(ffTheme.radiusMd),
+          border: Border.all(color: ffTheme.brandAccent.withValues(alpha: 0.35), width: 1.5),
+          boxShadow: ffTheme.shadowSoft,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -457,24 +479,28 @@ class _RecommendedPlanCard extends StatelessWidget {
             Row(
               children: [
                 ExcludeSemantics(
-                  child: Icon(Icons.auto_awesome_rounded, size: 16, color: ffTheme.primary),
+                  child: Icon(Icons.auto_awesome_rounded, size: 16, color: ffTheme.brandAccent),
                 ),
                 const SizedBox(width: 6),
                 Text('המסלול המומלץ למעבר',
-                    style: ffTheme.titleSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w800)),
+                    style: ffTheme.titleSmall.copyWith(fontWeight: FontWeight.w700)),
                 const Spacer(),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: ffTheme.primary,
-                    borderRadius: BorderRadius.circular(20),
+                    color: ffTheme.brandAccent,
+                    borderRadius: BorderRadius.circular(ffTheme.radiusPill),
                   ),
                   child: Text('${match.scorePct}% התאמה',
-                      style: ffTheme.labelSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
+                      style: ffTheme.labelSmall.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      )),
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
 
             // Plan info row
             Row(
@@ -486,7 +512,9 @@ class _RecommendedPlanCard extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(plan.provider,
-                          style: ffTheme.titleSmall.copyWith(fontWeight: FontWeight.w700)),
+                          style: ffTheme.titleSmall.copyWith(fontWeight: FontWeight.w700),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis),
                       Text(plan.plan,
                           style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText),
                           maxLines: 1,
@@ -498,7 +526,11 @@ class _RecommendedPlanCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text('₪${plan.priceText}',
-                        style: ffTheme.headlineSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w800)),
+                        style: ffTheme.headlineSmall.copyWith(
+                          color: ffTheme.primaryText,
+                          fontWeight: FontWeight.w800,
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                        )),
                     Text(priceLabel,
                         style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText)),
                   ],
@@ -508,43 +540,53 @@ class _RecommendedPlanCard extends StatelessWidget {
 
             // Reasons
             if (topReasons.isNotEmpty) ...[
-              const SizedBox(height: 10),
+              const SizedBox(height: 12),
               Wrap(
                 spacing: 6,
-                runSpacing: 4,
+                runSpacing: 6,
                 children: topReasons.map((r) => Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
                   decoration: BoxDecoration(
-                    color: ffTheme.secondary.withValues(alpha: 0.25),
-                    borderRadius: BorderRadius.circular(8),
+                    color: ffTheme.accent1,
+                    borderRadius: BorderRadius.circular(ffTheme.radiusXs),
                   ),
-                  child: Text(r, style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w600)),
+                  child: Text(r, style: ffTheme.labelSmall.copyWith(color: ffTheme.primaryText, fontWeight: FontWeight.w600)),
                 )).toList(),
               ),
             ],
 
-            // Annual saving
+            // Annual saving — VALUE, amber
             if (match.annualSaving > 0) ...[
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
               Text('חיסכון שנתי משוער: ₪${match.annualSaving}',
-                  style: ffTheme.bodySmall.copyWith(color: ffTheme.success, fontWeight: FontWeight.w700)),
+                  style: ffTheme.bodySmall.copyWith(
+                    color: ffTheme.savingDark,
+                    fontWeight: FontWeight.w700,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  )),
             ],
 
-            // Prefill action
-            const SizedBox(height: 12),
-            GestureDetector(
-              onTap: onUsePrefill,
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 9),
-                decoration: BoxDecoration(
-                  color: ffTheme.primary,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  'השתמש במחיר המומלץ (₪${plan.priceText})',
-                  textAlign: TextAlign.center,
-                  style: ffTheme.labelMedium.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
+            // Prefill action — secondary (demoted): tinted, not the screen's primary CTA
+            const SizedBox(height: 14),
+            Material(
+              color: ffTheme.brandAccentTint,
+              borderRadius: BorderRadius.circular(ffTheme.radiusSm),
+              child: InkWell(
+                onTap: onUsePrefill,
+                borderRadius: BorderRadius.circular(ffTheme.radiusSm),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  alignment: Alignment.center,
+                  child: Text(
+                    'השתמש במחיר המומלץ (₪${plan.priceText})',
+                    textAlign: TextAlign.center,
+                    style: ffTheme.labelMedium.copyWith(
+                      color: ffTheme.brandAccent,
+                      fontWeight: FontWeight.w700,
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -580,7 +622,7 @@ class _SavingsBarChart extends StatelessWidget {
             children: [
               SizedBox(
                 width: 64,
-                child: Text(m.$2, style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText, fontSize: 11)),
+                child: Text(m.$2, style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText, fontSize: 11), maxLines: 1, overflow: TextOverflow.ellipsis),
               ),
               Expanded(
                 child: ClipRRect(
@@ -605,7 +647,12 @@ class _SavingsBarChart extends StatelessWidget {
                 width: 52,
                 child: Text(
                   '₪$amount',
-                  style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700, fontSize: 11),
+                  style: ffTheme.labelSmall.copyWith(
+                    color: ffTheme.primary,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 11,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
                   textAlign: TextAlign.end,
                 ),
               ),
@@ -634,9 +681,9 @@ class _LeadingPlanCard extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: ffTheme.alternate),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
+        borderRadius: BorderRadius.circular(ffTheme.radiusMd),
+        border: Border.all(color: ffTheme.lineColor),
+        boxShadow: ffTheme.shadowSoft,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -645,8 +692,8 @@ class _LeadingPlanCard extends StatelessWidget {
             children: [
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(color: ffTheme.accent1, borderRadius: BorderRadius.circular(8)),
-                child: Text('הצעה מובילה', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+                decoration: BoxDecoration(color: ffTheme.accent1, borderRadius: BorderRadius.circular(ffTheme.radiusXs)),
+                child: Text('הצעה מובילה', style: ffTheme.labelSmall.copyWith(color: ffTheme.primaryText, fontWeight: FontWeight.w700)),
               ),
               if (matching.isEmpty) ...[
                 const SizedBox(width: 8),
@@ -663,7 +710,7 @@ class _LeadingPlanCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(plan.provider, style: ffTheme.titleSmall),
+                    Text(plan.provider, style: ffTheme.titleSmall.copyWith(fontWeight: FontWeight.w700), maxLines: 1, overflow: TextOverflow.ellipsis),
                     Text(plan.plan, style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText), maxLines: 1, overflow: TextOverflow.ellipsis),
                   ],
                 ),
@@ -671,13 +718,17 @@ class _LeadingPlanCard extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text('₪${plan.priceText}', style: ffTheme.headlineSmall.copyWith(color: ffTheme.primary)),
+                  Text('₪${plan.priceText}', style: ffTheme.headlineSmall.copyWith(
+                    color: ffTheme.primaryText,
+                    fontWeight: FontWeight.w800,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  )),
                   Text(priceUnitLabel(plan), style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText)),
                 ],
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           SizedBox(
             width: double.infinity,
             child: OutlinedButton(
@@ -686,11 +737,11 @@ class _LeadingPlanCard extends StatelessWidget {
                 context.pushNamed('Results');
               },
               style: OutlinedButton.styleFrom(
-                side: BorderSide(color: ffTheme.primary),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                padding: const EdgeInsets.symmetric(vertical: 10),
+                side: BorderSide(color: ffTheme.lineColor),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(ffTheme.radiusSm)),
+                padding: const EdgeInsets.symmetric(vertical: 11),
               ),
-              child: Text('הצג מסלול', style: ffTheme.labelMedium.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+              child: Text('הצג מסלול', style: ffTheme.labelMedium.copyWith(color: ffTheme.primaryText, fontWeight: FontWeight.w700)),
             ),
           ),
         ],
@@ -713,19 +764,27 @@ class _SliderSection extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: ffTheme.alternate),
+        borderRadius: BorderRadius.circular(ffTheme.radiusSm),
+        border: Border.all(color: ffTheme.lineColor),
+        boxShadow: ffTheme.shadowSoft,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              ExcludeSemantics(child: Icon(icon, size: 20, color: ffTheme.primary)),
+              ExcludeSemantics(child: Icon(icon, size: 20, color: ffTheme.secondaryText)),
               const SizedBox(width: 8),
               Text(label, style: ffTheme.titleSmall),
               const Spacer(),
-              Text('₪${value.round()}', style: ffTheme.headlineSmall.copyWith(color: ffTheme.primary)),
+              Text(
+                '₪${value.round()}',
+                style: ffTheme.headlineSmall.copyWith(
+                  color: ffTheme.primary,
+                  fontWeight: FontWeight.w800,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
+              ),
             ],
           ),
           Semantics(
@@ -744,8 +803,8 @@ class _SliderSection extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('₪${min.round()}', style: ffTheme.labelSmall),
-              Text('₪${max.round()}', style: ffTheme.labelSmall),
+              Text('₪${min.round()}', style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText)),
+              Text('₪${max.round()}', style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText)),
             ],
           ),
         ],
@@ -764,9 +823,16 @@ class _ResultStat extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Text(label, style: ffTheme.labelSmall),
-        const SizedBox(height: 4),
-        Text(value, style: ffTheme.headlineSmall.copyWith(color: color)),
+        Text(label, style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText)),
+        const SizedBox(height: 6),
+        Text(
+          value,
+          style: ffTheme.headlineSmall.copyWith(
+            color: color,
+            fontWeight: FontWeight.w800,
+            fontFeatures: const [FontFeature.tabularFigures()],
+          ),
+        ),
       ],
     );
   }
@@ -785,10 +851,14 @@ class _TimelineStat extends StatelessWidget {
       children: [
         Text(
           '₪$amount',
-          style: ffTheme.titleMedium.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w800),
+          style: ffTheme.titleMedium.copyWith(
+            color: ffTheme.primary,
+            fontWeight: FontWeight.w800,
+            fontFeatures: const [FontFeature.tabularFigures()],
+          ),
         ),
         const SizedBox(height: 4),
-        Text('$months חודשים', style: ffTheme.labelSmall),
+        Text('$months חודשים', style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText)),
       ],
     );
   }

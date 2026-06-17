@@ -48,15 +48,15 @@ class _TrackerWidgetState extends State<TrackerWidget> {
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(ffTheme.radiusMd),
         border: Border.all(color: ffTheme.alternate),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10)],
+        boxShadow: ffTheme.shadowSoft,
       ),
       child: Column(
         children: [
           InkWell(
             onTap: () => setState(() => _checklistExpanded = !_checklistExpanded),
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(ffTheme.radiusMd),
             child: Padding(
               padding: const EdgeInsets.all(16),
               child: Row(
@@ -69,7 +69,9 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                       children: [
                         Text("צ'ק-ליסט למעבר", style: ffTheme.titleSmall),
                         Text('$doneCount מתוך ${_checklistItems.length} הושלמו',
-                            style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText)),
+                            style: ffTheme.labelSmall.copyWith(
+                                color: ffTheme.secondaryText,
+                                fontFeatures: const [FontFeature.tabularFigures()])),
                       ],
                     ),
                   ),
@@ -310,11 +312,16 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                 const SizedBox(height: 12),
                 if (plan != null) ...[
                   Text('${plan.provider} — ₪${plan.priceText}/${priceUnitShort(plan)}',
-                      style: ffTheme.bodyLarge.copyWith(color: ffTheme.secondary, fontWeight: FontWeight.w700))
+                      style: ffTheme.bodyLarge.copyWith(
+                          color: ffTheme.secondary,
+                          fontWeight: FontWeight.w700,
+                          fontFeatures: const [FontFeature.tabularFigures()]))
                       .animate().fadeIn(delay: 450.ms),
                   const SizedBox(height: 10),
                   Text('המעבר הושלם בהצלחה. חיסכון שנתי של ₪${planSaveYear(plan, appState.currentBill(plan.cat))} כבר מתחיל!',
-                      style: ffTheme.bodyMedium.copyWith(color: Colors.white.withValues(alpha: 0.8)),
+                      style: ffTheme.bodyMedium.copyWith(
+                          color: Colors.white.withValues(alpha: 0.8),
+                          fontFeatures: const [FontFeature.tabularFigures()]),
                       textAlign: TextAlign.center).animate().fadeIn(delay: 550.ms),
                 ] else ...[
                   const SizedBox(height: 10),
@@ -360,7 +367,7 @@ class _TrackerWidgetState extends State<TrackerWidget> {
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: ffTheme.secondary,
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(ffTheme.radiusMd),
               ),
               child: Row(
                 children: [
@@ -391,9 +398,9 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                 padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(ffTheme.radiusMd),
                   border: Border.all(color: ffTheme.alternate),
-                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10)],
+                  boxShadow: ffTheme.shadowCard,
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -405,29 +412,35 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                       children: [
                         Text(
                           '₪${planSaveYear(plan, appState.currentBill(plan.cat))}',
-                          style: ffTheme.displaySmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w800),
-                        ).animate(onPlay: (c) => c.repeat()).shimmer(duration: 2000.ms, color: ffTheme.secondary.withValues(alpha: 0.4)),
+                          style: ffTheme.displaySmall.copyWith(
+                              color: ffTheme.saving,
+                              fontWeight: FontWeight.w800,
+                              fontFeatures: const [FontFeature.tabularFigures()]),
+                        ),
                         const SizedBox(width: 6),
                         Padding(
-                          padding: const EdgeInsets.only(bottom: 4),
+                          padding: const EdgeInsets.only(bottom: 6),
                           child: Text('לשנה', style: ffTheme.bodyMedium.copyWith(color: ffTheme.secondaryText)),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 12),
                     ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(ffTheme.radiusPill),
                       child: LinearProgressIndicator(
                         value: step / 4,
-                        backgroundColor: ffTheme.alternate,
+                        backgroundColor: ffTheme.alternate.withValues(alpha: 0.5),
                         valueColor: AlwaysStoppedAnimation(ffTheme.primary),
                         minHeight: 8,
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 8),
                     Text(
                       step == 0 ? 'ממתין לאישור' : step == 1 ? 'בתהליך אישור (${ (step / 4 * 100).round()}%)' : step >= 3 ? 'כמעט שם!' : 'בעיצומו (${(step / 4 * 100).round()}%)',
-                      style: ffTheme.labelSmall.copyWith(color: ffTheme.primary),
+                      style: ffTheme.labelSmall.copyWith(
+                          color: ffTheme.primary,
+                          fontWeight: FontWeight.w600,
+                          fontFeatures: const [FontFeature.tabularFigures()]),
                     ),
                   ],
                 ),
@@ -456,11 +469,10 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                                 width: 52,
                                 height: 52,
                                 decoration: BoxDecoration(
-                                  color: ffTheme.primary.withValues(alpha: 0.12),
+                                  color: ffTheme.primary.withValues(alpha: 0.10),
                                   shape: BoxShape.circle,
                                 ),
-                              ).animate(onPlay: (c) => c.repeat(reverse: true))
-                                .scale(begin: const Offset(1, 1), end: const Offset(1.2, 1.2), duration: 900.ms, curve: Curves.easeInOut),
+                              ),
                               Container(
                                 width: 40,
                                 height: 40,
@@ -513,7 +525,10 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                                   child: Text('בתהליך...', style: GoogleFonts.rubik(fontSize: 10, fontWeight: FontWeight.w700, color: Colors.white)),
                                 ),
                                 const SizedBox(width: 8),
-                                Text('~24 שעות', style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText)),
+                                Text('~24 שעות',
+                                    style: ffTheme.labelSmall.copyWith(
+                                        color: ffTheme.secondaryText,
+                                        fontFeatures: const [FontFeature.tabularFigures()])),
                               ],
                             ),
                           ],
@@ -526,7 +541,7 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                     ),
                   ),
                 ],
-              );
+              ).animate(delay: (i * 40 + 120).ms).fadeIn(duration: 240.ms).slideX(begin: 0.04, end: 0);
             }),
 
             const SizedBox(height: 24),
@@ -541,9 +556,9 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(ffTheme.radiusMd),
                   border: Border.all(color: ffTheme.alternate),
-                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10)],
+                  boxShadow: ffTheme.shadowSoft,
                 ),
                 child: Row(
                   children: [
@@ -566,8 +581,7 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                               shape: BoxShape.circle,
                               border: Border.all(color: Colors.white, width: 2),
                             ),
-                          ).animate(onPlay: (c) => c.repeat(reverse: true))
-                            .scale(begin: const Offset(1, 1), end: const Offset(1.3, 1.3), duration: 800.ms),
+                          ),
                         ),
                       ],
                     ),
@@ -577,11 +591,16 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text('דנה — הנציגה שלכם', style: ffTheme.titleSmall),
+                          const SizedBox(height: 2),
                           Row(
                             children: [
                               Container(width: 6, height: 6, decoration: const BoxDecoration(color: Color(0xFF111827), shape: BoxShape.circle)),
                               const SizedBox(width: 4),
-                              Text('פנויה עכשיו · תגובה ~5 דקות', style: ffTheme.labelSmall.copyWith(color: const Color(0xFF111827), fontWeight: FontWeight.w600)),
+                              Text('פנויה עכשיו · תגובה ~5 דקות',
+                                  style: ffTheme.labelSmall.copyWith(
+                                      color: const Color(0xFF111827),
+                                      fontWeight: FontWeight.w600,
+                                      fontFeatures: const [FontFeature.tabularFigures()])),
                             ],
                           ),
                         ],
@@ -589,7 +608,7 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                     ),
                     Container(
                       padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(color: ffTheme.primary, borderRadius: BorderRadius.circular(10)),
+                      decoration: BoxDecoration(color: ffTheme.primary, borderRadius: BorderRadius.circular(ffTheme.radiusXs)),
                       child: const Icon(Icons.chat_rounded, color: Colors.white, size: 18),
                     ),
                   ],
@@ -666,7 +685,7 @@ class _TrackerWidgetState extends State<TrackerWidget> {
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: ffTheme.accent2,
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(ffTheme.radiusMd),
                 border: Border.all(color: ffTheme.warning.withValues(alpha: 0.3)),
               ),
               child: Row(
@@ -748,7 +767,7 @@ class _StepConfirmButton extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 13),
         decoration: BoxDecoration(
           color: ffTheme.accent1,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(ffTheme.radiusMd),
           border: Border.all(color: ffTheme.primary.withValues(alpha: 0.25)),
         ),
         child: Row(

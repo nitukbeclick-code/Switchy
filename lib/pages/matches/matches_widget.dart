@@ -131,6 +131,9 @@ class _MatchesWidgetState extends State<MatchesWidget> {
                                 color: Colors.white,
                                 fontSize: 9,
                                 fontWeight: FontWeight.w800,
+                                fontFeatures: [
+                                  FontFeature.tabularFigures()
+                                ],
                               ),
                             ),
                           ),
@@ -201,14 +204,15 @@ class _MatchesWidgetState extends State<MatchesWidget> {
       (_SortMode.rating, 'דירוג'),
     ];
     return SizedBox(
-      height: 36,
+      height: 44,
       child: ListView(
         scrollDirection: Axis.horizontal,
         children: chips.map((chip) {
           final active = _sort == chip.$1;
           return Padding(
             padding: const EdgeInsetsDirectional.only(end: 8),
-            child: GestureDetector(
+            child: Center(
+              child: GestureDetector(
               onTap: () {
                 HapticFeedback.selectionClick();
                 setState(() => _sort = chip.$1);
@@ -216,35 +220,27 @@ class _MatchesWidgetState extends State<MatchesWidget> {
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
-                  color: active ? ffTheme.brandAccent : Colors.white,
-                  borderRadius: BorderRadius.circular(20),
+                  gradient: active ? ffTheme.accentGradient : null,
+                  color: active ? null : Colors.white,
+                  borderRadius: BorderRadius.circular(ffTheme.radiusPill),
                   border: Border.all(
                     color:
-                        active ? ffTheme.brandAccent : ffTheme.lineColor,
+                        active ? Colors.transparent : ffTheme.lineColor,
                   ),
-                  boxShadow: active
-                      ? [
-                          BoxShadow(
-                            color: ffTheme.brandAccent.withValues(alpha: 0.3),
-                            blurRadius: 6,
-                            offset: const Offset(0, 2),
-                          )
-                        ]
-                      : null,
+                  boxShadow: active ? ffTheme.shadowSoft : null,
                 ),
                 child: Text(
                   chip.$2,
-                  style: TextStyle(
-                    fontFamily: 'Assistant',
-                    fontSize: 13,
+                  style: ffTheme.labelMedium.copyWith(
                     fontWeight:
                         active ? FontWeight.w700 : FontWeight.w500,
                     color: active ? Colors.white : ffTheme.primaryText,
                   ),
                 ),
               ),
+            ),
             ),
           );
         }).toList(),
@@ -268,32 +264,30 @@ class _MatchesWidgetState extends State<MatchesWidget> {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topRight,
-          end: Alignment.bottomLeft,
-          colors: [ffTheme.primaryDark, ffTheme.tertiary],
-        ),
-        borderRadius: BorderRadius.circular(20),
+        gradient: ffTheme.brandGradient,
+        borderRadius: BorderRadius.circular(ffTheme.radiusLg),
+        boxShadow: ffTheme.shadowLifted,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
             padding:
-                const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                const EdgeInsetsDirectional.fromSTEB(10, 5, 10, 5),
             decoration: BoxDecoration(
-              color: ffTheme.secondary,
-              borderRadius: BorderRadius.circular(8),
+              color: Colors.white.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(ffTheme.radiusXs),
             ),
             child: Text(
               '✦ דאשבורד חכם',
               style: ffTheme.labelSmall.copyWith(
-                color: ffTheme.primary,
+                color: Colors.white,
                 fontWeight: FontWeight.w700,
+                letterSpacing: 0.2,
               ),
             ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
           Text(
             totalSaving > 0
                 ? 'חיסכון פוטנציאלי שנתי'
@@ -317,8 +311,9 @@ class _MatchesWidgetState extends State<MatchesWidget> {
                     return Text(
                       personalized ? disp : '~$disp',
                       style: ffTheme.displaySmall.copyWith(
-                        color: ffTheme.secondary,
+                        color: ffTheme.saving,
                         fontWeight: FontWeight.bold,
+                        fontFeatures: const [FontFeature.tabularFigures()],
                       ),
                     );
                   },
@@ -327,8 +322,9 @@ class _MatchesWidgetState extends State<MatchesWidget> {
                 Text(
                   savingDisplay,
                   style: ffTheme.displaySmall.copyWith(
-                    color: ffTheme.secondary,
+                    color: ffTheme.saving,
                     fontWeight: FontWeight.bold,
+                    fontFeatures: const [FontFeature.tabularFigures()],
                   ),
                 ),
               if (!personalized && totalSaving > 0) ...[
@@ -340,7 +336,7 @@ class _MatchesWidgetState extends State<MatchesWidget> {
                         horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.18),
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(ffTheme.radiusXs),
                     ),
                     child: Text(
                       'הערכה',
@@ -402,7 +398,7 @@ class _MatchesWidgetState extends State<MatchesWidget> {
                   begin: Alignment.topRight,
                   end: Alignment.bottomLeft,
                 ),
-                borderRadius: BorderRadius.circular(18),
+                borderRadius: BorderRadius.circular(ffTheme.radiusLg + 2),
               ),
             ),
           ),
@@ -418,11 +414,11 @@ class _MatchesWidgetState extends State<MatchesWidget> {
                 // Winner badge
                 if (isWinner) ...[
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 4),
+                    padding: const EdgeInsetsDirectional.fromSTEB(
+                        10, 4, 12, 4),
                     decoration: BoxDecoration(
                       color: ffTheme.saving,
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(ffTheme.radiusXs),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
@@ -435,12 +431,13 @@ class _MatchesWidgetState extends State<MatchesWidget> {
                           style: ffTheme.labelSmall.copyWith(
                             color: Colors.white,
                             fontWeight: FontWeight.w800,
+                            letterSpacing: 0.2,
                           ),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 10),
+                  const SizedBox(height: 12),
                 ],
 
                 // Category header row
@@ -512,6 +509,9 @@ class _MatchesWidgetState extends State<MatchesWidget> {
                           style: ffTheme.titleLarge.copyWith(
                             color: ffTheme.primary,
                             fontWeight: FontWeight.w800,
+                            fontFeatures: const [
+                              FontFeature.tabularFigures()
+                            ],
                           ),
                         ),
                         Text(
@@ -616,10 +616,10 @@ class _ScoreBadge extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
           decoration: BoxDecoration(
             color: ffTheme.primary,
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(ffTheme.radiusPill),
           ),
           child: Text(
             '${match.scorePct}% התאמה',
@@ -627,6 +627,7 @@ class _ScoreBadge extends StatelessWidget {
               color: Colors.white,
               fontSize: 11,
               fontWeight: FontWeight.w700,
+              fontFeatures: const [FontFeature.tabularFigures()],
             ),
           ),
         ),
@@ -639,10 +640,10 @@ class _ScoreBadge extends StatelessWidget {
             onTap: () => _showWhySheet(context, ffTheme),
             child: Container(
               padding:
-                  const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
               decoration: BoxDecoration(
                 color: ffTheme.brandAccent.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(ffTheme.radiusPill),
                 border: Border.all(
                     color: ffTheme.brandAccent.withValues(alpha: 0.4)),
               ),
@@ -711,7 +712,7 @@ class _ScoreBadge extends StatelessWidget {
                 height: 4,
                 margin: const EdgeInsets.only(bottom: 16),
                 decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
+                  color: ffTheme.alternate,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),

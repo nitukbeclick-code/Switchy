@@ -101,14 +101,14 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
                 children: [
                   Text(
                     'השוואת מחירי תקשורת\nהכי חכמה בישראל',
-                    style: GoogleFonts.rubik(fontSize: 30, fontWeight: FontWeight.w800, color: Colors.white, height: 1.2),
+                    style: GoogleFonts.rubik(fontSize: 32, fontWeight: FontWeight.w900, color: Colors.white, height: 1.15, letterSpacing: -0.5),
                   ).animate().fadeIn(duration: 500.ms).slideY(begin: 0.2, end: 0),
                   const SizedBox(height: 12),
                   Text(
                     'כל מסלולי הסלולר, האינטרנט והטלוויזיה במקום אחד — שקוף ואמין',
-                    style: GoogleFonts.assistant(fontSize: 14, color: Colors.white70),
+                    style: GoogleFonts.assistant(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.white70, height: 1.45),
                   ).animate().fadeIn(delay: 100.ms),
-                  const SizedBox(height: 18),
+                  const SizedBox(height: 20),
                   // Trust signals
                   const Row(
                     children: [
@@ -121,17 +121,17 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
                   ).animate().fadeIn(delay: 150.ms),
                   const SizedBox(height: 20),
                   Container(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(18),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                      color: Colors.white.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('מה אתם משלמים היום על סלולר?', style: GoogleFonts.rubik(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.white)),
-                        const SizedBox(height: 12),
+                        Text('מה אתם משלמים היום על סלולר?', style: GoogleFonts.assistant(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white70)),
+                        const SizedBox(height: 10),
                         Row(
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
@@ -142,11 +142,11 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
                                   Row(
                                     crossAxisAlignment: CrossAxisAlignment.end,
                                     children: [
-                                      Text('₪${_billInput.round()}', style: GoogleFonts.rubik(fontSize: 36, fontWeight: FontWeight.w800, color: ffTheme.secondary)),
+                                      Text('₪${_billInput.round()}', style: GoogleFonts.rubik(fontSize: 38, fontWeight: FontWeight.w900, color: Colors.white, height: 1, fontFeatures: const [FontFeature.tabularFigures()])),
                                       const SizedBox(width: 6),
                                       Padding(
-                                        padding: const EdgeInsets.only(bottom: 6),
-                                        child: Text('לחודש', style: GoogleFonts.assistant(fontSize: 12, color: Colors.white54)),
+                                        padding: const EdgeInsets.only(bottom: 7),
+                                        child: Text('לחודש', style: GoogleFonts.assistant(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white60)),
                                       ),
                                     ],
                                   ),
@@ -154,7 +154,7 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
                                     value: _billInput,
                                     min: 20,
                                     max: 500,
-                                    activeColor: ffTheme.secondary,
+                                    activeColor: Colors.white,
                                     inactiveColor: Colors.white24,
                                     onChanged: (v) => setState(() { _billInput = v; _catBills['cellular'] = v; }),
                                   ),
@@ -163,19 +163,20 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
                                       duration: const Duration(milliseconds: 300),
                                       child: Container(
                                         key: ValueKey(heroSaving),
-                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                                         decoration: BoxDecoration(
-                                          color: ffTheme.secondary.withValues(alpha: 0.2),
-                                          borderRadius: BorderRadius.circular(8),
+                                          color: ffTheme.saving.withValues(alpha: 0.18),
+                                          borderRadius: BorderRadius.circular(ffTheme.radiusXs),
+                                          border: Border.all(color: ffTheme.saving.withValues(alpha: 0.45)),
                                         ),
                                         child: Row(
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
-                                            Icon(Icons.savings_outlined, size: 12, color: ffTheme.secondary),
-                                            const SizedBox(width: 4),
+                                            Icon(Icons.savings_outlined, size: 13, color: ffTheme.saving),
+                                            const SizedBox(width: 5),
                                             Text(
                                               'תוכלו לחסוך עד ₪$heroSaving בשנה!',
-                                              style: GoogleFonts.rubik(fontSize: 11, fontWeight: FontWeight.w700, color: ffTheme.secondary),
+                                              style: GoogleFonts.rubik(fontSize: 11.5, fontWeight: FontWeight.w800, color: ffTheme.saving, fontFeatures: const [FontFeature.tabularFigures()]),
                                             ),
                                           ],
                                         ),
@@ -185,24 +186,33 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
                               ),
                             ),
                             const SizedBox(width: 12),
-                            ElevatedButton(
-                              onPressed: () {
-                                appState.setCurrentBill('cellular', _billInput.round());
-                                appState.setCategory('cellular');
-                                context.goNamed('Home');
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: ffTheme.secondary,
-                                foregroundColor: ffTheme.primaryDark,
-                                padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                                elevation: 0,
+                            DecoratedBox(
+                              decoration: BoxDecoration(
+                                gradient: ffTheme.accentGradient,
+                                borderRadius: BorderRadius.circular(14),
+                                boxShadow: ffTheme.shadowAccent,
                               ),
-                              child: Column(
-                                children: [
-                                  Text('בדוק', style: GoogleFonts.rubik(fontSize: 16, fontWeight: FontWeight.w800)),
-                                  Text('עכשיו', style: GoogleFonts.rubik(fontSize: 10, fontWeight: FontWeight.w600)),
-                                ],
+                              child: ElevatedButton(
+                                onPressed: () {
+                                  appState.setCurrentBill('cellular', _billInput.round());
+                                  appState.setCategory('cellular');
+                                  context.goNamed('Home');
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.transparent,
+                                  foregroundColor: Colors.white,
+                                  shadowColor: Colors.transparent,
+                                  padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                  elevation: 0,
+                                ),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text('בדוק', style: GoogleFonts.rubik(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white)),
+                                    Text('עכשיו', style: GoogleFonts.rubik(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.white70)),
+                                  ],
+                                ),
                               ),
                             ),
                           ],
@@ -275,19 +285,20 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
                   if (catSaving > 0 && _activeCat != 'abroad') ...[
                     const SizedBox(height: 10),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
                       decoration: BoxDecoration(
-                        color: ffTheme.secondary,
-                        borderRadius: BorderRadius.circular(10),
+                        color: ffTheme.saving.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(ffTheme.radiusXs),
+                        border: Border.all(color: ffTheme.saving.withValues(alpha: 0.4)),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.lightbulb_outline_rounded, size: 13, color: ffTheme.primaryDark),
-                          const SizedBox(width: 6),
+                          Icon(Icons.savings_outlined, size: 14, color: ffTheme.savingDark),
+                          const SizedBox(width: 7),
                           Text(
                             'לפי החשבון שלך תוכל לחסוך עד ₪$catSaving/שנה',
-                            style: GoogleFonts.rubik(fontSize: 12, fontWeight: FontWeight.w700, color: ffTheme.primaryDark),
+                            style: GoogleFonts.rubik(fontSize: 12, fontWeight: FontWeight.w800, color: ffTheme.savingDark, fontFeatures: const [FontFeature.tabularFigures()]),
                           ),
                         ],
                       ),
@@ -306,7 +317,7 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
                           }
                           context.goNamed('Home');
                         },
-                        child: Text('ראה את כל המסלולים →', style: ffTheme.titleSmall.copyWith(color: ffTheme.primary)),
+                        child: Text('ראה את כל המסלולים →', style: ffTheme.titleSmall.copyWith(color: ffTheme.brandAccent, fontWeight: FontWeight.w700)),
                       ),
                     ),
                 ],
@@ -411,19 +422,28 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
               ),
               child: Column(
                 children: [
-                  Text('מוכנים לחסוך?', style: GoogleFonts.rubik(fontSize: 28, fontWeight: FontWeight.w800, color: Colors.white)),
-                  const SizedBox(height: 8),
-                  Text('השוו את כל המסלולים ומצאו את המתאים לכם — בחינם', style: GoogleFonts.assistant(fontSize: 14, color: Colors.white70)),
-                  const SizedBox(height: 20),
-                  ElevatedButton(
-                    onPressed: () => context.goNamed('Home'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: ffTheme.secondary,
-                      foregroundColor: ffTheme.primaryDark,
-                      padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  Text('מוכנים לחסוך?', style: GoogleFonts.rubik(fontSize: 28, fontWeight: FontWeight.w900, color: Colors.white, letterSpacing: -0.4)),
+                  const SizedBox(height: 10),
+                  Text('השוו את כל המסלולים ומצאו את המתאים לכם — בחינם', style: GoogleFonts.assistant(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.white70, height: 1.45), textAlign: TextAlign.center),
+                  const SizedBox(height: 24),
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: ffTheme.accentGradient,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: ffTheme.shadowAccent,
                     ),
-                    child: Text('בדוק כמה תחסוך עכשיו', style: GoogleFonts.rubik(fontSize: 16, fontWeight: FontWeight.w800)),
+                    child: ElevatedButton(
+                      onPressed: () => context.goNamed('Home'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        foregroundColor: Colors.white,
+                        shadowColor: Colors.transparent,
+                        padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 16),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        elevation: 0,
+                      ),
+                      child: Text('בדוק כמה תחסוך עכשיו', style: GoogleFonts.rubik(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white)),
+                    ),
                   ),
                 ],
               ),
@@ -437,7 +457,7 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
               color: ffTheme.primaryDark,
               child: Column(
                 children: [
-                  Text('חוסך', style: GoogleFonts.rubik(fontSize: 18, fontWeight: FontWeight.w800, color: ffTheme.secondary)),
+                  Text('חוסך', style: GoogleFonts.rubik(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white)),
                   const SizedBox(height: 8),
                   Text('© 2026 חוסך. כל הזכויות שמורות.', style: GoogleFonts.assistant(fontSize: 11, color: Colors.white38)),
                   const SizedBox(height: 4),
@@ -459,11 +479,12 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
     final label = labels[_activeCat] ?? 'בקטגוריה';
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: ffTheme.alternate),
+        borderRadius: BorderRadius.circular(ffTheme.radiusMd),
+        border: Border.all(color: ffTheme.lineColor),
+        boxShadow: ffTheme.shadowSoft,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -472,7 +493,7 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
             children: [
               Text('מה אתם משלמים $label?', style: ffTheme.labelMedium),
               const Spacer(),
-              Text('₪${bill.round()}$kBillUnit', style: ffTheme.titleSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+              Text('₪${bill.round()}$kBillUnit', style: ffTheme.titleSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w800, fontFeatures: const [FontFeature.tabularFigures()])),
             ],
           ),
           Slider(
@@ -501,10 +522,11 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
     return SafeArea(
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
-        height: 64,
+        height: 66,
         decoration: BoxDecoration(
           color: Colors.white,
-          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 12, offset: const Offset(0, -3))],
+          border: Border(top: BorderSide(color: ffTheme.lineColor)),
+          boxShadow: ffTheme.shadowGlass,
         ),
         child: Row(
           children: [
@@ -514,13 +536,14 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('פוטנציאל החיסכון שלך', style: GoogleFonts.assistant(fontSize: 11, color: Colors.grey.shade500)),
+                  Text('פוטנציאל החיסכון שלך', style: GoogleFonts.assistant(fontSize: 11, fontWeight: FontWeight.w600, color: ffTheme.secondaryText)),
+                  const SizedBox(height: 1),
                   AnimatedSwitcher(
                     duration: const Duration(milliseconds: 300),
                     child: Text(
                       key: ValueKey('$saving$cat'),
                       'עד ₪$saving/שנה $catLabel',
-                      style: GoogleFonts.rubik(fontSize: 14, fontWeight: FontWeight.w800, color: ffTheme.primary),
+                      style: GoogleFonts.rubik(fontSize: 15, fontWeight: FontWeight.w900, color: ffTheme.savingDark, fontFeatures: const [FontFeature.tabularFigures()]),
                     ),
                   ),
                 ],
@@ -537,13 +560,14 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
                 context.goNamed('Home');
               },
               child: Container(
-                margin: const EdgeInsetsDirectional.only(start: 16),
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                margin: const EdgeInsetsDirectional.only(start: 16, end: 16),
+                padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 11),
                 decoration: BoxDecoration(
-                  color: ffTheme.secondary,
-                  borderRadius: BorderRadius.circular(12),
+                  gradient: ffTheme.accentGradient,
+                  borderRadius: BorderRadius.circular(ffTheme.radiusSm),
+                  boxShadow: ffTheme.shadowAccent,
                 ),
-                child: Text('בדוק עכשיו', style: GoogleFonts.rubik(fontSize: 13, fontWeight: FontWeight.w800, color: ffTheme.primaryDark)),
+                child: Text('בדוק עכשיו', style: GoogleFonts.rubik(fontSize: 13, fontWeight: FontWeight.w800, color: Colors.white)),
               ),
             ),
           ],
@@ -597,10 +621,11 @@ class _AnimatedStat extends StatelessWidget {
             final display = end >= 1000 ? '${(val / 1000).round()}K' : '$val';
             return Text(
               '$prefix$display$suffix',
-              style: GoogleFonts.rubik(fontSize: 18, fontWeight: FontWeight.w800, color: ffTheme.primary),
+              style: GoogleFonts.rubik(fontSize: 22, fontWeight: FontWeight.w900, color: ffTheme.primary, height: 1, fontFeatures: const [FontFeature.tabularFigures()]),
             );
           },
         ),
+        const SizedBox(height: 4),
         Text(label, style: ffTheme.labelSmall),
       ],
     );
@@ -611,7 +636,7 @@ class _StatDivider extends StatelessWidget {
   const _StatDivider();
 
   @override
-  Widget build(BuildContext context) => Container(width: 1, height: 32, color: const Color(0xFFE5E0D5));
+  Widget build(BuildContext context) => Container(width: 1, height: 32, color: AppColors.lineColor);
 }
 
 class _NumberedStep extends StatelessWidget {
@@ -749,31 +774,38 @@ class _FAQState extends State<_FAQ> {
   @override
   Widget build(BuildContext context) {
     final ffTheme = AppTheme.of(context);
-    return Container(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 180),
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
         color: ffTheme.background,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _open ? ffTheme.primary.withValues(alpha: 0.3) : ffTheme.alternate),
+        borderRadius: BorderRadius.circular(ffTheme.radiusSm),
+        border: Border.all(color: _open ? ffTheme.brandAccent.withValues(alpha: 0.45) : ffTheme.lineColor),
       ),
       child: InkWell(
         onTap: () => setState(() => _open = !_open),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(ffTheme.radiusSm),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
-                  Expanded(child: Text(widget.q, style: ffTheme.titleSmall.copyWith(fontWeight: FontWeight.w600))),
-                  Icon(_open ? Icons.remove_rounded : Icons.add_rounded, size: 20, color: ffTheme.primary),
+                  Expanded(child: Text(widget.q, style: ffTheme.titleSmall.copyWith(fontWeight: FontWeight.w700))),
+                  const SizedBox(width: 12),
+                  Icon(_open ? Icons.remove_rounded : Icons.add_rounded, size: 20, color: _open ? ffTheme.brandAccent : ffTheme.secondaryText),
                 ],
               ),
-              if (_open) ...[
-                const SizedBox(height: 8),
-                Text(widget.a, style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText, height: 1.5)),
-              ],
+              AnimatedCrossFade(
+                duration: const Duration(milliseconds: 200),
+                crossFadeState: _open ? CrossFadeState.showFirst : CrossFadeState.showSecond,
+                firstChild: Padding(
+                  padding: const EdgeInsets.only(top: 10),
+                  child: Text(widget.a, style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText, height: 1.55)),
+                ),
+                secondChild: const SizedBox(width: double.infinity),
+              ),
             ],
           ),
         ),

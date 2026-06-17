@@ -124,7 +124,7 @@ class _OnboardingWidgetState extends State<OnboardingWidget>
                           height: 34,
                           decoration: BoxDecoration(
                             gradient: t.accentGradient,
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(t.radiusXs),
                             boxShadow: t.shadowAccent,
                           ),
                           child: Center(
@@ -228,7 +228,7 @@ class _OnboardingWidgetState extends State<OnboardingWidget>
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
                       color: Colors.white),
-                  borderRadius: BorderRadius.circular(18),
+                  borderRadius: BorderRadius.circular(t.radiusLg),
                 ).animate(key: ValueKey('btn_$_page')).fadeIn(duration: 300.ms),
               ),
             ],
@@ -439,7 +439,7 @@ class _Step2 extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 16),
-                const _BillRow(label: 'סלולר', amount: '₪89', isFirst: true),
+                const _BillRow(label: 'סלולר', amount: '₪89'),
                 const _BillRow(label: 'אינטרנט', amount: '₪149'),
                 const _BillRow(label: 'טלוויזיה', amount: '₪229'),
                 const Divider(height: 20, color: AppColors.lineColor),
@@ -458,7 +458,8 @@ class _Step2 extends StatelessWidget {
                       style: GoogleFonts.rubik(
                           fontSize: 18,
                           fontWeight: FontWeight.w900,
-                          color: AppColors.primaryText),
+                          color: AppColors.primaryText,
+                          fontFeatures: const [FontFeature.tabularFigures()]),
                     ),
                   ],
                 ),
@@ -536,9 +537,9 @@ class _Step3 extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.auto_awesome_rounded,
-                    color: AppColors.savingDark, size: 22),
-                const SizedBox(width: 10),
+                const Icon(Icons.savings_rounded,
+                    color: AppColors.savingDark, size: 24),
+                const SizedBox(width: 12),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -546,15 +547,18 @@ class _Step3 extends StatelessWidget {
                       'בממוצע חוסכים',
                       style: GoogleFonts.assistant(
                           fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.savingDark),
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.savingDark,
+                          height: 1.1),
                     ),
                     Text(
                       '₪1,200 בשנה',
                       style: GoogleFonts.rubik(
                           fontSize: 22,
                           fontWeight: FontWeight.w900,
-                          color: AppColors.savingDark),
+                          color: AppColors.savingDark,
+                          height: 1.1,
+                          fontFeatures: const [FontFeature.tabularFigures()]),
                     ),
                   ],
                 ),
@@ -728,7 +732,8 @@ class _IllustrationStep2 extends StatelessWidget {
                   style: GoogleFonts.rubik(
                       fontSize: 16,
                       fontWeight: FontWeight.w900,
-                      color: AppColors.primaryText),
+                      color: AppColors.primaryText,
+                      fontFeatures: const [FontFeature.tabularFigures()]),
                 ),
                 Text(
                   'לחודש',
@@ -804,7 +809,8 @@ class _IllustrationStep3 extends StatelessWidget {
                 style: GoogleFonts.rubik(
                     fontSize: 11,
                     fontWeight: FontWeight.w800,
-                    color: Colors.white),
+                    color: Colors.white,
+                    fontFeatures: const [FontFeature.tabularFigures()]),
               ),
             ),
           ),
@@ -942,16 +948,14 @@ class _BillRow extends StatelessWidget {
   const _BillRow({
     required this.label,
     required this.amount,
-    this.isFirst = false,
   });
   final String label;
   final String amount;
-  final bool isFirst;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.only(bottom: isFirst ? 10 : 10, top: isFirst ? 0 : 0),
+      padding: const EdgeInsets.only(bottom: 10),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
@@ -967,7 +971,8 @@ class _BillRow extends StatelessWidget {
             style: GoogleFonts.rubik(
                 fontSize: 15,
                 fontWeight: FontWeight.w700,
-                color: AppColors.primaryText),
+                color: AppColors.primaryText,
+                fontFeatures: const [FontFeature.tabularFigures()]),
           ),
         ],
       ),

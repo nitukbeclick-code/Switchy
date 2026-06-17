@@ -329,13 +329,14 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
                     },
                     t: t,
                     onTap: () => context.pushNamed('Provider', pathParameters: {'name': provider}),
-                  ).animate(delay: (i * 60).ms).fadeIn(duration: 350.ms).slideX(begin: 0.05, end: 0);
+                  ).animate(delay: (i * 40).ms).fadeIn(duration: 300.ms).slideX(begin: 0.05, end: 0);
                 }),
 
               // Providers without real reviews yet — listed honestly.
               if (unrated.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                Text('ממתינים לדירוג ראשון', style: t.titleSmall.copyWith(color: t.secondaryText)),
+                const SizedBox(height: 16),
+                Text('ממתינים לדירוג ראשון',
+                    style: t.labelLarge.copyWith(color: t.secondaryText, fontWeight: FontWeight.w700)),
                 const SizedBox(height: 10),
                 ...unrated.map((provider) => GestureDetector(
                       onTap: () => context.pushNamed('Provider', pathParameters: {'name': provider}),
@@ -345,13 +346,17 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
                         decoration: t.glassDecoration(radius: t.radiusMd),
                         child: Row(
                           children: [
-                            LogoWidget(provider: provider, size: 34),
+                            ExcludeSemantics(child: LogoWidget(provider: provider, size: 34)),
                             const SizedBox(width: 10),
                             Expanded(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(provider, style: t.titleSmall, overflow: TextOverflow.ellipsis),
+                                  Text(provider,
+                                      style: t.titleSmall.copyWith(fontWeight: FontWeight.w700),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis),
+                                  const SizedBox(height: 2),
                                   Text('אין עדיין דירוגים', style: t.labelSmall.copyWith(color: t.secondaryText)),
                                 ],
                               ),
@@ -359,8 +364,9 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
                             TextButton(
                               onPressed: () => _editReview(provider),
                               style: TextButton.styleFrom(
-                                foregroundColor: t.primary,
+                                foregroundColor: t.brandAccent,
                                 visualDensity: VisualDensity.compact,
+                                textStyle: t.labelMedium.copyWith(fontWeight: FontWeight.w700),
                               ),
                               child: const Text('דרגו ראשונים'),
                             ),
@@ -416,12 +422,13 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
                             onTap: () => _editReview(e),
                             child: AnimatedContainer(
                               duration: const Duration(milliseconds: 200),
+                              curve: Curves.easeOut,
                               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
                               decoration: BoxDecoration(
-                                color: active ? t.primary : Colors.white,
+                                color: active ? t.brandAccent : Colors.white,
                                 borderRadius: BorderRadius.circular(t.radiusPill),
-                                border: Border.all(color: active ? t.primary : t.alternate),
-                                boxShadow: active ? t.shadowPrimary : null,
+                                border: Border.all(color: active ? t.brandAccent : t.alternate),
+                                boxShadow: active ? t.shadowAccent : null,
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
@@ -459,7 +466,7 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
                     // ── Thumbs up/down sub-ratings ──────────────────────────
                     Text('דירוג מהיר', style: t.labelLarge),
                     const SizedBox(height: 2),
-                    Text('בחרו 👍 או 👎 לכל קטגוריה', style: t.labelSmall.copyWith(color: t.secondaryText)),
+                    Text('סמנו אגודל למעלה או למטה לכל קטגוריה', style: t.labelSmall.copyWith(color: t.secondaryText)),
                     const SizedBox(height: 10),
                     _ThumbSubRatings(
                       thumbs: _thumbRatings,
@@ -498,7 +505,7 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
                                         child: Icon(
                                           filled ? Icons.star_rounded : Icons.star_outline_rounded,
                                           size: 28,
-                                          color: t.warning,
+                                          color: filled ? AppColors.saving : t.alternate,
                                         ),
                                       ),
                                     ),
@@ -509,7 +516,7 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
                               if ((_subRatings[e.key] ?? 0) > 0)
                                 Text(
                                   _ratingLabel(_subRatings[e.key]!),
-                                  style: t.labelSmall.copyWith(color: t.primary, fontWeight: FontWeight.w700),
+                                  style: t.labelSmall.copyWith(color: AppColors.savingDark, fontWeight: FontWeight.w700),
                                 ),
                             ],
                           ),
@@ -536,7 +543,7 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(t.radiusSm),
-                          borderSide: BorderSide(color: t.primary, width: 1.5),
+                          borderSide: BorderSide(color: t.brandAccent, width: 1.5),
                         ),
                         filled: true,
                         fillColor: Colors.white.withValues(alpha: 0.6),
@@ -558,6 +565,7 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
                             style: t.labelSmall.copyWith(
                               color: _reviewCharCount >= 480 ? t.warning : t.secondaryText,
                               fontSize: 10,
+                              fontFeatures: const [FontFeature.tabularFigures()],
                             ),
                           ),
                         ],
@@ -572,30 +580,30 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
                       const SizedBox(height: 12),
                     ],
 
-                    ElevatedButton.icon(
-                      onPressed: () {
-                        final hasRating = _overallStarRating > 0 ||
-                            _subRatings.values.any((v) => v > 0) ||
-                            _thumbRatings.values.any((v) => v != null);
-                        final textOk = _reviewCharCount == 0 || _reviewCharCount >= 20;
-                        if (_selectedProvider != null && hasRating && textOk) {
-                          _submitReview(appState);
-                        }
-                      },
-                      icon: const Icon(Icons.send_rounded, size: 18),
-                      label: Text(_selectedProvider != null && appState.hasReviewedProvider(_selectedProvider!)
-                          ? 'עדכון ביקורת'
-                          : 'שליחת ביקורת'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: t.primary,
-                        foregroundColor: Colors.white,
-                        disabledBackgroundColor: t.alternate,
-                        elevation: 0,
-                        minimumSize: const Size(double.infinity, 50),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(t.radiusMd)),
-                        textStyle: GoogleFonts.rubik(fontSize: 15, fontWeight: FontWeight.w700),
-                      ),
-                    ),
+                    Builder(builder: (context) {
+                      final hasRating = _overallStarRating > 0 ||
+                          _subRatings.values.any((v) => v > 0) ||
+                          _thumbRatings.values.any((v) => v != null);
+                      final textOk = _reviewCharCount == 0 || _reviewCharCount >= 20;
+                      final canSubmit = _selectedProvider != null && hasRating && textOk;
+                      return ElevatedButton.icon(
+                        onPressed: canSubmit ? () => _submitReview(appState) : null,
+                        icon: const Icon(Icons.send_rounded, size: 18),
+                        label: Text(_selectedProvider != null && appState.hasReviewedProvider(_selectedProvider!)
+                            ? 'עדכון ביקורת'
+                            : 'שליחת ביקורת'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: t.brandAccent,
+                          foregroundColor: Colors.white,
+                          disabledBackgroundColor: t.brandAccent.withValues(alpha: 0.4),
+                          disabledForegroundColor: Colors.white.withValues(alpha: 0.7),
+                          elevation: 0,
+                          minimumSize: const Size(double.infinity, 50),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(t.radiusMd)),
+                          textStyle: GoogleFonts.rubik(fontSize: 15, fontWeight: FontWeight.w700),
+                        ),
+                      );
+                    }),
                   ],
                 ),
               ).animate().fadeIn(delay: 300.ms),
@@ -619,7 +627,11 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                             decoration: BoxDecoration(color: t.accent1, borderRadius: BorderRadius.circular(t.radiusPill)),
                             child: Text('${appState.userReviews.length}',
-                                style: t.labelSmall.copyWith(color: t.primary, fontWeight: FontWeight.w800)),
+                                style: t.labelSmall.copyWith(
+                                  color: t.primary,
+                                  fontWeight: FontWeight.w800,
+                                  fontFeatures: const [FontFeature.tabularFigures()],
+                                )),
                           ),
                         ],
                       ),
@@ -667,7 +679,11 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                             decoration: BoxDecoration(color: t.accent1, borderRadius: BorderRadius.circular(t.radiusPill)),
                             child: Text('${_remoteReviews.values.fold(0, (s, l) => s + l.length)}',
-                                style: t.labelSmall.copyWith(color: t.primary, fontWeight: FontWeight.w800)),
+                                style: t.labelSmall.copyWith(
+                                  color: t.primary,
+                                  fontWeight: FontWeight.w800,
+                                  fontFeatures: const [FontFeature.tabularFigures()],
+                                )),
                           ),
                         ],
                       ),
@@ -686,14 +702,21 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
                                       _StarRow(value: r.overall.toDouble(), size: 12, t: t),
                                       const SizedBox(width: 4),
                                       Text(r.overall.toString(),
-                                          style: t.labelSmall.copyWith(fontWeight: FontWeight.w700, color: t.primary)),
+                                          style: t.labelSmall.copyWith(
+                                            fontWeight: FontWeight.w700,
+                                            color: AppColors.savingDark,
+                                            fontFeatures: const [FontFeature.tabularFigures()],
+                                          )),
                                     ],
                                   ),
                                   if (r.text.isNotEmpty) ...[
-                                    const SizedBox(height: 3),
-                                    Text(r.text, style: t.bodySmall, maxLines: 2, overflow: TextOverflow.ellipsis),
+                                    const SizedBox(height: 4),
+                                    Text(r.text,
+                                        style: t.bodySmall.copyWith(height: 1.4),
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis),
                                   ],
-                                  const Divider(height: 14),
+                                  const Divider(height: 16),
                                 ],
                               ),
                             ));
@@ -739,13 +762,17 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.emoji_events_rounded, color: t.secondary, size: 18),
+                const Icon(Icons.emoji_events_rounded, color: AppColors.saving, size: 18),
                 const SizedBox(width: 6),
                 Text('המדורגים הגבוה ביותר',
-                    style: t.titleSmall.copyWith(color: t.secondary, fontWeight: FontWeight.w700)),
+                    style: t.labelLarge.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.2,
+                    )),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 18),
             Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               mainAxisAlignment: MainAxisAlignment.center,
@@ -805,7 +832,10 @@ class _LeaderboardCard extends StatelessWidget {
           margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.all(14),
           decoration: t.glassDecoration().copyWith(
-                border: Border.all(color: isTop ? t.secondary : Colors.white.withValues(alpha: 0.55), width: isTop ? 2 : 1),
+                border: Border.all(
+                  color: isTop ? AppColors.saving : Colors.white.withValues(alpha: 0.55),
+                  width: isTop ? 1.5 : 1,
+                ),
               ),
           child: Column(
             children: [
@@ -816,7 +846,7 @@ class _LeaderboardCard extends StatelessWidget {
                     height: 30,
                     decoration: BoxDecoration(
                       color: isTop
-                          ? t.secondary
+                          ? AppColors.saving
                           : rank == 1
                               ? t.accent2
                               : rank == 2
@@ -826,7 +856,12 @@ class _LeaderboardCard extends StatelessWidget {
                     ),
                     child: Center(
                       child: Text('${rank + 1}',
-                          style: GoogleFonts.rubik(fontSize: 13, fontWeight: FontWeight.w800, color: t.primaryDark)),
+                          style: GoogleFonts.rubik(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                            color: t.primaryDark,
+                            fontFeatures: const [FontFeature.tabularFigures()],
+                          )),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -836,12 +871,20 @@ class _LeaderboardCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(provider, style: t.titleSmall, overflow: TextOverflow.ellipsis),
+                        Text(provider, style: t.titleSmall.copyWith(fontWeight: FontWeight.w700), maxLines: 1, overflow: TextOverflow.ellipsis),
+                        const SizedBox(height: 2),
                         Row(
                           children: [
                             _StarRow(value: avg, size: 13, t: t),
                             const SizedBox(width: 4),
-                            Text(avg.toStringAsFixed(1), style: t.labelSmall.copyWith(fontWeight: FontWeight.w700)),
+                            Text(
+                              avg.toStringAsFixed(1),
+                              style: t.labelSmall.copyWith(
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.savingDark,
+                                fontFeatures: const [FontFeature.tabularFigures()],
+                              ),
+                            ),
                           ],
                         ),
                       ],
@@ -850,8 +893,15 @@ class _LeaderboardCard extends StatelessWidget {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Text('$totalReviews', style: t.titleSmall.copyWith(color: t.primary)),
-                      Text(totalReviews == 1 ? 'ביקורת' : 'ביקורות', style: t.labelSmall),
+                      Text(
+                        '$totalReviews',
+                        style: t.titleSmall.copyWith(
+                          color: t.primary,
+                          fontWeight: FontWeight.w700,
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                        ),
+                      ),
+                      Text(totalReviews == 1 ? 'ביקורת' : 'ביקורות', style: t.labelSmall.copyWith(color: t.secondaryText)),
                     ],
                   ),
                   const SizedBox(width: 6),
@@ -937,7 +987,7 @@ class _MyReviewRow extends StatelessWidget {
                 icon: const Icon(Icons.edit_rounded, size: 15),
                 label: const Text('ערוך'),
                 style: TextButton.styleFrom(
-                  foregroundColor: t.primary,
+                  foregroundColor: t.brandAccent,
                   visualDensity: VisualDensity.compact,
                   padding: const EdgeInsets.symmetric(horizontal: 8),
                   textStyle: t.labelSmall.copyWith(fontWeight: FontWeight.w700),
@@ -955,14 +1005,18 @@ class _MyReviewRow extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(color: t.accent1, borderRadius: BorderRadius.circular(t.radiusPill)),
                         child: Text('${ProviderRatings.subLabels[e.key]} ${e.value}',
-                            style: t.labelSmall.copyWith(color: t.primary, fontWeight: FontWeight.w700)),
+                            style: t.labelSmall.copyWith(
+                              color: t.primary,
+                              fontWeight: FontWeight.w700,
+                              fontFeatures: const [FontFeature.tabularFigures()],
+                            )),
                       ))
                   .toList(),
             ),
           ],
           if (text.isNotEmpty) ...[
             const SizedBox(height: 6),
-            Text(text, style: t.bodySmall, maxLines: 3, overflow: TextOverflow.ellipsis),
+            Text(text, style: t.bodySmall.copyWith(height: 1.4), maxLines: 3, overflow: TextOverflow.ellipsis),
           ],
           if (showDivider) const Divider(height: 20),
         ],
@@ -989,7 +1043,7 @@ class _StarRow extends StatelessWidget {
               : j < value
                   ? Icons.star_half_rounded
                   : Icons.star_outline_rounded;
-          return Icon(icon, size: size, color: t.warning);
+          return Icon(icon, size: size, color: AppColors.saving);
         }),
       ),
     );
@@ -1013,11 +1067,12 @@ class _SortChip extends StatelessWidget {
         onTap: onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
+          curve: Curves.easeOut,
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
           decoration: BoxDecoration(
-            color: active ? t.primary : Colors.white,
+            color: active ? t.brandAccent : Colors.white,
             borderRadius: BorderRadius.circular(t.radiusPill),
-            border: Border.all(color: active ? t.primary : t.alternate),
+            border: Border.all(color: active ? t.brandAccent : t.alternate),
           ),
           child: Text(label, style: t.labelSmall.copyWith(
             color: active ? Colors.white : t.secondaryText,
@@ -1065,7 +1120,12 @@ class _PodiumItem extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(avg.toStringAsFixed(1),
-                style: GoogleFonts.rubik(fontSize: 12, fontWeight: FontWeight.w800, color: Colors.white)),
+                style: GoogleFonts.rubik(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                )),
             const SizedBox(height: 4),
             Container(
               width: 80,
@@ -1113,7 +1173,13 @@ class _SubBar extends StatelessWidget {
           ),
         ),
         const SizedBox(width: 8),
-        Text((value * 5).toStringAsFixed(1), style: t.labelSmall.copyWith(fontWeight: FontWeight.w700)),
+        Text(
+          (value * 5).toStringAsFixed(1),
+          style: t.labelSmall.copyWith(
+            fontWeight: FontWeight.w700,
+            fontFeatures: const [FontFeature.tabularFigures()],
+          ),
+        ),
       ],
     );
   }

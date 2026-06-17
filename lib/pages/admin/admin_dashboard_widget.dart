@@ -136,7 +136,11 @@ class _MetricsGrid extends StatelessWidget {
       children: [
         Text(
           'מדדים מרכזיים',
-          style: theme.titleMedium.copyWith(color: Colors.white70),
+          style: theme.labelMedium.copyWith(
+            color: Colors.white54,
+            fontWeight: FontWeight.w700,
+            letterSpacing: 0.3,
+          ),
         ),
         const SizedBox(height: 12),
         GridView.builder(
@@ -213,6 +217,7 @@ class _MetricCard extends StatelessWidget {
                   color: AppColors.brandAccent,
                   fontSize: 32,
                   fontWeight: FontWeight.w900,
+                  fontFeatures: const [FontFeature.tabularFigures()],
                 ),
               ),
             ],
@@ -284,7 +289,11 @@ class _LeadPipeline extends StatelessWidget {
                 ),
                 child: Text(
                   'שלב ${currentStep + 1}/5',
-                  style: theme.labelSmall.copyWith(color: AppColors.brandAccent),
+                  style: theme.labelSmall.copyWith(
+                    color: AppColors.brandAccent,
+                    fontWeight: FontWeight.w700,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
                 ),
               ),
             ],
@@ -468,6 +477,7 @@ class _SavingsOpportunity extends StatelessWidget {
                     style: theme.headlineSmall.copyWith(
                       color: AppColors.saving,
                       fontWeight: FontWeight.w900,
+                      fontFeatures: const [FontFeature.tabularFigures()],
                     ),
                   ),
                   Text(
@@ -480,15 +490,10 @@ class _SavingsOpportunity extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           if (opportunities.isEmpty)
-            Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                child: Text(
-                  'הכנס חשבונות נוכחיים כדי לראות הזדמנויות',
-                  style: theme.bodySmall.copyWith(color: Colors.white38),
-                  textAlign: TextAlign.center,
-                ),
-              ),
+            _DashEmpty(
+              icon: Icons.savings_outlined,
+              text: 'הכנס חשבונות נוכחיים כדי לראות הזדמנויות',
+              theme: theme,
             )
           else
             ...List.generate(opportunities.length, (i) {
@@ -581,6 +586,7 @@ class _SavingRow extends StatelessWidget {
                 color: AppColors.saving,
                 fontWeight: FontWeight.w700,
                 fontSize: 10,
+                fontFeatures: const [FontFeature.tabularFigures()],
               ),
               textAlign: TextAlign.end,
             ),
@@ -642,21 +648,20 @@ class _MostWatchedPlans extends StatelessWidget {
                 ),
                 child: Text(
                   '${plans.length} מסלולים',
-                  style: theme.labelSmall.copyWith(color: Colors.white54),
+                  style: theme.labelSmall.copyWith(
+                    color: Colors.white54,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 16),
           if (plans.isEmpty)
-            Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                child: Text(
-                  'אין מסלולים עקובים עדיין',
-                  style: theme.bodySmall.copyWith(color: Colors.white38),
-                ),
-              ),
+            _DashEmpty(
+              icon: Icons.visibility_off_rounded,
+              text: 'אין מסלולים עקובים עדיין',
+              theme: theme,
             )
           else
             ...List.generate(plans.length, (i) {
@@ -811,6 +816,7 @@ class _WatchedPlanRow extends StatelessWidget {
                   color: Colors.white.withValues(alpha: 0.87),
                   fontSize: 12,
                   fontWeight: FontWeight.w700,
+                  fontFeatures: const [FontFeature.tabularFigures()],
                 ),
               ),
               const SizedBox(height: 2),
@@ -907,14 +913,10 @@ class _RecentActivityFeed extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           if (activities.isEmpty)
-            Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                child: Text(
-                  'אין פעילות אחרונה',
-                  style: theme.bodySmall.copyWith(color: Colors.white38),
-                ),
-              ),
+            _DashEmpty(
+              icon: Icons.history_toggle_off_rounded,
+              text: 'אין פעילות אחרונה',
+              theme: theme,
             )
           else
             ...List.generate(activities.length, (i) {
@@ -1062,6 +1064,47 @@ extension _StringX on String {
   String take(int n) => length <= n ? this : '${substring(0, n)}…';
 }
 
+// ── Dark-surface empty state ──────────────────────────────────────────────────
+// A quiet, consistent in-card empty placeholder for the dashboard's dark cards:
+// a dimmed icon chip over a one-line hint, centred. Replaces the bare grey text
+// that each section used to repeat ad hoc.
+class _DashEmpty extends StatelessWidget {
+  const _DashEmpty({required this.icon, required this.text, required this.theme});
+  final IconData icon;
+  final String text;
+  final AppTheme theme;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.05),
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+              ),
+              child: Icon(icon, color: Colors.white30, size: 20),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              text,
+              style: theme.bodySmall.copyWith(color: Colors.white38),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 // ── Section 6 — Price manager (admin price editing) ───────────────────────────
 // Edit a plan's price → appBackend.updatePlanPrice → (Supabase: the plan_prices
 // trigger logs it to the ledger; Local: in-memory override) → re-hydrate the
@@ -1205,7 +1248,11 @@ class _PriceManagerState extends State<_PriceManager> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(color: Colors.white10, borderRadius: BorderRadius.circular(t.radiusPill)),
-                  child: Text('${allPlans.length} מסלולים', style: t.labelSmall.copyWith(color: Colors.white54)),
+                  child: Text('${allPlans.length} מסלולים',
+                      style: t.labelSmall.copyWith(
+                        color: Colors.white54,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      )),
                 ),
             ],
           ),
@@ -1228,15 +1275,16 @@ class _PriceManagerState extends State<_PriceManager> {
           ),
           const SizedBox(height: 12),
           if (_query.trim().isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 10),
-              child: Text('הקלידו שם מסלול או ספק כדי לערוך מחיר',
-                  style: t.bodySmall.copyWith(color: Colors.white38)),
+            _DashEmpty(
+              icon: Icons.tune_rounded,
+              text: 'הקלידו שם מסלול או ספק כדי לערוך מחיר',
+              theme: t,
             )
           else if (matches.isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 10),
-              child: Text('לא נמצאו מסלולים תואמים', style: t.bodySmall.copyWith(color: Colors.white38)),
+            _DashEmpty(
+              icon: Icons.search_off_rounded,
+              text: 'לא נמצאו מסלולים תואמים',
+              theme: t,
             )
           else
             ...matches.map((p) => _priceRow(p, t)),
@@ -1269,7 +1317,11 @@ class _PriceManagerState extends State<_PriceManager> {
                 ),
               ),
               Text('₪${p.priceText}',
-                  style: t.titleSmall.copyWith(color: AppColors.saving, fontWeight: FontWeight.w800)),
+                  style: t.titleSmall.copyWith(
+                    color: AppColors.saving,
+                    fontWeight: FontWeight.w800,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  )),
               const SizedBox(width: 8),
               const Icon(Icons.edit_rounded, color: Colors.white38, size: 18),
             ],

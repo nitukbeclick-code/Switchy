@@ -192,16 +192,20 @@ class _AuthWidgetState extends State<AuthWidget> {
                   width: 44,
                   height: 44,
                   decoration: BoxDecoration(color: t.secondary, borderRadius: BorderRadius.circular(t.radiusSm)),
-                  child: Center(child: Text('₪', style: t.headlineSmall.copyWith(color: t.primaryDark))),
+                  child: Center(
+                    child: ExcludeSemantics(
+                      child: Text('₪', style: t.headlineSmall.copyWith(color: t.primaryDark)),
+                    ),
+                  ),
                 ),
                 const SizedBox(width: 12),
-                Text('חוסך', style: t.headlineMedium.copyWith(color: Colors.white)),
+                Text('חוסך', style: t.titleLarge.copyWith(color: Colors.white, fontWeight: FontWeight.w800)),
               ],
             ),
-            const SizedBox(height: 14),
-            Text(title, style: t.headlineMedium.copyWith(color: Colors.white)),
-            const SizedBox(height: 6),
-            Text(sub, style: t.bodyMedium.copyWith(color: Colors.white.withValues(alpha: 0.85))),
+            const SizedBox(height: 24),
+            Text(title, style: t.headlineMedium.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 8),
+            Text(sub, style: t.bodyMedium.copyWith(color: Colors.white.withValues(alpha: 0.82), height: 1.4)),
           ],
         ),
       ),
@@ -273,7 +277,7 @@ class _AuthWidgetState extends State<AuthWidget> {
                 TextSpan(
                   text: link,
                   style: t.bodySmall.copyWith(
-                      color: t.primary, fontWeight: FontWeight.w700, decoration: TextDecoration.underline),
+                      color: t.brandAccent, fontWeight: FontWeight.w700, decoration: TextDecoration.underline),
                 ),
               ]
             : null,
@@ -287,7 +291,7 @@ class _AuthWidgetState extends State<AuthWidget> {
           child: Checkbox(
             value: value,
             onChanged: onChanged,
-            activeColor: t.primary,
+            activeColor: t.brandAccent,
             visualDensity: VisualDensity.compact,
             materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
           ),
@@ -316,10 +320,10 @@ class _AuthWidgetState extends State<AuthWidget> {
             fg: Colors.white,
             onTap: _busy ? null : _faceIdLogin,
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
         ],
         _consentPanel(t),
-        const SizedBox(height: 14),
+        const SizedBox(height: 16),
         _SocialButton(
           label: 'המשך עם Google',
           glyph: 'G',
@@ -337,26 +341,26 @@ class _AuthWidgetState extends State<AuthWidget> {
           fg: Colors.white,
           onTap: _busy ? null : () => _oauth(OAuthProvider.facebook),
         ),
-        const SizedBox(height: 18),
+        const SizedBox(height: 24),
         Row(children: [
           Expanded(child: Divider(color: t.alternate)),
-          Padding(padding: const EdgeInsets.symmetric(horizontal: 12), child: Text('או', style: t.labelMedium)),
+          Padding(padding: const EdgeInsets.symmetric(horizontal: 12), child: Text('או', style: t.labelMedium.copyWith(color: t.secondaryText))),
           Expanded(child: Divider(color: t.alternate)),
         ]),
-        const SizedBox(height: 18),
+        const SizedBox(height: 24),
         AppButton(
           text: 'הרשמה עם מייל',
           color: t.primary,
           onPressed: () async => setState(() => _mode = _Mode.signup),
           width: double.infinity,
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 8),
         TextButton(
           onPressed: () => setState(() => _mode = _Mode.login),
           child: Text.rich(TextSpan(
             text: 'כבר רשומים? ',
             style: t.bodyMedium.copyWith(color: t.secondaryText),
-            children: [TextSpan(text: 'התחברו', style: t.bodyMedium.copyWith(color: t.primary, fontWeight: FontWeight.w700))],
+            children: [TextSpan(text: 'התחברו', style: t.bodyMedium.copyWith(color: t.brandAccent, fontWeight: FontWeight.w700))],
           )),
         ),
       ],
@@ -407,7 +411,7 @@ class _AuthWidgetState extends State<AuthWidget> {
               alignment: AlignmentDirectional.centerStart,
               child: TextButton(
                 onPressed: _busy ? null : _forgotPassword,
-                child: Text('שכחתי סיסמה', style: t.labelMedium.copyWith(color: t.primary)),
+                child: Text('שכחתי סיסמה', style: t.labelMedium.copyWith(color: t.brandAccent, fontWeight: FontWeight.w600)),
               ),
             ),
           ],
@@ -451,7 +455,7 @@ class _AuthWidgetState extends State<AuthWidget> {
             onPressed: () => setState(() => _mode = isSignup ? _Mode.login : _Mode.signup),
             child: Text(
               isSignup ? 'כבר רשומים? התחברו' : 'אין לכם חשבון? הרשמו',
-              style: t.bodyMedium.copyWith(color: t.primary, fontWeight: FontWeight.w700),
+              style: t.bodyMedium.copyWith(color: t.brandAccent, fontWeight: FontWeight.w700),
             ),
           ),
         ],
@@ -503,7 +507,7 @@ class _AuthWidgetState extends State<AuthWidget> {
         enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(t.radiusMd), borderSide: BorderSide(color: t.alternate)),
         focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(t.radiusMd), borderSide: BorderSide(color: t.primary, width: 1.5)),
+            borderRadius: BorderRadius.circular(t.radiusMd), borderSide: BorderSide(color: t.brandAccent, width: 1.5)),
       ),
     );
   }
@@ -535,29 +539,33 @@ class _SocialButton extends StatelessWidget {
     final t = AppTheme.of(context);
     return Semantics(
       button: true,
+      enabled: onTap != null,
       label: label,
-      child: Material(
-        color: bg,
-        borderRadius: BorderRadius.circular(t.radiusMd),
-        child: InkWell(
-          onTap: onTap,
+      child: Opacity(
+        opacity: onTap == null ? 0.4 : 1,
+        child: Material(
+          color: bg,
           borderRadius: BorderRadius.circular(t.radiusMd),
-          child: Container(
-            height: 52,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(t.radiusMd),
-              border: bordered ? Border.all(color: t.alternate) : null,
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                if (icon != null)
-                  Icon(icon, color: fg, size: 22)
-                else if (glyph != null)
-                  Text(glyph!, style: t.titleMedium.copyWith(color: glyphColor ?? fg, fontWeight: FontWeight.w800)),
-                const SizedBox(width: 10),
-                Text(label, style: t.titleSmall.copyWith(color: fg)),
-              ],
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(t.radiusMd),
+            child: Container(
+              height: 52,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(t.radiusMd),
+                border: bordered ? Border.all(color: t.alternate) : null,
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (icon != null)
+                    Icon(icon, color: fg, size: 22)
+                  else if (glyph != null)
+                    Text(glyph!, style: t.titleMedium.copyWith(color: glyphColor ?? fg, fontWeight: FontWeight.w800)),
+                  const SizedBox(width: 10),
+                  Text(label, style: t.titleSmall.copyWith(color: fg, fontWeight: FontWeight.w600)),
+                ],
+              ),
             ),
           ),
         ),

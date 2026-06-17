@@ -175,10 +175,21 @@ class _SuccessWidgetState extends State<SuccessWidget> {
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
                             Text('₪${plan.priceText}/${priceUnitShort(plan)}',
-                                style: GoogleFonts.rubik(fontSize: 16, fontWeight: FontWeight.w800, color: ffTheme.secondary)),
-                            if (save > 0)
+                                style: GoogleFonts.rubik(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.white,
+                                  fontFeatures: const [FontFeature.tabularFigures()],
+                                )),
+                            if (save > 0) ...[
+                              const SizedBox(height: 2),
                               Text('חוסך ₪$save/שנה',
-                                  style: ffTheme.labelSmall.copyWith(color: ffTheme.secondary.withValues(alpha: 0.85))),
+                                  style: ffTheme.labelSmall.copyWith(
+                                    color: ffTheme.saving,
+                                    fontWeight: FontWeight.w700,
+                                    fontFeatures: const [FontFeature.tabularFigures()],
+                                  )),
+                            ],
                           ],
                         ),
                       ],

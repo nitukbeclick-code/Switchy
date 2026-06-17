@@ -40,6 +40,7 @@ class SkeletonPostCard extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.circular(t.radiusLg),
         border: Border.all(color: t.alternate.withValues(alpha: 0.4)),
+        boxShadow: t.shadowSoft,
       ),
       child: Shimmer.fromColors(
         baseColor: const Color(0xFFE9EDF0),

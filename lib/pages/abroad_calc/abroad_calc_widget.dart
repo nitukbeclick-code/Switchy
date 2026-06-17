@@ -191,21 +191,33 @@ class _AbroadCalcWidgetState extends State<AbroadCalcWidget> {
           // Section heading
           Text(
             'תוכניות מומלצות',
-            style: theme.headlineSmall,
+            style: theme.headlineSmall.copyWith(fontWeight: FontWeight.w700),
           ).animate().fadeIn(duration: 280.ms, delay: 80.ms),
           const SizedBox(height: 4),
           Text(
             'ממוינות לפי עלות כוללת לטיול — מהזולה לביותר',
-            style: theme.bodySmall,
+            style: theme.bodySmall.copyWith(color: theme.secondaryText),
           ).animate().fadeIn(duration: 280.ms, delay: 120.ms),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
 
           // SECTION 2 — PLAN CARDS
           if (ranked.isEmpty)
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 40),
+              padding: const EdgeInsets.symmetric(vertical: 48),
               child: Center(
-                child: Text('לא נמצאו תוכניות', style: theme.bodyMedium.copyWith(color: theme.secondaryText)),
+                child: Column(
+                  children: [
+                    Icon(Icons.travel_explore_rounded, size: 40, color: theme.secondaryText),
+                    const SizedBox(height: 12),
+                    Text('לא נמצאו תוכניות', style: theme.titleSmall),
+                    const SizedBox(height: 4),
+                    Text(
+                      'נסו לשנות את מספר הימים או רמת השימוש',
+                      style: theme.bodySmall.copyWith(color: theme.secondaryText),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
               ),
             )
           else
@@ -328,7 +340,10 @@ class _InputCard extends StatelessWidget {
                 ),
                 child: Text(
                   '${days.round()} ימים',
-                  style: theme.titleSmall.copyWith(color: AppColors.brandAccent),
+                  style: theme.titleSmall.copyWith(
+                    color: AppColors.brandAccent,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
                 ),
               ),
             ],
@@ -419,23 +434,28 @@ class _InputCard extends StatelessWidget {
 
           // ── Total data needed ─────────────────────────────────────────────
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.04),
+              color: AppColors.accent1,
               borderRadius: BorderRadius.circular(theme.radiusSm),
-              border: Border.all(color: AppColors.alternate.withValues(alpha: 0.18)),
+              border: Border.all(color: theme.lineColor),
             ),
             child: Row(
               children: [
-                const Icon(Icons.data_usage_rounded, size: 18, color: AppColors.sage),
+                Icon(Icons.data_usage_rounded, size: 18, color: theme.secondaryText),
                 const SizedBox(width: 8),
                 Text(
-                  'סה"כ צריך: ',
+                  'סה"כ צריך',
                   style: theme.bodyMedium.copyWith(color: theme.secondaryText),
                 ),
+                const Spacer(),
                 Text(
                   totalNeededLabel,
-                  style: theme.titleSmall.copyWith(color: AppColors.brandAccent),
+                  style: theme.titleSmall.copyWith(
+                    color: AppColors.brandAccent,
+                    fontWeight: FontWeight.w700,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
                 ),
               ],
             ),
@@ -590,7 +610,7 @@ class _PlanCard extends StatelessWidget {
                 // Plan title
                 Text(
                   plan.plan,
-                  style: theme.titleMedium,
+                  style: theme.titleMedium.copyWith(fontWeight: FontWeight.w700),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -606,12 +626,18 @@ class _PlanCard extends StatelessWidget {
                       children: [
                         Text(
                           '₪${_formatPrice(totalCost)} לטיול',
-                          style: theme.headlineSmall.copyWith(color: AppColors.brandAccent),
+                          style: theme.headlineSmall.copyWith(
+                            color: AppColors.brandAccent,
+                            fontWeight: FontWeight.w800,
+                            fontFeatures: const [FontFeature.tabularFigures()],
+                          ),
                         ),
                         const SizedBox(height: 2),
                         Text(
                           pricingNote,
-                          style: theme.bodySmall,
+                          style: theme.bodySmall.copyWith(
+                            fontFeatures: const [FontFeature.tabularFigures()],
+                          ),
                         ),
                       ],
                     ),
@@ -621,7 +647,10 @@ class _PlanCard extends StatelessWidget {
                       children: [
                         Text(
                           '₪${_formatPrice(perDay)}',
-                          style: theme.titleLarge.copyWith(color: theme.primaryText),
+                          style: theme.titleLarge.copyWith(
+                            color: theme.primaryText,
+                            fontFeatures: const [FontFeature.tabularFigures()],
+                          ),
                         ),
                         Text('ליום', style: theme.labelSmall),
                       ],
@@ -637,11 +666,11 @@ class _PlanCard extends StatelessWidget {
                   );
                   if (dataFeat.isEmpty) return const SizedBox.shrink();
                   return Padding(
-                    padding: const EdgeInsets.only(top: 8),
+                    padding: const EdgeInsets.only(top: 10),
                     child: Row(
                       children: [
-                        const Icon(Icons.wifi_rounded, size: 14, color: AppColors.sage),
-                        const SizedBox(width: 4),
+                        Icon(Icons.wifi_rounded, size: 14, color: theme.secondaryText),
+                        const SizedBox(width: 6),
                         Expanded(
                           child: Text(dataFeat, style: theme.bodySmall),
                         ),

@@ -56,9 +56,10 @@ class StatPill extends StatelessWidget {
             style: ffTheme.labelSmall.copyWith(
               color: fg,
               fontWeight: FontWeight.w800,
+              fontFeatures: const [FontFeature.tabularFigures()],
             ),
           ),
-          const SizedBox(width: 3),
+          const SizedBox(width: 4),
           Text(
             label,
             style: ffTheme.labelSmall.copyWith(

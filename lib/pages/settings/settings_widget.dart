@@ -206,10 +206,17 @@ class SettingsWidget extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
                           color: ffTheme.accent1,
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(ffTheme.radiusXs),
                           border: Border.all(color: ffTheme.alternate),
                         ),
-                        child: Text('1.0.0', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+                        child: Text(
+                          '1.0.0',
+                          style: ffTheme.labelSmall.copyWith(
+                            color: ffTheme.primary,
+                            fontWeight: FontWeight.w700,
+                            fontFeatures: const [FontFeature.tabularFigures()],
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -235,10 +242,19 @@ class SettingsWidget extends StatelessWidget {
             const SizedBox(height: 24),
 
             // ── Logout button (logged-in only) ────────────────────────────
+            // Destructive but demoted: white fill + red hairline + red label so
+            // danger reads in the colour, without claiming the screen's primary
+            // indigo CTA slot.
             if (appState.isLoggedIn)
               AppButton(
                 text: 'התנתקות',
-                color: ffTheme.error,
+                color: Colors.white,
+                borderSide: BorderSide(color: ffTheme.error.withValues(alpha: 0.5)),
+                textStyle: ffTheme.labelLarge.copyWith(
+                  color: ffTheme.error,
+                  fontWeight: FontWeight.w700,
+                ),
+                icon: Icon(Icons.logout_rounded, size: 18, color: ffTheme.error),
                 width: double.infinity,
                 onPressed: () async {
                   final confirmed = await showDialog<bool>(
@@ -411,8 +427,15 @@ class _SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Text(title, style: ffTheme.titleMedium.copyWith(color: ffTheme.primaryText)),
+      padding: const EdgeInsetsDirectional.only(start: 4, bottom: 12),
+      child: Text(
+        title,
+        style: ffTheme.labelMedium.copyWith(
+          color: ffTheme.secondaryText,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.3,
+        ),
+      ),
     );
   }
 }
@@ -429,9 +452,9 @@ class _Card extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 4),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(ffTheme.radiusLg),
         border: Border.all(color: ffTheme.alternate),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10)],
+        boxShadow: ffTheme.shadowGlass,
       ),
       child: child,
     );
@@ -704,6 +727,7 @@ class _PriceAlertTuningCard extends StatelessWidget {
                   style: ffTheme.titleSmall.copyWith(
                     color: ffTheme.saving,
                     fontWeight: FontWeight.w800,
+                    fontFeatures: const [FontFeature.tabularFigures()],
                   ),
                 ),
               ],
@@ -836,6 +860,7 @@ class _RenewalReminderCard extends StatelessWidget {
                   style: ffTheme.titleSmall.copyWith(
                     color: ffTheme.primary,
                     fontWeight: FontWeight.w800,
+                    fontFeatures: const [FontFeature.tabularFigures()],
                   ),
                 ),
               ],
@@ -893,6 +918,7 @@ class _RenewalReminderCard extends StatelessWidget {
                         style: ffTheme.titleSmall.copyWith(
                           color: ffTheme.brandAccent,
                           fontWeight: FontWeight.w800,
+                          fontFeatures: const [FontFeature.tabularFigures()],
                         ),
                       ),
                     ),

@@ -50,9 +50,10 @@ class EmptyState extends StatelessWidget {
               decoration: BoxDecoration(
                 color: ffTheme.mint,
                 shape: BoxShape.circle,
-                boxShadow: ffTheme.shadowSoft,
+                border: Border.all(color: ffTheme.alternate.withValues(alpha: 0.08)),
+                boxShadow: ffTheme.shadowGlass,
               ),
-              child: Icon(icon, size: 48, color: ffTheme.tertiary),
+              child: Icon(icon, size: 44, color: ffTheme.tertiary),
             ),
             const SizedBox(height: 24),
             Text(
@@ -61,10 +62,18 @@ class EmptyState extends StatelessWidget {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 8),
-            Text(
-              subtitle,
-              style: ffTheme.bodyMedium.copyWith(color: ffTheme.secondaryText),
-              textAlign: TextAlign.center,
+            // Constrain the measure so the supporting copy reads in calm,
+            // 2–3 word lines rather than stretching the full page width.
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 280),
+              child: Text(
+                subtitle,
+                style: ffTheme.bodyMedium.copyWith(
+                  color: ffTheme.secondaryText,
+                  height: 1.45,
+                ),
+                textAlign: TextAlign.center,
+              ),
             ),
             if (ctaLabel != null && onCtaTap != null) ...[
               const SizedBox(height: 32),

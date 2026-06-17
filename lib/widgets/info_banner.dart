@@ -50,11 +50,22 @@ class InfoBanner extends StatelessWidget {
     final bg = backgroundColor ?? ffTheme.accent1;
     final accent = accentColor ?? ffTheme.primary;
 
+    // The leading mark sits in a soft tinted badge so it reads as a deliberate
+    // anchor (one accent moment per banner) rather than a floating glyph.
     Widget leading;
     if (emoji != null) {
       leading = Text(emoji!, style: const TextStyle(fontSize: 18));
     } else {
-      leading = Icon(icon ?? Icons.info_outline_rounded, color: accent, size: 18);
+      leading = Container(
+        width: 30,
+        height: 30,
+        decoration: BoxDecoration(
+          color: accent.withValues(alpha: 0.10),
+          borderRadius: BorderRadius.circular(ffTheme.radiusXs),
+        ),
+        alignment: Alignment.center,
+        child: Icon(icon ?? Icons.info_outline_rounded, color: accent, size: 18),
+      );
     }
 
     return Container(
@@ -84,11 +95,12 @@ class InfoBanner extends StatelessWidget {
                   ),
                 ),
                 if (subtitle != null) ...[
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 3),
                   Text(
                     subtitle!,
                     style: ffTheme.labelSmall.copyWith(
                       color: accent.withValues(alpha: 0.75),
+                      height: 1.35,
                     ),
                   ),
                 ],

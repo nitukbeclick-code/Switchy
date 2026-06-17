@@ -82,13 +82,16 @@ class AnnualRecapWidget extends StatelessWidget {
                     ],
                   ).animate().fadeIn(delay: 120.ms, duration: 400.ms),
                   if (opportunities.isNotEmpty) ...[
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 28),
                     Text('פוטנציאל החיסכון שלכם',
-                        style: ffTheme.titleMedium.copyWith(fontWeight: FontWeight.w800)),
+                        style: ffTheme.titleLarge.copyWith(fontWeight: FontWeight.w800)),
                     const SizedBox(height: 4),
                     Text('₪$potential נוספים בשנה אם תעברו למסלולים שמצאנו',
-                        style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText)),
-                    const SizedBox(height: 12),
+                        style: ffTheme.bodySmall.copyWith(
+                            color: ffTheme.secondaryText,
+                            height: 1.4,
+                            fontFeatures: const [FontFeature.tabularFigures()])),
+                    const SizedBox(height: 14),
                     ...List.generate(opportunities.length, (i) {
                       final cs = opportunities[i];
                       final cat = categoryById(cs.categoryId);
@@ -101,19 +104,27 @@ class AnnualRecapWidget extends StatelessWidget {
                     }),
                   ],
                   const SizedBox(height: 28),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton.icon(
-                      style: FilledButton.styleFrom(
-                        backgroundColor: ffTheme.primary,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: ffTheme.accentGradient,
+                      borderRadius: BorderRadius.circular(ffTheme.radiusMd),
+                      boxShadow: ffTheme.shadowAccent,
+                    ),
+                    child: SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: Colors.transparent,
+                          foregroundColor: Colors.white,
+                          shadowColor: Colors.transparent,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(ffTheme.radiusMd)),
+                        ),
+                        onPressed: () => _share(saved, potential),
+                        icon: const Icon(Icons.ios_share_rounded, size: 20),
+                        label: Text('שיתוף הסיכום',
+                            style: ffTheme.titleSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
                       ),
-                      onPressed: () => _share(saved, potential),
-                      icon: const Icon(Icons.ios_share_rounded, size: 20),
-                      label: Text('שיתוף הסיכום',
-                          style: ffTheme.titleSmall.copyWith(color: Colors.white)),
                     ),
                   ).animate().fadeIn(delay: 240.ms),
                   const SizedBox(height: 16),
@@ -143,33 +154,35 @@ class _HeroCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: ffTheme.primary,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: ffTheme.shadowSoft,
+        gradient: ffTheme.brandGradient,
+        borderRadius: BorderRadius.circular(ffTheme.radiusLg),
+        boxShadow: ffTheme.shadowLifted,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('חסכת עם חוסך',
               style: ffTheme.labelMedium.copyWith(color: Colors.white.withValues(alpha: 0.8))),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           Row(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text('₪$saved',
                   style: ffTheme.displayLarge.copyWith(
-                      color: ffTheme.saving, fontWeight: FontWeight.w900)),
-              const SizedBox(width: 6),
+                      color: ffTheme.saving,
+                      fontWeight: FontWeight.w900,
+                      fontFeatures: const [FontFeature.tabularFigures()])),
+              const SizedBox(width: 8),
               Padding(
-                padding: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.only(bottom: 10),
                 child: Text('בשנה',
                     style: ffTheme.titleSmall.copyWith(color: Colors.white.withValues(alpha: 0.85))),
               ),
             ],
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           Text('כל הכבוד — זה מה שצברת עד עכשיו 🎉',
-              style: ffTheme.bodyMedium.copyWith(color: Colors.white.withValues(alpha: 0.85))),
+              style: ffTheme.bodyMedium.copyWith(color: Colors.white.withValues(alpha: 0.85), height: 1.4)),
         ],
       ),
     );
@@ -194,15 +207,20 @@ class _StatTile extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: ffTheme.alternate),
+        borderRadius: BorderRadius.circular(ffTheme.radiusMd),
+        border: Border.all(color: ffTheme.lineColor),
+        boxShadow: ffTheme.shadowSoft,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(icon, size: 22, color: ffTheme.primary),
-          const SizedBox(height: 10),
-          Text(value, style: ffTheme.headlineSmall.copyWith(fontWeight: FontWeight.w800)),
+          const SizedBox(height: 12),
+          Text(value,
+              style: ffTheme.headlineSmall.copyWith(
+                  fontWeight: FontWeight.w900,
+                  fontFeatures: const [FontFeature.tabularFigures()])),
+          const SizedBox(height: 2),
           Text(label, style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText)),
         ],
       ),
@@ -229,18 +247,25 @@ class _OpportunityRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: ffTheme.alternate),
+        borderRadius: BorderRadius.circular(ffTheme.radiusMd),
+        border: Border.all(color: ffTheme.lineColor),
+        boxShadow: ffTheme.shadowSoft,
       ),
       child: Row(
         children: [
           Text(icon, style: const TextStyle(fontSize: 22)),
           const SizedBox(width: 12),
-          Expanded(child: Text(name, style: ffTheme.titleSmall)),
+          Expanded(child: Text(name, style: ffTheme.titleSmall.copyWith(fontWeight: FontWeight.w700))),
           Text('₪$annualSaving',
-              style: ffTheme.titleSmall.copyWith(color: ffTheme.saving, fontWeight: FontWeight.w800)),
+              style: ffTheme.titleMedium.copyWith(
+                  color: ffTheme.savingDark,
+                  fontWeight: FontWeight.w900,
+                  fontFeatures: const [FontFeature.tabularFigures()])),
           const SizedBox(width: 4),
-          Text('בשנה', style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText)),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 1),
+            child: Text('בשנה', style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText)),
+          ),
         ],
       ),
     );

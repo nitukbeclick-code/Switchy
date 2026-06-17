@@ -38,20 +38,44 @@ class SectionHeader extends StatelessWidget {
       children: [
         if (emoji != null) ...[
           Text(emoji!, style: const TextStyle(fontSize: 18)),
-          const SizedBox(width: 6),
+          const SizedBox(width: 8),
         ] else if (icon != null) ...[
           icon!,
-          const SizedBox(width: 6),
+          const SizedBox(width: 8),
         ],
-        Expanded(child: Text(title, style: ffTheme.titleLarge)),
+        Expanded(
+          child: Text(
+            title,
+            style: ffTheme.titleLarge,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
         if (trailingLabel != null)
-          GestureDetector(
-            onTap: onTrailingTap,
-            child: Text(
-              trailingLabel!,
-              style: ffTheme.labelMedium.copyWith(
-                color: ffTheme.primary,
-                fontWeight: FontWeight.w700,
+          // A real touch target + ripple around the link; the trailing action
+          // carries the indigo ACTION accent and a directional chevron so it
+          // reads as "see more" rather than plain text.
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: onTrailingTap,
+              borderRadius: BorderRadius.circular(ffTheme.radiusSm),
+              child: Padding(
+                padding: const EdgeInsetsDirectional.only(start: 8, top: 4, bottom: 4),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      trailingLabel!,
+                      style: ffTheme.labelMedium.copyWith(
+                        color: ffTheme.brandAccent,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    Icon(Icons.chevron_left_rounded,
+                        size: 16, color: ffTheme.brandAccent),
+                  ],
+                ),
               ),
             ),
           ),

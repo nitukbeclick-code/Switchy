@@ -19,6 +19,9 @@ import '../../widgets/empty_state.dart';
 /// recent searches plus an honest browse-by-category surface built from the
 /// REAL catalogue (categories + the genuinely cheapest plan in each) — never
 /// invented popularity numbers.
+///
+/// Filter row below the search bar lets users narrow by category, provider,
+/// and budget — all state is local to this widget; no AppState mutations.
 class SearchWidget extends StatefulWidget {
   const SearchWidget({super.key});
 
@@ -26,10 +29,37 @@ class SearchWidget extends StatefulWidget {
   State<SearchWidget> createState() => _SearchWidgetState();
 }
 
+// ── Category filter definition ──────────────────────────────────────────────
+
+class _CatChip {
+  const _CatChip({required this.id, required this.label});
+  final String? id; // null means "הכל"
+  final String label;
+}
+
+const List<_CatChip> _catChips = [
+  _CatChip(id: null, label: 'הכל'),
+  _CatChip(id: 'cellular', label: 'סלולר'),
+  _CatChip(id: 'internet', label: 'אינטרנט'),
+  _CatChip(id: 'tv', label: 'טלוויזיה'),
+  _CatChip(id: 'triple', label: 'חבילה'),
+  _CatChip(id: 'abroad', label: 'חו"ל'),
+];
+
+const double _maxBudget = 500;
+const int _maxProviderChips = 5;
+
 class _SearchWidgetState extends State<SearchWidget> {
   final _ctrl = TextEditingController();
   final _focus = FocusNode();
   String _q = '';
+
+  // ── Filter state ───────────────────────────────────────────────────────────
+  String? _categoryFilter; // null = הכל
+  String? _providerFilter; // null = all providers
+  bool _budgetOpen = false; // slider expanded?
+  double _maxPrice = _maxBudget; // ₪0–₪500
+  bool _showAllProviders = false; // expand "עוד" provider list
 
   @override
   void dispose() {
@@ -54,16 +84,46 @@ class _SearchWidgetState extends State<SearchWidget> {
     }
   }
 
+  // How many active filter dimensions are engaged (for the badge counter).
+  int get _activeFilterCount {
+    var n = 0;
+    if (_categoryFilter != null) n++;
+    if (_providerFilter != null) n++;
+    if (_budgetOpen && _maxPrice < _maxBudget) n++;
+    return n;
+  }
+
+  void _clearAllFilters() {
+    setState(() {
+      _categoryFilter = null;
+      _providerFilter = null;
+      _maxPrice = _maxBudget;
+      _budgetOpen = false;
+      _showAllProviders = false;
+    });
+  }
+
+  // ── Build ──────────────────────────────────────────────────────────────────
+
   @override
   Widget build(BuildContext context) {
     final ffTheme = AppTheme.of(context);
     final appState = Provider.of<AppState>(context);
-    final results = searchEverything(_q);
+
+    final maxPrice = (_budgetOpen && _maxPrice < _maxBudget) ? _maxPrice : null;
+    final results = searchEverything(
+      _q,
+      categoryFilter: _categoryFilter,
+      providerFilter: _providerFilter,
+      maxPrice: maxPrice,
+    );
+
+    final hasFilters = _activeFilterCount > 0;
 
     return Scaffold(
       backgroundColor: ffTheme.background,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: ffTheme.secondaryBackground,
         elevation: 0,
         titleSpacing: 0,
         leading: IconButton(
@@ -112,7 +172,7 @@ class _SearchWidgetState extends State<SearchWidget> {
                       _focus.requestFocus();
                     },
                     child: Padding(
-                      padding: const EdgeInsets.only(right: 2, left: 2),
+                      padding: const EdgeInsetsDirectional.only(end: 2, start: 2),
                       child: Icon(Icons.close_rounded, size: 18, color: ffTheme.secondaryText),
                     ),
                   ),
@@ -120,31 +180,396 @@ class _SearchWidgetState extends State<SearchWidget> {
             ],
           ),
         ),
+        // Filter icon (with badge) at the end of the AppBar
+        actions: [
+          Padding(
+            padding: const EdgeInsetsDirectional.only(start: 8, end: 4),
+            child: Semantics(
+              button: true,
+              label: hasFilters ? 'מסנן פעיל, $_activeFilterCount מסננים' : 'מסנן',
+              child: GestureDetector(
+                onTap: hasFilters ? _clearAllFilters : null,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Icon(
+                      hasFilters ? Icons.filter_alt_rounded : Icons.filter_alt_outlined,
+                      color: hasFilters ? ffTheme.brandAccent : ffTheme.secondaryText,
+                      size: 26,
+                    ),
+                    if (hasFilters)
+                      Positioned(
+                        top: -4,
+                        left: -4,
+                        child: Container(
+                          width: 16,
+                          height: 16,
+                          decoration: BoxDecoration(
+                            color: ffTheme.brandAccent,
+                            shape: BoxShape.circle,
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            '$_activeFilterCount',
+                            style: GoogleFonts.assistant(
+                              fontSize: 9,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                              height: 1,
+                              fontFeatures: const [FontFeature.tabularFigures()],
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
           child: Container(height: 1, color: ffTheme.alternate),
         ),
       ),
-      body: _q.trim().isEmpty
-          ? _Suggestions(
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // ── Filter panel (always visible in search mode) ─────────────────
+          _FilterPanel(
+            ffTheme: ffTheme,
+            selectedCategory: _categoryFilter,
+            onCategoryChanged: (id) => setState(() {
+              _categoryFilter = id;
+              _providerFilter = null; // reset provider when category changes
+              _showAllProviders = false;
+            }),
+            budgetOpen: _budgetOpen,
+            maxPrice: _maxPrice,
+            onToggleBudget: () => setState(() => _budgetOpen = !_budgetOpen),
+            onBudgetChanged: (v) => setState(() => _maxPrice = v),
+            activeFilterCount: _activeFilterCount,
+          ),
+
+          // ── Provider chips (only when there are plan results and query active)
+          if (_q.trim().isNotEmpty && results.plans.isNotEmpty)
+            _ProviderFilterRow(
               ffTheme: ffTheme,
-              onPick: _useSuggestion,
-              recent: appState.recentSearches,
-              onClearRecent: appState.clearRecentSearches,
-            )
-          : results.isEmpty
-              ? const EmptyState(
-                  icon: Icons.search_off_rounded,
-                  headline: 'לא נמצאו תוצאות',
-                  subtitle: 'נסו שם ספק, מסלול או תכונה אחרת',
-                )
-              : _ResultsList(
-                  results: results,
-                  query: _q,
-                  ffTheme: ffTheme,
-                  appState: appState,
-                  onBeforeNavigate: _remember,
+              plans: results.plans,
+              selectedProvider: _providerFilter,
+              showAll: _showAllProviders,
+              onProviderChanged: (name) => setState(() => _providerFilter = name),
+              onShowAll: () => setState(() => _showAllProviders = true),
+            ),
+
+          // ── Body ──────────────────────────────────────────────────────────
+          Expanded(
+            child: _q.trim().isEmpty
+                ? _Suggestions(
+                    ffTheme: ffTheme,
+                    onPick: _useSuggestion,
+                    recent: appState.recentSearches,
+                    onClearRecent: appState.clearRecentSearches,
+                  )
+                : (results.isEmpty
+                    ? const EmptyState(
+                        icon: Icons.search_off_rounded,
+                        headline: 'לא נמצאו תוצאות לסינון זה',
+                        subtitle: 'נסו לשנות את המסנן או לחפש שם אחר',
+                      )
+                    : _ResultsList(
+                        results: results,
+                        query: _q,
+                        ffTheme: ffTheme,
+                        appState: appState,
+                        onBeforeNavigate: _remember,
+                      )),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Filter panel — category chips + budget slider ────────────────────────────
+
+class _FilterPanel extends StatelessWidget {
+  const _FilterPanel({
+    required this.ffTheme,
+    required this.selectedCategory,
+    required this.onCategoryChanged,
+    required this.budgetOpen,
+    required this.maxPrice,
+    required this.onToggleBudget,
+    required this.onBudgetChanged,
+    required this.activeFilterCount,
+  });
+
+  final AppTheme ffTheme;
+  final String? selectedCategory;
+  final void Function(String?) onCategoryChanged;
+  final bool budgetOpen;
+  final double maxPrice;
+  final VoidCallback onToggleBudget;
+  final void Function(double) onBudgetChanged;
+  final int activeFilterCount;
+
+  @override
+  Widget build(BuildContext context) {
+    final budgetActive = budgetOpen && maxPrice < _maxBudget;
+    return Container(
+      color: ffTheme.secondaryBackground,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // ── Category chips row ─────────────────────────────────────────
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
+            child: Row(
+              children: [
+                // Budget toggle chip (sits at the start)
+                Padding(
+                  padding: const EdgeInsetsDirectional.only(start: 8),
+                  child: _FilterChip(
+                    label: budgetOpen
+                        ? (budgetActive ? 'תקציב: עד ₪${maxPrice.round()}' : 'תקציב')
+                        : 'תקציב',
+                    icon: Icons.tune_rounded,
+                    selected: budgetOpen,
+                    ffTheme: ffTheme,
+                    onTap: onToggleBudget,
+                  ),
                 ),
+                // Category chips
+                ..._catChips.map((c) => Padding(
+                      padding: const EdgeInsetsDirectional.only(start: 8),
+                      child: _FilterChip(
+                        label: c.label,
+                        selected: selectedCategory == c.id,
+                        ffTheme: ffTheme,
+                        onTap: () => onCategoryChanged(c.id),
+                      ),
+                    )),
+              ],
+            ),
+          ),
+          // ── Budget slider (collapsible) ────────────────────────────────
+          if (budgetOpen)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 2, 16, 10),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.savings_outlined, size: 14, color: ffTheme.brandAccent),
+                      const SizedBox(width: 6),
+                      Text(
+                        maxPrice >= _maxBudget
+                            ? 'כל התקציבים'
+                            : 'עד ₪${maxPrice.round()} לחודש',
+                        style: ffTheme.labelSmall.copyWith(
+                          color: maxPrice < _maxBudget
+                              ? ffTheme.brandAccent
+                              : ffTheme.secondaryText,
+                          fontWeight: FontWeight.w700,
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                        ),
+                      ),
+                    ],
+                  ),
+                  SliderTheme(
+                    data: SliderThemeData(
+                      activeTrackColor: ffTheme.brandAccent,
+                      inactiveTrackColor: ffTheme.brandAccentTint,
+                      thumbColor: ffTheme.brandAccent,
+                      overlayColor: ffTheme.brandAccent.withValues(alpha: 0.12),
+                      trackHeight: 3,
+                      thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 7),
+                    ),
+                    child: Slider(
+                      value: maxPrice,
+                      min: 0,
+                      max: _maxBudget,
+                      divisions: 50,
+                      onChanged: onBudgetChanged,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          Container(height: 1, color: ffTheme.lineColor),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Reusable filter chip ─────────────────────────────────────────────────────
+
+class _FilterChip extends StatelessWidget {
+  const _FilterChip({
+    required this.label,
+    required this.selected,
+    required this.ffTheme,
+    required this.onTap,
+    this.icon,
+  });
+
+  final String label;
+  final bool selected;
+  final AppTheme ffTheme;
+  final VoidCallback onTap;
+  final IconData? icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: label,
+      selected: selected,
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: selected ? ffTheme.brandAccent : ffTheme.accent2,
+            borderRadius: BorderRadius.circular(ffTheme.radiusPill),
+            border: Border.all(
+              color: selected ? ffTheme.brandAccent : ffTheme.lineColor,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (icon != null) ...[
+                Icon(
+                  icon,
+                  size: 13,
+                  color: selected ? Colors.white : ffTheme.secondaryText,
+                ),
+                const SizedBox(width: 4),
+              ],
+              Text(
+                label,
+                style: GoogleFonts.assistant(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  color: selected ? Colors.white : ffTheme.primaryText,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Provider filter chips row ────────────────────────────────────────────────
+
+class _ProviderFilterRow extends StatelessWidget {
+  const _ProviderFilterRow({
+    required this.ffTheme,
+    required this.plans,
+    required this.selectedProvider,
+    required this.showAll,
+    required this.onProviderChanged,
+    required this.onShowAll,
+  });
+
+  final AppTheme ffTheme;
+  final List<Plan> plans;
+  final String? selectedProvider;
+  final bool showAll;
+  final void Function(String?) onProviderChanged;
+  final VoidCallback onShowAll;
+
+  /// Unique provider names, ordered by how many matching plans they have.
+  List<String> get _providers {
+    final counts = <String, int>{};
+    for (final p in plans) {
+      counts[p.provider] = (counts[p.provider] ?? 0) + 1;
+    }
+    final sorted = counts.keys.toList()
+      ..sort((a, b) => counts[b]!.compareTo(counts[a]!));
+    return sorted;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final providers = _providers;
+    final hasMore = providers.length > _maxProviderChips && !showAll;
+    final visible = showAll ? providers : providers.take(_maxProviderChips).toList();
+
+    return Container(
+      color: ffTheme.secondaryBackground,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.fromLTRB(12, 6, 12, 8),
+            child: Row(
+              children: [
+                // "כל הספקים" chip
+                Padding(
+                  padding: const EdgeInsetsDirectional.only(start: 8),
+                  child: _FilterChip(
+                    label: 'כל הספקים',
+                    selected: selectedProvider == null,
+                    ffTheme: ffTheme,
+                    onTap: () => onProviderChanged(null),
+                  ),
+                ),
+                ...visible.map((name) => Padding(
+                      padding: const EdgeInsetsDirectional.only(start: 8),
+                      child: _FilterChip(
+                        label: name,
+                        selected: selectedProvider == name,
+                        ffTheme: ffTheme,
+                        onTap: () => onProviderChanged(
+                          selectedProvider == name ? null : name,
+                        ),
+                      ),
+                    )),
+                if (hasMore)
+                  Padding(
+                    padding: const EdgeInsetsDirectional.only(start: 8),
+                    child: Semantics(
+                      button: true,
+                      label: 'הצג עוד ספקים',
+                      child: GestureDetector(
+                        onTap: onShowAll,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: ffTheme.brandAccentTint,
+                            borderRadius: BorderRadius.circular(ffTheme.radiusPill),
+                            border: Border.all(color: ffTheme.brandAccent.withValues(alpha: 0.3)),
+                          ),
+                          child: Text(
+                            'עוד +${providers.length - _maxProviderChips}',
+                            style: GoogleFonts.assistant(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: ffTheme.brandAccent,
+                              fontFeatures: const [FontFeature.tabularFigures()],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          Container(height: 1, color: ffTheme.lineColor),
+        ],
+      ),
     );
   }
 }
@@ -191,7 +616,7 @@ class _ResultsList extends StatelessWidget {
                   app.setCategory(c.id);
                   context.pushNamed('Results');
                 },
-              ).animate(delay: (i.clamp(0, 5) * 30).ms).fadeIn(duration: 220.ms);
+              ).animate(delay: (i * 60).ms).fadeIn(duration: 220.ms).slideY(begin: 0.08);
               i++;
               return widget;
             }).toList(),
@@ -220,7 +645,7 @@ class _ResultsList extends StatelessWidget {
                     onBeforeNavigate();
                     context.pushNamed('Provider', pathParameters: {'name': name});
                   },
-                ).animate(delay: (i.clamp(0, 5) * 30).ms).fadeIn(duration: 220.ms);
+                ).animate(delay: (i * 60).ms).fadeIn(duration: 220.ms).slideY(begin: 0.08);
                 i++;
                 return widget;
               },
@@ -239,7 +664,7 @@ class _ResultsList extends StatelessWidget {
               query: query,
               currentBill: appState.currentBill(p.cat),
               ffTheme: ffTheme,
-            ).animate(delay: (i.clamp(0, 6) * 25).ms).fadeIn(duration: 220.ms);
+            ).animate(delay: (i * 60).ms).fadeIn(duration: 220.ms).slideY(begin: 0.08);
             i++;
             return widget;
           }),
@@ -270,7 +695,10 @@ class _SectionLabel extends StatelessWidget {
             borderRadius: BorderRadius.circular(ffTheme.radiusPill),
           ),
           child: Text('$count',
-              style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+              style: ffTheme.labelSmall.copyWith(
+                  color: ffTheme.primary,
+                  fontWeight: FontWeight.w700,
+                  fontFeatures: const [FontFeature.tabularFigures()])),
         ),
       ],
     );
@@ -315,7 +743,7 @@ class _Highlighted extends StatelessWidget {
     final low = text.toLowerCase();
     final hlStyle = base.copyWith(
       fontWeight: FontWeight.w800,
-      color: AppColors.primary,
+      color: AppTheme.of(context).primaryText,
       backgroundColor: highlight,
     );
 
@@ -401,7 +829,7 @@ class _HighlightedPlanCard extends StatelessWidget {
         ),
         if (feature != null)
           Padding(
-            padding: const EdgeInsets.only(bottom: 12, right: 4, left: 4),
+            padding: const EdgeInsetsDirectional.only(bottom: 12, end: 4, start: 4),
             child: Row(
               children: [
                 Icon(Icons.check_circle_outline_rounded, size: 14, color: ffTheme.tertiary),
@@ -443,7 +871,7 @@ class _CategoryResultChip extends StatelessWidget {
     return Semantics(
       button: true,
       label: 'קטגוריה ${hit.name}',
-      child: GestureDetector(
+      child: _PressScale(
         onTap: onTap,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -455,14 +883,18 @@ class _CategoryResultChip extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text(hit.icon, style: const TextStyle(fontSize: 16)),
+              Icon(categoryIconData(hit.id), size: 16, color: ffTheme.primary),
               const SizedBox(width: 8),
-              _Highlighted(
-                text: hit.name,
-                query: query,
-                base: GoogleFonts.assistant(
-                    fontSize: 14, fontWeight: FontWeight.w700, color: ffTheme.primary),
-                highlight: ffTheme.secondary.withValues(alpha: 0.4),
+              Flexible(
+                child: _Highlighted(
+                  text: hit.name,
+                  query: query,
+                  base: GoogleFonts.assistant(
+                      fontSize: 14, fontWeight: FontWeight.w700, color: ffTheme.primary),
+                  highlight: ffTheme.secondary.withValues(alpha: 0.4),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
               const SizedBox(width: 6),
               Icon(Icons.chevron_left_rounded, size: 18, color: ffTheme.primary),
@@ -495,7 +927,7 @@ class _ProviderChip extends StatelessWidget {
     return Semantics(
       button: true,
       label: 'ספק $name, $planCount מסלולים',
-      child: GestureDetector(
+      child: _PressScale(
         onTap: onTap,
         child: Container(
           width: 116,
@@ -505,17 +937,22 @@ class _ProviderChip extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               ExcludeSemantics(child: LogoWidget(provider: name, size: 38)),
-              const SizedBox(height: 6),
+              const SizedBox(height: 8),
               _Highlighted(
                 text: name,
                 query: query,
-                base: ffTheme.labelSmall.copyWith(fontWeight: FontWeight.w700),
+                base: ffTheme.labelSmall
+                    .copyWith(fontSize: 12.5, fontWeight: FontWeight.w800, height: 1.1),
                 highlight: ffTheme.secondary.withValues(alpha: 0.4),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
+              const SizedBox(height: 1),
               Text('$planCount מסלולים',
-                  style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText, fontSize: 10)),
+                  style: ffTheme.labelSmall.copyWith(
+                      color: ffTheme.secondaryText,
+                      fontSize: 10,
+                      fontFeatures: const [FontFeature.tabularFigures()])),
             ],
           ),
         ),
@@ -714,7 +1151,7 @@ class _CheapestRow extends StatelessWidget {
     return Semantics(
       button: true,
       label: '$catName: ${plan.provider}, ${plan.plan}, ₪${plan.priceText} ${priceUnitShort(plan)}',
-      child: GestureDetector(
+      child: _PressScale(
         onTap: () {
           Provider.of<AppState>(context, listen: false).viewPlan(plan.id);
           context.push('/plan/${plan.id}');
@@ -763,8 +1200,11 @@ class _CheapestRow extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text('₪${plan.priceText}',
-                      style: ffTheme.titleMedium
-                          .copyWith(color: ffTheme.primary, fontWeight: FontWeight.w800)),
+                      style: ffTheme.titleMedium.copyWith(
+                          color: ffTheme.primary,
+                          fontWeight: FontWeight.w800,
+                          height: 1.1,
+                          fontFeatures: const [FontFeature.tabularFigures()])),
                   Text(priceUnitShort(plan),
                       style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText, fontSize: 10)),
                 ],
@@ -772,6 +1212,40 @@ class _CheapestRow extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+// ── Press-feedback wrapper (visual only — keeps onTap + Semantics intact) ─────
+
+/// Wraps a tappable surface with a subtle 0.97 scale-down on press, so glass
+/// cards acknowledge touch. Replaces a bare [GestureDetector]; [onTap] fires on
+/// release exactly as before.
+class _PressScale extends StatefulWidget {
+  const _PressScale({required this.onTap, required this.child});
+  final VoidCallback onTap;
+  final Widget child;
+
+  @override
+  State<_PressScale> createState() => _PressScaleState();
+}
+
+class _PressScaleState extends State<_PressScale> {
+  bool _down = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: widget.onTap,
+      onTapDown: (_) => setState(() => _down = true),
+      onTapUp: (_) => setState(() => _down = false),
+      onTapCancel: () => setState(() => _down = false),
+      child: AnimatedScale(
+        scale: _down ? 0.97 : 1,
+        duration: const Duration(milliseconds: 120),
+        curve: Curves.easeOut,
+        child: widget.child,
       ),
     );
   }

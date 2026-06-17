@@ -9,6 +9,7 @@ import '../../app_state.dart';
 import '../../services/auth_service.dart';
 import '../../services/telegram_service.dart';
 import '../../widgets/app_button.dart';
+import '../../widgets/info_banner.dart';
 
 class SettingsWidget extends StatelessWidget {
   const SettingsWidget({super.key});
@@ -37,6 +38,12 @@ class SettingsWidget extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 8),
+
+            // ── Section 0: Theme mode ─────────────────────────────────────
+            _SectionHeader(title: 'ערכת נושא', ffTheme: ffTheme),
+            _ThemeModeCard(ffTheme: ffTheme).animate().fadeIn(duration: 350.ms),
+
+            const SizedBox(height: 24),
 
             // ── Section 1: Notifications ──────────────────────────────────
             _SectionHeader(title: 'התראות', ffTheme: ffTheme),
@@ -75,6 +82,22 @@ class SettingsWidget extends StatelessWidget {
                 ],
               ),
             ).animate().fadeIn(duration: 350.ms),
+
+            const SizedBox(height: 24),
+
+            // ── Section 1b: Price-alert tuning ────────────────────────────
+            _SectionHeader(title: 'כוונון התראות מחיר', ffTheme: ffTheme),
+            _PriceAlertTuningCard(ffTheme: ffTheme)
+                .animate()
+                .fadeIn(delay: 60.ms, duration: 350.ms),
+
+            const SizedBox(height: 24),
+
+            // ── Section 1c: Renewal reminders ─────────────────────────────
+            _SectionHeader(title: 'תזכורות חידוש', ffTheme: ffTheme),
+            _RenewalReminderCard(ffTheme: ffTheme)
+                .animate()
+                .fadeIn(delay: 80.ms, duration: 350.ms),
 
             const SizedBox(height: 24),
 
@@ -183,10 +206,17 @@ class SettingsWidget extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
                           color: ffTheme.accent1,
-                          borderRadius: BorderRadius.circular(8),
+                          borderRadius: BorderRadius.circular(ffTheme.radiusXs),
                           border: Border.all(color: ffTheme.alternate),
                         ),
-                        child: Text('1.0.0', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+                        child: Text(
+                          '1.0.0',
+                          style: ffTheme.labelSmall.copyWith(
+                            color: ffTheme.primary,
+                            fontWeight: FontWeight.w700,
+                            fontFeatures: const [FontFeature.tabularFigures()],
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -212,10 +242,19 @@ class SettingsWidget extends StatelessWidget {
             const SizedBox(height: 24),
 
             // ── Logout button (logged-in only) ────────────────────────────
+            // Destructive but demoted: white fill + red hairline + red label so
+            // danger reads in the colour, without claiming the screen's primary
+            // indigo CTA slot.
             if (appState.isLoggedIn)
               AppButton(
                 text: 'התנתקות',
-                color: ffTheme.error,
+                color: ffTheme.secondaryBackground,
+                borderSide: BorderSide(color: ffTheme.error.withValues(alpha: 0.5)),
+                textStyle: ffTheme.labelLarge.copyWith(
+                  color: ffTheme.error,
+                  fontWeight: FontWeight.w700,
+                ),
+                icon: Icon(Icons.logout_rounded, size: 18, color: ffTheme.error),
                 width: double.infinity,
                 onPressed: () async {
                   final confirmed = await showDialog<bool>(
@@ -388,8 +427,15 @@ class _SectionHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Text(title, style: ffTheme.titleMedium.copyWith(color: ffTheme.primaryText)),
+      padding: const EdgeInsetsDirectional.only(start: 4, bottom: 12),
+      child: Text(
+        title,
+        style: ffTheme.labelMedium.copyWith(
+          color: ffTheme.secondaryText,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.3,
+        ),
+      ),
     );
   }
 }
@@ -405,10 +451,10 @@ class _Card extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        color: ffTheme.secondaryBackground,
+        borderRadius: BorderRadius.circular(ffTheme.radiusLg),
         border: Border.all(color: ffTheme.alternate),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10)],
+        boxShadow: ffTheme.shadowGlass,
       ),
       child: child,
     );
@@ -445,33 +491,36 @@ class _ToggleRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(
-        children: [
-          Container(
-            width: 38,
-            height: 38,
-            decoration: BoxDecoration(
-              color: ffTheme.accent1,
-              borderRadius: BorderRadius.circular(10),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 44),
+        child: Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: ffTheme.accent1,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: ffTheme.primary, size: 20),
             ),
-            child: Icon(icon, color: ffTheme.primary, size: 20),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: ffTheme.titleSmall),
-                Text(subtitle, style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText)),
-              ],
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: ffTheme.titleSmall),
+                  Text(subtitle, style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText)),
+                ],
+              ),
             ),
-          ),
-          Switch(
-            value: value,
-            onChanged: onChanged,
-            activeThumbColor: ffTheme.primary,
-          ),
-        ],
+            Switch(
+              value: value,
+              onChanged: onChanged,
+              activeThumbColor: ffTheme.primary,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -529,6 +578,366 @@ class _ActionRow extends StatelessWidget {
   }
 }
 
+// ── Theme Mode Selector ────────────────────────────────────────────────────────
+class _ThemeModeCard extends StatelessWidget {
+  const _ThemeModeCard({required this.ffTheme});
+  final AppTheme ffTheme;
+
+  @override
+  Widget build(BuildContext context) {
+    final appState = Provider.of<AppState>(context);
+    final current = appState.themeMode;
+
+    final options = [
+      (ThemeMode.dark, 'כהה', Icons.dark_mode_rounded),
+      (ThemeMode.light, 'בהיר', Icons.light_mode_rounded),
+      (ThemeMode.system, 'אוטומטי', Icons.brightness_auto_rounded),
+    ];
+
+    return _Card(
+      ffTheme: ffTheme,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: ffTheme.brandAccentTint,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(Icons.dark_mode_rounded, color: ffTheme.brandAccent, size: 20),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Row(
+                children: options.map((opt) {
+                  final (mode, label, icon) = opt;
+                  final isActive = current == mode;
+                  return Expanded(
+                    child: Semantics(
+                      button: true,
+                      selected: isActive,
+                      label: label,
+                      child: GestureDetector(
+                        onTap: () =>
+                            Provider.of<AppState>(context, listen: false).setThemeMode(mode),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 180),
+                          margin: const EdgeInsets.symmetric(horizontal: 3),
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          constraints: const BoxConstraints(minHeight: 44),
+                          decoration: BoxDecoration(
+                            color: isActive
+                                ? ffTheme.brandAccent
+                                : ffTheme.accent1,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: isActive
+                                  ? ffTheme.brandAccent
+                                  : ffTheme.alternate.withValues(alpha: 0.4),
+                            ),
+                          ),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                icon,
+                                size: 18,
+                                color: isActive ? Colors.white : ffTheme.secondaryText,
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                label,
+                                style: ffTheme.labelSmall.copyWith(
+                                  color: isActive ? Colors.white : ffTheme.secondaryText,
+                                  fontWeight: isActive ? FontWeight.w700 : FontWeight.w600,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Price-alert tuning: min monthly saving + alert frequency ────────────────────
+class _PriceAlertTuningCard extends StatelessWidget {
+  const _PriceAlertTuningCard({required this.ffTheme});
+  final AppTheme ffTheme;
+
+  @override
+  Widget build(BuildContext context) {
+    final appState = Provider.of<AppState>(context);
+    final minSaving = appState.minSavingAlert;
+    final frequency = appState.alertFrequency;
+
+    const freqOptions = [
+      ('immediate', 'מיידי'),
+      ('daily', 'יומי'),
+      ('weekly', 'שבועי'),
+    ];
+
+    return _Card(
+      ffTheme: ffTheme,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Minimum monthly saving slider (₪).
+            Row(
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: ffTheme.accent1,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(Icons.savings_rounded, color: ffTheme.saving, size: 20),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('סף חיסכון חודשי מינימלי', style: ffTheme.titleSmall),
+                      Text(
+                        'התראה רק כשהחיסכון לפחות בגובה זה',
+                        style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText),
+                      ),
+                    ],
+                  ),
+                ),
+                Text(
+                  '₪$minSaving',
+                  style: ffTheme.titleSmall.copyWith(
+                    color: ffTheme.saving,
+                    fontWeight: FontWeight.w800,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
+                ),
+              ],
+            ),
+            Slider(
+              value: minSaving.toDouble().clamp(0, 100),
+              min: 0,
+              max: 100,
+              divisions: 20,
+              label: '₪$minSaving',
+              activeColor: ffTheme.saving,
+              onChanged: (v) => Provider.of<AppState>(context, listen: false)
+                  .setMinSavingAlert(v.round()),
+            ),
+            const SizedBox(height: 8),
+            // Alert frequency segmented choice.
+            Text('תדירות התראות', style: ffTheme.titleSmall),
+            const SizedBox(height: 10),
+            Row(
+              children: freqOptions.map((opt) {
+                final (value, label) = opt;
+                final isActive = frequency == value;
+                return Expanded(
+                  child: GestureDetector(
+                    onTap: () => Provider.of<AppState>(context, listen: false)
+                        .setAlertFrequency(value),
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 180),
+                      margin: const EdgeInsets.symmetric(horizontal: 3),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      decoration: BoxDecoration(
+                        color: isActive ? ffTheme.brandAccent : ffTheme.accent1,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: isActive
+                              ? ffTheme.brandAccent
+                              : ffTheme.alternate.withValues(alpha: 0.4),
+                        ),
+                      ),
+                      child: Text(
+                        label,
+                        textAlign: TextAlign.center,
+                        style: ffTheme.labelMedium.copyWith(
+                          color: isActive ? Colors.white : ffTheme.secondaryText,
+                          fontWeight: isActive ? FontWeight.w700 : FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 14),
+            const InfoBanner(
+              icon: Icons.notifications_active_rounded,
+              title: 'נשלח התראה כשנמצא מסלול שחוסך לך לפחות את הסכום שבחרת.',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Renewal reminders: days-ahead + time-of-day ─────────────────────────────────
+class _RenewalReminderCard extends StatelessWidget {
+  const _RenewalReminderCard({required this.ffTheme});
+  final AppTheme ffTheme;
+
+  Future<void> _pickTime(BuildContext context, String current) async {
+    final parts = current.split(':');
+    final initial = TimeOfDay(
+      hour: int.tryParse(parts.isNotEmpty ? parts[0] : '') ?? 9,
+      minute: int.tryParse(parts.length > 1 ? parts[1] : '') ?? 0,
+    );
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: initial,
+      builder: (ctx, child) => Directionality(
+        textDirection: TextDirection.rtl,
+        child: child ?? const SizedBox.shrink(),
+      ),
+    );
+    if (picked == null || !context.mounted) return;
+    final hh = picked.hour.toString().padLeft(2, '0');
+    final mm = picked.minute.toString().padLeft(2, '0');
+    Provider.of<AppState>(context, listen: false).setRenewalReminderTime('$hh:$mm');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final appState = Provider.of<AppState>(context);
+    final daysAhead = appState.renewalDaysAhead;
+    final reminderTime = appState.renewalReminderTime;
+
+    return _Card(
+      ffTheme: ffTheme,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Days-ahead slider.
+            Row(
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: ffTheme.accent1,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(Icons.event_repeat_rounded, color: ffTheme.primary, size: 20),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('כמה ימים מראש', style: ffTheme.titleSmall),
+                      Text(
+                        'נזכיר לך לפני מועד החידוש',
+                        style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText),
+                      ),
+                    ],
+                  ),
+                ),
+                Text(
+                  '$daysAhead ימים',
+                  style: ffTheme.titleSmall.copyWith(
+                    color: ffTheme.primary,
+                    fontWeight: FontWeight.w800,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
+                ),
+              ],
+            ),
+            Slider(
+              value: daysAhead.toDouble().clamp(1, 60),
+              min: 1,
+              max: 60,
+              divisions: 59,
+              label: '$daysAhead ימים',
+              activeColor: ffTheme.primary,
+              onChanged: (v) => Provider.of<AppState>(context, listen: false)
+                  .setRenewalDaysAhead(v.round()),
+            ),
+            const SizedBox(height: 8),
+            // Time-of-day control.
+            InkWell(
+              onTap: () => _pickTime(context, reminderTime),
+              borderRadius: BorderRadius.circular(12),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        color: ffTheme.accent1,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(Icons.schedule_rounded, color: ffTheme.primary, size: 20),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('שעת התזכורת', style: ffTheme.titleSmall),
+                          Text(
+                            'מתי לשלוח את התזכורת ביום הנבחר',
+                            style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: ffTheme.brandAccentTint,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: ffTheme.alternate),
+                      ),
+                      child: Text(
+                        reminderTime,
+                        style: ffTheme.titleSmall.copyWith(
+                          color: ffTheme.brandAccent,
+                          fontWeight: FontWeight.w800,
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+            const InfoBanner(
+              icon: Icons.alarm_rounded,
+              title: 'התזכורת תישלח לפני מועד החידוש בשעה שבחרת, כדי שיהיה לך זמן להשוות מסלולים.',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 // ── Telegram Connection Row ─────────────────────────────────────────────────────
 class _TelegramRow extends StatefulWidget {
   const _TelegramRow({required this.ffTheme});
@@ -546,20 +955,20 @@ class _TelegramRowState extends State<_TelegramRow> {
     setState(() => _busy = true);
     try {
       final appState = Provider.of<AppState>(context, listen: false);
-      final userId = appState.userId;
-      final botUsername = 'chosech_bot';
+      final userId = appState.userPhone;
+      const botUsername = 'chosech_bot';
       final deepLink = Uri.parse('https://t.me/$botUsername?start=user_$userId');
 
       if (await canLaunchUrl(deepLink)) {
         await launchUrl(deepLink, mode: LaunchMode.externalApplication);
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('טלגרם נפתח. שלח /start כדי להתחבר')),
+          const SnackBar(content: Text('טלגרם נפתח. שלח /start כדי להתחבר')),
         );
       } else {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('לא ניתן לפתוח את טלגרם. אנא תקנו אותו תחילה.')),
+          const SnackBar(content: Text('לא ניתן לפתוח את טלגרם. אנא תקנו אותו תחילה.')),
         );
       }
     } catch (e) {
@@ -645,22 +1054,34 @@ class _TelegramRowState extends State<_TelegramRow> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('טלגרם', style: ffTheme.titleSmall),
-                    Text('✅ מחובר', style: ffTheme.bodySmall.copyWith(color: const Color(0xFF22C55E))),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.check_circle_rounded, size: 14, color: ffTheme.success),
+                        const SizedBox(width: 4),
+                        Text('מחובר', style: ffTheme.bodySmall.copyWith(color: ffTheme.success)),
+                      ],
+                    ),
                   ],
                 ),
               ),
-              PopupMenuButton(
-                onSelected: (value) {
-                  if (value == 'test') {
-                    _testTelegram();
-                  } else if (value == 'disconnect') {
-                    _disconnectTelegram();
-                  }
-                },
-                itemBuilder: (_) => [
-                  const PopupMenuItem(value: 'test', child: Text('בדוק חיבור')),
-                  const PopupMenuItem(value: 'disconnect', child: Text('נתק')),
-                ],
+              Semantics(
+                button: true,
+                label: 'אפשרויות טלגרם',
+                child: PopupMenuButton(
+                  tooltip: 'אפשרויות טלגרם',
+                  onSelected: (value) {
+                    if (value == 'test') {
+                      _testTelegram();
+                    } else if (value == 'disconnect') {
+                      _disconnectTelegram();
+                    }
+                  },
+                  itemBuilder: (_) => [
+                    const PopupMenuItem(value: 'test', child: Text('בדוק חיבור')),
+                    const PopupMenuItem(value: 'disconnect', child: Text('נתק')),
+                  ],
+                ),
               ),
             ],
           ),
@@ -678,10 +1099,10 @@ class _TelegramRowState extends State<_TelegramRow> {
                 width: 38,
                 height: 38,
                 decoration: BoxDecoration(
-                  color: Colors.grey.withValues(alpha: 0.1),
+                  color: ffTheme.accent1,
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(Icons.send, color: Colors.grey[600], size: 20),
+                child: Icon(Icons.send, color: ffTheme.secondaryText, size: 20),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -694,7 +1115,7 @@ class _TelegramRowState extends State<_TelegramRow> {
                 ),
               ),
               if (_busy)
-                SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
               else
                 Icon(Icons.arrow_back_ios_rounded, size: 14, color: ffTheme.secondaryText),
             ],

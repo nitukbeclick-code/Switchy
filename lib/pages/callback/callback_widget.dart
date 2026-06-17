@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../theme/app_theme.dart';
 import '../../core/nav.dart';
 import '../../widgets/app_button.dart';
 import '../../widgets/app_snackbar.dart';
 import '../../app_state.dart';
+import '../../data.dart';
 import '../../services/backend/backend.dart';
 import '../../services/backend/local_backend.dart';
 
@@ -105,7 +105,7 @@ class _CallbackWidgetState extends State<CallbackWidget> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: ffTheme.secondaryBackground,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: ffTheme.alternate),
               ),
@@ -125,8 +125,7 @@ class _CallbackWidgetState extends State<CallbackWidget> {
                   Container(
                     width: 8, height: 8,
                     decoration: BoxDecoration(color: ffTheme.success, shape: BoxShape.circle),
-                  ).animate(onPlay: (c) => c.repeat(reverse: true))
-                    .scale(begin: const Offset(1, 1), end: const Offset(1.5, 1.5), duration: 900.ms),
+                  ).animate().fadeIn(duration: 400.ms),
                 ],
               ),
             ).animate().fadeIn(delay: 180.ms),
@@ -160,7 +159,7 @@ class _CallbackWidgetState extends State<CallbackWidget> {
                 final catId = topicToCat[_topic];
                 final bill = catId != null ? st.currentBill(catId) : 0;
                 final noteParts = <String>['נושא: $_topic', 'עיתוי: $_timing'];
-                if (bill > 0) noteParts.add('חשבון נוכחי: ₪$bill/חודש');
+                if (bill > 0) noteParts.add('חשבון נוכחי: ₪$bill$kBillUnit');
                 if (st.quizCompleted) noteParts.add('תקציב: ₪${st.quizBudget} | עדיפות: ${st.quizPriority}');
                 try {
                   await appBackend.submitLead(LeadInput(
@@ -190,9 +189,9 @@ class _CallbackWidgetState extends State<CallbackWidget> {
                 width: double.infinity,
                 height: 56,
                 color: _isLoading ? ffTheme.alternate : ffTheme.primary,
-                textStyle: ffTheme.titleSmall.copyWith(color: Colors.white),
-                borderRadius: BorderRadius.circular(16),
-              
+                textStyle: ffTheme.titleMedium.copyWith(color: Colors.white),
+                borderRadius: BorderRadius.circular(ffTheme.radiusLg),
+
             ).animate().fadeIn(delay: 220.ms),
 
             const SizedBox(height: 12),
@@ -254,8 +253,9 @@ class _CallbackWidgetState extends State<CallbackWidget> {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        gradient: LinearGradient(colors: [ffTheme.primary, ffTheme.tertiary], begin: Alignment.topRight, end: Alignment.bottomLeft),
-        borderRadius: BorderRadius.circular(16),
+        gradient: ffTheme.freshGradient,
+        borderRadius: BorderRadius.circular(ffTheme.radiusLg),
+        boxShadow: ffTheme.shadowPrimary,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -276,10 +276,10 @@ class _CallbackWidgetState extends State<CallbackWidget> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('נציג אנושי יחזור אליכם',
-                        style: GoogleFonts.rubik(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
+                        style: ffTheme.titleMedium.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
                     const SizedBox(height: 4),
                     Text('משאירים פרטים, ומומחה מטעמנו מתקשר בזמן שנוח לכם',
-                        style: GoogleFonts.assistant(fontSize: 12, color: Colors.white70)),
+                        style: ffTheme.bodySmall.copyWith(color: Colors.white.withValues(alpha: 0.8), height: 1.35)),
                   ],
                 ),
               ),
@@ -302,7 +302,7 @@ class _CallbackWidgetState extends State<CallbackWidget> {
                         const SizedBox(height: 4),
                         Text(label,
                             textAlign: TextAlign.center,
-                            style: GoogleFonts.assistant(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white)),
+                            style: ffTheme.labelSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w600)),
                       ],
                     ),
                   ),
@@ -328,7 +328,7 @@ class _CallbackWidgetState extends State<CallbackWidget> {
             duration: const Duration(milliseconds: 200),
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             decoration: BoxDecoration(
-              color: active ? ffTheme.primary : Colors.white,
+              color: active ? ffTheme.primary : ffTheme.secondaryBackground,
               borderRadius: BorderRadius.circular(20),
               border: Border.all(color: active ? ffTheme.primary : ffTheme.alternate),
               boxShadow: active ? [BoxShadow(color: ffTheme.primary.withValues(alpha: 0.2), blurRadius: 8, offset: const Offset(0, 2))] : [],
@@ -356,13 +356,15 @@ class _CallbackWidgetState extends State<CallbackWidget> {
               duration: const Duration(milliseconds: 200),
               margin: EdgeInsetsDirectional.only(end: i < _timings.length - 1 ? 8 : 0),
               padding: const EdgeInsets.symmetric(vertical: 10),
+              constraints: const BoxConstraints(minHeight: 44),
               decoration: BoxDecoration(
-                color: active ? ffTheme.primary : Colors.white,
+                color: active ? ffTheme.primary : ffTheme.secondaryBackground,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: active ? ffTheme.primary : ffTheme.alternate),
                 boxShadow: active ? [BoxShadow(color: ffTheme.primary.withValues(alpha: 0.2), blurRadius: 8, offset: const Offset(0, 2))] : [],
               ),
               child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(icons[i], size: 18, color: active ? Colors.white : ffTheme.secondaryText),
                   const SizedBox(height: 4),
@@ -377,6 +379,9 @@ class _CallbackWidgetState extends State<CallbackWidget> {
   }
 
   Widget _buildSuccessState(AppTheme ffTheme, BuildContext context) {
+    // A single settling ring on enter — no infinite idle pulse, and it goes
+    // flat under reduced-motion.
+    final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
     return Scaffold(
       backgroundColor: ffTheme.background,
       body: SafeArea(
@@ -388,59 +393,87 @@ class _CallbackWidgetState extends State<CallbackWidget> {
               Stack(
                 alignment: Alignment.center,
                 children: [
-                  Container(
-                    width: 120, height: 120,
-                    decoration: BoxDecoration(color: ffTheme.primary.withValues(alpha: 0.08), shape: BoxShape.circle),
-                  ).animate(onPlay: (c) => c.repeat(reverse: true))
-                    .scale(begin: const Offset(1, 1), end: const Offset(1.12, 1.12), duration: 1200.ms),
-                  Container(
-                    width: 92, height: 92,
-                    decoration: BoxDecoration(color: ffTheme.accent1, shape: BoxShape.circle),
-                    child: Icon(Icons.phone_in_talk_rounded, color: ffTheme.primary, size: 46),
-                  ).animate().scale(duration: 600.ms, curve: Curves.elasticOut),
-                  PositionedDirectional(
-                    top: 4, end: 4,
-                    child: ExcludeSemantics(child: Icon(Icons.auto_awesome, size: 16, color: ffTheme.primary)).animate(delay: 400.ms).fadeIn().slideY(begin: -0.5),
-                  ),
+                  // A single settling ring on enter — no infinite idle pulse,
+                  // and it goes flat under reduced-motion.
+                  () {
+                    final ring = Container(
+                      width: 120, height: 120,
+                      decoration: BoxDecoration(color: ffTheme.primary.withValues(alpha: 0.06), shape: BoxShape.circle),
+                    );
+                    if (reduceMotion) return ring;
+                    return ring
+                        .animate()
+                        .scale(begin: const Offset(0.85, 0.85), end: const Offset(1, 1), duration: 500.ms, curve: Curves.easeOutCubic)
+                        .fadeIn(duration: 400.ms);
+                  }(),
+                  () {
+                    final circle = Container(
+                      width: 92, height: 92,
+                      decoration: BoxDecoration(color: ffTheme.accent1, shape: BoxShape.circle),
+                      child: Icon(Icons.phone_in_talk_rounded, color: ffTheme.primary, size: 46),
+                    );
+                    if (reduceMotion) return circle;
+                    return circle.animate().scale(
+                          begin: const Offset(0.7, 0.7),
+                          end: const Offset(1, 1),
+                          duration: 500.ms,
+                          curve: Curves.easeOutBack,
+                        );
+                  }(),
+                  if (!reduceMotion)
+                    PositionedDirectional(
+                      top: 4, end: 4,
+                      child: ExcludeSemantics(child: Icon(Icons.auto_awesome, size: 16, color: ffTheme.primary)).animate(delay: 400.ms).fadeIn().slideY(begin: -0.5),
+                    ),
                 ],
               ),
               const SizedBox(height: 28),
-              Text('קיבלנו!', style: ffTheme.headlineMedium).animate().fadeIn(delay: 300.ms).slideY(begin: 0.2),
+              Text('קיבלנו!', style: ffTheme.headlineMedium)
+                  .animate(target: reduceMotion ? 1 : null)
+                  .fadeIn(delay: 300.ms)
+                  .slideY(begin: 0.2),
               const SizedBox(height: 8),
               Text(
                 'נציג ייצור קשר $_timing\nבנושא: $_topic',
                 style: ffTheme.bodyLarge.copyWith(color: ffTheme.secondaryText),
                 textAlign: TextAlign.center,
-              ).animate().fadeIn(delay: 400.ms),
+              ).animate(target: reduceMotion ? 1 : null).fadeIn(delay: 400.ms),
               const SizedBox(height: 24),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 decoration: BoxDecoration(
                   color: ffTheme.accent1,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: ffTheme.primary.withValues(alpha: 0.15)),
+                  borderRadius: BorderRadius.circular(ffTheme.radiusSm),
+                  border: Border.all(color: ffTheme.alternate.withValues(alpha: 0.1)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(Icons.access_time_rounded, size: 16, color: ffTheme.primary),
                     const SizedBox(width: 8),
-                    Text('ימי א׳–ה׳, 9:00–21:00', style: ffTheme.labelMedium.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w600)),
+                    Text(
+                      'ימי א׳–ה׳, 9:00–21:00',
+                      style: ffTheme.labelMedium.copyWith(
+                        color: ffTheme.primary,
+                        fontWeight: FontWeight.w600,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
+                    ),
                   ],
                 ),
-              ).animate().fadeIn(delay: 450.ms),
+              ).animate(target: reduceMotion ? 1 : null).fadeIn(delay: 450.ms),
               const SizedBox(height: 32),
               AppButton(
                 text: 'מעקב אחר התהליך',
                 onPressed: () async => context.goNamed('Tracker'),
-                
+
                   width: 240,
                   height: 52,
                   color: ffTheme.primary,
                   textStyle: ffTheme.titleSmall.copyWith(color: Colors.white),
-                  borderRadius: BorderRadius.circular(14),
-                
-              ).animate().fadeIn(delay: 500.ms),
+                  borderRadius: BorderRadius.circular(ffTheme.radiusMd),
+
+              ).animate(target: reduceMotion ? 1 : null).fadeIn(delay: 500.ms),
               const SizedBox(height: 12),
               TextButton(
                 onPressed: () => context.safePop(),
@@ -457,11 +490,14 @@ class _CallbackWidgetState extends State<CallbackWidget> {
     return InputDecoration(
       hintText: hint,
       filled: true,
-      fillColor: Colors.white,
-      prefixIcon: Icon(icon, color: ffTheme.secondaryText),
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+      fillColor: ffTheme.secondaryBackground,
+      prefixIcon: Icon(icon, color: ffTheme.secondaryText, size: 20),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.alternate)),
       enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.alternate)),
       focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.primary, width: 1.5)),
+      errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.error)),
+      focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.error, width: 1.5)),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
     );
   }
 }

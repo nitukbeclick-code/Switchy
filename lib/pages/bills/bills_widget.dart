@@ -73,6 +73,16 @@ List<_Overpay> _overpaysFor(AppState appState, Map<String, int> savingByCat) {
   return out;
 }
 
+/// Cheapest monthly-priced regular plan for a category, or null if none.
+Plan? _cheapestMonthlyPlan(String catId) {
+  Plan? cheapest;
+  for (final p in plansByCat(catId)) {
+    if (!p.isRegular || p.unit != 'month') continue;
+    if (cheapest == null || p.priceValue < cheapest.priceValue) cheapest = p;
+  }
+  return cheapest;
+}
+
 class _BillsWidgetState extends State<BillsWidget> {
   int _touchedIndex = -1;
 
@@ -111,6 +121,11 @@ class _BillsWidgetState extends State<BillsWidget> {
     final worst = overpays.isNotEmpty ? overpays.first : null;
     // Until the user personalises their bills, every saving is an estimate.
     final estimate = !appState.billsPersonalized;
+
+    // Progress: how many categories have a bill > 0 (abroad excluded from the 4).
+    final mainCats = categories.where((c) => c.id != 'abroad').toList();
+    final definedCount = mainCats.where((c) => appState.currentBill(c.id) > 0).length;
+    final totalCatCount = mainCats.length;
 
     return Scaffold(
       backgroundColor: ffTheme.background,
@@ -156,40 +171,75 @@ class _BillsWidgetState extends State<BillsWidget> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Hero total card
+            // ── Info banner ──────────────────────────────────────────────────
+            _InfoBanner(ffTheme: ffTheme).animate().fadeIn(duration: 350.ms).slideY(begin: -0.04, end: 0),
+
+            const SizedBox(height: 12),
+
+            // ── Progress indicator ───────────────────────────────────────────
+            _ProgressHeader(
+              defined: definedCount,
+              total: totalCatCount,
+              ffTheme: ffTheme,
+            ).animate().fadeIn(delay: 60.ms, duration: 350.ms),
+
+            const SizedBox(height: 14),
+
+            // Hero total card — the premium ink surface. Stays ink; the one
+            // accent moment is the amber VALUE chip for the savings figure.
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topRight,
-                  end: Alignment.bottomLeft,
-                  colors: [ffTheme.primaryDark, ffTheme.primary],
-                ),
-                borderRadius: BorderRadius.circular(20),
+                gradient: ffTheme.brandGradient,
+                borderRadius: BorderRadius.circular(ffTheme.radiusLg),
+                boxShadow: ffTheme.shadowPrimary,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('הוצאה חודשית כוללת', style: GoogleFonts.assistant(fontSize: 13, color: ffTheme.secondary, fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 6),
-                  Text('₪$total', style: GoogleFonts.rubik(fontSize: 48, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: -1.5)),
-                  Text('לחודש בכל הקטגוריות', style: GoogleFonts.assistant(fontSize: 12, color: Colors.white60)),
+                  Text(
+                    'הוצאה חודשית כוללת',
+                    style: ffTheme.labelMedium.copyWith(
+                      color: Colors.white.withValues(alpha: 0.70),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '₪$total',
+                    style: ffTheme.displayMedium.copyWith(
+                      color: Colors.white,
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'לחודש בכל הקטגוריות',
+                    style: ffTheme.labelSmall.copyWith(color: Colors.white.withValues(alpha: 0.55)),
+                  ),
                   if (totalSavings > 0) ...[
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 16),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(10),
+                        color: AppColors.saving.withValues(alpha: 0.18),
+                        borderRadius: BorderRadius.circular(ffTheme.radiusXs),
+                        border: Border.all(color: AppColors.saving.withValues(alpha: 0.35)),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.lightbulb_outline_rounded, size: 16, color: ffTheme.secondary),
+                          const Icon(Icons.savings_rounded, size: 16, color: AppColors.saving),
                           const SizedBox(width: 8),
-                          Text('חיסכון פוטנציאלי: ₪$totalSavings/שנה',
-                              style: GoogleFonts.rubik(fontSize: 13, fontWeight: FontWeight.w700, color: ffTheme.secondary)),
+                          Text(
+                            'חיסכון פוטנציאלי: ₪$totalSavings/שנה',
+                            style: ffTheme.labelSmall.copyWith(
+                              color: AppColors.saving,
+                              fontWeight: FontWeight.w700,
+                              fontFeatures: const [FontFeature.tabularFigures()],
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -247,10 +297,10 @@ class _BillsWidgetState extends State<BillsWidget> {
                 width: double.infinity,
                 padding: const EdgeInsets.fromLTRB(12, 20, 12, 12),
                 decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
+                  color: ffTheme.secondaryBackground,
+                  borderRadius: BorderRadius.circular(ffTheme.radiusMd),
                   border: Border.all(color: ffTheme.alternate),
-                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 12)],
+                  boxShadow: ffTheme.shadowSoft,
                 ),
                 child: Column(
                   children: [
@@ -357,7 +407,7 @@ class _BillsWidgetState extends State<BillsWidget> {
                             const SizedBox(width: 4),
                             Text(c.name, style: ffTheme.labelSmall),
                             const SizedBox(width: 4),
-                            Text('₪${appState.currentBill(c.id)}', style: ffTheme.labelSmall.copyWith(color: ffTheme.primaryText, fontWeight: FontWeight.w700)),
+                            Text('₪${appState.currentBill(c.id)}', style: ffTheme.labelSmall.copyWith(color: ffTheme.primaryText, fontWeight: FontWeight.w700, fontFeatures: const [FontFeature.tabularFigures()])),
                           ],
                         );
                       }).toList(),
@@ -441,12 +491,192 @@ class _BillsWidgetState extends State<BillsWidget> {
                   context.pushNamed('Results');
                 },
                 ffTheme: ffTheme,
-              ).animate(delay: (i * 70).ms).fadeIn(duration: 350.ms).slideX(begin: 0.05, end: 0);
+              ).animate().fadeIn(delay: (i * 80).ms).slideY(begin: 0.08, end: 0);
             }),
+
+            // ── Total savings summary card ─────────────────────────────────
+            if (totalSavings > 0) ...[
+              const SizedBox(height: 8),
+              _TotalSavingsCard(
+                totalAnnual: totalSavings,
+                ffTheme: ffTheme,
+                onDetails: () => context.pushNamed('Savings'),
+              ).animate().fadeIn(delay: 120.ms).slideY(begin: 0.06, end: 0),
+            ],
 
             const SizedBox(height: 32),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ── Info banner ────────────────────────────────────────────────────────────────
+
+class _InfoBanner extends StatelessWidget {
+  const _InfoBanner({required this.ffTheme});
+  final AppTheme ffTheme;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppColors.brandAccentTint,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.brandAccent.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.lightbulb_rounded, size: 18, color: AppColors.brandAccent),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'מלא את הסכומים שאתה משלם היום. נמצא לך עסקאות טובות יותר.',
+              style: ffTheme.bodySmall.copyWith(
+                color: AppColors.brandAccent,
+                fontWeight: FontWeight.w600,
+                height: 1.4,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Progress header ────────────────────────────────────────────────────────────
+
+class _ProgressHeader extends StatelessWidget {
+  const _ProgressHeader({required this.defined, required this.total, required this.ffTheme});
+  final int defined;
+  final int total;
+  final AppTheme ffTheme;
+
+  @override
+  Widget build(BuildContext context) {
+    final fraction = total > 0 ? defined / total : 0.0;
+    final complete = defined == total;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text(
+              'הוגדרו $defined מתוך $total קטגוריות',
+              style: ffTheme.labelMedium.copyWith(color: ffTheme.primaryText, fontWeight: FontWeight.w600),
+            ),
+            const Spacer(),
+            if (complete)
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.check_circle_rounded, size: 14, color: ffTheme.success),
+                  const SizedBox(width: 4),
+                  Text('הכל מוגדר', style: ffTheme.labelSmall.copyWith(color: ffTheme.success, fontWeight: FontWeight.w700)),
+                ],
+              ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(ffTheme.radiusPill),
+          child: LinearProgressIndicator(
+            value: fraction,
+            minHeight: 6,
+            backgroundColor: ffTheme.alternate,
+            // Indigo = ACTION while there's still a category to define; ink once
+            // complete (no action left to drive).
+            valueColor: AlwaysStoppedAnimation<Color>(
+              complete ? ffTheme.success : AppColors.brandAccent,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ── Total savings summary card ─────────────────────────────────────────────────
+
+class _TotalSavingsCard extends StatelessWidget {
+  const _TotalSavingsCard({
+    required this.totalAnnual,
+    required this.ffTheme,
+    required this.onDetails,
+  });
+  final int totalAnnual;
+  final AppTheme ffTheme;
+  final VoidCallback onDetails;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFFBEB), // amber-50
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.saving.withValues(alpha: 0.35)),
+        boxShadow: [BoxShadow(color: AppColors.saving.withValues(alpha: 0.08), blurRadius: 12, offset: const Offset(0, 4))],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: AppColors.saving.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Icon(Icons.savings_rounded, size: 24, color: AppColors.saving),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'סה"כ פוטנציאל חיסכון',
+                  style: ffTheme.labelSmall.copyWith(color: AppColors.savingDark, fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '₪$totalAnnual בשנה',
+                  style: GoogleFonts.rubik(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.saving,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          Semantics(
+            button: true,
+            label: 'ראה פירוט חיסכון',
+            child: GestureDetector(
+              onTap: onDetails,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                decoration: BoxDecoration(
+                  color: AppColors.saving,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  'ראה פירוט',
+                  style: ffTheme.labelSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -465,12 +695,13 @@ class _SavingsRing extends StatelessWidget {
     final keep = total - savingsPerMonth;
 
     return Container(
+      margin: const EdgeInsets.only(bottom: 4),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        color: ffTheme.secondaryBackground,
+        borderRadius: BorderRadius.circular(ffTheme.radiusLg),
         border: Border.all(color: ffTheme.alternate),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 12)],
+        boxShadow: ffTheme.shadowSoft,
       ),
       child: Row(
         children: [
@@ -521,9 +752,9 @@ class _SavingsRing extends StatelessWidget {
               children: [
                 Text('פוטנציאל החיסכון שלך', style: ffTheme.titleSmall),
                 const SizedBox(height: 10),
-                _RingLegendRow(color: ffTheme.primary, label: 'אפשר לחסוך', value: '₪$savingsPerMonth/חודש', ffTheme: ffTheme),
+                _RingLegendRow(color: ffTheme.primary, label: 'אפשר לחסוך', value: '₪$savingsPerMonth$kBillUnit', ffTheme: ffTheme),
                 const SizedBox(height: 6),
-                _RingLegendRow(color: ffTheme.secondary, label: 'מחיר שוק', value: '₪$keep/חודש', ffTheme: ffTheme),
+                _RingLegendRow(color: ffTheme.secondary, label: 'מחיר שוק', value: '₪$keep$kBillUnit', ffTheme: ffTheme),
                 const SizedBox(height: 12),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
@@ -858,6 +1089,94 @@ class _WorstCategoryCta extends StatelessWidget {
   }
 }
 
+// ── Inline savings hint ────────────────────────────────────────────────────────
+
+/// Shows the cheapest-plan hint below a bill input, visible only when the
+/// user has entered a non-zero bill. Reads from the real catalogue via
+/// [_cheapestMonthlyPlan]; for abroad categories (no monthly plans) it's
+/// suppressed entirely. Animates in on first reveal.
+class _SavingsHint extends StatelessWidget {
+  const _SavingsHint({required this.catId, required this.bill, required this.ffTheme});
+  final String catId;
+  final int bill;
+  final AppTheme ffTheme;
+
+  @override
+  Widget build(BuildContext context) {
+    if (bill <= 0) return const SizedBox.shrink();
+    final cheapest = _cheapestMonthlyPlan(catId);
+    if (cheapest == null) return const SizedBox.shrink();
+
+    final monthlySaving = (bill - cheapest.priceValue).clamp(0, double.infinity).round();
+    final annualSaving = monthlySaving * 12;
+    final isGood = bill <= cheapest.priceValue;
+    final isGreat = annualSaving >= 500;
+
+    // Color scheme based on opportunity.
+    final Color hintColor = isGood
+        ? const Color(0xFF16A34A)   // green-600
+        : isGreat
+            ? const Color(0xFF16A34A) // green-600 for big wins
+            : AppColors.saving;        // amber for regular opportunities
+
+    final Color hintBg = isGood
+        ? const Color(0xFFF0FDF4)   // green-50
+        : const Color(0xFFFFFBEB);  // amber-50
+
+    final Color hintBorder = isGood
+        ? const Color(0xFF16A34A).withValues(alpha: 0.25)
+        : AppColors.saving.withValues(alpha: 0.30);
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+        decoration: BoxDecoration(
+          color: hintBg,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: hintBorder),
+        ),
+        child: isGood
+            ? Row(
+                children: [
+                  Icon(Icons.check_circle_rounded, size: 15, color: hintColor),
+                  const SizedBox(width: 8),
+                  Text(
+                    'כבר בתעריף טוב! ✓',
+                    style: ffTheme.labelSmall.copyWith(color: hintColor, fontWeight: FontWeight.w700),
+                  ),
+                ],
+              )
+            : Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(top: 1),
+                    child: Icon(Icons.lightbulb_rounded, size: 14, color: hintColor),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: RichText(
+                      text: TextSpan(
+                        style: ffTheme.labelSmall.copyWith(color: hintColor, height: 1.4),
+                        children: [
+                          TextSpan(text: 'יש תוכניות מ-₪${cheapest.priceText}/${priceUnitShort(cheapest)}'),
+                          TextSpan(
+                            text: ' — אתה יכול לחסוך ₪$monthlySaving לחודש (₪$annualSaving בשנה)',
+                            style: ffTheme.labelSmall.copyWith(color: hintColor, fontWeight: FontWeight.w700, height: 1.4),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+      ).animate().fadeIn(duration: 300.ms).slideY(begin: -0.05, end: 0),
+    );
+  }
+}
+
 class _BillCard extends StatelessWidget {
   const _BillCard({
     required this.category,
@@ -888,13 +1207,15 @@ class _BillCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bool isDefined = currentBill > 0;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ffTheme.secondaryBackground,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: currentBill > 0 ? ffTheme.primary.withValues(alpha: 0.2) : ffTheme.alternate),
+        border: Border.all(color: isDefined ? ffTheme.primary.withValues(alpha: 0.2) : ffTheme.alternate),
         boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10)],
       ),
       child: Column(
@@ -915,11 +1236,21 @@ class _BillCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(category.name, style: ffTheme.titleSmall),
-                    if (currentBill > 0 && yearlySave > 0)
+                    Row(
+                      children: [
+                        Text(category.name, style: ffTheme.titleSmall),
+                        const SizedBox(width: 8),
+                        // Category status badge
+                        if (isDefined)
+                          const _StatusBadge(label: 'מוגדר ✓', color: Color(0xFF16A34A), bg: Color(0xFFF0FDF4))
+                        else
+                          _StatusBadge(label: 'לא הוגדר', color: ffTheme.secondaryText, bg: ffTheme.alternate.withValues(alpha: 0.5)),
+                      ],
+                    ),
+                    if (isDefined && yearlySave > 0)
                       Text('חיסכון פוטנציאלי: ₪$yearlySave/שנה',
                           style: ffTheme.labelSmall.copyWith(color: ffTheme.success, fontWeight: FontWeight.w600)),
-                    if (currentBill == 0)
+                    if (!isDefined)
                       Text('לא בשימוש', style: ffTheme.labelSmall),
                   ],
                 ),
@@ -928,12 +1259,20 @@ class _BillCard extends StatelessWidget {
               Row(
                 children: [
                   _RoundBtn(icon: Icons.remove, color: ffTheme.alternate, iconColor: ffTheme.secondaryText, onTap: onDecrease, semanticLabel: 'הפחת ₪10 מ${category.name}'),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                  // Once a bill is set the readout sits on a faint action-accent
+                  // pill, so a touched value reads as deliberately set, not 0.
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 150),
+                    margin: const EdgeInsets.symmetric(horizontal: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: isDefined ? ffTheme.accent1 : Colors.transparent,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
                     child: Text(
                       '₪$currentBill',
                       style: ffTheme.titleSmall.copyWith(
-                        color: currentBill > 0 ? ffTheme.primary : ffTheme.secondaryText,
+                        color: isDefined ? ffTheme.primary : ffTheme.secondaryText,
                         fontWeight: FontWeight.w700,
                         // Fixed-width digits so ±10 steps don't nudge the buttons.
                         fontFeatures: const [FontFeature.tabularFigures()],
@@ -952,28 +1291,45 @@ class _BillCard extends StatelessWidget {
             runSpacing: 6,
             children: (_presets[category.id] ?? [49, 99, 149, 199]).map((preset) {
               final isActive = currentBill == preset;
-              return GestureDetector(
-                onTap: () => onSetValue(preset),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 150),
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                  decoration: BoxDecoration(
-                    color: isActive ? ffTheme.primary : ffTheme.background,
+              return Semantics(
+                button: true,
+                selected: isActive,
+                label: 'הגדר ₪$preset ל${category.name}',
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () => onSetValue(preset),
                     borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: isActive ? ffTheme.primary : ffTheme.alternate),
-                  ),
-                  child: Text(
-                    '₪$preset',
-                    style: ffTheme.labelSmall.copyWith(
-                      color: isActive ? Colors.white : ffTheme.secondaryText,
-                      fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(minHeight: 44),
+                      child: Center(
+                        widthFactor: 1,
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 150),
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: isActive ? ffTheme.primary : ffTheme.background,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: isActive ? ffTheme.primary : ffTheme.alternate),
+                          ),
+                          child: Text(
+                            '₪$preset',
+                            style: ffTheme.labelSmall.copyWith(
+                              color: isActive ? Colors.white : ffTheme.secondaryText,
+                              fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ),
               );
             }).toList(),
           ),
-          if (currentBill > 0 && yearlySave > 0) ...[
+          // ── Inline savings hint ───────────────────────────────────────────
+          _SavingsHint(catId: category.id, bill: currentBill, ffTheme: ffTheme),
+          if (isDefined && yearlySave > 0) ...[
             const SizedBox(height: 10),
             // Shared ghost variant — was a hand-rolled InkWell with a ~34px
             // hit area; now a 44px-tall consistent tertiary button.
@@ -989,6 +1345,29 @@ class _BillCard extends StatelessWidget {
             ),
           ],
         ],
+      ),
+    );
+  }
+}
+
+/// Small inline badge for category defined/undefined status.
+class _StatusBadge extends StatelessWidget {
+  const _StatusBadge({required this.label, required this.color, required this.bg});
+  final String label;
+  final Color color;
+  final Color bg;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(
+        label,
+        style: GoogleFonts.assistant(fontSize: 11, fontWeight: FontWeight.w700, color: color),
       ),
     );
   }

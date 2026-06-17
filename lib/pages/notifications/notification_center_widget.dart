@@ -8,6 +8,7 @@ import '../../core/nav.dart';
 import '../../services/notifications.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/empty_state.dart';
+import '../../widgets/pressable.dart';
 
 class NotificationCenterWidget extends StatefulWidget {
   const NotificationCenterWidget({super.key});
@@ -48,6 +49,9 @@ class _NotificationCenterWidgetState extends State<NotificationCenterWidget> {
       NotifKind.savings => (Icons.trending_down_rounded, ffTheme.success),
       NotifKind.meeting => (Icons.videocam_rounded, ffTheme.brandAccent),
       NotifKind.info => (Icons.info_rounded, ffTheme.info),
+      NotifKind.communityReply => (Icons.forum_rounded, ffTheme.brandAccent),
+      NotifKind.communityLike => (Icons.favorite_rounded, ffTheme.saving),
+      NotifKind.priceTarget => (Icons.flag_rounded, ffTheme.brandAccent),
     };
   }
 
@@ -60,7 +64,7 @@ class _NotificationCenterWidgetState extends State<NotificationCenterWidget> {
     return Scaffold(
       backgroundColor: ffTheme.background,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: ffTheme.secondaryBackground,
         elevation: 0,
         centerTitle: true,
         leading: IconButton(
@@ -94,7 +98,7 @@ class _NotificationCenterWidgetState extends State<NotificationCenterWidget> {
               subtitle: 'אין התראות חדשות כרגע',
             )
           : ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
               itemCount: notifs.length,
               itemBuilder: (context, i) {
                 final n = notifs[i];
@@ -136,75 +140,63 @@ class _NotifCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Material(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(15),
-          child: Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(15),
-              border: Border.all(color: ffTheme.alternate),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Pressable(
+        onTap: onTap,
+        child: Container(
+          decoration: ffTheme.glassDecoration(radius: ffTheme.radiusMd),
+          padding: const EdgeInsetsDirectional.fromSTEB(14, 14, 8, 14),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: iconColor.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
                 ),
-              ],
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  width: 42,
-                  height: 42,
-                  decoration: BoxDecoration(
-                    color: iconColor.withValues(alpha: 0.12),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(icon, size: 22, color: iconColor),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        notification.title,
-                        style: ffTheme.titleSmall,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
+                child: Icon(icon, size: 22, color: iconColor),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      notification.title,
+                      style: ffTheme.titleSmall.copyWith(fontWeight: FontWeight.w700),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      notification.body,
+                      style: ffTheme.bodySmall.copyWith(
+                        color: ffTheme.secondaryText,
+                        height: 1.35,
                       ),
-                      const SizedBox(height: 3),
-                      Text(
-                        notification.body,
-                        style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ],
-                  ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 4),
-                IconButton(
-                  icon: Icon(Icons.close_rounded, size: 18, color: ffTheme.secondaryText),
-                  tooltip: 'הסר',
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                  onPressed: onDismiss,
-                ),
-              ],
-            ),
+              ),
+              const SizedBox(width: 4),
+              IconButton(
+                icon: Icon(Icons.close_rounded, size: 18, color: ffTheme.secondaryText),
+                tooltip: 'הסר',
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+                onPressed: onDismiss,
+              ),
+            ],
           ),
         ),
       ),
     )
         .animate(delay: delay)
         .fadeIn(duration: 280.ms, curve: Curves.easeOut)
-        .slideY(begin: 0.05, end: 0, duration: 280.ms, curve: Curves.easeOut);
+        .slideY(begin: 0.06, end: 0, duration: 280.ms, curve: Curves.easeOut);
   }
 }

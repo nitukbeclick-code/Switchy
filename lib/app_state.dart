@@ -2,8 +2,8 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'data.dart' show planById;
-import 'models.dart' show TrackedPlan;
+import 'data.dart' show planById, applyLiveCatalog, isCatalogHydrated;
+import 'models.dart' show TrackedPlan, Plan;
 import 'services/backend/backend.dart'
     show BookedMeeting, MeetingStatus, meetingStatusFromDb, meetingStatusToDb;
 import 'services/savings_summary.dart' show savingsCreditedOnLead;
@@ -14,6 +14,16 @@ class AppState extends ChangeNotifier {
   factory AppState() => _instance;
   AppState._internal();
   static void reset() => _instance = AppState._internal();
+
+  /// Overlays the backend's live plan catalogue onto the bundled seed (see
+  /// `applyLiveCatalog` / `mergeLivePlan` in data.dart) and notifies listeners
+  /// so any open screen re-renders with live prices. Fire-and-forget from
+  /// startup; an empty list is a safe no-op (the app stays on the seed), so a
+  /// failed or backend-less fetch never blanks the catalogue.
+  void hydrateCatalogWith(List<Plan> plans) {
+    applyLiveCatalog(plans);
+    if (isCatalogHydrated) notifyListeners();
+  }
 
   Future<void> initializePersistedState() async {
     final p = await SharedPreferences.getInstance();
@@ -56,9 +66,56 @@ class AppState extends ChangeNotifier {
     _meetingJoinUrl = p.getString('meetingJoinUrl');
     _meetingStartsAtIso = p.getString('meetingStartsAtIso');
     _meetingCreatedAtIso = p.getString('meetingCreatedAtIso');
+    // Telegram notifications
+    _userTelegramChatId = p.getString('userTelegramChatId') ?? '';
+    _telegramEnabled = p.getBool('telegramEnabled') ?? false;
+    // Support ticket
+    _supportTicketId = p.getString('supportTicketId');
     // Watched plans
     final watched = p.getStringList('watchedPlans') ?? [];
     _watchedPlans.addAll(watched);
+    // Favorites / wishlist
+    final favorites = p.getStringList('favoritePlans') ?? [];
+    _favoritePlans.addAll(favorites);
+    // Price targets (planId -> ₪ goal), stored as a JSON map
+    final priceTargetsJson = p.getString('priceTargets');
+    if (priceTargetsJson != null) {
+      final decoded = jsonDecode(priceTargetsJson) as Map<String, dynamic>;
+      decoded.forEach((planId, value) {
+        _priceTargets[planId] = (value as num).toInt();
+      });
+    }
+    // Price-alert push dedup (planId -> ISO date last pushed)
+    final priceAlertNotifiedJson = p.getString('priceAlertNotified');
+    if (priceAlertNotifiedJson != null) {
+      final decoded = jsonDecode(priceAlertNotifiedJson) as Map<String, dynamic>;
+      decoded.forEach((planId, value) {
+        _priceAlertNotified[planId] = value as String;
+      });
+    }
+    // Price-drop baseline + detected drops
+    final lastSeenPricesJson = p.getString('lastSeenPrices');
+    if (lastSeenPricesJson != null) {
+      final decoded = jsonDecode(lastSeenPricesJson) as Map<String, dynamic>;
+      decoded.forEach((planId, value) {
+        _lastSeenPrices[planId] = (value as num).toInt();
+      });
+    }
+    final priceDropsJson = p.getString('priceDrops');
+    if (priceDropsJson != null) {
+      final decoded = jsonDecode(priceDropsJson) as Map<String, dynamic>;
+      decoded.forEach((planId, value) {
+        _priceDrops[planId] = (value as Map).cast<String, dynamic>();
+      });
+    }
+    // Alert-tuning prefs
+    _minSavingAlert = p.getInt('minSavingAlert') ?? 5;
+    _alertFrequency = p.getString('alertFrequency') ?? 'immediate';
+    _renewalDaysAhead = p.getInt('renewalDaysAhead') ?? 21;
+    _renewalReminderTime = p.getString('renewalReminderTime') ?? '09:00';
+    // Switch checklist done-set
+    final checklistDone = p.getStringList('switchChecklistDone') ?? [];
+    _switchChecklistDone.addAll(checklistDone);
     // Recently viewed
     final recent = p.getStringList('recentlyViewed') ?? [];
     _recentlyViewed.addAll(recent);
@@ -114,7 +171,12 @@ class AppState extends ChangeNotifier {
     _prefPriceAlerts = p.getBool('prefPriceAlerts') ?? true;
     _prefRequestUpdates = p.getBool('prefRequestUpdates') ?? true;
     _prefCommunityNotifs = p.getBool('prefCommunityNotifs') ?? false;
+    _isAdmin = p.getBool('isAdmin') ?? false;
     _seenOnboarding = p.getBool('seenOnboarding') ?? false;
+    // Theme mode. Defaults to light (the fully-designed-and-QA'd theme); dark is
+    // a working opt-in via Settings until the dark visual QA pass completes.
+    final themeModeStr = p.getString('theme_mode') ?? 'light';
+    _themeMode = _themeModeFromString(themeModeStr);
     notifyListeners();
   }
 
@@ -211,11 +273,49 @@ class AppState extends ChangeNotifier {
             }
           }
           break;
+        case 'telegram':
+          if (_userTelegramChatId.isEmpty) {
+            await p.remove('userTelegramChatId');
+            await p.remove('telegramEnabled');
+          } else {
+            await p.setString('userTelegramChatId', _userTelegramChatId);
+            await p.setBool('telegramEnabled', _telegramEnabled);
+          }
+          break;
+        case 'supportTicket':
+          if (_supportTicketId == null) {
+            await p.remove('supportTicketId');
+          } else {
+            await p.setString('supportTicketId', _supportTicketId!);
+          }
+          break;
         case 'trackerStep':
           await p.setInt('trackerStep', _trackerStep);
           break;
         case 'watchedPlans':
           await p.setStringList('watchedPlans', _watchedPlans.toList());
+          break;
+        case 'favoritePlans':
+          await p.setStringList('favoritePlans', _favoritePlans.toList());
+          break;
+        case 'priceTargets':
+          await p.setString('priceTargets', jsonEncode(_priceTargets));
+          break;
+        case 'priceAlertNotified':
+          await p.setString('priceAlertNotified', jsonEncode(_priceAlertNotified));
+          break;
+        case 'priceDropState':
+          await p.setString('lastSeenPrices', jsonEncode(_lastSeenPrices));
+          await p.setString('priceDrops', jsonEncode(_priceDrops));
+          break;
+        case 'alertTuning':
+          await p.setInt('minSavingAlert', _minSavingAlert);
+          await p.setString('alertFrequency', _alertFrequency);
+          await p.setInt('renewalDaysAhead', _renewalDaysAhead);
+          await p.setString('renewalReminderTime', _renewalReminderTime);
+          break;
+        case 'switchChecklistDone':
+          await p.setStringList('switchChecklistDone', _switchChecklistDone.toList());
           break;
         case 'recentlyViewed':
           await p.setStringList('recentlyViewed', _recentlyViewed);
@@ -257,9 +357,13 @@ class AppState extends ChangeNotifier {
           await p.setBool('prefPriceAlerts', _prefPriceAlerts);
           await p.setBool('prefRequestUpdates', _prefRequestUpdates);
           await p.setBool('prefCommunityNotifs', _prefCommunityNotifs);
+          await p.setBool('isAdmin', _isAdmin);
           break;
         case 'seenOnboarding':
           await p.setBool('seenOnboarding', _seenOnboarding);
+          break;
+        case 'themeMode':
+          await p.setString('theme_mode', _themeModeToString(_themeMode));
           break;
       }
     }
@@ -283,10 +387,13 @@ class AppState extends ChangeNotifier {
   // call; it marks every light group dirty (each write is cheap).
   static const Set<String> _lightGroups = {
     'auth', 'totalSavings', 'selectedCat', 'bills', 'quiz', 'quizNeeds', 'lead',
-    'meeting',
-    'trackerStep', 'watchedPlans', 'recentlyViewed', 'recentSearches',
+    'meeting', 'telegram', 'supportTicket',
+    'trackerStep', 'watchedPlans', 'favoritePlans', 'priceTargets',
+    'priceAlertNotified', 'priceDropState', 'alertTuning', 'switchChecklistDone',
+    'recentlyViewed', 'recentSearches',
     'userReviews', 'likedPosts', 'bookmarkedPosts', 'myPlans',
     'renewalReminders', 'dismissedNotifications', 'prefs', 'seenOnboarding',
+    'themeMode',
   };
   void _persist() {
     for (final k in _lightGroups) {
@@ -362,8 +469,8 @@ class AppState extends ChangeNotifier {
   String get userPhone => _userPhone;
   String get userEmail => _userEmail;
   String get firstName => _userName.isNotEmpty ? _userName.split(' ').first : 'אורח';
-  void login({required String name, required String phone, String email = ''}) { _isLoggedIn = true; _userName = name; _userPhone = phone; _userEmail = email; notifyListeners(); _persist(); }
-  void logout() { _isLoggedIn = false; _userName = ''; _userPhone = ''; _userEmail = ''; notifyListeners(); _persist(); }
+  void login({required String name, required String phone, String email = ''}) { _isLoggedIn = true; _userName = name; _userPhone = phone; _userEmail = email; _isAdmin = isAdminEmail(email); notifyListeners(); _persist(); }
+  void logout() { _isLoggedIn = false; _userName = ''; _userPhone = ''; _userEmail = ''; _isAdmin = false; notifyListeners(); _persist(); }
 
   // Lead
   String? _leadName; String? _leadPhone; String? _leadProvider; String? _leadPlanId; String? _leadEmail; String? _leadCallbackTime;
@@ -437,6 +544,47 @@ class AppState extends ChangeNotifier {
     notifyListeners();
   }
 
+  // ── Telegram Notifications ─────────────────────────────────────────────────
+  String _userTelegramChatId = '';
+  bool _telegramEnabled = false;
+
+  String get userTelegramChatId => _userTelegramChatId;
+  bool get telegramEnabled => _telegramEnabled;
+
+  // ── Support Ticket ──────────────────────────────────────────────────────────
+  String? _supportTicketId;
+
+  String? get supportTicketId => _supportTicketId;
+
+  void setSupportTicketId(String? id) {
+    _supportTicketId = id;
+    _markDirty('supportTicket');
+    notifyListeners();
+  }
+
+  void setUserTelegramChatId(String chatId, {bool enabled = true}) {
+    _userTelegramChatId = chatId;
+    _telegramEnabled = enabled;
+    _markDirty('telegram');
+    notifyListeners();
+    _persist();
+  }
+
+  void setTelegramEnabled(bool enabled) {
+    _telegramEnabled = enabled;
+    _markDirty('telegram');
+    notifyListeners();
+    _persist();
+  }
+
+  void clearTelegramData() {
+    _userTelegramChatId = '';
+    _telegramEnabled = false;
+    _markDirty('telegram');
+    notifyListeners();
+    _persist();
+  }
+
   // Tracker
   int _trackerStep = 0;
   int get trackerStep => _trackerStep;
@@ -471,6 +619,122 @@ class AppState extends ChangeNotifier {
       _watchedPlans.remove(planId);
     } else {
       _watchedPlans.add(planId);
+    }
+    notifyListeners();
+    _persist();
+  }
+
+  // Favorites / wishlist — mirrors the watch list (a separate, sentiment list:
+  // "plans I love" vs "plans whose price I'm tracking").
+  final Set<String> _favoritePlans = {};
+  List<String> get favoritePlans => List.unmodifiable(_favoritePlans);
+  bool isFavorited(String planId) => _favoritePlans.contains(planId);
+  void toggleFavorite(String planId) {
+    if (_favoritePlans.contains(planId)) {
+      _favoritePlans.remove(planId);
+    } else {
+      _favoritePlans.add(planId);
+    }
+    notifyListeners();
+    _persist();
+  }
+
+  // Price targets — a ₪ goal per plan id; a price-alert fires once the plan
+  // reaches it. A non-positive target removes the entry (no goal = not tracked).
+  final Map<String, int> _priceTargets = {};
+  Map<String, int> get priceTargets => Map.unmodifiable(_priceTargets);
+  int? priceTargetFor(String planId) => _priceTargets[planId];
+  void setPriceTarget(String planId, int price) {
+    if (price <= 0) {
+      _priceTargets.remove(planId);
+    } else {
+      _priceTargets[planId] = price;
+    }
+    notifyListeners();
+    _persist();
+  }
+  void clearPriceTarget(String planId) {
+    _priceTargets.remove(planId);
+    notifyListeners();
+    _persist();
+  }
+
+  // OS-push dedup for price-target alerts — planId -> ISO date last pushed, so a
+  // continuously-met target isn't re-pushed within its [alertFrequency] window.
+  // The live notification-center alert is independent and always reflects state.
+  final Map<String, String> _priceAlertNotified = {};
+  Map<String, String> get priceAlertNotified => Map.unmodifiable(_priceAlertNotified);
+  void markPriceAlertNotified(String planId, String isoDate) {
+    _priceAlertNotified[planId] = isoDate;
+    notifyListeners();
+    _persist();
+  }
+
+  // Price-drop detection — [_lastSeenPrices] is the baseline (the last price we
+  // showed for each watched plan); [_priceDrops] holds drops the sync detected
+  // (planId -> {planName, provider, oldPrice, newPrice}) for the notification
+  // center. With a static catalogue nothing drops; real drops appear once the
+  // backend serves updated prices.
+  final Map<String, int> _lastSeenPrices = {};
+  int? lastSeenPrice(String planId) => _lastSeenPrices[planId];
+  void recordSeenPrices(Map<String, int> prices) {
+    if (prices.isEmpty) return;
+    _lastSeenPrices.addAll(prices);
+    notifyListeners();
+    _persist();
+  }
+
+  final Map<String, Map<String, dynamic>> _priceDrops = {};
+  Map<String, Map<String, dynamic>> get priceDrops => Map.unmodifiable(_priceDrops);
+  void recordPriceDrop({
+    required String planId,
+    required String planName,
+    required String provider,
+    required int oldPrice,
+    required int newPrice,
+  }) {
+    _priceDrops[planId] = {
+      'planName': planName,
+      'provider': provider,
+      'oldPrice': oldPrice,
+      'newPrice': newPrice,
+    };
+    notifyListeners();
+    _persist();
+  }
+
+  void clearPriceDrop(String planId) {
+    if (_priceDrops.remove(planId) != null) {
+      notifyListeners();
+      _persist();
+    }
+  }
+
+  // Alert-tuning prefs — thresholds/timing the notification engine reads so the
+  // user controls how aggressive (and how early) their alerts are.
+  int _minSavingAlert = 5;
+  String _alertFrequency = 'immediate';
+  int _renewalDaysAhead = 21;
+  String _renewalReminderTime = '09:00';
+  int get minSavingAlert => _minSavingAlert;
+  String get alertFrequency => _alertFrequency;
+  int get renewalDaysAhead => _renewalDaysAhead;
+  String get renewalReminderTime => _renewalReminderTime;
+  void setMinSavingAlert(int v) { _minSavingAlert = v; notifyListeners(); _persist(); }
+  void setAlertFrequency(String v) { _alertFrequency = v; notifyListeners(); _persist(); }
+  void setRenewalDaysAhead(int v) { _renewalDaysAhead = v; notifyListeners(); _persist(); }
+  void setRenewalReminderTime(String v) { _renewalReminderTime = v; notifyListeners(); _persist(); }
+
+  // Switch checklist — set of completed step keys for the "how to switch
+  // provider" guide, so progress survives across sessions.
+  final Set<String> _switchChecklistDone = {};
+  Set<String> get switchChecklistDone => Set.unmodifiable(_switchChecklistDone);
+  bool isChecklistDone(String key) => _switchChecklistDone.contains(key);
+  void toggleChecklistItem(String key) {
+    if (_switchChecklistDone.contains(key)) {
+      _switchChecklistDone.remove(key);
+    } else {
+      _switchChecklistDone.add(key);
     }
     notifyListeners();
     _persist();
@@ -514,6 +778,47 @@ class AppState extends ChangeNotifier {
   void setPrefPriceAlerts(bool v) { _prefPriceAlerts = v; notifyListeners(); _persist(); }
   void setPrefRequestUpdates(bool v) { _prefRequestUpdates = v; notifyListeners(); _persist(); }
   void setPrefCommunityNotifs(bool v) { _prefCommunityNotifs = v; notifyListeners(); _persist(); }
+
+  // Admin flag — gates the (otherwise unreachable) '/admin' route. Derived from
+  // the signed-in email against [adminEmails] inside login()/logout(); the
+  // setter remains for manual override (e.g. tests or a future server-driven
+  // role). Compare lower-cased — emails are case-insensitive.
+  static const Set<String> adminEmails = {
+    'uziel10@gmail.com',
+    'inbal2526@gmail.com',
+    'arielgabayyy@gmail.com',
+    'nitukbeclick@gmail.com',
+  };
+  static bool isAdminEmail(String email) =>
+      email.isNotEmpty && adminEmails.contains(email.trim().toLowerCase());
+  bool _isAdmin = false;
+  bool get isAdmin => _isAdmin;
+  void setIsAdmin(bool v) { _isAdmin = v; notifyListeners(); _persist(); }
+
+  // Theme mode (default light until the dark visual-QA pass completes).
+  ThemeMode _themeMode = ThemeMode.light;
+  ThemeMode get themeMode => _themeMode;
+  void setThemeMode(ThemeMode mode) {
+    _themeMode = mode;
+    notifyListeners();
+    _markDirty('themeMode');
+  }
+
+  static ThemeMode _themeModeFromString(String s) {
+    switch (s) {
+      case 'light': return ThemeMode.light;
+      case 'system': return ThemeMode.system;
+      default: return ThemeMode.dark;
+    }
+  }
+
+  static String _themeModeToString(ThemeMode m) {
+    switch (m) {
+      case ThemeMode.light: return 'light';
+      case ThemeMode.system: return 'system';
+      case ThemeMode.dark: return 'dark';
+    }
+  }
 
   // Onboarding
   bool _seenOnboarding = false;

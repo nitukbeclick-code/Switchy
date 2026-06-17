@@ -11,6 +11,7 @@ import 'services/auth_service.dart';
 import 'services/meeting_sync.dart';
 import 'services/push_notification_service.dart';
 import 'services/secure_session_store.dart';
+import 'services/timeout_http_client.dart';
 import 'services/backend/local_backend.dart';
 import 'services/backend/supabase_backend.dart';
 
@@ -34,18 +35,49 @@ void main() async {
     statusBarIconBrightness: Brightness.light,
   ));
 
-  await _initBackend();
+  // Startup services are wrapped so a failure in any single one can NEVER stop
+  // the app from rendering. Each is non-critical to first paint: the backend
+  // falls back to on-device data, biometric warmup just affects the lock gate,
+  // and push init only affects reminders. Without these guards a thrown
+  // exception here (e.g. native notification/timezone init on a real device)
+  // would kill main() before runApp() and the app would "not open".
+  try {
+    await _initBackend();
+  } catch (e, s) {
+    debugPrint('startup: _initBackend failed (continuing on local backend): $e\n$s');
+  }
   await AppState().initializePersistedState();
   // Cache the Face-ID-armed flag synchronously for the router's cold-start gate
   // (no-op on web / when no real session). Must run after the backend is up so
   // a restored Supabase session is already visible.
-  await AuthService.instance.warmUpBiometricLock();
+  try {
+    await AuthService.instance.warmUpBiometricLock();
+  } catch (e) {
+    debugPrint('startup: biometric warmup failed (continuing): $e');
+  }
   // Init OS push (no-op on web) so renewal reminders can be (re)scheduled.
-  await PushNotificationService.instance.init();
+  try {
+    await PushNotificationService.instance.init();
+  } catch (e) {
+    debugPrint('startup: push init failed (continuing without notifications): $e');
+  }
   runApp(ChangeNotifierProvider.value(value: AppState(), child: const ChosechApp()));
   _appStarted = true;
+  // Hydrate the plan catalogue from the backend (live prices/featured/ratings
+  // overlaid onto the bundled seed), then rebuild open screens. Fire-and-forget:
+  // first paint already happened on the seed, and an empty/failed fetch is a
+  // safe no-op — LocalBackend returns the seed, so this is an identity merge
+  // offline. Real prices flow the moment a Supabase catalogue is connected.
+  appBackend
+      .fetchPlans()
+      .then((plans) => AppState().hydrateCatalogWith(plans))
+      .catchError((e) => debugPrint('startup: catalogue hydration failed (using seed): $e'));
   // Reschedule renewal reminders from the restored state (fire-and-forget).
   PushNotificationService.instance.syncRenewalReminders(AppState());
+  // Push any price targets already met on cold start (gated + deduped inside).
+  PushNotificationService.instance.syncPriceAlerts(AppState());
+  // Detect price drops for watched plans vs the last-seen baseline (gated).
+  PushNotificationService.instance.syncPriceDrops(AppState());
   // App-scope meeting sync: a rep confirmation must land (status + Zoom link +
   // push reminders) no matter which screen is open. Fire-and-forget.
   MeetingSync.start();
@@ -64,6 +96,10 @@ Future<void> _initBackend() async {
   await Supabase.initialize(
     url: _supabaseUrl,
     publishableKey: _supabaseAnonKey,
+    // A network blip must never hang the UI: this timeout client fails every
+    // Supabase request fast (15s) so callers fall back to on-device data / a
+    // retry instead of awaiting forever. One chokepoint for all query sites.
+    httpClient: TimeoutHttpClient(),
     // Mobile: persist the session in the Keychain/Keystore (secure enclave),
     // not plaintext SharedPreferences. Web: null → default storage (CSP is the
     // web mitigation), which also keeps the `flutter build web` gate green.

@@ -23,7 +23,12 @@ class ScheduledReminder {
 /// The exact date a single plan's renewal reminder should fire, or null if it
 /// has no promo date or the promo has already ended. Fires [daysBefore] before
 /// the promo ends, clamped forward to today if that date has already passed.
-DateTime? reminderFireDate(TrackedPlan plan, {int daysBefore = 21, DateTime? now}) {
+DateTime? reminderFireDate(
+  TrackedPlan plan, {
+  int daysBefore = 21,
+  ({int hour, int minute})? atTime,
+  DateTime? now,
+}) {
   final end = plan.promoEnd;
   if (end == null) return null;
   final n = now ?? DateTime.now();
@@ -31,7 +36,13 @@ DateTime? reminderFireDate(TrackedPlan plan, {int daysBefore = 21, DateTime? now
   final endDay = DateTime(end.year, end.month, end.day);
   if (!endDay.isAfter(today)) return null;
   final fire = endDay.subtract(Duration(days: daysBefore));
-  return fire.isBefore(today) ? today : fire;
+  final fireDay = fire.isBefore(today) ? today : fire;
+  // Honor the user's preferred reminder time-of-day when provided; otherwise
+  // keep the historical date-only (midnight) behavior.
+  if (atTime != null) {
+    return DateTime(fireDay.year, fireDay.month, fireDay.day, atTime.hour, atTime.minute);
+  }
+  return fireDay;
 }
 
 /// The renewal reminders to fire for the user's tracked plans, soonest first.
@@ -47,13 +58,14 @@ DateTime? reminderFireDate(TrackedPlan plan, {int daysBefore = 21, DateTime? now
 List<ScheduledReminder> renewalReminderSchedule(
   AppState s, {
   int daysBefore = 21,
+  ({int hour, int minute})? atTime,
   DateTime? now,
 }) {
   if (!s.renewalReminders) return const [];
 
   final out = <ScheduledReminder>[];
   for (final p in s.myPlans) {
-    final fire = reminderFireDate(p, daysBefore: daysBefore, now: now);
+    final fire = reminderFireDate(p, daysBefore: daysBefore, atTime: atTime, now: now);
     if (fire == null) continue; // no promo date, or promo already ended
 
     out.add(ScheduledReminder(
@@ -69,8 +81,13 @@ List<ScheduledReminder> renewalReminderSchedule(
 }
 
 /// The next reminder that will fire, or null if none is scheduled.
-ScheduledReminder? nextReminder(AppState s, {int daysBefore = 21, DateTime? now}) {
-  final all = renewalReminderSchedule(s, daysBefore: daysBefore, now: now);
+ScheduledReminder? nextReminder(
+  AppState s, {
+  int daysBefore = 21,
+  ({int hour, int minute})? atTime,
+  DateTime? now,
+}) {
+  final all = renewalReminderSchedule(s, daysBefore: daysBefore, atTime: atTime, now: now);
   return all.isEmpty ? null : all.first;
 }
 

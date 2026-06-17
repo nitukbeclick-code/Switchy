@@ -42,9 +42,10 @@ class _SuccessWidgetState extends State<SuccessWidget> {
     final ffTheme = AppTheme.of(context);
     final appState = Provider.of<AppState>(context);
     final plan = appState.leadPlanId != null ? planById(appState.leadPlanId!) : null;
+    final reduceMotion = MediaQuery.of(context).disableAnimations;
 
     return Scaffold(
-      backgroundColor: ffTheme.primary,
+      backgroundColor: AppColors.primary,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -56,69 +57,94 @@ class _SuccessWidgetState extends State<SuccessWidget> {
               Stack(
                 alignment: Alignment.center,
                 children: [
-                  // Outer pulse ring
-                  Container(
-                    width: 120,
-                    height: 120,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.08),
-                      shape: BoxShape.circle,
-                    ),
-                  ).animate(onPlay: (c) => c.repeat(reverse: true))
-                    .scale(begin: const Offset(1, 1), end: const Offset(1.12, 1.12), duration: 1200.ms, curve: Curves.easeInOut),
+                  // Outer pulse ring — looping motion is suppressed when the
+                  // user prefers reduced motion.
+                  Builder(builder: (_) {
+                    final ring = Container(
+                      width: 120,
+                      height: 120,
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.08),
+                        shape: BoxShape.circle,
+                      ),
+                    );
+                    if (reduceMotion) return ring;
+                    return ring
+                        .animate(onPlay: (c) => c.repeat(reverse: true))
+                        .scale(begin: const Offset(1, 1), end: const Offset(1.12, 1.12), duration: 1200.ms, curve: Curves.easeInOut);
+                  }),
 
                   // Main circle
-                  Container(
-                    width: 96,
-                    height: 96,
-                    decoration: BoxDecoration(
-                      color: ffTheme.secondary,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(Icons.check_rounded, size: 56, color: ffTheme.primary),
-                  ).animate()
-                    .scale(duration: 500.ms, curve: Curves.elasticOut)
-                    .then()
-                    .shake(hz: 2, duration: 200.ms),
+                  Builder(builder: (_) {
+                    final circle = Container(
+                      width: 96,
+                      height: 96,
+                      decoration: BoxDecoration(
+                        color: ffTheme.secondary,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(Icons.check_rounded, size: 56, color: ffTheme.primary),
+                    );
+                    if (reduceMotion) return circle;
+                    return circle
+                        .animate()
+                        .scale(duration: 500.ms, curve: Curves.elasticOut)
+                        .then()
+                        .shake(hz: 2, duration: 200.ms);
+                  }),
 
                   // Sparkle top-left
                   Positioned(
                     top: 4,
                     right: 4,
-                    child: const Icon(Icons.auto_awesome, size: 18, color: Colors.white)
-                        .animate(delay: 400.ms).fadeIn().slideY(begin: -0.5),
+                    child: reduceMotion
+                        ? const Icon(Icons.auto_awesome, size: 18, color: Colors.white)
+                        : const Icon(Icons.auto_awesome, size: 18, color: Colors.white)
+                            .animate(delay: 400.ms).fadeIn().slideY(begin: -0.5),
                   ),
                   // Sparkle bottom-right
                   Positioned(
                     bottom: 4,
                     left: 4,
-                    child: const Icon(Icons.celebration_outlined, size: 18, color: Colors.white)
-                        .animate(delay: 600.ms).fadeIn().slideY(begin: 0.5),
+                    child: reduceMotion
+                        ? const Icon(Icons.celebration_outlined, size: 18, color: Colors.white)
+                        : const Icon(Icons.celebration_outlined, size: 18, color: Colors.white)
+                            .animate(delay: 600.ms).fadeIn().slideY(begin: 0.5),
                   ),
                 ],
               ),
 
               const SizedBox(height: 28),
 
-              Text(
-                'קיבלנו, ${appState.firstName}!',
-                style: GoogleFonts.rubik(fontSize: 32, fontWeight: FontWeight.w800, color: Colors.white),
-                textAlign: TextAlign.center,
-              ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.2),
+              _entrance(
+                reduceMotion,
+                Text(
+                  'קיבלנו, ${appState.firstName}!',
+                  style: GoogleFonts.rubik(fontSize: 32, fontWeight: FontWeight.w800, color: Colors.white),
+                  textAlign: TextAlign.center,
+                ),
+                (w) => w.animate().fadeIn(delay: 300.ms).slideY(begin: 0.2),
+              ),
 
               const SizedBox(height: 8),
 
-              Text(
-                'הבקשה נשלחה בהצלחה',
-                style: ffTheme.bodyLarge.copyWith(color: Colors.white.withValues(alpha: 0.75)),
-                textAlign: TextAlign.center,
-              ).animate().fadeIn(delay: 400.ms),
+              _entrance(
+                reduceMotion,
+                Text(
+                  'הבקשה נשלחה בהצלחה',
+                  style: ffTheme.bodyLarge.copyWith(color: Colors.white.withValues(alpha: 0.75)),
+                  textAlign: TextAlign.center,
+                ),
+                (w) => w.animate().fadeIn(delay: 400.ms),
+              ),
 
               const SizedBox(height: 28),
 
               // Plan summary card
               if (plan != null)
-                Builder(builder: (ctx) {
+                _entrance(
+                  reduceMotion,
+                  Builder(builder: (ctx) {
                   final bill = appState.currentBill(plan.cat);
                   final save = planSaveYear(plan, bill);
                   return Container(
@@ -149,21 +175,36 @@ class _SuccessWidgetState extends State<SuccessWidget> {
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
                             Text('₪${plan.priceText}/${priceUnitShort(plan)}',
-                                style: GoogleFonts.rubik(fontSize: 16, fontWeight: FontWeight.w800, color: ffTheme.secondary)),
-                            if (save > 0)
+                                style: GoogleFonts.rubik(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.white,
+                                  fontFeatures: const [FontFeature.tabularFigures()],
+                                )),
+                            if (save > 0) ...[
+                              const SizedBox(height: 2),
                               Text('חוסך ₪$save/שנה',
-                                  style: ffTheme.labelSmall.copyWith(color: ffTheme.secondary.withValues(alpha: 0.85))),
+                                  style: ffTheme.labelSmall.copyWith(
+                                    color: ffTheme.saving,
+                                    fontWeight: FontWeight.w700,
+                                    fontFeatures: const [FontFeature.tabularFigures()],
+                                  )),
+                            ],
                           ],
                         ),
                       ],
                     ),
                   );
-                }).animate().fadeIn(delay: 500.ms),
+                  }),
+                  (w) => w.animate().fadeIn(delay: 500.ms),
+                ),
 
               const SizedBox(height: 24),
 
               // "What happens next" checklist with staggered animation
-              Container(
+              _entrance(
+                reduceMotion,
+                Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
@@ -196,45 +237,72 @@ class _SuccessWidgetState extends State<SuccessWidget> {
                     ),
                   ],
                 ),
-              ).animate().fadeIn(delay: 650.ms),
+                ),
+                (w) => w.animate().fadeIn(delay: 650.ms),
+              ),
 
               const SizedBox(height: 24),
 
               // Trust badges — all verifiable, no invented ratings/counts.
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  _TrustBadge(icon: Icons.lock_rounded, label: 'מאובטח', ffTheme: ffTheme),
-                  const SizedBox(width: 24),
-                  _TrustBadge(icon: Icons.money_off_rounded, label: 'ללא עלות', ffTheme: ffTheme),
-                  const SizedBox(width: 24),
-                  _TrustBadge(icon: Icons.handshake_rounded, label: 'ליווי אישי', ffTheme: ffTheme),
-                ],
-              ).animate().fadeIn(delay: 750.ms),
+              _entrance(
+                reduceMotion,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _TrustBadge(icon: Icons.lock_rounded, label: 'מאובטח', ffTheme: ffTheme),
+                    const SizedBox(width: 24),
+                    _TrustBadge(icon: Icons.money_off_rounded, label: 'ללא עלות', ffTheme: ffTheme),
+                    const SizedBox(width: 24),
+                    _TrustBadge(icon: Icons.handshake_rounded, label: 'ליווי אישי', ffTheme: ffTheme),
+                  ],
+                ),
+                (w) => w.animate().fadeIn(delay: 750.ms),
+              ),
 
               const SizedBox(height: 28),
 
-              AppButton(
-                text: 'מעקב אחר התהליך',
-                onPressed: () async => context.goNamed('Tracker'),
-                
+              _entrance(
+                reduceMotion,
+                AppButton(
+                  text: 'מעקב אחר התהליך',
+                  onPressed: () async => context.goNamed('Tracker'),
                   width: double.infinity,
                   height: 56,
                   color: ffTheme.secondary,
                   textStyle: GoogleFonts.rubik(fontSize: 15, fontWeight: FontWeight.w700, color: ffTheme.primary),
                   borderRadius: BorderRadius.circular(16),
-                
-              ).animate().fadeIn(delay: 800.ms),
+                ),
+                (w) => w.animate().fadeIn(delay: 800.ms),
+              ),
 
               const SizedBox(height: 14),
 
-              TextButton(
-                onPressed: () => context.goNamed('Home'),
-                child: Text(
-                  'חזרה לדף הבית',
-                  style: ffTheme.bodyMedium.copyWith(color: Colors.white.withValues(alpha: 0.65)),
+              _entrance(
+                reduceMotion,
+                AppButton.ghost(
+                  text: 'השוו עוד מסלולים',
+                  onPressed: () async => context.goNamed('Results'),
+                  width: double.infinity,
+                  height: 56,
+                  textStyle: GoogleFonts.rubik(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white),
+                  borderRadius: BorderRadius.circular(16),
                 ),
-              ).animate().fadeIn(delay: 900.ms),
+                (w) => w.animate().fadeIn(delay: 850.ms).slideY(begin: 0.2),
+              ),
+
+              const SizedBox(height: 14),
+
+              _entrance(
+                reduceMotion,
+                TextButton(
+                  onPressed: () => context.goNamed('Home'),
+                  child: Text(
+                    'חזרה לדף הבית',
+                    style: ffTheme.bodyMedium.copyWith(color: Colors.white.withValues(alpha: 0.65)),
+                  ),
+                ),
+                (w) => w.animate().fadeIn(delay: 900.ms),
+              ),
 
               const SizedBox(height: 16),
             ],
@@ -245,6 +313,18 @@ class _SuccessWidgetState extends State<SuccessWidget> {
   }
 }
 
+/// Applies a one-shot entrance animation to [child] unless the user has
+/// requested reduced motion (`MediaQuery.disableAnimations`), in which case the
+/// plain widget is returned so content appears immediately without movement.
+Widget _entrance(
+  bool reduceMotion,
+  Widget child,
+  Widget Function(Widget child) animate,
+) {
+  if (reduceMotion) return child;
+  return animate(child);
+}
+
 class _CheckItem extends StatelessWidget {
   const _CheckItem({required this.checked, required this.text, required this.ffTheme});
   final bool checked;
@@ -253,26 +333,32 @@ class _CheckItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedOpacity(
-      opacity: checked ? 1.0 : 0.4,
-      duration: const Duration(milliseconds: 400),
-      child: Row(
-        children: [
-          AnimatedContainer(
-            duration: ffTheme.motionMedium,
-            width: 24,
-            height: 24,
-            decoration: BoxDecoration(
-              color: checked ? ffTheme.secondary : Colors.white.withValues(alpha: 0.15),
-              shape: BoxShape.circle,
-            ),
-            child: checked
-                ? Icon(Icons.check_rounded, size: 14, color: ffTheme.primary)
-                : null,
+    return Semantics(
+      checked: checked,
+      label: '${checked ? 'הושלם' : 'בתהליך'}: $text',
+      child: ExcludeSemantics(
+        child: AnimatedOpacity(
+          opacity: checked ? 1.0 : 0.4,
+          duration: const Duration(milliseconds: 400),
+          child: Row(
+            children: [
+              AnimatedContainer(
+                duration: ffTheme.motionMedium,
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(
+                  color: checked ? ffTheme.secondary : Colors.white.withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: checked
+                    ? Icon(Icons.check_rounded, size: 14, color: ffTheme.primary)
+                    : null,
+              ),
+              const SizedBox(width: 12),
+              Text(text, style: GoogleFonts.rubik(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.white)),
+            ],
           ),
-          const SizedBox(width: 12),
-          Text(text, style: GoogleFonts.rubik(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.white)),
-        ],
+        ),
       ),
     );
   }

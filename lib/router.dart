@@ -13,6 +13,8 @@ import 'pages/quiz/quiz_widget.dart';
 import 'pages/results/results_widget.dart';
 import 'pages/search/search_widget.dart';
 import 'pages/savings/savings_widget.dart';
+import 'pages/favorites/favorites_widget.dart';
+import 'pages/recap/annual_recap_widget.dart';
 import 'pages/plan_detail/plan_detail_widget.dart';
 import 'pages/compare/compare_widget.dart';
 import 'pages/lead/lead_widget.dart';
@@ -37,6 +39,9 @@ import 'pages/renewal/renewal_widget.dart';
 import 'pages/renewal_report/renewal_report_widget.dart';
 import 'pages/notifications/notification_center_widget.dart';
 import 'pages/provider/provider_widget.dart';
+import 'pages/support_ticket/support_ticket_widget.dart';
+import 'pages/abroad_calc/abroad_calc_widget.dart';
+import 'pages/admin/admin_dashboard_widget.dart';
 
 final _rootNavKey = GlobalKey<NavigatorState>(debugLabel: 'root');
 final _shellNavKey = GlobalKey<NavigatorState>(debugLabel: 'shell');
@@ -86,6 +91,8 @@ GoRouter createRouter() {
         GoRoute(path: '/results', name: 'Results', builder: (_, __) => const ResultsWidget()),
         GoRoute(path: '/search', name: 'Search', builder: (_, __) => const SearchWidget()),
         GoRoute(path: '/savings', name: 'Savings', builder: (_, __) => const SavingsWidget()),
+        GoRoute(path: '/favorites', name: 'Favorites', builder: (_, __) => const FavoritesWidget()),
+        GoRoute(path: '/recap', name: 'AnnualRecap', builder: (_, __) => const AnnualRecapWidget()),
         GoRoute(path: '/plan/:planId', name: 'PlanDetail', builder: (_, s) => PlanDetailWidget(planId: s.pathParameters['planId']!)),
         GoRoute(path: '/compare', name: 'Compare', builder: (_, __) => const CompareWidget()),
         GoRoute(path: '/lead/:planId', name: 'Lead', builder: (_, s) => LeadWidget(planId: s.pathParameters['planId']!, source: s.uri.queryParameters['source'] ?? 'form')),
@@ -117,6 +124,9 @@ GoRouter createRouter() {
         GoRoute(path: '/renewal-report/:trackedId', name: 'RenewalReport', builder: (_, s) => RenewalReportWidget(trackedId: s.pathParameters['trackedId']!)),
         GoRoute(path: '/notifications', name: 'Notifications', builder: (_, __) => const NotificationCenterWidget()),
         GoRoute(path: '/provider/:name', name: 'Provider', builder: (_, s) => ProviderWidget(providerName: s.pathParameters['name']!)),
+        GoRoute(path: '/support-ticket/:ticketId', name: 'support-ticket', builder: (_, s) => SupportTicketWidget(ticketId: s.pathParameters['ticketId']!)),
+        GoRoute(path: '/abroad-calc', name: 'AbroadCalc', builder: (_, __) => const AbroadCalcWidget()),
+        GoRoute(path: '/admin', name: 'Admin', builder: (_, __) => const AdminDashboardWidget()),
       ],
     ),
   ],

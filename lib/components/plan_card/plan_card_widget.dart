@@ -78,7 +78,7 @@ class PlanCardWidget extends StatelessWidget {
         children: [
           Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ffTheme.secondaryBackground,
         borderRadius: BorderRadius.circular(ffTheme.radiusLg),
         // Crisp formal frame; the best match wears the VALUE accent — a 2px
         // amber ring + warm glow, mirroring the site's `.plan--best`.
@@ -202,7 +202,7 @@ class PlanCardWidget extends StatelessWidget {
                                     button: true,
                                     label: 'פרופיל ${plan.provider}',
                                     child: InkWell(
-                                      borderRadius: BorderRadius.circular(6),
+                                      borderRadius: BorderRadius.circular(ffTheme.radiusXs),
                                       onTap: () => context.pushNamed('Provider', pathParameters: {'name': plan.provider}),
                                       child: Padding(
                                         padding: const EdgeInsets.symmetric(vertical: 4),
@@ -289,6 +289,7 @@ class PlanCardWidget extends StatelessWidget {
                                   fontSize: 11,
                                   fontWeight: FontWeight.w700,
                                   color: Colors.white,
+                                  fontFeatures: const [FontFeature.tabularFigures()],
                                 ),
                               ),
                             ],
@@ -334,6 +335,7 @@ class PlanCardWidget extends StatelessWidget {
                             style: GoogleFonts.assistant(
                               fontSize: 12,
                               color: ffTheme.secondaryText,
+                              fontFeatures: const [FontFeature.tabularFigures()],
                             ),
                           ),
                         ],
@@ -502,7 +504,9 @@ class _ChooseButton extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         gradient: isBest ? ffTheme.accentGradient : null,
-        color: isBest ? null : ffTheme.primary,
+        // Fixed ink (not the brightness-aware token) so the white label stays
+        // readable in dark, where ffTheme.primary flips to near-white.
+        color: isBest ? null : AppColors.primary,
         borderRadius: BorderRadius.circular(ffTheme.radiusMd),
         boxShadow: isBest ? ffTheme.shadowAccent : null,
       ),
@@ -620,6 +624,7 @@ class _SpecChip extends StatelessWidget {
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
                 color: ffTheme.secondaryText,
+                fontFeatures: const [FontFeature.tabularFigures()],
               ),
               overflow: TextOverflow.ellipsis,
               maxLines: 1,

@@ -82,15 +82,63 @@ class _HomeWidgetState extends State<HomeWidget> {
     return null;
   }
 
+  /// Flash deal detection: a plan is a flash deal if its price is ≥ 20% below
+  /// the average price for its category.  Calculation is intentionally inline
+  /// (not in a service) and memoised on the plan list which never changes at
+  /// runtime.
+  static final Map<String, double> _catAvgCache = {};
+
+  static double _categoryAvg(String catId) {
+    return _catAvgCache.putIfAbsent(catId, () {
+      final plans = allPlans.where((p) => p.cat == catId).toList();
+      if (plans.isEmpty) return 0;
+      return plans.fold<double>(0, (sum, p) => sum + p.priceValue) / plans.length;
+    });
+  }
+
+  static bool _isFlashDeal(Plan plan) {
+    final avg = _categoryAvg(plan.cat);
+    if (avg <= 0) return false;
+    return plan.priceValue <= avg * 0.80; // ≥20% below average
+  }
+
+  /// Percentage below average, clamped to [0, 99].
+  static int _flashDiscountPct(Plan plan) {
+    final avg = _categoryAvg(plan.cat);
+    if (avg <= 0) return 0;
+    return ((1 - plan.priceValue / avg) * 100).round().clamp(0, 99);
+  }
+
   @override
   Widget build(BuildContext context) {
+    // The home layout's *structure* is driven by exactly three AppState fields:
+    // the active category, that category's bill, and whether the quiz is done.
+    // A Selector over only those rebuilds this subtree when they change while
+    // skipping the screen's many unrelated notifies (likes, watch toggles,
+    // searches). All section builders + callbacks read the singleton with
+    // listen:false, so behaviour is identical but the rebuild surface shrinks.
+    return Selector<AppState, _HomeDeps>(
+      selector: (_, s) =>
+          _HomeDeps(s.selectedCat, s.currentBill(s.selectedCat), s.quizCompleted),
+      builder: (context, _, __) => _buildBody(context),
+    );
+  }
+
+  Widget _buildBody(BuildContext context) {
     final ffTheme = AppTheme.of(context);
-    final appState = Provider.of<AppState>(context);
+    final appState = AppState();
     final activeCat = appState.selectedCat;
     final deal = hotDeal(appState.currentBill(activeCat), cat: activeCat);
     // Compute the savings summary once and share it with the hero + grid
     // (each used to recompute it — 5 engine rankings — on every build).
     final savings = _savingsFor(appState);
+
+    // Flash deals — top 6 across all categories, sorted by discount depth
+    final flashDeals = allPlans
+        .where(_isFlashDeal)
+        .toList()
+      ..sort((a, b) => _flashDiscountPct(b).compareTo(_flashDiscountPct(a)));
+    final topFlashDeals = flashDeals.take(6).toList();
 
     return Scaffold(
       backgroundColor: ffTheme.background,
@@ -108,6 +156,10 @@ class _HomeWidgetState extends State<HomeWidget> {
 
               // ── 3. Savings hero card ───────────────────────────────────────
               SliverToBoxAdapter(child: _buildSavingsHero(context, ffTheme, savings)),
+
+              // ── 3b. Flash deals section ────────────────────────────────────
+              if (topFlashDeals.isNotEmpty)
+                SliverToBoxAdapter(child: _buildFlashDeals(context, ffTheme, topFlashDeals)),
 
               // ── 4. Hot deal card ───────────────────────────────────────────
               if (deal != null)
@@ -172,11 +224,14 @@ class _HomeWidgetState extends State<HomeWidget> {
               child: FloatingActionButton(
                 backgroundColor: ffTheme.secondary,
                 elevation: 0,
+                tooltip: 'בקשת שיחה חוזרת',
                 onPressed: () {
                   HapticFeedback.lightImpact();
                   context.pushNamed('Callback');
                 },
-                child: Icon(Icons.phone_rounded, color: ffTheme.primary, size: 26),
+                child: ExcludeSemantics(
+                  child: Icon(Icons.phone_rounded, color: ffTheme.primary, size: 26),
+                ),
               ),
             ),
           ),
@@ -246,7 +301,7 @@ class _HomeWidgetState extends State<HomeWidget> {
         : const Color(0xFFFFB300).withValues(alpha: 0.45);
 
     return SliverToBoxAdapter(
-      child: GestureDetector(
+      child: Pressable(
         onTap: () {
           HapticFeedback.lightImpact();
           context.pushNamed('RenewalReport', pathParameters: {'trackedId': r.id});
@@ -296,6 +351,8 @@ class _HomeWidgetState extends State<HomeWidget> {
                         color: isUrgent ? const Color(0xFF7B1E1E) : const Color(0xFF5F4000),
                         fontWeight: FontWeight.w800,
                         fontSize: 13.5,
+                        height: 1.3,
+                        fontFeatures: const [FontFeature.tabularFigures()],
                       ),
                     ),
                     if (subText.isNotEmpty) ...[
@@ -355,25 +412,32 @@ class _HomeWidgetState extends State<HomeWidget> {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    GestureDetector(
-                      onTap: () {
-                        HapticFeedback.lightImpact();
-                        context.pushNamed('Search');
-                      },
-                      child: Container(
-                        margin: const EdgeInsets.only(top: 8),
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(ffTheme.radiusMd),
-                          border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(Icons.search_rounded, color: Colors.white.withValues(alpha: 0.7), size: 16),
-                            const SizedBox(width: 8),
-                            Text('חפש ספק או מסלול...', style: AppTheme.of(context).bodySmall.copyWith(color: Colors.white.withValues(alpha: 0.65))),
-                          ],
+                    Semantics(
+                      button: true,
+                      label: 'חיפוש ספק או מסלול',
+                      child: GestureDetector(
+                        onTap: () {
+                          HapticFeedback.lightImpact();
+                          context.pushNamed('Search');
+                        },
+                        child: Container(
+                          margin: const EdgeInsets.only(top: 8),
+                          constraints: const BoxConstraints(minHeight: 44),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(ffTheme.radiusMd),
+                            border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
+                          ),
+                          child: Row(
+                            children: [
+                              ExcludeSemantics(
+                                child: Icon(Icons.search_rounded, color: Colors.white.withValues(alpha: 0.7), size: 16),
+                              ),
+                              const SizedBox(width: 8),
+                              Text('חפש ספק או מסלול...', style: AppTheme.of(context).bodySmall.copyWith(color: Colors.white.withValues(alpha: 0.65))),
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -411,7 +475,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                         width: 16,
                         height: 16,
                         decoration: BoxDecoration(color: ffTheme.secondary, shape: BoxShape.circle, border: Border.all(color: ffTheme.primaryDark, width: 1.5)),
-                        child: Center(child: Text(count > 9 ? '9+' : '$count', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: ffTheme.primaryDark))),
+                        child: Center(child: Text(count > 9 ? '9+' : '$count', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: ffTheme.primaryDark, fontFeatures: const [FontFeature.tabularFigures()]))),
                       ),
                     );
                   }),
@@ -430,7 +494,7 @@ class _HomeWidgetState extends State<HomeWidget> {
     // hero never lands on a screen showing a different number.
     final totalSave = savings.totalAnnualPotential;
 
-    return GestureDetector(
+    return Pressable(
       onTap: () {
         HapticFeedback.lightImpact();
         context.pushNamed('Savings');
@@ -447,9 +511,12 @@ class _HomeWidgetState extends State<HomeWidget> {
         children: [
           Text(
             'חיסכון פוטנציאלי שנתי',
-            style: ffTheme.labelMedium.copyWith(color: Colors.white.withValues(alpha: 0.75)),
+            style: ffTheme.labelMedium.copyWith(
+              color: Colors.white.withValues(alpha: 0.75),
+              letterSpacing: 0.2,
+            ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
           // Real figure only — when no bill is set we show a dash and prompt the
           // quiz, never a fabricated "potential saving" number. Mirrors the
           // /savings dashboard's honest empty state.
@@ -475,16 +542,17 @@ class _HomeWidgetState extends State<HomeWidget> {
             Text(
               '₪—',
               style: ffTheme.displaySmall.copyWith(
-                color: ffTheme.secondary,
+                color: Colors.white.withValues(alpha: 0.55),
                 fontWeight: FontWeight.bold,
+                fontFeatures: const [FontFeature.tabularFigures()],
               ),
             ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
           Text(
             appState.billsPersonalized
                 ? 'מחושב לפי החשבונות שלך'
                 : 'הערכה — ענו על השאלון לחישוב מדויק',
-            style: ffTheme.bodySmall.copyWith(color: Colors.white.withValues(alpha: 0.75)),
+            style: ffTheme.bodySmall.copyWith(color: Colors.white.withValues(alpha: 0.72)),
           ),
           const SizedBox(height: 20),
           GestureDetector(
@@ -493,14 +561,20 @@ class _HomeWidgetState extends State<HomeWidget> {
               appState.billsPersonalized ? context.goNamed('Results') : context.goNamed('Quiz');
             },
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
               decoration: BoxDecoration(
-                color: ffTheme.secondary,
+                gradient: ffTheme.accentGradient,
                 borderRadius: BorderRadius.circular(ffTheme.radiusMd),
+                boxShadow: ffTheme.shadowAccent,
               ),
               child: Text(
                 appState.billsPersonalized ? 'חפש חבילות ←' : 'בדקו כמה תחסכו ←',
-                style: ffTheme.titleSmall.copyWith(color: ffTheme.primaryDark),
+                textAlign: TextAlign.center,
+                style: ffTheme.titleSmall.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
           ),
@@ -511,6 +585,63 @@ class _HomeWidgetState extends State<HomeWidget> {
         .animate()
         .fadeIn(duration: 600.ms)
         .scale(begin: const Offset(0.95, 0.95), end: const Offset(1.0, 1.0));
+  }
+
+  Widget _buildFlashDeals(BuildContext context, AppTheme ffTheme, List<Plan> deals) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 0, 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Section header row
+          Padding(
+            padding: const EdgeInsetsDirectional.only(start: 16, bottom: 12),
+            child: Row(
+              children: [
+                Text('מבצעי אש', style: ffTheme.titleLarge),
+                const SizedBox(width: 6),
+                const Text('🔥', style: TextStyle(fontSize: 18)),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: AppColors.saving,
+                    borderRadius: BorderRadius.circular(ffTheme.radiusPill),
+                  ),
+                  child: Text(
+                    '${deals.length}',
+                    style: ffTheme.labelSmall.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 11,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Horizontal scroll of flash deal cards
+          SizedBox(
+            height: 210,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: deals.length,
+              separatorBuilder: (_, __) => const SizedBox(width: 10),
+              itemBuilder: (context, i) {
+                final plan = deals[i];
+                final discountPct = _flashDiscountPct(plan);
+                return _FlashDealCard(
+                  plan: plan,
+                  discountPct: discountPct,
+                  ffTheme: ffTheme,
+                  onTap: () => context.pushNamed('PlanDetail', pathParameters: {'planId': plan.id}),
+                ).animate(delay: (i * 70).ms).fadeIn(duration: 350.ms).slideX(begin: 0.1, end: 0);
+              },
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildHotDeal(BuildContext context, AppTheme ffTheme, Plan deal, AppState appState) {
@@ -570,11 +701,18 @@ class _HomeWidgetState extends State<HomeWidget> {
               const SizedBox(width: 6),
               Expanded(child: Text('התאמת השאלון — ${catInfo.name} עד ₪$budget', style: ffTheme.titleLarge)),
               GestureDetector(
+                behavior: HitTestBehavior.opaque,
                 onTap: () {
                   appState.setCategory(cat);
                   context.goNamed('Results');
                 },
-                child: Text('הכל ←', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(minHeight: 44),
+                  child: Center(
+                    widthFactor: 1,
+                    child: Text('הכל ←', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+                  ),
+                ),
               ),
             ],
           ),
@@ -699,7 +837,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                 child: Container(
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: isActive ? ffTheme.accent1 : Colors.white,
+                    color: isActive ? ffTheme.accent1 : ffTheme.secondaryBackground,
                     borderRadius: BorderRadius.circular(ffTheme.radiusLg),
                     border: Border.all(
                       color: isActive ? ffTheme.primary : ffTheme.alternate,
@@ -854,9 +992,11 @@ class _HomeWidgetState extends State<HomeWidget> {
                           shape: BoxShape.circle,
                         ),
                         child: Center(
-                          child: Text(
-                            post.user,
-                            style: ffTheme.labelLarge.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
+                          child: ExcludeSemantics(
+                            child: Text(
+                              post.user,
+                              style: ffTheme.labelLarge.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
+                            ),
                           ),
                         ),
                       ),
@@ -943,17 +1083,17 @@ class _HomeWidgetState extends State<HomeWidget> {
   }
 
   Widget _buildToolsRow(BuildContext context, AppTheme ffTheme) {
-    final tools = [
-      const _Tool(icon: Icons.videocam_rounded, label: 'פגישת וידאו', route: 'Meeting'),
-      const _Tool(icon: Icons.adjust_rounded, label: 'ההתאמות שלי', route: 'Matches'),
-      const _Tool(icon: Icons.savings_rounded, label: 'החיסכון שלי', route: 'Savings'),
-      const _Tool(icon: Icons.alarm_rounded, label: 'מעקב חידושים', route: 'Renewal'),
-      const _Tool(icon: Icons.location_on_rounded, label: 'בדיקת כיסוי', route: 'Availability'),
-      const _Tool(icon: Icons.calculate_rounded, label: 'מחשבון מעבר', route: 'SwitchCalc'),
-      const _Tool(icon: Icons.receipt_long_rounded, label: 'ניהול חשבון', route: 'Bills'),
-      const _Tool(icon: Icons.swap_horiz_rounded, label: 'ניוד מספר', route: 'Porting'),
-      const _Tool(icon: Icons.star_rounded, label: 'דירוגי ספקים', route: 'Ratings'),
-      const _Tool(icon: Icons.smart_toy_rounded, label: 'יועץ AI', route: 'AIAdvisor'),
+    const tools = [
+      _Tool(icon: Icons.videocam_rounded, label: 'פגישת וידאו', route: 'Meeting'),
+      _Tool(icon: Icons.adjust_rounded, label: 'ההתאמות שלי', route: 'Matches'),
+      _Tool(icon: Icons.savings_rounded, label: 'החיסכון שלי', route: 'Savings'),
+      _Tool(icon: Icons.alarm_rounded, label: 'מעקב חידושים', route: 'Renewal'),
+      _Tool(icon: Icons.location_on_rounded, label: 'בדיקת כיסוי', route: 'Availability'),
+      _Tool(icon: Icons.calculate_rounded, label: 'מחשבון מעבר', route: 'SwitchCalc'),
+      _Tool(icon: Icons.receipt_long_rounded, label: 'ניהול חשבון', route: 'Bills'),
+      _Tool(icon: Icons.swap_horiz_rounded, label: 'ניוד מספר', route: 'Porting'),
+      _Tool(icon: Icons.star_rounded, label: 'דירוגי ספקים', route: 'Ratings'),
+      _Tool(icon: Icons.smart_toy_rounded, label: 'יועץ AI', route: 'AIAdvisor'),
     ];
 
     return Padding(
@@ -962,7 +1102,7 @@ class _HomeWidgetState extends State<HomeWidget> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.only(right: 0, bottom: 12),
+            padding: const EdgeInsetsDirectional.only(end: 0, bottom: 12),
             child: Text('כלים שימושיים', style: ffTheme.titleLarge),
           ),
           SizedBox(
@@ -973,32 +1113,38 @@ class _HomeWidgetState extends State<HomeWidget> {
               separatorBuilder: (_, __) => const SizedBox(width: 12),
               itemBuilder: (context, i) {
                 final tool = tools[i];
-                return Pressable(
-                  onTap: () {
-                    HapticFeedback.lightImpact();
-                    context.pushNamed(tool.route);
-                  },
-                  child: Container(
-                    width: 110,
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(ffTheme.radiusLg),
-                      border: Border.all(color: ffTheme.alternate),
-                      boxShadow: ffTheme.shadowSoft,
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(tool.icon, size: 26, color: ffTheme.primaryText),
-                        const SizedBox(height: 6),
-                        Text(
-                          tool.label,
-                          style: ffTheme.labelSmall.copyWith(color: ffTheme.primaryText),
-                          textAlign: TextAlign.center,
-                          maxLines: 2,
+                return Semantics(
+                  button: true,
+                  label: tool.label,
+                  child: Pressable(
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      context.pushNamed(tool.route);
+                    },
+                    child: Container(
+                      width: 110,
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: ffTheme.secondaryBackground,
+                        borderRadius: BorderRadius.circular(ffTheme.radiusLg),
+                        border: Border.all(color: ffTheme.alternate),
+                        boxShadow: ffTheme.shadowSoft,
+                      ),
+                      child: ExcludeSemantics(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(tool.icon, size: 26, color: ffTheme.primaryText),
+                            const SizedBox(height: 6),
+                            Text(
+                              tool.label,
+                              style: ffTheme.labelSmall.copyWith(color: ffTheme.primaryText),
+                              textAlign: TextAlign.center,
+                              maxLines: 2,
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
                   ),
                 );
@@ -1048,7 +1194,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                         width: 148,
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: ffTheme.secondaryBackground,
                           borderRadius: BorderRadius.circular(ffTheme.radiusMd),
                           border: Border.all(
                             color: better != null ? ffTheme.primary.withValues(alpha: 0.35) : ffTheme.alternate,
@@ -1134,7 +1280,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                     width: 148,
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: ffTheme.secondaryBackground,
                       borderRadius: BorderRadius.circular(ffTheme.radiusMd),
                       border: Border.all(color: ffTheme.alternate),
                       boxShadow: ffTheme.shadowSoft,
@@ -1166,25 +1312,25 @@ class _HomeWidgetState extends State<HomeWidget> {
   }
 
   Widget _buildBrandStrip(BuildContext context, AppTheme ffTheme) {
-    final providers = [
-      const _Provider('פלאפון', Color(0xFFE07034), Color(0xFFFFF3EC)),
-      const _Provider('סלקום', Color(0xFFCC2244), Color(0xFFFFECF0)),
-      const _Provider('פרטנר', Color(0xFF2255CC), Color(0xFFEEF2FF)),
-      const _Provider('הוט מובייל', Color(0xFF8B1A1A), Color(0xFFFFECEC)),
-      const _Provider('גולן טלקום', Color(0xFF15603E), Color(0xFFE8F5EE)),
-      const _Provider('רמי לוי', Color(0xFFD4232A), Color(0xFFFFF0F0)),
-      const _Provider('Xphone', Color(0xFF0066CC), Color(0xFFEEF5FF)),
-      const _Provider('WeCom', Color(0xFF6B21A8), Color(0xFFF5EEFF)),
-      const _Provider('וואלה מובייל', Color(0xFF0077B6), Color(0xFFECF6FF)),
-      const _Provider('019 מובייל', Color(0xFF6B35C8), Color(0xFFF3EEFF)),
-      const _Provider('yes', Color(0xFF1A3A7A), Color(0xFFEEF0FF)),
-      const _Provider('בזק', Color(0xFF007B8A), Color(0xFFECFAFB)),
-      const _Provider('HOT', Color(0xFF8B1A1A), Color(0xFFFFECEC)),
-      const _Provider('NextTV', Color(0xFFE07034), Color(0xFFFFF3EC)),
-      const _Provider('גילת', Color(0xFF1D6FA4), Color(0xFFECF4FF)),
-      const _Provider('CCC', Color(0xFF2E7D32), Color(0xFFEDF7EE)),
-      const _Provider('STING TV', Color(0xFF1A7A4E), Color(0xFFE8F8EE)),
-      const _Provider('Airalo', Color(0xFF00897B), Color(0xFFE0F2F1)),
+    const providers = [
+      _Provider('פלאפון', Color(0xFFE07034), Color(0xFFFFF3EC)),
+      _Provider('סלקום', Color(0xFFCC2244), Color(0xFFFFECF0)),
+      _Provider('פרטנר', Color(0xFF2255CC), Color(0xFFEEF2FF)),
+      _Provider('הוט מובייל', Color(0xFF8B1A1A), Color(0xFFFFECEC)),
+      _Provider('גולן טלקום', Color(0xFF15603E), Color(0xFFE8F5EE)),
+      _Provider('רמי לוי', Color(0xFFD4232A), Color(0xFFFFF0F0)),
+      _Provider('Xphone', Color(0xFF0066CC), Color(0xFFEEF5FF)),
+      _Provider('WeCom', Color(0xFF6B21A8), Color(0xFFF5EEFF)),
+      _Provider('וואלה מובייל', Color(0xFF0077B6), Color(0xFFECF6FF)),
+      _Provider('019 מובייל', Color(0xFF6B35C8), Color(0xFFF3EEFF)),
+      _Provider('yes', Color(0xFF1A3A7A), Color(0xFFEEF0FF)),
+      _Provider('בזק', Color(0xFF007B8A), Color(0xFFECFAFB)),
+      _Provider('HOT', Color(0xFF8B1A1A), Color(0xFFFFECEC)),
+      _Provider('NextTV', Color(0xFFE07034), Color(0xFFFFF3EC)),
+      _Provider('גילת', Color(0xFF1D6FA4), Color(0xFFECF4FF)),
+      _Provider('CCC', Color(0xFF2E7D32), Color(0xFFEDF7EE)),
+      _Provider('STING TV', Color(0xFF1A7A4E), Color(0xFFE8F8EE)),
+      _Provider('Airalo', Color(0xFF00897B), Color(0xFFE0F2F1)),
     ];
 
     return Padding(
@@ -1234,6 +1380,158 @@ class _HomeWidgetState extends State<HomeWidget> {
   }
 }
 
+// ── Flash deal card ────────────────────────────────────────────────────────────
+
+class _FlashDealCard extends StatelessWidget {
+  const _FlashDealCard({
+    required this.plan,
+    required this.discountPct,
+    required this.ffTheme,
+    required this.onTap,
+  });
+
+  final Plan plan;
+  final int discountPct;
+  final AppTheme ffTheme;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 160,
+        decoration: BoxDecoration(
+          color: const Color(0xFF111827), // dark slate
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: ffTheme.shadowCard,
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Amber top band
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+              color: AppColors.saving,
+              child: Row(
+                children: [
+                  const Icon(Icons.local_fire_department_rounded, size: 14, color: Colors.white),
+                  const SizedBox(width: 4),
+                  Text(
+                    'מבצע חם',
+                    style: ffTheme.labelSmall.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            // Card body
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Plan name
+                    Text(
+                      plan.plan,
+                      style: ffTheme.titleSmall.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 3),
+                    // Provider name
+                    Text(
+                      plan.provider,
+                      style: ffTheme.labelSmall.copyWith(
+                        color: Colors.white.withValues(alpha: 0.55),
+                        fontSize: 11,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const Spacer(),
+                    // Price
+                    Text(
+                      '₪${plan.priceText}',
+                      style: ffTheme.titleLarge.copyWith(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 22,
+                      ),
+                    ),
+                    Text(
+                      priceUnitLabel(plan),
+                      style: ffTheme.labelSmall.copyWith(
+                        color: Colors.white.withValues(alpha: 0.55),
+                        fontSize: 10,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    // Savings badge
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: AppColors.saving.withValues(alpha: 0.18),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppColors.saving.withValues(alpha: 0.45)),
+                      ),
+                      child: Text(
+                        'חוסך $discountPct% מהממוצע',
+                        style: ffTheme.labelSmall.copyWith(
+                          color: AppColors.saving,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 10,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    // CTA button
+                    SizedBox(
+                      width: double.infinity,
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: onTap,
+                          borderRadius: BorderRadius.circular(10),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 7),
+                            decoration: BoxDecoration(
+                              gradient: ffTheme.accentGradient,
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              'פרטים ←',
+                              textAlign: TextAlign.center,
+                              style: ffTheme.labelSmall.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 // ── Helper data classes ────────────────────────────────────────────────────────
 
 String _greeting() {
@@ -1261,4 +1559,24 @@ class _Provider {
 class _CommunityPreview {
   const _CommunityPreview({required this.user, required this.channel, required this.text});
   final String user, channel, text;
+}
+
+/// Immutable selection of the three AppState fields that drive the home layout's
+/// structure. Value equality lets the [Selector] skip rebuilds when unrelated
+/// AppState fields notify.
+class _HomeDeps {
+  const _HomeDeps(this.selectedCat, this.bill, this.quizCompleted);
+  final String selectedCat;
+  final int bill;
+  final bool quizCompleted;
+
+  @override
+  bool operator ==(Object other) =>
+      other is _HomeDeps &&
+      other.selectedCat == selectedCat &&
+      other.bill == bill &&
+      other.quizCompleted == quizCompleted;
+
+  @override
+  int get hashCode => Object.hash(selectedCat, bill, quizCompleted);
 }

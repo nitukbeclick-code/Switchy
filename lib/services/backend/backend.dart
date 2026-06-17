@@ -189,6 +189,7 @@ class PostInput {
     this.mediaType,
     this.media,
     this.mediaDurationMs,
+    this.planId,
   });
 
   final String author;
@@ -198,6 +199,7 @@ class PostInput {
   final String? mediaType; // image | video | audio
   final String? media;
   final int? mediaDurationMs;
+  final String? planId;
 
   Map<String, dynamic> toRow() => {
         'author': author,
@@ -207,6 +209,7 @@ class PostInput {
         'media_type': mediaType,
         'media_url': media,
         'media_duration_ms': mediaDurationMs,
+        'plan_id': planId,
       };
 }
 
@@ -363,4 +366,40 @@ abstract interface class Backend {
   Future<Set<String>> likedPostIds();
   Future<void> setBookmark(String postId, bool bookmarked);
   Future<Set<String>> bookmarkedPostIds();
+
+  /// Reports a post for moderation.
+  /// [postId] — the post being reported.
+  /// [reason] — one of: 'ספאם', 'לא הולם', 'מידע שגוי'.
+  Future<void> reportPost(String postId, String reason);
+
+  // ── Plan catalogue ────────────────────────────────────────────────────────────
+  /// Fetches plans from the catalogue with optional filters.
+  /// [category] restricts to one of 'cellular','internet','tv','triple','abroad'.
+  /// [provider] filters by exact provider name.
+  /// [flashDealsOnly] returns only rows where is_flash_deal = true.
+  /// Returns an empty list on error so callers can fall back gracefully.
+  Future<List<Plan>> fetchPlans({
+    String? category,
+    String? provider,
+    bool flashDealsOnly = false,
+  });
+
+  /// Updates a plan's headline price (admin only). On the server this writes the
+  /// `plans` row — guarded by the admin-only RLS policy — and the `plan_prices`
+  /// capture trigger records the change in the ledger, so every user sees the
+  /// new price plus a price-drop notification when it falls. [priceExact] is the
+  /// fractional advertised price (e.g. 38.9), or null for a whole-shekel price.
+  /// Throws on failure so the admin UI can surface it. [LocalBackend] mutates the
+  /// in-memory catalogue so the change is visible for the session.
+  Future<void> updatePlanPrice(String planId, {required int price, double? priceExact});
+
+  // ── Price history ──────────────────────────────────────────────────────────
+  /// Chronological price points for a plan (oldest→newest, last [days] days),
+  /// from the `plan_prices` ledger. Powers the history sparkline and price-drop
+  /// detection. Returns an empty list when unavailable (no backend / no rows /
+  /// error) so callers fall back to a deterministic synthetic series.
+  Future<List<({DateTime capturedAt, int price})>> fetchPriceHistory(
+    String planId, {
+    int days = 30,
+  });
 }

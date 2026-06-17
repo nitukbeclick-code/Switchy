@@ -77,7 +77,7 @@ class _PortingWidgetState extends State<PortingWidget> {
     return Scaffold(
       backgroundColor: ffTheme.background,
       appBar: AppBar(
-        backgroundColor: ffTheme.primary,
+        backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
@@ -98,8 +98,8 @@ class _PortingWidgetState extends State<PortingWidget> {
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: ffTheme.accent1,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: ffTheme.primary.withValues(alpha: 0.2)),
+                borderRadius: BorderRadius.circular(ffTheme.radiusMd),
+                border: Border.all(color: ffTheme.alternate.withValues(alpha: 0.1)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -108,10 +108,10 @@ class _PortingWidgetState extends State<PortingWidget> {
                     children: [
                       Icon(Icons.info_outline_rounded, color: ffTheme.primary, size: 18),
                       const SizedBox(width: 8),
-                      Text('כיצד עובד הניוד?', style: ffTheme.labelLarge.copyWith(color: ffTheme.primary)),
+                      Text('כיצד עובד הניוד?', style: ffTheme.titleSmall.copyWith(color: ffTheme.primary)),
                     ],
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 16),
                   Row(
                     children: [
                       for (final item in [
@@ -192,7 +192,7 @@ class _PortingWidgetState extends State<PortingWidget> {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 14, vertical: 8),
                     decoration: BoxDecoration(
-                      color: selected ? ffTheme.primary : Colors.white,
+                      color: selected ? ffTheme.primary : ffTheme.secondaryBackground,
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
                         color:
@@ -229,8 +229,8 @@ class _PortingWidgetState extends State<PortingWidget> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
-                color: ffTheme.accent2,
-                borderRadius: BorderRadius.circular(10),
+                color: ffTheme.warning.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(ffTheme.radiusXs),
                 border: Border.all(color: ffTheme.warning.withValues(alpha: 0.25)),
               ),
               child: Row(
@@ -242,7 +242,8 @@ class _PortingWidgetState extends State<PortingWidget> {
                     'זמן ניוד: עד 3 ימי עסקים',
                     style: ffTheme.bodySmall.copyWith(
                         color: ffTheme.warning,
-                        fontWeight: FontWeight.w600),
+                        fontWeight: FontWeight.w600,
+                        fontFeatures: const [FontFeature.tabularFigures()]),
                   ),
                 ],
               ),
@@ -251,40 +252,46 @@ class _PortingWidgetState extends State<PortingWidget> {
             const SizedBox(height: 20),
 
             // POA checkbox
-            GestureDetector(
-              onTap: () =>
-                  setState(() => _poaAccepted = !_poaAccepted),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    width: 24,
-                    height: 24,
-                    decoration: BoxDecoration(
-                      color: _poaAccepted
-                          ? ffTheme.primary
-                          : Colors.white,
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(
-                          color: _poaAccepted
-                              ? ffTheme.primary
-                              : ffTheme.alternate,
-                          width: 1.5),
+            Semantics(
+              checked: _poaAccepted,
+              label: 'אני מסכים/ה לייפוי כוח לביצוע הניוד בשמי',
+              child: GestureDetector(
+                onTap: () =>
+                    setState(() => _poaAccepted = !_poaAccepted),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      width: 24,
+                      height: 24,
+                      decoration: BoxDecoration(
+                        color: _poaAccepted
+                            ? ffTheme.primary
+                            : ffTheme.secondaryBackground,
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                            color: _poaAccepted
+                                ? ffTheme.primary
+                                : ffTheme.alternate,
+                            width: 1.5),
+                      ),
+                      child: _poaAccepted
+                          ? const Icon(Icons.check_rounded,
+                              size: 16, color: Colors.white)
+                          : null,
                     ),
-                    child: _poaAccepted
-                        ? const Icon(Icons.check_rounded,
-                            size: 16, color: Colors.white)
-                        : null,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      'אני מסכים/ה לייפוי כוח לביצוע הניוד בשמי',
-                      style: ffTheme.bodyMedium,
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ExcludeSemantics(
+                        child: Text(
+                          'אני מסכים/ה לייפוי כוח לביצוע הניוד בשמי',
+                          style: ffTheme.bodyMedium,
+                        ),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ).animate(delay: 260.ms).fadeIn(duration: 280.ms),
 
@@ -298,41 +305,40 @@ class _PortingWidgetState extends State<PortingWidget> {
                 final canSubmit = _canSubmit;
                 return AppButton(
                   text: 'שלח בקשת ניוד',
-                  onPressed: canSubmit
-                      ? () async {
-                          final st = Provider.of<AppState>(context, listen: false);
-                          final name = st.userName.isNotEmpty ? st.userName : 'משתמש';
-                          final phone = _phoneController.text.trim();
-                          try {
-                            await appBackend.submitLead(LeadInput(
-                              name: name,
-                              phone: phone,
-                              provider: _selectedProvider,
-                              source: 'porting',
-                              notes: 'ניוד מ: $_selectedProvider | ת.ז: ${_idController.text.trim()}',
-                            )).timeout(const Duration(seconds: 10));
-                          } catch (_) {
-                            // The porting request never reached the team — let
-                            // the user retry instead of showing false success.
-                            if (!context.mounted) return;
-                            AppSnackBar.error(context, 'שליחת הבקשה נכשלה — בדקו את החיבור ונסו שוב');
-                            return;
-                          }
-                          appBackend.upsertProfile(name: name, phone: phone).catchError((_) {});
-                          if (!mounted) return;
-                          setState(() => _submitted = true);
-                        }
-                      : () async {},
-                  
+                  enabled: canSubmit,
+                  onPressed: () async {
+                    final st = Provider.of<AppState>(context, listen: false);
+                    final name = st.userName.isNotEmpty ? st.userName : 'משתמש';
+                    final phone = _phoneController.text.trim();
+                    try {
+                      await appBackend.submitLead(LeadInput(
+                        name: name,
+                        phone: phone,
+                        provider: _selectedProvider,
+                        source: 'porting',
+                        notes: 'ניוד מ: $_selectedProvider | ת.ז: ${_idController.text.trim()}',
+                      )).timeout(const Duration(seconds: 10));
+                    } catch (_) {
+                      // The porting request never reached the team — let
+                      // the user retry instead of showing false success.
+                      if (!context.mounted) return;
+                      AppSnackBar.error(context, 'שליחת הבקשה נכשלה — בדקו את החיבור ונסו שוב');
+                      return;
+                    }
+                    appBackend.upsertProfile(name: name, phone: phone).catchError((_) {});
+                    if (!mounted) return;
+                    setState(() => _submitted = true);
+                  },
+
                     height: 56,
                     color:
                         canSubmit ? ffTheme.primary : ffTheme.alternate,
-                    textStyle: ffTheme.titleSmall.copyWith(
+                    textStyle: ffTheme.titleMedium.copyWith(
                         color: canSubmit
                             ? Colors.white
                             : ffTheme.secondaryText),
-                    borderRadius: BorderRadius.circular(16),
-                  
+                    borderRadius: BorderRadius.circular(ffTheme.radiusLg),
+
                 );
               },
             ).animate(delay: 300.ms).fadeIn(duration: 280.ms),
@@ -361,7 +367,7 @@ class _PortingWidgetState extends State<PortingWidget> {
       decoration: InputDecoration(
         hintText: hint,
         filled: true,
-        fillColor: Colors.white,
+        fillColor: ffTheme.secondaryBackground,
         prefixIcon: Icon(prefixIcon, color: ffTheme.secondaryText, size: 20),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -390,28 +396,34 @@ class _SuccessState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
     return Scaffold(
-      backgroundColor: ffTheme.primary,
+      backgroundColor: AppColors.primary,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(32),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Container(
-                width: 100,
-                height: 100,
-                decoration: BoxDecoration(
-                  color: ffTheme.secondary,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(Icons.check_rounded,
-                    size: 60, color: ffTheme.primary),
-              )
-                  .animate()
-                  .scale(
+              () {
+                final mark = Container(
+                  width: 100,
+                  height: 100,
+                  decoration: BoxDecoration(
+                    color: ffTheme.secondary,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.check_rounded,
+                      size: 60, color: ffTheme.primary),
+                );
+                if (reduceMotion) return mark;
+                return mark.animate().scale(
+                      begin: const Offset(0.7, 0.7),
+                      end: const Offset(1, 1),
                       duration: 400.ms,
-                      curve: Curves.elasticOut),
+                      curve: Curves.easeOutBack,
+                    );
+              }(),
 
               const SizedBox(height: 32),
 
@@ -419,15 +431,15 @@ class _SuccessState extends StatelessWidget {
                 'הבקשה נשלחה בהצלחה!',
                 style: ffTheme.headlineMedium.copyWith(color: Colors.white),
                 textAlign: TextAlign.center,
-              ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.2),
+              ).animate(target: reduceMotion ? 1 : null).fadeIn(delay: 300.ms).slideY(begin: 0.2),
 
               const SizedBox(height: 12),
 
               Text(
                 'נציג ייצור קשר תוך 24 שעות\nלהשלמת תהליך הניוד',
-                style: ffTheme.bodyLarge.copyWith(color: Colors.white.withValues(alpha: 0.85)),
+                style: ffTheme.bodyLarge.copyWith(color: Colors.white.withValues(alpha: 0.85), height: 1.4),
                 textAlign: TextAlign.center,
-              ).animate().fadeIn(delay: 400.ms),
+              ).animate(target: reduceMotion ? 1 : null).fadeIn(delay: 400.ms),
 
               const SizedBox(height: 16),
 
@@ -435,38 +447,45 @@ class _SuccessState extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(ffTheme.radiusSm),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(Icons.schedule_rounded, color: ffTheme.secondary, size: 16),
                     const SizedBox(width: 8),
-                    Text('זמן ניוד: 1–3 ימי עסקים', style: ffTheme.labelMedium.copyWith(color: ffTheme.secondary, fontWeight: FontWeight.w600)),
+                    Text(
+                      'זמן ניוד: 1–3 ימי עסקים',
+                      style: ffTheme.labelMedium.copyWith(
+                        color: ffTheme.secondary,
+                        fontWeight: FontWeight.w600,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
+                    ),
                   ],
                 ),
-              ).animate().fadeIn(delay: 450.ms),
+              ).animate(target: reduceMotion ? 1 : null).fadeIn(delay: 450.ms),
 
               const SizedBox(height: 40),
 
               AppButton(
                 text: 'עקוב אחר הניוד',
                 onPressed: () async => context.goNamed('Tracker'),
-                
+
                   width: double.infinity,
                   height: 56,
                   color: ffTheme.secondary,
                   textStyle: ffTheme.titleMedium.copyWith(color: ffTheme.primary),
-                  borderRadius: BorderRadius.circular(16),
-                
-              ).animate().fadeIn(delay: 500.ms),
+                  borderRadius: BorderRadius.circular(ffTheme.radiusLg),
+
+              ).animate(target: reduceMotion ? 1 : null).fadeIn(delay: 500.ms),
 
               const SizedBox(height: 12),
 
               TextButton(
                 onPressed: () => context.goNamed('Account'),
                 child: Text('חזרה לאזור האישי', style: ffTheme.bodyMedium.copyWith(color: Colors.white70)),
-              ).animate().fadeIn(delay: 600.ms),
+              ).animate(target: reduceMotion ? 1 : null).fadeIn(delay: 600.ms),
             ],
           ),
         ),

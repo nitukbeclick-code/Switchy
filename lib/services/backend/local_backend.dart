@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import '../../data.dart';
 import '../../models.dart';
 import '../meeting_slots.dart';
 import 'backend.dart';
@@ -230,6 +231,46 @@ class LocalBackend implements Backend {
 
   @override
   Future<Set<String>> bookmarkedPostIds() async => Set.unmodifiable(_bookmarked);
+
+  @override
+  Future<void> reportPost(String postId, String reason) => Future.value();
+
+  // ── Plan catalogue ────────────────────────────────────────────────────────────
+  @override
+  Future<List<Plan>> fetchPlans({
+    String? category,
+    String? provider,
+    bool flashDealsOnly = false,
+  }) {
+    // Flash-deal flag is not stored on the local Plan model; when flashDealsOnly
+    // is requested in offline mode we return an empty list rather than showing
+    // all plans (which would be misleading).
+    if (flashDealsOnly) return Future.value(const []);
+
+    var plans = allPlans;
+    if (category != null) plans = plans.where((p) => p.cat == category).toList();
+    if (provider != null) plans = plans.where((p) => p.provider == provider).toList();
+    return Future.value(List.unmodifiable(plans));
+  }
+
+  @override
+  Future<void> updatePlanPrice(String planId, {required int price, double? priceExact}) async {
+    // No DB offline — mutate the in-memory catalogue so the admin sees the edit
+    // take effect this session (and the change rides the same hydration path).
+    final cur = planById(planId);
+    if (cur == null) return;
+    overridePlan(cur.copyWith(price: price, priceExact: priceExact));
+  }
+
+  // ── Price history ──────────────────────────────────────────────────────────
+  // Local/offline mode keeps no price ledger — return empty so the sparkline
+  // falls back to its deterministic synthetic series.
+  @override
+  Future<List<({DateTime capturedAt, int price})>> fetchPriceHistory(
+    String planId, {
+    int days = 30,
+  }) async =>
+      const [];
 }
 
 /// The backend the app talks to. Defaults to on-device storage; `main.dart`

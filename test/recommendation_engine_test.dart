@@ -1,9 +1,12 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:chosech/app_state.dart';
 import 'package:chosech/data.dart';
 import 'package:chosech/models.dart';
 import 'package:chosech/services/recommendation_engine.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   group('priorityFromId', () {
     test('maps known ids', () {
       expect(priorityFromId('price'), MatchPriority.price);
@@ -245,6 +248,161 @@ void main() {
         final scoreWithout = RecommendationEngine.scorePlan(nonFivegPlan, profileWithout).score;
         expect(scoreWith, equals(scoreWithout));
       }
+    });
+  });
+
+  group('MatchProfile.fromAppState — quiz-budget gating', () {
+    setUp(() {
+      SharedPreferences.setMockInitialValues({});
+      AppState.reset();
+    });
+
+    test('budget applies only when the quiz category matches the plan category', () {
+      final s = AppState();
+      s.setQuizCompleted(true);
+      s.setQuizCat('cellular');
+      s.setQuizBudget(75);
+
+      // Same category as the completed quiz: budget carries through.
+      final cellular = MatchProfile.fromAppState(s, 'cellular');
+      expect(cellular.budget, 75);
+
+      // A different category: the quiz budget must NOT leak across categories.
+      final internet = MatchProfile.fromAppState(s, 'internet');
+      expect(internet.budget, 0);
+    });
+
+    test('an incomplete quiz never contributes a budget', () {
+      final s = AppState();
+      s.setQuizCat('cellular');
+      s.setQuizBudget(75);
+      // quizCompleted is still false.
+      final p = MatchProfile.fromAppState(s, 'cellular');
+      expect(p.budget, 0);
+    });
+
+    test('carries currentBill, priority and needs straight through', () {
+      final s = AppState();
+      s.setCurrentBill('cellular', 130);
+      s.setQuizPriority('speed');
+      s.setQuizLines(3);
+      s.setQuizNeeds(wants5G: true, wantsAbroad: true, wantsNoCommit: true);
+
+      final p = MatchProfile.fromAppState(s, 'cellular');
+      expect(p.category, 'cellular');
+      expect(p.currentBill, 130);
+      expect(p.priority, MatchPriority.speed);
+      expect(p.lines, 3);
+      expect(p.wants5G, isTrue);
+      expect(p.wantsAbroad, isTrue);
+      expect(p.wantsNoCommit, isTrue);
+    });
+  });
+
+  group('empty / missing category', () {
+    test('every catalogue category ranks without throwing; unknown is empty', () {
+      // Guard: real categories produce a ranking, and the unknown one returns
+      // an empty list rather than throwing.
+      for (final cat in ['cellular', 'internet', 'tv', 'triple', 'abroad']) {
+        expect(plansByCat(cat), isNotEmpty, reason: '$cat should exist');
+        expect(() => RecommendationEngine.rank(MatchProfile(category: cat)),
+            returnsNormally);
+      }
+      final empty = RecommendationEngine.rank(const MatchProfile(category: 'ghost_cat'));
+      expect(empty, isEmpty);
+    });
+
+    test('an empty category returns empty rank and a null best match — no throw', () {
+      const profile = MatchProfile(category: 'ghost_cat', currentBill: 120, budget: 80);
+      expect(() => RecommendationEngine.rank(profile, limit: 5), returnsNormally);
+      expect(RecommendationEngine.rank(profile, limit: 5), isEmpty);
+      expect(RecommendationEngine.bestMatch(profile), isNull);
+    });
+  });
+
+  group('PlanMatch.label band cutoffs', () {
+    // A synthetic plan whose score we drive purely via its price (no bill, no
+    // budget, no bonuses) lets us land scores on either side of each cutoff.
+    PlanMatch matchAt(double score) => PlanMatch(
+          plan: Plan(
+            id: 'lbl_${score.toStringAsFixed(0)}',
+            cat: 'cellular',
+            provider: 'בדיקה',
+            net: '4G',
+            plan: 'מסלול בדיקה',
+            price: 50,
+          ),
+          score: score,
+          annualSaving: 0,
+          reasons: const [],
+          caveats: const [],
+        );
+
+    test('boundary scores map to the right Hebrew label', () {
+      // perfect: score >= 85
+      expect(matchAt(85).label, 'התאמה מושלמת');
+      expect(matchAt(100).label, 'התאמה מושלמת');
+      // excellent: 70 <= score < 85
+      expect(matchAt(84.9).label, 'התאמה מצוינת');
+      expect(matchAt(70).label, 'התאמה מצוינת');
+      // good: 55 <= score < 70
+      expect(matchAt(69.9).label, 'התאמה טובה');
+      expect(matchAt(55).label, 'התאמה טובה');
+      // fair: score < 55
+      expect(matchAt(54.9).label, 'התאמה סבירה');
+      expect(matchAt(0).label, 'התאמה סבירה');
+    });
+  });
+
+  group('caveat generation', () {
+    // A synthetic plan we fully control, so each caveat trigger is isolated.
+    // noCommit is derived from term (term null/0 == no commitment).
+    Plan cellular({
+      int price = 60,
+      int? after,
+      int? term,
+    }) =>
+        Plan(
+          id: 'cav_${price}_${after ?? 0}_${term ?? 0}',
+          cat: 'cellular',
+          provider: 'בדיקה',
+          net: '4G',
+          plan: 'מסלול בדיקה',
+          price: price,
+          after: after,
+          term: term,
+        );
+
+    test('exceeding the budget yields the over-budget caveat with the exact gap', () {
+      final plan = cellular(price: 100);
+      const profile = MatchProfile(category: 'cellular', budget: 70);
+      final m = RecommendationEngine.scorePlan(plan, profile);
+      // plan.price (100) - budget (70) == 30.
+      expect(m.caveats, contains('₪30 מעל התקציב'));
+    });
+
+    test('a promo price yields the "rises later" caveat', () {
+      final plan = cellular(price: 40, after: 80);
+      const profile = MatchProfile(category: 'cellular');
+      final m = RecommendationEngine.scorePlan(plan, profile);
+      expect(m.caveats, contains('מחיר מבצע — עולה ל-₪80 בהמשך'));
+    });
+
+    test('a committed plan yields the commitment-term caveat', () {
+      final plan = cellular(term: 12);
+      const profile = MatchProfile(category: 'cellular');
+      final m = RecommendationEngine.scorePlan(plan, profile);
+      expect(m.caveats, contains('התחייבות ל-12 חודשים'));
+    });
+
+    test('a no-commit plan within budget produces none of those caveats', () {
+      // No term => noCommit; price under budget; no promo (after omitted).
+      final plan = cellular(price: 50);
+      const profile = MatchProfile(category: 'cellular', budget: 90);
+      final m = RecommendationEngine.scorePlan(plan, profile);
+      expect(m.caveats.any((c) => c.contains('מעל התקציב')), isFalse);
+      expect(m.caveats.any((c) => c.contains('התחייבות')), isFalse);
+      expect(m.caveats.any((c) => c.contains('מחיר מבצע')), isFalse);
     });
   });
 }

@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+// Shared radius constants used by both ThemeData builders.
+const double _radiusMd = 16;
+const double _radiusLg = 20;
+const double _radiusXl = 28;
+
 /// Central design tokens for the חוסך app.
 ///
 /// This is hand-authored, idiomatic Flutter — no FlutterFlow runtime,
@@ -61,38 +66,52 @@ class AppColors {
 /// no per-context state to thread. Call sites use `AppTheme.of(context)` for
 /// readability and so a future theming change has a single seam to hook into.
 class AppTheme {
-  const AppTheme._();
-  static const AppTheme _instance = AppTheme._();
-  static AppTheme of(BuildContext context) => _instance;
+  const AppTheme._(this.dark);
 
-  // Palette
-  Color get primary => AppColors.primary;
-  Color get secondary => AppColors.secondary;
-  Color get tertiary => AppColors.tertiary;
-  Color get background => AppColors.background;
-  Color get secondaryBackground => AppColors.secondaryBackground;
-  Color get primaryText => AppColors.primaryText;
-  Color get secondaryText => AppColors.secondaryText;
-  Color get alternate => AppColors.alternate;
-  Color get lineColor => AppColors.lineColor;
-  Color get error => AppColors.error;
-  Color get warning => AppColors.warning;
-  Color get success => AppColors.success;
-  Color get info => AppColors.info;
+  /// Whether this instance resolves dark-mode token values. Set by [of] from the
+  /// ambient [Theme]'s brightness, so a single seam (`AppTheme.of(context).*`)
+  /// drives every widget token in both themes — no per-call-site `if (dark)`.
+  final bool dark;
+
+  static const AppTheme _light = AppTheme._(false);
+  static const AppTheme _dark = AppTheme._(true);
+
+  /// Resolves the palette for the ambient brightness. MaterialApp's
+  /// `themeMode`/`darkTheme` already flip [Theme]'s brightness; this makes the
+  /// app's own widget tokens follow suit.
+  static AppTheme of(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark ? _dark : _light;
+
+  // Palette — surface/text/border tokens flip; accents lift slightly on dark.
+  // Ink CTA fills route through AppButton's gradient, so `primary` maps to the
+  // on-surface ink (near-white on dark) for its text/icon/border roles.
+  Color get primary => dark ? const Color(0xFFF5F7F8) : AppColors.primary;
+  Color get secondary => dark ? const Color(0xFF2A3442) : AppColors.secondary;
+  Color get tertiary => dark ? const Color(0xFF9AA5B1) : AppColors.tertiary;
+  Color get background => dark ? const Color(0xFF0B0F14) : AppColors.background;
+  Color get secondaryBackground => dark ? const Color(0xFF161C24) : AppColors.secondaryBackground;
+  Color get primaryText => dark ? const Color(0xFFF5F7F8) : AppColors.primaryText;
+  Color get secondaryText => dark ? const Color(0xFF9AA5B1) : AppColors.secondaryText;
+  Color get alternate => dark ? const Color(0xFF2E3845) : AppColors.alternate;
+  Color get lineColor => dark ? const Color(0xFF232B36) : AppColors.lineColor;
+  Color get error => dark ? const Color(0xFFF87171) : AppColors.error;
+  Color get warning => dark ? const Color(0xFFFBBF24) : AppColors.warning;
+  Color get success => dark ? const Color(0xFFF5F7F8) : AppColors.success;
+  Color get info => dark ? const Color(0xFF9AA5B1) : AppColors.info;
   Color get white => Colors.white;
   Color get primaryDark => AppColors.primaryDark;
-  Color get sage => AppColors.sage;
-  Color get mint => AppColors.mint;
-  Color get accent1 => AppColors.accent1;
-  Color get accent2 => AppColors.accent2;
-  Color get accent3 => AppColors.accent3;
-  Color get accent4 => AppColors.accent4;
+  Color get sage => dark ? const Color(0xFF8A95A3) : AppColors.sage;
+  Color get mint => dark ? const Color(0xFF1A2030) : AppColors.mint;
+  Color get accent1 => dark ? const Color(0xFF1A2030) : AppColors.accent1;
+  Color get accent2 => dark ? const Color(0xFF1C2332) : AppColors.accent2;
+  Color get accent3 => dark ? const Color(0xFF1A2030) : AppColors.accent3;
+  Color get accent4 => dark ? const Color(0xFF1C2230) : AppColors.accent4;
 
-  // Accent system
-  Color get brandAccent => AppColors.brandAccent;
-  Color get brandAccentTint => AppColors.brandAccentTint;
-  Color get saving => AppColors.saving;
-  Color get savingDark => AppColors.savingDark;
+  // Accent system — indigo (action) + amber (value) lift for dark contrast.
+  Color get brandAccent => dark ? const Color(0xFF6366F1) : AppColors.brandAccent;
+  Color get brandAccentTint => dark ? const Color(0xFF1E2138) : AppColors.brandAccentTint;
+  Color get saving => dark ? const Color(0xFFFBBF24) : AppColors.saving;
+  Color get savingDark => dark ? const Color(0xFFF59E0B) : AppColors.savingDark;
 
   // ── Elevation — soft, layered, cool ink-tinted shadows (not flat black) ─────
   /// Subtle lift for chips, list rows, low-emphasis surfaces.
@@ -133,9 +152,11 @@ class AppTheme {
   /// high-value surfaces (bottom nav, sticky headers, modals, hero overlays).
   BoxDecoration glassDecoration({double alpha = 0.66, Color? tint, double? radius}) =>
       BoxDecoration(
-        color: (tint ?? Colors.white).withValues(alpha: alpha),
+        color: (tint ?? (dark ? const Color(0xFF161C24) : Colors.white))
+            .withValues(alpha: dark ? 0.86 : alpha),
         borderRadius: BorderRadius.circular(radius ?? radiusLg),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.55)),
+        border: Border.all(
+            color: dark ? const Color(0xFF2E3845) : Colors.white.withValues(alpha: 0.55)),
         boxShadow: shadowGlass,
       );
 
@@ -191,11 +212,17 @@ class AppTheme {
 
   /// A faint top-to-bottom glass wash for full-screen scaffolds — lifts plain
   /// backgrounds off flat white without introducing any colour.
-  LinearGradient get surfaceWash => const LinearGradient(
-        colors: [Color(0xFFF7F9FA), Color(0xFFF1F4F6)],
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-      );
+  LinearGradient get surfaceWash => dark
+      ? const LinearGradient(
+          colors: [Color(0xFF0E131A), Color(0xFF0B0F14)],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        )
+      : const LinearGradient(
+          colors: [Color(0xFFF7F9FA), Color(0xFFF1F4F6)],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        );
 
   // Type scale — each style resolves its GoogleFonts face exactly once and is
   // then cached. The getters previously called GoogleFonts.rubik()/assistant()
@@ -209,39 +236,197 @@ class AppTheme {
   static final TextStyle _displayLarge = GoogleFonts.rubik(fontSize: 58, fontWeight: FontWeight.w900, letterSpacing: -0.05, height: 1.02, color: AppColors.primaryText);
   static final TextStyle _displayMedium = GoogleFonts.rubik(fontSize: 44, fontWeight: FontWeight.w900, letterSpacing: -0.04, height: 1.03, color: AppColors.primaryText);
   static final TextStyle _displaySmall = GoogleFonts.rubik(fontSize: 35, fontWeight: FontWeight.w900, letterSpacing: -0.03, height: 1.05, color: AppColors.primaryText);
-  TextStyle get displayLarge => _displayLarge;
-  TextStyle get displayMedium => _displayMedium;
-  TextStyle get displaySmall => _displaySmall;
+  // Each getter is byte-identical in light; in dark it overrides only the color
+  // to the brightness-aware on-surface token (the font face stays memoized).
+  TextStyle get displayLarge => dark ? _displayLarge.copyWith(color: primaryText) : _displayLarge;
+  TextStyle get displayMedium => dark ? _displayMedium.copyWith(color: primaryText) : _displayMedium;
+  TextStyle get displaySmall => dark ? _displaySmall.copyWith(color: primaryText) : _displaySmall;
 
   // Headlines
   static final TextStyle _headlineLarge = GoogleFonts.rubik(fontSize: 28, fontWeight: FontWeight.w800, letterSpacing: -0.02, color: AppColors.primaryText);
   static final TextStyle _headlineMedium = GoogleFonts.rubik(fontSize: 24, fontWeight: FontWeight.w700, letterSpacing: -0.01, color: AppColors.primaryText);
   static final TextStyle _headlineSmall = GoogleFonts.rubik(fontSize: 20, fontWeight: FontWeight.w700, letterSpacing: -0.01, color: AppColors.primaryText);
-  TextStyle get headlineLarge => _headlineLarge;
-  TextStyle get headlineMedium => _headlineMedium;
-  TextStyle get headlineSmall => _headlineSmall;
+  TextStyle get headlineLarge => dark ? _headlineLarge.copyWith(color: primaryText) : _headlineLarge;
+  TextStyle get headlineMedium => dark ? _headlineMedium.copyWith(color: primaryText) : _headlineMedium;
+  TextStyle get headlineSmall => dark ? _headlineSmall.copyWith(color: primaryText) : _headlineSmall;
 
   // Titles
   static final TextStyle _titleLarge = GoogleFonts.rubik(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.primaryText);
   static final TextStyle _titleMedium = GoogleFonts.rubik(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.primaryText);
   static final TextStyle _titleSmall = GoogleFonts.rubik(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.primaryText);
-  TextStyle get titleLarge => _titleLarge;
-  TextStyle get titleMedium => _titleMedium;
-  TextStyle get titleSmall => _titleSmall;
+  TextStyle get titleLarge => dark ? _titleLarge.copyWith(color: primaryText) : _titleLarge;
+  TextStyle get titleMedium => dark ? _titleMedium.copyWith(color: primaryText) : _titleMedium;
+  TextStyle get titleSmall => dark ? _titleSmall.copyWith(color: primaryText) : _titleSmall;
 
   // Body — Assistant, the Hebrew-first reading face
   static final TextStyle _bodyLarge = GoogleFonts.assistant(fontSize: 16, fontWeight: FontWeight.w500, color: AppColors.primaryText);
   static final TextStyle _bodyMedium = GoogleFonts.assistant(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.primaryText);
   static final TextStyle _bodySmall = GoogleFonts.assistant(fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.secondaryText);
-  TextStyle get bodyLarge => _bodyLarge;
-  TextStyle get bodyMedium => _bodyMedium;
-  TextStyle get bodySmall => _bodySmall;
+  TextStyle get bodyLarge => dark ? _bodyLarge.copyWith(color: primaryText) : _bodyLarge;
+  TextStyle get bodyMedium => dark ? _bodyMedium.copyWith(color: primaryText) : _bodyMedium;
+  TextStyle get bodySmall => dark ? _bodySmall.copyWith(color: secondaryText) : _bodySmall;
 
   // Labels
   static final TextStyle _labelLarge = GoogleFonts.assistant(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.primaryText);
   static final TextStyle _labelMedium = GoogleFonts.assistant(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.secondaryText);
   static final TextStyle _labelSmall = GoogleFonts.assistant(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.secondaryText);
-  TextStyle get labelLarge => _labelLarge;
-  TextStyle get labelMedium => _labelMedium;
-  TextStyle get labelSmall => _labelSmall;
+  TextStyle get labelLarge => dark ? _labelLarge.copyWith(color: primaryText) : _labelLarge;
+  TextStyle get labelMedium => dark ? _labelMedium.copyWith(color: secondaryText) : _labelMedium;
+  TextStyle get labelSmall => dark ? _labelSmall.copyWith(color: secondaryText) : _labelSmall;
+
+  // ── ThemeData factories ─────────────────────────────────────────────────────
+  // These produce MaterialApp theme/darkTheme values.  Widget-level tokens
+  // (AppTheme.of(context).*) remain the single source of truth for colours and
+  // text styles inside widgets; these factories only set the Material defaults
+  // so that system widgets (dialogs, snackbars, inputs) inherit sensible values.
+
+  /// Dark theme — ink #0B0F14 background, glass-white surfaces, indigo accent.
+  static ThemeData darkThemeData() {
+    const Color bg = Color(0xFF0B0F14);
+    const Color surface = Color(0xFF161C24);
+    const Color onSurface = Color(0xFFF5F7F8);
+    const Color border = Color(0xFF222A35);
+    final base = ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.dark,
+      fontFamily: GoogleFonts.assistant().fontFamily,
+    );
+    return base.copyWith(
+      colorScheme: const ColorScheme.dark(
+        primary: AppColors.brandAccent,
+        secondary: AppColors.saving,
+        surface: surface,
+        onSurface: onSurface,
+        error: AppColors.error,
+      ),
+      scaffoldBackgroundColor: bg,
+      canvasColor: bg,
+      textTheme: GoogleFonts.assistantTextTheme(base.textTheme.apply(bodyColor: onSurface, displayColor: onSurface)),
+      appBarTheme: AppBarTheme(
+        backgroundColor: bg,
+        foregroundColor: onSurface,
+        elevation: 0,
+        centerTitle: false,
+        titleTextStyle: GoogleFonts.rubik(fontSize: 18, fontWeight: FontWeight.w700, color: onSurface),
+      ),
+      cardTheme: CardThemeData(
+        color: surface,
+        elevation: 0,
+        margin: EdgeInsets.zero,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(_radiusLg),
+          side: const BorderSide(color: border),
+        ),
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(_radiusXl)),
+      ),
+      bottomSheetTheme: const BottomSheetThemeData(
+        backgroundColor: surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(_radiusXl)),
+        ),
+      ),
+      snackBarTheme: SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: surface,
+        contentTextStyle: GoogleFonts.assistant(color: onSurface),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(_radiusMd)),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: surface,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(_radiusMd),
+          borderSide: const BorderSide(color: border),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(_radiusMd),
+          borderSide: const BorderSide(color: border),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(_radiusMd),
+          borderSide: const BorderSide(color: AppColors.brandAccent, width: 1.5),
+        ),
+      ),
+      dividerTheme: const DividerThemeData(color: border, thickness: 1),
+      iconTheme: const IconThemeData(color: onSurface),
+    );
+  }
+
+  /// Light theme — glass-white #F5F7F8 background, white cards, indigo accent.
+  static ThemeData lightThemeData() {
+    const Color bg = Color(0xFFF5F7F8);
+    const Color surface = Color(0xFFFFFFFF);
+    const Color onSurface = Color(0xFF0B0F14);
+    const Color border = Color(0xFFD1D5DB);
+    final base = ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.light,
+      fontFamily: GoogleFonts.assistant().fontFamily,
+    );
+    return base.copyWith(
+      colorScheme: const ColorScheme.light(
+        primary: AppColors.brandAccent,
+        secondary: AppColors.saving,
+        surface: surface,
+        onSurface: onSurface,
+        error: AppColors.error,
+      ),
+      scaffoldBackgroundColor: bg,
+      canvasColor: bg,
+      textTheme: GoogleFonts.assistantTextTheme(base.textTheme.apply(bodyColor: onSurface, displayColor: onSurface)),
+      appBarTheme: AppBarTheme(
+        backgroundColor: bg,
+        foregroundColor: onSurface,
+        elevation: 0,
+        centerTitle: false,
+        titleTextStyle: GoogleFonts.rubik(fontSize: 18, fontWeight: FontWeight.w700, color: onSurface),
+      ),
+      cardTheme: CardThemeData(
+        color: surface,
+        elevation: 0,
+        margin: EdgeInsets.zero,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(_radiusLg),
+          side: const BorderSide(color: border),
+        ),
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(_radiusXl)),
+      ),
+      bottomSheetTheme: const BottomSheetThemeData(
+        backgroundColor: surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(_radiusXl)),
+        ),
+      ),
+      snackBarTheme: SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        backgroundColor: surface,
+        contentTextStyle: GoogleFonts.assistant(color: onSurface),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(_radiusMd)),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: surface,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(_radiusMd),
+          borderSide: const BorderSide(color: border),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(_radiusMd),
+          borderSide: const BorderSide(color: border),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(_radiusMd),
+          borderSide: const BorderSide(color: AppColors.brandAccent, width: 1.5),
+        ),
+      ),
+      dividerTheme: const DividerThemeData(color: border, thickness: 1),
+      iconTheme: const IconThemeData(color: onSurface),
+    );
+  }
 }

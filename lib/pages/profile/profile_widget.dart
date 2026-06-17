@@ -22,8 +22,6 @@ class ProfileWidget extends StatefulWidget {
 }
 
 class _ProfileWidgetState extends State<ProfileWidget> {
-  String _lang = 'עברית';
-
   void _showEditProfile(BuildContext context, AppState appState, AppTheme ffTheme) {
     final nameCtrl = TextEditingController(text: appState.userName);
     final phoneCtrl = TextEditingController(text: appState.userPhone);
@@ -53,11 +51,11 @@ class _ProfileWidgetState extends State<ProfileWidget> {
               decoration: InputDecoration(
                 hintText: 'ישראל ישראלי',
                 filled: true,
-                fillColor: Colors.white,
+                fillColor: ffTheme.secondaryBackground,
                 prefixIcon: Icon(Icons.person_outline_rounded, color: ffTheme.secondaryText),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.alternate)),
-                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.primary, width: 1.5)),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusSm), borderSide: BorderSide.none),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusSm), borderSide: BorderSide(color: ffTheme.alternate)),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusSm), borderSide: BorderSide(color: ffTheme.brandAccent, width: 1.5)),
               ),
             ),
             const SizedBox(height: 16),
@@ -70,11 +68,11 @@ class _ProfileWidgetState extends State<ProfileWidget> {
               decoration: InputDecoration(
                 hintText: '050-0000000',
                 filled: true,
-                fillColor: Colors.white,
+                fillColor: ffTheme.secondaryBackground,
                 prefixIcon: Icon(Icons.phone_outlined, color: ffTheme.secondaryText),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.alternate)),
-                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.primary, width: 1.5)),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusSm), borderSide: BorderSide.none),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusSm), borderSide: BorderSide(color: ffTheme.alternate)),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(ffTheme.radiusSm), borderSide: BorderSide(color: ffTheme.brandAccent, width: 1.5)),
               ),
             ),
             const SizedBox(height: 24),
@@ -91,6 +89,8 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                 Provider.of<AppState>(ctx, listen: false).login(name: name, phone: phone);
                 appBackend.upsertProfile(name: name, phone: phone).catchError((_) {});
                 Navigator.pop(ctx);
+                AppSnackBar.success(context, 'השינויים שמורים',
+                    duration: const Duration(seconds: 2));
               },
               
                 width: double.infinity,
@@ -169,8 +169,8 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                         margin: const EdgeInsets.only(bottom: 8),
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                         decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(14),
+                          color: ffTheme.secondaryBackground,
+                          borderRadius: BorderRadius.circular(ffTheme.radiusMd),
                           border: Border.all(color: ffTheme.alternate),
                         ),
                         child: Row(
@@ -230,77 +230,6 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                     ffTheme: ffTheme,
                   ),
 
-                  const SizedBox(height: 20),
-
-                  // Language
-                  _buildSectionHeader('שפה', ffTheme),
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: ffTheme.alternate),
-                    ),
-                    child: Row(
-                      children: ['עברית', 'English', 'العربية'].map((lang) {
-                        final active = _lang == lang;
-                        return Expanded(
-                          child: GestureDetector(
-                            onTap: () => setState(() => _lang = lang),
-                            child: AnimatedContainer(
-                              duration: ffTheme.motionFast,
-                              margin: const EdgeInsets.symmetric(horizontal: 3),
-                              padding: const EdgeInsets.symmetric(vertical: 8),
-                              decoration: BoxDecoration(
-                                color: active ? ffTheme.primary : Colors.transparent,
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Center(
-                                child: Text(lang, style: ffTheme.labelSmall.copyWith(color: active ? Colors.white : ffTheme.secondaryText)),
-                              ),
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // Appearance
-                  _buildSectionHeader('מראה', ffTheme),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: ffTheme.alternate),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.dark_mode_rounded, color: ffTheme.secondaryText, size: 22),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('מצב כהה', style: ffTheme.titleSmall),
-                              Text('ממשק בגוונים כהים', style: ffTheme.bodySmall),
-                            ],
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: ffTheme.accent2,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text('בקרוב', style: ffTheme.labelSmall.copyWith(color: const Color(0xFF7A5C00), fontWeight: FontWeight.w600)),
-                        ),
-                      ],
-                    ),
-                  ),
-
                   const SizedBox(height: 28),
 
                   // Logout
@@ -310,12 +239,12 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                         appState.logout();
                         context.goNamed('Onboarding');
                       },
-                      icon: Icon(Icons.logout_rounded, color: ffTheme.error),
-                      label: Text('התנתקות', style: ffTheme.titleSmall.copyWith(color: ffTheme.error)),
+                      icon: Icon(Icons.logout_rounded, color: ffTheme.error, size: 20),
+                      label: Text('התנתקות', style: ffTheme.labelLarge.copyWith(color: ffTheme.error, fontWeight: FontWeight.w600)),
                       style: OutlinedButton.styleFrom(
-                        side: BorderSide(color: ffTheme.error),
+                        side: BorderSide(color: ffTheme.error.withValues(alpha: 0.5)),
                         minimumSize: const Size(double.infinity, 52),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(ffTheme.radiusMd)),
                       ),
                     ).animate().fadeIn(delay: 400.ms),
 
@@ -335,7 +264,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
     return SliverAppBar(
       expandedHeight: 200,
       pinned: true,
-      backgroundColor: ffTheme.primary,
+      backgroundColor: AppColors.primary,
       leading: Navigator.canPop(context)
           ? IconButton(
               icon: const Icon(Icons.arrow_back_ios_rounded, color: Colors.white),
@@ -354,11 +283,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
       flexibleSpace: FlexibleSpaceBar(
         background: Container(
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [ffTheme.primary, ffTheme.tertiary],
-              begin: Alignment.topRight,
-              end: Alignment.bottomLeft,
-            ),
+            gradient: ffTheme.freshGradient,
           ),
           child: SafeArea(
             child: Column(
@@ -405,12 +330,12 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                     ],
                   ),
                 ).animate().scale(duration: 500.ms, curve: Curves.elasticOut),
-                const SizedBox(height: 10),
+                const SizedBox(height: 12),
                 Text(
                   appState.isLoggedIn ? appState.userName : 'אורח',
-                  style: ffTheme.titleMedium.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
+                  style: ffTheme.titleLarge.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 12),
                 // Stats row
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -438,8 +363,9 @@ class _ProfileWidgetState extends State<ProfileWidget> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          gradient: LinearGradient(colors: [ffTheme.primary, ffTheme.tertiary]),
-          borderRadius: BorderRadius.circular(16),
+          gradient: ffTheme.freshGradient,
+          borderRadius: BorderRadius.circular(ffTheme.radiusMd),
+          boxShadow: ffTheme.shadowPrimary,
         ),
         child: Row(
           children: [
@@ -455,6 +381,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('התחבר לחשבון', style: ffTheme.titleSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 2),
                   Text('שמור מסלולים, עקוב אחר חיסכון וקבל התראות', style: ffTheme.bodySmall.copyWith(color: Colors.white70)),
                 ],
               ),
@@ -474,10 +401,10 @@ class _ProfileWidgetState extends State<ProfileWidget> {
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
+          color: ffTheme.secondaryBackground,
+          borderRadius: BorderRadius.circular(ffTheme.radiusMd),
           border: Border.all(color: ffTheme.primary.withValues(alpha: 0.3), width: 1.5),
-          boxShadow: [BoxShadow(color: ffTheme.primary.withValues(alpha: 0.08), blurRadius: 12, offset: const Offset(0, 4))],
+          boxShadow: ffTheme.shadowSoft,
         ),
         child: Row(
           children: [
@@ -490,7 +417,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                   Text(plan.provider, style: ffTheme.titleSmall.copyWith(fontWeight: FontWeight.w700)),
                   Text(plan.plan, style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText), maxLines: 1, overflow: TextOverflow.ellipsis),
                   const SizedBox(height: 4),
-                  Text('₪${plan.priceText}/${priceUnitShort(plan)}', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+                  Text('₪${plan.priceText}/${priceUnitShort(plan)}', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700, fontFeatures: const [FontFeature.tabularFigures()])),
                 ],
               ),
             ),
@@ -498,7 +425,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
                 color: ffTheme.accent1,
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(ffTheme.radiusXs),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -561,10 +488,10 @@ class _ProfileWidgetState extends State<ProfileWidget> {
               width: 130,
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
+                color: ffTheme.secondaryBackground,
+                borderRadius: BorderRadius.circular(ffTheme.radiusSm),
                 border: Border.all(color: ffTheme.alternate),
-                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 6, offset: const Offset(0, 2))],
+                boxShadow: ffTheme.shadowSoft,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -577,7 +504,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                     ],
                   ),
                   const SizedBox(height: 6),
-                  Text('₪${p.priceText}/${priceUnitShort(p)}', style: ffTheme.titleSmall.copyWith(color: ffTheme.primary)),
+                  Text('₪${p.priceText}/${priceUnitShort(p)}', style: ffTheme.titleSmall.copyWith(color: ffTheme.primary, fontFeatures: const [FontFeature.tabularFigures()])),
                   const SizedBox(height: 2),
                   Text(p.plan, style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText), maxLines: 1, overflow: TextOverflow.ellipsis),
                 ],
@@ -593,8 +520,8 @@ class _ProfileWidgetState extends State<ProfileWidget> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
+        color: ffTheme.secondaryBackground,
+        borderRadius: BorderRadius.circular(ffTheme.radiusMd),
         border: Border.all(color: ffTheme.alternate),
       ),
       child: Wrap(
@@ -615,8 +542,9 @@ class _ProfileWidgetState extends State<ProfileWidget> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          gradient: LinearGradient(colors: [ffTheme.primary, ffTheme.tertiary]),
-          borderRadius: BorderRadius.circular(14),
+          gradient: ffTheme.freshGradient,
+          borderRadius: BorderRadius.circular(ffTheme.radiusMd),
+          boxShadow: ffTheme.shadowPrimary,
         ),
         child: Row(
           children: [
@@ -626,7 +554,8 @@ class _ProfileWidgetState extends State<ProfileWidget> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('גלה כמה תחסוך', style: ffTheme.titleSmall.copyWith(color: Colors.white)),
+                  Text('גלה כמה תחסוך', style: ffTheme.titleSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 2),
                   Text('ענה על 4 שאלות קצרות', style: ffTheme.bodySmall.copyWith(color: Colors.white70)),
                 ],
               ),
@@ -644,11 +573,18 @@ class _ProfileWidgetState extends State<ProfileWidget> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(title, style: ffTheme.titleMedium),
+          Text(title, style: ffTheme.titleMedium.copyWith(fontWeight: FontWeight.w700)),
           if (actionLabel != null && onAction != null)
             GestureDetector(
+              behavior: HitTestBehavior.opaque,
               onTap: onAction,
-              child: Text(actionLabel, style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w600)),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 44),
+                child: Center(
+                  widthFactor: 1,
+                  child: Text(actionLabel, style: ffTheme.labelMedium.copyWith(color: ffTheme.brandAccent, fontWeight: FontWeight.w700)),
+                ),
+              ),
             ),
         ],
       ),
@@ -669,7 +605,15 @@ class _HeroStat extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(value, style: ffTheme.titleMedium.copyWith(color: Colors.white, fontWeight: FontWeight.w800)),
+        Text(
+          value,
+          style: ffTheme.titleMedium.copyWith(
+            color: Colors.white,
+            fontWeight: FontWeight.w800,
+            fontFeatures: const [FontFeature.tabularFigures()],
+          ),
+        ),
+        const SizedBox(height: 2),
         Text(label, style: ffTheme.labelSmall.copyWith(color: Colors.white70)),
       ],
     );
@@ -685,10 +629,10 @@ class _QuizChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
         color: ffTheme.accent1,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(ffTheme.radiusPill),
         border: Border.all(color: ffTheme.primary.withValues(alpha: 0.2)),
       ),
       child: Row(
@@ -698,7 +642,7 @@ class _QuizChip extends StatelessWidget {
             ExcludeSemantics(child: Icon(icon, size: 13, color: ffTheme.primary)),
             const SizedBox(width: 4),
           ],
-          Text(text, style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w600)),
+          Text(text, style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w600, fontFeatures: const [FontFeature.tabularFigures()])),
         ],
       ),
     );
@@ -720,8 +664,8 @@ class _ToggleTile extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
+        color: ffTheme.secondaryBackground,
+        borderRadius: BorderRadius.circular(ffTheme.radiusMd),
         border: Border.all(color: ffTheme.alternate),
       ),
       child: Row(
@@ -733,7 +677,8 @@ class _ToggleTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(title, style: ffTheme.titleSmall),
-                Text(subtitle, style: ffTheme.bodySmall),
+                const SizedBox(height: 2),
+                Text(subtitle, style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText)),
               ],
             ),
           ),

@@ -1,0 +1,51 @@
+name: Build APK
+
+# Builds a sideloadable release APK in the cloud (no local Android toolchain
+# needed). Download it from the run's "Artifacts" section. Trigger manually from
+# the Actions tab (Run workflow) or automatically on a push to the build branch.
+on:
+  workflow_dispatch:
+  push:
+    branches: [ "claude/kind-chaplygin-9e15f0", "main" ]
+    paths-ignore:
+      - "**.md"
+      - "supabase/**"
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Android builds need a JDK (the web CI didn't). 17 matches the project's
+      # AGP 8.11.1 / Gradle 8.14 toolchain.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      # Same Flutter as the existing CI (ci.yml) so google_fonts const-eval etc.
+      # behave identically.
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.38.10"
+          channel: stable
+
+      - run: flutter --version
+      - run: flutter pub get
+
+      # Builds against the live Supabase backend when the SUPABASE_URL /
+      # SUPABASE_ANON_KEY repo secrets are set (Settings → Secrets and variables
+      # → Actions → New repository secret). When a secret is unset it resolves to
+      # an empty string and main.dart's _initBackend() short-circuits, so the app
+      # stays on the on-device LocalBackend and the build always succeeds.
+      - run: >
+          flutter build apk --release
+          --dart-define=SUPABASE_URL=${{ secrets.SUPABASE_URL }}
+          --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: chosech-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error

@@ -105,11 +105,16 @@ class _LeadWidgetState extends State<LeadWidget> {
               // Name field
               _FieldLabel(label: 'שם מלא', ffTheme: ffTheme),
               const SizedBox(height: 8),
-              TextFormField(
-                controller: _nameCtrl,
-                textDirection: TextDirection.rtl,
-                decoration: _inputDecoration(hint: 'ישראל ישראלי', icon: Icons.person_outline_rounded, ffTheme: ffTheme),
-                validator: (v) => (v == null || v.trim().isEmpty) ? 'שדה חובה' : null,
+              Semantics(
+                textField: true,
+                label: 'שם מלא',
+                child: TextFormField(
+                  controller: _nameCtrl,
+                  textDirection: TextDirection.rtl,
+                  textInputAction: TextInputAction.next,
+                  decoration: _inputDecoration(hint: 'ישראל ישראלי', icon: Icons.person_outline_rounded, ffTheme: ffTheme),
+                  validator: (v) => (v == null || v.trim().isEmpty) ? 'שדה חובה' : null,
+                ),
               ).animate(delay: 80.ms).fadeIn().slideY(begin: 0.05),
 
               const SizedBox(height: 14),
@@ -117,15 +122,20 @@ class _LeadWidgetState extends State<LeadWidget> {
               // Phone field
               _FieldLabel(label: 'מספר טלפון', ffTheme: ffTheme),
               const SizedBox(height: 8),
-              TextFormField(
-                controller: _phoneCtrl,
-                keyboardType: TextInputType.phone,
-                textDirection: TextDirection.ltr,
-                decoration: _inputDecoration(hint: '050-0000000', icon: Icons.phone_outlined, ffTheme: ffTheme),
-                validator: (v) {
-                  final digits = (v ?? '').replaceAll(RegExp(r'\D'), '');
-                  return (digits.length < 9 || digits.length > 15) ? 'מספר טלפון לא תקין' : null;
-                },
+              Semantics(
+                textField: true,
+                label: 'מספר טלפון',
+                child: TextFormField(
+                  controller: _phoneCtrl,
+                  keyboardType: TextInputType.phone,
+                  textInputAction: TextInputAction.next,
+                  textDirection: TextDirection.ltr,
+                  decoration: _inputDecoration(hint: '050-0000000', icon: Icons.phone_outlined, ffTheme: ffTheme),
+                  validator: (v) {
+                    final digits = (v ?? '').replaceAll(RegExp(r'\D'), '');
+                    return (digits.length < 9 || digits.length > 15) ? 'מספר טלפון לא תקין' : null;
+                  },
+                ),
               ).animate(delay: 120.ms).fadeIn().slideY(begin: 0.05),
 
               const SizedBox(height: 14),
@@ -133,11 +143,16 @@ class _LeadWidgetState extends State<LeadWidget> {
               // Email field (optional)
               _FieldLabel(label: 'אימייל (אופציונלי)', ffTheme: ffTheme),
               const SizedBox(height: 8),
-              TextFormField(
-                controller: _emailCtrl,
-                keyboardType: TextInputType.emailAddress,
-                textDirection: TextDirection.ltr,
-                decoration: _inputDecoration(hint: 'example@email.com', icon: Icons.mail_outline_rounded, ffTheme: ffTheme),
+              Semantics(
+                textField: true,
+                label: 'אימייל (אופציונלי)',
+                child: TextFormField(
+                  controller: _emailCtrl,
+                  keyboardType: TextInputType.emailAddress,
+                  textInputAction: TextInputAction.done,
+                  textDirection: TextDirection.ltr,
+                  decoration: _inputDecoration(hint: 'example@email.com', icon: Icons.mail_outline_rounded, ffTheme: ffTheme),
+                ),
               ).animate(delay: 160.ms).fadeIn().slideY(begin: 0.05),
 
               const SizedBox(height: 20),
@@ -192,7 +207,7 @@ class _LeadWidgetState extends State<LeadWidget> {
                     // Build rep context: current bill + quiz preferences.
                     final bill = plan != null ? st.currentBill(plan.cat) : 0;
                     final parts = <String>[];
-                    if (bill > 0) parts.add('חשבון נוכחי: ₪$bill/חודש');
+                    if (bill > 0) parts.add('חשבון נוכחי: ₪$bill$kBillUnit');
                     if (plan != null) parts.add('חסכון שנתי צפוי: ₪${planSaveYear(plan, bill)}');
                     if (st.quizCompleted) parts.add('תקציב: ₪${st.quizBudget} | עדיפות: ${st.quizPriority} | קווים: ${st.quizLines}');
                     final nowIso = DateTime.now().toUtc().toIso8601String();
@@ -241,8 +256,8 @@ class _LeadWidgetState extends State<LeadWidget> {
                   height: 56,
                   color: _isSubmitting ? ffTheme.alternate : ffTheme.primary,
                   textStyle: ffTheme.titleMedium.copyWith(color: Colors.white),
-                  borderRadius: BorderRadius.circular(18),
-                
+                  borderRadius: BorderRadius.circular(ffTheme.radiusLg),
+
               ).animate().fadeIn(delay: 300.ms),
 
               const SizedBox(height: 8),
@@ -274,8 +289,7 @@ class _LeadWidgetState extends State<LeadWidget> {
           Container(
             width: 8, height: 8,
             decoration: BoxDecoration(color: ffTheme.primary, shape: BoxShape.circle),
-          ).animate(onPlay: (c) => c.repeat(reverse: true))
-            .scale(begin: const Offset(1, 1), end: const Offset(1.5, 1.5), duration: 700.ms),
+          ).animate().fadeIn(duration: 400.ms),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
@@ -298,12 +312,13 @@ class _LeadWidgetState extends State<LeadWidget> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [ffTheme.accent1, Colors.white],
+          colors: [ffTheme.accent1, ffTheme.secondaryBackground],
           begin: Alignment.topRight,
           end: Alignment.bottomLeft,
         ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: ffTheme.primary.withValues(alpha: 0.2)),
+        borderRadius: BorderRadius.circular(ffTheme.radiusMd),
+        border: Border.all(color: ffTheme.alternate.withValues(alpha: 0.12)),
+        boxShadow: ffTheme.shadowSoft,
       ),
       child: Column(
         children: [
@@ -316,43 +331,66 @@ class _LeadWidgetState extends State<LeadWidget> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(plan.provider, style: ffTheme.titleSmall),
+                    const SizedBox(height: 2),
                     Text(plan.plan, style: ffTheme.bodySmall, maxLines: 1, overflow: TextOverflow.ellipsis),
-                    Text('₪${plan.priceText}/${priceUnitShort(plan)}', style: ffTheme.titleMedium.copyWith(color: ffTheme.primary)),
+                    const SizedBox(height: 4),
+                    Text(
+                      '₪${plan.priceText}/${priceUnitShort(plan)}',
+                      style: ffTheme.titleLarge.copyWith(
+                        color: ffTheme.primary,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
+                    ),
                   ],
                 ),
               ),
               if (saveYear > 0)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(color: ffTheme.secondary, borderRadius: BorderRadius.circular(10)),
+                  decoration: BoxDecoration(
+                    color: ffTheme.saving.withValues(alpha: 0.14),
+                    borderRadius: BorderRadius.circular(ffTheme.radiusXs),
+                    border: Border.all(color: ffTheme.saving.withValues(alpha: 0.4)),
+                  ),
                   child: Column(
                     children: [
-                      Text('חוסך', style: ffTheme.labelSmall.copyWith(color: ffTheme.primaryDark)),
-                      Text('₪$saveYear/שנה', style: ffTheme.titleSmall.copyWith(color: ffTheme.primaryDark, fontWeight: FontWeight.w800)),
+                      Text('חוסך', style: ffTheme.labelSmall.copyWith(color: ffTheme.savingDark, fontWeight: FontWeight.w700)),
+                      Text(
+                        '₪$saveYear/שנה',
+                        style: ffTheme.titleSmall.copyWith(
+                          color: ffTheme.savingDark,
+                          fontWeight: FontWeight.w800,
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                        ),
+                      ),
                     ],
                   ),
                 ),
             ],
           ),
           if (saveYear > 0) ...[
-            const SizedBox(height: 10),
+            const SizedBox(height: 12),
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
               decoration: BoxDecoration(
-                color: ffTheme.primary.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(8),
+                color: ffTheme.saving.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(ffTheme.radiusSm),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.savings_rounded, size: 15, color: ffTheme.primary),
+                  Icon(Icons.savings_rounded, size: 15, color: ffTheme.savingDark),
                   const SizedBox(width: 6),
                   Flexible(
                     child: Text(
                       'כ-₪${(saveYear / 12).round()} חיסכון בחודש הראשון!',
-                      style: ffTheme.labelMedium.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700),
+                      style: ffTheme.labelMedium.copyWith(
+                        color: ffTheme.savingDark,
+                        fontWeight: FontWeight.w700,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
                       textAlign: TextAlign.center,
                     ),
                   ),
@@ -383,7 +421,7 @@ class _LeadWidgetState extends State<LeadWidget> {
               margin: EdgeInsets.only(right: opt.$1 != 'tomorrow' ? 8 : 0),
               padding: const EdgeInsets.symmetric(vertical: 10),
               decoration: BoxDecoration(
-                color: selected ? ffTheme.primary : Colors.white,
+                color: selected ? ffTheme.primary : ffTheme.secondaryBackground,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: selected ? ffTheme.primary : ffTheme.alternate, width: selected ? 1.5 : 1),
                 boxShadow: selected ? [BoxShadow(color: ffTheme.primary.withValues(alpha: 0.2), blurRadius: 8, offset: const Offset(0, 2))] : [],
@@ -410,7 +448,7 @@ class _LeadWidgetState extends State<LeadWidget> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ffTheme.secondaryBackground,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: ffTheme.alternate),
       ),
@@ -431,8 +469,11 @@ class _LeadWidgetState extends State<LeadWidget> {
     return InputDecoration(
       hintText: hint,
       prefixIcon: Icon(icon, color: ffTheme.secondaryText, size: 20),
+      // Error text sits below the field, themed + RTL like the rest of the form.
+      errorStyle: ffTheme.labelSmall.copyWith(color: ffTheme.error, fontWeight: FontWeight.w600),
+      errorMaxLines: 2,
       filled: true,
-      fillColor: Colors.white,
+      fillColor: ffTheme.secondaryBackground,
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.alternate)),
       enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.alternate)),
       focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.primary, width: 1.5)),

@@ -1,5 +1,6 @@
 import '../models.dart';
 import '../data.dart';
+import '../app_state.dart';
 import 'recommendation_engine.dart';
 
 /// The user/app context the advisor needs to answer, lifted out of `AppState`
@@ -708,4 +709,125 @@ class AdvisorEngine {
         wantsAbroad: ctx.wantsAbroad,
         wantsNoCommit: ctx.wantsNoCommit,
       );
+
+  // ── User-profile context ─────────────────────────────────────────────────
+
+  /// Assemble a Hebrew summary of the user's current profile from [AppState].
+  /// The result is a multi-line string suitable for display in the "פרופיל שלי"
+  /// card and for injecting as system context into rule-based reply generation.
+  static String buildUserContext(AppState state) {
+    final buf = StringBuffer();
+
+    // ── Bills ──────────────────────────────────────────────────────────────
+    const catNames = <String, String>{
+      'cellular': 'סלולר',
+      'internet': 'אינטרנט',
+      'tv': 'טלוויזיה',
+      'triple': 'חבילה משולבת',
+      'abroad': 'חו"ל',
+    };
+    final nonZeroBills = catNames.keys
+        .where((c) => state.currentBill(c) > 0)
+        .map((c) => '${catNames[c]} ₪${state.currentBill(c)}')
+        .toList();
+
+    if (nonZeroBills.isNotEmpty) {
+      buf.writeln('חשבונות נוכחיים: ${nonZeroBills.join(', ')}');
+    } else {
+      buf.writeln('חשבונות נוכחיים: לא הוגדרו עדיין');
+    }
+
+    // ── Quiz / preference signals ──────────────────────────────────────────
+    if (state.quizCompleted) {
+      final catName = catNames[state.quizCat] ?? state.quizCat;
+      const priorityLabels = <String, String>{
+        'price': 'מחיר',
+        'speed': 'מהירות',
+        'service': 'שירות',
+        'coverage': 'כיסוי',
+      };
+      final priorityLabel = priorityLabels[state.quizPriority] ?? state.quizPriority;
+      final needs = <String>[];
+      if (state.wants5G) needs.add('5G');
+      if (state.wantsAbroad) needs.add('חו"ל');
+      if (state.wantsNoCommit) needs.add('ללא התחייבות');
+      final needsStr = needs.isEmpty ? '' : ', עדיפויות: ${needs.join(' · ')}';
+      buf.writeln('מחפש: $catName, תקציב עד ₪${state.quizBudget}, עדיפות: $priorityLabel$needsStr');
+      if (state.quizLines > 1) {
+        buf.writeln('מספר קווים: ${state.quizLines}');
+      }
+    } else {
+      buf.writeln('שאלון העדפות: לא הושלם עדיין');
+    }
+
+    // ── Tracked plans (renewal radar) ─────────────────────────────────────
+    if (state.myPlans.isNotEmpty) {
+      final planLines = state.myPlans.map((p) {
+        final catLabel = catNames[p.category] ?? p.category;
+        final renewalNote = p.daysUntilRenewal != null
+            ? ' (מתחדש בעוד ${p.daysUntilRenewal} ימים)'
+            : '';
+        return '${p.provider} — ${p.planName} ₪${p.monthlyPrice}/$catLabel$renewalNote';
+      }).join('\n  ');
+      buf.writeln('תוכניות עקובות:\n  $planLines');
+    } else {
+      buf.writeln('תוכניות עקובות: אין');
+    }
+
+    // ── Watched plan ids (price-alert watchlist) ───────────────────────────
+    if (state.watchedPlans.isNotEmpty) {
+      buf.writeln('מסלולים במעקב מחיר: ${state.watchedPlans.length}');
+    }
+
+    return buf.toString().trimRight();
+  }
+
+  /// Generate a Hebrew reply that is contextually aware of the user's data.
+  /// This is used when no other intent branch matched, or as a supplement when
+  /// the user explicitly asks something that needs their profile numbers (bills,
+  /// savings, tracked plans). [userContext] is produced by [buildUserContext].
+  static String generateContextualReply(String userMessage, String userContext) {
+    final lower = userMessage.toLowerCase();
+
+    // Savings question with explicit profile reference
+    if (lower.contains('כמה') &&
+        (lower.contains('חוסך') ||
+            lower.contains('חיסכון') ||
+            lower.contains('אחסוך') ||
+            lower.contains('לחסוך'))) {
+      // Check if the context contains actual bills
+      if (userContext.contains('₪') && !userContext.contains('לא הוגדרו')) {
+        return 'לפי הפרופיל שלך:\n$userContext\n\n'
+            'כדי לחשב חיסכון מדויק, כתוב "כמה אני חוסך" ואראה לך את הפוטנציאל המלא בכל קטגוריה.';
+      } else {
+        return 'כדי לחשב את החיסכון שלך, צריך קודם להגדיר את החשבונות.\n'
+            'עבור ל"החשבונות שלי" ↓ והכנס כמה אתה משלם — ואמצא כמה תוכל לחסוך! 💡';
+      }
+    }
+
+    // Profile / current status question
+    if (lower.contains('פרופיל') ||
+        lower.contains('הגדרות שלי') ||
+        lower.contains('המצב שלי') ||
+        lower.contains('מה יש לי')) {
+      return 'הנה הפרופיל שלך:\n\n$userContext\n\n'
+          'רוצה לשפר מסלול? כתוב "מה הכי משתלם לי" ואמצא לך את הטוב ביותר.';
+    }
+
+    // Generic fallback that acknowledges the profile
+    if (userContext.contains('₪') && !userContext.contains('לא הוגדרו')) {
+      return 'ראיתי את הפרופיל שלך. איך אפשר לעזור?\n\n'
+          'אפשר לשאול:\n'
+          '• "מה הכי משתלם לי?"\n'
+          '• "כמה אני חוסך?"\n'
+          '• "מצא סלולר זול ללא התחייבות"';
+    }
+
+    return 'לא הצלחתי להבין בדיוק. נסו לכתוב למשל:\n\n'
+        '• "מצא סלולר זול ללא התחייבות"\n'
+        '• "אינטרנט גיגה בזול"\n'
+        '• "חבילת חו"ל לאירופה"\n'
+        '• "5G בפחות מ-₪60"\n'
+        '• "כמה אני חוסך"';
+  }
 }

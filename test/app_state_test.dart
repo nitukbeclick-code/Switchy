@@ -534,4 +534,209 @@ void main() {
       expect(state.renewalReminders, isTrue);
     });
   });
+
+  // -- Admin role derivation --
+
+  group('isAdmin derivation', () {
+    test('defaults to false before any login', () {
+      expect(AppState().isAdmin, isFalse);
+    });
+
+    test('login with an allow-listed email grants admin (case-insensitive)', () {
+      final state = AppState();
+      state.login(name: 'owner', phone: '0500000000', email: 'UZIEL10@Gmail.com');
+      expect(state.isAdmin, isTrue);
+    });
+
+    test('login with a non-admin email does not grant admin', () {
+      final state = AppState();
+      state.login(name: 'user', phone: '0501111111', email: 'someone@example.com');
+      expect(state.isAdmin, isFalse);
+    });
+
+    test('logout clears the admin flag', () {
+      final state = AppState();
+      state.login(name: 'owner', phone: '0500000000', email: 'uziel10@gmail.com');
+      expect(state.isAdmin, isTrue);
+      state.logout();
+      expect(state.isAdmin, isFalse);
+    });
+
+    test('isAdminEmail ignores case and surrounding space', () {
+      expect(AppState.isAdminEmail(' uziel10@gmail.com '), isTrue);
+      expect(AppState.isAdminEmail('nope@gmail.com'), isFalse);
+      expect(AppState.isAdminEmail(''), isFalse);
+    });
+
+    test('every configured admin email is recognised', () {
+      for (final email in const [
+        'uziel10@gmail.com',
+        'inbal2526@gmail.com',
+        'arielgabayyy@gmail.com',
+        'nitukbeclick@gmail.com',
+      ]) {
+        expect(AppState.isAdminEmail(email), isTrue, reason: email);
+        expect(AppState.isAdminEmail(email.toUpperCase()), isTrue, reason: email);
+      }
+      expect(AppState.adminEmails.length, equals(4));
+    });
+  });
+
+  // ── Favorites / wishlist ─────────────────────────────────────────────────────
+
+  group('toggleFavorite', () {
+    test('adds a plan to favorites', () {
+      final state = AppState();
+      expect(state.isFavorited('plan_a'), isFalse);
+      state.toggleFavorite('plan_a');
+      expect(state.isFavorited('plan_a'), isTrue);
+      expect(state.favoritePlans, contains('plan_a'));
+    });
+
+    test('removes a plan already favorited', () {
+      final state = AppState();
+      state.toggleFavorite('plan_a');
+      state.toggleFavorite('plan_a');
+      expect(state.isFavorited('plan_a'), isFalse);
+    });
+
+    test('favorites are independent per plan', () {
+      final state = AppState();
+      state.toggleFavorite('plan_a');
+      expect(state.isFavorited('plan_a'), isTrue);
+      expect(state.isFavorited('plan_b'), isFalse);
+    });
+
+    test('persists across a reload', () async {
+      final state = AppState();
+      state.toggleFavorite('plan_a');
+      await state.flushPersistence();
+      AppState.reset();
+      final fresh = AppState();
+      await fresh.initializePersistedState();
+      expect(fresh.isFavorited('plan_a'), isTrue);
+    });
+  });
+
+  // ── Price targets ────────────────────────────────────────────────────────────
+
+  group('price targets', () {
+    test('setPriceTarget stores a ₪ goal per plan', () {
+      final state = AppState();
+      expect(state.priceTargetFor('plan_a'), isNull);
+      state.setPriceTarget('plan_a', 39);
+      expect(state.priceTargetFor('plan_a'), equals(39));
+      expect(state.priceTargets['plan_a'], equals(39));
+    });
+
+    test('a non-positive target removes the entry', () {
+      final state = AppState();
+      state.setPriceTarget('plan_a', 39);
+      state.setPriceTarget('plan_a', 0);
+      expect(state.priceTargetFor('plan_a'), isNull);
+      state.setPriceTarget('plan_b', 50);
+      state.setPriceTarget('plan_b', -10);
+      expect(state.priceTargetFor('plan_b'), isNull);
+    });
+
+    test('clearPriceTarget removes a target', () {
+      final state = AppState();
+      state.setPriceTarget('plan_a', 25);
+      state.clearPriceTarget('plan_a');
+      expect(state.priceTargetFor('plan_a'), isNull);
+    });
+
+    test('targets persist (as a JSON map) across a reload', () async {
+      final state = AppState();
+      state.setPriceTarget('plan_a', 39);
+      state.setPriceTarget('plan_b', 120);
+      await state.flushPersistence();
+      AppState.reset();
+      final fresh = AppState();
+      await fresh.initializePersistedState();
+      expect(fresh.priceTargetFor('plan_a'), equals(39));
+      expect(fresh.priceTargetFor('plan_b'), equals(120));
+    });
+  });
+
+  // ── Alert-tuning prefs ───────────────────────────────────────────────────────
+
+  group('alert tuning', () {
+    test('sensible defaults', () {
+      final state = AppState();
+      expect(state.minSavingAlert, equals(5));
+      expect(state.alertFrequency, equals('immediate'));
+      expect(state.renewalDaysAhead, equals(21));
+      expect(state.renewalReminderTime, equals('09:00'));
+    });
+
+    test('setters update each value and notify', () {
+      final state = AppState();
+      var count = 0;
+      state.addListener(() => count++);
+      state.setMinSavingAlert(20);
+      state.setAlertFrequency('weekly');
+      state.setRenewalDaysAhead(30);
+      state.setRenewalReminderTime('18:30');
+      expect(state.minSavingAlert, equals(20));
+      expect(state.alertFrequency, equals('weekly'));
+      expect(state.renewalDaysAhead, equals(30));
+      expect(state.renewalReminderTime, equals('18:30'));
+      expect(count, equals(4));
+    });
+
+    test('persist across a reload', () async {
+      final state = AppState();
+      state.setMinSavingAlert(15);
+      state.setAlertFrequency('daily');
+      state.setRenewalDaysAhead(45);
+      state.setRenewalReminderTime('08:00');
+      await state.flushPersistence();
+      AppState.reset();
+      final fresh = AppState();
+      await fresh.initializePersistedState();
+      expect(fresh.minSavingAlert, equals(15));
+      expect(fresh.alertFrequency, equals('daily'));
+      expect(fresh.renewalDaysAhead, equals(45));
+      expect(fresh.renewalReminderTime, equals('08:00'));
+    });
+  });
+
+  // ── Switch checklist ─────────────────────────────────────────────────────────
+
+  group('switch checklist', () {
+    test('toggleChecklistItem marks a step done', () {
+      final state = AppState();
+      expect(state.isChecklistDone('step1'), isFalse);
+      state.toggleChecklistItem('step1');
+      expect(state.isChecklistDone('step1'), isTrue);
+      expect(state.switchChecklistDone, contains('step1'));
+    });
+
+    test('toggling again un-marks the step', () {
+      final state = AppState();
+      state.toggleChecklistItem('step1');
+      state.toggleChecklistItem('step1');
+      expect(state.isChecklistDone('step1'), isFalse);
+    });
+
+    test('steps are independent', () {
+      final state = AppState();
+      state.toggleChecklistItem('step1');
+      expect(state.isChecklistDone('step1'), isTrue);
+      expect(state.isChecklistDone('step2'), isFalse);
+    });
+
+    test('persists across a reload', () async {
+      final state = AppState();
+      state.toggleChecklistItem('step1');
+      state.toggleChecklistItem('step2');
+      await state.flushPersistence();
+      AppState.reset();
+      final fresh = AppState();
+      await fresh.initializePersistedState();
+      expect(fresh.isChecklistDone('step1'), isTrue);
+      expect(fresh.isChecklistDone('step2'), isTrue);
+    });
+  });
 }

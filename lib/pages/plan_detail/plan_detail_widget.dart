@@ -1,6 +1,8 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:fl_chart/fl_chart.dart';
+import 'package:shimmer/shimmer.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -8,12 +10,18 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../theme/app_theme.dart';
 import '../../core/nav.dart';
 import '../../widgets/app_button.dart';
+import '../../widgets/skeleton.dart';
+import '../../widgets/empty_state.dart';
 import '../../app_state.dart';
+import '../../services/push_notification_service.dart';
 import '../../models.dart';
 import '../../data.dart';
 import '../../components/logo_widget/logo_widget.dart';
+import '../../widgets/app_snackbar.dart';
 import '../../services/recommendation_engine.dart';
+import '../../services/plan_history.dart';
 import '../../services/backend/local_backend.dart';
+import '../../services/provider_ratings.dart';
 
 class PlanDetailWidget extends StatefulWidget {
   const PlanDetailWidget({super.key, required this.planId});
@@ -52,7 +60,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
     if (plan == null) {
       return Scaffold(
         appBar: AppBar(
-          backgroundColor: ffTheme.primary,
+          backgroundColor: AppColors.primary,
           leading: IconButton(
             icon: const Icon(Icons.arrow_back_ios_rounded, color: Colors.white),
             tooltip: 'חזרה',
@@ -96,7 +104,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
               SliverAppBar(
                 expandedHeight: 200,
                 pinned: true,
-                backgroundColor: ffTheme.primary,
+                backgroundColor: AppColors.primary,
                 leading: IconButton(
                   icon: const Icon(Icons.arrow_back_ios_rounded, color: Colors.white),
                   tooltip: 'חזרה',
@@ -109,7 +117,14 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                     onPressed: () {
                       HapticFeedback.selectionClick();
                       final unit = priceUnitShort(plan);
-                      Share.share('${plan.provider} — ${plan.plan}\n₪${plan.priceText}/$unit\n\nמצאתי בחוסך');
+                      // Key spec: first feat line, trimmed
+                      final keySpec = plan.feats.isNotEmpty ? plan.feats.first : '';
+                      final specPart = keySpec.isNotEmpty ? ' | $keySpec' : '';
+                      final ratingStr = plan.rating.toStringAsFixed(1);
+                      Share.share(
+                        'תוכנית ${plan.plan} של ${plan.provider} — ₪${plan.priceText}/$unit$specPart | דירוג ★$ratingStr\n'
+                        'בדוק דרך חוסך: https://chosech.app',
+                      );
                     },
                   ),
                   IconButton(
@@ -145,9 +160,16 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                           ),
                           const SizedBox(height: 10),
                           GestureDetector(
+                            behavior: HitTestBehavior.opaque,
                             onTap: () => context.pushNamed('Provider', pathParameters: {'name': plan.provider}),
-                            child: Text(plan.provider,
-                                style: ffTheme.titleLarge.copyWith(color: Colors.white)),
+                            child: ConstrainedBox(
+                              constraints: const BoxConstraints(minHeight: 44),
+                              child: Center(
+                                widthFactor: 1,
+                                child: Text(plan.provider,
+                                    style: ffTheme.titleLarge.copyWith(color: Colors.white)),
+                              ),
+                            ),
                           ),
                           const SizedBox(height: 4),
                           Padding(
@@ -189,34 +211,47 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                                       '₪${plan.priceText}',
                                       style: ffTheme.displaySmall.copyWith(
                                           color: ffTheme.primary,
-                                          fontWeight: FontWeight.w800),
+                                          fontWeight: FontWeight.w800,
+                                          fontFeatures: const [
+                                            FontFeature.tabularFigures()
+                                          ]),
                                     ),
                                     const SizedBox(width: 4),
                                     Padding(
-                                      padding: const EdgeInsets.only(bottom: 6),
+                                      padding: const EdgeInsets.only(bottom: 7),
                                       child: Text('/${priceUnitShort(plan)}',
-                                          style: ffTheme.bodySmall.copyWith(
-                                              color: ffTheme.secondaryText)),
+                                          style: ffTheme.bodyMedium.copyWith(
+                                              color: ffTheme.secondaryText,
+                                              fontWeight: FontWeight.w500)),
                                     ),
                                   ],
                                 ),
                                 if (plan.hasPromo)
-                                  Text(
-                                    '₪${plan.after} אחרי ${plan.intro ?? 'המבצע'}',
-                                    style: ffTheme.bodySmall
-                                        .copyWith(color: ffTheme.secondaryText),
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 2),
+                                    child: Text(
+                                      '₪${plan.after} אחרי ${plan.intro ?? 'המבצע'}',
+                                      style: ffTheme.bodySmall.copyWith(
+                                          color: ffTheme.secondaryText,
+                                          fontFeatures: const [
+                                            FontFeature.tabularFigures()
+                                          ]),
+                                    ),
                                   ),
-                                const SizedBox(height: 8),
+                                const SizedBox(height: 12),
                                 Container(
                                   padding: const EdgeInsets.symmetric(
-                                      horizontal: 10, vertical: 4),
+                                      horizontal: 11, vertical: 5),
                                   decoration: BoxDecoration(
                                     color: ffTheme.background,
-                                    borderRadius: BorderRadius.circular(20),
-                                    border: Border.all(color: ffTheme.alternate),
+                                    borderRadius:
+                                        BorderRadius.circular(ffTheme.radiusPill),
+                                    border:
+                                        Border.all(color: ffTheme.alternate),
                                   ),
                                   child: Text(plan.commitmentLabel,
-                                      style: ffTheme.labelSmall),
+                                      style: ffTheme.labelSmall.copyWith(
+                                          fontWeight: FontWeight.w600)),
                                 ),
                               ],
                             ),
@@ -239,12 +274,42 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                                     fontFeatures: const [FontFeature.tabularFigures()],
                                   ),
                                 ),
+                              )
+                            else
+                              GestureDetector(
+                                onTap: () => context.pushNamed('Bills'),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 12, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: ffTheme.saving.withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(ffTheme.radiusPill),
+                                    border: Border.all(
+                                        color: ffTheme.saving.withValues(alpha: 0.5)),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(Icons.edit_note_rounded,
+                                          size: 14,
+                                          color: Color(0xFF92400E)),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        'הכנס חשבון לחישוב חיסכון',
+                                        style: ffTheme.labelSmall.copyWith(
+                                          color: const Color(0xFF92400E),
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
                               ),
                           ],
                         ),
                       ).animate().fadeIn(duration: 350.ms).slideY(begin: 0.1),
 
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 16),
 
                       // Features card
                       _Card(
@@ -271,7 +336,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                           .fadeIn(duration: 300.ms)
                           .slideY(begin: 0.08),
 
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 16),
 
                       // Pricing breakdown card
                       _Card(
@@ -307,9 +372,16 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                           .fadeIn(duration: 300.ms)
                           .slideY(begin: 0.08),
 
+                      // ── היסטוריית מחיר — collapsible price sparkline ──────
+                      const SizedBox(height: 16),
+                      _PriceHistoryCard(plan: plan)
+                          .animate(delay: 140.ms)
+                          .fadeIn(duration: 300.ms)
+                          .slideY(begin: 0.08),
+
                       // Warning card (promo)
                       if (plan.hasPromo) ...[
-                        const SizedBox(height: 14),
+                        const SizedBox(height: 16),
                         Container(
                           padding: const EdgeInsets.all(14),
                           decoration: BoxDecoration(
@@ -336,7 +408,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                         ).animate(delay: 160.ms).fadeIn(duration: 300.ms),
                       ],
 
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 16),
 
                       // Rate provider CTA — honest entry point to leave the
                       // first real review (no fabricated rating shown).
@@ -366,7 +438,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                       ).animate(delay: 250.ms).fadeIn(duration: 300.ms),
 
                       // ── "למה המסלול הזה מתאים לך" — fit panel ──────────────
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 16),
                       _FitPanel(
                         match: planMatch,
                         annualSaving: saveYear,
@@ -383,7 +455,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
 
                       // ── Quick-spec grid ─────────────────────────────────
                       if (plan.specs.isNotEmpty) ...[
-                        const SizedBox(height: 14),
+                        const SizedBox(height: 16),
                         _SpecGrid(plan: plan)
                             .animate(delay: 285.ms)
                             .fadeIn(duration: 300.ms)
@@ -391,7 +463,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                       ],
 
                       // ── Detailed cost breakdown ──────────────────────────
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 16),
                       _CostBreakdownCard(plan: plan)
                           .animate(delay: 295.ms)
                           .fadeIn(duration: 300.ms)
@@ -399,10 +471,10 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
 
                       // Fine print
                       if (plan.fine != null) ...[
-                        const SizedBox(height: 14),
+                        const SizedBox(height: 16),
                         Container(
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: ffTheme.secondaryBackground,
                             borderRadius: BorderRadius.circular(14),
                             border: Border.all(color: ffTheme.alternate),
                             boxShadow: [
@@ -430,7 +502,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
 
                       // ── מידע נוסף / אותיות קטנות (progressive disclosure) ──
                       if (plan.hasExtraInfo) ...[
-                        const SizedBox(height: 14),
+                        const SizedBox(height: 16),
                         _ExtraInfoSection(plan: plan)
                             .animate(delay: 305.ms)
                             .fadeIn(duration: 300.ms)
@@ -439,7 +511,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
 
                       // Savings timeline
                       if (saveYear > 0) ...[
-                        const SizedBox(height: 14),
+                        const SizedBox(height: 16),
                         _Card(
                           title: 'חיסכון לאורך זמן',
                           child: Row(
@@ -455,7 +527,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                         ).animate(delay: 260.ms).fadeIn(duration: 300.ms).slideY(begin: 0.08),
                       ],
 
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 16),
 
                       // Video-meeting cross-sell — a quote over Zoom with a rep.
                       _Card(
@@ -489,29 +561,92 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                         ),
                       ).animate(delay: 270.ms).fadeIn(duration: 300.ms).slideY(begin: 0.08),
 
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 16),
 
                       // Price alert card
                       _Card(
-                        child: Row(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Icon(Icons.notifications_outlined,
-                                color: ffTheme.primary, size: 22),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                'עקוב אחר שינויי מחיר',
-                                style: ffTheme.bodyMedium,
-                              ),
+                            Row(
+                              children: [
+                                Icon(Icons.notifications_outlined,
+                                    color: ffTheme.primary, size: 22),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    'עקוב אחר שינויי מחיר',
+                                    style: ffTheme.bodyMedium,
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: Icon(
+                                    appState.isFavorited(plan.id)
+                                        ? Icons.favorite_rounded
+                                        : Icons.favorite_border_rounded,
+                                    size: 22,
+                                  ),
+                                  color: appState.isFavorited(plan.id)
+                                      ? ffTheme.saving
+                                      : ffTheme.secondaryText,
+                                  tooltip: appState.isFavorited(plan.id)
+                                      ? 'הסרה מהמועדפים'
+                                      : 'שמירה למועדפים',
+                                  onPressed: () {
+                                    HapticFeedback.selectionClick();
+                                    final nowFav = !appState.isFavorited(plan.id);
+                                    appState.toggleFavorite(plan.id);
+                                    AppSnackBar.success(context,
+                                        nowFav ? 'נשמר למועדפים' : 'הוסר מהמועדפים');
+                                  },
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.flag_outlined, size: 22),
+                                  color: ffTheme.brandAccent,
+                                  tooltip: 'הגדרת יעד מחיר',
+                                  onPressed: () =>
+                                      _showPriceTargetDialog(context, plan),
+                                ),
+                                Switch(
+                                  value: appState.isWatching(plan.id),
+                                  onChanged: (v) {
+                                    HapticFeedback.selectionClick();
+                                    appState.toggleWatch(plan.id);
+                                  },
+                                  activeThumbColor: ffTheme.primary,
+                                ),
+                              ],
                             ),
-                            Switch(
-                              value: appState.isWatching(plan.id),
-                              onChanged: (v) {
-                                HapticFeedback.selectionClick();
-                                appState.toggleWatch(plan.id);
-                              },
-                              activeThumbColor: ffTheme.primary,
-                            ),
+                            Builder(builder: (_) {
+                              final target = appState.priceTargetFor(plan.id);
+                              if (target == null) return const SizedBox.shrink();
+                              return Padding(
+                                padding: const EdgeInsets.only(top: 4),
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.flag_rounded,
+                                        size: 16, color: ffTheme.brandAccent),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        'יעד מחיר: ₪$target',
+                                        style: ffTheme.labelSmall.copyWith(
+                                            fontWeight: FontWeight.w700),
+                                      ),
+                                    ),
+                                    TextButton(
+                                      onPressed: () {
+                                        HapticFeedback.selectionClick();
+                                        appState.clearPriceTarget(plan.id);
+                                        AppSnackBar.info(
+                                            context, 'יעד המחיר הוסר');
+                                      },
+                                      child: const Text('הסרה'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }),
                           ],
                         ),
                       )
@@ -519,22 +654,39 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                           .fadeIn(duration: 300.ms)
                           .slideY(begin: 0.08),
 
-                      // Similar plans section
+                      // ── ביקורות section ─────────────────────────────────
+                      const SizedBox(height: 16),
+                      _ReviewsSection(provider: plan.provider)
+                          .animate(delay: 300.ms)
+                          .fadeIn(duration: 300.ms)
+                          .slideY(begin: 0.08),
+
+                      // ── "תוכניות דומות" section ─────────────────────────
                       Builder(builder: (_) {
+                        // ±30% price range filter, same category, exclude self
+                        final priceMin = plan.priceValue * 0.70;
+                        final priceMax = plan.priceValue * 1.30;
                         final similar = allPlans
-                            .where((p) => p.cat == plan.cat && p.id != plan.id)
+                            .where((p) =>
+                                p.cat == plan.cat &&
+                                p.id != plan.id &&
+                                p.priceValue >= priceMin &&
+                                p.priceValue <= priceMax)
                             .toList()
-                          ..sort((a, b) => (a.price - plan.price).abs().compareTo((b.price - plan.price).abs()));
-                        final topSimilar = similar.take(4).toList();
+                          ..sort((a, b) =>
+                              (a.priceValue - plan.priceValue).abs()
+                                  .compareTo((b.priceValue - plan.priceValue).abs()));
+                        final topSimilar = similar.take(3).toList();
                         if (topSimilar.isEmpty) return const SizedBox();
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             const SizedBox(height: 20),
-                            Text('מסלולים דומים', style: ffTheme.titleLarge),
+                            Text('תוכניות דומות שכדאי לבדוק',
+                                style: ffTheme.titleMedium.copyWith(fontWeight: FontWeight.w700)),
                             const SizedBox(height: 12),
                             SizedBox(
-                              height: 110,
+                              height: 148,
                               child: ListView.separated(
                                 scrollDirection: Axis.horizontal,
                                 itemCount: topSimilar.length,
@@ -542,46 +694,123 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                                 itemBuilder: (ctx, i) {
                                   final p = topSimilar[i];
                                   final pSave = planSaveYear(p, bill);
+                                  final pInCompare = appState.isInCompare(p.id);
+                                  // Key spec: first feat line
+                                  final keySpec = p.feats.isNotEmpty ? p.feats.first : p.plan;
                                   return GestureDetector(
-                                    onTap: () => context.pushNamed('PlanDetail', pathParameters: {'planId': p.id}),
+                                    onTap: () => context.pushNamed('PlanDetail',
+                                        pathParameters: {'planId': p.id}),
                                     child: Container(
-                                      width: 160,
-                                      padding: const EdgeInsets.all(14),
+                                      width: 170,
+                                      padding: const EdgeInsets.all(12),
                                       decoration: BoxDecoration(
-                                        color: Colors.white,
+                                        color: ffTheme.secondaryBackground,
                                         borderRadius: BorderRadius.circular(14),
                                         border: Border.all(color: ffTheme.alternate),
-                                        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
+                                        boxShadow: [
+                                          BoxShadow(
+                                              color: Colors.black.withValues(alpha: 0.04),
+                                              blurRadius: 8,
+                                              offset: const Offset(0, 2))
+                                        ],
                                       ),
                                       child: Column(
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
                                           Row(
                                             children: [
-                                              LogoWidget(provider: p.provider, size: 28),
+                                              LogoWidget(provider: p.provider, size: 26),
                                               const SizedBox(width: 8),
-                                              Expanded(child: Text(p.provider, style: ffTheme.labelSmall.copyWith(fontWeight: FontWeight.w700), maxLines: 1, overflow: TextOverflow.ellipsis)),
+                                              Expanded(
+                                                child: Text(p.provider,
+                                                    style: ffTheme.labelSmall.copyWith(
+                                                        fontWeight: FontWeight.w700),
+                                                    maxLines: 1,
+                                                    overflow: TextOverflow.ellipsis),
+                                              ),
                                             ],
                                           ),
-                                          const SizedBox(height: 6),
-                                          Text('₪${p.priceText}/${priceUnitShort(p)}', style: ffTheme.titleSmall.copyWith(color: ffTheme.primary)),
+                                          const SizedBox(height: 5),
+                                          Text(
+                                            '₪${p.priceText}/${priceUnitShort(p)}',
+                                            style: ffTheme.titleSmall
+                                                .copyWith(color: ffTheme.primary),
+                                          ),
                                           const SizedBox(height: 3),
-                                          if (pSave > 0)
-                                            Text('חוסך ₪$pSave/שנה', style: ffTheme.labelSmall.copyWith(color: ffTheme.success))
-                                          else
-                                            Text(p.plan, style: ffTheme.labelSmall, maxLines: 1, overflow: TextOverflow.ellipsis),
+                                          Text(
+                                            keySpec,
+                                            style: ffTheme.labelSmall.copyWith(
+                                                color: ffTheme.secondaryText),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          if (pSave > 0) ...[
+                                            const SizedBox(height: 3),
+                                            Text(
+                                              'חוסך ₪$pSave/שנה',
+                                              style: ffTheme.labelSmall.copyWith(
+                                                  color: ffTheme.saving,
+                                                  fontWeight: FontWeight.w700),
+                                            ),
+                                          ],
+                                          const Spacer(),
+                                          // "השווה" button
+                                          GestureDetector(
+                                            onTap: () {
+                                              HapticFeedback.selectionClick();
+                                              appState.toggleCompare(p.id);
+                                            },
+                                            child: AnimatedContainer(
+                                              duration: const Duration(milliseconds: 180),
+                                              width: double.infinity,
+                                              padding: const EdgeInsets.symmetric(
+                                                  vertical: 5),
+                                              decoration: BoxDecoration(
+                                                color: pInCompare
+                                                    ? ffTheme.brandAccent
+                                                    : ffTheme.brandAccent
+                                                        .withValues(alpha: 0.10),
+                                                borderRadius: BorderRadius.circular(8),
+                                              ),
+                                              child: Row(
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment.center,
+                                                children: [
+                                                  Icon(
+                                                    pInCompare
+                                                        ? Icons.check_rounded
+                                                        : Icons.compare_arrows_rounded,
+                                                    size: 13,
+                                                    color: pInCompare
+                                                        ? Colors.white
+                                                        : ffTheme.brandAccent,
+                                                  ),
+                                                  const SizedBox(width: 4),
+                                                  Text(
+                                                    pInCompare ? 'בהשוואה ✓' : 'השווה',
+                                                    style: ffTheme.labelSmall.copyWith(
+                                                      color: pInCompare
+                                                          ? Colors.white
+                                                          : ffTheme.brandAccent,
+                                                      fontWeight: FontWeight.w700,
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
                                         ],
                                       ),
                                     ),
-                                  ).animate(delay: (i * 60).ms).fadeIn(duration: 250.ms);
+                                  ).animate(delay: (320 + i * 60).ms).fadeIn(duration: 250.ms);
                                 },
                               ),
                             ),
                           ],
-                        );
+                        ).animate(delay: 310.ms).fadeIn(duration: 300.ms).slideY(begin: 0.08);
                       }),
 
-                      const SizedBox(height: 100),
+                      const SizedBox(height: 140),
                     ],
                   ),
                 ),
@@ -589,7 +818,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
             ],
           ),
 
-          // Sticky bottom bar
+          // ── Sticky bottom CTA bar ────────────────────────────────────
           Positioned(
             bottom: 0,
             left: 0,
@@ -598,7 +827,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
               child: Container(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: ffTheme.secondaryBackground,
                   border: Border(
                       top: BorderSide(color: ffTheme.alternate, width: 1)),
                   boxShadow: [
@@ -609,49 +838,153 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                     ),
                   ],
                 ),
-                child: Row(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Expanded(
-                      child: AppButton(
-                        text: 'עברו למסלול הזה ←',
-                        onPressed: () async => context.pushNamed('Lead',
-                            pathParameters: {'planId': plan.id}, queryParameters: {'source': 'plan'}),
-                        
-                          height: 56,
-                          color: ffTheme.primary,
-                          textStyle:
-                              ffTheme.titleSmall.copyWith(color: Colors.white),
-                          borderRadius: BorderRadius.circular(16),
-                        
-                      ),
+                    // ── Primary + compare row ──
+                    Row(
+                      children: [
+                        Expanded(
+                          child: AppButton(
+                            text: 'קבל הצעה ←',
+                            onPressed: () async => context.pushNamed('Lead',
+                                pathParameters: {'planId': plan.id},
+                                queryParameters: {'source': 'plan'}),
+                            height: 52,
+                            color: ffTheme.primary,
+                            textStyle:
+                                ffTheme.titleSmall.copyWith(color: Colors.white),
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        // ── "הוסף להשוואה" quick action ──
+                        Semantics(
+                          button: true,
+                          label: inCompare ? 'הסר מהשוואה' : 'הוסף להשוואה',
+                          child: GestureDetector(
+                            onTap: () {
+                              HapticFeedback.selectionClick();
+                              appState.toggleCompare(plan.id);
+                            },
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              width: 52,
+                              height: 52,
+                              decoration: BoxDecoration(
+                                color: inCompare
+                                    ? ffTheme.brandAccent
+                                    : ffTheme.secondaryBackground,
+                                border: Border.all(
+                                    color: inCompare
+                                        ? ffTheme.brandAccent
+                                        : ffTheme.alternate,
+                                    width: 1.5),
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              child: Tooltip(
+                                message: inCompare ? '✓ בהשוואה' : 'הוסף להשוואה',
+                                child: Icon(
+                                  inCompare
+                                      ? Icons.check_rounded
+                                      : Icons.add_rounded,
+                                  color: inCompare
+                                      ? Colors.white
+                                      : ffTheme.brandAccent,
+                                  size: 22,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 12),
-                    GestureDetector(
-                      onTap: () {
-                        HapticFeedback.selectionClick();
-                        appState.toggleCompare(plan.id);
-                      },
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        width: 56,
-                        height: 56,
-                        decoration: BoxDecoration(
-                          color: inCompare
-                              ? ffTheme.primary
-                              : ffTheme.secondaryBackground,
-                          border: Border.all(
-                              color: inCompare
-                                  ? ffTheme.primary
-                                  : ffTheme.alternate,
-                              width: 1.5),
-                          borderRadius: BorderRadius.circular(16),
+                    const SizedBox(height: 8),
+                    // ── Secondary row: meeting + direct provider ──
+                    Row(
+                      children: [
+                        // "קבע פגישה" — video meeting with context
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () {
+                              HapticFeedback.selectionClick();
+                              context.pushNamed('Meeting', queryParameters: {
+                                'provider': plan.provider,
+                                'planId': plan.id,
+                                'source': 'plan_cta',
+                              });
+                            },
+                            child: Container(
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: ffTheme.secondaryBackground,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: ffTheme.alternate),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.videocam_outlined,
+                                      size: 16, color: ffTheme.brandAccent),
+                                  const SizedBox(width: 5),
+                                  Text(
+                                    'קבע פגישה',
+                                    style: ffTheme.labelMedium.copyWith(
+                                      color: ffTheme.brandAccent,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
                         ),
-                        child: Icon(
-                          inCompare ? Icons.check_rounded : Icons.add_rounded,
-                          color: inCompare ? Colors.white : ffTheme.primary,
-                          size: 24,
+                        const SizedBox(width: 10),
+                        // "עבר לספק ישירות" — open provider website
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () async {
+                              HapticFeedback.selectionClick();
+                              // Use plan.sourceUrl when available, otherwise
+                              // derive a best-effort provider homepage from the name.
+                              final rawUrl = plan.sourceUrl ??
+                                  _providerHomepage(plan.provider);
+                              if (rawUrl == null) return;
+                              try {
+                                final uri = Uri.parse(rawUrl);
+                                final scheme = uri.scheme.toLowerCase();
+                                if (scheme != 'http' && scheme != 'https') return;
+                                if (!await canLaunchUrl(uri)) return;
+                                await launchUrl(uri,
+                                    mode: LaunchMode.externalApplication);
+                              } catch (_) {}
+                            },
+                            child: Container(
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: ffTheme.secondaryBackground,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: ffTheme.alternate),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.open_in_new_rounded,
+                                      size: 14, color: ffTheme.secondaryText),
+                                  const SizedBox(width: 5),
+                                  Text(
+                                    'עבר לספק ישירות',
+                                    style: ffTheme.labelMedium.copyWith(
+                                      color: ffTheme.secondaryText,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
+                      ],
                     ),
                   ],
                 ),
@@ -661,6 +994,82 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
         ],
       ),
     );
+  }
+
+  /// Opens a numeric ₪ dialog to set (or update) a price target for [plan].
+  /// On save we store it via [AppState.setPriceTarget] and confirm with a
+  /// SnackBar; an empty/invalid value is rejected without closing.
+  Future<void> _showPriceTargetDialog(BuildContext context, Plan plan) async {
+    final ffTheme = AppTheme.of(context);
+    final appState = Provider.of<AppState>(context, listen: false);
+    final existing = appState.priceTargetFor(plan.id);
+    final controller =
+        TextEditingController(text: existing != null ? '$existing' : '');
+    final result = await showDialog<int>(
+      context: context,
+      builder: (dialogContext) {
+        String? errorText;
+        return StatefulBuilder(
+          builder: (ctx, setStateDialog) {
+            void submit() {
+              final value = int.tryParse(controller.text.trim());
+              if (value == null || value <= 0) {
+                setStateDialog(() => errorText = 'נא להזין מחיר תקין');
+                return;
+              }
+              Navigator.of(dialogContext).pop(value);
+            }
+
+            return AlertDialog(
+              title: const Text('הגדרת יעד מחיר'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'נודיע לך כשהמסלול יגיע למחיר היעד שתבחר.',
+                    style: ffTheme.labelMedium,
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: controller,
+                    autofocus: true,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [
+                      FilteringTextInputFormatter.digitsOnly,
+                    ],
+                    onSubmitted: (_) => submit(),
+                    decoration: InputDecoration(
+                      prefixText: '₪ ',
+                      labelText: 'מחיר יעד',
+                      errorText: errorText,
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(),
+                  child: const Text('ביטול'),
+                ),
+                TextButton(
+                  onPressed: submit,
+                  child: const Text('שמירה'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+    controller.dispose();
+    if (result == null) return;
+    appState.setPriceTarget(plan.id, result);
+    // If the plan already meets the new goal, surface a push right away
+    // (gated + deduped inside; no-op on web).
+    PushNotificationService.instance.syncPriceAlerts(appState);
+    if (!context.mounted) return;
+    AppSnackBar.success(context, 'יעד מחיר נשמר: ₪$result');
   }
 }
 
@@ -695,7 +1104,7 @@ class _FitPanel extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.72),
+        color: t.secondaryBackground.withValues(alpha: 0.72),
         borderRadius: BorderRadius.circular(t.radiusLg),
         border: Border.all(color: t.primary.withValues(alpha: 0.16)),
         boxShadow: t.shadowGlass,
@@ -730,7 +1139,7 @@ class _FitPanel extends StatelessWidget {
 
           // Real annual saving — honest estimate framing.
           if (hasSaving) ...[
-            const SizedBox(height: 14),
+            const SizedBox(height: 16),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               decoration: BoxDecoration(
@@ -770,7 +1179,7 @@ class _FitPanel extends StatelessWidget {
 
           // Reasons (real ✓ list from the engine)
           if (match.reasons.isNotEmpty) ...[
-            const SizedBox(height: 14),
+            const SizedBox(height: 16),
             ...match.reasons.map((r) => Padding(
                   padding: const EdgeInsets.only(bottom: 8),
                   child: Row(
@@ -1017,6 +1426,260 @@ class _RingPainter extends CustomPainter {
       old.cap != cap;
 }
 
+// ── Price history sparkline ───────────────────────────────────────────────────
+//
+// A collapsible card that draws a synthetic — but deterministic — 30-day price
+// history for the plan (see PlanHistory). Collapsed by default to keep the page
+// calm; expanding builds the series (with a brief skeleton) and renders a small
+// fl_chart sparkline plus min / max / current labels. Per-provider brand colors
+// are untouched — the line uses the app's VALUE accent (saving / amber).
+
+class _PriceHistoryCard extends StatefulWidget {
+  const _PriceHistoryCard({required this.plan});
+  final Plan plan;
+
+  @override
+  State<_PriceHistoryCard> createState() => _PriceHistoryCardState();
+}
+
+class _PriceHistoryCardState extends State<_PriceHistoryCard> {
+  bool _expanded = false;
+  bool _building = false;
+  List<PricePoint> _series = const [];
+
+  Future<void> _toggle() async {
+    HapticFeedback.selectionClick();
+    if (_expanded) {
+      setState(() => _expanded = false);
+      return;
+    }
+    setState(() {
+      _expanded = true;
+      _building = true;
+    });
+    // Prefer the real price ledger; fall back to a deterministic synthetic
+    // series when the backend has no history (offline / not yet populated).
+    List<PricePoint> series;
+    try {
+      final rows = await appBackend.fetchPriceHistory(widget.plan.id);
+      series = rows.length >= 2
+          ? rows.map((r) => PricePoint(r.capturedAt, r.price)).toList()
+          : PlanHistory.generate(
+              planId: widget.plan.id,
+              basePrice: widget.plan.priceValue.round(),
+              anchor: 30,
+            );
+    } catch (_) {
+      series = PlanHistory.generate(
+        planId: widget.plan.id,
+        basePrice: widget.plan.priceValue.round(),
+        anchor: 30,
+      );
+    }
+    if (!mounted) return;
+    setState(() {
+      _series = series;
+      _building = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppTheme.of(context);
+    return Container(
+      decoration: BoxDecoration(
+        color: t.secondaryBackground,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: t.alternate),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // ── Header (tap to expand/collapse) ──
+          Semantics(
+            button: true,
+            label: _expanded ? 'הסתר היסטוריית מחיר' : 'הצג היסטוריית מחיר',
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(14),
+                onTap: _toggle,
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      Icon(Icons.show_chart_rounded,
+                          size: 20, color: t.primary),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text('היסטוריית מחיר', style: t.titleSmall),
+                      ),
+                      Text(
+                        'ב-30 הימים האחרונים',
+                        style: t.labelSmall.copyWith(color: t.secondaryText),
+                      ),
+                      const SizedBox(width: 4),
+                      AnimatedRotation(
+                        turns: _expanded ? 0.5 : 0,
+                        duration: const Duration(milliseconds: 200),
+                        child: Icon(Icons.expand_more_rounded,
+                            color: t.secondaryText),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          // ── Body (only when expanded) ──
+          AnimatedCrossFade(
+            duration: const Duration(milliseconds: 220),
+            crossFadeState: _expanded
+                ? CrossFadeState.showSecond
+                : CrossFadeState.showFirst,
+            firstChild: const SizedBox(width: double.infinity),
+            secondChild: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: _building
+                  ? _buildSkeleton()
+                  : _series.isEmpty
+                      ? const SizedBox(
+                          height: 160,
+                          child: EmptyState(
+                            icon: Icons.show_chart_rounded,
+                            headline: 'אין נתוני מחיר',
+                            subtitle:
+                                'עדיין לא נאספה היסטוריית מחיר עבור מסלול זה.',
+                          ),
+                        )
+                      : _buildChart(t),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSkeleton() {
+    return Shimmer.fromColors(
+      baseColor: const Color(0xFFE9EDF0),
+      highlightColor: const Color(0xFFF7F9FA),
+      child: const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SkeletonBox(width: double.infinity, height: 96, radius: 12),
+          SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              SkeletonBox(width: 60, height: 32),
+              SkeletonBox(width: 60, height: 32),
+              SkeletonBox(width: 60, height: 32),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChart(AppTheme t) {
+    final minP = PlanHistory.minPrice(_series);
+    final maxP = PlanHistory.maxPrice(_series);
+    final curP = PlanHistory.current(_series);
+    // Pad the Y range a touch so the line never hugs the edges.
+    final span = (maxP - minP).abs();
+    final pad = span == 0 ? 2.0 : span * 0.25;
+    final spots = <FlSpot>[
+      for (var i = 0; i < _series.length; i++)
+        FlSpot(i.toDouble(), _series[i].price.toDouble()),
+    ];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SizedBox(
+          height: 96,
+          child: LineChart(
+            LineChartData(
+              minY: minP - pad,
+              maxY: maxP + pad,
+              minX: 0,
+              maxX: (_series.length - 1).toDouble(),
+              titlesData: const FlTitlesData(show: false),
+              borderData: FlBorderData(show: false),
+              gridData: const FlGridData(show: false),
+              lineTouchData: const LineTouchData(enabled: false),
+              lineBarsData: [
+                LineChartBarData(
+                  spots: spots,
+                  isCurved: true,
+                  curveSmoothness: 0.28,
+                  color: t.saving,
+                  barWidth: 2.5,
+                  isStrokeCapRound: true,
+                  dotData: const FlDotData(show: false),
+                  belowBarData: BarAreaData(
+                    show: true,
+                    color: t.saving.withValues(alpha: 0.10),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            _HistoryStat(label: 'נמוך', value: minP, color: t.success, t: t),
+            _HistoryStat(label: 'גבוה', value: maxP, color: t.warning, t: t),
+            _HistoryStat(label: 'נוכחי', value: curP, color: t.primary, t: t),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+/// One labelled price figure (נמוך / גבוה / נוכחי) under the sparkline.
+class _HistoryStat extends StatelessWidget {
+  const _HistoryStat({
+    required this.label,
+    required this.value,
+    required this.color,
+    required this.t,
+  });
+  final String label;
+  final int value;
+  final Color color;
+  final AppTheme t;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        Text(
+          '₪$value',
+          style: t.titleMedium.copyWith(
+            color: color,
+            fontWeight: FontWeight.w800,
+            fontFeatures: const [FontFeature.tabularFigures()],
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(label, style: t.labelSmall.copyWith(color: t.secondaryText)),
+      ],
+    );
+  }
+}
+
 // ── Helper widgets ────────────────────────────────────────────────────────────
 
 class _Card extends StatelessWidget {
@@ -1030,7 +1693,7 @@ class _Card extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ffTheme.secondaryBackground,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: ffTheme.alternate),
         boxShadow: [
@@ -1141,7 +1804,7 @@ class _SpecGrid extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ffTheme.secondaryBackground,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: ffTheme.alternate),
         boxShadow: [
@@ -1221,7 +1884,7 @@ class _CostBreakdownCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ffTheme.secondaryBackground,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: ffTheme.alternate),
         boxShadow: [
@@ -1304,7 +1967,7 @@ class _ExtraInfoSection extends StatelessWidget {
     final ffTheme = AppTheme.of(context);
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ffTheme.secondaryBackground,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: ffTheme.alternate),
         boxShadow: [
@@ -1470,4 +2133,333 @@ class _BulletRow extends StatelessWidget {
       ),
     );
   }
+}
+
+// ── Reviews section ───────────────────────────────────────────────────────────
+
+/// Embedded review section: star summary, sub-rating bars, top-3 review cards,
+/// and two CTAs linking to the full Ratings page.
+class _ReviewsSection extends StatelessWidget {
+  const _ReviewsSection({required this.provider});
+  final String provider;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppTheme.of(context);
+    final appState = Provider.of<AppState>(context, listen: false);
+    final rating = ProviderRatings.forProvider(provider, appState: appState);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: t.secondaryBackground,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: t.alternate),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Section header
+          Text('ביקורות', style: t.titleSmall),
+          const SizedBox(height: 12),
+
+          // ── 1. Star summary row ───────────────────────────────────────────
+          if (!rating.hasData)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Text(
+                'אין ביקורות עדיין',
+                style: t.bodySmall.copyWith(color: t.secondaryText),
+              ),
+            )
+          else ...[
+            Row(
+              children: [
+                _StarRow(stars: rating.stars, size: 22),
+                const SizedBox(width: 8),
+                Text(
+                  rating.stars.toStringAsFixed(1),
+                  style: t.titleMedium.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: t.primaryText,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  '(${rating.reviewCount} ביקורות)',
+                  style: t.bodySmall.copyWith(color: t.secondaryText),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // ── 2. Sub-rating bars ────────────────────────────────────────
+            ...ProviderRatings.subKeys.map((key) {
+              final val = rating.sub[key] ?? 0.0;
+              if (val <= 0) return const SizedBox.shrink();
+              final label = ProviderRatings.subLabels[key] ?? key;
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 52,
+                      child: Text(
+                        label,
+                        style: t.labelSmall.copyWith(color: t.secondaryText),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    SizedBox(
+                      width: 120,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(4),
+                        child: LinearProgressIndicator(
+                          value: (val / 5.0).clamp(0.0, 1.0),
+                          minHeight: 6,
+                          backgroundColor: t.alternate,
+                          valueColor: AlwaysStoppedAnimation<Color>(t.brandAccent),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      val.toStringAsFixed(1),
+                      style: t.labelSmall.copyWith(
+                        color: t.primaryText,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+            const SizedBox(height: 4),
+          ],
+
+          // ── 3. Top-3 review cards (FutureBuilder) ──────────────────────
+          FutureBuilder<List<dynamic>>(
+            future: appBackend.reviewsForProvider(provider),
+            builder: (context, snapshot) {
+              final reviews = snapshot.data ?? const [];
+              if (reviews.isEmpty) return const SizedBox.shrink();
+              final topReviews = reviews.take(3).toList();
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 8),
+                  ...topReviews.asMap().entries.map((entry) {
+                    final i = entry.key;
+                    final r = entry.value;
+                    final overall = r.overall;
+                    final text = r.text;
+                    final snippet = text.length > 120 ? '${text.substring(0, 120)}...' : text;
+                    const isVerified = true; // local reviews are user-submitted
+                    return Padding(
+                      padding: EdgeInsets.only(bottom: i < topReviews.length - 1 ? 10 : 0),
+                      child: _ReviewCard(
+                        overall: overall,
+                        snippet: snippet,
+                        isVerified: isVerified,
+                      ),
+                    );
+                  }),
+                  const SizedBox(height: 8),
+                ],
+              );
+            },
+          ),
+
+          // ── 4. CTAs ──────────────────────────────────────────────────────
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(color: t.brandAccent),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                  ),
+                  onPressed: () => context.pushNamed('Ratings'),
+                  child: Text(
+                    'ראה את כל הביקורות',
+                    style: t.labelMedium.copyWith(
+                      color: t.brandAccent,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: t.brandAccent,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    elevation: 0,
+                  ),
+                  onPressed: () => context.pushNamed('Ratings'),
+                  child: Text(
+                    'כתוב ביקורת',
+                    style: t.labelMedium.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A row of filled / half / empty star icons for a given [stars] value (0..5).
+class _StarRow extends StatelessWidget {
+  const _StarRow({required this.stars, this.size = 18});
+  final double stars;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppTheme.of(context);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: List.generate(5, (i) {
+        final threshold = i + 1;
+        IconData icon;
+        if (stars >= threshold) {
+          icon = Icons.star_rounded;
+        } else if (stars >= threshold - 0.5) {
+          icon = Icons.star_half_rounded;
+        } else {
+          icon = Icons.star_border_rounded;
+        }
+        return Icon(icon, size: size, color: t.saving);
+      }),
+    );
+  }
+}
+
+/// A compact card showing a single review: star row, author initial, text
+/// snippet, and optional verified badge.
+class _ReviewCard extends StatelessWidget {
+  const _ReviewCard({
+    required this.overall,
+    required this.snippet,
+    this.isVerified = false,
+  });
+  final int overall;
+  final String snippet;
+  final bool isVerified;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppTheme.of(context);
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: t.background,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: t.alternate),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              // Author initial circle
+              Container(
+                width: 30,
+                height: 30,
+                decoration: BoxDecoration(
+                  color: t.brandAccent.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: Center(
+                  child: Text(
+                    'מ',
+                    style: t.labelSmall.copyWith(
+                      color: t.brandAccent,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              _StarRow(stars: overall.toDouble(), size: 14),
+              if (isVerified) ...[
+                const SizedBox(width: 6),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: t.success.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    'מאומת',
+                    style: t.labelSmall.copyWith(
+                      color: t.success,
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          if (snippet.isNotEmpty) ...[
+            const SizedBox(height: 7),
+            Text(
+              snippet,
+              style: t.bodySmall.copyWith(color: t.primaryText),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+// ── Provider homepage lookup ──────────────────────────────────────────────────
+//
+// Returns a best-effort HTTPS homepage for known Israeli telecom providers.
+// Used as a fallback when `plan.sourceUrl` is null. Never guesses — returns
+// null for unrecognised names so we don't open a garbage URL.
+String? _providerHomepage(String provider) {
+  final p = provider.trim();
+  const map = <String, String>{
+    'סלקום': 'https://www.cellcom.co.il',
+    'פרטנר': 'https://www.partner.co.il',
+    'הוט מובייל': 'https://www.hot.net.il',
+    'הוט': 'https://www.hot.net.il',
+    'גולן טלקום': 'https://www.golan.co.il',
+    'גולן': 'https://www.golan.co.il',
+    'פלאפון': 'https://www.pelephone.co.il',
+    'רמי לוי תקשורת': 'https://www.ramilevi.co.il',
+    'רמי לוי': 'https://www.ramilevi.co.il',
+    '019 מובייל': 'https://www.019mobile.co.il',
+    '019': 'https://www.019mobile.co.il',
+    'יס': 'https://www.yes.co.il',
+    'בזק': 'https://www.bezeq.co.il',
+    'בזק בינלאומי': 'https://www.bezeq-int.co.il',
+    'נטוויז\'ן': 'https://www.netvision.net.il',
+    'Airalo eSIM': 'https://www.airalo.com',
+    'Airalo': 'https://www.airalo.com',
+  };
+  return map[p];
 }

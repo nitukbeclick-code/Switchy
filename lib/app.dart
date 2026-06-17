@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart' show timeDilation;
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import 'theme/app_theme.dart';
+import 'app_state.dart';
 import 'router.dart';
 
 class ChosechApp extends StatefulWidget {
@@ -27,81 +28,43 @@ class _ChosechAppState extends State<ChosechApp> {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp.router(
-      title: 'חוסך',
-      debugShowCheckedModeBanner: false,
-      locale: const Locale('he'),
-      localizationsDelegates: const [
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-      supportedLocales: const [Locale('he'), Locale('en')],
-      theme: _theme(context),
-      routerConfig: _router,
-      builder: (ctx, child) {
-        // Honour the OS "reduce motion" setting globally: flutter_animate has
-        // no built-in switch, so collapse EVERY animation (entrances, page
-        // transitions, ripples) to near-instant via the scheduler's clock.
-        // 1.0 restores normal speed the moment the setting is turned off.
-        timeDilation = MediaQuery.of(ctx).disableAnimations ? 0.05 : 1.0;
-        return Directionality(
-          textDirection: TextDirection.rtl,
-          // Clamp accessibility text scaling to a sane ceiling so very large
-          // system text can't overflow our fixed-height chips, badges and rows.
-          child: MediaQuery(
-            data: MediaQuery.of(ctx).copyWith(
-              textScaler: MediaQuery.textScalerOf(ctx).clamp(maxScaleFactor: 1.3),
-            ),
-            child: child!,
-          ),
+    return Consumer<AppState>(
+      builder: (context, appState, _) {
+        return MaterialApp.router(
+          title: 'חוסך',
+          debugShowCheckedModeBanner: false,
+          locale: const Locale('he'),
+          localizationsDelegates: const [
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          supportedLocales: const [Locale('he'), Locale('en')],
+          themeMode: appState.themeMode,
+          theme: AppTheme.lightThemeData(),
+          darkTheme: AppTheme.darkThemeData(),
+          routerConfig: _router,
+          builder: (ctx, child) {
+            // Honour the OS "reduce motion" setting globally: flutter_animate has
+            // no built-in switch, so collapse EVERY animation (entrances, page
+            // transitions, ripples) to near-instant via the scheduler's clock.
+            // 1.0 restores normal speed the moment the setting is turned off.
+            timeDilation = MediaQuery.of(ctx).disableAnimations ? 0.05 : 1.0;
+            return Directionality(
+              textDirection: TextDirection.rtl,
+              // Clamp accessibility text scaling to a sane ceiling so very large
+              // system text can't overflow our fixed-height chips, badges and rows.
+              child: MediaQuery(
+                data: MediaQuery.of(ctx).copyWith(
+                  textScaler: MediaQuery.textScalerOf(ctx).clamp(maxScaleFactor: 1.3),
+                ),
+                child: child!,
+              ),
+            );
+          },
         );
       },
     );
   }
 
-  ThemeData _theme(BuildContext context) {
-    final base = ThemeData(useMaterial3: true, fontFamily: GoogleFonts.assistant().fontFamily);
-    // Friendly rounding scale, read from the shared design tokens.
-    final t = AppTheme.of(context);
-    return base.copyWith(
-      colorScheme: ColorScheme.fromSeed(seedColor: AppColors.primary, surface: AppColors.secondaryBackground),
-      scaffoldBackgroundColor: AppColors.background,
-      canvasColor: AppColors.background,
-      textTheme: GoogleFonts.assistantTextTheme(base.textTheme),
-      appBarTheme: AppBarTheme(
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        centerTitle: false,
-        titleTextStyle: GoogleFonts.rubik(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white),
-      ),
-      cardTheme: CardThemeData(
-        color: AppColors.secondaryBackground,
-        elevation: 0,
-        margin: EdgeInsets.zero,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(t.radiusLg)),
-      ),
-      dialogTheme: DialogThemeData(
-        backgroundColor: AppColors.secondaryBackground,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(t.radiusXl)),
-      ),
-      bottomSheetTheme: BottomSheetThemeData(
-        backgroundColor: AppColors.secondaryBackground,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(t.radiusXl)),
-        ),
-      ),
-      snackBarTheme: SnackBarThemeData(
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(t.radiusMd)),
-      ),
-      inputDecorationTheme: InputDecorationTheme(
-        filled: true, fillColor: AppColors.secondaryBackground,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(t.radiusMd), borderSide: const BorderSide(color: AppColors.alternate)),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(t.radiusMd), borderSide: const BorderSide(color: AppColors.alternate)),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(t.radiusMd), borderSide: const BorderSide(color: AppColors.primary, width: 1.5)),
-      ),
-    );
-  }
 }

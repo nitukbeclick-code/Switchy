@@ -13,6 +13,7 @@
 
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../models.dart';
 import 'backend.dart';
@@ -468,5 +469,128 @@ class SupabaseBackend implements Backend {
   Future<Set<String>> bookmarkedPostIds() async {
     final rows = await _db.from('post_bookmarks').select('post_id').eq('user_id', _uid!);
     return (rows as List).map((r) => r['post_id'] as String).toSet();
+  }
+
+  @override
+  Future<void> reportPost(String postId, String reason) async {
+    /*
+      SQL to create the backing table (run once in Supabase dashboard):
+
+      CREATE TABLE IF NOT EXISTS post_reports (
+        id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        post_id     text NOT NULL,
+        reporter_id uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+        reason      text NOT NULL CHECK (reason IN ('ספאם','לא הולם','מידע שגוי')),
+        created_at  timestamptz NOT NULL DEFAULT now()
+      );
+
+      ALTER TABLE post_reports ENABLE ROW LEVEL SECURITY;
+
+      -- Users can insert their own reports
+      CREATE POLICY "users can report posts"
+        ON post_reports FOR INSERT
+        WITH CHECK (reporter_id = auth.uid());
+
+      -- Only service role / admins can read reports
+      CREATE POLICY "admins read reports"
+        ON post_reports FOR SELECT
+        USING (auth.role() = 'service_role');
+    */
+    await _db.from('post_reports').insert({
+      'post_id': postId,
+      'reporter_id': _uid,
+      'reason': reason,
+    });
+  }
+
+  // ── Plan catalogue ────────────────────────────────────────────────────────────
+  @override
+  Future<List<Plan>> fetchPlans({
+    String? category,
+    String? provider,
+    bool flashDealsOnly = false,
+  }) async {
+    try {
+      var query = _db.from('plans').select();
+      if (category != null) query = query.eq('category', category);
+      if (provider != null) query = query.eq('provider', provider);
+      if (flashDealsOnly) query = query.eq('is_flash_deal', true);
+      final rows = await query.order('is_featured', ascending: false).order('rating', ascending: false);
+      return (rows as List).map((r) {
+        // specs is JSONB — comes back as Map<String, dynamic>; cast to Map<String, String>.
+        final rawSpecs = r['specs'] as Map? ?? {};
+        final specs = rawSpecs.map((k, v) => MapEntry(k as String, v?.toString() ?? ''));
+
+        // fees is JSONB or null.
+        final rawFees = r['fees'] as Map? ?? {};
+        final fees = rawFees.map((k, v) => MapEntry(k as String, v?.toString() ?? ''));
+
+        final priceNum = (r['price'] as num?)?.toDouble() ?? 0.0;
+        final priceExactRaw = r['price_exact'] as num?;
+
+        return Plan(
+          id: r['id'] as String,
+          cat: r['category'] as String,
+          provider: r['provider'] as String,
+          net: '',  // not stored in the DB table; default to empty
+          plan: r['title'] as String,
+          price: priceNum.round(),
+          priceExact: priceExactRaw?.toDouble(),
+          rating: (r['rating'] as num?)?.toDouble() ?? 4.0,
+          reviews: (r['review_count'] as num?)?.toInt() ?? 0,
+          highlight: r['is_featured'] as bool? ?? false,
+          kind: r['kind'] as String? ?? 'regular',
+          priceUnit: (r['price_unit'] as String?) == 'month' ? null : r['price_unit'] as String?,
+          specs: specs,
+          fees: fees,
+        );
+      }).toList();
+    } catch (e) {
+      debugPrint('fetchPlans error: $e');
+      return const [];
+    }
+  }
+
+  @override
+  Future<void> updatePlanPrice(String planId, {required int price, double? priceExact}) async {
+    // RLS ("Admins (by email) can modify plans") gates this; a non-admin write
+    // is rejected by Postgres. The plan_prices trigger captures the change to
+    // the ledger. Rethrow so the admin UI can show success/failure.
+    try {
+      await _db.from('plans').update({
+        'price': price,
+        'price_exact': priceExact,
+      }).eq('id', planId);
+    } catch (e) {
+      debugPrint('updatePlanPrice error: $e');
+      rethrow;
+    }
+  }
+
+  // ── Price history ──────────────────────────────────────────────────────────
+  @override
+  Future<List<({DateTime capturedAt, int price})>> fetchPriceHistory(
+    String planId, {
+    int days = 30,
+  }) async {
+    try {
+      final since =
+          DateTime.now().toUtc().subtract(Duration(days: days)).toIso8601String();
+      final rows = await _db
+          .from('plan_prices')
+          .select('price, captured_at')
+          .eq('plan_id', planId)
+          .gte('captured_at', since)
+          .order('captured_at', ascending: true);
+      return (rows as List)
+          .map((r) => (
+                capturedAt: DateTime.parse(r['captured_at'] as String),
+                price: (r['price'] as num).round(),
+              ))
+          .toList();
+    } catch (e) {
+      debugPrint('fetchPriceHistory error: $e');
+      return const [];
+    }
   }
 }

@@ -40,9 +40,13 @@ void main() {
     expect(find.text('החיסכון שלי'), findsOneWidget);
     expect(find.text('לפי קטגוריה'), findsOneWidget);
     // A high cellular bill must surface at least one annual-saving badge.
-    expect(find.textContaining('/שנה'), findsWidgets);
-    // Personalised + positive total → the share action is offered.
-    expect(find.byIcon(Icons.ios_share_rounded), findsOneWidget);
+    // The redesigned badge labels the annual figure with the Hebrew-natural
+    // 'בשנה' (e.g. "₪123" / "בשנה") rather than the old "/שנה" suffix.
+    expect(find.textContaining('בשנה'), findsWidgets);
+    // Personalised + positive total → the share action is offered. The redesign
+    // surfaces it twice (a header icon-button and a full-width share CTA), so any
+    // share affordance satisfies the intent.
+    expect(find.byIcon(Icons.ios_share_rounded), findsWidgets);
   });
 
   testWidgets('Renewal report shows the table and our top pick', (tester) async {
@@ -76,6 +80,8 @@ void main() {
 
     await tester.enterText(find.byType(TextField).first, allProviders.first);
     await _settle(tester);
+    // Drain the result rows' staggered entrance-animation delay timers.
+    await tester.pump(const Duration(seconds: 2));
 
     expect(find.text('ספקים'), findsOneWidget);
     expect(find.text('מסלולים'), findsOneWidget);
@@ -97,6 +103,7 @@ void main() {
     await tester.tap(find.byIcon(Icons.close_rounded));
     await tester.pump(const Duration(milliseconds: 300));
     await tester.pump(const Duration(milliseconds: 300)); // flush staggered reveal timers
+    await tester.pump(const Duration(seconds: 2)); // drain entrance-animation delay timers
 
     // The recent-searches section appears only when there is history.
     expect(find.text('חיפושים אחרונים'), findsOneWidget);
@@ -109,9 +116,13 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
     await tester.pump(const Duration(milliseconds: 300));
 
-    // The empty state offers category browse chips; tap "אינטרנט".
+    // The empty state offers category browse chips; tap the "אינטרנט" one.
+    // The redesign added an always-visible filter row that ALSO has an
+    // "אינטרנט" chip ahead of the browse chip, so a bare text finder would hit
+    // the filter (which doesn't set a query). Target the browse chip by its
+    // unique semantics label instead — tapping it runs a category search.
     expect(find.text('עיון לפי קטגוריה'), findsOneWidget);
-    await tester.tap(find.text('אינטרנט').first);
+    await tester.tap(find.bySemanticsLabel(RegExp('חיפוש אינטרנט')));
     await tester.pump(const Duration(milliseconds: 300));
     await tester.pump(const Duration(milliseconds: 300));
 

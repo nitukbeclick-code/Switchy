@@ -41,7 +41,7 @@ class MiniPlanCard extends StatelessWidget {
           boxShadow: ffTheme.shadowCard,
         ),
         child: Material(
-          color: Colors.white,
+          color: ffTheme.secondaryBackground,
           borderRadius: BorderRadius.circular(ffTheme.radiusLg),
           child: InkWell(
             borderRadius: BorderRadius.circular(ffTheme.radiusLg),
@@ -99,7 +99,10 @@ class MiniPlanCard extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                       decoration: BoxDecoration(
-                        color: ffTheme.primary,
+                        // Fixed ink (not the brightness-aware token) so the white
+                        // label stays readable in both themes — ffTheme.primary
+                        // flips to near-white on dark.
+                        color: AppColors.primary,
                         borderRadius: BorderRadius.circular(ffTheme.radiusMd),
                       ),
                       child: Text(

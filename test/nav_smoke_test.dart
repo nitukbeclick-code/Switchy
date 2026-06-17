@@ -155,6 +155,10 @@ void main() {
     _navigateTo(tester, '/matches');
     await tester.pump(const Duration(milliseconds: 300));
     await tester.pump(const Duration(milliseconds: 300));
+    // The redesigned hub plays a 1400ms count-up tween plus staggered entrance
+    // fades. Drain those finite animation timers so none stays pending when the
+    // widget tree is disposed (which the framework flags as an exception).
+    await tester.pump(const Duration(milliseconds: 1500));
 
     expect(tester.takeException(), isNull);
   });
@@ -228,6 +232,9 @@ void main() {
     await tester.enterText(find.byType(TextField).first, allProviders.first);
     await tester.pump(const Duration(milliseconds: 300));
     await tester.pump(const Duration(milliseconds: 300));
+    // Drain the result rows' staggered entrance-animation delay timers
+    // (.animate(delay: i*60ms)) so none stays pending at teardown.
+    await tester.pump(const Duration(seconds: 2));
 
     expect(tester.takeException(), isNull);
   });

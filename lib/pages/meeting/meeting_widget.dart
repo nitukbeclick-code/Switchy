@@ -343,7 +343,7 @@ class _MeetingWidgetState extends State<MeetingWidget> {
             height: 56,
             color: _submitting ? t.alternate : t.primary,
             textStyle: t.titleMedium.copyWith(color: Colors.white),
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(t.radiusLg),
           ).animate(delay: 180.ms).fadeIn(),
           const SizedBox(height: 8),
           Center(
@@ -387,12 +387,12 @@ class _MeetingWidgetState extends State<MeetingWidget> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('פגישת Zoom אישית עם מומחה',
-                    style: t.titleSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w800)),
-                const SizedBox(height: 4),
+                    style: t.titleMedium.copyWith(color: Colors.white, fontWeight: FontWeight.w800)),
+                const SizedBox(height: 5),
                 Text(
                   'נציג מכירות יציג לכם הצעת מחיר מותאמת בשיחת וידאו של 30 דקות — ללא עלות וללא התחייבות.',
-                  style: GoogleFonts.assistant(
-                      fontSize: 12.5, color: Colors.white.withValues(alpha: 0.85), height: 1.35),
+                  style: t.bodySmall.copyWith(
+                      color: Colors.white.withValues(alpha: 0.85), height: 1.4),
                 ),
               ],
             ),
@@ -413,7 +413,7 @@ class _MeetingWidgetState extends State<MeetingWidget> {
           selected: active,
           label: 'ספק $p',
           child: Material(
-            color: active ? t.primary : Colors.white,
+            color: active ? t.primary : t.secondaryBackground,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(t.radiusPill),
               side: BorderSide(color: active ? t.primary : t.alternate),
@@ -424,19 +424,22 @@ class _MeetingWidgetState extends State<MeetingWidget> {
                 HapticFeedback.selectionClick();
                 setState(() => _provider = p);
               },
-              child: Padding(
-                padding: const EdgeInsetsDirectional.fromSTEB(6, 5, 12, 5),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    ExcludeSemantics(child: LogoWidget(provider: p, size: 26)),
-                    const SizedBox(width: 7),
-                    Text(p,
-                        style: t.labelMedium.copyWith(
-                          color: active ? Colors.white : t.primaryText,
-                          fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-                        )),
-                  ],
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 44),
+                child: Padding(
+                  padding: const EdgeInsetsDirectional.fromSTEB(6, 5, 12, 5),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ExcludeSemantics(child: LogoWidget(provider: p, size: 26)),
+                      const SizedBox(width: 7),
+                      Text(p,
+                          style: t.labelMedium.copyWith(
+                            color: active ? Colors.white : t.primaryText,
+                            fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                          )),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -464,7 +467,7 @@ class _MeetingWidgetState extends State<MeetingWidget> {
             selected: active,
             label: label,
             child: Material(
-              color: active ? t.primary : Colors.white,
+              color: active ? t.primary : t.secondaryBackground,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(t.radiusMd),
                 side: BorderSide(color: active ? t.primary : t.alternate),
@@ -518,7 +521,7 @@ class _MeetingWidgetState extends State<MeetingWidget> {
           selected: active,
           label: 'שעה $s',
           child: Material(
-            color: active ? t.primary : Colors.white,
+            color: active ? t.primary : t.secondaryBackground,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(t.radiusSm),
               side: BorderSide(color: active ? t.primary : t.alternate),
@@ -550,7 +553,7 @@ class _MeetingWidgetState extends State<MeetingWidget> {
       hintText: hint,
       prefixIcon: Icon(icon, color: t.secondaryText, size: 20),
       filled: true,
-      fillColor: Colors.white,
+      fillColor: t.secondaryBackground,
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: t.alternate)),
       enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: t.alternate)),
       focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: t.primary, width: 1.5)),
@@ -659,33 +662,45 @@ class _NextSteps extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: t.alternate),
+        color: t.secondaryBackground,
+        borderRadius: BorderRadius.circular(t.radiusMd),
+        border: Border.all(color: t.lineColor),
+        boxShadow: t.shadowSoft,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text('מה קורה עכשיו?', style: t.titleSmall),
-          const SizedBox(height: 12),
-          for (final (label, done) in steps)
+          const SizedBox(height: 14),
+          for (final (i, (label, done)) in steps.indexed)
             Padding(
-              padding: const EdgeInsets.only(bottom: 8),
+              padding: EdgeInsets.only(bottom: i == steps.length - 1 ? 0 : 12),
               child: Row(
                 children: [
                   Container(
                     width: 20,
                     height: 20,
                     decoration: BoxDecoration(
-                      color: done ? t.primary : t.alternate.withValues(alpha: 0.5),
+                      color: done ? t.primary : Colors.transparent,
                       shape: BoxShape.circle,
+                      border: done ? null : Border.all(color: t.alternate.withValues(alpha: 0.35), width: 1.5),
                     ),
                     child: done
                         ? const Icon(Icons.check_rounded, size: 13, color: Colors.white)
                         : null,
                   ),
                   const SizedBox(width: 10),
-                  Expanded(child: Text(label, style: t.bodySmall.copyWith(color: t.primaryText))),
+                  // Completed steps read at full ink; pending steps de-emphasise
+                  // to a secondary tone so the eye lands on what's already done.
+                  Expanded(
+                    child: Text(
+                      label,
+                      style: t.bodySmall.copyWith(
+                        color: done ? t.primaryText : t.secondaryText,
+                        fontWeight: done ? FontWeight.w600 : FontWeight.w500,
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),

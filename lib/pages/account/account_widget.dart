@@ -7,6 +7,9 @@ import '../../core/nav.dart';
 import '../../app_state.dart';
 import '../../data.dart';
 import '../../widgets/pressable.dart';
+import '../../widgets/app_button.dart';
+import '../../widgets/app_snackbar.dart';
+import '../../widgets/digital_agent_fab.dart';
 import '../../components/logo_widget/logo_widget.dart';
 import '../../components/plan_card/mini_plan_card.dart';
 
@@ -21,6 +24,10 @@ class AccountWidget extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: ffTheme.background,
+      // Digital support agent — reachable from the account surface. Gracefully
+      // asks anonymous users to sign in and degrades cleanly if the support
+      // backend isn't reachable.
+      floatingActionButton: const DigitalAgentFab(),
       body: CustomScrollView(
         slivers: [
           SliverToBoxAdapter(
@@ -61,8 +68,16 @@ class AccountWidget extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(appState.isLoggedIn ? appState.userName : 'אורח', style: GoogleFonts.rubik(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white)),
-                            Text(appState.isLoggedIn ? appState.userPhone : 'לא מחובר', style: GoogleFonts.assistant(fontSize: 13, color: Colors.white70)),
+                            Text(appState.isLoggedIn ? appState.userName : 'אורח', style: GoogleFonts.rubik(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white, height: 1.2)),
+                            const SizedBox(height: 2),
+                            Text(
+                              appState.isLoggedIn ? appState.userPhone : 'לא מחובר',
+                              style: GoogleFonts.assistant(
+                                fontSize: 13,
+                                color: Colors.white70,
+                                fontFeatures: const [FontFeature.tabularFigures()],
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -142,9 +157,20 @@ class AccountWidget extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('חסכת עד כה!', style: GoogleFonts.assistant(fontSize: 13, color: ffTheme.secondary, fontWeight: FontWeight.w600)),
-                        const SizedBox(height: 6),
-                        Text('₪${appState.totalSavings}', style: GoogleFonts.rubik(fontSize: 44, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: -1)),
+                        Text('חסכת עד כה', style: GoogleFonts.assistant(fontSize: 13, color: Colors.white70, fontWeight: FontWeight.w600, letterSpacing: 0.2)),
+                        const SizedBox(height: 8),
+                        Text(
+                          '₪${appState.totalSavings}',
+                          style: GoogleFonts.rubik(
+                            fontSize: 46,
+                            fontWeight: FontWeight.w800,
+                            color: ffTheme.saving,
+                            letterSpacing: -1.2,
+                            height: 1.0,
+                            fontFeatures: const [FontFeature.tabularFigures()],
+                          ),
+                        ),
+                        const SizedBox(height: 4),
                         Text('מאז שהצטרפת לחוסך', style: GoogleFonts.assistant(fontSize: 12, color: Colors.white60)),
                       ],
                     ),
@@ -174,10 +200,10 @@ class AccountWidget extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
+                        color: ffTheme.secondaryBackground,
+                        borderRadius: BorderRadius.circular(ffTheme.radiusMd),
                         border: Border.all(color: ffTheme.alternate),
-                        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10)],
+                        boxShadow: ffTheme.shadowSoft,
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -253,12 +279,13 @@ class AccountWidget extends StatelessWidget {
                             Text('עוד לא בחרתם מסלול?', style: ffTheme.titleSmall),
                             const SizedBox(height: 4),
                             Text('מצאו את החבילה הזולה ביותר עכשיו', style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText)),
-                            const SizedBox(height: 14),
+                            const SizedBox(height: 16),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 9),
+                              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 11),
                               decoration: BoxDecoration(
-                                color: ffTheme.primary,
-                                borderRadius: BorderRadius.circular(10),
+                                gradient: ffTheme.accentGradient,
+                                borderRadius: BorderRadius.circular(ffTheme.radiusSm),
+                                boxShadow: ffTheme.shadowAccent,
                               ),
                               child: Text('השווה מסלולים', style: ffTheme.labelMedium.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
                             ),
@@ -273,7 +300,9 @@ class AccountWidget extends StatelessWidget {
                   if (appState.watchedPlans.isNotEmpty) ...[
                     Text('מסלולים במעקב', style: ffTheme.titleLarge),
                     const SizedBox(height: 10),
-                    ...appState.watchedPlans.map((id) {
+                    ...appState.watchedPlans.asMap().entries.map((entry) {
+                      final i = entry.key;
+                      final id = entry.value;
                       final p = planById(id);
                       if (p == null) return const SizedBox();
                       final save = planSaveYear(p, appState.currentBill(p.cat));
@@ -294,67 +323,99 @@ class AccountWidget extends StatelessWidget {
                               icon: const Icon(Icons.notifications_off_outlined, size: 18),
                               color: ffTheme.secondaryText,
                               tooltip: 'הסר ממעקב',
-                              onPressed: () => appState.toggleWatch(id),
+                              onPressed: () {
+                                appState.toggleWatch(id);
+                                AppSnackBar.success(context, 'הוסר מהמעקב');
+                              },
                             ),
                           ],
                         ),
-                      );
+                      ).animate().fadeIn(delay: (i * 80).ms).slideY(begin: 0.08, end: 0);
                     }),
+                    const SizedBox(height: 10),
+                  ] else ...[
+                    Text('מסלולים במעקב', style: ffTheme.titleLarge),
+                    const SizedBox(height: 10),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: ffTheme.alternate),
+                      ),
+                      child: Column(
+                        children: [
+                          ExcludeSemantics(child: Icon(Icons.notifications_none_rounded, size: 36, color: ffTheme.secondaryText)),
+                          const SizedBox(height: 10),
+                          Text('עדיין לא עוקבים אחרי מסלולים', style: ffTheme.titleSmall),
+                          const SizedBox(height: 4),
+                          Text('עקבו אחרי מסלולים כדי לקבל התראות על מחירים', style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText), textAlign: TextAlign.center),
+                          const SizedBox(height: 14),
+                          OutlinedButton(
+                            onPressed: () => context.goNamed('Results'),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: ffTheme.primary,
+                              side: BorderSide(color: ffTheme.primary),
+                            ),
+                            child: const Text('עיון במסלולים'),
+                          ),
+                        ],
+                      ),
+                    ).animate().fadeIn(delay: 300.ms),
                     const SizedBox(height: 10),
                   ],
 
                   // Quiz CTA or summary
                   if (!appState.quizCompleted) ...[
                     const SizedBox(height: 20),
-                    Pressable(
-                      onTap: () => context.pushNamed('Quiz'),
-                      child: Container(
-                        padding: const EdgeInsets.all(18),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [ffTheme.primaryDark, ffTheme.primary],
-                            begin: Alignment.topRight,
-                            end: Alignment.bottomLeft,
+                    Container(
+                      padding: const EdgeInsets.all(18),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [ffTheme.primaryDark, ffTheme.primary],
+                          begin: Alignment.topRight,
+                          end: Alignment.bottomLeft,
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 48,
+                            height: 48,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: const Center(child: ExcludeSemantics(child: Icon(Icons.adjust, size: 24, color: Colors.white))),
                           ),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 48,
-                              height: 48,
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                              child: const Center(child: ExcludeSemantics(child: Icon(Icons.adjust, size: 24, color: Colors.white))),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('גלה כמה תוכל לחסוך!',
+                                    style: ffTheme.titleSmall.copyWith(color: Colors.white)),
+                                const SizedBox(height: 2),
+                                Text('שאלון קצר — תוצאות מותאמות אישית',
+                                    style: ffTheme.bodySmall.copyWith(color: Colors.white70)),
+                              ],
                             ),
-                            const SizedBox(width: 14),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text('גלה כמה תוכל לחסוך!',
-                                      style: ffTheme.titleSmall.copyWith(color: Colors.white)),
-                                  const SizedBox(height: 2),
-                                  Text('שאלון קצר — תוצאות מותאמות אישית',
-                                      style: ffTheme.bodySmall.copyWith(color: Colors.white70)),
-                                ],
-                              ),
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                              decoration: BoxDecoration(
-                                color: ffTheme.secondary,
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Text('התחל ←',
-                                  style: ffTheme.labelSmall.copyWith(
-                                      color: ffTheme.primaryDark,
-                                      fontWeight: FontWeight.w700)),
-                            ),
-                          ],
-                        ),
+                          ),
+                          const SizedBox(width: 10),
+                          AppButton(
+                            text: 'התחל ←',
+                            onPressed: () async => context.pushNamed('Quiz'),
+                            color: Colors.white,
+                            height: 40,
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            borderRadius: BorderRadius.circular(10),
+                            textStyle: ffTheme.labelSmall.copyWith(
+                                color: ffTheme.primaryDark,
+                                fontWeight: FontWeight.w700),
+                          ),
+                        ],
                       ),
                     ).animate().fadeIn(delay: 250.ms),
                   ] else ...[
@@ -371,7 +432,7 @@ class AccountWidget extends StatelessWidget {
                           ExcludeSemantics(child: Icon(Icons.adjust, size: 20, color: ffTheme.primary)),
                           const SizedBox(width: 10),
                           Expanded(
-                            child: Text('תקציב השאלון: ₪${appState.quizBudget}${appState.quizCat == 'abroad' ? '/חבילה' : '/חודש'}',
+                            child: Text('תקציב השאלון: ₪${appState.quizBudget}${categoryBudgetSuffix(appState.quizCat)}',
                                 style: ffTheme.bodyMedium.copyWith(color: ffTheme.primary)),
                           ),
                           GestureDetector(
@@ -391,8 +452,15 @@ class AccountWidget extends StatelessWidget {
                         Text('צפיות אחרונות', style: ffTheme.titleLarge),
                         const Spacer(),
                         GestureDetector(
+                          behavior: HitTestBehavior.opaque,
                           onTap: () => context.goNamed('Results'),
-                          child: Text('כל המסלולים', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(minHeight: 44),
+                            child: Center(
+                              widthFactor: 1,
+                              child: Text('כל המסלולים', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+                            ),
+                          ),
                         ),
                       ],
                     ),
@@ -426,8 +494,8 @@ class AccountWidget extends StatelessWidget {
                                       Expanded(child: Text(p.provider, style: ffTheme.labelSmall.copyWith(fontWeight: FontWeight.w700), overflow: TextOverflow.ellipsis)),
                                     ],
                                   ),
-                                  const SizedBox(height: 5),
-                                  Text('₪${p.priceText}/${priceUnitShort(p)}', style: ffTheme.titleSmall.copyWith(color: ffTheme.primary)),
+                                  const SizedBox(height: 6),
+                                  Text('₪${p.priceText}/${priceUnitShort(p)}', style: ffTheme.titleSmall.copyWith(color: ffTheme.primary, fontFeatures: const [FontFeature.tabularFigures()])),
                                   Text(p.plan, style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText), maxLines: 1, overflow: TextOverflow.ellipsis),
                                 ],
                               ),
@@ -451,7 +519,9 @@ class AccountWidget extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 10),
-                    ...appState.userReviews.take(3).map((r) {
+                    ...appState.userReviews.take(3).toList().asMap().entries.map((entry) {
+                      final i = entry.key;
+                      final r = entry.value;
                       final overall = r['overall'] as int? ?? 0;
                       final text = r['text'] as String? ?? '';
                       return Container(
@@ -478,15 +548,15 @@ class AccountWidget extends StatelessWidget {
                             ),
                             Row(
                               mainAxisSize: MainAxisSize.min,
-                              children: List.generate(5, (i) => Icon(
-                                i < overall ? Icons.star_rounded : Icons.star_outline_rounded,
+                              children: List.generate(5, (star) => Icon(
+                                star < overall ? Icons.star_rounded : Icons.star_outline_rounded,
                                 size: 14,
                                 color: ffTheme.warning,
                               )),
                             ),
                           ],
                         ),
-                      );
+                      ).animate().fadeIn(delay: (i * 80).ms).slideY(begin: 0.08, end: 0);
                     }),
                   ],
 
@@ -495,10 +565,14 @@ class AccountWidget extends StatelessWidget {
                   // Quick actions
                   Text('פעולות מהירות', style: ffTheme.titleLarge),
                   const SizedBox(height: 12),
-                  _ActionTile(icon: Icons.alarm_rounded, title: 'מעקב חידושים', subtitle: 'אל תשלם יותר מדי כשהמבצע נגמר', onTap: () => context.pushNamed('Renewal'), ffTheme: ffTheme),
-                  _ActionTile(icon: Icons.compare_arrows_rounded, title: 'השוואה חדשה', subtitle: 'מצא את המסלול הכי מתאים לך', onTap: () => context.goNamed('Results'), ffTheme: ffTheme),
-                  _ActionTile(icon: Icons.auto_awesome_rounded, title: 'יועץ AI', subtitle: 'שאל שאלות על מסלולי תקשורת', onTap: () => context.pushNamed('AIAdvisor'), ffTheme: ffTheme),
-                  _ActionTile(icon: Icons.person_rounded, title: 'הגדרות פרופיל', subtitle: 'עדכן פרטים ועדפות', onTap: () => context.pushNamed('Profile'), ffTheme: ffTheme),
+                  _ActionTile(icon: Icons.alarm_rounded, title: 'מעקב חידושים', subtitle: 'אל תשלם יותר מדי כשהמבצע נגמר', onTap: () => context.pushNamed('Renewal'), ffTheme: ffTheme).animate().fadeIn(delay: 0.ms).slideY(begin: 0.08, end: 0),
+                  _ActionTile(icon: Icons.compare_arrows_rounded, title: 'השוואה חדשה', subtitle: 'מצא את המסלול הכי מתאים לך', onTap: () => context.goNamed('Results'), ffTheme: ffTheme).animate().fadeIn(delay: 80.ms).slideY(begin: 0.08, end: 0),
+                  _ActionTile(icon: Icons.favorite_rounded, title: 'המסלולים השמורים', subtitle: 'המועדפים ששמרת לבדיקה מאוחר יותר', onTap: () => context.pushNamed('Favorites'), ffTheme: ffTheme).animate().fadeIn(delay: 120.ms).slideY(begin: 0.08, end: 0),
+                  _ActionTile(icon: Icons.celebration_rounded, title: 'הסיכום השנתי', subtitle: 'כמה חסכת עם חוסך — וגם לשיתוף', onTap: () => context.pushNamed('AnnualRecap'), ffTheme: ffTheme).animate().fadeIn(delay: 200.ms).slideY(begin: 0.08, end: 0),
+                  _ActionTile(icon: Icons.auto_awesome_rounded, title: 'יועץ AI', subtitle: 'שאל שאלות על מסלולי תקשורת', onTap: () => context.pushNamed('AIAdvisor'), ffTheme: ffTheme).animate().fadeIn(delay: 160.ms).slideY(begin: 0.08, end: 0),
+                  _ActionTile(icon: Icons.person_rounded, title: 'הגדרות פרופיל', subtitle: 'עדכן פרטים ועדפות', onTap: () => context.pushNamed('Profile'), ffTheme: ffTheme).animate().fadeIn(delay: 240.ms).slideY(begin: 0.08, end: 0),
+                  if (appState.isAdmin)
+                    _ActionTile(icon: Icons.admin_panel_settings_rounded, title: 'ניהול מערכת', subtitle: 'לוח בקרה למנהלים', onTap: () => context.pushNamed('Admin'), ffTheme: ffTheme).animate().fadeIn(delay: 350.ms),
 
                   const SizedBox(height: 24),
                 ],

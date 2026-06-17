@@ -96,6 +96,41 @@ void main() {
   });
 
   testWidgets(
+      'Settings screen renders price-alert tuning + renewal reminder panels wired to AppState',
+      (tester) async {
+    await _ignoringOverflow(() async {
+      await _bootApp(tester);
+
+      _go(tester, '/settings');
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump(const Duration(milliseconds: 300));
+
+      // Both new section headers render.
+      expect(find.text('כוונון התראות מחיר'), findsOneWidget);
+      expect(find.text('תזכורות חידוש'), findsOneWidget);
+
+      // Defaults from AppState are reflected: min saving ₪5, days-ahead 21,
+      // reminder time 09:00, frequency 'immediate' → 'מיידי' is the segmented label.
+      expect(find.text('₪5'), findsWidgets);
+      expect(find.text('21 ימים'), findsWidgets);
+      expect(find.text('09:00'), findsOneWidget);
+      expect(find.text('מיידי'), findsOneWidget);
+
+      // Tapping a frequency option drives the setter on AppState.
+      // Scroll it into view first (panels sit below the fold in the test viewport).
+      final weekly = find.text('שבועי');
+      await tester.scrollUntilVisible(weekly, 120,
+          scrollable: find.byType(Scrollable).first);
+      await tester.pump(const Duration(milliseconds: 200));
+      await tester.tap(weekly);
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(AppState().alertFrequency, 'weekly');
+
+      tester.takeException();
+    });
+  });
+
+  testWidgets(
       'Compare screen shows comparison rows for two tracked cellular plans',
       (tester) async {
     await _ignoringOverflow(() async {

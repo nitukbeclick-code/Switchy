@@ -97,4 +97,112 @@ void main() {
       expect(r.reviewCount, 0);
     });
   });
+
+  group('ProviderRatings.averageStars — review-count weighting contract', () {
+    test('every catalogue provider averages 0 (no plan ships real reviews)', () {
+      // The catalogue intentionally seeds reviews == 0 on every plan, so the
+      // weighted average (Σ rating*reviews / Σ reviews) has a zero denominator
+      // and the guard returns 0. This pins that no placeholder `rating` ever
+      // leaks into a fabricated star average.
+      for (final p in allProviders) {
+        expect(ProviderRatings.averageStars(p), 0,
+            reason: 'provider $p must report 0 stars without real reviews');
+      }
+    });
+  });
+
+  group('ProviderRatings.forProvider — blends the user review into the avg', () {
+    test('with no catalogue reviews the blended average equals the user overall',
+        () {
+      // catReviews == 0, catStars == 0  ->  blended == (0*0 + own)/(0+1) == own.
+      final state = AppState();
+      final provider = allProviders.first;
+      state.addReview(
+        provider: provider,
+        overall: 3,
+        subRatings: {'price': 3, 'service': 3, 'coverage': 3, 'speed': 3},
+        text: 'ok',
+      );
+      final r = ProviderRatings.forProvider(provider, appState: state);
+      expect(r.stars, 3.0);
+      expect(r.reviewCount, 1);
+      expect(r.hasData, isTrue);
+      expect(r.ratedByUser, isTrue);
+    });
+
+    test('an overall of 0 is ignored: no data even though a review row exists',
+        () {
+      // A review with overall == 0 contributes no star signal; the blend guard
+      // (own > 0) leaves stars/reviewCount at the catalogue baseline of 0.
+      final state = AppState();
+      final provider = allProviders.first;
+      state.addReview(
+        provider: provider,
+        overall: 0,
+        subRatings: {'price': 4, 'service': 0, 'coverage': 0, 'speed': 0},
+        text: 'no overall',
+      );
+      final r = ProviderRatings.forProvider(provider, appState: state);
+      expect(r.stars, 0);
+      expect(r.reviewCount, 0);
+      expect(r.hasData, isFalse);
+      // But the act of reviewing is still recorded.
+      expect(r.ratedByUser, isTrue);
+      // The one rated sub-dimension still surfaces.
+      expect(r.sub['price'], 4.0);
+    });
+  });
+
+  group('ProviderRatings.subRating — partial & missing dimensions', () {
+    test('a partial review rates only the dimensions the user scored', () {
+      // User rates price & service; leaves coverage & speed at 0.
+      final state = AppState();
+      final provider = allProviders.first;
+      state.addReview(
+        provider: provider,
+        overall: 4,
+        subRatings: {'price': 5, 'service': 3, 'coverage': 0, 'speed': 0},
+        text: 'partial',
+      );
+      expect(ProviderRatings.subRating(provider, 'price', appState: state), 5.0);
+      expect(
+          ProviderRatings.subRating(provider, 'service', appState: state), 3.0);
+      // Unscored dimensions stay "no data" (0), never a synthetic fallback.
+      expect(
+          ProviderRatings.subRating(provider, 'coverage', appState: state), 0);
+      expect(ProviderRatings.subRating(provider, 'speed', appState: state), 0);
+    });
+
+    test('an unknown sub-key is 0 (missing field handled defensively)', () {
+      final state = AppState();
+      final provider = allProviders.first;
+      state.addReview(
+        provider: provider,
+        overall: 4,
+        subRatings: {'price': 5, 'service': 4, 'coverage': 3, 'speed': 2},
+        text: 'full',
+      );
+      expect(
+          ProviderRatings.subRating(provider, 'nonexistent_dim',
+              appState: state),
+          0);
+    });
+
+    test('forProvider.sub carries exactly the four known dimensions', () {
+      final state = AppState();
+      final provider = allProviders.first;
+      state.addReview(
+        provider: provider,
+        overall: 4,
+        subRatings: {'price': 5, 'service': 4, 'coverage': 3, 'speed': 2},
+        text: 'full',
+      );
+      final r = ProviderRatings.forProvider(provider, appState: state);
+      expect(r.sub.keys.toSet(), ProviderRatings.subKeys.toSet());
+      expect(r.sub['price'], 5.0);
+      expect(r.sub['service'], 4.0);
+      expect(r.sub['coverage'], 3.0);
+      expect(r.sub['speed'], 2.0);
+    });
+  });
 }

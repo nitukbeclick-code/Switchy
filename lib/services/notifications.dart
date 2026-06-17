@@ -3,10 +3,15 @@ import '../data.dart';
 import '../models.dart';
 import 'backend/backend.dart' show MeetingStatus;
 import 'meeting_slots.dart' show formatMeetingDateHe, meetingLocalStart;
+import 'price_change_event.dart';
 import 'recommendation_engine.dart';
 
 /// The kind of actionable alert, used to pick an icon/accent in the UI.
-enum NotifKind { renewal, betterDeal, savings, meeting, info }
+///
+/// Note: price-drop alerts use [savings] so existing switch expressions on this
+/// enum remain exhaustive. A dedicated [priceDrop] value can be introduced once
+/// all call sites are updated.
+enum NotifKind { renewal, betterDeal, savings, meeting, info, communityReply, communityLike, priceTarget }
 
 /// A computed, actionable notification. These are derived on the fly from app
 /// state (tracked plans, watchlist, bills) rather than stored as events, so they
@@ -33,6 +38,76 @@ class AppNotification {
   final String? planId; // when set, tap should open this plan's detail
   final String? category; // when set, set this category before navigating
   final int priority; // higher sorts first
+
+  /// Convenience factory for a price-drop alert derived from a [PriceChangeEvent].
+  /// Deep-links to the plan's detail screen via [routeName] = 'PlanDetail'.
+  factory AppNotification.priceDrop(PriceChangeEvent event) {
+    final monthly = event.saving;
+    final annual = event.savingAnnual;
+    final monthlyStr = monthly == monthly.roundToDouble()
+        ? monthly.toInt().toString()
+        : monthly.toStringAsFixed(2);
+    final annualStr = annual == annual.roundToDouble()
+        ? annual.toInt().toString()
+        : annual.toStringAsFixed(2);
+    final newStr = event.newPrice == event.newPrice.roundToDouble()
+        ? event.newPrice.toInt().toString()
+        : event.newPrice.toStringAsFixed(2);
+    return AppNotification(
+      id: 'price_drop_${event.planId}',
+      kind: NotifKind.savings, // price drops are a savings opportunity
+      title: 'מחיר ירד! ${event.provider}',
+      body: '${event.planName} ירד ל-₪$newStr — חיסכון של ₪$monthlyStr לחודש (₪$annualStr בשנה)',
+      routeName: 'PlanDetail',
+      planId: event.planId,
+      priority: 750 + annual.toInt().clamp(0, 250),
+    );
+  }
+
+  /// Factory for a community reply alert — someone replied to the user's post.
+  factory AppNotification.communityReply({
+    required String postId,
+    required String authorName,
+    required String snippet,
+  }) => AppNotification(
+    id: 'reply_$postId',
+    kind: NotifKind.communityReply,
+    title: 'תגובה חדשה',
+    body: '$authorName הגיב על הפוסט שלך: «$snippet»',
+    routeName: 'Community',
+    priority: 300,
+  );
+
+  /// Factory for a community like alert — the user's post received likes.
+  factory AppNotification.communityLike({
+    required String postId,
+    required int likerCount,
+  }) => AppNotification(
+    id: 'like_$postId',
+    kind: NotifKind.communityLike,
+    title: 'הפוסט שלך קיבל לייקים',
+    body: 'הפוסט שלך קיבל $likerCount לייקים 🎉',
+    routeName: 'Community',
+    priority: 200,
+  );
+
+  /// Factory for a price-target alert — a watched plan reached the ₪ goal the
+  /// user set for it. Deep-links to the plan's detail screen.
+  factory AppNotification.priceTarget({
+    required String planId,
+    required String provider,
+    required String planName,
+    required int currentPrice,
+    required int targetPrice,
+  }) => AppNotification(
+    id: 'price_target_$planId',
+    kind: NotifKind.priceTarget,
+    title: '🎯 הגעת ליעד המחיר!',
+    body: '$provider · $planName עומד על ₪$currentPrice — היעד שלך היה ₪$targetPrice',
+    routeName: 'PlanDetail',
+    planId: planId,
+    priority: 700,
+  );
 }
 
 /// Builds the list of actionable notifications for [s], newest/most-urgent
@@ -102,6 +177,46 @@ List<AppNotification> computeNotifications(AppState s) {
       category: topSaving.plan.cat,
       priority: 200,
     ));
+  }
+
+  // 3b) Price-target alerts — a plan reached the ₪ goal the user set for it.
+  // Gated on the Price Alerts toggle; skipped when the monthly saving vs the
+  // user's current bill is below their minimum-saving threshold (no bill set →
+  // always show, since setting a target is an explicit user intent).
+  if (s.prefPriceAlerts) {
+    for (final entry in s.priceTargets.entries) {
+      final plan = planById(entry.key);
+      if (plan == null) continue;
+      final price = plan.priceValue.round();
+      if (price > entry.value) continue; // target not reached yet
+      final bill = s.currentBill(plan.cat);
+      if (bill > 0 && (bill - price) < s.minSavingAlert) continue; // too small to alert
+      out.add(AppNotification.priceTarget(
+        planId: plan.id,
+        provider: plan.provider,
+        planName: plan.plan,
+        currentPrice: price,
+        targetPrice: entry.value,
+      ));
+    }
+  }
+
+  // 3c) Price-drop alerts — a watched plan whose price fell since we last showed
+  // it, detected by PushNotificationService.syncPriceDrops. Gated on Price Alerts.
+  if (s.prefPriceAlerts) {
+    for (final entry in s.priceDrops.entries) {
+      final d = entry.value;
+      final oldPrice = (d['oldPrice'] as num).toInt();
+      final newPrice = (d['newPrice'] as num).toInt();
+      if (newPrice >= oldPrice) continue; // stale (price recovered)
+      out.add(AppNotification.priceDrop(PriceChangeEvent(
+        planId: entry.key,
+        planName: d['planName'] as String,
+        provider: d['provider'] as String,
+        oldPrice: oldPrice.toDouble(),
+        newPrice: newPrice.toDouble(),
+      )));
+    }
   }
 
   // 4) Video-meeting status — the user's booked Zoom meeting with a rep.

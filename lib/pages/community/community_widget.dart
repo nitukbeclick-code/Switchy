@@ -26,13 +26,21 @@ class CommunityWidget extends StatefulWidget {
   State<CommunityWidget> createState() => _CommunityWidgetState();
 }
 
+// Sort options for the feed.
+enum _FeedSort { newest, popular, rated }
+
 class _CommunityWidgetState extends State<CommunityWidget> {
   final _searchCtrl = TextEditingController();
+  final _quickPostCtrl = TextEditingController();
   late List<CommunityPost> _posts;
   String _activeChannel = 'הכל';
   String _searchQuery = '';
-  bool _sortByPopular = false;
+  _FeedSort _feedSort = _FeedSort.newest;
   bool _showBookmarksOnly = false;
+  // Active topic filter (null = כולם)
+  String? _topicFilter;
+  // Author filter — shows only posts by this author name (null = כולם)
+  String? _authorFilter;
   // Reply threads, keyed by post id. Populated only from real backend content
   // (and the user's own persisted replies) — no fabricated seed conversations.
   final Map<String, List<_Reply>> _replyData = {};
@@ -111,6 +119,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
   @override
   void dispose() {
     _searchCtrl.dispose();
+    _quickPostCtrl.dispose();
     _feedScrollCtrl.dispose();
     _changesSub?.cancel();
     super.dispose();
@@ -128,6 +137,15 @@ class _CommunityWidgetState extends State<CommunityWidget> {
   int _channelCount(String ch) =>
       ch == 'הכל' ? _posts.length : _posts.where((p) => p.channel == ch).length;
 
+  // Topic filter chips: maps display label → channel values they match.
+  static const _topicLabels = ['סלולר', 'אינטרנט', 'טלוויזיה', 'כללי'];
+  static const _topicChannels = {
+    'סלולר': ['סלולר'],
+    'אינטרנט': ['אינטרנט'],
+    'טלוויזיה': ['טלוויזיה'],
+    'כללי': ['המלצות', 'עזרה בניתוק', 'חו"ל', 'חבילה משולבת'],
+  };
+
   List<CommunityPost> get _filtered {
     final appState = AppState();
     var base = _activeChannel == 'הכל'
@@ -136,6 +154,15 @@ class _CommunityWidgetState extends State<CommunityWidget> {
     if (_showBookmarksOnly) {
       base = base.where((p) => appState.isBookmarked(p.id)).toList();
     }
+    // Apply topic filter (independent of channel chips)
+    if (_topicFilter != null) {
+      final allowed = _topicChannels[_topicFilter!] ?? const <String>[];
+      base = base.where((p) => allowed.contains(p.channel)).toList();
+    }
+    // Apply author filter
+    if (_authorFilter != null) {
+      base = base.where((p) => p.author == _authorFilter).toList();
+    }
     if (_searchQuery.isNotEmpty) {
       final q = _searchQuery.toLowerCase();
       base = base.where((p) =>
@@ -143,11 +170,74 @@ class _CommunityWidgetState extends State<CommunityWidget> {
           p.author.toLowerCase().contains(q) ||
           p.channel.toLowerCase().contains(q)).toList();
     }
-    if (_sortByPopular) return List.from(base)..sort((a, b) => b.likes.compareTo(a.likes));
-    return base;
+    switch (_feedSort) {
+      case _FeedSort.popular:
+        return List.from(base)..sort((a, b) => b.likes.compareTo(a.likes));
+      case _FeedSort.rated:
+        // "rated" = posts with most replies (community engagement proxy)
+        return List.from(base)..sort((a, b) => b.replies.compareTo(a.replies));
+      case _FeedSort.newest:
+        return base;
+    }
+  }
+
+  /// Posts pinned at the top of the feed: top-2 by likes or the newest
+  /// team post. Returns at most 2 unique posts.
+  List<CommunityPost> get _featuredPosts {
+    if (_posts.isEmpty) return const [];
+    // Team posts always feature first
+    final teamPosts = _posts.where((p) => p.isTeam).take(1).toList();
+    // Top liked non-team post
+    final byLikes = [..._posts]
+      ..sort((a, b) => b.likes.compareTo(a.likes));
+    final topLiked = byLikes.where((p) => !p.isTeam && p.likes >= 5).take(1).toList();
+    final featured = <CommunityPost>[];
+    for (final p in [...teamPosts, ...topLiked]) {
+      if (!featured.any((f) => f.id == p.id)) featured.add(p);
+      if (featured.length >= 2) break;
+    }
+    return featured;
+  }
+
+  /// Whether the current user is a verified customer (completed switch or
+  /// active tracked plan at a late stage).
+  bool _isCurrentUserVerified(AppState appState) {
+    if (!appState.isLoggedIn) return false;
+    return appState.myPlans.isNotEmpty || appState.trackerStep >= 3;
   }
 
   // ── Feed actions ───────────────────────────────────────────────────────────────
+
+  void _submitQuickPost(BuildContext context, AppState appState, AppTheme ffTheme) {
+    final text = _quickPostCtrl.text.trim();
+    if (text.isEmpty) return;
+    if (!appState.isLoggedIn) {
+      AppSnackBar.info(context, 'יש להתחבר כדי לפרסם פוסט',
+          action: SnackBarAction(label: 'כניסה', onPressed: () => context.pushNamed('Auth')));
+      return;
+    }
+    HapticFeedback.lightImpact();
+    final id = DateTime.now().millisecondsSinceEpoch.toString();
+    final author = appState.firstName;
+    final avatar = appState.firstName.isNotEmpty ? appState.firstName[0] : 'א';
+    const channel = 'המלצות';
+    appState.addCommunityPost(
+      id: id, author: author, avatar: avatar, channel: channel, text: text,
+    );
+    setState(() {
+      _posts.insert(0, CommunityPost(
+        id: id, author: author, avatar: avatar, channel: channel, text: text,
+        likes: 0, replies: 0, timestamp: DateTime.now(),
+      ));
+      _quickPostCtrl.clear();
+    });
+    AppSnackBar.success(context, 'הפוסט פורסם בהצלחה!');
+    appBackend.createPost(PostInput(
+      author: author, avatar: avatar, channel: channel, text: text,
+    )).then((_) {}).catchError((_) {
+      if (context.mounted) AppSnackBar.error(context, 'הפרסום נכשל, נסו שוב');
+    });
+  }
 
   Future<void> _refreshFeed() async {
     HapticFeedback.mediumImpact();
@@ -181,6 +271,393 @@ class _CommunityWidgetState extends State<CommunityWidget> {
             child: const Text('מחק'),
           ),
         ],
+      ),
+    );
+  }
+
+  // ── Report Post ────────────────────────────────────────────────────────────────
+
+  void _showReportSheet(BuildContext context, CommunityPost post) {
+    final ffTheme = AppTheme.of(context);
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        decoration: BoxDecoration(
+          color: ffTheme.background,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: ffTheme.alternate, borderRadius: BorderRadius.circular(2)))),
+            const SizedBox(height: 16),
+            Text('דווח על פוסט', style: ffTheme.titleLarge),
+            const SizedBox(height: 4),
+            Text('מדוע אתה מדווח על פוסט זה?', style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText)),
+            const SizedBox(height: 16),
+            for (final entry in [
+              ('spam', 'ספאם'),
+              ('inappropriate', 'לא הולם'),
+              ('misinformation', 'מידע שגוי'),
+            ])
+              ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                leading: Icon(Icons.flag_outlined, color: ffTheme.error, size: 20),
+                title: Text(entry.$2, style: ffTheme.bodyMedium),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                onTap: () async {
+                  Navigator.pop(ctx);
+                  try {
+                    await appBackend.reportPost(post.id, entry.$1);
+                  } catch (_) {}
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('הדיווח נשלח, תודה')),
+                    );
+                  }
+                },
+              ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Edit Post ──────────────────────────────────────────────────────────────────
+
+  void _showEditComposer(BuildContext context, AppState appState, AppTheme ffTheme, CommunityPost post) {
+    final ctrl = TextEditingController(text: post.text);
+    final String selectedChannel = post.channel;
+    final String? pendingType = post.mediaType;
+    final String? pendingData = post.mediaData;
+    final int? pendingDur = post.mediaDurationMs;
+    // Resolve the attached plan if any
+    Plan? attachedPlan;
+    if (post.planId != null) {
+      try {
+        attachedPlan = allPlans.firstWhere((p) => p.id == post.planId);
+      } catch (_) {}
+    }
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheet) => AnimatedPadding(
+          duration: const Duration(milliseconds: 100),
+          padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+          child: Container(
+            decoration: BoxDecoration(
+              color: ffTheme.background,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: ffTheme.alternate, borderRadius: BorderRadius.circular(2)))),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Text('ערוך פוסט', style: ffTheme.titleLarge),
+                    const Spacer(),
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      child: Text('ביטול', style: ffTheme.bodyMedium.copyWith(color: ffTheme.secondaryText)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                Text('תוכן', style: ffTheme.labelLarge),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: ctrl,
+                  maxLines: 4,
+                  minLines: 3,
+                  maxLength: 500,
+                  autofocus: true,
+                  textDirection: TextDirection.rtl,
+                  onChanged: (_) => setSheet(() {}),
+                  decoration: InputDecoration(
+                    hintText: 'שתפו חוויה, טיפ, שאלה...',
+                    filled: true,
+                    fillColor: ffTheme.secondaryBackground,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: ffTheme.alternate)),
+                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: ffTheme.alternate)),
+                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: ffTheme.primary, width: 1.5)),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                // Plan attachment chip
+                if (attachedPlan != null)
+                  Builder(builder: (_) {
+                    final plan = attachedPlan!;
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Chip(
+                        avatar: CircleAvatar(
+                          backgroundColor: AppColors.primary,
+                          child: Text(
+                            plan.provider.isNotEmpty ? plan.provider[0] : '?',
+                            style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                        label: Text('${plan.plan} • ₪${plan.price}', style: ffTheme.labelSmall),
+                        deleteIcon: const Icon(Icons.close, size: 14),
+                        onDeleted: () => setSheet(() => attachedPlan = null),
+                      ),
+                    );
+                  }),
+                // Attach plan button
+                GestureDetector(
+                  onTap: () async {
+                    final plan = await _showPlanPickerSheet(context, ffTheme);
+                    if (plan != null) setSheet(() => attachedPlan = plan);
+                  },
+                  child: Chip(
+                    avatar: Icon(Icons.attach_file_rounded, size: 14, color: ffTheme.primary),
+                    label: Text('צרף תוכנית', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary)),
+                    backgroundColor: ffTheme.accent1,
+                    side: BorderSide(color: ffTheme.primary.withValues(alpha: 0.2)),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () async {
+                      final text = ctrl.text.trim();
+                      if (text.isEmpty && pendingData == null) return;
+                      HapticFeedback.lightImpact();
+                      Navigator.pop(ctx);
+                      try {
+                        await appBackend.deletePost(post.id);
+                        final author = appState.firstName;
+                        final avatar = appState.firstName.isNotEmpty ? appState.firstName[0] : 'א';
+                        final newPost = await appBackend.createPost(PostInput(
+                          author: author,
+                          avatar: avatar,
+                          channel: selectedChannel,
+                          text: text,
+                          mediaType: pendingType,
+                          media: pendingData,
+                          mediaDurationMs: pendingDur,
+                          planId: attachedPlan?.id,
+                        ));
+                        setState(() {
+                          _posts.removeWhere((p) => p.id == post.id);
+                          _posts.insert(0, newPost);
+                        });
+                      } catch (_) {
+                        await _loadFromBackend();
+                      }
+                    },
+                    icon: const Icon(Icons.check_rounded, size: 18),
+                    label: const Text('שמור שינויים'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      textStyle: GoogleFonts.rubik(fontSize: 15, fontWeight: FontWeight.w700),
+                      elevation: 0,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ).then((_) => ctrl.dispose());
+  }
+
+  // ── Plan picker bottom sheet ────────────────────────────────────────────────────
+
+  Future<Plan?> _showPlanPickerSheet(BuildContext context, AppTheme ffTheme) async {
+    final searchCtrl = TextEditingController();
+    Plan? result;
+    await showModalBottomSheet<Plan>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheet) {
+          final query = searchCtrl.text.toLowerCase();
+          final filtered = allPlans.where((p) =>
+            query.isEmpty ||
+            p.plan.toLowerCase().contains(query) ||
+            p.provider.toLowerCase().contains(query)
+          ).toList();
+          return Container(
+            height: MediaQuery.of(ctx).size.height * 0.75,
+            decoration: BoxDecoration(
+              color: ffTheme.background,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: ffTheme.alternate, borderRadius: BorderRadius.circular(2)))),
+                      const SizedBox(height: 14),
+                      Text('בחר תוכנית לצרף', style: ffTheme.titleLarge),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: searchCtrl,
+                        textDirection: TextDirection.rtl,
+                        autofocus: true,
+                        onChanged: (_) => setSheet(() {}),
+                        decoration: InputDecoration(
+                          hintText: 'חפש תוכנית או ספק...',
+                          hintTextDirection: TextDirection.rtl,
+                          prefixIcon: Icon(Icons.search_rounded, color: ffTheme.secondaryText, size: 18),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          filled: true,
+                          fillColor: ffTheme.secondaryBackground,
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: ffTheme.alternate)),
+                          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: ffTheme.alternate)),
+                          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: ffTheme.primary)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Expanded(
+                  child: ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                    itemCount: filtered.length,
+                    itemBuilder: (_, i) {
+                      final plan = filtered[i];
+                      return ListTile(
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        leading: CircleAvatar(
+                          backgroundColor: AppColors.primary,
+                          radius: 16,
+                          child: Text(
+                            plan.provider.isNotEmpty ? plan.provider[0] : '?',
+                            style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                        title: Text(plan.plan, style: ffTheme.labelMedium),
+                        subtitle: Text('${plan.provider} • ₪${plan.price}', style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        onTap: () {
+                          result = plan;
+                          Navigator.pop(ctx);
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+    searchCtrl.dispose();
+    return result;
+  }
+
+  // ── Author mini-profile bottom sheet ──────────────────────────────────────────
+
+  void _showAuthorProfile(BuildContext context, CommunityPost post, AppTheme ffTheme) {
+    final authorPostCount = _posts.where((p) => p.author == post.author).length;
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        decoration: BoxDecoration(
+          color: ffTheme.background,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        ),
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Semantics(
+                  button: true,
+                  label: 'סגור',
+                  child: GestureDetector(
+                    onTap: () => Navigator.pop(ctx),
+                    child: Icon(Icons.close_rounded, color: ffTheme.secondaryText, size: 22),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            CircleAvatar(
+              radius: 32,
+              backgroundColor: AppColors.primary,
+              child: Text(
+                post.avatar,
+                style: GoogleFonts.rubik(fontSize: 24, fontWeight: FontWeight.w800, color: Colors.white),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(post.author, style: ffTheme.titleLarge),
+                if (post.isVerified) ...[
+                  const SizedBox(width: 6),
+                  Icon(Icons.verified_rounded, size: 18, color: ffTheme.info),
+                ],
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _StatPill(value: '$authorPostCount', label: 'פוסטים', color: ffTheme.primary),
+                if (post.isVerified) ...[
+                  const SizedBox(width: 20),
+                  _StatPill(value: 'מאומת', label: 'סטטוס', color: ffTheme.info),
+                ],
+              ],
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  setState(() {
+                    _authorFilter = post.author;
+                    _visibleCount = _feedPageSize;
+                  });
+                },
+                icon: Icon(Icons.filter_list_rounded, size: 16, color: ffTheme.primary),
+                label: Text(
+                  'ראה את כל הפוסטים של ${post.author}',
+                  style: ffTheme.bodyMedium.copyWith(color: ffTheme.primary),
+                ),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: ffTheme.primary,
+                  side: BorderSide(color: ffTheme.primary),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
       ),
     );
   }
@@ -316,7 +793,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                     margin: const EdgeInsets.symmetric(horizontal: 16),
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: ffTheme.secondaryBackground,
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(color: ffTheme.primary.withValues(alpha: 0.2)),
                     ),
@@ -367,7 +844,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                   Container(
                     padding: EdgeInsets.fromLTRB(16, 10, 16, MediaQuery.of(ctx).viewInsets.bottom + 16),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: ffTheme.secondaryBackground,
                       border: Border(top: BorderSide(color: ffTheme.alternate)),
                       boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 8, offset: const Offset(0, -4))],
                     ),
@@ -530,6 +1007,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
     String? pendingType;
     String? pendingData;
     int? pendingDur;
+    Plan? attachedPlan;
 
     showModalBottomSheet(
       context: context,
@@ -574,7 +1052,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                         duration: const Duration(milliseconds: 200),
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
-                          color: active ? ffTheme.primary : Colors.white,
+                          color: active ? ffTheme.primary : ffTheme.secondaryBackground,
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(color: active ? ffTheme.primary : ffTheme.alternate),
                         ),
@@ -597,13 +1075,66 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                   decoration: InputDecoration(
                     hintText: 'שתפו חוויה, טיפ, שאלה...',
                     filled: true,
-                    fillColor: Colors.white,
+                    fillColor: ffTheme.secondaryBackground,
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: ffTheme.alternate)),
                     enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: ffTheme.alternate)),
                     focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: ffTheme.primary, width: 1.5)),
                   ),
                 ),
                 const SizedBox(height: 10),
+
+                // Plan attachment row
+                Row(
+                  children: [
+                    // Attach plan chip/button
+                    GestureDetector(
+                      onTap: () async {
+                        final plan = await _showPlanPickerSheet(context, ffTheme);
+                        if (plan != null) setSheet(() => attachedPlan = plan);
+                      },
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: attachedPlan != null ? ffTheme.accent1 : ffTheme.secondaryBackground,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: attachedPlan != null ? ffTheme.primary : ffTheme.alternate),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.attach_file_rounded, size: 14, color: ffTheme.primary),
+                            const SizedBox(width: 5),
+                            Text('צרף תוכנית 📎', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary)),
+                          ],
+                        ),
+                      ),
+                    ),
+                    if (attachedPlan != null) ...[
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Chip(
+                          avatar: CircleAvatar(
+                            backgroundColor: AppColors.primary,
+                            child: Text(
+                              attachedPlan!.provider.isNotEmpty ? attachedPlan!.provider[0] : '?',
+                              style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                          label: Text(
+                            '${attachedPlan!.plan} • ₪${attachedPlan!.price}',
+                            style: ffTheme.labelSmall,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          deleteIcon: const Icon(Icons.close, size: 14),
+                          onDeleted: () => setSheet(() => attachedPlan = null),
+                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 8),
 
                 // Media attach row
                 Row(
@@ -713,6 +1244,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                           mediaType: pendingType,
                           mediaData: pendingData,
                           mediaDurationMs: pendingDur,
+                          planId: attachedPlan?.id,
                         ));
                       });
                       Navigator.pop(ctx);
@@ -724,12 +1256,13 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                         mediaType: pendingType,
                         media: pendingData,
                         mediaDurationMs: pendingDur,
+                        planId: attachedPlan?.id,
                       )).ignore();
                     },
                     icon: const Icon(Icons.send_rounded, size: 18),
                     label: const Text('פרסם'),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: ffTheme.primary,
+                      backgroundColor: AppColors.primary,
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -752,6 +1285,9 @@ class _CommunityWidgetState extends State<CommunityWidget> {
   Widget build(BuildContext context) {
     final ffTheme = AppTheme.of(context);
     final appState = Provider.of<AppState>(context, listen: false);
+    // Compute the filtered+sorted feed once per build — the getter does a
+    // filter+sort pass and is read in several places below.
+    final filtered = _filtered;
 
     return Scaffold(
       backgroundColor: ffTheme.background,
@@ -772,7 +1308,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
         elevation: 0,
         actions: [
           Padding(
-            padding: const EdgeInsets.only(left: 16, top: 8, bottom: 8),
+            padding: const EdgeInsetsDirectional.only(start: 16, top: 8, bottom: 8),
             child: ElevatedButton.icon(
               onPressed: () => _showComposer(context, appState, ffTheme),
               icon: const Icon(Icons.edit_rounded, size: 14),
@@ -793,7 +1329,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
         children: [
           // Stats strip
           Container(
-            color: Colors.white,
+            color: ffTheme.secondaryBackground,
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
             child: Row(
               children: [
@@ -816,16 +1352,16 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                 ),
                 const Spacer(),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF0F2F4),
-                    borderRadius: BorderRadius.circular(10),
+                    color: ffTheme.background,
+                    borderRadius: BorderRadius.circular(ffTheme.radiusXs),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(Icons.emoji_events_rounded, size: 14, color: ffTheme.primary),
-                      const SizedBox(width: 4),
+                      const SizedBox(width: 5),
                       Text('קהילה פעילה', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
                     ],
                   ),
@@ -850,10 +1386,10 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                   }),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
-                    margin: const EdgeInsets.only(right: 8),
+                    margin: const EdgeInsetsDirectional.only(end: 8),
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: active ? ffTheme.primary : Colors.white,
+                      color: active ? ffTheme.primary : ffTheme.secondaryBackground,
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(color: active ? ffTheme.primary : ffTheme.alternate),
                     ),
@@ -877,87 +1413,153 @@ class _CommunityWidgetState extends State<CommunityWidget> {
             ),
           ),
 
-          // Sort + search row
+          // Sort chips + bookmarks + search
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                GestureDetector(
-                  onTap: () => setState(() {
-                    _sortByPopular = !_sortByPopular;
-                    _visibleCount = _feedPageSize;
-                  }),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: _sortByPopular ? ffTheme.primary.withValues(alpha: 0.1) : ffTheme.background,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: _sortByPopular ? ffTheme.primary : ffTheme.alternate),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(_sortByPopular ? Icons.local_fire_department_rounded : Icons.access_time_rounded, size: 13, color: _sortByPopular ? ffTheme.primary : ffTheme.secondaryText),
-                        const SizedBox(width: 4),
-                        Text(_sortByPopular ? 'פופולרי' : 'חדש', style: ffTheme.labelSmall.copyWith(color: _sortByPopular ? ffTheme.primary : ffTheme.secondaryText, fontWeight: FontWeight.w600)),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Tooltip(
-                  message: 'פוסטים שמורים',
-                  child: GestureDetector(
-                    onTap: () {
-                      HapticFeedback.selectionClick();
-                      setState(() {
-                        _showBookmarksOnly = !_showBookmarksOnly;
+                // Row 1: 3-chip sort bar + bookmark toggle
+                Row(
+                  children: [
+                    _SortChipBar(
+                      current: _feedSort,
+                      ffTheme: ffTheme,
+                      onSelect: (s) => setState(() {
+                        _feedSort = s;
                         _visibleCount = _feedPageSize;
-                      });
-                    },
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: _showBookmarksOnly ? ffTheme.warning.withValues(alpha: 0.12) : ffTheme.background,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: _showBookmarksOnly ? ffTheme.warning : ffTheme.alternate),
-                      ),
-                      child: Icon(
-                        _showBookmarksOnly ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
-                        size: 15,
-                        color: _showBookmarksOnly ? ffTheme.warning : ffTheme.secondaryText,
+                      }),
+                    ),
+                    const SizedBox(width: 8),
+                    Tooltip(
+                      message: 'פוסטים שמורים',
+                      child: GestureDetector(
+                        onTap: () {
+                          HapticFeedback.selectionClick();
+                          setState(() {
+                            _showBookmarksOnly = !_showBookmarksOnly;
+                            _visibleCount = _feedPageSize;
+                          });
+                        },
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: _showBookmarksOnly ? ffTheme.warning.withValues(alpha: 0.12) : ffTheme.background,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: _showBookmarksOnly ? ffTheme.warning : ffTheme.alternate),
+                          ),
+                          child: Icon(
+                            _showBookmarksOnly ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+                            size: 15,
+                            color: _showBookmarksOnly ? ffTheme.warning : ffTheme.secondaryText,
+                          ),
+                        ),
                       ),
                     ),
-                  ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: TextField(
+                        controller: _searchCtrl,
+                        textDirection: TextDirection.rtl,
+                        decoration: InputDecoration(
+                          hintText: 'חיפוש בפוסטים...',
+                          hintTextDirection: TextDirection.rtl,
+                          prefixIcon: _searchQuery.isEmpty
+                              ? Icon(Icons.search_rounded, color: ffTheme.secondaryText, size: 18)
+                              : GestureDetector(
+                                  onTap: () { _searchCtrl.clear(); setState(() => _searchQuery = ''); },
+                                  child: Icon(Icons.close_rounded, color: ffTheme.secondaryText, size: 18),
+                                ),
+                          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                          filled: true,
+                          fillColor: ffTheme.secondaryBackground,
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide(color: ffTheme.alternate)),
+                          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide(color: ffTheme.alternate)),
+                          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide(color: ffTheme.primary)),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: TextField(
-                    controller: _searchCtrl,
-                    textDirection: TextDirection.rtl,
-                    decoration: InputDecoration(
-                      hintText: 'חיפוש בפוסטים...',
-                      hintTextDirection: TextDirection.rtl,
-                      prefixIcon: _searchQuery.isEmpty
-                          ? Icon(Icons.search_rounded, color: ffTheme.secondaryText, size: 18)
-                          : GestureDetector(
-                              onTap: () { _searchCtrl.clear(); setState(() => _searchQuery = ''); },
-                              child: Icon(Icons.close_rounded, color: ffTheme.secondaryText, size: 18),
+                // Row 2: topic filter chips
+                const SizedBox(height: 8),
+                SizedBox(
+                  height: 32,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    children: _topicLabels.map((topic) {
+                      final active = _topicFilter == topic;
+                      return Padding(
+                        padding: const EdgeInsetsDirectional.only(start: 6),
+                        child: Semantics(
+                          button: true,
+                          selected: active,
+                          label: 'סנן לפי $topic',
+                          child: GestureDetector(
+                            onTap: () => setState(() {
+                              _topicFilter = active ? null : topic;
+                              _visibleCount = _feedPageSize;
+                            }),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 180),
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                              decoration: BoxDecoration(
+                                color: active ? AppColors.brandAccent : ffTheme.secondaryBackground,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(color: active ? AppColors.brandAccent : ffTheme.alternate),
+                              ),
+                              child: Text(topic,
+                                  style: ffTheme.labelSmall.copyWith(
+                                    color: active ? Colors.white : ffTheme.secondaryText,
+                                    fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                                  )),
                             ),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      filled: true,
-                      fillColor: Colors.white,
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide(color: ffTheme.alternate)),
-                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide(color: ffTheme.alternate)),
-                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(20), borderSide: BorderSide(color: ffTheme.primary)),
-                    ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
                   ),
                 ),
               ],
             ),
           ).animate().fadeIn(duration: 280.ms),
+
+          // Author filter banner
+          if (_authorFilter != null)
+            Container(
+              margin: const EdgeInsets.fromLTRB(16, 6, 16, 0),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppColors.brandAccent.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: AppColors.brandAccent.withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.person_rounded, size: 14, color: AppColors.brandAccent),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'מציג פוסטים של: $_authorFilter',
+                      style: AppTheme.of(context).labelSmall.copyWith(color: AppColors.brandAccent, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () => setState(() { _authorFilter = null; _visibleCount = _feedPageSize; }),
+                    child: const Icon(Icons.close_rounded, size: 16, color: AppColors.brandAccent),
+                  ),
+                ],
+              ),
+            ).animate().fadeIn(duration: 200.ms),
+
+          // Quick-post section
+          _QuickPostSection(
+            ctrl: _quickPostCtrl,
+            ffTheme: ffTheme,
+            isVerified: _isCurrentUserVerified(appState),
+            onSubmit: () => _submitQuickPost(context, appState, ffTheme),
+          ).animate().fadeIn(duration: 320.ms),
 
           // Hot deal banner
           ..._posts.where((p) => p.isTeam && p.planId != null).take(1).map((p) =>
@@ -967,8 +1569,8 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                 margin: const EdgeInsets.fromLTRB(16, 10, 16, 0),
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(colors: [ffTheme.primaryDark, ffTheme.primary]),
-                  borderRadius: BorderRadius.circular(14),
+                  gradient: ffTheme.brandGradient,
+                  borderRadius: BorderRadius.circular(ffTheme.radiusMd),
                 ),
                 child: Row(
                   children: [
@@ -979,7 +1581,8 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text('עסקת השבוע', style: ffTheme.labelSmall.copyWith(color: ffTheme.secondary, fontWeight: FontWeight.w700)),
-                          Text(p.text.length > 60 ? '${p.text.substring(0, 60)}...' : p.text, style: ffTheme.bodySmall.copyWith(color: Colors.white70, height: 1.3)),
+                          const SizedBox(height: 2),
+                          Text(p.text, style: ffTheme.bodySmall.copyWith(color: Colors.white70, height: 1.3), maxLines: 1, overflow: TextOverflow.ellipsis),
                         ],
                       ),
                     ),
@@ -993,7 +1596,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
 
           // Posts list
           Expanded(
-            child: _filtered.isEmpty
+            child: filtered.isEmpty
                 ? (_showBookmarksOnly
                     ? Center(
                         child: Column(
@@ -1059,17 +1662,35 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                       controller: _feedScrollCtrl,
                       physics: const AlwaysScrollableScrollPhysics(),
                       padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
-                      // Build only the current window; it grows as the user
-                      // scrolls (see _maybeGrowFeed). For short feeds this equals
-                      // _filtered.length, so behavior is unchanged.
-                      itemCount: math.min(_visibleCount, _filtered.length),
+                      // The window starts with featured posts (if any), then
+                      // the regular feed. We prepend them without duplicating in
+                      // the main list (the builder offsets by featuredCount).
+                      itemCount: () {
+                        final featured = _featuredPosts;
+                        final feedCount = math.min(_visibleCount, filtered.length);
+                        return (featured.isNotEmpty ? 1 : 0) + feedCount;
+                      }(),
                       itemBuilder: (context, i) {
-                        final post = _filtered[i];
+                        final featured = _featuredPosts;
+                        // Slot 0 = featured section header+cards (when any exist)
+                        if (featured.isNotEmpty && i == 0) {
+                          return _FeaturedPostsSection(
+                            posts: featured,
+                            ffTheme: ffTheme,
+                            isVerified: _isCurrentUserVerified(appState),
+                            onReply: (p) => _showReplies(context, p, ffTheme),
+                          ).animate().fadeIn(duration: 400.ms);
+                        }
+                        final feedIndex = featured.isNotEmpty ? i - 1 : i;
+                        final post = filtered[feedIndex];
+                        final isVerified = _isCurrentUserVerified(appState) &&
+                            appState.isOwnPost(post.id);
                         return _PostCard(
                           post: post,
                           ffTheme: ffTheme,
                           bookmarked: appState.isBookmarked(post.id),
                           isOwn: appState.isOwnPost(post.id),
+                          isCurrentUserVerified: isVerified,
                           replyCount: _replyData.containsKey(post.id) ? _replyData[post.id]!.length : post.replies,
                           onBookmark: (id) {
                             HapticFeedback.selectionClick();
@@ -1079,7 +1700,10 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                           },
                           onReply: () => _showReplies(context, post, ffTheme),
                           onDelete: () => _confirmDelete(context, post, appState, ffTheme),
-                        ).animate(delay: (i * 50).ms).fadeIn(duration: 350.ms).slideY(begin: 0.05, end: 0);
+                          onReport: () => _showReportSheet(context, post),
+                          onEdit: () => _showEditComposer(context, appState, ffTheme, post),
+                          onAuthorTap: () => _showAuthorProfile(context, post, ffTheme),
+                        ).animate(delay: (feedIndex * 50).ms).fadeIn(duration: 350.ms).slideY(begin: 0.05, end: 0);
                       },
                     ),
                   ),
@@ -1101,7 +1725,11 @@ class _PostCard extends StatefulWidget {
     required this.onBookmark,
     required this.onReply,
     this.isOwn = false,
+    this.isCurrentUserVerified = false,
     this.onDelete,
+    this.onReport,
+    this.onEdit,
+    this.onAuthorTap,
   });
   final CommunityPost post;
   final AppTheme ffTheme;
@@ -1110,7 +1738,11 @@ class _PostCard extends StatefulWidget {
   final ValueChanged<String> onBookmark;
   final VoidCallback onReply;
   final bool isOwn;
+  final bool isCurrentUserVerified;
   final VoidCallback? onDelete;
+  final VoidCallback? onReport;
+  final VoidCallback? onEdit;
+  final VoidCallback? onAuthorTap;
 
   @override
   State<_PostCard> createState() => _PostCardState();
@@ -1139,13 +1771,13 @@ class _PostCardState extends State<_PostCard> {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        color: ffTheme.secondaryBackground,
+        borderRadius: BorderRadius.circular(ffTheme.radiusMd),
         border: Border.all(
           color: isTrending ? ffTheme.warning.withValues(alpha: 0.5) : ffTheme.alternate,
           width: isTrending ? 1.5 : 1,
         ),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 8, offset: const Offset(0, 2))],
+        boxShadow: ffTheme.shadowGlass,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1178,10 +1810,17 @@ class _PostCardState extends State<_PostCard> {
                 // Author row
                 Row(
                   children: [
-                    Container(
-                      width: 38, height: 38,
-                      decoration: BoxDecoration(color: ffTheme.accent1, shape: BoxShape.circle),
-                      child: Center(child: Text(post.avatar, style: GoogleFonts.rubik(fontSize: 16, fontWeight: FontWeight.w700, color: ffTheme.primary))),
+                    Semantics(
+                      button: true,
+                      label: 'פרופיל של ${post.author}',
+                      child: GestureDetector(
+                        onTap: widget.onAuthorTap,
+                        child: Container(
+                          width: 38, height: 38,
+                          decoration: BoxDecoration(color: ffTheme.accent1, shape: BoxShape.circle),
+                          child: Center(child: Text(post.avatar, style: GoogleFonts.rubik(fontSize: 16, fontWeight: FontWeight.w700, color: ffTheme.primary))),
+                        ),
+                      ),
                     ),
                     const SizedBox(width: 10),
                     Expanded(
@@ -1190,7 +1829,14 @@ class _PostCardState extends State<_PostCard> {
                         children: [
                           Row(
                             children: [
-                              Flexible(child: Text(post.author, style: ffTheme.labelLarge, overflow: TextOverflow.ellipsis)),
+                              Semantics(
+                                button: true,
+                                label: 'פרופיל של ${post.author}',
+                                child: GestureDetector(
+                                  onTap: widget.onAuthorTap,
+                                  child: Text(post.author, style: ffTheme.labelLarge, overflow: TextOverflow.ellipsis),
+                                ),
+                              ),
                               if (post.isTeam) ...[
                                 const SizedBox(width: 6),
                                 Container(
@@ -1202,6 +1848,13 @@ class _PostCardState extends State<_PostCard> {
                               if (post.isVerified) ...[
                                 const SizedBox(width: 4),
                                 Icon(Icons.verified_rounded, size: 14, color: ffTheme.info),
+                              ],
+                              // "לקוח מאומת" badge for own posts when the user
+                              // is a verified customer (has tracked plans or
+                              // completed the switch flow).
+                              if (widget.isCurrentUserVerified) ...[
+                                const SizedBox(width: 5),
+                                _VerifiedBadge(ffTheme: ffTheme),
                               ],
                             ],
                           ),
@@ -1240,33 +1893,61 @@ class _PostCardState extends State<_PostCard> {
                         ),
                       ),
                     ),
-                    // Own-post overflow menu
-                    if (widget.isOwn && widget.onDelete != null)
-                      SizedBox(
-                        height: 28,
-                        width: 28,
-                        child: PopupMenuButton<String>(
-                          padding: EdgeInsets.zero,
-                          tooltip: 'אפשרויות',
-                          icon: Icon(Icons.more_vert_rounded, size: 18, color: ffTheme.secondaryText),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          onSelected: (v) {
-                            if (v == 'delete') widget.onDelete!();
-                          },
-                          itemBuilder: (_) => [
-                            PopupMenuItem<String>(
-                              value: 'delete',
-                              child: Row(
-                                children: [
-                                  Icon(Icons.delete_outline_rounded, size: 18, color: ffTheme.error),
-                                  const SizedBox(width: 8),
-                                  Text('מחק פוסט', style: ffTheme.bodyMedium.copyWith(color: ffTheme.error)),
-                                ],
+                    // Overflow menu — own posts: edit+delete; others: report
+                    SizedBox(
+                      height: 28,
+                      width: 28,
+                      child: PopupMenuButton<String>(
+                        padding: EdgeInsets.zero,
+                        tooltip: 'אפשרויות',
+                        icon: Icon(Icons.more_vert_rounded, size: 18, color: ffTheme.secondaryText),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        onSelected: (v) {
+                          if (v == 'delete') widget.onDelete?.call();
+                          if (v == 'report') widget.onReport?.call();
+                          if (v == 'edit') widget.onEdit?.call();
+                        },
+                        itemBuilder: (_) {
+                          final canEdit = widget.isOwn &&
+                              DateTime.now().difference(post.timestamp).inMinutes < 10;
+                          return [
+                            if (widget.isOwn && widget.onDelete != null)
+                              PopupMenuItem<String>(
+                                value: 'delete',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.delete_outline_rounded, size: 18, color: ffTheme.error),
+                                    const SizedBox(width: 8),
+                                    Text('מחק פוסט', style: ffTheme.bodyMedium.copyWith(color: ffTheme.error)),
+                                  ],
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
+                            if (canEdit && widget.onEdit != null)
+                              PopupMenuItem<String>(
+                                value: 'edit',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.edit_outlined, size: 18, color: ffTheme.primary),
+                                    const SizedBox(width: 8),
+                                    Text('ערוך פוסט', style: ffTheme.bodyMedium.copyWith(color: ffTheme.primary)),
+                                  ],
+                                ),
+                              ),
+                            if (!widget.isOwn)
+                              PopupMenuItem<String>(
+                                value: 'report',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.flag_outlined, size: 18, color: ffTheme.secondaryText),
+                                    const SizedBox(width: 8),
+                                    Text('דווח על פוסט', style: ffTheme.bodyMedium),
+                                  ],
+                                ),
+                              ),
+                          ];
+                        },
                       ),
+                    ),
                   ],
                 ),
 
@@ -1286,28 +1967,51 @@ class _PostCardState extends State<_PostCard> {
                     VideoMessageBubble(source: post.mediaData!),
                 ],
 
-                // Plan chip
+                // Plan chip (tagged plan)
                 if (post.planId != null) ...[
                   const SizedBox(height: 10),
-                  GestureDetector(
-                    onTap: () => context.pushNamed('PlanDetail', pathParameters: {'planId': post.planId!}),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: ffTheme.accent1,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: ffTheme.primary.withValues(alpha: 0.2)),
+                  Builder(builder: (ctx) {
+                    Plan? taggedPlan;
+                    try {
+                      taggedPlan = allPlans.firstWhere((p) => p.id == post.planId);
+                    } catch (_) {}
+                    return GestureDetector(
+                      onTap: () => context.pushNamed('PlanDetail', pathParameters: {'planId': post.planId!}),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: ffTheme.accent1,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: ffTheme.primary.withValues(alpha: 0.25)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (taggedPlan != null)
+                              CircleAvatar(
+                                radius: 10,
+                                backgroundColor: AppColors.primary,
+                                child: Text(
+                                  taggedPlan.provider.isNotEmpty ? taggedPlan.provider[0] : '?',
+                                  style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w700),
+                                ),
+                              )
+                            else
+                              Icon(Icons.link_rounded, size: 14, color: ffTheme.primary),
+                            const SizedBox(width: 6),
+                            Text(
+                              taggedPlan != null
+                                  ? '${taggedPlan.plan} • ₪${taggedPlan.price}'
+                                  : 'צפה בחבילה',
+                              style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700),
+                            ),
+                            const SizedBox(width: 4),
+                            Icon(Icons.open_in_new_rounded, size: 10, color: ffTheme.primary.withValues(alpha: 0.7)),
+                          ],
+                        ),
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.open_in_new_rounded, size: 12, color: ffTheme.primary),
-                          const SizedBox(width: 6),
-                          Text('צפה בחבילה', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
-                        ],
-                      ),
-                    ),
-                  ),
+                    );
+                  }),
                 ],
               ],
             ),
@@ -1389,22 +2093,33 @@ class _ActionBtn extends StatelessWidget {
       label: semanticLabel,
       child: GestureDetector(
         onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              AnimatedScale(
-                scale: scale,
-                duration: const Duration(milliseconds: 200),
-                curve: Curves.elasticOut,
-                child: Icon(icon, size: 17, color: color),
-              ),
-              if (label.isNotEmpty) ...[
-                const SizedBox(width: 4),
-                Text(label, style: ffTheme.labelSmall.copyWith(color: color, fontWeight: FontWeight.w600)),
+        behavior: HitTestBehavior.opaque,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                AnimatedScale(
+                  scale: scale,
+                  duration: const Duration(milliseconds: 200),
+                  curve: Curves.elasticOut,
+                  child: Icon(icon, size: 17, color: color),
+                ),
+                if (label.isNotEmpty) ...[
+                  const SizedBox(width: 4),
+                  Text(
+                    label,
+                    style: ffTheme.labelSmall.copyWith(
+                      color: color,
+                      fontWeight: FontWeight.w600,
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),
@@ -1424,12 +2139,354 @@ class _StatPill extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(value, style: GoogleFonts.rubik(fontSize: 15, fontWeight: FontWeight.w800, color: color)),
+        Text(
+          value,
+          style: GoogleFonts.rubik(
+            fontSize: 16,
+            fontWeight: FontWeight.w800,
+            color: color,
+            height: 1.1,
+            fontFeatures: const [FontFeature.tabularFigures()],
+          ),
+        ),
         Text(label, style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText, fontSize: 10)),
       ],
     );
   }
 }
+
+// ── Sort chip bar ─────────────────────────────────────────────────────────────
+
+class _SortChipBar extends StatelessWidget {
+  const _SortChipBar({required this.current, required this.ffTheme, required this.onSelect});
+  final _FeedSort current;
+  final AppTheme ffTheme;
+  final ValueChanged<_FeedSort> onSelect;
+
+  static const List<_FeedSort> _sortValues = [
+    _FeedSort.newest,
+    _FeedSort.popular,
+    _FeedSort.rated,
+  ];
+  static const List<String> _sortLabels = ['חדש', 'פופולרי', 'מדורג'];
+  static const List<IconData> _sortIcons = [
+    Icons.access_time_rounded,
+    Icons.local_fire_department_rounded,
+    Icons.star_rounded,
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: List.generate(_sortValues.length, (i) {
+        final sort = _sortValues[i];
+        final label = _sortLabels[i];
+        final icon = _sortIcons[i];
+        final active = current == sort;
+        return Padding(
+          padding: const EdgeInsets.only(left: 5),
+          child: Semantics(
+            button: true,
+            selected: active,
+            label: 'מיין לפי $label',
+            child: GestureDetector(
+              onTap: () => onSelect(sort),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: active ? AppColors.brandAccent : ffTheme.background,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: active ? AppColors.brandAccent : ffTheme.alternate),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(icon, size: 12,
+                        color: active ? Colors.white : ffTheme.secondaryText),
+                    const SizedBox(width: 4),
+                    Text(label,
+                        style: ffTheme.labelSmall.copyWith(
+                          color: active ? Colors.white : ffTheme.secondaryText,
+                          fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                        )),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      }),
+    );
+  }
+}
+
+// ── Quick-post section ────────────────────────────────────────────────────────
+
+class _QuickPostSection extends StatefulWidget {
+  const _QuickPostSection({
+    required this.ctrl,
+    required this.ffTheme,
+    required this.isVerified,
+    required this.onSubmit,
+  });
+  final TextEditingController ctrl;
+  final AppTheme ffTheme;
+  final bool isVerified;
+  final VoidCallback onSubmit;
+
+  @override
+  State<_QuickPostSection> createState() => _QuickPostSectionState();
+}
+
+class _QuickPostSectionState extends State<_QuickPostSection> {
+  bool _focused = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = widget.ffTheme;
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: t.secondaryBackground,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: _focused ? AppColors.brandAccent : t.alternate),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 8, offset: const Offset(0, 2))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.edit_note_rounded, size: 18, color: AppColors.brandAccent),
+              const SizedBox(width: 8),
+              Text('שתף את החוויה שלך עם הקהילה',
+                  style: t.labelMedium.copyWith(color: t.primaryText, fontWeight: FontWeight.w700)),
+              if (widget.isVerified) ...[
+                const Spacer(),
+                _VerifiedBadge(ffTheme: t),
+              ],
+            ],
+          ),
+          const SizedBox(height: 10),
+          Focus(
+            onFocusChange: (f) => setState(() => _focused = f),
+            child: TextField(
+              controller: widget.ctrl,
+              maxLines: 2,
+              minLines: 1,
+              textDirection: TextDirection.rtl,
+              decoration: InputDecoration(
+                hintText: 'מה על דעתך? טיפ, ביקורת, שאלה...',
+                hintTextDirection: TextDirection.rtl,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                filled: true,
+                fillColor: t.background,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: t.alternate)),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: t.alternate)),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.brandAccent, width: 1.5)),
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Align(
+            alignment: AlignmentDirectional.centerEnd,
+            child: ElevatedButton.icon(
+              onPressed: widget.onSubmit,
+              icon: const Icon(Icons.send_rounded, size: 16),
+              label: const Text('פרסם'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.brandAccent,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                textStyle: GoogleFonts.rubik(fontSize: 13, fontWeight: FontWeight.w700),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Featured posts section ────────────────────────────────────────────────────
+
+class _FeaturedPostsSection extends StatelessWidget {
+  const _FeaturedPostsSection({
+    required this.posts,
+    required this.ffTheme,
+    required this.isVerified,
+    required this.onReply,
+  });
+  final List<CommunityPost> posts;
+  final AppTheme ffTheme;
+  final bool isVerified;
+  final ValueChanged<CommunityPost> onReply;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = ffTheme;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Row(
+            children: [
+              const Icon(Icons.push_pin_rounded, size: 14, color: AppColors.saving),
+              const SizedBox(width: 6),
+              Text('פוסטים מומלצים',
+                  style: t.labelMedium.copyWith(color: t.secondaryText, fontWeight: FontWeight.w700)),
+            ],
+          ),
+        ),
+        ...posts.map((post) => _FeaturedCard(post: post, ffTheme: t, onReply: () => onReply(post))),
+        const SizedBox(height: 4),
+        Divider(color: t.alternate, height: 20),
+      ],
+    );
+  }
+}
+
+class _FeaturedCard extends StatelessWidget {
+  const _FeaturedCard({required this.post, required this.ffTheme, required this.onReply});
+  final CommunityPost post;
+  final AppTheme ffTheme;
+  final VoidCallback onReply;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = ffTheme;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.saving.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.saving.withValues(alpha: 0.35)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              // "מומלץ" amber badge — value/win state
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                decoration: BoxDecoration(
+                  color: AppColors.saving.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(t.radiusXs),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.auto_awesome_rounded, size: 11, color: AppColors.saving),
+                    const SizedBox(width: 4),
+                    Text('מומלץ', style: t.labelSmall.copyWith(color: AppColors.saving, fontWeight: FontWeight.w700, fontSize: 10)),
+                  ],
+                ),
+              ),
+              const Spacer(),
+              // Channel badge
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                decoration: BoxDecoration(color: t.background, borderRadius: BorderRadius.circular(8)),
+                child: Text(post.channel, style: t.labelSmall.copyWith(color: t.secondaryText, fontSize: 10)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 30, height: 30,
+                decoration: BoxDecoration(color: t.accent1, shape: BoxShape.circle),
+                child: Center(child: Text(post.avatar, style: GoogleFonts.rubik(fontSize: 13, fontWeight: FontWeight.w700, color: t.primary))),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(post.author, style: t.labelMedium),
+                    const SizedBox(height: 4),
+                    Text(post.text, style: t.bodySmall.copyWith(height: 1.4), maxLines: 2, overflow: TextOverflow.ellipsis),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Icon(Icons.favorite_rounded, size: 13, color: Colors.red.shade400),
+              const SizedBox(width: 4),
+              Text('${post.likes}', style: t.labelSmall.copyWith(color: t.secondaryText, fontFeatures: const [FontFeature.tabularFigures()])),
+              const SizedBox(width: 12),
+              Semantics(
+                button: true,
+                label: 'הגב לפוסט מומלץ',
+                child: GestureDetector(
+                  onTap: onReply,
+                  behavior: HitTestBehavior.opaque,
+                  child: Row(
+                    children: [
+                      Icon(Icons.chat_bubble_outline_rounded, size: 13, color: t.primary),
+                      const SizedBox(width: 4),
+                      Text('${post.replies}', style: t.labelSmall.copyWith(color: t.primary, fontFeatures: const [FontFeature.tabularFigures()])),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Verified customer badge ───────────────────────────────────────────────────
+
+class _VerifiedBadge extends StatelessWidget {
+  const _VerifiedBadge({required this.ffTheme});
+  final AppTheme ffTheme;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: 'לקוח מאומת',
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+        decoration: BoxDecoration(
+          color: AppColors.brandAccent.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: AppColors.brandAccent.withValues(alpha: 0.4)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.check_circle_outline_rounded, size: 10, color: AppColors.brandAccent),
+            const SizedBox(width: 3),
+            Text('לקוח מאומת',
+                style: ffTheme.labelSmall.copyWith(
+                  color: AppColors.brandAccent,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 9,
+                )),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Data ──────────────────────────────────────────────────────────────────────
 
 class _Reply {
   final String author, avatar, text;

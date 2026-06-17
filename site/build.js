@@ -299,7 +299,7 @@ function planCardHtml(p, best) {
         <div class="plan__name">${esc(p.plan)}</div>
         ${specs ? `<div class="plan__chips">${specs}</div>` : ''}
         ${flags.length ? `<div class="plan__flags">${flags.join('')}</div>` : ''}
-        <div class="plan__bottom"><div class="plan__price"><b>₪${priceText(p)}</b> <span>${unit}</span>${after}</div></div>
+        <div class="plan__bottom"><div class="plan__price" style="font-variant-numeric:tabular-nums"><b>₪${priceText(p)}</b> <span>${unit}</span>${after}</div></div>
         <a class="plan__cta" target="_blank" rel="noopener" href="${esc(waHref)}">${iconFor('💬')} מעוניין/ת ←</a>
       </article>`;
 }
@@ -1129,7 +1129,7 @@ ${nav}
     <section class="lead-hero">
       <div class="container">
         <p class="crumbs"><a href="index.html">דף הבית</a> ← <a href="plans.html">כל החבילות</a> ← ${esc(name)}</p>
-        <div style="margin-bottom:14px">${providerLogo(name, 64)}</div>
+        <div style="display:flex;justify-content:center;margin-bottom:16px">${providerLogo(name, 64)}</div>
         <h1>כל המסלולים של <span class="hl">${esc(name)}</span></h1>
         <p>${plans.length} מסלולים${catNames.length ? ` (${esc(catNames.join(' · '))})` : ''} — החל מ-₪${cheapest}. השוו מחירים ותכונות, ומצאו את המסלול המשתלם ביותר.</p>
         <div class="hero__cta"><a class="btn btn--primary btn--lg" href="#cta">קבלו השוואה חינם ←</a><a class="btn btn--ghost btn--lg" href="plans.html">לכל החבילות</a></div>
@@ -1166,7 +1166,7 @@ function providersIndexPage() {
   const cards = Object.keys(map).sort((a, b) => map[b].length - map[a].length).map((name) => {
     const ps = map[name];
     const min = ps.reduce((m, p) => Math.min(m, p.price), Infinity);
-    return `        <a class="provider-card" href="provider-${providerSlug(name)}.html">${providerLogo(name, 46)}<span><b>${esc(name)}</b><small>${ps.length} מסלולים · מ-₪${min}</small></span></a>`;
+    return `        <a class="provider-card" href="provider-${providerSlug(name)}.html">${providerLogo(name, 46)}<span><b>${esc(name)}</b><small style="font-variant-numeric:tabular-nums">${ps.length} מסלולים · מ-₪${min}</small></span></a>`;
   }).join('\n');
   return `<!DOCTYPE html>
 <html lang="he" dir="rtl">
@@ -1573,16 +1573,16 @@ ${nav}
 
     <section class="section">
       <div class="container">
-        <div id="calc" class="glass" data-cheapest="${offerPrice(ch)}" data-cat="${c.slug}" style="max-width:560px;margin:0 auto;border:1px solid #E4E8EC;border-radius:18px;padding:28px 24px;box-shadow:0 6px 24px rgba(17,24,39,.05)">
+        <div id="calc" class="glass" data-cheapest="${offerPrice(ch)}" data-cat="${c.slug}" style="max-width:560px;margin:0 auto;border:1px solid var(--line);border-radius:var(--radius);padding:28px 24px;box-shadow:var(--shadow)">
           <h2 style="margin:0 0 6px">כמה אתם יכולים לחסוך על ${esc(c.name)}?</h2>
-          <p style="margin:0 0 4px">המסלול הזול ביותר ב${esc(c.name)} כרגע: <span style="color:#0B0F14;font-weight:700">${esc(ch.provider)} ${esc(ch.plan)} — ${priceText(ch)}</span>.</p>
+          <p style="margin:0 0 4px">המסלול הזול ביותר ב${esc(c.name)} כרגע: <span style="color:var(--ink-900);font-weight:700;font-variant-numeric:tabular-nums">${esc(ch.provider)} ${esc(ch.plan)} — ${priceText(ch)}</span>.</p>
           <label for="calcBill" style="display:block;font-weight:700;margin:14px 0 0">כמה אתם משלמים היום? (₪ לחודש)</label>
           <div style="display:flex;gap:10px;flex-wrap:wrap;margin:8px 0 16px">
-            <input id="calcBill" class="filter-search" type="number" inputmode="numeric" min="0" placeholder="למשל: 89" style="flex:1 1 220px" />
+            <input id="calcBill" class="filter-search" type="number" inputmode="numeric" min="0" placeholder="למשל: 89" style="flex:1 1 220px;font-variant-numeric:tabular-nums" />
             <button id="calcBtn" class="btn btn--primary" type="button">חשבו חיסכון</button>
           </div>
-          <p id="calcOut" role="status" aria-live="polite" style="display:none;margin:8px 0 0;padding:14px 16px;border-radius:12px;background:#F0F2F4;color:#0B0F14"></p>
-          <p style="margin:12px 0 0;font-size:.85rem;color:#6b7280">* הערכה בלבד — החיסכון בפועל תלוי במסלול שתבחרו ובתנאים. מומלץ לאמת מול הספק.</p>
+          <p id="calcOut" role="status" aria-live="polite" style="display:none;margin:8px 0 0;padding:14px 16px;border-radius:var(--radius-sm);background:var(--ink-050);color:var(--ink-900);font-variant-numeric:tabular-nums"></p>
+          <p style="margin:12px 0 0;font-size:.85rem;color:var(--ink-400)">* הערכה בלבד — החיסכון בפועל תלוי במסלול שתבחרו ובתנאים. מומלץ לאמת מול הספק.</p>
         </div>
         <div style="text-align:center;margin-top:22px">
           <a class="btn btn--ghost btn--lg" href="${c.slug}.html">לכל מסלולי ה${esc(c.name)} ←</a>

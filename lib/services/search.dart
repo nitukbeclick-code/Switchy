@@ -51,7 +51,18 @@ int? _priceToken(String q) {
 /// prefix/word-boundary boost), then feature/spec matches; ties break on price.
 /// A purely numeric query is treated as a budget — plans at or under it float up
 /// and the cheapest come first. Pure and testable; no UI, no navigation.
-SearchResults searchEverything(String query, {int planLimit = 40}) {
+///
+/// Optional filters narrow results without changing the base ranking:
+/// - [categoryFilter]: keep only plans whose [Plan.cat] matches this id.
+/// - [providerFilter]: keep only plans whose [Plan.provider] matches exactly.
+/// - [maxPrice]: keep only plans with [Plan.priceValue] ≤ this value.
+SearchResults searchEverything(
+  String query, {
+  int planLimit = 40,
+  String? categoryFilter,
+  String? providerFilter,
+  double? maxPrice,
+}) {
   final q = query.trim().toLowerCase();
   if (q.isEmpty) {
     return const SearchResults(providers: [], plans: [], categories: []);
@@ -143,13 +154,31 @@ SearchResults searchEverything(String query, {int planLimit = 40}) {
   // Dedupe by id, preserving rank order (defensive — the catalogue shouldn't
   // hold duplicate ids, but a future merge could).
   final seen = <String>{};
-  final plans = <Plan>[];
+  var plans = <Plan>[];
   for (final p in matched) {
     if (seen.add(p.id)) plans.add(p);
   }
 
+  // ── Apply optional filters ────────────────────────────────────────────────
+  if (categoryFilter != null && categoryFilter.isNotEmpty) {
+    plans = plans.where((p) => p.cat == categoryFilter).toList();
+  }
+  if (providerFilter != null && providerFilter.isNotEmpty) {
+    plans = plans.where((p) => p.provider == providerFilter).toList();
+  }
+  if (maxPrice != null) {
+    plans = plans.where((p) => p.priceValue <= maxPrice).toList();
+  }
+
+  // Filter providers to those that still have matching plans (or matched the
+  // text query themselves).
+  final filteredProviderNames = plans.map((p) => p.provider).toSet();
+  final filteredProviders = (categoryFilter != null || providerFilter != null || maxPrice != null)
+      ? providers.where((name) => filteredProviderNames.contains(name)).toList()
+      : providers;
+
   return SearchResults(
-    providers: providers,
+    providers: filteredProviders,
     categories: categoryHits,
     plans: plans.length > planLimit ? plans.sublist(0, planLimit) : plans,
   );

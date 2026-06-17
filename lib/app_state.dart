@@ -173,8 +173,9 @@ class AppState extends ChangeNotifier {
     _prefCommunityNotifs = p.getBool('prefCommunityNotifs') ?? false;
     _isAdmin = p.getBool('isAdmin') ?? false;
     _seenOnboarding = p.getBool('seenOnboarding') ?? false;
-    // Theme mode
-    final themeModeStr = p.getString('theme_mode') ?? 'dark';
+    // Theme mode. Defaults to light (the fully-designed-and-QA'd theme); dark is
+    // a working opt-in via Settings until the dark visual QA pass completes.
+    final themeModeStr = p.getString('theme_mode') ?? 'light';
     _themeMode = _themeModeFromString(themeModeStr);
     notifyListeners();
   }
@@ -794,8 +795,8 @@ class AppState extends ChangeNotifier {
   bool get isAdmin => _isAdmin;
   void setIsAdmin(bool v) { _isAdmin = v; notifyListeners(); _persist(); }
 
-  // Theme mode
-  ThemeMode _themeMode = ThemeMode.dark;
+  // Theme mode (default light until the dark visual-QA pass completes).
+  ThemeMode _themeMode = ThemeMode.light;
   ThemeMode get themeMode => _themeMode;
   void setThemeMode(ThemeMode mode) {
     _themeMode = mode;

@@ -76,7 +76,7 @@ body {
    any colour. Pointer-transparent, fixed, and very subtle. */
 body::after {
   content: ""; position: fixed; inset: 0; z-index: 9999; pointer-events: none;
-  background-image: var(--grain); background-size: 160px; opacity: .025; mix-blend-mode: multiply;
+  background-image: var(--grain); background-size: 160px; opacity: .022;
 }
 
 ::selection { background: var(--ink-800); color: #fff; }
@@ -132,7 +132,7 @@ a { color: inherit; text-decoration: none; }
   font-family: 'Rubik', sans-serif; font-weight: 700; font-size: 15px;
   padding: 13px 24px; border-radius: 16px; border: 0; cursor: pointer;
   transition: transform .2s var(--ease-spring), box-shadow .2s var(--ease), background .18s;
-  white-space: nowrap; isolation: isolate; will-change: transform;
+  white-space: nowrap; isolation: isolate;
 }
 /* A diagonal light sheen that sweeps across on hover — a quiet premium tell. */
 .btn::before {
@@ -326,9 +326,15 @@ a.chip:hover { transform: translateY(-2px); border-color: var(--green-2); box-sh
 .cat { background: var(--cream); border: 1px solid var(--line); border-radius: var(--radius); padding: 26px 16px; text-align: center; transition: transform .2s var(--ease), box-shadow .2s; }
 .section--alt .cat { background: var(--cream); }
 .cat:hover { transform: translateY(-5px); box-shadow: var(--shadow); }
+.cat { display: block; color: inherit; }
 .cat__icon { font-size: 38px; display: block; margin-bottom: 10px; }
 .cat h3 { font-size: 17px; color: var(--green-d); }
 .cat p { color: var(--muted); font-size: 14px; margin-top: 3px; }
+/* Category cards are links to their landing pages — a quiet action cue that is
+   always visible (so it reads as tappable on touch, where there is no hover)
+   and nudges its arrow on hover. */
+.cat__go { display: block; margin-top: 12px; color: var(--accent); font-family: 'Rubik', sans-serif; font-weight: 700; font-size: 13px; opacity: .85; transition: opacity .18s, letter-spacing .18s var(--ease); }
+.cat:hover .cat__go { opacity: 1; letter-spacing: .01em; }
 
 /* Calculator */
 .calc { display: grid; grid-template-columns: 1fr 1fr; gap: 44px; align-items: center; }
@@ -410,6 +416,24 @@ a.chip:hover { transform: translateY(-2px); border-color: var(--green-2); box-sh
 .footer__links a, .footer__contact a { color: rgba(255,255,255,.8); font-weight: 600; transition: color .15s; }
 .footer__links a:hover, .footer__contact a:hover { color: var(--lime); }
 .footer__bottom { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-top: 34px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,.12); font-size: 13px; }
+
+/* ── Floating WhatsApp contact (mobile only) ─────────────────────────────────
+   Keeps the editorial desktop layout clean; on touch it gives a one-tap line
+   to a human. On-brand indigo "action" (not WhatsApp-green) per the palette. */
+.wa-fab { display: none; }
+@media (max-width: 760px) {
+  .wa-fab {
+    position: fixed; inset-inline-end: 16px; bottom: 16px; z-index: 45;
+    width: 54px; height: 54px; border-radius: 50%;
+    display: grid; place-items: center; color: #fff;
+    background: linear-gradient(165deg, var(--accent), var(--accent-d));
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 10px 24px rgba(79,70,229,.36), 0 2px 6px rgba(55,48,163,.26);
+    transition: transform .2s var(--ease-spring), box-shadow .2s var(--ease);
+  }
+  .wa-fab:active { transform: scale(.94); }
+  .wa-fab svg { width: 26px; height: 26px; display: block; }
+}
+@media (prefers-reduced-motion: reduce) { .wa-fab { transition: none; } }
 
 /* ── Category landing hero (generated pages) ─────────────────────────── */
 .lead-hero { padding: 56px 0 8px; text-align: center; position: relative; }

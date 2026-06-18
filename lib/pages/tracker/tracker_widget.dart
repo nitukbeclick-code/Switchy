@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../theme/app_theme.dart';
 import '../../core/nav.dart';
 import '../../widgets/app_button.dart';
@@ -93,10 +94,7 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                 Container(
                   width: 96,
                   height: 96,
-                  decoration: BoxDecoration(
-                    color: ffTheme.alternate,
-                    shape: BoxShape.circle,
-                  ),
+                  decoration: ffTheme.glassDecoration(radius: 48),
                   child: Icon(Icons.do_not_disturb_on_outlined, size: 52, color: ffTheme.secondaryText),
                 ).animate().scale(duration: 500.ms, curve: Curves.easeOut),
                 const SizedBox(height: 24),
@@ -149,10 +147,7 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                 Container(
                   width: 96,
                   height: 96,
-                  decoration: BoxDecoration(
-                    color: ffTheme.accent1,
-                    shape: BoxShape.circle,
-                  ),
+                  decoration: ffTheme.glassDecoration(radius: 48),
                   child: Icon(Icons.track_changes_rounded, size: 52, color: ffTheme.primary),
                 ).animate(onPlay: (c) => c.repeat(reverse: true))
                   .scale(begin: const Offset(1, 1), end: const Offset(1.05, 1.05), duration: 1500.ms, curve: Curves.easeInOut),
@@ -329,6 +324,14 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                   ],
                 ),
               ).animate().fadeIn(delay: 100.ms),
+              const SizedBox(height: 20),
+            ],
+
+            // Pre-switch checklist — actionable tasks the user ticks off as they
+            // complete the move. Collapsible, and only relevant once the lead is
+            // live (step >= 1). Rendered above the timeline.
+            if (step >= 1) ...[
+              const _PreSwitchChecklist().animate().fadeIn(delay: 150.ms),
               const SizedBox(height: 20),
             ],
 
@@ -658,5 +661,182 @@ class _StepConfirmButton extends StatelessWidget {
         ),
       ),
     ).animate().fadeIn(delay: 440.ms);
+  }
+}
+
+/// One pre-switch task: a stable [key] (persisted, never localized) and its
+/// Hebrew [label] (display only).
+class _ChecklistTask {
+  final String key;
+  final String label;
+  const _ChecklistTask(this.key, this.label);
+}
+
+/// A collapsible "before you switch" checklist. The user ticks tasks off as they
+/// complete the move; checked state is persisted under stable keys via
+/// [SharedPreferences] (prefixed [_prefPrefix]) so it survives restarts and
+/// stays scoped to this surface — no global app state is mutated.
+class _PreSwitchChecklist extends StatefulWidget {
+  const _PreSwitchChecklist();
+
+  @override
+  State<_PreSwitchChecklist> createState() => _PreSwitchChecklistState();
+}
+
+class _PreSwitchChecklistState extends State<_PreSwitchChecklist> {
+  static const String _prefPrefix = 'trackerChecklist.';
+
+  static const List<_ChecklistTask> _tasks = [
+    _ChecklistTask('cancel-old', 'ביטול המסלול הישן'),
+    _ChecklistTask('port-code', 'אימות קוד ניוד'),
+    _ChecklistTask('new-sim', 'הגדרת SIM/מכשיר חדש'),
+    _ChecklistTask('activation', 'אישור הפעלה'),
+  ];
+
+  final Set<String> _done = <String>{};
+  SharedPreferences? _prefs;
+  bool _expanded = true;
+
+  @override
+  void initState() {
+    super.initState();
+    SharedPreferences.getInstance().then((p) {
+      if (!mounted) return;
+      setState(() {
+        _prefs = p;
+        for (final t in _tasks) {
+          if (p.getBool('$_prefPrefix${t.key}') ?? false) _done.add(t.key);
+        }
+      });
+    });
+  }
+
+  bool _isChecklistDone(String key) => _done.contains(key);
+
+  /// Whether every task is checked — the "ready to switch" signal.
+  bool get _switchChecklistDone => _tasks.every((t) => _done.contains(t.key));
+
+  void _toggleChecklistItem(String key) {
+    HapticFeedback.selectionClick();
+    final nowDone = !_done.contains(key);
+    setState(() {
+      if (nowDone) {
+        _done.add(key);
+      } else {
+        _done.remove(key);
+      }
+    });
+    _prefs?.setBool('$_prefPrefix$key', nowDone);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ffTheme = AppTheme.of(context);
+    final doneCount = _done.length;
+    final allDone = _switchChecklistDone;
+
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: allDone ? ffTheme.primary.withValues(alpha: 0.4) : ffTheme.alternate),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10)],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header — tap to collapse/expand.
+          Semantics(
+            button: true,
+            label: _expanded ? 'צמצום רשימת המשימות' : 'הרחבת רשימת המשימות',
+            child: InkWell(
+              borderRadius: BorderRadius.circular(16),
+              onTap: () {
+                HapticFeedback.lightImpact();
+                setState(() => _expanded = !_expanded);
+              },
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    Icon(
+                      allDone ? Icons.checklist_rtl_rounded : Icons.fact_check_outlined,
+                      size: 22,
+                      color: ffTheme.primary,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('משימות לפני המעבר', style: ffTheme.titleSmall),
+                          Text(
+                            allDone ? 'הכל מוכן למעבר ✓' : 'הושלמו $doneCount מתוך ${_tasks.length}',
+                            style: ffTheme.labelSmall.copyWith(
+                              color: allDone ? ffTheme.primary : ffTheme.secondaryText,
+                              fontWeight: allDone ? FontWeight.w700 : FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    AnimatedRotation(
+                      turns: _expanded ? 0.5 : 0,
+                      duration: 200.ms,
+                      child: Icon(Icons.expand_more_rounded, color: ffTheme.secondaryText),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          // Collapsible body — the task checkboxes.
+          AnimatedCrossFade(
+            firstChild: const SizedBox(width: double.infinity),
+            secondChild: Padding(
+              padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+              child: Column(
+                children: [
+                  for (final t in _tasks)
+                    InkWell(
+                      borderRadius: BorderRadius.circular(10),
+                      onTap: () => _toggleChecklistItem(t.key),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        child: Row(
+                          children: [
+                            Checkbox(
+                              value: _isChecklistDone(t.key),
+                              onChanged: (_) => _toggleChecklistItem(t.key),
+                              activeColor: ffTheme.primary,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              visualDensity: VisualDensity.compact,
+                            ),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                t.label,
+                                style: ffTheme.bodyMedium.copyWith(
+                                  color: _isChecklistDone(t.key) ? ffTheme.secondaryText : ffTheme.primaryText,
+                                  decoration: _isChecklistDone(t.key) ? TextDecoration.lineThrough : null,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            crossFadeState: _expanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+            duration: 200.ms,
+          ),
+        ],
+      ),
+    );
   }
 }

@@ -45,6 +45,18 @@ create policy "Users can update their own tickets"
   using ((select auth.uid()) = user_id)
   with check ((select auth.uid()) = user_id);
 
+-- Column-scope authenticated UPDATE to `status` only (mirrors leads/meetings).
+-- The RLS policy above still row-scopes updates to the owner, but it does not
+-- restrict WHICH columns may change. Without this, an authenticated user could
+-- mutate workflow columns (agent_type/escalated_at/human_assigned_to/
+-- telegram_group_id) — e.g. clear an assignment or hijack a Telegram group,
+-- corrupting the escalation workflow. The Flutter app's closeTicket only needs
+-- to set status='resolved'. Revoking the table-wide UPDATE and re-granting just
+-- the `status` column makes every other column server-managed (service_role
+-- only) while leaving closeTicket working. Idempotent / re-runnable.
+revoke update on public.support_tickets from authenticated;
+grant update (status) on public.support_tickets to authenticated;
+
 -- RLS policies for support_messages
 create policy "Users can view messages in their own tickets"
   on public.support_messages

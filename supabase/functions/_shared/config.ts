@@ -50,6 +50,7 @@ async function resolveCfg(): Promise<Cfg> {
   const [notifyEmail, e] = pick("leads_notify_email", firstEnv(["LEADS_NOTIFY_EMAIL", "LEADS_TO_EMAIL", "TEAM_EMAIL", "NOTIFY_EMAIL"]));
   const [openai, f] = pick("openai_api_key", firstEnv(["OPENAI_API_KEY", "OPENAI_KEY"]));
   const [anthropic, g] = pick("anthropic_api_key", firstEnv(["ANTHROPIC_API_KEY", "ANTHROPIC_KEY", "CLAUDE_API_KEY"]));
+  const [gemini, gg] = pick("gemini_api_key", firstEnv(["GEMINI_API_KEY", "GOOGLE_AI_KEY"]));
   const [webhookSecret, h] = pick("lead_webhook_secret", firstEnv(["LEAD_WEBHOOK_SECRET", "WEBHOOK_SECRET"]));
   const [allowedCsv, i] = pick("telegram_allowed_user_ids", firstEnv(["TELEGRAM_ALLOWED_USER_IDS"]));
   // Zoom Server-to-Server OAuth — the SQL side adds these keys to the
@@ -61,13 +62,13 @@ async function resolveCfg(): Promise<Cfg> {
   // reject /v2/users/me/... for account-level tokens; '' falls back to 'me'.
   const [zoomHostEmail, m] = pick("zoom_host_email", firstEnv(["ZOOM_HOST_EMAIL"]));
   return {
-    tgToken, tgChat, resend, resendFrom, notifyEmail, openai, anthropic, webhookSecret,
+    tgToken, tgChat, resend, resendFrom, notifyEmail, openai, anthropic, gemini, webhookSecret,
     zoomAccountId, zoomClientId, zoomClientSecret, zoomHostEmail,
     allowedUserIds: parseUserIds(allowedCsv),
     src: {
       telegram_bot_token: a, telegram_chat_id: b, resend_api_key: c, resend_from: d,
-      leads_notify_email: e, openai_api_key: f, anthropic_api_key: g, lead_webhook_secret: h,
-      telegram_allowed_user_ids: i,
+      leads_notify_email: e, openai_api_key: f, anthropic_api_key: g, gemini_api_key: gg,
+      lead_webhook_secret: h, telegram_allowed_user_ids: i,
       zoom_account_id: j, zoom_client_id: k, zoom_client_secret: l, zoom_host_email: m,
     },
   };

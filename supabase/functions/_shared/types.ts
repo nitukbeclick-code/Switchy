@@ -96,6 +96,7 @@ export type Cfg = {
   notifyEmail: string;
   openai: string;
   anthropic: string;
+  gemini: string;
   webhookSecret: string;
   zoomAccountId: string;
   zoomClientId: string;

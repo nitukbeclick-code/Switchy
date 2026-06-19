@@ -1393,12 +1393,14 @@ ${groups}
         <header class="section__head reveal"><span class="eyebrow">🤖 חוסך AI</span><h2>יועץ התקשורת החכם שלכם</h2><p>שואלים בשפה חופשית — מקבלים המלצה מנומקת עם חיסכון שנתי.</p></header>
         <div class="ai-demo reveal">
           <div class="ai-chat" id="aiChat">
-            <div class="ai-bubble ai-bubble--bot">היי! אני חוסך AI — יועץ התקשורת החכם שלך. מה תרצו לבדוק היום?</div>
-            <div class="ai-bubble ai-bubble--me">מה הכי משתלם לי בסלולר עם 5G?</div>
-            <div class="ai-bubble ai-bubble--bot">מצאתי לך 3 מסלולי 5G מובילים — הזול ביותר ב-₪29/חודש ללא התחייבות, חיסכון שנתי של עד ₪1,080 לעומת חשבון ממוצע. רוצה שאשווה ביניהם? 📊</div>
+            <div class="ai-bubble ai-bubble--bot">היי! אני חוסך AI — שאלו אותי על מסלולי סלולר, אינטרנט, טלוויזיה או חו״ל, ואני אענה לפי הנתונים האמיתיים שלנו.</div>
           </div>
           <div class="ai-chips" aria-label="שאלות מהירות לדוגמה">${aiChips}</div>
-          <p class="ai-foot">דמו. השיחה המלאה והחיה — באפליקציה.</p>
+          <form class="ai-input" id="aiChatForm">
+            <input type="text" id="aiChatInput" maxlength="500" placeholder="שאלו אותי כל דבר על מסלולים..." aria-label="שאלו את חוסך AI" autocomplete="off" />
+            <button type="submit" class="btn btn--primary">שלחו</button>
+          </form>
+          <p class="ai-foot">חוסך AI עונה לפי מסלולים אמיתיים מהקטלוג — לא ייעוץ אישי מחייב.</p>
         </div>
       </div>
     </section>

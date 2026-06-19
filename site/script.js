@@ -325,41 +325,77 @@
     render();
   }
 
-  // ── AI advisor demo chips (app.html) ────────────────────────────────────────
+  // ── חוסך AI — real Gemini-backed chat (app.html) ────────────────────────────
+  // Calls the ai-chat Supabase Edge Function; falls back to a friendly error
+  // bubble (never a fake canned answer) if the call fails or isn't configured.
   const aiChat = $('aiChat');
   if (aiChat) {
-    const replies = {
-      'מה הכי משתלם': 'בלי להיכנס לאפליקציה אני נותן הערכה — אבל בתוך חוסך אני קורא את החשבון האמיתי שלך וממליץ מדויק. בממוצע אנשים חוסכים ₪900–₪1,200 בשנה. 💰',
-      'סלולר': 'יש מסלולי סלולר מ-₪15/חודש, וכמה 5G ללא הגבלה ב-₪29 ללא התחייבות. רוצה שאמצא לך את הזול ביותר לפי השימוש שלך? 📱',
-      'אינטרנט': 'סיב אופטי עד 1000Mb מתחיל סביב ₪89/חודש — שימו לב למחיר אחרי המבצע. אני משווה גם את זה. 🌐',
-      'ללא התחייבות': 'רוב המסלולים הזולים היום הם ללא התחייבות בכלל — אפשר לעבור ולבטל בכל עת. אסנן רק כאלה? ✅',
-      'חו': 'לחו״ל יש eSIM נוחים: למשל 10GB לאירופה סביב ₪35 לחבילה, בלי הפתעות רומינג. ✈️',
-      'פחות מ': 'יש לא מעט מסלולים מתחת ל-₪50 — סלולר, ואפילו אינטרנט בסיסי. נסמן תקציב ונראה הכל. 💸',
-    };
-    const pick = (q) => {
-      for (const key of Object.keys(replies)) if (q.indexOf(key) !== -1) return replies[key];
-      return 'שאלה מצוינת! באפליקציה אני עונה על זה לפי הנתונים האמיתיים שלך וממליץ על המסלול המשתלם ביותר. ✨';
-    };
+    const aiForm = $('aiChatForm');
+    const aiInput = $('aiChatInput');
+    const aiHistory = [];
     const addBubble = (cls, text) => {
       const b = document.createElement('div');
       b.className = 'ai-bubble ' + cls;
       b.textContent = text;
       aiChat.appendChild(b);
-      b.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      b.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'nearest' });
+      return b;
+    };
+    const addTyping = () => {
+      const b = document.createElement('div');
+      b.className = 'ai-bubble ai-bubble--bot ai-bubble--typing';
+      b.setAttribute('aria-live', 'polite');
+      b.setAttribute('aria-label', 'חוסך AI כותב תשובה');
+      b.innerHTML = '<span></span><span></span><span></span>';
+      aiChat.appendChild(b);
+      b.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'nearest' });
+      return b;
+    };
+    let aiBusy = false;
+    const askAi = async (q) => {
+      if (!q || aiBusy) return;
+      aiBusy = true;
+      addBubble('ai-bubble--me', q);
+      const typing = addTyping();
+      track('ai_chat_message', { source: location.pathname });
+      try {
+        const cfg = window.CHOSECH_SUPABASE;
+        if (!cfg || !cfg.url) throw new Error('ai chat not configured');
+        const res = await fetch(cfg.url.replace(/\/$/, '') + '/functions/v1/ai-chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', apikey: cfg.anonKey, Authorization: 'Bearer ' + cfg.anonKey },
+          body: JSON.stringify({ message: q, history: aiHistory }),
+        });
+        const data = await res.json().catch(() => ({}));
+        typing.remove();
+        if (!res.ok || !data.reply) throw new Error('ai chat failed: ' + res.status);
+        addBubble('ai-bubble--bot', data.reply);
+        aiHistory.push({ role: 'user', text: q }, { role: 'bot', text: data.reply });
+        if (aiHistory.length > 12) aiHistory.splice(0, aiHistory.length - 12);
+      } catch (_) {
+        typing.remove();
+        addBubble('ai-bubble--bot', 'לא הצלחתי להתחבר כרגע — נסו שוב בעוד רגע, או דברו איתנו בוואטסאפ 💬');
+      }
+      aiBusy = false;
     };
     document.querySelectorAll('.ai-chip').forEach((chip) => {
       chip.setAttribute('role', 'button');
       chip.setAttribute('tabindex', '0');
-      const ask = () => {
-        const q = chip.textContent.replace(/^[^א-ת]+/, '').trim();
-        addBubble('ai-bubble--me', q);
-        setTimeout(() => addBubble('ai-bubble--bot', pick(q)), 450);
-      };
+      const ask = () => askAi(chip.textContent.replace(/^[^א-ת]+/, '').trim());
       chip.addEventListener('click', ask);
       chip.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); ask(); }
       });
     });
+    if (aiForm && aiInput) {
+      aiForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const q = aiInput.value.trim();
+        if (!q) return;
+        aiInput.value = '';
+        askAi(q);
+      });
+    }
   }
 
   // ══ Premium interactions ══════════════════════════════════════════════════

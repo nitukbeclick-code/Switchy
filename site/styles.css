@@ -477,6 +477,10 @@ a.chip:hover { transform: translateY(-2px); border-color: var(--green-2); box-sh
 
 /* ── Plan catalogue cards ────────────────────────────────────────────── */
 .plan-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(248px, 1fr)); gap: 14px; }
+/* Homepage "featured deals" — a centered 3-up showcase of real plan cards. */
+.plan-grid--featured { grid-template-columns: repeat(3, 1fr); max-width: 880px; margin-inline: auto; }
+@media (max-width: 860px) { .plan-grid--featured { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 560px) { .plan-grid--featured { grid-template-columns: 1fr; } }
 .plan { background: rgba(255,255,255,.66); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border: 1px solid rgba(255,255,255,.6); border-radius: 18px; padding: 16px; display: flex; flex-direction: column; box-shadow: var(--shadow-sm); transition: box-shadow .2s, transform .2s var(--ease); }
 @supports not ((backdrop-filter: blur(14px)) or (-webkit-backdrop-filter: blur(14px))) { .plan { background: #fff; } }
 .plan:hover { transform: translateY(-3px); box-shadow: var(--shadow); }

@@ -158,7 +158,7 @@ Deno.test("safeEqual matches equal strings and rejects different ones", async ()
 // Minimal Cfg for the auth gates — only the fields the predicates read matter.
 const cfgWith = (over: Partial<Cfg>): Cfg => ({
   tgToken: "t", tgChat: "-100123", resend: "", resendFrom: "", notifyEmail: "",
-  openai: "", anthropic: "", webhookSecret: "s",
+  openai: "", anthropic: "", gemini: "", webhookSecret: "s",
   zoomAccountId: "", zoomClientId: "", zoomClientSecret: "", zoomHostEmail: "",
   allowedUserIds: [42], src: {},
   ...over,

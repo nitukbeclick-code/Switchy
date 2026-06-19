@@ -371,6 +371,7 @@ const footer = `  <footer class="footer">
 // opt-in, never pre-ticked). Pass the page's own submit-button label.
 // NOTE: index.html is hand-written — keep its form's consent block in sync.
 const leadFormHtml = (submitLabel) => `<form class="cta__form" id="leadForm" novalidate>
+          <input type="text" id="leadCompany" name="company" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" />
           <input type="text" id="leadName" name="name" placeholder="שם מלא" aria-label="שם מלא" autocomplete="name" required />
           <input type="tel" id="leadPhone" name="phone" placeholder="טלפון (050-0000000)" aria-label="מספר טלפון" autocomplete="tel" inputmode="tel" required />
           <div class="consent">

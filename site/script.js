@@ -129,6 +129,13 @@
   if (form) {
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
+      // Honeypot: real users never see/fill #leadCompany (offscreen + aria-hidden
+      // + tabindex -1). A filled value means a bot — fake success, skip the POST.
+      if (($('leadCompany') && $('leadCompany').value || '').trim()) {
+        form.reset();
+        if (note) { note.classList.remove('cta__note--err'); note.textContent = 'תודה! נחזור אליך בהקדם ✦'; }
+        return;
+      }
       const name = ($('leadName').value || '').trim();
       // Normalize to digits/+ — the leads gate rejects dots/parens/spaces.
       const phone = ($('leadPhone').value || '').replace(/[^\d+]/g, '');

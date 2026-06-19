@@ -17,7 +17,7 @@ export interface TgWebAppUser {
 async function hmac(keyData: Uint8Array, msg: string): Promise<Uint8Array> {
   const key = await crypto.subtle.importKey(
     "raw",
-    keyData,
+    keyData as BufferSource,
     { name: "HMAC", hash: "SHA-256" },
     false,
     ["sign"],

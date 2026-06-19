@@ -547,19 +547,19 @@ class _TelegramRowState extends State<_TelegramRow> {
     try {
       final appState = Provider.of<AppState>(context, listen: false);
       final userId = appState.userId;
-      final botUsername = 'chosech_bot';
+      const botUsername = 'chosech_bot';
       final deepLink = Uri.parse('https://t.me/$botUsername?start=user_$userId');
 
       if (await canLaunchUrl(deepLink)) {
         await launchUrl(deepLink, mode: LaunchMode.externalApplication);
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('טלגרם נפתח. שלח /start כדי להתחבר')),
+          const SnackBar(content: Text('טלגרם נפתח. שלח /start כדי להתחבר')),
         );
       } else {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('לא ניתן לפתוח את טלגרם. אנא תקנו אותו תחילה.')),
+          const SnackBar(content: Text('לא ניתן לפתוח את טלגרם. אנא תקנו אותו תחילה.')),
         );
       }
     } catch (e) {
@@ -694,7 +694,7 @@ class _TelegramRowState extends State<_TelegramRow> {
                 ),
               ),
               if (_busy)
-                SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
               else
                 Icon(Icons.arrow_back_ios_rounded, size: 14, color: ffTheme.secondaryText),
             ],

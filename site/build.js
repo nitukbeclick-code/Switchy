@@ -397,6 +397,10 @@ const leadFormHtml = (submitLabel) => `<form class="cta__form" id="leadForm" nov
               <input type="checkbox" id="consentMarketing" name="consentMarketing" />
               <span>אני מעוניין/ת לקבל דיוור שיווקי, מבצעים והטבות (אופציונלי, ניתן לבטל בכל עת)</span>
             </label>
+            <label class="consent__row" for="consentPriceAlert">
+              <input type="checkbox" id="consentPriceAlert" name="consentPriceAlert" />
+              <span>התריעו לי כשיורד מחיר על מסלול שמתאים לי</span>
+            </label>
           </div>
           <button class="btn btn--primary btn--lg" type="submit">${esc(submitLabel)}</button>
         </form>`;
@@ -1105,7 +1109,7 @@ ${nav}
         <div class="plan-grid" id="planGrid">
         ${cards}
         </div>
-        <p class="plan-empty" id="planEmpty">לא נמצאו חבילות שתואמות את החיפוש.</p>
+        <p class="plan-empty" id="planEmpty">לא נמצאו חבילות שתואמות את החיפוש. נסו להסיר חלק מהמסננים או <button type="button" class="plan-empty__reset" id="planEmptyReset">לנקות הכל</button>.</p>
       </div>
     </section>
 ${collectionsSection}

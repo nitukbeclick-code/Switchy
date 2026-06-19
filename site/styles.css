@@ -444,6 +444,28 @@ a.chip:hover { transform: translateY(-2px); border-color: var(--green-2); box-sh
 }
 @media (prefers-reduced-motion: reduce) { .wa-fab { transition: none; } }
 
+/* ── Sticky mobile CTA bar ────────────────────────────────────────────────────
+   Injected by script.js once the visitor scrolls past the first screen; hidden
+   again while the real lead form is in view so we never show two CTAs at once. */
+.sticky-cta {
+  display: none;
+  position: fixed; inset-inline: 0; bottom: 0; z-index: 46;
+  padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
+  background: var(--white); border-top: 1px solid var(--line);
+  box-shadow: 0 -8px 24px rgba(15,27,34,.10);
+  transform: translateY(110%); transition: transform .25s var(--ease);
+}
+.sticky-cta .btn { width: 100%; }
+.sticky-cta.is-visible { transform: translateY(0); }
+@media (max-width: 720px) { .sticky-cta { display: block; } }
+@media (prefers-reduced-motion: reduce) { .sticky-cta { transition: none; } }
+/* Lift the WhatsApp FAB above the sticky bar so they never overlap. */
+body:has(.sticky-cta.is-visible) .wa-fab { bottom: 76px; }
+
+/* ── Post-submit referral nudge ──────────────────────────────────────────── */
+.cta__referral { margin-top: 14px; text-align: center; font-size: 14px; color: var(--muted); }
+.cta__referral a { color: var(--accent); font-weight: 700; }
+
 /* ── Category landing hero (generated pages) ─────────────────────────── */
 .lead-hero { padding: 56px 0 8px; text-align: center; position: relative; }
 .lead-hero::before {
@@ -560,6 +582,11 @@ select.filter-search { cursor: pointer; -webkit-appearance: none; appearance: no
 }
 .plan-empty::before { content: "🔍"; display: block; font-size: 30px; margin-bottom: 12px; opacity: .7; }
 .plan-empty strong { display: block; font-family: 'Rubik'; font-weight: 800; color: var(--green-d); font-size: 17px; margin-bottom: 4px; }
+.plan-empty__reset {
+  background: none; border: none; padding: 0; font: inherit; color: var(--accent);
+  font-weight: 700; text-decoration: underline; cursor: pointer;
+}
+.plan-empty__reset:hover, .plan-empty__reset:focus-visible { color: var(--accent-d, var(--accent)); }
 .cat-plans-head { display: flex; align-items: baseline; gap: 10px; margin: 30px 0 14px; }
 .cat-plans-head h2 { font-family: 'Rubik'; font-size: 24px; color: var(--green-d); }
 .cat-plans-head .count { color: var(--muted); font-size: 14px; }

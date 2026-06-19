@@ -155,6 +155,7 @@
       }
       const now = new Date().toISOString();
       const marketingAt = $('consentMarketing') && $('consentMarketing').checked ? now : null;
+      const priceAlert = $('consentPriceAlert') && $('consentPriceAlert').checked;
       const btn = form.querySelector('button[type="submit"]');
       if (btn) { btn.disabled = true; btn.classList.add('is-loading'); }
       let sent = true;
@@ -166,6 +167,7 @@
           terms_accepted_at: now,
           privacy_accepted_at: now,
           marketing_accepted_at: marketingAt,
+          notes: priceAlert ? 'מעוניין/ת בהתראת ירידת מחיר' : null,
         });
       } catch (_) {
         sent = false;
@@ -181,7 +183,37 @@
         note.classList.remove('cta__note--err');
         note.textContent = 'תודה ' + name.split(' ')[0] + '! נחזור אליך בהקדם ✦';
       }
+      showReferralShare();
     });
+    // form_start — fires once, the moment the visitor first engages the form.
+    let formStarted = false;
+    form.addEventListener('focusin', () => {
+      if (formStarted) return;
+      formStarted = true;
+      track('form_start', { source: location.pathname });
+    });
+  }
+
+  // ── Referral share (after a successful lead) ───────────────────────────────
+  // No backend tracking table for referrals yet — the ?ref= param on the link
+  // is the entire mechanic; redeeming/crediting it is a future backend concern.
+  function showReferralShare() {
+    if ($('referralShare')) return; // already shown (e.g. double submit)
+    const cta = form.closest('.cta__inner, .container') || form.parentElement;
+    if (!cta) return;
+    let code = '';
+    try { code = (sessionStorage.getItem('chosechRef') || ''); } catch (_) { /* storage may be blocked */ }
+    if (!code) {
+      code = Math.random().toString(36).slice(2, 8);
+      try { sessionStorage.setItem('chosechRef', code); } catch (_) { /* best-effort */ }
+    }
+    const waText = encodeURIComponent('גיליתי אתר שמשווה מחירי סלולר/אינטרנט/טלוויזיה וחוסך כסף בלי כאב ראש — שווה לבדוק: https://chosech.co.il/?ref=' + code);
+    const box = document.createElement('p');
+    box.id = 'referralShare';
+    box.className = 'cta__referral reveal in';
+    box.innerHTML = 'מכירים מישהו ששווה לו לחסוך? <a href="https://wa.me/?text=' + waText + '" target="_blank" rel="noopener">שתפו בוואטסאפ ←</a>';
+    cta.appendChild(box);
+    track('referral_share_shown', { source: location.pathname });
   }
 
   // ── All-plans filter (plans.html) ──────────────────────────────────────────
@@ -227,6 +259,14 @@
     }));
     if (search) search.addEventListener('input', apply);
     if (sort) sort.addEventListener('change', apply);
+    const emptyReset = $('planEmptyReset');
+    if (emptyReset) emptyReset.addEventListener('click', () => {
+      cat = 'all';
+      btns.forEach((x) => x.classList.toggle('active', x.dataset.filter === 'all'));
+      flagChips.forEach((c) => c.classList.remove('active'));
+      if (search) search.value = '';
+      apply();
+    });
     apply();
   }
 
@@ -343,6 +383,58 @@
       if (!ticking) { ticking = true; requestAnimationFrame(setProgress); }
     }, { passive: true });
     setProgress();
+  }
+
+  // ── Scroll-depth analytics ──────────────────────────────────────────────────
+  // Fires once per threshold per page load — a coarse read on how far visitors
+  // get before bouncing, no per-pixel tracking.
+  (() => {
+    const thresholds = [25, 50, 75, 100];
+    const fired = new Set();
+    let ticking = false;
+    const check = () => {
+      const h = document.documentElement;
+      const max = h.scrollHeight - h.clientHeight;
+      const pct = max > 0 ? (h.scrollTop / max) * 100 : 100;
+      thresholds.forEach((t) => {
+        if (pct >= t && !fired.has(t)) { fired.add(t); track('scroll_depth', { depth: t, source: location.pathname }); }
+      });
+      ticking = false;
+    };
+    window.addEventListener('scroll', () => {
+      if (!ticking) { ticking = true; requestAnimationFrame(check); }
+    }, { passive: true });
+  })();
+
+  // ── Sticky mobile CTA ────────────────────────────────────────────────────────
+  // Appears only after the visitor has scrolled past the first screen, so it
+  // doesn't compete with the hero CTA or shift layout during first paint.
+  if (form && window.matchMedia('(max-width: 720px)').matches) {
+    const stickyBar = document.createElement('div');
+    stickyBar.className = 'sticky-cta';
+    stickyBar.innerHTML = '<button type="button" class="btn btn--primary">קבלו השוואה חינם ←</button>';
+    document.body.appendChild(stickyBar);
+    const stickyBtn = stickyBar.querySelector('button');
+    stickyBtn.addEventListener('click', () => {
+      track('sticky_cta_click', { source: location.pathname });
+      form.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' });
+      const first = $('leadName');
+      if (first) first.focus({ preventScroll: true });
+    });
+    let visible = false;
+    let stickyTicking = false;
+    const updateSticky = () => {
+      const past = window.scrollY > window.innerHeight * 0.6;
+      const formRect = form.getBoundingClientRect();
+      const overForm = formRect.top < window.innerHeight && formRect.bottom > 0;
+      const show = past && !overForm;
+      if (show !== visible) { visible = show; stickyBar.classList.toggle('is-visible', show); }
+      stickyTicking = false;
+    };
+    window.addEventListener('scroll', () => {
+      if (!stickyTicking) { stickyTicking = true; requestAnimationFrame(updateSticky); }
+    }, { passive: true });
+    updateSticky();
   }
 
   // ── Staggered reveals: index each .reveal within its own section ───────────

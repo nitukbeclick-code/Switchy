@@ -1,22 +1,18 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:flutter_animate/flutter_animate.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../theme/app_theme.dart';
-import '../../core/nav.dart';
 import '../../app_state.dart';
 import '../../services/support_ticket_service.dart';
-import '../../widgets/app_button.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SupportTicketWidget extends StatefulWidget {
   final String ticketId;
 
   const SupportTicketWidget({
-    Key? key,
+    super.key,
     required this.ticketId,
-  }) : super(key: key);
+  });
 
   @override
   State<SupportTicketWidget> createState() => _SupportTicketWidgetState();
@@ -30,7 +26,7 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
   final _inputCtrl = TextEditingController();
   final _scrollCtrl = ScrollController();
 
-  bool _isLoading = false;
+  final bool _isLoading = false;
   bool _isTyping = false;
   List<SupportMessage> _messages = [];
   SupportTicket? _ticket;
@@ -100,7 +96,7 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
 
     try {
       final appState = Provider.of<AppState>(context, listen: false);
-      final userId = appState.getUserId();
+      final userId = appState.userId;
       if (userId == null) throw Exception('User not logged in');
 
       final result = await _service.sendMessage(
@@ -163,7 +159,7 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
               child: Center(
                 child: Text(
                   'Connected to support',
-                  style: theme.labelSmall?.copyWith(color: Colors.white),
+                  style: theme.labelSmall.copyWith(color: Colors.white),
                 ),
               ),
             ),
@@ -203,7 +199,7 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
     );
   }
 
-  Widget _buildEmptyState(AppThemeData theme) {
+  Widget _buildEmptyState(AppTheme theme) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -211,7 +207,7 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
           Icon(
             Icons.support_agent,
             size: 48,
-            color: theme.primary.withOpacity(0.3),
+            color: theme.primary.withValues(alpha: 0.3),
           ),
           const SizedBox(height: 16),
           Text(
@@ -224,7 +220,7 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
             child: Text(
               'Ask me anything about your plans or account',
               textAlign: TextAlign.center,
-              style: theme.bodySmall?.copyWith(
+              style: theme.bodySmall.copyWith(
                 color: theme.secondary,
               ),
             ),
@@ -234,7 +230,7 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
     );
   }
 
-  Widget _buildMessageBubble(SupportMessage msg, AppThemeData theme) {
+  Widget _buildMessageBubble(SupportMessage msg, AppTheme theme) {
     final isUser = msg.role == 'user';
     final isHuman = msg.role == 'human';
 
@@ -254,7 +250,7 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
         bottomRight: Radius.circular(12),
       );
     } else {
-      bgColor = isHuman ? theme.saving.withOpacity(0.2) : Colors.grey.shade200;
+      bgColor = isHuman ? theme.saving.withValues(alpha: 0.2) : Colors.grey.shade200;
       textColor = Colors.black87;
       alignment = Alignment.centerLeft;
       borderRadius = const BorderRadius.only(
@@ -283,7 +279,7 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
               ),
               child: Text(
                 msg.messageText,
-                style: theme.bodyMedium?.copyWith(color: textColor),
+                style: theme.bodyMedium.copyWith(color: textColor),
               ),
             ),
             if (isHuman)
@@ -291,7 +287,7 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
                 padding: const EdgeInsets.only(top: 4),
                 child: Text(
                   'Human Support',
-                  style: theme.labelSmall?.copyWith(
+                  style: theme.labelSmall.copyWith(
                     color: theme.saving,
                     fontWeight: FontWeight.bold,
                   ),
@@ -301,7 +297,7 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
               padding: const EdgeInsets.only(top: 4),
               child: Text(
                 _formatTime(msg.createdAt),
-                style: theme.labelSmall?.copyWith(
+                style: theme.labelSmall.copyWith(
                   color: Colors.grey.shade600,
                   fontSize: 10,
                 ),
@@ -313,7 +309,7 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
     );
   }
 
-  Widget _buildTypingIndicator(AppThemeData theme) {
+  Widget _buildTypingIndicator(AppTheme theme) {
     return Align(
       alignment: Alignment.centerLeft,
       child: Padding(
@@ -357,7 +353,7 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
     );
   }
 
-  Widget _buildQuickReplies(AppThemeData theme) {
+  Widget _buildQuickReplies(AppTheme theme) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       child: SingleChildScrollView(
@@ -369,8 +365,8 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
               child: InputChip(
                 label: Text(reply, style: theme.labelSmall),
                 onPressed: () => _sendMessage(reply),
-                backgroundColor: theme.primary.withOpacity(0.1),
-                labelStyle: theme.labelSmall?.copyWith(color: theme.primary),
+                backgroundColor: theme.primary.withValues(alpha: 0.1),
+                labelStyle: theme.labelSmall.copyWith(color: theme.primary),
               ),
             );
           }).toList(),
@@ -379,7 +375,7 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
     );
   }
 
-  Widget _buildInputArea(AppThemeData theme, bool isEscalated) {
+  Widget _buildInputArea(AppTheme theme, bool isEscalated) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(

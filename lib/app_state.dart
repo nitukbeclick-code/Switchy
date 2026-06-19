@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'data.dart' show planById;
 import 'models.dart' show TrackedPlan;
 import 'services/backend/backend.dart'
@@ -14,6 +15,9 @@ class AppState extends ChangeNotifier {
   factory AppState() => _instance;
   AppState._internal();
   static void reset() => _instance = AppState._internal();
+
+  /// The current Supabase auth user id, or null for an anonymous/guest session.
+  String? get userId => Supabase.instance.client.auth.currentUser?.id;
 
   Future<void> initializePersistedState() async {
     final p = await SharedPreferences.getInstance();

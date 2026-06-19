@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../app_state.dart';
 import '../theme/app_theme.dart';
 
 class DigitalAgentFab extends StatefulWidget {
@@ -10,10 +8,10 @@ class DigitalAgentFab extends StatefulWidget {
   final int unreadCount;
 
   const DigitalAgentFab({
-    Key? key,
+    super.key,
     this.ticketId,
     this.unreadCount = 0,
-  }) : super(key: key);
+  });
 
   @override
   State<DigitalAgentFab> createState() => _DigitalAgentFabState();

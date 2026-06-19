@@ -1,10 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
   <url>
     <loc>https://chosech.co.il/</loc>
     <lastmod>2026-06-10</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
+    <image:image>
+      <image:loc>https://chosech.co.il/og-image.png</image:loc>
+    </image:image>
   </url>
   <url>
     <loc>https://chosech.co.il/plans.html</loc>
@@ -29,6 +32,15 @@
     <lastmod>2026-06-19</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
+    <image:image>
+      <image:loc>https://chosech.co.il/assets/app/shot-home.webp</image:loc>
+    </image:image>
+    <image:image>
+      <image:loc>https://chosech.co.il/assets/app/shot-results.webp</image:loc>
+    </image:image>
+    <image:image>
+      <image:loc>https://chosech.co.il/assets/app/shot-meeting.webp</image:loc>
+    </image:image>
   </url>
   <url>
     <loc>https://chosech.co.il/guides.html</loc>

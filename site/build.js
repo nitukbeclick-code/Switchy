@@ -36,6 +36,16 @@ const analyticsTag = () =>
   <script defer data-domain="${ANALYTICS_DOMAIN}" src="${ANALYTICS_SRC}"></script>
   <script>window.plausible=window.plausible||function(){(window.plausible.q=window.plausible.q||[]).push(arguments)};</script>`;
 
+// ── Lead form backend (Supabase) ─────────────────────────────────────────────
+// The anon/publishable key is the PUBLIC client key (RLS-gated, safe to ship
+// in static HTML — never the service_role key). Without this, script.js's
+// sendLead() silently no-ops and the lead form never persists anything.
+const SUPABASE_URL = 'https://orzitfqmlvopujsoyigr.supabase.co';
+const SUPABASE_ANON_KEY =
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9yeml0ZnFtbHZvcHVqc295aWdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5OTc5NzIsImV4cCI6MjA5NjU3Mzk3Mn0.NY4ZHzR3BAWUxm5as9Z054o8fwcfejAab9SIvduKlhM';
+const leadsConfigTag = () =>
+  `<script>window.CHOSECH_SUPABASE={url:'${SUPABASE_URL}',anonKey:'${SUPABASE_ANON_KEY}'};</script>`;
+
 // Real plan catalogue, exported from the app via `flutter test tool/export_plans.dart`.
 const catalogue = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'plans.json'), 'utf8'));
 const plansByCat = {};
@@ -494,6 +504,7 @@ function page(c) {
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="preconnect" href="https://plausible.io" />
+  <link rel="preconnect" href="https://orzitfqmlvopujsoyigr.supabase.co" />
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" />
   <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
   <noscript><link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" rel="stylesheet" /></noscript>
@@ -574,6 +585,7 @@ ${catGuides}
     </section>
   </main>
 ${footer}
+  ${leadsConfigTag()}
   <script src="${JS_SRC}" defer></script>
 </body>
 </html>
@@ -819,6 +831,7 @@ function head(title, desc, url, extraJsonLd, noindex) {
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="preconnect" href="https://plausible.io" />
+  <link rel="preconnect" href="https://orzitfqmlvopujsoyigr.supabase.co" />
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" />
   <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
   <noscript><link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" rel="stylesheet" /></noscript>
@@ -889,6 +902,7 @@ ${relatedCards}
     </article>
   </main>
 ${footer}
+  ${leadsConfigTag()}
   <script src="${JS_SRC}" defer></script>
 </body>
 </html>
@@ -920,6 +934,7 @@ ${cards}
     </section>
   </main>
 ${footer}
+  ${leadsConfigTag()}
   <script src="${JS_SRC}" defer></script>
 </body>
 </html>
@@ -1011,6 +1026,7 @@ ${cta}
     </section>
   </main>
 ${footer}
+  ${leadsConfigTag()}
   <script src="${JS_SRC}" defer></script>
 </body>
 </html>
@@ -1037,6 +1053,7 @@ ${navNoCta}
     </section>
   </main>
 ${footer}
+  ${leadsConfigTag()}
   <script src="${JS_SRC}" defer></script>
 </body>
 </html>
@@ -1102,6 +1119,7 @@ ${collectionsSection}
     </section>
   </main>
 ${footer}
+  ${leadsConfigTag()}
   <script src="${JS_SRC}" defer></script>
 </body>
 </html>
@@ -1158,6 +1176,7 @@ ${nav}
     </section>
   </main>
 ${footer}
+  ${leadsConfigTag()}
   <script src="${JS_SRC}" defer></script>
 </body>
 </html>
@@ -1195,6 +1214,7 @@ ${cards}
     </section>
   </main>
 ${footer}
+  ${leadsConfigTag()}
   <script src="${JS_SRC}" defer></script>
 </body>
 </html>
@@ -1251,6 +1271,7 @@ ${nav}
   </main>
 ${footer}
   <script>window.__PLANS__ = ${jsonForScript(data)};</script>
+  ${leadsConfigTag()}
   <script src="${JS_SRC}" defer></script>
 </body>
 </html>
@@ -1333,9 +1354,9 @@ ${nav}
       <div class="container">
         <header class="section__head reveal"><span class="eyebrow">הצצה פנימה</span><h2>ככה זה נראה באמת</h2><p>צילומי מסך אמיתיים מהאפליקציה — לא הדמיות.</p></header>
         <div class="app-shots">
-          <figure class="app-shot reveal"><img src="assets/app/shot-home.png" alt="מסך הבית של חוסך — חיסכון פוטנציאלי ועסקאות חמות" width="390" height="844" loading="lazy" decoding="async"><figcaption>דף הבית — החיסכון שלכם במבט אחד</figcaption></figure>
-          <figure class="app-shot reveal"><img src="assets/app/shot-results.png" alt="השוואת מסלולים בחוסך — דירוג חכם וציון התאמה" width="390" height="844" loading="lazy" decoding="async"><figcaption>השוואת מסלולים עם ציון התאמה</figcaption></figure>
-          <figure class="app-shot reveal"><img src="assets/app/shot-meeting.png" alt="קביעת פגישת וידאו ב-Zoom עם נציג מכירות" width="390" height="844" loading="lazy" decoding="async"><figcaption><img class="app-shot__zoom" src="assets/logos/zoom.svg" alt="" width="16" height="16"> פגישת Zoom אישית עם נציג</figcaption></figure>
+          <figure class="app-shot reveal"><img src="assets/app/shot-home.webp" alt="מסך הבית של חוסך — חיסכון פוטנציאלי ועסקאות חמות" width="390" height="844" loading="lazy" decoding="async"><figcaption>דף הבית — החיסכון שלכם במבט אחד</figcaption></figure>
+          <figure class="app-shot reveal"><img src="assets/app/shot-results.webp" alt="השוואת מסלולים בחוסך — דירוג חכם וציון התאמה" width="390" height="844" loading="lazy" decoding="async"><figcaption>השוואת מסלולים עם ציון התאמה</figcaption></figure>
+          <figure class="app-shot reveal"><img src="assets/app/shot-meeting.webp" alt="קביעת פגישת וידאו ב-Zoom עם נציג מכירות" width="390" height="844" loading="lazy" decoding="async"><figcaption><img class="app-shot__zoom" src="assets/logos/zoom.svg" alt="" width="16" height="16"> פגישת Zoom אישית עם נציג</figcaption></figure>
         </div>
       </div>
     </section>
@@ -1388,6 +1409,7 @@ ${groups}
     </section>
   </main>
 ${footer}
+  ${leadsConfigTag()}
   <script src="${JS_SRC}" defer></script>
 </body>
 </html>
@@ -1529,6 +1551,7 @@ ${guidesHtml}
     </section>
   </main>
 ${footer}
+  ${leadsConfigTag()}
   <script src="${JS_SRC}" defer></script>
 </body>
 </html>
@@ -1615,6 +1638,7 @@ ${guidesHtml}
     </section>
   </main>
 ${footer}
+  ${leadsConfigTag()}
   <script src="${JS_SRC}" defer></script>
 </body>
 </html>

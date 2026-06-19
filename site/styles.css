@@ -728,5 +728,3 @@ a.chip:active { transform: translateY(0) scale(.97); }
   .feature::after, .step::after, .cat::after, .guide-card::after, .plan::after, .provider-card::after { display: none; }
   .reveal { transition-delay: 0ms !important; }
 }
-/ *   C a c h e   b u s t :   2 0 2 6 - 0 6 - 1 2   0 3 : 4 0 : 4 3   * /  
- 

@@ -304,7 +304,7 @@ function planCardHtml(p, best) {
   // and only surface once a real review exists (see provider_ratings.dart).
   const text = esc(`${p.provider} ${p.plan} ${(p.feats || []).join(' ')} ${Object.values(p.specs || {}).join(' ')}`).toLowerCase();
   const waHref = 'https://wa.me/972505037537?text=' + encodeURIComponent('היי, מעניין אותי ' + p.provider + ' - ' + p.plan + ' (₪' + priceText(p) + ')');
-  return `<article class="plan${isBest ? ' plan--best' : ''}${hasJump ? ' plan--hasjump' : ''}" data-cat="${esc(p.cat)}" data-text="${text}" data-price="${p.price}" data-after="${p.after || ''}" data-haspromo="${p.after ? 'true' : 'false'}" data-5g="${p.is5G}" data-nocommit="${p.noCommit}" data-abroad="${p.hasAbroad}" data-kosher="${p.kind === 'kosher'}">
+  return `<article class="plan${isBest ? ' plan--best' : ''}${hasJump ? ' plan--hasjump' : ''}" data-cat="${esc(p.cat)}" data-text="${text}" data-price="${p.price}" data-after="${p.after || ''}" data-haspromo="${p.after ? 'true' : 'false'}" data-5g="${p.is5G}" data-nocommit="${p.noCommit}" data-abroad="${p.hasAbroad}" data-kosher="${p.kind === 'kosher'}" data-provider="${providerSlug(p.provider)}">
         ${isBest ? '<span class="plan__badge">המחיר הנמוך ביותר</span>' : ''}
         <div class="plan__top"><span class="plan__id">${providerLogo(p.provider)}<a class="plan__provider" href="provider-${providerSlug(p.provider)}.html">${esc(p.provider)}</a></span><span class="plan__net">${esc(p.net)}</span></div>
         <div class="plan__name">${esc(p.plan)}</div>
@@ -1083,6 +1083,8 @@ function plansPage() {
     .map(([f, label], i) => `<button class="filter-btn${i === 0 ? ' active' : ''}" data-filter="${f}">${esc(label)}</button>`)
     .join('\n          ');
   const cards = catalogue.plans.slice().sort((a, b) => a.price - b.price).map(planCardHtml).join('\n        ');
+  const providerNames = [...new Set(catalogue.plans.map((p) => p.provider))].sort((a, b) => a.localeCompare(b, 'he'));
+  const providerOptions = providerNames.map((n) => `<option value="${providerSlug(n)}">${esc(n)}</option>`).join('');
   const collectionsSection = builtCollections.length ? `
     <section class="section section--alt" aria-label="אוספים">
       <div class="container">
@@ -1114,6 +1116,10 @@ ${nav}
             <option value="price-asc" selected>מהזול ליקר</option>
             <option value="price-desc">מהיקר לזול</option>
             <option value="after-asc">מחיר אחרי מבצע (זול ליקר)</option>
+          </select>
+          <select id="planProvider" class="filter-search" style="flex:0 0 auto;max-width:180px" aria-label="סינון לפי ספק">
+            <option value="">כל הספקים</option>
+            ${providerOptions}
           </select>
           <button class="flag-chip" data-flag="5g">5G</button>
           <button class="flag-chip" data-flag="nocommit">ללא התחייבות</button>

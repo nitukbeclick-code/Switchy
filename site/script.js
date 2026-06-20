@@ -223,6 +223,7 @@
     const empty = $('planEmpty');
     const search = $('planSearch');
     const sort = $('planSort');
+    const providerSel = $('planProvider');
     const btns = Array.from(document.querySelectorAll('.filter-btn'));
     const flagChips = Array.from(document.querySelectorAll('.flag-chip'));
     const flagKey = { '5g': 'data-5g', nocommit: 'data-nocommit', abroad: 'data-abroad', haspromo: 'data-haspromo', kosher: 'data-kosher' };
@@ -230,6 +231,7 @@
     let cat = 'all';
     const apply = () => {
       const q = (search && search.value || '').trim().toLowerCase();
+      const prov = providerSel ? providerSel.value : '';
       const activeFlags = flagChips.filter((c) => c.classList.contains('active')).map((c) => c.dataset.flag);
       let shown = 0;
       const visibleCards = [];
@@ -237,7 +239,8 @@
         const okCat = cat === 'all' || card.dataset.cat === cat;
         const okText = !q || (card.dataset.text || '').includes(q);
         const okFlags = activeFlags.every((f) => card.getAttribute(flagKey[f]) === 'true');
-        const visible = okCat && okText && okFlags;
+        const okProv = !prov || card.dataset.provider === prov;
+        const visible = okCat && okText && okFlags && okProv;
         card.style.display = visible ? '' : 'none';
         if (visible) { shown++; visibleCards.push(card); }
       }
@@ -266,12 +269,14 @@
     }));
     if (search) search.addEventListener('input', apply);
     if (sort) sort.addEventListener('change', apply);
+    if (providerSel) providerSel.addEventListener('change', apply);
     const emptyReset = $('planEmptyReset');
     if (emptyReset) emptyReset.addEventListener('click', () => {
       cat = 'all';
       btns.forEach((x) => x.classList.toggle('active', x.dataset.filter === 'all'));
       flagChips.forEach((c) => c.classList.remove('active'));
       if (search) search.value = '';
+      if (providerSel) providerSel.value = '';
       apply();
     });
     apply();

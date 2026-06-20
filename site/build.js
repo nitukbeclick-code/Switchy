@@ -1687,6 +1687,22 @@ const collections = [
     intro: 'נוסעים לכמה ימים? חבילה יומית יכולה להיות זולה יותר מחבילה שבועית. הנה כל החבילות לפי יום, ממוינות מהזול.',
     filter: (p) => p.cat === 'abroad' && (p.priceUnit === 'day' || /יומי|ליום/i.test([p.plan, (p.feats || []).join(' ')].join(' '))), limit: 15,
   },
+  {
+    slug: 'cellular-esim', catSlug: 'cellular', catName: 'סלולר', eyebrow: 'eSIM',
+    title: 'מסלולי סלולר עם eSIM בישראל — השוואת מחירים | חוסך',
+    h1: 'מסלולי eSIM בישראל',
+    desc: 'מסלולי סלולר ישראליים התומכים ב-eSIM — ללא SIM פיזי, מתאים לאייפון ולאנדרואיד תואם eSIM. ממוינים מהזול ביותר.',
+    intro: 'eSIM מאפשר לעבור ספק תוך דקות — ללא שליח וללא המתנה. הנה כל המסלולים הישראליים שתומכים ב-eSIM, ממוינים מהזול.',
+    filter: (p) => p.cat === 'cellular' && (p.feats || []).some((f) => /esim|eSIM/i.test(f)), limit: 15,
+  },
+  {
+    slug: 'tv-sport', catSlug: 'tv', catName: 'טלוויזיה', eyebrow: 'ספורט',
+    title: 'חבילות טלוויזיה עם ספורט — השוואת מחירים | חוסך',
+    h1: 'טלוויזיה עם ספורט',
+    desc: 'חבילות טלוויזיה הכוללות ערוצי ספורט — כדורגל, כדורסל, F1 ועוד. ממוינות מהזול ביותר.',
+    intro: 'אוהבי ספורט? הנה החבילות שכוללות ערוצי ספורט — ממוינות מהזול ליקר.',
+    filter: (p) => p.cat === 'tv' && (p.feats || []).some((f) => /ספורט|sport/i.test(f)), limit: 10,
+  },
 ];
 
 function collectionPage(col) {

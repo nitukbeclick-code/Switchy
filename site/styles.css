@@ -550,8 +550,9 @@ body:has(.sticky-cta.is-visible) .wa-fab { bottom: 76px; }
 /* The site's most-repeated CTA (every plan card) — a real indigo tertiary
    button: ACTION colour, 44px hit area (negative margin keeps the layout),
    hover pill + arrow nudge, tactile press. */
+.plan__actions { display: flex; align-items: center; gap: 6px; margin-top: 10px; }
 .plan__cta {
-  margin-top: 10px; align-self: flex-start;
+  flex: 1 1 auto; align-self: flex-start;
   display: inline-flex; align-items: center; gap: 6px;
   font-family: 'Rubik'; font-weight: 700; font-size: 14px; color: var(--accent);
   text-decoration: none; padding: 10px 14px; margin-inline-start: -14px; min-height: 44px;
@@ -561,6 +562,8 @@ body:has(.sticky-cta.is-visible) .wa-fab { bottom: 76px; }
 .plan__cta:hover .ico { transform: translateX(-2px); }
 .plan__cta .ico { transition: transform .2s var(--ease); }
 .plan__cta:active { transform: scale(.97); }
+.plan__compare { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--line); background: var(--cream); font-size: 16px; text-decoration: none; transition: border-color .15s, background .15s, transform .15s; flex-shrink: 0; }
+.plan__compare:hover { border-color: var(--accent); background: var(--accent-t); transform: scale(1.07); }
 
 /* filter bar (all-plans page) */
 .filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 22px; }

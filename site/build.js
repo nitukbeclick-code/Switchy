@@ -915,7 +915,12 @@ ${body}
           <div class="article-cta">
             <h3>רוצים לראות כמה תחסכו בפועל?</h3>
             <p>השוואה חינם בשניות, בלי התחייבות.</p>
-            <a class="btn btn--inverse btn--lg" href="index.html#calculator">בדקו עכשיו ←</a>
+            ${(() => {
+              const catSlug = guideCatToSlug[g.cat];
+              const href = catSlug ? `${catSlug}.html` : 'plans.html';
+              const label = catSlug ? `השוו מסלולי ${g.cat} ←` : 'ראו את כל המסלולים ←';
+              return `<a class="btn btn--inverse btn--lg" href="${href}">${esc(label)}</a>`;
+            })()}
           </div>
         </div>
       </section>

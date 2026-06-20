@@ -225,7 +225,7 @@
     const sort = $('planSort');
     const btns = Array.from(document.querySelectorAll('.filter-btn'));
     const flagChips = Array.from(document.querySelectorAll('.flag-chip'));
-    const flagKey = { '5g': 'data-5g', nocommit: 'data-nocommit', abroad: 'data-abroad', haspromo: 'data-haspromo' };
+    const flagKey = { '5g': 'data-5g', nocommit: 'data-nocommit', abroad: 'data-abroad', haspromo: 'data-haspromo', kosher: 'data-kosher' };
     const planCount = $('planCount');
     let cat = 'all';
     const apply = () => {
@@ -564,5 +564,13 @@
     };
     if (btn) btn.addEventListener('click', run);
     if (bill) bill.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); run(); } });
+    document.querySelectorAll('.calc-quick__btn').forEach((qb) => {
+      qb.addEventListener('click', () => {
+        if (bill) { bill.value = qb.dataset.val; }
+        document.querySelectorAll('.calc-quick__btn').forEach((b) => b.classList.remove('active'));
+        qb.classList.add('active');
+        run();
+      });
+    });
   }
 })();

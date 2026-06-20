@@ -304,7 +304,7 @@ function planCardHtml(p, best) {
   // and only surface once a real review exists (see provider_ratings.dart).
   const text = esc(`${p.provider} ${p.plan} ${(p.feats || []).join(' ')} ${Object.values(p.specs || {}).join(' ')}`).toLowerCase();
   const waHref = 'https://wa.me/972505037537?text=' + encodeURIComponent('היי, מעניין אותי ' + p.provider + ' - ' + p.plan + ' (₪' + priceText(p) + ')');
-  return `<article class="plan${isBest ? ' plan--best' : ''}${hasJump ? ' plan--hasjump' : ''}" data-cat="${esc(p.cat)}" data-text="${text}" data-price="${p.price}" data-after="${p.after || ''}" data-haspromo="${p.after ? 'true' : 'false'}" data-5g="${p.is5G}" data-nocommit="${p.noCommit}" data-abroad="${p.hasAbroad}">
+  return `<article class="plan${isBest ? ' plan--best' : ''}${hasJump ? ' plan--hasjump' : ''}" data-cat="${esc(p.cat)}" data-text="${text}" data-price="${p.price}" data-after="${p.after || ''}" data-haspromo="${p.after ? 'true' : 'false'}" data-5g="${p.is5G}" data-nocommit="${p.noCommit}" data-abroad="${p.hasAbroad}" data-kosher="${p.kind === 'kosher'}">
         ${isBest ? '<span class="plan__badge">המחיר הנמוך ביותר</span>' : ''}
         <div class="plan__top"><span class="plan__id">${providerLogo(p.provider)}<a class="plan__provider" href="provider-${providerSlug(p.provider)}.html">${esc(p.provider)}</a></span><span class="plan__net">${esc(p.net)}</span></div>
         <div class="plan__name">${esc(p.plan)}</div>
@@ -476,6 +476,16 @@ function page(c) {
   // lowest price in this category — badge it as the value anchor (only when the
   // list is long enough for the highlight to mean something).
   const planCards = catPlans.map((p, i) => planCardHtml(p, i === 0 && catPlans.length > 2)).join('\n      ');
+  const heroStats = (() => {
+    const monthly = catPlans.filter((p) => !p.priceUnit || p.priceUnit === 'month');
+    if (monthly.length < 3) return '';
+    const cheapest = monthly[0].price;
+    const maxP = monthly[monthly.length - 1].price;
+    const avg = Math.round(monthly.reduce((s, p) => s + p.price, 0) / monthly.length);
+    const maxSave = (avg - cheapest) * 12;
+    if (maxSave < 100) return '';
+    return `<p class="hero__social"><strong>${monthly.length} מסלולים</strong> · החל מ-₪${cheapest}/חודש · חסכו עד <strong>₪${maxSave.toLocaleString()}</strong> בשנה לעומת ממוצע קטלוג (₪${avg})</p>`;
+  })();
   const cols = (typeof builtCollections !== 'undefined' ? builtCollections : []).filter((col) => col.catSlug === c.slug);
   const colsStrip = cols.length ? `
     <section class="section" aria-label="אוספים">
@@ -527,6 +537,7 @@ ${nav}
         <span class="pill pill--ico">${iconFor(c.icon)} השוואה חינם · בלי התחייבות</span>
         <h1>${esc(c.h1[0])}<span class="hl">${esc(c.h1[1])}</span></h1>
         <p>${esc(c.intro)}</p>
+        ${heroStats}
         <div class="hero__cta">
           <a class="btn btn--primary btn--lg" href="#cta">השוו ותחסכו ←</a>
           ${['cellular', 'internet', 'tv', 'triple'].includes(c.slug) ? `<a class="btn btn--ghost btn--lg" href="calc-${c.slug}.html">${svgIcon('calculator')} מחשבון חיסכון</a>` : '<a class="btn btn--ghost btn--lg" href="index.html#how">איך זה עובד?</a>'}
@@ -1108,6 +1119,7 @@ ${nav}
           <button class="flag-chip" data-flag="nocommit">ללא התחייבות</button>
           <button class="flag-chip" data-flag="abroad">כולל חו״ל</button>
           <button class="flag-chip" data-flag="haspromo">מחיר מבצע</button>
+          <button class="flag-chip" data-flag="kosher">כשר</button>
           <span class="plan-count" id="planCount" aria-live="polite" aria-atomic="true"></span>
         </div>
         <div class="plan-grid" id="planGrid">
@@ -1617,7 +1629,16 @@ ${nav}
           <h2 style="margin:0 0 6px">כמה אתם יכולים לחסוך על ${esc(c.name)}?</h2>
           <p style="margin:0 0 4px">המסלול הזול ביותר ב${esc(c.name)} כרגע: <span style="color:#0B0F14;font-weight:700">${esc(ch.provider)} ${esc(ch.plan)} — ${priceText(ch)}</span>.</p>
           <label for="calcBill" style="display:block;font-weight:700;margin:14px 0 0">כמה אתם משלמים היום? (₪ לחודש)</label>
-          <div style="display:flex;gap:10px;flex-wrap:wrap;margin:8px 0 16px">
+          <div class="calc-quick" role="group" aria-label="בחירה מהירה" style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 6px">
+            ${(() => {
+              const monthly = (plansByCat[c.slug] || []).filter((p) => !p.priceUnit || p.priceUnit === 'month').map((p) => p.price).sort((a, b) => a - b);
+              if (!monthly.length) return '';
+              const pct = (p) => monthly[Math.floor(p * (monthly.length - 1))];
+              const vals = [pct(0.4), pct(0.6), pct(0.8), pct(0.95)].map((v) => Math.round((v * 1.6) / 10) * 10).filter((v, i, a) => a.indexOf(v) === i && v > (offerPrice(ch)));
+              return vals.slice(0, 4).map((v) => `<button type="button" class="chip calc-quick__btn" data-val="${v}">₪${v}</button>`).join('');
+            })()}
+          </div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;margin:4px 0 16px">
             <input id="calcBill" class="filter-search" type="number" inputmode="numeric" min="0" placeholder="למשל: 89" style="flex:1 1 220px" />
             <button id="calcBtn" class="btn btn--primary" type="button">חשבו חיסכון</button>
           </div>

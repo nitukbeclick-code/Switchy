@@ -303,7 +303,7 @@ function planCardHtml(p, best) {
   // and only surface once a real review exists (see provider_ratings.dart).
   const text = esc(`${p.provider} ${p.plan} ${(p.feats || []).join(' ')} ${Object.values(p.specs || {}).join(' ')}`).toLowerCase();
   const waHref = 'https://wa.me/972505037537?text=' + encodeURIComponent('היי, מעניין אותי ' + p.provider + ' - ' + p.plan + ' (₪' + priceText(p) + ')');
-  return `<article class="plan${isBest ? ' plan--best' : ''}" data-cat="${esc(p.cat)}" data-text="${text}" data-price="${p.price}" data-5g="${p.is5G}" data-nocommit="${p.noCommit}" data-abroad="${p.hasAbroad}">
+  return `<article class="plan${isBest ? ' plan--best' : ''}" data-cat="${esc(p.cat)}" data-text="${text}" data-price="${p.price}" data-5g="${p.is5G}" data-nocommit="${p.noCommit}" data-after="${p.after || ''}" data-abroad="${p.hasAbroad}">
         ${isBest ? '<span class="plan__badge">המחיר הנמוך ביותר</span>' : ''}
         <div class="plan__top"><span class="plan__id">${providerLogo(p.provider)}<a class="plan__provider" href="provider-${providerSlug(p.provider)}.html">${esc(p.provider)}</a></span><span class="plan__net">${esc(p.net)}</span></div>
         <div class="plan__name">${esc(p.plan)}</div>
@@ -1101,6 +1101,7 @@ ${nav}
           <select id="planSort" class="filter-search" style="flex:0 0 auto;max-width:210px" aria-label="מיון חבילות">
             <option value="price-asc" selected>מהזול ליקר</option>
             <option value="price-desc">מהיקר לזול</option>
+            <option value="after-asc">מחיר אחרי מבצע (זול ליקר)</option>
           </select>
           <button class="flag-chip" data-flag="5g">5G</button>
           <button class="flag-chip" data-flag="nocommit">ללא התחייבות</button>

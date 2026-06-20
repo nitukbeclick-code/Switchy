@@ -244,6 +244,11 @@
       const mode = (sort && sort.value) || 'price-asc';
       visibleCards.sort((a, b) => {
         if (mode === 'price-desc') return Number(b.dataset.price) - Number(a.dataset.price);
+        if (mode === 'after-asc') {
+          const aa = Number(a.dataset.after || a.dataset.price);
+          const ba = Number(b.dataset.after || b.dataset.price);
+          return aa - ba;
+        }
         return Number(a.dataset.price) - Number(b.dataset.price);
       });
       visibleCards.forEach((card) => planGrid.appendChild(card));

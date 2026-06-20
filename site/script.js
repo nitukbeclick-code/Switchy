@@ -226,6 +226,7 @@
     const btns = Array.from(document.querySelectorAll('.filter-btn'));
     const flagChips = Array.from(document.querySelectorAll('.flag-chip'));
     const flagKey = { '5g': 'data-5g', nocommit: 'data-nocommit', abroad: 'data-abroad' };
+    const planCount = $('planCount');
     let cat = 'all';
     const apply = () => {
       const q = (search && search.value || '').trim().toLowerCase();
@@ -247,6 +248,7 @@
       });
       visibleCards.forEach((card) => planGrid.appendChild(card));
       if (empty) empty.style.display = shown ? 'none' : 'block';
+      if (planCount) planCount.textContent = shown < cards.length ? `${shown} מסלולים נמצאו` : '';
     };
     btns.forEach((b) => b.addEventListener('click', () => {
       btns.forEach((x) => x.classList.toggle('active', x === b));

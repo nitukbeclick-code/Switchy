@@ -1105,6 +1105,7 @@ ${nav}
           <button class="flag-chip" data-flag="5g">5G</button>
           <button class="flag-chip" data-flag="nocommit">ללא התחייבות</button>
           <button class="flag-chip" data-flag="abroad">כולל חו״ל</button>
+          <span class="plan-count" id="planCount" aria-live="polite" aria-atomic="true"></span>
         </div>
         <div class="plan-grid" id="planGrid">
         ${cards}

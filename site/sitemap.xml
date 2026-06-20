@@ -325,6 +325,12 @@
     <priority>0.6</priority>
   </url>
   <url>
+    <loc>https://chosech.co.il/guide-save-phone-bill.html</loc>
+    <lastmod>2026-06-20</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
     <loc>https://chosech.co.il/guide-senior-plans.html</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
@@ -351,6 +357,12 @@
   <url>
     <loc>https://chosech.co.il/guide-tv.html</loc>
     <lastmod>2026-06-10</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://chosech.co.il/guide-wifi-tips.html</loc>
+    <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>

@@ -328,7 +328,28 @@
       compareTable.innerHTML =
         `<table class="cmp-table"><thead><tr><th></th>${cols}</tr></thead><tbody>${rows.join('')}${ctaRow}</tbody></table>`;
     };
-    picks.forEach((s) => s.addEventListener('change', render));
+    // Initialise from URL params (?p0=id&p1=id&p2=id) so comparisons can be shared.
+    const sp = new URLSearchParams(location.search);
+    picks.forEach((s, i) => { const v = sp.get('p' + i); if (v && byId[v]) s.value = v; });
+    const updateUrl = () => {
+      const params = new URLSearchParams();
+      picks.forEach((s, i) => { if (s.value) params.set('p' + i, s.value); });
+      history.replaceState(null, '', '?' + params.toString());
+    };
+    const copyBtn = document.createElement('button');
+    copyBtn.className = 'btn btn--ghost btn--sm cmp-share';
+    copyBtn.textContent = '🔗 שתפו השוואה זו';
+    copyBtn.setAttribute('aria-live', 'polite');
+    compareTable.insertAdjacentElement('afterend', copyBtn);
+    copyBtn.addEventListener('click', () => {
+      navigator.clipboard.writeText(location.href).then(() => {
+        copyBtn.textContent = '✓ הקישור הועתק!';
+        setTimeout(() => { copyBtn.textContent = '🔗 שתפו השוואה זו'; }, 2500);
+      });
+      track('compare_share', { source: 'copy_link' });
+    });
+    picks.forEach((s) => s.addEventListener('change', () => { updateUrl(); render(); }));
+    updateUrl();
     render();
   }
 

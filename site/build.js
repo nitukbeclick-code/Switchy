@@ -1154,6 +1154,15 @@ function providerPage(name, plans) {
   const catNames = [...new Set(plans.map((p) => (categories.find((c) => c.slug === p.cat) || {}).name).filter(Boolean))];
   const sortedPlans = plans.slice().sort((a, b) => a.price - b.price);
   const cards = sortedPlans.map((p, i) => planCardHtml(p, i === 0 && sortedPlans.length > 1)).join('\n        ');
+  const planCats = [...new Set(plans.map((p) => p.cat))];
+  const relatedProviders = [...new Set(
+    catalogue.plans
+      .filter((p) => p.provider !== name && planCats.includes(p.cat))
+      .map((p) => p.provider)
+  )].slice(0, 6);
+  const relatedChips = relatedProviders.map((pname) =>
+    `<a class="chip" href="provider-${providerSlug(pname)}.html">${providerLogo(pname, 22)} ${esc(pname)}</a>`
+  ).join('\n          ');
   const jsonld = jsonForScript({
     '@context': 'https://schema.org',
     '@graph': [
@@ -1187,6 +1196,14 @@ ${nav}
         </div>
       </div>
     </section>
+    ${relatedChips ? `<section class="providers" aria-label="ספקים דומים">
+      <div class="container">
+        <p class="providers__title">ספקים נוספים באותן קטגוריות</p>
+        <div class="providers__row">
+          ${relatedChips}
+        </div>
+      </div>
+    </section>` : ''}
     <section class="cta" id="cta">
       <div class="container cta__inner reveal">
         <h2>רוצים לעבור ל${esc(name)} — או ממנו?</h2>

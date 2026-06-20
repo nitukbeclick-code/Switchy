@@ -271,6 +271,12 @@
     <priority>0.6</priority>
   </url>
   <url>
+    <loc>https://chosech.co.il/guide-esim-israel.html</loc>
+    <lastmod>2026-06-20</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
     <loc>https://chosech.co.il/guide-fiber-vs-cable.html</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
@@ -290,7 +296,7 @@
   </url>
   <url>
     <loc>https://chosech.co.il/guide-internet-speed.html</loc>
-    <lastmod>2026-06-10</lastmod>
+    <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
@@ -320,6 +326,12 @@
   </url>
   <url>
     <loc>https://chosech.co.il/guide-senior-plans.html</loc>
+    <lastmod>2026-06-20</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://chosech.co.il/guide-switch-provider.html</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>

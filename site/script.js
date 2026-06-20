@@ -224,6 +224,7 @@
     const search = $('planSearch');
     const sort = $('planSort');
     const providerSel = $('planProvider');
+    const maxPriceInput = $('planMaxPrice');
     const btns = Array.from(document.querySelectorAll('.filter-btn'));
     const flagChips = Array.from(document.querySelectorAll('.flag-chip'));
     const flagKey = { '5g': 'data-5g', nocommit: 'data-nocommit', abroad: 'data-abroad', haspromo: 'data-haspromo', kosher: 'data-kosher' };
@@ -232,6 +233,7 @@
     const apply = () => {
       const q = (search && search.value || '').trim().toLowerCase();
       const prov = providerSel ? providerSel.value : '';
+      const maxPrice = maxPriceInput && maxPriceInput.value ? Number(maxPriceInput.value) : Infinity;
       const activeFlags = flagChips.filter((c) => c.classList.contains('active')).map((c) => c.dataset.flag);
       let shown = 0;
       const visibleCards = [];
@@ -240,7 +242,8 @@
         const okText = !q || (card.dataset.text || '').includes(q);
         const okFlags = activeFlags.every((f) => card.getAttribute(flagKey[f]) === 'true');
         const okProv = !prov || card.dataset.provider === prov;
-        const visible = okCat && okText && okFlags && okProv;
+        const okPrice = Number(card.dataset.price) <= maxPrice;
+        const visible = okCat && okText && okFlags && okProv && okPrice;
         card.style.display = visible ? '' : 'none';
         if (visible) { shown++; visibleCards.push(card); }
       }
@@ -270,6 +273,7 @@
     if (search) search.addEventListener('input', apply);
     if (sort) sort.addEventListener('change', apply);
     if (providerSel) providerSel.addEventListener('change', apply);
+    if (maxPriceInput) maxPriceInput.addEventListener('input', apply);
     const emptyReset = $('planEmptyReset');
     if (emptyReset) emptyReset.addEventListener('click', () => {
       cat = 'all';
@@ -277,6 +281,7 @@
       flagChips.forEach((c) => c.classList.remove('active'));
       if (search) search.value = '';
       if (providerSel) providerSel.value = '';
+      if (maxPriceInput) maxPriceInput.value = '';
       apply();
     });
     apply();

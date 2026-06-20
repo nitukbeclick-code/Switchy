@@ -1134,6 +1134,11 @@ ${nav}
             <option value="">כל הספקים</option>
             ${providerOptions}
           </select>
+          <div class="filter-price" role="group" aria-label="סינון לפי מחיר">
+            <span class="filter-price__label">עד</span>
+            <input type="number" id="planMaxPrice" class="filter-search" style="flex:0 0 auto;width:90px" min="0" step="5" placeholder="₪ מקס׳" aria-label="מחיר מקסימלי לחודש" />
+            <span class="filter-price__label">₪</span>
+          </div>
           <button class="flag-chip" data-flag="5g">5G</button>
           <button class="flag-chip" data-flag="nocommit">ללא התחייבות</button>
           <button class="flag-chip" data-flag="abroad">כולל חו״ל</button>

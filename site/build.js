@@ -863,6 +863,8 @@ function head(title, desc, url, extraJsonLd, noindex) {
 </head>`;
 }
 
+const guideCatToSlug = { 'סלולר': 'cellular', 'אינטרנט': 'internet', 'טלוויזיה': 'tv', 'חבילה משולבת': 'triple', 'חו״ל': 'abroad' };
+
 function articlePage(g) {
   const url = `${SITE}/${g.slug}.html`;
   const body = g.sections.map((s) => {
@@ -913,7 +915,25 @@ ${body}
           </div>
         </div>
       </section>
-${faqSection}      <section class="section section--alt" aria-label="מדריכים נוספים">
+${faqSection}${(() => {
+    const catSlug = guideCatToSlug[g.cat];
+    const topPlans = catSlug ? (plansByCat[catSlug] || []).slice(0, 3) : [];
+    if (!topPlans.length) return '';
+    const catPageName = g.cat;
+    const catPageHref = catSlug + '.html';
+    return `      <section class="section" aria-label="מסלולים מומלצים">
+        <div class="container">
+          <header class="section__head reveal"><span class="eyebrow">המסלולים הזולים ביותר</span><h2>${esc(catPageName)} — הזולים עכשיו</h2><p>ממוינים מהזול ביותר מתוך הקטלוג המלא שלנו.</p></header>
+          <div class="plan-grid plan-grid--featured">
+${topPlans.map((p) => planCardHtml(p, false)).join('\n')}
+          </div>
+          <div style="text-align:center;margin-top:20px">
+            <a class="btn btn--ghost" href="${catPageHref}">לכל מסלולי ה${esc(catPageName)} ←</a>
+          </div>
+        </div>
+      </section>
+`;
+  })()}      <section class="section section--alt" aria-label="מדריכים נוספים">
         <div class="container">
           <header class="section__head reveal"><span class="eyebrow">להמשך קריאה</span><h2>מדריכים נוספים</h2></header>
           <div class="guide-cards">

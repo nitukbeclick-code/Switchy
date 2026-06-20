@@ -540,6 +540,8 @@ body:has(.sticky-cta.is-visible) .wa-fab { bottom: 76px; }
 .plan__price b { font-family: 'Rubik'; font-size: 24px; font-weight: 800; color: var(--green); }
 .plan__price span { color: var(--muted); font-size: 12px; }
 .plan__after { display: block; color: var(--muted); font-size: 11px; }
+.plan--hasjump .plan__after { color: #d97706; font-weight: 600; }
+.plan--hasjump .plan__after::before { content: '⚠ '; }
 /* The site's most-repeated CTA (every plan card) — a real indigo tertiary
    button: ACTION colour, 44px hit area (negative margin keeps the layout),
    hover pill + arrow nudge, tactile press. */

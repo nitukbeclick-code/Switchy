@@ -297,13 +297,14 @@ function planCardHtml(p, best) {
   if (p.is5G) flags.push('<span class="pflag pflag--5g">5G</span>');
   if (p.noCommit) flags.push('<span class="pflag">ללא התחייבות</span>');
   if (p.hasAbroad) flags.push('<span class="pflag">כולל חו״ל</span>');
+  const hasJump = p.after && (p.after - p.price) > 30;
   const after = p.after ? `<span class="plan__after">ואז ₪${p.after}</span>` : '';
   // NOTE: a plan's "rating" is a fabricated placeholder (every plan has 0 real
   // reviews) — never render it as a star/score. Honest ratings live per-provider
   // and only surface once a real review exists (see provider_ratings.dart).
   const text = esc(`${p.provider} ${p.plan} ${(p.feats || []).join(' ')} ${Object.values(p.specs || {}).join(' ')}`).toLowerCase();
   const waHref = 'https://wa.me/972505037537?text=' + encodeURIComponent('היי, מעניין אותי ' + p.provider + ' - ' + p.plan + ' (₪' + priceText(p) + ')');
-  return `<article class="plan${isBest ? ' plan--best' : ''}" data-cat="${esc(p.cat)}" data-text="${text}" data-price="${p.price}" data-5g="${p.is5G}" data-nocommit="${p.noCommit}" data-after="${p.after || ''}" data-abroad="${p.hasAbroad}">
+  return `<article class="plan${isBest ? ' plan--best' : ''}${hasJump ? ' plan--hasjump' : ''}" data-cat="${esc(p.cat)}" data-text="${text}" data-price="${p.price}" data-after="${p.after || ''}" data-haspromo="${p.after ? 'true' : 'false'}" data-5g="${p.is5G}" data-nocommit="${p.noCommit}" data-abroad="${p.hasAbroad}">
         ${isBest ? '<span class="plan__badge">המחיר הנמוך ביותר</span>' : ''}
         <div class="plan__top"><span class="plan__id">${providerLogo(p.provider)}<a class="plan__provider" href="provider-${providerSlug(p.provider)}.html">${esc(p.provider)}</a></span><span class="plan__net">${esc(p.net)}</span></div>
         <div class="plan__name">${esc(p.plan)}</div>
@@ -1106,6 +1107,7 @@ ${nav}
           <button class="flag-chip" data-flag="5g">5G</button>
           <button class="flag-chip" data-flag="nocommit">ללא התחייבות</button>
           <button class="flag-chip" data-flag="abroad">כולל חו״ל</button>
+          <button class="flag-chip" data-flag="haspromo">מחיר מבצע</button>
           <span class="plan-count" id="planCount" aria-live="polite" aria-atomic="true"></span>
         </div>
         <div class="plan-grid" id="planGrid">

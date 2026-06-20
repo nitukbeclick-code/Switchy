@@ -1611,12 +1611,12 @@ const collections = [
     filter: (p) => p.cat === 'triple' && offerPrice(p) <= 160, limit: 10,
   },
   {
-    slug: 'cellular-abroad-included', catSlug: 'cellular', catName: 'סלולר', eyebrow: 'חו״ל כלול',
-    title: 'מסלולי סלולר עם חו״ל כלול — גלישה ושיחות לחו״ל ממסלול הסלולר | חוסך',
-    h1: 'מסלולי סלולר עם חו״ל כלול',
-    desc: 'מסלולי סלולר שכוללים גלישה ו/או שיחות לחו״ל — ממוינים מהזול ביותר. מושלמים לנוסעים תכופים.',
-    intro: 'מסלולים אלה כוללים מסגרת גלישה ו/או שיחות לחו״ל כחלק מהמנוי — בלי לשלם על חבילת חו״ל נפרדת.',
-    filter: (p) => p.cat === 'cellular' && p.hasAbroad, limit: 15,
+    slug: 'internet-cable-only', catSlug: 'internet', catName: 'אינטרנט', eyebrow: 'כבל HOT',
+    title: 'אינטרנט על כבל (HOT) — כל המסלולים מהזול ביותר | חוסך',
+    h1: 'אינטרנט על כבל — כל המסלולים',
+    desc: 'כל מסלולי האינטרנט הביתי על תשתית הכבל של HOT — ממוינים מהזול ביותר. זמין כמעט בכל הארץ.',
+    intro: 'אינטרנט על כבל זמין בכמעט כל ישוב עירוני בישראל. הנה כל המסלולים על תשתית הכבל, ממוינים מהזול ליקר.',
+    filter: (p) => p.cat === 'internet' && p.net === 'כבלים', limit: 15,
   },
   {
     slug: 'internet-fiber-only', catSlug: 'internet', catName: 'אינטרנט', eyebrow: 'סיב אופטי',
@@ -1625,6 +1625,14 @@ const collections = [
     desc: 'השוואת כל מסלולי אינטרנט הסיב האופטי (FTTH/Fiber) בישראל — בזק, HOT, פרטנר, גולן וגילת. ממוינים מהזול ביותר.',
     intro: 'אינטרנט סיב אופטי מביא מהירות מלאה ויציבות מקסימלית לבית. הנה כל המסלולים הזמינים בישראל, ממוינים מהזול.',
     filter: (p) => p.cat === 'internet' && p.net === 'סיב אופטי', limit: 20,
+  },
+  {
+    slug: 'tv-streaming-included', catSlug: 'tv', catName: 'טלוויזיה', eyebrow: 'סטרימינג כלול',
+    title: 'חבילות טלוויזיה עם Netflix / HBO Max / Disney+ כלולים | חוסך',
+    h1: 'טלוויזיה עם סטרימינג כלול',
+    desc: 'חבילות טלוויזיה שכוללות Netflix, HBO Max, Disney+ או שירות סטרימינג אחר בחבילה — ממוינות מהזול ביותר.',
+    intro: 'הנה החבילות שמשלבות טלוויזיה קלאסית עם שירות סטרימינג כלול — בלי לשלם נפרד על Netflix / HBO Max.',
+    filter: (p) => p.cat === 'tv' && (p.feats || []).some((f) => /netflix|hbo|disney|max/i.test(f)), limit: 10,
   },
 ];
 

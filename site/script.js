@@ -557,9 +557,16 @@
       if (!cur || cur <= 0) { show('הזינו את הסכום שאתם משלמים היום.'); return; }
       const monthly = Math.max(0, cur - cheapest);
       const yearly = monthly * 12;
-      show(yearly > 0
-        ? 'הערכת חיסכון: עד <b>' + nis(yearly) + '</b> בשנה (' + nis(monthly) + ' בחודש). זו הערכה מול המסלול הזול בשוק — בדקו את ההשוואה המלאה.'
-        : 'אתם כבר משלמים פחות מהמסלול הזול שמצאנו — מצוין! עדיין שווה להשוות מדי פעם.');
+      if (yearly > 0) {
+        show('<div class="calc-result">'
+          + '<div class="calc-result__row"><span>משלמים היום</span><strong>' + nis(cur) + '/חודש · ' + nis(cur * 12) + '/שנה</strong></div>'
+          + '<div class="calc-result__row"><span>מסלול זול ביותר</span><strong>' + nis(cheapest) + '/חודש</strong></div>'
+          + '<hr class="calc-result__sep">'
+          + '<div class="calc-result__row calc-result__row--main"><span>חיסכון פוטנציאלי</span><strong class="saving">' + nis(monthly) + '/חודש · ' + nis(yearly) + '/שנה</strong></div>'
+          + '</div><p style="margin:10px 0 0;font-size:.85rem;color:#6b7280">הערכה מול המסלול הזול בשוק — בדקו את ההשוואה המלאה.</p>');
+      } else {
+        show('אתם כבר משלמים פחות מהמסלול הזול שמצאנו — מצוין! עדיין שווה להשוות מדי פעם.');
+      }
       if (window.plausible) window.plausible('calc_used', { props: { cat: calc.dataset.cat || '' } });
     };
     if (btn) btn.addEventListener('click', run);

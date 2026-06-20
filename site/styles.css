@@ -584,6 +584,12 @@ select.filter-search { cursor: pointer; -webkit-appearance: none; appearance: no
 /* Empty state (no plans match the filters) — an intentional, illustrated
    pause rather than a bare line of grey text that could read as broken. */
 .plan-count { margin-right: auto; font-size: 13px; color: var(--ink-500, #6b7280); white-space: nowrap; }
+.calc-result { display: grid; gap: 10px; }
+.calc-result__row { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+.calc-result__row strong { font-family: 'Rubik'; text-align: left; }
+.calc-result__sep { border: none; border-top: 1px solid #D1D5DB; margin: 2px 0; }
+.calc-result__row--main { font-size: 1.05rem; }
+.calc-result__row--main .saving { color: #F59E0B; font-size: 1.15rem; }
 .plan-empty {
   text-align: center; color: var(--muted); padding: 56px 24px; display: none;
   background: var(--cream); border: 1px dashed var(--ink-200); border-radius: var(--radius);

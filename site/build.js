@@ -928,10 +928,28 @@ ${footer}
 
 function guidesIndexPage() {
   const url = `${SITE}/guides.html`;
-  const cards = guides.map(guideCard).join('\n');
+  // Order categories for display: general first, then by topic
+  const catOrder = ['מדריך כללי', 'סלולר', 'אינטרנט', 'חבילה משולבת', 'טלוויזיה', 'חו״ל'];
+  const grouped = {};
+  for (const g of guides) {
+    const c = catOrder.includes(g.cat) ? g.cat : 'מדריך כללי';
+    if (!grouped[c]) grouped[c] = [];
+    grouped[c].push(g);
+  }
+  const sections = catOrder
+    .filter((c) => grouped[c] && grouped[c].length)
+    .map((c) => `
+    <section class="section${c !== catOrder[0] ? ' section--alt' : ''}" aria-label="${esc(c)}">
+      <div class="container">
+        <header class="section__head reveal"><span class="eyebrow">${esc(c)}</span><h2>${esc(c === 'מדריך כללי' ? 'מדריכים כלליים' : `מדריכי ${c}`)}</h2></header>
+        <div class="guide-cards">
+${grouped[c].map(guideCard).join('\n')}
+        </div>
+      </div>
+    </section>`).join('');
   return `<!DOCTYPE html>
 <html lang="he" dir="rtl">
-${head('מדריכים — איך לחסוך על תקשורת | חוסך', 'מדריכים מקצועיים: איך לעבור ספק, לבחור מסלול סלולר, סיב אופטי מול כבלים ועוד — כל הטיפים כדי לא לשלם יותר מדי.', url)}
+${head('מדריכים — איך לחסוך על תקשורת | חוסך', `${guides.length} מדריכים מקצועיים: איך לעבור ספק, לבחור מסלול סלולר, סיב אופטי מול כבלים ועוד — כל הטיפים כדי לא לשלם יותר מדי.`, url)}
 <body id="top">
 ${navNoCta}
   <main id="main">
@@ -939,16 +957,10 @@ ${navNoCta}
       <div class="container">
         <p class="crumbs"><a href="index.html">דף הבית</a> ← מדריכים</p>
         <h1>מדריכים — איך לא לשלם יותר מדי</h1>
-        <div class="article-meta"><span>טיפים, מדריכים והשוואות שיחסכו לכם כסף</span></div>
+        <div class="article-meta"><span>${guides.length} מדריכים • טיפים, השוואות ומדריכי החלטה שיחסכו לכם כסף</span></div>
       </div>
     </section>
-    <section class="section">
-      <div class="container">
-        <div class="guide-cards">
-${cards}
-        </div>
-      </div>
-    </section>
+${sections}
   </main>
 ${footer}
   ${leadsConfigTag()}

@@ -1240,6 +1240,19 @@ ${nav}
         </div>
       </div>
     </section>` : ''}
+    ${(() => {
+      const provCatName = catNames[0] || null;
+      const gHtml = relatedGuides(provCatName, null, 2).map(guideCard).join('\n');
+      return gHtml ? `
+    <section class="section section--alt" aria-label="מדריכים">
+      <div class="container">
+        <header class="section__head reveal"><span class="eyebrow">כדאי לדעת</span><h2>מדריכים שימושיים</h2></header>
+        <div class="guide-cards guide-cards--2">
+${gHtml}
+        </div>
+      </div>
+    </section>` : '';
+    })()}
     <section class="cta" id="cta">
       <div class="container cta__inner reveal">
         <h2>רוצים לעבור ל${esc(name)} — או ממנו?</h2>

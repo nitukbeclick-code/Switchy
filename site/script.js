@@ -557,20 +557,27 @@
     const out = $('calcOut');
     const btn = $('calcBtn');
     const show = (html) => { if (out) { out.style.display = 'block'; out.innerHTML = html; } };
+    const catNames = { cellular: 'סלולר', internet: 'אינטרנט', tv: 'טלוויזיה', triple: 'חבילה משולבת', abroad: 'חו"ל' };
     const run = () => {
       const cur = parseFloat(bill && bill.value);
       if (!cur || cur <= 0) { show('הזינו את הסכום שאתם משלמים היום.'); return; }
       const monthly = Math.max(0, cur - cheapest);
       const yearly = monthly * 12;
+      const cat = calc.dataset.cat || '';
+      const catHref = cat ? cat + '.html' : 'plans.html';
+      const catLabel = catNames[cat] || 'מסלולים';
       if (yearly > 0) {
         show('<div class="calc-result">'
           + '<div class="calc-result__row"><span>משלמים היום</span><strong>' + nis(cur) + '/חודש · ' + nis(cur * 12) + '/שנה</strong></div>'
           + '<div class="calc-result__row"><span>מסלול זול ביותר</span><strong>' + nis(cheapest) + '/חודש</strong></div>'
           + '<hr class="calc-result__sep">'
           + '<div class="calc-result__row calc-result__row--main"><span>חיסכון פוטנציאלי</span><strong class="saving">' + nis(monthly) + '/חודש · ' + nis(yearly) + '/שנה</strong></div>'
-          + '</div><p style="margin:10px 0 0;font-size:.85rem;color:#6b7280">הערכה מול המסלול הזול בשוק — בדקו את ההשוואה המלאה.</p>');
+          + '</div>'
+          + '<a href="' + catHref + '" class="btn btn--primary btn--block" style="margin-top:16px">לראות את כל מסלולי ' + catLabel + ' ←</a>'
+          + '<p style="margin:8px 0 0;font-size:.8rem;color:#6b7280;text-align:center">הערכה מול המסלול הזול בשוק. המחירים מתעדכנים ברציפות.</p>');
       } else {
-        show('אתם כבר משלמים פחות מהמסלול הזול שמצאנו — מצוין! עדיין שווה להשוות מדי פעם.');
+        show('<p style="margin:0 0 12px">אתם כבר משלמים פחות מהמסלול הזול שמצאנו — מצוין!</p>'
+          + '<a href="' + catHref + '" class="btn btn--ghost btn--block">עדיין שווה להשוות מדי פעם ←</a>');
       }
       if (window.plausible) window.plausible('calc_used', { props: { cat: calc.dataset.cat || '' } });
     };

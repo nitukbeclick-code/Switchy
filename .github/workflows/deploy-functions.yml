@@ -27,6 +27,7 @@ on:
           - notify-lead
           - renewal-reminders
           - telegram-webhook
+          - site-ai-chat
           - all
   push:
     branches:
@@ -78,7 +79,7 @@ jobs:
           }
 
           if [ "$target" = "all" ]; then
-            for fn in notify-lead renewal-reminders telegram-webhook; do
+            for fn in notify-lead renewal-reminders telegram-webhook site-ai-chat; do
               deploy_one "$fn"
             done
           else

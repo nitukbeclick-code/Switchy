@@ -44,6 +44,17 @@ jobs:
         with:
           deno-version: v2.x
           cache: true
+        continue-on-error: true
+        id: deno-official
+
+      - name: Set up Deno (GitHub releases fallback)
+        if: steps.deno-official.outcome == 'failure'
+        run: |
+          DENO_VER=$(curl -fsSL https://api.github.com/repos/denoland/deno/releases/latest | python3 -c "import sys,json; print(json.load(sys.stdin)['tag_name'].lstrip('v'))")
+          curl -fsSL "https://github.com/denoland/deno/releases/download/v${DENO_VER}/deno-x86_64-unknown-linux-gnu.zip" -o /tmp/deno.zip
+          unzip /tmp/deno.zip -d /usr/local/bin/
+          chmod +x /usr/local/bin/deno
+          deno --version
 
       - name: Type-check
         working-directory: supabase/functions

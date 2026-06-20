@@ -987,9 +987,13 @@ ${navNoCta}
         <p class="crumbs"><a href="index.html">דף הבית</a> ← מדריכים</p>
         <h1>מדריכים — איך לא לשלם יותר מדי</h1>
         <div class="article-meta"><span>${guides.length} מדריכים • טיפים, השוואות ומדריכי החלטה שיחסכו לכם כסף</span></div>
+        <div style="margin-top:20px;max-width:480px">
+          <input type="search" id="guideSearch" class="filter-search" placeholder="חפשו מדריך…" aria-label="חיפוש מדריכים" style="width:100%;font-size:16px" />
+        </div>
       </div>
     </section>
 ${sections}
+    <p id="guideEmpty" style="display:none;text-align:center;padding:40px 0;color:var(--muted);font-size:16px">לא נמצאו מדריכים שתואמים את החיפוש.</p>
   </main>
 ${footer}
   ${leadsConfigTag()}

@@ -284,6 +284,9 @@
       if (maxPriceInput) maxPriceInput.value = '';
       apply();
     });
+    // Pre-fill search from URL ?q= param (for Sitelinks search box / deep links)
+    const initQ = new URLSearchParams(location.search).get('q');
+    if (initQ && search) { search.value = initQ; }
     apply();
   }
 
@@ -595,6 +598,29 @@
         qb.classList.add('active');
         run();
       });
+    });
+  }
+
+  // ── Guide search (guides.html) ──────────────────────────────────────────────
+  const gs = document.getElementById('guideSearch');
+  if (gs) {
+    const cards = Array.from(document.querySelectorAll('.guide-card'));
+    const sections = Array.from(document.querySelectorAll('main section[aria-label]'));
+    const empty = document.getElementById('guideEmpty');
+    gs.addEventListener('input', () => {
+      const q = gs.value.trim().toLowerCase();
+      let visible = 0;
+      cards.forEach((card) => {
+        const text = card.textContent.toLowerCase();
+        const show = !q || text.includes(q);
+        card.style.display = show ? '' : 'none';
+        if (show) visible++;
+      });
+      sections.forEach((sec) => {
+        const anyVisible = Array.from(sec.querySelectorAll('.guide-card')).some((c) => c.style.display !== 'none');
+        sec.style.display = anyVisible ? '' : 'none';
+      });
+      if (empty) empty.style.display = visible === 0 ? 'block' : 'none';
     });
   }
 })();

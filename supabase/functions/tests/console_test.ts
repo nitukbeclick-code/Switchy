@@ -1,4 +1,4 @@
-import { assert, assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
+import { assert, assertEquals } from "jsr:@std/assert";
 import { authorizeRep, dataCheckString, validateInitData } from "../_shared/webapp.ts";
 import { buildBoard, toConsoleMeeting } from "../notify-lead/console.ts";
 

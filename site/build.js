@@ -1077,7 +1077,19 @@ ${navNoCta}
         <p>הדף שחיפשתם לא קיים או עבר דירה. בואו נחזיר אתכם למסלול.</p>
         <div class="hero__cta" style="justify-content:center">
           <a class="btn btn--primary btn--lg" href="index.html">חזרה לדף הבית</a>
-          <a class="btn btn--ghost btn--lg" href="guides.html">למדריכים</a>
+          <a class="btn btn--ghost btn--lg" href="plans.html">כל המסלולים</a>
+        </div>
+      </div>
+    </section>
+    <section class="section">
+      <div class="container">
+        <header class="section__head reveal" style="text-align:center"><span class="eyebrow">ניווט מהיר</span><h2>לאן רוצים לעבור?</h2></header>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;max-width:800px;margin:0 auto">
+          ${categories.map((c) => `<a href="${c.slug}.html" class="glass" style="display:block;padding:18px 20px;border-radius:14px;border:1px solid #E4E8EC;text-decoration:none;color:#0B0F14;font-weight:700"><span style="font-size:1.5rem">${c.icon}</span><br>${esc(c.name)}</a>`).join('')}
+          <a href="compare.html" class="glass" style="display:block;padding:18px 20px;border-radius:14px;border:1px solid #E4E8EC;text-decoration:none;color:#0B0F14;font-weight:700"><span style="font-size:1.5rem">⚖️</span><br>השוואת מסלולים</a>
+          <a href="providers.html" class="glass" style="display:block;padding:18px 20px;border-radius:14px;border:1px solid #E4E8EC;text-decoration:none;color:#0B0F14;font-weight:700"><span style="font-size:1.5rem">🏢</span><br>כל הספקים</a>
+          <a href="guides.html" class="glass" style="display:block;padding:18px 20px;border-radius:14px;border:1px solid #E4E8EC;text-decoration:none;color:#0B0F14;font-weight:700"><span style="font-size:1.5rem">📚</span><br>מדריכים</a>
+          <a href="app.html" class="glass" style="display:block;padding:18px 20px;border-radius:14px;border:1px solid #E4E8EC;text-decoration:none;color:#0B0F14;font-weight:700"><span style="font-size:1.5rem">📱</span><br>האפליקציה</a>
         </div>
       </div>
     </section>

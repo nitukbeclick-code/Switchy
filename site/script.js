@@ -326,8 +326,12 @@
   }
 
   // ── חוסך AI — real Gemini-backed chat (app.html) ────────────────────────────
-  // Calls the ai-chat Supabase Edge Function; falls back to a friendly error
-  // bubble (never a fake canned answer) if the call fails or isn't configured.
+  // Calls the Supabase Edge Function; falls back to a friendly error bubble
+  // (never a fake canned answer) if the call fails or isn't configured.
+  // NOTE: the function source lives at supabase/functions/ai-chat, but it was
+  // deployed to production under the name "site-ai-chat" — keep this in sync
+  // with whatever name is actually live, or rename the deployed function.
+  const AI_CHAT_FUNCTION = 'site-ai-chat';
   const aiChat = $('aiChat');
   if (aiChat) {
     const aiForm = $('aiChatForm');
@@ -361,7 +365,7 @@
       try {
         const cfg = window.CHOSECH_SUPABASE;
         if (!cfg || !cfg.url) throw new Error('ai chat not configured');
-        const res = await fetch(cfg.url.replace(/\/$/, '') + '/functions/v1/ai-chat', {
+        const res = await fetch(cfg.url.replace(/\/$/, '') + '/functions/v1/' + AI_CHAT_FUNCTION, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', apikey: cfg.anonKey, Authorization: 'Bearer ' + cfg.anonKey },
           body: JSON.stringify({ message: q, history: aiHistory }),

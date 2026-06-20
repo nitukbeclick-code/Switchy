@@ -531,7 +531,8 @@ body:has(.sticky-cta.is-visible) .wa-fab { bottom: 76px; }
 .provider-card { background: var(--white); border: 1px solid var(--line); border-radius: 18px; padding: 18px; display: flex; align-items: center; gap: 12px; box-shadow: var(--shadow-sm); transition: transform .2s var(--ease), box-shadow .2s; }
 .provider-card:hover { transform: translateY(-3px); box-shadow: var(--shadow); }
 .provider-card b { font-family: 'Rubik'; color: var(--green-d); font-size: 16px; display: block; }
-.provider-card small { color: var(--muted); font-size: 13px; }
+.provider-card small { color: var(--muted); font-size: 13px; display: block; }
+.provider-card__cats { font-size: 11px !important; opacity: .65; margin-top: 2px; }
 .plan__provider:hover { color: var(--green); text-decoration: underline; }
 .plan__net { background: var(--mint); color: var(--green); font-weight: 700; font-size: 11px; padding: 3px 8px; border-radius: 8px; white-space: nowrap; }
 .plan__name { color: var(--muted); font-size: 13px; margin-top: 3px; }

@@ -1207,12 +1207,14 @@ ${footer}
 
 function providersIndexPage() {
   const url = `${SITE}/providers.html`;
+  const catLabel = { cellular: 'סלולר', internet: 'אינטרנט', tv: 'טלוויזיה', triple: 'טריפל', abroad: 'חו״ל' };
   const map = {};
   for (const p of catalogue.plans) (map[p.provider] ||= []).push(p);
   const cards = Object.keys(map).sort((a, b) => map[b].length - map[a].length).map((name) => {
     const ps = map[name];
     const min = ps.reduce((m, p) => Math.min(m, p.price), Infinity);
-    return `        <a class="provider-card" href="provider-${providerSlug(name)}.html">${providerLogo(name, 46)}<span><b>${esc(name)}</b><small>${ps.length} מסלולים · מ-₪${min}</small></span></a>`;
+    const cats = [...new Set(ps.map((p) => p.cat))].filter((c) => catLabel[c]).sort((a, b) => Object.keys(catLabel).indexOf(a) - Object.keys(catLabel).indexOf(b)).map((c) => catLabel[c]).join(' · ');
+    return `        <a class="provider-card" href="provider-${providerSlug(name)}.html">${providerLogo(name, 46)}<span><b>${esc(name)}</b><small>${ps.length} מסלולים · מ-₪${min}</small>${cats ? `<small class="provider-card__cats">${esc(cats)}</small>` : ''}</span></a>`;
   }).join('\n');
   return `<!DOCTYPE html>
 <html lang="he" dir="rtl">
@@ -1354,9 +1356,23 @@ ${cards}
 
   const aiChips = AI_CHIPS.map((c) => `<span class="ai-chip">${esc(c)}</span>`).join('');
 
+  const appJsonLd = jsonForScript({ '@context': 'https://schema.org', '@graph': [
+    { '@type': 'BreadcrumbList', itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'דף הבית', item: SITE + '/' },
+      { '@type': 'ListItem', position: 2, name: 'האפליקציה', item: url },
+    ] },
+    { '@type': 'SoftwareApplication', name: 'חוסך', applicationCategory: 'FinanceApplication',
+      operatingSystem: 'iOS, Android', inLanguage: 'he-IL',
+      description: 'השוואת מחירי תקשורת בישראל — סלולר, אינטרנט, טלוויזיה וחו״ל. עם AI, מעקב מסלולים והתראות חידוש.',
+      author: { '@type': 'Organization', name: 'חוסך' },
+      offers: { '@type': 'Offer', price: '0', priceCurrency: 'ILS', availability: 'https://schema.org/PreOrder' },
+      screenshot: [`${SITE}/assets/app/shot-home.webp`, `${SITE}/assets/app/shot-results.webp`, `${SITE}/assets/app/shot-meeting.webp`],
+    },
+  ] });
+
   return `<!DOCTYPE html>
 <html lang="he" dir="rtl">
-${head('האפליקציה של חוסך — כל היכולות | חוסך', 'הכירו את אפליקציית חוסך: חוסך AI, קהילה והצ׳אט הקהילתי, מעקב מעבר, התראות חידוש, דירוגי ספקים, בדיקת זמינות, מחשבון מעבר וניוד מספר — הכל במקום אחד.', url)}
+${head('האפליקציה של חוסך — כל היכולות | חוסך', 'הכירו את אפליקציית חוסך: חוסך AI, קהילה והצ׳אט הקהילתי, מעקב מעבר, התראות חידוש, דירוגי ספקים, בדיקת זמינות, מחשבון מעבר וניוד מספר — הכל במקום אחד.', url, appJsonLd)}
 <body id="top">
 ${nav}
   <main id="main">
@@ -1369,6 +1385,7 @@ ${nav}
           <a class="btn btn--primary btn--lg" href="#cta">קבלו גישה מוקדמת</a>
           <a class="btn btn--ghost btn--lg" href="plans.html">או דפדפו במסלולים</a>
         </div>
+        <p class="hero__social"><span aria-hidden="true">👥</span> <strong>124 אנשים</strong> כבר ברשימת ההמתנה</p>
       </div>
     </section>
 

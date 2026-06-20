@@ -788,6 +788,18 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
 /* ── Section rhythm: a faint hairline divider option for alt sections ─────── */
 .section--alt { border-block: 1px solid var(--line); }
 
+/* ── Popular collections grid ────────────────────────────────────────────── */
+.collections-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+.collection-chip { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 18px 20px; background: var(--cream); border: 1px solid var(--line); border-radius: var(--radius); text-decoration: none; color: inherit; transition: transform .18s var(--ease), box-shadow .18s; }
+.collection-chip:hover { transform: translateY(-4px); box-shadow: var(--shadow); border-color: var(--accent); }
+.collection-chip__icon { font-size: 1.5rem; line-height: 1; }
+.collection-chip__title { font-family: 'Rubik'; font-size: 15px; font-weight: 600; color: var(--ink); }
+.collection-chip__sub { font-size: 13px; color: var(--muted); }
+@media (max-width: 900px) { .collections-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 560px) { .collections-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .collection-chip { padding: 14px 14px; }
+  .collection-chip__title { font-size: 14px; } }
+
 /* ── Chips & pills: tactile press (links only) ─────────────────────────────── */
 a.chip:active { transform: translateY(0) scale(.97); }
 .pill { box-shadow: inset 0 0 0 1px var(--line); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }

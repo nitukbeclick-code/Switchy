@@ -4,8 +4,10 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 // ai-chat — חוסך AI
 // Public chat endpoint behind the "חוסך AI" widget on app.html. Replaces the
 // old client-only keyword-matched demo with a real Gemini call, grounded in
-// the live plan catalogue (fetched from the deployed site's own data/plans.json
-// so this function never goes stale relative to what's published).
+// the plan catalogue bundled into this function as plans-snapshot.json (the
+// production site isn't live yet, so the catalogue can't be fetched at
+// runtime — refresh that file from site/data/plans.json and redeploy when
+// prices change).
 //
 // POST { message: string, history?: { role: 'user'|'bot', text: string }[] }
 //   -> { reply: string }
@@ -16,12 +18,18 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { firstEnv, resolveCfgCached } from "../_shared/config.ts";
 import { fetchRows, insertRow } from "../_shared/db.ts";
 import { jlog } from "../_shared/log.ts";
+import plansSnapshot from "./plans-snapshot.json" with { type: "json" };
 
-const PLANS_URL = "https://chosech.co.il/data/plans.json";
 const MAX_MESSAGE_LEN = 500;
 const MAX_HISTORY_TURNS = 6;
 const MAX_OUTPUT_TOKENS = 350;
 const PER_IP_HOURLY_LIMIT = 15;
+
+// Gemini model names Google has shipped under the free tier; tried in order.
+// chosech.co.il isn't live yet (DNS unset, app still pre-launch), so the
+// catalogue ships as a bundled snapshot instead of a runtime fetch — refresh
+// this file (copy from site/data/plans.json) and redeploy when prices change.
+const GEMINI_MODELS = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"];
 
 function cors(extra: Record<string, string> = {}): Record<string, string> {
   return { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*", ...extra };
@@ -39,22 +47,11 @@ type Plan = {
   is5G?: boolean; noCommit?: boolean; hasAbroad?: boolean; priceUnit?: string;
 };
 
-// Cached in module scope — survives across requests on a warm instance, gone
-// on cold start (fetched fresh, fail-soft to an empty catalogue).
-let plansCache: { rows: Plan[]; at: number } | null = null;
-async function loadPlans(): Promise<Plan[]> {
-  if (plansCache && Date.now() - plansCache.at < 10 * 60_000) return plansCache.rows;
-  try {
-    const r = await fetch(PLANS_URL);
-    if (!r.ok) return plansCache?.rows ?? [];
-    const j = await r.json();
-    const rows: Plan[] = Array.isArray(j?.plans) ? j.plans : [];
-    plansCache = { rows, at: Date.now() };
-    return rows;
-  } catch (e) {
-    jlog({ at: "ai-chat.loadPlans", ok: false, error: String(e) });
-    return plansCache?.rows ?? [];
-  }
+// Bundled at deploy time (see GEMINI_MODELS comment above) — no runtime fetch,
+// no dependency on the production site being live.
+function loadPlans(): Plan[] {
+  const rows = (plansSnapshot as { plans?: Plan[] })?.plans;
+  return Array.isArray(rows) ? rows : [];
 }
 
 // Compact, factual context: the cheapest handful per category, formatted as
@@ -90,7 +87,7 @@ const SYSTEM_PROMPT_HEADER = `את/ה "חוסך AI" — עוזר וירטואל�
 נתוני מסלולים אמיתיים (קטגוריה | ספק | מסלול | מחיר | תכונות):
 `;
 
-async function callGemini(apiKey: string, systemContext: string, history: { role: string; text: string }[], message: string): Promise<string> {
+async function callGeminiModel(model: string, apiKey: string, systemContext: string, history: { role: string; text: string }[], message: string): Promise<Response> {
   const contents = [
     ...history.slice(-MAX_HISTORY_TURNS).map((h) => ({
       role: h.role === "user" ? "user" : "model",
@@ -98,8 +95,8 @@ async function callGemini(apiKey: string, systemContext: string, history: { role
     })),
     { role: "user", parts: [{ text: message }] },
   ];
-  const r = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`,
+  return await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -110,13 +107,25 @@ async function callGemini(apiKey: string, systemContext: string, history: { role
       }),
     },
   );
-  if (!r.ok) {
-    jlog({ at: "ai-chat.callGemini", ok: false, status: r.status });
-    throw new Error("gemini request failed: " + r.status);
+}
+
+// Google renames/retires model ids over time; a 404 means "try the next
+// candidate", anything else (auth/quota/5xx) is a real failure — don't mask it.
+async function callGemini(apiKey: string, systemContext: string, history: { role: string; text: string }[], message: string): Promise<string> {
+  let lastStatus = 0;
+  for (const model of GEMINI_MODELS) {
+    const r = await callGeminiModel(model, apiKey, systemContext, history, message);
+    if (r.ok) {
+      const j = await r.json();
+      const text = j?.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text).join("") ?? "";
+      jlog({ at: "ai-chat.callGemini", ok: true, model });
+      return String(text).trim();
+    }
+    lastStatus = r.status;
+    jlog({ at: "ai-chat.callGemini", ok: false, model, status: r.status });
+    if (r.status !== 404) break;
   }
-  const j = await r.json();
-  const text = j?.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text).join("") ?? "";
-  return String(text).trim();
+  throw new Error("gemini request failed: " + lastStatus);
 }
 
 function clientIp(req: Request): string {
@@ -165,7 +174,7 @@ Deno.serve(async (req: Request) => {
   const ip = clientIp(req);
   if (await rateLimited(ip)) return json({ error: "rate limit exceeded" }, 429);
 
-  const plans = await loadPlans();
+  const plans = loadPlans();
   const systemPrompt = SYSTEM_PROMPT_HEADER + buildCatalogueContext(plans);
 
   try {

@@ -1,6 +1,6 @@
 {
   "tasks": {
-    "check": "deno check notify-lead/index.ts renewal-reminders/index.ts",
+    "check": "deno check notify-lead/index.ts renewal-reminders/index.ts ai-chat/index.ts",
     "test": "deno test tests/"
   },
   "compilerOptions": {

@@ -259,7 +259,7 @@ const LOGO = [
 // gracefully falls back to the coloured initials badge below.
 const LOGO_FILE = {
   'xphone': 'xphone.png', 'cellcom': 'cellcom.webp', '019mobile': '019mobile.webp', 'partner': 'partner.webp',
-  'golan': 'golan.webp', 'rami-levy': 'rami-levy.webp', 'bezeq': 'bezeq.svg', 'hot-mobile': 'hot-mobile.png',
+  'golan': 'golan.webp', 'rami-levy': 'rami-levy.webp', 'bezeq': 'bezeq.svg', 'hot-mobile': 'hot-mobile.webp',
   'hot': 'hot.svg', 'ccc': 'ccc.png', 'pelephone': 'pelephone.svg', 'wecom': 'wecom.png',
   'sting-tv': 'sting-tv.png', 'walla-mobile': 'walla-mobile.webp', 'gilat': 'gilat.webp', 'yes': 'yes.webp',
   'nexttv': 'nexttv.png', 'airalo': 'airalo.webp',

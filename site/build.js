@@ -368,6 +368,10 @@ const footer = `  <footer class="footer">
         <h4>כלים מומלצים</h4>
         <a href="compare.html">השוואת מסלולים</a><a href="calc-cellular.html">מחשבון סלולר</a><a href="calc-internet.html">מחשבון אינטרנט</a><a href="providers.html">כל הספקים</a><a href="guide-switching.html">מדריך מעבר ספק</a><a href="guide-number-port.html">ניוד מספר</a>
       </nav>
+      <nav class="footer__links footer__col" aria-label="קולקציות פופולריות">
+        <h4>חיפושים פופולריים</h4>
+        <a href="cellular-budget.html">סלולר מתחת ל-₪30</a><a href="cellular-5g.html">סלולר 5G</a><a href="internet-fiber-only.html">אינטרנט סיב אופטי</a><a href="internet-giga.html">אינטרנט גיגה</a><a href="plans-no-commitment.html">ללא התחייבות</a><a href="esim-abroad.html">eSIM לחו״ל</a>
+      </nav>
       <nav class="footer__links footer__col" aria-label="החברה">
         <h4>החברה</h4>
         <a href="about.html">אודות</a><a href="app.html">האפליקציה</a><a href="guides.html">כל המדריכים</a><a href="privacy.html">מדיניות פרטיות</a><a href="terms.html">תנאי שימוש</a>
@@ -1657,6 +1661,22 @@ const collections = [
     desc: 'חבילות טלוויזיה שכוללות Netflix, HBO Max, Disney+ או שירות סטרימינג אחר בחבילה — ממוינות מהזול ביותר.',
     intro: 'הנה החבילות שמשלבות טלוויזיה קלאסית עם שירות סטרימינג כלול — בלי לשלם נפרד על Netflix / HBO Max.',
     filter: (p) => p.cat === 'tv' && (p.feats || []).some((f) => /netflix|hbo|disney|max/i.test(f)), limit: 10,
+  },
+  {
+    slug: 'cellular-mid-range', catSlug: 'cellular', catName: 'סלולר', eyebrow: '₪30–₪60',
+    title: 'מסלולי סלולר ₪30–₪60 — איזון מחיר ואיכות | חוסך',
+    h1: 'מסלולי סלולר ₪30–₪60',
+    desc: 'מסלולי סלולר בטווח המחיר ₪30–₪60 — שדה האמצע שמאזן תקציב ואיכות. גב גדול, מהירות טובה, מחיר הגיוני.',
+    intro: 'לא הכי זול, לא הכי יקר — הטווח הזה מציע גב נתונים גדול, כולל לרוב שיחות ו-SMS, לפעמים גם 5G.',
+    filter: (p) => p.cat === 'cellular' && offerPrice(p) >= 30 && offerPrice(p) <= 60, limit: 18,
+  },
+  {
+    slug: 'abroad-daily', catSlug: 'abroad', catName: 'חבילות חו״ל', eyebrow: 'יומי',
+    title: 'חבילות חו״ל יומיות — לנסיעות קצרות | חוסך',
+    h1: 'חבילות חו״ל יומיות',
+    desc: 'חבילות גלישה בחו״ל לפי יום — אידיאלי לנסיעות קצרות של ימים ספורים. משלמים רק על מה שמשתמשים.',
+    intro: 'נוסעים לכמה ימים? חבילה יומית יכולה להיות זולה יותר מחבילה שבועית. הנה כל החבילות לפי יום, ממוינות מהזול.',
+    filter: (p) => p.cat === 'abroad' && (p.priceUnit === 'day' || /יומי|ליום/i.test([p.plan, (p.feats || []).join(' ')].join(' '))), limit: 15,
   },
 ];
 

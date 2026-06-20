@@ -422,7 +422,7 @@ a.chip:hover { transform: translateY(-2px); border-color: var(--green-2); box-sh
 
 /* Footer */
 .footer { background: var(--green-d); color: rgba(255,255,255,.8); padding: 48px 0 28px; }
-.footer__inner { display: grid; grid-template-columns: 1.6fr 1fr 1fr 1fr; gap: 30px; }
+.footer__inner { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr 1fr; gap: 28px; }
 .footer__col h4 { font-family: 'Rubik'; font-size: 14px; color: rgba(255,255,255,.55); font-weight: 700; margin-bottom: 12px; }
 .footer__brand p { margin-top: 12px; max-width: 30em; font-size: 14px; }
 .footer__links, .footer__contact { display: flex; flex-direction: column; gap: 10px; padding-top: 6px; }
@@ -792,16 +792,16 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
 .section--alt { border-block: 1px solid var(--line); }
 
 /* ── Popular collections grid ────────────────────────────────────────────── */
-.collections-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+.collections-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; }
 .collection-chip { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 18px 20px; background: var(--cream); border: 1px solid var(--line); border-radius: var(--radius); text-decoration: none; color: inherit; transition: transform .18s var(--ease), box-shadow .18s; }
 .collection-chip:hover { transform: translateY(-4px); box-shadow: var(--shadow); border-color: var(--accent); }
 .collection-chip__icon { font-size: 1.5rem; line-height: 1; }
-.collection-chip__title { font-family: 'Rubik'; font-size: 15px; font-weight: 600; color: var(--ink); }
-.collection-chip__sub { font-size: 13px; color: var(--muted); }
-@media (max-width: 900px) { .collections-grid { grid-template-columns: repeat(2, 1fr); } }
-@media (max-width: 560px) { .collections-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+.collection-chip__title { font-family: 'Rubik'; font-size: 14px; font-weight: 600; color: var(--ink); }
+.collection-chip__sub { font-size: 12px; color: var(--muted); }
+@media (max-width: 1024px) { .collections-grid { grid-template-columns: repeat(4, 1fr); } }
+@media (max-width: 700px) { .collections-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
   .collection-chip { padding: 14px 14px; }
-  .collection-chip__title { font-size: 14px; } }
+  .collection-chip__title { font-size: 13px; } }
 
 /* ── Chips & pills: tactile press (links only) ─────────────────────────────── */
 a.chip:active { transform: translateY(0) scale(.97); }

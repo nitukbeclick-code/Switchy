@@ -1140,7 +1140,8 @@ function providerPage(name, plans) {
   const url = `${SITE}/provider-${slug}.html`;
   const cheapest = plans.reduce((m, p) => Math.min(m, p.price), Infinity);
   const catNames = [...new Set(plans.map((p) => (categories.find((c) => c.slug === p.cat) || {}).name).filter(Boolean))];
-  const cards = plans.map(planCardHtml).join('\n        ');
+  const sortedPlans = plans.slice().sort((a, b) => a.price - b.price);
+  const cards = sortedPlans.map((p, i) => planCardHtml(p, i === 0 && sortedPlans.length > 1)).join('\n        ');
   const jsonld = jsonForScript({
     '@context': 'https://schema.org',
     '@graph': [

@@ -22,19 +22,17 @@ const JS_V = assetHash('script.js');
 const CSS_HREF = `styles.css?v=${CSS_V}`;
 const JS_SRC = `script.js?v=${JS_V}`;
 
-// ── Cookieless analytics (privacy-respecting, placeholder by default) ────────
-// Plausible-style: no cookies, no cross-site tracking, no personal data. The
-// domain below is a PLACEHOLDER — swap ANALYTICS_DOMAIN for the real account
-// (and uncomment the real endpoint) once analytics is set up. Until then the
-// remote script simply 404s harmlessly; the inline stub still queues calls so
-// `window.plausible('event', …)` from script.js never throws. Conversion
-// events (lead_submit, whatsapp_click) are fired from script.js.
-const ANALYTICS_DOMAIN = 'switchy-ai.com';
-const ANALYTICS_SRC = 'https://plausible.io/js/script.outbound-links.tagged-events.js';
+// ── Analytics — Google Analytics 4 (free) ───────────────────────────────────
+// Replace GA4_ID with your real Measurement ID (G-XXXXXXXXXX, from
+// analytics.google.com) HERE and in index.html, then rebuild. Until a real ID
+// is set, gtag loads harmlessly with no valid destination. Custom conversion
+// events (lead_submit, meeting_booked, whatsapp_click, …) are sent via gtag()
+// from script.js. NOTE: GA4 sets cookies — add a consent banner if you target EU.
+const GA4_ID = 'G-XXXXXXXXXX';
 const analyticsTag = () =>
-  `<!-- Cookieless analytics (Plausible-style). Placeholder until configured — no cookies, no personal data. -->
-  <script defer data-domain="${ANALYTICS_DOMAIN}" src="${ANALYTICS_SRC}"></script>
-  <script>window.plausible=window.plausible||function(){(window.plausible.q=window.plausible.q||[]).push(arguments)};</script>`;
+  `<!-- Google Analytics 4 — replace the Measurement ID in build.js + index.html. -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=${GA4_ID}"></script>
+  <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','${GA4_ID}');</script>`;
 
 // ── Lead form backend (Supabase) ─────────────────────────────────────────────
 // The anon/publishable key is the PUBLIC client key (RLS-gated, safe to ship
@@ -1100,7 +1098,7 @@ function head(title, desc, url, extraJsonLd, noindex, ogType = 'article') {
   <meta name="twitter:image:alt" content="${esc(OG_IMAGE_ALT)}" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="preconnect" href="https://plausible.io" />
+  <link rel="preconnect" href="https://www.googletagmanager.com" />
   <link rel="preconnect" href="https://orzitfqmlvopujsoyigr.supabase.co" />
   <!-- Fonts via Google CDN, loaded non-render-blocking (preload as style →
        swap media print→all on load), with a <noscript> fallback. Preconnected

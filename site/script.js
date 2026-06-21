@@ -143,7 +143,7 @@
   // Thin wrapper over the Plausible-style queue (defined inline in <head>).
   // Privacy-respecting: event names + coarse props only, never personal data.
   const track = (name, props) => {
-    try { if (typeof window.plausible === 'function') window.plausible(name, props ? { props: props } : undefined); } catch (_) { /* analytics is best-effort */ }
+    try { if (typeof window.gtag === 'function') window.gtag('event', name, props || undefined); } catch (_) { /* analytics is best-effort */ }
   };
 
   // Fire a conversion event whenever a WhatsApp link is clicked (lead intent),

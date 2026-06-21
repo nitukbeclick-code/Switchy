@@ -4,15 +4,37 @@
   const $ = (id) => document.getElementById(id);
   const nis = (n) => '₪' + Math.round(n).toLocaleString('he-IL');
 
+  // ── Shared scheduling helpers ──────────────────────────────────────────────
+  // rafThrottle: collapse a burst of high-frequency events (scroll/pointer) into
+  // one call per animation frame, so handlers that read layout don't thrash.
+  // debounce: defer a handler until input has settled (text fields), avoiding a
+  // full re-filter on every keystroke.
+  const rafThrottle = (fn) => {
+    let scheduled = false;
+    return (...args) => {
+      if (scheduled) return;
+      scheduled = true;
+      requestAnimationFrame(() => { scheduled = false; fn(...args); });
+    };
+  };
+  const debounce = (fn, wait = 120) => {
+    let t = 0;
+    return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), wait); };
+  };
+
   // ── Footer year ──────────────────────────────────────────────────────────
   const year = $('year');
   if (year) year.textContent = new Date().getFullYear();
 
   // ── Sticky nav shadow ────────────────────────────────────────────────────
+  // rAF-throttled: toggling a class is a write, but reading scrollY each event
+  // and reacting synchronously is wasteful at scroll cadence.
   const nav = $('nav');
   const onScroll = () => nav && nav.classList.toggle('scrolled', window.scrollY > 10);
-  window.addEventListener('scroll', onScroll, { passive: true });
-  onScroll();
+  if (nav) {
+    window.addEventListener('scroll', rafThrottle(onScroll), { passive: true });
+    onScroll();
+  }
 
   // ── Mobile menu ──────────────────────────────────────────────────────────
   const toggle = $('navToggle');
@@ -27,6 +49,11 @@
     toggle.addEventListener('click', () =>
       setMenu(toggle.getAttribute('aria-expanded') !== 'true'));
     menu.querySelectorAll('a').forEach((a) => a.addEventListener('click', () => setMenu(false)));
+    // Esc closes the menu and returns focus to the toggle — keyboard parity with
+    // the click-to-open affordance.
+    menu.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') { setMenu(false); toggle.focus(); }
+    });
   }
 
   // ── Current page in the nav ──────────────────────────────────────────────
@@ -136,21 +163,30 @@
         if (note) { note.classList.remove('cta__note--err'); note.textContent = 'תודה! נחזור אליך בהקדם ✦'; }
         return;
       }
-      const name = ($('leadName').value || '').trim();
+      const nameEl = $('leadName');
+      const phoneEl = $('leadPhone');
+      const name = (nameEl && nameEl.value || '').trim();
       // Normalize to digits/+ — the leads gate rejects dots/parens/spaces.
-      const phone = ($('leadPhone').value || '').replace(/[^\d+]/g, '');
+      const phone = (phoneEl && phoneEl.value || '').replace(/[^\d+]/g, '');
       if (name.length < 2 || name.length > 80 || phone.replace(/\D/g, '').length < 9) {
         if (note) { note.classList.add('cta__note--err'); note.textContent = 'נא למלא שם וטלפון תקין 🙏'; }
+        // Move focus to the first invalid field so keyboard/AT users land on it.
+        const bad = (name.length < 2 || name.length > 80) ? nameEl : phoneEl;
+        if (bad) bad.focus();
         return;
       }
       // Legal consent gate (Privacy Protection Regulations + Spam/Communications
       // Law): terms + privacy are MANDATORY — block submission without both.
       // Marketing is optional opt-in. The server re-stamps these timestamps
       // authoritatively; we send them so the consent moment is captured client-side.
-      const termsOk = $('consentTerms') && $('consentTerms').checked;
-      const privacyOk = $('consentPrivacy') && $('consentPrivacy').checked;
+      const termsEl = $('consentTerms');
+      const privacyEl = $('consentPrivacy');
+      const termsOk = termsEl && termsEl.checked;
+      const privacyOk = privacyEl && privacyEl.checked;
       if (!termsOk || !privacyOk) {
         if (note) { note.classList.add('cta__note--err'); note.textContent = 'יש לאשר את תנאי השימוש ומדיניות הפרטיות כדי להמשיך 🙏'; }
+        const badConsent = !termsOk ? termsEl : privacyEl;
+        if (badConsent) badConsent.focus();
         return;
       }
       const now = new Date().toISOString();
@@ -175,6 +211,7 @@
       if (btn) { btn.disabled = false; btn.classList.remove('is-loading'); }
       if (!sent) {
         if (note) { note.classList.add('cta__note--err'); note.textContent = 'השליחה נכשלה — נסו שוב, או כתבו לנו בוואטסאפ 💬'; }
+        if (btn) btn.focus(); // keep focus on the retry affordance
         return;
       }
       track('lead_submit', { source: location.pathname });
@@ -257,28 +294,42 @@
         }
         return Number(a.dataset.price) - Number(b.dataset.price);
       });
-      visibleCards.forEach((card) => planGrid.appendChild(card));
+      // Re-order via a fragment so the visible cards reflow once, not per-append.
+      const frag = document.createDocumentFragment();
+      visibleCards.forEach((card) => frag.appendChild(card));
+      planGrid.appendChild(frag);
       if (empty) empty.style.display = shown ? 'none' : 'block';
       if (planCount) planCount.textContent = shown < cards.length ? `${shown} מסלולים נמצאו` : '';
     };
-    btns.forEach((b) => b.addEventListener('click', () => {
-      btns.forEach((x) => x.classList.toggle('active', x === b));
-      cat = b.dataset.filter;
-      apply();
-    }));
-    flagChips.forEach((chip) => chip.addEventListener('click', () => {
-      chip.classList.toggle('active');
-      apply();
-    }));
-    if (search) search.addEventListener('input', apply);
+    // Reflect toggle state in ARIA so AT announces the active category/flag, not
+    // just the visual .active class.
+    const setPressed = (el, on) => el.setAttribute('aria-pressed', String(on));
+    btns.forEach((b) => {
+      setPressed(b, b.classList.contains('active'));
+      b.addEventListener('click', () => {
+        btns.forEach((x) => { const on = x === b; x.classList.toggle('active', on); setPressed(x, on); });
+        cat = b.dataset.filter;
+        apply();
+      });
+    });
+    flagChips.forEach((chip) => {
+      setPressed(chip, chip.classList.contains('active'));
+      chip.addEventListener('click', () => {
+        chip.classList.toggle('active');
+        setPressed(chip, chip.classList.contains('active'));
+        apply();
+      });
+    });
+    // Debounced: a full grid re-filter on every keystroke is wasteful; settle first.
+    if (search) search.addEventListener('input', debounce(apply, 120));
     if (sort) sort.addEventListener('change', apply);
     if (providerSel) providerSel.addEventListener('change', apply);
-    if (maxPriceInput) maxPriceInput.addEventListener('input', apply);
+    if (maxPriceInput) maxPriceInput.addEventListener('input', debounce(apply, 120));
     const emptyReset = $('planEmptyReset');
     if (emptyReset) emptyReset.addEventListener('click', () => {
       cat = 'all';
-      btns.forEach((x) => x.classList.toggle('active', x.dataset.filter === 'all'));
-      flagChips.forEach((c) => c.classList.remove('active'));
+      btns.forEach((x) => { const on = x.dataset.filter === 'all'; x.classList.toggle('active', on); setPressed(x, on); });
+      flagChips.forEach((c) => { c.classList.remove('active'); setPressed(c, false); });
       if (search) search.value = '';
       if (providerSel) providerSel.value = '';
       if (maxPriceInput) maxPriceInput.value = '';
@@ -368,10 +419,21 @@
     copyBtn.setAttribute('aria-live', 'polite');
     compareTable.insertAdjacentElement('afterend', copyBtn);
     copyBtn.addEventListener('click', () => {
-      navigator.clipboard.writeText(location.href).then(() => {
+      const ok = () => {
         copyBtn.textContent = '✓ הקישור הועתק!';
         setTimeout(() => { copyBtn.textContent = '🔗 שתפו השוואה זו'; }, 2500);
-      });
+      };
+      const fail = () => {
+        // Clipboard API is unavailable on insecure origins / older browsers —
+        // tell the user instead of silently doing nothing.
+        copyBtn.textContent = '⚠ העתיקו את הכתובת מהדפדפן';
+        setTimeout(() => { copyBtn.textContent = '🔗 שתפו השוואה זו'; }, 2500);
+      };
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(location.href).then(ok, fail);
+        } else { fail(); }
+      } catch (_) { fail(); }
       track('compare_share', { source: 'copy_link' });
     });
     picks.forEach((s) => s.addEventListener('change', () => { updateUrl(); render(); }));
@@ -391,6 +453,11 @@
     const aiForm = $('aiChatForm');
     const aiInput = $('aiChatInput');
     const aiHistory = [];
+    // Announce new bubbles to assistive tech: the chat log is a polite live
+    // region, so each appended user/bot message is read out in turn.
+    if (!aiChat.getAttribute('role')) aiChat.setAttribute('role', 'log');
+    aiChat.setAttribute('aria-live', 'polite');
+    aiChat.setAttribute('aria-atomic', 'false');
     const addBubble = (cls, text) => {
       const b = document.createElement('div');
       b.className = 'ai-bubble ' + cls;
@@ -410,9 +477,15 @@
       return b;
     };
     let aiBusy = false;
+    const chips = Array.from(document.querySelectorAll('.ai-chip'));
+    // Reflect the in-flight state so chips read as disabled to AT and don't
+    // queue a second request mid-answer.
+    const setChipsBusy = (busy) => chips.forEach((c) => c.setAttribute('aria-disabled', String(busy)));
     const askAi = async (q) => {
       if (!q || aiBusy) return;
       aiBusy = true;
+      setChipsBusy(true);
+      if (aiInput) aiInput.setAttribute('aria-busy', 'true');
       addBubble('ai-bubble--me', q);
       const typing = addTyping();
       track('ai_chat_message', { source: location.pathname });
@@ -435,11 +508,16 @@
         addBubble('ai-bubble--bot', 'לא הצלחתי להתחבר כרגע — נסו שוב בעוד רגע, או דברו איתנו בוואטסאפ 💬');
       }
       aiBusy = false;
+      setChipsBusy(false);
+      if (aiInput) { aiInput.removeAttribute('aria-busy'); aiInput.focus(); }
     };
-    document.querySelectorAll('.ai-chip').forEach((chip) => {
+    chips.forEach((chip) => {
       chip.setAttribute('role', 'button');
       chip.setAttribute('tabindex', '0');
-      const ask = () => askAi(chip.textContent.replace(/^[^א-ת]+/, '').trim());
+      // Strip the leading emoji/symbol for both the spoken label and the query.
+      const label = chip.textContent.replace(/^[^א-ת]+/, '').trim();
+      if (label && !chip.getAttribute('aria-label')) chip.setAttribute('aria-label', label);
+      const ask = () => { if (chip.getAttribute('aria-disabled') !== 'true') askAi(label); };
       chip.addEventListener('click', ask);
       chip.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); ask(); }
@@ -449,7 +527,7 @@
       aiForm.addEventListener('submit', (e) => {
         e.preventDefault();
         const q = aiInput.value.trim();
-        if (!q) return;
+        if (!q || aiBusy) return;
         aiInput.value = '';
         askAi(q);
       });
@@ -542,14 +620,22 @@
   });
 
   // ── Pointer-tracking spotlight on cards (feeds CSS --mx/--my) ──────────────
+  // rAF-batched: rect read + custom-prop write happen once per frame off the
+  // latest pointer position, so a fast pointermove can't force layout per event.
   if (!reduceMotion && window.matchMedia('(hover: hover)').matches) {
     const spotlightSel = '.feature, .step, .cat, .guide-card, .plan, .provider-card';
+    let spotCard = null, spotX = 0, spotY = 0;
+    const paintSpot = rafThrottle(() => {
+      if (!spotCard) return;
+      const r = spotCard.getBoundingClientRect();
+      spotCard.style.setProperty('--mx', ((spotX - r.left) / r.width * 100).toFixed(1) + '%');
+      spotCard.style.setProperty('--my', ((spotY - r.top) / r.height * 100).toFixed(1) + '%');
+    });
     document.addEventListener('pointermove', (e) => {
       const card = e.target.closest && e.target.closest(spotlightSel);
       if (!card) return;
-      const r = card.getBoundingClientRect();
-      card.style.setProperty('--mx', ((e.clientX - r.left) / r.width * 100).toFixed(1) + '%');
-      card.style.setProperty('--my', ((e.clientY - r.top) / r.height * 100).toFixed(1) + '%');
+      spotCard = card; spotX = e.clientX; spotY = e.clientY;
+      paintSpot();
     }, { passive: true });
   }
 
@@ -558,14 +644,16 @@
     document.querySelectorAll('.btn--primary').forEach((btn) => {
       btn.classList.add('magnetic');
       const strength = 0.28;
-      btn.addEventListener('pointermove', (e) => {
+      let mx = 0, my = 0;
+      const paint = rafThrottle(() => {
         const r = btn.getBoundingClientRect();
-        const x = (e.clientX - (r.left + r.width / 2)) * strength;
-        const y = (e.clientY - (r.top + r.height / 2)) * strength;
+        const x = (mx - (r.left + r.width / 2)) * strength;
+        const y = (my - (r.top + r.height / 2)) * strength;
         // CSS `translate` composes with the :hover/:active `transform` states —
         // an inline transform here used to clobber the lift and the press.
         btn.style.translate = `${x.toFixed(1)}px ${y.toFixed(1)}px`;
       });
+      btn.addEventListener('pointermove', (e) => { mx = e.clientX; my = e.clientY; paint(); });
       btn.addEventListener('pointerleave', () => { btn.style.translate = ''; });
     });
   }
@@ -600,15 +688,16 @@
         show('<p style="margin:0 0 12px">אתם כבר משלמים פחות מהמסלול הזול שמצאנו — מצוין!</p>'
           + '<a href="' + catHref + '" class="btn btn--ghost btn--block">עדיין שווה להשוות מדי פעם ←</a>');
       }
-      if (window.plausible) window.plausible('calc_used', { props: { cat: calc.dataset.cat || '' } });
+      track('calc_used', { cat: calc.dataset.cat || '' });
     };
     if (btn) btn.addEventListener('click', run);
     if (bill) bill.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); run(); } });
-    document.querySelectorAll('.calc-quick__btn').forEach((qb) => {
+    const quickBtns = Array.from(document.querySelectorAll('.calc-quick__btn'));
+    quickBtns.forEach((qb) => {
+      qb.setAttribute('aria-pressed', 'false');
       qb.addEventListener('click', () => {
         if (bill) { bill.value = qb.dataset.val; }
-        document.querySelectorAll('.calc-quick__btn').forEach((b) => b.classList.remove('active'));
-        qb.classList.add('active');
+        quickBtns.forEach((b) => { const on = b === qb; b.classList.toggle('active', on); b.setAttribute('aria-pressed', String(on)); });
         run();
       });
     });
@@ -623,29 +712,35 @@
     const catBtns = Array.from(document.querySelectorAll('.guide-cat-filters .filter-btn'));
     let activeCat = 'all';
 
+    // Cache each card's searchable text + owning section once — these never
+    // change, so we avoid re-reading textContent/closest() on every filter.
+    const cardMeta = cards.map((card) => {
+      const sec = card.closest('section[aria-label]');
+      return { card, sec, text: card.textContent.toLowerCase(), cat: sec ? sec.getAttribute('aria-label') : null };
+    });
+
     const applyGuideFilters = () => {
       const q = gs.value.trim().toLowerCase();
       let visible = 0;
-      cards.forEach((card) => {
-        const text = card.textContent.toLowerCase();
-        const catMatch = activeCat === 'all' || (card.closest('section[aria-label]') || {}).getAttribute('aria-label') === activeCat;
-        const show = catMatch && (!q || text.includes(q));
-        card.style.display = show ? '' : 'none';
-        if (show) visible++;
+      const secHasVisible = new Set();
+      cardMeta.forEach((m) => {
+        const catMatch = activeCat === 'all' || m.cat === activeCat;
+        const show = catMatch && (!q || m.text.includes(q));
+        m.card.style.display = show ? '' : 'none';
+        if (show) { visible++; if (m.sec) secHasVisible.add(m.sec); }
       });
-      sectionEls.forEach((sec) => {
-        const anyVisible = Array.from(sec.querySelectorAll('.guide-card')).some((c) => c.style.display !== 'none');
-        sec.style.display = anyVisible ? '' : 'none';
-      });
+      sectionEls.forEach((sec) => { sec.style.display = secHasVisible.has(sec) ? '' : 'none'; });
       if (empty) empty.style.display = visible === 0 ? 'block' : 'none';
     };
 
-    gs.addEventListener('input', applyGuideFilters);
+    // Debounced: don't re-scan every card's textContent on each keystroke.
+    gs.addEventListener('input', debounce(applyGuideFilters, 120));
 
     catBtns.forEach((btn) => {
+      btn.setAttribute('aria-pressed', String(btn.classList.contains('active')));
       btn.addEventListener('click', () => {
         activeCat = btn.dataset.guideCat || 'all';
-        catBtns.forEach((b) => b.classList.toggle('active', b === btn));
+        catBtns.forEach((b) => { const on = b === btn; b.classList.toggle('active', on); b.setAttribute('aria-pressed', String(on)); });
         applyGuideFilters();
       });
     });

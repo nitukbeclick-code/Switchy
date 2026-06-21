@@ -3,8 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>חוסך — השוואת מחירי תקשורת חכמה | חוסכים עד ₪1,200 בשנה</title>
-  <meta name="description" content="חוסך משווה עבורכם מחירים על סלולר, אינטרנט, טלוויזיה, חבילות משולבות וחו״ל מכל חברות התקשורת — ומוצא את המסלול הכי משתלם. בחינם, בלי התחייבות." />
+  <title>חוסך — השוואת מחירי תקשורת: סלולר, אינטרנט, טלוויזיה וחו״ל</title>
+  <meta name="description" content="חוסך משווה לכם מחירים על סלולר, אינטרנט, טלוויזיה, חבילות משולבות וחו״ל מכל חברות התקשורת בישראל — ומוצא את המסלול הכי משתלם. השוואה חינם, בלי התחייבות, עם ליווי אנושי במעבר." />
+  <meta name="keywords" content="השוואת מחירי תקשורת, מסלול סלולר, חבילת אינטרנט, סיב אופטי, השוואת ספקים, ניוד מספר, eSIM חו״ל, מסלול 5G" />
+  <meta name="robots" content="index, follow, max-image-preview:large" />
   <meta name="theme-color" content="#111827" />
   <link rel="canonical" href="https://chosech.co.il/" />
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
@@ -16,14 +18,17 @@
   <meta property="og:locale" content="he_IL" />
   <meta property="og:url" content="https://chosech.co.il/" />
   <meta property="og:site_name" content="חוסך" />
-  <meta property="og:title" content="חוסך — השוואת מחירי תקשורת חכמה" />
-  <meta property="og:description" content="כל חברות התקשורת במקום אחד. השוו, חסכו עד ₪1,200 בשנה, ועברו בליווי מלא." />
+  <meta property="og:title" content="חוסך — השוואת מחירי תקשורת בישראל" />
+  <meta property="og:description" content="כל חברות התקשורת במקום אחד. משווים סלולר, אינטרנט, טלוויזיה וחו״ל, מוצאים את המסלול המשתלם ועוברים בליווי מלא — חינם, בלי התחייבות." />
   <meta property="og:image" content="https://chosech.co.il/og-image.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:image:alt" content="חוסך — השוואת מחירי תקשורת חכמה" />
   <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="חוסך — השוואת מחירי תקשורת בישראל" />
+  <meta name="twitter:description" content="כל חברות התקשורת במקום אחד. משווים, מוצאים את המסלול המשתלם ועוברים בליווי מלא — חינם, בלי התחייבות." />
   <meta name="twitter:image" content="https://chosech.co.il/og-image.png" />
+  <meta name="twitter:image:alt" content="חוסך — השוואת מחירי תקשורת חכמה" />
 
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -34,23 +39,27 @@
   <noscript><link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" rel="stylesheet" /></noscript>
   <!-- ?v= cache-busting hash is owned by build.js (it prints the current
        values on every run) — keep this in sync when styles.css changes. -->
-  <link rel="stylesheet" href="styles.css?v=56381a14" />
+  <link rel="stylesheet" href="styles.css?v=2870ee58" />
 
   <!-- Cookieless analytics (Plausible-style). Placeholder until configured —
        no cookies, no personal data. Mirrors build.js analyticsTag(). -->
   <script defer data-domain="chosech.co.il" src="https://plausible.io/js/script.outbound-links.tagged-events.js"></script>
   <script>window.plausible=window.plausible||function(){(window.plausible.q=window.plausible.q||[]).push(arguments)};</script>
 
-  <!-- Structured data: Organization, WebSite, and an FAQ (eligible for rich results). -->
+  <!-- Structured data: Organization, WebSite, SoftwareApplication, Breadcrumb and FAQ
+       (eligible for rich results). No fabricated ratings/reviews are declared. -->
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
     "@graph": [
       {
         "@type": "Organization",
+        "@id": "https://chosech.co.il/#organization",
         "name": "חוסך",
         "url": "https://chosech.co.il/",
-        "description": "השוואת מחירי תקשורת חכמה — סלולר, אינטרנט, טלוויזיה, חבילות וחו״ל.",
+        "logo": "https://chosech.co.il/favicon.svg",
+        "image": "https://chosech.co.il/og-image.png",
+        "description": "השוואת מחירי תקשורת בישראל — סלולר, אינטרנט, טלוויזיה, חבילות משולבות וחו״ל.",
         "areaServed": "IL",
         "email": "hello@chosech.co.il",
         "contactPoint": {
@@ -64,9 +73,11 @@
       },
       {
         "@type": "WebSite",
+        "@id": "https://chosech.co.il/#website",
         "name": "חוסך",
         "url": "https://chosech.co.il/",
         "inLanguage": "he-IL",
+        "publisher": { "@id": "https://chosech.co.il/#organization" },
         "potentialAction": {
           "@type": "SearchAction",
           "target": {
@@ -77,18 +88,39 @@
         }
       },
       {
+        "@type": "SoftwareApplication",
+        "name": "חוסך",
+        "applicationCategory": "FinanceApplication",
+        "operatingSystem": "Android, iOS",
+        "inLanguage": "he-IL",
+        "url": "https://chosech.co.il/app.html",
+        "description": "אפליקציה להשוואת מסלולי תקשורת בישראל — המלצה אישית, התראת חידוש מבצע וליווי במעבר. בגישה מוקדמת.",
+        "publisher": { "@id": "https://chosech.co.il/#organization" },
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "ILS" }
+      },
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "דף הבית", "item": "https://chosech.co.il/" },
+          { "@type": "ListItem", "position": 2, "name": "כל החבילות", "item": "https://chosech.co.il/plans.html" },
+          { "@type": "ListItem", "position": 3, "name": "השוואת מסלולים", "item": "https://chosech.co.il/compare.html" }
+        ]
+      },
+      {
         "@type": "FAQPage",
         "mainEntity": [
           { "@type": "Question", "name": "זה באמת בחינם?",
             "acceptedAnswer": { "@type": "Answer", "text": "כן, לחלוטין. אנחנו מקבלים עמלה מחברת התקשורת כשעוברים — אתם לא משלמים לנו אגורה, והמחיר שלכם זהה." } },
-          { "@type": "Question", "name": "המספר שלי נשמר במעבר?",
+          { "@type": "Question", "name": "האם המספר שלי נשמר במעבר?",
             "acceptedAnswer": { "@type": "Answer", "text": "בוודאי. ניוד המספר שומר על המספר הקיים, והוא מתבצע תוך 1–3 ימי עסקים בליווי שלנו." } },
           { "@type": "Question", "name": "אילו חברות אתם משווים?",
-            "acceptedAnswer": { "@type": "Answer", "text": "את כולן — פלאפון, סלקום, פרטנר, הוט, גולן, 019, רמי לוי, בזק, yes ועוד, בכל הקטגוריות." } },
+            "acceptedAnswer": { "@type": "Answer", "text": "את כל הגדולות והקטנות — פלאפון, סלקום, פרטנר, הוט, גולן טלקום, 019 מובייל, רמי לוי, בזק, yes ועוד, בכל הקטגוריות." } },
           { "@type": "Question", "name": "כמה זמן לוקח התהליך?",
-            "acceptedAnswer": { "@type": "Answer", "text": "השאלון לוקח כ-2 דקות וההשוואה מיידית. נציג חוזר אליכם תוך שעה בשעות הפעילות להשלמת המעבר." } },
-          { "@type": "Question", "name": "מה ההתראה על חידוש מבצע?",
-            "acceptedAnswer": { "@type": "Answer", "text": "מסלולים רבים זולים בשנה הראשונה ואז קופצים. חוסך מזכיר לכם כ-21 יום לפני סיום המבצע כדי שתשוו שוב ולא תשלמו יותר מדי." } }
+            "acceptedAnswer": { "@type": "Answer", "text": "השאלון לוקח כ-2 דקות וההשוואה מיידית. נציג חוזר אליכם בהקדם בשעות הפעילות כדי להשלים את המעבר." } },
+          { "@type": "Question", "name": "מהי התראת החידוש על מבצע?",
+            "acceptedAnswer": { "@type": "Answer", "text": "מסלולים רבים זולים בשנה הראשונה ואז קופצים. חוסך מזכיר לכם כ-21 יום לפני סיום המבצע כדי שתשוו שוב ולא תשלמו יותר מדי." } },
+          { "@type": "Question", "name": "האם חוסך זמינה כבר?",
+            "acceptedAnswer": { "@type": "Answer", "text": "אנחנו בגישה מוקדמת. כבר עכשיו אפשר להשוות מסלולים באתר ולהשאיר פרטים, ונחזור אליכם להשלמת המעבר. ההרשמה מצרפת אתכם גם לרשימת ההמתנה לאפליקציה." } }
         ]
       }
     ]
@@ -134,24 +166,25 @@
     <section class="hero">
       <div class="container hero__inner">
         <div class="hero__copy reveal">
-          <span class="pill">חינם · בלי התחייבות</span>
+          <span class="pill">גישה מוקדמת · חינם · בלי התחייבות</span>
           <h1>כל חברות התקשורת<br /><span class="hl">במקום אחד</span></h1>
           <p class="hero__sub">
-            חוסך משווה עבורכם מחירים על סלולר, אינטרנט, טלוויזיה, חבילות משולבות
-            וחו״ל — ומוצא את המסלול הכי משתלם. תחסכו <strong>עד ₪1,200 בשנה</strong>.
+            חוסך משווה לכם מחירים על סלולר, אינטרנט, טלוויזיה, חבילות משולבות
+            וחו״ל מכל הספקים בישראל — ומוצא את המסלול הכי משתלם.
+            השוואה חינם, בלי התחייבות, עם <strong>ליווי אנושי במעבר</strong>.
           </p>
           <div class="hero__cta">
-            <a class="btn btn--primary btn--lg" href="#calculator">בדקו כמה תחסכו ←</a>
+            <a class="btn btn--primary btn--lg" href="#calculator">בדקו כמה תוכלו לחסוך ←</a>
             <a class="btn btn--ghost btn--lg" href="#how">איך זה עובד?</a>
           </div>
-          <p class="hero__social"><span aria-hidden="true">👥</span> <strong>87 אנשים</strong> בדקו מסלולים השבוע</p>
-          <ul class="hero__stats" aria-label="נתונים">
+          <p class="hero__social"><span aria-hidden="true">✦</span> משווים <strong>120+ מסלולים</strong> מ-18 ספקים — מתעדכן כל יום</p>
+          <ul class="hero__stats" aria-label="נתונים על ההשוואה">
             <li><b>120+</b><span>מסלולים בהשוואה</span></li>
             <li><b>18</b><span>ספקים</span></li>
             <li><b>5</b><span>קטגוריות</span></li>
             <li><b>מ-₪15</b><span>מחיר התחלתי</span></li>
           </ul>
-          <p class="hero__fineprint">* הערכה בלבד; החיסכון בפועל תלוי בחבילה, בספק ובשימוש שלכם. ראו <a href="terms.html">תנאי שימוש</a>.</p>
+          <p class="hero__fineprint">* החיסכון משתנה לפי החבילה, הספק והשימוש שלכם — נחשב לכם אישית. ראו <a href="terms.html">תנאי שימוש</a>.</p>
         </div>
 
         <div class="hero__visual reveal" aria-hidden="true">
@@ -223,7 +256,7 @@
         <header class="section__head reveal">
           <span class="eyebrow">מחירים אמיתיים</span>
           <h2>ככה נראה מסלול משתלם</h2>
-          <p>שלוש דוגמאות אמיתיות מההשוואה — הזול ביותר בכל קטגוריה, כולל המחיר שאחרי המבצע. שקוף, בלי כוכביות.</p>
+          <p>שלוש דוגמאות מתוך ההשוואה — מחיר אטרקטיבי בכל קטגוריה, כולל המחיר שאחרי המבצע. שקוף, בלי כוכביות נסתרות.</p>
         </header>
         <div class="plan-grid plan-grid--featured">
           <article class="plan reveal" data-cat="cellular">
@@ -445,25 +478,28 @@
       </div>
     </section>
 
-    <!-- ── Value props ──────────────────────────────────────────────────── -->
+    <!-- ── Value props / our promise ────────────────────────────────────── -->
+    <!-- Honest "why us" principles (NOT customer reviews). The product is in
+         early access — we don't publish testimonials or savings we can't back. -->
     <section class="section" id="why">
       <div class="container">
         <header class="section__head reveal">
           <span class="eyebrow">למה דרכנו</span>
           <h2>השוואה הוגנת, מעבר בלי כאב ראש</h2>
+          <p>אנחנו בגישה מוקדמת — אז במקום ביקורות מומצאות, הנה בדיוק מה שאנחנו מתחייבים אליו.</p>
         </header>
         <div class="quotes">
           <figure class="quote reveal">
-            <blockquote>״שילמתי ₪119 לסלקום שנים. בדקתי בחוסך וקניתי ב-₪39 — אותה רשת, 5G. קשה להאמין שזה אותו שירות.״</blockquote>
-            <figcaption>ד.ק., תל אביב — חסכה ₪960 בשנה · <span>משתמשת בטא</span></figcaption>
+            <blockquote>משווים את אותו מסלול אצל כל הספקים — אותה רשת, אותו שירות, מחיר אחר. אנחנו מראים לכם את הפער, לא מסתירים אותו.</blockquote>
+            <figcaption>השוואה ללא משוא פנים</figcaption>
           </figure>
           <figure class="quote reveal">
-            <blockquote>״ניסיתי להתמקח עם הוט לבד ולא הצלחתי. חוסך עשו את כל המעבר תוך יומיים — בלי ריצות, בלי המתנה.״</blockquote>
-            <figcaption>מ.ג., חיפה — עבר לאינטרנט ב-₪49 · <span>משתמש בטא</span></figcaption>
+            <blockquote>המעבר הוא הכי מתיש בתהליך — אז אנחנו עושים אותו בשבילכם. ניוד מספר, מילוי טפסים ומעקב, עד שהמעבר מסתיים תוך 1–3 ימי עסקים.</blockquote>
+            <figcaption>ליווי אנושי במעבר</figcaption>
           </figure>
           <figure class="quote reveal">
-            <blockquote>״הפתעה: המסלול שהציעו לי זול מ-₪35 שהייתי משלם בטריפל הישן. ועוד עם HBO Max בחינם לשנה.״</blockquote>
-            <figcaption>ר.ל., ירושלים — חסך בחבילה משולבת · <span>משתמש בטא</span></figcaption>
+            <blockquote>הרבה מסלולים זולים בשנה הראשונה ואז קופצים. אנחנו מציגים מראש את המחיר שאחרי המבצע — ומזכירים לכם להשוות שוב לפני שהוא עולה.</blockquote>
+            <figcaption>מחיר אמיתי, בלי הפתעות</figcaption>
           </figure>
         </div>
       </div>
@@ -543,11 +579,15 @@
           </details>
           <details>
             <summary>כמה זמן לוקח התהליך?</summary>
-            <p>השאלון לוקח כ-2 דקות, ההשוואה מיידית. נציג חוזר אליכם תוך שעה (בשעות הפעילות) להשלמת המעבר.</p>
+            <p>השאלון לוקח כ-2 דקות, ההשוואה מיידית. נציג חוזר אליכם בהקדם (בשעות הפעילות) להשלמת המעבר, וניוד המספר מתבצע תוך 1–3 ימי עסקים.</p>
           </details>
           <details>
-            <summary>מה ההתראה על חידוש מבצע?</summary>
+            <summary>מהי התראת החידוש על מבצע?</summary>
             <p>מסלולים רבים זולים בשנה הראשונה ואז קופצים. חוסך עוקב ומזכיר לכם ~21 יום לפני סיום המבצע — כדי שתשוו שוב ולא תשלמו יותר מדי.</p>
+          </details>
+          <details>
+            <summary>האם חוסך זמינה כבר?</summary>
+            <p>אנחנו בגישה מוקדמת. כבר עכשיו אפשר להשוות מסלולים באתר ולהשאיר פרטים, ונחזור אליכם להשלמת המעבר. ההרשמה מצרפת אתכם גם לרשימת ההמתנה לאפליקציה.</p>
           </details>
         </div>
       </div>
@@ -575,7 +615,7 @@
     <section class="cta" id="cta">
       <div class="container cta__inner reveal">
         <h2>מוכנים להפסיק לשלם יותר מדי?</h2>
-        <p>גלו בשניות כמה תוכלו לחסוך — חינם, בלי התחייבות.</p>
+        <p>השאירו שם וטלפון, ונחזור אליכם עם השוואה אישית והמסלול המשתלם ביותר עבורכם — חינם, בלי התחייבות.</p>
         <form class="cta__form" id="leadForm" novalidate>
           <input type="text" id="leadCompany" name="company" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" />
           <input type="text" id="leadName" name="name" placeholder="שם מלא" aria-label="שם מלא" autocomplete="name" required />
@@ -598,7 +638,7 @@
               <span>התריעו לי כשיורד מחיר על מסלול שמתאים לי</span>
             </label>
           </div>
-          <button class="btn btn--primary btn--lg" type="submit">קבלו השוואה חינם</button>
+          <button class="btn btn--primary btn--lg" type="submit">קבלו השוואה חינם ←</button>
         </form>
         <p class="cta__note" id="leadNote" role="status" aria-live="polite"></p>
         <a class="cta__wa" href="https://wa.me/972505037537?text=%D7%94%D7%99%D7%99%2C%20%D7%90%D7%A9%D7%9E%D7%97%20%D7%9C%D7%94%D7%A9%D7%95%D7%95%D7%AA%20%D7%9E%D7%A1%D7%9C%D7%95%D7%9C%D7%99%D7%9D" target="_blank" rel="noopener">
@@ -669,6 +709,6 @@
   <script>window.CHOSECH_SUPABASE={url:'https://orzitfqmlvopujsoyigr.supabase.co',anonKey:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9yeml0ZnFtbHZvcHVqc295aWdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5OTc5NzIsImV4cCI6MjA5NjU3Mzk3Mn0.NY4ZHzR3BAWUxm5as9Z054o8fwcfejAab9SIvduKlhM'};</script>
   <!-- ?v= cache-busting hash is owned by build.js (it prints the current
        values on every run) — keep this in sync when script.js changes. -->
-  <script src="script.js?v=347d87d0" defer></script>
+  <script src="script.js?v=ba0ffd43" defer></script>
 </body>
 </html>

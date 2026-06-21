@@ -324,8 +324,8 @@ function planCardHtml(p, best) {
         ${flags.length ? `<div class="plan__flags">${flags.join('')}</div>` : ''}
         <div class="plan__bottom"><div class="plan__price"><b>₪${priceText(p)}</b> <span>${unit}</span>${after}</div></div>
         <div class="plan__actions">
-          <a class="plan__cta" target="_blank" rel="noopener" href="${esc(waHref)}">${iconFor('💬')} מעוניין/ת ←</a>
-          <a class="plan__compare" href="${compareHref}" title="השוו מסלול זה">⚖️</a>
+          <a class="plan__cta" target="_blank" rel="noopener" href="${esc(waHref)}" aria-label="${esc(`מעוניין/ת ב${p.provider} ${p.plan} — פנייה בוואטסאפ`)}">${iconFor('💬')} מעוניין/ת ←</a>
+          <a class="plan__compare" href="${compareHref}" title="השוו מסלול זה" aria-label="${esc(`השוו את ${p.provider} ${p.plan}`)}"><span aria-hidden="true">⚖️</span></a>
         </div>
       </article>`;
 }
@@ -430,6 +430,53 @@ const leadFormHtml = (submitLabel) => `<form class="cta__form" id="leadForm" nov
 // otherwise the rounded int. Always a plain number (schema.org/Offer.price).
 const offerPrice = (p) => (p.priceExact != null ? p.priceExact : p.price);
 
+// ── Shared social-card image metadata ───────────────────────────────────────
+// Single source of truth for the OG/Twitter image so the dimensions + alt match
+// the hand-written index.html (1200×630) on every generated page too.
+const OG_IMAGE = `${SITE}/og-image.png`;
+const OG_IMAGE_ALT = 'חוסך — השוואת מחירי תקשורת חכמה';
+
+// ── Site-wide structured-data identities (Organization + WebSite) ────────────
+// Stable @id values let every page reference the same entity (publisher, brand)
+// instead of re-declaring it — Google de-dupes by @id and builds a knowledge
+// graph from the references. Mirrors the canonical block in index.html; the
+// nodes are emitted in each page's @graph via siteGraphNodes() below.
+const ORG_ID = `${SITE}/#organization`;
+const WEBSITE_ID = `${SITE}/#website`;
+const orgNode = {
+  '@type': 'Organization',
+  '@id': ORG_ID,
+  name: 'חוסך',
+  url: SITE + '/',
+  logo: { '@type': 'ImageObject', url: `${SITE}/favicon.svg` },
+  description: 'השוואת מחירי תקשורת חכמה — סלולר, אינטרנט, טלוויזיה, חבילות וחו״ל.',
+  areaServed: 'IL',
+  email: 'hello@chosech.co.il',
+  contactPoint: {
+    '@type': 'ContactPoint',
+    contactType: 'customer support',
+    telephone: '+972505037537',
+    email: 'hello@chosech.co.il',
+    areaServed: 'IL',
+    availableLanguage: ['he'],
+  },
+};
+const websiteNode = {
+  '@type': 'WebSite',
+  '@id': WEBSITE_ID,
+  name: 'חוסך',
+  url: SITE + '/',
+  inLanguage: 'he-IL',
+  publisher: { '@id': ORG_ID },
+  potentialAction: {
+    '@type': 'SearchAction',
+    target: { '@type': 'EntryPoint', urlTemplate: `${SITE}/plans.html?q={search_term_string}` },
+    'query-input': 'required name=search_term_string',
+  },
+};
+// The two identity nodes, ready to spread into any page's @graph.
+const siteGraphNodes = () => [orgNode, websiteNode];
+
 // Build a Product node (with an Offer) for one real plan. We intentionally emit
 // NO aggregateRating/review here: every plan has 0 real reviews, so a rating
 // would be fabricated — honest structured data carries price/offer only.
@@ -479,9 +526,13 @@ function jsonLd(c) {
       { '@type': 'ListItem', position: 2, name: c.name, item: url },
     ],
   };
-  const graph = [crumbs, faq];
+  // Site identity nodes are emitted in the page head; here we add the page's own
+  // breadcrumb, FAQ, and a CollectionPage carrying the plan ItemList.
   const catPlans = plansByCat[c.slug] || [];
-  if (catPlans.length) graph.push(plansItemListJsonLd(catPlans, url, `מסלולי ${c.name}`));
+  const collection = { '@type': 'CollectionPage', name: c.title, description: c.desc, url, inLanguage: 'he-IL',
+    isPartOf: { '@id': WEBSITE_ID }, publisher: { '@id': ORG_ID },
+    ...(catPlans.length ? { mainEntity: plansItemListJsonLd(catPlans, url, `מסלולי ${c.name}`) } : {}) };
+  const graph = [crumbs, collection, faq];
   return jsonForScript({ '@context': 'https://schema.org', '@graph': graph });
 }
 
@@ -516,38 +567,12 @@ function page(c) {
         </div>
       </div>
     </section>` : '';
+  // Category pages share the canonical head() — og:type 'website' (a hub of
+  // offers, not an article); jsonLd(c) supplies breadcrumb + CollectionPage +
+  // FAQ + plan ItemList, while head() adds the site-wide Organization/WebSite.
   return `<!DOCTYPE html>
 <html lang="he" dir="rtl">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>${esc(c.title)}</title>
-  <meta name="description" content="${esc(c.desc)}" />
-  <meta name="theme-color" content="#111827" />
-  <link rel="canonical" href="${url}" />
-  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
-  <link rel="apple-touch-icon" href="favicon.svg" />
-  <link rel="manifest" href="site.webmanifest" />
-  <meta property="og:type" content="website" />
-  <meta property="og:locale" content="he_IL" />
-  <meta property="og:url" content="${url}" />
-  <meta property="og:site_name" content="חוסך" />
-  <meta property="og:title" content="${esc(c.title)}" />
-  <meta property="og:description" content="${esc(c.desc)}" />
-  <meta property="og:image" content="${SITE}/og-image.png" />
-  <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:image" content="${SITE}/og-image.png" />
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link rel="preconnect" href="https://plausible.io" />
-  <link rel="preconnect" href="https://orzitfqmlvopujsoyigr.supabase.co" />
-  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" />
-  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
-  <noscript><link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" rel="stylesheet" /></noscript>
-  <link rel="stylesheet" href="${CSS_HREF}" />
-  ${analyticsTag()}
-  <script type="application/ld+json">${jsonLd(c)}</script>
-</head>
+${head(c.title, c.desc, url, jsonLd(c), false, 'website')}
 <body id="top">
 ${nav}
   <main id="main">
@@ -825,10 +850,17 @@ function articleJsonLd(g) {
       { '@type': 'ListItem', position: 2, name: 'מדריכים', item: SITE + '/guides.html' },
       { '@type': 'ListItem', position: 3, name: g.h1, item: url },
     ] },
-    { '@type': 'Article', headline: g.h1, description: g.desc, datePublished: g.date,
-      inLanguage: 'he-IL', mainEntityOfPage: url,
-      author: { '@type': 'Organization', name: 'חוסך' },
-      publisher: { '@type': 'Organization', name: 'חוסך' } },
+    // dateModified mirrors datePublished (we don't track separate edit times),
+    // which is valid and lets Google show a freshness signal. author/publisher
+    // reference the site-wide Organization @id so the entity isn't re-declared.
+    { '@type': 'Article', headline: g.h1, description: g.desc,
+      datePublished: g.date, dateModified: g.date,
+      inLanguage: 'he-IL', articleSection: g.cat,
+      mainEntityOfPage: { '@type': 'WebPage', '@id': url },
+      image: OG_IMAGE,
+      isPartOf: { '@id': WEBSITE_ID },
+      author: { '@id': ORG_ID },
+      publisher: { '@id': ORG_ID } },
   ];
   // Guides that carry explicit Q&A get a FAQPage node — eligible for FAQ rich
   // results, and a real reflection of the on-page content.
@@ -844,27 +876,43 @@ function articleJsonLd(g) {
   return jsonForScript({ '@context': 'https://schema.org', '@graph': graph });
 }
 
-function head(title, desc, url, extraJsonLd, noindex) {
+// Site-wide identity JSON-LD (Organization + WebSite) — emitted on every page
+// as its own block so the @id references resolve across the page's other graphs
+// without re-serialising each caller's pre-built JSON string.
+const siteJsonLdTag = () =>
+  `<script type="application/ld+json">${jsonForScript({ '@context': 'https://schema.org', '@graph': siteGraphNodes() })}</script>`;
+
+// `ogType` controls og:type (default 'article' preserves prior behaviour for
+// guides/legal; non-article pages pass 'website'). `noindex` adds robots noindex
+// (404) — indexable pages get an explicit index,follow so the intent is clear.
+function head(title, desc, url, extraJsonLd, noindex, ogType = 'article') {
   return `<head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />${noindex ? '\n  <base href="/" />' : ''}
   <title>${esc(title)}</title>
-  <meta name="description" content="${esc(desc)}" />${noindex ? '\n  <meta name="robots" content="noindex" />' : ''}
+  <meta name="description" content="${esc(desc)}" />
+  <meta name="robots" content="${noindex ? 'noindex, follow' : 'index, follow, max-image-preview:large, max-snippet:-1'}" />
   <style>.skip{position:absolute;left:-999px;top:0;z-index:100;background:#111827;color:#fff;padding:10px 16px;border-radius:0 0 8px 0}.skip:focus{left:0}</style>
   <meta name="theme-color" content="#111827" />
   <link rel="canonical" href="${url}" />
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="favicon.svg" />
   <link rel="manifest" href="site.webmanifest" />
-  <meta property="og:type" content="article" />
+  <meta property="og:type" content="${ogType}" />
   <meta property="og:locale" content="he_IL" />
   <meta property="og:url" content="${url}" />
   <meta property="og:site_name" content="חוסך" />
   <meta property="og:title" content="${esc(title)}" />
   <meta property="og:description" content="${esc(desc)}" />
-  <meta property="og:image" content="${SITE}/og-image.png" />
+  <meta property="og:image" content="${OG_IMAGE}" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="${esc(OG_IMAGE_ALT)}" />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:image" content="${SITE}/og-image.png" />
+  <meta name="twitter:title" content="${esc(title)}" />
+  <meta name="twitter:description" content="${esc(desc)}" />
+  <meta name="twitter:image" content="${OG_IMAGE}" />
+  <meta name="twitter:image:alt" content="${esc(OG_IMAGE_ALT)}" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="preconnect" href="https://plausible.io" />
@@ -874,6 +922,7 @@ function head(title, desc, url, extraJsonLd, noindex) {
   <noscript><link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" rel="stylesheet" /></noscript>
   <link rel="stylesheet" href="${CSS_HREF}" />
   ${analyticsTag()}
+  ${siteJsonLdTag()}
   ${extraJsonLd ? `<script type="application/ld+json">${extraJsonLd}</script>` : ''}
 </head>`;
 }
@@ -971,6 +1020,28 @@ ${footer}
 `;
 }
 
+// Guides index structured data: breadcrumb + a CollectionPage whose ItemList
+// links every guide article by URL — gives crawlers an explicit, ranked map of
+// the whole guides hub (better crawl depth) without fabricating any data.
+function guidesIndexJsonLd() {
+  const url = `${SITE}/guides.html`;
+  return jsonForScript({ '@context': 'https://schema.org', '@graph': [
+    { '@type': 'BreadcrumbList', itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'דף הבית', item: SITE + '/' },
+      { '@type': 'ListItem', position: 2, name: 'מדריכים', item: url },
+    ] },
+    { '@type': 'CollectionPage', name: 'מדריכים — איך לחסוך על תקשורת', url, inLanguage: 'he-IL',
+      isPartOf: { '@id': WEBSITE_ID }, publisher: { '@id': ORG_ID },
+      mainEntity: {
+        '@type': 'ItemList',
+        numberOfItems: guides.length,
+        itemListElement: guides.map((g, i) => ({
+          '@type': 'ListItem', position: i + 1, url: `${SITE}/${g.slug}.html`, name: g.h1,
+        })),
+      } },
+  ] });
+}
+
 function guidesIndexPage() {
   const url = `${SITE}/guides.html`;
   // Order categories for display: general first, then by topic
@@ -994,7 +1065,7 @@ ${grouped[c].map(guideCard).join('\n')}
     </section>`).join('');
   return `<!DOCTYPE html>
 <html lang="he" dir="rtl">
-${head('מדריכים — איך לחסוך על תקשורת | חוסך', `${guides.length} מדריכים מקצועיים: איך לעבור ספק, לבחור מסלול סלולר, סיב אופטי מול כבלים ועוד — כל הטיפים כדי לא לשלם יותר מדי.`, url)}
+${head('מדריכים — איך לחסוך על תקשורת | חוסך', `${guides.length} מדריכים מקצועיים: איך לעבור ספק, לבחור מסלול סלולר, סיב אופטי מול כבלים ועוד — כל הטיפים כדי לא לשלם יותר מדי.`, url, guidesIndexJsonLd(), false, 'website')}
 <body id="top">
 ${navNoCta}
   <main id="main">
@@ -1085,9 +1156,20 @@ function staticPage(p) {
             <a class="btn btn--inverse btn--lg" href="index.html#calculator">בדקו עכשיו ←</a>
           </div>`
     : '';
+  // Breadcrumb + a typed WebPage node (AboutPage for /about) so even the legal
+  // and about pages carry valid structured data and tie back to the site entity.
+  const pageType = p.slug === 'about' ? 'AboutPage' : 'WebPage';
+  const staticJsonLd = jsonForScript({ '@context': 'https://schema.org', '@graph': [
+    { '@type': 'BreadcrumbList', itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'דף הבית', item: SITE + '/' },
+      { '@type': 'ListItem', position: 2, name: p.h1, item: url },
+    ] },
+    { '@type': pageType, name: p.h1, description: p.desc, url, inLanguage: 'he-IL',
+      isPartOf: { '@id': WEBSITE_ID }, publisher: { '@id': ORG_ID } },
+  ] });
   return `<!DOCTYPE html>
 <html lang="he" dir="rtl">
-${head(p.title, p.desc, url)}
+${head(p.title, p.desc, url, staticJsonLd, false, 'website')}
 <body id="top">
 ${navNoCta}
   <main id="main">
@@ -1118,7 +1200,7 @@ ${footer}
 function notFoundPage() {
   return `<!DOCTYPE html>
 <html lang="he" dir="rtl">
-${head('הדף לא נמצא — חוסך', 'הדף שחיפשתם לא נמצא.', `${SITE}/404.html`, null, true)}
+${head('הדף לא נמצא — חוסך', 'הדף שחיפשתם לא נמצא.', `${SITE}/404.html`, null, true, 'website')}
 <body id="top">
 ${navNoCta}
   <main id="main">
@@ -1136,13 +1218,13 @@ ${navNoCta}
     <section class="section">
       <div class="container">
         <header class="section__head reveal" style="text-align:center"><span class="eyebrow">ניווט מהיר</span><h2>לאן רוצים לעבור?</h2></header>
-        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;max-width:800px;margin:0 auto">
-          ${categories.map((c) => `<a href="${c.slug}.html" class="glass" style="display:block;padding:18px 20px;border-radius:14px;border:1px solid #E4E8EC;text-decoration:none;color:#0B0F14;font-weight:700"><span style="font-size:1.5rem">${c.icon}</span><br>${esc(c.name)}</a>`).join('')}
-          <a href="compare.html" class="glass" style="display:block;padding:18px 20px;border-radius:14px;border:1px solid #E4E8EC;text-decoration:none;color:#0B0F14;font-weight:700"><span style="font-size:1.5rem">⚖️</span><br>השוואת מסלולים</a>
-          <a href="providers.html" class="glass" style="display:block;padding:18px 20px;border-radius:14px;border:1px solid #E4E8EC;text-decoration:none;color:#0B0F14;font-weight:700"><span style="font-size:1.5rem">🏢</span><br>כל הספקים</a>
-          <a href="guides.html" class="glass" style="display:block;padding:18px 20px;border-radius:14px;border:1px solid #E4E8EC;text-decoration:none;color:#0B0F14;font-weight:700"><span style="font-size:1.5rem">📚</span><br>מדריכים</a>
-          <a href="app.html" class="glass" style="display:block;padding:18px 20px;border-radius:14px;border:1px solid #E4E8EC;text-decoration:none;color:#0B0F14;font-weight:700"><span style="font-size:1.5rem">📱</span><br>האפליקציה</a>
-        </div>
+        <nav style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;max-width:800px;margin:0 auto" aria-label="ניווט מהיר">
+          ${categories.map((c) => `<a href="${c.slug}.html" class="glass" style="display:block;padding:18px 20px;border-radius:14px;border:1px solid #E4E8EC;text-decoration:none;color:#0B0F14;font-weight:700"><span style="font-size:1.5rem" aria-hidden="true">${c.icon}</span><br>${esc(c.name)}</a>`).join('')}
+          <a href="compare.html" class="glass" style="display:block;padding:18px 20px;border-radius:14px;border:1px solid #E4E8EC;text-decoration:none;color:#0B0F14;font-weight:700"><span style="font-size:1.5rem" aria-hidden="true">⚖️</span><br>השוואת מסלולים</a>
+          <a href="providers.html" class="glass" style="display:block;padding:18px 20px;border-radius:14px;border:1px solid #E4E8EC;text-decoration:none;color:#0B0F14;font-weight:700"><span style="font-size:1.5rem" aria-hidden="true">🏢</span><br>כל הספקים</a>
+          <a href="guides.html" class="glass" style="display:block;padding:18px 20px;border-radius:14px;border:1px solid #E4E8EC;text-decoration:none;color:#0B0F14;font-weight:700"><span style="font-size:1.5rem" aria-hidden="true">📚</span><br>מדריכים</a>
+          <a href="app.html" class="glass" style="display:block;padding:18px 20px;border-radius:14px;border:1px solid #E4E8EC;text-decoration:none;color:#0B0F14;font-weight:700"><span style="font-size:1.5rem" aria-hidden="true">📱</span><br>האפליקציה</a>
+        </nav>
       </div>
     </section>
   </main>
@@ -1171,9 +1253,23 @@ function plansPage() {
         </div>
       </div>
     </section>` : '';
+  // Breadcrumb + a CollectionPage carrying an ItemList of the cheapest plan
+  // Products. Capped at 40 so the JSON-LD payload stays lean (the page renders
+  // every plan in HTML; the structured list just gives crawlers a real sample).
+  const sortedPlans = catalogue.plans.slice().sort((a, b) => a.price - b.price);
+  const ldGraph = [
+    { '@type': 'BreadcrumbList', itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'דף הבית', item: SITE + '/' },
+      { '@type': 'ListItem', position: 2, name: 'כל החבילות', item: url },
+    ] },
+    { '@type': 'CollectionPage', name: 'כל החבילות — מחירון מלא', url, inLanguage: 'he-IL',
+      isPartOf: { '@id': WEBSITE_ID }, publisher: { '@id': ORG_ID },
+      mainEntity: plansItemListJsonLd(sortedPlans.slice(0, 40), url, 'מחירון מלא של כל חברות התקשורת') },
+  ];
+  const plansJsonLd = jsonForScript({ '@context': 'https://schema.org', '@graph': ldGraph });
   return `<!DOCTYPE html>
 <html lang="he" dir="rtl">
-${head('כל החבילות — מחירון מלא של כל חברות התקשורת | חוסך', `מחירון מלא: ${catalogue.plans.length} מסלולי סלולר, אינטרנט, טלוויזיה, חבילות משולבות וחו״ל מכל החברות — ממוין מהזול ביותר. סננו לפי קטגוריה וחפשו.`, url)}
+${head('כל החבילות — מחירון מלא של כל חברות התקשורת | חוסך', `מחירון מלא: ${catalogue.plans.length} מסלולי סלולר, אינטרנט, טלוויזיה, חבילות משולבות וחו״ל מכל החברות — ממוין מהזול ביותר. סננו לפי קטגוריה וחפשו.`, url, plansJsonLd, false, 'website')}
 <body id="top">
 ${nav}
   <main id="main">
@@ -1259,12 +1355,17 @@ function providerPage(name, plans) {
         { '@type': 'ListItem', position: 2, name: 'כל החבילות', item: SITE + '/plans.html' },
         { '@type': 'ListItem', position: 3, name: name, item: url },
       ] },
-      plansItemListJsonLd(plans, url, `מסלולי ${name}`),
+      // CollectionPage wrapper ties the provider's plan ItemList to the site
+      // entity; the per-plan Products already carry the provider as their Brand.
+      { '@type': 'CollectionPage', name: `כל המסלולים של ${name}`, url, inLanguage: 'he-IL',
+        isPartOf: { '@id': WEBSITE_ID }, publisher: { '@id': ORG_ID },
+        about: { '@type': 'Brand', name },
+        mainEntity: plansItemListJsonLd(plans, url, `מסלולי ${name}`) },
     ],
   });
   return `<!DOCTYPE html>
 <html lang="he" dir="rtl">
-${head(`כל המסלולים של ${name} — מחירים והשוואה | חוסך`, `כל מסלולי ${name} במקום אחד — ${plans.length} מסלולים מ-₪${cheapest}. השוו מחירים ותכונות ומצאו את המשתלם ביותר.`, url, jsonld)}
+${head(`כל המסלולים של ${name} — מחירים והשוואה | חוסך`, `כל מסלולי ${name} במקום אחד — ${plans.length} מסלולים מ-₪${cheapest}. השוו מחירים ותכונות ומצאו את המשתלם ביותר.`, url, jsonld, false, 'website')}
 <body id="top">
 ${nav}
   <main id="main">
@@ -1328,15 +1429,33 @@ function providersIndexPage() {
   const catLabel = { cellular: 'סלולר', internet: 'אינטרנט', tv: 'טלוויזיה', triple: 'טריפל', abroad: 'חו״ל' };
   const map = {};
   for (const p of catalogue.plans) (map[p.provider] ||= []).push(p);
-  const cards = Object.keys(map).sort((a, b) => map[b].length - map[a].length).map((name) => {
+  const sortedNames = Object.keys(map).sort((a, b) => map[b].length - map[a].length);
+  const cards = sortedNames.map((name) => {
     const ps = map[name];
     const min = ps.reduce((m, p) => Math.min(m, p.price), Infinity);
     const cats = [...new Set(ps.map((p) => p.cat))].filter((c) => catLabel[c]).sort((a, b) => Object.keys(catLabel).indexOf(a) - Object.keys(catLabel).indexOf(b)).map((c) => catLabel[c]).join(' · ');
     return `        <a class="provider-card" href="provider-${providerSlug(name)}.html">${providerLogo(name, 46)}<span><b>${esc(name)}</b><small>${ps.length} מסלולים · מ-₪${min}</small>${cats ? `<small class="provider-card__cats">${esc(cats)}</small>` : ''}</span></a>`;
   }).join('\n');
+  // Breadcrumb + CollectionPage whose ItemList links every provider page —
+  // an explicit, crawlable map of the provider hub.
+  const provJsonLd = jsonForScript({ '@context': 'https://schema.org', '@graph': [
+    { '@type': 'BreadcrumbList', itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'דף הבית', item: SITE + '/' },
+      { '@type': 'ListItem', position: 2, name: 'ספקים', item: url },
+    ] },
+    { '@type': 'CollectionPage', name: 'כל הספקים', url, inLanguage: 'he-IL',
+      isPartOf: { '@id': WEBSITE_ID }, publisher: { '@id': ORG_ID },
+      mainEntity: {
+        '@type': 'ItemList', numberOfItems: sortedNames.length,
+        itemListElement: sortedNames.map((name, i) => ({
+          '@type': 'ListItem', position: i + 1, name,
+          url: `${SITE}/provider-${providerSlug(name)}.html`,
+        })),
+      } },
+  ] });
   return `<!DOCTYPE html>
 <html lang="he" dir="rtl">
-${head('כל הספקים — מסלולים ומחירים לפי חברה | חוסך', 'כל ספקי התקשורת בישראל במקום אחד — סלקום, פרטנר, פלאפון, גולן, בזק, הוט, yes ועוד. בחרו ספק וראו את כל המסלולים שלו.', url)}
+${head('כל הספקים — מסלולים ומחירים לפי חברה | חוסך', 'כל ספקי התקשורת בישראל במקום אחד — סלקום, פרטנר, פלאפון, גולן, בזק, הוט, yes ועוד. בחרו ספק וראו את כל המסלולים שלו.', url, provJsonLd, false, 'website')}
 <body id="top">
 ${navNoCta}
   <main id="main">
@@ -1378,9 +1497,21 @@ function comparePage() {
   const firstTwo = (plansByCat['cellular'] || []).slice(0, 2).map((p) => p.id);
   const sel = (i, preId) =>
     `<select class="compare-pick filter-search" id="cmp${i}" aria-label="מסלול ${i + 1}"><option value="">— בחרו מסלול —</option>${optionsFor(preId)}</select>`;
+  // The comparison tool is an interactive WebApplication; pair it with a
+  // breadcrumb so the page is well-typed for search.
+  const compareJsonLd = jsonForScript({ '@context': 'https://schema.org', '@graph': [
+    { '@type': 'BreadcrumbList', itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'דף הבית', item: SITE + '/' },
+      { '@type': 'ListItem', position: 2, name: 'השוואה', item: url },
+    ] },
+    { '@type': 'WebApplication', name: 'השוואת מסלולים צד לצד', url, inLanguage: 'he-IL',
+      applicationCategory: 'BusinessApplication', browserRequirements: 'requires JavaScript',
+      isPartOf: { '@id': WEBSITE_ID }, publisher: { '@id': ORG_ID },
+      offers: { '@type': 'Offer', price: '0', priceCurrency: 'ILS' } },
+  ] });
   return `<!DOCTYPE html>
 <html lang="he" dir="rtl">
-${head('השוואת מסלולים צד לצד | חוסך', 'בחרו עד 3 מסלולים והשוו אותם צד לצד — מחיר, רשת, 5G, התחייבות, חו״ל ומפרט. מכל חברות התקשורת.', url)}
+${head('השוואת מסלולים צד לצד | חוסך', 'בחרו עד 3 מסלולים והשוו אותם צד לצד — מחיר, רשת, 5G, התחייבות, חו״ל ומפרט. מכל חברות התקשורת.', url, compareJsonLd, false, 'website')}
 <body id="top">
 ${nav}
   <main id="main">
@@ -1459,12 +1590,14 @@ function appPage() {
   const groups = APP_GROUPS.map(([gIcon, gTitle, items]) => {
     const cards = items.map(([icon, h, p]) =>
       `          <article class="feature reveal"><span class="feature__icon">${iconFor(icon)}</span><h3>${esc(h)}</h3><p>${esc(p)}</p></article>`).join('\n');
-    return `      <div class="app-group">
+    // <section> landmark labelled via aria (not a heading element) so the page's
+    // h1→h2→h3 hierarchy stays intact while each feature group is still announced.
+    return `      <section class="app-group" aria-label="${esc(gTitle)}">
         <header class="section__head reveal"><span class="eyebrow">${gIcon} ${esc(gTitle)}</span></header>
         <div class="features">
 ${cards}
         </div>
-      </div>`;
+      </section>`;
   }).join('\n');
 
   // Channel list mirrors the in-app community channels — shown as honest "what
@@ -1482,7 +1615,7 @@ ${cards}
     { '@type': 'SoftwareApplication', name: 'חוסך', applicationCategory: 'FinanceApplication',
       operatingSystem: 'iOS, Android', inLanguage: 'he-IL',
       description: 'השוואת מחירי תקשורת בישראל — סלולר, אינטרנט, טלוויזיה וחו״ל. עם AI, מעקב מסלולים והתראות חידוש.',
-      author: { '@type': 'Organization', name: 'חוסך' },
+      author: { '@id': ORG_ID }, publisher: { '@id': ORG_ID },
       offers: { '@type': 'Offer', price: '0', priceCurrency: 'ILS', availability: 'https://schema.org/PreOrder' },
       screenshot: [`${SITE}/assets/app/shot-home.webp`, `${SITE}/assets/app/shot-results.webp`, `${SITE}/assets/app/shot-meeting.webp`],
     },
@@ -1490,7 +1623,7 @@ ${cards}
 
   return `<!DOCTYPE html>
 <html lang="he" dir="rtl">
-${head('האפליקציה של חוסך — כל היכולות | חוסך', 'הכירו את אפליקציית חוסך: חוסך AI, קהילה והצ׳אט הקהילתי, מעקב מעבר, התראות חידוש, דירוגי ספקים, בדיקת זמינות, מחשבון מעבר וניוד מספר — הכל במקום אחד.', url, appJsonLd)}
+${head('האפליקציה של חוסך — כל היכולות | חוסך', 'הכירו את אפליקציית חוסך: חוסך AI, קהילה והצ׳אט הקהילתי, מעקב מעבר, התראות חידוש, דירוגי ספקים, בדיקת זמינות, מחשבון מעבר וניוד מספר — הכל במקום אחד.', url, appJsonLd, false, 'website')}
 <body id="top">
 ${nav}
   <main id="main">
@@ -1747,12 +1880,16 @@ function collectionPage(col) {
     { '@type': 'ListItem', position: 3, name: col.h1, item: url },
   ] };
   const graph = [crumbs];
-  if (shown.length) graph.push(plansItemListJsonLd(shown, url, col.h1));
+  // CollectionPage wrapper carries the plan ItemList and links the page to the
+  // site entity; the per-plan Products supply the real price/offer data.
+  graph.push({ '@type': 'CollectionPage', name: col.h1, description: col.desc, url, inLanguage: 'he-IL',
+    isPartOf: { '@id': WEBSITE_ID }, publisher: { '@id': ORG_ID },
+    ...(shown.length ? { mainEntity: plansItemListJsonLd(shown, url, col.h1) } : {}) });
   const extraJsonLd = jsonForScript({ '@context': 'https://schema.org', '@graph': graph });
   const guidesHtml = relatedGuides(col.catName, null, 2).map(guideCard).join('\n');
   return `<!DOCTYPE html>
 <html lang="he" dir="rtl">
-${head(col.title, col.desc, url, extraJsonLd)}
+${head(col.title, col.desc, url, extraJsonLd, false, 'website')}
 <body id="top">
 ${nav}
   <main id="main">
@@ -1829,11 +1966,16 @@ function calculatorPage(c) {
     { '@type': 'ListItem', position: 2, name: c.name, item: `${SITE}/${c.slug}.html` },
     { '@type': 'ListItem', position: 3, name: h1, item: url },
   ] };
-  const extraJsonLd = jsonForScript({ '@context': 'https://schema.org', '@graph': [crumbs] });
+  // The savings calculator is an interactive WebApplication (free, JS-driven).
+  const calcApp = { '@type': 'WebApplication', name: h1, description: desc, url, inLanguage: 'he-IL',
+    applicationCategory: 'FinanceApplication', browserRequirements: 'requires JavaScript',
+    isPartOf: { '@id': WEBSITE_ID }, publisher: { '@id': ORG_ID },
+    offers: { '@type': 'Offer', price: '0', priceCurrency: 'ILS' } };
+  const extraJsonLd = jsonForScript({ '@context': 'https://schema.org', '@graph': [crumbs, calcApp] });
   const guidesHtml = relatedGuides(c.name, null, 2).map(guideCard).join('\n');
   return `<!DOCTYPE html>
 <html lang="he" dir="rtl">
-${head(title, desc, url, extraJsonLd)}
+${head(title, desc, url, extraJsonLd, false, 'website')}
 <body id="top">
 ${nav}
   <main id="main">

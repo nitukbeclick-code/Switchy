@@ -1862,6 +1862,7 @@ ${groups}
             <input type="text" id="aiChatInput" maxlength="500" placeholder="שאלו אותי כל דבר על מסלולים..." aria-label="שאלו את חוסך AI" autocomplete="off" />
             <button type="submit" class="btn btn--primary">שלחו</button>
           </form>
+          <button type="button" id="aiEscalate" class="ai-escalate" style="margin-top:10px;background:none;border:0;color:var(--accent);font-family:'Assistant',sans-serif;font-weight:700;font-size:14px;cursor:pointer;padding:6px 4px;min-height:44px">🆘 לדבר עם נציג אנושי</button>
           <p class="ai-foot">חוסך AI עונה לפי מסלולים אמיתיים מהקטלוג — לא ייעוץ אישי מחייב.</p>
         </div>
       </div>

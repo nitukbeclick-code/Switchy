@@ -511,6 +511,40 @@
       setChipsBusy(false);
       if (aiInput) { aiInput.removeAttribute('aria-busy'); aiInput.focus(); }
     };
+    // "Talk to a human" — calls the existing site-support-escalate function
+    // (sends the last message + recent context + page to the team's Telegram).
+    // Never blocks: any failure still shows the standard hand-off message.
+    const aiEscalate = $('aiEscalate');
+    if (aiEscalate) {
+      aiEscalate.addEventListener('click', async () => {
+        if (aiBusy) return;
+        aiBusy = true; setChipsBusy(true); aiEscalate.setAttribute('aria-disabled', 'true');
+        const typing = addTyping();
+        track('support_escalate', { source: location.pathname });
+        const handoff = 'הפנייה הועברה לנציג אנושי 🙋 נחזור אליך בהקדם. אפשר להמשיך לכתוב כאן בינתיים.';
+        try {
+          const cfg = window.CHOSECH_SUPABASE;
+          if (!cfg || !cfg.url) throw new Error('not configured');
+          const lastUser = aiHistory.slice().reverse().find((h) => h.role === 'user');
+          const res = await fetch(cfg.url.replace(/\/$/, '') + '/functions/v1/site-support-escalate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', apikey: cfg.anonKey, Authorization: 'Bearer ' + cfg.anonKey },
+            body: JSON.stringify({
+              message: (lastUser && lastUser.text) || 'המשתמש ביקש לדבר עם נציג אנושי',
+              history: aiHistory.slice(-4),
+              page: location.pathname,
+            }),
+          });
+          const data = await res.json().catch(() => ({}));
+          typing.remove();
+          addBubble('ai-bubble--bot', (res.ok && data.reply) ? data.reply : handoff);
+        } catch (_) {
+          typing.remove();
+          addBubble('ai-bubble--bot', handoff);
+        }
+        aiBusy = false; setChipsBusy(false); aiEscalate.removeAttribute('aria-disabled');
+      });
+    }
     chips.forEach((chip) => {
       chip.setAttribute('role', 'button');
       chip.setAttribute('tabindex', '0');

@@ -31,6 +31,13 @@ const PER_IP_HOURLY_LIMIT = 15;
 // this file (copy from site/data/plans.json) and redeploy when prices change.
 const GEMINI_MODELS = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"];
 
+// Fallback chain when Gemini is down/empty/quota-capped. Both speak the
+// OpenAI chat-completions schema, so they share buildOpenAiMessages + the same
+// grounded Hebrew system prompt. Groq is fast & free-tier-generous; OpenRouter
+// is the last-ditch net (a free model id so it costs nothing at rest).
+const GROQ_MODEL = "llama-3.3-70b-versatile";
+const OPENROUTER_MODEL = "meta-llama/llama-3.3-70b-instruct:free";
+
 function cors(extra: Record<string, string> = {}): Record<string, string> {
   return { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*", ...extra };
 }
@@ -110,7 +117,8 @@ async function callGeminiModel(model: string, apiKey: string, systemContext: str
 }
 
 // Google renames/retires model ids over time; a 404 means "try the next
-// candidate", anything else (auth/quota/5xx) is a real failure — don't mask it.
+// candidate", anything else (auth/quota/5xx) is a real failure — stop trying
+// Gemini and let the caller fall through to the OpenAI-style providers.
 async function callGemini(apiKey: string, systemContext: string, history: { role: string; text: string }[], message: string): Promise<string> {
   let lastStatus = 0;
   for (const model of GEMINI_MODELS) {
@@ -126,6 +134,109 @@ async function callGemini(apiKey: string, systemContext: string, history: { role
     if (r.status !== 404) break;
   }
   throw new Error("gemini request failed: " + lastStatus);
+}
+
+// Shared OpenAI chat-completions message array: the same grounded Hebrew system
+// prompt as Gemini's systemInstruction, then the clipped history, then the new
+// user turn. "bot"/"model" history roles map to "assistant".
+function buildOpenAiMessages(systemContext: string, history: { role: string; text: string }[], message: string): { role: string; content: string }[] {
+  return [
+    { role: "system", content: systemContext },
+    ...history.slice(-MAX_HISTORY_TURNS).map((h) => ({
+      role: h.role === "user" ? "user" : "assistant",
+      content: String(h.text ?? "").slice(0, MAX_MESSAGE_LEN),
+    })),
+    { role: "user", content: message },
+  ];
+}
+
+// One helper for both OpenAI-compatible endpoints (Groq, OpenRouter). Returns
+// the trimmed reply on success, or "" on any failure/empty body so the caller
+// can move to the next provider without throwing mid-chain.
+async function callOpenAiCompatible(
+  label: string,
+  url: string,
+  apiKey: string,
+  model: string,
+  messages: { role: string; content: string }[],
+  extraHeaders: Record<string, string> = {},
+): Promise<string> {
+  try {
+    const r = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`,
+        ...extraHeaders,
+      },
+      body: JSON.stringify({
+        model,
+        messages,
+        max_tokens: MAX_OUTPUT_TOKENS,
+        temperature: 0.4,
+      }),
+    });
+    if (!r.ok) {
+      jlog({ at: `ai-chat.${label}`, ok: false, status: r.status });
+      return "";
+    }
+    const j = await r.json();
+    const text = String(j?.choices?.[0]?.message?.content ?? "").trim();
+    jlog({ at: `ai-chat.${label}`, ok: !!text, model });
+    return text;
+  } catch (e) {
+    jlog({ at: `ai-chat.${label}`, ok: false, error: String(e) });
+    return "";
+  }
+}
+
+// Resilient generation: Gemini first (its richer systemInstruction path), then
+// Groq, then OpenRouter — each only attempted if a key is present. Returns the
+// first non-empty reply, or "" if every configured provider fails/empties out.
+async function generateReply(
+  geminiKey: string,
+  systemContext: string,
+  history: { role: string; text: string }[],
+  message: string,
+): Promise<string> {
+  if (geminiKey) {
+    try {
+      const reply = await callGemini(geminiKey, systemContext, history, message);
+      if (reply) return reply;
+    } catch (e) {
+      jlog({ at: "ai-chat.generateReply", provider: "gemini", ok: false, error: String(e) });
+    }
+  }
+
+  const messages = buildOpenAiMessages(systemContext, history, message);
+
+  const groqKey = firstEnv(["GROQ_API_KEY"]);
+  if (groqKey) {
+    const reply = await callOpenAiCompatible(
+      "callGroq",
+      "https://api.groq.com/openai/v1/chat/completions",
+      groqKey,
+      GROQ_MODEL,
+      messages,
+    );
+    if (reply) return reply;
+  }
+
+  const openRouterKey = firstEnv(["OPENROUTER_API_KEY"]);
+  if (openRouterKey) {
+    const reply = await callOpenAiCompatible(
+      "callOpenRouter",
+      "https://openrouter.ai/api/v1/chat/completions",
+      openRouterKey,
+      OPENROUTER_MODEL,
+      messages,
+      // OpenRouter asks senders to identify the calling app; harmless if dropped.
+      { "HTTP-Referer": "https://switchy-ai.com", "X-Title": "Switchy AI" },
+    );
+    if (reply) return reply;
+  }
+
+  return "";
 }
 
 function clientIp(req: Request): string {
@@ -158,7 +269,11 @@ Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return json({ error: "method not allowed" }, 405);
 
   const apiKey = (await resolveCfgCached()).gemini || firstEnv(["GEMINI_API_KEY", "GOOGLE_AI_KEY"]);
-  if (!apiKey) return json({ error: "ai chat is not configured" }, 503);
+  // Configured if ANY provider in the fallback chain has a key — Gemini first,
+  // then the OpenAI-style backups (Groq, OpenRouter).
+  if (!apiKey && !firstEnv(["GROQ_API_KEY"]) && !firstEnv(["OPENROUTER_API_KEY"])) {
+    return json({ error: "ai chat is not configured" }, 503);
+  }
 
   let body: { message?: string; history?: { role: string; text: string }[] };
   try {
@@ -178,7 +293,7 @@ Deno.serve(async (req: Request) => {
   const systemPrompt = SYSTEM_PROMPT_HEADER + buildCatalogueContext(plans);
 
   try {
-    const reply = await callGemini(apiKey, systemPrompt, history, message);
+    const reply = await generateReply(apiKey, systemPrompt, history, message);
     insertRow("chat_messages", { ip: ip || null }).catch(() => {}); // best-effort, never blocks the reply
     return json({ reply: reply || "מצטער/ת, לא הצלחתי לנסח תשובה כרגע — נסו לשאול אחרת או דברו איתנו בוואטסאפ." });
   } catch (e) {

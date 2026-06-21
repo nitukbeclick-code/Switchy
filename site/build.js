@@ -86,6 +86,8 @@ const ICONS = {
   pin: '<path d="M12 21s7-6 7-11a7 7 0 0 0-14 0c0 5 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/>',
   note: '<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 9h6M9 13h6M9 17h4"/>',
   bell: '<path d="M6 9a6 6 0 0 1 12 0c0 6 2 7 2 7H4s2-1 2-7z"/><path d="M10 20a2 2 0 0 0 4 0"/>',
+  bulb: '<path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.5.4.8 1 .9 1.6l.1.5h5l.1-.5c.1-.6.4-1.2.9-1.6A6 6 0 0 0 12 3z"/>',
+  info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>',
 };
 const EMOJI_TO_ICON = {
   '📱': 'phone', '📲': 'phone', '📞': 'phone', '🌐': 'globe', '🌍': 'globe', '⚽': 'globe',
@@ -95,6 +97,7 @@ const EMOJI_TO_ICON = {
   '🔎': 'search', '🔍': 'search', '✅': 'check', '✨': 'sparkle', '🧾': 'receipt', '🧮': 'calculator',
   '🤝': 'check', '📡': 'signal', '📶': 'signal', '👥': 'people', '🎧': 'headset', '🛟': 'headset',
   '⚡': 'bolt', '🔌': 'bolt', '🚀': 'rocket', '📍': 'pin', '📝': 'note', '📋': 'note', '🔔': 'bell',
+  '💡': 'bulb', '🛈': 'info', 'ℹ': 'info',
 };
 const svgIcon = (name) =>
   `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name] || ICONS.sparkle}</svg>`;
@@ -282,6 +285,29 @@ function providerLogo(name, size = 36) {
 
 // Render one real plan as a card. Used on category pages and the all-plans page.
 const UNIT_HE = { month: 'לחודש', package: 'לחבילה', day: 'ליום', minute: 'לדקה' };
+// A simple, explainable "value score" (0–100) for a card badge. It is NOT a
+// review rating (every plan has 0 real reviews — see note below); it's a
+// price-value heuristic relative to the plan's own category, nudged up by
+// flexibility (no commitment), 5G and an included-abroad bundle. Deterministic
+// and bounded so the same plan always shows the same number.
+function planValueScore(p) {
+  const peers = (plansByCat[p.cat] || []).filter((q) => !q.priceUnit || q.priceUnit === p.priceUnit);
+  let base = 60;
+  if (peers.length > 1) {
+    const prices = peers.map((q) => q.price).sort((a, b) => a - b);
+    const lo = prices[0];
+    const hi = prices[prices.length - 1];
+    // Cheaper within the category → higher base (price is ~70% of the score).
+    if (hi > lo) base = 50 + Math.round(((hi - p.price) / (hi - lo)) * 40); // 50–90
+  }
+  let bonus = 0;
+  if (p.noCommit) bonus += 4;       // flexibility
+  if (p.is5G) bonus += 3;           // future-proof
+  if (p.hasAbroad) bonus += 2;      // bundled value
+  if (p.after && p.after - p.price > 30) bonus -= 4; // promo that jumps later
+  return Math.max(40, Math.min(99, base + bonus));
+}
+
 function planCardHtml(p, best) {
   // `best` highlights the value anchor — passed ONLY as an explicit boolean from
   // the single-category listing (sorted cheapest-first), so the label "lowest
@@ -291,43 +317,92 @@ function planCardHtml(p, best) {
   // priceUnit comes from the app catalogue export (tool/export_plans.dart) —
   // abroad plans mix per-package/day/minute/month pricing, so never assume.
   const unit = UNIT_HE[p.priceUnit] || (p.cat === 'abroad' ? 'לחבילה' : 'לחודש');
-  // Full-package details. p.specs holds the headline numbers (data/minutes/
-  // channels/speed); the structured extras below (setup fee, equipment =
-  // router/converter, range extender) are optional — rendered as labelled
-  // chips only when a value exists, so a missing field never shows noise.
-  // Collect these via the Claude-in-Chrome catalogue pass (the telecom sites
-  // 403 headless fetches and hide the data behind "מידע נוסף" buttons), then
-  // drop the values into plans.json — no template change needed afterwards.
-  const specPairs = Object.entries(p.specs || {}).map(([, v]) => ['', v]);
+  // Full-package details as readable label/value ROWS (not cramped chips):
+  // p.specs holds the headline numbers (data/minutes/channels/speed) keyed by a
+  // Hebrew label; the structured extras below (setup fee, equipment =
+  // router/converter, range extender) are optional — rendered only when a value
+  // exists, so a missing field never shows noise. Collect these via the
+  // Claude-in-Chrome catalogue pass (the telecom sites 403 headless fetches and
+  // hide the data behind "מידע נוסף" buttons), then drop the values into
+  // plans.json — no template change needed afterwards.
+  const specPairs = Object.entries(p.specs || {}).map(([k, v]) => [k, v]);
   if (p.equipment) specPairs.push(['ציוד', p.equipment]);
   if (p.setupFee) specPairs.push(['התקנה', p.setupFee]);
   if (p.rangeExtender) specPairs.push(['מגדיל טווח', p.rangeExtender]);
   const specs = specPairs
-    .map(([k, v]) => `<span class="pchip">${k ? esc(k) + ': ' : ''}${esc(v)}</span>`).join('');
+    .map(([k, v]) => `<div class="plan__spec"><span class="plan__spec-k">${k ? esc(k) : 'כולל'}</span><span class="plan__spec-v">${esc(v)}</span></div>`)
+    .join('');
   const flags = [];
   if (p.is5G) flags.push('<span class="pflag pflag--5g">5G</span>');
   if (p.noCommit) flags.push('<span class="pflag">ללא התחייבות</span>');
   if (p.hasAbroad) flags.push('<span class="pflag">כולל חו״ל</span>');
   const hasJump = p.after && (p.after - p.price) > 30;
   const after = p.after ? `<span class="plan__after">ואז ₪${p.after}</span>` : '';
+  // Card variant: the value anchor (cheapest in its category) reads as a budget
+  // pick; a richer 5G/abroad plan with a promo-jump reads as a premium pick.
+  // These are presentational accents only (A2 styles them); they never change
+  // the data, and a plan can be neither.
+  const isPremium = !isBest && p.is5G && (p.hasAbroad || hasJump);
+  const variant = isBest ? ' plan--budget' : (isPremium ? ' plan--premium' : '');
+  // Value score badge — amber "best value" tint only on the category anchor.
+  const score = planValueScore(p);
+  const scoreBadge = `<span class="plan__score${isBest ? ' plan__score--best' : ''}" title="ציון ערך משוקלל לפי מחיר וגמישות בקטגוריה"><span class="plan__score-num">${score}</span><span class="plan__score-lbl">ציון ערך</span></span>`;
   // NOTE: a plan's "rating" is a fabricated placeholder (every plan has 0 real
   // reviews) — never render it as a star/score. Honest ratings live per-provider
   // and only surface once a real review exists (see provider_ratings.dart).
   const text = esc(`${p.provider} ${p.plan} ${(p.feats || []).join(' ')} ${Object.values(p.specs || {}).join(' ')}`).toLowerCase();
   const waHref = 'https://wa.me/972505037537?text=' + encodeURIComponent('היי, מעניין אותי ' + p.provider + ' - ' + p.plan + ' (₪' + priceText(p) + ')');
   const compareHref = p.id ? `compare.html?p0=${encodeURIComponent(p.id)}` : 'compare.html';
-  return `<article class="plan${isBest ? ' plan--best' : ''}${hasJump ? ' plan--hasjump' : ''}" data-cat="${esc(p.cat)}" data-text="${text}" data-price="${p.price}" data-after="${p.after || ''}" data-haspromo="${p.after ? 'true' : 'false'}" data-5g="${p.is5G}" data-nocommit="${p.noCommit}" data-abroad="${p.hasAbroad}" data-kosher="${p.kind === 'kosher'}" data-provider="${providerSlug(p.provider)}" data-id="${esc(p.id || '')}">
+  return `<article class="plan${isBest ? ' plan--best' : ''}${variant}${hasJump ? ' plan--hasjump' : ''}" data-cat="${esc(p.cat)}" data-text="${text}" data-price="${p.price}" data-after="${p.after || ''}" data-haspromo="${p.after ? 'true' : 'false'}" data-5g="${p.is5G}" data-nocommit="${p.noCommit}" data-abroad="${p.hasAbroad}" data-kosher="${p.kind === 'kosher'}" data-provider="${providerSlug(p.provider)}" data-id="${esc(p.id || '')}">
         ${isBest ? '<span class="plan__badge">המחיר הנמוך ביותר</span>' : ''}
-        <div class="plan__top"><span class="plan__id">${providerLogo(p.provider)}<a class="plan__provider" href="provider-${providerSlug(p.provider)}.html">${esc(p.provider)}</a></span><span class="plan__net">${esc(p.net)}</span></div>
-        <div class="plan__name">${esc(p.plan)}</div>
-        ${specs ? `<div class="plan__chips">${specs}</div>` : ''}
+        <div class="plan__top"><span class="plan__id">${providerLogo(p.provider)}<a class="plan__provider" href="provider-${providerSlug(p.provider)}.html">${esc(p.provider)}</a></span>${scoreBadge}</div>
+        <div class="plan__name">${esc(p.plan)} <span class="plan__net">${esc(p.net)}</span></div>
+        ${specs ? `<div class="plan__specs">${specs}</div>` : ''}
         ${flags.length ? `<div class="plan__flags">${flags.join('')}</div>` : ''}
         <div class="plan__bottom"><div class="plan__price"><b>₪${priceText(p)}</b> <span>${unit}</span>${after}</div></div>
         <div class="plan__actions">
-          <a class="plan__cta" target="_blank" rel="noopener" href="${esc(waHref)}" aria-label="${esc(`מעוניין/ת ב${p.provider} ${p.plan} — פנייה בוואטסאפ`)}">${iconFor('💬')} מעוניין/ת ←</a>
+          <a class="plan__cta" target="_blank" rel="noopener" href="${esc(waHref)}" aria-label="${esc(`מעוניין/ת ב${p.provider} ${p.plan} — פנייה בוואטסאפ`)}">${iconFor('💬')} מעוניין/ת בוואטסאפ ←</a>
           <a class="plan__compare" href="${compareHref}" title="השוו מסלול זה" aria-label="${esc(`השוו את ${p.provider} ${p.plan}`)}"><span aria-hidden="true">⚖️</span></a>
         </div>
       </article>`;
+}
+
+// Sub-category groups for the Guides mega-menu (and its mobile mirror). Each
+// column shows up to 4 top guides for a topic, deep-linking straight into the
+// article — so an SEO visitor lands one click from the guide they need rather
+// than the flat index. Built lazily from `guides` (declared further down) so it
+// reflects any content/guides/*.json articles too. Order matches the brand
+// categories: cellular → internet → tv → abroad, plus a general column.
+const MEGA_GROUPS = [
+  ['סלולר', 'cellular.html'],
+  ['אינטרנט', 'internet.html'],
+  ['טלוויזיה', 'tv.html'],
+  ['חו״ל', 'abroad.html'],
+  ['מדריך כללי', 'guides.html'],
+];
+function megaMenuColumns() {
+  return MEGA_GROUPS
+    .map(([cat, href]) => {
+      const items = guides.filter((g) => g.cat === cat).slice(0, 4);
+      if (!items.length) return '';
+      const links = items
+        .map((g) => `<a href="${esc(g.slug)}.html">${esc(g.h1)}</a>`)
+        .join('\n            ');
+      const heading = cat === 'מדריך כללי' ? 'כללי' : cat;
+      return `          <div class="mega-menu__col">
+            <a class="mega-menu__head" href="${href}">${esc(heading)}</a>
+            ${links}
+          </div>`;
+    })
+    .filter(Boolean)
+    .join('\n');
+}
+// Compact guide list for the mobile drawer (top general guides — the mega-menu
+// hover UI doesn't exist on touch, so we surface a few key links inline).
+function mobileGuideLinks() {
+  return relatedGuides(null, null, 4)
+    .map((g) => `      <a class="nav__mobile-sub" href="${esc(g.slug)}.html">${esc(g.h1)}</a>`)
+    .join('\n');
 }
 
 const navHtml = (ctaHref) => `  <a class="skip" href="#main">דלג לתוכן</a>
@@ -341,7 +416,12 @@ const navHtml = (ctaHref) => `  <a class="skip" href="#main">דלג לתוכן</
         <a href="providers.html">ספקים</a>
         <a href="compare.html">השוואה</a>
         <a href="app.html">האפליקציה</a>
-        <a href="guides.html">מדריכים</a>
+        <div class="mega" data-mega>
+          <a href="guides.html" class="mega__trigger" aria-haspopup="true" aria-expanded="false">מדריכים <span class="mega__caret" aria-hidden="true">▾</span></a>
+          <div class="mega-menu" role="menu" aria-label="מדריכים לפי נושא">
+${megaMenuColumns()}
+          </div>
+        </div>
         <a href="index.html#calculator">מחשבון</a>
       </nav>
       <a class="btn btn--primary nav__cta" href="${ctaHref}">השוו עכשיו</a>
@@ -352,34 +432,37 @@ const navHtml = (ctaHref) => `  <a class="skip" href="#main">דלג לתוכן</
       <a href="providers.html">ספקים</a>
       <a href="compare.html">השוואה</a>
       <a href="app.html">האפליקציה</a>
-      <a href="guides.html">מדריכים</a>
+      <a href="guides.html">כל המדריכים</a>
+${mobileGuideLinks()}
       <a href="index.html#calculator">מחשבון</a>
       <a class="btn btn--primary" href="${ctaHref}">השוו עכשיו</a>
     </div>
   </header>`;
-
-// Pages that render their own lead-form section keep the in-page anchor;
-// article/guide/static/404/providers-index pages have no #cta, so their header
-// CTA points at the homepage's — otherwise it's a dead button exactly where
-// organic-SEO visitors land.
-const nav = navHtml('#cta');
-const navNoCta = navHtml('index.html#cta');
 
 const footer = `  <footer class="footer">
     <div class="container footer__inner">
       <div class="footer__brand">
         <a class="brand brand--light" href="index.html"><span class="brand__mark" aria-hidden="true">✦</span><span class="brand__name">חוסך</span></a>
         <p>השוואת מחירי תקשורת חכמה. משווים, חוסכים, עוברים — בלי כאב ראש.</p>
+        <form class="subscribe" id="subscribeForm" novalidate>
+          <label class="subscribe__label" for="subscribeEmail">קבלו עדכוני מחיר ומבצעים</label>
+          <div class="subscribe__row">
+            <input class="subscribe__input" type="email" id="subscribeEmail" name="email" placeholder="האימייל שלכם" aria-label="כתובת אימייל לעדכונים" autocomplete="email" inputmode="email" required />
+            <button class="btn btn--primary subscribe__btn" type="submit">הצטרפו</button>
+          </div>
+          <label class="subscribe__consent" for="subscribeConsent"><input type="checkbox" id="subscribeConsent" name="consent" required /> אני מאשר/ת קבלת עדכוני מחיר ומבצעים במייל</label>
+          <p class="subscribe__note" id="subscribeNote" role="status" aria-live="polite"></p>
+        </form>
       </div>
       <nav class="footer__links footer__col" aria-label="קטגוריות">
         <h4>קטגוריות</h4>
-        <a href="cellular.html">סלולר</a><a href="internet.html">אינטרנט</a><a href="tv.html">טלוויזיה</a><a href="triple.html">חבילה משולבת</a><a href="abroad.html">חו״ל</a><a href="plans.html">כל החבילות</a>
+        <a href="cellular.html">סלולר</a><a href="internet.html">אינטרנט</a><a href="tv.html">טלוויזיה</a><a href="triple.html">חבילה משולבת</a><a href="abroad.html">חבילות חו״ל</a><a href="plans.html">כל החבילות</a>
       </nav>
       <nav class="footer__links footer__col" aria-label="כלים ומדריכים">
         <h4>כלים מומלצים</h4>
         <a href="compare.html">השוואת מסלולים</a><a href="calc-cellular.html">מחשבון סלולר</a><a href="calc-internet.html">מחשבון אינטרנט</a><a href="providers.html">כל הספקים</a><a href="guide-switching.html">מדריך מעבר ספק</a><a href="guide-number-port.html">ניוד מספר</a>
       </nav>
-      <nav class="footer__links footer__col" aria-label="קולקציות פופולריות">
+      <nav class="footer__links footer__col" aria-label="חיפושים פופולריים">
         <h4>חיפושים פופולריים</h4>
         <a href="cellular-budget.html">סלולר מתחת ל-₪30</a><a href="cellular-5g.html">סלולר 5G</a><a href="internet-fiber-only.html">אינטרנט סיב אופטי</a><a href="internet-giga.html">אינטרנט גיגה</a><a href="plans-no-commitment.html">ללא התחייבות</a><a href="esim-abroad.html">eSIM לחו״ל</a>
       </nav>
@@ -494,6 +577,19 @@ function planProductNode(p, listUrl) {
       priceCurrency: 'ILS',
       availability: 'https://schema.org/InStock',
       url: listUrl,
+      // Explicit PriceSpecification: the unit (month/package/day/minute) the
+      // price is billed per, in ILS — lets Google read the figure unambiguously
+      // instead of guessing it's a one-off. valueAddedTaxIncluded:true since
+      // Israeli advertised consumer prices include VAT.
+      priceSpecification: {
+        '@type': 'UnitPriceSpecification',
+        price: offerPrice(p),
+        priceCurrency: 'ILS',
+        valueAddedTaxIncluded: true,
+        ...(UNIT_HE[p.priceUnit] || p.cat === 'abroad'
+          ? { unitText: UNIT_HE[p.priceUnit] || 'לחבילה' }
+          : { unitText: 'לחודש', billingDuration: 1, billingIncrement: 1, unitCode: 'MON' }),
+      },
       ...(p.after != null ? { description: `מחיר היכרות; ואז ₪${p.after}` } : {}),
     },
   };
@@ -576,16 +672,23 @@ ${head(c.title, c.desc, url, jsonLd(c), false, 'website')}
 <body id="top">
 ${nav}
   <main id="main">
-    <section class="lead-hero">
-      <div class="container">
-        <p class="crumbs"><a href="index.html">דף הבית</a> ← ${esc(c.name)}</p>
-        <span class="pill pill--ico">${iconFor(c.icon)} השוואה חינם · בלי התחייבות</span>
-        <h1>${esc(c.h1[0])}<span class="hl">${esc(c.h1[1])}</span></h1>
-        <p>${esc(c.intro)}</p>
-        ${heroStats}
-        <div class="hero__cta">
-          <a class="btn btn--primary btn--lg" href="#cta">השוו ותחסכו ←</a>
-          ${['cellular', 'internet', 'tv', 'triple'].includes(c.slug) ? `<a class="btn btn--ghost btn--lg" href="calc-${c.slug}.html">${svgIcon('calculator')} מחשבון חיסכון</a>` : '<a class="btn btn--ghost btn--lg" href="index.html#how">איך זה עובד?</a>'}
+    <section class="lead-hero lead-hero--split">
+      <div class="container lead-hero__grid">
+        <div class="lead-hero__text">
+          <p class="crumbs"><a href="index.html">דף הבית</a> ← ${esc(c.name)}</p>
+          <span class="pill pill--ico">${iconFor(c.icon)} השוואה חינם · בלי התחייבות</span>
+          <h1>${esc(c.h1[0])}<span class="hl">${esc(c.h1[1])}</span></h1>
+          <p>${esc(c.intro)}</p>
+          ${heroStats}
+          <div class="hero__cta">
+            <a class="btn btn--primary btn--lg" href="#cta">השוו ותחסכו ←</a>
+            ${['cellular', 'internet', 'tv', 'triple'].includes(c.slug) ? `<a class="btn btn--ghost btn--lg" href="calc-${c.slug}.html">${svgIcon('calculator')} מחשבון חיסכון</a>` : '<a class="btn btn--ghost btn--lg" href="index.html#how">איך זה עובד?</a>'}
+          </div>
+        </div>
+        <div class="lead-hero__media" aria-hidden="false">
+          <figure class="app-shot app-shot--hero">
+            <img src="assets/app/shot-results.webp" alt="${esc(`אפליקציית חוסך — השוואת מסלולי ${c.name} עם ציון התאמה וחיסכון`)}" width="390" height="844" loading="lazy" decoding="async" />
+          </figure>
         </div>
       </div>
     </section>
@@ -819,10 +922,19 @@ if (fs.existsSync(extraGuidesDir)) {
   }
 }
 
+// Header markup — evaluated AFTER `guides` is fully populated (incl. the
+// content/guides/*.json extras), because the Guides mega-menu lists real
+// articles. Pages that render their own lead-form keep the in-page #cta anchor;
+// article/guide/static/404/providers-index pages have no #cta, so their header
+// CTA points at the homepage's — otherwise it's a dead button exactly where
+// organic-SEO visitors land.
+const nav = navHtml('#cta');
+const navNoCta = navHtml('index.html#cta');
+
 // Render a single guide card (reused by guides index, article "related", category pages).
 function guideCard(g) {
   const dateHe = new Date(g.date).toLocaleDateString('he-IL', { year: 'numeric', month: 'long', day: 'numeric' });
-  return `          <a class="guide-card reveal" href="${g.slug}.html">
+  return `          <a class="guide-card reveal" href="${esc(g.slug)}.html">
             <span class="tag-cat">${esc(g.cat)}</span>
             <h3>${esc(g.h1)}</h3>
             <p>${esc(g.desc)}</p>
@@ -895,6 +1007,8 @@ function head(title, desc, url, extraJsonLd, noindex, ogType = 'article') {
   <style>.skip{position:absolute;left:-999px;top:0;z-index:100;background:#111827;color:#fff;padding:10px 16px;border-radius:0 0 8px 0}.skip:focus{left:0}</style>
   <meta name="theme-color" content="#111827" />
   <link rel="canonical" href="${url}" />
+  <link rel="alternate" hreflang="he-IL" href="${url}" />
+  <link rel="alternate" hreflang="x-default" href="${url}" />
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="favicon.svg" />
   <link rel="manifest" href="site.webmanifest" />
@@ -917,6 +1031,9 @@ function head(title, desc, url, extraJsonLd, noindex, ogType = 'article') {
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="preconnect" href="https://plausible.io" />
   <link rel="preconnect" href="https://orzitfqmlvopujsoyigr.supabase.co" />
+  <!-- Fonts via Google CDN, loaded non-render-blocking (preload as style →
+       swap media print→all on load), with a <noscript> fallback. Preconnected
+       above; font-display:swap so text never blocks on the webfont. -->
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" />
   <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
   <noscript><link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" rel="stylesheet" /></noscript>
@@ -929,14 +1046,45 @@ function head(title, desc, url, extraJsonLd, noindex, ogType = 'article') {
 
 const guideCatToSlug = { 'סלולר': 'cellular', 'אינטרנט': 'internet', 'טלוויזיה': 'tv', 'חבילה משולבת': 'triple', 'חו״ל': 'abroad' };
 
+// Render a tip/callout block for a guide section. Backward-compatible: a section
+// with neither field renders nothing. `tip` → .callout--tip (amber/value
+// accent); `callout` → a neutral .callout. Each may be a string or {title,text}.
+function calloutHtml(field, isTip) {
+  if (!field) return '';
+  const obj = typeof field === 'string' ? { text: field } : field;
+  if (!obj.text) return '';
+  const title = obj.title || (isTip ? 'טיפ' : 'שימו לב');
+  const icon = iconFor(isTip ? '💡' : '🛈');
+  return `        <aside class="callout${isTip ? ' callout--tip' : ''}" role="note">
+          <span class="callout__icon" aria-hidden="true">${icon}</span>
+          <div class="callout__body"><p class="callout__title">${esc(title)}</p><p>${esc(obj.text)}</p></div>
+        </aside>\n`;
+}
+
 function articlePage(g) {
   const url = `${SITE}/${g.slug}.html`;
-  const body = g.sections.map((s) => {
-    let html = `        <h2>${esc(s.h2)}</h2>\n`;
+  // Each section gets a stable ASCII anchor id (sec-N) so the auto TOC can deep-
+  // link to it without slugifying Hebrew headings into something fragile.
+  const body = g.sections.map((s, i) => {
+    const id = `sec-${i + 1}`;
+    let html = `        <h2 id="${id}">${esc(s.h2)}</h2>\n`;
     if (s.p) html += s.p.map((p) => `        <p>${esc(p)}</p>`).join('\n') + '\n';
     if (s.ul) html += `        <ul>\n${s.ul.map((li) => `          <li>${esc(li)}</li>`).join('\n')}\n        </ul>\n`;
+    // Optional callouts — `tip` (highlight) and/or `callout` (neutral note).
+    html += calloutHtml(s.tip, true);
+    html += calloutHtml(s.callout, false);
     return html;
   }).join('\n');
+  // Auto table of contents from the section headings. Only worth showing when
+  // there are at least 3 sections (a 2-item TOC adds clutter, not navigation).
+  const toc = g.sections.length >= 3
+    ? `            <nav class="toc" aria-label="תוכן עניינים">
+              <p class="toc__title">בעמוד הזה</p>
+              <ol class="toc__list">
+${g.sections.map((s, i) => `                <li><a class="toc__link" href="#sec-${i + 1}">${esc(s.h2)}</a></li>`).join('\n')}
+              </ol>
+            </nav>\n`
+    : '';
   const dateHe = new Date(g.date).toLocaleDateString('he-IL', { year: 'numeric', month: 'long', day: 'numeric' });
   const relatedCards = relatedGuides(g.cat, g.slug, 3).map(guideCard).join('\n');
   // Visible FAQ — kept in sync with the FAQPage JSON-LD (rich-results rules
@@ -970,7 +1118,7 @@ ${navNoCta}
         <div class="container">
           <div class="prose">
             <div class="tldr"><b>בקצרה:</b> ${esc(g.tldr)}</div>
-${body}
+${toc}${body}
           </div>
           <div class="article-cta">
             <h3>רוצים לראות כמה תחסכו בפועל?</h3>
@@ -1530,6 +1678,31 @@ ${nav}
           ${sel(2, '')}
         </div>
         <div id="compareTable" class="compare-table-wrap"></div>
+        <details class="cmp-glossary">
+          <summary>מה המשמעות של כל שורה בטבלה?</summary>
+          <dl class="cmp-glossary__list">
+            <div class="cmp-glossary__item">
+              <dt><button type="button" class="cmp-help" aria-label="הסבר: 5G והשהיה" data-tip="5G הוא הדור החמישי של הרשת — מהיר ויציב יותר באזורים עמוסים, עם השהיה (latency) נמוכה. דורש מכשיר שתומך וכיסוי באזור שלכם.">?</button> 5G והשהיה (latency)</dt>
+              <dd>הדור החמישי — מהיר ויציב יותר באזורים עמוסים, עם זמן תגובה קצר. דורש מכשיר תומך וכיסוי באזור.</dd>
+            </div>
+            <div class="cmp-glossary__item">
+              <dt><button type="button" class="cmp-help" aria-label="הסבר: התחייבות" data-tip="מסלול ללא התחייבות ניתן לביטול בכל עת ללא קנס. מסלול עם התחייבות עשוי לגרור חיוב יציאה אם עוזבים מוקדם.">?</button> התחייבות</dt>
+              <dd>מסלול ללא התחייבות ניתן לביטול בכל עת ללא קנס; התחייבות פעילה עשויה לגרור חיוב יציאה.</dd>
+            </div>
+            <div class="cmp-glossary__item">
+              <dt><button type="button" class="cmp-help" aria-label="הסבר: מחיר אחרי מבצע" data-tip="המחיר שתשלמו כשתקופת ההיכרות מסתיימת (לרוב אחרי 12 חודשים). תמיד השוו לפי המחיר הקבוע, לא רק לפי מחיר המבצע.">?</button> מחיר אחרי מבצע</dt>
+              <dd>הסכום שתשלמו כשמסתיימת תקופת ההיכרות. השוו לפי המחיר הקבוע, לא רק לפי מחיר המבצע.</dd>
+            </div>
+            <div class="cmp-glossary__item">
+              <dt><button type="button" class="cmp-help" aria-label="הסבר: eSIM" data-tip="כרטיס SIM דיגיטלי שמותקן בטלפון בלי כרטיס פיזי — מופעל בסריקת קוד, נוח במיוחד לחבילות גלישה בחו״ל.">?</button> eSIM</dt>
+              <dd>כרטיס SIM דיגיטלי בלי כרטיס פיזי, מופעל בסריקת קוד — נוח במיוחד לחבילות חו״ל.</dd>
+            </div>
+            <div class="cmp-glossary__item">
+              <dt><button type="button" class="cmp-help" aria-label="הסבר: ציוד" data-tip="הציוד הכלול בחבילה — נתב (אינטרנט) או ממיר (טלוויזיה). שימו לב אם יש דמי השאלה או רכישה חד-פעמית.">?</button> ציוד (נתב/ממיר)</dt>
+              <dd>הנתב או הממיר הכלולים בחבילה. בדקו אם מדובר בהשאלה או רכישה ואם יש דמי התקנה.</dd>
+            </div>
+          </dl>
+        </details>
       </div>
     </section>
     <section class="cta" id="cta">

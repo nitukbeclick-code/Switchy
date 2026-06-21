@@ -81,7 +81,32 @@
     if (saveOut) saveOut.textContent = nis(annual);
   };
   if (billRange) {
+    // a11y: native <input type="range"> is keyboard-operable by default (arrows
+    // adjust value, firing 'input'). We make sure AT can read the live result by
+    // pointing the slider at a polite live region that holds the saving figure,
+    // and by giving the slider a value text that includes the current bill.
+    const calcLive = $('billCalcLive');
+    if (calcLive) {
+      calcLive.setAttribute('aria-live', 'polite');
+      calcLive.setAttribute('aria-atomic', 'true');
+    }
+    const announceCalc = () => {
+      if (!calcLive) return;
+      const bill = Number(billRange.value);
+      const annual = Math.round((bill * SAVE_RATE * 12) / 10) * 10;
+      calcLive.textContent = 'בתשלום של ' + nis(bill) + ' בחודש, חיסכון שנתי משוער של עד ' + nis(annual) + '.';
+    };
+    if (!billRange.getAttribute('aria-valuetext')) {
+      billRange.setAttribute('aria-valuetext', nis(Number(billRange.value)));
+    }
     billRange.addEventListener('input', updateCalc);
+    // Announce the result only after input settles, so dragging the slider
+    // doesn't flood the live region with every intermediate value.
+    billRange.addEventListener('input', () => {
+      billRange.setAttribute('aria-valuetext', nis(Number(billRange.value)));
+    });
+    billRange.addEventListener('input', debounce(announceCalc, 350));
+    billRange.addEventListener('change', announceCalc);
     updateCalc();
   }
 
@@ -129,6 +154,99 @@
     if (a) track('whatsapp_click', { source: location.pathname });
   }, true);
 
+  // ── Toast notifications ─────────────────────────────────────────────────────
+  // One reusable, dependency-free toast. A single live region (assertive for
+  // errors, polite for success) hosts the stack; messages auto-dismiss and can
+  // be dismissed manually. No hard-coded colors — .toast / .toast--success /
+  // .toast--error own the look in styles.css, so it follows dark-mode + RTL.
+  // Reduced-motion: CSS suppresses the slide/fade, the toast just appears.
+  let toastHost = null;
+  const ensureToastHost = () => {
+    if (toastHost && document.body.contains(toastHost)) return toastHost;
+    toastHost = document.createElement('div');
+    toastHost.className = 'toast-host';
+    toastHost.setAttribute('aria-live', 'polite');
+    toastHost.setAttribute('aria-atomic', 'false');
+    document.body.appendChild(toastHost);
+    return toastHost;
+  };
+  const toast = (message, kind = 'success', timeout = 4500) => {
+    if (!message) return;
+    const host = ensureToastHost();
+    const el = document.createElement('div');
+    el.className = 'toast toast--' + (kind === 'error' ? 'error' : 'success');
+    // Errors interrupt (assertive) so AT reads them promptly; success is polite.
+    el.setAttribute('role', kind === 'error' ? 'alert' : 'status');
+    el.setAttribute('aria-live', kind === 'error' ? 'assertive' : 'polite');
+    const msg = document.createElement('span');
+    msg.className = 'toast__msg';
+    msg.textContent = message;
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'toast__close';
+    close.setAttribute('aria-label', 'סגירה');
+    close.textContent = '✕';
+    let killed = false;
+    let timer = 0;
+    const dismiss = () => {
+      if (killed) return;
+      killed = true;
+      clearTimeout(timer);
+      el.classList.remove('is-in');
+      el.classList.add('is-out');
+      const drop = () => el.remove();
+      if (reduceMotion) drop();
+      else { el.addEventListener('transitionend', drop, { once: true }); setTimeout(drop, 400); }
+    };
+    close.addEventListener('click', dismiss);
+    el.appendChild(msg);
+    el.appendChild(close);
+    host.appendChild(el);
+    // Force a reflow so the entrance transition runs from the initial state.
+    requestAnimationFrame(() => el.classList.add('is-in'));
+    if (timeout > 0) timer = setTimeout(dismiss, timeout);
+    return el;
+  };
+
+  // ── Shared AI endpoint caller ───────────────────────────────────────────────
+  // All three site AI tools (advisor / bill-analyzer / subscribe) POST to a
+  // Supabase Edge Function with the anon key — identical wiring to the chat
+  // handler below. Throws on missing config or non-2xx so callers fail-soft via
+  // a friendly Hebrew toast.
+  const callAiFunction = async (fnName, payload) => {
+    const cfg = window.CHOSECH_SUPABASE;
+    if (!cfg || !cfg.url || !cfg.anonKey) throw new Error('ai backend not configured');
+    const res = await fetch(cfg.url.replace(/\/$/, '') + '/functions/v1/' + fnName, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', apikey: cfg.anonKey, Authorization: 'Bearer ' + cfg.anonKey },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(fnName + ' failed: ' + res.status);
+    return data;
+  };
+  // Small DOM helper for the AI shells: a skeleton placeholder block.
+  const skeletonRows = (n = 3) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'skeleton-stack';
+    wrap.setAttribute('aria-hidden', 'true');
+    for (let i = 0; i < n; i++) {
+      const row = document.createElement('div');
+      row.className = 'skeleton';
+      wrap.appendChild(row);
+    }
+    return wrap;
+  };
+  // Hand off to the lead form: scroll it into view and focus the name field.
+  // Shared by the advisor's "להשאיר פרטים" CTA.
+  const handoffToLead = () => {
+    const f = $('leadForm');
+    if (!f) { location.href = 'index.html#lead'; return; }
+    f.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' });
+    const first = $('leadName');
+    if (first) setTimeout(() => first.focus({ preventScroll: true }), reduceMotion ? 0 : 400);
+  };
+
   // ── Lead form ──────────────────────────────────────────────────────────────
   // Backend is optional and config-driven: set `window.CHOSECH_SUPABASE =
   // { url, anonKey }` (anon key only — never the service_role key) to POST leads
@@ -153,7 +271,43 @@
     // rate limit) must not be presented to the visitor as success.
     if (!res.ok) throw new Error('lead rejected: ' + res.status);
   };
+  // Per-field inline error: a <span class="field-error"> placed right after the
+  // field (created lazily, id-linked via aria-describedby) + aria-invalid. AT
+  // reads the message when focus lands on the flagged field; sighted users see
+  // it inline rather than only the single shared note at the bottom.
+  const fieldError = (el, msg) => {
+    if (!el) return;
+    if (msg == null) {
+      el.removeAttribute('aria-invalid');
+      const ex = el.getAttribute('aria-describedby');
+      if (ex) { const n = document.getElementById(ex); if (n && n.classList.contains('field-error')) n.remove(); el.removeAttribute('aria-describedby'); }
+      return;
+    }
+    el.setAttribute('aria-invalid', 'true');
+    let id = el.getAttribute('aria-describedby');
+    let span = id ? document.getElementById(id) : null;
+    if (!span || !span.classList.contains('field-error')) {
+      id = (el.id || 'f') + '-err';
+      span = document.getElementById(id);
+      if (!span) {
+        span = document.createElement('span');
+        span.id = id;
+        span.className = 'field-error';
+        (el.parentNode || el).insertBefore(span, el.nextSibling);
+      }
+      el.setAttribute('aria-describedby', id);
+    }
+    span.textContent = msg;
+  };
+  // Israeli mobile: +972/0, then 5X, then 7 more digits — lenient on spaces/dashes.
+  const IL_PHONE_RE = /^(\+?972|0)5[0-9](-?\d){7}$/;
   if (form) {
+    const nameEl0 = $('leadName');
+    const phoneEl0 = $('leadPhone');
+    // Clearing the error as the user corrects the field is friendlier than
+    // leaving a stale red message until the next submit.
+    if (nameEl0) nameEl0.addEventListener('input', () => { if (nameEl0.getAttribute('aria-invalid')) fieldError(nameEl0, null); });
+    if (phoneEl0) phoneEl0.addEventListener('input', () => { if (phoneEl0.getAttribute('aria-invalid')) fieldError(phoneEl0, null); });
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       // Honeypot: real users never see/fill #leadCompany (offscreen + aria-hidden
@@ -166,12 +320,20 @@
       const nameEl = $('leadName');
       const phoneEl = $('leadPhone');
       const name = (nameEl && nameEl.value || '').trim();
+      const phoneRaw = (phoneEl && phoneEl.value || '').trim();
       // Normalize to digits/+ — the leads gate rejects dots/parens/spaces.
-      const phone = (phoneEl && phoneEl.value || '').replace(/[^\d+]/g, '');
-      if (name.length < 2 || name.length > 80 || phone.replace(/\D/g, '').length < 9) {
+      const phone = phoneRaw.replace(/[^\d+]/g, '');
+      // Validate the lenient-spaced raw value against the IL regex, fall back to
+      // a digit-count floor so unusual-but-valid inputs aren't over-rejected.
+      const nameOk = name.length >= 2 && name.length <= 80;
+      const phoneOk = IL_PHONE_RE.test(phoneRaw.replace(/[^\d+\-\s]/g, '')) || phone.replace(/\D/g, '').length >= 9;
+      fieldError(nameEl, nameOk ? null : 'נא למלא שם (2–80 תווים)');
+      fieldError(phoneEl, phoneOk ? null : 'נא למלא מספר טלפון נייד תקין');
+      if (!nameOk || !phoneOk) {
         if (note) { note.classList.add('cta__note--err'); note.textContent = 'נא למלא שם וטלפון תקין 🙏'; }
+        toast('נא למלא שם וטלפון תקין', 'error');
         // Move focus to the first invalid field so keyboard/AT users land on it.
-        const bad = (name.length < 2 || name.length > 80) ? nameEl : phoneEl;
+        const bad = !nameOk ? nameEl : phoneEl;
         if (bad) bad.focus();
         return;
       }
@@ -185,6 +347,7 @@
       const privacyOk = privacyEl && privacyEl.checked;
       if (!termsOk || !privacyOk) {
         if (note) { note.classList.add('cta__note--err'); note.textContent = 'יש לאשר את תנאי השימוש ומדיניות הפרטיות כדי להמשיך 🙏'; }
+        toast('יש לאשר את תנאי השימוש ומדיניות הפרטיות', 'error');
         const badConsent = !termsOk ? termsEl : privacyEl;
         if (badConsent) badConsent.focus();
         return;
@@ -193,7 +356,10 @@
       const marketingAt = $('consentMarketing') && $('consentMarketing').checked ? now : null;
       const priceAlert = $('consentPriceAlert') && $('consentPriceAlert').checked;
       const btn = form.querySelector('button[type="submit"]');
-      if (btn) { btn.disabled = true; btn.classList.add('is-loading'); }
+      // Disabled "שולח…" state: keep the original label so we can restore it,
+      // and prevent a double-submit while the request is in flight.
+      let btnLabel = '';
+      if (btn) { btnLabel = btn.textContent; btn.disabled = true; btn.classList.add('is-loading'); btn.textContent = 'שולח…'; }
       let sent = true;
       try {
         await sendLead({
@@ -208,18 +374,22 @@
       } catch (_) {
         sent = false;
       }
-      if (btn) { btn.disabled = false; btn.classList.remove('is-loading'); }
+      if (btn) { btn.disabled = false; btn.classList.remove('is-loading'); if (btnLabel) btn.textContent = btnLabel; }
       if (!sent) {
         if (note) { note.classList.add('cta__note--err'); note.textContent = 'השליחה נכשלה — נסו שוב, או כתבו לנו בוואטסאפ 💬'; }
+        toast('השליחה נכשלה — נסו שוב בעוד רגע', 'error');
         if (btn) btn.focus(); // keep focus on the retry affordance
         return;
       }
       track('lead_submit', { source: location.pathname });
       form.reset();
+      fieldError(nameEl, null);
+      fieldError(phoneEl, null);
       if (note) {
         note.classList.remove('cta__note--err');
         note.textContent = 'תודה ' + name.split(' ')[0] + '! נחזור אליך בהקדם ✦';
       }
+      toast('תודה ' + name.split(' ')[0] + '! נחזור אליך בהקדם', 'success');
       showReferralShare();
     });
     // form_start — fires once, the moment the visitor first engages the form.
@@ -745,4 +915,439 @@
       });
     });
   }
+
+  // ── Button :active press feedback hook ──────────────────────────────────────
+  // CSS owns the visual press (.is-pressed); JS just toggles the hook so even
+  // keyboard activation (Space holds the button active) and touch get parity.
+  // Delegated + pointer/keys, so it covers buttons injected later (sticky CTA,
+  // AI shells). Reduced-motion users still get the class; CSS chooses whether to
+  // animate it.
+  (() => {
+    const isBtn = (t) => t && t.closest && t.closest('button, .btn, [role="button"]');
+    const press = (e) => { const b = isBtn(e.target); if (b) b.classList.add('is-pressed'); };
+    const release = (e) => {
+      const b = isBtn(e.target);
+      if (b) b.classList.remove('is-pressed');
+    };
+    document.addEventListener('pointerdown', press, { passive: true });
+    document.addEventListener('pointerup', release, { passive: true });
+    document.addEventListener('pointercancel', release, { passive: true });
+    document.addEventListener('keydown', (e) => { if (e.key === ' ' || e.key === 'Enter') press(e); });
+    document.addEventListener('keyup', (e) => { if (e.key === ' ' || e.key === 'Enter') release(e); });
+    // Safety net: clear any lingering pressed state when focus/window leaves.
+    window.addEventListener('blur', () => document.querySelectorAll('.is-pressed').forEach((b) => b.classList.remove('is-pressed')));
+  })();
+
+  // ── Mega-menu (.mega-menu) — open/close with click, Esc, outside-click, kbd ──
+  // A trigger (data-mega-trigger / aria-controls) toggles a .mega-menu panel.
+  // aria-expanded mirrors state; Esc and outside-click close and (for Esc)
+  // return focus to the trigger. Multiple menus close each other.
+  (() => {
+    const menus = Array.from(document.querySelectorAll('.mega-menu'));
+    const triggers = Array.from(document.querySelectorAll('.mega__trigger, .nav__item--mega > a[aria-haspopup], [data-mega-trigger], [aria-controls].mega-trigger'));
+    if (!menus.length && !triggers.length) return;
+    const panelFor = (trigger) => {
+      const id = trigger.getAttribute('aria-controls') || trigger.getAttribute('data-mega-trigger');
+      return id ? document.getElementById(id) : trigger.parentElement && trigger.parentElement.querySelector('.mega-menu');
+    };
+    const pairs = triggers.map((t) => ({ trigger: t, panel: panelFor(t) })).filter((p) => p.panel);
+    const setOpen = (pair, open) => {
+      pair.trigger.setAttribute('aria-expanded', String(open));
+      pair.panel.classList.toggle('is-open', open);
+      pair.panel.hidden = !open;
+    };
+    const closeAll = (except) => pairs.forEach((p) => { if (p !== except) setOpen(p, false); });
+    pairs.forEach((pair) => {
+      if (!pair.trigger.hasAttribute('aria-expanded')) pair.trigger.setAttribute('aria-expanded', 'false');
+      if (!pair.trigger.hasAttribute('aria-haspopup')) pair.trigger.setAttribute('aria-haspopup', 'true');
+      pair.panel.hidden = pair.panel.classList.contains('is-open') ? false : true;
+      pair.trigger.addEventListener('click', (e) => {
+        e.preventDefault();
+        const open = pair.trigger.getAttribute('aria-expanded') !== 'true';
+        closeAll(pair);
+        setOpen(pair, open);
+      });
+      // Esc anywhere within the menu/trigger closes it and restores focus.
+      const onKey = (e) => { if (e.key === 'Escape') { setOpen(pair, false); pair.trigger.focus(); } };
+      pair.trigger.addEventListener('keydown', onKey);
+      pair.panel.addEventListener('keydown', onKey);
+    });
+    // Outside-click closes every open mega-menu.
+    document.addEventListener('click', (e) => {
+      const inside = pairs.some((p) => p.panel.contains(e.target) || p.trigger.contains(e.target));
+      if (!inside) closeAll(null);
+    });
+  })();
+
+  // ── TOC scrollspy (.toc) — highlight the section in view ────────────────────
+  // IntersectionObserver tracks which target heading/section is currently in
+  // the viewport; the matching .toc a gets .toc__link--active + aria-current.
+  // Smooth in-page scroll on click (reduced-motion: instant). Degrades to no-op
+  // without IO support.
+  (() => {
+    const toc = document.querySelector('.toc');
+    if (!toc) return;
+    const links = Array.from(toc.querySelectorAll('a[href^="#"]'));
+    if (!links.length) return;
+    const targets = links
+      .map((a) => { const id = decodeURIComponent(a.getAttribute('href').slice(1)); return { a, el: id && document.getElementById(id) }; })
+      .filter((t) => t.el);
+    if (!targets.length) return;
+    const setActive = (a) => {
+      links.forEach((l) => {
+        const on = l === a;
+        l.classList.toggle('toc__link--active', on);
+        if (on) l.setAttribute('aria-current', 'true'); else l.removeAttribute('aria-current');
+      });
+    };
+    // Smooth-scroll on click and move active immediately for snappy feedback.
+    targets.forEach((t) => {
+      t.a.addEventListener('click', (e) => {
+        e.preventDefault();
+        setActive(t.a);
+        t.el.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
+        // Make the heading focusable for keyboard users landing on it.
+        if (!t.el.hasAttribute('tabindex')) t.el.setAttribute('tabindex', '-1');
+        t.el.focus({ preventScroll: true });
+        history.replaceState(null, '', t.a.getAttribute('href'));
+      });
+    });
+    if (!('IntersectionObserver' in window)) { setActive(targets[0].a); return; }
+    // Track the topmost intersecting target. Top-anchored rootMargin so a
+    // heading counts as "current" once it reaches the upper third of the screen.
+    const visible = new Map();
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((en) => {
+        if (en.isIntersecting) visible.set(en.target, en.boundingClientRect.top);
+        else visible.delete(en.target);
+      });
+      if (!visible.size) return;
+      let topEl = null, topY = Infinity;
+      visible.forEach((y, el) => { if (y < topY) { topY = y; topEl = el; } });
+      const match = targets.find((t) => t.el === topEl);
+      if (match) setActive(match.a);
+    }, { rootMargin: '0px 0px -65% 0px', threshold: 0 });
+    targets.forEach((t) => io.observe(t.el));
+  })();
+
+  // ── AI tool: Plan Advisor (#advisorOpen / .advisor) ─────────────────────────
+  // Multi-step form collecting {category,budget,priority,lines,abroad}, then
+  // POST site-plan-advisor and render recommendations (with annualSaving).
+  // Skeleton while loading; "להשאיר פרטים" hands off to the lead form; fails
+  // soft with a Hebrew toast. The shell builds its own UI inside the host so it
+  // works even when only the container markup exists.
+  (() => {
+    const host = $('advisorOpen') || document.querySelector('.advisor');
+    if (!host) return;
+    const STEPS = [
+      { key: 'category', q: 'מה מעניין אתכם?', type: 'choice', options: [
+        ['cellular', 'סלולר'], ['internet', 'אינטרנט'], ['tv', 'טלוויזיה'], ['triple', 'משולבת'], ['abroad', 'חו״ל'] ] },
+      { key: 'budget', q: 'מה התקציב החודשי המשוער?', type: 'choice', options: [
+        ['50', 'עד ₪50'], ['100', '₪50–100'], ['150', '₪100–150'], ['9999', '₪150+'] ] },
+      { key: 'priority', q: 'מה הכי חשוב לכם?', type: 'choice', options: [
+        ['price', 'המחיר הזול ביותר'], ['data', 'הרבה גלישה'], ['balanced', 'שירות ויציבות'], ['noCommit', 'בלי התחייבות'] ] },
+      { key: 'lines', q: 'כמה קווים / מנויים?', type: 'choice', options: [
+        ['1', 'אחד'], ['2', 'שניים'], ['3', 'שלושה'], ['4', 'ארבעה ומעלה'] ] },
+      { key: 'abroad', q: 'צריך גם חבילת חו״ל?', type: 'choice', options: [
+        ['yes', 'כן'], ['no', 'לא'] ] },
+    ];
+    const answers = {};
+    let idx = 0;
+    let busy = false;
+    const stage = document.createElement('div');
+    stage.className = 'advisor__stage';
+    stage.setAttribute('aria-live', 'polite');
+    host.appendChild(stage);
+
+    const renderStep = () => {
+      const step = STEPS[idx];
+      stage.innerHTML = '';
+      const wrap = document.createElement('div');
+      wrap.className = 'advisor__step';
+      wrap.setAttribute('role', 'group');
+      const progress = document.createElement('p');
+      progress.className = 'advisor__progress';
+      progress.textContent = 'שלב ' + (idx + 1) + ' מתוך ' + STEPS.length;
+      const heading = document.createElement('h3');
+      heading.className = 'advisor__q';
+      heading.textContent = step.q;
+      wrap.setAttribute('aria-label', step.q);
+      const opts = document.createElement('div');
+      opts.className = 'advisor__options';
+      step.options.forEach(([val, label]) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'btn btn--ghost advisor__option';
+        b.textContent = label;
+        b.addEventListener('click', () => {
+          answers[step.key] = val;
+          if (idx < STEPS.length - 1) { idx++; renderStep(); }
+          else submit();
+        });
+        opts.appendChild(b);
+      });
+      wrap.appendChild(progress);
+      wrap.appendChild(heading);
+      wrap.appendChild(opts);
+      if (idx > 0) {
+        const back = document.createElement('button');
+        back.type = 'button';
+        back.className = 'btn btn--ghost btn--sm advisor__back';
+        back.textContent = '→ חזרה';
+        back.addEventListener('click', () => { idx--; renderStep(); });
+        wrap.appendChild(back);
+      }
+      stage.appendChild(wrap);
+      const firstOpt = opts.querySelector('button');
+      if (firstOpt) firstOpt.focus({ preventScroll: true });
+    };
+
+    const renderRecs = (data) => {
+      stage.innerHTML = '';
+      const recs = (data && Array.isArray(data.recommendations)) ? data.recommendations : [];
+      const head = document.createElement('h3');
+      head.className = 'advisor__q';
+      head.textContent = recs.length ? 'ההמלצות שלנו עבורכם' : 'לא מצאנו התאמה מדויקת';
+      stage.appendChild(head);
+      if (data && data.followup) {
+        const fu = document.createElement('p');
+        fu.className = 'advisor__followup';
+        fu.textContent = data.followup;
+        stage.appendChild(fu);
+      }
+      const list = document.createElement('div');
+      list.className = 'advisor__recs';
+      recs.forEach((r) => {
+        const card = document.createElement('article');
+        card.className = 'advisor__rec';
+        const title = document.createElement('h4');
+        title.textContent = (r.provider ? r.provider + ' · ' : '') + (r.name || '');
+        const price = document.createElement('p');
+        price.className = 'advisor__rec-price';
+        if (r.price != null) price.textContent = '₪' + r.price + ' לחודש';
+        const saving = document.createElement('p');
+        if (r.annualSaving != null && Number(r.annualSaving) > 0) {
+          saving.className = 'advisor__rec-saving';
+          saving.textContent = 'חיסכון שנתי משוער: ' + nis(Number(r.annualSaving));
+        }
+        const reason = document.createElement('p');
+        reason.className = 'advisor__rec-reason';
+        if (r.reason) reason.textContent = r.reason;
+        card.appendChild(title);
+        if (r.price != null) card.appendChild(price);
+        if (saving.textContent) card.appendChild(saving);
+        if (r.reason) card.appendChild(reason);
+        list.appendChild(card);
+      });
+      stage.appendChild(list);
+      const actions = document.createElement('div');
+      actions.className = 'advisor__actions';
+      const lead = document.createElement('button');
+      lead.type = 'button';
+      lead.className = 'btn btn--primary';
+      lead.textContent = 'להשאיר פרטים →';
+      lead.addEventListener('click', handoffToLead);
+      const again = document.createElement('button');
+      again.type = 'button';
+      again.className = 'btn btn--ghost';
+      again.textContent = 'להתחיל מחדש';
+      again.addEventListener('click', () => { idx = 0; for (const k in answers) delete answers[k]; renderStep(); });
+      actions.appendChild(lead);
+      actions.appendChild(again);
+      stage.appendChild(actions);
+    };
+
+    async function submit() {
+      if (busy) return;
+      busy = true;
+      stage.innerHTML = '';
+      stage.appendChild(skeletonRows(3));
+      try {
+        const data = await callAiFunction('site-plan-advisor', {
+          answers: {
+            category: answers.category,
+            budget: answers.budget,
+            priority: answers.priority,
+            lines: answers.lines,
+            abroad: answers.abroad,
+          },
+        });
+        track('advisor_used', { category: answers.category || '' });
+        renderRecs(data);
+      } catch (_) {
+        toast('היועץ החכם לא זמין כרגע — נסו שוב בעוד רגע', 'error');
+        renderStep(); // back to the last question so the user can retry
+      }
+      busy = false;
+    }
+
+    renderStep();
+  })();
+
+  // ── AI tool: Bill Analyzer (#billDrop / .bill-drop) ─────────────────────────
+  // Accept an image (file input + drag/drop), read as base64, POST
+  // site-bill-analyzer, render provider/currentSpend/suggestions. Skeleton while
+  // loading; strict single-submit; fails soft with a Hebrew toast.
+  (() => {
+    const drop = $('billDrop') || document.querySelector('.bill-drop');
+    if (!drop) return;
+    let input = drop.querySelector('input[type="file"]');
+    if (!input) {
+      input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.className = 'bill-drop__input';
+      input.id = 'billDropInput';
+      input.setAttribute('aria-label', 'העלאת צילום חשבון');
+      drop.appendChild(input);
+    } else {
+      input.accept = input.accept || 'image/*';
+    }
+    let result = drop.querySelector('.bill-drop__result');
+    if (!result) {
+      result = document.createElement('div');
+      result.className = 'bill-drop__result';
+      result.setAttribute('aria-live', 'polite');
+      drop.appendChild(result);
+    }
+    // Keyboard affordance: clicking the zone opens the picker; the zone is a
+    // labelled button for AT, the file input does the actual work.
+    if (!drop.hasAttribute('role')) drop.setAttribute('role', 'button');
+    if (!drop.hasAttribute('tabindex')) drop.setAttribute('tabindex', '0');
+    if (!drop.hasAttribute('aria-label')) drop.setAttribute('aria-label', 'גררו לכאן צילום חשבון, או הקישו לבחירת קובץ');
+    let busy = false;
+
+    const readAsBase64 = (file) => new Promise((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onload = () => resolve(String(fr.result || ''));
+      fr.onerror = () => reject(new Error('read failed'));
+      fr.readAsDataURL(file);
+    });
+
+    const renderResult = (data) => {
+      result.innerHTML = '';
+      const head = document.createElement('h3');
+      head.className = 'bill-drop__title';
+      head.textContent = 'מה מצאנו בחשבון';
+      result.appendChild(head);
+      const summary = document.createElement('p');
+      summary.className = 'bill-drop__summary';
+      const parts = [];
+      if (data && data.provider) parts.push('ספק נוכחי: ' + data.provider);
+      if (data && data.currentSpend != null) parts.push('תשלום נוכחי: ' + nis(Number(data.currentSpend)));
+      summary.textContent = parts.join(' · ') || 'לא זוהו פרטי חשבון.';
+      result.appendChild(summary);
+      const suggestions = (data && Array.isArray(data.suggestions)) ? data.suggestions : [];
+      if (suggestions.length) {
+        const list = document.createElement('div');
+        list.className = 'bill-drop__suggestions';
+        suggestions.forEach((s) => {
+          const card = document.createElement('article');
+          card.className = 'bill-drop__suggestion';
+          const title = document.createElement('h4');
+          title.textContent = (s.provider ? s.provider + ' · ' : '') + (s.name || '');
+          card.appendChild(title);
+          if (s.price != null) {
+            const p = document.createElement('p');
+            p.className = 'bill-drop__suggestion-price';
+            p.textContent = '₪' + s.price + ' לחודש';
+            card.appendChild(p);
+          }
+          if (s.annualSaving != null && Number(s.annualSaving) > 0) {
+            const sv = document.createElement('p');
+            sv.className = 'bill-drop__suggestion-saving';
+            sv.textContent = 'חיסכון שנתי משוער: ' + nis(Number(s.annualSaving));
+            card.appendChild(sv);
+          }
+          list.appendChild(card);
+        });
+        result.appendChild(list);
+      }
+      const cta = document.createElement('button');
+      cta.type = 'button';
+      cta.className = 'btn btn--primary';
+      cta.textContent = 'להשאיר פרטים →';
+      cta.addEventListener('click', handoffToLead);
+      result.appendChild(cta);
+    };
+
+    const analyze = async (file) => {
+      if (busy) return;
+      if (!file || !/^image\//.test(file.type)) { toast('נא להעלות תמונה של החשבון', 'error'); return; }
+      busy = true;
+      drop.classList.add('is-loading');
+      result.innerHTML = '';
+      result.appendChild(skeletonRows(3));
+      try {
+        const imageBase64 = await readAsBase64(file);
+        const data = await callAiFunction('site-bill-analyzer', { imageBase64: imageBase64 });
+        track('bill_analyzed', { source: location.pathname });
+        renderResult(data);
+      } catch (_) {
+        result.innerHTML = '';
+        toast('ניתוח החשבון לא זמין כרגע — נסו שוב בעוד רגע', 'error');
+      }
+      drop.classList.remove('is-loading');
+      busy = false;
+    };
+
+    input.addEventListener('change', () => { if (input.files && input.files[0]) analyze(input.files[0]); });
+    drop.addEventListener('click', (e) => { if (e.target !== input && !busy) input.click(); });
+    drop.addEventListener('keydown', (e) => {
+      if ((e.key === 'Enter' || e.key === ' ') && !busy) { e.preventDefault(); input.click(); }
+    });
+    ['dragenter', 'dragover'].forEach((ev) => drop.addEventListener(ev, (e) => {
+      e.preventDefault(); drop.classList.add('is-dragover');
+    }));
+    ['dragleave', 'dragend'].forEach((ev) => drop.addEventListener(ev, () => drop.classList.remove('is-dragover')));
+    drop.addEventListener('drop', (e) => {
+      e.preventDefault();
+      drop.classList.remove('is-dragover');
+      const file = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+      if (file && !busy) analyze(file);
+    });
+  })();
+
+  // ── AI tool: Subscribe (#subscribeForm / .subscribe) ────────────────────────
+  // Email + consent checkbox → POST site-subscribe, toast on success. Fails soft
+  // with a Hebrew toast. Single-submit while in flight.
+  (() => {
+    const form2 = $('subscribeForm') || document.querySelector('.subscribe form, form.subscribe');
+    if (!form2) return;
+    const emailEl = form2.querySelector('input[type="email"], #subscribeEmail');
+    const consentEl = form2.querySelector('input[type="checkbox"], #subscribeConsent');
+    const btn = form2.querySelector('button[type="submit"], button:not([type])');
+    const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    let busy = false;
+    form2.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (busy) return;
+      const email = (emailEl && emailEl.value || '').trim();
+      const consent = consentEl ? !!consentEl.checked : true;
+      if (!EMAIL_RE.test(email)) {
+        if (emailEl) { emailEl.setAttribute('aria-invalid', 'true'); emailEl.focus(); }
+        toast('נא להזין כתובת אימייל תקינה', 'error');
+        return;
+      }
+      if (emailEl) emailEl.removeAttribute('aria-invalid');
+      if (consentEl && !consent) {
+        consentEl.focus();
+        toast('יש לאשר קבלת עדכונים כדי להירשם', 'error');
+        return;
+      }
+      busy = true;
+      let btnLabel = '';
+      if (btn) { btnLabel = btn.textContent; btn.disabled = true; btn.classList.add('is-loading'); btn.textContent = 'נרשם…'; }
+      try {
+        await callAiFunction('site-subscribe', { email: email, consent: consent });
+        track('subscribed', { source: location.pathname });
+        form2.reset();
+        toast('נרשמתם בהצלחה! נעדכן אתכם בהזדמנויות חיסכון', 'success');
+      } catch (_) {
+        toast('ההרשמה נכשלה — נסו שוב בעוד רגע', 'error');
+      }
+      if (btn) { btn.disabled = false; btn.classList.remove('is-loading'); if (btnLabel) btn.textContent = btnLabel; }
+      busy = false;
+    });
+  })();
 })();

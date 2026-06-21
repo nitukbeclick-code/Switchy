@@ -42,10 +42,10 @@
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" />
   <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
   <noscript><link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" rel="stylesheet" /></noscript>
-  <link rel="stylesheet" href="styles.css?v=353a8ebe" />
-  <!-- Google Analytics 4 (gtag.js) — id mirrored in index.html. -->
+  <link rel="stylesheet" href="styles.css?v=ce46547a" />
+  <!-- Google Analytics 4 (gtag.js) + Consent Mode v2 — id mirrored in index.html. -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-YCTGRVN7SJ"></script>
-  <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-YCTGRVN7SJ');</script>
+  <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('consent','default',{ad_storage:'denied',ad_user_data:'denied',ad_personalization:'denied',analytics_storage:'denied'});gtag('js',new Date());gtag('config','G-YCTGRVN7SJ');</script>
   <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"Organization","@id":"https://switchy-ai.com/#organization","name":"חוסך","url":"https://switchy-ai.com/","logo":{"@type":"ImageObject","url":"https://switchy-ai.com/favicon.svg"},"description":"השוואת מחירי תקשורת חכמה — סלולר, אינטרנט, טלוויזיה, חבילות וחו״ל.","areaServed":"IL","email":"hello@chosech.co.il","contactPoint":{"@type":"ContactPoint","contactType":"customer support","telephone":"+972505037537","email":"hello@chosech.co.il","areaServed":"IL","availableLanguage":["he"]}},{"@type":"WebSite","@id":"https://switchy-ai.com/#website","name":"חוסך","url":"https://switchy-ai.com/","inLanguage":"he-IL","publisher":{"@id":"https://switchy-ai.com/#organization"},"potentialAction":{"@type":"SearchAction","target":{"@type":"EntryPoint","urlTemplate":"https://switchy-ai.com/plans.html?q={search_term_string}"},"query-input":"required name=search_term_string"}}]}</script>
   <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"דף הבית","item":"https://switchy-ai.com/"},{"@type":"ListItem","position":2,"name":"מדריכים","item":"https://switchy-ai.com/guides.html"},{"@type":"ListItem","position":3,"name":"סלולר באוסטריה — מדריך לישראלים","item":"https://switchy-ai.com/guide-abroad-austria.html"}]},{"@type":"Article","headline":"סלולר באוסטריה — מדריך לישראלים","description":"כיצד להישאר מחוברים באוסטריה — eSIM Airalo, SIM מקומי A1/Magenta, ורומינג EU. וינה, זלצבורג, אינסברוק.","datePublished":"2026-06-21","dateModified":"2026-06-21","inLanguage":"he-IL","articleSection":"חו״ל","mainEntityOfPage":{"@type":"WebPage","@id":"https://switchy-ai.com/guide-abroad-austria.html"},"image":"https://switchy-ai.com/og-image.png","isPartOf":{"@id":"https://switchy-ai.com/#website"},"author":{"@id":"https://switchy-ai.com/#organization"},"publisher":{"@id":"https://switchy-ai.com/#organization"}},{"@type":"FAQPage","mainEntity":[{"@type":"Question","name":"שוויץ = EU?","acceptedAnswer":{"@type":"Answer","text":"לא — שוויץ אינה EU. רומינג שוויצרי ≠ EU Day Pass. eSIM Airalo Europe כולל שוויץ כ-destination, אך אם יש לכם רומינג EU מהספק הישראלי — שוויץ = עלות נפרדת (₪30–₪50/יום). eSIM ייעודי לשוויץ = פתרון."}},{"@type":"Question","name":"Airalo Austria vs Airalo Germany?","acceptedAnswer":{"@type":"Answer","text":"אם רק אוסטריה: Austria $13 ל-10GB. אוסטריה + גרמניה: Europe $20 ל-10GB. מחיר לGB: Austria = זול יותר. Europe = גמיש יותר לסיור."}},{"@type":"Question","name":"Cash באוסטריה?","acceptedAnswer":{"@type":"Answer","text":"אוסטריה = cash-friendly יותר מהולנד. Visa/Mastercard = מקובלים. מסעדות/טקסי: לעיתים cash בלבד. קחו €50–₪100 במזומן. ATM = בכל מקום (ללא עמלה עם Wise/Revolut)."}},{"@type":"Question","name":"Christmas Markets (דצמבר) — טיפים?","acceptedAnswer":{"@type":"Answer","text":"אוסטריה = Christmas Markets ידועים. WiFi = מוגבל במרקטים. eSIM = עובד מצוין. Glühwein: שתו ב-Pfand glass (€3 deposit). Google Translate Camera = לתפריטים גרמניים."}}]}]}</script>
 </head>
@@ -326,7 +326,14 @@
       <div class="pmodal__body" id="pmodalBody"></div>
     </div>
   </div>
+  <div class="cbanner" id="cookieBanner" role="dialog" aria-label="הסכמה לעוגיות" hidden>
+    <p class="cbanner__text">אנחנו משתמשים ב-cookies כדי לנתח שימוש ולשפר את האתר. <a href="privacy.html">מדיניות הפרטיות</a></p>
+    <div class="cbanner__actions">
+      <button type="button" class="btn btn--ghost cbanner__btn" data-consent="deny">רק חיוני</button>
+      <button type="button" class="btn btn--primary cbanner__btn" data-consent="grant">אישור</button>
+    </div>
+  </div>
   <script>window.CHOSECH_SUPABASE={url:'https://orzitfqmlvopujsoyigr.supabase.co',anonKey:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9yeml0ZnFtbHZvcHVqc295aWdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5OTc5NzIsImV4cCI6MjA5NjU3Mzk3Mn0.NY4ZHzR3BAWUxm5as9Z054o8fwcfejAab9SIvduKlhM'};</script>
-  <script src="script.js?v=62255cfa" defer></script>
+  <script src="script.js?v=5d056831" defer></script>
 </body>
 </html>

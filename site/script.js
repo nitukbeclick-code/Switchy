@@ -2403,4 +2403,28 @@
       }
     });
   })();
+
+  // ── Cookie consent (GA4 Consent Mode v2) ────────────────────────────────────
+  // The <head> gtag snippet sets consent default = denied. This banner lets the
+  // user grant analytics-only (ad storage stays denied); the choice persists in
+  // localStorage so it's asked once. No choice yet → banner shows; denied → GA4
+  // stays cookieless.
+  (() => {
+    const KEY = 'cookieConsent';
+    let stored = null;
+    try { stored = localStorage.getItem(KEY); } catch (_) { /* private mode */ }
+    const grant = () => { try { if (typeof window.gtag === 'function') window.gtag('consent', 'update', { analytics_storage: 'granted' }); } catch (_) { /* best effort */ } };
+    if (stored === 'granted') grant();
+    const banner = $('cookieBanner');
+    if (!banner || stored === 'granted' || stored === 'denied') return;
+    banner.hidden = false;
+    banner.addEventListener('click', (e) => {
+      const b = e.target.closest && e.target.closest('[data-consent]');
+      if (!b) return;
+      const granted = b.getAttribute('data-consent') === 'grant';
+      try { localStorage.setItem(KEY, granted ? 'granted' : 'denied'); } catch (_) { /* ignore */ }
+      if (granted) grant();
+      banner.hidden = true;
+    });
+  })();
 })();

@@ -735,7 +735,9 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.white,
-                        foregroundColor: ffTheme.brandAccentDark,
+                        // Fixed deep-green (#15803D, 5:1 on white) — the pill is
+                        // always white, so a theme-aware color would fail in dark.
+                        foregroundColor: AppColors.brandAccentDark,
                         elevation: 0,
                         shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(10)),
@@ -744,7 +746,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                       ),
                       child: Text('השוואה ←',
                           style: ffTheme.labelMedium.copyWith(
-                              color: ffTheme.brandAccentDark,
+                              color: AppColors.brandAccentDark,
                               fontWeight: FontWeight.w700)),
                     ),
                   ],

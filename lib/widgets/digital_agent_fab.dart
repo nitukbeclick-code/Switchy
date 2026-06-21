@@ -63,7 +63,7 @@ class DigitalAgentFab extends StatelessWidget {
                       child: Text(
                         unread > 9 ? '9+' : '$unread',
                         style: const TextStyle(
-                          color: Colors.white,
+                          color: Color(0xFF3A2900), // dark ink on amber (AA); matches the home badge
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
                           height: 1.0,

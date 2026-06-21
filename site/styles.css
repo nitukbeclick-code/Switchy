@@ -1941,8 +1941,11 @@ body.pmodal-lock { overflow: hidden; }
   box-shadow: var(--glint), var(--shadow-lg);
 }
 .cbanner[hidden] { display: none; }
-@keyframes cbanner-in { from { transform: translateY(120%); opacity: .5; } to { transform: none; opacity: 1; } }
-.cbanner:not([hidden]) { animation: cbanner-in .3s var(--ease) both; }
+/* Tiny slide only — the from-state (10px down, full opacity) is itself fully
+   on-screen and visible, so even a paused/never-finished animation never hides
+   the banner. No off-screen translate, no opacity dimming. */
+@keyframes cbanner-in { from { transform: translateY(10px); } to { transform: none; } }
+.cbanner:not([hidden]) { animation: cbanner-in .3s var(--ease); }
 .cbanner__text { margin: 0; color: var(--ink); font-size: .9rem; line-height: 1.5; flex: 1 1 280px; }
 .cbanner__text a { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
 .cbanner__actions { display: flex; gap: 8px; flex: 0 0 auto; }

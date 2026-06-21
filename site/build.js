@@ -29,9 +29,9 @@ const JS_SRC = `script.js?v=${JS_V}`;
 // banner if you target the EU.
 const GA4_ID = 'G-YCTGRVN7SJ';
 const analyticsTag = () =>
-  `<!-- Google Analytics 4 (gtag.js) — id mirrored in index.html. -->
+  `<!-- Google Analytics 4 (gtag.js) + Consent Mode v2 — id mirrored in index.html. -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=${GA4_ID}"></script>
-  <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','${GA4_ID}');</script>`;
+  <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('consent','default',{ad_storage:'denied',ad_user_data:'denied',ad_personalization:'denied',analytics_storage:'denied'});gtag('js',new Date());gtag('config','${GA4_ID}');</script>`;
 
 // ── Lead form backend (Supabase) ─────────────────────────────────────────────
 // The anon/publishable key is the PUBLIC client key (RLS-gated, safe to ship
@@ -544,6 +544,13 @@ const footer = `  <footer class="footer">
     <div class="pmodal__panel" role="document">
       <button type="button" class="pmodal__x" data-pmodal-close aria-label="סגירת החלון">✕</button>
       <div class="pmodal__body" id="pmodalBody"></div>
+    </div>
+  </div>
+  <div class="cbanner" id="cookieBanner" role="dialog" aria-label="הסכמה לעוגיות" hidden>
+    <p class="cbanner__text">אנחנו משתמשים ב-cookies כדי לנתח שימוש ולשפר את האתר. <a href="privacy.html">מדיניות הפרטיות</a></p>
+    <div class="cbanner__actions">
+      <button type="button" class="btn btn--ghost cbanner__btn" data-consent="deny">רק חיוני</button>
+      <button type="button" class="btn btn--primary cbanner__btn" data-consent="grant">אישור</button>
     </div>
   </div>`;
 

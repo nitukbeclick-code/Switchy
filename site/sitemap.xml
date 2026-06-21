@@ -265,6 +265,12 @@
     <priority>0.6</priority>
   </url>
   <url>
+    <loc>https://chosech.co.il/guide-4g-vs-5g.html</loc>
+    <lastmod>2026-06-21</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
     <loc>https://chosech.co.il/guide-5g-explained.html</loc>
     <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
@@ -313,6 +319,12 @@
     <priority>0.6</priority>
   </url>
   <url>
+    <loc>https://chosech.co.il/guide-abroad-spain.html</loc>
+    <lastmod>2026-06-21</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
     <loc>https://chosech.co.il/guide-abroad-turkey.html</loc>
     <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
@@ -343,6 +355,12 @@
     <priority>0.6</priority>
   </url>
   <url>
+    <loc>https://chosech.co.il/guide-apple-tv-streaming.html</loc>
+    <lastmod>2026-06-21</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
     <loc>https://chosech.co.il/guide-bezeq-review.html</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
@@ -363,6 +381,12 @@
   <url>
     <loc>https://chosech.co.il/guide-cancel-contract.html</loc>
     <lastmod>2026-06-20</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://chosech.co.il/guide-cellcom-bezeq-internet.html</loc>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
@@ -507,6 +531,12 @@
   <url>
     <loc>https://chosech.co.il/guide-international-calls.html</loc>
     <lastmod>2026-06-20</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://chosech.co.il/guide-internet-fiber-installation.html</loc>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>

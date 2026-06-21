@@ -1277,6 +1277,34 @@ alter default privileges in schema public grant all on tables    to service_role
 alter default privileges in schema public grant all on sequences to service_role;
 alter default privileges in schema public grant all on functions to service_role;
 
+-- ── (A2) PUBLIC-FACING grants for anon / authenticated ──────────────────────
+-- RLS is enabled on every table below with the right policies (public-read
+-- using(true); writes gated by auth.uid()=user_id; meetings insert-anyone with
+-- check(true)), but PostgREST checks table GRANTs *before* RLS — so without
+-- these the public-read policies are dead and BOTH the marketing site and the
+-- app's community read return 401. These only let the role reach the table;
+-- RLS still gates every row. (Same gap class as the service_role block above.)
+
+-- public read: community feed, replies, reviews, like counts, rating summary
+grant select on public.community_posts          to anon, authenticated;
+grant select on public.community_replies         to anon, authenticated;
+grant select on public.provider_reviews          to anon, authenticated;
+grant select on public.post_likes                to anon, authenticated;
+grant select on public.provider_rating_summary   to anon, authenticated;
+
+-- authenticated write paths (RLS with-check enforces auth.uid() = user_id)
+grant insert, update, delete on public.community_posts   to authenticated;
+grant insert, delete         on public.community_replies  to authenticated;
+grant insert, update, delete on public.provider_reviews   to authenticated;
+grant insert, delete         on public.post_likes         to authenticated;
+grant select, insert, update, delete on public.post_bookmarks to authenticated;
+
+-- video-consultation booking: anyone may insert a meeting (meetings_guard
+-- validates + stamps it); the customer gets the Zoom link by email after a rep
+-- confirms. authenticated may also read their own meetings.
+grant insert on public.meetings to anon, authenticated;
+grant select on public.meetings to authenticated;
+
 -- ═══════════════════════════════════════════════════════════════════════════
 -- (B) COMMUNITY moderation + notification contract
 -- ═══════════════════════════════════════════════════════════════════════════

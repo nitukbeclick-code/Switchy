@@ -415,6 +415,8 @@ const navHtml = (ctaHref) => `  <a class="skip" href="#main">דלג לתוכן</
         <a href="plans.html">כל החבילות</a>
         <a href="providers.html">ספקים</a>
         <a href="compare.html">השוואה</a>
+        <a href="community.html">קהילה</a>
+        <a href="book.html">פגישת ייעוץ</a>
         <a href="app.html">האפליקציה</a>
         <div class="mega" data-mega>
           <a href="guides.html" class="mega__trigger" aria-haspopup="true" aria-expanded="false">מדריכים <span class="mega__caret" aria-hidden="true">▾</span></a>
@@ -431,6 +433,8 @@ ${megaMenuColumns()}
       <a href="plans.html">כל החבילות</a>
       <a href="providers.html">ספקים</a>
       <a href="compare.html">השוואה</a>
+      <a href="community.html">קהילה</a>
+      <a href="book.html">תיאום פגישת וידאו</a>
       <a href="app.html">האפליקציה</a>
       <a href="guides.html">כל המדריכים</a>
 ${mobileGuideLinks()}
@@ -460,7 +464,7 @@ const footer = `  <footer class="footer">
       </nav>
       <nav class="footer__links footer__col" aria-label="כלים ומדריכים">
         <h4>כלים מומלצים</h4>
-        <a href="compare.html">השוואת מסלולים</a><a href="calc-cellular.html">מחשבון סלולר</a><a href="calc-internet.html">מחשבון אינטרנט</a><a href="providers.html">כל הספקים</a><a href="guide-switching.html">מדריך מעבר ספק</a><a href="guide-number-port.html">ניוד מספר</a>
+        <a href="compare.html">השוואת מסלולים</a><a href="community.html">קהילה ודירוגים</a><a href="book.html">תיאום פגישת וידאו</a><a href="calc-cellular.html">מחשבון סלולר</a><a href="calc-internet.html">מחשבון אינטרנט</a><a href="providers.html">כל הספקים</a><a href="guide-switching.html">מדריך מעבר ספק</a><a href="guide-number-port.html">ניוד מספר</a>
       </nav>
       <nav class="footer__links footer__col" aria-label="חיפושים פופולריים">
         <h4>חיפושים פופולריים</h4>
@@ -2115,6 +2119,210 @@ ${footer}
 `;
 }
 
+// ── Community page (read-only mirror of the app's community + ratings) ───────
+// Posts/replies/ratings are fetched LIVE from Supabase by script.js (same anon
+// key, RLS public-read). The page ships empty shells (#communityFeed,
+// #ratingsSummary) that JS fills, plus an honest "post via the app" CTA — the
+// site never writes community content (posting needs app sign-in).
+function communityPage() {
+  const url = `${SITE}/community.html`;
+  const title = 'קהילת חוסך — דיונים אמיתיים ודירוגי ספקים | חוסך';
+  const desc = 'הצטרפו לקהילת חוסך: דיונים אמיתיים על מסלולי סלולר, אינטרנט, טלוויזיה וחו״ל, ודירוגי ספקים מלקוחות אמיתיים. שאלו, השוו ולמדו לפני שאתם עוברים.';
+  // Channel filter mirrors the in-app community channels (script.js filters the
+  // live feed client-side by data-channel).
+  const channels = [
+    ['all', 'הכול'], ['recommend', 'המלצות'], ['cellular', 'סלולר'], ['internet', 'אינטרנט'],
+    ['tv', 'טלוויזיה'], ['abroad', 'חו״ל'], ['help', 'עזרה בניתוק'],
+  ];
+  const chanBtns = channels
+    .map(([val, label], i) => `<button class="community__chan${i === 0 ? ' community__chan--active' : ''}" type="button" data-channel="${esc(val)}">${esc(label)}</button>`)
+    .join('\n          ');
+  const jsonLd = jsonForScript({ '@context': 'https://schema.org', '@graph': [
+    { '@type': 'BreadcrumbList', itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'דף הבית', item: SITE + '/' },
+      { '@type': 'ListItem', position: 2, name: 'קהילה', item: url },
+    ] },
+    { '@type': 'CollectionPage', name: title, description: desc, url, inLanguage: 'he-IL',
+      isPartOf: { '@id': WEBSITE_ID }, publisher: { '@id': ORG_ID } },
+  ] });
+  return `<!DOCTYPE html>
+<html lang="he" dir="rtl">
+${head(title, desc, url, jsonLd, false, 'website')}
+<body id="top">
+${navNoCta}
+  <main id="main">
+    <section class="lead-hero">
+      <div class="container">
+        <p class="crumbs"><a href="index.html">דף הבית</a> ← קהילה</p>
+        <span class="pill pill--ico">${iconFor('💬')} חוכמת ההמון · ניסיון אמיתי</span>
+        <h1>קהילת <span class="hl">חוסך</span></h1>
+        <p>דיונים אמיתיים מאנשים שכבר עברו: מה עבד, מה לא, ואיזה ספק באמת שווה. קראו, השוו ודירוגי ספקים מלקוחות — לפני שאתם מחליטים.</p>
+        <div class="lead-hero__cta">
+          <a class="btn btn--primary btn--lg" href="app.html">להצטרף ולפרסם — הורידו את האפליקציה</a>
+          <a class="btn btn--ghost btn--lg" href="#ratings">לדירוגי הספקים ↓</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="section community">
+      <div class="container">
+        <header class="section__head reveal"><span class="eyebrow">הצ׳אט הקהילתי</span><h2>מה מדברים עכשיו בקהילה</h2><p>פוסטים אחרונים מהקהילה. לפרסום, תגובות ושיתוף תמונה — הצטרפו דרך האפליקציה.</p></header>
+        <div class="community__filter" role="group" aria-label="סינון לפי ערוץ">
+          ${chanBtns}
+        </div>
+        <div id="communityFeed" class="community__feed" aria-live="polite" aria-busy="true">
+          <p class="booking__note">טוען דיונים מהקהילה…</p>
+        </div>
+        <div class="cta__inner reveal" style="text-align:center;margin-top:28px">
+          <p style="margin:0 auto;max-width:48ch">רוצים לפתוח דיון, להגיב או לשתף צילום מסך של חשבון? הפרסום מתבצע מתוך האפליקציה — שם גם תקבלו התראות כשמישהו עונה.</p>
+          <div class="hero__cta" style="justify-content:center;margin-top:18px">
+            <a class="btn btn--primary btn--lg" href="app.html">להצטרף ולפרסם — הורידו את האפליקציה ←</a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section--alt" id="ratings">
+      <div class="container">
+        <header class="section__head reveal"><span class="eyebrow">דירוגי לקוחות</span><h2>דירוגי ספקים — מהקהילה</h2><p>ממוצע כוכבים וביקורות אמיתיות לכל ספק. נטען חי ממסד הנתונים של חוסך.</p></header>
+        <div id="ratingsSummary" class="ratings" aria-live="polite" aria-busy="true">
+          <p class="booking__note">טוען דירוגים…</p>
+        </div>
+      </div>
+    </section>
+  </main>
+${footer}
+  ${leadsConfigTag()}
+  <script src="${JS_SRC}" defer></script>
+</body>
+</html>
+`;
+}
+
+// ── Booking page (Zoom video-consultation, anonymous booking) ────────────────
+// The form POSTs directly to Supabase /meetings (server meetings_guard
+// validates). script.js owns: building valid slots for the chosen date (Israel
+// time, ≥4h ahead, ≤30 days, 30-min grid, Sun–Thu 09:00–20:30 / Fri 09:00–12:30,
+// no Saturday), provider pick state, consent gating, and the success/guard-error
+// messaging. The date <select> is pre-filled here with the next ~30 valid days.
+const BOOK_PROVIDERS = ['HOT', 'yes', 'פרטנר', 'סלקום', 'STING TV', 'בזק', 'הוט מובייל'];
+// Build the next ~30 calendar days as ISO values; script.js skips Saturdays when
+// populating slots, but we keep all options so the user can pick any day and see
+// "no slots" honestly. Generated from the build date for a deterministic file;
+// script.js re-derives validity at runtime against the real "now".
+function bookDateOptions() {
+  const out = [];
+  const start = new Date();
+  const heDays = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
+  for (let i = 0; i < 31; i++) {
+    const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
+    const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const label = `יום ${heDays[d.getDay()]} · ${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
+    out.push(`<option value="${iso}">${esc(label)}</option>`);
+  }
+  return out.join('\n            ');
+}
+function bookPage() {
+  const url = `${SITE}/book.html`;
+  const title = 'תיאום פגישת ייעוץ בווידאו (Zoom) — חוסך';
+  const desc = 'קבעו פגישת ייעוץ אישית בזום עם נציג חוסך — נעבור יחד על המסלולים שלכם ונמצא איפה לחסוך. בחרו ספק, יום ושעה; קישור Zoom יישלח למייל לאחר אישור.';
+  const providerBtns = BOOK_PROVIDERS
+    .map((p) => `<button class="booking__provider" type="button" data-provider="${esc(p)}">${providerLogo(p, 28)}<span>${esc(p)}</span></button>`)
+    .join('\n            ');
+  const jsonLd = jsonForScript({ '@context': 'https://schema.org', '@graph': [
+    { '@type': 'BreadcrumbList', itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'דף הבית', item: SITE + '/' },
+      { '@type': 'ListItem', position: 2, name: 'פגישת ייעוץ', item: url },
+    ] },
+    { '@type': 'Service', name: 'פגישת ייעוץ בווידאו', serviceType: 'ייעוץ השוואת מסלולי תקשורת',
+      description: desc, areaServed: 'IL', provider: { '@id': ORG_ID }, inLanguage: 'he-IL',
+      offers: { '@type': 'Offer', price: '0', priceCurrency: 'ILS', availability: 'https://schema.org/InStock' } },
+  ] });
+  return `<!DOCTYPE html>
+<html lang="he" dir="rtl">
+${head(title, desc, url, jsonLd, false, 'website')}
+<body id="top">
+${navNoCta}
+  <main id="main">
+    <section class="lead-hero">
+      <div class="container">
+        <p class="crumbs"><a href="index.html">דף הבית</a> ← פגישת ייעוץ</p>
+        <span class="pill pill--ico">${iconFor('🎥')} פגישת Zoom · חינם · ללא התחייבות</span>
+        <h1>תיאום <span class="hl">פגישת ייעוץ</span> בווידאו</h1>
+        <p>נציג חוסך יעבור איתכם, פנים מול פנים בזום, על המסלולים שלכם — ויראה בדיוק איפה אפשר לחסוך. בחרו ספק, יום ושעה; <strong>קישור ה-Zoom יישלח למייל</strong> מיד לאחר שנציג יאשר את הפגישה.</p>
+      </div>
+    </section>
+
+    <section class="section booking">
+      <div class="container">
+        <header class="section__head reveal"><span class="eyebrow">תיאום פגישה</span><h2>בחרו ספק, יום ושעה</h2><p>הפגישה באורך כ-30 דקות. נדרשת הסכמה לתנאים ולמדיניות הפרטיות.</p></header>
+        <form id="bookForm" class="booking__form" novalidate>
+          <div class="booking__row">
+            <label class="booking__field" for="bookName">שם מלא
+              <input type="text" id="bookName" name="name" placeholder="ישראל ישראלי" autocomplete="name" required />
+            </label>
+            <label class="booking__field" for="bookPhone">טלפון
+              <input type="tel" id="bookPhone" name="phone" placeholder="050-0000000" autocomplete="tel" inputmode="tel" required />
+            </label>
+          </div>
+          <label class="booking__field" for="bookEmail">אימייל (לקבלת קישור ה-Zoom)
+            <input type="email" id="bookEmail" name="email" placeholder="you@example.com" autocomplete="email" inputmode="email" required />
+          </label>
+
+          <fieldset class="booking__providers">
+            <legend>על איזה ספק נדבר?</legend>
+            <div class="booking__providers-grid" role="group" aria-label="בחירת ספק">
+            ${providerBtns}
+            </div>
+            <input type="hidden" id="bookProvider" name="provider" value="" required />
+          </fieldset>
+
+          <div class="booking__row">
+            <label class="booking__field" for="bookDate">יום
+              <select id="bookDate" name="meeting_date" required>
+                <option value="">בחרו יום</option>
+            ${bookDateOptions()}
+              </select>
+            </label>
+            <div class="booking__field">
+              <span class="booking__field-label">שעה</span>
+              <div id="slotGrid" class="slot-grid" role="group" aria-label="בחירת שעה" aria-live="polite">
+                <p class="booking__note">בחרו יום כדי לראות שעות פנויות.</p>
+              </div>
+              <input type="hidden" id="bookSlot" name="slot" value="" required />
+            </div>
+          </div>
+
+          <div class="booking__consent">
+            <label class="consent__row" for="bookTerms">
+              <input type="checkbox" id="bookTerms" name="terms" required />
+              <span>קראתי ואני מסכים/ה ל<a href="terms.html" target="_blank" rel="noopener">תנאי השימוש</a></span>
+            </label>
+            <label class="consent__row" for="bookPrivacy">
+              <input type="checkbox" id="bookPrivacy" name="privacy" required />
+              <span>קראתי ואני מסכים/ה ל<a href="privacy.html" target="_blank" rel="noopener">מדיניות הפרטיות</a></span>
+            </label>
+            <label class="consent__row" for="bookMarketing">
+              <input type="checkbox" id="bookMarketing" name="marketing" />
+              <span>אני מעוניין/ת לקבל דיוור שיווקי, מבצעים והטבות (אופציונלי, ניתן לבטל בכל עת)</span>
+            </label>
+          </div>
+
+          <button class="btn btn--primary btn--lg" type="submit">קבעו פגישה ←</button>
+          <p class="booking__note" id="bookNote" role="status" aria-live="polite"></p>
+        </form>
+        <p class="booking__note" style="text-align:center;margin-top:18px;max-width:52ch;margin-inline:auto">לאחר שליחה, נציג מאשר את הפגישה ואתם מקבלים קישור Zoom למייל. אין צורך להוריד תוכנה — נכנסים מהדפדפן או מאפליקציית Zoom.</p>
+      </div>
+    </section>
+  </main>
+${footer}
+  ${leadsConfigTag()}
+  <script src="${JS_SRC}" defer></script>
+</body>
+</html>
+`;
+}
+
 // ── Savings calculators (per-category landing pages) ────────────────────────
 // Each compares against the cheapest REGULAR plan in the category (never a
 // data-only / kosher SIM — those aren't a like-for-like main line). The number
@@ -2251,6 +2459,8 @@ fs.writeFileSync(path.join(__dirname, 'guides.html'), guidesIndexPage());
 fs.writeFileSync(path.join(__dirname, 'plans.html'), plansPage());
 fs.writeFileSync(path.join(__dirname, 'providers.html'), providersIndexPage());
 fs.writeFileSync(path.join(__dirname, 'compare.html'), comparePage());
+fs.writeFileSync(path.join(__dirname, 'community.html'), communityPage());
+fs.writeFileSync(path.join(__dirname, 'book.html'), bookPage());
 fs.writeFileSync(path.join(__dirname, 'app.html'), appPage());
 fs.writeFileSync(path.join(__dirname, '404.html'), notFoundPage());
 
@@ -2270,6 +2480,8 @@ const locs = [
   { loc: `${SITE}/plans.html`, lastmod: CATALOGUE_DATE, priority: '0.9', changefreq: 'daily' },
   { loc: `${SITE}/providers.html`, lastmod: CATALOGUE_DATE, priority: '0.8', changefreq: 'weekly' },
   { loc: `${SITE}/compare.html`, lastmod: CATALOGUE_DATE, priority: '0.8', changefreq: 'weekly' },
+  { loc: `${SITE}/community.html`, lastmod: BUILD_DATE, priority: '0.7', changefreq: 'daily' },
+  { loc: `${SITE}/book.html`, lastmod: BUILD_DATE, priority: '0.7', changefreq: 'monthly' },
   { loc: `${SITE}/app.html`, lastmod: BUILD_DATE, priority: '0.7', changefreq: 'monthly', images: [
     `${SITE}/assets/app/shot-home.webp`, `${SITE}/assets/app/shot-results.webp`, `${SITE}/assets/app/shot-meeting.webp`,
   ] },
@@ -2290,5 +2502,5 @@ ${locs.map((u) => `  <url>\n    <loc>${u.loc}</loc>\n    <lastmod>${u.lastmod}</
 `;
 fs.writeFileSync(path.join(__dirname, 'sitemap.xml'), sitemap);
 
-console.log(`Generated ${categories.length} category + ${builtCollections.length} collections + ${builtCalculators.length} calculators + ${guides.length} guides + ${staticPages.length} static + guides index + plans + providers + 404 + sitemap.xml`);
+console.log(`Generated ${categories.length} category + ${builtCollections.length} collections + ${builtCalculators.length} calculators + ${guides.length} guides + ${staticPages.length} static + guides index + plans + providers + community + book + 404 + sitemap.xml`);
 console.log(`Asset fingerprints: styles.css?v=${CSS_V}  script.js?v=${JS_V}  (hand-written index.html must reference these same values)`);

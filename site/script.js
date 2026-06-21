@@ -1350,4 +1350,565 @@
       busy = false;
     });
   })();
+
+  // ── Shared Supabase REST helper ─────────────────────────────────────────────
+  // Read/write the SAME Supabase the app uses, so community + bookings stay in
+  // sync with the app automatically. anon key only — RLS + edge guards live on
+  // the server. Returns parsed JSON; throws on missing config or non-2xx so
+  // callers can fail soft with a Hebrew message.
+  const sbRest = async (path, opts = {}) => {
+    const cfg = window.CHOSECH_SUPABASE;
+    if (!cfg || !cfg.url || !cfg.anonKey) throw new Error('supabase not configured');
+    const res = await fetch(cfg.url.replace(/\/$/, '') + '/rest/v1/' + path.replace(/^\//, ''), {
+      method: opts.method || 'GET',
+      headers: Object.assign({
+        apikey: cfg.anonKey,
+        Authorization: 'Bearer ' + cfg.anonKey,
+        'Content-Type': 'application/json',
+      }, opts.headers || {}),
+      body: opts.body != null ? JSON.stringify(opts.body) : undefined,
+    });
+    if (!res.ok) {
+      // Surface the server's message (guard errors carry a Hebrew/explainable
+      // reason) so the caller can show it verbatim.
+      let detail = '';
+      try { const j = await res.json(); detail = j.message || j.error || j.hint || ''; } catch (_) { /* non-JSON */ }
+      const err = new Error('rest ' + res.status + (detail ? ': ' + detail : ''));
+      err.status = res.status;
+      err.detail = detail;
+      throw err;
+    }
+    if (res.status === 204) return null;
+    return res.json().catch(() => null);
+  };
+
+  // Escape user-authored text before it touches innerHTML — community posts,
+  // replies and reviews are arbitrary strings from other users.
+  const escHtmlS = (s) => String(s == null ? '' : s)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+  // Hebrew relative time — "לפני N דקות/שעות/ימים", falling back to a date.
+  const relTimeHe = (iso) => {
+    const t = Date.parse(iso);
+    if (!Number.isFinite(t)) return '';
+    const diff = Date.now() - t;
+    const sec = Math.round(diff / 1000);
+    if (sec < 60) return 'עכשיו';
+    const min = Math.round(sec / 60);
+    if (min < 60) return 'לפני ' + min + (min === 1 ? ' דקה' : ' דקות');
+    const hr = Math.round(min / 60);
+    if (hr < 24) return 'לפני ' + hr + (hr === 1 ? ' שעה' : ' שעות');
+    const day = Math.round(hr / 24);
+    if (day < 7) return 'לפני ' + day + (day === 1 ? ' יום' : ' ימים');
+    const wk = Math.round(day / 7);
+    if (day < 30) return 'לפני ' + wk + (wk === 1 ? ' שבוע' : ' שבועות');
+    try { return new Date(t).toLocaleDateString('he-IL', { day: 'numeric', month: 'long' }); } catch (_) { return ''; }
+  };
+
+  // ── (1) COMMUNITY — read-only mirror of the app's community + ratings ───────
+  // Posts, replies and provider ratings are public-read in Supabase (anon RLS).
+  // Posting/replying needs app sign-in, so we surface a download CTA instead.
+  (() => {
+    const feed = $('communityFeed');
+    const ratingsHost = $('ratingsSummary');
+    if (!feed && !ratingsHost) return; // not on this page
+
+    // Channel chip for a post (falls back to "כללי" when unset).
+    const channelChip = (ch) =>
+      '<span class="post-card__channel">' + escHtmlS(ch || 'כללי') + '</span>';
+
+    const mediaHtml = (type, url) => {
+      if (type !== 'image' || !url) return '';
+      // Only the safe URL forms; escape the attribute. The img is decorative
+      // context for the post body, so alt stays empty.
+      return '<div class="post-card__media"><img src="' + escHtmlS(url) +
+        '" alt="" loading="lazy" decoding="async"></div>';
+    };
+
+    // ── Replies (lazy, on expand) ─────────────────────────────────────────────
+    const renderReplies = (box, replies) => {
+      if (!replies || !replies.length) {
+        box.innerHTML = '<p class="post-card__noreplies">אין עדיין תגובות — הצטרפו לדיון באפליקציה.</p>';
+        return;
+      }
+      box.innerHTML = replies.map((r) =>
+        '<div class="reply">' +
+          '<div class="reply__head"><strong class="reply__author">' + escHtmlS(r.author || 'אנונימי') + '</strong>' +
+          '<time class="reply__time">' + escHtmlS(relTimeHe(r.created_at)) + '</time></div>' +
+          '<div class="reply__body">' + escHtmlS(r.body || '') + '</div>' +
+          mediaHtml(r.media_type, r.media_url) +
+        '</div>'
+      ).join('');
+    };
+
+    const loadReplies = async (post, box, toggleBtn) => {
+      box.innerHTML = '<p class="post-card__noreplies">טוען תגובות…</p>';
+      try {
+        const replies = await sbRest('community_replies?select=id,author,body,media_type,media_url,created_at' +
+          '&is_flagged=eq.false&post_id=eq.' + encodeURIComponent(post.id) + '&order=created_at.asc');
+        renderReplies(box, replies);
+      } catch (_) {
+        box.innerHTML = '<p class="post-card__noreplies">לא הצלחנו לטעון תגובות כרגע.</p>';
+      }
+      if (toggleBtn) toggleBtn.setAttribute('aria-expanded', 'true');
+    };
+
+    // ── A single post card ────────────────────────────────────────────────────
+    const renderPost = (post) => {
+      const card = document.createElement('article');
+      card.className = 'post-card';
+      const avatar = post.avatar
+        ? '<img class="post-card__avatar" src="' + escHtmlS(post.avatar) + '" alt="" loading="lazy" decoding="async">'
+        : '<span class="post-card__avatar post-card__avatar--ph" aria-hidden="true">' +
+            escHtmlS((post.author || '?').trim().charAt(0) || '?') + '</span>';
+      const repliesId = 'replies-' + escHtmlS(String(post.id));
+      card.innerHTML =
+        '<header class="post-card__head">' +
+          avatar +
+          '<div class="post-card__meta"><strong class="post-card__author">' + escHtmlS(post.author || 'אנונימי') + '</strong>' +
+          channelChip(post.channel) + '</div>' +
+          '<time class="post-card__time">' + escHtmlS(relTimeHe(post.created_at)) + '</time>' +
+        '</header>' +
+        '<div class="post-card__body">' + escHtmlS(post.body || '') + '</div>' +
+        mediaHtml(post.media_type, post.media_url) +
+        '<button type="button" class="post-card__toggle" aria-expanded="false" aria-controls="' + repliesId + '">הצגת תגובות</button>' +
+        '<div class="post-card__replies" id="' + repliesId + '" hidden></div>';
+
+      const toggleBtn = card.querySelector('.post-card__toggle');
+      const repliesBox = card.querySelector('.post-card__replies');
+      let loaded = false;
+      toggleBtn.addEventListener('click', () => {
+        const open = repliesBox.hidden;
+        repliesBox.hidden = !open;
+        toggleBtn.textContent = open ? 'הסתרת תגובות' : 'הצגת תגובות';
+        toggleBtn.setAttribute('aria-expanded', String(open));
+        if (open && !loaded) { loaded = true; loadReplies(post, repliesBox, toggleBtn); }
+      });
+      return card;
+    };
+
+    // ── Feed + channel filter ────────────────────────────────────────────────
+    if (feed) {
+      let allPosts = [];
+      let activeChannel = '';
+      const filterRow = $('communityFilter') || document.querySelector('.community__filter');
+
+      const paintFeed = () => {
+        const list = activeChannel ? allPosts.filter((p) => p.channel === activeChannel) : allPosts;
+        feed.innerHTML = '';
+        if (!list.length) {
+          feed.innerHTML = '<p class="community__empty">אין עדיין פוסטים בערוץ הזה — היו הראשונים באפליקציה.</p>';
+          return;
+        }
+        const frag = document.createDocumentFragment();
+        list.forEach((p) => frag.appendChild(renderPost(p)));
+        feed.appendChild(frag);
+      };
+
+      const buildFilter = () => {
+        if (!filterRow) return;
+        // Prefer wiring the pre-rendered channel buttons (their Hebrew labels are nicer
+        // than the raw channel keys); only build chips dynamically if none exist.
+        const staticChans = Array.from(filterRow.querySelectorAll('.community__chan, [data-channel]'));
+        if (staticChans.length) {
+          staticChans.forEach((b) => {
+            b.addEventListener('click', () => {
+              const dc = b.getAttribute('data-channel') || '';
+              activeChannel = (dc === 'all' || dc === '') ? '' : dc;
+              staticChans.forEach((c) => {
+                const on = c === b;
+                c.classList.toggle('community__chan--active', on);
+                c.setAttribute('aria-pressed', String(on));
+              });
+              paintFeed();
+            });
+          });
+          return;
+        }
+        const channels = [];
+        allPosts.forEach((p) => { if (p.channel && !channels.includes(p.channel)) channels.push(p.channel); });
+        if (!channels.length) return;
+        const mk = (val, label) => {
+          const b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'chip community__chip';
+          b.textContent = label;
+          b.setAttribute('aria-pressed', String(val === activeChannel));
+          b.addEventListener('click', () => {
+            activeChannel = val;
+            Array.from(filterRow.children).forEach((c) => c.setAttribute('aria-pressed', String(c === b)));
+            paintFeed();
+          });
+          return b;
+        };
+        filterRow.innerHTML = '';
+        filterRow.appendChild(mk('', 'הכל'));
+        channels.forEach((ch) => filterRow.appendChild(mk(ch, ch)));
+      };
+
+      (async () => {
+        feed.setAttribute('aria-busy', 'true');
+        feed.innerHTML = '<p class="community__loading">טוען את הקהילה…</p>';
+        try {
+          const posts = await sbRest('community_posts?select=id,author,avatar,channel,body,media_type,media_url,created_at' +
+            '&is_flagged=eq.false&order=created_at.desc&limit=30');
+          allPosts = Array.isArray(posts) ? posts : [];
+          buildFilter();
+          paintFeed();
+        } catch (_) {
+          feed.innerHTML = '<p class="community__error">לא הצלחנו לטעון את הקהילה כרגע — נסו שוב בעוד רגע, או פתחו את האפליקציה 💬</p>';
+        }
+        feed.removeAttribute('aria-busy');
+      })();
+    }
+
+    // ── Provider ratings + recent reviews ────────────────────────────────────
+    if (ratingsHost) {
+      // The build emits #ratingsSummary but not a reviews container — self-heal one
+      // right after it so recent reviews have somewhere to render.
+      let reviewsHost = $('reviewsList');
+      if (!reviewsHost) {
+        reviewsHost = document.createElement('div');
+        reviewsHost.id = 'reviewsList';
+        reviewsHost.className = 'reviews';
+        if (ratingsHost.parentNode) ratingsHost.parentNode.insertBefore(reviewsHost, ratingsHost.nextSibling);
+      }
+      const stars = (avg) => {
+        const v = Math.max(0, Math.min(5, Number(avg) || 0));
+        const full = Math.round(v);
+        let out = '';
+        for (let i = 1; i <= 5; i++) out += i <= full ? '★' : '☆';
+        return '<span class="rating-card__stars" aria-hidden="true">' + out + '</span>';
+      };
+
+      (async () => {
+        ratingsHost.setAttribute('aria-busy', 'true');
+        ratingsHost.innerHTML = '<p class="ratings__loading">טוען דירוגים…</p>';
+        try {
+          const rows = await sbRest('provider_rating_summary?select=*');
+          const summary = Array.isArray(rows) ? rows.slice() : [];
+          summary.sort((a, b) => (Number(b.avg_stars) || 0) - (Number(a.avg_stars) || 0));
+          if (!summary.length) {
+            ratingsHost.innerHTML = '<p class="ratings__empty">אין עדיין מספיק דירוגים — דרגו ספקים באפליקציה.</p>';
+          } else {
+            ratingsHost.innerHTML = '<div class="ratings__grid">' + summary.map((r) => {
+              const avg = (Number(r.avg_stars) || 0).toFixed(1);
+              const count = Number(r.review_count) || 0;
+              return '<div class="rating-card">' +
+                '<strong class="rating-card__provider">' + escHtmlS(r.provider) + '</strong>' +
+                stars(r.avg_stars) +
+                '<span class="rating-card__score">' + escHtmlS(avg) + '</span>' +
+                '<span class="rating-card__count">' + count + (count === 1 ? ' חוות דעת' : ' חוות דעת') + '</span>' +
+                '</div>';
+            }).join('') + '</div>';
+          }
+        } catch (_) {
+          ratingsHost.innerHTML = '<p class="ratings__error">לא הצלחנו לטעון דירוגים כרגע — נסו שוב בעוד רגע.</p>';
+        }
+        ratingsHost.removeAttribute('aria-busy');
+      })();
+
+      if (reviewsHost) {
+        (async () => {
+          reviewsHost.setAttribute('aria-busy', 'true');
+          try {
+            const reviews = await sbRest('provider_reviews?select=provider,overall,body,created_at,is_verified_customer' +
+              '&order=created_at.desc&limit=20');
+            const list = Array.isArray(reviews) ? reviews : [];
+            if (!list.length) { reviewsHost.innerHTML = ''; reviewsHost.removeAttribute('aria-busy'); return; }
+            reviewsHost.innerHTML = list.map((rv) => {
+              const overall = Math.max(0, Math.min(5, Math.round(Number(rv.overall) || 0)));
+              let st = '';
+              for (let i = 1; i <= 5; i++) st += i <= overall ? '★' : '☆';
+              const badge = rv.is_verified_customer
+                ? '<span class="verified-badge">✓ לקוח מאומת</span>' : '';
+              return '<div class="review-card">' +
+                '<div class="review-card__head">' +
+                  '<strong class="review-card__provider">' + escHtmlS(rv.provider) + '</strong>' +
+                  '<span class="review-card__stars" aria-label="' + overall + ' מתוך 5">' + st + '</span>' +
+                  badge +
+                '</div>' +
+                '<div class="review-card__body">' + escHtmlS(rv.body || '') + '</div>' +
+                '<time class="review-card__time">' + escHtmlS(relTimeHe(rv.created_at)) + '</time>' +
+                '</div>';
+            }).join('');
+          } catch (_) {
+            reviewsHost.innerHTML = '<p class="ratings__error">לא הצלחנו לטעון חוות דעת כרגע.</p>';
+          }
+          reviewsHost.removeAttribute('aria-busy');
+        })();
+      }
+    }
+  })();
+
+  // ── (2) BOOKING — Zoom video-consultation booking (anonymous allowed) ────────
+  // Mirrors the app's meeting_slots + meetings_guard: builds valid dates/slots
+  // client-side (Israel time, ≥4h out, ≤30 days, no Saturday, Fri until 12:30),
+  // validates the form, and POSTs to /meetings. On success the rep confirms in
+  // Telegram and the customer gets the Zoom link by email.
+  (() => {
+    const form = $('bookForm');
+    if (!form) return;
+
+    const PROVIDERS = ['HOT', 'yes', 'פרטנר', 'סלקום', 'STING TV', 'בזק', 'הוט מובייל'];
+    const providersHost = $('bookProviders') || form.querySelector('.booking__providers');
+    const dateSel = $('bookDate');
+    const slotHost = $('bookSlots') || form.querySelector('.slot-grid');
+    const nameEl = $('bookName');
+    const phoneEl = $('bookPhone');
+    const emailEl = $('bookEmail');
+    const termsEl = $('bookTerms');
+    const privacyEl = $('bookPrivacy');
+    const marketingEl = $('bookMarketing');
+    const noteEl = $('bookNote') || form.querySelector('.booking__note');
+    const btn = form.querySelector('button[type="submit"]');
+    const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    let chosenProvider = '';
+    let chosenSlot = '';
+    let busy = false;
+
+    const setNote = (msg, isErr) => {
+      if (!noteEl) return;
+      noteEl.textContent = msg || '';
+      noteEl.classList.toggle('booking__note--err', !!isErr);
+    };
+
+    // ── Israel-time helpers ──────────────────────────────────────────────────
+    // Compute "now" in Asia/Jerusalem regardless of the visitor's own TZ, so
+    // the ≥4h window matches the server. We read the IL wall-clock parts and
+    // also the IL UTC-offset (for converting a chosen slot back to a real instant).
+    const ilParts = (date) => {
+      const fmt = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'Asia/Jerusalem', year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', hour12: false, weekday: 'short',
+      });
+      const p = {};
+      fmt.formatToParts(date).forEach((x) => { p[x.type] = x.value; });
+      // 'hour' can come back as '24' at midnight in some engines — normalise.
+      let hour = parseInt(p.hour, 10); if (hour === 24) hour = 0;
+      return {
+        year: parseInt(p.year, 10), month: parseInt(p.month, 10), day: parseInt(p.day, 10),
+        hour: hour, minute: parseInt(p.minute, 10), weekday: p.weekday,
+      };
+    };
+    // IL offset (minutes east of UTC) at a given instant — handles DST (IDT/IST).
+    const ilOffsetMinutes = (date) => {
+      const dtf = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'Asia/Jerusalem', year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
+      });
+      const parts = {};
+      dtf.formatToParts(date).forEach((x) => { parts[x.type] = x.value; });
+      let h = parseInt(parts.hour, 10); if (h === 24) h = 0;
+      const asUTC = Date.UTC(+parts.year, +parts.month - 1, +parts.day, h, +parts.minute, +parts.second);
+      return Math.round((asUTC - date.getTime()) / 60000);
+    };
+    // Real UTC instant for an IL wall-clock Y-M-D H:M.
+    const ilWallToInstant = (y, mo, d, h, mi) => {
+      // First approximation assuming UTC, then correct by the IL offset at that point.
+      const guess = new Date(Date.UTC(y, mo - 1, d, h, mi));
+      const off = ilOffsetMinutes(guess);
+      return new Date(Date.UTC(y, mo - 1, d, h, mi) - off * 60000);
+    };
+
+    const HE_DAYS = ['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'];
+    const pad2 = (n) => (n < 10 ? '0' + n : '' + n);
+
+    // JS getUTCDay-style index for an IL date (0=Sun..6=Sat), via a noon instant
+    // (noon avoids DST edge ambiguity).
+    const ilWeekday = (y, mo, d) => {
+      const inst = ilWallToInstant(y, mo, d, 12, 0);
+      // Re-read the weekday in IL terms.
+      const wd = ilParts(inst).weekday; // 'Sun'..'Sat'
+      return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(wd);
+    };
+
+    // ── Build the next-30-days date options (skip Saturday) ──────────────────
+    const buildDates = () => {
+      if (!dateSel) return;
+      const now = ilParts(new Date());
+      dateSel.innerHTML = '<option value="">בחרו תאריך</option>';
+      let added = 0;
+      for (let i = 0; i < 30 && added < 30; i++) {
+        // Walk forward day by day from today in IL terms.
+        const base = ilWallToInstant(now.year, now.month, now.day, 12, 0);
+        const d = new Date(base.getTime() + i * 86400000);
+        const p = ilParts(d);
+        const wd = ilWeekday(p.year, p.month, p.day);
+        if (wd === 6) continue; // no Saturday
+        const value = p.year + '-' + pad2(p.month) + '-' + pad2(p.day);
+        const label = HE_DAYS[wd] + ', ' + p.day + '/' + p.month;
+        const opt = document.createElement('option');
+        opt.value = value;
+        opt.textContent = label;
+        dateSel.appendChild(opt);
+        added++;
+      }
+    };
+
+    // ── Slots for the chosen date (30-min grid, ≥4h from now) ────────────────
+    const buildSlots = () => {
+      if (!slotHost) return;
+      chosenSlot = '';
+      slotHost.innerHTML = '';
+      const val = dateSel && dateSel.value;
+      if (!val) { slotHost.innerHTML = '<p class="booking__note">בחרו תאריך כדי לראות שעות פנויות.</p>'; return; }
+      const [y, mo, d] = val.split('-').map(Number);
+      const wd = ilWeekday(y, mo, d);
+      if (wd === 6) { slotHost.innerHTML = '<p class="booking__note">אין פגישות בשבת.</p>'; return; }
+      // Sun–Thu: 09:00–20:30 ; Fri: 09:00–12:30. End is the last *start* slot.
+      const startMin = 9 * 60;
+      const endMin = wd === 5 ? 12 * 60 + 30 : 20 * 60 + 30;
+      const minLead = Date.now() + 4 * 60 * 60 * 1000; // ≥4h from now
+      const maxAhead = Date.now() + 30 * 86400000;
+      let any = false;
+      for (let m = startMin; m <= endMin; m += 30) {
+        const h = Math.floor(m / 60);
+        const mi = m % 60;
+        const inst = ilWallToInstant(y, mo, d, h, mi);
+        if (inst.getTime() < minLead) continue;     // too soon
+        if (inst.getTime() > maxAhead) continue;     // beyond 30 days
+        const hhmm = pad2(h) + ':' + pad2(mi);
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'slot';
+        b.textContent = hhmm;
+        b.setAttribute('aria-pressed', 'false');
+        b.addEventListener('click', () => {
+          chosenSlot = hhmm;
+          Array.from(slotHost.querySelectorAll('.slot')).forEach((s) => {
+            const on = s === b;
+            s.classList.toggle('slot--chosen', on);
+            s.setAttribute('aria-pressed', String(on));
+          });
+          setNote('', false);
+        });
+        slotHost.appendChild(b);
+        any = true;
+      }
+      if (!any) slotHost.innerHTML = '<p class="booking__note">אין שעות פנויות בתאריך זה — נסו תאריך אחר.</p>';
+    };
+
+    // ── Providers — wire the existing logo buttons (don't destroy the fieldset) ──
+    const providerInput = $('bookProvider');
+    const setProvider = (name, btns, active) => {
+      chosenProvider = name;
+      if (providerInput) providerInput.value = name;
+      btns.forEach((c) => {
+        const on = c === active;
+        c.classList.toggle('is-chosen', on);
+        c.setAttribute('aria-pressed', String(on));
+      });
+      setNote('', false);
+    };
+    const existingProv = Array.from(form.querySelectorAll('.booking__provider'));
+    if (existingProv.length) {
+      // Markup already renders the 7 provider buttons (with logos) + the hidden
+      // #bookProvider input — just wire them rather than wiping the fieldset.
+      existingProv.forEach((b) => {
+        b.setAttribute('aria-pressed', 'false');
+        b.addEventListener('click', () =>
+          setProvider(b.getAttribute('data-provider') || (b.textContent || '').trim(), existingProv, b));
+      });
+    } else if (providersHost) {
+      providersHost.innerHTML = '';
+      const built = [];
+      PROVIDERS.forEach((name) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'chip booking__provider';
+        b.textContent = name;
+        b.setAttribute('aria-pressed', 'false');
+        b.addEventListener('click', () => setProvider(name, built, b));
+        providersHost.appendChild(b);
+        built.push(b);
+      });
+    }
+
+    if (dateSel) dateSel.addEventListener('change', buildSlots);
+    buildDates();
+    buildSlots();
+
+    // Clear inline errors as the user corrects fields.
+    [nameEl, phoneEl, emailEl].forEach((el) => {
+      if (el) el.addEventListener('input', () => { if (el.getAttribute('aria-invalid')) fieldError(el, null); });
+    });
+
+    // ── Submit ───────────────────────────────────────────────────────────────
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (busy) return;
+
+      const name = (nameEl && nameEl.value || '').trim();
+      const phoneRaw = (phoneEl && phoneEl.value || '').trim();
+      const phone = phoneRaw.replace(/[^\d+]/g, '');
+      const email = (emailEl && emailEl.value || '').trim();
+
+      const nameOk = name.length >= 2 && name.length <= 80;
+      const phoneOk = IL_PHONE_RE.test(phoneRaw.replace(/[^\d+\-\s]/g, '')) || phone.replace(/\D/g, '').length >= 9;
+      const emailOk = EMAIL_RE.test(email);
+      const termsOk = termsEl && termsEl.checked;
+      const privacyOk = privacyEl && privacyEl.checked;
+
+      fieldError(nameEl, nameOk ? null : 'נא למלא שם (2–80 תווים)');
+      fieldError(phoneEl, phoneOk ? null : 'נא למלא מספר טלפון נייד תקין');
+      fieldError(emailEl, emailOk ? null : 'נא למלא אימייל תקין — לשם יישלח קישור ה-Zoom');
+
+      if (!nameOk || !phoneOk || !emailOk) {
+        setNote('נא למלא שם, טלפון ואימייל תקינים 🙏', true);
+        const bad = !nameOk ? nameEl : (!phoneOk ? phoneEl : emailEl);
+        if (bad) bad.focus();
+        return;
+      }
+      if (!chosenProvider) { setNote('בחרו ספק לפגישה 🙏', true); if (providersHost) providersHost.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' }); return; }
+      if (!dateSel || !dateSel.value) { setNote('בחרו תאריך לפגישה 🙏', true); if (dateSel) dateSel.focus(); return; }
+      if (!chosenSlot) { setNote('בחרו שעה פנויה לפגישה 🙏', true); if (slotHost) slotHost.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' }); return; }
+      if (!termsOk || !privacyOk) {
+        setNote('יש לאשר את תנאי השימוש ומדיניות הפרטיות כדי להמשיך 🙏', true);
+        const badC = !termsOk ? termsEl : privacyEl;
+        if (badC) badC.focus();
+        return;
+      }
+
+      const now = new Date().toISOString();
+      const payload = {
+        name: name,
+        phone: phone,
+        email: email,
+        provider: chosenProvider,
+        meeting_date: dateSel.value,
+        slot: chosenSlot,
+        source: 'site',
+        terms_accepted_at: now,
+        privacy_accepted_at: now,
+        marketing_accepted_at: (marketingEl && marketingEl.checked) ? now : null,
+      };
+
+      busy = true;
+      let btnLabel = '';
+      if (btn) { btnLabel = btn.textContent; btn.disabled = true; btn.classList.add('is-loading'); btn.textContent = 'קובע פגישה…'; }
+      try {
+        await sbRest('meetings', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: payload });
+        track('meeting_booked', { provider: chosenProvider });
+        form.reset();
+        chosenProvider = '';
+        chosenSlot = '';
+        Array.from(form.querySelectorAll('.booking__provider')).forEach((c) => { c.classList.remove('is-chosen'); c.setAttribute('aria-pressed', 'false'); });
+        buildDates();
+        buildSlots();
+        setNote('תודה! נשלח אליכם קישור Zoom למייל מיד לאחר שנציג יאשר את הפגישה.', false);
+        toast('תודה! נשלח אליכם קישור Zoom למייל לאחר אישור הנציג', 'success');
+      } catch (err) {
+        // Guard errors (e.g. 400) carry a friendly server message; prefer it.
+        const msg = (err && err.detail) ? err.detail : 'לא הצלחנו לקבוע את הפגישה — בדקו את הפרטים ונסו שוב, או דברו איתנו בוואטסאפ 💬';
+        setNote(msg, true);
+        toast(msg, 'error');
+        if (btn) btn.focus();
+      }
+      if (btn) { btn.disabled = false; btn.classList.remove('is-loading'); if (btnLabel) btn.textContent = btnLabel; }
+      busy = false;
+    });
+  })();
 })();

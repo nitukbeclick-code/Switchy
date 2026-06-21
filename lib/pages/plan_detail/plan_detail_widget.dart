@@ -243,7 +243,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                                 ),
                                 if (plan.hasPromo)
                                   Text(
-                                    '₪${plan.after} אחרי ${plan.intro ?? 'המבצע'}',
+                                    '₪${plan.afterText} אחרי ${plan.intro ?? 'המבצע'}',
                                     style: ffTheme.bodySmall
                                         .copyWith(color: ffTheme.secondaryText),
                                   ),
@@ -342,7 +342,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                             if (plan.hasPromo)
                               _PriceRow(
                                 label: 'מחיר לאחר מבצע',
-                                value: '₪${plan.after}',
+                                value: '₪${plan.afterText}',
                                 valueColor: ffTheme.warning,
                                 ffTheme: ffTheme,
                               ),
@@ -382,7 +382,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                               const SizedBox(width: 10),
                               Expanded(
                                 child: Text(
-                                  'המחיר יעלה ל-₪${plan.after} לאחר ${plan.intro ?? 'תקופת המבצע'}',
+                                  'המחיר יעלה ל-₪${plan.afterText} לאחר ${plan.intro ?? 'תקופת המבצע'}',
                                   style: ffTheme.bodySmall.copyWith(
                                       color: ffTheme.warning,
                                       fontWeight: FontWeight.w600),
@@ -1141,7 +1141,7 @@ class _ValueAnchor extends StatelessWidget {
     if (out.length < 3 && plan.hasPromo) {
       out.add(_ValueBullet(
         icon: Icons.schedule_rounded,
-        text: 'מחיר מבצע — יעלה ל-₪${plan.after} אחרי ${plan.intro ?? 'תקופת המבצע'}',
+        text: 'מחיר מבצע — יעלה ל-₪${plan.afterText} אחרי ${plan.intro ?? 'תקופת המבצע'}',
       ));
     }
 
@@ -1470,7 +1470,7 @@ class _CostBreakdownCard extends StatelessWidget {
           if (plan.hasPromo) ...[
             _PriceRow(
               label: 'מחיר לאחר מבצע',
-              value: '₪${plan.after}',
+              value: '₪${plan.afterText}',
               valueColor: ffTheme.warning,
               ffTheme: ffTheme,
             ),

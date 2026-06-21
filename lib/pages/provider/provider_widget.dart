@@ -766,7 +766,7 @@ class _PlanCard extends StatelessWidget {
                 if (plan.hasPromo) ...[
                   const SizedBox(width: 8),
                   Text(
-                    '← ₪${plan.after} אחרי',
+                    '← ₪${plan.afterText} אחרי',
                     style: ffTheme.labelSmall
                         .copyWith(color: ffTheme.secondaryText),
                   ),

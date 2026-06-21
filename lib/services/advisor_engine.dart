@@ -536,7 +536,7 @@ class AdvisorEngine {
         final topReasons = best.reasons.take(3).map((r) => '• $r').join('\n');
         final savingLine = best.annualSaving > 0 ? '\nחיסכון שנתי: ₪${best.annualSaving}' : '';
         final promoNote =
-            best.plan.hasPromo ? '\nמחיר מבצע! לאחר המבצע: ₪${best.plan.after}/$unit' : '';
+            best.plan.hasPromo ? '\nמחיר מבצע! לאחר המבצע: ₪${best.plan.afterText}/$unit' : '';
 
         // Alternative plan (reuses the ranking computed above)
         String altLine = '';
@@ -569,7 +569,7 @@ class AdvisorEngine {
       final saveYear = ((currentBill - best.price) * 12).clamp(0, 999999);
       final catName = categoryById(cat)?.name ?? cat;
       final unit = priceUnitShort(best);
-      final promoNote = best.hasPromo ? '\nמחיר מבצע! לאחר המבצע: ₪${best.after}/$unit' : '';
+      final promoNote = best.hasPromo ? '\nמחיר מבצע! לאחר המבצע: ₪${best.afterText}/$unit' : '';
       final commitNote =
           best.noCommit ? '\nללא התחייבות' : '\nהתחייבות ${best.term} חודשים';
       final savingsLine = saveYear > 0 ? '\nחיסכון שנתי צפוי: ₪$saveYear' : '';

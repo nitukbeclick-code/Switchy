@@ -1,0 +1,58 @@
+{
+  "slug": "guide-youtube-premium",
+  "cat": "טלוויזיה",
+  "date": "2026-06-21",
+  "read": 2,
+  "title": "YouTube Premium ישראל — מחיר ואם שווה | חוסך",
+  "desc": "YouTube Premium ישראל 2026: מחיר, מה כולל, YouTube Music, Family Plan, ואם שווה לשלם.",
+  "h1": "YouTube Premium ישראל — מדריך",
+  "tldr": "YouTube Premium: ₪30.99/חודש. כולל: ללא פרסומות + YouTube Music + Offline + PiP. Family: ₪46.99 ל-5 אנשים. שווה אם: גולשים YouTube הרבה + רוצים YouTube Music. לא שווה: אם רק Spotify + מעט YouTube.",
+  "sections": [
+    {
+      "h2": "מה כולל YouTube Premium?",
+      "ul": [
+        "ללא פרסומות: אפס פרסומות על כל סרטון, כולל Shorts.",
+        "YouTube Music Premium: שירות מוזיקה מלא כלול. 100M+ שירים, Offline, ללא פרסומות.",
+        "Offline: הורדת סרטונים לצפייה ללא גלישה. נוח לטיסה/נסיעה.",
+        "Picture-in-Picture (PiP): iPhone/iPad — יוטיוב ממשיך בחלון קטן כשיוצאים מהאפליקציה.",
+        "YouTube Kids Premium: ללא פרסומות ב-YouTube Kids."
+      ]
+    },
+    {
+      "h2": "מחיר YouTube Premium ישראל",
+      "ul": [
+        "Individual: ₪30.99/חודש. לאדם אחד.",
+        "Family: ₪46.99/חודש. עד 5 חברי משפחה (+מנהל = 6). כל אחד עצמאי.",
+        "Student: ₪15.99/חודש. הוכחת סטודנט נדרשת.",
+        "ניסיון חינם: 30 ימים חינם לחדשים. ₪0 לחודש ראשון.",
+        "Family: ₪46.99/6 = ₪7.8/אדם. vs ₪31 Individual. חיסכון 75%."
+      ]
+    },
+    {
+      "h2": "YouTube Music vs. Spotify",
+      "ul": [
+        "YouTube Music: כלול ב-YouTube Premium. 100M שירים. AI recommendations.",
+        "Spotify: ₪26/חודש. AI DJ. Discover Weekly. עדיף למוזיקה בלבד.",
+        "אם כבר משלמים YouTube Premium: YouTube Music = חינם. לא צריך Spotify.",
+        "אם רוצים רק מוזיקה: Spotify = עדיף UX. YouTube Music = כלול.",
+        "מסקנה: YouTube Premium + Music = ₪31. Spotify = ₪26. הבדל קטן, YouTube Premium = יותר."
+      ]
+    },
+    {
+      "h2": "מתי YouTube Premium שווה?",
+      "ul": [
+        "כן שווה: גולשים YouTube >2 שעות/יום. פרסומות = מציקות. Offline = שימושי.",
+        "כן שווה: רוצים YouTube Music. Family Plan ל-5 אנשים = ₪8/אדם.",
+        "שקלו: אם YouTube = 20 דקות/יום בלבד. מסנן פרסומות (uBlock Origin) = חינם ב-PC.",
+        "Mobile: uBlock לא עובד ב-iOS/Android. Premium = הפתרון הרשמי לנייד.",
+        "עצה: 30 ימי ניסיון חינם → ראו אם הניסיון ללא פרסומות משנה את הגלישה."
+      ]
+    }
+  ],
+  "faq": [
+    ["AdBlock חינמי — למה לשלם?", "PC/Mac: uBlock Origin = חוסם פרסומות YouTube חינם. Mobile (iOS/Android): אין uBlock. Premium = הפתרון לנייד + Offline + PiP. אם גולשים בעיקר ב-PC: לא חייבים Premium."],
+    ["YouTube Music — ספריה ישראלית?", "כן — YouTube Music ישראל: עידן רייכל, שלמה ארצי, Static & Ben El, Omer Adam. גם קליפים רשמיים כלולים. Podcasts: YouTube Podcasts = כלול. בעברית = זמין."],
+    ["YouTube Premium Family — מי יכול?", "עד 5 חברי משפחה (+ אתם = 6). כולם חייבים להיות בבית אחד (אותו כתובת). Google בודקת לפעמים. לא מומלץ לשתף עם חברים שאינם בבית."],
+    ["YouTube Premium ביטול — איך?", "YouTube → פרופיל → רכישות → ביטול. מיידי. ממשיכים ליהנות עד סוף תקופה שכבר שולמה. ביטול במהלך ניסיון חינם: לא תחויבו. ביטול + הצטרפות מחדש: ניסיון חינם = חד-פעמי."]
+  ]
+}

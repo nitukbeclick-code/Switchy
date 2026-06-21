@@ -291,8 +291,19 @@ function planCardHtml(p, best) {
   // priceUnit comes from the app catalogue export (tool/export_plans.dart) —
   // abroad plans mix per-package/day/minute/month pricing, so never assume.
   const unit = UNIT_HE[p.priceUnit] || (p.cat === 'abroad' ? 'לחבילה' : 'לחודש');
-  const specs = Object.entries(p.specs || {}).slice(0, 3)
-    .map(([, v]) => `<span class="pchip">${esc(v)}</span>`).join('');
+  // Full-package details. p.specs holds the headline numbers (data/minutes/
+  // channels/speed); the structured extras below (setup fee, equipment =
+  // router/converter, range extender) are optional — rendered as labelled
+  // chips only when a value exists, so a missing field never shows noise.
+  // Collect these via the Claude-in-Chrome catalogue pass (the telecom sites
+  // 403 headless fetches and hide the data behind "מידע נוסף" buttons), then
+  // drop the values into plans.json — no template change needed afterwards.
+  const specPairs = Object.entries(p.specs || {}).map(([, v]) => ['', v]);
+  if (p.equipment) specPairs.push(['ציוד', p.equipment]);
+  if (p.setupFee) specPairs.push(['התקנה', p.setupFee]);
+  if (p.rangeExtender) specPairs.push(['מגדיל טווח', p.rangeExtender]);
+  const specs = specPairs
+    .map(([k, v]) => `<span class="pchip">${k ? esc(k) + ': ' : ''}${esc(v)}</span>`).join('');
   const flags = [];
   if (p.is5G) flags.push('<span class="pflag pflag--5g">5G</span>');
   if (p.noCommit) flags.push('<span class="pflag">ללא התחייבות</span>');
@@ -1357,7 +1368,7 @@ function comparePage() {
   const data = catalogue.plans.map((p) => ({
     id: p.id, cat: p.cat, provider: p.provider, plan: p.plan, price: p.price, priceExact: p.priceExact,
     after: p.after, net: p.net, is5G: p.is5G, noCommit: p.noCommit, hasAbroad: p.hasAbroad,
-    specs: p.specs,
+    specs: p.specs, equipment: p.equipment, setupFee: p.setupFee, rangeExtender: p.rangeExtender,
   }));
   const optionsFor = (preId) => categories.map((c) => {
     const opts = (plansByCat[c.slug] || []).map((p) =>

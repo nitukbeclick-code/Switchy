@@ -301,6 +301,10 @@
     const picks = [0, 1, 2].map((i) => $('cmp' + i)).filter(Boolean);
     const yes = '<span class="cmp-yes" aria-label="כן">✓</span>';
     const no = '<span class="cmp-no" aria-label="לא">—</span>';
+    // Distinct from `no` (—): a missing full-package detail is "not stated on
+    // the provider's site", not "none" — conflating them would read a blank
+    // setup fee as "free". Collected via the Claude-in-Chrome catalogue pass.
+    const na = '<span class="cmp-no">לא מצוין</span>';
     const catName = { cellular: 'סלולר', internet: 'אינטרנט', tv: 'טלוויזיה', triple: 'משולבת', abroad: 'חו״ל' };
     const render = () => {
       const chosen = picks.map((s) => byId[s.value]).filter(Boolean);
@@ -334,6 +338,15 @@
       specKeys.forEach((k) => {
         rows.push(row(k, chosen.map((p) => (p.specs && p.specs[k] != null) ? escHtml(p.specs[k]) : no)));
       });
+      // Full-package detail rows — shown only when at least one chosen plan
+      // carries the field, so the table stays clean for categories that don't
+      // have it (e.g. no "התקנה" row for cellular). Missing value → "לא מצוין".
+      [['התקנה', 'setupFee'], ['ציוד (נתב/ממיר)', 'equipment'], ['מגדיל טווח', 'rangeExtender']]
+        .forEach(([label, key]) => {
+          if (chosen.some((p) => p[key] != null && p[key] !== '')) {
+            rows.push(row(label, chosen.map((p) => (p[key] != null && p[key] !== '') ? escHtml(p[key]) : na)));
+          }
+        });
       const wa = (p) => 'https://wa.me/972505037537?text=' +
         encodeURIComponent('היי, מעניין אותי ' + p.provider + ' - ' + p.plan + ' (₪' + p.price + ')');
       const ctaRow = `<tr class="cmp-cta-row"><th scope="row"></th>${chosen.map((p) =>

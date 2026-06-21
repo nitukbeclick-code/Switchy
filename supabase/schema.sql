@@ -1305,6 +1305,51 @@ grant select, insert, update, delete on public.post_bookmarks to authenticated;
 grant insert on public.meetings to anon, authenticated;
 grant select on public.meetings to authenticated;
 
+-- ── (A3) grant gap for the remaining app/site-facing tables ──────────────────
+-- Verified access paths (2026-06-21): the site lead form POSTs to /rest/v1/leads
+-- as anon (site/script.js:260); the app reads/writes profiles, leads, plan_views,
+-- tracked_plans, support_tickets/messages directly as the authenticated user
+-- (lib/services/backend/supabase_backend.dart, support_ticket_service.dart).
+-- RLS already gates these (insert-anyone / owner policies verified) — only the
+-- GRANTs were missing, so every one of these flows 401s without the block below.
+grant insert on public.leads            to anon, authenticated;  -- site form (anon) + app (auth)
+grant select on public.leads            to authenticated;        -- leads_select_own
+grant select, insert, update on public.profiles to authenticated;            -- own profile upsert/read
+grant insert on public.plan_views       to anon, authenticated;  -- view analytics (insert-anyone)
+grant select, insert, update, delete on public.tracked_plans to authenticated; -- renewal radar (owner)
+grant select, insert, update on public.support_tickets to authenticated;     -- support (user own)
+grant select, insert        on public.support_messages to authenticated;     -- support thread (own)
+grant select on public.plans            to anon, authenticated;  -- "publicly readable" catalogue
+grant select on public.plan_prices      to anon, authenticated;  -- public price history
+
+-- ── (A4) security-advisor hardening ─────────────────────────────────────────
+-- (1) provider_rating_summary was SECURITY DEFINER (advisor ERROR
+--     security_definer_view). security_invoker makes it respect the caller's RLS;
+--     reads still work (reviews_select_all is public; anon/auth have SELECT on
+--     provider_reviews).
+alter view public.provider_rating_summary set (security_invoker = on);
+
+-- (2) SECURITY DEFINER functions that must NOT be RPC-callable by clients
+--     (advisor anon/authenticated_security_definer_function_executable). All are
+--     trigger/internal fns — revoking EXECUTE is safe (triggers fire as the table
+--     owner, independent of the caller's grant). service_role keeps EXECUTE via
+--     the (A) `grant all on all functions ... to service_role` above.
+--     KEPT ON PURPOSE: increment_savings(uuid,integer) — the app calls it via
+--     rpc() as authenticated (supabase_backend.dart:76).
+revoke execute on function public.delete_community_storage_object() from anon, authenticated, public;
+revoke execute on function public.leads_rate_limit()                from anon, authenticated, public;
+revoke execute on function public.log_plan_price()                  from anon, authenticated, public;
+revoke execute on function public.meetings_guard()                  from anon, authenticated, public;
+revoke execute on function public.notify_meeting_on_insert()        from anon, authenticated, public;
+revoke execute on function public.plan_views_guard()                from anon, authenticated, public;
+revoke execute on function public.rls_auto_enable()                 from anon, authenticated, public;
+
+-- (3) community-media is a PUBLIC bucket (objects served via public URL), so the
+--     broad SELECT policy only enables the storage LIST api (advisor
+--     public_bucket_allows_listing). Dropping it blocks enumeration of every
+--     file; getPublicUrl()-based image display is unaffected.
+drop policy if exists "community media public read" on storage.objects;
+
 -- ═══════════════════════════════════════════════════════════════════════════
 -- (B) COMMUNITY moderation + notification contract
 -- ═══════════════════════════════════════════════════════════════════════════

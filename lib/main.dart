@@ -79,10 +79,22 @@ Future<void> _initBackend() async {
   // works because the `leads` insert policy allows anyone.
   final auth = Supabase.instance.client.auth;
   if (auth.currentSession == null) {
-    try {
-      await auth.signInAnonymously();
-    } catch (e) {
-      debugPrint('Supabase anonymous sign-in unavailable: $e');
+    // Retry transient failures with backoff: without a session every RLS-scoped
+    // write (tracked plans, reviews, community, profile) silently fails for the
+    // whole run, so a single cold-start network blip must not cost us the
+    // identity. If anonymous sign-ins are genuinely disabled in the dashboard
+    // this still gives up after a few tries and anonymous lead capture keeps
+    // working (the `leads` insert policy allows anyone).
+    for (var attempt = 0; attempt < 3; attempt++) {
+      try {
+        await auth.signInAnonymously();
+        break;
+      } catch (e) {
+        debugPrint('Supabase anonymous sign-in failed (attempt ${attempt + 1}/3): $e');
+        if (attempt < 2) {
+          await Future<void>.delayed(Duration(milliseconds: 400 * (1 << attempt)));
+        }
+      }
     }
   }
 

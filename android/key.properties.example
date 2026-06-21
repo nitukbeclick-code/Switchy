@@ -1,0 +1,16 @@
+# Android release signing — copy this file to android/key.properties and fill in
+# your upload keystore details. key.properties + *.jks/*.keystore are git-ignored.
+#
+# 1. Create an upload keystore (once):
+#      keytool -genkey -v -keystore upload-keystore.jks -storetype JKS \
+#        -keyalg RSA -keysize 2048 -validity 10000 -alias upload
+# 2. Put the .jks somewhere safe (NOT in the repo) and point storeFile at it.
+# 3. flutter build appbundle   ->  signs with this key (Play Store ready).
+#
+# If android/key.properties is absent, the release build falls back to debug
+# keys so `flutter run --release` still works locally.
+
+storePassword=CHANGE_ME
+keyPassword=CHANGE_ME
+keyAlias=upload
+storeFile=/absolute/path/to/upload-keystore.jks

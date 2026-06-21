@@ -479,7 +479,7 @@ function page(c) {
   const bullets = c.bullets.map(([icon, h, p]) => `        <article class="feature feature--check reveal"><span class="feature__icon">${iconFor(icon)}</span><h3>${esc(h)}</h3><p>${esc(p)}</p></article>`).join('\n');
   const chips = c.providers.map((p) => `<span class="chip">${esc(p)}</span>`).join('\n          ');
   const faqs = c.faq.map(([q, a]) => `          <details><summary>${esc(q)}</summary><p>${esc(a)}</p></details>`).join('\n');
-  const catGuides = relatedGuides(c.name, null, 2).map(guideCard).join('\n');
+  const catGuides = relatedGuides(c.name, null, 4).map(guideCard).join('\n');
   const catPlans = plansByCat[c.slug] || [];
   // Cards are sorted cheapest-first (plansByCat sort), so card 0 is honestly the
   // lowest price in this category — badge it as the value anchor (only when the
@@ -594,7 +594,7 @@ ${faqs}
     <section class="section" aria-label="מדריכים שימושיים">
       <div class="container">
         <header class="section__head reveal"><span class="eyebrow">כדאי לדעת</span><h2>מדריכים שימושיים</h2></header>
-        <div class="guide-cards guide-cards--2">
+        <div class="guide-cards guide-cards--4">
 ${catGuides}
         </div>
       </div>

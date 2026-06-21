@@ -508,7 +508,8 @@ body:has(.sticky-cta.is-visible) .wa-fab { bottom: 76px; }
 .guide-card p { color: var(--muted); flex: 1; }
 .guide-card .meta { color: var(--muted); font-size: 13px; margin-top: 14px; }
 .guide-cards--2 { grid-template-columns: repeat(2, 1fr); max-width: 760px; margin-inline: auto; }
-@media (max-width: 900px) { .guide-cards, .guide-cards--2 { grid-template-columns: 1fr; } }
+.guide-cards--4 { grid-template-columns: repeat(2, 1fr); max-width: 900px; margin-inline: auto; }
+@media (max-width: 900px) { .guide-cards, .guide-cards--2, .guide-cards--4 { grid-template-columns: 1fr; } }
 
 /* ── Plan catalogue cards ────────────────────────────────────────────── */
 .plan-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(248px, 1fr)); gap: 14px; }

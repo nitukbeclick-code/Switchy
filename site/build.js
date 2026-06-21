@@ -1891,7 +1891,7 @@ ${nav}
           <a class="btn btn--primary btn--lg" href="#cta">קבלו גישה מוקדמת</a>
           <a class="btn btn--ghost btn--lg" href="plans.html">או דפדפו במסלולים</a>
         </div>
-        <p class="hero__social"><span class="hero__social-ico" aria-hidden="true">${svgIcon('people')}</span> <strong><span data-count-to="124">124</span> אנשים</strong> כבר ברשימת ההמתנה</p>
+        <p class="hero__social"><span class="hero__social-ico" aria-hidden="true">${svgIcon('people')}</span> <strong>הצטרפו לרשימת ההמתנה</strong> — היו מהראשונים לקבל את האפליקציה</p>
       </div>
     </section>
 

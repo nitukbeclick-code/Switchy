@@ -129,7 +129,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                   background: Container(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        colors: [ffTheme.primary, ffTheme.tertiary],
+                        colors: [ffTheme.primary, ffTheme.primaryDark],
                         begin: Alignment.topRight,
                         end: Alignment.bottomLeft,
                       ),
@@ -139,15 +139,52 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           const SizedBox(height: 32),
+                          // Logo sits on a soft white chip so per-provider brand
+                          // colours stay legible over the green hero (we never
+                          // recolour the logo itself).
                           Hero(
                             tag: 'plan_logo_${plan.id}',
-                            child: LogoWidget(provider: plan.provider, size: 80),
+                            child: Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(ffTheme.radiusMd),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.12),
+                                    blurRadius: 14,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: LogoWidget(provider: plan.provider, size: 64),
+                            ),
                           ),
-                          const SizedBox(height: 10),
-                          GestureDetector(
-                            onTap: () => context.pushNamed('Provider', pathParameters: {'name': plan.provider}),
-                            child: Text(plan.provider,
-                                style: ffTheme.titleLarge.copyWith(color: Colors.white)),
+                          const SizedBox(height: 12),
+                          Semantics(
+                            button: true,
+                            label: 'עבור לעמוד הספק ${plan.provider}',
+                            child: Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(ffTheme.radiusPill),
+                                onTap: () => context.pushNamed('Provider', pathParameters: {'name': plan.provider}),
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(plan.provider,
+                                          style: ffTheme.titleLarge.copyWith(color: Colors.white)),
+                                      const SizedBox(width: 4),
+                                      Icon(Icons.chevron_left_rounded,
+                                          size: 18,
+                                          color: Colors.white.withValues(alpha: 0.85)),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
                           ),
                           const SizedBox(height: 4),
                           Padding(
@@ -567,7 +604,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                                           Text('₪${p.priceText}/${priceUnitShort(p)}', style: ffTheme.titleSmall.copyWith(color: ffTheme.primary)),
                                           const SizedBox(height: 3),
                                           if (pSave > 0)
-                                            Text('חוסך ₪$pSave/שנה', style: ffTheme.labelSmall.copyWith(color: ffTheme.success))
+                                            Text('חוסך ₪$pSave/שנה', style: ffTheme.labelSmall.copyWith(color: ffTheme.savingDark, fontWeight: FontWeight.w700))
                                           else
                                             Text(p.plan, style: ffTheme.labelSmall, maxLines: 1, overflow: TextOverflow.ellipsis),
                                         ],
@@ -596,16 +633,19 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
             right: 0,
             child: SafeArea(
               child: Container(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
                 decoration: BoxDecoration(
                   color: Colors.white,
+                  borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(22)),
                   border: Border(
-                      top: BorderSide(color: ffTheme.alternate, width: 1)),
+                      top: BorderSide(
+                          color: ffTheme.lineColor, width: 1)),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.07),
-                      blurRadius: 16,
-                      offset: const Offset(0, -4),
+                      color: Colors.black.withValues(alpha: 0.08),
+                      blurRadius: 20,
+                      offset: const Offset(0, -6),
                     ),
                   ],
                 ),
@@ -930,7 +970,7 @@ class _ScoreRing extends StatelessWidget {
                 progress: value,
                 track: t.primary.withValues(alpha: 0.12),
                 fill: t.primary,
-                cap: t.secondary,
+                cap: t.primary.withValues(alpha: 0.55),
               ),
               child: Center(
                 child: Column(
@@ -1108,7 +1148,11 @@ class _SavingsPeriod extends StatelessWidget {
       children: [
         Text(
           '₪$amount',
-          style: ffTheme.titleMedium.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w800),
+          style: ffTheme.titleMedium.copyWith(
+            color: ffTheme.savingDark,
+            fontWeight: FontWeight.w800,
+            fontFeatures: const [FontFeature.tabularFigures()],
+          ),
         ),
         const SizedBox(height: 4),
         Text('$months חודשים', style: ffTheme.labelSmall),

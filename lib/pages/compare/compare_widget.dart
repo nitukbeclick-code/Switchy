@@ -112,8 +112,23 @@ class _EmptyState extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const SizedBox(height: 20),
-            Icon(Icons.compare_arrows_rounded, size: 80, color: hasPlan ? ffTheme.primary.withValues(alpha: 0.4) : ffTheme.alternate)
-                .animate().fadeIn(duration: 400.ms).scale(begin: const Offset(0.7, 0.7)),
+            Container(
+              width: 112,
+              height: 112,
+              decoration: BoxDecoration(
+                color: hasPlan
+                    ? ffTheme.primary.withValues(alpha: 0.08)
+                    : ffTheme.accent1,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.compare_arrows_rounded,
+                size: 56,
+                color: hasPlan
+                    ? ffTheme.primary
+                    : ffTheme.secondaryText,
+              ),
+            ).animate().fadeIn(duration: 400.ms).scale(begin: const Offset(0.7, 0.7)),
             const SizedBox(height: 24),
             Text(hasPlan ? 'מסלול אחד בסל' : 'בחר 2–3 מסלולים מהתוצאות',
                     style: ffTheme.headlineSmall.copyWith(color: ffTheme.secondaryText),
@@ -598,16 +613,17 @@ class _WinnerSummaryCard extends StatelessWidget {
                       children: [
                         Text(
                           'למה ${winner.provider} מנצח?',
-                          style: GoogleFonts.rubik(fontSize: 13, fontWeight: FontWeight.w700, color: ffTheme.secondary),
+                          style: GoogleFonts.rubik(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white),
                         ),
                         const SizedBox(height: 8),
-                        // Engine reasons
+                        // Engine reasons — green-tinted check reads as "pro" on the
+                        // dark hero (white on white-wash chip).
                         ...topReasons.map((r) => Padding(
                           padding: const EdgeInsets.only(bottom: 4),
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Icon(Icons.check_circle_rounded, size: 15, color: ffTheme.secondary),
+                              const Icon(Icons.check_circle_rounded, size: 15, color: Colors.white),
                               const SizedBox(width: 6),
                               Expanded(
                                 child: Text(r, style: GoogleFonts.assistant(fontSize: 12, color: Colors.white, fontWeight: FontWeight.w600)),
@@ -615,13 +631,13 @@ class _WinnerSummaryCard extends StatelessWidget {
                             ],
                           ),
                         )),
-                        // Comparative superlatives
+                        // Comparative superlatives wear the VALUE accent (amber).
                         ...superlatives.take(2).map((s) => Padding(
                           padding: const EdgeInsets.only(bottom: 4),
                           child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Icon(Icons.star_rounded, size: 15, color: ffTheme.secondary),
+                              Icon(Icons.star_rounded, size: 15, color: ffTheme.saving),
                               const SizedBox(width: 6),
                               Expanded(
                                 child: Text(s, style: GoogleFonts.assistant(fontSize: 12, color: Colors.white, fontWeight: FontWeight.w600)),
@@ -641,13 +657,13 @@ class _WinnerSummaryCard extends StatelessWidget {
                     context.pushNamed('Lead', pathParameters: {'planId': winner.id}, queryParameters: {'source': 'compare'});
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: ffTheme.secondary,
-                    foregroundColor: ffTheme.primaryDark,
-                    minimumSize: const Size(double.infinity, 44),
+                    backgroundColor: Colors.white,
+                    foregroundColor: ffTheme.primary,
+                    minimumSize: const Size(double.infinity, 46),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     elevation: 0,
                   ),
-                  child: Text('בחר מסלול זה ←', style: GoogleFonts.rubik(fontSize: 14, fontWeight: FontWeight.w800)),
+                  child: Text('בחר מסלול זה ←', style: GoogleFonts.rubik(fontSize: 14, fontWeight: FontWeight.w800, color: ffTheme.primary)),
                 ),
               ],
             ),
@@ -697,7 +713,7 @@ class _WinnerSummaryCard extends StatelessWidget {
                   if (isWinner)
                     Padding(
                       padding: const EdgeInsetsDirectional.only(end: 4),
-                      child: Icon(Icons.star_rounded, size: 14, color: ffTheme.secondary),
+                      child: Icon(Icons.star_rounded, size: 14, color: ffTheme.saving),
                     )
                   else
                     const SizedBox(width: 18),
@@ -746,7 +762,9 @@ class _PlanHeader extends StatelessWidget {
       margin: const EdgeInsetsDirectional.only(start: 10),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: isWinner ? ffTheme.accent1 : Colors.white,
+        color: isWinner
+            ? ffTheme.primary.withValues(alpha: 0.06)
+            : Colors.white,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color: isWinner ? ffTheme.primary : ffTheme.alternate,
@@ -754,7 +772,9 @@ class _PlanHeader extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
+            color: isWinner
+                ? ffTheme.primary.withValues(alpha: 0.12)
+                : Colors.black.withValues(alpha: 0.04),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -768,18 +788,18 @@ class _PlanHeader extends StatelessWidget {
               padding:
                   const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
-                color: ffTheme.secondary,
+                color: ffTheme.saving,
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.emoji_events_rounded,
-                      size: 13, color: ffTheme.primaryDark),
+                  const Icon(Icons.emoji_events_rounded,
+                      size: 13, color: Color(0xFF3A2900)),
                   const SizedBox(width: 4),
                   Text('זוכה',
                       style: ffTheme.labelSmall.copyWith(
-                          color: ffTheme.primaryDark,
+                          color: const Color(0xFF3A2900),
                           fontWeight: FontWeight.w700)),
                 ],
               ),
@@ -896,8 +916,10 @@ class _RowWidget extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
+                          // Savings highlight wears the VALUE accent (amber) for
+                          // the winner; others stay a quiet glass tint.
                           color: isWinner
-                              ? ffTheme.secondary
+                              ? ffTheme.saving.withValues(alpha: 0.18)
                               : ffTheme.background,
                           borderRadius: BorderRadius.circular(8),
                         ),
@@ -905,11 +927,12 @@ class _RowWidget extends StatelessWidget {
                           v,
                           style: ffTheme.labelSmall.copyWith(
                             color: isWinner
-                                ? ffTheme.primaryDark
+                                ? ffTheme.savingDark
                                 : ffTheme.secondaryText,
                             fontWeight: isWinner
-                                ? FontWeight.w700
+                                ? FontWeight.w800
                                 : FontWeight.w500,
+                            fontFeatures: const [FontFeature.tabularFigures()],
                           ),
                           textAlign: TextAlign.center,
                         ),

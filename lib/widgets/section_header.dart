@@ -45,13 +45,24 @@ class SectionHeader extends StatelessWidget {
         ],
         Expanded(child: Text(title, style: ffTheme.titleLarge)),
         if (trailingLabel != null)
-          GestureDetector(
-            onTap: onTrailingTap,
-            child: Text(
-              trailingLabel!,
-              style: ffTheme.labelMedium.copyWith(
-                color: ffTheme.primary,
-                fontWeight: FontWeight.w700,
+          Semantics(
+            button: true,
+            label: trailingLabel,
+            child: GestureDetector(
+              onTap: onTrailingTap,
+              behavior: HitTestBehavior.opaque,
+              child: Padding(
+                // A small hit-padding so the inline link is comfortably tappable.
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+                child: Text(
+                  trailingLabel!,
+                  style: ffTheme.labelMedium.copyWith(
+                    // Green = ACTION: the trailing link reads as the tappable
+                    // affordance in the row.
+                    color: ffTheme.brandAccent,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ),
             ),
           ),

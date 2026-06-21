@@ -57,7 +57,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                 prefixIcon: Icon(Icons.person_outline_rounded, color: ffTheme.secondaryText),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                 enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.alternate)),
-                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.primary, width: 1.5)),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.brandAccent, width: 1.5)),
               ),
             ),
             const SizedBox(height: 16),
@@ -74,7 +74,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                 prefixIcon: Icon(Icons.phone_outlined, color: ffTheme.secondaryText),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                 enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.alternate)),
-                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.primary, width: 1.5)),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.brandAccent, width: 1.5)),
               ),
             ),
             const SizedBox(height: 24),
@@ -252,7 +252,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                               margin: const EdgeInsets.symmetric(horizontal: 3),
                               padding: const EdgeInsets.symmetric(vertical: 8),
                               decoration: BoxDecoration(
-                                color: active ? ffTheme.primary : Colors.transparent,
+                                gradient: active ? ffTheme.accentGradient : null,
                                 borderRadius: BorderRadius.circular(10),
                               ),
                               child: Center(
@@ -438,8 +438,9 @@ class _ProfileWidgetState extends State<ProfileWidget> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          gradient: LinearGradient(colors: [ffTheme.primary, ffTheme.tertiary]),
+          gradient: ffTheme.accentGradient,
           borderRadius: BorderRadius.circular(16),
+          boxShadow: ffTheme.shadowAccent,
         ),
         child: Row(
           children: [
@@ -476,8 +477,8 @@ class _ProfileWidgetState extends State<ProfileWidget> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: ffTheme.primary.withValues(alpha: 0.3), width: 1.5),
-          boxShadow: [BoxShadow(color: ffTheme.primary.withValues(alpha: 0.08), blurRadius: 12, offset: const Offset(0, 4))],
+          border: Border.all(color: ffTheme.brandAccent.withValues(alpha: 0.3), width: 1.5),
+          boxShadow: [BoxShadow(color: ffTheme.brandAccent.withValues(alpha: 0.1), blurRadius: 12, offset: const Offset(0, 4))],
         ),
         child: Row(
           children: [
@@ -497,15 +498,15 @@ class _ProfileWidgetState extends State<ProfileWidget> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
               decoration: BoxDecoration(
-                color: ffTheme.accent1,
+                color: ffTheme.brandAccentTint,
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Container(width: 6, height: 6, decoration: BoxDecoration(color: ffTheme.primary, shape: BoxShape.circle)),
+                  Container(width: 6, height: 6, decoration: BoxDecoration(color: ffTheme.brandAccent, shape: BoxShape.circle)),
                   const SizedBox(width: 5),
-                  Text('בתהליך', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w600)),
+                  Text('בתהליך', style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccent, fontWeight: FontWeight.w600)),
                 ],
               ),
             ),
@@ -615,8 +616,9 @@ class _ProfileWidgetState extends State<ProfileWidget> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          gradient: LinearGradient(colors: [ffTheme.primary, ffTheme.tertiary]),
+          gradient: ffTheme.accentGradient,
           borderRadius: BorderRadius.circular(14),
+          boxShadow: ffTheme.shadowAccent,
         ),
         child: Row(
           children: [
@@ -648,7 +650,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
           if (actionLabel != null && onAction != null)
             GestureDetector(
               onTap: onAction,
-              child: Text(actionLabel, style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w600)),
+              child: Text(actionLabel, style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccent, fontWeight: FontWeight.w600)),
             ),
         ],
       ),
@@ -687,18 +689,18 @@ class _QuizChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
-        color: ffTheme.accent1,
+        color: ffTheme.brandAccentTint,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: ffTheme.primary.withValues(alpha: 0.2)),
+        border: Border.all(color: ffTheme.brandAccent.withValues(alpha: 0.22)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (icon != null) ...[
-            ExcludeSemantics(child: Icon(icon, size: 13, color: ffTheme.primary)),
+            ExcludeSemantics(child: Icon(icon, size: 13, color: ffTheme.brandAccent)),
             const SizedBox(width: 4),
           ],
-          Text(text, style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w600)),
+          Text(text, style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccent, fontWeight: FontWeight.w600)),
         ],
       ),
     );
@@ -726,7 +728,15 @@ class _ToggleTile extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(icon, color: ffTheme.primary, size: 22),
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: ffTheme.brandAccentTint,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(icon, color: ffTheme.brandAccent, size: 20),
+          ),
           const SizedBox(width: 14),
           Expanded(
             child: Column(
@@ -740,7 +750,7 @@ class _ToggleTile extends StatelessWidget {
           Switch(
             value: value,
             onChanged: onChanged,
-            activeThumbColor: ffTheme.primary,
+            activeThumbColor: ffTheme.brandAccent,
           ),
         ],
       ),

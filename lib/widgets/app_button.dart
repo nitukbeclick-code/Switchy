@@ -9,9 +9,9 @@ import '../theme/app_theme.dart';
 /// spinner and taps are ignored. Pass an [icon] to render it before the label.
 ///
 /// When [color] is the brand ink ([AppColors.primary]) and no [borderSide] is
-/// supplied, the button reads as the primary CTA: it is filled with the
-/// ink→slate [AppTheme.freshGradient] and lifted by the soft ink
-/// [AppTheme.shadowPrimary] glow. Any other [color] (or an outlined/ghost
+/// supplied, the button reads as the primary CTA: it is filled with the green
+/// ACTION [AppTheme.accentGradient] and lifted by the soft green
+/// [AppTheme.shadowAccent] glow. Any other [color] (or an outlined/ghost
 /// variant with a [borderSide]) keeps the calm solid-fill styling. Either way it
 /// gains a subtle tactile scale-down while pressed.
 class AppButton extends StatefulWidget {
@@ -34,7 +34,7 @@ class AppButton extends StatefulWidget {
   });
 
   /// Secondary action: white fill, hairline border, ink label — sits quietly
-  /// next to a primary without competing for the indigo.
+  /// next to a primary without competing for the green.
   const AppButton.secondary({
     super.key,
     required this.text,
@@ -123,7 +123,7 @@ class _AppButtonState extends State<AppButton> {
         GoogleFonts.rubik(fontSize: 14, fontWeight: FontWeight.w700, color: foreground);
     final borderRadius = widget.borderRadius ?? BorderRadius.circular(ffTheme.radiusMd);
 
-    // The primary CTA: brand ink colour, no outline → it earns the indigo
+    // The primary CTA: brand ink colour, no outline → it earns the green
     // ACTION gradient + glow. Any other colour (or an outlined/ghost variant)
     // stays on the calm solid-fill path.
     final isPrimaryCta =

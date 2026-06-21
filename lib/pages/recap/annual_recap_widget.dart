@@ -178,8 +178,21 @@ class _RecapBody extends StatelessWidget {
         // Opportunity breakdown — straight from computeSavings, largest first.
         if (opportunities.isNotEmpty) ...[
           const SizedBox(height: 24),
-          Text('פירוט ההזדמנויות',
-              style: ffTheme.titleMedium.copyWith(fontWeight: FontWeight.w800)),
+          Row(
+            children: [
+              Container(
+                width: 4,
+                height: 18,
+                decoration: BoxDecoration(
+                  color: ffTheme.primary,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text('פירוט ההזדמנויות',
+                  style: ffTheme.titleMedium.copyWith(fontWeight: FontWeight.w800)),
+            ],
+          ),
           const SizedBox(height: 4),
           Text(
             personalized
@@ -287,8 +300,16 @@ class _StatTile extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 22, color: ffTheme.primaryText),
-          const SizedBox(height: 10),
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: ffTheme.accent1,
+              borderRadius: BorderRadius.circular(11),
+            ),
+            child: Icon(icon, size: 20, color: ffTheme.primary),
+          ),
+          const SizedBox(height: 12),
           Text(value,
               style: GoogleFonts.rubik(
                   fontSize: 24, fontWeight: FontWeight.w800, color: ffTheme.primaryText)),
@@ -312,21 +333,40 @@ class _RealizedCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Realised savings = a banked win → green ACTION tint, distinct from the
+    // amber "potential" figures elsewhere on the recap.
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: ffTheme.success.withValues(alpha: 0.1),
+        color: ffTheme.primary.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: ffTheme.success.withValues(alpha: 0.35)),
+        border: Border.all(color: ffTheme.primary.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
-          Icon(Icons.savings_rounded, color: ffTheme.success, size: 24),
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: ffTheme.primary.withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(Icons.savings_rounded, color: ffTheme.primary, size: 22),
+          ),
           const SizedBox(width: 12),
           Expanded(
-            child: Text('כבר חסכת ₪$amount דרך חוסך השנה',
-                style: ffTheme.titleSmall
-                    .copyWith(color: ffTheme.primaryText, fontWeight: FontWeight.w700)),
+            child: RichText(
+              text: TextSpan(
+                style: ffTheme.titleSmall.copyWith(color: ffTheme.primaryText, fontWeight: FontWeight.w700),
+                children: [
+                  const TextSpan(text: 'כבר חסכת '),
+                  TextSpan(
+                      text: '₪$amount',
+                      style: ffTheme.titleSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w800)),
+                  const TextSpan(text: ' דרך חוסך השנה'),
+                ],
+              ),
+            ),
           ),
         ],
       ),
@@ -359,7 +399,15 @@ class _OpportunityRow extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Icon(categoryIconData(saving.categoryId), size: 22, color: ffTheme.primaryText),
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: ffTheme.accent1,
+              borderRadius: BorderRadius.circular(11),
+            ),
+            child: Icon(categoryIconData(saving.categoryId), size: 20, color: ffTheme.primaryText),
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(

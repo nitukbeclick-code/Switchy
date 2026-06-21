@@ -164,10 +164,11 @@ class SettingsWidget extends StatelessWidget {
                         width: 44,
                         height: 44,
                         decoration: BoxDecoration(
-                          color: ffTheme.primary,
+                          gradient: ffTheme.accentGradient,
                           borderRadius: BorderRadius.circular(12),
+                          boxShadow: ffTheme.shadowAccent,
                         ),
-                        child: const Center(child: Icon(Icons.savings_outlined, size: 22, color: Colors.white)),
+                        child: const Center(child: ExcludeSemantics(child: Icon(Icons.savings_outlined, size: 22, color: Colors.white))),
                       ),
                       const SizedBox(width: 14),
                       Expanded(
@@ -182,11 +183,11 @@ class SettingsWidget extends StatelessWidget {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
-                          color: ffTheme.accent1,
+                          color: ffTheme.brandAccentTint,
                           borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: ffTheme.alternate),
+                          border: Border.all(color: ffTheme.brandAccent.withValues(alpha: 0.2)),
                         ),
-                        child: Text('1.0.0', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+                        child: Text('1.0.0', style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccent, fontWeight: FontWeight.w700)),
                       ),
                     ],
                   ),
@@ -451,10 +452,10 @@ class _ToggleRow extends StatelessWidget {
             width: 38,
             height: 38,
             decoration: BoxDecoration(
-              color: ffTheme.accent1,
+              color: ffTheme.brandAccentTint,
               borderRadius: BorderRadius.circular(10),
             ),
-            child: Icon(icon, color: ffTheme.primary, size: 20),
+            child: Icon(icon, color: ffTheme.brandAccent, size: 20),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -469,7 +470,7 @@ class _ToggleRow extends StatelessWidget {
           Switch(
             value: value,
             onChanged: onChanged,
-            activeThumbColor: ffTheme.primary,
+            activeThumbColor: ffTheme.brandAccent,
           ),
         ],
       ),
@@ -650,6 +651,7 @@ class _TelegramRowState extends State<_TelegramRow> {
                 ),
               ),
               PopupMenuButton(
+                tooltip: 'אפשרויות טלגרם',
                 onSelected: (value) {
                   if (value == 'test') {
                     _testTelegram();

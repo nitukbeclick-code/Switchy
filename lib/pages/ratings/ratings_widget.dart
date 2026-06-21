@@ -227,7 +227,9 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
             bottom: TabBar(
               controller: _tabCtrl,
               tabs: _cats.map((c) => Tab(text: c)).toList(),
-              indicatorColor: t.secondary,
+              indicatorColor: t.brandAccent,
+              indicatorWeight: 3,
+              indicatorSize: TabBarIndicatorSize.label,
               labelColor: Colors.white,
               unselectedLabelColor: Colors.white60,
               isScrollable: true,
@@ -314,8 +316,9 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
                             TextButton(
                               onPressed: () => _editReview(provider),
                               style: TextButton.styleFrom(
-                                foregroundColor: t.primary,
+                                foregroundColor: t.brandAccent,
                                 visualDensity: VisualDensity.compact,
+                                textStyle: t.labelSmall.copyWith(fontWeight: FontWeight.w800),
                               ),
                               child: const Text('דרגו ראשונים'),
                             ),
@@ -338,10 +341,14 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
                     Row(
                       children: [
                         Container(
-                          width: 38,
-                          height: 38,
-                          decoration: BoxDecoration(color: t.accent1, borderRadius: BorderRadius.circular(t.radiusSm)),
-                          child: Icon(Icons.rate_review_rounded, color: t.primary, size: 20),
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            gradient: t.accentGradient,
+                            borderRadius: BorderRadius.circular(t.radiusSm),
+                            boxShadow: t.shadowAccent,
+                          ),
+                          child: const Icon(Icons.rate_review_rounded, color: Colors.white, size: 20),
                         ),
                         const SizedBox(width: 10),
                         Expanded(
@@ -470,24 +477,36 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
                       ),
                     ),
                     const SizedBox(height: 16),
-                    ElevatedButton.icon(
-                      onPressed: (_selectedProvider != null && _subRatings.values.any((v) => v > 0))
-                          ? () => _submitReview(appState)
-                          : null,
-                      icon: const Icon(Icons.send_rounded, size: 18),
-                      label: Text(_selectedProvider != null && appState.hasReviewedProvider(_selectedProvider!)
-                          ? 'עדכון ביקורת'
-                          : 'שליחת ביקורת'),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: t.primary,
-                        foregroundColor: Colors.white,
-                        disabledBackgroundColor: t.alternate,
-                        elevation: 0,
-                        minimumSize: const Size(double.infinity, 50),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(t.radiusMd)),
-                        textStyle: GoogleFonts.rubik(fontSize: 15, fontWeight: FontWeight.w700),
-                      ),
-                    ),
+                    Builder(builder: (context) {
+                      final canSubmit = _selectedProvider != null && _subRatings.values.any((v) => v > 0);
+                      final editing = _selectedProvider != null && appState.hasReviewedProvider(_selectedProvider!);
+                      return AnimatedContainer(
+                        duration: t.motionFast,
+                        curve: t.easeOut,
+                        decoration: BoxDecoration(
+                          gradient: canSubmit ? t.accentGradient : null,
+                          color: canSubmit ? null : t.alternate.withValues(alpha: 0.3),
+                          borderRadius: BorderRadius.circular(t.radiusMd),
+                          boxShadow: canSubmit ? t.shadowAccent : null,
+                        ),
+                        child: ElevatedButton.icon(
+                          onPressed: canSubmit ? () => _submitReview(appState) : null,
+                          icon: const Icon(Icons.send_rounded, size: 18),
+                          label: Text(editing ? 'עדכון ביקורת' : 'שליחת ביקורת'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.transparent,
+                            foregroundColor: Colors.white,
+                            disabledBackgroundColor: Colors.transparent,
+                            disabledForegroundColor: Colors.white.withValues(alpha: 0.6),
+                            shadowColor: Colors.transparent,
+                            elevation: 0,
+                            minimumSize: const Size(double.infinity, 50),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(t.radiusMd)),
+                            textStyle: GoogleFonts.rubik(fontSize: 15, fontWeight: FontWeight.w700),
+                          ),
+                        ),
+                      );
+                    }),
                   ],
                 ),
               ).animate().fadeIn(delay: 300.ms),
@@ -569,8 +588,12 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
                                 children: [
                                   Row(
                                     children: [
-                                      Text(mapEntry.key, style: t.labelMedium.copyWith(
-                                          fontWeight: FontWeight.w700, color: t.primaryText)),
+                                      Flexible(
+                                        child: Text(mapEntry.key,
+                                            style: t.labelMedium.copyWith(
+                                                fontWeight: FontWeight.w700, color: t.primaryText),
+                                            overflow: TextOverflow.ellipsis),
+                                      ),
                                       const SizedBox(width: 8),
                                       _StarRow(value: r.overall.toDouble(), size: 12, t: t),
                                       const SizedBox(width: 4),
@@ -578,11 +601,15 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
                                           style: t.labelSmall.copyWith(fontWeight: FontWeight.w700, color: t.primary)),
                                     ],
                                   ),
+                                  if (r.isVerifiedCustomer) ...[
+                                    const SizedBox(height: 5),
+                                    _VerifiedBadge(t: t),
+                                  ],
                                   if (r.text.isNotEmpty) ...[
-                                    const SizedBox(height: 3),
+                                    const SizedBox(height: 5),
                                     Text(r.text, style: t.bodySmall, maxLines: 2, overflow: TextOverflow.ellipsis),
                                   ],
-                                  const Divider(height: 14),
+                                  const Divider(height: 16),
                                 ],
                               ),
                             ));
@@ -965,17 +992,57 @@ class _SubBar extends StatelessWidget {
         Expanded(
           child: ClipRRect(
             borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: value,
-              backgroundColor: t.alternate,
-              valueColor: AlwaysStoppedAnimation(t.tertiary),
-              minHeight: 5,
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: value.clamp(0.0, 1.0)),
+              duration: t.motionMedium,
+              curve: t.easeOut,
+              builder: (context, v, _) => LinearProgressIndicator(
+                value: v,
+                backgroundColor: t.alternate.withValues(alpha: 0.12),
+                valueColor: AlwaysStoppedAnimation(t.brandAccent),
+                minHeight: 6,
+              ),
             ),
           ),
         ),
         const SizedBox(width: 8),
         Text((value * 5).toStringAsFixed(1), style: t.labelSmall.copyWith(fontWeight: FontWeight.w700)),
       ],
+    );
+  }
+}
+
+/// Green trust badge shown next to a review whose author was verified as a real
+/// customer (`ReviewInput.isVerifiedCustomer`). Uses the ACTION (green) accent.
+class _VerifiedBadge extends StatelessWidget {
+  const _VerifiedBadge({required this.t});
+  final AppTheme t;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: 'לקוח מאומת',
+      child: Container(
+        padding: const EdgeInsetsDirectional.only(start: 6, end: 8, top: 3, bottom: 3),
+        decoration: BoxDecoration(
+          color: t.brandAccent.withValues(alpha: 0.10),
+          borderRadius: BorderRadius.circular(t.radiusPill),
+          border: Border.all(color: t.brandAccent.withValues(alpha: 0.30)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.verified_rounded, size: 13, color: t.brandAccent),
+            const SizedBox(width: 4),
+            Text('לקוח מאומת',
+                style: t.labelSmall.copyWith(
+                  color: t.brandAccent,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 10.5,
+                )),
+          ],
+        ),
+      ),
     );
   }
 }

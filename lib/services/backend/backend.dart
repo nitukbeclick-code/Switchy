@@ -160,12 +160,18 @@ class ReviewInput {
     required this.overall,
     required this.subRatings,
     this.text = '',
+    this.isVerifiedCustomer = false,
   });
 
   final String provider;
   final int overall; // 1..5
   final Map<String, int> subRatings; // price/service/coverage/speed → 0..5
   final String text;
+
+  /// True when the reviewer was verified as a real customer
+  /// (`provider_reviews.is_verified_customer`). Write-side only on the server;
+  /// the client reads it to badge trustworthy reviews.
+  final bool isVerifiedCustomer;
 
   Map<String, dynamic> toRow() => {
         'provider': provider,
@@ -254,6 +260,7 @@ class CommunityReply {
     this.mediaType,
     this.media,
     this.mediaDurationMs,
+    this.isFlagged = false,
   });
 
   final String id;
@@ -265,6 +272,45 @@ class CommunityReply {
   final String? mediaType;
   final String? media;
   final int? mediaDurationMs;
+
+  /// True when a moderator flagged the reply (`community_replies.is_flagged`).
+  final bool isFlagged;
+}
+
+/// A community notification (maps to `community_notifications`) — someone
+/// replied, mentioned the user, or a moderator flagged their content.
+class CommunityNotification {
+  const CommunityNotification({
+    required this.id,
+    required this.kind,
+    this.postId,
+    this.replyId,
+    this.actor,
+    this.readAt,
+    required this.createdAt,
+  });
+
+  final String id;
+  final String kind; // 'reply' | 'mention' | 'flag'
+  final String? postId;
+  final String? replyId;
+  final String? actor;
+  final DateTime? readAt;
+  final DateTime createdAt;
+
+  bool get isRead => readAt != null;
+
+  factory CommunityNotification.fromJson(Map<String, dynamic> r) =>
+      CommunityNotification(
+        id: r['id'] as String,
+        kind: r['kind'] as String,
+        postId: r['post_id'] as String?,
+        replyId: r['reply_id'] as String?,
+        actor: r['actor'] as String?,
+        readAt: DateTime.tryParse(r['read_at'] as String? ?? ''),
+        createdAt:
+            DateTime.tryParse(r['created_at'] as String? ?? '') ?? DateTime.now(),
+      );
 }
 
 /// The app's data backend — the seam between the UI and where shared data lives.
@@ -363,4 +409,20 @@ abstract interface class Backend {
   Future<Set<String>> likedPostIds();
   Future<void> setBookmark(String postId, bool bookmarked);
   Future<Set<String>> bookmarkedPostIds();
+
+  // ── Moderation & notifications ───────────────────────────────────────────────
+  /// Reports a post or reply for moderation (inserts a `community_reports` row as
+  /// the current user). [targetType] is 'post' | 'reply'.
+  Future<void> reportContent({
+    required String targetType,
+    required String targetId,
+    required String reason,
+    String? body,
+  });
+
+  /// The user's own community notifications, newest first.
+  Future<List<CommunityNotification>> fetchCommunityNotifications();
+
+  /// Marks all of the user's unread community notifications as read.
+  Future<void> markCommunityNotificationsRead();
 }

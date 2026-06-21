@@ -208,9 +208,21 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                       style: ffTheme.bodyLarge.copyWith(color: ffTheme.secondary, fontWeight: FontWeight.w700))
                       .animate().fadeIn(delay: 450.ms),
                   const SizedBox(height: 10),
-                  Text('המעבר הושלם בהצלחה. חיסכון שנתי של ₪${planSaveYear(plan, appState.currentBill(plan.cat))} כבר מתחיל!',
+                  RichText(
+                    textAlign: TextAlign.center,
+                    text: TextSpan(
                       style: ffTheme.bodyMedium.copyWith(color: Colors.white.withValues(alpha: 0.8)),
-                      textAlign: TextAlign.center).animate().fadeIn(delay: 550.ms),
+                      children: [
+                        const TextSpan(text: 'המעבר הושלם בהצלחה. חיסכון שנתי של '),
+                        TextSpan(
+                          text: '₪${planSaveYear(plan, appState.currentBill(plan.cat))}',
+                          style: ffTheme.bodyMedium.copyWith(
+                              color: ffTheme.saving, fontWeight: FontWeight.w800),
+                        ),
+                        const TextSpan(text: ' כבר מתחיל!'),
+                      ],
+                    ),
+                  ).animate().fadeIn(delay: 550.ms),
                 ] else ...[
                   const SizedBox(height: 10),
                   Text('המעבר הושלם בהצלחה!',
@@ -295,10 +307,13 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
+                        // The expected saving is the VALUE figure → amber, with a
+                        // soft amber shimmer (respects the platform reduce-motion
+                        // flag, like every other animation in the app).
                         Text(
                           '₪${planSaveYear(plan, appState.currentBill(plan.cat))}',
-                          style: ffTheme.displaySmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w800),
-                        ).animate(onPlay: (c) => c.repeat()).shimmer(duration: 2000.ms, color: ffTheme.secondary.withValues(alpha: 0.4)),
+                          style: ffTheme.displaySmall.copyWith(color: ffTheme.savingDark, fontWeight: FontWeight.w800),
+                        ).animate(onPlay: (c) => c.repeat()).shimmer(duration: 2000.ms, color: ffTheme.saving.withValues(alpha: 0.5)),
                         const SizedBox(width: 6),
                         Padding(
                           padding: const EdgeInsets.only(bottom: 4),

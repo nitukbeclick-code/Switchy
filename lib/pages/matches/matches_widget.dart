@@ -100,12 +100,9 @@ class MatchesWidget extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topRight,
-          end: Alignment.bottomLeft,
-          colors: [ffTheme.primaryDark, ffTheme.tertiary],
-        ),
-        borderRadius: BorderRadius.circular(20),
+        gradient: ffTheme.brandGradient,
+        borderRadius: BorderRadius.circular(ffTheme.radiusXl),
+        boxShadow: ffTheme.shadowLifted,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -113,15 +110,23 @@ class MatchesWidget extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
             decoration: BoxDecoration(
-              color: AppColors.secondary,
-              borderRadius: BorderRadius.circular(8),
+              color: Colors.white.withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(ffTheme.radiusXs),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
             ),
-            child: Text(
-              '✦ דאשבורד חכם',
-              style: ffTheme.labelSmall.copyWith(
-                color: AppColors.primary,
-                fontWeight: FontWeight.w700,
-              ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.auto_awesome_rounded, size: 12, color: ffTheme.saving),
+                const SizedBox(width: 5),
+                Text(
+                  'דאשבורד חכם',
+                  style: ffTheme.labelSmall.copyWith(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 14),
@@ -145,8 +150,9 @@ class MatchesWidget extends StatelessWidget {
                     return Text(
                       personalized ? disp : '~$disp',
                       style: ffTheme.displaySmall.copyWith(
-                        color: AppColors.secondary,
+                        color: ffTheme.saving,
                         fontWeight: FontWeight.bold,
+                        fontFeatures: const [FontFeature.tabularFigures()],
                       ),
                     );
                   },
@@ -155,7 +161,7 @@ class MatchesWidget extends StatelessWidget {
                 Text(
                   savingDisplay,
                   style: ffTheme.displaySmall.copyWith(
-                    color: AppColors.secondary,
+                    color: Colors.white,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -240,6 +246,7 @@ class MatchesWidget extends StatelessWidget {
                     color: Colors.white,
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
+                    fontFeatures: const [FontFeature.tabularFigures()],
                   ),
                 ),
               ),
@@ -269,13 +276,22 @@ class MatchesWidget extends StatelessWidget {
                     ),
                     if (topReason != null) ...[
                       const SizedBox(height: 6),
-                      Text(
-                        topReason,
-                        style: ffTheme.labelSmall.copyWith(
-                          color: ffTheme.primary,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 11,
-                        ),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(Icons.check_circle_rounded, size: 13, color: ffTheme.primary),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              topReason,
+                              style: ffTheme.labelSmall.copyWith(
+                                color: ffTheme.primary,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                     if (match.annualSaving > 0) ...[
@@ -284,7 +300,9 @@ class MatchesWidget extends StatelessWidget {
                         value: personalized
                             ? '₪${match.annualSaving}'
                             : '~₪${match.annualSaving}',
-                        label: personalized ? 'לשנה' : 'הערכה לשנה',
+                        label: personalized ? 'חיסכון לשנה' : 'הערכה לשנה',
+                        backgroundColor: AppColors.saving.withValues(alpha: 0.14),
+                        textColor: AppColors.savingDark,
                       ),
                     ],
                   ],
@@ -299,11 +317,34 @@ class MatchesWidget extends StatelessWidget {
                     style: ffTheme.titleLarge.copyWith(
                       color: ffTheme.primary,
                       fontWeight: FontWeight.w800,
+                      fontFeatures: const [FontFeature.tabularFigures()],
                     ),
                   ),
                   Text(
                     priceLabel,
                     style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: ffTheme.accent1,
+                      borderRadius: BorderRadius.circular(ffTheme.radiusSm),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'פרטים',
+                          style: ffTheme.labelSmall.copyWith(
+                            color: ffTheme.primary,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(width: 2),
+                        Icon(Icons.arrow_back_ios_new_rounded, size: 10, color: ffTheme.primary),
+                      ],
+                    ),
                   ),
                 ],
               ),

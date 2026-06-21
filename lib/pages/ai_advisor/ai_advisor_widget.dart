@@ -181,21 +181,21 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
       backgroundColor: ffTheme.background,
       appBar: AppBar(
         flexibleSpace: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(colors: [ffTheme.primary, ffTheme.tertiary]),
-          ),
+          decoration: BoxDecoration(gradient: ffTheme.accentGradient),
         ),
         title: Row(
           children: [
             ExcludeSemantics(
               child: Container(
-                width: 32,
-                height: 32,
+                width: 34,
+                height: 34,
                 decoration: BoxDecoration(
-                  color: ffTheme.secondary,
-                  borderRadius: BorderRadius.circular(8),
+                  color: Colors.white.withValues(alpha: 0.18),
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Center(child: Text('✦', style: TextStyle(fontSize: 16))),
+                child: const Center(
+                  child: Icon(Icons.auto_awesome_rounded, size: 18, color: Colors.white),
+                ),
               ),
             ),
             const SizedBox(width: 10),
@@ -208,9 +208,14 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
                     Container(
                       width: 8,
                       height: 8,
-                      decoration: const BoxDecoration(color: Color(0xFF111827), shape: BoxShape.circle),
-                    ).animate(onPlay: (c) => c.repeat(reverse: true))
-                      .scale(begin: const Offset(1, 1), end: const Offset(1.3, 1.3), duration: 800.ms),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(color: Colors.white.withValues(alpha: 0.6), blurRadius: 6),
+                        ],
+                      ),
+                    ),
                     const SizedBox(width: 4),
                     Text('מחובר עכשיו', style: GoogleFonts.assistant(fontSize: 11, color: Colors.white70)),
                   ],
@@ -281,20 +286,32 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
                 itemCount: quickStarts.length,
                 itemBuilder: (ctx, i) {
                   final q = quickStarts[i];
-                  return GestureDetector(
-                    onTap: () => _send(q),
-                    child: Container(
-                      alignment: Alignment.center,
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: ffTheme.alternate),
-                        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 4, offset: const Offset(0, 1))],
+                  return Semantics(
+                    button: true,
+                    label: q,
+                    child: GestureDetector(
+                      onTap: () => _send(q),
+                      child: Container(
+                        alignment: Alignment.center,
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: ffTheme.brandAccentTint,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: ffTheme.brandAccent.withValues(alpha: 0.22)),
+                        ),
+                        child: Text(
+                          q,
+                          style: ffTheme.labelMedium.copyWith(
+                            color: ffTheme.brandAccent,
+                            fontWeight: FontWeight.w700,
+                          ),
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
-                      child: Text(q, style: ffTheme.labelMedium, textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
                     ),
-                  );
+                  ).animate(delay: (i.clamp(0, 6) * 30).ms).fadeIn(duration: 240.ms).slideY(begin: 0.1, end: 0);
                 },
               ),
             ).animate().fadeIn(duration: 500.ms),
@@ -320,7 +337,7 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
                         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide(color: ffTheme.alternate)),
                         enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide(color: ffTheme.alternate)),
-                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide(color: ffTheme.primary, width: 1.5)),
+                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide(color: ffTheme.brandAccent, width: 1.5)),
                         filled: true,
                         fillColor: ffTheme.background,
                       ),
@@ -335,11 +352,12 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
                     child: GestureDetector(
                       onTap: () => _send(_inputCtrl.text),
                       child: Container(
-                        width: 44,
-                        height: 44,
+                        width: 46,
+                        height: 46,
                         decoration: BoxDecoration(
-                          color: ffTheme.primary,
+                          gradient: ffTheme.accentGradient,
                           shape: BoxShape.circle,
+                          boxShadow: ffTheme.shadowAccent,
                         ),
                         child: const Icon(Icons.send_rounded, color: Colors.white, size: 20),
                       ),
@@ -387,13 +405,15 @@ class _MessageBubble extends StatelessWidget {
                   constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   decoration: BoxDecoration(
-                    color: ffTheme.accent1,
+                    color: ffTheme.secondaryBackground,
                     borderRadius: const BorderRadius.only(
                       topLeft: Radius.circular(18),
                       topRight: Radius.circular(18),
                       bottomLeft: Radius.circular(4),
                       bottomRight: Radius.circular(18),
                     ),
+                    border: Border.all(color: ffTheme.alternate.withValues(alpha: 0.10)),
+                    boxShadow: ffTheme.shadowSoft,
                   ),
                   child: Text(msg.text, style: ffTheme.bodyMedium.copyWith(height: 1.5), textDirection: TextDirection.rtl),
                 ),
@@ -402,13 +422,14 @@ class _MessageBubble extends StatelessWidget {
                   constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   decoration: BoxDecoration(
-                    color: ffTheme.primary,
+                    gradient: ffTheme.accentGradient,
                     borderRadius: const BorderRadius.only(
                       topLeft: Radius.circular(18),
                       topRight: Radius.circular(18),
                       bottomLeft: Radius.circular(18),
                       bottomRight: Radius.circular(4),
                     ),
+                    boxShadow: ffTheme.shadowAccent,
                   ),
                   child: Text(msg.text, style: ffTheme.bodyMedium.copyWith(color: Colors.white, height: 1.5), textDirection: TextDirection.rtl),
                 ),
@@ -425,45 +446,54 @@ class _MessageBubble extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                GestureDetector(
-                  onTap: () {
-                    Provider.of<AppState>(context, listen: false).setCategory(msg.cat);
-                    context.pushNamed('Results');
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: ffTheme.primary.withValues(alpha: 0.3)),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text('ראה הכל', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w600)),
-                        const SizedBox(width: 4),
-                        Icon(Icons.arrow_back_ios_rounded, size: 11, color: ffTheme.primary),
-                      ],
+                Semantics(
+                  button: true,
+                  label: 'ראה את כל המסלולים',
+                  child: GestureDetector(
+                    onTap: () {
+                      Provider.of<AppState>(context, listen: false).setCategory(msg.cat);
+                      context.pushNamed('Results');
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                      decoration: BoxDecoration(
+                        color: ffTheme.brandAccentTint,
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: ffTheme.brandAccent.withValues(alpha: 0.3)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text('ראה הכל', style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccent, fontWeight: FontWeight.w700)),
+                          const SizedBox(width: 4),
+                          Icon(Icons.arrow_back_ios_rounded, size: 11, color: ffTheme.brandAccent),
+                        ],
+                      ),
                     ),
                   ),
                 ),
                 if (msg.planId != null) ...[
                   const SizedBox(width: 8),
-                  GestureDetector(
-                    onTap: () => context.pushNamed('Lead', pathParameters: {'planId': msg.planId!}, queryParameters: {'source': 'advisor'}),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                      decoration: BoxDecoration(
-                        color: ffTheme.primary,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.phone_forwarded_rounded, size: 13, color: Colors.white),
-                          const SizedBox(width: 5),
-                          Text('דבר עם נציג', style: ffTheme.labelSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
-                        ],
+                  Semantics(
+                    button: true,
+                    label: 'דבר עם נציג',
+                    child: GestureDetector(
+                      onTap: () => context.pushNamed('Lead', pathParameters: {'planId': msg.planId!}, queryParameters: {'source': 'advisor'}),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                        decoration: BoxDecoration(
+                          gradient: ffTheme.accentGradient,
+                          borderRadius: BorderRadius.circular(20),
+                          boxShadow: ffTheme.shadowAccent,
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.phone_forwarded_rounded, size: 13, color: Colors.white),
+                            const SizedBox(width: 5),
+                            Text('דבר עם נציג', style: ffTheme.labelSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -491,8 +521,14 @@ class _TypingBubble extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
-              color: ffTheme.accent1,
-              borderRadius: BorderRadius.circular(18),
+              color: ffTheme.secondaryBackground,
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(18),
+                topRight: Radius.circular(18),
+                bottomLeft: Radius.circular(4),
+                bottomRight: Radius.circular(18),
+              ),
+              boxShadow: ffTheme.shadowSoft,
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -500,7 +536,7 @@ class _TypingBubble extends StatelessWidget {
                 width: 8,
                 height: 8,
                 margin: EdgeInsets.only(left: i > 0 ? 4 : 0),
-                decoration: BoxDecoration(color: ffTheme.primary, shape: BoxShape.circle),
+                decoration: BoxDecoration(color: ffTheme.brandAccent, shape: BoxShape.circle),
               ).animate(onPlay: (c) => c.repeat())
                 .fadeIn(delay: (i * 200).ms, duration: 300.ms)
                 .then()

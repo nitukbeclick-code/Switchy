@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../theme/app_theme.dart';
@@ -78,10 +79,22 @@ class _QuizWidgetState extends State<QuizWidget> {
         title: Text('שאלון חיסכון', style: ffTheme.titleLarge),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(6),
-          child: LinearProgressIndicator(
-            value: (_step + 1) / 5,
-            backgroundColor: ffTheme.alternate,
-            valueColor: AlwaysStoppedAnimation(ffTheme.primary),
+          child: ClipRRect(
+            borderRadius: const BorderRadius.only(
+              topRight: Radius.circular(3),
+              topLeft: Radius.circular(3),
+            ),
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: 0, end: (_step + 1) / 5),
+              duration: ffTheme.motionMedium,
+              curve: ffTheme.easeOut,
+              builder: (context, value, _) => LinearProgressIndicator(
+                value: value,
+                minHeight: 6,
+                backgroundColor: ffTheme.secondary,
+                valueColor: AlwaysStoppedAnimation(ffTheme.brandAccent),
+              ),
+            ),
           ),
         ),
       ),
@@ -119,7 +132,7 @@ class _QuizWidgetState extends State<QuizWidget> {
                   },
                   width: double.infinity,
                   height: 56,
-                  color: ffTheme.primary,
+                  color: ffTheme.brandAccent,
                   textStyle: ffTheme.titleMedium.copyWith(color: Colors.white),
                   borderRadius: BorderRadius.circular(18),
                 ),
@@ -157,7 +170,7 @@ class _QuizWidgetState extends State<QuizWidget> {
                       },
                       width: double.infinity,
                       height: 56,
-                      color: ffTheme.primary,
+                      color: ffTheme.brandAccent,
                       textStyle: ffTheme.titleMedium.copyWith(color: Colors.white),
                       borderRadius: BorderRadius.circular(18),
                     ),
@@ -271,15 +284,22 @@ class _QuizWidgetState extends State<QuizWidget> {
               IconButton(
                 tooltip: 'הפחת קו',
                 onPressed: () => setState(() { if (_lines > 1) _lines--; }),
-                icon: Icon(Icons.remove_circle_outline_rounded, size: 36, color: ffTheme.primary),
+                icon: Icon(Icons.remove_circle_outline_rounded, size: 36, color: ffTheme.brandAccent),
               ),
               const SizedBox(width: 16),
-              Text('$_lines', style: ffTheme.displaySmall),
+              AnimatedSwitcher(
+                duration: ffTheme.motionFast,
+                transitionBuilder: (child, anim) =>
+                    ScaleTransition(scale: anim, child: child),
+                child: Text('$_lines',
+                    key: ValueKey(_lines),
+                    style: ffTheme.displaySmall.copyWith(color: ffTheme.brandAccent)),
+              ),
               const SizedBox(width: 16),
               IconButton(
                 tooltip: 'הוסף קו',
                 onPressed: () => setState(() { if (_lines < 10) _lines++; }),
-                icon: Icon(Icons.add_circle_outline_rounded, size: 36, color: ffTheme.primary),
+                icon: Icon(Icons.add_circle_outline_rounded, size: 36, color: ffTheme.brandAccent),
               ),
             ],
           ),
@@ -405,7 +425,7 @@ class _QuizWidgetState extends State<QuizWidget> {
             children: [
               Text(
                 '₪${clampedBill.round()}${_cat == 'abroad' ? '' : '/חודש'}',
-                style: ffTheme.displayMedium.copyWith(color: ffTheme.primary),
+                style: ffTheme.displayMedium.copyWith(color: ffTheme.brandAccent),
               ),
               const SizedBox(height: 4),
               Text(
@@ -413,14 +433,21 @@ class _QuizWidgetState extends State<QuizWidget> {
                 style: ffTheme.labelMedium.copyWith(color: ffTheme.secondaryText),
               ),
               const SizedBox(height: 16),
-              Slider(
-                value: clampedBill,
-                min: billCfg.$1,
-                max: billCfg.$2,
-                divisions: billCfg.$3,
-                activeColor: ffTheme.primary,
-                inactiveColor: ffTheme.alternate,
-                onChanged: (v) => setState(() => _currentBill = v),
+              SliderTheme(
+                data: SliderTheme.of(context).copyWith(
+                  trackHeight: 5,
+                  overlayColor: ffTheme.brandAccent.withValues(alpha: 0.12),
+                  thumbColor: ffTheme.brandAccent,
+                ),
+                child: Slider(
+                  value: clampedBill,
+                  min: billCfg.$1,
+                  max: billCfg.$2,
+                  divisions: billCfg.$3,
+                  activeColor: ffTheme.brandAccent,
+                  inactiveColor: ffTheme.secondary,
+                  onChanged: (v) => setState(() => _currentBill = v),
+                ),
               ),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -437,14 +464,17 @@ class _QuizWidgetState extends State<QuizWidget> {
                 children: _budgetPresets(_cat).map((preset) {
                   final active = clampedBill.round() == preset;
                   return GestureDetector(
-                    onTap: () => setState(() => _currentBill = preset.toDouble()),
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      setState(() => _currentBill = preset.toDouble());
+                    },
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 180),
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
                       decoration: BoxDecoration(
-                        color: active ? ffTheme.primary : Colors.white,
+                        color: active ? ffTheme.brandAccent : ffTheme.secondaryBackground,
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: active ? ffTheme.primary : ffTheme.alternate),
+                        border: Border.all(color: active ? ffTheme.brandAccent : ffTheme.alternate),
                       ),
                       child: Text('₪$preset',
                         style: ffTheme.labelMedium.copyWith(
@@ -472,25 +502,36 @@ class _QuizWidgetState extends State<QuizWidget> {
             children: [
               Text(
                 '₪${clampedBudget.round()}${_cat == 'abroad' ? '' : '/חודש'}',
-                style: ffTheme.displayMedium.copyWith(color: ffTheme.primary),
+                style: ffTheme.displayMedium.copyWith(color: ffTheme.brandAccent),
               ),
               const SizedBox(height: 4),
-              Text(
-                '$planCount מסלולים בתקציב זה',
-                style: ffTheme.labelMedium.copyWith(
-                  color: planCount > 0 ? ffTheme.success : ffTheme.error,
-                  fontWeight: FontWeight.w600,
+              AnimatedSwitcher(
+                duration: ffTheme.motionFast,
+                child: Text(
+                  '$planCount מסלולים בתקציב זה',
+                  key: ValueKey(planCount > 0),
+                  style: ffTheme.labelMedium.copyWith(
+                    color: planCount > 0 ? ffTheme.savingDark : ffTheme.error,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
               const SizedBox(height: 16),
-              Slider(
-                value: clampedBudget,
-                min: sliderConfig.$1,
-                max: sliderConfig.$2,
-                divisions: sliderConfig.$3,
-                activeColor: ffTheme.primary,
-                inactiveColor: ffTheme.alternate,
-                onChanged: (v) => setState(() => _budget = v),
+              SliderTheme(
+                data: SliderTheme.of(context).copyWith(
+                  trackHeight: 5,
+                  overlayColor: ffTheme.brandAccent.withValues(alpha: 0.12),
+                  thumbColor: ffTheme.brandAccent,
+                ),
+                child: Slider(
+                  value: clampedBudget,
+                  min: sliderConfig.$1,
+                  max: sliderConfig.$2,
+                  divisions: sliderConfig.$3,
+                  activeColor: ffTheme.brandAccent,
+                  inactiveColor: ffTheme.secondary,
+                  onChanged: (v) => setState(() => _budget = v),
+                ),
               ),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -508,14 +549,17 @@ class _QuizWidgetState extends State<QuizWidget> {
                 children: _budgetPresets(_cat).map((preset) {
                   final active = clampedBudget.round() == preset;
                   return GestureDetector(
-                    onTap: () => setState(() => _budget = preset.toDouble()),
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      setState(() => _budget = preset.toDouble());
+                    },
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 180),
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
                       decoration: BoxDecoration(
-                        color: active ? ffTheme.primary : Colors.white,
+                        color: active ? ffTheme.brandAccent : ffTheme.secondaryBackground,
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: active ? ffTheme.primary : ffTheme.alternate),
+                        border: Border.all(color: active ? ffTheme.brandAccent : ffTheme.alternate),
                       ),
                       child: Text('₪$preset',
                         style: ffTheme.labelMedium.copyWith(
@@ -658,10 +702,32 @@ class _QuizWidgetState extends State<QuizWidget> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          CircularProgressIndicator(color: ffTheme.primary, strokeWidth: 3),
+          Container(
+            width: 72,
+            height: 72,
+            decoration: BoxDecoration(
+              color: ffTheme.brandAccentTint,
+              shape: BoxShape.circle,
+            ),
+            child: Center(
+              child: SizedBox(
+                width: 40,
+                height: 40,
+                child: CircularProgressIndicator(color: ffTheme.brandAccent, strokeWidth: 3),
+              ),
+            ),
+          ).animate(onPlay: (c) => c.repeat(reverse: true)).scale(
+                begin: const Offset(1, 1),
+                end: const Offset(1.06, 1.06),
+                duration: 900.ms,
+                curve: Curves.easeInOut,
+              ),
           const SizedBox(height: 24),
           Text('מנתח את הנתונים…',
-              style: ffTheme.titleMedium.copyWith(color: ffTheme.secondaryText)),
+              style: ffTheme.titleMedium.copyWith(color: ffTheme.primaryText)),
+          const SizedBox(height: 6),
+          Text('מתאים את המסלולים בדיוק לצרכים שלך',
+              style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText)),
         ],
       ),
     );
@@ -674,8 +740,23 @@ class _QuizWidgetState extends State<QuizWidget> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('מצאנו לך התאמה!',
-              style: ffTheme.headlineMedium.copyWith(color: ffTheme.primary)),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: ffTheme.brandAccentTint,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(Icons.auto_awesome_rounded, color: ffTheme.brandAccent, size: 20),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text('מצאנו לך התאמה!',
+                    style: ffTheme.headlineMedium.copyWith(color: ffTheme.brandAccent)),
+              ),
+            ],
+          ),
           const SizedBox(height: 4),
           Text('מבוסס על התשובות שלך',
               style: ffTheme.bodyMedium.copyWith(color: ffTheme.secondaryText)),
@@ -691,13 +772,8 @@ class _QuizWidgetState extends State<QuizWidget> {
               decoration: BoxDecoration(
                 color: ffTheme.secondaryBackground,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: ffTheme.primary, width: 2),
-                boxShadow: [
-                  BoxShadow(
-                      color: ffTheme.primary.withValues(alpha: 0.10),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4))
-                ],
+                border: Border.all(color: ffTheme.brandAccent, width: 2),
+                boxShadow: ffTheme.shadowAccent,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -725,7 +801,7 @@ class _QuizWidgetState extends State<QuizWidget> {
                         children: [
                           Text('₪${top.plan.priceText}',
                               style: ffTheme.headlineSmall
-                                  .copyWith(color: ffTheme.primary, fontWeight: FontWeight.w800)),
+                                  .copyWith(color: ffTheme.brandAccent, fontWeight: FontWeight.w800)),
                           Text(priceUnit,
                               style: ffTheme.labelSmall
                                   .copyWith(color: ffTheme.secondaryText)),
@@ -740,24 +816,31 @@ class _QuizWidgetState extends State<QuizWidget> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
-                          color: ffTheme.primary,
+                          gradient: ffTheme.accentGradient,
                           borderRadius: BorderRadius.circular(20),
                         ),
-                        child: Text('${top.scorePct}% התאמה',
-                            style: ffTheme.labelSmall
-                                .copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.verified_rounded, size: 13, color: Colors.white),
+                            const SizedBox(width: 4),
+                            Text('${top.scorePct}% התאמה',
+                                style: ffTheme.labelSmall
+                                    .copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
+                          ],
+                        ),
                       ),
                       const SizedBox(width: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
-                          color: ffTheme.accent1,
+                          color: ffTheme.brandAccentTint,
                           borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: ffTheme.primary.withValues(alpha: 0.3)),
+                          border: Border.all(color: ffTheme.brandAccent.withValues(alpha: 0.3)),
                         ),
                         child: Text(top.label,
                             style: ffTheme.labelSmall
-                                .copyWith(color: ffTheme.primary, fontWeight: FontWeight.w600)),
+                                .copyWith(color: ffTheme.brandAccent, fontWeight: FontWeight.w700)),
                       ),
                     ],
                   ),
@@ -769,7 +852,7 @@ class _QuizWidgetState extends State<QuizWidget> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Icon(Icons.check_circle_rounded,
-                                  size: 18, color: ffTheme.success),
+                                  size: 18, color: ffTheme.brandAccent),
                               const SizedBox(width: 8),
                               Expanded(
                                   child: Text(r,
@@ -783,14 +866,21 @@ class _QuizWidgetState extends State<QuizWidget> {
                     const SizedBox(height: 10),
                     Container(
                       width: double.infinity,
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
                       decoration: BoxDecoration(
-                        color: ffTheme.success.withValues(alpha: 0.10),
+                        color: ffTheme.saving.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: ffTheme.saving.withValues(alpha: 0.30)),
                       ),
-                      child: Text('חיסכון שנתי של ₪${top.annualSaving}',
-                          style: ffTheme.labelMedium
-                              .copyWith(color: ffTheme.success, fontWeight: FontWeight.w700)),
+                      child: Row(
+                        children: [
+                          Icon(Icons.savings_rounded, size: 16, color: ffTheme.savingDark),
+                          const SizedBox(width: 8),
+                          Text('חיסכון שנתי של ₪${top.annualSaving}',
+                              style: ffTheme.labelMedium
+                                  .copyWith(color: ffTheme.savingDark, fontWeight: FontWeight.w800)),
+                        ],
+                      ),
                     ),
                   ],
                 ],
@@ -808,10 +898,10 @@ class _QuizWidgetState extends State<QuizWidget> {
                 Share.share(
                     'מצאתי מסלול ${top.plan.provider} ב-₪${top.plan.priceText} — ${top.annualSaving > 0 ? 'חוסך ₪${top.annualSaving} בשנה ' : ''}עם חוסך');
               },
-              icon: Icon(Icons.ios_share_rounded, size: 18, color: ffTheme.primary),
+              icon: Icon(Icons.ios_share_rounded, size: 18, color: ffTheme.brandAccent),
               label: Text('שתף',
                   style: ffTheme.labelLarge
-                      .copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+                      .copyWith(color: ffTheme.brandAccent, fontWeight: FontWeight.w700)),
             ),
           ),
 
@@ -849,7 +939,7 @@ class _QuizWidgetState extends State<QuizWidget> {
                         ),
                         Text('₪${alt.plan.priceText}',
                             style: ffTheme.titleMedium
-                                .copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+                                .copyWith(color: ffTheme.brandAccent, fontWeight: FontWeight.w700)),
                         const SizedBox(width: 10),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -922,9 +1012,10 @@ class _ChoiceChip extends StatelessWidget {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: selected ? ffTheme.primary : ffTheme.secondaryBackground,
+          color: selected ? ffTheme.brandAccent : ffTheme.secondaryBackground,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: selected ? ffTheme.primary : ffTheme.alternate, width: 1.5),
+          border: Border.all(color: selected ? ffTheme.brandAccent : ffTheme.alternate, width: 1.5),
+          boxShadow: selected ? ffTheme.shadowAccent : null,
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -959,16 +1050,16 @@ class _RadioTile extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
-          color: selected ? ffTheme.accent1 : ffTheme.secondaryBackground,
+          color: selected ? ffTheme.brandAccentTint : ffTheme.secondaryBackground,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: selected ? ffTheme.primary : ffTheme.alternate, width: selected ? 2 : 1),
+          border: Border.all(color: selected ? ffTheme.brandAccent : ffTheme.alternate, width: selected ? 2 : 1),
         ),
         child: Row(
           children: [
-            Icon(icon, size: 22, color: selected ? ffTheme.primary : ffTheme.primaryText),
+            Icon(icon, size: 22, color: selected ? ffTheme.brandAccent : ffTheme.primaryText),
             const SizedBox(width: 12),
-            Expanded(child: Text(label, style: ffTheme.bodyLarge.copyWith(color: selected ? ffTheme.primary : ffTheme.primaryText))),
-            if (selected) Icon(Icons.check_circle_rounded, color: ffTheme.primary),
+            Expanded(child: Text(label, style: ffTheme.bodyLarge.copyWith(color: selected ? ffTheme.brandAccent : ffTheme.primaryText, fontWeight: selected ? FontWeight.w700 : FontWeight.w500))),
+            if (selected) Icon(Icons.check_circle_rounded, color: ffTheme.brandAccent),
           ],
         ),
       ),

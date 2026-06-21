@@ -230,6 +230,26 @@ class LocalBackend implements Backend {
 
   @override
   Future<Set<String>> bookmarkedPostIds() async => Set.unmodifiable(_bookmarked);
+
+  // ── Moderation & notifications ───────────────────────────────────────────────
+  @override
+  Future<void> reportContent({
+    required String targetType,
+    required String targetId,
+    required String reason,
+    String? body,
+  }) async {
+    // No-op locally — there is no moderation queue on-device.
+  }
+
+  @override
+  Future<List<CommunityNotification>> fetchCommunityNotifications() async =>
+      const [];
+
+  @override
+  Future<void> markCommunityNotificationsRead() async {
+    // No-op locally.
+  }
 }
 
 /// The backend the app talks to. Defaults to on-device storage; `main.dart`

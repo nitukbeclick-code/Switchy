@@ -355,25 +355,29 @@ class _HomeWidgetState extends State<HomeWidget> {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    GestureDetector(
-                      onTap: () {
-                        HapticFeedback.lightImpact();
-                        context.pushNamed('Search');
-                      },
-                      child: Container(
-                        margin: const EdgeInsets.only(top: 8),
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.15),
-                          borderRadius: BorderRadius.circular(ffTheme.radiusMd),
-                          border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
-                        ),
-                        child: Row(
-                          children: [
-                            Icon(Icons.search_rounded, color: Colors.white.withValues(alpha: 0.7), size: 16),
-                            const SizedBox(width: 8),
-                            Text('חפש ספק או מסלול...', style: AppTheme.of(context).bodySmall.copyWith(color: Colors.white.withValues(alpha: 0.65))),
-                          ],
+                    Semantics(
+                      button: true,
+                      label: 'חיפוש ספק או מסלול',
+                      child: GestureDetector(
+                        onTap: () {
+                          HapticFeedback.lightImpact();
+                          context.pushNamed('Search');
+                        },
+                        child: Container(
+                          margin: const EdgeInsets.only(top: 8),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(ffTheme.radiusPill),
+                            border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(Icons.search_rounded, color: Colors.white.withValues(alpha: 0.7), size: 16),
+                              const SizedBox(width: 8),
+                              Text('חפש ספק או מסלול...', style: AppTheme.of(context).bodySmall.copyWith(color: Colors.white.withValues(alpha: 0.65))),
+                            ],
+                          ),
                         ),
                       ),
                     ),
@@ -487,20 +491,26 @@ class _HomeWidgetState extends State<HomeWidget> {
             style: ffTheme.bodySmall.copyWith(color: Colors.white.withValues(alpha: 0.75)),
           ),
           const SizedBox(height: 20),
-          GestureDetector(
-            onTap: () {
-              HapticFeedback.lightImpact();
-              appState.billsPersonalized ? context.goNamed('Results') : context.goNamed('Quiz');
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              decoration: BoxDecoration(
-                color: ffTheme.secondary,
-                borderRadius: BorderRadius.circular(ffTheme.radiusMd),
-              ),
-              child: Text(
-                appState.billsPersonalized ? 'חפש חבילות ←' : 'בדקו כמה תחסכו ←',
-                style: ffTheme.titleSmall.copyWith(color: ffTheme.primaryDark),
+          Semantics(
+            button: true,
+            label: appState.billsPersonalized ? 'חפש חבילות' : 'בדקו כמה תחסכו',
+            child: GestureDetector(
+              onTap: () {
+                HapticFeedback.lightImpact();
+                appState.billsPersonalized ? context.goNamed('Results') : context.goNamed('Quiz');
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 13),
+                decoration: BoxDecoration(
+                  gradient: ffTheme.freshGradient,
+                  borderRadius: BorderRadius.circular(ffTheme.radiusPill),
+                  boxShadow: ffTheme.shadowPrimary,
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+                ),
+                child: Text(
+                  appState.billsPersonalized ? 'חפש חבילות ←' : 'בדקו כמה תחסכו ←',
+                  style: ffTheme.titleSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
+                ),
               ),
             ),
           ),
@@ -688,7 +698,7 @@ class _HomeWidgetState extends State<HomeWidget> {
               final savingsText = isPersonalized
                   ? (save > 0 ? 'תחסוך ₪$save בשנה' : 'מחיר תחרותי')
                   : (cheapest > 0 ? 'מסלולים מ-₪$cheapest' : 'השוואת מחירים');
-              final savingsColor = isPersonalized && save > 0 ? ffTheme.success : ffTheme.primary;
+              final savingsColor = isPersonalized && save > 0 ? ffTheme.savingDark : ffTheme.primary;
 
               return GestureDetector(
                 onTap: () {
@@ -718,7 +728,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                             const Spacer(),
                             Container(
                               width: 6, height: 6,
-                              decoration: BoxDecoration(color: ffTheme.success, shape: BoxShape.circle),
+                              decoration: BoxDecoration(color: ffTheme.primary, shape: BoxShape.circle),
                             ),
                           ],
                         ],
@@ -1070,9 +1080,9 @@ class _HomeWidgetState extends State<HomeWidget> {
                             const SizedBox(height: 3),
                             Row(
                               children: [
-                                Container(width: 5, height: 5, decoration: BoxDecoration(color: ffTheme.success, shape: BoxShape.circle)),
+                                Container(width: 5, height: 5, decoration: BoxDecoration(color: ffTheme.primary, shape: BoxShape.circle)),
                                 const SizedBox(width: 4),
-                                Text('עוקב', style: ffTheme.labelSmall.copyWith(color: ffTheme.success, fontSize: 10)),
+                                Text('עוקב', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontSize: 10, fontWeight: FontWeight.w700)),
                               ],
                             ),
                           ],

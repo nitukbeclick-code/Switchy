@@ -109,7 +109,7 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Your request has been escalated to a human representative'),
+              content: Text('הפנייה שלכם הועברה לנציג אנושי'),
               duration: Duration(seconds: 3),
             ),
           );
@@ -148,18 +148,36 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
     final isEscalated = _ticket?.status == 'human_assigned';
 
     return Scaffold(
+      backgroundColor: theme.background,
       appBar: AppBar(
-        title: const Text('Support'),
+        title: const Text('תמיכה'),
         backgroundColor: theme.primary,
+        foregroundColor: Colors.white,
         elevation: 0,
         actions: [
           if (isEscalated)
             Padding(
-              padding: const EdgeInsets.all(16.0),
+              padding: const EdgeInsetsDirectional.only(end: 12),
               child: Center(
-                child: Text(
-                  'Connected to support',
-                  style: theme.labelSmall.copyWith(color: Colors.white),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: theme.brandAccent.withValues(alpha: 0.18),
+                    borderRadius: BorderRadius.circular(theme.radiusPill),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.headset_mic_rounded, size: 13, color: Colors.white),
+                      const SizedBox(width: 5),
+                      Text(
+                        'מחובר לנציג',
+                        style: theme.labelSmall.copyWith(
+                            color: Colors.white, fontWeight: FontWeight.w700),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -169,11 +187,25 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
         children: [
           if (_error != null)
             Container(
+              width: double.infinity,
+              margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),
               padding: const EdgeInsets.all(12),
-              color: Colors.red.shade100,
-              child: Text(
-                _error!,
-                style: TextStyle(color: Colors.red.shade900),
+              decoration: BoxDecoration(
+                color: theme.error.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(theme.radiusSm),
+                border: Border.all(color: theme.error.withValues(alpha: 0.25)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.error_outline_rounded, size: 18, color: theme.error),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _error!,
+                      style: theme.bodySmall.copyWith(color: theme.error),
+                    ),
+                  ),
+                ],
               ),
             ),
           Expanded(
@@ -201,31 +233,35 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
 
   Widget _buildEmptyState(AppTheme theme) {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.support_agent,
-            size: 48,
-            color: theme.primary.withValues(alpha: 0.3),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Welcome to Support',
-            style: theme.titleMedium,
-          ),
-          const SizedBox(height: 8),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Text(
-              'Ask me anything about your plans or account',
-              textAlign: TextAlign.center,
-              style: theme.bodySmall.copyWith(
-                color: theme.secondary,
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 76,
+              height: 76,
+              decoration: BoxDecoration(
+                gradient: theme.accentGradient,
+                shape: BoxShape.circle,
+                boxShadow: theme.shadowAccent,
               ),
+              child: const Icon(Icons.support_agent_rounded, size: 38, color: Colors.white),
             ),
-          ),
-        ],
+            const SizedBox(height: 18),
+            Text(
+              'ברוכים הבאים לתמיכה',
+              style: theme.titleMedium,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'שאלו אותי כל דבר על התוכניות או החשבון שלכם',
+              textAlign: TextAlign.center,
+              style: theme.bodySmall.copyWith(color: theme.secondaryText),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -234,71 +270,77 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
     final isUser = msg.role == 'user';
     final isHuman = msg.role == 'human';
 
-    Color bgColor;
-    Color textColor;
-    Alignment alignment;
-    BorderRadiusGeometry borderRadius;
+    final TextColorPair colors = isUser
+        ? TextColorPair(null, Colors.white, theme.accentGradient)
+        : isHuman
+            ? TextColorPair(theme.brandAccent.withValues(alpha: 0.10), theme.primaryText, null)
+            : TextColorPair(Colors.white.withValues(alpha: 0.85), theme.primaryText, null);
 
-    if (isUser) {
-      bgColor = theme.primary;
-      textColor = Colors.white;
-      alignment = Alignment.centerRight;
-      borderRadius = const BorderRadius.only(
-        topLeft: Radius.circular(12),
-        topRight: Radius.circular(4),
-        bottomLeft: Radius.circular(12),
-        bottomRight: Radius.circular(12),
-      );
-    } else {
-      bgColor = isHuman ? theme.saving.withValues(alpha: 0.2) : Colors.grey.shade200;
-      textColor = Colors.black87;
-      alignment = Alignment.centerLeft;
-      borderRadius = const BorderRadius.only(
-        topLeft: Radius.circular(4),
-        topRight: Radius.circular(12),
-        bottomLeft: Radius.circular(12),
-        bottomRight: Radius.circular(12),
-      );
-    }
+    final alignment = isUser ? Alignment.centerRight : Alignment.centerLeft;
+    final borderRadius = isUser
+        ? const BorderRadius.only(
+            topLeft: Radius.circular(16),
+            topRight: Radius.circular(4),
+            bottomLeft: Radius.circular(16),
+            bottomRight: Radius.circular(16),
+          )
+        : const BorderRadius.only(
+            topLeft: Radius.circular(4),
+            topRight: Radius.circular(16),
+            bottomLeft: Radius.circular(16),
+            bottomRight: Radius.circular(16),
+          );
 
     return Align(
       alignment: alignment,
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
+        padding: const EdgeInsets.symmetric(vertical: 6),
         child: Column(
           crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
           children: [
+            if (isHuman)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.headset_mic_rounded, size: 12, color: theme.brandAccent),
+                    const SizedBox(width: 4),
+                    Text(
+                      'נציג אנושי',
+                      style: theme.labelSmall.copyWith(
+                        color: theme.brandAccent,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             Container(
               constraints: BoxConstraints(
-                maxWidth: MediaQuery.of(context).size.width * 0.75,
+                maxWidth: MediaQuery.of(context).size.width * 0.78,
               ),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
-                color: bgColor,
+                color: colors.background,
+                gradient: colors.gradient,
                 borderRadius: borderRadius,
+                border: isUser
+                    ? null
+                    : Border.all(color: theme.alternate.withValues(alpha: 0.08)),
+                boxShadow: isUser ? theme.shadowAccent : theme.shadowSoft,
               ),
               child: Text(
                 msg.messageText,
-                style: theme.bodyMedium.copyWith(color: textColor),
+                style: theme.bodyMedium.copyWith(color: colors.text, height: 1.35),
               ),
             ),
-            if (isHuman)
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Text(
-                  'Human Support',
-                  style: theme.labelSmall.copyWith(
-                    color: theme.saving,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
             Padding(
               padding: const EdgeInsets.only(top: 4),
               child: Text(
                 _formatTime(msg.createdAt),
                 style: theme.labelSmall.copyWith(
-                  color: Colors.grey.shade600,
+                  color: theme.secondaryText,
                   fontSize: 10,
                 ),
               ),
@@ -313,104 +355,128 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
     return Align(
       alignment: Alignment.centerLeft,
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
+        padding: const EdgeInsets.symmetric(vertical: 6),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
           decoration: BoxDecoration(
-            color: Colors.grey.shade200,
-            borderRadius: BorderRadius.circular(20),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: List.generate(
-              3,
-              (i) => Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 2),
-                child: ScaleTransition(
-                  scale: Tween<double>(begin: 0.8, end: 1.2)
-                      .animate(
-                        CurvedAnimation(
-                          parent: AlwaysStoppedAnimation(
-                            (DateTime.now().millisecondsSinceEpoch % 600) / 600,
-                          ),
-                          curve: Curves.easeInOut,
-                        ),
-                      ),
-                  child: Container(
-                    width: 6,
-                    height: 6,
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade600,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                ),
-              ),
+            color: Colors.white.withValues(alpha: 0.85),
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(4),
+              topRight: Radius.circular(16),
+              bottomLeft: Radius.circular(16),
+              bottomRight: Radius.circular(16),
             ),
+            border: Border.all(color: theme.alternate.withValues(alpha: 0.08)),
+            boxShadow: theme.shadowSoft,
           ),
+          child: _TypingDots(color: theme.brandAccent),
         ),
       ),
     );
   }
 
   Widget _buildQuickReplies(AppTheme theme) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      child: SingleChildScrollView(
+    return SizedBox(
+      height: 44,
+      child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        child: Row(
-          children: _quickReplies.map((reply) {
-            return Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: InputChip(
-                label: Text(reply, style: theme.labelSmall),
-                onPressed: () => _sendMessage(reply),
-                backgroundColor: theme.primary.withValues(alpha: 0.1),
-                labelStyle: theme.labelSmall.copyWith(color: theme.primary),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        itemCount: _quickReplies.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (context, i) {
+          final reply = _quickReplies[i];
+          return Semantics(
+            button: true,
+            label: reply,
+            child: ActionChip(
+              label: Text(reply),
+              onPressed: () => _sendMessage(reply),
+              backgroundColor: theme.brandAccent.withValues(alpha: 0.08),
+              side: BorderSide(color: theme.brandAccent.withValues(alpha: 0.25)),
+              labelStyle: theme.labelSmall.copyWith(
+                color: theme.brandAccent,
+                fontWeight: FontWeight.w700,
               ),
-            );
-          }).toList(),
-        ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(theme.radiusPill),
+              ),
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              visualDensity: VisualDensity.compact,
+            ),
+          );
+        },
       ),
     );
   }
 
   Widget _buildInputArea(AppTheme theme, bool isEscalated) {
+    final canSend = !_isTyping;
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
       decoration: BoxDecoration(
-        color: Colors.grey.shade50,
+        color: theme.secondaryBackground,
         border: Border(
-          top: BorderSide(color: Colors.grey.shade300),
+          top: BorderSide(color: theme.alternate.withValues(alpha: 0.08)),
         ),
       ),
-      child: Row(
-        children: [
-          Expanded(
-            child: TextField(
-              controller: _inputCtrl,
-              enabled: !isEscalated || _ticket?.status == 'human_assigned',
-              textDirection: TextDirection.rtl,
-              decoration: InputDecoration(
-                hintText: 'Type your message...',
-                hintTextDirection: TextDirection.rtl,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(20),
-                  borderSide: BorderSide(color: Colors.grey.shade300),
+      child: SafeArea(
+        top: false,
+        child: Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _inputCtrl,
+                enabled: !isEscalated || _ticket?.status == 'human_assigned',
+                textDirection: TextDirection.rtl,
+                textInputAction: TextInputAction.send,
+                onSubmitted: canSend ? (v) => _sendMessage(v) : null,
+                decoration: InputDecoration(
+                  hintText: 'כתבו הודעה...',
+                  hintTextDirection: TextDirection.rtl,
+                  filled: true,
+                  fillColor: theme.background,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(theme.radiusPill),
+                    borderSide: BorderSide(color: theme.alternate.withValues(alpha: 0.12)),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(theme.radiusPill),
+                    borderSide: BorderSide(color: theme.alternate.withValues(alpha: 0.12)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(theme.radiusPill),
+                    borderSide: BorderSide(color: theme.brandAccent, width: 1.5),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
                 ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                maxLines: null,
               ),
-              maxLines: null,
             ),
-          ),
-          const SizedBox(width: 8),
-          FloatingActionButton(
-            mini: true,
-            backgroundColor: theme.primary,
-            onPressed: _isTyping ? null : () => _sendMessage(_inputCtrl.text),
-            child: const Icon(Icons.send, color: Colors.white),
-          ),
-        ],
+            const SizedBox(width: 8),
+            Semantics(
+              button: true,
+              label: 'שליחת הודעה',
+              child: AnimatedContainer(
+                duration: theme.motionFast,
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  gradient: canSend ? theme.accentGradient : null,
+                  color: canSend ? null : theme.alternate.withValues(alpha: 0.2),
+                  shape: BoxShape.circle,
+                  boxShadow: canSend ? theme.shadowAccent : null,
+                ),
+                child: IconButton(
+                  tooltip: 'שליחה',
+                  onPressed: canSend ? () => _sendMessage(_inputCtrl.text) : null,
+                  icon: const Icon(Icons.send_rounded),
+                  color: Colors.white,
+                  disabledColor: Colors.white.withValues(alpha: 0.6),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -423,13 +489,78 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
 
     String dateStr;
     if (msgDate == today) {
-      dateStr = 'Today';
+      dateStr = 'היום';
     } else if (msgDate == yesterday) {
-      dateStr = 'Yesterday';
+      dateStr = 'אתמול';
     } else {
       dateStr = '${time.day}/${time.month}';
     }
 
-    return '${time.hour}:${time.minute.toString().padLeft(2, '0')} • $dateStr';
+    final hh = time.hour.toString().padLeft(2, '0');
+    final mm = time.minute.toString().padLeft(2, '0');
+    return '$hh:$mm • $dateStr';
+  }
+}
+
+/// Small value object pairing a bubble's optional fill, optional gradient, and
+/// text colour so the bubble builder stays declarative.
+class TextColorPair {
+  const TextColorPair(this.background, this.text, this.gradient);
+  final Color? background;
+  final Color text;
+  final Gradient? gradient;
+}
+
+/// Three softly pulsing dots used as the assistant "typing…" indicator.
+/// Self-contained so the page's [State] keeps no animation wiring.
+class _TypingDots extends StatefulWidget {
+  const _TypingDots({required this.color});
+  final Color color;
+
+  @override
+  State<_TypingDots> createState() => _TypingDotsState();
+}
+
+class _TypingDotsState extends State<_TypingDots> with SingleTickerProviderStateMixin {
+  late final AnimationController _ctrl =
+      AnimationController(vsync: this, duration: const Duration(milliseconds: 1100))..repeat();
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: 'מקליד…',
+      child: AnimatedBuilder(
+        animation: _ctrl,
+        builder: (context, _) {
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            children: List.generate(3, (i) {
+              final phase = (_ctrl.value - i * 0.18) % 1.0;
+              final t = (1 - (phase * 2 - 1).abs()).clamp(0.0, 1.0);
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 2.5),
+                child: Transform.translate(
+                  offset: Offset(0, -2.5 * t),
+                  child: Container(
+                    width: 7,
+                    height: 7,
+                    decoration: BoxDecoration(
+                      color: widget.color.withValues(alpha: 0.4 + 0.6 * t),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+              );
+            }),
+          );
+        },
+      ),
+    );
   }
 }

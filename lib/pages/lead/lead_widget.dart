@@ -264,24 +264,29 @@ class _LeadWidgetState extends State<LeadWidget> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: ffTheme.accent1,
+        color: ffTheme.brandAccentTint,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: ffTheme.primary.withValues(alpha: 0.3)),
+        border: Border.all(color: ffTheme.brandAccent.withValues(alpha: 0.3)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
+          // Live "we're open" dot — a gentle breathing glow, green = available.
           Container(
             width: 8, height: 8,
-            decoration: BoxDecoration(color: ffTheme.primary, shape: BoxShape.circle),
+            decoration: BoxDecoration(
+              color: ffTheme.brandAccent,
+              shape: BoxShape.circle,
+              boxShadow: [BoxShadow(color: ffTheme.brandAccent.withValues(alpha: 0.5), blurRadius: 6, spreadRadius: 1)],
+            ),
           ).animate(onPlay: (c) => c.repeat(reverse: true))
-            .scale(begin: const Offset(1, 1), end: const Offset(1.5, 1.5), duration: 700.ms),
+            .scale(begin: const Offset(1, 1), end: const Offset(1.4, 1.4), duration: 900.ms, curve: Curves.easeInOut),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
               'שלחו פרטים ונציג יחזור אליכם בהקדם — בימי א׳–ה׳, 9:00–21:00',
               style: ffTheme.labelMedium.copyWith(
-                color: ffTheme.primary,
+                color: ffTheme.brandAccent,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -324,11 +329,15 @@ class _LeadWidgetState extends State<LeadWidget> {
               if (saveYear > 0)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(color: ffTheme.secondary, borderRadius: BorderRadius.circular(10)),
+                  decoration: BoxDecoration(
+                    color: ffTheme.saving.withValues(alpha: 0.14),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: ffTheme.saving.withValues(alpha: 0.35)),
+                  ),
                   child: Column(
                     children: [
-                      Text('חוסך', style: ffTheme.labelSmall.copyWith(color: ffTheme.primaryDark)),
-                      Text('₪$saveYear/שנה', style: ffTheme.titleSmall.copyWith(color: ffTheme.primaryDark, fontWeight: FontWeight.w800)),
+                      Text('חוסך', style: ffTheme.labelSmall.copyWith(color: ffTheme.savingDark)),
+                      Text('₪$saveYear/שנה', style: ffTheme.titleSmall.copyWith(color: ffTheme.savingDark, fontWeight: FontWeight.w800)),
                     ],
                   ),
                 ),
@@ -340,19 +349,19 @@ class _LeadWidgetState extends State<LeadWidget> {
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: ffTheme.primary.withValues(alpha: 0.08),
+                color: ffTheme.saving.withValues(alpha: 0.10),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.savings_rounded, size: 15, color: ffTheme.primary),
+                  Icon(Icons.savings_rounded, size: 15, color: ffTheme.savingDark),
                   const SizedBox(width: 6),
                   Flexible(
                     child: Text(
                       'כ-₪${(saveYear / 12).round()} חיסכון בחודש הראשון!',
-                      style: ffTheme.labelMedium.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700),
+                      style: ffTheme.labelMedium.copyWith(color: ffTheme.savingDark, fontWeight: FontWeight.w700),
                       textAlign: TextAlign.center,
                     ),
                   ),
@@ -383,10 +392,10 @@ class _LeadWidgetState extends State<LeadWidget> {
               margin: EdgeInsets.only(right: opt.$1 != 'tomorrow' ? 8 : 0),
               padding: const EdgeInsets.symmetric(vertical: 10),
               decoration: BoxDecoration(
-                color: selected ? ffTheme.primary : Colors.white,
+                color: selected ? ffTheme.brandAccent : Colors.white,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: selected ? ffTheme.primary : ffTheme.alternate, width: selected ? 1.5 : 1),
-                boxShadow: selected ? [BoxShadow(color: ffTheme.primary.withValues(alpha: 0.2), blurRadius: 8, offset: const Offset(0, 2))] : [],
+                border: Border.all(color: selected ? ffTheme.brandAccent : ffTheme.alternate, width: selected ? 1.5 : 1),
+                boxShadow: selected ? [BoxShadow(color: ffTheme.brandAccent.withValues(alpha: 0.28), blurRadius: 10, offset: const Offset(0, 3))] : [],
               ),
               child: Column(
                 children: [
@@ -435,7 +444,7 @@ class _LeadWidgetState extends State<LeadWidget> {
       fillColor: Colors.white,
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.alternate)),
       enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.alternate)),
-      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.primary, width: 1.5)),
+      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.brandAccent, width: 1.5)),
       errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.error)),
       focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.error, width: 1.5)),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -470,7 +479,7 @@ class _TimelineStep extends StatelessWidget {
           children: [
             Container(
               width: 28, height: 28,
-              decoration: BoxDecoration(color: ffTheme.primary, shape: BoxShape.circle),
+              decoration: BoxDecoration(gradient: ffTheme.accentGradient, shape: BoxShape.circle),
               child: Center(child: Text('$step', style: ffTheme.labelSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w800))),
             ),
             if (!isLast)
@@ -505,7 +514,7 @@ class _TrustBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Icon(icon, color: ffTheme.primary, size: 22),
+        Icon(icon, color: ffTheme.brandAccent, size: 22),
         const SizedBox(height: 4),
         Text(label, style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText)),
       ],

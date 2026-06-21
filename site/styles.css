@@ -32,10 +32,11 @@
   --ink-050: #F0F2F4;
 
   /* Refined accent system — color used with intent over the ink/glass base.
-     Indigo = action (CTAs, links, active, focus). Amber = value/savings. */
-  --accent: #4F46E5;        /* indigo — primary action */
-  --accent-d: #3730A3;      /* deep indigo for gradient depth */
-  --accent-t: #EEF0FB;      /* light indigo surface tint */
+     Green = action (CTAs, links, active, focus), matching the Switchy logo.
+     Amber = value/savings. */
+  --accent: #16A34A;        /* brand green — primary action */
+  --accent-d: #15803D;      /* deep green for gradient depth + hover */
+  --accent-t: #DCFCE7;      /* light green surface tint */
   --value: #F59E0B;         /* amber — savings / value emphasis */
   --value-d: #D97706;
 
@@ -49,12 +50,12 @@
   --shadow: 0 2px 6px rgba(15,27,34,.05), 0 14px 38px rgba(15,27,34,.09);
   --shadow-lg: 0 6px 16px rgba(15,27,34,.08), 0 30px 70px rgba(15,27,34,.16);
   --shadow-ink: 0 10px 24px rgba(17,24,39,.26), 0 2px 6px rgba(17,24,39,.18);
-  /* Focus rings — a two-layer ring (white inner gap + indigo halo) so the
+  /* Focus rings — a two-layer ring (white inner gap + green halo) so the
      outline reads cleanly on both light glass and the dark ink bands. The
      value variant is for amber "best/value" controls. */
-  --ring: 0 0 0 2px #fff, 0 0 0 5px rgba(79,70,229,.42);   /* focus ring (indigo) */
+  --ring: 0 0 0 2px #fff, 0 0 0 5px rgba(22,163,74,.42);   /* focus ring (green) */
   --ring-value: 0 0 0 2px #fff, 0 0 0 5px rgba(245,158,11,.45);
-  --ring-flush: 0 0 0 3px rgba(79,70,229,.34);   /* no white gap — for borderless/dark contexts */
+  --ring-flush: 0 0 0 3px rgba(22,163,74,.34);   /* no white gap — for borderless/dark contexts */
 
   /* Spacing scale — a single rhythm the whole system can tune against, so
      gaps/padding share one cadence instead of drifting magic numbers. */
@@ -73,7 +74,7 @@
 /* ── Dark theme ───────────────────────────────────────────────────────────
    A refined dark mode that re-skins the SAME token names, so every component
    below inherits it without per-rule overrides. Surfaces become dark ink, text
-   lifts to light; the indigo ACTION and amber VALUE accents are nudged brighter
+   lifts to light; the green ACTION and amber VALUE accents are nudged brighter
    so they stay legible (and clear WCAG AA) against the dark glass. */
 @media (prefers-color-scheme: dark) {
   :root {
@@ -100,9 +101,9 @@
     --ink-100: #2A3340;
     --ink-050: #1B232E;
 
-    --accent: #818CF8;        /* indigo lifted for contrast on dark glass */
-    --accent-d: #6366F1;
-    --accent-t: #20283C;      /* tinted indigo surface */
+    --accent: #4ADE80;        /* green lifted for contrast on dark glass */
+    --accent-d: #22C55E;
+    --accent-t: #0B2A18;      /* tinted green surface */
     --value: #FBBF24;         /* amber lifted */
     --value-d: #F59E0B;
 
@@ -226,15 +227,15 @@ a:not([class]) { text-decoration: underline; text-underline-offset: 2px; text-de
 /* Inset top highlight = the glass edge that makes the gradient read dimensional. */
 .btn--primary {
   background: linear-gradient(165deg, var(--accent), var(--accent-d)); color: #fff;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 10px 24px rgba(79,70,229,.32), 0 2px 6px rgba(55,48,163,.24);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 10px 24px rgba(22,163,74,.32), 0 2px 6px rgba(21,128,61,.24);
 }
-.btn--primary:hover { transform: translateY(-2px); filter: brightness(1.05); box-shadow: inset 0 1px 0 rgba(255,255,255,.22), 0 18px 36px rgba(79,70,229,.4), 0 3px 8px rgba(55,48,163,.26); }
+.btn--primary:hover { transform: translateY(-2px); filter: brightness(1.05); box-shadow: inset 0 1px 0 rgba(255,255,255,.22), 0 18px 36px rgba(22,163,74,.4), 0 3px 8px rgba(21,128,61,.26); }
 /* Keyboard focus keeps the button's depth AND adds the ring halo, so the CTA
    never goes flat when tabbed to (a bare box-shadow would erase its lift). */
-.btn--primary:focus-visible { box-shadow: inset 0 1px 0 rgba(255,255,255,.22), 0 10px 24px rgba(79,70,229,.32), var(--ring); }
+.btn--primary:focus-visible { box-shadow: inset 0 1px 0 rgba(255,255,255,.22), 0 10px 24px rgba(22,163,74,.32), var(--ring); }
 .btn--ghost:focus-visible { box-shadow: inset 0 0 0 1px var(--ink-200), var(--ring); }
 .btn--inverse:focus-visible { box-shadow: inset 0 1px 0 rgba(255,255,255,.6), var(--ring-value); }
-.btn--primary:active { transform: translateY(0) scale(.985); filter: brightness(.97); box-shadow: inset 0 2px 4px rgba(0,0,0,.18), 0 6px 14px rgba(79,70,229,.3); }
+.btn--primary:active { transform: translateY(0) scale(.985); filter: brightness(.97); box-shadow: inset 0 2px 4px rgba(0,0,0,.18), 0 6px 14px rgba(22,163,74,.3); }
 .btn--ghost { background: var(--mint); color: var(--green); box-shadow: inset 0 0 0 1px var(--line); }
 .btn--ghost:hover { background: #fff; transform: translateY(-2px); box-shadow: inset 0 0 0 1px var(--ink-200), var(--shadow-sm); }
 .btn--ghost:active { transform: translateY(0) scale(.985); }
@@ -295,7 +296,7 @@ a:not([class]) { text-decoration: underline; text-underline-offset: 2px; text-de
 /* Compact, quieter nav CTA — it lives on EVERY viewport, so it must not
    compete with the page-level primaries below it. */
 .nav__cta { margin-inline-start: 6px; padding: 9px 16px; font-size: 14px; border-radius: 12px;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 4px 12px rgba(79,70,229,.24); }
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 4px 12px rgba(22,163,74,.24); }
 .nav__toggle { display: none; background: none; border: 0; width: 44px; height: 44px; cursor: pointer; padding: 10px; }
 .nav__toggle span { display: block; height: 2.5px; background: var(--green-d); border-radius: 2px; margin: 4px 0; transition: .25s var(--ease); }
 .nav__toggle[aria-expanded="true"] span:nth-child(1) { transform: translateY(6.5px) rotate(45deg); }
@@ -415,7 +416,7 @@ a.chip:hover { transform: translateY(-2px); border-color: var(--green-2); box-sh
 .section--alt .step { background: var(--cream); }
 .step { box-shadow: var(--shadow-sm); transition: transform .2s var(--ease), box-shadow .2s; }
 .step:hover { transform: translateY(-4px); box-shadow: var(--shadow); }
-.step__num { width: 44px; height: 44px; display: grid; place-items: center; background: linear-gradient(140deg, var(--accent), var(--accent-d)); color: #fff; font-family: 'Rubik'; font-weight: 800; border-radius: 14px; font-size: 19px; margin-bottom: 16px; box-shadow: 0 6px 16px rgba(79,70,229,.32); }
+.step__num { width: 44px; height: 44px; display: grid; place-items: center; background: linear-gradient(140deg, var(--accent), var(--accent-d)); color: #fff; font-family: 'Rubik'; font-weight: 800; border-radius: 14px; font-size: 19px; margin-bottom: 16px; box-shadow: 0 6px 16px rgba(22,163,74,.32); }
 .step h3 { font-size: 19px; color: var(--green-d); margin-bottom: 8px; }
 .step p { color: var(--muted); }
 
@@ -544,7 +545,7 @@ a.chip:hover { transform: translateY(-2px); border-color: var(--green-2); box-sh
 
 /* ── Floating WhatsApp contact (mobile only) ─────────────────────────────────
    Keeps the editorial desktop layout clean; on touch it gives a one-tap line
-   to a human. On-brand indigo "action" (not WhatsApp-green) per the palette. */
+   to a human. On-brand green "action" (not WhatsApp-green) per the palette. */
 .wa-fab { display: none; }
 @media (max-width: 760px) {
   .wa-fab {
@@ -552,7 +553,7 @@ a.chip:hover { transform: translateY(-2px); border-color: var(--green-2); box-sh
     width: 54px; height: 54px; border-radius: 50%;
     display: grid; place-items: center; color: #fff;
     background: linear-gradient(165deg, var(--accent), var(--accent-d));
-    box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 10px 24px rgba(79,70,229,.36), 0 2px 6px rgba(55,48,163,.26);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 10px 24px rgba(22,163,74,.36), 0 2px 6px rgba(21,128,61,.26);
     transition: transform .2s var(--ease-spring), box-shadow .2s var(--ease);
   }
   .wa-fab:active { transform: scale(.94); }
@@ -606,7 +607,7 @@ body:has(.sticky-cta.is-visible) .wa-fab { bottom: 76px; }
 .prose h3 { font-family: 'Rubik'; font-size: 19px; color: var(--green-d); margin: 22px 0 8px; }
 .prose ul { padding-inline-start: 22px; margin: 0 0 18px; }
 .prose li { margin-bottom: 9px; font-size: 17px; color: var(--ink-700); line-height: 1.72; }
-/* Inline links in long-form copy: indigo (action), with an underline that
+/* Inline links in long-form copy: green (action), with an underline that
    thickens on hover — clearly clickable without shouting through the body. */
 .prose a:not([class]) { color: var(--accent); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; transition: text-decoration-thickness .15s, color .15s; }
 .prose a:not([class]):hover { color: var(--accent-d); text-decoration-thickness: 2px; }
@@ -687,7 +688,7 @@ body:has(.sticky-cta.is-visible) .wa-fab { bottom: 76px; }
 .plan__after { display: block; color: var(--muted); font-size: 11px; }
 .plan--hasjump .plan__after { color: #d97706; font-weight: 600; }
 .plan--hasjump .plan__after::before { content: '⚠ '; }
-/* The site's most-repeated CTA (every plan card) — a real indigo tertiary
+/* The site's most-repeated CTA (every plan card) — a real green tertiary
    button: ACTION colour, 44px hit area (negative margin keeps the layout),
    hover pill + arrow nudge, tactile press. */
 .plan__actions { display: flex; align-items: center; gap: 6px; margin-top: 10px; }
@@ -710,7 +711,7 @@ body:has(.sticky-cta.is-visible) .wa-fab { bottom: 76px; }
 .filter-btn { background: var(--white); border: 1px solid var(--line); color: var(--green-d); font-family: 'Rubik'; font-weight: 700; font-size: 14px; padding: 8px 16px; min-height: 44px; display: inline-flex; align-items: center; border-radius: 999px; cursor: pointer; transition: background .15s, color .15s, border-color .15s, transform .15s var(--ease-spring), box-shadow .18s; }
 .filter-btn:hover { transform: translateY(-1px); border-color: var(--ink-300); box-shadow: var(--shadow-sm); }
 .filter-btn:active { transform: scale(.97); }
-/* Selected = indigo, the one "active" language across the site (matches the
+/* Selected = green, the one "active" language across the site (matches the
    nav's aria-current) — was solid ink here and grey one row below. */
 .filter-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
 .filter-search { flex: 1 1 220px; min-width: 0; min-height: 44px; padding: 10px 16px; border: 1px solid var(--line); border-radius: 999px; font-family: 'Assistant'; font-size: 15px; background: var(--white); transition: border-color .15s, box-shadow .15s; }
@@ -985,11 +986,11 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
 /* ╔══════════════════════════════════════════════════════════════════════╗
    ║  DESIGN-SYSTEM COMPONENTS — plan tiers, callouts, TOC, mega-menu,      ║
    ║  toast, field-error, skeleton, advisor, bill-drop, subscribe.         ║
-   ║  Indigo = ACTION, amber = VALUE. RTL-safe, reduced-motion honoured.    ║
+   ║  Green  = ACTION, amber = VALUE. RTL-safe, reduced-motion honoured.    ║
    ╚══════════════════════════════════════════════════════════════════════╝ */
 
 /* ── Plan tiers ────────────────────────────────────────────────────────────
-   Premium = indigo ACTION accent (top stripe + ring); budget = quiet, lighter
+   Premium = green ACTION accent (top stripe + ring); budget = quiet, lighter
    weight; the score badge wears the amber VALUE colour for "best value". */
 .plan--premium { position: relative; border-color: var(--accent); box-shadow: inset 0 1px 0 rgba(255,255,255,.7), 0 0 0 1px var(--accent), var(--shadow); }
 .plan--premium::before {
@@ -1029,7 +1030,7 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
 
 /* ── Table of contents ─────────────────────────────────────────────────────
    A sticky in-article nav with a scrollspy active state. Vertical ink rail on
-   the inline-start; the active link gets the indigo ACTION colour + a marker. */
+   the inline-start; the active link gets the green ACTION colour + a marker. */
 .toc {
   position: sticky; top: 96px; align-self: start;
   font-size: 14px; line-height: 1.5; padding-inline-start: 2px;
@@ -1172,7 +1173,7 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
 
 /* ── Bill-drop (drag/drop upload zone) ─────────────────────────────────────
    A dashed target for dropping/choosing a bill image. .is-dragover lights it
-   indigo; the whole zone is clickable (a label wrapping a hidden file input). */
+   green; the whole zone is clickable (a label wrapping a hidden file input). */
 .bill-drop {
   display: grid; place-items: center; gap: 10px; text-align: center;
   padding: 36px 24px; border: 2px dashed var(--ink-200); border-radius: var(--radius);

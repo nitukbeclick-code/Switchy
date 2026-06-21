@@ -61,15 +61,22 @@ async function resolveCfg(): Promise<Cfg> {
   // Optional: the meeting-host user for S2S calls — some account configurations
   // reject /v2/users/me/... for account-level tokens; '' falls back to 'me'.
   const [zoomHostEmail, m] = pick("zoom_host_email", firstEnv(["ZOOM_HOST_EMAIL"]));
+  // Google Calendar service-account (optional — mirrors the zoom_* pattern). The
+  // SQL side adds these keys to get_lead_notify_config; '' on either disables
+  // calendar event creation (the confirm path stays fail-soft).
+  const [googleServiceAccount, n] = pick("google_service_account_key", firstEnv(["GOOGLE_SERVICE_ACCOUNT_KEY"]));
+  const [googleCalendarId, o] = pick("google_calendar_id", firstEnv(["GOOGLE_CALENDAR_ID"]));
   return {
     tgToken, tgChat, resend, resendFrom, notifyEmail, openai, anthropic, gemini, webhookSecret,
     zoomAccountId, zoomClientId, zoomClientSecret, zoomHostEmail,
+    googleServiceAccount, googleCalendarId,
     allowedUserIds: parseUserIds(allowedCsv),
     src: {
       telegram_bot_token: a, telegram_chat_id: b, resend_api_key: c, resend_from: d,
       leads_notify_email: e, openai_api_key: f, anthropic_api_key: g, gemini_api_key: gg,
       lead_webhook_secret: h, telegram_allowed_user_ids: i,
       zoom_account_id: j, zoom_client_id: k, zoom_client_secret: l, zoom_host_email: m,
+      google_service_account_key: n, google_calendar_id: o,
     },
   };
 }

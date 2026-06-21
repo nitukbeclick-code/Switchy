@@ -62,7 +62,13 @@ export async function createZoomMeeting(
   opts: { topic: string; startsAtIso: string },
 ): Promise<{ join_url: string; id: string } | null> {
   let token = await getZoomToken(cfg);
-  if (!token) return null;
+  if (!token) {
+    // Auth failure is distinct from create failure: getZoomToken already logged
+    // the OAuth status, but this line tells us the create path bailed BEFORE the
+    // API call (vs. a non-OK create below) when reading the logs back.
+    jlog({ at: "createZoomMeeting", ok: false, phase: "auth", error: "no zoom token" });
+    return null;
+  }
   // S2S account tokens may not resolve /users/me in every configuration —
   // prefer an explicit host email when configured.
   const host = encodeURIComponent(cfg.zoomHostEmail || "me");
@@ -78,12 +84,15 @@ export async function createZoomMeeting(
       // cached token revoked/expired early — refresh once and retry
       tokenCache = null;
       token = await getZoomToken(cfg);
-      if (!token) return null;
+      if (!token) {
+        jlog({ at: "createZoomMeeting", ok: false, phase: "auth", error: "token refresh failed after 401" });
+        return null;
+      }
       r = await post(token);
     }
     const j = await r.json().catch(() => ({} as Record<string, unknown>)) as Record<string, unknown>;
     if (!r.ok || !j.join_url) {
-      jlog({ at: "createZoomMeeting", ok: false, status: r.status, error: j.message });
+      jlog({ at: "createZoomMeeting", ok: false, phase: "create", status: r.status, error: j.message ?? j.error });
       return null;
     }
     return { join_url: String(j.join_url), id: String(j.id ?? "") };

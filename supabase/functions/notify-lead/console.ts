@@ -252,9 +252,22 @@ header{position:sticky;top:0;z-index:5;background:linear-gradient(180deg,var(--b
 .h-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
 h1{font-size:20px;font-weight:800;margin:0;letter-spacing:-.4px}
 .rep{font-size:12.5px;color:var(--ink-500);margin-top:2px;font-weight:600}
+.h-actions{display:flex;align-items:center;gap:8px}
+.updated{font-size:11px;color:var(--ink-500);font-weight:600;white-space:nowrap}
 .refresh{width:40px;height:40px;border-radius:12px;border:1px solid var(--line);background:var(--card);
   display:grid;place-items:center;cursor:pointer;font-size:18px;color:var(--ink-700)}
 .refresh:active{transform:scale(.94)}
+.refresh.spin{pointer-events:none}
+.refresh.spin svg,.refresh.spin .ref-ico{animation:rot .8s linear infinite}
+@keyframes rot{to{transform:rotate(360deg)}}
+.health{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 2px}
+.hpill{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;padding:5px 10px;
+  border-radius:999px;border:1px solid var(--line);background:var(--card);color:var(--ink-700)}
+.hpill .dot{width:8px;height:8px;border-radius:50%;flex:none}
+.hpill--ok .dot{background:var(--ok)} .hpill--off .dot{background:var(--danger)}
+.hpill--off{color:var(--ink-500)}
+.btn .spin-ico{display:inline-block;width:13px;height:13px;border:2px solid currentColor;border-top-color:transparent;
+  border-radius:50%;animation:rot .7s linear infinite;vertical-align:-2px}
 .stats{display:flex;gap:8px;margin:12px 0 4px}
 .stat{flex:1;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px 8px;text-align:center}
 .stat b{display:block;font-size:22px;font-weight:800;font-feature-settings:"tnum"}
@@ -310,8 +323,12 @@ h1{font-size:20px;font-weight:800;margin:0;letter-spacing:-.4px}
   <header>
     <div class="h-row">
       <div><h1>לוח הפגישות</h1><div class="rep" id="rep">חוסך · קונסולת נציגים</div></div>
-      <button class="refresh" id="refresh" aria-label="רענון">⟳</button>
+      <div class="h-actions">
+        <span class="updated" id="updated"></span>
+        <button class="refresh" id="refresh" aria-label="רענון הלוח" title="רענון"><span class="ref-ico">⟳</span></button>
+      </div>
     </div>
+    <div class="health" id="health" hidden></div>
     <div class="stats">
       <div class="stat stat--today"><b id="s-today">–</b><span>היום</span></div>
       <div class="stat stat--pending"><b id="s-pending">–</b><span>ממתינות</span></div>
@@ -338,6 +355,9 @@ h1{font-size:20px;font-weight:800;margin:0;letter-spacing:-.4px}
   var initData = tg ? tg.initData : "";
   var board = { today:[], pending:[], week:[], stats:{today:0,pending:0,week:0} };
   var tab = "today";
+  var lastSync = 0;        // epoch ms of the last successful load (0 = never)
+  var loading = false;     // a console-data fetch is in flight
+  var REFRESH_MS = 20000;  // background poll cadence
 
   function api(action, body){
     if (MOCK) return Promise.resolve(MOCK); // local preview
@@ -394,42 +414,114 @@ h1{font-size:20px;font-weight:800;margin:0;letter-spacing:-.4px}
   }
   function setTab(t){ tab=t; [].forEach.call(document.querySelectorAll(".tab"),function(b){b.classList.toggle("on",b.dataset.tab===t);}); render(); }
 
-  function load(){
-    api("console-data").then(function(d){
-      if(!d||!d.ok){ document.getElementById("list").innerHTML=empty(d&&d.error==="unauthorized"?"אין הרשאה — פתחו מתוך הבוט":"שגיאה בטעינה"); return; }
-      board=d; if(d.rep&&d.rep.name) document.getElementById("rep").textContent="שלום "+d.rep.name;
-      if(MOCK) document.getElementById("banner").innerHTML='<div class="banner">תצוגה מקדימה — נתוני דוגמה (ללא טלגרם)</div>';
-      render();
-    }).catch(function(){ document.getElementById("list").innerHTML=empty("שגיאת רשת"); });
+  // ── Integration health strip (BOT-3 adds an integrations object to data) ──
+  // Render only when the object is present; hide gracefully when it's absent so
+  // an older backend never shows an empty/misleading strip.
+  function renderHealth(intg){
+    var box=document.getElementById("health");
+    if(!intg || typeof intg!=="object"){ box.hidden=true; box.innerHTML=""; return; }
+    var rows=[["zoom","Zoom"],["calendar","יומן Google"],["email","אימייל"]];
+    var html="";
+    for(var i=0;i<rows.length;i++){
+      var key=rows[i][0]; if(!(key in intg)) continue;
+      var ok=!!intg[key];
+      html+='<span class="hpill '+(ok?"hpill--ok":"hpill--off")+'"><span class="dot"></span>'+
+        rows[i][1]+" "+(ok?"✓":"✕")+"</span>";
+    }
+    box.innerHTML=html; box.hidden=!html;
   }
 
-  function act(id, action, payload){
+  // "עודכן לפני X" — a relative timestamp that ticks every few seconds.
+  function renderUpdated(){
+    var el=document.getElementById("updated");
+    if(!lastSync){ el.textContent=""; return; }
+    var s=Math.max(0,Math.round((Date.now()-lastSync)/1000)), txt;
+    if(s<5) txt="עודכן הרגע";
+    else if(s<60) txt="עודכן לפני "+s+" ש׳";
+    else { var m=Math.round(s/60); txt="עודכן לפני "+m+" דק׳"; }
+    el.textContent=txt;
+  }
+  setInterval(renderUpdated, 5000);
+
+  function setLoading(on){
+    loading=on;
+    document.getElementById("refresh").classList.toggle("spin",on);
+  }
+
+  function load(){
+    if(loading) return;
+    setLoading(true);
+    api("console-data").then(function(d){
+      setLoading(false);
+      if(!d||!d.ok){ document.getElementById("list").innerHTML=empty(d&&d.error==="unauthorized"?"אין הרשאה — פתחו מתוך הבוט":"שגיאה בטעינה"); return; }
+      board=d; lastSync=Date.now();
+      if(d.rep&&d.rep.name) document.getElementById("rep").textContent="שלום "+d.rep.name;
+      if(MOCK) document.getElementById("banner").innerHTML='<div class="banner">תצוגה מקדימה — נתוני דוגמה (ללא טלגרם)</div>';
+      renderHealth(d.integrations);
+      renderUpdated();
+      render();
+    }).catch(function(){
+      setLoading(false);
+      // Keep the existing board on a transient network blip; only show the
+      // error state on the very first load when there's nothing to show.
+      if(!lastSync) document.getElementById("list").innerHTML=empty("שגיאת רשת");
+    });
+  }
+
+  // Optimistic action: the tapped button is already disabled + spinning by the
+  // caller (the btn arg). We restore it only when we DON'T immediately re-fetch
+  // — on success/needsLink the board reloads and replaces the card wholesale.
+  function act(id, action, payload, btn){
+    function restore(){
+      if(!btn) return;
+      btn.removeAttribute("disabled");
+      if(btn._label!=null){ btn.innerHTML=btn._label; btn._label=null; }
+    }
     api("console-act",{id:id,act:action,payload:payload}).then(function(d){
-      if(!d||!d.ok){ toast((d&&d.error)||"הפעולה נכשלה", true); return; }
-      if(d.needsLink){
-        promptLink(id); return;
-      }
-      toast("בוצע"); load();
-    }).catch(function(){ toast("שגיאת רשת", true); });
+      if(!d||!d.ok){ restore(); toast((d&&d.error)||"הפעולה נכשלה", true); return; }
+      if(d.needsLink){ restore(); promptLink(id); return; }
+      toast("בוצע"); load(); // re-fetch reconciles the optimistic state
+    }).catch(function(){ restore(); toast("שגיאת רשת", true); });
+  }
+  // Disable + swap a button to a spinner so the rep gets instant feedback.
+  function busy(btn, label){
+    if(!btn) return;
+    btn._label=btn.innerHTML;
+    btn.innerHTML='<span class="spin-ico" aria-hidden="true"></span> '+(label||"שולח…");
+    btn.setAttribute("disabled","disabled");
   }
   function promptLink(id){
     var link = window.prompt("הדביקו קישור Zoom לפגישה:");
     if(link) act(id,"sendlink",link.trim());
   }
-  function promptReschedule(id){
+  function promptReschedule(id, btn){
     var v = window.prompt("מועד חדש (YYYY-MM-DD HH:MM):");
-    if(v) act(id,"reschedule",v.trim());
+    if(v){ busy(btn,"מעדכן…"); act(id,"reschedule",v.trim(),btn); }
   }
 
   document.getElementById("refresh").addEventListener("click", load);
   [].forEach.call(document.querySelectorAll(".tab"),function(b){ b.addEventListener("click",function(){ setTab(b.dataset.tab); }); });
   document.getElementById("list").addEventListener("click", function(e){
-    var el=e.target.closest("[data-act]"); if(!el) return;
+    var el=e.target.closest("[data-act]"); if(!el || el.hasAttribute("disabled")) return;
     var id=el.dataset.id, a=el.dataset.act;
-    if(a==="reschedule"){ promptReschedule(id); return; }
+    // prompt-driven acts confirm first, then spin once the rep commits.
+    if(a==="reschedule"){ promptReschedule(id, el); return; }
     if(a==="cancel" && !window.confirm("לבטל את הפגישה?")) return;
-    el.setAttribute("disabled","disabled");
-    act(id,a);
+    busy(el, a==="confirm"?"מאשר…":a==="cancel"?"מבטל…":"שולח…");
+    act(id,a,null,el);
+  });
+
+  // Auto-refresh: poll the board on a steady cadence and whenever the rep
+  // returns to the tab. Skip the poll while a fetch is already in flight or the
+  // page is hidden (saves battery / avoids piling up requests).
+  setInterval(function(){
+    if(MOCK || loading) return;
+    if(document.visibilityState==="hidden") return;
+    load();
+  }, REFRESH_MS);
+  window.addEventListener("focus", function(){ if(!MOCK && !loading) load(); });
+  document.addEventListener("visibilitychange", function(){
+    if(!MOCK && !loading && document.visibilityState==="visible") load();
   });
 
   load();

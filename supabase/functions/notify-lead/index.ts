@@ -22,7 +22,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 // Deploy: supabase functions deploy notify-lead --no-verify-jwt
 // ─────────────────────────────────────────────────────────────────────────────
 
-import type { Lead, MeetingRow, TgUpdate } from "../_shared/types.ts";
+import type { Cfg, Lead, MeetingRow, TgUpdate } from "../_shared/types.ts";
 import { botFullyConfigured, resolveCfgCached, safeEqual, tgWebhookToken } from "../_shared/config.ts";
 import { sendTelegram, tgApi } from "../_shared/telegram.ts";
 import { fetchRows, rpcRows, serviceFetch } from "../_shared/db.ts";
@@ -32,6 +32,7 @@ import { buildHtml, buildText, leadKeyboard } from "../_shared/leads.ts";
 import { buildMeetingText, meetingKeyboard } from "../_shared/meetings.ts";
 import { buildReturningLine, type PriorLead, type PriorMeeting } from "../_shared/agenda.ts";
 import { zoomConfigured } from "../_shared/zoom.ts";
+import { gcalConfigured } from "../_shared/google_calendar.ts";
 import { aiTriage } from "./triage.ts";
 import { BOT_COMMANDS } from "./commands.ts";
 import { handleCallback, handleTeamMessage } from "./callbacks.ts";
@@ -75,6 +76,33 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
+// One compact "are the integrations wired?" object, surfaced both in ?action=health
+// and in the console-data payload (the console health strip renders it). Booleans
+// only — never the secret values themselves.
+export function integrationsStatus(cfg: Cfg): { zoom: boolean; calendar: boolean; email: boolean; telegram: boolean } {
+  return {
+    zoom: zoomConfigured(cfg),
+    calendar: gcalConfigured(cfg),
+    email: !!cfg.resend,
+    telegram: !!cfg.tgToken,
+  };
+}
+
+// Service-role table-grant probe: confirm the function's service-role key can
+// actually read public.leads. A 200 → "ok", a 401/403 → "forbidden" (grants
+// missing), anything else → "error". Fail-soft: never throws into the handler.
+async function leadsGrantProbe(): Promise<"ok" | "forbidden" | "error"> {
+  try {
+    const r = await serviceFetch("/rest/v1/leads?select=id&limit=1", { method: "HEAD" });
+    if (!r) return "error";
+    if (r.ok) return "ok";
+    if (r.status === 401 || r.status === 403) return "forbidden";
+    return "error";
+  } catch (_) {
+    return "error";
+  }
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*", "Access-Control-Allow-Methods": "GET, POST, OPTIONS" } });
@@ -90,9 +118,15 @@ Deno.serve(async (req: Request) => {
       const authed = !!cfg.webhookSecret &&
         (await safeEqual(req.headers.get("x-webhook-secret") ?? "", cfg.webhookSecret));
       const entry = (present: boolean, source: string) => (authed ? { present, source } : { present });
+      // Ops probes (gated): the table-grant check hits the DB with the service
+      // role, so only run + expose it for the authed team — anonymous health
+      // stays a cheap config snapshot.
+      const grant = authed ? await leadsGrantProbe() : undefined;
       return json({
         ok: true,
         function: "notify-lead",
+        integrations: integrationsStatus(cfg),
+        ...(authed ? { leads_table_grant: grant } : {}),
         configured: {
           telegram_bot_token: entry(!!cfg.tgToken, cfg.src.telegram_bot_token),
           telegram_chat_id: entry(!!cfg.tgChat, cfg.src.telegram_chat_id),
@@ -200,7 +234,17 @@ Deno.serve(async (req: Request) => {
   if (action === "console-data") {
     let body: { initData?: string } = {};
     try { body = await req.json(); } catch (_) { /* empty */ }
-    return handleConsoleData(cfg, body.initData ?? "");
+    const res = await handleConsoleData(cfg, body.initData ?? "");
+    // Fold the integrations status into the payload so the console health strip
+    // (BOT-2) can render it. Only merge into a 200 JSON body; pass auth failures
+    // (401, etc.) through untouched.
+    if (res.status === 200) {
+      try {
+        const payload = await res.clone().json() as Record<string, unknown>;
+        return json({ ...payload, integrations: integrationsStatus(cfg) }, res.status);
+      } catch (_) { /* non-JSON body — return as-is */ }
+    }
+    return res;
   }
   if (action === "console-act") {
     let body: { initData?: string; id?: string; act?: string; payload?: string } = {};

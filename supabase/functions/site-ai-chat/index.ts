@@ -252,15 +252,21 @@ function clientIp(req: Request): string {
   return "";
 }
 
-async function rateLimited(ip: string): Promise<boolean> {
-  if (!ip) return false; // fail-open on missing IP — the global 60/hr leads cap is unrelated; best-effort here
+// Tri-state: true = limited (429), false = ok, null = DB error.
+// On a DB error we FAIL-CLOSED (null → 503): this endpoint hits the paid
+// Gemini/Groq/OpenRouter providers, so a Supabase outage must not turn them
+// into an unmetered open relay. Only the "no IP" case stays fail-open.
+async function rateLimited(ip: string): Promise<boolean | null> {
+  if (!ip) return false; // can't limit without an IP — fail-open
   const since = new Date(Date.now() - 60 * 60_000).toISOString();
   const rows = await fetchRows<{ id: string }>(
     `/rest/v1/chat_messages?select=id&ip=eq.${encodeURIComponent(ip)}&created_at=gte.${encodeURIComponent(since)}`,
   );
-  if (rows === null) return false; // table missing / query failed — fail open, don't block real users on infra hiccups
+  if (rows === null) return null; // query failed — fail CLOSED (caller returns 503)
   return rows.length >= PER_IP_HOURLY_LIMIT;
 }
+
+const FRIENDLY_BUSY = "שירות עמוס כרגע, נסו שוב בעוד רגע";
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -287,7 +293,9 @@ Deno.serve(async (req: Request) => {
   const history = Array.isArray(body.history) ? body.history.slice(-MAX_HISTORY_TURNS) : [];
 
   const ip = clientIp(req);
-  if (await rateLimited(ip)) return json({ error: "rate limit exceeded" }, 429);
+  const limited = await rateLimited(ip);
+  if (limited === null) return json({ error: FRIENDLY_BUSY }, 503);
+  if (limited) return json({ error: "rate limit exceeded" }, 429);
 
   const plans = loadPlans();
   const systemPrompt = SYSTEM_PROMPT_HEADER + buildCatalogueContext(plans);

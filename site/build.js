@@ -21,6 +21,17 @@ const CSS_V = assetHash('styles.css');
 const JS_V = assetHash('script.js');
 const CSS_HREF = `styles.css?v=${CSS_V}`;
 const JS_SRC = `script.js?v=${JS_V}`;
+// community.js is authored separately (the community/ratings/auth front-end). It
+// may not exist on a given build yet, so fall back to a stable placeholder hash
+// rather than crashing — the real content-hash kicks in once the file is present.
+const COMMUNITY_JS_V = fs.existsSync(path.join(__dirname, 'community.js'))
+  ? assetHash('community.js')
+  : '00000000';
+// Loaded as a native ES module (community.js uses import/export). Emitted ONLY on
+// the community/ratings/provider pages — after script.js — so the rest of the
+// site stays untouched. `defer` keeps execution after the DOM is parsed.
+const communityScriptTag = () =>
+  `<script type="module" src="community.js?v=${COMMUNITY_JS_V}" defer></script>`;
 
 // ── Cookieless analytics (privacy-respecting, placeholder by default) ────────
 // Plausible-style: no cookies, no cross-site tracking, no personal data. The
@@ -340,6 +351,8 @@ const navHtml = (ctaHref) => `  <a class="skip" href="#main">דלג לתוכן</
         <a href="plans.html">כל החבילות</a>
         <a href="providers.html">ספקים</a>
         <a href="compare.html">השוואה</a>
+        <a href="community.html">קהילה</a>
+        <a href="ratings.html">דירוגים</a>
         <a href="app.html">האפליקציה</a>
         <a href="guides.html">מדריכים</a>
         <a href="index.html#calculator">מחשבון</a>
@@ -351,6 +364,8 @@ const navHtml = (ctaHref) => `  <a class="skip" href="#main">דלג לתוכן</
       <a href="plans.html">כל החבילות</a>
       <a href="providers.html">ספקים</a>
       <a href="compare.html">השוואה</a>
+      <a href="community.html">קהילה</a>
+      <a href="ratings.html">דירוגים</a>
       <a href="app.html">האפליקציה</a>
       <a href="guides.html">מדריכים</a>
       <a href="index.html#calculator">מחשבון</a>
@@ -377,7 +392,7 @@ const footer = `  <footer class="footer">
       </nav>
       <nav class="footer__links footer__col" aria-label="כלים ומדריכים">
         <h4>כלים מומלצים</h4>
-        <a href="compare.html">השוואת מסלולים</a><a href="calc-cellular.html">מחשבון סלולר</a><a href="calc-internet.html">מחשבון אינטרנט</a><a href="providers.html">כל הספקים</a><a href="guide-switching.html">מדריך מעבר ספק</a><a href="guide-number-port.html">ניוד מספר</a>
+        <a href="compare.html">השוואת מסלולים</a><a href="calc-cellular.html">מחשבון סלולר</a><a href="calc-internet.html">מחשבון אינטרנט</a><a href="providers.html">כל הספקים</a><a href="community.html">קהילה</a><a href="ratings.html">דירוגים</a><a href="guide-switching.html">מדריך מעבר ספק</a><a href="guide-number-port.html">ניוד מספר</a>
       </nav>
       <nav class="footer__links footer__col" aria-label="קולקציות פופולריות">
         <h4>חיפושים פופולריים</h4>
@@ -425,6 +440,16 @@ const leadFormHtml = (submitLabel) => `<form class="cta__form" id="leadForm" nov
           </div>
           <button class="btn btn--primary btn--lg" type="submit">${esc(submitLabel)}</button>
         </form>`;
+
+// ── Shared community auth UI ─────────────────────────────────────────────────
+// Emitted on the community/ratings/provider pages (the only places where posting
+// requires a verified account). Two pieces:
+//   • #authStatus — a header slot community.js fills with the logged-in/out state
+//     (logged-out shows a "התחברו" button; logged-in shows the user + sign-out).
+//   • #authModal  — the hidden login dialog (Google/Facebook OAuth + email OTP).
+// All wiring lives in community.js; build.js only emits the static scaffold.
+const authStatusHtml = () => `<div id="authStatus" class="auth-status"></div>`;
+const authModalHtml = () => `<div id="authModal" class="auth-modal" hidden><div class="auth-modal__overlay"></div><div class="auth-modal__panel glass" role="dialog" aria-modal="true" aria-label="התחברות לקהילה"><button id="authModalClose" class="auth-modal__close" aria-label="סגור">×</button><h2>הצטרפו לקהילה</h2><button id="authGoogle" class="btn btn--inverse">המשך עם Google</button><button id="authFacebook" class="btn btn--inverse">המשך עם Facebook</button><div class="auth-sep">או</div><form id="authEmailForm"><input id="authEmail" type="email" required placeholder="המייל שלך" autocomplete="email"><button class="btn btn--primary" type="submit">שלחו לי קוד</button></form><form id="authOtpForm" hidden><input id="authOtp" inputmode="numeric" autocomplete="one-time-code" placeholder="קוד מהמייל"><button id="authOtpVerify" class="btn btn--primary" type="submit">אימות וכניסה</button></form><p id="authMsg" role="status" aria-live="polite"></p><p class="auth-fine">כדי לפרסם בקהילה צריך להתחבר ולאמת — כך שומרים על קהילה נקייה מספאם.</p></div></div>`;
 
 // Offer price for structured data — the exact advertised figure when present,
 // otherwise the rounded int. Always a plain number (schema.org/Offer.price).
@@ -1372,6 +1397,7 @@ ${nav}
     <section class="lead-hero">
       <div class="container">
         <p class="crumbs"><a href="index.html">דף הבית</a> ← <a href="plans.html">כל החבילות</a> ← ${esc(name)}</p>
+        ${authStatusHtml()}
         <div style="margin-bottom:14px">${providerLogo(name, 64)}</div>
         <h1>כל המסלולים של <span class="hl">${esc(name)}</span></h1>
         <p>${plans.length} מסלולים${catNames.length ? ` (${esc(catNames.join(' · '))})` : ''} — החל מ-₪${cheapest}. השוו מחירים ותכונות, ומצאו את המסלול המשתלם ביותר.</p>
@@ -1406,6 +1432,34 @@ ${gHtml}
       </div>
     </section>` : '';
     })()}
+    <section id="providerRatings" class="provider-ratings section section--alt" aria-label="דירוגים וביקורות">
+      <div class="container">
+        <header class="section__head reveal"><span class="eyebrow">דירוגים אמיתיים</span><h2>דירוגים וביקורות על ${esc(name)}</h2></header>
+        <div id="providerStars"></div>
+        <div id="providerReviews"></div>
+        <form id="reviewForm" class="review-form glass" hidden>
+          <div class="star-row star-row--overall">
+            <span class="star-row__label">דירוג כללי</span>
+            <span class="star-input-group" data-field="overall">
+              ${[1, 2, 3, 4, 5].map((v) => `<button type="button" class="star-input" data-field="overall" data-val="${v}" aria-label="${v} כוכבים">★</button>`).join('')}
+            </span>
+          </div>
+          ${[['price', 'מחיר'], ['service', 'שירות'], ['coverage', 'כיסוי'], ['speed', 'מהירות']].map(([field, label]) =>
+            `<div class="star-row">
+            <span class="star-row__label">${esc(label)}</span>
+            <span class="star-input-group" data-field="${field}">
+              ${[1, 2, 3, 4, 5].map((v) => `<button type="button" class="star-input" data-field="${field}" data-val="${v}" aria-label="${esc(label)} ${v} כוכבים">★</button>`).join('')}
+            </span>
+          </div>`).join('\n          ')}
+          <textarea id="reviewBody" placeholder="ספרו על החוויה שלכם עם ${esc(name)}…"></textarea>
+          <button id="reviewSubmit" class="btn btn--primary" type="submit">פרסמו ביקורת</button>
+        </form>
+        <div id="reviewLoginPrompt" class="review-login-prompt" hidden>
+          <p>רוצים לדרג את ${esc(name)}? התחברו כדי לפרסם ביקורת אמיתית.</p>
+          <button id="openAuthBtn" class="btn btn--primary">התחברו כדי לדרג</button>
+        </div>
+      </div>
+    </section>
     <section class="cta" id="cta">
       <div class="container cta__inner reveal">
         <h2>רוצים לעבור ל${esc(name)} — או ממנו?</h2>
@@ -1417,8 +1471,11 @@ ${gHtml}
     </section>
   </main>
 ${footer}
+  ${authModalHtml()}
   ${leadsConfigTag()}
+  <script>window.__PROVIDER__ = { name: ${JSON.stringify(name)}, slug: ${JSON.stringify(providerSlug(name))} };</script>
   <script src="${JS_SRC}" defer></script>
+  ${communityScriptTag()}
 </body>
 </html>
 `;
@@ -1477,6 +1534,126 @@ ${cards}
 ${footer}
   ${leadsConfigTag()}
   <script src="${JS_SRC}" defer></script>
+</body>
+</html>
+`;
+}
+
+// ── Community feed page ──────────────────────────────────────────────────────
+// Static scaffold for the community board; community.js hydrates #communityApp
+// (tabs → channels, composer, feed) and the auth flow at runtime.
+function communityPage() {
+  const url = `${SITE}/community.html`;
+  const title = 'קהילת חוסך — שאלות, חוויות וטיפים על ספקי תקשורת | חוסך';
+  const desc = 'הקהילה של חוסך: שאלות על מעבר ספק, חוויות אמיתיות מלקוחות וטיפים לחיסכון על סלולר, אינטרנט, טלוויזיה וחבילות. שתפו, שאלו וקבלו תשובות.';
+  // og:type 'website' (a hub, not an article); CollectionPage + Breadcrumb
+  // mirror the other plan/hub pages.
+  const jsonld = jsonForScript({ '@context': 'https://schema.org', '@graph': [
+    { '@type': 'BreadcrumbList', itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'דף הבית', item: SITE + '/' },
+      { '@type': 'ListItem', position: 2, name: 'קהילה', item: url },
+    ] },
+    { '@type': 'CollectionPage', name: title, description: desc, url, inLanguage: 'he-IL',
+      isPartOf: { '@id': WEBSITE_ID }, publisher: { '@id': ORG_ID } },
+  ] });
+  // Channels shared between the filter tabs and the composer dropdown — the 4
+  // postable channels plus an "all" view tab (first, active by default).
+  const channels = [['general', 'כללי'], ['switch', 'מעבר ספק'], ['questions', 'שאלות'], ['tips', 'טיפים']];
+  const tabs = [['all', 'הכל'], ...channels]
+    .map(([ch, label], i) => `<button class="community-tab${i === 0 ? ' active' : ''}" data-channel="${ch}">${esc(label)}</button>`)
+    .join('\n            ');
+  const composerOpts = channels.map(([ch, label]) => `<option value="${ch}">${esc(label)}</option>`).join('');
+  return `<!DOCTYPE html>
+<html lang="he" dir="rtl">
+${head(title, desc, url, jsonld, false, 'website')}
+<body id="top">
+${navNoCta}
+  <main id="main">
+    <section class="lead-hero">
+      <div class="container">
+        <p class="crumbs"><a href="index.html">דף הבית</a> ← קהילה</p>
+        ${authStatusHtml()}
+        <h1>קהילת <span class="hl">חוסך</span></h1>
+        <p>שאלות, חוויות אמיתיות וטיפים על ספקי תקשורת — מלקוחות, ללקוחות. שתפו מה עבד לכם, שאלו לפני מעבר, וגלו איפה באמת חוסכים.</p>
+      </div>
+    </section>
+    <section class="section">
+      <div class="container">
+        <section id="communityApp">
+          <div class="community-tabs" role="tablist" aria-label="ערוצי קהילה">
+            ${tabs}
+          </div>
+          <div id="communityComposer" class="community-composer glass">
+            <textarea id="composerBody" placeholder="שתפו שאלה, חוויה או טיפ…"></textarea>
+            <div class="community-composer__row">
+              <select id="composerChannel" aria-label="ערוץ">${composerOpts}</select>
+              <button id="composerSubmit" class="btn btn--primary" type="button">פרסמו</button>
+            </div>
+          </div>
+          <div id="composerLoginPrompt" class="community-composer__login" hidden>
+            <p>רוצים לשתף או לשאול? התחברו כדי לפרסם בקהילה.</p>
+            <button id="openAuthBtn" class="btn btn--primary">התחברו כדי לפרסם</button>
+          </div>
+          <div id="communityFeed"></div>
+        </section>
+      </div>
+    </section>
+  </main>
+${footer}
+  ${authModalHtml()}
+  ${leadsConfigTag()}
+  <script src="${JS_SRC}" defer></script>
+  ${communityScriptTag()}
+</body>
+</html>
+`;
+}
+
+// ── Ratings board page ───────────────────────────────────────────────────────
+// Static scaffold for the cross-provider ratings board; community.js renders
+// #ratingsBoard from window.__PROVIDERS__ + live review data.
+function ratingsPage() {
+  const url = `${SITE}/ratings.html`;
+  const title = 'דירוגי ספקי תקשורת — ביקורות אמיתיות מלקוחות | חוסך';
+  const desc = 'דירוגים וביקורות אמיתיים על ספקי הסלולר, האינטרנט והטלוויזיה בישראל — מחיר, שירות, כיסוי ומהירות. ראו מי באמת מרוצה ובחרו בעיניים פקוחות.';
+  const jsonld = jsonForScript({ '@context': 'https://schema.org', '@graph': [
+    { '@type': 'BreadcrumbList', itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'דף הבית', item: SITE + '/' },
+      { '@type': 'ListItem', position: 2, name: 'דירוגים', item: url },
+    ] },
+    { '@type': 'CollectionPage', name: title, description: desc, url, inLanguage: 'he-IL',
+      isPartOf: { '@id': WEBSITE_ID }, publisher: { '@id': ORG_ID } },
+  ] });
+  // {slug,name} for every provider in the catalogue — community.js uses this to
+  // build the board (and link each row to its provider page).
+  const providers = [...new Set(catalogue.plans.map((p) => p.provider))].sort()
+    .map((name) => ({ slug: providerSlug(name), name }));
+  return `<!DOCTYPE html>
+<html lang="he" dir="rtl">
+${head(title, desc, url, jsonld, false, 'website')}
+<body id="top">
+${navNoCta}
+  <main id="main">
+    <section class="lead-hero">
+      <div class="container">
+        <p class="crumbs"><a href="index.html">דף הבית</a> ← דירוגים</p>
+        ${authStatusHtml()}
+        <h1>דירוגי <span class="hl">ספקי תקשורת</span></h1>
+        <p>ביקורות אמיתיות מלקוחות על כל ספקי התקשורת — מחיר, שירות, כיסוי ומהירות. בחרו ספק כדי לקרוא ולדרג.</p>
+      </div>
+    </section>
+    <section class="section">
+      <div class="container">
+        <div id="ratingsBoard"></div>
+      </div>
+    </section>
+  </main>
+${footer}
+  ${authModalHtml()}
+  ${leadsConfigTag()}
+  <script>window.__PROVIDERS__ = ${jsonForScript(providers)};</script>
+  <script src="${JS_SRC}" defer></script>
+  ${communityScriptTag()}
 </body>
 </html>
 `;
@@ -2078,6 +2255,8 @@ fs.writeFileSync(path.join(__dirname, 'guides.html'), guidesIndexPage());
 fs.writeFileSync(path.join(__dirname, 'plans.html'), plansPage());
 fs.writeFileSync(path.join(__dirname, 'providers.html'), providersIndexPage());
 fs.writeFileSync(path.join(__dirname, 'compare.html'), comparePage());
+fs.writeFileSync(path.join(__dirname, 'community.html'), communityPage());
+fs.writeFileSync(path.join(__dirname, 'ratings.html'), ratingsPage());
 fs.writeFileSync(path.join(__dirname, 'app.html'), appPage());
 fs.writeFileSync(path.join(__dirname, '404.html'), notFoundPage());
 
@@ -2101,6 +2280,8 @@ const locs = [
     `${SITE}/assets/app/shot-home.webp`, `${SITE}/assets/app/shot-results.webp`, `${SITE}/assets/app/shot-meeting.webp`,
   ] },
   { loc: `${SITE}/guides.html`, lastmod: BUILD_DATE, priority: '0.7', changefreq: 'weekly' },
+  { loc: `${SITE}/community.html`, lastmod: BUILD_DATE, priority: '0.7', changefreq: 'weekly' },
+  { loc: `${SITE}/ratings.html`, lastmod: BUILD_DATE, priority: '0.7', changefreq: 'weekly' },
   { loc: `${SITE}/about.html`, lastmod: BUILD_DATE, priority: '0.5', changefreq: 'monthly' },
   ...categories.map((c) => ({ loc: `${SITE}/${c.slug}.html`, lastmod: CATALOGUE_DATE, priority: '0.9', changefreq: 'daily' })),
   ...builtCollections.map((col) => ({ loc: `${SITE}/${col.slug}.html`, lastmod: CATALOGUE_DATE, priority: '0.75', changefreq: 'weekly' })),
@@ -2117,5 +2298,5 @@ ${locs.map((u) => `  <url>\n    <loc>${u.loc}</loc>\n    <lastmod>${u.lastmod}</
 `;
 fs.writeFileSync(path.join(__dirname, 'sitemap.xml'), sitemap);
 
-console.log(`Generated ${categories.length} category + ${builtCollections.length} collections + ${builtCalculators.length} calculators + ${guides.length} guides + ${staticPages.length} static + guides index + plans + providers + 404 + sitemap.xml`);
-console.log(`Asset fingerprints: styles.css?v=${CSS_V}  script.js?v=${JS_V}  (hand-written index.html must reference these same values)`);
+console.log(`Generated ${categories.length} category + ${builtCollections.length} collections + ${builtCalculators.length} calculators + ${guides.length} guides + ${staticPages.length} static + guides index + plans + providers + community + ratings + 404 + sitemap.xml`);
+console.log(`Asset fingerprints: styles.css?v=${CSS_V}  script.js?v=${JS_V}  community.js?v=${COMMUNITY_JS_V}  (hand-written index.html must reference these same values)`);

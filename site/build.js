@@ -7,7 +7,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('node:crypto');
 
-const SITE = 'https://chosech.co.il';
+const SITE = 'https://switchy-ai.com';
 
 // Cache-busting fingerprints: the deploy configs (netlify.toml / vercel.json)
 // serve *.css/*.js with `Cache-Control: immutable` for a year, so every
@@ -29,7 +29,7 @@ const JS_SRC = `script.js?v=${JS_V}`;
 // remote script simply 404s harmlessly; the inline stub still queues calls so
 // `window.plausible('event', …)` from script.js never throws. Conversion
 // events (lead_submit, whatsapp_click) are fired from script.js.
-const ANALYTICS_DOMAIN = 'chosech.co.il';
+const ANALYTICS_DOMAIN = 'switchy-ai.com';
 const ANALYTICS_SRC = 'https://plausible.io/js/script.outbound-links.tagged-events.js';
 const analyticsTag = () =>
   `<!-- Cookieless analytics (Plausible-style). Placeholder until configured — no cookies, no personal data. -->

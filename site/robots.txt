@@ -2,4 +2,4 @@ User-agent: *
 Allow: /
 Disallow: /data/
 
-Sitemap: https://chosech.co.il/sitemap.xml
+Sitemap: https://switchy-ai.com/sitemap.xml

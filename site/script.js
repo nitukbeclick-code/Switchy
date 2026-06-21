@@ -244,7 +244,7 @@
       code = Math.random().toString(36).slice(2, 8);
       try { sessionStorage.setItem('chosechRef', code); } catch (_) { /* best-effort */ }
     }
-    const waText = encodeURIComponent('גיליתי אתר שמשווה מחירי סלולר/אינטרנט/טלוויזיה וחוסך כסף בלי כאב ראש — שווה לבדוק: https://chosech.co.il/?ref=' + code);
+    const waText = encodeURIComponent('גיליתי אתר שמשווה מחירי סלולר/אינטרנט/טלוויזיה וחוסך כסף בלי כאב ראש — שווה לבדוק: https://switchy-ai.com/?ref=' + code);
     const box = document.createElement('p');
     box.id = 'referralShare';
     box.className = 'cta__referral reveal in';

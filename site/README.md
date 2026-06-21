@@ -60,7 +60,7 @@ Search-and-replace these placeholders:
 |-------------|-------|--------|
 | `972505037537` | `index.html` (WhatsApp links) | your WhatsApp business number |
 | `hello@chosech.co.il` | `index.html` footer | your contact email |
-| `https://chosech.co.il/` | `index.html` (canonical/OG/JSON-LD), `robots.txt`, `sitemap.xml` | your real domain |
+| `https://switchy-ai.com/` | `index.html` (canonical/OG/JSON-LD), `robots.txt`, `sitemap.xml` | your real domain |
 | `SAVE_RATE = 0.45` | `script.js` | tune the calculator's "up to" estimate |
 
 ## SEO / technical

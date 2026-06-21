@@ -1007,6 +1007,11 @@ create index if not exists chat_messages_ip_idx on public.chat_messages (ip, cre
 alter table public.chat_messages enable row level security;
 -- Deliberately no policies: only service_role (which bypasses RLS) may
 -- read/write this table; anon/authenticated get nothing.
+-- BYPASSRLS skips the policy check but NOT the base table grant — so the
+-- service_role still needs an explicit GRANT here. (This project's default
+-- privileges do not grant to service_role, so relying on them silently 403s
+-- every insert/select from the edge function — see the 2026-06 incident.)
+grant select, insert on public.chat_messages to service_role;
 
 -- Trim old rows daily so the table doesn't grow unbounded (only the last
 -- hour is ever queried). Optional — register once if pg_cron is enabled:

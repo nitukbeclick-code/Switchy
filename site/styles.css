@@ -1865,3 +1865,69 @@ a.chip:active { transform: translateY(0) scale(.97); }
   .cmp__cta a::after { content: 'פנייה בוואטסאפ'; font-size: .9rem; font-weight: 600; }
 }
 @media (prefers-reduced-motion: reduce) { .cmp__cta a { transition: none; } }
+
+/* ── "מידע נוסף" trigger buttons ─────────────────────────────────────────────── */
+.plan__more {
+  margin-top: 10px; width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  background: transparent; border: 1px solid var(--line); border-radius: var(--radius-sm);
+  color: var(--ink); font: inherit; font-weight: 600; font-size: .92rem; padding: 9px 12px; cursor: pointer;
+  transition: background .16s, border-color .16s, color .16s;
+}
+.plan__more svg { width: 17px; height: 17px; color: var(--accent); }
+.plan__more:hover { background: var(--accent-t); border-color: var(--accent); }
+.plan__more:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.cmp__name.cmp__more {
+  background: none; border: 0; padding: 0; font: inherit; font-weight: 700; color: var(--ink);
+  cursor: pointer; text-align: right; text-decoration: underline; text-decoration-color: var(--ink-200);
+  text-underline-offset: 3px; transition: color .16s;
+}
+.cmp__name.cmp__more:hover { color: var(--accent); text-decoration-color: var(--accent); }
+.cmp__name.cmp__more:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+
+/* ── Plan details modal (מידע נוסף) ──────────────────────────────────────────── */
+body.pmodal-lock { overflow: hidden; }
+.pmodal { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: flex-end; justify-content: center; }
+.pmodal[hidden] { display: none; }
+@media (min-width: 640px) { .pmodal { align-items: center; padding: 24px; } }
+.pmodal__backdrop { position: absolute; inset: 0; background: rgba(8,12,18,.55); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); opacity: 0; transition: opacity .22s var(--ease); }
+.pmodal--open .pmodal__backdrop { opacity: 1; }
+.pmodal__panel {
+  position: relative; width: 100%; max-width: 560px; max-height: 92vh; overflow-y: auto;
+  background: var(--white); border: 1px solid var(--line);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0; box-shadow: var(--shadow-lg);
+  padding: 26px 22px 22px; transform: translateY(26px);
+  transition: transform .26s var(--ease); -webkit-overflow-scrolling: touch;
+}
+@media (min-width: 640px) { .pmodal__panel { border-radius: var(--radius-lg); transform: translateY(12px) scale(.98); } }
+.pmodal--open .pmodal__panel { transform: none; }
+.pmodal__x {
+  position: absolute; inset-inline-start: 14px; top: 14px; width: 34px; height: 34px; border-radius: 50%;
+  border: 1px solid var(--line); background: var(--cream); color: var(--ink); font-size: 15px; line-height: 1; cursor: pointer;
+  display: grid; place-items: center; transition: background .16s, color .16s, border-color .16s;
+}
+.pmodal__x:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+.pmodal__head { padding-inline-end: 40px; border-bottom: 1px solid var(--line); padding-bottom: 16px; }
+.pmodal__brand { color: var(--muted); font-weight: 600; font-size: .9rem; }
+.pmodal__title { font-family: 'Rubik', sans-serif; font-size: 1.4rem; margin: 4px 0 10px; color: var(--ink); line-height: 1.2; }
+.pmodal__price { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.pmodal__price b { font-size: 1.7rem; color: var(--ink); }
+.pmodal__price > span { color: var(--muted); }
+.pmodal__after { color: var(--ink); font-weight: 600; background: var(--value-t); padding: 2px 9px; border-radius: 999px; font-size: .85rem; }
+.pmodal__fixed { color: var(--accent); font-weight: 600; font-size: .9rem; }
+.pmodal__flags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.pmodal__flag { font-size: .78rem; font-weight: 600; padding: 4px 10px; border-radius: 999px; background: var(--accent-t); color: var(--accent); }
+.pmodal__sec { margin-top: 18px; }
+.pmodal__sec h3 { font-family: 'Rubik', sans-serif; font-size: 1rem; margin: 0 0 10px; color: var(--ink); }
+.pmodal__grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+@media (max-width: 460px) { .pmodal__grid { grid-template-columns: 1fr; } }
+.pmodal__row { display: flex; justify-content: space-between; gap: 12px; background: var(--cream); border: 1px solid var(--line); border-radius: var(--radius-xs); padding: 9px 12px; }
+.pmodal__k { color: var(--muted); font-size: .88rem; }
+.pmodal__v { color: var(--ink); font-weight: 600; font-size: .9rem; text-align: left; }
+.pmodal__ul { margin: 0; padding-inline-start: 20px; display: flex; flex-direction: column; gap: 6px; }
+.pmodal__ul li { color: var(--ink); line-height: 1.5; }
+.pmodal__ul--fine li { color: var(--muted); font-size: .88rem; }
+.pmodal__elig { margin-top: 14px; padding: 10px 14px; background: var(--accent-t); border-radius: var(--radius-sm); color: var(--ink); font-size: .9rem; }
+.pmodal__cta { display: flex; flex-direction: column; gap: 10px; margin-top: 22px; }
+.pmodal__cta .btn { width: 100%; }
+.pmodal__upd { margin-top: 14px; text-align: center; color: var(--muted); font-size: .78rem; }
+@media (prefers-reduced-motion: reduce) { .pmodal__backdrop, .pmodal__panel { transition: none; } }

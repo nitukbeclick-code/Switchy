@@ -2295,4 +2295,112 @@
       });
     } catch (_) { /* Safari <14 lacks addEventListener on MQL */ }
   })();
+
+  // ── "מידע נוסף" plan-details modal ──────────────────────────────────────────
+  // The full per-plan breakdown (price + post-promo, what you get, equipment/fees,
+  // what's included, the complete פרטים-נוספים fine print, terms, eligibility).
+  // Data is lazy-fetched from data/plans.json on first open and cached. Triggered
+  // by any [data-plan-more] (card button or comparison-table plan name). The
+  // modal shell lives in the shared footer, so it works on every page.
+  (() => {
+    const modal = $('planModal');
+    const body = $('pmodalBody');
+    if (!modal || !body) return;
+    const PROVIDER_SLUGS = {
+      'Xphone': 'xphone', 'סלקום': 'cellcom', '019 מובייל': '019mobile', 'פרטנר': 'partner',
+      'גולן טלקום': 'golan', 'רמי לוי': 'rami-levy', 'בזק': 'bezeq', 'הוט מובייל': 'hot-mobile',
+      'HOT': 'hot', 'CCC': 'ccc', 'פלאפון': 'pelephone', 'WeCom': 'wecom', 'STING TV': 'sting-tv',
+      'וואלה מובייל': 'walla-mobile', 'גילת': 'gilat', 'yes': 'yes', 'NextTV': 'nexttv', 'Airalo eSIM': 'airalo',
+    };
+    const slug = (name) => PROVIDER_SLUGS[name] || (String(name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || '');
+    const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const UNIT = { month: 'לחודש', package: 'לחבילה', day: 'ליום', minute: 'לדקה' };
+    let byId = null, loading = null, lastFocus = null;
+
+    const load = () => {
+      if (byId) return Promise.resolve(byId);
+      if (loading) return loading;
+      loading = fetch('data/plans.json').then((r) => r.json()).then((d) => {
+        byId = {}; (d.plans || []).forEach((p) => { byId[p.id] = p; }); return byId;
+      }).catch(() => (byId = {}));
+      return loading;
+    };
+
+    const rows = (obj) => Object.entries(obj || {}).filter(([, v]) => v).map(([k, v]) =>
+      `<div class="pmodal__row"><span class="pmodal__k">${esc(k)}</span><span class="pmodal__v">${esc(v)}</span></div>`).join('');
+    const list = (arr) => (arr || []).filter(Boolean).map((x) => `<li>${esc(x)}</li>`).join('');
+
+    const render = (p) => {
+      const unit = UNIT[p.priceUnit] || (p.cat === 'abroad' ? 'לחבילה' : 'לחודש');
+      const price = '₪' + (p.priceExact != null ? p.priceExact : p.price);
+      const afterVal = p.afterExact != null ? p.afterExact : p.after;
+      const after = (p.after != null && p.after > p.price)
+        ? `<span class="pmodal__after">ואז ₪${afterVal} ${esc(unit)}</span>`
+        : `<span class="pmodal__fixed">מחיר קבוע</span>`;
+      const flags = [];
+      if (p.is5G) flags.push('5G');
+      flags.push(p.noCommit ? 'ללא התחייבות' : ('התחייבות ' + p.term + ' חודשים'));
+      if (p.hasAbroad) flags.push('כולל חו״ל');
+      const specs = rows(p.specs), fees = rows(p.fees);
+      const ps = slug(p.provider);
+      body.innerHTML =
+        `<header class="pmodal__head">
+          <div class="pmodal__brand">${esc(p.provider)}${p.net ? ` · ${esc(p.net)}` : ''}</div>
+          <h2 class="pmodal__title" id="pmodalTitle">${esc(p.plan)}</h2>
+          <div class="pmodal__price"><b>${price}</b> <span>${esc(unit)}</span> ${after}</div>
+          ${flags.length ? `<div class="pmodal__flags">${flags.map((f) => `<span class="pmodal__flag">${esc(f)}</span>`).join('')}</div>` : ''}
+        </header>
+        ${specs ? `<section class="pmodal__sec"><h3>מה מקבלים</h3><div class="pmodal__grid">${specs}</div></section>` : ''}
+        ${fees ? `<section class="pmodal__sec"><h3>עלויות וציוד</h3><div class="pmodal__grid">${fees}</div></section>` : ''}
+        ${(p.feats && p.feats.length) ? `<section class="pmodal__sec"><h3>כלול בחבילה</h3><ul class="pmodal__ul">${list(p.feats)}</ul></section>` : ''}
+        ${(p.fineLines && p.fineLines.length) ? `<section class="pmodal__sec"><h3>פרטים נוספים</h3><ul class="pmodal__ul pmodal__ul--fine">${list(p.fineLines)}</ul></section>` : ''}
+        ${(p.terms && p.terms.length) ? `<section class="pmodal__sec"><h3>תנאים והתחייבות</h3><ul class="pmodal__ul">${list(p.terms)}</ul></section>` : ''}
+        ${p.eligibility ? `<p class="pmodal__elig">${esc(p.eligibility)}</p>` : ''}
+        <div class="pmodal__cta">
+          <a class="btn btn--primary" target="_blank" rel="noopener" href="https://wa.me/972505037537?text=${encodeURIComponent('היי, מעניין אותי ' + p.provider + ' - ' + p.plan)}">מעוניין/ת — דברו איתי בוואטסאפ ←</a>
+          ${ps ? `<a class="btn btn--ghost" href="provider-${esc(ps)}.html">כל מסלולי ${esc(p.provider)}</a>` : ''}
+        </div>
+        ${p.updatedAt ? `<p class="pmodal__upd">המידע נאסף מהאתרים הרשמיים · עודכן ${esc(p.updatedAt)}</p>` : ''}`;
+    };
+
+    const close = () => {
+      modal.classList.remove('pmodal--open');
+      document.body.classList.remove('pmodal-lock');
+      const fin = () => { modal.hidden = true; };
+      if (reduceMotion) fin(); else setTimeout(fin, 220);
+      if (lastFocus && lastFocus.focus) try { lastFocus.focus(); } catch (_) { /* gone */ }
+    };
+    const open = (id, trigger) => {
+      lastFocus = trigger || document.activeElement;
+      load().then((map) => {
+        const p = map && map[id];
+        if (!p) return; // no data for this id → no-op (clean on data-less pages)
+        render(p);
+        modal.hidden = false;
+        document.body.classList.add('pmodal-lock');
+        void modal.offsetWidth; // force reflow so the open transition plays reliably
+        modal.classList.add('pmodal--open');
+        const x = modal.querySelector('.pmodal__x');
+        if (x) x.focus();
+        track('plan_info_open', { plan: id });
+      });
+    };
+
+    document.addEventListener('click', (e) => {
+      const t = e.target.closest && e.target.closest('[data-plan-more]');
+      if (t) { e.preventDefault(); open(t.getAttribute('data-plan-more'), t); return; }
+      if (e.target.closest && e.target.closest('[data-pmodal-close]')) { e.preventDefault(); close(); }
+    });
+    document.addEventListener('keydown', (e) => {
+      if (modal.hidden) return;
+      if (e.key === 'Escape') { close(); return; }
+      if (e.key === 'Tab') { // focus trap within the panel
+        const f = modal.querySelectorAll('a[href], button:not([disabled])');
+        if (!f.length) return;
+        const first = f[0], last = f[f.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+        else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      }
+    });
+  })();
 })();

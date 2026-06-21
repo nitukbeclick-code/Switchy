@@ -21,6 +21,7 @@ void main() {
           'price': p.price,
           'priceExact': p.priceExact,
           'after': p.hasPromo ? p.after : null,
+          'afterExact': p.hasPromo ? p.afterExact : null,
           'net': p.netLabel,
           'is5G': p.is5G,
           'noCommit': p.noCommit,
@@ -29,6 +30,14 @@ void main() {
           'specs': p.specs,
           'priceUnit': p.unit, // month / package / day / minute (resolved default)
           'kind': p.kind,      // regular / dataonly / kosher
+          // ── Rich detail for the site "מידע נוסף" modal (all optional) ─────────
+          'fees': p.fees,            // דמי חיבור / התקנה / נתב / מגדיל טווח / ממיר
+          'fineLines': p.allFinePrint, // the full "פרטים נוספים" bullets
+          'terms': p.terms,          // commitment / contract bullets
+          'term': p.term,            // commitment months (null = ללא התחייבות)
+          'eligibility': p.eligibility,
+          'notes': p.notes,
+          'updatedAt': p.updatedAt,
         }).toList();
 
     final out = {

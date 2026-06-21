@@ -378,7 +378,7 @@ function planCardHtml(p, best) {
   if (p.noCommit) flags.push('<span class="pflag">ללא התחייבות</span>');
   if (p.hasAbroad) flags.push('<span class="pflag">כולל חו״ל</span>');
   const hasJump = p.after && (p.after - p.price) > 30;
-  const after = p.after ? `<span class="plan__after">ואז ₪${p.after}</span>` : '';
+  const after = p.after ? `<span class="plan__after">ואז ₪${p.afterExact != null ? p.afterExact : p.after}</span>` : '';
   // Card variant: the value anchor (cheapest in its category) reads as a budget
   // pick; a richer 5G/abroad plan with a promo-jump reads as a premium pick.
   // These are presentational accents only (A2 styles them); they never change
@@ -405,6 +405,7 @@ function planCardHtml(p, best) {
           <a class="plan__cta" target="_blank" rel="noopener" href="${esc(waHref)}" aria-label="${esc(`מעוניין/ת ב${p.provider} ${p.plan} — פנייה בוואטסאפ`)}">${iconFor('💬')} מעוניין/ת בוואטסאפ ←</a>
           <a class="plan__compare" href="${compareHref}" title="השוו מסלול זה" aria-label="${esc(`השוו את ${p.provider} ${p.plan}`)}">${svgIcon('scale')}</a>
         </div>
+        <button type="button" class="plan__more" data-plan-more="${esc(p.id || '')}" aria-haspopup="dialog" aria-label="${esc(`כל הפרטים על ${p.provider} ${p.plan}`)}">${svgIcon('info')} כל הפרטים על המסלול ←</button>
       </article>`;
 }
 
@@ -538,7 +539,14 @@ const footer = `  <footer class="footer">
     <div class="footer__divider" aria-hidden="true"></div>
     <div class="container footer__bottom"><span>© <span id="year">${BUILD_YEAR}</span> חוסך · כל הזכויות שמורות</span><span class="footer__made">נבנה באהבה בישראל</span></div>
   </footer>
-  <a class="wa-fab" href="https://wa.me/972505037537?text=%D7%94%D7%99%D7%99%2C%20%D7%90%D7%A9%D7%9E%D7%97%20%D7%9C%D7%94%D7%A9%D7%95%D7%95%D7%AA%20%D7%9E%D7%A1%D7%9C%D7%95%D7%9C%D7%99%D7%9D" target="_blank" rel="noopener" aria-label="דברו איתנו בוואטסאפ"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" width="26" height="26"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.885-9.885 9.885M20.52 3.449C18.24 1.245 15.24 0 12.045 0 5.463 0 .104 5.359.101 11.892c0 2.096.549 4.142 1.595 5.945L0 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.582 0 11.943-5.359 11.945-11.893a11.821 11.821 0 00-3.418-8.452z"/></svg></a>`;
+  <a class="wa-fab" href="https://wa.me/972505037537?text=%D7%94%D7%99%D7%99%2C%20%D7%90%D7%A9%D7%9E%D7%97%20%D7%9C%D7%94%D7%A9%D7%95%D7%95%D7%AA%20%D7%9E%D7%A1%D7%9C%D7%95%D7%9C%D7%99%D7%9D" target="_blank" rel="noopener" aria-label="דברו איתנו בוואטסאפ"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" width="26" height="26"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.885-9.885 9.885M20.52 3.449C18.24 1.245 15.24 0 12.045 0 5.463 0 .104 5.359.101 11.892c0 2.096.549 4.142 1.595 5.945L0 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.582 0 11.943-5.359 11.945-11.893a11.821 11.821 0 00-3.418-8.452z"/></svg></a>
+  <div class="pmodal" id="planModal" role="dialog" aria-modal="true" aria-labelledby="pmodalTitle" hidden>
+    <div class="pmodal__backdrop" data-pmodal-close></div>
+    <div class="pmodal__panel" role="document">
+      <button type="button" class="pmodal__x" data-pmodal-close aria-label="סגירת החלון">✕</button>
+      <div class="pmodal__body" id="pmodalBody"></div>
+    </div>
+  </div>`;
 
 // Shared lead-capture form. Single source of truth for the markup that used to
 // be copy-pasted into every CTA section — so the legal consent block (Privacy
@@ -708,7 +716,7 @@ function comparisonTable(plans, catSlug) {
   if (!plans || plans.length < 2) return '';
   const spec = (p, ...keys) => { for (const k of keys) { const v = (p.specs || {})[k]; if (v) return esc(v); } return ''; };
   const afterCell = (p) => (p.after && p.after > p.price)
-    ? `<b class="cmp__jump">₪${p.after}</b>`
+    ? `<b class="cmp__jump">₪${p.afterExact != null ? p.afterExact : p.after}</b>`
     : `<span class="cmp__fixed">קבוע</span>`;
   const info = (p) => {
     const f = (p.feats || []).filter((x) => x && !/^\d|GB|דק|SMS|מגה|Mb|^5G$/i.test(x));
@@ -717,7 +725,7 @@ function comparisonTable(plans, catSlug) {
   };
   const waHref = (p) => 'https://wa.me/972505037537?text=' + encodeURIComponent('היי, מעניין אותי ' + p.provider + ' - ' + p.plan);
   const prov = (p) => `<a class="cmp__prov" href="provider-${providerSlug(p.provider)}.html">${providerLogo(p.provider, 26)}<span>${esc(p.provider)}</span></a>`;
-  const name = (p) => `<b class="cmp__name">${esc(p.plan)}</b>`;
+  const name = (p) => `<button type="button" class="cmp__name cmp__more" data-plan-more="${esc(p.id || '')}" aria-haspopup="dialog" title="${esc('כל הפרטים — ' + p.plan)}">${esc(p.plan)}</button>`;
   const price = (p) => `<b>₪${priceText(p)}</b>`;
   let head, row;
   if (catSlug === 'internet') {

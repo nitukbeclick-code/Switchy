@@ -62,7 +62,7 @@ class PlanCardWidget extends StatelessWidget {
     final inCompare = appState.isInCompare(plan.id);
     final isWatching = appState.isWatching(plan.id);
     final displayPrice = '₪${plan.priceText}';
-    final displayAfter = plan.hasPromo ? '₪${plan.after}' : null;
+    final displayAfter = plan.hasPromo ? '₪${plan.afterText}' : null;
     final matchLabel = _quizMatch(appState);
 
     // One-line summary read out by screen readers before the inner controls.

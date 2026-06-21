@@ -166,7 +166,7 @@ class RecommendationEngine {
     if (plan.hasAbroad && !abroad) reasons.add('כולל גלישה בחו״ל');
     if (plan.isFixed) reasons.add('מחיר קבוע — ללא עליות');
 
-    if (plan.hasPromo) caveats.add('מחיר מבצע — עולה ל-₪${plan.after} בהמשך');
+    if (plan.hasPromo) caveats.add('מחיר מבצע — עולה ל-₪${plan.afterText} בהמשך');
     if (!plan.noCommit && plan.term != null && plan.term! > 0) {
       caveats.add('התחייבות ל-${plan.term} חודשים');
     }

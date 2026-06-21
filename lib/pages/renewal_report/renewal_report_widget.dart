@@ -459,7 +459,7 @@ class _AlternativeRow extends StatelessWidget {
                     Text('₪${plan.priceText}',
                         style: ffTheme.titleSmall.copyWith(
                             color: ffTheme.primary, fontWeight: FontWeight.w800)),
-                    Text(plan.hasPromo ? 'ואז ₪${plan.after}' : priceUnitLabel(plan),
+                    Text(plan.hasPromo ? 'ואז ₪${plan.afterText}' : priceUnitLabel(plan),
                         style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText, fontSize: 10)),
                   ],
                 ),

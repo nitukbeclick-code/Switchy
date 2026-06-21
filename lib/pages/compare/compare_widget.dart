@@ -238,7 +238,7 @@ class _CompareTable extends StatelessWidget {
     final rows = <_Row>[
       _Row('מחיר', plans.map((p) => '₪${p.priceText}/${priceUnitShort(p)}').toList()),
       _Row('לאחר מבצע',
-          plans.map((p) => p.hasPromo ? '₪${p.after}' : 'קבוע').toList()),
+          plans.map((p) => p.hasPromo ? '₪${p.afterText}' : 'קבוע').toList()),
       _Row('התחייבות',
           plans.map((p) => p.commitmentLabel).toList()),
       _Row('חיסכון שנתי',

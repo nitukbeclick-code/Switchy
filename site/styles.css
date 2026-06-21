@@ -1453,3 +1453,82 @@ a.ratings-row { cursor: pointer; }
   .review-card { padding: 16px; }
   .community-empty, .ratings-empty, .review-empty, .review-login { padding: 22px 18px; }
 }
+
+/* ── Video-meeting booking wizard (meeting.html) ───────────────────────────────
+   Additive, reuses the ink/glass tokens + the same chip language as the plans
+   filters (.filter-btn) and the savings amber for the selected state. Form on a
+   light glass card (not the dark .cta band), so consent reads in ink, not white. */
+.meet-wrap { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+.meet-form { padding: 28px; display: flex; flex-direction: column; gap: 22px; }
+.meet-step { border: 0; padding: 0; margin: 0; min-width: 0; }
+.meet-step__title { display: flex; align-items: center; gap: 10px; font-family: 'Rubik', sans-serif; font-weight: 800; font-size: 18px; color: var(--green-d); padding: 0; }
+.meet-step__num { flex: 0 0 auto; width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; background: var(--accent-t); color: var(--accent); font-size: 14px; font-weight: 800; }
+.meet-step__hint { color: var(--muted); font-size: 14px; margin: 6px 0 12px; }
+
+.meet-chips { display: flex; flex-wrap: wrap; gap: 10px; }
+.meet-chips--scroll, .meet-chips--slots { gap: 8px; }
+.meet-empty { color: var(--muted); font-size: 14px; margin: 2px 0; }
+
+/* Base chip — mirrors .filter-btn's pill look so the page feels native. */
+.meet-chip {
+  background: var(--white); border: 1px solid var(--line); color: var(--green-d);
+  font-family: 'Rubik', sans-serif; font-weight: 700; font-size: 14px;
+  padding: 8px 14px; min-height: 44px; display: inline-flex; align-items: center; gap: 8px;
+  border-radius: 999px; cursor: pointer;
+  transition: background .15s, color .15s, border-color .15s, transform .15s var(--ease-spring), box-shadow .18s;
+}
+.meet-chip:hover { transform: translateY(-1px); border-color: var(--ink-300); box-shadow: var(--shadow-sm); }
+.meet-chip:active { transform: scale(.97); }
+.meet-chip:focus-visible { outline: none; box-shadow: var(--ring); }
+.meet-chip.is-selected { background: var(--accent); color: #fff; border-color: var(--accent); }
+.meet-chip.is-selected .plogo { box-shadow: 0 0 0 2px rgba(255,255,255,.5); }
+.meet-chip--provider .plogo { width: 24px; height: 24px; }
+.meet-chip--slot { font-variant-numeric: tabular-nums; padding: 8px 16px; }
+.meet-chip__day { white-space: nowrap; }
+
+.meet-fields { display: flex; flex-direction: column; gap: 10px; }
+.meet-input {
+  width: 100%; min-height: 44px; padding: 12px 14px; border: 1px solid var(--line);
+  border-radius: 14px; font-family: 'Assistant', sans-serif; font-size: 16px;
+  background: var(--white); color: var(--ink); transition: border-color .15s, box-shadow .15s;
+}
+.meet-input--area { resize: vertical; min-height: 60px; line-height: 1.5; }
+.meet-input:focus-visible { outline: none; border-color: var(--accent); box-shadow: var(--ring-flush); }
+
+/* Consent on a LIGHT card — override the dark .cta band colours from ink-on-white. */
+.meet-consent { margin-top: 14px; }
+.meet-consent .consent__row { color: var(--ink); font-weight: 500; }
+.meet-consent .consent__row a { color: var(--accent); }
+.meet-consent .consent__row input[type="checkbox"] { width: 20px; height: 20px; min-width: 20px; accent-color: var(--accent); }
+.meet-consent .consent__row input[type="checkbox"]:focus-visible { outline: none; box-shadow: var(--ring-flush); }
+
+.meet-summary { background: var(--accent-t); color: var(--accent-d); border-radius: 14px; padding: 12px 16px; font-weight: 700; font-size: 15px; }
+.meet-summary[hidden] { display: none; }
+.meet-status { min-height: 22px; font-weight: 700; text-align: center; margin: 2px 0; }
+.meet-status--ok { color: var(--accent-d); }
+.meet-status--err { color: #B91C1C; }
+.meet-wa { display: inline-flex; align-items: center; gap: 6px; justify-content: center; color: var(--green); font-weight: 700; border-bottom: 1px dashed var(--ink-300); padding-bottom: 2px; align-self: center; }
+.meet-wa .ico { width: 16px; height: 16px; }
+.meet-wa:hover { opacity: .85; }
+
+/* Aside "how it works" card. */
+.meet-aside { padding: 24px; position: sticky; top: 92px; }
+.meet-aside__title { display: flex; align-items: center; gap: 8px; font-size: 20px; font-weight: 800; color: var(--green-d); }
+.meet-aside__title .ico { width: 22px; height: 22px; color: var(--accent); }
+.meet-aside__list { margin: 16px 0 0; padding-inline-start: 20px; display: flex; flex-direction: column; gap: 10px; color: var(--ink); font-size: 15px; }
+.meet-aside__fine { display: flex; align-items: flex-start; gap: 8px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--line); color: var(--muted); font-size: 13.5px; line-height: 1.55; }
+.meet-aside__fine .ico { flex: 0 0 auto; width: 18px; height: 18px; margin-top: 2px; color: var(--accent); }
+
+@media (max-width: 880px) {
+  .meet-wrap { grid-template-columns: 1fr; }
+  .meet-aside { position: static; order: -1; }
+}
+@media (max-width: 600px) {
+  .meet-form { padding: 20px; }
+  .meet-chips--scroll { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 6px; -webkit-overflow-scrolling: touch; }
+  .meet-chips--scroll .meet-chip { flex: 0 0 auto; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .meet-chip { transition: background .01s, color .01s, border-color .01s, box-shadow .01s; }
+  .meet-chip:hover, .meet-chip:active { transform: none; }
+}

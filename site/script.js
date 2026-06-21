@@ -779,4 +779,370 @@
       });
     });
   }
+
+  // ── Video-meeting booking wizard (meeting.html) ─────────────────────────────
+  // Books a Zoom meeting with a rep into the existing `meetings` table via the
+  // same anon-key REST pattern as the lead form. The bookable window is computed
+  // client-side in ISRAEL time and re-validated server-side by the meetings_guard
+  // trigger — this is UX only, never the security boundary.
+  //
+  // CONTRACT (must match the app + SQL): providers = window.__MEETING__.providers
+  // (the 7 eligible carriers); windows Sun–Thu 09:00–20:30, Fri 09:00–12:30, NO
+  // Saturday; 30-minute grid; the chosen date+slot must be ≥ now + 4 HOURS in
+  // Israel time; max 30 days ahead.
+  const meetingForm = $('meetingForm');
+  if (meetingForm) {
+    const MIN_LEAD_MS = 4 * 60 * 60 * 1000;  // 4 hours
+    const MAX_DAYS = 30;                       // booking horizon
+    const SLOT_MIN = 30;                       // 30-minute grid
+    // [openMinutes, closeMinutes] = last START + SLOT_MIN. The window is the set
+    // of START times; a 09:00–20:30 close means the last START is 20:00 (the
+    // 30-min meeting ends 20:30). Fri last START 12:00 (ends 12:30).
+    // JS getDay(): 0=Sun … 6=Sat.
+    const WINDOWS = {
+      0: [9 * 60, 20 * 60], 1: [9 * 60, 20 * 60], 2: [9 * 60, 20 * 60],
+      3: [9 * 60, 20 * 60], 4: [9 * 60, 20 * 60],   // Sun–Thu, last start 20:00
+      5: [9 * 60, 12 * 60],                          // Fri, last start 12:00
+      // 6 (Sat) absent → never bookable
+    };
+
+    // Offset (minutes) between Israel wall-clock and UTC at a given instant —
+    // positive because Israel is ahead of UTC (UTC+2 winter / UTC+3 summer).
+    // Derived from Intl so DST is handled automatically without a fixed +2/+3.
+    const israelOffsetMinutes = (date) => {
+      const dtf = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'Asia/Jerusalem', hourCycle: 'h23',
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit',
+      });
+      const p = {};
+      dtf.formatToParts(date).forEach((x) => { if (x.type !== 'literal') p[x.type] = x.value; });
+      const asUTC = Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute, +p.second);
+      return Math.round((asUTC - date.getTime()) / 60000);
+    };
+    // { year, month, day, weekday, minutes } of "now" on the Israel wall clock.
+    const israelNowParts = () => {
+      const now = new Date();
+      const dtf = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'Asia/Jerusalem', hourCycle: 'h23', weekday: 'short',
+        year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit',
+      });
+      const p = {};
+      dtf.formatToParts(now).forEach((x) => { if (x.type !== 'literal') p[x.type] = x.value; });
+      return { year: +p.year, month: +p.month, day: +p.day, weekday: WD_MAP[p.weekday], minutes: +p.hour * 60 + +p.minute };
+    };
+    // Convert an Israel wall date+time (Y-M-D, minutes-since-midnight) to a true
+    // epoch (ms). Settle the offset twice so a slot that straddles a DST switch
+    // still resolves to the correct instant.
+    const israelWallToEpoch = (y, mo, d, mins) => {
+      const hh = Math.floor(mins / 60), mm = mins % 60;
+      let guess = Date.UTC(y, mo - 1, d, hh, mm, 0);
+      for (let i = 0; i < 2; i++) {
+        const off = israelOffsetMinutes(new Date(guess));
+        guess = Date.UTC(y, mo - 1, d, hh, mm, 0) - off * 60000;
+      }
+      return guess;
+    };
+    // Israel weekday (0=Sun…6=Sat) for a given Israel wall date. Resolved at noon
+    // so a DST jump near midnight can't shift the reported day.
+    const WD_MAP = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+    const weekdayOf = (y, mo, d) => {
+      const epoch = israelWallToEpoch(y, mo, d, 12 * 60);
+      const wd = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Jerusalem', weekday: 'short' })
+        .formatToParts(new Date(epoch))
+        .find((x) => x.type === 'weekday');
+      return wd ? WD_MAP[wd.value] : 0;
+    };
+    const pad = (n) => String(n).padStart(2, '0');
+    const HE_DAYS = ['א׳', 'ב׳', 'ג׳', 'ד׳', 'ה׳', 'ו׳', 'ש׳'];
+    const HE_MONTHS = ['ינו׳', 'פבר׳', 'מרץ', 'אפר׳', 'מאי', 'יוני', 'יולי', 'אוג׳', 'ספט׳', 'אוק׳', 'נוב׳', 'דצמ׳'];
+
+    const providerWrap = $('meetingProvider');
+    const dateWrap = $('meetingDate');
+    const slotWrap = $('meetingSlot');
+    const summary = $('meetingSummary');
+    const status = $('meetingStatus');
+    const nameEl = $('meetingName');
+    const phoneEl = $('meetingPhone');
+    const emailEl = $('meetingEmail');
+    const noteEl = $('meetingNote');
+    const submitBtn = meetingForm.querySelector('button[type="submit"]');
+
+    let chosenProvider = '';
+    let chosenDate = null;   // { y, mo, d, label }
+    let chosenSlot = '';     // 'HH:MM'
+
+    const setStatus = (msg, isErr) => {
+      if (!status) return;
+      status.textContent = msg || '';
+      status.classList.toggle('meet-status--err', !!isErr);
+      status.classList.toggle('meet-status--ok', !!msg && !isErr);
+    };
+
+    // Build the list of bookable Israel wall dates (today..+MAX_DAYS) that have at
+    // least one slot still ≥ now+4h. Saturdays and out-of-window days drop out.
+    const buildDates = () => {
+      const now = israelNowParts();
+      const nowEpoch = Date.now();
+      const out = [];
+      // Iterate day offsets from today's Israel date forward.
+      let cursor = Date.UTC(now.year, now.month - 1, now.day); // a date anchor in UTC ms
+      for (let i = 0; i <= MAX_DAYS; i++) {
+        const dd = new Date(cursor + i * 86400000);
+        const y = dd.getUTCFullYear(), mo = dd.getUTCMonth() + 1, d = dd.getUTCDate();
+        const wd = weekdayOf(y, mo, d);
+        const win = WINDOWS[wd];
+        if (!win) continue;                       // Saturday / closed day
+        // Does any 30-min start in this day's window clear now+4h?
+        const lastStart = win[1] - SLOT_MIN;      // close is last-start + SLOT_MIN
+        let hasSlot = false;
+        for (let m = win[0]; m <= lastStart; m += SLOT_MIN) {
+          if (israelWallToEpoch(y, mo, d, m) - nowEpoch >= MIN_LEAD_MS) { hasSlot = true; break; }
+        }
+        if (!hasSlot) continue;
+        out.push({ y, mo, d, wd, label: `${HE_DAYS[wd]} ${d} ${HE_MONTHS[mo - 1]}` });
+      }
+      return out;
+    };
+
+    // Slots for a chosen date, each flagged enabled/disabled by the 4h rule.
+    const buildSlots = (dt) => {
+      const win = WINDOWS[dt.wd];
+      if (!win) return [];
+      const nowEpoch = Date.now();
+      const lastStart = win[1] - SLOT_MIN;
+      const out = [];
+      for (let m = win[0]; m <= lastStart; m += SLOT_MIN) {
+        const ok = israelWallToEpoch(dt.y, dt.mo, dt.d, m) - nowEpoch >= MIN_LEAD_MS;
+        out.push({ time: `${pad(Math.floor(m / 60))}:${pad(m % 60)}`, ok });
+      }
+      return out;
+    };
+
+    const updateSummary = () => {
+      if (!summary) return;
+      if (chosenProvider && chosenDate && chosenSlot) {
+        summary.textContent = `פגישה עם נציג ${chosenProvider} · ${chosenDate.label} · בשעה ${chosenSlot}`;
+        summary.hidden = false;
+      } else {
+        summary.textContent = '';
+        summary.hidden = true;
+      }
+    };
+
+    const renderSlots = () => {
+      if (!slotWrap) return;
+      slotWrap.innerHTML = '';
+      chosenSlot = '';
+      if (!chosenDate) {
+        slotWrap.innerHTML = '<p class="meet-empty">בחרו תאריך כדי לראות שעות פנויות.</p>';
+        updateSummary();
+        return;
+      }
+      const slots = buildSlots(chosenDate);
+      const usable = slots.filter((s) => s.ok);
+      if (!usable.length) {
+        slotWrap.innerHTML = '<p class="meet-empty">אין שעות פנויות ביום זה — נסו תאריך אחר.</p>';
+        updateSummary();
+        return;
+      }
+      usable.forEach((s) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'meet-chip meet-chip--slot';
+        b.setAttribute('role', 'radio');
+        b.setAttribute('aria-checked', 'false');
+        b.dataset.slot = s.time;
+        b.textContent = s.time;
+        b.addEventListener('click', () => {
+          chosenSlot = s.time;
+          slotWrap.querySelectorAll('.meet-chip').forEach((x) => {
+            const on = x === b;
+            x.classList.toggle('is-selected', on);
+            x.setAttribute('aria-checked', String(on));
+          });
+          updateSummary();
+          setStatus('');
+        });
+        slotWrap.appendChild(b);
+      });
+      updateSummary();
+    };
+
+    const renderDates = () => {
+      if (!dateWrap) return;
+      const dates = buildDates();
+      dateWrap.innerHTML = '';
+      if (!dates.length) {
+        dateWrap.innerHTML = '<p class="meet-empty">אין מועדים פנויים כרגע — נסו שוב מאוחר יותר או דברו איתנו בוואטסאפ.</p>';
+        return;
+      }
+      dates.forEach((dt) => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'meet-chip meet-chip--date';
+        b.setAttribute('role', 'radio');
+        b.setAttribute('aria-checked', 'false');
+        b.dataset.date = `${dt.y}-${pad(dt.mo)}-${pad(dt.d)}`;
+        b.innerHTML = `<span class="meet-chip__day">${dt.label}</span>`;
+        b.addEventListener('click', () => {
+          chosenDate = dt;
+          dateWrap.querySelectorAll('.meet-chip').forEach((x) => {
+            const on = x === b;
+            x.classList.toggle('is-selected', on);
+            x.setAttribute('aria-checked', String(on));
+          });
+          renderSlots();
+          setStatus('');
+        });
+        dateWrap.appendChild(b);
+      });
+    };
+
+    // Provider chips are rendered server-side (the 7 eligible strings) — just wire
+    // selection. data-provider holds the EXACT eligibility string for the insert.
+    if (providerWrap) {
+      providerWrap.querySelectorAll('.meet-chip--provider').forEach((b) => {
+        b.addEventListener('click', () => {
+          chosenProvider = b.dataset.provider || '';
+          providerWrap.querySelectorAll('.meet-chip').forEach((x) => {
+            const on = x === b;
+            x.classList.toggle('is-selected', on);
+            x.setAttribute('aria-checked', String(on));
+          });
+          updateSummary();
+          setStatus('');
+        });
+      });
+    }
+
+    renderDates();
+    renderSlots();
+
+    // POST a meeting into the existing `meetings` table (same anon-key REST
+    // pattern as sendLead). The server trigger computes starts_at + validates.
+    const sendMeeting = async (payload) => {
+      const cfg = window.CHOSECH_SUPABASE;
+      if (!cfg || !cfg.url || !cfg.anonKey) return { ok: false, status: 0 }; // backend parked
+      const res = await fetch(cfg.url.replace(/\/$/, '') + '/rest/v1/meetings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: cfg.anonKey,
+          Authorization: 'Bearer ' + cfg.anonKey,
+          Prefer: 'return=minimal',
+        },
+        body: JSON.stringify(payload),
+      });
+      let body = '';
+      if (!res.ok) { body = await res.text().catch(() => ''); }
+      return { ok: res.ok, status: res.status, body: body };
+    };
+
+    // Map a rejected insert (the meetings_guard trigger / RLS / rate limit) to a
+    // friendly Hebrew message. Matches on substrings the server raises so the
+    // visitor gets actionable guidance instead of a raw Postgres error.
+    const friendlyMeetingError = (status, body) => {
+      const b = (body || '').toLowerCase();
+      if (/eligible|provider|ספק/.test(b)) return 'הספק שבחרתם אינו זמין כרגע לפגישות וידאו — נסו ספק אחר.';
+      if (/4 hour|four hour|lead|מראש|ahead/.test(b)) return 'יש לקבוע לפחות 4 שעות מראש — בחרו מועד מאוחר יותר.';
+      if (/window|hours|saturday|שבת|closed|outside/.test(b)) return 'המועד שנבחר מחוץ לשעות הפעילות — בחרו יום ושעה אחרים.';
+      if (/pending|already|exists|duplicate|כבר/.test(b)) return 'כבר יש לכם בקשת פגישה ממתינה — ניצור קשר בקרוב.';
+      if (status === 429 || /rate|limit|too many/.test(b)) return 'נשלחו יותר מדי בקשות — נסו שוב בעוד מספר דקות.';
+      return 'השליחה נכשלה — נסו שוב, או כתבו לנו בוואטסאפ 💬';
+    };
+
+    meetingForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      // Honeypot — a filled #meetingCompany means a bot: fake success, no POST.
+      if (($('meetingCompany') && $('meetingCompany').value || '').trim()) {
+        meetingForm.reset();
+        setStatus('נשלח — ניצור קשר לאישור הפגישה ✦', false);
+        return;
+      }
+      const name = (nameEl && nameEl.value || '').trim();
+      const phone = (phoneEl && phoneEl.value || '').replace(/[^\d+]/g, '');
+      const email = (emailEl && emailEl.value || '').trim();
+      const note = (noteEl && noteEl.value || '').trim();
+
+      if (!chosenProvider) { setStatus('בחרו ספק כדי להמשיך 🙏', true); if (providerWrap) providerWrap.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' }); return; }
+      if (!chosenDate) { setStatus('בחרו תאריך לפגישה 🙏', true); if (dateWrap) dateWrap.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' }); return; }
+      if (!chosenSlot) { setStatus('בחרו שעה לפגישה 🙏', true); if (slotWrap) slotWrap.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' }); return; }
+      if (name.length < 2 || name.length > 80 || phone.replace(/\D/g, '').length < 9) {
+        setStatus('נא למלא שם וטלפון תקין 🙏', true);
+        const bad = (name.length < 2 || name.length > 80) ? nameEl : phoneEl;
+        if (bad) bad.focus();
+        return;
+      }
+      if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        setStatus('כתובת האימייל אינה תקינה — תקנו או השאירו ריק 🙏', true);
+        if (emailEl) emailEl.focus();
+        return;
+      }
+      const termsEl = $('meetingTerms');
+      const privacyEl = $('meetingPrivacy');
+      const termsOk = termsEl && termsEl.checked;
+      const privacyOk = privacyEl && privacyEl.checked;
+      if (!termsOk || !privacyOk) {
+        setStatus('יש לאשר את תנאי השימוש ומדיניות הפרטיות כדי להמשיך 🙏', true);
+        const badConsent = !termsOk ? termsEl : privacyEl;
+        if (badConsent) badConsent.focus();
+        return;
+      }
+      // Re-validate the 4h rule at submit time (the page may have been open a
+      // while) so a slot that just slipped under 4h is caught before the POST.
+      const slotMins = (() => { const [h, m] = chosenSlot.split(':'); return +h * 60 + +m; })();
+      if (israelWallToEpoch(chosenDate.y, chosenDate.mo, chosenDate.d, slotMins) - Date.now() < MIN_LEAD_MS) {
+        setStatus('המועד שבחרתם כבר קרוב מדי — בחרו שעה מאוחרת יותר 🙏', true);
+        renderDates();
+        renderSlots();
+        return;
+      }
+
+      const now = new Date().toISOString();
+      const marketingAt = $('meetingMarketing') && $('meetingMarketing').checked ? now : null;
+      if (submitBtn) { submitBtn.disabled = true; submitBtn.classList.add('is-loading'); }
+      let result;
+      try {
+        result = await sendMeeting({
+          name: name,
+          phone: phone,
+          email: email || null,
+          provider: chosenProvider,
+          plan_id: null,
+          meeting_date: `${chosenDate.y}-${pad(chosenDate.mo)}-${pad(chosenDate.d)}`,
+          slot: chosenSlot,
+          source: 'site-meeting',
+          note: note || null,
+          terms_accepted_at: now,
+          privacy_accepted_at: now,
+          marketing_accepted_at: marketingAt,
+        });
+      } catch (_) {
+        result = { ok: false, status: 0, body: '' };
+      }
+      if (submitBtn) { submitBtn.disabled = false; submitBtn.classList.remove('is-loading'); }
+      if (!result || !result.ok) {
+        setStatus(result && result.status ? friendlyMeetingError(result.status, result.body) : 'השליחה נכשלה — נסו שוב, או כתבו לנו בוואטסאפ 💬', true);
+        if (submitBtn) submitBtn.focus();
+        return;
+      }
+      track('meeting_request', { provider: chosenProvider, source: location.pathname });
+      meetingForm.reset();
+      chosenProvider = ''; chosenDate = null; chosenSlot = '';
+      if (providerWrap) providerWrap.querySelectorAll('.meet-chip').forEach((x) => { x.classList.remove('is-selected'); x.setAttribute('aria-checked', 'false'); });
+      renderDates();
+      renderSlots();
+      updateSummary();
+      setStatus('נשלח — ניצור קשר לאישור הפגישה ✦', false);
+    });
+
+    // form_start parity with the lead form — one analytics ping on first engage.
+    let meetingStarted = false;
+    meetingForm.addEventListener('focusin', () => {
+      if (meetingStarted) return;
+      meetingStarted = true;
+      track('form_start', { source: location.pathname });
+    });
+  }
 })();

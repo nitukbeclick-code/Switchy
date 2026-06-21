@@ -57,6 +57,19 @@ const SUPABASE_ANON_KEY =
 const leadsConfigTag = () =>
   `<script>window.CHOSECH_SUPABASE={url:'${SUPABASE_URL}',anonKey:'${SUPABASE_ANON_KEY}'};</script>`;
 
+// ── Video-meeting booking (shared contract with the app + the meetings_guard
+// SQL trigger) ───────────────────────────────────────────────────────────────
+// The 7 providers a rep can be booked for, EXACTLY as the server eligibility
+// check expects them (any other string is rejected by the trigger). Surfaced to
+// the client (meeting.html chips + the eligibility mirror in script.js) via
+// window.__MEETING__ so the list lives in one place. The booking windows
+// (Sun–Thu 09:00–20:30, Fri 09:00–12:30, no Saturday), 30-minute grid, 4-hour
+// min lead time and 30-day horizon are mirrored client-side in script.js for UX;
+// the trigger remains the source of truth and re-validates on insert.
+const MEETING_PROVIDERS = ['HOT', 'yes', 'פרטנר', 'סלקום', 'STING TV', 'בזק', 'הוט מובייל'];
+const meetingConfigTag = () =>
+  `<script>window.__MEETING__={providers:${jsonForScript(MEETING_PROVIDERS)}};</script>`;
+
 // Real plan catalogue, exported from the app via `flutter test tool/export_plans.dart`.
 const catalogue = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'plans.json'), 'utf8'));
 const plansByCat = {};
@@ -354,6 +367,7 @@ const navHtml = (ctaHref) => `  <a class="skip" href="#main">דלג לתוכן</
         <a href="community.html">קהילה</a>
         <a href="ratings.html">דירוגים</a>
         <a href="app.html">האפליקציה</a>
+        <a href="meeting.html">פגישת וידאו</a>
         <a href="guides.html">מדריכים</a>
         <a href="index.html#calculator">מחשבון</a>
       </nav>
@@ -367,6 +381,7 @@ const navHtml = (ctaHref) => `  <a class="skip" href="#main">דלג לתוכן</
       <a href="community.html">קהילה</a>
       <a href="ratings.html">דירוגים</a>
       <a href="app.html">האפליקציה</a>
+      <a href="meeting.html">פגישת וידאו</a>
       <a href="guides.html">מדריכים</a>
       <a href="index.html#calculator">מחשבון</a>
       <a class="btn btn--primary" href="${ctaHref}">השוו עכשיו</a>
@@ -392,7 +407,7 @@ const footer = `  <footer class="footer">
       </nav>
       <nav class="footer__links footer__col" aria-label="כלים ומדריכים">
         <h4>כלים מומלצים</h4>
-        <a href="compare.html">השוואת מסלולים</a><a href="calc-cellular.html">מחשבון סלולר</a><a href="calc-internet.html">מחשבון אינטרנט</a><a href="providers.html">כל הספקים</a><a href="community.html">קהילה</a><a href="ratings.html">דירוגים</a><a href="guide-switching.html">מדריך מעבר ספק</a><a href="guide-number-port.html">ניוד מספר</a>
+        <a href="compare.html">השוואת מסלולים</a><a href="calc-cellular.html">מחשבון סלולר</a><a href="calc-internet.html">מחשבון אינטרנט</a><a href="providers.html">כל הספקים</a><a href="meeting.html">פגישת וידאו עם נציג</a><a href="community.html">קהילה</a><a href="ratings.html">דירוגים</a><a href="guide-switching.html">מדריך מעבר ספק</a><a href="guide-number-port.html">ניוד מספר</a>
       </nav>
       <nav class="footer__links footer__col" aria-label="קולקציות פופולריות">
         <h4>חיפושים פופולריים</h4>
@@ -2220,6 +2235,124 @@ ${footer}
 </html>
 `;
 }
+// ── Video-meeting booking page ───────────────────────────────────────────────
+// A 4-step wizard (provider → date → time slot → details) that books a Zoom
+// meeting with a rep into the EXISTING `meetings` table via the same anon-key
+// REST pattern the lead form uses. Provider chips are emitted server-side from
+// MEETING_PROVIDERS (the 7 eligible carriers); date/slot chips are rendered by
+// script.js because the bookable window depends on "now" in Israel time (4-hour
+// min lead, Sun–Thu 09:00–20:30 / Fri 09:00–12:30, 30-min grid, ≤30 days). The
+// server trigger re-validates everything on insert — this UI just mirrors the
+// rules so a visitor isn't shown un-bookable times.
+function meetingPage() {
+  const url = `${SITE}/meeting.html`;
+  const title = 'קביעת פגישת וידאו עם נציג — חוסך';
+  const desc = 'קבעו פגישת וידאו ב-Zoom עם נציג חוסך — בוחרים ספק, תאריך ושעה, ומקבלים ייעוץ אישי על מסלולי סלולר, אינטרנט, טלוויזיה וחבילות. חינם, בלי התחייבות.';
+  // CollectionPage + Breadcrumb mirror the other hub/tool pages so the booking
+  // page joins the same knowledge-graph entity (publisher + website).
+  const jsonld = jsonForScript({ '@context': 'https://schema.org', '@graph': [
+    { '@type': 'BreadcrumbList', itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'דף הבית', item: SITE + '/' },
+      { '@type': 'ListItem', position: 2, name: 'פגישת וידאו', item: url },
+    ] },
+    { '@type': 'CollectionPage', name: title, description: desc, url, inLanguage: 'he-IL',
+      isPartOf: { '@id': WEBSITE_ID }, publisher: { '@id': ORG_ID } },
+  ] });
+  // Provider chips — radio-semantics buttons. The data-provider value is the
+  // EXACT eligibility string the server expects (never the slug/initials).
+  const providerChips = MEETING_PROVIDERS.map((name) =>
+    `<button type="button" class="meet-chip meet-chip--provider" role="radio" aria-checked="false" data-provider="${esc(name)}">${providerLogo(name, 30)}<span>${esc(name)}</span></button>`
+  ).join('\n          ');
+  return `<!DOCTYPE html>
+<html lang="he" dir="rtl">
+${head(title, desc, url, jsonld, false, 'website')}
+<body id="top">
+${nav}
+  <main id="main">
+    <section class="lead-hero">
+      <div class="container">
+        <p class="crumbs"><a href="index.html">דף הבית</a> ← פגישת וידאו</p>
+        <h1>פגישת <span class="hl">וידאו</span> עם נציג</h1>
+        <p>בוחרים ספק, יום ושעה — ונפגשים ב-Zoom לייעוץ אישי על המסלול שמתאים לכם. חינם, בלי התחייבות, מול נציג אמיתי.</p>
+      </div>
+    </section>
+    <section class="section">
+      <div class="container meet-wrap">
+        <form class="meet-form glass" id="meetingForm" novalidate>
+          <!-- Honeypot: real users never see/fill this (offscreen + aria-hidden). -->
+          <input type="text" id="meetingCompany" name="company" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" />
+
+          <fieldset class="meet-step">
+            <legend class="meet-step__title"><span class="meet-step__num">1</span> בחרו ספק</legend>
+            <p class="meet-step__hint">עם איזה ספק תרצו שנעזור לכם?</p>
+            <div class="meet-chips" id="meetingProvider" role="radiogroup" aria-label="בחירת ספק">
+          ${providerChips}
+            </div>
+          </fieldset>
+
+          <fieldset class="meet-step">
+            <legend class="meet-step__title"><span class="meet-step__num">2</span> בחרו תאריך</legend>
+            <p class="meet-step__hint">עד 30 יום קדימה · ימים א׳–ה׳ וגם יום ו׳ עד הצהריים.</p>
+            <div class="meet-chips meet-chips--scroll" id="meetingDate" role="radiogroup" aria-label="בחירת תאריך"></div>
+          </fieldset>
+
+          <fieldset class="meet-step">
+            <legend class="meet-step__title"><span class="meet-step__num">3</span> בחרו שעה</legend>
+            <p class="meet-step__hint">פגישה של 30 דקות · לפחות 4 שעות מראש.</p>
+            <div class="meet-chips meet-chips--slots" id="meetingSlot" role="radiogroup" aria-label="בחירת שעה"></div>
+          </fieldset>
+
+          <fieldset class="meet-step">
+            <legend class="meet-step__title"><span class="meet-step__num">4</span> הפרטים שלכם</legend>
+            <div class="meet-fields">
+              <input type="text" id="meetingName" name="name" class="meet-input" placeholder="שם מלא" aria-label="שם מלא" autocomplete="name" required />
+              <input type="tel" id="meetingPhone" name="phone" class="meet-input" placeholder="טלפון (050-0000000)" aria-label="מספר טלפון" autocomplete="tel" inputmode="tel" required />
+              <input type="email" id="meetingEmail" name="email" class="meet-input" placeholder="אימייל (לא חובה — לשליחת קישור Zoom)" aria-label="אימייל" autocomplete="email" inputmode="email" />
+              <textarea id="meetingNote" name="note" class="meet-input meet-input--area" placeholder="משהו שכדאי שנדע לפני הפגישה? (לא חובה)" aria-label="הערה לנציג" rows="2"></textarea>
+            </div>
+            <div class="consent meet-consent">
+              <label class="consent__row" for="meetingTerms">
+                <input type="checkbox" id="meetingTerms" name="consentTerms" required />
+                <span>קראתי ואני מסכים/ה ל<a href="terms.html" target="_blank" rel="noopener">תנאי השימוש</a></span>
+              </label>
+              <label class="consent__row" for="meetingPrivacy">
+                <input type="checkbox" id="meetingPrivacy" name="consentPrivacy" required />
+                <span>קראתי ואני מסכים/ה ל<a href="privacy.html" target="_blank" rel="noopener">מדיניות הפרטיות</a></span>
+              </label>
+              <label class="consent__row" for="meetingMarketing">
+                <input type="checkbox" id="meetingMarketing" name="consentMarketing" />
+                <span>אני מעוניין/ת לקבל דיוור שיווקי, מבצעים והטבות (אופציונלי, ניתן לבטל בכל עת)</span>
+              </label>
+            </div>
+          </fieldset>
+
+          <div class="meet-summary" id="meetingSummary" aria-live="polite"></div>
+          <button class="btn btn--primary btn--lg btn--block" type="submit">קבעו פגישת וידאו ←</button>
+          <p class="meet-status" id="meetingStatus" role="status" aria-live="polite"></p>
+          <a class="meet-wa" href="https://wa.me/972505037537" target="_blank" rel="noopener">${svgIcon('chat')}מעדיפים לדבר בוואטסאפ? כתבו לנו</a>
+        </form>
+        <aside class="meet-aside glass">
+          <h2 class="meet-aside__title">${svgIcon('video')} איך זה עובד?</h2>
+          <ol class="meet-aside__list">
+            <li>בוחרים ספק, יום ושעה שנוחים לכם.</li>
+            <li>משאירים שם וטלפון (ואימייל לקישור ה-Zoom).</li>
+            <li>אנחנו מאשרים את הפגישה ושולחים קישור הצטרפות.</li>
+            <li>נפגשים בווידאו ועוברים יחד על המסלול המשתלם ביותר.</li>
+          </ol>
+          <p class="meet-aside__fine">${svgIcon('clock')} פגישות בימים א׳–ה׳ 09:00–20:30 ובימי ו׳ עד 12:30 (שעון ישראל). הפגישה אורכת כ-30 דקות וניתן לקבוע לפחות 4 שעות מראש.</p>
+        </aside>
+      </div>
+    </section>
+  </main>
+${footer}
+  ${leadsConfigTag()}
+  ${meetingConfigTag()}
+  <script src="${JS_SRC}" defer></script>
+</body>
+</html>
+`;
+}
+
 const builtCalculators = CALC_SLUGS
   .map((slug) => categories.find((c) => c.slug === slug))
   .filter((c) => c && cheapestRegular(c.slug));
@@ -2259,6 +2392,7 @@ fs.writeFileSync(path.join(__dirname, 'compare.html'), comparePage());
 fs.writeFileSync(path.join(__dirname, 'community.html'), communityPage());
 fs.writeFileSync(path.join(__dirname, 'ratings.html'), ratingsPage());
 fs.writeFileSync(path.join(__dirname, 'app.html'), appPage());
+fs.writeFileSync(path.join(__dirname, 'meeting.html'), meetingPage());
 fs.writeFileSync(path.join(__dirname, '404.html'), notFoundPage());
 
 // ── Refresh sitemap ─────────────────────────────────────────────────────────
@@ -2283,6 +2417,7 @@ const locs = [
   { loc: `${SITE}/guides.html`, lastmod: BUILD_DATE, priority: '0.7', changefreq: 'weekly' },
   { loc: `${SITE}/community.html`, lastmod: BUILD_DATE, priority: '0.7', changefreq: 'weekly' },
   { loc: `${SITE}/ratings.html`, lastmod: BUILD_DATE, priority: '0.7', changefreq: 'weekly' },
+  { loc: `${SITE}/meeting.html`, lastmod: BUILD_DATE, priority: '0.7', changefreq: 'monthly' },
   { loc: `${SITE}/about.html`, lastmod: BUILD_DATE, priority: '0.5', changefreq: 'monthly' },
   ...categories.map((c) => ({ loc: `${SITE}/${c.slug}.html`, lastmod: CATALOGUE_DATE, priority: '0.9', changefreq: 'daily' })),
   ...builtCollections.map((col) => ({ loc: `${SITE}/${col.slug}.html`, lastmod: CATALOGUE_DATE, priority: '0.75', changefreq: 'weekly' })),
@@ -2299,5 +2434,5 @@ ${locs.map((u) => `  <url>\n    <loc>${u.loc}</loc>\n    <lastmod>${u.lastmod}</
 `;
 fs.writeFileSync(path.join(__dirname, 'sitemap.xml'), sitemap);
 
-console.log(`Generated ${categories.length} category + ${builtCollections.length} collections + ${builtCalculators.length} calculators + ${guides.length} guides + ${staticPages.length} static + guides index + plans + providers + community + ratings + 404 + sitemap.xml`);
+console.log(`Generated ${categories.length} category + ${builtCollections.length} collections + ${builtCalculators.length} calculators + ${guides.length} guides + ${staticPages.length} static + guides index + plans + providers + community + ratings + app + meeting + 404 + sitemap.xml`);
 console.log(`Asset fingerprints: styles.css?v=${CSS_V}  script.js?v=${JS_V}  community.js?v=${COMMUNITY_JS_V}  (hand-written index.html must reference these same values)`);

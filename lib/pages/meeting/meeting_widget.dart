@@ -6,7 +6,6 @@ import 'package:provider/provider.dart';
 import '../../app_state.dart';
 import '../../components/logo_widget/logo_widget.dart';
 import '../../core/nav.dart';
-import '../../data.dart';
 import '../../services/backend/backend.dart';
 import '../../services/backend/local_backend.dart';
 import '../../services/meeting_slots.dart';
@@ -17,8 +16,8 @@ import '../../widgets/app_snackbar.dart';
 import '../../widgets/consent_panel.dart';
 import 'meeting_status_card.dart';
 
-/// "פגישת וידאו עם נציג" — books a 30-minute Zoom sales meeting, one day or
-/// more in advance (Sun–Thu 9:00–21:00, Friday mornings). The request rides
+/// "פגישת וידאו עם נציג" — books a 30-minute Zoom sales meeting, from about
+/// 4 hours ahead (same-day allowed; Sun–Thu 9:00–21:00, Friday mornings). The request rides
 /// the rep pipeline; once a rep confirms, the Zoom link arrives here via the
 /// backend's realtime [Backend.meetingStream] (simulated under LocalBackend).
 class MeetingWidget extends StatefulWidget {
@@ -59,7 +58,9 @@ class _MeetingWidgetState extends State<MeetingWidget> {
   @override
   void initState() {
     super.initState();
-    _provider = widget.provider;
+    // Only honour a deep-linked provider when it is one of the bookable seven
+    // (the server accepts no others); otherwise leave the step unselected.
+    _provider = meetingProviders.contains(widget.provider) ? widget.provider : null;
     final appState = AppState();
     if (appState.userName.isNotEmpty) _nameCtrl.text = appState.userName;
     if (appState.userPhone.isNotEmpty) _phoneCtrl.text = appState.userPhone;
@@ -272,7 +273,7 @@ class _MeetingWidgetState extends State<MeetingWidget> {
           const SizedBox(height: 22),
           _SectionLabel(t: t, step: 2, label: 'באיזה יום נוח לכם?'),
           const SizedBox(height: 4),
-          Text('ניתן לקבוע פגישה החל ממחר, בימים א׳–ה׳ ובשישי בבוקר.', style: t.bodySmall),
+          Text('ניתן לקבוע פגישה כבר היום (כ-4 שעות מראש), בימים א׳–ה׳ ובשישי בבוקר.', style: t.bodySmall),
           const SizedBox(height: 10),
           _buildDateChips(t).animate(delay: 100.ms).fadeIn().slideY(begin: 0.04),
 
@@ -406,7 +407,7 @@ class _MeetingWidgetState extends State<MeetingWidget> {
     return Wrap(
       spacing: 8,
       runSpacing: 8,
-      children: allProviders.map((p) {
+      children: meetingProviders.map((p) {
         final active = _provider == p;
         return Semantics(
           button: true,

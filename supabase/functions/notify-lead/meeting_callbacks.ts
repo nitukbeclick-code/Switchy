@@ -13,6 +13,9 @@ import {
 } from "../_shared/meetings.ts";
 import { parseReschedule } from "../_shared/reschedule.ts";
 import { createZoomMeeting, deleteZoomMeeting, zoomConfigured } from "../_shared/zoom.ts";
+import {
+  createCalendarEvent, deleteCalendarEvent, gcalConfigured, updateCalendarEventStart,
+} from "../_shared/google_calendar.ts";
 import { sendCustomerEmail } from "../_shared/email.ts";
 import { allowed } from "./callbacks.ts";
 
@@ -55,6 +58,33 @@ async function emailCustomer(cfg: Cfg, meeting: MeetingRow): Promise<boolean> {
 function deliveryLine(meeting: MeetingRow, emailed: boolean): string {
   if (!meeting.email) return "⚠️ אין אימייל ללקוח — שלחו את הקישור בוואטסאפ";
   return emailed ? "📧 הקישור נשלח ללקוח במייל" : "⚠️ שליחת המייל ללקוח נכשלה — שלחו את הקישור ידנית";
+}
+
+// Best-effort: create a Google Calendar event for a confirmed meeting and stash
+// the event id on the row so reschedule/cancel can patch/delete it. Mirrors the
+// Zoom integration's fail-soft contract — never throws, never blocks the confirm.
+async function createGcalEventFor(cfg: Cfg, meeting: MeetingRow, joinUrl: string): Promise<void> {
+  if (!gcalConfigured(cfg)) return;
+  const startIso = String(meeting.starts_at ?? "");
+  if (!startIso) return;
+  const name = meeting.name ?? "";
+  const provider = meeting.provider ?? "";
+  const summary = `חוסך — פגישת ייעוץ ${provider} עם ${name}`.replace(/\s+/g, " ").trim();
+  const description =
+    `שם: ${name}\nטלפון: ${meeting.phone ?? ""}\nספק: ${provider}\nקישור Zoom: ${joinUrl}`;
+  const ev = await createCalendarEvent(cfg, { summary, description, startIso });
+  if (!ev?.id || !meeting.id) return;
+  // persist best-effort — a failed patch leaves the event live but un-tracked,
+  // which is harmless (it just won't be auto-moved/deleted later).
+  await patchCount(`/rest/v1/meetings?id=eq.${meeting.id}`, { gcal_event_id: ev.id });
+}
+
+// Best-effort: delete the calendar event tied to a meeting (if any). Fail-soft.
+async function deleteGcalEventFor(cfg: Cfg, meetingId: string): Promise<void> {
+  if (!gcalConfigured(cfg)) return;
+  const rows = await fetchRows<MeetingRow>(`/rest/v1/meetings?id=eq.${meetingId}&select=gcal_event_id`);
+  const id = rows?.[0]?.gcal_event_id;
+  if (id) await deleteCalendarEvent(cfg, id);
 }
 
 export async function handleMeetingCallback(cfg: Cfg, cb: TgCallbackQuery): Promise<HandlerResult> {
@@ -170,6 +200,9 @@ export async function handleMeetingCallback(cfg: Cfg, cb: TgCallbackQuery): Prom
       await refreshMeetingKeyboard(cfg, msg, meetingId);
       return { ok: false, skipped: "not pending" };
     }
+    // best-effort: drop any calendar event we may have created for this meeting
+    // (a pending meeting normally has none, but a re-opened/edge case might).
+    await deleteGcalEventFor(cfg, meetingId);
     await logMeetingEvent({
       meeting_id: meetingId, event: "status_change", old_status: "pending", new_status: newStatus,
       actor_tg_id: cb.from?.id ?? null, actor_name: who,
@@ -238,6 +271,9 @@ export async function handleMeetingCallback(cfg: Cfg, cb: TgCallbackQuery): Prom
     meeting_id: meetingId, event: "link_set", note: zoom.join_url.slice(0, 500),
     actor_tg_id: cb.from?.id ?? null, actor_name: who,
   });
+  // best-effort Google Calendar event (mirrors Zoom): never let it break the
+  // confirm. Persist the returned id so reschedule/cancel can patch/delete it.
+  await createGcalEventFor(cfg, meeting, zoom.join_url);
   await answer("הפגישה אושרה ✅");
   await freezeCard(cfg, msg, meetingId, `✅ ${MEETING_STATUS_HE.confirmed}${who ? " — " + who : ""}`);
   const confirmed: MeetingRow = { ...meeting, status: "confirmed", join_url: zoom.join_url };
@@ -287,6 +323,8 @@ export async function handleMeetingLinkReply(cfg: Cfg, msg: TgMessage, meetingId
   // fetch AFTER the patch so the email renders the join link we just stored
   const rows = await fetchRows<MeetingRow>(`/rest/v1/meetings?id=eq.${meetingId}&select=*`);
   const meeting = rows?.[0];
+  // best-effort calendar event for the manually-confirmed meeting too
+  if (meeting) await createGcalEventFor(cfg, meeting, link);
   const emailed = meeting ? await emailCustomer(cfg, meeting) : false;
   await sendTelegram(cfg, emailed ? "✅ הקישור נשלח ללקוח" : `✅ הקישור נרשם — ${deliveryLine(meeting ?? {}, emailed)}`);
   return { ok: true, emailed };
@@ -321,6 +359,10 @@ export async function handleMeetingRescheduleReply(cfg: Cfg, msg: TgMessage, mee
   // fetch AFTER the patch so the card + email render the new time
   const rows = await fetchRows<MeetingRow>(`/rest/v1/meetings?id=eq.${meetingId}&select=*`);
   const meeting = rows?.[0];
+  // best-effort: move the calendar event to the new start (fail-soft).
+  if (gcalConfigured(cfg) && meeting?.gcal_event_id) {
+    await updateCalendarEventStart(cfg, meeting.gcal_event_id, parsed.startsAt);
+  }
   await sendTelegram(
     cfg,
     `🔄 <b>הפגישה עם ${esc(meeting?.name ?? "")} נדחתה</b> ל${esc(formatMeetingWhen(meeting ?? { meeting_date: parsed.meetingDate, slot: parsed.slot }))}.`,

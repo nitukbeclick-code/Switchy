@@ -704,6 +704,11 @@ create table if not exists public.meetings (
   updated_at       timestamptz not null default now()
 );
 
+-- Google Calendar event id (server-managed): set when the rep confirms the
+-- meeting and a calendar event is created; used to delete/patch the event on
+-- cancel/no-rep/reschedule. Added via ALTER so existing deployments pick it up.
+alter table public.meetings add column if not exists gcal_event_id text;
+
 drop trigger if exists meetings_set_updated_at on public.meetings;
 create trigger meetings_set_updated_at before update on public.meetings
   for each row execute function public.set_updated_at();
@@ -711,6 +716,12 @@ create trigger meetings_set_updated_at before update on public.meetings
 -- ── 2. RLS — leads' insert-anyone / select-own / column-limited pattern ──────
 alter table public.meetings enable row level security;
 
+-- INSERT is open to anyone (mirrors leads_insert_anyone): the site books a
+-- meeting with the anon key and no user session (auth.uid() is null), so the
+-- policy must NOT require auth.uid(). `with check (true)` permits the anon/public
+-- role; the meetings_guard BEFORE INSERT trigger still validates every field
+-- (provider whitelist, schedule, 4h lead time, rate limits) and sets user_id to
+-- auth.uid() (null for anon). No additional anon policy is needed.
 drop policy if exists "meetings_insert_anyone" on public.meetings;
 create policy "meetings_insert_anyone" on public.meetings
   for insert with check (true);
@@ -779,6 +790,7 @@ begin
   new.notified_at := null;     new.claimed_by := null;
   new.claimed_by_tg_id := null; new.claimed_at := null;
   new.confirmed_at := null;    new.reminded_rep_at := null;
+  new.gcal_event_id := null;
 
   -- shape validation (same regexes/bounds as leads_rate_limit)
   if length(trim(new.name)) < 2 or length(new.name) > 80 then
@@ -795,11 +807,14 @@ begin
     raise exception 'field too long';
   end if;
 
+  -- provider gate: a meeting may only be booked for an eligible carrier (the
+  -- seven providers Chosech offers consultations for). Required + whitelisted.
+  if coalesce(new.provider, '') not in ('HOT','yes','פרטנר','סלקום','STING TV','בזק','הוט מובייל') then
+    raise exception 'provider not eligible for a meeting';
+  end if;
+
   -- schedule rules: Israel wall clock is the only clock that matters here.
   il_today := (now() at time zone 'Asia/Jerusalem')::date;
-  if new.meeting_date < il_today + 1 then
-    raise exception 'meeting must be booked at least one day ahead';
-  end if;
   if new.meeting_date > il_today + 30 then
     raise exception 'meeting too far ahead';
   end if;
@@ -823,6 +838,13 @@ begin
   -- so Israel DST transitions can never drift the meeting time.
   new.starts_at := ((new.meeting_date::text || ' ' || new.slot)::timestamp)
                      at time zone 'Asia/Jerusalem';
+
+  -- minimum lead time: the meeting must start at least 4 hours from now (the
+  -- date-only "tomorrow" check above is intentionally relaxed in favour of this
+  -- absolute-instant rule, so a same-day slot 4h+ out is allowed).
+  if new.starts_at < now() + interval '4 hours' then
+    raise exception 'meeting must be booked at least 4 hours ahead';
+  end if;
 
   -- one open meeting per phone (pending/confirmed in the future)
   if (select count(*) from public.meetings
@@ -957,7 +979,10 @@ as $$
      'openai_api_key', 'anthropic_api_key', 'lead_webhook_secret',
      -- Zoom Server-to-Server OAuth (optional — the bot falls back to the
      -- reply-with-link flow when these are absent)
-     'zoom_account_id', 'zoom_client_id', 'zoom_client_secret', 'zoom_host_email'
+     'zoom_account_id', 'zoom_client_id', 'zoom_client_secret', 'zoom_host_email',
+     -- Google Calendar service-account (optional — mirrors Zoom; the bot skips
+     -- calendar creation when these are absent)
+     'google_service_account_key', 'google_calendar_id'
    );
 $$;
 revoke execute on function public.get_lead_notify_config() from public, anon, authenticated;
@@ -986,7 +1011,10 @@ as $$
      'telegram_bot_token', 'telegram_chat_id', 'telegram_allowed_user_ids',
      'resend_api_key', 'resend_from', 'leads_notify_email',
      'openai_api_key', 'anthropic_api_key', 'gemini_api_key', 'lead_webhook_secret',
-     'zoom_account_id', 'zoom_client_id', 'zoom_client_secret', 'zoom_host_email'
+     'zoom_account_id', 'zoom_client_id', 'zoom_client_secret', 'zoom_host_email',
+     -- Google Calendar service-account (optional — mirrors Zoom; the bot creates
+     -- a calendar event on confirm when both are present, fail-soft otherwise)
+     'google_service_account_key', 'google_calendar_id'
    );
 $$;
 revoke execute on function public.get_lead_notify_config() from public, anon, authenticated;

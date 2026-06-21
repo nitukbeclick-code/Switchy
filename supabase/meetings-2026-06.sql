@@ -136,11 +136,13 @@ begin
     raise exception 'field too long';
   end if;
 
+  -- only the 7 rep-eligible providers may book a video meeting
+  if coalesce(new.provider, '') not in ('HOT','yes','פרטנר','סלקום','STING TV','בזק','הוט מובייל') then
+    raise exception 'provider not eligible for a meeting';
+  end if;
+
   -- schedule rules: Israel wall clock is the only clock that matters here.
   il_today := (now() at time zone 'Asia/Jerusalem')::date;
-  if new.meeting_date < il_today + 1 then
-    raise exception 'meeting must be booked at least one day ahead';
-  end if;
   if new.meeting_date > il_today + 30 then
     raise exception 'meeting too far ahead';
   end if;
@@ -164,6 +166,11 @@ begin
   -- so Israel DST transitions can never drift the meeting time.
   new.starts_at := ((new.meeting_date::text || ' ' || new.slot)::timestamp)
                      at time zone 'Asia/Jerusalem';
+
+  -- minimum 4 hours of lead time (replaces the old one-day-ahead rule)
+  if new.starts_at < now() + interval '4 hours' then
+    raise exception 'meeting must be booked at least 4 hours ahead';
+  end if;
 
   -- one open meeting per phone (pending/confirmed in the future)
   if (select count(*) from public.meetings

@@ -63,7 +63,10 @@ class _NotificationCenterWidgetState extends State<NotificationCenterWidget> {
   (IconData, Color) _kindStyle(AppTheme ffTheme, NotifKind kind) {
     return switch (kind) {
       NotifKind.renewal => (Icons.alarm_rounded, ffTheme.warning),
-      NotifKind.betterDeal => (Icons.lightbulb_rounded, ffTheme.primary),
+      // Amber = VALUE: a "better deal" alert is a savings opportunity, and the
+      // amber stays vivid against the tinted badge in BOTH light and dark
+      // (the theme-aware ink `primary` would dim to off-white on dark here).
+      NotifKind.betterDeal => (Icons.lightbulb_rounded, ffTheme.saving),
       NotifKind.savings => (Icons.trending_down_rounded, ffTheme.success),
       NotifKind.meeting => (Icons.videocam_rounded, ffTheme.brandAccent),
       NotifKind.community => (Icons.forum_rounded, ffTheme.brandAccent),
@@ -95,7 +98,7 @@ class _NotificationCenterWidgetState extends State<NotificationCenterWidget> {
     return Scaffold(
       backgroundColor: ffTheme.background,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: ffTheme.cardSurface,
         elevation: 0,
         centerTitle: true,
         leading: IconButton(
@@ -176,7 +179,7 @@ class _NotifCard extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Material(
-        color: Colors.white,
+        color: ffTheme.cardSurface,
         borderRadius: BorderRadius.circular(15),
         child: InkWell(
           onTap: onTap,
@@ -185,13 +188,7 @@ class _NotifCard extends StatelessWidget {
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(15),
               border: Border.all(color: ffTheme.alternate),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
+              boxShadow: ffTheme.shadowSoft,
             ),
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
             child: Row(

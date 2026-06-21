@@ -6,6 +6,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../theme/app_theme.dart';
 import '../../core/nav.dart';
 import '../../widgets/app_button.dart';
+import '../../widgets/pressable.dart';
 import '../../app_state.dart';
 import '../../data.dart';
 import '../../services/recommendation_engine.dart';
@@ -716,12 +717,7 @@ class _QuizWidgetState extends State<QuizWidget> {
                 child: CircularProgressIndicator(color: ffTheme.brandAccent, strokeWidth: 3),
               ),
             ),
-          ).animate(onPlay: (c) => c.repeat(reverse: true)).scale(
-                begin: const Offset(1, 1),
-                end: const Offset(1.06, 1.06),
-                duration: 900.ms,
-                curve: Curves.easeInOut,
-              ),
+          ),
           const SizedBox(height: 24),
           Text('מנתח את הנתונים…',
               style: ffTheme.titleMedium.copyWith(color: ffTheme.primaryText)),
@@ -756,14 +752,15 @@ class _QuizWidgetState extends State<QuizWidget> {
                     style: ffTheme.headlineMedium.copyWith(color: ffTheme.brandAccent)),
               ),
             ],
-          ),
+          ).animate().fadeIn(duration: 280.ms).slideY(begin: 0.06, end: 0, curve: ffTheme.easeOut),
           const SizedBox(height: 4),
           Text('מבוסס על התשובות שלך',
-              style: ffTheme.bodyMedium.copyWith(color: ffTheme.secondaryText)),
+              style: ffTheme.bodyMedium.copyWith(color: ffTheme.secondaryText))
+              .animate(delay: 80.ms).fadeIn(duration: 280.ms).slideY(begin: 0.06, end: 0, curve: ffTheme.easeOut),
           const SizedBox(height: 20),
 
           // Top match card
-          GestureDetector(
+          Pressable(
             onTap: () => context.pushNamed('PlanDetail',
                 pathParameters: {'planId': top.plan.id}),
             child: Container(
@@ -886,7 +883,10 @@ class _QuizWidgetState extends State<QuizWidget> {
                 ],
               ),
             ),
-          ),
+          ).animate(delay: 160.ms)
+              .fadeIn(duration: 320.ms)
+              .slideY(begin: 0.08, end: 0, curve: ffTheme.easeOut)
+              .scaleXY(begin: 0.97, end: 1, curve: ffTheme.spring),
 
           // Share affordance — let a delighted user spread the word.
           const SizedBox(height: 8),
@@ -911,7 +911,9 @@ class _QuizWidgetState extends State<QuizWidget> {
             Text('חלופות נוספות',
                 style: ffTheme.labelLarge.copyWith(color: ffTheme.secondaryText)),
             const SizedBox(height: 10),
-            ..._recs.skip(1).take(2).map((alt) => GestureDetector(
+            ..._recs.skip(1).take(2).toList().asMap().entries.map((entry) {
+              final alt = entry.value;
+              return Pressable(
                   onTap: () => context.pushNamed('PlanDetail',
                       pathParameters: {'planId': alt.plan.id}),
                   child: Container(
@@ -944,7 +946,7 @@ class _QuizWidgetState extends State<QuizWidget> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
-                            color: ffTheme.alternate,
+                            color: ffTheme.secondary,
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Text('${alt.scorePct}%',
@@ -957,7 +959,10 @@ class _QuizWidgetState extends State<QuizWidget> {
                       ],
                     ),
                   ),
-                )),
+                ).animate(delay: (240 + entry.key * 80).ms)
+                    .fadeIn(duration: 300.ms)
+                    .slideY(begin: 0.06, end: 0, curve: ffTheme.easeOut);
+            }),
           ],
           const SizedBox(height: 8),
         ],

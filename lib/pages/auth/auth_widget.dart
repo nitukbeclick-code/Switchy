@@ -183,11 +183,18 @@ class _AuthWidgetState extends State<AuthWidget> {
             const SizedBox(height: 8),
             Row(
               children: [
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(color: t.secondary, borderRadius: BorderRadius.circular(t.radiusSm)),
-                  child: Center(child: Text('₪', style: t.headlineSmall.copyWith(color: t.primaryDark))),
+                Hero(
+                  tag: 'brand-mark',
+                  child: Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(t.radiusSm)),
+                    child: Center(
+                      child: ExcludeSemantics(
+                        child: Text('₪', style: t.headlineSmall.copyWith(color: AppColors.primaryDark)),
+                      ),
+                    ),
+                  ),
                 ),
                 const SizedBox(width: 12),
                 Text('חוסך', style: t.headlineMedium.copyWith(color: Colors.white)),
@@ -318,11 +325,15 @@ class _AuthWidgetState extends State<AuthWidget> {
         _consentPanel(t),
         const SizedBox(height: 14),
         _SocialButton(
+          // The Google button keeps its brand white surface in both themes, so
+          // its label/glyph must read on white regardless of app brightness — a
+          // fixed ink foreground, not the theme-aware primaryText (off-white on
+          // dark would vanish).
           label: 'המשך עם Google',
           glyph: 'G',
           glyphColor: const Color(0xFF4285F4),
           bg: Colors.white,
-          fg: t.primaryText,
+          fg: AppColors.primaryText,
           bordered: true,
           onTap: _busy ? null : () => _oauth(OAuthProvider.google),
         ),
@@ -343,7 +354,7 @@ class _AuthWidgetState extends State<AuthWidget> {
         const SizedBox(height: 18),
         AppButton(
           text: 'הרשמה עם מייל',
-          color: t.primary,
+          color: AppColors.primary,
           onPressed: () async => setState(() => _mode = _Mode.signup),
           width: double.infinity,
         ),
@@ -415,7 +426,7 @@ class _AuthWidgetState extends State<AuthWidget> {
           const SizedBox(height: 18),
           AppButton(
             text: isSignup ? 'יצירת חשבון' : 'התחברות',
-            color: t.primary,
+            color: AppColors.primary,
             onPressed: () async {
               if (!_formKey.currentState!.validate()) return;
               if (isSignup) {

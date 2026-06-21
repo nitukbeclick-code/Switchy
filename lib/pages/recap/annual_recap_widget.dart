@@ -236,13 +236,23 @@ class _HeroCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 28),
       decoration: BoxDecoration(
-        color: ffTheme.primaryDark,
+        // A premium ink hero: soft wash + a pronounced lift so the headline
+        // figure floats off the page.
+        gradient: ffTheme.brandGradient,
         borderRadius: BorderRadius.circular(24),
-        boxShadow: ffTheme.shadowSoft,
+        boxShadow: ffTheme.shadowLifted,
       ),
       child: Column(
         children: [
-          Icon(Icons.celebration_rounded, color: ffTheme.saving, size: 30),
+          // The celebratory mark breathes gently — honest, not confetti-loud.
+          Icon(Icons.celebration_rounded, color: ffTheme.saving, size: 30)
+              .animate(onPlay: (c) => c.repeat(reverse: true))
+              .scale(
+                begin: const Offset(1, 1),
+                end: const Offset(1.12, 1.12),
+                duration: 1600.ms,
+                curve: Curves.easeInOut,
+              ),
           const SizedBox(height: 12),
           Text(
             'החיסכון הפוטנציאלי שלך לשנה',
@@ -393,7 +403,7 @@ class _OpportunityRow extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ffTheme.cardSurface,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: ffTheme.alternate),
       ),

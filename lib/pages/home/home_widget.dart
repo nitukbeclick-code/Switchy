@@ -167,16 +167,17 @@ class _HomeWidgetState extends State<HomeWidget> {
             child: Container(
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                boxShadow: ffTheme.shadowPrimary,
+                boxShadow: ffTheme.shadowAccent,
               ),
               child: FloatingActionButton(
-                backgroundColor: ffTheme.secondary,
+                // Green ACTION — request a callback.
+                backgroundColor: ffTheme.brandAccent,
                 elevation: 0,
                 onPressed: () {
                   HapticFeedback.lightImpact();
                   context.pushNamed('Callback');
                 },
-                child: Icon(Icons.phone_rounded, color: ffTheme.primary, size: 26),
+                child: const Icon(Icons.phone_rounded, color: Colors.white, size: 26),
               ),
             ),
           ),
@@ -201,14 +202,14 @@ class _HomeWidgetState extends State<HomeWidget> {
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.compare_arrows_rounded, color: ffTheme.secondary, size: 20),
+                      Icon(Icons.compare_arrows_rounded, color: ffTheme.brandAccent, size: 20),
                       const SizedBox(width: 8),
                       Text('השווה ${appState.comparePlans.length} מסלולים', style: ffTheme.titleSmall.copyWith(color: Colors.white)),
                       const Spacer(),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                        decoration: BoxDecoration(color: ffTheme.secondary, borderRadius: BorderRadius.circular(ffTheme.radiusSm)),
-                        child: Text('←', style: ffTheme.labelMedium.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w800)),
+                        decoration: BoxDecoration(color: ffTheme.brandAccent, borderRadius: BorderRadius.circular(ffTheme.radiusSm)),
+                        child: const Text('←', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
                       ),
                     ],
                   ),
@@ -235,15 +236,24 @@ class _HomeWidgetState extends State<HomeWidget> {
         : '⏰ המבצע שלך ב${r.provider} מסתיים בעוד $days ימים';
     final subText = isExpired ? '' : 'השווה עכשיו ותחסוך לפני שהמחיר קופץ';
 
-    // Urgency: red-tinted when ≤7 days, amber-tinted otherwise
+    // Urgency: red-tinted when ≤7 days, amber-tinted otherwise. The badge/CTA
+    // gradient keeps its semantic urgency hue (fixed, legible on its own fill);
+    // the CARD surface + text are theme-aware so the alert reads correctly on
+    // both the glass-white and the slate-dark canvas.
     final isUrgent = days <= 7;
+    final accent = isUrgent ? const Color(0xFFE53935) : const Color(0xFFFFB300);
     final gradientColors = isUrgent
         ? [const Color(0xFF7B1E1E), const Color(0xFFB33030)]
         : [const Color(0xFF7B5E00), const Color(0xFFB38A00)];
-    final bgColor = isUrgent ? const Color(0xFFFFF0F0) : const Color(0xFFFFF8E1);
-    final borderColor = isUrgent
-        ? const Color(0xFFE53935).withValues(alpha: 0.35)
-        : const Color(0xFFFFB300).withValues(alpha: 0.45);
+    final bgColor = Color.alphaBlend(
+        accent.withValues(alpha: ffTheme.dark ? 0.16 : 0.08), ffTheme.cardSurface);
+    final textColor = ffTheme.dark
+        ? ffTheme.primaryText
+        : (isUrgent ? const Color(0xFF7B1E1E) : const Color(0xFF5F4000));
+    final subColor = ffTheme.dark
+        ? ffTheme.secondaryText
+        : (isUrgent ? const Color(0xFF9E2020) : const Color(0xFF7A5500));
+    final borderColor = accent.withValues(alpha: isUrgent ? 0.35 : 0.45);
 
     return SliverToBoxAdapter(
       child: GestureDetector(
@@ -260,7 +270,7 @@ class _HomeWidgetState extends State<HomeWidget> {
             border: Border.all(color: borderColor, width: 1.5),
             boxShadow: [
               BoxShadow(
-                color: (isUrgent ? const Color(0xFFE53935) : const Color(0xFFFFB300)).withValues(alpha: 0.15),
+                color: accent.withValues(alpha: 0.15),
                 blurRadius: 12,
                 offset: const Offset(0, 3),
               ),
@@ -293,7 +303,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                     Text(
                       mainText,
                       style: ffTheme.titleSmall.copyWith(
-                        color: isUrgent ? const Color(0xFF7B1E1E) : const Color(0xFF5F4000),
+                        color: textColor,
                         fontWeight: FontWeight.w800,
                         fontSize: 13.5,
                       ),
@@ -303,7 +313,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                       Text(
                         subText,
                         style: ffTheme.bodySmall.copyWith(
-                          color: isUrgent ? const Color(0xFF9E2020) : const Color(0xFF7A5500),
+                          color: subColor,
                         ),
                       ),
                     ],
@@ -414,8 +424,10 @@ class _HomeWidgetState extends State<HomeWidget> {
                       child: Container(
                         width: 16,
                         height: 16,
-                        decoration: BoxDecoration(color: ffTheme.secondary, shape: BoxShape.circle, border: Border.all(color: ffTheme.primaryDark, width: 1.5)),
-                        child: Center(child: Text(count > 9 ? '9+' : '$count', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: ffTheme.primaryDark))),
+                        // Amber VALUE dot — the unread badge pops against the ink
+                        // header and reads as "needs attention" in both themes.
+                        decoration: BoxDecoration(color: ffTheme.saving, shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 1.5)),
+                        child: Center(child: Text(count > 9 ? '9+' : '$count', style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: Color(0xFF3A2900)))),
                       ),
                     );
                   }),
@@ -425,7 +437,7 @@ class _HomeWidgetState extends State<HomeWidget> {
           ),
         ),
       ),
-    );
+    ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.06, end: 0, curve: Curves.easeOutCubic);
   }
 
   Widget _buildSavingsHero(BuildContext context, AppTheme ffTheme, SavingsSummary savings) {
@@ -479,7 +491,7 @@ class _HomeWidgetState extends State<HomeWidget> {
             Text(
               '₪—',
               style: ffTheme.displaySmall.copyWith(
-                color: ffTheme.secondary,
+                color: Colors.white.withValues(alpha: 0.65),
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -502,9 +514,11 @@ class _HomeWidgetState extends State<HomeWidget> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 13),
                 decoration: BoxDecoration(
-                  gradient: ffTheme.freshGradient,
+                  // Green ACTION pill on the ink hero — the single conversion cue
+                  // that guides the eye, with its accent glow.
+                  gradient: ffTheme.accentGradient,
                   borderRadius: BorderRadius.circular(ffTheme.radiusPill),
-                  boxShadow: ffTheme.shadowPrimary,
+                  boxShadow: ffTheme.shadowAccent,
                   border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
                 ),
                 child: Text(
@@ -584,7 +598,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                   appState.setCategory(cat);
                   context.goNamed('Results');
                 },
-                child: Text('הכל ←', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+                child: Text('הכל ←', style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccent, fontWeight: FontWeight.w700)),
               ),
             ],
           ),
@@ -698,7 +712,8 @@ class _HomeWidgetState extends State<HomeWidget> {
               final savingsText = isPersonalized
                   ? (save > 0 ? 'תחסוך ₪$save בשנה' : 'מחיר תחרותי')
                   : (cheapest > 0 ? 'מסלולים מ-₪$cheapest' : 'השוואת מחירים');
-              final savingsColor = isPersonalized && save > 0 ? ffTheme.savingDark : ffTheme.primary;
+              // Amber = VALUE (personalised saving); neutral ink otherwise.
+              final savingsColor = isPersonalized && save > 0 ? ffTheme.savingDark : ffTheme.secondaryText;
 
               return GestureDetector(
                 onTap: () {
@@ -709,10 +724,16 @@ class _HomeWidgetState extends State<HomeWidget> {
                 child: Container(
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: isActive ? ffTheme.accent1 : Colors.white,
+                    // Active card sits on a subtle green-tinted ground; the rest
+                    // on the plain card surface — both theme-aware.
+                    color: isActive
+                        ? Color.alphaBlend(
+                            ffTheme.brandAccent.withValues(alpha: ffTheme.dark ? 0.16 : 0.07),
+                            ffTheme.cardSurface)
+                        : ffTheme.cardSurface,
                     borderRadius: BorderRadius.circular(ffTheme.radiusLg),
                     border: Border.all(
-                      color: isActive ? ffTheme.primary : ffTheme.alternate,
+                      color: isActive ? ffTheme.brandAccent : ffTheme.alternate,
                       width: isActive ? 2 : 1,
                     ),
                     boxShadow: ffTheme.shadowSoft,
@@ -723,12 +744,14 @@ class _HomeWidgetState extends State<HomeWidget> {
                     children: [
                       Row(
                         children: [
-                          Icon(categoryIconData(cat.id), size: 22, color: ffTheme.primary),
+                          Icon(categoryIconData(cat.id), size: 22,
+                              color: isActive ? ffTheme.brandAccent : ffTheme.primaryText),
                           if (isPersonalized) ...[
                             const Spacer(),
+                            // Green active "analysed" dot.
                             Container(
                               width: 6, height: 6,
-                              decoration: BoxDecoration(color: ffTheme.primary, shape: BoxShape.circle),
+                              decoration: BoxDecoration(color: ffTheme.brandAccent, shape: BoxShape.circle),
                             ),
                           ],
                         ],
@@ -775,12 +798,13 @@ class _HomeWidgetState extends State<HomeWidget> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: ffTheme.secondary,
+                      // Green chip on the ink advisor band — the brand "AI" tag.
+                      color: ffTheme.brandAccent,
                       borderRadius: BorderRadius.circular(ffTheme.radiusSm),
                     ),
                     child: Text(
                       '✦ חוסך AI',
-                      style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700),
+                      style: ffTheme.labelSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w800),
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -796,7 +820,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                 ],
               ),
             ),
-            Icon(Icons.chat_bubble_rounded, color: ffTheme.secondary, size: 40),
+            Icon(Icons.chat_bubble_rounded, color: ffTheme.brandAccent, size: 40),
           ],
         ),
       ),
@@ -826,13 +850,13 @@ class _HomeWidgetState extends State<HomeWidget> {
         children: [
           Row(
             children: [
-              Icon(Icons.chat_bubble_outline_rounded, size: 18, color: ffTheme.primary),
+              Icon(Icons.chat_bubble_outline_rounded, size: 18, color: ffTheme.primaryText),
               const SizedBox(width: 6),
               Text('קהילה', style: ffTheme.titleLarge),
               const Spacer(),
               GestureDetector(
                 onTap: () => context.goNamed('Community'),
-                child: Text('הכל ←', style: ffTheme.labelMedium.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+                child: Text('הכל ←', style: ffTheme.labelMedium.copyWith(color: ffTheme.brandAccent, fontWeight: FontWeight.w700)),
               ),
             ],
           ),
@@ -851,7 +875,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                   decoration: BoxDecoration(
                     color: ffTheme.accent1,
                     borderRadius: BorderRadius.circular(ffTheme.radiusLg),
-                    border: Border.all(color: ffTheme.primary.withValues(alpha: 0.2)),
+                    border: Border.all(color: ffTheme.alternate.withValues(alpha: 0.6)),
                     boxShadow: ffTheme.shadowSoft,
                   ),
                   child: Row(
@@ -860,7 +884,8 @@ class _HomeWidgetState extends State<HomeWidget> {
                         width: 38,
                         height: 38,
                         decoration: BoxDecoration(
-                          color: ffTheme.primary,
+                          // Green avatar — the community identity accent.
+                          gradient: ffTheme.accentGradient,
                           shape: BoxShape.circle,
                         ),
                         child: Center(
@@ -880,15 +905,15 @@ class _HomeWidgetState extends State<HomeWidget> {
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                                   decoration: BoxDecoration(
-                                    color: ffTheme.accent2,
+                                    color: ffTheme.saving.withValues(alpha: 0.16),
                                     borderRadius: BorderRadius.circular(ffTheme.radiusSm),
                                   ),
-                                  child: Text(post.channel, style: ffTheme.labelSmall.copyWith(color: const Color(0xFF8A6000), fontSize: 10, fontWeight: FontWeight.w700)),
+                                  child: Text(post.channel, style: ffTheme.labelSmall.copyWith(color: ffTheme.savingDark, fontSize: 10, fontWeight: FontWeight.w700)),
                                 ),
                                 const SizedBox(width: 6),
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(color: ffTheme.primary, borderRadius: BorderRadius.circular(6)),
+                                  decoration: BoxDecoration(color: ffTheme.brandAccent, borderRadius: BorderRadius.circular(6)),
                                   child: Text('הפוסט שלך', style: ffTheme.labelSmall.copyWith(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w700)),
                                 ),
                               ],
@@ -917,7 +942,7 @@ class _HomeWidgetState extends State<HomeWidget> {
         decoration: BoxDecoration(
           color: ffTheme.accent1,
           borderRadius: BorderRadius.circular(ffTheme.radiusLg),
-          border: Border.all(color: ffTheme.primary.withValues(alpha: 0.2)),
+          border: Border.all(color: ffTheme.alternate.withValues(alpha: 0.6)),
           boxShadow: ffTheme.shadowSoft,
         ),
         child: Row(
@@ -925,7 +950,7 @@ class _HomeWidgetState extends State<HomeWidget> {
             Container(
               width: 38,
               height: 38,
-              decoration: BoxDecoration(color: ffTheme.primary, shape: BoxShape.circle),
+              decoration: BoxDecoration(gradient: ffTheme.accentGradient, shape: BoxShape.circle),
               child: const Center(child: Icon(Icons.chat_bubble_outline_rounded, size: 18, color: Colors.white)),
             ),
             const SizedBox(width: 12),
@@ -945,7 +970,7 @@ class _HomeWidgetState extends State<HomeWidget> {
               ),
             ),
             const SizedBox(width: 8),
-            Icon(Icons.arrow_back_rounded, color: ffTheme.primary, size: 20),
+            Icon(Icons.arrow_back_rounded, color: ffTheme.brandAccent, size: 20),
           ],
         ),
       ),
@@ -992,7 +1017,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                     width: 110,
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: ffTheme.cardSurface,
                       borderRadius: BorderRadius.circular(ffTheme.radiusLg),
                       border: Border.all(color: ffTheme.alternate),
                       boxShadow: ffTheme.shadowSoft,
@@ -1058,10 +1083,12 @@ class _HomeWidgetState extends State<HomeWidget> {
                         width: 148,
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: Colors.white,
+                          color: ffTheme.cardSurface,
                           borderRadius: BorderRadius.circular(ffTheme.radiusMd),
                           border: Border.all(
-                            color: better != null ? ffTheme.primary.withValues(alpha: 0.35) : ffTheme.alternate,
+                            // A better-deal card wears an amber VALUE ring.
+                            color: better != null ? ffTheme.saving.withValues(alpha: 0.55) : ffTheme.alternate,
+                            width: better != null ? 1.5 : 1,
                           ),
                           boxShadow: ffTheme.shadowSoft,
                         ),
@@ -1076,13 +1103,14 @@ class _HomeWidgetState extends State<HomeWidget> {
                               ],
                             ),
                             const SizedBox(height: 5),
-                            Text('₪${plan.priceText}/${priceUnitShort(plan)}', style: ffTheme.titleSmall.copyWith(color: ffTheme.primary, fontSize: 13, fontWeight: FontWeight.w700)),
+                            Text('₪${plan.priceText}/${priceUnitShort(plan)}', style: ffTheme.titleSmall.copyWith(color: ffTheme.primaryText, fontSize: 13, fontWeight: FontWeight.w700)),
                             const SizedBox(height: 3),
                             Row(
                               children: [
-                                Container(width: 5, height: 5, decoration: BoxDecoration(color: ffTheme.primary, shape: BoxShape.circle)),
+                                // Green active "tracking" cue.
+                                Container(width: 5, height: 5, decoration: BoxDecoration(color: ffTheme.brandAccent, shape: BoxShape.circle)),
                                 const SizedBox(width: 4),
-                                Text('עוקב', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontSize: 10, fontWeight: FontWeight.w700)),
+                                Text('עוקב', style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccent, fontSize: 10, fontWeight: FontWeight.w700)),
                               ],
                             ),
                           ],
@@ -1096,12 +1124,13 @@ class _HomeWidgetState extends State<HomeWidget> {
                             width: 22,
                             height: 22,
                             decoration: BoxDecoration(
-                              color: ffTheme.secondary,
+                              // Amber VALUE badge — a cheaper alternative exists.
+                              color: ffTheme.saving,
                               shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white, width: 1.5),
+                              border: Border.all(color: ffTheme.cardSurface, width: 1.5),
                               boxShadow: ffTheme.shadowSoft,
                             ),
-                            child: Center(child: Icon(Icons.lightbulb_outline_rounded, size: 11, color: ffTheme.primary)),
+                            child: const Center(child: Icon(Icons.lightbulb_outline_rounded, size: 11, color: Color(0xFF3A2900))),
                           ),
                         ),
                     ],
@@ -1144,7 +1173,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                     width: 148,
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: ffTheme.cardSurface,
                       borderRadius: BorderRadius.circular(ffTheme.radiusMd),
                       border: Border.all(color: ffTheme.alternate),
                       boxShadow: ffTheme.shadowSoft,
@@ -1160,7 +1189,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                           ],
                         ),
                         const SizedBox(height: 5),
-                        Text('₪${plan.priceText}/${priceUnitShort(plan)}', style: ffTheme.titleSmall.copyWith(color: ffTheme.primary, fontSize: 13, fontWeight: FontWeight.w700)),
+                        Text('₪${plan.priceText}/${priceUnitShort(plan)}', style: ffTheme.titleSmall.copyWith(color: ffTheme.primaryText, fontSize: 13, fontWeight: FontWeight.w700)),
                         const SizedBox(height: 3),
                         Text(plan.plan, style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText), maxLines: 1, overflow: TextOverflow.ellipsis),
                       ],
@@ -1214,6 +1243,17 @@ class _HomeWidgetState extends State<HomeWidget> {
               separatorBuilder: (_, __) => const SizedBox(width: 8),
               itemBuilder: (context, i) {
                 final p = providers[i];
+                // Per-provider brand HUE is preserved (rule: never recolor the
+                // carrier brand). Only the chip SURFACE adapts to the theme — on
+                // dark the pale brand wash becomes a faint tint of the provider's
+                // own colour over the dark card, with a lifted text shade so the
+                // same hue still pops on slate.
+                final chipBg = ffTheme.dark
+                    ? Color.alphaBlend(p.color.withValues(alpha: 0.20), AppColors.darkCard)
+                    : p.bg;
+                final chipFg = ffTheme.dark
+                    ? Color.alphaBlend(p.color.withValues(alpha: 0.85), Colors.white)
+                    : p.color;
                 return Pressable(
                   onTap: () => context.pushNamed(
                     'Provider',
@@ -1222,14 +1262,14 @@ class _HomeWidgetState extends State<HomeWidget> {
                   child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                   decoration: BoxDecoration(
-                    color: p.bg,
+                    color: chipBg,
                     borderRadius: BorderRadius.circular(ffTheme.radiusPill),
-                    border: Border.all(color: p.color.withValues(alpha: 0.25)),
+                    border: Border.all(color: p.color.withValues(alpha: ffTheme.dark ? 0.45 : 0.25)),
                   ),
                   child: Text(
                     p.name,
                     style: ffTheme.labelMedium.copyWith(
-                      color: p.color,
+                      color: chipFg,
                       fontWeight: FontWeight.w700,
                     ),
                   ),

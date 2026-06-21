@@ -15,6 +15,10 @@ import '../../components/logo_widget/logo_widget.dart';
 import '../../services/recommendation_engine.dart';
 import '../../services/backend/local_backend.dart';
 
+/// Ink read out on the amber VALUE surface — amber is fixed-hue in both
+/// themes, so this deep-amber ink stays legible on light AND dark.
+const Color _onSaving = Color(0xFF3A2900);
+
 class PlanDetailWidget extends StatefulWidget {
   const PlanDetailWidget({super.key, required this.planId});
   final String planId;
@@ -271,7 +275,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                                 child: Text(
                                   'חוסך ₪$saveYear בשנה',
                                   style: ffTheme.labelMedium.copyWith(
-                                    color: const Color(0xFF3A2900),
+                                    color: _onSaving,
                                     fontWeight: FontWeight.w700,
                                     fontFeatures: const [FontFeature.tabularFigures()],
                                   ),
@@ -439,16 +443,10 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                         const SizedBox(height: 14),
                         Container(
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: ffTheme.cardSurface,
                             borderRadius: BorderRadius.circular(14),
                             border: Border.all(color: ffTheme.alternate),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.04),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
+                            boxShadow: ffTheme.shadowSoft,
                           ),
                           child: ExpansionTile(
                             title: Text('אותיות קטנות', style: ffTheme.titleSmall),
@@ -585,10 +583,10 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                                       width: 160,
                                       padding: const EdgeInsets.all(14),
                                       decoration: BoxDecoration(
-                                        color: Colors.white,
+                                        color: ffTheme.cardSurface,
                                         borderRadius: BorderRadius.circular(14),
                                         border: Border.all(color: ffTheme.alternate),
-                                        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
+                                        boxShadow: ffTheme.shadowSoft,
                                       ),
                                       child: Column(
                                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -635,7 +633,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
               child: Container(
                 padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: ffTheme.cardSurface,
                   borderRadius: const BorderRadius.vertical(
                       top: Radius.circular(22)),
                   border: Border(
@@ -643,7 +641,9 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                           color: ffTheme.lineColor, width: 1)),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.08),
+                      color: ffTheme.dark
+                          ? const Color(0x66060A12)
+                          : Colors.black.withValues(alpha: 0.08),
                       blurRadius: 20,
                       offset: const Offset(0, -6),
                     ),
@@ -656,13 +656,15 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                         text: 'עברו למסלול הזה ←',
                         onPressed: () async => context.pushNamed('Lead',
                             pathParameters: {'planId': plan.id}, queryParameters: {'source': 'plan'}),
-                        
+
                           height: 56,
-                          color: ffTheme.primary,
+                          // Const brand ink → AppButton lifts this into the green
+                          // ACTION gradient + glow in BOTH themes (white-on-green).
+                          color: AppColors.primary,
                           textStyle:
                               ffTheme.titleSmall.copyWith(color: Colors.white),
                           borderRadius: BorderRadius.circular(16),
-                        
+
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -688,7 +690,9 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                         ),
                         child: Icon(
                           inCompare ? Icons.check_rounded : Icons.add_rounded,
-                          color: inCompare ? Colors.white : ffTheme.primary,
+                          color: inCompare
+                              ? (ffTheme.dark ? ffTheme.background : Colors.white)
+                              : ffTheme.primary,
                           size: 24,
                         ),
                       ),
@@ -735,9 +739,9 @@ class _FitPanel extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.72),
+        color: t.cardSurface.withValues(alpha: t.dark ? 0.85 : 0.72),
         borderRadius: BorderRadius.circular(t.radiusLg),
-        border: Border.all(color: t.primary.withValues(alpha: 0.16)),
+        border: Border.all(color: t.brandAccent.withValues(alpha: 0.22)),
         boxShadow: t.shadowGlass,
       ),
       child: Column(
@@ -898,13 +902,17 @@ class _FitPanel extends StatelessWidget {
                             ? Icons.check_rounded
                             : Icons.compare_arrows_rounded,
                         size: 18,
-                        color: inCompare ? Colors.white : t.primary,
+                        color: inCompare
+                            ? (t.dark ? t.background : Colors.white)
+                            : t.primary,
                       ),
                       const SizedBox(width: 8),
                       Text(
                         inCompare ? 'נוסף להשוואה' : 'הוסף להשוואה',
                         style: t.titleSmall.copyWith(
-                          color: inCompare ? Colors.white : t.primary,
+                          color: inCompare
+                              ? (t.dark ? t.background : Colors.white)
+                              : t.primary,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
@@ -1070,16 +1078,10 @@ class _Card extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ffTheme.cardSurface,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: ffTheme.alternate),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        boxShadow: ffTheme.shadowSoft,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1185,16 +1187,10 @@ class _SpecGrid extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ffTheme.cardSurface,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: ffTheme.alternate),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        boxShadow: ffTheme.shadowSoft,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1265,16 +1261,10 @@ class _CostBreakdownCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ffTheme.cardSurface,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: ffTheme.alternate),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        boxShadow: ffTheme.shadowSoft,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1348,16 +1338,10 @@ class _ExtraInfoSection extends StatelessWidget {
     final ffTheme = AppTheme.of(context);
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ffTheme.cardSurface,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: ffTheme.alternate),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        boxShadow: ffTheme.shadowSoft,
       ),
       child: ExpansionTile(
         title: Text('מידע נוסף ואותיות קטנות', style: ffTheme.titleSmall),

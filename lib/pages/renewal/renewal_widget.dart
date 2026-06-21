@@ -179,12 +179,9 @@ class _IntroCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [ffTheme.primaryDark, ffTheme.primary],
-          begin: Alignment.topRight,
-          end: Alignment.bottomLeft,
-        ),
+        gradient: ffTheme.brandGradient,
         borderRadius: BorderRadius.circular(18),
+        boxShadow: ffTheme.shadowSoft,
       ),
       child: Row(
         children: [
@@ -232,6 +229,62 @@ String _chipLabel(int days) {
   return 'מסתיים בעוד $days ימים';
 }
 
+// ── Countdown ring ─────────────────────────────────────────────────────────────
+
+/// A compact circular gauge that fills as the renewal date approaches. Over a
+/// 90-day horizon: far out → a thin sliver; days==0 → a full ring. Past-due (<0)
+/// renders a full ring in the urgency colour. The day number sits in the centre.
+class _CountdownRing extends StatelessWidget {
+  const _CountdownRing({required this.days, required this.color, required this.ffTheme});
+  final int days;
+  final Color color;
+  final AppTheme ffTheme;
+
+  @override
+  Widget build(BuildContext context) {
+    final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    // 0..1 progress where 1 = renews now / overdue, ~0 = 90+ days away.
+    final progress = days < 0 ? 1.0 : (1 - (days / 90)).clamp(0.06, 1.0);
+    final centerLabel = days < 0 ? '!' : '$days';
+    return Semantics(
+      label: _chipLabel(days),
+      child: SizedBox(
+        width: 44,
+        height: 44,
+        child: TweenAnimationBuilder<double>(
+          tween: Tween(begin: reduceMotion ? progress : 0, end: progress),
+          duration: const Duration(milliseconds: 900),
+          curve: ffTheme.easeOut,
+          builder: (_, value, __) => Stack(
+            alignment: Alignment.center,
+            children: [
+              SizedBox(
+                width: 44,
+                height: 44,
+                child: CircularProgressIndicator(
+                  value: value,
+                  strokeWidth: 4,
+                  backgroundColor: color.withValues(alpha: 0.15),
+                  valueColor: AlwaysStoppedAnimation(color),
+                  strokeCap: StrokeCap.round,
+                ),
+              ),
+              Text(
+                centerLabel,
+                style: GoogleFonts.rubik(
+                    fontSize: days >= 100 ? 12 : 14,
+                    fontWeight: FontWeight.w800,
+                    color: color,
+                    fontFeatures: const [FontFeature.tabularFigures()]),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 // ── Plan Card ─────────────────────────────────────────────────────────────────
 
 class _PlanCard extends StatelessWidget {
@@ -268,15 +321,10 @@ class _PlanCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ffTheme.cardSurface,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: ffTheme.alternate),
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 10,
-              offset: const Offset(0, 3))
-        ],
+        boxShadow: ffTheme.shadowSoft,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -286,7 +334,12 @@ class _PlanCard extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
             child: Row(
               children: [
-                LogoWidget(provider: plan.provider, size: 44),
+                // Hero-tagged logo so it shares-element animates into the
+                // full comparison report when the card is opened.
+                Hero(
+                  tag: 'tracked-logo-${plan.id}',
+                  child: LogoWidget(provider: plan.provider, size: 44),
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Column(
@@ -321,47 +374,58 @@ class _PlanCard extends StatelessWidget {
             ),
           ),
 
-          // Promo end countdown
+          // Promo end countdown — a ring that fills as renewal approaches sits
+          // beside the urgency chip for an at-a-glance "how close" read.
           if (days != null) ...[
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
               child: Row(
                 children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: _chipColor(days, ffTheme).withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(
-                          color: _chipColor(days, ffTheme).withValues(alpha: 0.4)),
-                    ),
-                    child: Row(
+                  _CountdownRing(days: days, color: _chipColor(days, ffTheme), ffTheme: ffTheme),
+                  const SizedBox(width: 10),
+                  Flexible(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.timer_outlined,
-                            size: 13,
-                            color: _chipColor(days, ffTheme)),
-                        const SizedBox(width: 4),
-                        Text(
-                          _chipLabel(days),
-                          style: GoogleFonts.assistant(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: _chipColor(days, ffTheme),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: _chipColor(days, ffTheme).withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                                color: _chipColor(days, ffTheme).withValues(alpha: 0.4)),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.timer_outlined,
+                                  size: 13,
+                                  color: _chipColor(days, ffTheme)),
+                              const SizedBox(width: 4),
+                              Text(
+                                _chipLabel(days),
+                                style: GoogleFonts.assistant(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: _chipColor(days, ffTheme),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
+                        if (promoEnd != null) ...[
+                          const SizedBox(height: 3),
+                          Text(
+                            DateFormat('d/M/yyyy').format(promoEnd),
+                            style: ffTheme.labelSmall
+                                .copyWith(color: ffTheme.secondaryText),
+                          ),
+                        ],
                       ],
                     ),
                   ),
-                  if (promoEnd != null) ...[
-                    const SizedBox(width: 8),
-                    Text(
-                      DateFormat('d/M/yyyy').format(promoEnd),
-                      style: ffTheme.labelSmall
-                          .copyWith(color: ffTheme.secondaryText),
-                    ),
-                  ],
                 ],
               ),
             ),
@@ -502,7 +566,7 @@ class _ReminderTile extends StatelessWidget {
         : 'נשלח לך התראה ~21 יום לפני סיום המבצע';
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ffTheme.cardSurface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: ffTheme.alternate),
       ),
@@ -627,9 +691,9 @@ class _AddPlanSheetState extends State<_AddPlanSheet> {
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
 
     return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      decoration: BoxDecoration(
+        color: ffTheme.cardSurface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
       padding: EdgeInsets.fromLTRB(20, 20, 20, 20 + bottomInset),
       child: Form(

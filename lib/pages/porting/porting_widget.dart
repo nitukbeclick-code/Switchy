@@ -77,16 +77,15 @@ class _PortingWidgetState extends State<PortingWidget> {
     return Scaffold(
       backgroundColor: ffTheme.background,
       appBar: AppBar(
-        backgroundColor: ffTheme.primary,
-        foregroundColor: Colors.white,
+        // Inherit the themed app-bar (ink on light, darkSurface on dark) so the
+        // header reads correctly in both modes rather than forcing white-on-ink.
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_rounded, color: Colors.white),
+          icon: const Icon(Icons.arrow_back_ios_rounded),
           tooltip: 'חזרה',
           onPressed: () => context.safePop(),
         ),
-        title: Text('בקשת ניוד מספר',
-            style: ffTheme.titleLarge.copyWith(color: Colors.white)),
+        title: const Text('בקשת ניוד מספר'),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
@@ -192,7 +191,7 @@ class _PortingWidgetState extends State<PortingWidget> {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 14, vertical: 8),
                     decoration: BoxDecoration(
-                      color: selected ? ffTheme.brandAccent : Colors.white,
+                      color: selected ? ffTheme.brandAccent : ffTheme.cardSurface,
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
                         color:
@@ -264,7 +263,7 @@ class _PortingWidgetState extends State<PortingWidget> {
                     decoration: BoxDecoration(
                       color: _poaAccepted
                           ? ffTheme.brandAccent
-                          : Colors.white,
+                          : ffTheme.cardSurface,
                       borderRadius: BorderRadius.circular(6),
                       border: Border.all(
                           color: _poaAccepted
@@ -326,7 +325,7 @@ class _PortingWidgetState extends State<PortingWidget> {
                   
                     height: 56,
                     color:
-                        canSubmit ? ffTheme.primary : ffTheme.alternate,
+                        canSubmit ? AppColors.primary : ffTheme.alternate,
                     textStyle: ffTheme.titleSmall.copyWith(
                         color: canSubmit
                             ? Colors.white
@@ -361,7 +360,7 @@ class _PortingWidgetState extends State<PortingWidget> {
       decoration: InputDecoration(
         hintText: hint,
         filled: true,
-        fillColor: Colors.white,
+        fillColor: ffTheme.cardSurface,
         prefixIcon: Icon(prefixIcon, color: ffTheme.secondaryText, size: 20),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -391,7 +390,10 @@ class _SuccessState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: ffTheme.primary,
+      // Celebration hero stays a premium INK surface in both themes (the const
+      // ink token, not the theme-aware `ffTheme.primary` which flips to off-white
+      // on dark and would strand the white-on-ink content).
+      backgroundColor: AppColors.primary,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(32),
@@ -441,9 +443,9 @@ class _SuccessState extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.schedule_rounded, color: ffTheme.secondary, size: 16),
+                    const Icon(Icons.schedule_rounded, color: AppColors.secondary, size: 16),
                     const SizedBox(width: 8),
-                    Text('זמן ניוד: 1–3 ימי עסקים', style: ffTheme.labelMedium.copyWith(color: ffTheme.secondary, fontWeight: FontWeight.w600)),
+                    Text('זמן ניוד: 1–3 ימי עסקים', style: ffTheme.labelMedium.copyWith(color: AppColors.secondary, fontWeight: FontWeight.w600)),
                   ],
                 ),
               ).animate().fadeIn(delay: 450.ms),
@@ -456,8 +458,8 @@ class _SuccessState extends StatelessWidget {
                 
                   width: double.infinity,
                   height: 56,
-                  color: ffTheme.secondary,
-                  textStyle: ffTheme.titleMedium.copyWith(color: ffTheme.primary),
+                  color: AppColors.secondary,
+                  textStyle: ffTheme.titleMedium.copyWith(color: AppColors.primary),
                   borderRadius: BorderRadius.circular(16),
                 
               ).animate().fadeIn(delay: 500.ms),

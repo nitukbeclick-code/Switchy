@@ -14,6 +14,10 @@ import '../../components/logo_widget/logo_widget.dart';
 import '../../services/recommendation_engine.dart';
 import '../../services/backend/local_backend.dart';
 
+/// Ink read out on the amber VALUE surface — amber is fixed-hue in both
+/// themes, so this deep-amber ink stays legible on light AND dark.
+const Color _onSaving = Color(0xFF3A2900);
+
 class CompareWidget extends StatelessWidget {
   const CompareWidget({super.key});
 
@@ -145,10 +149,10 @@ class _EmptyState extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: ffTheme.cardSurface,
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(color: ffTheme.primary.withValues(alpha: 0.25)),
-                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8)],
+                  boxShadow: ffTheme.shadowSoft,
                 ),
                 child: Row(
                   children: [
@@ -171,7 +175,8 @@ class _EmptyState extends StatelessWidget {
               text: hasPlan ? 'הוסף מסלול נוסף ←' : 'חזרה לתוצאות',
               onPressed: () async => context.goNamed('Results'),
 
-                color: ffTheme.primary,
+                // Const brand ink → green ACTION gradient in both themes.
+                color: AppColors.primary,
                 textStyle: ffTheme.titleSmall.copyWith(color: Colors.white),
                 borderRadius: BorderRadius.circular(14),
                 height: 52,
@@ -403,9 +408,9 @@ class _CompareTable extends StatelessWidget {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: p.id == winnerId
                               ? ffTheme.primary
-                              : ffTheme.secondaryBackground,
+                              : ffTheme.cardSurface,
                           foregroundColor: p.id == winnerId
-                              ? Colors.white
+                              ? (ffTheme.dark ? ffTheme.background : Colors.white)
                               : ffTheme.primaryText,
                           elevation: 0,
                           shape: RoundedRectangleBorder(
@@ -421,7 +426,7 @@ class _CompareTable extends StatelessWidget {
                           'בחר ←',
                           style: ffTheme.titleSmall.copyWith(
                               color: p.id == winnerId
-                                  ? Colors.white
+                                  ? (ffTheme.dark ? ffTheme.background : Colors.white)
                                   : ffTheme.primaryText),
                         ),
                       ),
@@ -554,9 +559,9 @@ class _WinnerSummaryCard extends StatelessWidget {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.emoji_events_rounded, size: 13, color: Color(0xFF3A2900)),
+                          const Icon(Icons.emoji_events_rounded, size: 13, color: _onSaving),
                           const SizedBox(width: 4),
-                          Text('ההמלצה שלנו', style: ffTheme.labelSmall.copyWith(color: const Color(0xFF3A2900), fontWeight: FontWeight.w800)),
+                          Text('ההמלצה שלנו', style: ffTheme.labelSmall.copyWith(color: _onSaving, fontWeight: FontWeight.w800)),
                         ],
                       ),
                     ),
@@ -657,13 +662,15 @@ class _WinnerSummaryCard extends StatelessWidget {
                     context.pushNamed('Lead', pathParameters: {'planId': winner.id}, queryParameters: {'source': 'compare'});
                   },
                   style: ElevatedButton.styleFrom(
+                    // Sits on the permanently-ink hero in both themes, so the
+                    // on-hero contrast pair is fixed (white fill, ink label).
                     backgroundColor: Colors.white,
-                    foregroundColor: ffTheme.primary,
+                    foregroundColor: AppColors.primary,
                     minimumSize: const Size(double.infinity, 46),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     elevation: 0,
                   ),
-                  child: Text('בחר מסלול זה ←', style: GoogleFonts.rubik(fontSize: 14, fontWeight: FontWeight.w800, color: ffTheme.primary)),
+                  child: Text('בחר מסלול זה ←', style: GoogleFonts.rubik(fontSize: 14, fontWeight: FontWeight.w800, color: AppColors.primary)),
                 ),
               ],
             ),
@@ -763,22 +770,16 @@ class _PlanHeader extends StatelessWidget {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: isWinner
-            ? ffTheme.primary.withValues(alpha: 0.06)
-            : Colors.white,
+            ? ffTheme.saving.withValues(alpha: ffTheme.dark ? 0.16 : 0.10)
+            : ffTheme.cardSurface,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: isWinner ? ffTheme.primary : ffTheme.alternate,
+          color: isWinner ? ffTheme.saving : ffTheme.alternate,
           width: isWinner ? 2 : 1,
         ),
-        boxShadow: [
-          BoxShadow(
-            color: isWinner
-                ? ffTheme.primary.withValues(alpha: 0.12)
-                : Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        boxShadow: isWinner
+            ? [BoxShadow(color: ffTheme.saving.withValues(alpha: 0.24), blurRadius: 14, offset: const Offset(0, 5))]
+            : ffTheme.shadowSoft,
       ),
       child: Column(
         children: [
@@ -795,11 +796,11 @@ class _PlanHeader extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const Icon(Icons.emoji_events_rounded,
-                      size: 13, color: Color(0xFF3A2900)),
+                      size: 13, color: _onSaving),
                   const SizedBox(width: 4),
                   Text('זוכה',
                       style: ffTheme.labelSmall.copyWith(
-                          color: const Color(0xFF3A2900),
+                          color: _onSaving,
                           fontWeight: FontWeight.w700)),
                 ],
               ),
@@ -826,7 +827,9 @@ class _PlanHeader extends StatelessWidget {
               child: Text(
                 '${match!.scorePct}% התאמה',
                 style: ffTheme.labelSmall.copyWith(
-                  color: isWinner ? Colors.white : ffTheme.primaryText,
+                  color: isWinner
+                      ? (ffTheme.dark ? ffTheme.background : Colors.white)
+                      : ffTheme.primaryText,
                   fontWeight: isWinner ? FontWeight.w700 : FontWeight.w600,
                   fontSize: isWinner ? null : 10,
                 ),
@@ -881,7 +884,7 @@ class _RowWidget extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 2),
       decoration: BoxDecoration(
-        color: isAlt ? ffTheme.accent1.withValues(alpha: 0.5) : Colors.white,
+        color: isAlt ? ffTheme.accent1.withValues(alpha: 0.5) : ffTheme.cardSurface,
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(

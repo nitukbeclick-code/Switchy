@@ -125,7 +125,7 @@ class _BiometricGateWidgetState extends State<BiometricGateWidget> {
                     text: 'התחברו עם סיסמה',
                     width: double.infinity,
                     color: Colors.white,
-                    textStyle: t.titleMedium.copyWith(color: t.primary),
+                    textStyle: t.titleMedium.copyWith(color: AppColors.primary),
                     onPressed: _signInWithPassword,
                   )
                 else
@@ -133,7 +133,7 @@ class _BiometricGateWidgetState extends State<BiometricGateWidget> {
                     text: _busy ? 'מאמת…' : 'כניסה מהירה',
                     width: double.infinity,
                     color: Colors.white,
-                    textStyle: t.titleMedium.copyWith(color: t.primary),
+                    textStyle: t.titleMedium.copyWith(color: AppColors.primary),
                     onPressed: () async => _unlock(),
                   ),
                 const SizedBox(height: 12),

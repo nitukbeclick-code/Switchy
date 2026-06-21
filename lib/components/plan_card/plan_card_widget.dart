@@ -6,7 +6,12 @@ import '../../theme/app_theme.dart';
 import '../../app_state.dart';
 import '../../data.dart';
 import '../../models.dart';
+import '../../widgets/pressable.dart';
 import '../logo_widget/logo_widget.dart';
+
+/// Ink read out on the amber VALUE surface — amber is a fixed-hue accent in
+/// both themes, so this deep-amber ink stays legible on light AND dark.
+const Color _onSaving = Color(0xFF3A2900);
 
 class PlanCardWidget extends StatelessWidget {
   const PlanCardWidget({
@@ -78,7 +83,7 @@ class PlanCardWidget extends StatelessWidget {
         children: [
           Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ffTheme.cardSurface,
         borderRadius: BorderRadius.circular(ffTheme.radiusLg),
         // Crisp formal frame; the best match wears the VALUE accent — a 2px
         // amber ring + warm glow, mirroring the site's `.plan--best`.
@@ -87,7 +92,7 @@ class PlanCardWidget extends StatelessWidget {
           width: isBest ? 2 : 1,
         ),
         boxShadow: isBest
-            ? const [BoxShadow(color: Color(0x40D97706), blurRadius: 18, offset: Offset(0, 6))]
+            ? [BoxShadow(color: ffTheme.saving.withValues(alpha: 0.28), blurRadius: 22, offset: const Offset(0, 8))]
             : ffTheme.shadowCard,
       ),
       child: Column(
@@ -254,7 +259,7 @@ class PlanCardWidget extends StatelessWidget {
                             active: inCompare,
                             fill: inCompare ? ffTheme.primary : ffTheme.background,
                             borderColor: inCompare ? ffTheme.primary : ffTheme.alternate,
-                            iconColor: inCompare ? Colors.white : ffTheme.secondaryText,
+                            iconColor: inCompare ? (ffTheme.dark ? ffTheme.background : Colors.white) : ffTheme.secondaryText,
                             onTap: () => appState.toggleCompare(plan.id),
                           ),
                         ],
@@ -275,8 +280,11 @@ class PlanCardWidget extends StatelessWidget {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
-                            color: ffTheme.primary,
+                            // Match score is an ACTION signal → green gradient,
+                            // legible in both themes (white ink on green).
+                            gradient: ffTheme.accentGradient,
                             borderRadius: BorderRadius.circular(20),
+                            boxShadow: ffTheme.shadowAccent,
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -354,7 +362,7 @@ class PlanCardWidget extends StatelessWidget {
                           style: GoogleFonts.rubik(
                             fontSize: 12,
                             fontWeight: FontWeight.w800,
-                            color: const Color(0xFF3A2900),
+                            color: _onSaving,
                             fontFeatures: const [FontFeature.tabularFigures()],
                           ),
                         ),
@@ -447,19 +455,19 @@ class PlanCardWidget extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: ffTheme.saving,
                   borderRadius: BorderRadius.circular(ffTheme.radiusPill),
-                  boxShadow: const [BoxShadow(color: Color(0x57D97706), blurRadius: 14, offset: Offset(0, 6))],
+                  boxShadow: [BoxShadow(color: ffTheme.saving.withValues(alpha: 0.34), blurRadius: 16, offset: const Offset(0, 6))],
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.star_rounded, size: 13, color: Color(0xFF3A2900)),
+                    const Icon(Icons.star_rounded, size: 13, color: _onSaving),
                     const SizedBox(width: 4),
                     Text(
                       'ההתאמה הכי טובה',
                       style: GoogleFonts.rubik(
                         fontSize: 11,
                         fontWeight: FontWeight.w800,
-                        color: const Color(0xFF3A2900),
+                        color: _onSaving,
                       ),
                     ),
                   ],
@@ -491,30 +499,42 @@ class _ChooseButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // The best match wears the green gradient → white ink. A regular card's
+    // ink CTA flips with the theme (off-white surface on dark), so its label
+    // takes the contrasting on-primary ink for that surface.
+    final labelColor = isBest
+        ? Colors.white
+        : (ffTheme.dark ? ffTheme.background : Colors.white);
     final label = Text(
       'בחירה',
       style: GoogleFonts.rubik(
         fontSize: 14,
         fontWeight: FontWeight.w700,
-        color: Colors.white,
+        color: labelColor,
       ),
     );
-    return Container(
-      decoration: BoxDecoration(
-        gradient: isBest ? ffTheme.accentGradient : null,
-        color: isBest ? null : ffTheme.primary,
-        borderRadius: BorderRadius.circular(ffTheme.radiusMd),
-        boxShadow: isBest ? ffTheme.shadowAccent : null,
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
+    // Pressable supplies the scale-on-press; the InkWell keeps the ripple and
+    // owns the tap (so the callback fires exactly once). deferToChild lets the
+    // InkWell win the gesture arena instead of Pressable swallowing the tap.
+    return Pressable(
+      behavior: HitTestBehavior.deferToChild,
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: isBest ? ffTheme.accentGradient : null,
+          color: isBest ? null : ffTheme.primary,
           borderRadius: BorderRadius.circular(ffTheme.radiusMd),
-          splashColor: Colors.white.withValues(alpha: 0.15),
-          onTap: onTap,
-          child: Padding(
-            padding: EdgeInsets.symmetric(horizontal: fullWidth ? 0 : 22, vertical: 12),
-            child: fullWidth ? Center(child: label) : label,
+          boxShadow: isBest ? ffTheme.shadowAccent : ffTheme.shadowPrimary,
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(ffTheme.radiusMd),
+            splashColor: Colors.white.withValues(alpha: 0.15),
+            onTap: onTap,
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: fullWidth ? 0 : 22, vertical: 12),
+              child: fullWidth ? Center(child: label) : label,
+            ),
           ),
         ),
       ),

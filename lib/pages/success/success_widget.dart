@@ -44,7 +44,9 @@ class _SuccessWidgetState extends State<SuccessWidget> {
     final plan = appState.leadPlanId != null ? planById(appState.leadPlanId!) : null;
 
     return Scaffold(
-      backgroundColor: ffTheme.primary,
+      // Celebration hero stays a premium INK surface in both themes — the const
+      // ink token, not the theme-aware getter (which flips to off-white on dark).
+      backgroundColor: AppColors.primary,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -221,8 +223,8 @@ class _SuccessWidgetState extends State<SuccessWidget> {
                 
                   width: double.infinity,
                   height: 56,
-                  color: ffTheme.secondary,
-                  textStyle: GoogleFonts.rubik(fontSize: 15, fontWeight: FontWeight.w700, color: ffTheme.primary),
+                  color: AppColors.secondary,
+                  textStyle: GoogleFonts.rubik(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.primary),
                   borderRadius: BorderRadius.circular(16),
                 
               ).animate().fadeIn(delay: 800.ms),

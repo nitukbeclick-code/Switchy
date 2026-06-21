@@ -11,6 +11,7 @@ import '../../components/logo_widget/logo_widget.dart';
 import '../../components/plan_card/plan_card_widget.dart';
 import '../../services/search.dart';
 import '../../widgets/empty_state.dart';
+import '../../widgets/pressable.dart';
 
 /// Global search across every provider and plan in the catalogue.
 ///
@@ -75,7 +76,7 @@ class _SearchWidgetState extends State<SearchWidget> {
     return Scaffold(
       backgroundColor: ffTheme.background,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: ffTheme.secondaryBackground,
         elevation: 0,
         titleSpacing: 0,
         leading: IconButton(
@@ -206,7 +207,7 @@ class _ResultsList extends StatelessWidget {
                   app.setCategory(c.id);
                   context.pushNamed('Results');
                 },
-              ).animate(delay: (i.clamp(0, 5) * 30).ms).fadeIn(duration: 220.ms);
+              ).animate(delay: (i.clamp(0, 5) * 40).ms).fadeIn(duration: 240.ms).slideY(begin: 0.06, end: 0, curve: ffTheme.easeOut);
               i++;
               return widget;
             }).toList(),
@@ -235,7 +236,7 @@ class _ResultsList extends StatelessWidget {
                     onBeforeNavigate();
                     context.pushNamed('Provider', pathParameters: {'name': name});
                   },
-                ).animate(delay: (i.clamp(0, 5) * 30).ms).fadeIn(duration: 220.ms);
+                ).animate(delay: (i.clamp(0, 5) * 40).ms).fadeIn(duration: 240.ms).slideY(begin: 0.06, end: 0, curve: ffTheme.easeOut);
                 i++;
                 return widget;
               },
@@ -254,7 +255,7 @@ class _ResultsList extends StatelessWidget {
               query: query,
               currentBill: appState.currentBill(p.cat),
               ffTheme: ffTheme,
-            ).animate(delay: (i.clamp(0, 6) * 25).ms).fadeIn(duration: 220.ms);
+            ).animate(delay: (i.clamp(0, 6) * 35).ms).fadeIn(duration: 240.ms).slideY(begin: 0.06, end: 0, curve: ffTheme.easeOut);
             i++;
             return widget;
           }),
@@ -330,7 +331,7 @@ class _Highlighted extends StatelessWidget {
     final low = text.toLowerCase();
     final hlStyle = base.copyWith(
       fontWeight: FontWeight.w800,
-      color: AppColors.brandAccent,
+      color: AppTheme.of(context).brandAccent,
       backgroundColor: highlight,
     );
 
@@ -458,7 +459,7 @@ class _CategoryResultChip extends StatelessWidget {
     return Semantics(
       button: true,
       label: 'קטגוריה ${hit.name}',
-      child: GestureDetector(
+      child: Pressable(
         onTap: onTap,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -510,7 +511,7 @@ class _ProviderChip extends StatelessWidget {
     return Semantics(
       button: true,
       label: 'ספק $name, $planCount מסלולים',
-      child: GestureDetector(
+      child: Pressable(
         onTap: onTap,
         child: Container(
           width: 116,
@@ -606,7 +607,7 @@ class _Suggestions extends StatelessWidget {
               .map((c) => Semantics(
                     button: true,
                     label: 'חיפוש ${c.name}',
-                    child: GestureDetector(
+                    child: Pressable(
                       onTap: () => onPick(c.name),
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -692,7 +693,7 @@ class _PillChip extends StatelessWidget {
     return Semantics(
       button: true,
       label: 'חיפוש $label',
-      child: GestureDetector(
+      child: Pressable(
         onTap: onTap,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -730,7 +731,7 @@ class _CheapestRow extends StatelessWidget {
     return Semantics(
       button: true,
       label: '$catName: ${plan.provider}, ${plan.plan}, ₪${plan.priceText} ${priceUnitShort(plan)}',
-      child: GestureDetector(
+      child: Pressable(
         onTap: () {
           Provider.of<AppState>(context, listen: false).viewPlan(plan.id);
           context.push('/plan/${plan.id}');

@@ -150,9 +150,9 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
     return Scaffold(
       backgroundColor: theme.background,
       appBar: AppBar(
+        // Inherit the themed app-bar (ink on light, darkSurface on dark) so the
+        // header is correct in both modes instead of forcing white-on-ink.
         title: const Text('תמיכה'),
-        backgroundColor: theme.primary,
-        foregroundColor: Colors.white,
         elevation: 0,
         actions: [
           if (isEscalated)
@@ -274,7 +274,7 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
         ? TextColorPair(null, Colors.white, theme.accentGradient)
         : isHuman
             ? TextColorPair(theme.brandAccent.withValues(alpha: 0.10), theme.primaryText, null)
-            : TextColorPair(Colors.white.withValues(alpha: 0.85), theme.primaryText, null);
+            : TextColorPair(theme.cardSurface, theme.primaryText, null);
 
     final alignment = isUser ? Alignment.centerRight : Alignment.centerLeft;
     final borderRadius = isUser
@@ -359,7 +359,7 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.85),
+            color: theme.cardSurface,
             borderRadius: const BorderRadius.only(
               topLeft: Radius.circular(4),
               topRight: Radius.circular(16),

@@ -53,7 +53,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
               decoration: InputDecoration(
                 hintText: 'ישראל ישראלי',
                 filled: true,
-                fillColor: Colors.white,
+                fillColor: ffTheme.cardSurface,
                 prefixIcon: Icon(Icons.person_outline_rounded, color: ffTheme.secondaryText),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                 enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.alternate)),
@@ -70,7 +70,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
               decoration: InputDecoration(
                 hintText: '050-0000000',
                 filled: true,
-                fillColor: Colors.white,
+                fillColor: ffTheme.cardSurface,
                 prefixIcon: Icon(Icons.phone_outlined, color: ffTheme.secondaryText),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                 enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.alternate)),
@@ -92,13 +92,11 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                 appBackend.upsertProfile(name: name, phone: phone).catchError((_) {});
                 Navigator.pop(ctx);
               },
-              
-                width: double.infinity,
-                height: 52,
-                color: ffTheme.primary,
-                textStyle: ffTheme.titleSmall.copyWith(color: Colors.white),
-                borderRadius: BorderRadius.circular(14),
-              
+              width: double.infinity,
+              height: 52,
+              color: AppColors.primary,
+              textStyle: ffTheme.titleSmall.copyWith(color: Colors.white),
+              borderRadius: BorderRadius.circular(14),
             ),
           ],
         ),
@@ -168,11 +166,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                       return Container(
                         margin: const EdgeInsets.only(bottom: 8),
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: ffTheme.alternate),
-                        ),
+                        decoration: ffTheme.glassDecoration(radius: 14),
                         child: Row(
                           children: [
                             Expanded(
@@ -236,11 +230,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                   _buildSectionHeader('שפה', ffTheme),
                   Container(
                     padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: ffTheme.alternate),
-                    ),
+                    decoration: ffTheme.glassDecoration(radius: 14),
                     child: Row(
                       children: ['עברית', 'English', 'العربية'].map((lang) {
                         final active = _lang == lang;
@@ -267,35 +257,42 @@ class _ProfileWidgetState extends State<ProfileWidget> {
 
                   const SizedBox(height: 20),
 
-                  // Appearance
+                  // Appearance — live theme control (system / light / dark)
                   _buildSectionHeader('מראה', ffTheme),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: ffTheme.alternate),
-                    ),
-                    child: Row(
+                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+                    decoration: ffTheme.glassDecoration(radius: 14),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Icon(Icons.dark_mode_rounded, color: ffTheme.secondaryText, size: 22),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('מצב כהה', style: ffTheme.titleSmall),
-                              Text('ממשק בגוונים כהים', style: ffTheme.bodySmall),
-                            ],
-                          ),
+                        Row(
+                          children: [
+                            Container(
+                              width: 38,
+                              height: 38,
+                              decoration: BoxDecoration(
+                                color: ffTheme.brandAccentTint,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Icon(Icons.dark_mode_rounded, color: ffTheme.brandAccent, size: 20),
+                            ),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('ערכת נושא', style: ffTheme.titleSmall),
+                                  Text('בהיר, כהה או לפי המכשיר', style: ffTheme.bodySmall),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: ffTheme.accent2,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text('בקרוב', style: ffTheme.labelSmall.copyWith(color: const Color(0xFF7A5C00), fontWeight: FontWeight.w600)),
+                        const SizedBox(height: 14),
+                        _ThemeSegmented(
+                          ffTheme: ffTheme,
+                          mode: appState.themeMode,
+                          onChanged: (m) => Provider.of<AppState>(context, listen: false).setThemeMode(m),
                         ),
                       ],
                     ),
@@ -474,9 +471,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
       onTap: () => context.pushNamed('Tracker'),
       child: Container(
         padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
+        decoration: ffTheme.glassDecoration(radius: 14).copyWith(
           border: Border.all(color: ffTheme.brandAccent.withValues(alpha: 0.3), width: 1.5),
           boxShadow: [BoxShadow(color: ffTheme.brandAccent.withValues(alpha: 0.1), blurRadius: 12, offset: const Offset(0, 4))],
         ),
@@ -561,12 +556,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
             child: Container(
               width: 130,
               padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: ffTheme.alternate),
-                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 6, offset: const Offset(0, 2))],
-              ),
+              decoration: ffTheme.glassDecoration(radius: 12),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -593,11 +583,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
   Widget _buildQuizSummary(BuildContext context, AppTheme ffTheme, AppState appState) {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: ffTheme.alternate),
-      ),
+      decoration: ffTheme.glassDecoration(radius: 14),
       child: Wrap(
         spacing: 8,
         runSpacing: 6,
@@ -660,6 +646,76 @@ class _ProfileWidgetState extends State<ProfileWidget> {
 
 // ── Helper widgets ────────────────────────────────────────────────────────────
 
+/// A 3-way segmented control for the app theme: system / light / dark.
+/// Bound to [AppState.themeMode]; the active segment carries the green ACTION
+/// gradient so the choice reads at a glance in both light and dark.
+class _ThemeSegmented extends StatelessWidget {
+  const _ThemeSegmented({required this.ffTheme, required this.mode, required this.onChanged});
+  final AppTheme ffTheme;
+  final ThemeMode mode;
+  final ValueChanged<ThemeMode> onChanged;
+
+  static const _segments = <(ThemeMode, String, IconData)>[
+    (ThemeMode.system, 'מערכת', Icons.brightness_auto_rounded),
+    (ThemeMode.light, 'בהיר', Icons.light_mode_rounded),
+    (ThemeMode.dark, 'כהה', Icons.dark_mode_rounded),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: ffTheme.background,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: ffTheme.alternate),
+      ),
+      child: Row(
+        children: _segments.map((s) {
+          final active = mode == s.$1;
+          return Expanded(
+            child: Semantics(
+              button: true,
+              selected: active,
+              label: s.$2,
+              child: GestureDetector(
+                onTap: () => onChanged(s.$1),
+                behavior: HitTestBehavior.opaque,
+                child: AnimatedContainer(
+                  duration: ffTheme.motionMedium,
+                  curve: ffTheme.easeOut,
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  decoration: BoxDecoration(
+                    gradient: active ? ffTheme.accentGradient : null,
+                    borderRadius: BorderRadius.circular(10),
+                    boxShadow: active ? ffTheme.shadowAccent : null,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ExcludeSemantics(
+                        child: Icon(s.$3, size: 18, color: active ? Colors.white : ffTheme.secondaryText),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        s.$2,
+                        style: ffTheme.labelSmall.copyWith(
+                          color: active ? Colors.white : ffTheme.secondaryText,
+                          fontWeight: active ? FontWeight.w700 : FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+}
+
 class _HeroStat extends StatelessWidget {
   const _HeroStat({required this.value, required this.label, required this.ffTheme});
   final String value;
@@ -721,11 +777,7 @@ class _ToggleTile extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: ffTheme.alternate),
-      ),
+      decoration: ffTheme.glassDecoration(radius: 14),
       child: Row(
         children: [
           Container(

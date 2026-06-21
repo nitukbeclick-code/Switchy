@@ -58,19 +58,24 @@ class _OnboardingWidgetState extends State<OnboardingWidget> {
                     padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
                     child: Row(
                       children: [
-                        Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Center(
-                            child: Text('₪',
-                                style: GoogleFonts.rubik(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.w800,
-                                    color: ffTheme.primaryDark)),
+                        Hero(
+                          tag: 'brand-mark',
+                          child: Container(
+                            width: 40,
+                            height: 40,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Center(
+                              child: ExcludeSemantics(
+                                child: Text('₪',
+                                    style: GoogleFonts.rubik(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.w800,
+                                        color: AppColors.primaryDark)),
+                              ),
+                            ),
                           ),
                         ),
                         const SizedBox(width: 10),
@@ -128,13 +133,14 @@ class _OnboardingWidgetState extends State<OnboardingWidget> {
                 child: AppButton(
                   text: _page == 2 ? 'בואו נתחיל לחסוך!' : 'הבא →',
                   onPressed: () async => _next(),
-                  
-                    width: double.infinity,
-                    height: 58,
-                    color: ffTheme.primary,
-                    textStyle: ffTheme.titleMedium.copyWith(color: Colors.white),
-                    borderRadius: BorderRadius.circular(18),
-                  
+                  width: double.infinity,
+                  height: 58,
+                  // AppColors.primary (const ink) so the button earns the green
+                  // ACTION gradient — using the theme-aware token would break that
+                  // detection in dark mode.
+                  color: AppColors.primary,
+                  textStyle: ffTheme.titleMedium.copyWith(color: Colors.white),
+                  borderRadius: BorderRadius.circular(18),
                 ),
               ),
             ],
@@ -376,12 +382,7 @@ class _StatChip extends StatelessWidget {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: ffTheme.alternate),
-          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 8)],
-        ),
+        decoration: ffTheme.glassDecoration(radius: 14),
         child: Column(
           children: [
             Text(value, style: GoogleFonts.rubik(fontSize: 20, fontWeight: FontWeight.w800, color: ffTheme.brandAccent)),
@@ -434,11 +435,7 @@ class _StepTimeline extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: ffTheme.alternate),
-      ),
+      decoration: ffTheme.glassDecoration(radius: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: steps.asMap().entries.map((e) {

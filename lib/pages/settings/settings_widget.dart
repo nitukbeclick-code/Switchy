@@ -74,7 +74,7 @@ class SettingsWidget extends StatelessWidget {
                   _TelegramRow(ffTheme: ffTheme),
                 ],
               ),
-            ).animate().fadeIn(duration: 350.ms),
+            ).animate().fadeIn(duration: 350.ms).slideY(begin: 0.06, end: 0),
 
             const SizedBox(height: 24),
 
@@ -145,7 +145,52 @@ class SettingsWidget extends StatelessWidget {
                   ),
                 ],
               ),
-            ).animate().fadeIn(delay: 100.ms, duration: 350.ms),
+            ).animate().fadeIn(delay: 120.ms, duration: 350.ms).slideY(begin: 0.06, end: 0),
+
+            const SizedBox(height: 24),
+
+            // ── Appearance: theme mode (system / light / dark) ────────────
+            _SectionHeader(title: 'מראה', ffTheme: ffTheme),
+            _Card(
+              ffTheme: ffTheme,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          width: 38,
+                          height: 38,
+                          decoration: BoxDecoration(
+                            color: ffTheme.brandAccentTint,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Icon(Icons.dark_mode_rounded, color: ffTheme.brandAccent, size: 20),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('ערכת נושא', style: ffTheme.titleSmall),
+                              Text('בהיר, כהה או לפי המכשיר', style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText)),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    _ThemeSegmented(
+                      ffTheme: ffTheme,
+                      mode: appState.themeMode,
+                      onChanged: (m) => Provider.of<AppState>(context, listen: false).setThemeMode(m),
+                    ),
+                  ],
+                ),
+              ),
+            ).animate().fadeIn(delay: 250.ms, duration: 350.ms).slideY(begin: 0.06, end: 0),
 
             const SizedBox(height: 24),
 
@@ -208,7 +253,7 @@ class SettingsWidget extends StatelessWidget {
                   ),
                 ],
               ),
-            ).animate().fadeIn(delay: 200.ms, duration: 350.ms),
+            ).animate().fadeIn(delay: 320.ms, duration: 350.ms).slideY(begin: 0.06, end: 0),
 
             const SizedBox(height: 24),
 
@@ -395,6 +440,76 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
+/// A 3-way segmented control for the app theme: system / light / dark.
+/// Bound to [AppState.themeMode]; the active segment carries the green ACTION
+/// gradient so the choice reads at a glance in both light and dark.
+class _ThemeSegmented extends StatelessWidget {
+  const _ThemeSegmented({required this.ffTheme, required this.mode, required this.onChanged});
+  final AppTheme ffTheme;
+  final ThemeMode mode;
+  final ValueChanged<ThemeMode> onChanged;
+
+  static const _segments = <(ThemeMode, String, IconData)>[
+    (ThemeMode.system, 'מערכת', Icons.brightness_auto_rounded),
+    (ThemeMode.light, 'בהיר', Icons.light_mode_rounded),
+    (ThemeMode.dark, 'כהה', Icons.dark_mode_rounded),
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: ffTheme.background,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: ffTheme.alternate),
+      ),
+      child: Row(
+        children: _segments.map((s) {
+          final active = mode == s.$1;
+          return Expanded(
+            child: Semantics(
+              button: true,
+              selected: active,
+              label: s.$2,
+              child: GestureDetector(
+                onTap: () => onChanged(s.$1),
+                behavior: HitTestBehavior.opaque,
+                child: AnimatedContainer(
+                  duration: ffTheme.motionMedium,
+                  curve: ffTheme.easeOut,
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  decoration: BoxDecoration(
+                    gradient: active ? ffTheme.accentGradient : null,
+                    borderRadius: BorderRadius.circular(10),
+                    boxShadow: active ? ffTheme.shadowAccent : null,
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      ExcludeSemantics(
+                        child: Icon(s.$3, size: 18, color: active ? Colors.white : ffTheme.secondaryText),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        s.$2,
+                        style: ffTheme.labelSmall.copyWith(
+                          color: active ? Colors.white : ffTheme.secondaryText,
+                          fontWeight: active ? FontWeight.w700 : FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+}
+
 class _Card extends StatelessWidget {
   const _Card({required this.child, required this.ffTheme});
   final Widget child;
@@ -405,12 +520,7 @@ class _Card extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: ffTheme.alternate),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10)],
-      ),
+      decoration: ffTheme.glassDecoration(radius: 16),
       child: child,
     );
   }
@@ -610,7 +720,7 @@ class _TelegramRowState extends State<_TelegramRow> {
               appState.clearTelegramData();
               setState(() {});
             },
-            child: const Text('נתק', style: TextStyle(color: Colors.red)),
+            child: Text('נתק', style: TextStyle(color: widget.ffTheme.error)),
           ),
         ],
       ),
@@ -646,7 +756,7 @@ class _TelegramRowState extends State<_TelegramRow> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('טלגרם', style: ffTheme.titleSmall),
-                    Text('✅ מחובר', style: ffTheme.bodySmall.copyWith(color: const Color(0xFF22C55E))),
+                    Text('✅ מחובר', style: ffTheme.bodySmall.copyWith(color: ffTheme.brandAccent)),
                   ],
                 ),
               ),
@@ -680,10 +790,10 @@ class _TelegramRowState extends State<_TelegramRow> {
                 width: 38,
                 height: 38,
                 decoration: BoxDecoration(
-                  color: Colors.grey.withValues(alpha: 0.1),
+                  color: ffTheme.secondaryText.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Icon(Icons.send, color: Colors.grey[600], size: 20),
+                child: Icon(Icons.send, color: ffTheme.secondaryText, size: 20),
               ),
               const SizedBox(width: 14),
               Expanded(

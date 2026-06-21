@@ -341,7 +341,7 @@ class _MeetingWidgetState extends State<MeetingWidget> {
             onPressed: _submitting ? () async {} : () async => _submit(),
             width: double.infinity,
             height: 56,
-            color: _submitting ? t.alternate : t.primary,
+            color: AppColors.primary,
             textStyle: t.titleMedium.copyWith(color: Colors.white),
             borderRadius: BorderRadius.circular(18),
           ).animate(delay: 180.ms).fadeIn(),
@@ -413,7 +413,7 @@ class _MeetingWidgetState extends State<MeetingWidget> {
           selected: active,
           label: 'ספק $p',
           child: Material(
-            color: active ? t.brandAccent : Colors.white,
+            color: active ? t.brandAccent : t.cardSurface,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(t.radiusPill),
               side: BorderSide(color: active ? t.brandAccent : t.alternate),
@@ -464,7 +464,7 @@ class _MeetingWidgetState extends State<MeetingWidget> {
             selected: active,
             label: label,
             child: Material(
-              color: active ? t.brandAccent : Colors.white,
+              color: active ? t.brandAccent : t.cardSurface,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(t.radiusMd),
                 side: BorderSide(color: active ? t.brandAccent : t.alternate),
@@ -518,7 +518,7 @@ class _MeetingWidgetState extends State<MeetingWidget> {
           selected: active,
           label: 'שעה $s',
           child: Material(
-            color: active ? t.brandAccent : Colors.white,
+            color: active ? t.brandAccent : t.cardSurface,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(t.radiusSm),
               side: BorderSide(color: active ? t.brandAccent : t.alternate),
@@ -550,7 +550,7 @@ class _MeetingWidgetState extends State<MeetingWidget> {
       hintText: hint,
       prefixIcon: Icon(icon, color: t.secondaryText, size: 20),
       filled: true,
-      fillColor: Colors.white,
+      fillColor: t.cardSurface,
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: t.alternate)),
       enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: t.alternate)),
       focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: t.brandAccent, width: 1.5)),
@@ -605,12 +605,12 @@ class _DemoBanner extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Icon(Icons.science_rounded, size: 15, color: Color(0xFFB45309)),
+          Icon(Icons.science_rounded, size: 15, color: t.warning),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
               'מצב הדגמה — האישור והקישור מדומים ואינם נשלחים לנציג.',
-              style: t.labelSmall.copyWith(color: const Color(0xFFB45309), fontWeight: FontWeight.w600),
+              style: t.labelSmall.copyWith(color: t.warning, fontWeight: FontWeight.w600),
             ),
           ),
         ],
@@ -663,7 +663,7 @@ class _NextSteps extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: t.cardSurface,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: t.alternate),
       ),

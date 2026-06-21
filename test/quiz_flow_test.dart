@@ -60,8 +60,11 @@ void main() {
 
     await tester.tap(find.text('הצג תוצאות'));
     await tester.pump(const Duration(milliseconds: 300));
-    // Let the ~700ms "analyzing" delay resolve so no timer is left pending.
+    // Let the ~700ms "analyzing" delay resolve, then give the Results screen's
+    // entrance animations time to fire and settle, so no flutter_animate timer
+    // is left pending at teardown.
     await tester.pump(const Duration(milliseconds: 800));
+    await tester.pump(const Duration(milliseconds: 900));
 
     expect(AppState().currentBill('cellular'), equals(89));
   });

@@ -271,14 +271,14 @@ class _TrackerWidgetState extends State<TrackerWidget> {
               ),
               child: Row(
                 children: [
-                  Icon(Icons.handshake_outlined, size: 24, color: ffTheme.primaryDark),
+                  Icon(Icons.handshake_outlined, size: 24, color: ffTheme.primaryText),
                   const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('אנחנו מלווים — לא מנתקים', style: GoogleFonts.rubik(fontSize: 15, fontWeight: FontWeight.w700, color: ffTheme.primaryDark)),
-                        Text('נציג אישי ילווה אתכם לכל אורך הדרך', style: GoogleFonts.assistant(fontSize: 12, color: ffTheme.primaryDark.withValues(alpha: 0.8))),
+                        Text('אנחנו מלווים — לא מנתקים', style: GoogleFonts.rubik(fontSize: 15, fontWeight: FontWeight.w700, color: ffTheme.primaryText)),
+                        Text('נציג אישי ילווה אתכם לכל אורך הדרך', style: GoogleFonts.assistant(fontSize: 12, color: ffTheme.primaryText.withValues(alpha: 0.75))),
                       ],
                     ),
                   ),
@@ -294,10 +294,10 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(18),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: ffTheme.cardSurface,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: ffTheme.alternate),
-                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10)],
+                  boxShadow: ffTheme.shadowSoft,
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -455,10 +455,10 @@ class _TrackerWidgetState extends State<TrackerWidget> {
               child: Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: ffTheme.cardSurface,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: ffTheme.alternate),
-                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10)],
+                  boxShadow: ffTheme.shadowSoft,
                 ),
                 child: Row(
                   children: [
@@ -474,12 +474,14 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                         ),
                         PositionedDirectional(
                           end: 0, bottom: 0,
+                          // Green "online" dot — a live presence cue (ACTION/active
+                          // green), ringed in the card surface so it reads as a badge.
                           child: Container(
                             width: 14, height: 14,
                             decoration: BoxDecoration(
-                              color: const Color(0xFF111827),
+                              color: ffTheme.brandAccent,
                               shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white, width: 2),
+                              border: Border.all(color: ffTheme.cardSurface, width: 2),
                             ),
                           ).animate(onPlay: (c) => c.repeat(reverse: true))
                             .scale(begin: const Offset(1, 1), end: const Offset(1.3, 1.3), duration: 800.ms),
@@ -494,9 +496,9 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                           Text('דנה — הנציגה שלכם', style: ffTheme.titleSmall),
                           Row(
                             children: [
-                              Container(width: 6, height: 6, decoration: const BoxDecoration(color: Color(0xFF111827), shape: BoxShape.circle)),
+                              Container(width: 6, height: 6, decoration: BoxDecoration(color: ffTheme.brandAccent, shape: BoxShape.circle)),
                               const SizedBox(width: 4),
-                              Text('פנויה עכשיו · תגובה ~5 דקות', style: ffTheme.labelSmall.copyWith(color: const Color(0xFF111827), fontWeight: FontWeight.w600)),
+                              Text('פנויה עכשיו · תגובה ~5 דקות', style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccent, fontWeight: FontWeight.w600)),
                             ],
                           ),
                         ],
@@ -753,10 +755,10 @@ class _PreSwitchChecklistState extends State<_PreSwitchChecklist> {
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ffTheme.cardSurface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: allDone ? ffTheme.primary.withValues(alpha: 0.4) : ffTheme.alternate),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10)],
+        boxShadow: ffTheme.shadowSoft,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

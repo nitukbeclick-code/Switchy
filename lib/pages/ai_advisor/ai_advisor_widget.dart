@@ -13,6 +13,7 @@ import '../../services/advisor_engine.dart';
 import '../../services/savings_summary.dart';
 import '../../services/provider_ratings.dart';
 import '../../services/backend/local_backend.dart';
+import '../../widgets/pressable.dart';
 
 class AIAdvisorWidget extends StatefulWidget {
   const AIAdvisorWidget({super.key});
@@ -289,7 +290,7 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
                   return Semantics(
                     button: true,
                     label: q,
-                    child: GestureDetector(
+                    child: Pressable(
                       onTap: () => _send(q),
                       child: Container(
                         alignment: Alignment.center,
@@ -320,9 +321,9 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
           Container(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: ffTheme.secondaryBackground,
               border: Border(top: BorderSide(color: ffTheme.alternate)),
-              boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, -4))],
+              boxShadow: ffTheme.shadowSoft,
             ),
             child: SafeArea(
               top: false,
@@ -349,7 +350,7 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
                   Semantics(
                     button: true,
                     label: 'שלח הודעה',
-                    child: GestureDetector(
+                    child: Pressable(
                       onTap: () => _send(_inputCtrl.text),
                       child: Container(
                         width: 46,
@@ -449,7 +450,7 @@ class _MessageBubble extends StatelessWidget {
                 Semantics(
                   button: true,
                   label: 'ראה את כל המסלולים',
-                  child: GestureDetector(
+                  child: Pressable(
                     onTap: () {
                       Provider.of<AppState>(context, listen: false).setCategory(msg.cat);
                       context.pushNamed('Results');
@@ -477,7 +478,7 @@ class _MessageBubble extends StatelessWidget {
                   Semantics(
                     button: true,
                     label: 'דבר עם נציג',
-                    child: GestureDetector(
+                    child: Pressable(
                       onTap: () => context.pushNamed('Lead', pathParameters: {'planId': msg.planId!}, queryParameters: {'source': 'advisor'}),
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
@@ -503,7 +504,11 @@ class _MessageBubble extends StatelessWidget {
           ],
         ],
       ),
-    );
+    ).animate().fadeIn(duration: 260.ms).slideY(
+          begin: 0.08,
+          end: 0,
+          curve: ffTheme.easeOut,
+        );
   }
 }
 

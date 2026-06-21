@@ -53,7 +53,7 @@ class MeetingStatusCard extends StatelessWidget {
 
     final (chipLabel, chipBg, chipFg) = switch (meeting.status) {
       MeetingStatus.confirmed => ('הפגישה אושרה', t.brandAccentTint, t.brandAccent),
-      MeetingStatus.pending => ('ממתין לאישור נציג', t.saving.withValues(alpha: 0.15), const Color(0xFFB45309)),
+      MeetingStatus.pending => ('ממתין לאישור נציג', t.saving.withValues(alpha: 0.15), t.warning),
       MeetingStatus.noRep => ('לא נמצא נציג זמין', t.secondary, t.primaryText),
       MeetingStatus.expired => ('המועד חלף', t.secondary, t.primaryText),
       MeetingStatus.cancelled => ('הפגישה בוטלה', t.secondary, t.primaryText),

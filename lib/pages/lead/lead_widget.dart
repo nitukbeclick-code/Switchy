@@ -170,7 +170,9 @@ class _LeadWidgetState extends State<LeadWidget> {
               _consentPanel(ffTheme),
               const SizedBox(height: 16),
 
-              // Submit button
+              // Submit button — the green ACTION gradient (AppColors.primary is
+              // the const-ink sentinel AppButton maps to the theme-aware accent
+              // gradient, so the CTA stays vivid in dark too).
               AppButton(
                 text: _isSubmitting ? 'שולח...' : 'שלחו פרטים',
                 onPressed: _isSubmitting ? () async {} : () async {
@@ -239,7 +241,7 @@ class _LeadWidgetState extends State<LeadWidget> {
                 
                   width: double.infinity,
                   height: 56,
-                  color: _isSubmitting ? ffTheme.alternate : ffTheme.primary,
+                  color: AppColors.primary,
                   textStyle: ffTheme.titleMedium.copyWith(color: Colors.white),
                   borderRadius: BorderRadius.circular(18),
                 
@@ -303,7 +305,7 @@ class _LeadWidgetState extends State<LeadWidget> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [ffTheme.accent1, Colors.white],
+          colors: [ffTheme.accent1, ffTheme.cardSurface],
           begin: Alignment.topRight,
           end: Alignment.bottomLeft,
         ),
@@ -392,7 +394,7 @@ class _LeadWidgetState extends State<LeadWidget> {
               margin: EdgeInsets.only(right: opt.$1 != 'tomorrow' ? 8 : 0),
               padding: const EdgeInsets.symmetric(vertical: 10),
               decoration: BoxDecoration(
-                color: selected ? ffTheme.brandAccent : Colors.white,
+                color: selected ? ffTheme.brandAccent : ffTheme.cardSurface,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: selected ? ffTheme.brandAccent : ffTheme.alternate, width: selected ? 1.5 : 1),
                 boxShadow: selected ? [BoxShadow(color: ffTheme.brandAccent.withValues(alpha: 0.28), blurRadius: 10, offset: const Offset(0, 3))] : [],
@@ -419,7 +421,7 @@ class _LeadWidgetState extends State<LeadWidget> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ffTheme.cardSurface,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: ffTheme.alternate),
       ),
@@ -441,7 +443,7 @@ class _LeadWidgetState extends State<LeadWidget> {
       hintText: hint,
       prefixIcon: Icon(icon, color: ffTheme.secondaryText, size: 20),
       filled: true,
-      fillColor: Colors.white,
+      fillColor: ffTheme.cardSurface,
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.alternate)),
       enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.alternate)),
       focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.brandAccent, width: 1.5)),

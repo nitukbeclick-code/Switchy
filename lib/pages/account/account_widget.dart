@@ -173,12 +173,7 @@ class AccountWidget extends StatelessWidget {
                   if (plan != null)
                     Container(
                       padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: ffTheme.alternate),
-                        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10)],
-                      ),
+                      decoration: ffTheme.glassDecoration(radius: 16),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -241,9 +236,7 @@ class AccountWidget extends StatelessWidget {
                       child: Container(
                         width: double.infinity,
                         padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
+                        decoration: ffTheme.glassDecoration(radius: 16).copyWith(
                           border: Border.all(color: ffTheme.alternate, width: 1.5),
                         ),
                         child: Column(
@@ -411,12 +404,7 @@ class AccountWidget extends StatelessWidget {
                               width: 140,
                               margin: const EdgeInsetsDirectional.only(end: 10),
                               padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(14),
-                                border: Border.all(color: ffTheme.alternate),
-                                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 6)],
-                              ),
+                              decoration: ffTheme.glassDecoration(radius: 14),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
@@ -458,11 +446,7 @@ class AccountWidget extends StatelessWidget {
                       return Container(
                         margin: const EdgeInsets.only(bottom: 8),
                         padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: ffTheme.alternate),
-                        ),
+                        decoration: ffTheme.glassDecoration(radius: 12),
                         child: Row(
                           children: [
                             Expanded(
@@ -496,10 +480,12 @@ class AccountWidget extends StatelessWidget {
                   // Quick actions
                   Text('פעולות מהירות', style: ffTheme.titleLarge),
                   const SizedBox(height: 12),
-                  _ActionTile(icon: Icons.alarm_rounded, title: 'מעקב חידושים', subtitle: 'אל תשלם יותר מדי כשהמבצע נגמר', onTap: () => context.pushNamed('Renewal'), ffTheme: ffTheme),
-                  _ActionTile(icon: Icons.compare_arrows_rounded, title: 'השוואה חדשה', subtitle: 'מצא את המסלול הכי מתאים לך', onTap: () => context.goNamed('Results'), ffTheme: ffTheme),
-                  _ActionTile(icon: Icons.auto_awesome_rounded, title: 'יועץ AI', subtitle: 'שאל שאלות על מסלולי תקשורת', onTap: () => context.pushNamed('AIAdvisor'), ffTheme: ffTheme),
-                  _ActionTile(icon: Icons.person_rounded, title: 'הגדרות פרופיל', subtitle: 'עדכן פרטים ועדפות', onTap: () => context.pushNamed('Profile'), ffTheme: ffTheme),
+                  ...[
+                    _ActionTile(icon: Icons.alarm_rounded, title: 'מעקב חידושים', subtitle: 'אל תשלם יותר מדי כשהמבצע נגמר', onTap: () => context.pushNamed('Renewal'), ffTheme: ffTheme),
+                    _ActionTile(icon: Icons.compare_arrows_rounded, title: 'השוואה חדשה', subtitle: 'מצא את המסלול הכי מתאים לך', onTap: () => context.goNamed('Results'), ffTheme: ffTheme),
+                    _ActionTile(icon: Icons.auto_awesome_rounded, title: 'יועץ AI', subtitle: 'שאל שאלות על מסלולי תקשורת', onTap: () => context.pushNamed('AIAdvisor'), ffTheme: ffTheme),
+                    _ActionTile(icon: Icons.person_rounded, title: 'הגדרות פרופיל', subtitle: 'עדכן פרטים ועדפות', onTap: () => context.pushNamed('Profile'), ffTheme: ffTheme),
+                  ].animate(interval: 70.ms).fadeIn(duration: 300.ms).slideY(begin: 0.06, end: 0),
 
                   const SizedBox(height: 24),
                 ],
@@ -526,11 +512,7 @@ class _QuickLink extends StatelessWidget {
         onTap: onTap,
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 14),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: ffTheme.alternate),
-          ),
+          decoration: ffTheme.glassDecoration(radius: 14),
           child: Column(
             children: [
               Icon(icon, color: ffTheme.brandAccent, size: 24),
@@ -559,12 +541,7 @@ class _ActionTile extends StatelessWidget {
       child: Container(
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: ffTheme.alternate),
-          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 8)],
-        ),
+        decoration: ffTheme.glassDecoration(radius: 14),
         child: Row(
           children: [
             Container(

@@ -1,0 +1,58 @@
+{
+  "slug": "guide-android-vs-iphone",
+  "cat": "סלולר",
+  "date": "2026-06-21",
+  "read": 3,
+  "title": "Android vs. iPhone — מה לבחור ב-2026? | חוסך",
+  "desc": "השוואה מקיפה: iPhone vs. Android — מחיר, אבטחה, מצלמה, חיי סוללה ומה מתאים לכם.",
+  "h1": "Android vs. iPhone — ההשוואה המלאה",
+  "tldr": "iPhone: מערכת-אקולוגית Apple, עדכונים 7 שנים, אבטחה גבוהה, מחיר גבוה. Android: מגוון מחירים, גמישות, ביחד עם Google. ל-98% מהמשתמשים: שניהם מצוינים. הבדל עיקרי: מי שהמשפחה/חברים שלכם משתמשים בהם.",
+  "sections": [
+    {
+      "h2": "iPhone — יתרונות",
+      "ul": [
+        "עדכונים ארוכים: iOS 7 שנות עדכון. Galaxy S24 = 7 שנים. Pixel = 7 שנים.",
+        "אבטחה: Secure Enclave, Face ID, App Store מבוקר. פחות מלוור.",
+        "iMessage/FaceTime: חיוני אם משפחה/חברים ב-Apple (ירוק/כחול בבועה).",
+        "מצלמה: iPhone 16 Pro = מצוין. עיבוד תמונה = מוביל שוק לרוב הטעמים.",
+        "Resale value: iPhone שומר ערך טוב. iPhone 12 עדיין ~₪1,200."
+      ]
+    },
+    {
+      "h2": "Android — יתרונות",
+      "ul": [
+        "מחיר: Samsung A25 ~₪700. Pixel 8a ~₪1,600. iPhone 16 = ₪3,299+.",
+        "גמישות: Sideload apps, File manager, USB-C universal, Widgets.",
+        "Google Integration: Gmail/Drive/Maps/Chrome/Keep = חלק מ-Android DNA.",
+        "מגוון: Samsung, Pixel, Xiaomi, OnePlus — בחרו לפי העדפה.",
+        "הטעינה: Samsung/Xiaomi = 45–120W. iPhone 16 = 25W. Android = מהיר יותר."
+      ]
+    },
+    {
+      "h2": "השוואת מצלמות",
+      "ul": [
+        "iPhone 16 Pro: ProRes video, Cinematic mode. מצוין לסרטים/סטורי.",
+        "Samsung Galaxy S25 Ultra: 200MP zoom. Telescope optical 10×. לסיטואציות נישה.",
+        "Google Pixel 9 Pro: AI photo editing. Best Shots. מצוין לתמונות יומיות.",
+        "לרוב המשתמשים: iPhone 16 / Samsung S25 / Pixel 9 = כולם מצוינים. הבדל קטן.",
+        "מסקנה: אל תבחרו טלפון רק על בסיס specs מצלמה. נסו את שניהם ביד."
+      ]
+    },
+    {
+      "h2": "מה לבחור — מדריך מהיר",
+      "ul": [
+        "אם משפחה ב-Apple: iPhone = FaceTime/iMessage מסנכרנים בקלות.",
+        "אם תקציב מוגבל (<₪2,000): Samsung A35/A55 / Pixel 8a = ערך מצוין.",
+        "אם גיימינג: Android (Samsung/ASUS ROG) = יותר גמישות. iPhone גם מצוין.",
+        "אם פרטיות: iPhone = אפל מרוויחה ממוצרים, לא ממידע. Google = מרוויח ממידע.",
+        "אם ישראלי: שניהם תומכים eSIM, עברית, waze, Cibus — שניהם מצוינים."
+      ]
+    }
+  ],
+  "faq": [
+    ["WhatsApp שווה ב-iPhone וב-Android?", "כן — WhatsApp זהה בשניהם. גיבוי: iPhone = iCloud. Android = Google Drive. העברת היסטוריה בין מערכות: WhatsApp תומכת כיום בהעברה. מעבר = לא מאבדים צ'אטים."],
+    ["מעבר מ-Android ל-iPhone — כמה קשה?", "קל יחסית ב-2026. 'Move to iOS' app מעביר: אנשי קשר, הודעות SMS, תמונות. WhatsApp = גיבוי נפרד. Apps = להוריד מחדש ב-App Store (לרוב קיימים). קבצים = iCloud Drive."],
+    ["iPhone vs. Android — סוללה?", "iPhone 15/16: סוללה טובה. 4,000–4,685 mAh. 25W טעינה. Samsung S25: 4,000 mAh, 25W. Samsung S25+: 45W. Pixel 9: 4,700 mAh, 27W. בפועל: שניהם מחזיקים יום מלא בשימוש רגיל."],
+    ["Pixel 9 vs. iPhone 16 — מה עדיף?", "Pixel 9: AI features מובילים (Magic Eraser, Call Screen, Recorder). iPhone 16: Apple Intelligence (חדש, AI). מחיר: Pixel 9 ~₪2,700. iPhone 16 = ₪3,299. Pixel = ערך יותר גבוה. iPhone = Ecosystem Apple."]
+  ]
+}

@@ -1,0 +1,58 @@
+{
+  "slug": "guide-abroad-amsterdam",
+  "cat": "חו\"ל",
+  "date": "2026-06-21",
+  "read": 2,
+  "title": "סלולר בהולנד לישראלים — eSIM, SIM ורומינג | חוסך",
+  "desc": "כיצד להישאר מחוברים בהולנד — eSIM Airalo, SIM מקומי KPN/Lebara NL, ורומינג EU. אמסטרדם, רוטרדם, האג.",
+  "h1": "סלולר בהולנד — מדריך לישראלים",
+  "tldr": "הולנד = EU. Airalo Europe 10GB $20 = כולל הולנד. SIM מקומי Lebara NL 10GB €10. רומינג ישראלי EU: ₪12–₪20/יום. Tele2 Holland: SIM prepaid זול ₪8–₪15 לשבוע.",
+  "sections": [
+    {
+      "h2": "eSIM להולנד",
+      "ul": [
+        "Airalo Europe: 10GB $20. כולל הולנד + בלגיה + צרפת + גרמניה.",
+        "Airalo Netherlands: 3GB $6, 10GB $14. רשת KPN.",
+        "Holafly Netherlands: ללא הגבלה 5 ימים $19. לסיור אמסטרדם קצר = מציין.",
+        "יתרון EU: eSIM אחד עובד בכל מדינות Benelux — גם בבלגיה ולוקסמבורג.",
+        "Dual SIM: SIM ישראלי + eSIM הולנדי = FaceTime ישראלי + גלישה מקומית."
+      ]
+    },
+    {
+      "h2": "SIM מקומי בהולנד",
+      "ul": [
+        "Lebara Netherlands: 10GB €10. שיחות לישראל כלולות! זמין ב-Albert Heijn.",
+        "Tele2 Prepaid: זול ביותר. זמין בקיוסקים/HEMA/V&D.",
+        "KPN Prepaid: הספק הגדול. כיסוי מצוין. מעט יקר יותר.",
+        "קנייה: Schiphol Airport (AMS) — דוכני KPN/T-Mobile/Lebara. בעיר: Belfabriek.",
+        "ללא רישום: SIM פשוט בהולנד לא תמיד דורש תיעוד."
+      ]
+    },
+    {
+      "h2": "כיסוי בהולנד",
+      "ul": [
+        "אמסטרדם/רוטרדם/האג: 4G/5G מלא. מטרו: כיסוי 4G טוב.",
+        "הולנד הכפרית (Groningen, Friesland): כיסוי 4G טוב. הולנד = צפופה, מכוסה.",
+        "Keukenhof/שדות ציפורנים: 4G טוב. אזורי תיירות = מכוסים.",
+        "KPN = כיסוי הטוב ביותר. T-Mobile = חזק. Tele2/Lebara (MVNO) = KPN backend.",
+        "Intercity/Sprinter: כיסוי 4G ברכבות. NS (רכבת הולנדית) = מהיר ונוח."
+      ]
+    },
+    {
+      "h2": "תחבורה ואפליקציות שימושיות",
+      "ul": [
+        "OV-chipkaart: כרטיס תחבורה הולנדי. Schiphol → אמסטרדם: €5.50.",
+        "9292 App: ניווט תחבורה ציבורית הולנדית. מצוין. אנגלית + עברית (Google).",
+        "NS App: רכבות הולנד. תנו לשמור כרטיס אלקטרוני.",
+        "Uber: פועל באמסטרדם. גם Bolt. מחיר דומה לטקסי.",
+        "Google Maps: מושלם להולנד. כולל אופניים — הוסיפו גם bike navigation."
+      ]
+    }
+  ],
+  "faq": [
+    ["Amsterdam — אינטרנט ב-Hotel?", "מלונות אמסטרדם = WiFi טוב ברובם. אם WiFi מלון = איטי: eSIM/SIM מקומי = פתרון. Airbnb: בדקו במה כתוב. Hotspot iPhone/Android = שיתוף לכל המכשירים."],
+    ["Lebara NL — שיחות לישראל?", "Lebara Netherlands כולל דקות לישראל בחלק מהחבילות. בדקו תנאי החבילה הספציפית. אלטרנטיבה: WhatsApp/FaceTime = חינם דרך eSIM הולנדי."],
+    ["הולנד — כרטיס אשראי?", "הולנד = cash-light. Maestro/Mastercard/Visa = מקובלים בכל מקום. iDEAL = שיטת תשלום הולנדית אינטרנטית (לא לתיירים). Apple Pay/Google Pay = עובד ברוב החנויות."],
+    ["Schiphol Airport — WiFi?", "Schiphol WiFi חינמי = מוגבל לשעה. עדיף eSIM/SIM. KPN דוכן ב-Arrival Hall 1/2. זמינות טובה לפני דרכון אם eSIM כבר פעיל."]
+  ]
+}

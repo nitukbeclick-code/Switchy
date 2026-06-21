@@ -1,0 +1,58 @@
+{
+  "slug": "guide-internet-parental-controls",
+  "cat": "אינטרנט",
+  "date": "2026-06-21",
+  "read": 3,
+  "title": "בקרת הורים לאינטרנט — DNS, ראוטר ואפליקציות | חוסך",
+  "desc": "כיצד להגדיר בקרת הורים באינטרנט הביתי: DNS חוסם, הגדרות ראוטר, Circle, Google Family Link.",
+  "h1": "בקרת הורים לאינטרנט — מדריך הגדרה",
+  "tldr": "DNS חוסם (CleanBrowsing/OpenDNS): שנו ב-router = חוסם פורנוגרפיה/גיימבלינג לכל הבית. Circle with Disney: ₪100 + ₪10/חודש = ניהול ייעודי. Google Family Link: חינם לאנדרואיד. Screen Time: חינם ל-iOS.",
+  "sections": [
+    {
+      "h2": "DNS חוסם — הפתרון הפשוט",
+      "ul": [
+        "CleanBrowsing: DNS חינמי שחוסם פורנוגרפיה/phishing. 185.228.168.9.",
+        "OpenDNS FamilyShield: 208.67.222.123, 208.67.220.123. חינם. קל.",
+        "Cloudflare for Families: 1.1.1.3 (כולל malware חסום). חינם.",
+        "הגדרה: כנסו לראוטר (192.168.1.1 בדרך כלל) → DNS → הכניסו כתובות.",
+        "יתרון: חוסם לכל המכשירים בבית — טלוויזיה, Xbox, מחשב, טאבלט."
+      ]
+    },
+    {
+      "h2": "Google Family Link",
+      "ul": [
+        "Android בלבד: שליטה על מכשירי Android של ילדים (<13).",
+        "גמישות: אישורי apps, מגבלות זמן מסך, מיקום GPS בזמן אמת.",
+        "חינם: כלול ב-Google Account. הגדרה ב-families.google.com.",
+        "מגבלה: ילד >13 = מבצע Supervised account (פחות שליטה).",
+        "WhatsApp: Family Link לא שולט בWhatsApp. DNS חוסם = פתרון נוסף."
+      ]
+    },
+    {
+      "h2": "Screen Time (iOS/macOS)",
+      "ul": [
+        "iPhone/iPad: הגדרות → Screen Time → Family Sharing. שליטה בשעות.",
+        "App Limits: הגבלה לשעות ספציפיות לאפליקציות (TikTok, YouTube, Games).",
+        "Content & Privacy: חסימת תוכן למבוגרים, רכישות in-app.",
+        "Downtime: שעות שכל האפליקציות (חוץ מהמותרות) נחסמות. לילה = ישן.",
+        "iCloud Family Sharing: ניהול כל מכשירי Apple המשפחה ממך."
+      ]
+    },
+    {
+      "h2": "פתרונות ייעודיים",
+      "ul": [
+        "Circle Home Plus: מכשיר ~₪100 + ₪10/חודש. פרופיל לכל ילד. שעות/apps.",
+        "Gryphon Router: ראוטר + בקרת הורים מובנית. ~₪400. יחיד + בקרה.",
+        "Bark: ₪14/חודש. מנטר SMS/email/social לסכנות (bullying/סקסטינג).",
+        "Net Nanny: $40/שנה. חסימת תוכן + ניטור + זמן מסך.",
+        "עצה: DNS + Screen Time/Family Link = ₪0. מספיק ל-80% מהמשפחות."
+      ]
+    }
+  ],
+  "faq": [
+    ["DNS חסימה — ילד מחכים?", "ילד מיומן יכול לעקוף DNS ע\"י שינוי DNS בהגדרות מכשיר (אם יש הרשאה). מניעה: נעילת הגדרות DNS במכשיר (Family Link/Screen Time). בראוטר: DHCP שולט על DNS — קשה לעקוף."],
+    ["VPN עוקף בקרת הורים?", "כן — VPN יכול לעקוף DNS חוסם. מניעה: חסמו אפליקציות VPN ב-Family Link/Screen Time. DNS ברמת ראוטר עם 'Block VPN ports' = הגנה נוספת. Gryphon/Circle = חוסמים VPN."],
+    ["WhatsApp — איך לנטר?", "WhatsApp = מוצפן. Bark מנטר metadata. Family Link/Screen Time = הגבלת שעות WhatsApp. OpenDNS = לא חוסם WhatsApp (תוכן מוצפן). פתרון: Screen Time Downtime = אין WhatsApp בלילה."],
+    ["גיל מינימלי WhatsApp/Instagram?", "WhatsApp: 16 (EU GDPR). Instagram: 13 (תנאי שימוש). בפועל: ילדים מצטרפים מוקדם יותר. Family Link ל-<13 = יכול למנוע התקנת apps שלא אושרו. >13 = Screen Time = עוד שליטה."]
+  ]
+}

@@ -725,6 +725,12 @@ create policy "meetings_select_own" on public.meetings
 revoke select on public.meetings from anon, authenticated;
 grant select (id, status, provider, meeting_date, slot, starts_at, join_url, created_at, user_id)
   on public.meetings to authenticated;
+-- The notify-lead bot runs as service_role (bypasses RLS) but STILL needs the
+-- explicit base-table grant — default privileges do not grant to service_role on
+-- this project (same as chat_messages, README §2026-06 incident). Without this,
+-- every service-role meetings read/write 403s and confirming a meeting fails
+-- with "העדכון נכשל". Applied live 2026-06-21; kept here so deploys don't regress.
+grant select, insert, update, delete on public.meetings to service_role;
 
 -- Realtime: the app's meetingStream() listens for UPDATEs on this table —
 -- without publication membership no event ever reaches the client.
@@ -891,6 +897,9 @@ create table if not exists public.meeting_events (
   created_at  timestamptz not null default now()
 );
 alter table public.meeting_events enable row level security;
+-- service_role (the bot) needs an explicit base-table grant — see the meetings
+-- note above. Without it, logMeetingEvent() silently 403s on every confirm.
+grant select, insert, update, delete on public.meeting_events to service_role;
 create index if not exists meeting_events_meeting_idx
   on public.meeting_events (meeting_id, created_at desc);
 

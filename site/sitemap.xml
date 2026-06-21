@@ -307,6 +307,24 @@
     <priority>0.6</priority>
   </url>
   <url>
+    <loc>https://switchy-ai.com/guide-abroad-balkans.html</loc>
+    <lastmod>2026-06-21</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://switchy-ai.com/guide-abroad-canada.html</loc>
+    <lastmod>2026-06-21</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://switchy-ai.com/guide-abroad-china.html</loc>
+    <lastmod>2026-06-21</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
     <loc>https://switchy-ai.com/guide-abroad-czech.html</loc>
     <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
@@ -475,6 +493,12 @@
     <priority>0.6</priority>
   </url>
   <url>
+    <loc>https://switchy-ai.com/guide-cellular-coverage-map.html</loc>
+    <lastmod>2026-06-21</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
     <loc>https://switchy-ai.com/guide-cellular-coverage.html</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
@@ -488,6 +512,12 @@
   </url>
   <url>
     <loc>https://switchy-ai.com/guide-cellular-switch-guide.html</loc>
+    <lastmod>2026-06-21</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://switchy-ai.com/guide-cgnat-ipv6.html</loc>
     <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
@@ -517,6 +547,12 @@
     <priority>0.6</priority>
   </url>
   <url>
+    <loc>https://switchy-ai.com/guide-cordcutting.html</loc>
+    <lastmod>2026-06-21</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
     <loc>https://switchy-ai.com/guide-data-saving.html</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
@@ -541,6 +577,12 @@
     <priority>0.6</priority>
   </url>
   <url>
+    <loc>https://switchy-ai.com/guide-dual-sim.html</loc>
+    <lastmod>2026-06-21</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
     <loc>https://switchy-ai.com/guide-esim-explained.html</loc>
     <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
@@ -549,6 +591,18 @@
   <url>
     <loc>https://switchy-ai.com/guide-esim-israel.html</loc>
     <lastmod>2026-06-20</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://switchy-ai.com/guide-esim-troubleshooting.html</loc>
+    <lastmod>2026-06-21</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://switchy-ai.com/guide-esim-vs-roaming.html</loc>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
@@ -643,7 +697,19 @@
     <priority>0.6</priority>
   </url>
   <url>
+    <loc>https://switchy-ai.com/guide-internet-bill-cut.html</loc>
+    <lastmod>2026-06-21</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
     <loc>https://switchy-ai.com/guide-internet-fiber-installation.html</loc>
+    <lastmod>2026-06-21</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://switchy-ai.com/guide-internet-for-renters.html</loc>
     <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
@@ -727,6 +793,24 @@
     <priority>0.6</priority>
   </url>
   <url>
+    <loc>https://switchy-ai.com/guide-kids-tv-controls.html</loc>
+    <lastmod>2026-06-21</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://switchy-ai.com/guide-kosher-line.html</loc>
+    <lastmod>2026-06-21</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://switchy-ai.com/guide-mesh-wifi.html</loc>
+    <lastmod>2026-06-21</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
     <loc>https://switchy-ai.com/guide-mifi.html</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
@@ -805,6 +889,12 @@
     <priority>0.6</priority>
   </url>
   <url>
+    <loc>https://switchy-ai.com/guide-roaming-pitfalls.html</loc>
+    <lastmod>2026-06-21</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
     <loc>https://switchy-ai.com/guide-router-upgrade.html</loc>
     <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
@@ -825,6 +915,12 @@
   <url>
     <loc>https://switchy-ai.com/guide-save-phone-bill.html</loc>
     <lastmod>2026-06-20</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://switchy-ai.com/guide-second-work-line.html</loc>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
@@ -853,6 +949,12 @@
     <priority>0.6</priority>
   </url>
   <url>
+    <loc>https://switchy-ai.com/guide-sports-streaming.html</loc>
+    <lastmod>2026-06-21</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
     <loc>https://switchy-ai.com/guide-spotify-israel.html</loc>
     <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
@@ -865,7 +967,19 @@
     <priority>0.6</priority>
   </url>
   <url>
+    <loc>https://switchy-ai.com/guide-streaming-bundles.html</loc>
+    <lastmod>2026-06-21</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
     <loc>https://switchy-ai.com/guide-streaming-comparison.html</loc>
+    <lastmod>2026-06-21</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://switchy-ai.com/guide-student-cellular.html</loc>
     <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
@@ -949,6 +1063,12 @@
     <priority>0.6</priority>
   </url>
   <url>
+    <loc>https://switchy-ai.com/guide-upload-speed.html</loc>
+    <lastmod>2026-06-21</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
     <loc>https://switchy-ai.com/guide-vacation-internet.html</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
@@ -980,6 +1100,12 @@
   </url>
   <url>
     <loc>https://switchy-ai.com/guide-yes-review.html</loc>
+    <lastmod>2026-06-21</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://switchy-ai.com/guide-yes-vs-hot-tv.html</loc>
     <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>

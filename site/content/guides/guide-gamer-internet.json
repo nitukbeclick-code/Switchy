@@ -14,9 +14,13 @@
         "Latency (Ping): ms לשרת המשחק. <20ms = מצוין. 50ms = OK. >100ms = גרוע.",
         "Jitter: שונות ב-Ping. <5ms = מושלם. >20ms = תנועה לא חלקה.",
         "Packet Loss: 0% = חובה לגיימינג תחרותי. 1% = מורגש. 5% = בלתי אפשרי.",
-        "Upload: גיימינג = בעיקר Download. Upload = 3Mbps מספיק לרוב המשחקים.",
+        "Upload: גיימינג = בעיקר Download. Upload = 3Mbps מספיק לרוב המשחקים. סטרימינג של המשחק דורש יותר — ראו <a href=\"guide-upload-speed.html\">מהירות העלאה</a>.",
         "Download: Warzone/Fortnite = מורידים 100+ GB. 100Mbps+ = נוח."
-      ]
+      ],
+      "tip": {
+        "title": "Ping חשוב יותר ממהירות",
+        "text": "גיימר עם 50Mbps ו-Ping של 8ms יחווה משחק חלק יותר מגיימר עם 1Gbps ו-Ping של 60ms. אל תרדפו אחרי מספר ה-Mbps הגדול — רדפו אחרי latency נמוך ויציב."
+      }
     },
     {
       "h2": "FTTH גלאל — הבחירה הגיימינג",
@@ -44,9 +48,14 @@
         "QoS: Gaming Priority בראוטר = מבטיח latency לגיימינג ראשון.",
         "DNS: 1.1.1.1 (Cloudflare) = מהיר יותר לרזולוציה. בניחוש: מוריד Ping ל-CDN.",
         "MTU: 1500 = רגיל. אם בעיות חיבור לPS/Xbox: נסו 1480.",
-        "IPv6: הפעילו אם הספק תומך. Xbox/PS5 = מועדפים IPv6.",
-        "Router Buffer Bloat: ב-dslreports.com/speedtest = בדיקה. A/B = מצוין."
-      ]
+        "IPv6: הפעילו אם הספק תומך. Xbox/PS5 = מועדפים IPv6 ומקבלים NAT פתוח. ראו <a href=\"guide-cgnat-ipv6.html\">CGNAT ו-IPv6</a>.",
+        "Router Buffer Bloat: ב-dslreports.com/speedtest = בדיקה. A/B = מצוין.",
+        "ראוטר ישן = bottleneck ל-latency. לשדרוג ראו <a href=\"guide-choose-router.html\">בחירת ראוטר</a>."
+      ],
+      "callout": {
+        "title": "גלאל זמין בכתובת שלכם?",
+        "text": "אם זמין גלאל FTTH — זו הבחירה הברורה לגיימינג: Ping נמוך, Jitter אפסי ו-0% packet loss. בדקו זמינות והשוו מסלולים ב<a href=\"internet.html\">עמוד האינטרנט</a> וב<a href=\"compare.html\">השוואה</a>."
+      }
     }
   ],
   "faq": [

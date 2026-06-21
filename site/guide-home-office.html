@@ -9,6 +9,8 @@
   <style>.skip{position:absolute;left:-999px;top:0;z-index:100;background:#111827;color:#fff;padding:10px 16px;border-radius:0 0 8px 0}.skip:focus{left:0}</style>
   <meta name="theme-color" content="#111827" />
   <link rel="canonical" href="https://switchy-ai.com/guide-home-office.html" />
+  <link rel="alternate" hreflang="he-IL" href="https://switchy-ai.com/guide-home-office.html" />
+  <link rel="alternate" hreflang="x-default" href="https://switchy-ai.com/guide-home-office.html" />
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="favicon.svg" />
   <link rel="manifest" href="site.webmanifest" />
@@ -31,10 +33,13 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="preconnect" href="https://plausible.io" />
   <link rel="preconnect" href="https://orzitfqmlvopujsoyigr.supabase.co" />
+  <!-- Fonts via Google CDN, loaded non-render-blocking (preload as style →
+       swap media print→all on load), with a <noscript> fallback. Preconnected
+       above; font-display:swap so text never blocks on the webfont. -->
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" />
   <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
   <noscript><link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" rel="stylesheet" /></noscript>
-  <link rel="stylesheet" href="styles.css?v=2870ee58" />
+  <link rel="stylesheet" href="styles.css?v=3c0ae6d7" />
   <!-- Cookieless analytics (Plausible-style). Placeholder until configured — no cookies, no personal data. -->
   <script defer data-domain="switchy-ai.com" src="https://plausible.io/js/script.outbound-links.tagged-events.js"></script>
   <script>window.plausible=window.plausible||function(){(window.plausible.q=window.plausible.q||[]).push(arguments)};</script>
@@ -53,7 +58,46 @@
         <a href="providers.html">ספקים</a>
         <a href="compare.html">השוואה</a>
         <a href="app.html">האפליקציה</a>
-        <a href="guides.html">מדריכים</a>
+        <div class="mega" data-mega>
+          <a href="guides.html" class="mega__trigger" aria-haspopup="true" aria-expanded="false">מדריכים <span class="mega__caret" aria-hidden="true">▾</span></a>
+          <div class="mega-menu" role="menu" aria-label="מדריכים לפי נושא">
+          <div class="mega-menu__col">
+            <a class="mega-menu__head" href="cellular.html">סלולר</a>
+            <a href="guide-cellular.html">איך לבחור מסלול סלולר ב-2026</a>
+            <a href="guide-5g.html">מתי באמת כדאי לעבור ל-5G?</a>
+            <a href="guide-family-lines.html">משפחה? כך חוסכים על כמה קווי סלולר</a>
+            <a href="guide-4g-vs-5g.html">4G vs. 5G — מה ההבדל בפועל?</a>
+          </div>
+          <div class="mega-menu__col">
+            <a class="mega-menu__head" href="internet.html">אינטרנט</a>
+            <a href="guide-fiber.html">סיב אופטי מול כבלים: מה ההבדל וכמה זה עולה?</a>
+            <a href="guide-5g-home.html">אינטרנט 5G ביתי (FWA) בישראל: המדריך המלא</a>
+            <a href="guide-bezeq-review.html">בזק 2026: כל מה שצריך לדעת</a>
+            <a href="guide-business-internet.html">אינטרנט לעסקים קטנים: המדריך המלא לבחירה נכונה</a>
+          </div>
+          <div class="mega-menu__col">
+            <a class="mega-menu__head" href="tv.html">טלוויזיה</a>
+            <a href="guide-apple-tv-streaming.html">Apple TV+ — האם שווה בישראל?</a>
+            <a href="guide-choose-tv-plan.html">בחירת חבילת טלוויזיה: המדריך המלא</a>
+            <a href="guide-cordcutting.html">לחתוך את הכבלים — מעבר לסטרימינג בלבד</a>
+            <a href="guide-disney-plus-israel.html">Disney+ ישראל — האם שווה?</a>
+          </div>
+          <div class="mega-menu__col">
+            <a class="mega-menu__head" href="abroad.html">חו״ל</a>
+            <a href="guide-esim.html">מדריך eSIM לחו״ל — איך לבחור חבילה לכל יעד</a>
+            <a href="guide-abroad-amsterdam.html">סלולר בהולנד — מדריך לישראלים</a>
+            <a href="guide-abroad-asia.html">סלולר ואינטרנט לאסיה — מדריך מקיף</a>
+            <a href="guide-abroad-austria.html">סלולר באוסטריה — מדריך לישראלים</a>
+          </div>
+          <div class="mega-menu__col">
+            <a class="mega-menu__head" href="guides.html">כללי</a>
+            <a href="guide-switching.html">המדריך המלא למעבר ספק תקשורת — בלי כאב ראש</a>
+            <a href="guide-cancel-commitment.html">איך לבטל התחייבות בלי לשלם קנס</a>
+            <a href="guide-read-bill.html">איך לקרוא חשבון תקשורת ולמצוא חיובים מיותרים</a>
+            <a href="guide-cancel-contract.html">איך מבטלים חוזה תקשורת: HOT, yes, פרטנר, סלקום ועוד</a>
+          </div>
+          </div>
+        </div>
         <a href="index.html#calculator">מחשבון</a>
       </nav>
       <a class="btn btn--primary nav__cta" href="index.html#cta">השוו עכשיו</a>
@@ -64,7 +108,11 @@
       <a href="providers.html">ספקים</a>
       <a href="compare.html">השוואה</a>
       <a href="app.html">האפליקציה</a>
-      <a href="guides.html">מדריכים</a>
+      <a href="guides.html">כל המדריכים</a>
+      <a class="nav__mobile-sub" href="guide-switching.html">המדריך המלא למעבר ספק תקשורת — בלי כאב ראש</a>
+      <a class="nav__mobile-sub" href="guide-cellular.html">איך לבחור מסלול סלולר ב-2026</a>
+      <a class="nav__mobile-sub" href="guide-fiber.html">סיב אופטי מול כבלים: מה ההבדל וכמה זה עולה?</a>
+      <a class="nav__mobile-sub" href="guide-5g.html">מתי באמת כדאי לעבור ל-5G?</a>
       <a href="index.html#calculator">מחשבון</a>
       <a class="btn btn--primary" href="index.html#cta">השוו עכשיו</a>
     </div>
@@ -82,7 +130,18 @@
         <div class="container">
           <div class="prose">
             <div class="tldr"><b>בקצרה:</b> עבודה מהבית דורשת: 50Mbps download + 20Mbps upload לפחות, ראוטר אמין עם WiFi 6, חיבור כבל LAN לתחנה, ו-UPS קטן כגיבוי חשמל. אם יש Zoom/Teams כבד — כבל LAN &gt; WiFi תמיד.</div>
-        <h2>כמה מהירות אינטרנט צריך לעבודה מהבית?</h2>
+            <nav class="toc" aria-label="תוכן עניינים">
+              <p class="toc__title">בעמוד הזה</p>
+              <ol class="toc__list">
+                <li><a class="toc__link" href="#sec-1">כמה מהירות אינטרנט צריך לעבודה מהבית?</a></li>
+                <li><a class="toc__link" href="#sec-2">כבל LAN vs. WiFi לעבודה</a></li>
+                <li><a class="toc__link" href="#sec-3">ראוטר לעבודה מהבית</a></li>
+                <li><a class="toc__link" href="#sec-4">גיבוי סלולרי לתקלת אינטרנט</a></li>
+                <li><a class="toc__link" href="#sec-5">VPN לעבודה מהבית</a></li>
+                <li><a class="toc__link" href="#sec-6">UPS — גיבוי חשמל לראוטר ומחשב</a></li>
+              </ol>
+            </nav>
+        <h2 id="sec-1">כמה מהירות אינטרנט צריך לעבודה מהבית?</h2>
         <ul>
           <li>מינימום: 20Mbps download + 10Mbps upload. מספיק לזום אחד + גלישה.</li>
           <li>מומלץ: 50–100Mbps download + 20–50Mbps upload. לשיחות וידיאו + שיתוף קבצים גדולים.</li>
@@ -91,7 +150,7 @@
           <li>גלאל 1Gbps: &#39;אוורקיל&#39; לרוב האנשים. 200Mbps מספיק גם לבית עם עבודה כבדה.</li>
         </ul>
 
-        <h2>כבל LAN vs. WiFi לעבודה</h2>
+        <h2 id="sec-2">כבל LAN vs. WiFi לעבודה</h2>
         <ul>
           <li>כבל LAN (Ethernet): יציב, מהיר, ללא השהיה. **הכי מומלץ לתחנת עבודה קבועה.**</li>
           <li>WiFi 5GHz: מהיר וטוב לרוב הצרכים. ביצועי Zoom/Teams נהדרים.</li>
@@ -100,7 +159,7 @@
           <li>Powerline Adapter: כבל LAN דרך שקעי חשמל — אם לא ניתן למשוך כבל. ₪100–₪250.</li>
         </ul>
 
-        <h2>ראוטר לעבודה מהבית</h2>
+        <h2 id="sec-3">ראוטר לעבודה מהבית</h2>
         <ul>
           <li>WiFi 6 (802.11ax): חובה בראוטר חדש — מנהל טוב יותר מספר מכשירים בו-זמנית.</li>
           <li>MU-MIMO: Simultaneous Multi-User — חשוב לבית עם כמה מחשבים פעילים.</li>
@@ -109,7 +168,7 @@
           <li>Mesh לבית גדול: אם חדר העבודה רחוק מהראוטר — נקודת Mesh נוספת (₪150–₪300).</li>
         </ul>
 
-        <h2>גיבוי סלולרי לתקלת אינטרנט</h2>
+        <h2 id="sec-4">גיבוי סלולרי לתקלת אינטרנט</h2>
         <ul>
           <li>Hotspot מסמארטפון: הדרך הפשוטה — כבו WiFi במחשב, הפעילו Hotspot בטלפון.</li>
           <li>SIM Router כגיבוי: ראוטר נפרד עם SIM סלולרי — מופעל רק כשהאינטרנט הראשי נופל.</li>
@@ -118,7 +177,7 @@
           <li>ספק עם שני ספקים: לרמת אמינות גבוהה — ראוטר dual-WAN (כגון ASUS AX86U) מחבר שני ספקים.</li>
         </ul>
 
-        <h2>VPN לעבודה מהבית</h2>
+        <h2 id="sec-5">VPN לעבודה מהבית</h2>
         <ul>
           <li>VPN ארגוני (מעסיק): ספקים כ-Cisco AnyConnect, Palo Alto GlobalProtect. כל הגדרה מהצד של ה-IT.</li>
           <li>VPN אישי (NordVPN, Surfshark, ExpressVPN): לאבטחת גלישה ב-WiFi ציבורי. ₪30–₪60/חודש.</li>
@@ -126,7 +185,7 @@
           <li>פיצול: VPN ארגוני + גלישה ישירה (Split Tunnel) — כך שרק תעבורת החברה עוברת VPN, לא YouTube.</li>
         </ul>
 
-        <h2>UPS — גיבוי חשמל לראוטר ומחשב</h2>
+        <h2 id="sec-6">UPS — גיבוי חשמל לראוטר ומחשב</h2>
         <ul>
           <li>UPS (Uninterruptible Power Supply): אחסון חשמל לכמה דקות-שעות בהפסקת חשמל.</li>
           <li>לראוטר בלבד: UPS קטן (600VA, ₪150–₪250) = ראוטר רץ 3–6 שעות. מספיק לרוב ההפסקות.</li>
@@ -159,37 +218,37 @@
           <div class="plan-grid plan-grid--featured">
 <article class="plan plan--hasjump" data-cat="internet" data-text="פרטנר fiber 1000mb סיב אופטי עד 1000/100mb נתב wifi7 כלול cyberguard +₪4.90 עד 1000/100 wifi7 כלול" data-price="39" data-after="159" data-haspromo="true" data-5g="false" data-nocommit="true" data-abroad="false" data-kosher="false" data-provider="partner" data-id="net_partner_fiber1g">
         
-        <div class="plan__top"><span class="plan__id"><span class="plogo plogo--img" style="width:36px;height:36px"><img src="assets/logos/partner.webp" alt="פרטנר" width="36" height="36" loading="lazy" decoding="async"></span><a class="plan__provider" href="provider-partner.html">פרטנר</a></span><span class="plan__net">סיב אופטי</span></div>
-        <div class="plan__name">Fiber 1000Mb</div>
-        <div class="plan__chips"><span class="pchip">עד 1000/100</span><span class="pchip">WiFi7 כלול</span></div>
+        <div class="plan__top"><span class="plan__id"><span class="plogo plogo--img" style="width:36px;height:36px"><img src="assets/logos/partner.webp" alt="פרטנר" width="36" height="36" loading="lazy" decoding="async"></span><a class="plan__provider" href="provider-partner.html">פרטנר</a></span><span class="plan__score" title="ציון ערך משוקלל לפי מחיר וגמישות בקטגוריה"><span class="plan__score-num">90</span><span class="plan__score-lbl">ציון ערך</span></span></div>
+        <div class="plan__name">Fiber 1000Mb <span class="plan__net">סיב אופטי</span></div>
+        <div class="plan__specs"><div class="plan__spec"><span class="plan__spec-k">מהירות</span><span class="plan__spec-v">עד 1000/100</span></div><div class="plan__spec"><span class="plan__spec-k">נתב</span><span class="plan__spec-v">WiFi7 כלול</span></div></div>
         <div class="plan__flags"><span class="pflag">ללא התחייבות</span></div>
         <div class="plan__bottom"><div class="plan__price"><b>₪39</b> <span>לחודש</span><span class="plan__after">ואז ₪159</span></div></div>
         <div class="plan__actions">
-          <a class="plan__cta" target="_blank" rel="noopener" href="https://wa.me/972505037537?text=%D7%94%D7%99%D7%99%2C%20%D7%9E%D7%A2%D7%A0%D7%99%D7%99%D7%9F%20%D7%90%D7%95%D7%AA%D7%99%20%D7%A4%D7%A8%D7%98%D7%A0%D7%A8%20-%20Fiber%201000Mb%20(%E2%82%AA39)" aria-label="מעוניין/ת בפרטנר Fiber 1000Mb — פנייה בוואטסאפ"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8 9 9 0 0 1-3.8-.8L3 20l1.3-3.9A8 8 0 0 1 3.5 11 8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/></svg> מעוניין/ת ←</a>
+          <a class="plan__cta" target="_blank" rel="noopener" href="https://wa.me/972505037537?text=%D7%94%D7%99%D7%99%2C%20%D7%9E%D7%A2%D7%A0%D7%99%D7%99%D7%9F%20%D7%90%D7%95%D7%AA%D7%99%20%D7%A4%D7%A8%D7%98%D7%A0%D7%A8%20-%20Fiber%201000Mb%20(%E2%82%AA39)" aria-label="מעוניין/ת בפרטנר Fiber 1000Mb — פנייה בוואטסאפ"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8 9 9 0 0 1-3.8-.8L3 20l1.3-3.9A8 8 0 0 1 3.5 11 8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/></svg> מעוניין/ת בוואטסאפ ←</a>
           <a class="plan__compare" href="compare.html?p0=net_partner_fiber1g" title="השוו מסלול זה" aria-label="השוו את פרטנר Fiber 1000Mb"><span aria-hidden="true">⚖️</span></a>
         </div>
       </article>
 <article class="plan plan--hasjump" data-cat="internet" data-text="גילת 1gb מבצע אונליין סיב אופטי עד 1000/100mb נתב כלול ניוד חינם מסיב בזק עד 1000/100 כלול (wifi7 +₪10/ח׳)" data-price="49" data-after="95" data-haspromo="true" data-5g="false" data-nocommit="true" data-abroad="false" data-kosher="false" data-provider="gilat" data-id="net_gilat_1g_online">
         
-        <div class="plan__top"><span class="plan__id"><span class="plogo plogo--img" style="width:36px;height:36px"><img src="assets/logos/gilat.webp" alt="גילת" width="36" height="36" loading="lazy" decoding="async"></span><a class="plan__provider" href="provider-gilat.html">גילת</a></span><span class="plan__net">סיב אופטי</span></div>
-        <div class="plan__name">1GB מבצע אונליין</div>
-        <div class="plan__chips"><span class="pchip">עד 1000/100</span><span class="pchip">כלול (WiFi7 +₪10/ח׳)</span></div>
+        <div class="plan__top"><span class="plan__id"><span class="plogo plogo--img" style="width:36px;height:36px"><img src="assets/logos/gilat.webp" alt="גילת" width="36" height="36" loading="lazy" decoding="async"></span><a class="plan__provider" href="provider-gilat.html">גילת</a></span><span class="plan__score" title="ציון ערך משוקלל לפי מחיר וגמישות בקטגוריה"><span class="plan__score-num">87</span><span class="plan__score-lbl">ציון ערך</span></span></div>
+        <div class="plan__name">1GB מבצע אונליין <span class="plan__net">סיב אופטי</span></div>
+        <div class="plan__specs"><div class="plan__spec"><span class="plan__spec-k">מהירות</span><span class="plan__spec-v">עד 1000/100</span></div><div class="plan__spec"><span class="plan__spec-k">נתב</span><span class="plan__spec-v">כלול (WiFi7 +₪10/ח׳)</span></div></div>
         <div class="plan__flags"><span class="pflag">ללא התחייבות</span></div>
         <div class="plan__bottom"><div class="plan__price"><b>₪49</b> <span>לחודש</span><span class="plan__after">ואז ₪95</span></div></div>
         <div class="plan__actions">
-          <a class="plan__cta" target="_blank" rel="noopener" href="https://wa.me/972505037537?text=%D7%94%D7%99%D7%99%2C%20%D7%9E%D7%A2%D7%A0%D7%99%D7%99%D7%9F%20%D7%90%D7%95%D7%AA%D7%99%20%D7%92%D7%99%D7%9C%D7%AA%20-%201GB%20%D7%9E%D7%91%D7%A6%D7%A2%20%D7%90%D7%95%D7%A0%D7%9C%D7%99%D7%99%D7%9F%20(%E2%82%AA49)" aria-label="מעוניין/ת בגילת 1GB מבצע אונליין — פנייה בוואטסאפ"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8 9 9 0 0 1-3.8-.8L3 20l1.3-3.9A8 8 0 0 1 3.5 11 8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/></svg> מעוניין/ת ←</a>
+          <a class="plan__cta" target="_blank" rel="noopener" href="https://wa.me/972505037537?text=%D7%94%D7%99%D7%99%2C%20%D7%9E%D7%A2%D7%A0%D7%99%D7%99%D7%9F%20%D7%90%D7%95%D7%AA%D7%99%20%D7%92%D7%99%D7%9C%D7%AA%20-%201GB%20%D7%9E%D7%91%D7%A6%D7%A2%20%D7%90%D7%95%D7%A0%D7%9C%D7%99%D7%99%D7%9F%20(%E2%82%AA49)" aria-label="מעוניין/ת בגילת 1GB מבצע אונליין — פנייה בוואטסאפ"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8 9 9 0 0 1-3.8-.8L3 20l1.3-3.9A8 8 0 0 1 3.5 11 8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/></svg> מעוניין/ת בוואטסאפ ←</a>
           <a class="plan__compare" href="compare.html?p0=net_gilat_1g_online" title="השוו מסלול זה" aria-label="השוו את גילת 1GB מבצע אונליין"><span aria-hidden="true">⚖️</span></a>
         </div>
       </article>
 <article class="plan plan--hasjump" data-cat="internet" data-text="בזק אינטרנט 100 מגה (נחושת) נחושת vdsl עד 100/3mb נתב כלול ל-3 חודשים עד 100/3 +₪21.9/ח׳" data-price="65" data-after="158" data-haspromo="true" data-5g="false" data-nocommit="true" data-abroad="false" data-kosher="false" data-provider="bezeq" data-id="net_bezeq_copper100">
         
-        <div class="plan__top"><span class="plan__id"><span class="plogo plogo--img" style="width:36px;height:36px"><img src="assets/logos/bezeq.svg" alt="בזק" width="36" height="36" loading="lazy" decoding="async"></span><a class="plan__provider" href="provider-bezeq.html">בזק</a></span><span class="plan__net">כבלים</span></div>
-        <div class="plan__name">אינטרנט 100 מגה (נחושת)</div>
-        <div class="plan__chips"><span class="pchip">עד 100/3</span><span class="pchip">+₪21.9/ח׳</span></div>
+        <div class="plan__top"><span class="plan__id"><span class="plogo plogo--img" style="width:36px;height:36px"><img src="assets/logos/bezeq.svg" alt="בזק" width="36" height="36" loading="lazy" decoding="async"></span><a class="plan__provider" href="provider-bezeq.html">בזק</a></span><span class="plan__score" title="ציון ערך משוקלל לפי מחיר וגמישות בקטגוריה"><span class="plan__score-num">83</span><span class="plan__score-lbl">ציון ערך</span></span></div>
+        <div class="plan__name">אינטרנט 100 מגה (נחושת) <span class="plan__net">כבלים</span></div>
+        <div class="plan__specs"><div class="plan__spec"><span class="plan__spec-k">מהירות</span><span class="plan__spec-v">עד 100/3</span></div><div class="plan__spec"><span class="plan__spec-k">נתב</span><span class="plan__spec-v">+₪21.9/ח׳</span></div></div>
         <div class="plan__flags"><span class="pflag">ללא התחייבות</span></div>
         <div class="plan__bottom"><div class="plan__price"><b>₪65</b> <span>לחודש</span><span class="plan__after">ואז ₪158</span></div></div>
         <div class="plan__actions">
-          <a class="plan__cta" target="_blank" rel="noopener" href="https://wa.me/972505037537?text=%D7%94%D7%99%D7%99%2C%20%D7%9E%D7%A2%D7%A0%D7%99%D7%99%D7%9F%20%D7%90%D7%95%D7%AA%D7%99%20%D7%91%D7%96%D7%A7%20-%20%D7%90%D7%99%D7%A0%D7%98%D7%A8%D7%A0%D7%98%20100%20%D7%9E%D7%92%D7%94%20(%D7%A0%D7%97%D7%95%D7%A9%D7%AA)%20(%E2%82%AA65)" aria-label="מעוניין/ת בבזק אינטרנט 100 מגה (נחושת) — פנייה בוואטסאפ"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8 9 9 0 0 1-3.8-.8L3 20l1.3-3.9A8 8 0 0 1 3.5 11 8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/></svg> מעוניין/ת ←</a>
+          <a class="plan__cta" target="_blank" rel="noopener" href="https://wa.me/972505037537?text=%D7%94%D7%99%D7%99%2C%20%D7%9E%D7%A2%D7%A0%D7%99%D7%99%D7%9F%20%D7%90%D7%95%D7%AA%D7%99%20%D7%91%D7%96%D7%A7%20-%20%D7%90%D7%99%D7%A0%D7%98%D7%A8%D7%A0%D7%98%20100%20%D7%9E%D7%92%D7%94%20(%D7%A0%D7%97%D7%95%D7%A9%D7%AA)%20(%E2%82%AA65)" aria-label="מעוניין/ת בבזק אינטרנט 100 מגה (נחושת) — פנייה בוואטסאפ"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8 9 9 0 0 1-3.8-.8L3 20l1.3-3.9A8 8 0 0 1 3.5 11 8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/></svg> מעוניין/ת בוואטסאפ ←</a>
           <a class="plan__compare" href="compare.html?p0=net_bezeq_copper100" title="השוו מסלול זה" aria-label="השוו את בזק אינטרנט 100 מגה (נחושת)"><span aria-hidden="true">⚖️</span></a>
         </div>
       </article>
@@ -231,16 +290,25 @@
       <div class="footer__brand">
         <a class="brand brand--light" href="index.html"><span class="brand__mark" aria-hidden="true">✦</span><span class="brand__name">חוסך</span></a>
         <p>השוואת מחירי תקשורת חכמה. משווים, חוסכים, עוברים — בלי כאב ראש.</p>
+        <form class="subscribe" id="subscribeForm" novalidate>
+          <label class="subscribe__label" for="subscribeEmail">קבלו עדכוני מחיר ומבצעים</label>
+          <div class="subscribe__row">
+            <input class="subscribe__input" type="email" id="subscribeEmail" name="email" placeholder="האימייל שלכם" aria-label="כתובת אימייל לעדכונים" autocomplete="email" inputmode="email" required />
+            <button class="btn btn--primary subscribe__btn" type="submit">הצטרפו</button>
+          </div>
+          <label class="subscribe__consent" for="subscribeConsent"><input type="checkbox" id="subscribeConsent" name="consent" required /> אני מאשר/ת קבלת עדכוני מחיר ומבצעים במייל</label>
+          <p class="subscribe__note" id="subscribeNote" role="status" aria-live="polite"></p>
+        </form>
       </div>
       <nav class="footer__links footer__col" aria-label="קטגוריות">
         <h4>קטגוריות</h4>
-        <a href="cellular.html">סלולר</a><a href="internet.html">אינטרנט</a><a href="tv.html">טלוויזיה</a><a href="triple.html">חבילה משולבת</a><a href="abroad.html">חו״ל</a><a href="plans.html">כל החבילות</a>
+        <a href="cellular.html">סלולר</a><a href="internet.html">אינטרנט</a><a href="tv.html">טלוויזיה</a><a href="triple.html">חבילה משולבת</a><a href="abroad.html">חבילות חו״ל</a><a href="plans.html">כל החבילות</a>
       </nav>
       <nav class="footer__links footer__col" aria-label="כלים ומדריכים">
         <h4>כלים מומלצים</h4>
         <a href="compare.html">השוואת מסלולים</a><a href="calc-cellular.html">מחשבון סלולר</a><a href="calc-internet.html">מחשבון אינטרנט</a><a href="providers.html">כל הספקים</a><a href="guide-switching.html">מדריך מעבר ספק</a><a href="guide-number-port.html">ניוד מספר</a>
       </nav>
-      <nav class="footer__links footer__col" aria-label="קולקציות פופולריות">
+      <nav class="footer__links footer__col" aria-label="חיפושים פופולריים">
         <h4>חיפושים פופולריים</h4>
         <a href="cellular-budget.html">סלולר מתחת ל-₪30</a><a href="cellular-5g.html">סלולר 5G</a><a href="internet-fiber-only.html">אינטרנט סיב אופטי</a><a href="internet-giga.html">אינטרנט גיגה</a><a href="plans-no-commitment.html">ללא התחייבות</a><a href="esim-abroad.html">eSIM לחו״ל</a>
       </nav>
@@ -255,6 +323,6 @@
   </footer>
   <a class="wa-fab" href="https://wa.me/972505037537?text=%D7%94%D7%99%D7%99%2C%20%D7%90%D7%A9%D7%9E%D7%97%20%D7%9C%D7%94%D7%A9%D7%95%D7%95%D7%AA%20%D7%9E%D7%A1%D7%9C%D7%95%D7%9C%D7%99%D7%9D" target="_blank" rel="noopener" aria-label="דברו איתנו בוואטסאפ"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" width="26" height="26"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.885-9.885 9.885M20.52 3.449C18.24 1.245 15.24 0 12.045 0 5.463 0 .104 5.359.101 11.892c0 2.096.549 4.142 1.595 5.945L0 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.582 0 11.943-5.359 11.945-11.893a11.821 11.821 0 00-3.418-8.452z"/></svg></a>
   <script>window.CHOSECH_SUPABASE={url:'https://orzitfqmlvopujsoyigr.supabase.co',anonKey:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9yeml0ZnFtbHZvcHVqc295aWdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5OTc5NzIsImV4cCI6MjA5NjU3Mzk3Mn0.NY4ZHzR3BAWUxm5as9Z054o8fwcfejAab9SIvduKlhM'};</script>
-  <script src="script.js?v=14b649b5" defer></script>
+  <script src="script.js?v=743bfc96" defer></script>
 </body>
 </html>

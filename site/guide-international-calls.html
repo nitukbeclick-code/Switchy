@@ -9,6 +9,8 @@
   <style>.skip{position:absolute;left:-999px;top:0;z-index:100;background:#111827;color:#fff;padding:10px 16px;border-radius:0 0 8px 0}.skip:focus{left:0}</style>
   <meta name="theme-color" content="#111827" />
   <link rel="canonical" href="https://switchy-ai.com/guide-international-calls.html" />
+  <link rel="alternate" hreflang="he-IL" href="https://switchy-ai.com/guide-international-calls.html" />
+  <link rel="alternate" hreflang="x-default" href="https://switchy-ai.com/guide-international-calls.html" />
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="favicon.svg" />
   <link rel="manifest" href="site.webmanifest" />
@@ -31,10 +33,13 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="preconnect" href="https://plausible.io" />
   <link rel="preconnect" href="https://orzitfqmlvopujsoyigr.supabase.co" />
+  <!-- Fonts via Google CDN, loaded non-render-blocking (preload as style →
+       swap media print→all on load), with a <noscript> fallback. Preconnected
+       above; font-display:swap so text never blocks on the webfont. -->
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" />
   <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
   <noscript><link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" rel="stylesheet" /></noscript>
-  <link rel="stylesheet" href="styles.css?v=2870ee58" />
+  <link rel="stylesheet" href="styles.css?v=3c0ae6d7" />
   <!-- Cookieless analytics (Plausible-style). Placeholder until configured — no cookies, no personal data. -->
   <script defer data-domain="switchy-ai.com" src="https://plausible.io/js/script.outbound-links.tagged-events.js"></script>
   <script>window.plausible=window.plausible||function(){(window.plausible.q=window.plausible.q||[]).push(arguments)};</script>
@@ -53,7 +58,46 @@
         <a href="providers.html">ספקים</a>
         <a href="compare.html">השוואה</a>
         <a href="app.html">האפליקציה</a>
-        <a href="guides.html">מדריכים</a>
+        <div class="mega" data-mega>
+          <a href="guides.html" class="mega__trigger" aria-haspopup="true" aria-expanded="false">מדריכים <span class="mega__caret" aria-hidden="true">▾</span></a>
+          <div class="mega-menu" role="menu" aria-label="מדריכים לפי נושא">
+          <div class="mega-menu__col">
+            <a class="mega-menu__head" href="cellular.html">סלולר</a>
+            <a href="guide-cellular.html">איך לבחור מסלול סלולר ב-2026</a>
+            <a href="guide-5g.html">מתי באמת כדאי לעבור ל-5G?</a>
+            <a href="guide-family-lines.html">משפחה? כך חוסכים על כמה קווי סלולר</a>
+            <a href="guide-4g-vs-5g.html">4G vs. 5G — מה ההבדל בפועל?</a>
+          </div>
+          <div class="mega-menu__col">
+            <a class="mega-menu__head" href="internet.html">אינטרנט</a>
+            <a href="guide-fiber.html">סיב אופטי מול כבלים: מה ההבדל וכמה זה עולה?</a>
+            <a href="guide-5g-home.html">אינטרנט 5G ביתי (FWA) בישראל: המדריך המלא</a>
+            <a href="guide-bezeq-review.html">בזק 2026: כל מה שצריך לדעת</a>
+            <a href="guide-business-internet.html">אינטרנט לעסקים קטנים: המדריך המלא לבחירה נכונה</a>
+          </div>
+          <div class="mega-menu__col">
+            <a class="mega-menu__head" href="tv.html">טלוויזיה</a>
+            <a href="guide-apple-tv-streaming.html">Apple TV+ — האם שווה בישראל?</a>
+            <a href="guide-choose-tv-plan.html">בחירת חבילת טלוויזיה: המדריך המלא</a>
+            <a href="guide-cordcutting.html">לחתוך את הכבלים — מעבר לסטרימינג בלבד</a>
+            <a href="guide-disney-plus-israel.html">Disney+ ישראל — האם שווה?</a>
+          </div>
+          <div class="mega-menu__col">
+            <a class="mega-menu__head" href="abroad.html">חו״ל</a>
+            <a href="guide-esim.html">מדריך eSIM לחו״ל — איך לבחור חבילה לכל יעד</a>
+            <a href="guide-abroad-amsterdam.html">סלולר בהולנד — מדריך לישראלים</a>
+            <a href="guide-abroad-asia.html">סלולר ואינטרנט לאסיה — מדריך מקיף</a>
+            <a href="guide-abroad-austria.html">סלולר באוסטריה — מדריך לישראלים</a>
+          </div>
+          <div class="mega-menu__col">
+            <a class="mega-menu__head" href="guides.html">כללי</a>
+            <a href="guide-switching.html">המדריך המלא למעבר ספק תקשורת — בלי כאב ראש</a>
+            <a href="guide-cancel-commitment.html">איך לבטל התחייבות בלי לשלם קנס</a>
+            <a href="guide-read-bill.html">איך לקרוא חשבון תקשורת ולמצוא חיובים מיותרים</a>
+            <a href="guide-cancel-contract.html">איך מבטלים חוזה תקשורת: HOT, yes, פרטנר, סלקום ועוד</a>
+          </div>
+          </div>
+        </div>
         <a href="index.html#calculator">מחשבון</a>
       </nav>
       <a class="btn btn--primary nav__cta" href="index.html#cta">השוו עכשיו</a>
@@ -64,7 +108,11 @@
       <a href="providers.html">ספקים</a>
       <a href="compare.html">השוואה</a>
       <a href="app.html">האפליקציה</a>
-      <a href="guides.html">מדריכים</a>
+      <a href="guides.html">כל המדריכים</a>
+      <a class="nav__mobile-sub" href="guide-switching.html">המדריך המלא למעבר ספק תקשורת — בלי כאב ראש</a>
+      <a class="nav__mobile-sub" href="guide-cellular.html">איך לבחור מסלול סלולר ב-2026</a>
+      <a class="nav__mobile-sub" href="guide-fiber.html">סיב אופטי מול כבלים: מה ההבדל וכמה זה עולה?</a>
+      <a class="nav__mobile-sub" href="guide-5g.html">מתי באמת כדאי לעבור ל-5G?</a>
       <a href="index.html#calculator">מחשבון</a>
       <a class="btn btn--primary" href="index.html#cta">השוו עכשיו</a>
     </div>
@@ -82,7 +130,17 @@
         <div class="container">
           <div class="prose">
             <div class="tldr"><b>בקצרה:</b> הכי זול: WhatsApp/Facetime/Telegram בחינם דרך WiFi. אם צריכים שיחות לקוו — מסלול עם &#39;שיחות לחו&quot;ל&#39; (פרטנר, פלאפון, HOT) או מנוי 012/019 נפרד. אל תתקשרו ב-*6333 רגיל לחו&quot;ל — ₪3–₪6 לדקה.</div>
-        <h2>אפשרויות שיחה לחו&quot;ל — מהזול ליקר</h2>
+            <nav class="toc" aria-label="תוכן עניינים">
+              <p class="toc__title">בעמוד הזה</p>
+              <ol class="toc__list">
+                <li><a class="toc__link" href="#sec-1">אפשרויות שיחה לחו&quot;ל — מהזול ליקר</a></li>
+                <li><a class="toc__link" href="#sec-2">ספקים ישראליים עם שיחות לחו&quot;ל בחבילה</a></li>
+                <li><a class="toc__link" href="#sec-3">שיחות לחו&quot;ל כשנוסעים (רומינג)</a></li>
+                <li><a class="toc__link" href="#sec-4">מדינות נפוצות — עלות ממוצעת</a></li>
+                <li><a class="toc__link" href="#sec-5">טיפים לחיסכון מירבי</a></li>
+              </ol>
+            </nav>
+        <h2 id="sec-1">אפשרויות שיחה לחו&quot;ל — מהזול ליקר</h2>
         <ul>
           <li>WhatsApp/Telegram/FaceTime/Signal: חינם לחלוטין דרך WiFi/גלישה. הזול ביותר — כשהצד השני גם מחובר.</li>
           <li>Google Voice (לאמריקאים): שיחות ל-ארה&quot;ב/קנדה חינם, למדינות אחרות 1–3 סנט לדקה.</li>
@@ -91,7 +149,7 @@
           <li>חיוג דרך 019/012: הוספת קידומת 019/012 לפני הספרות הבינלאומיות מנתבת דרך ספק VOIP זול. עשרות אגורות לדקה לרוב המדינות.</li>
         </ul>
 
-        <h2>ספקים ישראליים עם שיחות לחו&quot;ל בחבילה</h2>
+        <h2 id="sec-2">ספקים ישראליים עם שיחות לחו&quot;ל בחבילה</h2>
         <ul>
           <li>פרטנר: מסלולים בין ₪35–₪80 הכוללים 100–500 דקות שיחה לחו&quot;ל לחודש (מדינות נבחרות).</li>
           <li>פלאפון: חבילות &#39;אינטרנשיונל&#39; עם דקות לחו&quot;ל. בדקו מה כלול בחבילה הנוכחית.</li>
@@ -100,15 +158,20 @@
           <li>MVNO כמו Xphone, WeCom: לרוב לא כוללים שיחות חינמיות לחו&quot;ל — רק גלישה.</li>
         </ul>
 
-        <h2>שיחות לחו&quot;ל כשנוסעים (רומינג)</h2>
+        <h2 id="sec-3">שיחות לחו&quot;ל כשנוסעים (רומינג)</h2>
         <ul>
           <li>רומינג של הספק הישראלי: ₪1–₪3 לדקה שיחה, ₪0.50–₪2 לSMS. יקר — הימנעו.</li>
           <li>חלופה: SIM מקומי בחו&quot;ל עם VoIP לשיחות לישראל (WhatsApp). הזול ביותר.</li>
           <li>eSIM לחו&quot;ל (Airalo, Holafly): גלישה זולה + WhatsApp. ישראל נגישה דרך האינטרנט.</li>
           <li>לקבלת שיחות: בזמן שאתם ב-SIM מקומי, המספר הישראלי לא פעיל. פתרון: Google Voice / eSIM Dual SIM לקבלת שיחות בלבד.</li>
+          <li>מתלבטים eSIM מול רומינג? ראו /guides/guide-esim-vs-roaming.html ו-/abroad.html.</li>
         </ul>
+        <aside class="callout callout--tip" role="note">
+          <span class="callout__icon" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.5.4.8 1 .9 1.6l.1.5h5l.1-.5c.1-.6.4-1.2.9-1.6A6 6 0 0 0 12 3z"/></svg></span>
+          <div class="callout__body"><p class="callout__title">Dual SIM = הטוב משני העולמות</p><p>בחו״ל השאירו SIM ישראלי פעיל לקבלת שיחות וקודים, וגלשו על eSIM זול. כך שיחות WhatsApp יוצאות בחינם והמספר הישראלי עדיין מקבל שיחות. ראו /guides/guide-iphone-esim.html.</p></div>
+        </aside>
 
-        <h2>מדינות נפוצות — עלות ממוצעת</h2>
+        <h2 id="sec-4">מדינות נפוצות — עלות ממוצעת</h2>
         <ul>
           <li>ארה&quot;ב/קנדה: WhatsApp בחינם; 019 כ-₪0.10–₪0.20/דקה; Skype ~$0.02/דקה.</li>
           <li>אירופה (UK, צרפת, גרמניה, ולנד): WhatsApp בחינם; 019 כ-₪0.15–₪0.30/דקה.</li>
@@ -117,13 +180,18 @@
           <li>אפריקה/דרום אמריקה: ₪0.50–₪1.50/דקה — VOIP עדיין זול בהרבה מרומינג רגיל.</li>
         </ul>
 
-        <h2>טיפים לחיסכון מירבי</h2>
+        <h2 id="sec-5">טיפים לחיסכון מירבי</h2>
         <ul>
           <li>הגדירו WhatsApp Business: אם יש לכם לקוחות בחו&quot;ל — תקשורת דרך WhatsApp Business היא חינמית ומקצועית.</li>
           <li>הורידו Skype למחשב: credit זול לשיחות לקוו חד-פעמיות ללא מינוי.</li>
           <li>קנו מסלול עם דקות חו&quot;ל רק אם מתקשרים: מסלול ₪60 עם 300 דקות &gt; מסלול ₪40 + 019 נפרד — רק אם באמת מנצלים.</li>
           <li>בדקו 019 Mobile: לחיוג מוזל — הוסיפו 019 לפני הספרה הבינלאומית. לרוב העסקים הישראליים יש הסכמים עם 019.</li>
+          <li>השוו מסלולים הכוללים דקות לחו״ל ב-/cellular.html ו-/compare.html.</li>
         </ul>
+        <aside class="callout" role="note">
+          <span class="callout__icon" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg></span>
+          <div class="callout__body"><p class="callout__title">אל תחייגו ישירות לחו״ל</p><p>חיוג ישיר ב-*6333 וכד&#39; עולה ₪2–₪6 לדקה — היקר ביותר. השתמשו תמיד באפליקציית VoIP (WhatsApp) או בקידומת 019/012 לחיוג מוזל.</p></div>
+        </aside>
 
           </div>
           <div class="article-cta">
@@ -150,37 +218,37 @@
           <div class="plan-grid plan-grid--featured">
 <article class="plan" data-cat="cellular" data-text="הוט מובייל 20gb data only 20gb גלישה sim דאטה לטאבלט/לפטופ/מודם 20gb" data-price="11" data-after="" data-haspromo="false" data-5g="false" data-nocommit="true" data-abroad="false" data-kosher="false" data-provider="hot-mobile" data-id="cel_hotmobile_dataonly20">
         
-        <div class="plan__top"><span class="plan__id"><span class="plogo plogo--img" style="width:36px;height:36px"><img src="assets/logos/hot-mobile.webp" alt="הוט מובייל" width="36" height="36" loading="lazy" decoding="async"></span><a class="plan__provider" href="provider-hot-mobile.html">הוט מובייל</a></span><span class="plan__net">4G</span></div>
-        <div class="plan__name">20GB Data Only</div>
-        <div class="plan__chips"><span class="pchip">20GB</span></div>
+        <div class="plan__top"><span class="plan__id"><span class="plogo plogo--img" style="width:36px;height:36px"><img src="assets/logos/hot-mobile.webp" alt="הוט מובייל" width="36" height="36" loading="lazy" decoding="async"></span><a class="plan__provider" href="provider-hot-mobile.html">הוט מובייל</a></span><span class="plan__score" title="ציון ערך משוקלל לפי מחיר וגמישות בקטגוריה"><span class="plan__score-num">94</span><span class="plan__score-lbl">ציון ערך</span></span></div>
+        <div class="plan__name">20GB Data Only <span class="plan__net">4G</span></div>
+        <div class="plan__specs"><div class="plan__spec"><span class="plan__spec-k">נתונים</span><span class="plan__spec-v">20GB</span></div></div>
         <div class="plan__flags"><span class="pflag">ללא התחייבות</span></div>
         <div class="plan__bottom"><div class="plan__price"><b>₪10.90</b> <span>לחודש</span></div></div>
         <div class="plan__actions">
-          <a class="plan__cta" target="_blank" rel="noopener" href="https://wa.me/972505037537?text=%D7%94%D7%99%D7%99%2C%20%D7%9E%D7%A2%D7%A0%D7%99%D7%99%D7%9F%20%D7%90%D7%95%D7%AA%D7%99%20%D7%94%D7%95%D7%98%20%D7%9E%D7%95%D7%91%D7%99%D7%99%D7%9C%20-%2020GB%20Data%20Only%20(%E2%82%AA10.90)" aria-label="מעוניין/ת בהוט מובייל 20GB Data Only — פנייה בוואטסאפ"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8 9 9 0 0 1-3.8-.8L3 20l1.3-3.9A8 8 0 0 1 3.5 11 8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/></svg> מעוניין/ת ←</a>
+          <a class="plan__cta" target="_blank" rel="noopener" href="https://wa.me/972505037537?text=%D7%94%D7%99%D7%99%2C%20%D7%9E%D7%A2%D7%A0%D7%99%D7%99%D7%9F%20%D7%90%D7%95%D7%AA%D7%99%20%D7%94%D7%95%D7%98%20%D7%9E%D7%95%D7%91%D7%99%D7%99%D7%9C%20-%2020GB%20Data%20Only%20(%E2%82%AA10.90)" aria-label="מעוניין/ת בהוט מובייל 20GB Data Only — פנייה בוואטסאפ"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8 9 9 0 0 1-3.8-.8L3 20l1.3-3.9A8 8 0 0 1 3.5 11 8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/></svg> מעוניין/ת בוואטסאפ ←</a>
           <a class="plan__compare" href="compare.html?p0=cel_hotmobile_dataonly20" title="השוו מסלול זה" aria-label="השוו את הוט מובייל 20GB Data Only"><span aria-hidden="true">⚖️</span></a>
         </div>
       </article>
 <article class="plan" data-cat="cellular" data-text="019 מובייל sim data 2gb 2gb גלישה ל-iot/רכב ip קבוע אפשרי 2gb" data-price="12" data-after="" data-haspromo="false" data-5g="false" data-nocommit="true" data-abroad="false" data-kosher="false" data-provider="019mobile" data-id="cel_019mobile_simdata2">
         
-        <div class="plan__top"><span class="plan__id"><span class="plogo plogo--img" style="width:36px;height:36px"><img src="assets/logos/019mobile.webp" alt="019 מובייל" width="36" height="36" loading="lazy" decoding="async"></span><a class="plan__provider" href="provider-019mobile.html">019 מובייל</a></span><span class="plan__net">4G</span></div>
-        <div class="plan__name">SIM Data 2GB</div>
-        <div class="plan__chips"><span class="pchip">2GB</span></div>
+        <div class="plan__top"><span class="plan__id"><span class="plogo plogo--img" style="width:36px;height:36px"><img src="assets/logos/019mobile.webp" alt="019 מובייל" width="36" height="36" loading="lazy" decoding="async"></span><a class="plan__provider" href="provider-019mobile.html">019 מובייל</a></span><span class="plan__score" title="ציון ערך משוקלל לפי מחיר וגמישות בקטגוריה"><span class="plan__score-num">94</span><span class="plan__score-lbl">ציון ערך</span></span></div>
+        <div class="plan__name">SIM Data 2GB <span class="plan__net">4G</span></div>
+        <div class="plan__specs"><div class="plan__spec"><span class="plan__spec-k">נתונים</span><span class="plan__spec-v">2GB</span></div></div>
         <div class="plan__flags"><span class="pflag">ללא התחייבות</span></div>
         <div class="plan__bottom"><div class="plan__price"><b>₪12</b> <span>לחודש</span></div></div>
         <div class="plan__actions">
-          <a class="plan__cta" target="_blank" rel="noopener" href="https://wa.me/972505037537?text=%D7%94%D7%99%D7%99%2C%20%D7%9E%D7%A2%D7%A0%D7%99%D7%99%D7%9F%20%D7%90%D7%95%D7%AA%D7%99%20019%20%D7%9E%D7%95%D7%91%D7%99%D7%99%D7%9C%20-%20SIM%20Data%202GB%20(%E2%82%AA12)" aria-label="מעוניין/ת ב019 מובייל SIM Data 2GB — פנייה בוואטסאפ"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8 9 9 0 0 1-3.8-.8L3 20l1.3-3.9A8 8 0 0 1 3.5 11 8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/></svg> מעוניין/ת ←</a>
+          <a class="plan__cta" target="_blank" rel="noopener" href="https://wa.me/972505037537?text=%D7%94%D7%99%D7%99%2C%20%D7%9E%D7%A2%D7%A0%D7%99%D7%99%D7%9F%20%D7%90%D7%95%D7%AA%D7%99%20019%20%D7%9E%D7%95%D7%91%D7%99%D7%99%D7%9C%20-%20SIM%20Data%202GB%20(%E2%82%AA12)" aria-label="מעוניין/ת ב019 מובייל SIM Data 2GB — פנייה בוואטסאפ"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8 9 9 0 0 1-3.8-.8L3 20l1.3-3.9A8 8 0 0 1 3.5 11 8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/></svg> מעוניין/ת בוואטסאפ ←</a>
           <a class="plan__compare" href="compare.html?p0=cel_019mobile_simdata2" title="השוו מסלול זה" aria-label="השוו את 019 מובייל SIM Data 2GB"><span aria-hidden="true">⚖️</span></a>
         </div>
       </article>
 <article class="plan" data-cat="cellular" data-text="רמי לוי זול להיות בקשר כשר כשר 10,000 דק׳ ברשת מסלול כשר 10,000 ברשת / 4,000 מחוץ" data-price="15" data-after="" data-haspromo="false" data-5g="false" data-nocommit="true" data-abroad="false" data-kosher="true" data-provider="rami-levy" data-id="cel_ramilevy_zolkasher">
         
-        <div class="plan__top"><span class="plan__id"><span class="plogo plogo--img" style="width:36px;height:36px"><img src="assets/logos/rami-levy.webp" alt="רמי לוי" width="36" height="36" loading="lazy" decoding="async"></span><a class="plan__provider" href="provider-rami-levy.html">רמי לוי</a></span><span class="plan__net">4G</span></div>
-        <div class="plan__name">זול להיות בקשר כשר</div>
-        <div class="plan__chips"><span class="pchip">10,000 ברשת / 4,000 מחוץ</span></div>
+        <div class="plan__top"><span class="plan__id"><span class="plogo plogo--img" style="width:36px;height:36px"><img src="assets/logos/rami-levy.webp" alt="רמי לוי" width="36" height="36" loading="lazy" decoding="async"></span><a class="plan__provider" href="provider-rami-levy.html">רמי לוי</a></span><span class="plan__score" title="ציון ערך משוקלל לפי מחיר וגמישות בקטגוריה"><span class="plan__score-num">93</span><span class="plan__score-lbl">ציון ערך</span></span></div>
+        <div class="plan__name">זול להיות בקשר כשר <span class="plan__net">4G</span></div>
+        <div class="plan__specs"><div class="plan__spec"><span class="plan__spec-k">דקות</span><span class="plan__spec-v">10,000 ברשת / 4,000 מחוץ</span></div></div>
         <div class="plan__flags"><span class="pflag">ללא התחייבות</span></div>
         <div class="plan__bottom"><div class="plan__price"><b>₪14.90</b> <span>לחודש</span></div></div>
         <div class="plan__actions">
-          <a class="plan__cta" target="_blank" rel="noopener" href="https://wa.me/972505037537?text=%D7%94%D7%99%D7%99%2C%20%D7%9E%D7%A2%D7%A0%D7%99%D7%99%D7%9F%20%D7%90%D7%95%D7%AA%D7%99%20%D7%A8%D7%9E%D7%99%20%D7%9C%D7%95%D7%99%20-%20%D7%96%D7%95%D7%9C%20%D7%9C%D7%94%D7%99%D7%95%D7%AA%20%D7%91%D7%A7%D7%A9%D7%A8%20%D7%9B%D7%A9%D7%A8%20(%E2%82%AA14.90)" aria-label="מעוניין/ת ברמי לוי זול להיות בקשר כשר — פנייה בוואטסאפ"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8 9 9 0 0 1-3.8-.8L3 20l1.3-3.9A8 8 0 0 1 3.5 11 8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/></svg> מעוניין/ת ←</a>
+          <a class="plan__cta" target="_blank" rel="noopener" href="https://wa.me/972505037537?text=%D7%94%D7%99%D7%99%2C%20%D7%9E%D7%A2%D7%A0%D7%99%D7%99%D7%9F%20%D7%90%D7%95%D7%AA%D7%99%20%D7%A8%D7%9E%D7%99%20%D7%9C%D7%95%D7%99%20-%20%D7%96%D7%95%D7%9C%20%D7%9C%D7%94%D7%99%D7%95%D7%AA%20%D7%91%D7%A7%D7%A9%D7%A8%20%D7%9B%D7%A9%D7%A8%20(%E2%82%AA14.90)" aria-label="מעוניין/ת ברמי לוי זול להיות בקשר כשר — פנייה בוואטסאפ"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8 9 9 0 0 1-3.8-.8L3 20l1.3-3.9A8 8 0 0 1 3.5 11 8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/></svg> מעוניין/ת בוואטסאפ ←</a>
           <a class="plan__compare" href="compare.html?p0=cel_ramilevy_zolkasher" title="השוו מסלול זה" aria-label="השוו את רמי לוי זול להיות בקשר כשר"><span aria-hidden="true">⚖️</span></a>
         </div>
       </article>
@@ -222,16 +290,25 @@
       <div class="footer__brand">
         <a class="brand brand--light" href="index.html"><span class="brand__mark" aria-hidden="true">✦</span><span class="brand__name">חוסך</span></a>
         <p>השוואת מחירי תקשורת חכמה. משווים, חוסכים, עוברים — בלי כאב ראש.</p>
+        <form class="subscribe" id="subscribeForm" novalidate>
+          <label class="subscribe__label" for="subscribeEmail">קבלו עדכוני מחיר ומבצעים</label>
+          <div class="subscribe__row">
+            <input class="subscribe__input" type="email" id="subscribeEmail" name="email" placeholder="האימייל שלכם" aria-label="כתובת אימייל לעדכונים" autocomplete="email" inputmode="email" required />
+            <button class="btn btn--primary subscribe__btn" type="submit">הצטרפו</button>
+          </div>
+          <label class="subscribe__consent" for="subscribeConsent"><input type="checkbox" id="subscribeConsent" name="consent" required /> אני מאשר/ת קבלת עדכוני מחיר ומבצעים במייל</label>
+          <p class="subscribe__note" id="subscribeNote" role="status" aria-live="polite"></p>
+        </form>
       </div>
       <nav class="footer__links footer__col" aria-label="קטגוריות">
         <h4>קטגוריות</h4>
-        <a href="cellular.html">סלולר</a><a href="internet.html">אינטרנט</a><a href="tv.html">טלוויזיה</a><a href="triple.html">חבילה משולבת</a><a href="abroad.html">חו״ל</a><a href="plans.html">כל החבילות</a>
+        <a href="cellular.html">סלולר</a><a href="internet.html">אינטרנט</a><a href="tv.html">טלוויזיה</a><a href="triple.html">חבילה משולבת</a><a href="abroad.html">חבילות חו״ל</a><a href="plans.html">כל החבילות</a>
       </nav>
       <nav class="footer__links footer__col" aria-label="כלים ומדריכים">
         <h4>כלים מומלצים</h4>
         <a href="compare.html">השוואת מסלולים</a><a href="calc-cellular.html">מחשבון סלולר</a><a href="calc-internet.html">מחשבון אינטרנט</a><a href="providers.html">כל הספקים</a><a href="guide-switching.html">מדריך מעבר ספק</a><a href="guide-number-port.html">ניוד מספר</a>
       </nav>
-      <nav class="footer__links footer__col" aria-label="קולקציות פופולריות">
+      <nav class="footer__links footer__col" aria-label="חיפושים פופולריים">
         <h4>חיפושים פופולריים</h4>
         <a href="cellular-budget.html">סלולר מתחת ל-₪30</a><a href="cellular-5g.html">סלולר 5G</a><a href="internet-fiber-only.html">אינטרנט סיב אופטי</a><a href="internet-giga.html">אינטרנט גיגה</a><a href="plans-no-commitment.html">ללא התחייבות</a><a href="esim-abroad.html">eSIM לחו״ל</a>
       </nav>
@@ -246,6 +323,6 @@
   </footer>
   <a class="wa-fab" href="https://wa.me/972505037537?text=%D7%94%D7%99%D7%99%2C%20%D7%90%D7%A9%D7%9E%D7%97%20%D7%9C%D7%94%D7%A9%D7%95%D7%95%D7%AA%20%D7%9E%D7%A1%D7%9C%D7%95%D7%9C%D7%99%D7%9D" target="_blank" rel="noopener" aria-label="דברו איתנו בוואטסאפ"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" width="26" height="26"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.885-9.885 9.885M20.52 3.449C18.24 1.245 15.24 0 12.045 0 5.463 0 .104 5.359.101 11.892c0 2.096.549 4.142 1.595 5.945L0 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.582 0 11.943-5.359 11.945-11.893a11.821 11.821 0 00-3.418-8.452z"/></svg></a>
   <script>window.CHOSECH_SUPABASE={url:'https://orzitfqmlvopujsoyigr.supabase.co',anonKey:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9yeml0ZnFtbHZvcHVqc295aWdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5OTc5NzIsImV4cCI6MjA5NjU3Mzk3Mn0.NY4ZHzR3BAWUxm5as9Z054o8fwcfejAab9SIvduKlhM'};</script>
-  <script src="script.js?v=14b649b5" defer></script>
+  <script src="script.js?v=743bfc96" defer></script>
 </body>
 </html>

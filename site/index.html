@@ -39,7 +39,7 @@
   <noscript><link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" rel="stylesheet" /></noscript>
   <!-- ?v= cache-busting hash is owned by build.js (it prints the current
        values on every run) — keep this in sync when styles.css changes. -->
-  <link rel="stylesheet" href="styles.css?v=2870ee58" />
+  <link rel="stylesheet" href="styles.css?v=3c0ae6d7" />
 
   <!-- Cookieless analytics (Plausible-style). Placeholder until configured —
        no cookies, no personal data. Mirrors build.js analyticsTag(). -->
@@ -138,7 +138,17 @@
         <span class="brand__name">חוסך</span>
       </a>
       <nav class="nav__links" aria-label="ניווט ראשי">
-        <a href="plans.html">כל החבילות</a>
+        <div class="nav__item nav__item--mega">
+          <a href="plans.html" aria-haspopup="true" aria-expanded="false">כל החבילות</a>
+          <div class="mega-menu" role="menu" aria-label="קטגוריות תקשורת">
+            <a class="mega-menu__link" role="menuitem" href="cellular.html"><b>סלולר</b><span>מ-₪15 לחודש</span></a>
+            <a class="mega-menu__link" role="menuitem" href="internet.html"><b>אינטרנט</b><span>סיב עד גיגה</span></a>
+            <a class="mega-menu__link" role="menuitem" href="tv.html"><b>טלוויזיה</b><span>ערוצים וסטרימינג</span></a>
+            <a class="mega-menu__link" role="menuitem" href="triple.html"><b>חבילה משולבת</b><span>הכל ביחד, בזול</span></a>
+            <a class="mega-menu__link" role="menuitem" href="abroad.html"><b>חו״ל / eSIM</b><span>גלישה בכל העולם</span></a>
+            <a class="mega-menu__link" role="menuitem" href="plans.html"><b>כל המסלולים ←</b><span>120+ בהשוואה</span></a>
+          </div>
+        </div>
         <a href="providers.html">ספקים</a>
         <a href="compare.html">השוואה</a>
         <a href="app.html">האפליקציה</a>
@@ -167,17 +177,19 @@
       <div class="container hero__inner">
         <div class="hero__copy reveal">
           <span class="pill">גישה מוקדמת · חינם · בלי התחייבות</span>
-          <h1>כל חברות התקשורת<br /><span class="hl">במקום אחד</span></h1>
+          <h1>מפסיקים לשלם<br /><span class="hl">יותר מדי על תקשורת</span></h1>
           <p class="hero__sub">
-            חוסך משווה לכם מחירים על סלולר, אינטרנט, טלוויזיה, חבילות משולבות
-            וחו״ל מכל הספקים בישראל — ומוצא את המסלול הכי משתלם.
-            השוואה חינם, בלי התחייבות, עם <strong>ליווי אנושי במעבר</strong>.
+            חוסך משווה בשבילכם את כל חברות התקשורת בישראל — סלולר, אינטרנט,
+            טלוויזיה, חבילות משולבות וחו״ל — ומוצא את המסלול הכי משתלם
+            <strong>בדיוק לפי השימוש שלכם</strong>. השוואה חינם, בלי התחייבות,
+            עם <strong>ליווי אנושי במעבר</strong>.
           </p>
           <div class="hero__cta">
             <a class="btn btn--primary btn--lg" href="#calculator">בדקו כמה תוכלו לחסוך ←</a>
-            <a class="btn btn--ghost btn--lg" href="#how">איך זה עובד?</a>
+            <a class="btn btn--ghost btn--lg" href="#advisorOpen" id="heroAdvisorLink">נסו את היועץ החכם</a>
           </div>
           <p class="hero__social"><span aria-hidden="true">✦</span> משווים <strong>120+ מסלולים</strong> מ-18 ספקים — מתעדכן כל יום</p>
+          <p class="hero__avail" role="status"><span class="hero__dot" aria-hidden="true"></span> הקטלוג עודכן היום · מחירים אמיתיים, כולל המחיר שאחרי המבצע</p>
           <ul class="hero__stats" aria-label="נתונים על ההשוואה">
             <li><b>120+</b><span>מסלולים בהשוואה</span></li>
             <li><b>18</b><span>ספקים</span></li>
@@ -187,8 +199,8 @@
           <p class="hero__fineprint">* החיסכון משתנה לפי החבילה, הספק והשימוש שלכם — נחשב לכם אישית. ראו <a href="terms.html">תנאי שימוש</a>.</p>
         </div>
 
-        <div class="hero__visual reveal" aria-hidden="true">
-          <div class="phone">
+        <div class="hero__visual reveal">
+          <div class="phone" aria-hidden="true">
             <div class="phone__notch"></div>
             <div class="phone__screen">
               <div class="card card--save">
@@ -213,6 +225,7 @@
               </div>
             </div>
           </div>
+          <img class="hero__shot" src="assets/app/shot-results.webp" width="280" height="600" loading="lazy" decoding="async" alt="מסך תוצאות ההשוואה באפליקציית חוסך — מסלולים מדורגים לפי החיסכון השנתי" />
         </div>
       </div>
     </section>
@@ -418,6 +431,64 @@
           </div>
           <a class="btn btn--primary btn--block" href="#cta">קבלו את ההמלצה המדויקת ←</a>
           <p class="calc__fine">* הערכה בלבד. החיסכון בפועל תלוי בחבילה ובספק.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── AI tools (UI shells; script.js binds behavior, Wave C builds APIs) ── -->
+    <section class="section section--alt" id="ai-tools" aria-label="כלים חכמים">
+      <div class="container">
+        <header class="section__head reveal">
+          <span class="eyebrow">חדש · מבוסס AI</span>
+          <h2>שני קיצורי דרך לחיסכון</h2>
+          <p>לא בא לכם למלא שאלון? תנו ל-AI לעשות את העבודה — מהמלצה אישית ועד ניתוח החשבון הקיים שלכם.</p>
+        </header>
+        <div class="ai-tools-grid">
+          <!-- Smart plan advisor launcher -->
+          <article class="advisor reveal" aria-labelledby="advisorTitle">
+            <span class="advisor__badge"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.9 4.6L18.5 9l-4.6 1.9L12 15l-1.9-4.1L5.5 9l4.6-1.4L12 3z"/><path d="M5 16l.8 2 .2.8.8.2 2 .8-2 .8-.8.2-.2.8L5 22l-.8-2-.2-.8-.8-.2-2-.8 2-.8.8-.2.2-.8z"/></svg></span>
+            <h3 id="advisorTitle">יועץ מסלולים חכם</h3>
+            <p>חמש שאלות קצרות, והיועץ שלנו מדרג עבורכם את המסלולים המשתלמים ביותר — עם הסבר על כל המלצה.</p>
+            <ul class="advisor__steps" aria-hidden="true">
+              <li class="advisor__step">קטגוריה ותקציב</li>
+              <li class="advisor__step">מה הכי חשוב לכם</li>
+              <li class="advisor__step">המלצה מנומקת</li>
+            </ul>
+            <button class="btn btn--primary btn--lg" id="advisorOpen" type="button" aria-haspopup="dialog">פתחו את היועץ החכם ←</button>
+          </article>
+
+          <!-- Bill analyzer drop zone -->
+          <article class="bill-drop reveal" aria-labelledby="billDropTitle">
+            <span class="advisor__badge"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg></span>
+            <h3 id="billDropTitle">נתחו את החשבון שלכם</h3>
+            <p>צלמו או העלו את חשבון התקשורת הנוכחי — ה-AI יקרא כמה אתם משלמים ויציע מסלולים זולים יותר באותם תנאים.</p>
+            <label class="bill-drop__zone" id="billDrop" for="billFile" tabindex="0" role="button" aria-label="העלאת צילום של החשבון לניתוח">
+              <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4M7 9l5-5 5 5"/><path d="M5 16v2a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2"/></svg>
+              <span class="bill-drop__text">גררו לכאן צילום חשבון<br /><small>או לחצו לבחירת קובץ · PNG/JPG/PDF</small></span>
+            </label>
+            <input type="file" id="billFile" accept="image/png,image/jpeg,application/pdf" class="bill-drop__input" aria-label="קובץ חשבון לניתוח" />
+            <p class="bill-drop__fine">התמונה מנותחת לצורך ההשוואה בלבד. אל תעלו פרטים רגישים שאינם נחוצים.</p>
+          </article>
+        </div>
+
+        <!-- Email capture -->
+        <div class="subscribe reveal">
+          <div class="subscribe__copy">
+            <h3>קבלו התראה כשיורד מחיר</h3>
+            <p>נשלח לכם מייל קצר כשמופיע מסלול משתלם יותר או כשמבצע עומד להסתיים. בלי ספאם, אפשר לבטל בכל עת.</p>
+          </div>
+          <form class="subscribe__form" id="subscribeForm" novalidate>
+            <input type="text" name="company" tabindex="-1" autocomplete="off" aria-hidden="true" class="subscribe__hp" />
+            <label class="subscribe__field">
+              <input type="email" id="subscribeEmail" name="email" placeholder="כתובת אימייל" aria-label="כתובת אימייל" autocomplete="email" inputmode="email" required />
+            </label>
+            <button class="btn btn--primary" type="submit">הירשמו להתראות</button>
+            <label class="subscribe__consent" for="subscribeConsent">
+              <input type="checkbox" id="subscribeConsent" name="consent" required />
+              <span>אני מאשר/ת קבלת עדכוני מחיר ל<a href="terms.html" target="_blank" rel="noopener">תנאי השימוש</a></span>
+            </label>
+          </form>
+          <p class="subscribe__note field-error" id="subscribeNote" role="status" aria-live="polite"></p>
         </div>
       </div>
     </section>
@@ -709,6 +780,6 @@
   <script>window.CHOSECH_SUPABASE={url:'https://orzitfqmlvopujsoyigr.supabase.co',anonKey:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9yeml0ZnFtbHZvcHVqc295aWdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5OTc5NzIsImV4cCI6MjA5NjU3Mzk3Mn0.NY4ZHzR3BAWUxm5as9Z054o8fwcfejAab9SIvduKlhM'};</script>
   <!-- ?v= cache-busting hash is owned by build.js (it prints the current
        values on every run) — keep this in sync when script.js changes. -->
-  <script src="script.js?v=14b649b5" defer></script>
+  <script src="script.js?v=743bfc96" defer></script>
 </body>
 </html>

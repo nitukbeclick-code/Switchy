@@ -1,0 +1,58 @@
+{
+  "slug": "guide-spotify-israel",
+  "cat": "טלוויזיה",
+  "date": "2026-06-21",
+  "read": 2,
+  "title": "Spotify ישראל — מחיר, Family Plan וכיצד לחסוך | חוסך",
+  "desc": "Spotify ישראל 2026: מחירים, Individual vs Duo vs Family, Apple One, ואיך לחסוך על מנוי המוזיקה.",
+  "h1": "Spotify ישראל — מדריך מחירים",
+  "tldr": "Spotify Individual: ₪25.99/חודש. Duo (2): ₪33.99. Family (6): ₪43.99. Apple One Individual: Spotify לא כלול — Apple Music כלול. YouTube Premium: ₪30 + YouTube Music. בשיתוף Family = ₪7.3/אדם.",
+  "sections": [
+    {
+      "h2": "תוכניות Spotify ישראל 2026",
+      "ul": [
+        "Spotify Free: פרסומות, ללא skip ללא הגבלה. מספיק לשמיעה לא-מרוכזת.",
+        "Individual: ₪25.99/חודש. ללא פרסומות. Offline. שליטה מלאה.",
+        "Duo: ₪33.99/חודש. 2 חשבונות (אותה כתובת). ₪17/אדם.",
+        "Family: ₪43.99/חודש. עד 6 חשבונות. ₪7.3/אדם. Spotify Kids כלול.",
+        "Student: ₪14.99/חודש. עם הוכחת סטודנט. ישירות באתר Spotify."
+      ]
+    },
+    {
+      "h2": "Spotify vs. Apple Music vs. YouTube Premium",
+      "ul": [
+        "Spotify: ₪26. קטלוג: 100M+ שירים. פופולרי ביותר. Discover Weekly/AI DJ.",
+        "Apple Music: ₪25 (כלול ב-Apple One). 100M שירים. Dolby Atmos. ל-iOS/Mac.",
+        "YouTube Premium: ₪30 + YouTube Music כלול. 100M שירים. Offline YouTube.",
+        "Tidal: ₪54. איכות FLAC/HiFi. לאוהבי אודיו מוסיקה.",
+        "מסקנה: Spotify = מובחר. Apple One = אם כבר משלמים Apple. YT Premium = אם YouTube גדול."
+      ]
+    },
+    {
+      "h2": "Spotify Family — איך עובד",
+      "ul": [
+        "עד 6 חשבונות עצמאיים: כל אדם = playlist/היסטוריה נפרדת.",
+        "Spotify Kids: פרופיל ילדים עם תוכן מסונן. ניהול הורים.",
+        "כתובת משותפת: Spotify דורשת כתובת IP זהה (בית אחד). לא לשיתוף עם חברים.",
+        "הגדרה: פתיחת Premium Family → הזמנת אנשים דרך מייל. 14 ימי ניסיון.",
+        "שינוי: ניהול חברי משפחה ב-family.spotify.com. הסרה/הוספה בכל עת."
+      ]
+    },
+    {
+      "h2": "חיסכון על Spotify",
+      "ul": [
+        "Family Plan: ₪43.99 / 6 = ₪7.3/אדם. vs ₪26 Individual. חיסכון 72%.",
+        "Student: ₪14.99 vs ₪26. חיסכון ₪11/חודש = ₪132/שנה.",
+        "Apple One Family: ₪79 = Apple Music + TV+ + Arcade + iCloud (6 אנשים). לא Spotify.",
+        "בדיקת ספק: חלק מספקים ישראלים כוללים Spotify בחבילה — שאלו.",
+        "ניסיון: Spotify מציעה לעיתים 3 חודשים Premium ב-₪1 לחדשים."
+      ]
+    }
+  ],
+  "faq": [
+    ["Spotify Offline — איך?", "Premium בלבד. סמנו ♥ אלבום/playlist → לחצו הורדה → זמין ללא גלישה. מגבלה: 10,000 שירים. מכשירים: 5. כשאין גלישה: Offline Mode אוטומטי."],
+    ["Spotify HiFi / Lossless?", "Spotify HiFi הוכרז ב-2021 אך עדיין לא השיק בישראל. Spotify Normal = 160kbps. Very High = 320kbps. Tidal/Apple Music = FLAC/Lossless. לאוהבי קוואלי = Apple Music Lossless ב-₪25 = עדיף."],
+    ["Spotify Wrapped — מתי?", "Spotify Wrapped: פורסם בדרך כלל בנובמבר–דצמבר. סיכום שנתי של השירים/אמנים/ז'אנרים שהאזנתם. זמין ב-App. גם על Spotify for Artists לאמנים."],
+    ["Spotify ישראלי — מוזיקה עברית?", "כן — Spotify ישראל כולל מוזיקה עברית נרחבת: עידן רייכל, שלמה ארצי, הפרויקט של עידן, Static & Ben El, Omer Adam. גם Podcasts עבריים. פלייליסטים ישראליים קוראטוריים."]
+  ]
+}

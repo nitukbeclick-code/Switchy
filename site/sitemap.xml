@@ -295,6 +295,12 @@
     <priority>0.6</priority>
   </url>
   <url>
+    <loc>https://chosech.co.il/guide-abroad-greece.html</loc>
+    <lastmod>2026-06-21</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
     <loc>https://chosech.co.il/guide-abroad-plans.html</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
@@ -463,6 +469,12 @@
     <priority>0.6</priority>
   </url>
   <url>
+    <loc>https://chosech.co.il/guide-hot-review.html</loc>
+    <lastmod>2026-06-21</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
     <loc>https://chosech.co.il/guide-hot-vs-yes.html</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
@@ -499,6 +511,12 @@
     <priority>0.6</priority>
   </url>
   <url>
+    <loc>https://chosech.co.il/guide-internet-stability.html</loc>
+    <lastmod>2026-06-21</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
     <loc>https://chosech.co.il/guide-iphone-esim.html</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
@@ -507,6 +525,12 @@
   <url>
     <loc>https://chosech.co.il/guide-kids-line.html</loc>
     <lastmod>2026-06-10</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://chosech.co.il/guide-kids-phone-plan.html</loc>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
@@ -537,6 +561,12 @@
   <url>
     <loc>https://chosech.co.il/guide-number-port.html</loc>
     <lastmod>2026-06-15</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://chosech.co.il/guide-number-portability.html</loc>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>

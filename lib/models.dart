@@ -21,6 +21,7 @@ class Plan {
     required this.price,
     this.priceExact,
     this.after,
+    this.afterExact,
     this.term,
     this.intro,
     this.rating = 4.0,
@@ -57,6 +58,20 @@ class Plan {
   /// .90; rounding them in the headline makes every plan look more expensive.
   final double? priceExact;
   final int? after;
+
+  /// Exact post-promo price when it isn't a whole shekel (e.g. 59.9 for a plan
+  /// that jumps to ₪59.90 after the promo). Mirrors [priceExact]; [after] stays
+  /// the rounded int for sort/threshold logic, while display prefers this.
+  final double? afterExact;
+
+  /// The post-promo price for display: exact when known, else the rounded int.
+  /// Null when there's no promo jump.
+  String? get afterText {
+    final v = afterExact ?? after?.toDouble();
+    if (v == null) return null;
+    return v == v.roundToDouble() ? v.toInt().toString() : v.toStringAsFixed(2);
+  }
+
   final int? term;
   final String? intro;
   final double rating;

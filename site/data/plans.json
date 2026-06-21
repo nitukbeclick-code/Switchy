@@ -1,5 +1,5 @@
 {
-  "generated": "2026-06-10T17:51:27.801515",
+  "generated": "2026-06-21T21:59:20.030988",
   "categories": [
     {
       "id": "cellular",
@@ -36,6 +36,7 @@
       "price": 70,
       "priceExact": 69.9,
       "after": null,
+      "afterExact": null,
       "net": "5G",
       "is5G": true,
       "noCommit": true,
@@ -52,7 +53,22 @@
         "SMS": "5,000"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {
+        "דמי חיבור": "אין"
+      },
+      "fineLines": [
+        "מחיר רשמי: ₪69.9",
+        "נתיב מהיר",
+        "שירות תיקונים מורחב",
+        "גלישה חופשית באפליקציות",
+        "חריגה 49 אג׳/דק׳"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "cel_cellcom_4gbasic500",
@@ -62,6 +78,7 @@
       "price": 45,
       "priceExact": 44.9,
       "after": null,
+      "afterExact": null,
       "net": "4G",
       "is5G": false,
       "noCommit": true,
@@ -77,7 +94,19 @@
         "SMS": "3,500"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {
+        "דמי חיבור": "אין"
+      },
+      "fineLines": [
+        "מחיר רשמי: ₪44.9",
+        "חריגה 49 אג׳/דק׳"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "cel_cellcom_5g800",
@@ -87,6 +116,7 @@
       "price": 40,
       "priceExact": 39.9,
       "after": 60,
+      "afterExact": 59.9,
       "net": "5G",
       "is5G": true,
       "noCommit": true,
@@ -102,7 +132,20 @@
         "SMS": "5,000"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {
+        "דמי חיבור": "אין"
+      },
+      "fineLines": [
+        "מחיר רשמי: ₪39.9",
+        "מחיר מבצע לחודשיים, לאחר מכן ₪59.9",
+        "גלישה חופשית באפליקציות"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "cel_cellcom_5gpro1000",
@@ -112,6 +155,7 @@
       "price": 60,
       "priceExact": 59.9,
       "after": null,
+      "afterExact": null,
       "net": "5G",
       "is5G": true,
       "noCommit": true,
@@ -128,7 +172,20 @@
         "SMS": "5,000"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {
+        "דמי חיבור": "אין"
+      },
+      "fineLines": [
+        "מחיר רשמי: ₪59.9",
+        "נתיב מהיר",
+        "גלישה חופשית באפליקציות"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "cel_cellcom_5gprofly1500",
@@ -138,6 +195,7 @@
       "price": 120,
       "priceExact": 119.9,
       "after": null,
+      "afterExact": null,
       "net": "5G",
       "is5G": true,
       "noCommit": true,
@@ -155,7 +213,20 @@
         "חו\"ל": "5GB + 50 דק׳/SMS לחודש"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {
+        "דמי חיבור": "אין"
+      },
+      "fineLines": [
+        "מחיר רשמי: ₪119.9",
+        "5GB גלישה בחו\"ל + 50 דק׳/SMS בכל חודש",
+        "שירות תיקונים מורחב"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "cel_partner_prince400",
@@ -165,6 +236,7 @@
       "price": 35,
       "priceExact": 34.9,
       "after": null,
+      "afterExact": null,
       "net": "4G",
       "is5G": false,
       "noCommit": true,
@@ -181,7 +253,20 @@
         "חו\"ל": "200 דק׳ ל-42 יעדים"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {
+        "דמי חיבור": "אין"
+      },
+      "fineLines": [
+        "מחיר רשמי: ₪34.9",
+        "₪34.9 ל-2 קווים+; ₪39.9 קו יחיד",
+        "200 דק׳ לחו\"ל ל-42 יעדים"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "cel_partner_queen5g500",
@@ -191,6 +276,7 @@
       "price": 40,
       "priceExact": 39.9,
       "after": 50,
+      "afterExact": 49.9,
       "net": "5G",
       "is5G": true,
       "noCommit": true,
@@ -208,7 +294,21 @@
         "חו\"ל": "400 דק׳ ל-42 יעדים"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {
+        "דמי חיבור": "אין"
+      },
+      "fineLines": [
+        "מחיר רשמי: ₪39.9",
+        "מחיר מבצע ל-3 חודשים, לאחר מכן ₪49.9",
+        "Private 5G",
+        "400 דק׳ לחו\"ל ל-42 יעדים"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "cel_partner_betterfutureboost5g2000",
@@ -218,6 +318,7 @@
       "price": 75,
       "priceExact": 74.9,
       "after": null,
+      "afterExact": null,
       "net": "5G",
       "is5G": true,
       "noCommit": true,
@@ -235,7 +336,24 @@
         "חו\"ל": "700 דק׳ ל-42 יעדים"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {
+        "דמי חיבור": "אין"
+      },
+      "fineLines": [
+        "מחיר רשמי: ₪74.9",
+        "eSIM מיידי",
+        "CyberGuard",
+        "eSIM Watch",
+        "FunTone",
+        "10% מהתשלום נתרם לעמותות",
+        "700 דק׳ לחו\"ל ל-42 יעדים"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "cel_partner_king5g800",
@@ -245,6 +363,7 @@
       "price": 60,
       "priceExact": 59.9,
       "after": null,
+      "afterExact": null,
       "net": "5G",
       "is5G": true,
       "noCommit": true,
@@ -261,7 +380,21 @@
         "SMS": "6,000"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {
+        "דמי חיבור": "אין"
+      },
+      "fineLines": [
+        "מחיר רשמי: ₪59.9",
+        "FunTone",
+        "CyberGuard",
+        "תיעדוף 5G"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "cel_partner_boost5g1500",
@@ -271,6 +404,7 @@
       "price": 70,
       "priceExact": 69.9,
       "after": null,
+      "afterExact": null,
       "net": "5G",
       "is5G": true,
       "noCommit": true,
@@ -287,7 +421,21 @@
         "SMS": "7,000"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {
+        "דמי חיבור": "אין"
+      },
+      "fineLines": [
+        "מחיר רשמי: ₪69.9",
+        "CyberGuard",
+        "eSIM Watch",
+        "קופון אביזרים בשווי ₪100"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "cel_pelephone_5g1000",
@@ -297,6 +445,7 @@
       "price": 40,
       "priceExact": 39.9,
       "after": 50,
+      "afterExact": 49.9,
       "net": "5G",
       "is5G": true,
       "noCommit": true,
@@ -313,7 +462,20 @@
         "חו\"ל": "מסלול Travel"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {},
+      "fineLines": [
+        "מחיר רשמי: ₪39.90",
+        "מחיר מבצע לחודשיים (הטבת Welcome), לאחר מכן ₪49.90",
+        "גלישה חופשית באפליקציות + AI",
+        "₪100 למוצרים מ-₪599",
+        "מסלול Travel לחו\"ל"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "cel_pelephone_4g400",
@@ -323,6 +485,7 @@
       "price": 40,
       "priceExact": 39.9,
       "after": null,
+      "afterExact": null,
       "net": "4G",
       "is5G": false,
       "noCommit": true,
@@ -338,7 +501,18 @@
         "חו\"ל": "מסלול Travel"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {},
+      "fineLines": [
+        "מחיר רשמי: ₪39.90",
+        "eSIM מיידי",
+        "מסלול Travel לחו\"ל"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "cel_pelephone_5gmaxvip2000",
@@ -348,6 +522,7 @@
       "price": 50,
       "priceExact": 49.9,
       "after": 65,
+      "afterExact": 64.9,
       "net": "5G",
       "is5G": true,
       "noCommit": true,
@@ -364,7 +539,20 @@
         "חו\"ל": "מסלול Travel"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {},
+      "fineLines": [
+        "מחיר רשמי: ₪49.90",
+        "מחיר מבצע לחודשיים, לאחר מכן ₪64.90",
+        "תיעדוף 5G",
+        "₪100 למוצרים מ-₪599",
+        "מסלול Travel לחו\"ל"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "cel_golan_300rolling",
@@ -374,6 +562,7 @@
       "price": 35,
       "priceExact": 34.9,
       "after": null,
+      "afterExact": null,
       "net": "4G",
       "is5G": false,
       "noCommit": true,
@@ -389,7 +578,18 @@
         "חו\"ל": "יש"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {},
+      "fineLines": [
+        "מחיר רשמי: ₪34.90",
+        "מחיר מבצע ל-12 חודשים",
+        "נפח גלישה מתגלגל לחודש הבא"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "cel_golan_400abroad",
@@ -399,6 +599,7 @@
       "price": 39,
       "priceExact": null,
       "after": null,
+      "afterExact": null,
       "net": "4G",
       "is5G": false,
       "noCommit": true,
@@ -415,7 +616,17 @@
         "חו\"ל": "1GB חו\"ל לחודש"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {},
+      "fineLines": [
+        "מחיר מבצע ל-12 חודשים",
+        "1GB גלישה בחו\"ל לחודש כלול במחיר"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "cel_golan_750_5g",
@@ -425,6 +636,7 @@
       "price": 49,
       "priceExact": null,
       "after": null,
+      "afterExact": null,
       "net": "5G",
       "is5G": true,
       "noCommit": true,
@@ -441,7 +653,18 @@
         "חו\"ל": "₪99 הנחה על חבילת חו\"ל"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {},
+      "fineLines": [
+        "מבצע ₪39 ל-3 חודשים, לאחר מכן ₪49",
+        "גלישה חופשית באפליקציות",
+        "₪99 הנחה על חבילת גלישה בחו\"ל"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "cel_golan_1500_5g",
@@ -451,6 +674,7 @@
       "price": 59,
       "priceExact": null,
       "after": null,
+      "afterExact": null,
       "net": "5G",
       "is5G": true,
       "noCommit": true,
@@ -467,7 +691,17 @@
         "חו\"ל": "יש"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {},
+      "fineLines": [
+        "מבצע ₪49 לחודשיים, לאחר מכן ₪59",
+        "שירות תיקונים"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "cel_golan_dataonly500",
@@ -477,6 +711,7 @@
       "price": 40,
       "priceExact": null,
       "after": null,
+      "afterExact": null,
       "net": "4G",
       "is5G": false,
       "noCommit": true,
@@ -491,7 +726,16 @@
         "דקות": "50 דק׳"
       },
       "priceUnit": "month",
-      "kind": "dataonly"
+      "kind": "dataonly",
+      "fees": {},
+      "fineLines": [
+        "מסלול דאטה בלבד"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "cel_golan_550abroad",
@@ -501,6 +745,7 @@
       "price": 129,
       "priceExact": null,
       "after": null,
+      "afterExact": null,
       "net": "4G",
       "is5G": false,
       "noCommit": true,
@@ -516,7 +761,16 @@
         "חו\"ל": "חו\"ל כלול"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {},
+      "fineLines": [
+        "גלישה בחו\"ל כלולה במחיר"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "cel_hotmobile_5gultra2500",
@@ -526,6 +780,7 @@
       "price": 70,
       "priceExact": 69.9,
       "after": null,
+      "afterExact": null,
       "net": "5G",
       "is5G": true,
       "noCommit": true,
@@ -543,7 +798,22 @@
         "חו\"ל": "500 דק׳ ל-27 יעדים"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {
+        "דמי חיבור": "חינם"
+      },
+      "fineLines": [
+        "מחיר רשמי: ₪69.9",
+        "HOT Mobile Cyber",
+        "נתיב מהיר",
+        "גלישה חופשית באפליקציות",
+        "500 דק׳ לחו\"ל ל-27 יעדים (שווי ₪9.9/ח׳)"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "cel_hotmobile_5gultraplus3000",
@@ -553,6 +823,7 @@
       "price": 110,
       "priceExact": 109.9,
       "after": null,
+      "afterExact": null,
       "net": "5G",
       "is5G": true,
       "noCommit": true,
@@ -570,7 +841,22 @@
         "חו\"ל": "10GB + 100 דק׳/SMS"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {
+        "דמי חיבור": "חינם"
+      },
+      "fineLines": [
+        "מחיר רשמי: ₪109.9",
+        "HOT Mobile Cyber",
+        "גלישה חופשית",
+        "10GB גלישה בחו\"ל + 100 דק׳/SMS",
+        "500 דק׳ ל-27 יעדים"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "cel_hotmobile_5gultrapremium3000",
@@ -580,6 +866,7 @@
       "price": 80,
       "priceExact": 79.9,
       "after": null,
+      "afterExact": null,
       "net": "5G",
       "is5G": true,
       "noCommit": true,
@@ -597,7 +884,21 @@
         "חו\"ל": "500 דק׳ ל-27 יעדים"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {
+        "דמי חיבור": "חינם"
+      },
+      "fineLines": [
+        "מחיר רשמי: ₪79.9",
+        "Cyber",
+        "נתיב מהיר",
+        "500 דק׳ ל-27 יעדים"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "cel_hotmobile_5ggen2000",
@@ -607,6 +908,7 @@
       "price": 60,
       "priceExact": 59.9,
       "after": null,
+      "afterExact": null,
       "net": "5G",
       "is5G": true,
       "noCommit": true,
@@ -624,7 +926,20 @@
         "חו\"ל": "300 דק׳ ל-27 יעדים"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {
+        "דמי חיבור": "חינם"
+      },
+      "fineLines": [
+        "מחיר רשמי: ₪59.9",
+        "גלישה חופשית באפליקציות",
+        "300 דק׳ לחו\"ל ל-27 יעדים"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "cel_hotmobile_dataonly20",
@@ -634,6 +949,7 @@
       "price": 11,
       "priceExact": 10.9,
       "after": null,
+      "afterExact": null,
       "net": "4G",
       "is5G": false,
       "noCommit": true,
@@ -646,7 +962,19 @@
         "נתונים": "20GB"
       },
       "priceUnit": "month",
-      "kind": "dataonly"
+      "kind": "dataonly",
+      "fees": {
+        "SIM": "עד הבית (3 ימי עסקים)"
+      },
+      "fineLines": [
+        "מחיר רשמי: ₪10.9",
+        "SIM Data לטאבלט / לפטופ / מודם"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "cel_hotmobile_dataonly150",
@@ -656,6 +984,7 @@
       "price": 22,
       "priceExact": 21.9,
       "after": null,
+      "afterExact": null,
       "net": "4G",
       "is5G": false,
       "noCommit": true,
@@ -668,7 +997,19 @@
         "נתונים": "150GB"
       },
       "priceUnit": "month",
-      "kind": "dataonly"
+      "kind": "dataonly",
+      "fees": {
+        "SIM": "עד הבית"
+      },
+      "fineLines": [
+        "מחיר רשמי: ₪21.9",
+        "SIM Data"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "cel_xphone_mechubrim",
@@ -678,6 +1019,7 @@
       "price": 23,
       "priceExact": 22.5,
       "after": null,
+      "afterExact": null,
       "net": "4G",
       "is5G": false,
       "noCommit": true,
@@ -693,7 +1035,20 @@
         "SMS": "5,000"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {
+        "SIM": "₪10",
+        "eSIM": "חינם"
+      },
+      "fineLines": [
+        "מחיר רשמי: ₪22.5",
+        "eSIM מיידי"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "cel_xphone_foreverplus",
@@ -703,6 +1058,7 @@
       "price": 30,
       "priceExact": 29.9,
       "after": null,
+      "afterExact": null,
       "net": "4G",
       "is5G": false,
       "noCommit": true,
@@ -719,7 +1075,21 @@
         "חו\"ל": "1GB חו\"ל"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {
+        "SIM": "₪10",
+        "eSIM": "חינם"
+      },
+      "fineLines": [
+        "מחיר רשמי: ₪29.90",
+        "מחיר קבוע לכל החיים — ללא עליית מחיר",
+        "1GB גלישה בחו\"ל כלול"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "cel_xphone_foreverplus5g",
@@ -729,6 +1099,7 @@
       "price": 35,
       "priceExact": 34.9,
       "after": null,
+      "afterExact": null,
       "net": "5G",
       "is5G": true,
       "noCommit": true,
@@ -746,7 +1117,20 @@
         "חו\"ל": "1GB חו\"ל"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {
+        "SIM": "₪10"
+      },
+      "fineLines": [
+        "מחיר רשמי: ₪34.90",
+        "מחיר קבוע לכל החיים — ללא עליית מחיר",
+        "1GB גלישה בחו\"ל כלול"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "cel_xphone_young50",
@@ -756,6 +1140,7 @@
       "price": 25,
       "priceExact": 24.9,
       "after": null,
+      "afterExact": null,
       "net": "4G",
       "is5G": false,
       "noCommit": true,
@@ -771,7 +1156,19 @@
         "SMS": "5,000"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {
+        "SIM": "₪10"
+      },
+      "fineLines": [
+        "מחיר רשמי: ₪24.90",
+        "החבילה הצעירה"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "cel_xphone_zoberim500",
@@ -781,6 +1178,7 @@
       "price": 30,
       "priceExact": 29.9,
       "after": null,
+      "afterExact": null,
       "net": "4G",
       "is5G": false,
       "noCommit": true,
@@ -797,7 +1195,20 @@
         "חו\"ל": "1GB צבירה חו\"ל"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {
+        "SIM": "₪10"
+      },
+      "fineLines": [
+        "מחיר רשמי: ₪29.90",
+        "נפח גלישה נצבר",
+        "1GB צבירה בחו\"ל"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "cel_xphone_zoberim750_5g",
@@ -807,6 +1218,7 @@
       "price": 40,
       "priceExact": 39.9,
       "after": null,
+      "afterExact": null,
       "net": "5G",
       "is5G": true,
       "noCommit": true,
@@ -824,7 +1236,20 @@
         "חו\"ל": "1GB צבירה חו\"ל"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {
+        "SIM": "₪10"
+      },
+      "fineLines": [
+        "מחיר רשמי: ₪39.90",
+        "נפח גלישה נצבר",
+        "1GB צבירה בחו\"ל"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "cel_xphone_global3",
@@ -834,6 +1259,7 @@
       "price": 43,
       "priceExact": 42.9,
       "after": null,
+      "afterExact": null,
       "net": "4G",
       "is5G": false,
       "noCommit": true,
@@ -850,7 +1276,19 @@
         "חו\"ל": "3GB חו\"ל"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {
+        "SIM": "₪10"
+      },
+      "fineLines": [
+        "מחיר רשמי: ₪42.90",
+        "3GB גלישה בחו\"ל כלול"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "cel_xphone_global5",
@@ -860,6 +1298,7 @@
       "price": 49,
       "priceExact": 48.9,
       "after": null,
+      "afterExact": null,
       "net": "4G",
       "is5G": false,
       "noCommit": true,
@@ -876,7 +1315,19 @@
         "חו\"ל": "5GB חו\"ל"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {
+        "SIM": "₪10"
+      },
+      "fineLines": [
+        "מחיר רשמי: ₪48.90",
+        "5GB גלישה בחו\"ל כלול"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "cel_xphone_global5g",
@@ -886,6 +1337,7 @@
       "price": 55,
       "priceExact": 54.9,
       "after": null,
+      "afterExact": null,
       "net": "5G",
       "is5G": true,
       "noCommit": true,
@@ -903,7 +1355,19 @@
         "חו\"ל": "5GB חו\"ל"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {
+        "SIM": "₪10"
+      },
+      "fineLines": [
+        "מחיר רשמי: ₪54.90",
+        "5GB גלישה בחו\"ל כלול"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "cel_ramilevy_600triple",
@@ -913,6 +1377,7 @@
       "price": 35,
       "priceExact": null,
       "after": null,
+      "afterExact": null,
       "net": "5G",
       "is5G": true,
       "noCommit": true,
@@ -929,7 +1394,17 @@
         "SMS": "5,000"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {},
+      "fineLines": [
+        "₪80 ל-3 קווים (₪35 לקו)",
+        "תומך דור 5"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "cel_ramilevy_couple500",
@@ -939,6 +1414,7 @@
       "price": 35,
       "priceExact": null,
       "after": null,
+      "afterExact": null,
       "net": "5G",
       "is5G": true,
       "noCommit": true,
@@ -955,7 +1431,17 @@
         "SMS": "5,000"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {},
+      "fineLines": [
+        "₪55 לזוג קווים (₪35 לקו)",
+        "דור 5"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "cel_ramilevy_couplepromo250",
@@ -965,6 +1451,7 @@
       "price": 30,
       "priceExact": null,
       "after": null,
+      "afterExact": null,
       "net": "5G",
       "is5G": true,
       "noCommit": true,
@@ -981,7 +1468,20 @@
         "SMS": "2,500"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {
+        "דמי חיבור": "חינם"
+      },
+      "fineLines": [
+        "₪50 לזוג (בתשלום בכרטיס אשראי)",
+        "חודשיים ראשונים + דמי חיבור חינם",
+        "דור 5"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "cel_ramilevy_couple250",
@@ -991,6 +1491,7 @@
       "price": 30,
       "priceExact": null,
       "after": null,
+      "afterExact": null,
       "net": "5G",
       "is5G": true,
       "noCommit": true,
@@ -1007,7 +1508,17 @@
         "SMS": "2,500"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {},
+      "fineLines": [
+        "₪50 לזוג (₪30 לקו)",
+        "דור 5"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "cel_ramilevy_1000xtreme",
@@ -1017,6 +1528,7 @@
       "price": 55,
       "priceExact": null,
       "after": null,
+      "afterExact": null,
       "net": "5G",
       "is5G": true,
       "noCommit": true,
@@ -1032,7 +1544,16 @@
         "SMS": "2,500"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {},
+      "fineLines": [
+        "דור 5"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "cel_ramilevy_300xtreme",
@@ -1042,6 +1563,7 @@
       "price": 35,
       "priceExact": null,
       "after": null,
+      "afterExact": null,
       "net": "5G",
       "is5G": true,
       "noCommit": true,
@@ -1057,7 +1579,16 @@
         "SMS": "2,500"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {},
+      "fineLines": [
+        "דור 5"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "cel_ramilevy_500global",
@@ -1067,6 +1598,7 @@
       "price": 50,
       "priceExact": null,
       "after": null,
+      "afterExact": null,
       "net": "5G",
       "is5G": true,
       "noCommit": true,
@@ -1084,7 +1616,17 @@
         "חו\"ל": "500 דק׳ ליעדים בחו\"ל"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {},
+      "fineLines": [
+        "דור 5",
+        "500 דק׳ לחו\"ל"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "cel_ramilevy_maxkasher",
@@ -1094,6 +1636,7 @@
       "price": 17,
       "priceExact": 16.9,
       "after": null,
+      "afterExact": null,
       "net": "4G",
       "is5G": false,
       "noCommit": true,
@@ -1107,7 +1650,18 @@
         "דקות": "10,000 ברשת / 5,000 מחוץ"
       },
       "priceUnit": "month",
-      "kind": "kosher"
+      "kind": "kosher",
+      "fees": {},
+      "fineLines": [
+        "מחיר רשמי: ₪16.9",
+        "מסלול כשר",
+        "לאחר 24 חודשים המחיר עשוי לעלות"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "cel_ramilevy_zolkasher",
@@ -1117,6 +1671,7 @@
       "price": 15,
       "priceExact": 14.9,
       "after": null,
+      "afterExact": null,
       "net": "4G",
       "is5G": false,
       "noCommit": true,
@@ -1130,7 +1685,18 @@
         "דקות": "10,000 ברשת / 4,000 מחוץ"
       },
       "priceUnit": "month",
-      "kind": "kosher"
+      "kind": "kosher",
+      "fees": {},
+      "fineLines": [
+        "מחיר רשמי: ₪14.9",
+        "מסלול כשר",
+        "לאחר 24 חודשים המחיר עשוי לעלות"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "cel_wecom_family",
@@ -1140,6 +1706,7 @@
       "price": 30,
       "priceExact": 29.9,
       "after": null,
+      "afterExact": null,
       "net": "4G",
       "is5G": false,
       "noCommit": true,
@@ -1155,7 +1722,20 @@
         "SMS": "3,000"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {
+        "דמי חיבור": "חינם"
+      },
+      "fineLines": [
+        "מחיר רשמי: ₪29.90",
+        "₪29.9 ל-2 קווים ומעלה",
+        "eSIM מיידי"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "cel_wecom_basic150",
@@ -1165,6 +1745,7 @@
       "price": 33,
       "priceExact": 32.9,
       "after": null,
+      "afterExact": null,
       "net": "4G",
       "is5G": false,
       "noCommit": true,
@@ -1180,7 +1761,19 @@
         "SMS": "3,000"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {
+        "דמי חיבור": "חינם"
+      },
+      "fineLines": [
+        "מחיר רשמי: ₪32.90",
+        "eSIM מיידי"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "cel_wecom_free5g",
@@ -1190,6 +1783,7 @@
       "price": 35,
       "priceExact": null,
       "after": null,
+      "afterExact": null,
       "net": "5G",
       "is5G": true,
       "noCommit": true,
@@ -1206,7 +1800,18 @@
         "SMS": "3,000"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {
+        "דמי חיבור": "חינם"
+      },
+      "fineLines": [
+        "eSIM מיידי"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "cel_wecom_global5g",
@@ -1216,6 +1821,7 @@
       "price": 60,
       "priceExact": 59.9,
       "after": null,
+      "afterExact": null,
       "net": "5G",
       "is5G": true,
       "noCommit": true,
@@ -1233,7 +1839,21 @@
         "חו\"ל": "5GB חו\"ל לחודש + תעריף מוזל"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {
+        "הצטרפות": "₪79.90 חד-פעמי"
+      },
+      "fineLines": [
+        "מחיר רשמי: ₪59.90",
+        "דמי הצטרפות חד-פעמיים ₪79.90",
+        "5GB גלישה בחו\"ל לחודש + תעריף מוזל",
+        "eSIM מיידי"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "cel_019mobile_bigdata300",
@@ -1243,6 +1863,7 @@
       "price": 40,
       "priceExact": 39.9,
       "after": null,
+      "afterExact": null,
       "net": "5G",
       "is5G": true,
       "noCommit": true,
@@ -1259,7 +1880,21 @@
         "SMS": "5,000"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {
+        "SIM": "₪10",
+        "eSIM": "חינם"
+      },
+      "fineLines": [
+        "מחיר רשמי: ₪39.90",
+        "דור 5",
+        "מחיר קבוע לכל החיים"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "cel_019mobile_lifetime12",
@@ -1269,6 +1904,7 @@
       "price": 20,
       "priceExact": 19.8,
       "after": null,
+      "afterExact": null,
       "net": "4G",
       "is5G": false,
       "noCommit": true,
@@ -1284,7 +1920,21 @@
         "SMS": "5,000"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {
+        "SIM": "₪10",
+        "eSIM": "חינם"
+      },
+      "fineLines": [
+        "מחיר רשמי: ₪19.80",
+        "מחיר קבוע לכל החיים",
+        "סינון אתרים חינם"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "cel_019mobile_bulbpony30",
@@ -1294,6 +1944,7 @@
       "price": 22,
       "priceExact": 21.9,
       "after": null,
+      "afterExact": null,
       "net": "4G",
       "is5G": false,
       "noCommit": true,
@@ -1309,7 +1960,20 @@
         "SMS": "5,000"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {
+        "SIM": "₪10"
+      },
+      "fineLines": [
+        "מחיר רשמי: ₪21.90",
+        "מחיר קבוע לכל החיים",
+        "סינון אתרים חינם"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "cel_019mobile_gazamnu170",
@@ -1319,6 +1983,7 @@
       "price": 26,
       "priceExact": 25.9,
       "after": null,
+      "afterExact": null,
       "net": "5G",
       "is5G": true,
       "noCommit": true,
@@ -1335,7 +2000,20 @@
         "SMS": "5,000"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {
+        "SIM": "₪10"
+      },
+      "fineLines": [
+        "מחיר רשמי: ₪25.90",
+        "מחיר קבוע לכל החיים",
+        "סינון אתרים חינם"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "cel_019mobile_weit100",
@@ -1345,6 +2023,7 @@
       "price": 30,
       "priceExact": 29.9,
       "after": null,
+      "afterExact": null,
       "net": "4G",
       "is5G": false,
       "noCommit": true,
@@ -1361,7 +2040,20 @@
         "חו\"ל": "100 דק׳ למבחר מדינות"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {
+        "SIM": "₪10"
+      },
+      "fineLines": [
+        "מחיר רשמי: ₪29.90",
+        "מחיר קבוע ל-3 שנים, לאחר מכן +₪10",
+        "100 דק׳ לחו\"ל למבחר מדינות"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "cel_019mobile_bigtime200",
@@ -1371,6 +2063,7 @@
       "price": 32,
       "priceExact": 31.8,
       "after": null,
+      "afterExact": null,
       "net": "4G",
       "is5G": false,
       "noCommit": true,
@@ -1387,7 +2080,20 @@
         "חו\"ל": "200 דק׳ למבחר מדינות"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {
+        "SIM": "₪10"
+      },
+      "fineLines": [
+        "מחיר רשמי: ₪31.80",
+        "מחיר קבוע ל-3 שנים, לאחר מכן +₪10",
+        "200 דק׳ לחו\"ל למבחר מדינות"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "cel_019mobile_simdata2",
@@ -1397,6 +2103,7 @@
       "price": 12,
       "priceExact": null,
       "after": null,
+      "afterExact": null,
       "net": "4G",
       "is5G": false,
       "noCommit": true,
@@ -1410,7 +2117,20 @@
         "נתונים": "2GB"
       },
       "priceUnit": "month",
-      "kind": "dataonly"
+      "kind": "dataonly",
+      "fees": {
+        "SIM": "₪10"
+      },
+      "fineLines": [
+        "מחיר קבוע לכל החיים",
+        "ל-IoT / רכב",
+        "IP קבוע +₪15"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "cel_019mobile_netfree_s_kasher",
@@ -1420,6 +2140,7 @@
       "price": 25,
       "priceExact": null,
       "after": null,
+      "afterExact": null,
       "net": "4G",
       "is5G": false,
       "noCommit": true,
@@ -1434,7 +2155,20 @@
         "נתונים": "10GB"
       },
       "priceUnit": "month",
-      "kind": "kosher"
+      "kind": "kosher",
+      "fees": {
+        "SIM": "₪10 + תשלום נטפרי"
+      },
+      "fineLines": [
+        "ללא עליית מחיר",
+        "מסונן ע\"י ועד הרבנים",
+        "תשלום נטפרי נפרד"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "cel_019mobile_netfree_m_kasher",
@@ -1444,6 +2178,7 @@
       "price": 42,
       "priceExact": null,
       "after": null,
+      "afterExact": null,
       "net": "4G",
       "is5G": false,
       "noCommit": true,
@@ -1458,7 +2193,20 @@
         "נתונים": "40GB"
       },
       "priceUnit": "month",
-      "kind": "kosher"
+      "kind": "kosher",
+      "fees": {
+        "SIM": "₪10 + תשלום נטפרי"
+      },
+      "fineLines": [
+        "ללא עליית מחיר",
+        "מסונן ע\"י ועד הרבנים",
+        "תשלום נטפרי נפרד"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "cel_walla_5g400",
@@ -1468,6 +2216,7 @@
       "price": 40,
       "priceExact": 39.9,
       "after": null,
+      "afterExact": null,
       "net": "5G",
       "is5G": true,
       "noCommit": true,
@@ -1483,7 +2232,19 @@
         "חו\"ל": "שיחות לחו\"ל כלולות"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {},
+      "fineLines": [
+        "מחיר רשמי: ₪39.90",
+        "מחיר מבצע לשנתיים",
+        "שיחות לחו\"ל + משלוח SIM חינם",
+        "פירוט מלא ב-PDF"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "cel_walla_family300",
@@ -1493,6 +2254,7 @@
       "price": 75,
       "priceExact": null,
       "after": null,
+      "afterExact": null,
       "net": "4G",
       "is5G": false,
       "noCommit": true,
@@ -1508,7 +2270,19 @@
         "חו\"ל": "שיחות חו\"ל כלולות"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {},
+      "fineLines": [
+        "₪75 ל-3 מנויים",
+        "חודש ראשון חינם",
+        "שיחות חו\"ל + משלוח SIM חינם",
+        "מסופק ע\"י HOT Mobile"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "cel_walla_basic300",
@@ -1518,6 +2292,7 @@
       "price": 31,
       "priceExact": 30.9,
       "after": null,
+      "afterExact": null,
       "net": "4G",
       "is5G": false,
       "noCommit": true,
@@ -1532,7 +2307,18 @@
         "חו\"ל": "שיחות חו\"ל כלולות"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {},
+      "fineLines": [
+        "מחיר רשמי: ₪30.90",
+        "מחיר לשנה, עד 2 מנויים",
+        "שיחות חו\"ל + משלוח SIM חינם"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "net_bezeq_bfiber300",
@@ -1542,6 +2328,7 @@
       "price": 109,
       "priceExact": null,
       "after": 196,
+      "afterExact": null,
       "net": "סיב אופטי",
       "is5G": false,
       "noCommit": true,
@@ -1556,7 +2343,22 @@
         "מהירות": "עד 300/100"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {
+        "התקנה": "סיבים חינם אם קיימת תשתית; דירה ₪199 / צמוד קרקע ₪499"
+      },
+      "fineLines": [
+        "מחיר כולל נתב לחודשיים בלבד",
+        "נתב +₪19.9/ח׳ לאחר מכן",
+        "ניתן להביא ציוד פרטי",
+        "מדרגות מחיר: ח׳3-12: ₪128.9 / ח׳13-36: ₪160 / ח׳37+: ₪196.3",
+        "ללא נתב מח׳37+: ₪176.4"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "net_bezeq_bfiber1g",
@@ -1566,6 +2368,7 @@
       "price": 99,
       "priceExact": null,
       "after": 217,
+      "afterExact": null,
       "net": "סיב אופטי",
       "is5G": false,
       "noCommit": true,
@@ -1580,7 +2383,20 @@
         "מהירות": "עד 1000/100"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {
+        "התקנה": "סיבים חינם אם קיימת תשתית; דירה ₪199 / צמוד קרקע ₪499"
+      },
+      "fineLines": [
+        "נתב +₪19.9/ח׳",
+        "תקורה ~10%",
+        "מדרגות מחיר: ח׳3-6: ₪118.9 / ח׳7-12: ₪158.9 / ח׳13-36: ₪180.2 / ח׳37+: ₪216.5"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "net_bezeq_bfiber1g250up",
@@ -1590,6 +2406,7 @@
       "price": 149,
       "priceExact": null,
       "after": null,
+      "afterExact": null,
       "net": "סיב אופטי",
       "is5G": false,
       "noCommit": true,
@@ -1603,7 +2420,20 @@
         "מהירות": "עד 1000/250"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {
+        "התקנה": "סיבים חינם אם קיימת תשתית; דירה ₪199 / צמוד קרקע ₪499"
+      },
+      "fineLines": [
+        "מחיר מבצע לשנה",
+        "נתב +₪19.9/ח׳",
+        "מחיר לאחר תקופת מבצע לא מצוין"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "net_bezeq_bfiber25g",
@@ -1613,6 +2443,7 @@
       "price": 125,
       "priceExact": null,
       "after": 227,
+      "afterExact": null,
       "net": "סיב אופטי",
       "is5G": false,
       "noCommit": true,
@@ -1626,7 +2457,21 @@
         "מהירות": "עד 2500/250"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {
+        "התקנה": "סיבים חינם אם קיימת תשתית; דירה ₪199 / צמוד קרקע ₪499"
+      },
+      "fineLines": [
+        "מחיר מבצע לשנה",
+        "נתב +₪19.9/ח׳",
+        "מדרגות מחיר: ח׳13-36: ₪200.4 / ח׳37+: ₪226.6",
+        "ללא נתב מח׳37+: ₪206.7"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "net_bezeq_bfiber5g",
@@ -1636,6 +2481,7 @@
       "price": 179,
       "priceExact": null,
       "after": 240,
+      "afterExact": null,
       "net": "סיב אופטי",
       "is5G": false,
       "noCommit": true,
@@ -1651,7 +2497,21 @@
         "נתב": "+₪39.9/ח׳"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {
+        "התקנה": "סיבים חינם אם קיימת תשתית; דירה ₪199 / צמוד קרקע ₪499"
+      },
+      "fineLines": [
+        "נתב +₪39.9/ח׳",
+        "תקורה ~17%",
+        "מדרגות מחיר: ח׳2-12: ₪218.9 / ח׳13+: ₪240.4",
+        "ללא נתב מח׳13+: ₪200.5"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "net_bezeq_copper100",
@@ -1661,6 +2521,7 @@
       "price": 65,
       "priceExact": null,
       "after": 158,
+      "afterExact": null,
       "net": "כבלים",
       "is5G": false,
       "noCommit": true,
@@ -1675,7 +2536,20 @@
         "נתב": "+₪21.9/ח׳"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {
+        "התקנה": "₪49"
+      },
+      "fineLines": [
+        "מחיר כולל נתב ל-3 חודשים",
+        "נתב BE +₪21.9/ח׳ לאחר מכן",
+        "מדרגות מחיר: ח׳4-12: ₪95 / ח׳13-36: ₪125 / ח׳37+: ₪158.3"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "net_bezeq_copper100_10up",
@@ -1685,6 +2559,7 @@
       "price": 99,
       "priceExact": null,
       "after": 161,
+      "afterExact": null,
       "net": "כבלים",
       "is5G": false,
       "noCommit": true,
@@ -1699,7 +2574,20 @@
         "נתב": "+₪21.9/ח׳"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {
+        "התקנה": "₪49"
+      },
+      "fineLines": [
+        "מחיר לשנה ללא נתב",
+        "נתב +₪21.9/ח׳",
+        "מדרגות מחיר: ח׳13-36: ₪128 / ח׳37+: ₪161.3"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "net_bezeq_copper200",
@@ -1709,6 +2597,7 @@
       "price": 109,
       "priceExact": null,
       "after": 166,
+      "afterExact": null,
       "net": "כבלים",
       "is5G": false,
       "noCommit": true,
@@ -1722,7 +2611,20 @@
         "נתב": "+₪21.9/ח׳"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {
+        "התקנה": "₪49"
+      },
+      "fineLines": [
+        "מחיר מבצע לשנה",
+        "נתב +₪21.9/ח׳",
+        "מדרגות מחיר: ח׳13-36: ₪130 / ח׳37+: ₪166.4"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "net_hot_fiber600ai",
@@ -1732,6 +2634,7 @@
       "price": 99,
       "priceExact": null,
       "after": null,
+      "afterExact": null,
       "net": "סיב אופטי",
       "is5G": false,
       "noCommit": true,
@@ -1747,7 +2650,20 @@
         "נתב": "מגדיל טווח מתקדם + נקודת רשת כלולים"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {
+        "התקנה": "חינם בדירה; בית פרטי ₪499; ציוד עצמי -₪40"
+      },
+      "fineLines": [
+        "כולל מגדיל טווח מתקדם ונקודת רשת",
+        "ציוד עצמי: הנחה ₪40/ח׳",
+        "מחיר לאחר מבצע לא מצוין"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "net_hot_fiber1g_hbomax",
@@ -1757,6 +2673,7 @@
       "price": 109,
       "priceExact": null,
       "after": null,
+      "afterExact": null,
       "net": "סיב אופטי",
       "is5G": false,
       "noCommit": true,
@@ -1772,7 +2689,20 @@
         "נתב": "מגדיל טווח + נקודת רשת כלולים"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {
+        "התקנה": "חינם בדירה; בית פרטי ₪499"
+      },
+      "fineLines": [
+        "50% הנחה ל-3 חודשים הראשונים",
+        "כולל HBO Max",
+        "כולל מגדיל טווח ונקודת רשת"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "net_hot_homeplus1g",
@@ -1782,6 +2712,7 @@
       "price": 124,
       "priceExact": null,
       "after": null,
+      "afterExact": null,
       "net": "סיב אופטי",
       "is5G": false,
       "noCommit": true,
@@ -1797,7 +2728,20 @@
         "נתב": "2 מגדילי טווח + 2 נקודות רשת כלולים"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {
+        "התקנה": "חינם בדירה; בית פרטי ₪499"
+      },
+      "fineLines": [
+        "מתאים לבתים גדולים / 2 מפלסים",
+        "כולל HBO Max",
+        "מחיר לאחר מבצע לא מצוין"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "net_cellcom_fiber1g",
@@ -1807,6 +2751,7 @@
       "price": 119,
       "priceExact": null,
       "after": 179,
+      "afterExact": null,
       "net": "סיב אופטי",
       "is5G": false,
       "noCommit": true,
@@ -1822,7 +2767,19 @@
         "נתב": "כלול"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {},
+      "fineLines": [
+        "מחיר שנה ראשונה ₪119/ח׳",
+        "חיבור לנקודת רשת חינם",
+        "כולל קו טלפון 1000 דקות",
+        "גלישה בטוחה כלולה"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "net_cellcom_fiber25g",
@@ -1832,6 +2789,7 @@
       "price": 99,
       "priceExact": null,
       "after": 149,
+      "afterExact": null,
       "net": "סיב אופטי",
       "is5G": false,
       "noCommit": true,
@@ -1846,7 +2804,17 @@
         "נתב": "Star Mesh WiFi7 כלול (+₪29.9 אופציה)"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {},
+      "fineLines": [
+        "מדרגות מחיר: ח׳1-5: ₪99 / ח׳6-12: ₪129 / שנה 2+: ₪149",
+        "נתב Star Mesh (WiFi7) +₪29.9/ח׳"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "net_partner_fiber600",
@@ -1856,6 +2824,7 @@
       "price": 69,
       "priceExact": null,
       "after": 100,
+      "afterExact": null,
       "net": "סיב אופטי",
       "is5G": false,
       "noCommit": true,
@@ -1871,7 +2840,20 @@
         "נתב": "WiFi7 +₪25/ח׳"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {
+        "התקנה": "חינם בבניין; 1-4 דירות ₪499 (36 תשלומים)"
+      },
+      "fineLines": [
+        "מחיר מבצע לחודשיים",
+        "נתב WiFi7 +₪25/ח׳",
+        "Easy Mesh +₪9.90/ח׳"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "net_partner_fiber1g",
@@ -1881,6 +2863,7 @@
       "price": 39,
       "priceExact": null,
       "after": 159,
+      "afterExact": null,
       "net": "סיב אופטי",
       "is5G": false,
       "noCommit": true,
@@ -1896,7 +2879,21 @@
         "נתב": "WiFi7 כלול"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {
+        "התקנה": "חינם בבניין 5+ דירות; 1-4 דירות ₪499"
+      },
+      "fineLines": [
+        "מדרגות מחיר: ח׳1-2: ₪39 / ח׳3-12: ₪139 / ח׳13+: ₪159",
+        "נתב WiFi7 כלול ₪0",
+        "Easy Mesh +₪9.90/ח׳",
+        "CyberGuard +₪4.90/ח׳"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "net_partner_fiber25g",
@@ -1906,6 +2903,7 @@
       "price": 149,
       "priceExact": null,
       "after": 169,
+      "afterExact": null,
       "net": "סיב אופטי",
       "is5G": false,
       "noCommit": true,
@@ -1921,7 +2919,20 @@
         "נתב": "כלול"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {
+        "התקנה": "חינם בבניין; בית פרטי ₪499"
+      },
+      "fineLines": [
+        "מחיר ל-18 חודשים",
+        "Easy Mesh +₪9.90/ח׳",
+        "CyberGuard +₪4.90/ח׳"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "net_golan_fiber1g",
@@ -1931,6 +2942,7 @@
       "price": 89,
       "priceExact": null,
       "after": null,
+      "afterExact": null,
       "net": "סיב אופטי",
       "is5G": false,
       "noCommit": true,
@@ -1946,7 +2958,20 @@
         "נתב": "+₪25/ח׳"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {},
+      "fineLines": [
+        "מחיר לשנה",
+        "נתב +₪25/ח׳",
+        "שובר Wolt ₪100 למצטרפים",
+        "תשתית סלקום",
+        "מחיר לאחר מבצע לא מצוין"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "net_xphone_300mb",
@@ -1956,6 +2981,7 @@
       "price": 100,
       "priceExact": 99.99,
       "after": null,
+      "afterExact": null,
       "net": "סיב אופטי",
       "is5G": false,
       "noCommit": true,
@@ -1970,7 +2996,19 @@
         "מהירות": "עד 300/100"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {},
+      "fineLines": [
+        "מחיר רשמי: ₪99.99",
+        "מחיר קבוע",
+        "חודשיים מתנה בהצטרפות",
+        "תשתית אנלימיטד / בזק"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "net_xphone_500mb",
@@ -1980,6 +3018,7 @@
       "price": 100,
       "priceExact": 99.99,
       "after": null,
+      "afterExact": null,
       "net": "סיב אופטי",
       "is5G": false,
       "noCommit": true,
@@ -1994,7 +3033,20 @@
         "מהירות": "עד 500/50"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {
+        "התקנה": "עלות מוזלת"
+      },
+      "fineLines": [
+        "מחיר רשמי: ₪99.99",
+        "מחיר קבוע",
+        "תשתית אנלימיטד"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "net_xphone_1000mb",
@@ -2004,6 +3056,7 @@
       "price": 122,
       "priceExact": null,
       "after": null,
+      "afterExact": null,
       "net": "סיב אופטי",
       "is5G": false,
       "noCommit": true,
@@ -2018,7 +3071,18 @@
         "מהירות": "עד 1000/100"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {},
+      "fineLines": [
+        "מחיר קבוע",
+        "חודשיים מתנה בהצטרפות",
+        "תשתית אנלימיטד / בזק"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "net_xphone_200mb",
@@ -2028,6 +3092,7 @@
       "price": 100,
       "priceExact": 99.99,
       "after": null,
+      "afterExact": null,
       "net": "כבלים",
       "is5G": false,
       "noCommit": true,
@@ -2042,7 +3107,19 @@
         "מהירות": "עד 200/20"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {},
+      "fineLines": [
+        "מחיר רשמי: ₪99.99",
+        "מחיר קבוע",
+        "תשתית בזק VDSL",
+        "סינון תוכן חינם"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "net_gilat_1g_online",
@@ -2052,6 +3129,7 @@
       "price": 49,
       "priceExact": null,
       "after": 95,
+      "afterExact": null,
       "net": "סיב אופטי",
       "is5G": false,
       "noCommit": true,
@@ -2067,7 +3145,23 @@
         "נתב": "כלול (WiFi7 +₪10/ח׳)"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {
+        "התקנה": "הסבה: דירה ₪49 / פרטי ₪99-149; חדש: דירה ₪199 / פרטי ₪199-499"
+      },
+      "fineLines": [
+        "₪49 ל-3 חודשים ראשונים (אונליין בלבד)",
+        "₪95 קבוע לכל החיים לאחר מכן",
+        "ניוד חינם לבעלי סיב בזק",
+        "נתב כלול; WiFi7 +₪10/ח׳",
+        "ערכת Ultra +₪24.90/ח׳",
+        "תשתית בזק"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "net_gilat_1g_year",
@@ -2077,6 +3171,7 @@
       "price": 79,
       "priceExact": null,
       "after": null,
+      "afterExact": null,
       "net": "סיב אופטי",
       "is5G": false,
       "noCommit": true,
@@ -2092,7 +3187,20 @@
         "נתב": "כלול (WiFi7 +₪10/ח׳)"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {
+        "התקנה": "הסבה: דירה ₪49 / פרטי ₪99-149; חדש: דירה ₪199 / פרטי ₪199-499"
+      },
+      "fineLines": [
+        "מחיר קבוע לשנה",
+        "WiFi7 +₪10/ח׳",
+        "מחיר לאחר שנה לא מצוין"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "net_gilat_1g_lifetime",
@@ -2102,6 +3210,7 @@
       "price": 95,
       "priceExact": null,
       "after": null,
+      "afterExact": null,
       "net": "סיב אופטי",
       "is5G": false,
       "noCommit": true,
@@ -2117,7 +3226,20 @@
         "נתב": "כלול (WiFi7 +₪10/ח׳)"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {
+        "התקנה": "הסבה: דירה ₪49 / פרטי ₪99-149; חדש: דירה ₪199 / פרטי ₪199-499"
+      },
+      "fineLines": [
+        "מחיר קבוע לכל החיים",
+        "חודש חינם בהצטרפות",
+        "WiFi7 +₪10/ח׳"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "net_ccc_fiber300",
@@ -2127,6 +3249,7 @@
       "price": 90,
       "priceExact": null,
       "after": null,
+      "afterExact": null,
       "net": "סיב אופטי",
       "is5G": false,
       "noCommit": true,
@@ -2141,7 +3264,18 @@
         "מהירות": "עד 300Mb"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {},
+      "fineLines": [
+        "לבעלי תשתית בזק פעילה",
+        "IP וסינון תוכן אופציונליים",
+        "מחיר קבוע"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": "לבעלי תשתית בזק פעילה",
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "net_ccc_fiber500",
@@ -2151,6 +3285,7 @@
       "price": 95,
       "priceExact": null,
       "after": null,
+      "afterExact": null,
       "net": "סיב אופטי",
       "is5G": false,
       "noCommit": true,
@@ -2164,7 +3299,17 @@
         "מהירות": "עד 500Mb"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {},
+      "fineLines": [
+        "לבעלי תשתית בזק פעילה",
+        "מחיר קבוע"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": "לבעלי תשתית בזק פעילה",
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "net_ccc_fiber1g",
@@ -2174,6 +3319,7 @@
       "price": 100,
       "priceExact": null,
       "after": null,
+      "afterExact": null,
       "net": "סיב אופטי",
       "is5G": false,
       "noCommit": true,
@@ -2187,7 +3333,17 @@
         "מהירות": "עד 1000Mb"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {},
+      "fineLines": [
+        "לבעלי תשתית בזק פעילה",
+        "מחיר קבוע"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": "לבעלי תשתית בזק פעילה",
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "net_ccc_copper40",
@@ -2197,6 +3353,7 @@
       "price": 80,
       "priceExact": null,
       "after": null,
+      "afterExact": null,
       "net": "כבלים",
       "is5G": false,
       "noCommit": true,
@@ -2210,7 +3367,17 @@
         "מהירות": "עד 40Mb"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {},
+      "fineLines": [
+        "תשתית בזק פעילה",
+        "מחיר קבוע"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": "תשתית בזק פעילה",
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "net_ccc_copper100",
@@ -2220,6 +3387,7 @@
       "price": 85,
       "priceExact": null,
       "after": null,
+      "afterExact": null,
       "net": "כבלים",
       "is5G": false,
       "noCommit": true,
@@ -2233,7 +3401,17 @@
         "מהירות": "עד 100Mb"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {},
+      "fineLines": [
+        "תשתית בזק פעילה",
+        "מחיר קבוע"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": "תשתית בזק פעילה",
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "net_ccc_copper200",
@@ -2243,6 +3421,7 @@
       "price": 95,
       "priceExact": null,
       "after": null,
+      "afterExact": null,
       "net": "כבלים",
       "is5G": false,
       "noCommit": true,
@@ -2256,7 +3435,17 @@
         "מהירות": "עד 200Mb"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {},
+      "fineLines": [
+        "תשתית בזק פעילה",
+        "מחיר קבוע"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": "תשתית בזק פעילה",
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "tv_hot_rak-televizia",
@@ -2266,6 +3455,7 @@
       "price": 89,
       "priceExact": null,
       "after": null,
+      "afterExact": null,
       "net": "כבלים",
       "is5G": false,
       "noCommit": true,
@@ -2278,7 +3468,16 @@
         "ערוצים": "~140"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {},
+      "fineLines": [
+        "HBO Max חינם 3 ח׳ אח\"כ ₪25"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "tv_hot_sport",
@@ -2288,6 +3487,7 @@
       "price": 99,
       "priceExact": null,
       "after": null,
+      "afterExact": null,
       "net": "כבלים",
       "is5G": false,
       "noCommit": true,
@@ -2303,7 +3503,17 @@
         "ממירים": "1"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {},
+      "fineLines": [
+        "חבילת הספורט כלולה במחיר",
+        "HBO Max חינם 3 ח׳ אח\"כ ₪25"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "tv_partner_sport",
@@ -2313,6 +3523,7 @@
       "price": 95,
       "priceExact": null,
       "after": null,
+      "afterExact": null,
       "net": "סטרימינג",
       "is5G": false,
       "noCommit": true,
@@ -2329,7 +3540,18 @@
         "VOD": "30,000+"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {},
+      "fineLines": [
+        "חבילת הספורט כלולה במחיר",
+        "ביטול בלחיצה — ללא התחייבות",
+        "דורש תשתית אינטרנט קיימת"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "tv_cellcom_netflix",
@@ -2339,6 +3561,7 @@
       "price": 69,
       "priceExact": null,
       "after": null,
+      "afterExact": null,
       "net": "סטרימינג",
       "is5G": false,
       "noCommit": true,
@@ -2354,7 +3577,18 @@
         "VOD": "30,000"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {},
+      "fineLines": [
+        "Netflix (מסך אחד) כלול במחיר",
+        "שדרוג Netflix Standard בתוספת תשלום",
+        "דורש תשתית אינטרנט קיימת"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "tv_stingtv_hbo-max-standard",
@@ -2364,6 +3598,7 @@
       "price": 49,
       "priceExact": null,
       "after": 150,
+      "afterExact": null,
       "net": "סטרימינג",
       "is5G": false,
       "noCommit": true,
@@ -2379,7 +3614,21 @@
         "VOD": "40,000+"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {
+        "התקנה": "מהיום להיום (לא כולל בית פרטי)"
+      },
+      "fineLines": [
+        "מבצע ח׳1-3: ₪49",
+        "ח׳4-12: ₪98.9",
+        "ח׳13+: ₪149.7",
+        "HBO Max 3 ח׳ חינם"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "tv_stingtv_disney-plus",
@@ -2389,6 +3638,7 @@
       "price": 49,
       "priceExact": null,
       "after": 150,
+      "afterExact": null,
       "net": "סטרימינג",
       "is5G": false,
       "noCommit": true,
@@ -2401,7 +3651,21 @@
         "ערוצים": "~70"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {
+        "התקנה": "מהיום להיום"
+      },
+      "fineLines": [
+        "מבצע ח׳1-3: ₪49",
+        "ח׳4-12: ₪98.9",
+        "ח׳13+: ₪149.7",
+        "דיסני+ 3 ח׳ מתנה אח\"כ ₪49.9"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "tv_stingtv_mibeit-yes",
@@ -2411,6 +3675,7 @@
       "price": 49,
       "priceExact": null,
       "after": null,
+      "afterExact": null,
       "net": "סטרימינג",
       "is5G": false,
       "noCommit": true,
@@ -2424,7 +3689,16 @@
         "VOD": "40,000"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {
+        "התקנה": "מהיום להיום"
+      },
+      "fineLines": [],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "tv_yes_sting-plus-by-yes",
@@ -2434,6 +3708,7 @@
       "price": 49,
       "priceExact": null,
       "after": null,
+      "afterExact": null,
       "net": "סטרימינג",
       "is5G": false,
       "noCommit": true,
@@ -2449,7 +3724,18 @@
         "VOD": "40,000"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {
+        "התקנה": "מהיום להיום"
+      },
+      "fineLines": [
+        "מחיר לשנה"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "tv_nexttv_app",
@@ -2459,6 +3745,7 @@
       "price": 70,
       "priceExact": 69.9,
       "after": null,
+      "afterExact": null,
       "net": "סטרימינג",
       "is5G": false,
       "noCommit": true,
@@ -2472,7 +3759,18 @@
         "VOD": "~40,000"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {},
+      "fineLines": [
+        "מחיר ₪69.90 לחודש",
+        "VOD ₪15.03/ח׳",
+        "6% הנחת חשמל"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "tri_hot_triple-hbo-max",
@@ -2482,6 +3780,7 @@
       "price": 199,
       "priceExact": null,
       "after": null,
+      "afterExact": null,
       "net": "סיב אופטי",
       "is5G": false,
       "noCommit": true,
@@ -2498,7 +3797,21 @@
         "סטרימרים": "2"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {
+        "התקנה": "חינם בדירה / בית פרטי ₪499"
+      },
+      "fineLines": [
+        "ח׳4+ במחיר מחירון",
+        "HBO Max חינם 3 ח׳ אח\"כ ₪25",
+        "VOD להסרה ₪30 (אם מסירים VOD, HBO ב-₪49.90)",
+        "נתב + מגדיל WiFi7 כלול"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": "לא כולל בית פרטי בהתקנה חינם",
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "tri_hot_triple-mondial-1000",
@@ -2508,6 +3821,7 @@
       "price": 169,
       "priceExact": null,
       "after": null,
+      "afterExact": null,
       "net": "סיב אופטי",
       "is5G": false,
       "noCommit": true,
@@ -2523,7 +3837,20 @@
         "ממירים": "2"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {
+        "התקנה": "חינם בדירה / בית פרטי ₪499"
+      },
+      "fineLines": [
+        "מבצע ₪84 ח׳1-3",
+        "ח׳4+: ₪169",
+        "טלפון ללא הגבלה כלול"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "tri_cellcom_triple-1gb-mondial-projector",
@@ -2533,6 +3860,7 @@
       "price": 159,
       "priceExact": null,
       "after": null,
+      "afterExact": null,
       "net": "סיב אופטי",
       "is5G": false,
       "noCommit": true,
@@ -2547,7 +3875,19 @@
         "ממירים": "3"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {},
+      "fineLines": [
+        "מקרן וידאו במתנה",
+        "ספורט 1 חינם חודשיים אח\"כ ₪93",
+        "ספורט 5 כלול",
+        "נתב +₪20 לחודש"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "tri_cellcom_triple-1gb-mondial-screen",
@@ -2557,6 +3897,7 @@
       "price": 189,
       "priceExact": null,
       "after": null,
+      "afterExact": null,
       "net": "סיב אופטי",
       "is5G": false,
       "noCommit": true,
@@ -2570,7 +3911,17 @@
         "ממירים": "3"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {},
+      "fineLines": [
+        "מסך Hisense QLED 55\" במתנה",
+        "נתב מתקדם כלול"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "tri_cellcom_triple-2-5gb",
@@ -2580,6 +3931,7 @@
       "price": 179,
       "priceExact": null,
       "after": 199,
+      "afterExact": null,
       "net": "סיב אופטי",
       "is5G": false,
       "noCommit": true,
@@ -2593,7 +3945,18 @@
         "ממירים": "2"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {},
+      "fineLines": [
+        "ח׳13+: ₪199",
+        "2 ממירי MasterBox",
+        "נתב +₪29.9 לחודש"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "tri_stingtv_sting-fiber-hbo-max",
@@ -2603,6 +3966,7 @@
       "price": 149,
       "priceExact": null,
       "after": 259,
+      "afterExact": null,
       "net": "סיב אופטי",
       "is5G": false,
       "noCommit": true,
@@ -2619,7 +3983,23 @@
         "ממירים": "2"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {
+        "התקנה": "בית פרטי ₪499"
+      },
+      "fineLines": [
+        "מבצע ח׳1-3: ₪149 (ללא נתב)",
+        "ח׳4-12: ₪198.9",
+        "ח׳13+: ₪258.9",
+        "כולל נתב: ח׳1-3 ₪174, ח׳4-12 ₪223.9, ח׳13+ ₪283.9",
+        "WiFi7, מגדיל טווח חודשיים מתנה אח\"כ ₪29.9",
+        "תשתית בזק"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "tri_yes_yes-fiber-triple",
@@ -2629,6 +4009,7 @@
       "price": 209,
       "priceExact": null,
       "after": 329,
+      "afterExact": null,
       "net": "סיב אופטי",
       "is5G": false,
       "noCommit": true,
@@ -2645,7 +4026,24 @@
         "ממירים": "2"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {
+        "התקנה": "בית פרטי ₪499"
+      },
+      "fineLines": [
+        "חודש ראשון חינם",
+        "ח׳2-12: ₪209",
+        "ח׳13-36: ₪229",
+        "ח׳37+: ₪329",
+        "yes+WiFi חינם כלול",
+        "נתב WiFi7 שנה מתנה",
+        "תשתית בזק"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "tri_yes_sting-fiber-by-yes",
@@ -2655,6 +4053,7 @@
       "price": 149,
       "priceExact": null,
       "after": 234,
+      "afterExact": null,
       "net": "סיב אופטי",
       "is5G": false,
       "noCommit": true,
@@ -2670,7 +4069,21 @@
         "ממירים": "2"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {
+        "התקנה": "בית פרטי ₪499"
+      },
+      "fineLines": [
+        "מחיר לשנה",
+        "ח׳13+: ₪234",
+        "כולל נתב: ₪174",
+        "WiFi7, מגדיל טווח חודשיים מתנה אח\"כ ₪29.9"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "tri_nexttv_fiber-tv-1gb",
@@ -2680,6 +4093,7 @@
       "price": 119,
       "priceExact": null,
       "after": null,
+      "afterExact": null,
       "net": "סיב אופטי",
       "is5G": false,
       "noCommit": true,
@@ -2692,7 +4106,21 @@
         "מהירות": "עד 1000"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {
+        "התקנה": "חינם"
+      },
+      "fineLines": [
+        "עד 1GB WiFi7",
+        "HBO Max 3 ח׳ חינם אח\"כ ₪25",
+        "סטרימר שנה חינם",
+        "נקודת רשת + מגדיל טווח חינם"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "tri_nexttv_fiber-tv-2gb",
@@ -2702,6 +4130,7 @@
       "price": 164,
       "priceExact": null,
       "after": null,
+      "afterExact": null,
       "net": "סיב אופטי",
       "is5G": false,
       "noCommit": true,
@@ -2713,7 +4142,14 @@
         "מהירות": "עד 2000"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {},
+      "fineLines": [],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "tri_golan_triple-hamushalam",
@@ -2723,6 +4159,7 @@
       "price": 139,
       "priceExact": null,
       "after": null,
+      "afterExact": null,
       "net": "סיב אופטי",
       "is5G": false,
       "noCommit": true,
@@ -2735,7 +4172,20 @@
         "מהירות": "עד 1000/100"
       },
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {},
+      "fineLines": [
+        "מחיר לשנה",
+        "כולל סלקום TV",
+        "שובר Wolt ₪100",
+        "נתב +₪25 לחודש",
+        "תשתית סלקום"
+      ],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": "2026-06"
     },
     {
       "id": "ab_019",
@@ -2745,6 +4195,7 @@
       "price": 1,
       "priceExact": null,
       "after": null,
+      "afterExact": null,
       "net": "בינלאומי",
       "is5G": false,
       "noCommit": true,
@@ -2757,7 +4208,14 @@
       ],
       "specs": {},
       "priceUnit": "minute",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {},
+      "fineLines": [],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": null
     },
     {
       "id": "ab_golan",
@@ -2767,6 +4225,7 @@
       "price": 10,
       "priceExact": null,
       "after": null,
+      "afterExact": null,
       "net": "בינלאומי",
       "is5G": false,
       "noCommit": true,
@@ -2779,7 +4238,14 @@
       ],
       "specs": {},
       "priceUnit": "day",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {},
+      "fineLines": [],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": null
     },
     {
       "id": "ab_partner",
@@ -2789,6 +4255,7 @@
       "price": 29,
       "priceExact": null,
       "after": null,
+      "afterExact": null,
       "net": "בינלאומי",
       "is5G": false,
       "noCommit": true,
@@ -2801,7 +4268,14 @@
       ],
       "specs": {},
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {},
+      "fineLines": [],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": null
     },
     {
       "id": "ab_pelephone",
@@ -2811,6 +4285,7 @@
       "price": 49,
       "priceExact": null,
       "after": null,
+      "afterExact": null,
       "net": "בינלאומי",
       "is5G": false,
       "noCommit": true,
@@ -2823,7 +4298,14 @@
       ],
       "specs": {},
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {},
+      "fineLines": [],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": null
     },
     {
       "id": "ab_airalo",
@@ -2833,6 +4315,7 @@
       "price": 25,
       "priceExact": null,
       "after": null,
+      "afterExact": null,
       "net": "eSIM",
       "is5G": false,
       "noCommit": true,
@@ -2845,7 +4328,14 @@
       ],
       "specs": {},
       "priceUnit": "package",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {},
+      "fineLines": [],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": null
     },
     {
       "id": "ab_airalo_3g",
@@ -2855,6 +4345,7 @@
       "price": 13,
       "priceExact": null,
       "after": null,
+      "afterExact": null,
       "net": "eSIM",
       "is5G": false,
       "noCommit": true,
@@ -2868,7 +4359,14 @@
       ],
       "specs": {},
       "priceUnit": "package",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {},
+      "fineLines": [],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": null
     },
     {
       "id": "ab_airalo_global",
@@ -2878,6 +4376,7 @@
       "price": 37,
       "priceExact": null,
       "after": null,
+      "afterExact": null,
       "net": "eSIM",
       "is5G": false,
       "noCommit": true,
@@ -2891,7 +4390,14 @@
       ],
       "specs": {},
       "priceUnit": "package",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {},
+      "fineLines": [],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": null
     },
     {
       "id": "ab_hot",
@@ -2901,6 +4407,7 @@
       "price": 9,
       "priceExact": null,
       "after": null,
+      "afterExact": null,
       "net": "בינלאומי",
       "is5G": false,
       "noCommit": true,
@@ -2913,7 +4420,14 @@
       ],
       "specs": {},
       "priceUnit": "day",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {},
+      "fineLines": [],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": null
     },
     {
       "id": "ab_partner_3g",
@@ -2923,6 +4437,7 @@
       "price": 49,
       "priceExact": null,
       "after": null,
+      "afterExact": null,
       "net": "בינלאומי",
       "is5G": false,
       "noCommit": true,
@@ -2935,7 +4450,14 @@
       ],
       "specs": {},
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {},
+      "fineLines": [],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": null
     },
     {
       "id": "ab_cellcom",
@@ -2945,6 +4467,7 @@
       "price": 8,
       "priceExact": null,
       "after": null,
+      "afterExact": null,
       "net": "בינלאומי",
       "is5G": false,
       "noCommit": true,
@@ -2957,7 +4480,14 @@
       ],
       "specs": {},
       "priceUnit": "day",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {},
+      "fineLines": [],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": null
     },
     {
       "id": "ab_019_world",
@@ -2967,6 +4497,7 @@
       "price": 19,
       "priceExact": null,
       "after": null,
+      "afterExact": null,
       "net": "בינלאומי",
       "is5G": false,
       "noCommit": true,
@@ -2979,7 +4510,14 @@
       ],
       "specs": {},
       "priceUnit": "month",
-      "kind": "regular"
+      "kind": "regular",
+      "fees": {},
+      "fineLines": [],
+      "terms": [],
+      "term": null,
+      "eligibility": null,
+      "notes": null,
+      "updatedAt": null
     }
   ]
 }

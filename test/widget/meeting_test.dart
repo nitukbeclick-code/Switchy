@@ -114,10 +114,15 @@ void main() {
     });
 
     testWidgets('blocks submit without consent and shows a hint', (tester) async {
-      await tester.pumpWidget(_wrap(const MeetingWidget(provider: 'הוט')));
+      await tester.pumpWidget(_wrap(const MeetingWidget(provider: 'HOT')));
       await tester.pump(const Duration(seconds: 1));
 
-      // Pick the first slot (scroll it into view first — it sits below the fold).
+      // Pick a future date first (so 09:00 is always offered regardless of the
+      // 4-hour same-day cutoff at the moment the test runs), then its first slot.
+      final date = bookableMeetingDates()[1];
+      await tester.ensureVisible(find.text(formatMeetingDateHe(date)).first);
+      await tester.tap(find.text(formatMeetingDateHe(date)).first);
+      await tester.pump();
       await tester.ensureVisible(find.text('09:00').first);
       await tester.tap(find.text('09:00').first);
       await tester.pump();
@@ -135,9 +140,14 @@ void main() {
     });
 
     testWidgets('happy path submits, flips to status and demo-confirms', (tester) async {
-      await tester.pumpWidget(_wrap(const MeetingWidget(provider: 'הוט', source: 'plan')));
+      await tester.pumpWidget(_wrap(const MeetingWidget(provider: 'HOT', source: 'plan')));
       await tester.pump(const Duration(seconds: 1));
 
+      // Future date → 09:00 always offered (immune to the 4h same-day cutoff).
+      final date = bookableMeetingDates()[1];
+      await tester.ensureVisible(find.text(formatMeetingDateHe(date)).first);
+      await tester.tap(find.text(formatMeetingDateHe(date)).first);
+      await tester.pump();
       await tester.ensureVisible(find.text('09:00').first);
       await tester.tap(find.text('09:00').first);
       await tester.pump();
@@ -158,12 +168,10 @@ void main() {
 
       expect(backend.submittedMeetings, hasLength(1));
       final m = backend.submittedMeetings.single;
-      expect(m.provider, 'הוט');
+      expect(m.provider, 'HOT');
       expect(m.slot, '09:00');
       expect(m.source, 'plan');
-      // The bookable grid starts tomorrow.
-      final firstDate = bookableMeetingDates().first;
-      expect(m.meetingDate, meetingDateIso(firstDate));
+      expect(m.meetingDate, meetingDateIso(date));
 
       // The screen flipped to the success/status view, and the demo rep
       // (LocalBackend, zero delay) already confirmed through the stream.

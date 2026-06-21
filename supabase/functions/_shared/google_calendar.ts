@@ -58,6 +58,15 @@ function pemToDer(pem: string): Uint8Array {
   return bytesFromB64(body);
 }
 
+// WebCrypto's importKey/sign want a BufferSource backed by a real ArrayBuffer;
+// a plain Uint8Array is typed ArrayBufferLike under Deno's strict lib (could be
+// a SharedArrayBuffer), so copy into a fresh ArrayBuffer to satisfy the types.
+function ab(bytes: Uint8Array): ArrayBuffer {
+  const buf = new ArrayBuffer(bytes.byteLength);
+  new Uint8Array(buf).set(bytes);
+  return buf;
+}
+
 // Build + RS256-sign the service-account assertion JWT.
 async function signJwt(clientEmail: string, privateKeyPem: string): Promise<string | null> {
   try {
@@ -73,7 +82,7 @@ async function signJwt(clientEmail: string, privateKeyPem: string): Promise<stri
     const signingInput = `${b64urlFromString(JSON.stringify(header))}.${b64urlFromString(JSON.stringify(claims))}`;
     const key = await crypto.subtle.importKey(
       "pkcs8",
-      pemToDer(privateKeyPem),
+      ab(pemToDer(privateKeyPem)),
       { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
       false,
       ["sign"],
@@ -81,7 +90,7 @@ async function signJwt(clientEmail: string, privateKeyPem: string): Promise<stri
     const sig = await crypto.subtle.sign(
       "RSASSA-PKCS1-v1_5",
       key,
-      new TextEncoder().encode(signingInput),
+      ab(new TextEncoder().encode(signingInput)),
     );
     return `${signingInput}.${b64urlFromBytes(new Uint8Array(sig))}`;
   } catch (e) {

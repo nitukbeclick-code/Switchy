@@ -244,14 +244,14 @@ class _HeroCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          // The celebratory mark breathes gently — honest, not confetti-loud.
+          // The celebratory mark arrives with a single gentle pop — plays once.
           Icon(Icons.celebration_rounded, color: ffTheme.saving, size: 30)
-              .animate(onPlay: (c) => c.repeat(reverse: true))
+              .animate()
               .scale(
-                begin: const Offset(1, 1),
-                end: const Offset(1.12, 1.12),
-                duration: 1600.ms,
-                curve: Curves.easeInOut,
+                begin: const Offset(0.8, 0.8),
+                end: const Offset(1, 1),
+                duration: 450.ms,
+                curve: Curves.easeOutBack,
               ),
           const SizedBox(height: 12),
           Text(

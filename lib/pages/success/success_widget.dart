@@ -58,7 +58,7 @@ class _SuccessWidgetState extends State<SuccessWidget> {
               Stack(
                 alignment: Alignment.center,
                 children: [
-                  // Outer pulse ring
+                  // Outer halo ring — expands in once behind the checkmark.
                   Container(
                     width: 120,
                     height: 120,
@@ -66,8 +66,7 @@ class _SuccessWidgetState extends State<SuccessWidget> {
                       color: Colors.white.withValues(alpha: 0.08),
                       shape: BoxShape.circle,
                     ),
-                  ).animate(onPlay: (c) => c.repeat(reverse: true))
-                    .scale(begin: const Offset(1, 1), end: const Offset(1.12, 1.12), duration: 1200.ms, curve: Curves.easeInOut),
+                  ).animate().scale(begin: const Offset(0.8, 0.8), end: const Offset(1, 1), duration: 500.ms, curve: Curves.easeOut),
 
                   // Main circle
                   Container(

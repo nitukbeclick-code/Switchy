@@ -149,8 +149,7 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                   height: 96,
                   decoration: ffTheme.glassDecoration(radius: 48),
                   child: Icon(Icons.track_changes_rounded, size: 52, color: ffTheme.primary),
-                ).animate(onPlay: (c) => c.repeat(reverse: true))
-                  .scale(begin: const Offset(1, 1), end: const Offset(1.05, 1.05), duration: 1500.ms, curve: Curves.easeInOut),
+                ).animate().scale(begin: const Offset(0.9, 0.9), end: const Offset(1, 1), duration: 450.ms, curve: Curves.easeOut),
                 const SizedBox(height: 24),
                 Text('עוד לא התחלתם', style: ffTheme.headlineSmall),
                 const SizedBox(height: 8),
@@ -307,13 +306,11 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                     Row(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
-                        // The expected saving is the VALUE figure → amber, with a
-                        // soft amber shimmer (respects the platform reduce-motion
-                        // flag, like every other animation in the app).
+                        // The expected saving is the VALUE figure → amber.
                         Text(
                           '₪${planSaveYear(plan, appState.currentBill(plan.cat))}',
                           style: ffTheme.displaySmall.copyWith(color: ffTheme.savingDark, fontWeight: FontWeight.w800),
-                        ).animate(onPlay: (c) => c.repeat()).shimmer(duration: 2000.ms, color: ffTheme.saving.withValues(alpha: 0.5)),
+                        ),
                         const SizedBox(width: 6),
                         Padding(
                           padding: const EdgeInsets.only(bottom: 4),
@@ -367,6 +364,9 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                         ? Stack(
                             alignment: Alignment.center,
                             children: [
+                              // Static halo ring marks the current step — the
+                              // active step is already distinguished by size,
+                              // border and colour, so no perpetual pulse.
                               Container(
                                 width: 52,
                                 height: 52,
@@ -374,8 +374,7 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                                   color: ffTheme.primary.withValues(alpha: 0.12),
                                   shape: BoxShape.circle,
                                 ),
-                              ).animate(onPlay: (c) => c.repeat(reverse: true))
-                                .scale(begin: const Offset(1, 1), end: const Offset(1.2, 1.2), duration: 900.ms, curve: Curves.easeInOut),
+                              ),
                               Container(
                                 width: 40,
                                 height: 40,
@@ -474,7 +473,7 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                         ),
                         PositionedDirectional(
                           end: 0, bottom: 0,
-                          // Green "online" dot — a live presence cue (ACTION/active
+                          // Green "online" dot — a presence cue (ACTION/active
                           // green), ringed in the card surface so it reads as a badge.
                           child: Container(
                             width: 14, height: 14,
@@ -483,8 +482,7 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                               shape: BoxShape.circle,
                               border: Border.all(color: ffTheme.cardSurface, width: 2),
                             ),
-                          ).animate(onPlay: (c) => c.repeat(reverse: true))
-                            .scale(begin: const Offset(1, 1), end: const Offset(1.3, 1.3), duration: 800.ms),
+                          ),
                         ),
                       ],
                     ),

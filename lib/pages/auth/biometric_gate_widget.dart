@@ -100,11 +100,11 @@ class _BiometricGateWidgetState extends State<BiometricGateWidget> {
                     border: Border.all(color: Colors.white.withValues(alpha: 0.35), width: 1.5),
                   ),
                   child: const Icon(Icons.fingerprint_rounded, color: Colors.white, size: 52),
-                ).animate(onPlay: (c) => c.repeat(reverse: true)).scale(
-                      duration: 1400.ms,
-                      begin: const Offset(1, 1),
-                      end: const Offset(1.06, 1.06),
-                      curve: Curves.easeInOut,
+                ).animate().scale(
+                      duration: 400.ms,
+                      begin: const Offset(0.9, 0.9),
+                      end: const Offset(1, 1),
+                      curve: Curves.easeOut,
                     ),
                 const SizedBox(height: 28),
                 Text('שלום $name',

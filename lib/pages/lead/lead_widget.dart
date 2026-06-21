@@ -273,7 +273,7 @@ class _LeadWidgetState extends State<LeadWidget> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Live "we're open" dot — a gentle breathing glow, green = available.
+          // "We're open" dot — green = available.
           Container(
             width: 8, height: 8,
             decoration: BoxDecoration(
@@ -281,8 +281,7 @@ class _LeadWidgetState extends State<LeadWidget> {
               shape: BoxShape.circle,
               boxShadow: [BoxShadow(color: ffTheme.brandAccent.withValues(alpha: 0.5), blurRadius: 6, spreadRadius: 1)],
             ),
-          ).animate(onPlay: (c) => c.repeat(reverse: true))
-            .scale(begin: const Offset(1, 1), end: const Offset(1.4, 1.4), duration: 900.ms, curve: Curves.easeInOut),
+          ),
           const SizedBox(width: 10),
           Expanded(
             child: Text(

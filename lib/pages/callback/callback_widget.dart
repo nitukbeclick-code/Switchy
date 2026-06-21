@@ -129,8 +129,7 @@ class _CallbackWidgetState extends State<CallbackWidget> {
                       shape: BoxShape.circle,
                       boxShadow: [BoxShadow(color: ffTheme.brandAccent.withValues(alpha: 0.5), blurRadius: 6, spreadRadius: 1)],
                     ),
-                  ).animate(onPlay: (c) => c.repeat(reverse: true))
-                    .scale(begin: const Offset(1, 1), end: const Offset(1.4, 1.4), duration: 900.ms, curve: Curves.easeInOut),
+                  ),
                 ],
               ),
             ).animate().fadeIn(delay: 180.ms),
@@ -399,8 +398,7 @@ class _CallbackWidgetState extends State<CallbackWidget> {
                   Container(
                     width: 120, height: 120,
                     decoration: BoxDecoration(color: ffTheme.brandAccent.withValues(alpha: 0.10), shape: BoxShape.circle),
-                  ).animate(onPlay: (c) => c.repeat(reverse: true))
-                    .scale(begin: const Offset(1, 1), end: const Offset(1.12, 1.12), duration: 1200.ms),
+                  ).animate().scale(begin: const Offset(0.85, 0.85), end: const Offset(1, 1), duration: 500.ms, curve: Curves.easeOut),
                   Container(
                     width: 92, height: 92,
                     decoration: BoxDecoration(color: ffTheme.brandAccentTint, shape: BoxShape.circle),

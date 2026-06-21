@@ -23,14 +23,13 @@ const CSS_HREF = `styles.css?v=${CSS_V}`;
 const JS_SRC = `script.js?v=${JS_V}`;
 
 // ── Analytics — Google Analytics 4 (free) ───────────────────────────────────
-// Replace GA4_ID with your real Measurement ID (G-XXXXXXXXXX, from
-// analytics.google.com) HERE and in index.html, then rebuild. Until a real ID
-// is set, gtag loads harmlessly with no valid destination. Custom conversion
-// events (lead_submit, meeting_booked, whatsapp_click, …) are sent via gtag()
-// from script.js. NOTE: GA4 sets cookies — add a consent banner if you target EU.
-const GA4_ID = 'G-XXXXXXXXXX';
+// Live Measurement ID below (mirror it in index.html if you ever change it, then
+// rebuild). Custom conversion events (lead_submit, meeting_booked, whatsapp_click,
+// …) are sent via gtag() from script.js. NOTE: GA4 sets cookies — add a consent
+// banner if you target the EU.
+const GA4_ID = 'G-YCTGRVN7SJ';
 const analyticsTag = () =>
-  `<!-- Google Analytics 4 — replace the Measurement ID in build.js + index.html. -->
+  `<!-- Google Analytics 4 (gtag.js) — id mirrored in index.html. -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=${GA4_ID}"></script>
   <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','${GA4_ID}');</script>`;
 

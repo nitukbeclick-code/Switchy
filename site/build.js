@@ -2207,7 +2207,7 @@ function communityPage() {
     ['tv', 'טלוויזיה'], ['abroad', 'חו״ל'], ['help', 'עזרה בניתוק'],
   ];
   const chanBtns = channels
-    .map(([val, label], i) => `<button class="community__chan${i === 0 ? ' community__chan--active' : ''}" type="button" data-channel="${esc(val)}">${esc(label)}</button>`)
+    .map(([val, label], i) => `<button class="community__chan${i === 0 ? ' community__chan--active' : ''}" type="button" data-channel="${esc(val)}" aria-pressed="${i === 0 ? 'true' : 'false'}">${esc(label)}</button>`)
     .join('\n          ');
   const jsonLd = jsonForScript({ '@context': 'https://schema.org', '@graph': [
     { '@type': 'BreadcrumbList', itemListElement: [

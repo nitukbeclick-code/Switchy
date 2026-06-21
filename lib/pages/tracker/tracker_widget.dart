@@ -216,7 +216,7 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                         TextSpan(
                           text: '₪${planSaveYear(plan, appState.currentBill(plan.cat))}',
                           style: ffTheme.bodyMedium.copyWith(
-                              color: ffTheme.saving, fontWeight: FontWeight.w800),
+                              color: ffTheme.savingText, fontWeight: FontWeight.w800),
                         ),
                         const TextSpan(text: ' כבר מתחיל!'),
                       ],
@@ -496,7 +496,7 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                             children: [
                               Container(width: 6, height: 6, decoration: BoxDecoration(color: ffTheme.brandAccent, shape: BoxShape.circle)),
                               const SizedBox(width: 4),
-                              Text('פנויה עכשיו · תגובה ~5 דקות', style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccent, fontWeight: FontWeight.w600)),
+                              Text('פנויה עכשיו · תגובה ~5 דקות', style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w600)),
                             ],
                           ),
                         ],

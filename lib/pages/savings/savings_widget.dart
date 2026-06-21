@@ -486,7 +486,7 @@ class _PotentialDonutCard extends StatelessWidget {
                                   style: GoogleFonts.rubik(
                                       fontSize: 18,
                                       fontWeight: FontWeight.w800,
-                                      color: ffTheme.savingDark)),
+                                      color: ffTheme.savingText)),
                               Text('לשנה',
                                   style: ffTheme.labelSmall
                                       .copyWith(color: ffTheme.secondaryText)),
@@ -566,7 +566,7 @@ class _LegendRow extends StatelessWidget {
         const SizedBox(width: 6),
         Text(personalized ? '₪$amount' : '~₪$amount',
             style: ffTheme.labelMedium
-                .copyWith(color: ffTheme.savingDark, fontWeight: FontWeight.w800)),
+                .copyWith(color: ffTheme.savingText, fontWeight: FontWeight.w800)),
       ],
     );
   }
@@ -824,7 +824,7 @@ class _CategoryRow extends StatelessWidget {
                     ),
                     child: Text(personalized ? '₪${saving.annualSaving}/שנה' : '~₪${saving.annualSaving}/שנה',
                         style: GoogleFonts.rubik(
-                            fontSize: 12, fontWeight: FontWeight.w800, color: ffTheme.savingDark)),
+                            fontSize: 12, fontWeight: FontWeight.w800, color: ffTheme.savingText)),
                   )
                 else if (has)
                   Row(
@@ -926,7 +926,7 @@ class _RenewalRow extends StatelessWidget {
                           ],
                           Text('חוסך ₪$saving/שנה',
                               style: ffTheme.labelSmall.copyWith(
-                                  color: ffTheme.savingDark, fontWeight: FontWeight.w800)),
+                                  color: ffTheme.savingText, fontWeight: FontWeight.w800)),
                         ],
                       ),
                     ],

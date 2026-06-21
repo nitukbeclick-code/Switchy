@@ -602,7 +602,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                                           Text('₪${p.priceText}/${priceUnitShort(p)}', style: ffTheme.titleSmall.copyWith(color: ffTheme.primary)),
                                           const SizedBox(height: 3),
                                           if (pSave > 0)
-                                            Text('חוסך ₪$pSave/שנה', style: ffTheme.labelSmall.copyWith(color: ffTheme.savingDark, fontWeight: FontWeight.w700))
+                                            Text('חוסך ₪$pSave/שנה', style: ffTheme.labelSmall.copyWith(color: ffTheme.savingText, fontWeight: FontWeight.w700))
                                           else
                                             Text(p.plan, style: ffTheme.labelSmall, maxLines: 1, overflow: TextOverflow.ellipsis),
                                         ],

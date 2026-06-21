@@ -837,7 +837,7 @@ class _QuizWidgetState extends State<QuizWidget> {
                         ),
                         child: Text(top.label,
                             style: ffTheme.labelSmall
-                                .copyWith(color: ffTheme.brandAccent, fontWeight: FontWeight.w700)),
+                                .copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w700)),
                       ),
                     ],
                   ),
@@ -875,7 +875,7 @@ class _QuizWidgetState extends State<QuizWidget> {
                           const SizedBox(width: 8),
                           Text('חיסכון שנתי של ₪${top.annualSaving}',
                               style: ffTheme.labelMedium
-                                  .copyWith(color: ffTheme.savingDark, fontWeight: FontWeight.w800)),
+                                  .copyWith(color: ffTheme.savingText, fontWeight: FontWeight.w800)),
                         ],
                       ),
                     ),
@@ -901,7 +901,7 @@ class _QuizWidgetState extends State<QuizWidget> {
               icon: Icon(Icons.ios_share_rounded, size: 18, color: ffTheme.brandAccent),
               label: Text('שתף',
                   style: ffTheme.labelLarge
-                      .copyWith(color: ffTheme.brandAccent, fontWeight: FontWeight.w700)),
+                      .copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w700)),
             ),
           ),
 

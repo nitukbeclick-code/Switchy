@@ -232,7 +232,7 @@ class SettingsWidget extends StatelessWidget {
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(color: ffTheme.brandAccent.withValues(alpha: 0.2)),
                         ),
-                        child: Text('1.0.0', style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccent, fontWeight: FontWeight.w700)),
+                        child: Text('1.0.0', style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w700)),
                       ),
                     ],
                   ),
@@ -756,7 +756,7 @@ class _TelegramRowState extends State<_TelegramRow> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('טלגרם', style: ffTheme.titleSmall),
-                    Text('✅ מחובר', style: ffTheme.bodySmall.copyWith(color: ffTheme.brandAccent)),
+                    Text('✅ מחובר', style: ffTheme.bodySmall.copyWith(color: ffTheme.brandAccentText)),
                   ],
                 ),
               ),

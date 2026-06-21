@@ -294,7 +294,7 @@ class MatchesWidget extends StatelessWidget {
                             child: Text(
                               topReason,
                               style: ffTheme.labelSmall.copyWith(
-                                color: ffTheme.brandAccent,
+                                color: ffTheme.brandAccentText,
                                 fontWeight: FontWeight.w600,
                                 fontSize: 11,
                               ),
@@ -350,7 +350,7 @@ class MatchesWidget extends StatelessWidget {
                         Text(
                           'פרטים',
                           style: ffTheme.labelSmall.copyWith(
-                            color: ffTheme.brandAccent,
+                            color: ffTheme.brandAccentText,
                             fontWeight: FontWeight.w700,
                           ),
                         ),

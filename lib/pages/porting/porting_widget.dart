@@ -107,7 +107,7 @@ class _PortingWidgetState extends State<PortingWidget> {
                     children: [
                       Icon(Icons.info_outline_rounded, color: ffTheme.brandAccent, size: 18),
                       const SizedBox(width: 8),
-                      Text('כיצד עובד הניוד?', style: ffTheme.labelLarge.copyWith(color: ffTheme.brandAccent)),
+                      Text('כיצד עובד הניוד?', style: ffTheme.labelLarge.copyWith(color: ffTheme.brandAccentText)),
                     ],
                   ),
                   const SizedBox(height: 14),
@@ -127,7 +127,7 @@ class _PortingWidgetState extends State<PortingWidget> {
                                 child: Icon(item.$1, size: 17, color: ffTheme.brandAccent),
                               ),
                               const SizedBox(height: 5),
-                              Text(item.$2, style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccent), textAlign: TextAlign.center),
+                              Text(item.$2, style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccentText), textAlign: TextAlign.center),
                             ],
                           ),
                         ),

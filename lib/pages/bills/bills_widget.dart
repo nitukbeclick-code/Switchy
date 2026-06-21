@@ -542,7 +542,7 @@ class _SavingsRing extends StatelessWidget {
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(color: ffTheme.saving.withValues(alpha: 0.4)),
                   ),
-                  child: Text('₪$totalSavings חיסכון שנתי', style: ffTheme.labelMedium.copyWith(color: ffTheme.savingDark, fontWeight: FontWeight.w800)),
+                  child: Text('₪$totalSavings חיסכון שנתי', style: ffTheme.labelMedium.copyWith(color: ffTheme.savingText, fontWeight: FontWeight.w800)),
                 ),
               ],
             ),
@@ -934,7 +934,7 @@ class _BillCard extends StatelessWidget {
                     Text(category.name, style: ffTheme.titleSmall),
                     if (currentBill > 0 && yearlySave > 0)
                       Text('חיסכון פוטנציאלי: ₪$yearlySave/שנה',
-                          style: ffTheme.labelSmall.copyWith(color: ffTheme.savingDark, fontWeight: FontWeight.w700)),
+                          style: ffTheme.labelSmall.copyWith(color: ffTheme.savingText, fontWeight: FontWeight.w700)),
                     if (currentBill == 0)
                       Text('לא בשימוש', style: ffTheme.labelSmall),
                   ],

@@ -286,7 +286,7 @@ class _SectionLabel extends StatelessWidget {
             borderRadius: BorderRadius.circular(ffTheme.radiusPill),
           ),
           child: Text('$count',
-              style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccent, fontWeight: FontWeight.w800)),
+              style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w800)),
         ),
       ],
     );
@@ -575,7 +575,7 @@ class _Suggestions extends StatelessWidget {
                 child: GestureDetector(
                   onTap: onClearRecent,
                   child: Text('נקה',
-                      style: ffTheme.labelMedium.copyWith(color: ffTheme.brandAccent, fontWeight: FontWeight.w700)),
+                      style: ffTheme.labelMedium.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w700)),
                 ),
               ),
             ],
@@ -758,7 +758,7 @@ class _CheapestRow extends StatelessWidget {
                           ),
                           child: Text(catName,
                               style: ffTheme.labelSmall
-                                  .copyWith(color: ffTheme.brandAccent, fontWeight: FontWeight.w800)),
+                                  .copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w800)),
                         ),
                         const SizedBox(width: 6),
                         Flexible(

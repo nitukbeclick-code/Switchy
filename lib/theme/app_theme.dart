@@ -54,8 +54,15 @@ class AppColors {
   static const Color brandAccent = Color(0xFF16A34A); // green 600
   static const Color brandAccentDark = Color(0xFF15803D); // green 700 (gradient depth)
   static const Color brandAccentTint = Color(0xFFDCFCE7); // light green surface
+  // AA-safe ink for green TEXT/links on light glass. The fill hue (#16A34A)
+  // only reaches ~3:1 as small text — green 700 clears 4.5:1 on white, the
+  // tint chip, and the glass bg while still reading as the same brand green.
+  static const Color brandAccentText = Color(0xFF15803D); // green 700 — small-text/link
   static const Color saving = Color(0xFFF59E0B); // amber 500
   static const Color savingDark = Color(0xFFD97706); // amber 600
+  // AA-safe ink for amber VALUE TEXT on light glass. Amber 500/600 fail 4.5:1
+  // as normal text; amber 800 clears it while keeping the warm "value" read.
+  static const Color savingText = Color(0xFF92400E); // amber 800 — small savings text
 
   // ── Dark variant ──────────────────────────────────────────────────────────
   // NOT a colour flip — a cohesive night theme. Deep blue-ink surfaces, slate
@@ -169,6 +176,19 @@ class AppTheme {
       dark ? AppColors.darkBrandAccentTint : AppColors.brandAccentTint;
   Color get saving => dark ? AppColors.darkSaving : AppColors.saving;
   Color get savingDark => dark ? AppColors.darkSavingDark : AppColors.savingDark;
+
+  /// AA-safe green for small accent TEXT/links on glass. On dark the lifted
+  /// green 400 already clears 4.5:1, so it reuses [brandAccent]; on light it
+  /// drops to green 700 so links/labels read at ≥4.5:1 (the fill hue is too
+  /// light as small text). Use this for green TEXT, not for fills/borders/icons.
+  Color get brandAccentText =>
+      dark ? AppColors.darkBrandAccent : AppColors.brandAccentText;
+
+  /// AA-safe amber for small VALUE TEXT (savings figures, "best value") on
+  /// glass. On dark the lifted amber 400 clears AA; on light it drops to amber
+  /// 800 so small savings text reads at ≥4.5:1. Large display numerals can keep
+  /// [saving]/[savingDark] (≥3:1 at 18px+ bold).
+  Color get savingText => dark ? AppColors.darkSaving : AppColors.savingText;
 
   // ── Spacing scale — one shared rhythm for gaps, padding, insets ────────────
   // Use these instead of ad-hoc magic numbers so vertical/horizontal rhythm

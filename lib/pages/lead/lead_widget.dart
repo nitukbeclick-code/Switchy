@@ -287,7 +287,7 @@ class _LeadWidgetState extends State<LeadWidget> {
             child: Text(
               'שלחו פרטים ונציג יחזור אליכם בהקדם — בימי א׳–ה׳, 9:00–21:00',
               style: ffTheme.labelMedium.copyWith(
-                color: ffTheme.brandAccent,
+                color: ffTheme.brandAccentText,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -337,8 +337,8 @@ class _LeadWidgetState extends State<LeadWidget> {
                   ),
                   child: Column(
                     children: [
-                      Text('חוסך', style: ffTheme.labelSmall.copyWith(color: ffTheme.savingDark)),
-                      Text('₪$saveYear/שנה', style: ffTheme.titleSmall.copyWith(color: ffTheme.savingDark, fontWeight: FontWeight.w800)),
+                      Text('חוסך', style: ffTheme.labelSmall.copyWith(color: ffTheme.savingText)),
+                      Text('₪$saveYear/שנה', style: ffTheme.titleSmall.copyWith(color: ffTheme.savingText, fontWeight: FontWeight.w800)),
                     ],
                   ),
                 ),
@@ -362,7 +362,7 @@ class _LeadWidgetState extends State<LeadWidget> {
                   Flexible(
                     child: Text(
                       'כ-₪${(saveYear / 12).round()} חיסכון בחודש הראשון!',
-                      style: ffTheme.labelMedium.copyWith(color: ffTheme.savingDark, fontWeight: FontWeight.w700),
+                      style: ffTheme.labelMedium.copyWith(color: ffTheme.savingText, fontWeight: FontWeight.w700),
                       textAlign: TextAlign.center,
                     ),
                   ),

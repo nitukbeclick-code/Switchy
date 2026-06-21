@@ -810,12 +810,16 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                             Positioned(
                               top: 4,
                               left: 4,
-                              child: GestureDetector(
-                                onTap: () => setSheet(() { pendingType = null; pendingData = null; pendingDur = null; }),
-                                child: Container(
-                                  padding: const EdgeInsets.all(3),
-                                  decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
-                                  child: const Icon(Icons.close, color: Colors.white, size: 14),
+                              child: Semantics(
+                                button: true,
+                                label: 'הסר צירוף',
+                                child: GestureDetector(
+                                  onTap: () => setSheet(() { pendingType = null; pendingData = null; pendingDur = null; }),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(3),
+                                    decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
+                                    child: const ExcludeSemantics(child: Icon(Icons.close, color: Colors.white, size: 14)),
+                                  ),
                                 ),
                               ),
                             ),
@@ -1084,9 +1088,13 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                       hintTextDirection: TextDirection.rtl,
                       prefixIcon: _searchQuery.isEmpty
                           ? Icon(Icons.search_rounded, color: ffTheme.secondaryText, size: 18)
-                          : GestureDetector(
-                              onTap: () { _searchCtrl.clear(); setState(() => _searchQuery = ''); },
-                              child: Icon(Icons.close_rounded, color: ffTheme.secondaryText, size: 18),
+                          : Semantics(
+                              button: true,
+                              label: 'נקה חיפוש',
+                              child: GestureDetector(
+                                onTap: () { _searchCtrl.clear(); setState(() => _searchQuery = ''); },
+                                child: Icon(Icons.close_rounded, color: ffTheme.secondaryText, size: 18),
+                              ),
                             ),
                       contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       filled: true,

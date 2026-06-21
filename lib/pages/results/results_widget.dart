@@ -229,6 +229,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                       prefixIcon: appState.searchQuery.isNotEmpty
                           ? IconButton(
                               icon: const Icon(Icons.clear_rounded),
+                              tooltip: 'נקה חיפוש',
                               onPressed: () {
                                 _searchController.clear();
                                 appState.setSearch('');
@@ -279,7 +280,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                                 const SizedBox(width: 5),
                                 Text('עודכן היום',
                                     style: ffTheme.labelSmall.copyWith(
-                                        color: ffTheme.brandAccent,
+                                        color: ffTheme.brandAccentText,
                                         fontWeight: FontWeight.w700)),
                               ],
                             ),
@@ -557,7 +558,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                                       Text(
                                         'תחסוך ₪$topSave בשנה',
                                         style: ffTheme.bodySmall.copyWith(
-                                            color: ffTheme.saving,
+                                            color: ffTheme.savingText,
                                             fontWeight: FontWeight.w800),
                                       ),
                                     ],

@@ -336,6 +336,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
       leading: Navigator.canPop(context)
           ? IconButton(
               icon: const Icon(Icons.arrow_back_ios_rounded, color: Colors.white),
+              tooltip: 'חזרה',
               onPressed: () => context.safePop(),
             )
           : null,
@@ -501,7 +502,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                 children: [
                   Container(width: 6, height: 6, decoration: BoxDecoration(color: ffTheme.brandAccent, shape: BoxShape.circle)),
                   const SizedBox(width: 5),
-                  Text('בתהליך', style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccent, fontWeight: FontWeight.w600)),
+                  Text('בתהליך', style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w600)),
                 ],
               ),
             ),
@@ -636,7 +637,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
           if (actionLabel != null && onAction != null)
             GestureDetector(
               onTap: onAction,
-              child: Text(actionLabel, style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccent, fontWeight: FontWeight.w600)),
+              child: Text(actionLabel, style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w600)),
             ),
         ],
       ),
@@ -756,7 +757,7 @@ class _QuizChip extends StatelessWidget {
             ExcludeSemantics(child: Icon(icon, size: 13, color: ffTheme.brandAccent)),
             const SizedBox(width: 4),
           ],
-          Text(text, style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccent, fontWeight: FontWeight.w600)),
+          Text(text, style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w600)),
         ],
       ),
     );

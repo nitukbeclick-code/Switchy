@@ -42,7 +42,7 @@
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" />
   <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
   <noscript><link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" rel="stylesheet" /></noscript>
-  <link rel="stylesheet" href="styles.css?v=b0428f06" />
+  <link rel="stylesheet" href="styles.css?v=0fadae25" />
   <!-- Cookieless analytics (Plausible-style). Placeholder until configured — no cookies, no personal data. -->
   <script defer data-domain="switchy-ai.com" src="https://plausible.io/js/script.outbound-links.tagged-events.js"></script>
   <script>window.plausible=window.plausible||function(){(window.plausible.q=window.plausible.q||[]).push(arguments)};</script>
@@ -162,13 +162,13 @@
       <div class="container">
         <header class="section__head reveal"><span class="eyebrow">הצ׳אט הקהילתי</span><h2>מה מדברים עכשיו בקהילה</h2><p>פוסטים אחרונים מהקהילה. לפרסום, תגובות ושיתוף תמונה — הצטרפו דרך האפליקציה.</p></header>
         <div class="community__filter" role="group" aria-label="סינון לפי ערוץ">
-          <button class="community__chan community__chan--active" type="button" data-channel="all">הכול</button>
-          <button class="community__chan" type="button" data-channel="recommend">המלצות</button>
-          <button class="community__chan" type="button" data-channel="cellular">סלולר</button>
-          <button class="community__chan" type="button" data-channel="internet">אינטרנט</button>
-          <button class="community__chan" type="button" data-channel="tv">טלוויזיה</button>
-          <button class="community__chan" type="button" data-channel="abroad">חו״ל</button>
-          <button class="community__chan" type="button" data-channel="help">עזרה בניתוק</button>
+          <button class="community__chan community__chan--active" type="button" data-channel="all" aria-pressed="true">הכול</button>
+          <button class="community__chan" type="button" data-channel="recommend" aria-pressed="false">המלצות</button>
+          <button class="community__chan" type="button" data-channel="cellular" aria-pressed="false">סלולר</button>
+          <button class="community__chan" type="button" data-channel="internet" aria-pressed="false">אינטרנט</button>
+          <button class="community__chan" type="button" data-channel="tv" aria-pressed="false">טלוויזיה</button>
+          <button class="community__chan" type="button" data-channel="abroad" aria-pressed="false">חו״ל</button>
+          <button class="community__chan" type="button" data-channel="help" aria-pressed="false">עזרה בניתוק</button>
         </div>
         <div id="communityFeed" class="community__feed" aria-live="polite" aria-busy="true">
           <p class="booking__note">טוען דיונים מהקהילה…</p>

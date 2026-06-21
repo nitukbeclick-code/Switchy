@@ -112,7 +112,7 @@ class AccountWidget extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('הצטרפו לחוסך בחינם', style: ffTheme.titleSmall.copyWith(color: ffTheme.brandAccent)),
+                            Text('הצטרפו לחוסך בחינם', style: ffTheme.titleSmall.copyWith(color: ffTheme.brandAccentText)),
                             Text('שמרו תוצאות, עקבו אחר מחירים ועוד', style: ffTheme.bodySmall),
                           ],
                         ),
@@ -215,13 +215,13 @@ class AccountWidget extends StatelessWidget {
                           const SizedBox(height: 6),
                           Text(
                             ['ממתין לאישור', 'אישור מסלול', 'ניוד בעיצומו', 'כמעט שם!', 'הושלם'][appState.trackerStep.clamp(0, 4)],
-                            style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccent),
+                            style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccentText),
                           ),
                           const SizedBox(height: 10),
                           OutlinedButton(
                             onPressed: () => context.goNamed('Tracker'),
                             style: OutlinedButton.styleFrom(
-                              foregroundColor: ffTheme.brandAccent,
+                              foregroundColor: ffTheme.brandAccentText,
                               side: BorderSide(color: ffTheme.brandAccent),
                               minimumSize: const Size(double.infinity, 40),
                             ),
@@ -366,11 +366,11 @@ class AccountWidget extends StatelessWidget {
                           const SizedBox(width: 10),
                           Expanded(
                             child: Text('תקציב השאלון: ₪${appState.quizBudget}${appState.quizCat == 'abroad' ? '/חבילה' : '/חודש'}',
-                                style: ffTheme.bodyMedium.copyWith(color: ffTheme.brandAccent, fontWeight: FontWeight.w600)),
+                                style: ffTheme.bodyMedium.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w600)),
                           ),
                           GestureDetector(
                             onTap: () => context.goNamed('Results'),
-                            child: Text('לתוצאות', style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccent, fontWeight: FontWeight.w700)),
+                            child: Text('לתוצאות', style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w700)),
                           ),
                         ],
                       ),
@@ -386,7 +386,7 @@ class AccountWidget extends StatelessWidget {
                         const Spacer(),
                         GestureDetector(
                           onTap: () => context.goNamed('Results'),
-                          child: Text('כל המסלולים', style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccent, fontWeight: FontWeight.w700)),
+                          child: Text('כל המסלולים', style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w700)),
                         ),
                       ],
                     ),
@@ -435,7 +435,7 @@ class AccountWidget extends StatelessWidget {
                         const Spacer(),
                         GestureDetector(
                           onTap: () => context.pushNamed('Ratings'),
-                          child: Text('כל הדירוגים', style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccent, fontWeight: FontWeight.w700)),
+                          child: Text('כל הדירוגים', style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w700)),
                         ),
                       ],
                     ),

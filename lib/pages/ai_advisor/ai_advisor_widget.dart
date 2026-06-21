@@ -303,7 +303,7 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
                         child: Text(
                           q,
                           style: ffTheme.labelMedium.copyWith(
-                            color: ffTheme.brandAccent,
+                            color: ffTheme.brandAccentText,
                             fontWeight: FontWeight.w700,
                           ),
                           textAlign: TextAlign.center,
@@ -465,7 +465,7 @@ class _MessageBubble extends StatelessWidget {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text('ראה הכל', style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccent, fontWeight: FontWeight.w700)),
+                          Text('ראה הכל', style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w700)),
                           const SizedBox(width: 4),
                           Icon(Icons.arrow_back_ios_rounded, size: 11, color: ffTheme.brandAccent),
                         ],

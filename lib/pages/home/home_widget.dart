@@ -598,7 +598,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                   appState.setCategory(cat);
                   context.goNamed('Results');
                 },
-                child: Text('הכל ←', style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccent, fontWeight: FontWeight.w700)),
+                child: Text('הכל ←', style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w700)),
               ),
             ],
           ),
@@ -856,7 +856,7 @@ class _HomeWidgetState extends State<HomeWidget> {
               const Spacer(),
               GestureDetector(
                 onTap: () => context.goNamed('Community'),
-                child: Text('הכל ←', style: ffTheme.labelMedium.copyWith(color: ffTheme.brandAccent, fontWeight: FontWeight.w700)),
+                child: Text('הכל ←', style: ffTheme.labelMedium.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w700)),
               ),
             ],
           ),
@@ -908,7 +908,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                                     color: ffTheme.saving.withValues(alpha: 0.16),
                                     borderRadius: BorderRadius.circular(ffTheme.radiusSm),
                                   ),
-                                  child: Text(post.channel, style: ffTheme.labelSmall.copyWith(color: ffTheme.savingDark, fontSize: 10, fontWeight: FontWeight.w700)),
+                                  child: Text(post.channel, style: ffTheme.labelSmall.copyWith(color: ffTheme.savingText, fontSize: 10, fontWeight: FontWeight.w700)),
                                 ),
                                 const SizedBox(width: 6),
                                 Container(
@@ -1110,7 +1110,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                                 // Green active "tracking" cue.
                                 Container(width: 5, height: 5, decoration: BoxDecoration(color: ffTheme.brandAccent, shape: BoxShape.circle)),
                                 const SizedBox(width: 4),
-                                Text('עוקב', style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccent, fontSize: 10, fontWeight: FontWeight.w700)),
+                                Text('עוקב', style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccentText, fontSize: 10, fontWeight: FontWeight.w700)),
                               ],
                             ),
                           ],

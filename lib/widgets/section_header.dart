@@ -66,8 +66,9 @@ class SectionHeader extends StatelessWidget {
                         trailingLabel!,
                         style: ffTheme.labelMedium.copyWith(
                           // Green = ACTION: the trailing link reads as the
-                          // tappable affordance in the row.
-                          color: ffTheme.brandAccent,
+                          // tappable affordance in the row. Uses the AA-safe
+                          // text shade so the small link clears 4.5:1 on glass.
+                          color: ffTheme.brandAccentText,
                           fontWeight: FontWeight.w700,
                         ),
                       ),

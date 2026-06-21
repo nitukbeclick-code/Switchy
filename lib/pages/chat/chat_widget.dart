@@ -415,7 +415,7 @@ class _ChatWidgetState extends State<ChatWidget> {
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(color: ffTheme.brandAccent.withValues(alpha: 0.28)),
               ),
-              child: Text(_quickReplies[i], style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccent, fontWeight: FontWeight.w700)),
+              child: Text(_quickReplies[i], style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w700)),
             ),
           ),
         ),

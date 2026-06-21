@@ -350,7 +350,7 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
             children: [
               Container(width: 7, height: 7, decoration: BoxDecoration(color: ffTheme.brandAccent, shape: BoxShape.circle)),
               const SizedBox(width: 5),
-              Text('${available.length} זמינים • מ-₪$cheapest', style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccent, fontWeight: FontWeight.w700)),
+              Text('${available.length} זמינים • מ-₪$cheapest', style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w700)),
             ],
           ),
         ),
@@ -480,7 +480,7 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
-                        Text('ראה מסלולי ${isp.name}', style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccent, fontWeight: FontWeight.w700)),
+                        Text('ראה מסלולי ${isp.name}', style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w700)),
                         const SizedBox(width: 4),
                         Icon(Icons.arrow_forward_ios_rounded, size: 11, color: ffTheme.brandAccent),
                       ],
@@ -599,7 +599,7 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
                 children: [
                   Icon(Icons.auto_awesome_rounded, size: 15, color: ffTheme.brandAccent),
                   const SizedBox(width: 5),
-                  Text('המסלול המומלץ עבורך', style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccent, fontWeight: FontWeight.w800, fontSize: 13)),
+                  Text('המסלול המומלץ עבורך', style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w800, fontSize: 13)),
                   const Spacer(),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
@@ -630,13 +630,13 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
                             children: topReasons.map((r) => Container(
                               padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                               decoration: BoxDecoration(color: ffTheme.brandAccentTint, borderRadius: BorderRadius.circular(6)),
-                              child: Text(r, style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccent, fontSize: 11)),
+                              child: Text(r, style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccentText, fontSize: 11)),
                             )).toList(),
                           ),
                         ],
                         if (match.annualSaving > 0) ...[
                           const SizedBox(height: 4),
-                          Text('חיסכון שנתי: ₪${match.annualSaving}', style: ffTheme.labelSmall.copyWith(color: ffTheme.savingDark, fontWeight: FontWeight.w700)),
+                          Text('חיסכון שנתי: ₪${match.annualSaving}', style: ffTheme.labelSmall.copyWith(color: ffTheme.savingText, fontWeight: FontWeight.w700)),
                         ],
                       ],
                     ),

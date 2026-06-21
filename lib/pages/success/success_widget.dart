@@ -154,7 +154,7 @@ class _SuccessWidgetState extends State<SuccessWidget> {
                                 style: GoogleFonts.rubik(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white)),
                             if (save > 0)
                               Text('חוסך ₪$save/שנה',
-                                  style: ffTheme.labelSmall.copyWith(color: ffTheme.saving, fontWeight: FontWeight.w700)),
+                                  style: ffTheme.labelSmall.copyWith(color: ffTheme.savingText, fontWeight: FontWeight.w700)),
                           ],
                         ),
                       ],

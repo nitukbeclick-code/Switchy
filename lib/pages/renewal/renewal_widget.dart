@@ -466,7 +466,7 @@ class _PlanCard extends StatelessWidget {
                                   TextSpan(
                                       text: '₪${bestMatch.annualSaving}/שנה',
                                       style: ffTheme.bodySmall.copyWith(
-                                          color: ffTheme.savingDark, fontWeight: FontWeight.w800)),
+                                          color: ffTheme.savingText, fontWeight: FontWeight.w800)),
                                 ],
                               ),
                             ),
@@ -875,11 +875,15 @@ class _AddPlanSheetState extends State<_AddPlanSheet> {
                       ),
                       const Spacer(),
                       if (_promoEndDate != null)
-                        GestureDetector(
-                          onTap: () =>
-                              setState(() => _promoEndDate = null),
-                          child: Icon(Icons.close_rounded,
-                              size: 16, color: ffTheme.secondaryText),
+                        Semantics(
+                          button: true,
+                          label: 'נקה תאריך סיום מבצע',
+                          child: GestureDetector(
+                            onTap: () =>
+                                setState(() => _promoEndDate = null),
+                            child: Icon(Icons.close_rounded,
+                                size: 16, color: ffTheme.secondaryText),
+                          ),
                         ),
                     ],
                   ),

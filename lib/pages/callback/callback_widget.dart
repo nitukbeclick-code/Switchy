@@ -231,7 +231,7 @@ class _CallbackWidgetState extends State<CallbackWidget> {
                           child: Text(
                             'מעדיפים פגישת וידאו? קבעו שיחת Zoom עם נציג',
                             style: ffTheme.labelMedium.copyWith(
-                                color: ffTheme.brandAccent, fontWeight: FontWeight.w700),
+                                color: ffTheme.brandAccentText, fontWeight: FontWeight.w700),
                           ),
                         ),
                       ],
@@ -431,7 +431,7 @@ class _CallbackWidgetState extends State<CallbackWidget> {
                   children: [
                     Icon(Icons.access_time_rounded, size: 16, color: ffTheme.brandAccent),
                     const SizedBox(width: 8),
-                    Text('ימי א׳–ה׳, 9:00–21:00', style: ffTheme.labelMedium.copyWith(color: ffTheme.brandAccent, fontWeight: FontWeight.w600)),
+                    Text('ימי א׳–ה׳, 9:00–21:00', style: ffTheme.labelMedium.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w600)),
                   ],
                 ),
               ).animate().fadeIn(delay: 450.ms),

@@ -696,6 +696,80 @@ function jsonLd(c) {
   return jsonForScript({ '@context': 'https://schema.org', '@graph': graph });
 }
 
+// Kamaze-style at-a-glance comparison table for a category. Columns adapt per
+// category: cellular shows connection-fee/volume/minutes/abroad; internet shows
+// speed/install/range-extender; tv & triple show install. Everything comes from
+// the exported plans.json — promo price (price) vs the price-after-period
+// (after, else "קבוע"), specs (volume/minutes/speed), optional fees
+// (setupFee/equipment/rangeExtender), and feats (the qualitative "מידע נוסף").
+// Rendered ABOVE the detailed cards as a quick scan; each row links to the
+// provider page and a WhatsApp CTA, mirroring how "כמה זה" lays it out.
+function comparisonTable(plans, catSlug) {
+  if (!plans || plans.length < 2) return '';
+  const spec = (p, ...keys) => { for (const k of keys) { const v = (p.specs || {})[k]; if (v) return esc(v); } return ''; };
+  const afterCell = (p) => (p.after && p.after > p.price)
+    ? `<b class="cmp__jump">₪${p.after}</b>`
+    : `<span class="cmp__fixed">קבוע</span>`;
+  const info = (p) => {
+    const f = (p.feats || []).filter((x) => x && !/^\d|GB|דק|SMS|מגה|Mb|^5G$/i.test(x));
+    const t = f.length ? f.join(' · ') : (p.notes || '');
+    return t ? `<span class="cmp__info">${esc(t)}</span>` : '—';
+  };
+  const waHref = (p) => 'https://wa.me/972505037537?text=' + encodeURIComponent('היי, מעניין אותי ' + p.provider + ' - ' + p.plan);
+  const prov = (p) => `<a class="cmp__prov" href="provider-${providerSlug(p.provider)}.html">${providerLogo(p.provider, 26)}<span>${esc(p.provider)}</span></a>`;
+  const name = (p) => `<b class="cmp__name">${esc(p.plan)}</b>`;
+  const price = (p) => `<b>₪${priceText(p)}</b>`;
+  let head, row;
+  if (catSlug === 'internet') {
+    head = ['ספק', 'חבילה', 'מחיר מבצע', 'מחיר אחרי תקופה', 'מהירות', 'התקנה', 'מגדיל טווח', 'מידע נוסף'];
+    row = (p) => [prov(p), name(p), price(p), afterCell(p), spec(p, 'מהירות', 'גלישה') || '—', esc(p.setupFee || '') || spec(p, 'התקנה') || '—', esc(p.rangeExtender || '') || spec(p, 'מגדיל טווח') || '—', info(p)];
+  } else if (catSlug === 'tv' || catSlug === 'triple') {
+    head = ['ספק', 'חבילה', 'מחיר מבצע', 'מחיר אחרי תקופה', 'התקנה', 'מידע נוסף'];
+    row = (p) => [prov(p), name(p), price(p), afterCell(p), esc(p.setupFee || '') || spec(p, 'התקנה') || '—', info(p)];
+  } else if (catSlug === 'abroad') {
+    head = ['ספק', 'חבילה', 'מחיר', 'נפח', 'תוקף', 'מידע נוסף'];
+    row = (p) => [prov(p), name(p), price(p), spec(p, 'נתונים', 'נפח') || '—', spec(p, 'תוקף', 'ימים') || '—', info(p)];
+  } else { // cellular (default)
+    head = ['ספק', 'חבילה', 'מחיר מבצע', 'מחיר אחרי תקופה', 'דמי חיבור', 'נפח', 'דקות/SMS', 'חו״ל', 'מידע נוסף'];
+    row = (p) => {
+      const sms = spec(p, 'SMS');
+      const mins = [spec(p, 'דקות'), sms ? sms + ' SMS' : ''].filter(Boolean).join(' · ') || '—';
+      const abroad = p.hasAbroad ? (spec(p, 'חו״ל', 'חו"ל') || '✓') : '—';
+      return [prov(p), name(p), price(p), afterCell(p), esc(p.setupFee || '') || 'אין', spec(p, 'נתונים', 'נפח') || '—', mins, abroad, info(p)];
+    };
+  }
+  // Highlight the cheapest *regular* plan (plans are price-sorted, so that's the
+  // first one whose kind is 'regular') — a data-only/kosher SIM may be cheaper but
+  // isn't a like-for-like value anchor, so it never gets the "best value" tint.
+  const bestIdx = plans.length > 2 ? Math.max(0, plans.findIndex((p) => (p.kind || 'regular') === 'regular')) : -1;
+  // Build every row's cells first, then drop any non-core column that is empty
+  // for ALL plans (e.g. internet "מגדיל טווח" before fees are exported) so a
+  // category never shows a column of dashes. Columns 0–2 (provider/plan/price)
+  // are always kept; the table auto-grows columns once their data lands.
+  const rowData = plans.map(row);
+  const keep = head.map((_, ci) => ci < 3 || rowData.some((r) => r[ci] && r[ci] !== '—'));
+  const ths = head.map((h, i) => keep[i] ? `<th${i === 2 || i === 3 ? ' class="cmp__num"' : ''}>${esc(h)}</th>` : '').join('') + '<th class="cmp__cta" aria-label="פנייה"></th>';
+  const trs = plans.map((p, i) => {
+    const cells = rowData[i].map((cell, ci) => keep[ci] ? `<td data-th="${esc(head[ci])}"${ci === 2 || ci === 3 ? ' class="cmp__num"' : ''}>${cell}</td>` : '').join('');
+    const cta = `<td class="cmp__cta"><a href="${waHref(p)}" target="_blank" rel="noopener" aria-label="${esc('מעוניין/ת ב' + p.provider + ' ' + p.plan + ' בוואטסאפ')}" title="פנייה בוואטסאפ">${svgIcon('chat')}</a></td>`;
+    return `              <tr${i === bestIdx ? ' class="cmp__best"' : ''}>${cells}${cta}</tr>`;
+  }).join('\n');
+  return `
+    <section class="section section--tight" id="compare-table" aria-label="טבלת השוואת מחירים">
+      <div class="container">
+        <header class="section__head reveal"><span class="eyebrow">השוואה מהירה</span><h2>טבלת השוואת מחירים</h2><p>כל המסלולים במבט אחד — מחיר מבצע מול המחיר אחרי תקופת המבצע, ומה כלול. ממוין מהזול ביותר.</p></header>
+        <div class="cmp-wrap reveal" role="region" aria-label="טבלת השוואה — ניתן לגלול" tabindex="0">
+          <table class="cmp">
+            <thead><tr>${ths}</tr></thead>
+            <tbody>
+${trs}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>`;
+}
+
 function page(c) {
   const url = `${SITE}/${c.slug}.html`;
   const bullets = c.bullets.map(([icon, h, p]) => `        <article class="feature feature--check reveal"><span class="feature__icon">${iconFor(icon)}</span><h3>${esc(h)}</h3><p>${esc(p)}</p></article>`).join('\n');
@@ -768,9 +842,11 @@ ${nav}
       </div>
     </section>
 
+${comparisonTable(catPlans, c.slug)}
+
     <section class="section" id="plans">
       <div class="container">
-        <header class="section__head reveal"><span class="eyebrow">${catPlans.length} מסלולים</span><h2>כל מסלולי ה${esc(c.name)}</h2><p>מהזול ביותר — מחירים מעודכנים מכל החברות.</p></header>
+        <header class="section__head reveal"><span class="eyebrow">${catPlans.length} מסלולים</span><h2>כל המסלולים — בפירוט מלא</h2><p>אותם מסלולים כמו בטבלה, עם כל הפרטים וכפתור פנייה ישיר.</p></header>
         <div class="plan-grid">
       ${planCards}
         </div>

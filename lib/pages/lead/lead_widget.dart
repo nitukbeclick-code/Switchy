@@ -128,6 +128,13 @@ class _LeadWidgetState extends State<LeadWidget> {
                 },
               ).animate(delay: 120.ms).fadeIn().slideY(begin: 0.05),
 
+              const SizedBox(height: 8),
+
+              // Data-use reassurance — directly under the phone field, where the
+              // hesitation lives. Complements (doesn't duplicate) the
+              // availability banner + the "what happens next" timeline.
+              _buildPhonePrivacyNote(ffTheme),
+
               const SizedBox(height: 14),
 
               // Email field (optional)
@@ -170,9 +177,11 @@ class _LeadWidgetState extends State<LeadWidget> {
               _consentPanel(ffTheme),
               const SizedBox(height: 16),
 
-              // Submit button
+              // Submit button — the green ACTION gradient (AppColors.primary is
+              // the const-ink sentinel AppButton maps to the theme-aware accent
+              // gradient, so the CTA stays vivid in dark too).
               AppButton(
-                text: _isSubmitting ? 'שולח...' : 'שלחו פרטים',
+                text: _isSubmitting ? 'שולח...' : 'קבלו המלצה אישית — נציג יחזור אליכם היום ←',
                 onPressed: _isSubmitting ? () async {} : () async {
                   if (!_formKey.currentState!.validate()) return;
                   if (!_acceptTerms || !_acceptPrivacy) {
@@ -239,7 +248,7 @@ class _LeadWidgetState extends State<LeadWidget> {
                 
                   width: double.infinity,
                   height: 56,
-                  color: _isSubmitting ? ffTheme.alternate : ffTheme.primary,
+                  color: AppColors.primary,
                   textStyle: ffTheme.titleMedium.copyWith(color: Colors.white),
                   borderRadius: BorderRadius.circular(18),
                 
@@ -271,7 +280,7 @@ class _LeadWidgetState extends State<LeadWidget> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Live "we're open" dot — a gentle breathing glow, green = available.
+          // "We're open" dot — green = available.
           Container(
             width: 8, height: 8,
             decoration: BoxDecoration(
@@ -279,14 +288,13 @@ class _LeadWidgetState extends State<LeadWidget> {
               shape: BoxShape.circle,
               boxShadow: [BoxShadow(color: ffTheme.brandAccent.withValues(alpha: 0.5), blurRadius: 6, spreadRadius: 1)],
             ),
-          ).animate(onPlay: (c) => c.repeat(reverse: true))
-            .scale(begin: const Offset(1, 1), end: const Offset(1.4, 1.4), duration: 900.ms, curve: Curves.easeInOut),
+          ),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
               'שלחו פרטים ונציג יחזור אליכם בהקדם — בימי א׳–ה׳, 9:00–21:00',
               style: ffTheme.labelMedium.copyWith(
-                color: ffTheme.brandAccent,
+                color: ffTheme.brandAccentText,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -296,6 +304,41 @@ class _LeadWidgetState extends State<LeadWidget> {
     ).animate().fadeIn(duration: 350.ms);
   }
 
+  // Three honest reassurances next to the phone field: no sharing with
+  // providers, callback via WhatsApp/phone, data encrypted. Marked decorative
+  // (icon-only) so screen readers hear only the copy.
+  Widget _buildPhonePrivacyNote(AppTheme ffTheme) {
+    final items = [
+      (Icons.shield_outlined, 'לא נשתף את המספר עם ספקים'),
+      (Icons.chat_bubble_outline_rounded, 'נחזור בוואטסאפ או בטלפון'),
+      (Icons.lock_outline_rounded, 'הנתונים מוצפנים'),
+    ];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (final item in items)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ExcludeSemantics(
+                  child: Icon(item.$1, size: 14, color: ffTheme.secondaryText),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    item.$2,
+                    style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText),
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
+    ).animate(delay: 140.ms).fadeIn();
+  }
+
   Widget _buildPlanCard(Plan plan, AppState appState, AppTheme ffTheme) {
     final bill = appState.currentBill(plan.cat);
     final saveYear = planSaveYear(plan, bill);
@@ -303,7 +346,7 @@ class _LeadWidgetState extends State<LeadWidget> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [ffTheme.accent1, Colors.white],
+          colors: [ffTheme.accent1, ffTheme.cardSurface],
           begin: Alignment.topRight,
           end: Alignment.bottomLeft,
         ),
@@ -336,8 +379,8 @@ class _LeadWidgetState extends State<LeadWidget> {
                   ),
                   child: Column(
                     children: [
-                      Text('חוסך', style: ffTheme.labelSmall.copyWith(color: ffTheme.savingDark)),
-                      Text('₪$saveYear/שנה', style: ffTheme.titleSmall.copyWith(color: ffTheme.savingDark, fontWeight: FontWeight.w800)),
+                      Text('חוסך', style: ffTheme.labelSmall.copyWith(color: ffTheme.savingText)),
+                      Text('₪$saveYear/שנה', style: ffTheme.titleSmall.copyWith(color: ffTheme.savingText, fontWeight: FontWeight.w800)),
                     ],
                   ),
                 ),
@@ -361,7 +404,7 @@ class _LeadWidgetState extends State<LeadWidget> {
                   Flexible(
                     child: Text(
                       'כ-₪${(saveYear / 12).round()} חיסכון בחודש הראשון!',
-                      style: ffTheme.labelMedium.copyWith(color: ffTheme.savingDark, fontWeight: FontWeight.w700),
+                      style: ffTheme.labelMedium.copyWith(color: ffTheme.savingText, fontWeight: FontWeight.w700),
                       textAlign: TextAlign.center,
                     ),
                   ),
@@ -392,7 +435,7 @@ class _LeadWidgetState extends State<LeadWidget> {
               margin: EdgeInsets.only(right: opt.$1 != 'tomorrow' ? 8 : 0),
               padding: const EdgeInsets.symmetric(vertical: 10),
               decoration: BoxDecoration(
-                color: selected ? ffTheme.brandAccent : Colors.white,
+                color: selected ? ffTheme.brandAccent : ffTheme.cardSurface,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: selected ? ffTheme.brandAccent : ffTheme.alternate, width: selected ? 1.5 : 1),
                 boxShadow: selected ? [BoxShadow(color: ffTheme.brandAccent.withValues(alpha: 0.28), blurRadius: 10, offset: const Offset(0, 3))] : [],
@@ -419,7 +462,7 @@ class _LeadWidgetState extends State<LeadWidget> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ffTheme.cardSurface,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: ffTheme.alternate),
       ),
@@ -441,7 +484,7 @@ class _LeadWidgetState extends State<LeadWidget> {
       hintText: hint,
       prefixIcon: Icon(icon, color: ffTheme.secondaryText, size: 20),
       filled: true,
-      fillColor: Colors.white,
+      fillColor: ffTheme.cardSurface,
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.alternate)),
       enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.alternate)),
       focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.brandAccent, width: 1.5)),

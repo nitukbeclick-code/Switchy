@@ -109,7 +109,7 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
               
                 width: double.infinity,
                 height: 52,
-                color: ffTheme.primary,
+                color: AppColors.primary,
                 textStyle: ffTheme.titleSmall.copyWith(color: Colors.white),
                 borderRadius: BorderRadius.circular(14),
               
@@ -142,8 +142,11 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
       width: double.infinity,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: LinearGradient(colors: [ffTheme.primary, ffTheme.tertiary]),
+        // Fixed ink hero (premium dark) — const ink tokens stay dark in both
+        // themes so the white content keeps its contrast.
+        gradient: const LinearGradient(colors: [AppColors.primary, AppColors.tertiary]),
         borderRadius: BorderRadius.circular(18),
+        boxShadow: ffTheme.shadowLifted,
       ),
       child: Row(
         children: [
@@ -209,7 +212,7 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
               decoration: InputDecoration(
                 hintText: 'תל אביב, חיפה, ירושלים...',
                 filled: true,
-                fillColor: Colors.white,
+                fillColor: ffTheme.cardSurface,
                 prefixIcon: const Icon(Icons.location_city_rounded),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                 enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
@@ -253,7 +256,7 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
           decoration: InputDecoration(
             hintText: 'רחוב דיזנגוף 99',
             filled: true,
-            fillColor: Colors.white,
+            fillColor: ffTheme.cardSurface,
             prefixIcon: const Icon(Icons.home_rounded),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
             enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
@@ -284,7 +287,7 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
                 duration: const Duration(milliseconds: 200),
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
                 decoration: BoxDecoration(
-                  color: selected ? ffTheme.brandAccent : Colors.white,
+                  color: selected ? ffTheme.brandAccent : ffTheme.cardSurface,
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(color: selected ? ffTheme.brandAccent : ffTheme.alternate, width: selected ? 1.5 : 1),
                 ),
@@ -345,10 +348,9 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(width: 7, height: 7, decoration: BoxDecoration(color: ffTheme.brandAccent, shape: BoxShape.circle))
-                  .animate(onPlay: (c) => c.repeat(reverse: true)).scale(begin: const Offset(1, 1), end: const Offset(1.3, 1.3), duration: 800.ms, curve: Curves.easeInOut),
+              Container(width: 7, height: 7, decoration: BoxDecoration(color: ffTheme.brandAccent, shape: BoxShape.circle)),
               const SizedBox(width: 5),
-              Text('${available.length} זמינים • מ-₪$cheapest', style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccent, fontWeight: FontWeight.w700)),
+              Text('${available.length} זמינים • מ-₪$cheapest', style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w700)),
             ],
           ),
         ),
@@ -384,12 +386,12 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ffTheme.cardSurface,
         borderRadius: BorderRadius.circular(14),
         border: isBest
             ? Border.all(color: ffTheme.saving, width: 2)
             : Border.all(color: isAvailable ? ffTheme.alternate : ffTheme.alternate.withValues(alpha: 0.5)),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 2))],
+        boxShadow: ffTheme.shadowSoft,
       ),
       child: Column(
         children: [
@@ -478,7 +480,7 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
-                        Text('ראה מסלולי ${isp.name}', style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccent, fontWeight: FontWeight.w700)),
+                        Text('ראה מסלולי ${isp.name}', style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w700)),
                         const SizedBox(width: 4),
                         Icon(Icons.arrow_forward_ios_rounded, size: 11, color: ffTheme.brandAccent),
                       ],
@@ -502,8 +504,9 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        gradient: LinearGradient(colors: [ffTheme.primary, ffTheme.tertiary]),
+        gradient: const LinearGradient(colors: [AppColors.primary, AppColors.tertiary]),
         borderRadius: BorderRadius.circular(14),
+        boxShadow: ffTheme.shadowCard,
       ),
       child: Column(
         children: [
@@ -537,13 +540,13 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
                 context.pushNamed('Results');
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: ffTheme.secondary,
-                foregroundColor: ffTheme.primaryDark,
+                backgroundColor: AppColors.secondary,
+                foregroundColor: AppColors.primaryDark,
                 elevation: 0,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 padding: const EdgeInsets.symmetric(vertical: 12),
               ),
-              child: Text('השווה מסלולי אינטרנט', style: ffTheme.labelMedium.copyWith(color: ffTheme.primaryDark, fontWeight: FontWeight.w800)),
+              child: Text('השווה מסלולי אינטרנט', style: ffTheme.labelMedium.copyWith(color: AppColors.primaryDark, fontWeight: FontWeight.w800)),
             ),
           ),
         ],
@@ -576,7 +579,7 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
       child: Container(
         margin: const EdgeInsets.only(top: 8, bottom: 8),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: ffTheme.cardSurface,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: ffTheme.brandAccent.withValues(alpha: 0.30), width: 1.5),
           boxShadow: [BoxShadow(color: ffTheme.brandAccent.withValues(alpha: 0.10), blurRadius: 14, offset: const Offset(0, 4))],
@@ -596,7 +599,7 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
                 children: [
                   Icon(Icons.auto_awesome_rounded, size: 15, color: ffTheme.brandAccent),
                   const SizedBox(width: 5),
-                  Text('המסלול המומלץ עבורך', style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccent, fontWeight: FontWeight.w800, fontSize: 13)),
+                  Text('המסלול המומלץ עבורך', style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w800, fontSize: 13)),
                   const Spacer(),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
@@ -627,13 +630,13 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
                             children: topReasons.map((r) => Container(
                               padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                               decoration: BoxDecoration(color: ffTheme.brandAccentTint, borderRadius: BorderRadius.circular(6)),
-                              child: Text(r, style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccent, fontSize: 11)),
+                              child: Text(r, style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccentText, fontSize: 11)),
                             )).toList(),
                           ),
                         ],
                         if (match.annualSaving > 0) ...[
                           const SizedBox(height: 4),
-                          Text('חיסכון שנתי: ₪${match.annualSaving}', style: ffTheme.labelSmall.copyWith(color: ffTheme.savingDark, fontWeight: FontWeight.w700)),
+                          Text('חיסכון שנתי: ₪${match.annualSaving}', style: ffTheme.labelSmall.copyWith(color: ffTheme.savingText, fontWeight: FontWeight.w700)),
                         ],
                       ],
                     ),

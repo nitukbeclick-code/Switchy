@@ -112,6 +112,7 @@ class AppState extends ChangeNotifier {
       _myPlans.addAll(list.map((e) => TrackedPlan.fromJson((e as Map).cast<String, dynamic>())));
     }
     _renewalReminders = p.getBool('renewalReminders') ?? false;
+    _themeMode = _themeModeFromKey(p.getString('themeMode'));
     _dismissedNotifications.addAll(p.getStringList('dismissedNotifications') ?? const []);
     // Advisor history
     final advisorHistoryJson = p.getString('advisorHistory');
@@ -275,6 +276,9 @@ class AppState extends ChangeNotifier {
         case 'renewalReminders':
           await p.setBool('renewalReminders', _renewalReminders);
           break;
+        case 'themeMode':
+          await p.setString('themeMode', _themeModeKey(_themeMode));
+          break;
         case 'dismissedNotifications':
           await p.setStringList('dismissedNotifications', _dismissedNotifications.toList());
           break;
@@ -311,8 +315,32 @@ class AppState extends ChangeNotifier {
     'meeting', 'telegram', 'supportTicket',
     'trackerStep', 'watchedPlans', 'recentlyViewed', 'recentSearches',
     'userReviews', 'likedPosts', 'bookmarkedPosts', 'myPlans',
-    'renewalReminders', 'dismissedNotifications', 'prefs', 'seenOnboarding',
+    'renewalReminders', 'themeMode', 'dismissedNotifications', 'prefs',
+    'seenOnboarding',
   };
+
+  // ── Theme-mode (de)serialization ──────────────────────────────────────────
+  static String _themeModeKey(ThemeMode m) {
+    switch (m) {
+      case ThemeMode.light:
+        return 'light';
+      case ThemeMode.dark:
+        return 'dark';
+      case ThemeMode.system:
+        return 'system';
+    }
+  }
+
+  static ThemeMode _themeModeFromKey(String? k) {
+    switch (k) {
+      case 'light':
+        return ThemeMode.light;
+      case 'dark':
+        return ThemeMode.dark;
+      default:
+        return ThemeMode.system;
+    }
+  }
   void _persist() {
     for (final k in _lightGroups) {
       _markDirty(k);
@@ -678,6 +706,12 @@ class AppState extends ChangeNotifier {
   bool _renewalReminders = false;
   bool get renewalReminders => _renewalReminders;
   void setRenewalReminders(bool v) { _renewalReminders = v; notifyListeners(); _persist(); }
+
+  // Theme mode (system/light/dark) — persisted so the app reopens in the user's
+  // chosen appearance. Stored as a string key; defaults to follow the OS.
+  ThemeMode _themeMode = ThemeMode.system;
+  ThemeMode get themeMode => _themeMode;
+  void setThemeMode(ThemeMode v) { _themeMode = v; notifyListeners(); _persist(); }
 
   void addMyPlan({
     required String category,

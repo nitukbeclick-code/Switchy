@@ -17,6 +17,10 @@ class MatchesWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ffTheme = AppTheme.of(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    // The header stays a dark ink band in both modes (ffTheme.primary resolves
+    // to off-white ink on dark, so it can't be used as the bar fill).
+    final headerColor = isDark ? AppColors.darkSurface : ffTheme.primary;
     final appState = Provider.of<AppState>(context);
 
     // One source of truth: the same engine figures as the home hero, the
@@ -42,7 +46,8 @@ class MatchesWidget extends StatelessWidget {
     return Scaffold(
       backgroundColor: ffTheme.background,
       appBar: AppBar(
-        backgroundColor: ffTheme.primary,
+        backgroundColor: headerColor,
+        foregroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
@@ -233,12 +238,15 @@ class MatchesWidget extends StatelessWidget {
                 ),
               ),
               const Spacer(),
-              // Match score badge
+              // Match score badge — green = ACTION/match signal, rendered as the
+              // accent gradient with a soft glow so it reads as the win state on
+              // both light and dark surfaces.
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3),
                 decoration: BoxDecoration(
-                  color: ffTheme.primary,
+                  gradient: ffTheme.accentGradient,
                   borderRadius: BorderRadius.circular(20),
+                  boxShadow: ffTheme.shadowAccent,
                 ),
                 child: Text(
                   '${match.scorePct}% התאמה',
@@ -279,13 +287,14 @@ class MatchesWidget extends StatelessWidget {
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Icon(Icons.check_circle_rounded, size: 13, color: ffTheme.primary),
+                          // Green = the affirmative "why it fits" tell.
+                          Icon(Icons.check_circle_rounded, size: 13, color: ffTheme.brandAccent),
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
                               topReason,
                               style: ffTheme.labelSmall.copyWith(
-                                color: ffTheme.primary,
+                                color: ffTheme.brandAccentText,
                                 fontWeight: FontWeight.w600,
                                 fontSize: 11,
                               ),
@@ -301,8 +310,10 @@ class MatchesWidget extends StatelessWidget {
                             ? '₪${match.annualSaving}'
                             : '~₪${match.annualSaving}',
                         label: personalized ? 'חיסכון לשנה' : 'הערכה לשנה',
-                        backgroundColor: AppColors.saving.withValues(alpha: 0.14),
-                        textColor: AppColors.savingDark,
+                        // Amber = VALUE. Theme-aware so the savings badge holds
+                        // contrast on both the glass-white and slate surfaces.
+                        backgroundColor: ffTheme.saving.withValues(alpha: 0.14),
+                        textColor: ffTheme.savingDark,
                       ),
                     ],
                   ],
@@ -328,7 +339,9 @@ class MatchesWidget extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     decoration: BoxDecoration(
-                      color: ffTheme.accent1,
+                      // Green = ACTION: the "details" affordance tinted to the
+                      // brand accent so the navigational cue is consistent.
+                      color: ffTheme.brandAccent.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(ffTheme.radiusSm),
                     ),
                     child: Row(
@@ -337,12 +350,12 @@ class MatchesWidget extends StatelessWidget {
                         Text(
                           'פרטים',
                           style: ffTheme.labelSmall.copyWith(
-                            color: ffTheme.primary,
+                            color: ffTheme.brandAccentText,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
                         const SizedBox(width: 2),
-                        Icon(Icons.arrow_back_ios_new_rounded, size: 10, color: ffTheme.primary),
+                        Icon(Icons.arrow_back_ios_new_rounded, size: 10, color: ffTheme.brandAccent),
                       ],
                     ),
                   ),

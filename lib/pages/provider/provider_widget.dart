@@ -8,6 +8,7 @@ import '../../app_state.dart';
 import '../../models.dart';
 import '../../data.dart';
 import '../../components/logo_widget/logo_widget.dart';
+import '../../widgets/pressable.dart';
 import '../../services/recommendation_engine.dart';
 import '../../services/provider_ratings.dart';
 import '../../services/backend/local_backend.dart';
@@ -431,21 +432,15 @@ class _BestMatchCard extends StatelessWidget {
     final topReason =
         match.reasons.isNotEmpty ? match.reasons.first : match.plan.plan;
 
-    return GestureDetector(
+    return Pressable(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: ffTheme.cardSurface,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: ffTheme.primary.withValues(alpha: 0.25)),
-          boxShadow: [
-            BoxShadow(
-              color: ffTheme.primary.withValues(alpha: 0.08),
-              blurRadius: 12,
-              offset: const Offset(0, 3),
-            ),
-          ],
+          border: Border.all(color: ffTheme.brandAccent.withValues(alpha: 0.30)),
+          boxShadow: ffTheme.shadowCard,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -466,7 +461,9 @@ class _BestMatchCard extends StatelessWidget {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: ffTheme.primary,
+                    // Match score is an ACTION signal → green, legible in both
+                    // themes (white ink on green).
+                    gradient: ffTheme.accentGradient,
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
@@ -574,16 +571,10 @@ class _RatingPanel extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ffTheme.cardSurface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: ffTheme.alternate),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        boxShadow: ffTheme.shadowSoft,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -716,9 +707,9 @@ class _PlanCard extends StatelessWidget {
       button: true,
       label: 'פתח את פרטי המסלול ${plan.plan}',
       child: Material(
-      color: Colors.white,
+      color: ffTheme.cardSurface,
       borderRadius: BorderRadius.circular(14),
-      shadowColor: Colors.black.withValues(alpha: 0.08),
+      shadowColor: ffTheme.dark ? Colors.black : Colors.black.withValues(alpha: 0.08),
       elevation: 1,
       child: InkWell(
         onTap: onTap,
@@ -726,7 +717,7 @@ class _PlanCard extends StatelessWidget {
         child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: ffTheme.cardSurface,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: ffTheme.alternate),
         ),
@@ -834,16 +825,10 @@ class _CommunityCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ffTheme.cardSurface,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: ffTheme.alternate),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 6,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        boxShadow: ffTheme.shadowSoft,
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,

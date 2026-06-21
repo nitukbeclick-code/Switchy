@@ -161,7 +161,12 @@ class _Hero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: BoxDecoration(color: ffTheme.primaryDark),
+      decoration: BoxDecoration(
+        // The premium ink hero: a soft top-right→bottom-left wash with a lifted
+        // shadow so it reads as the page's "premium" surface, not a flat block.
+        gradient: ffTheme.brandGradient,
+        boxShadow: ffTheme.shadowSoft,
+      ),
       child: SafeArea(
         bottom: false,
         child: Padding(
@@ -418,16 +423,7 @@ class _PotentialDonutCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final sections = <PieChartSectionData>[];
-    for (var i = 0; i < opportunities.length; i++) {
-      final cs = opportunities[i];
-      sections.add(PieChartSectionData(
-        value: cs.annualSaving.toDouble(),
-        color: _sliceColor(i, cs),
-        radius: 26,
-        showTitle: false,
-      ));
-    }
+    final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -447,35 +443,59 @@ class _PotentialDonutCard extends StatelessWidget {
           const SizedBox(height: 14),
           Row(
             children: [
-              // Donut with the total in the hole.
+              // Donut with the total in the hole. The slices sweep in clockwise
+              // from 12 o'clock (a `t`-driven startDegreeOffset rotation paired
+              // with a grow on radius) so the chart "draws itself".
               SizedBox(
                 width: 116,
                 height: 116,
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    PieChart(
-                      PieChartData(
-                        sections: sections,
-                        sectionsSpace: 2,
-                        centerSpaceRadius: 32,
-                        startDegreeOffset: -90,
-                      ),
-                    ),
-                    Column(
-                      mainAxisSize: MainAxisSize.min,
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween(begin: reduceMotion ? 1 : 0, end: 1),
+                  duration: const Duration(milliseconds: 1100),
+                  curve: ffTheme.easeOut,
+                  builder: (_, t, __) {
+                    final sections = <PieChartSectionData>[];
+                    for (var i = 0; i < opportunities.length; i++) {
+                      final cs = opportunities[i];
+                      sections.add(PieChartSectionData(
+                        value: cs.annualSaving.toDouble(),
+                        color: _sliceColor(i, cs),
+                        // Radius eases up as the sweep completes for a subtle grow.
+                        radius: 20 + 6 * t,
+                        showTitle: false,
+                      ));
+                    }
+                    return Stack(
+                      alignment: Alignment.center,
                       children: [
-                        Text(personalized ? '₪$total' : '~₪$total',
-                            style: GoogleFonts.rubik(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w800,
-                                color: ffTheme.savingDark)),
-                        Text('לשנה',
-                            style: ffTheme.labelSmall
-                                .copyWith(color: ffTheme.secondaryText)),
+                        PieChart(
+                          PieChartData(
+                            sections: sections,
+                            sectionsSpace: 2,
+                            centerSpaceRadius: 32,
+                            // Sweep clockwise: start fully rotated back, settle at -90°.
+                            startDegreeOffset: -90 - 360 * (1 - t),
+                          ),
+                        ),
+                        Opacity(
+                          opacity: t,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(personalized ? '₪$total' : '~₪$total',
+                                  style: GoogleFonts.rubik(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w800,
+                                      color: ffTheme.savingText)),
+                              Text('לשנה',
+                                  style: ffTheme.labelSmall
+                                      .copyWith(color: ffTheme.secondaryText)),
+                            ],
+                          ),
+                        ),
                       ],
-                    ),
-                  ],
+                    );
+                  },
                 ),
               ),
               const SizedBox(width: 16),
@@ -546,7 +566,7 @@ class _LegendRow extends StatelessWidget {
         const SizedBox(width: 6),
         Text(personalized ? '₪$amount' : '~₪$amount',
             style: ffTheme.labelMedium
-                .copyWith(color: ffTheme.savingDark, fontWeight: FontWeight.w800)),
+                .copyWith(color: ffTheme.savingText, fontWeight: FontWeight.w800)),
       ],
     );
   }
@@ -636,6 +656,9 @@ class _ProgressCard extends StatelessWidget {
                   _bar(1, realized.toDouble(), ffTheme.primary, ffTheme),
                 ],
               ),
+              // Bars grow up from the baseline on first paint.
+              swapAnimationDuration: const Duration(milliseconds: 650),
+              swapAnimationCurve: ffTheme.easeOut,
             ),
           ),
           const SizedBox(height: 8),
@@ -764,7 +787,7 @@ class _CategoryRow extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: ffTheme.cardSurface,
               borderRadius: BorderRadius.circular(14),
               border: Border.all(color: ffTheme.alternate),
             ),
@@ -801,7 +824,7 @@ class _CategoryRow extends StatelessWidget {
                     ),
                     child: Text(personalized ? '₪${saving.annualSaving}/שנה' : '~₪${saving.annualSaving}/שנה',
                         style: GoogleFonts.rubik(
-                            fontSize: 12, fontWeight: FontWeight.w800, color: ffTheme.savingDark)),
+                            fontSize: 12, fontWeight: FontWeight.w800, color: ffTheme.savingText)),
                   )
                 else if (has)
                   Row(
@@ -867,7 +890,7 @@ class _RenewalRow extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: ffTheme.cardSurface,
               borderRadius: BorderRadius.circular(14),
               border: Border.all(color: ffTheme.alternate),
             ),
@@ -903,7 +926,7 @@ class _RenewalRow extends StatelessWidget {
                           ],
                           Text('חוסך ₪$saving/שנה',
                               style: ffTheme.labelSmall.copyWith(
-                                  color: ffTheme.savingDark, fontWeight: FontWeight.w800)),
+                                  color: ffTheme.savingText, fontWeight: FontWeight.w800)),
                         ],
                       ),
                     ],

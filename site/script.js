@@ -1911,4 +1911,388 @@
       busy = false;
     });
   })();
+
+  // ══ Premium polish: counters, charts, parallax, tilt, forms, theme ══════════
+  // Award-level refinement of the EXISTING language ("white-glass + ink + green,
+  // editorial"). Each block is self-initialising, guarded on its markup, and a
+  // no-op under reduced-motion where motion is the whole point. A tiny shared
+  // ease/tween keeps charts/counters reading as one product with the rest of the
+  // site (matches the styles.css `--ease` feel).
+  // easeOutCubic — mirrors styles.css `--ease` feel for JS-driven tweens.
+  const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
+  // Generic value tween → calls `onFrame(currentValue)` each rAF until `dur` ms.
+  // Honours reduced-motion by jumping straight to the final value.
+  const tween = (from, to, dur, onFrame, onDone) => {
+    if (reduceMotion || dur <= 0) { onFrame(to); if (onDone) onDone(); return; }
+    const start = performance.now();
+    const step = (now) => {
+      const t = Math.min((now - start) / dur, 1);
+      onFrame(from + (to - from) * easeOutCubic(t));
+      if (t < 1) requestAnimationFrame(step);
+      else if (onDone) onDone();
+    };
+    requestAnimationFrame(step);
+  };
+  // Fire `cb(el)` once when `el` first scrolls into view (or immediately when IO
+  // is unavailable / reduced-motion, so the end-state is never withheld).
+  const onReveal = (el, cb) => {
+    if (!('IntersectionObserver' in window) || reduceMotion) { cb(el); return; }
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((e) => {
+        if (e.isIntersecting) { io.unobserve(e.target); cb(e.target); }
+      });
+    }, { threshold: 0.35 });
+    io.observe(el);
+  };
+
+  // ── (1) ANIMATED COUNTERS — [data-count-to] counts up on reveal ─────────────
+  // Opt-in via markup: <span data-count-to="1188" data-count-prefix="₪"
+  // data-count-suffix="+" data-count-dur="1400">. Number is formatted he-IL with
+  // optional decimals (data-count-decimals). Reduced-motion → final value set
+  // instantly. Idempotent: each element animates once.
+  (() => {
+    const els = Array.from(document.querySelectorAll('[data-count-to]'));
+    if (!els.length) return;
+    els.forEach((el) => {
+      if (el.dataset.countDone) return;
+      const to = Number(el.dataset.countTo);
+      if (!Number.isFinite(to)) return;
+      const from = Number(el.dataset.countFrom) || 0;
+      const dur = Number(el.dataset.countDur) || 1400;
+      const prefix = el.dataset.countPrefix || '';
+      const suffix = el.dataset.countSuffix || '';
+      const decimals = Math.max(0, Math.min(4, Number(el.dataset.countDecimals) || 0));
+      const fmt = (v) => prefix + v.toLocaleString('he-IL', {
+        minimumFractionDigits: decimals, maximumFractionDigits: decimals,
+      }) + suffix;
+      // Live region so AT hears the final figure (not every intermediate frame).
+      if (!el.hasAttribute('aria-label')) el.setAttribute('aria-label', fmt(to));
+      el.dataset.countDone = '1';
+      onReveal(el, () => {
+        tween(from, to, dur, (v) => { el.textContent = fmt(v); }, () => { el.textContent = fmt(to); });
+      });
+    });
+  })();
+
+  // ── (2a) ANIMATED CHARTS — [data-chart] inline-SVG bar charts (no deps) ──────
+  // Mount: <div data-chart='[{"label":"היום","value":120,"kind":"now"},
+  //   {"label":"הזול","value":29,"kind":"best"}]' data-chart-unit="₪"></div>
+  // Renders an accessible, RTL horizontal bar chart whose bars grow from 0 on
+  // reveal. `kind` maps to a semantic class (now=ink, best/save=value/accent) so
+  // colours follow the brand tokens — never per-provider brand colours.
+  const renderBarChart = (mount, series, opts) => {
+    opts = opts || {};
+    const unit = opts.unit || '';
+    const fmtV = (v) => unit + Math.round(v).toLocaleString('he-IL');
+    const max = series.reduce((m, s) => Math.max(m, Number(s.value) || 0), 0) || 1;
+    mount.classList.add('barchart');
+    mount.setAttribute('role', 'img');
+    const aria = series.map((s) => (s.label || '') + ': ' + fmtV(Number(s.value) || 0)).join(', ');
+    mount.setAttribute('aria-label', opts.title ? opts.title + ' — ' + aria : aria);
+    mount.innerHTML = '';
+    const rows = document.createElement('div');
+    rows.className = 'barchart__rows';
+    series.forEach((s, i) => {
+      const val = Math.max(0, Number(s.value) || 0);
+      const pct = (val / max) * 100;
+      const row = document.createElement('div');
+      row.className = 'barchart__row' + (s.kind ? ' barchart__row--' + s.kind : '');
+      const label = document.createElement('span');
+      label.className = 'barchart__label';
+      label.textContent = s.label || '';
+      const track = document.createElement('span');
+      track.className = 'barchart__track';
+      const bar = document.createElement('span');
+      bar.className = 'barchart__bar';
+      bar.style.width = '0%';
+      const out = document.createElement('span');
+      out.className = 'barchart__val';
+      out.textContent = reduceMotion ? fmtV(val) : fmtV(0);
+      track.appendChild(bar);
+      track.appendChild(out);
+      row.appendChild(label);
+      row.appendChild(track);
+      rows.appendChild(row);
+      // Choreographed: each bar grows on reveal, staggered 0/80/160/240ms.
+      onReveal(mount, () => {
+        const delay = reduceMotion ? 0 : Math.min(i, 3) * 80;
+        setTimeout(() => {
+          bar.style.transition = reduceMotion ? 'none' : 'width .9s var(--ease, ease-out)';
+          bar.style.width = pct.toFixed(1) + '%';
+          tween(0, val, 900, (v) => { out.textContent = fmtV(v); }, () => { out.textContent = fmtV(val); });
+        }, delay);
+      });
+    });
+    mount.appendChild(rows);
+  };
+
+  (() => {
+    const mounts = Array.from(document.querySelectorAll('[data-chart]'));
+    mounts.forEach((mount) => {
+      if (mount.dataset.chartDone) return;
+      let series;
+      try { series = JSON.parse(mount.getAttribute('data-chart') || '[]'); } catch (_) { series = null; }
+      if (!Array.isArray(series) || !series.length) return;
+      mount.dataset.chartDone = '1';
+      renderBarChart(mount, series, { unit: mount.dataset.chartUnit || '', title: mount.dataset.chartTitle || '' });
+    });
+  })();
+
+  // ── (2b) CALCULATOR RESULT CHART — upgrade the calc-*.html result block ──────
+  // The savings calculator renders a `.calc-result` into #calcOut. We watch for
+  // it and inject an animated "היום vs הזול" bar chart above the rows, so the
+  // saving lands visually. Pure enhancement: reads the numbers already shown.
+  (() => {
+    const calcEl = $('calc');
+    const out = $('calcOut');
+    if (!calcEl || !out) return;
+    const cheapest = Number(calcEl.dataset.cheapest) || 0;
+    const inject = () => {
+      const result = out.querySelector('.calc-result');
+      if (!result || result.querySelector('.calc-result__chart')) return;
+      // Recover "today" from the input rather than re-parsing the rendered text.
+      const bill = $('calcBill');
+      const cur = parseFloat(bill && bill.value);
+      if (!cur || cur <= 0 || cheapest <= 0) return;
+      const mount = document.createElement('div');
+      mount.className = 'calc-result__chart';
+      result.insertBefore(mount, result.firstChild);
+      renderBarChart(mount, [
+        { label: 'היום', value: cur, kind: 'now' },
+        { label: 'הזול בשוק', value: cheapest, kind: 'best' },
+      ], { unit: '₪', title: 'השוואת תשלום חודשי' });
+    };
+    const mo = new MutationObserver(() => inject());
+    mo.observe(out, { childList: true, subtree: true });
+    inject();
+  })();
+
+  // ── (2c) RATINGS CHART — animate the provider rating stars/bars ─────────────
+  // After the community ratings grid renders (.ratings__grid populated by the
+  // community module above), grow each card's score into an animated 0→5 bar and
+  // count the score up. Guarded + idempotent via a data flag; star glyphs stay.
+  (() => {
+    const host = $('ratingsSummary');
+    if (!host) return;
+    const enhance = () => {
+      const cards = Array.from(host.querySelectorAll('.rating-card'));
+      cards.forEach((card, i) => {
+        if (card.dataset.ratingChart) return;
+        const scoreEl = card.querySelector('.rating-card__score');
+        const score = scoreEl ? parseFloat(scoreEl.textContent) : NaN;
+        if (!Number.isFinite(score)) return;
+        card.dataset.ratingChart = '1';
+        const meter = document.createElement('span');
+        meter.className = 'rating-card__meter';
+        meter.setAttribute('aria-hidden', 'true');
+        const fill = document.createElement('span');
+        fill.className = 'rating-card__meter-fill';
+        fill.style.width = '0%';
+        meter.appendChild(fill);
+        // Place the meter right after the star glyphs.
+        const starsEl = card.querySelector('.rating-card__stars');
+        if (starsEl && starsEl.parentNode) starsEl.parentNode.insertBefore(meter, starsEl.nextSibling);
+        else card.appendChild(meter);
+        onReveal(card, () => {
+          setTimeout(() => {
+            fill.style.transition = reduceMotion ? 'none' : 'width .9s var(--ease, ease-out)';
+            fill.style.width = Math.max(0, Math.min(100, (score / 5) * 100)).toFixed(1) + '%';
+            if (scoreEl) tween(0, score, 900, (v) => { scoreEl.textContent = v.toFixed(1); }, () => { scoreEl.textContent = score.toFixed(1); });
+          }, reduceMotion ? 0 : Math.min(i, 6) * 60);
+        });
+      });
+    };
+    // The grid is fetched async; observe until it appears, then enhance.
+    const mo = new MutationObserver(() => enhance());
+    mo.observe(host, { childList: true, subtree: true });
+    enhance();
+  })();
+
+  // ── (3) HERO PARALLAX — drift bg/texture layers at a fraction of scroll ──────
+  // Opt-in layers: any descendant of .hero with [data-parallax] (or the legacy
+  // .hero__bg / .hero__texture) translates at `data-parallax` × scroll (default
+  // .25 bg-ish). rAF-batched, single scroll listener. Disabled under
+  // reduced-motion and on touch/coarse pointers (where it just costs battery).
+  (() => {
+    if (reduceMotion) return;
+    if (window.matchMedia('(hover: none)').matches || window.matchMedia('(pointer: coarse)').matches) return;
+    const hero = document.querySelector('.hero');
+    if (!hero) return;
+    let layers = Array.from(hero.querySelectorAll('[data-parallax], .hero__bg, .hero__texture, .hero__visual'));
+    layers = layers.map((el) => ({
+      el,
+      factor: el.hasAttribute('data-parallax')
+        ? (Number(el.getAttribute('data-parallax')) || 0.2)
+        : (el.classList.contains('hero__visual') ? 0.06 : 0.22),
+    })).filter((l) => l.factor);
+    if (!layers.length) return;
+    let ticking = false;
+    const paint = () => {
+      const y = window.scrollY;
+      // Only animate while the hero is reasonably in view.
+      if (y < window.innerHeight * 1.2) {
+        layers.forEach((l) => { l.el.style.transform = 'translate3d(0,' + (y * l.factor).toFixed(1) + 'px,0)'; });
+      }
+      ticking = false;
+    };
+    window.addEventListener('scroll', () => {
+      if (!ticking) { ticking = true; requestAnimationFrame(paint); }
+    }, { passive: true });
+    paint();
+  })();
+
+  // ── (4) PLAN-CARD 3D TILT — subtle pointer-driven tilt (desktop only) ───────
+  // Adds a gentle perspective tilt toward the cursor on plan/provider cards.
+  // Desktop hover only (no touch), disabled under reduced-motion. Resets cleanly
+  // on leave. Composes via CSS custom props so it never clobbers other transforms.
+  (() => {
+    if (reduceMotion) return;
+    if (!window.matchMedia('(hover: hover)').matches) return;
+    const sel = '.plan, .provider-card, .advisor__rec, .rating-card';
+    const MAX = 6; // degrees
+    let active = null, px = 0, py = 0;
+    const paint = rafThrottle(() => {
+      if (!active) return;
+      const r = active.getBoundingClientRect();
+      const cx = r.left + r.width / 2;
+      const cy = r.top + r.height / 2;
+      const dx = (px - cx) / (r.width / 2);
+      const dy = (py - cy) / (r.height / 2);
+      // RTL-agnostic: rotateY follows horizontal cursor, rotateX inverts vertical.
+      active.style.setProperty('--tilt-x', (-dy * MAX).toFixed(2) + 'deg');
+      active.style.setProperty('--tilt-y', (dx * MAX).toFixed(2) + 'deg');
+    });
+    document.addEventListener('pointermove', (e) => {
+      if (e.pointerType === 'touch') return;
+      const card = e.target.closest && e.target.closest(sel);
+      if (card !== active) {
+        if (active) { active.classList.remove('is-tilting'); active.style.removeProperty('--tilt-x'); active.style.removeProperty('--tilt-y'); }
+        active = card;
+        if (active) active.classList.add('is-tilting');
+      }
+      if (active) { px = e.clientX; py = e.clientY; paint(); }
+    }, { passive: true });
+    document.addEventListener('pointerleave', () => {
+      if (active) { active.classList.remove('is-tilting'); active.style.removeProperty('--tilt-x'); active.style.removeProperty('--tilt-y'); active = null; }
+    }, true);
+  })();
+
+  // ── (5) FORM MICRO-INTERACTIONS — floating labels + booking step transitions ─
+  // (a) Floating labels: a .field--float wrapper (label + input/textarea) gets
+  //     .is-filled while the control holds a value, so CSS can float the label.
+  //     Works for inputs added later; no markup churn if the wrapper is absent.
+  (() => {
+    const fields = Array.from(document.querySelectorAll('.field--float'));
+    const wire = (field) => {
+      const ctrl = field.querySelector('input, textarea, select');
+      if (!ctrl) return;
+      const sync = () => field.classList.toggle('is-filled', !!(ctrl.value && String(ctrl.value).length));
+      const focusOn = () => field.classList.add('is-focused');
+      const focusOff = () => { field.classList.remove('is-focused'); sync(); };
+      ctrl.addEventListener('input', sync);
+      ctrl.addEventListener('focus', focusOn);
+      ctrl.addEventListener('blur', focusOff);
+      sync();
+    };
+    fields.forEach(wire);
+  })();
+  // (b) Booking step transitions: if the booking form is laid out as discrete
+  //     .booking__step panels with [data-step], slide between them when the
+  //     fieldsets are completed. Purely visual; the existing submit logic and
+  //     validation are untouched. No-op when the markup is a single flat form.
+  (() => {
+    const form = $('bookForm');
+    if (!form) return;
+    const steps = Array.from(form.querySelectorAll('.booking__step[data-step]'));
+    if (steps.length < 2) return;
+    let current = 0;
+    // Slide enters from the leading edge: right (+X) in RTL, left (-X) in LTR.
+    const isLtr = document.documentElement.getAttribute('dir') === 'ltr';
+    const show = (idx, animate) => {
+      idx = Math.max(0, Math.min(steps.length - 1, idx));
+      steps.forEach((s, i) => {
+        const on = i === idx;
+        s.classList.toggle('is-active', on);
+        s.setAttribute('aria-hidden', String(!on));
+        if (animate && !reduceMotion && on) {
+          s.style.transition = 'none';
+          s.style.transform = 'translateX(' + (isLtr ? '-24px' : '24px') + ')';
+          s.style.opacity = '0';
+          requestAnimationFrame(() => {
+            s.style.transition = 'transform .35s var(--ease, ease-out), opacity .35s var(--ease, ease-out)';
+            s.style.transform = 'translateX(0)';
+            s.style.opacity = '1';
+          });
+        }
+      });
+      current = idx;
+    };
+    form.querySelectorAll('[data-step-next]').forEach((b) => b.addEventListener('click', (e) => { e.preventDefault(); show(current + 1, true); }));
+    form.querySelectorAll('[data-step-prev]').forEach((b) => b.addEventListener('click', (e) => { e.preventDefault(); show(current - 1, true); }));
+    show(0, false);
+  })();
+
+  // ── (6) LIGHT/DARK TOGGLE — #themeToggle flips a data-theme override ─────────
+  // Persists the choice to localStorage; on load honours a saved choice, else the
+  // system preference (so it cooperates with the CSS `prefers-color-scheme`
+  // block — `data-theme` on <html> is the explicit override). Reflects state on
+  // the toggle (aria-pressed + label) and keeps multiple toggles in sync.
+  (() => {
+    const KEY = 'chosech-theme';
+    const root = document.documentElement;
+    const systemDark = () => window.matchMedia('(prefers-color-scheme: dark)').matches;
+    let saved = null;
+    try { saved = localStorage.getItem(KEY); } catch (_) { /* storage may be blocked */ }
+    // Resolve the *effective* theme for toggle state; only write data-theme when
+    // there's an explicit user choice, so unset = follow system via CSS.
+    const apply = (theme, persist) => {
+      // Attribute-only theming: always write an EXPLICIT data-theme (resolving
+      // "system" to the live preference) so the CSS [data-theme] rules apply —
+      // there is no longer a prefers-color-scheme media block to fall back to.
+      const resolved = (theme === 'light' || theme === 'dark')
+        ? theme
+        : (systemDark() ? 'dark' : 'light');
+      root.setAttribute('data-theme', resolved);
+      if (persist) {
+        try {
+          if (theme === 'light' || theme === 'dark') localStorage.setItem(KEY, theme);
+          else localStorage.removeItem(KEY);
+        } catch (_) { /* best-effort */ }
+      }
+      syncToggles();
+    };
+    const effective = () => {
+      const attr = root.getAttribute('data-theme');
+      if (attr === 'light' || attr === 'dark') return attr;
+      return systemDark() ? 'dark' : 'light';
+    };
+    const toggles = Array.from(document.querySelectorAll('#themeToggle, [data-theme-toggle]'));
+    function syncToggles() {
+      const isDark = effective() === 'dark';
+      toggles.forEach((t) => {
+        t.setAttribute('aria-pressed', String(isDark));
+        if (!t.getAttribute('aria-label')) t.setAttribute('aria-label', 'מצב כהה');
+        t.setAttribute('title', isDark ? 'מעבר למצב בהיר' : 'מעבר למצב כהה');
+        t.classList.toggle('is-dark', isDark);
+      });
+    }
+    // Apply the saved choice, or resolve the system preference to an explicit
+    // attribute (attribute-only theming needs a value either way; the inline
+    // <head> guard already set one pre-paint — this just re-confirms it).
+    apply(saved === 'light' || saved === 'dark' ? saved : 'system', false);
+    toggles.forEach((t) => {
+      t.addEventListener('click', () => {
+        const next = effective() === 'dark' ? 'light' : 'dark';
+        apply(next, true);
+      });
+    });
+    // If the user hasn't pinned a choice, follow live system changes.
+    try {
+      window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+        let pinned = null;
+        try { pinned = localStorage.getItem(KEY); } catch (_) { /* ignore */ }
+        if (pinned !== 'light' && pinned !== 'dark') apply('system', false);
+      });
+    } catch (_) { /* Safari <14 lacks addEventListener on MQL */ }
+  })();
 })();

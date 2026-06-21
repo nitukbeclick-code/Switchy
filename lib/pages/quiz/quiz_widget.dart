@@ -6,6 +6,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../theme/app_theme.dart';
 import '../../core/nav.dart';
 import '../../widgets/app_button.dart';
+import '../../widgets/pressable.dart';
 import '../../app_state.dart';
 import '../../data.dart';
 import '../../services/recommendation_engine.dart';
@@ -124,11 +125,14 @@ class _QuizWidgetState extends State<QuizWidget> {
               if (_analyzing)
                 const SizedBox.shrink()
               else if (_revealed) ...[
+                // PRIMARY CTA — lead capture for the single best match.
                 AppButton(
-                  text: 'ראה את כל המסלולים ←',
+                  text: 'רוצה את המסלול הזה — השאירו פרטים ←',
                   onPressed: () async {
                     HapticFeedback.lightImpact();
-                    context.goNamed('Results');
+                    context.pushNamed('Lead',
+                        pathParameters: {'planId': _recs.first.plan.id},
+                        queryParameters: {'source': 'quiz'});
                   },
                   width: double.infinity,
                   height: 56,
@@ -137,6 +141,21 @@ class _QuizWidgetState extends State<QuizWidget> {
                   borderRadius: BorderRadius.circular(18),
                 ),
                 const SizedBox(height: 8),
+                // SECONDARY — browse the full list instead.
+                OutlinedButton(
+                  onPressed: () {
+                    HapticFeedback.lightImpact();
+                    context.goNamed('Results');
+                  },
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: ffTheme.brandAccentText,
+                    side: BorderSide(color: ffTheme.alternate),
+                    minimumSize: const Size(double.infinity, 52),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                  ),
+                  child: Text('ראו את כל המסלולים ←', style: ffTheme.titleMedium),
+                ),
+                const SizedBox(height: 4),
                 TextButton(
                   onPressed: () => setState(() => _revealed = false),
                   child: Text('↺ ערוך תשובות',
@@ -716,12 +735,7 @@ class _QuizWidgetState extends State<QuizWidget> {
                 child: CircularProgressIndicator(color: ffTheme.brandAccent, strokeWidth: 3),
               ),
             ),
-          ).animate(onPlay: (c) => c.repeat(reverse: true)).scale(
-                begin: const Offset(1, 1),
-                end: const Offset(1.06, 1.06),
-                duration: 900.ms,
-                curve: Curves.easeInOut,
-              ),
+          ),
           const SizedBox(height: 24),
           Text('מנתח את הנתונים…',
               style: ffTheme.titleMedium.copyWith(color: ffTheme.primaryText)),
@@ -752,18 +766,19 @@ class _QuizWidgetState extends State<QuizWidget> {
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: Text('מצאנו לך התאמה!',
+                child: Text('זה המסלול הכי משתלם בשבילך',
                     style: ffTheme.headlineMedium.copyWith(color: ffTheme.brandAccent)),
               ),
             ],
-          ),
+          ).animate().fadeIn(duration: 280.ms).slideY(begin: 0.06, end: 0, curve: ffTheme.easeOut),
           const SizedBox(height: 4),
           Text('מבוסס על התשובות שלך',
-              style: ffTheme.bodyMedium.copyWith(color: ffTheme.secondaryText)),
+              style: ffTheme.bodyMedium.copyWith(color: ffTheme.secondaryText))
+              .animate(delay: 80.ms).fadeIn(duration: 280.ms).slideY(begin: 0.06, end: 0, curve: ffTheme.easeOut),
           const SizedBox(height: 20),
 
           // Top match card
-          GestureDetector(
+          Pressable(
             onTap: () => context.pushNamed('PlanDetail',
                 pathParameters: {'planId': top.plan.id}),
             child: Container(
@@ -809,6 +824,38 @@ class _QuizWidgetState extends State<QuizWidget> {
                       ),
                     ],
                   ),
+                  if (top.annualSaving > 0) ...[
+                    const SizedBox(height: 16),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      decoration: BoxDecoration(
+                        color: ffTheme.saving.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: ffTheme.saving.withValues(alpha: 0.35)),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.savings_rounded, size: 24, color: ffTheme.savingDark),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('תחסכו עד',
+                                    style: ffTheme.labelSmall
+                                        .copyWith(color: ffTheme.savingText)),
+                                Text('₪${top.annualSaving} בשנה',
+                                    style: ffTheme.headlineSmall.copyWith(
+                                        color: ffTheme.savingText,
+                                        fontWeight: FontWeight.w800)),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 12),
                   // Badge row
                   Row(
@@ -840,7 +887,7 @@ class _QuizWidgetState extends State<QuizWidget> {
                         ),
                         child: Text(top.label,
                             style: ffTheme.labelSmall
-                                .copyWith(color: ffTheme.brandAccent, fontWeight: FontWeight.w700)),
+                                .copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w700)),
                       ),
                     ],
                   ),
@@ -862,31 +909,13 @@ class _QuizWidgetState extends State<QuizWidget> {
                           ),
                         )),
                   ],
-                  if (top.annualSaving > 0) ...[
-                    const SizedBox(height: 10),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-                      decoration: BoxDecoration(
-                        color: ffTheme.saving.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: ffTheme.saving.withValues(alpha: 0.30)),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.savings_rounded, size: 16, color: ffTheme.savingDark),
-                          const SizedBox(width: 8),
-                          Text('חיסכון שנתי של ₪${top.annualSaving}',
-                              style: ffTheme.labelMedium
-                                  .copyWith(color: ffTheme.savingDark, fontWeight: FontWeight.w800)),
-                        ],
-                      ),
-                    ),
-                  ],
                 ],
               ),
             ),
-          ),
+          ).animate(delay: 160.ms)
+              .fadeIn(duration: 320.ms)
+              .slideY(begin: 0.08, end: 0, curve: ffTheme.easeOut)
+              .scaleXY(begin: 0.97, end: 1, curve: ffTheme.spring),
 
           // Share affordance — let a delighted user spread the word.
           const SizedBox(height: 8),
@@ -901,17 +930,19 @@ class _QuizWidgetState extends State<QuizWidget> {
               icon: Icon(Icons.ios_share_rounded, size: 18, color: ffTheme.brandAccent),
               label: Text('שתף',
                   style: ffTheme.labelLarge
-                      .copyWith(color: ffTheme.brandAccent, fontWeight: FontWeight.w700)),
+                      .copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w700)),
             ),
           ),
 
           // Alternatives
           if (_recs.length > 1) ...[
             const SizedBox(height: 20),
-            Text('חלופות נוספות',
+            Text('עוד אפשרויות שמתאימות לך',
                 style: ffTheme.labelLarge.copyWith(color: ffTheme.secondaryText)),
             const SizedBox(height: 10),
-            ..._recs.skip(1).take(2).map((alt) => GestureDetector(
+            ..._recs.skip(1).take(2).toList().asMap().entries.map((entry) {
+              final alt = entry.value;
+              return Pressable(
                   onTap: () => context.pushNamed('PlanDetail',
                       pathParameters: {'planId': alt.plan.id}),
                   child: Container(
@@ -944,7 +975,7 @@ class _QuizWidgetState extends State<QuizWidget> {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
-                            color: ffTheme.alternate,
+                            color: ffTheme.secondary,
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Text('${alt.scorePct}%',
@@ -957,7 +988,10 @@ class _QuizWidgetState extends State<QuizWidget> {
                       ],
                     ),
                   ),
-                )),
+                ).animate(delay: (240 + entry.key * 80).ms)
+                    .fadeIn(duration: 300.ms)
+                    .slideY(begin: 0.06, end: 0, curve: ffTheme.easeOut);
+            }),
           ],
           const SizedBox(height: 8),
         ],

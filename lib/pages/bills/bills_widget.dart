@@ -161,12 +161,9 @@ class _BillsWidgetState extends State<BillsWidget> {
               width: double.infinity,
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topRight,
-                  end: Alignment.bottomLeft,
-                  colors: [ffTheme.primaryDark, ffTheme.primary],
-                ),
+                gradient: ffTheme.brandGradient,
                 borderRadius: BorderRadius.circular(20),
+                boxShadow: ffTheme.shadowSoft,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -248,10 +245,10 @@ class _BillsWidgetState extends State<BillsWidget> {
                 width: double.infinity,
                 padding: const EdgeInsets.fromLTRB(12, 20, 12, 12),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: ffTheme.cardSurface,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: ffTheme.alternate),
-                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 12)],
+                  boxShadow: ffTheme.shadowSoft,
                 ),
                 child: Column(
                   children: [
@@ -465,54 +462,66 @@ class _SavingsRing extends StatelessWidget {
     final pct = ((savingsPerMonth / total) * 100).round().clamp(0, 100);
     final keep = total - savingsPerMonth;
 
+    final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ffTheme.cardSurface,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: ffTheme.alternate),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 12)],
+        boxShadow: ffTheme.shadowSoft,
       ),
       child: Row(
         children: [
-          // Donut chart
+          // Donut chart — the amber savings slice sweeps in clockwise and the
+          // percentage counts up, so the "how much you save" lands with motion.
           SizedBox(
             width: 110,
             height: 110,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                PieChart(
-                  PieChartData(
-                    startDegreeOffset: -90,
-                    sectionsSpace: 3,
-                    centerSpaceRadius: 34,
-                    sections: [
-                      // Amber for the saving (the VALUE share), pale grey for the
-                      // rest (market price) — the savings slice reads as money.
-                      PieChartSectionData(
-                        value: savingsPerMonth.toDouble(),
-                        color: ffTheme.saving,
-                        radius: 20,
-                        showTitle: false,
-                      ),
-                      PieChartSectionData(
-                        value: keep.toDouble().clamp(1, double.infinity),
-                        color: ffTheme.secondary,
-                        radius: 16,
-                        showTitle: false,
-                      ),
+            child: TweenAnimationBuilder<double>(
+              tween: Tween(begin: reduceMotion ? 1 : 0, end: 1),
+              duration: const Duration(milliseconds: 1100),
+              curve: ffTheme.easeOut,
+              builder: (_, t, __) => Stack(
+                alignment: Alignment.center,
+                children: [
+                  PieChart(
+                    PieChartData(
+                      startDegreeOffset: -90 - 360 * (1 - t),
+                      sectionsSpace: 3,
+                      centerSpaceRadius: 34,
+                      sections: [
+                        // Amber for the saving (the VALUE share), pale grey for the
+                        // rest (market price) — the savings slice reads as money.
+                        PieChartSectionData(
+                          value: savingsPerMonth.toDouble(),
+                          color: ffTheme.saving,
+                          radius: 16 + 4 * t,
+                          showTitle: false,
+                        ),
+                        PieChartSectionData(
+                          value: keep.toDouble().clamp(1, double.infinity),
+                          color: ffTheme.secondary,
+                          radius: 16,
+                          showTitle: false,
+                        ),
+                      ],
+                    ),
+                  ),
+                  Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text('${(pct * t).round()}%',
+                          style: GoogleFonts.rubik(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                              color: ffTheme.savingDark,
+                              fontFeatures: const [FontFeature.tabularFigures()])),
+                      Text('חיסכון', style: ffTheme.labelSmall.copyWith(fontSize: 10)),
                     ],
                   ),
-                ),
-                Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text('$pct%', style: GoogleFonts.rubik(fontSize: 18, fontWeight: FontWeight.w800, color: ffTheme.savingDark)),
-                    Text('חיסכון', style: ffTheme.labelSmall.copyWith(fontSize: 10)),
-                  ],
-                ),
-              ],
+                ],
+              ),
             ),
           ),
           const SizedBox(width: 20),
@@ -533,7 +542,7 @@ class _SavingsRing extends StatelessWidget {
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(color: ffTheme.saving.withValues(alpha: 0.4)),
                   ),
-                  child: Text('₪$totalSavings חיסכון שנתי', style: ffTheme.labelMedium.copyWith(color: ffTheme.savingDark, fontWeight: FontWeight.w800)),
+                  child: Text('₪$totalSavings חיסכון שנתי', style: ffTheme.labelMedium.copyWith(color: ffTheme.savingText, fontWeight: FontWeight.w800)),
                 ),
               ],
             ),
@@ -899,10 +908,10 @@ class _BillCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ffTheme.cardSurface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: currentBill > 0 ? ffTheme.primary.withValues(alpha: 0.2) : ffTheme.alternate),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10)],
+        boxShadow: ffTheme.shadowSoft,
       ),
       child: Column(
         children: [
@@ -925,7 +934,7 @@ class _BillCard extends StatelessWidget {
                     Text(category.name, style: ffTheme.titleSmall),
                     if (currentBill > 0 && yearlySave > 0)
                       Text('חיסכון פוטנציאלי: ₪$yearlySave/שנה',
-                          style: ffTheme.labelSmall.copyWith(color: ffTheme.savingDark, fontWeight: FontWeight.w700)),
+                          style: ffTheme.labelSmall.copyWith(color: ffTheme.savingText, fontWeight: FontWeight.w700)),
                     if (currentBill == 0)
                       Text('לא בשימוש', style: ffTheme.labelSmall),
                   ],

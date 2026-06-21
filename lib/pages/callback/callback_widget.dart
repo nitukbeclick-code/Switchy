@@ -105,7 +105,7 @@ class _CallbackWidgetState extends State<CallbackWidget> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: ffTheme.cardSurface,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: ffTheme.alternate),
               ),
@@ -129,8 +129,7 @@ class _CallbackWidgetState extends State<CallbackWidget> {
                       shape: BoxShape.circle,
                       boxShadow: [BoxShadow(color: ffTheme.brandAccent.withValues(alpha: 0.5), blurRadius: 6, spreadRadius: 1)],
                     ),
-                  ).animate(onPlay: (c) => c.repeat(reverse: true))
-                    .scale(begin: const Offset(1, 1), end: const Offset(1.4, 1.4), duration: 900.ms, curve: Curves.easeInOut),
+                  ),
                 ],
               ),
             ).animate().fadeIn(delay: 180.ms),
@@ -193,7 +192,7 @@ class _CallbackWidgetState extends State<CallbackWidget> {
               
                 width: double.infinity,
                 height: 56,
-                color: _isLoading ? ffTheme.alternate : ffTheme.primary,
+                color: AppColors.primary,
                 textStyle: ffTheme.titleSmall.copyWith(color: Colors.white),
                 borderRadius: BorderRadius.circular(16),
               
@@ -232,7 +231,7 @@ class _CallbackWidgetState extends State<CallbackWidget> {
                           child: Text(
                             'מעדיפים פגישת וידאו? קבעו שיחת Zoom עם נציג',
                             style: ffTheme.labelMedium.copyWith(
-                                color: ffTheme.brandAccent, fontWeight: FontWeight.w700),
+                                color: ffTheme.brandAccentText, fontWeight: FontWeight.w700),
                           ),
                         ),
                       ],
@@ -258,8 +257,12 @@ class _CallbackWidgetState extends State<CallbackWidget> {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        gradient: LinearGradient(colors: [ffTheme.primary, ffTheme.tertiary], begin: Alignment.topRight, end: Alignment.bottomLeft),
+        // Fixed ink hero (premium dark card) — uses the const ink tokens so it
+        // stays dark-on-dark in BOTH themes (the theme-aware `ffTheme.primary`
+        // would flip to off-white on dark and break the white-on-ink contrast).
+        gradient: const LinearGradient(colors: [AppColors.primary, AppColors.tertiary], begin: Alignment.topRight, end: Alignment.bottomLeft),
         borderRadius: BorderRadius.circular(16),
+        boxShadow: ffTheme.shadowLifted,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -270,8 +273,8 @@ class _CallbackWidgetState extends State<CallbackWidget> {
                 child: Container(
                   width: 52,
                   height: 52,
-                  decoration: BoxDecoration(color: ffTheme.secondary, shape: BoxShape.circle),
-                  child: Icon(Icons.headset_mic_rounded, size: 26, color: ffTheme.primary),
+                  decoration: const BoxDecoration(color: AppColors.secondary, shape: BoxShape.circle),
+                  child: const Icon(Icons.headset_mic_rounded, size: 26, color: AppColors.primary),
                 ),
               ),
               const SizedBox(width: 14),
@@ -302,7 +305,7 @@ class _CallbackWidgetState extends State<CallbackWidget> {
                     ),
                     child: Column(
                       children: [
-                        Icon(icon, size: 18, color: ffTheme.secondary),
+                        Icon(icon, size: 18, color: AppColors.secondary),
                         const SizedBox(height: 4),
                         Text(label,
                             textAlign: TextAlign.center,
@@ -332,7 +335,7 @@ class _CallbackWidgetState extends State<CallbackWidget> {
             duration: const Duration(milliseconds: 200),
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             decoration: BoxDecoration(
-              color: active ? ffTheme.brandAccent : Colors.white,
+              color: active ? ffTheme.brandAccent : ffTheme.cardSurface,
               borderRadius: BorderRadius.circular(20),
               border: Border.all(color: active ? ffTheme.brandAccent : ffTheme.alternate),
               boxShadow: active ? [BoxShadow(color: ffTheme.brandAccent.withValues(alpha: 0.28), blurRadius: 10, offset: const Offset(0, 3))] : [],
@@ -361,7 +364,7 @@ class _CallbackWidgetState extends State<CallbackWidget> {
               margin: EdgeInsetsDirectional.only(end: i < _timings.length - 1 ? 8 : 0),
               padding: const EdgeInsets.symmetric(vertical: 10),
               decoration: BoxDecoration(
-                color: active ? ffTheme.brandAccent : Colors.white,
+                color: active ? ffTheme.brandAccent : ffTheme.cardSurface,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: active ? ffTheme.brandAccent : ffTheme.alternate),
                 boxShadow: active ? [BoxShadow(color: ffTheme.brandAccent.withValues(alpha: 0.28), blurRadius: 10, offset: const Offset(0, 3))] : [],
@@ -395,8 +398,7 @@ class _CallbackWidgetState extends State<CallbackWidget> {
                   Container(
                     width: 120, height: 120,
                     decoration: BoxDecoration(color: ffTheme.brandAccent.withValues(alpha: 0.10), shape: BoxShape.circle),
-                  ).animate(onPlay: (c) => c.repeat(reverse: true))
-                    .scale(begin: const Offset(1, 1), end: const Offset(1.12, 1.12), duration: 1200.ms),
+                  ).animate().scale(begin: const Offset(0.85, 0.85), end: const Offset(1, 1), duration: 500.ms, curve: Curves.easeOut),
                   Container(
                     width: 92, height: 92,
                     decoration: BoxDecoration(color: ffTheme.brandAccentTint, shape: BoxShape.circle),
@@ -429,7 +431,7 @@ class _CallbackWidgetState extends State<CallbackWidget> {
                   children: [
                     Icon(Icons.access_time_rounded, size: 16, color: ffTheme.brandAccent),
                     const SizedBox(width: 8),
-                    Text('ימי א׳–ה׳, 9:00–21:00', style: ffTheme.labelMedium.copyWith(color: ffTheme.brandAccent, fontWeight: FontWeight.w600)),
+                    Text('ימי א׳–ה׳, 9:00–21:00', style: ffTheme.labelMedium.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w600)),
                   ],
                 ),
               ).animate().fadeIn(delay: 450.ms),
@@ -440,7 +442,7 @@ class _CallbackWidgetState extends State<CallbackWidget> {
                 
                   width: 240,
                   height: 52,
-                  color: ffTheme.primary,
+                  color: AppColors.primary,
                   textStyle: ffTheme.titleSmall.copyWith(color: Colors.white),
                   borderRadius: BorderRadius.circular(14),
                 
@@ -461,7 +463,7 @@ class _CallbackWidgetState extends State<CallbackWidget> {
     return InputDecoration(
       hintText: hint,
       filled: true,
-      fillColor: Colors.white,
+      fillColor: ffTheme.cardSurface,
       prefixIcon: Icon(icon, color: ffTheme.secondaryText),
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
       enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.alternate)),

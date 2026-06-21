@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="light dark" />
+  <!-- Theme guard: set data-theme before first paint (saved choice or system) so dark mode never flashes. -->
+  <script>try{var t=localStorage.getItem('chosech-theme');document.documentElement.setAttribute('data-theme',(t==='light'||t==='dark')?t:(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light'));}catch(e){}</script>
   <title>חוסך — השוואת מחירי תקשורת: סלולר, אינטרנט, טלוויזיה וחו״ל</title>
   <meta name="description" content="חוסך משווה לכם מחירים על סלולר, אינטרנט, טלוויזיה, חבילות משולבות וחו״ל מכל חברות התקשורת בישראל — ומוצא את המסלול הכי משתלם. השוואה חינם, בלי התחייבות, עם ליווי אנושי במעבר." />
   <meta name="keywords" content="השוואת מחירי תקשורת, מסלול סלולר, חבילת אינטרנט, סיב אופטי, השוואת ספקים, ניוד מספר, eSIM חו״ל, מסלול 5G" />
@@ -39,7 +42,7 @@
   <noscript><link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" rel="stylesheet" /></noscript>
   <!-- ?v= cache-busting hash is owned by build.js (it prints the current
        values on every run) — keep this in sync when styles.css changes. -->
-  <link rel="stylesheet" href="styles.css?v=09e63a8b" />
+  <link rel="stylesheet" href="styles.css?v=27d3c532" />
 
   <!-- Cookieless analytics (Plausible-style). Placeholder until configured —
        no cookies, no personal data. Mirrors build.js analyticsTag(). -->
@@ -155,6 +158,9 @@
         <a href="guides.html">מדריכים</a>
         <a href="#calculator">מחשבון</a>
       </nav>
+      <button class="theme-toggle" id="themeToggle" type="button" aria-label="מעבר בין מצב בהיר וכהה" aria-pressed="false">
+        <span class="theme-toggle__sun" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8"/></svg></span><span class="theme-toggle__moon" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg></span>
+      </button>
       <a class="btn btn--primary nav__cta" href="#calculator">התחילו לחסוך</a>
       <button class="nav__toggle" id="navToggle" aria-label="פתיחת תפריט" aria-expanded="false" aria-controls="mobileMenu">
         <span></span><span></span><span></span>
@@ -188,6 +194,7 @@
             <a class="btn btn--primary btn--lg" href="#calculator">בדקו כמה תוכלו לחסוך ←</a>
             <a class="btn btn--ghost btn--lg" href="#advisorOpen" id="heroAdvisorLink">נסו את היועץ החכם</a>
           </div>
+          <p class="hero__trust-note">חינם — אנחנו מקבלים עמלה מהספק, לא מכם. ההמלצה ניטרלית.</p>
           <p class="hero__social"><span aria-hidden="true">✦</span> משווים <strong>120+ מסלולים</strong> מ-18 ספקים — מתעדכן כל יום</p>
           <p class="hero__avail" role="status"><span class="hero__dot" aria-hidden="true"></span> הקטלוג עודכן היום · מחירים אמיתיים, כולל המחיר שאחרי המבצע</p>
           <ul class="hero__stats" aria-label="נתונים על ההשוואה">
@@ -691,6 +698,7 @@
           <input type="text" id="leadCompany" name="company" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" />
           <input type="text" id="leadName" name="name" placeholder="שם מלא" aria-label="שם מלא" autocomplete="name" required />
           <input type="tel" id="leadPhone" name="phone" placeholder="טלפון (050-0000000)" aria-label="מספר טלפון" autocomplete="tel" inputmode="tel" required />
+          <p class="cta__form-note">נחזור בוואטסאפ או בטלפון • לא נשתף את המספר עם ספקים • הנתונים מוצפנים</p>
           <div class="consent">
             <label class="consent__row" for="consentTerms">
               <input type="checkbox" id="consentTerms" name="consentTerms" required />
@@ -709,7 +717,7 @@
               <span>התריעו לי כשיורד מחיר על מסלול שמתאים לי</span>
             </label>
           </div>
-          <button class="btn btn--primary btn--lg" type="submit">קבלו השוואה חינם ←</button>
+          <button class="btn btn--primary btn--lg" type="submit">קבלו המלצה אישית תוך 2 דקות ←</button>
         </form>
         <p class="cta__note" id="leadNote" role="status" aria-live="polite"></p>
         <a class="cta__wa" href="https://wa.me/972505037537?text=%D7%94%D7%99%D7%99%2C%20%D7%90%D7%A9%D7%9E%D7%97%20%D7%9C%D7%94%D7%A9%D7%95%D7%95%D7%AA%20%D7%9E%D7%A1%D7%9C%D7%95%D7%9C%D7%99%D7%9D" target="_blank" rel="noopener">
@@ -780,6 +788,6 @@
   <script>window.CHOSECH_SUPABASE={url:'https://orzitfqmlvopujsoyigr.supabase.co',anonKey:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9yeml0ZnFtbHZvcHVqc295aWdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5OTc5NzIsImV4cCI6MjA5NjU3Mzk3Mn0.NY4ZHzR3BAWUxm5as9Z054o8fwcfejAab9SIvduKlhM'};</script>
   <!-- ?v= cache-busting hash is owned by build.js (it prints the current
        values on every run) — keep this in sync when script.js changes. -->
-  <script src="script.js?v=969b4492" defer></script>
+  <script src="script.js?v=30f04aa5" defer></script>
 </body>
 </html>

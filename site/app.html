@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="light dark" />
+  <!-- Theme guard: set data-theme before first paint (saved choice or system) so dark mode never flashes. -->
+  <script>try{var t=localStorage.getItem('chosech-theme');document.documentElement.setAttribute('data-theme',(t==='light'||t==='dark')?t:(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light'));}catch(e){}</script>
   <title>האפליקציה של חוסך — כל היכולות | חוסך</title>
   <meta name="description" content="הכירו את אפליקציית חוסך: חוסך AI, קהילה והצ׳אט הקהילתי, מעקב מעבר, התראות חידוש, דירוגי ספקים, בדיקת זמינות, מחשבון מעבר וניוד מספר — הכל במקום אחד." />
   <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
@@ -39,7 +42,7 @@
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" />
   <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
   <noscript><link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" rel="stylesheet" /></noscript>
-  <link rel="stylesheet" href="styles.css?v=09e63a8b" />
+  <link rel="stylesheet" href="styles.css?v=27d3c532" />
   <!-- Cookieless analytics (Plausible-style). Placeholder until configured — no cookies, no personal data. -->
   <script defer data-domain="switchy-ai.com" src="https://plausible.io/js/script.outbound-links.tagged-events.js"></script>
   <script>window.plausible=window.plausible||function(){(window.plausible.q=window.plausible.q||[]).push(arguments)};</script>
@@ -51,7 +54,7 @@
   <header class="nav" id="nav">
     <div class="container nav__inner">
       <a class="brand" href="index.html" aria-label="חוסך — דף הבית">
-        <span class="brand__mark" aria-hidden="true">✦</span><span class="brand__name">חוסך</span>
+        <svg class="brand__mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19V13M11 19V8M17 19v-9"/><path d="M4 9.5 10 5l4 2.5 6-4.5"/><circle cx="20" cy="3" r="1.4" fill="currentColor" stroke="none"/></svg><span class="brand__name">חוסך</span>
       </a>
       <nav class="nav__links" aria-label="ניווט ראשי">
         <a href="plans.html">כל החבילות</a>
@@ -102,6 +105,9 @@
         </div>
         <a href="index.html#calculator">מחשבון</a>
       </nav>
+      <button class="theme-toggle" id="themeToggle" type="button" aria-label="מעבר בין מצב בהיר וכהה" aria-pressed="false">
+        <span class="theme-toggle__sun" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8"/></svg></span><span class="theme-toggle__moon" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg></span>
+      </button>
       <a class="btn btn--primary nav__cta" href="#cta">השוו עכשיו</a>
       <button class="nav__toggle" id="navToggle" aria-label="פתיחת תפריט" aria-expanded="false" aria-controls="mobileMenu"><span></span><span></span><span></span></button>
     </div>
@@ -123,6 +129,23 @@
   </header>
   <main id="main">
     <section class="lead-hero">
+      <div class="hero-decor" aria-hidden="true" data-parallax="0.18"><svg class="hero-decor__svg" viewBox="0 0 600 400" fill="none" stroke="currentColor" aria-hidden="true" preserveAspectRatio="xMidYMid slice">
+        <g class="hero-decor__net" stroke-width="1.1" opacity="0.5">
+          <path d="M60 320 L180 200 L320 260 L440 130 L560 190"/>
+          <path d="M60 120 L200 80 L340 150 L470 70 L560 110"/>
+          <path d="M180 200 L200 80M320 260 L340 150M440 130 L470 70"/>
+        </g>
+        <g class="hero-decor__nodes" fill="currentColor" stroke="none">
+          <circle cx="60" cy="320" r="3.5"/><circle cx="180" cy="200" r="4"/><circle cx="320" cy="260" r="3.5"/>
+          <circle cx="440" cy="130" r="4"/><circle cx="560" cy="190" r="3.5"/><circle cx="200" cy="80" r="3.5"/>
+          <circle cx="340" cy="150" r="3"/><circle cx="470" cy="70" r="3.5"/>
+        </g>
+        <g class="hero-decor__rings" stroke-width="1.4" fill="none" opacity="0.6">
+          <path d="M470 70 a18 18 0 0 1 22 22" stroke-linecap="round"/>
+          <path d="M470 70 a30 30 0 0 1 36 36" stroke-linecap="round" opacity="0.6"/>
+          <path d="M180 200 a16 16 0 0 0-20 20" stroke-linecap="round"/>
+        </g>
+      </svg></div>
       <div class="container">
         <p class="crumbs"><a href="index.html">דף הבית</a> ← האפליקציה</p>
         <h1>האפליקציה ש<span class="hl">עושה את העבודה</span></h1>
@@ -131,7 +154,7 @@
           <a class="btn btn--primary btn--lg" href="#cta">קבלו גישה מוקדמת</a>
           <a class="btn btn--ghost btn--lg" href="plans.html">או דפדפו במסלולים</a>
         </div>
-        <p class="hero__social"><span aria-hidden="true">👥</span> <strong>124 אנשים</strong> כבר ברשימת ההמתנה</p>
+        <p class="hero__social"><span class="hero__social-ico" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3.5 20a5.5 5.5 0 0 1 11 0"/><path d="M16 5.5a3 3 0 0 1 0 5M20.5 20a5.5 5.5 0 0 0-3.5-5.1"/></svg></span> <strong><span data-count-to="124">124</span> אנשים</strong> כבר ברשימת ההמתנה</p>
       </div>
     </section>
 
@@ -150,7 +173,7 @@
       <div class="container">
         <header class="section__head reveal"><span class="eyebrow">מה יש באפליקציה</span><h2>כל הכלים לחסוך — בלי כאב ראש</h2><p>כל יכולת שתראו כאן קיימת באפליקציה עצמה.</p></header>
       <section class="app-group" aria-label="השוואה והמלצה">
-        <header class="section__head reveal"><span class="eyebrow">🔎 השוואה והמלצה</span></header>
+        <header class="section__head reveal"><span class="eyebrow eyebrow--ico"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg> השוואה והמלצה</span></header>
         <div class="features">
           <article class="feature reveal"><span class="feature__icon"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 9h6M9 13h6M9 17h4"/></svg></span><h3>שאלון חיסכון</h3><p>כמה שאלות קצרות על השימוש שלכם — ומקבלים התאמה אישית, לא רשימה גנרית.</p></article>
           <article class="feature reveal"><span class="feature__icon"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.9 5.6L19 10l-5.1 1.4L12 17l-1.9-5.6L5 10l5.1-1.4z"/></svg></span><h3>ההתאמות שלי</h3><p>דאשבורד חכם עם המסלול המומלץ לכל קטגוריה, אחוז התאמה והחיסכון הצפוי.</p></article>
@@ -160,7 +183,7 @@
         </div>
       </section>
       <section class="app-group" aria-label="חיסכון ומעקב">
-        <header class="section__head reveal"><span class="eyebrow">💰 חיסכון ומעקב</span></header>
+        <header class="section__head reveal"><span class="eyebrow eyebrow--ico"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6"/><path d="M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"/></svg> חיסכון ומעקב</span></header>
         <div class="features">
           <article class="feature reveal"><span class="feature__icon"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 3h14v18l-2.5-1.5L14 21l-2-1.5L10 21l-2.5-1.5L5 21z"/><path d="M9 8h6M9 12h6"/></svg></span><h3>החשבונות שלי</h3><p>מזינים כמה אתם משלמים בכל קטגוריה ורואים מיד את ההוצאה הכוללת והחיסכון הפוטנציאלי.</p></article>
           <article class="feature reveal"><span class="feature__icon"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4v16h16"/><rect x="7" y="11" width="2.6" height="6"/><rect x="11.7" y="7" width="2.6" height="10"/><rect x="16.4" y="13" width="2.6" height="4"/></svg></span><h3>החיסכון שלי</h3><p>חיסכון שנתי פוטנציאלי, ההזדמנות הכי גדולה שלכם ופירוט מלא לפי קטגוריה.</p></article>
@@ -170,16 +193,16 @@
         </div>
       </section>
       <section class="app-group" aria-label="קהילה ואמון">
-        <header class="section__head reveal"><span class="eyebrow">💬 קהילה ואמון</span></header>
+        <header class="section__head reveal"><span class="eyebrow eyebrow--ico"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8 9 9 0 0 1-3.8-.8L3 20l1.3-3.9A8 8 0 0 1 3.5 11 8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/></svg> קהילה ואמון</span></header>
         <div class="features">
           <article class="feature reveal"><span class="feature__icon"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3"/><path d="M3.5 20a5.5 5.5 0 0 1 11 0"/><path d="M16 5.5a3 3 0 0 1 0 5M20.5 20a5.5 5.5 0 0 0-3.5-5.1"/></svg></span><h3>קהילת חוסך</h3><p>פיד פעיל עם ערוצים לכל נושא — המלצות, סלולר, אינטרנט, חו״ל ועזרה בניתוק.</p></article>
           <article class="feature reveal"><span class="feature__icon"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8 9 9 0 0 1-3.8-.8L3 20l1.3-3.9A8 8 0 0 1 3.5 11 8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/></svg></span><h3>הצ׳אט הקהילתי</h3><p>שואלים את הקהילה, מגיבים, משתפים תמונה או הקלטה — ומסמנים פוסטים לשמירה.</p></article>
-          <article class="feature reveal"><span class="feature__icon"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.9 5.6L19 10l-5.1 1.4L12 17l-1.9-5.6L5 10l5.1-1.4z"/></svg></span><h3>דירוגי ספקים</h3><p>לוח דירוגים של כל החברות: דירוג כולל, מחיר, שירות, כיסוי ומהירות — מלקוחות אמיתיים.</p></article>
+          <article class="feature reveal"><span class="feature__icon"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 17l-5.2 2.6 1-5.8L3.5 9.7l5.9-.9z"/></svg></span><h3>דירוגי ספקים</h3><p>לוח דירוגים של כל החברות: דירוג כולל, מחיר, שירות, כיסוי ומהירות — מלקוחות אמיתיים.</p></article>
           <article class="feature reveal"><span class="feature__icon"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 13v-1a8 8 0 0 1 16 0v1"/><rect x="3" y="13" width="4" height="6" rx="1.5"/><rect x="17" y="13" width="4" height="6" rx="1.5"/></svg></span><h3>דנה — ליווי אישי</h3><p>נציגה שמלווה את המעבר בצ׳אט: סטטוס, ניוד מספר וכל שאלה — &quot;מלווים, לא מנתקים&quot;.</p></article>
         </div>
       </section>
       <section class="app-group" aria-label="המעבר עצמו">
-        <header class="section__head reveal"><span class="eyebrow">🤝 המעבר עצמו</span></header>
+        <header class="section__head reveal"><span class="eyebrow eyebrow--ico"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.5 2.5 5-5"/></svg> המעבר עצמו</span></header>
         <div class="features">
           <article class="feature reveal"><span class="feature__icon"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="7" width="13" height="10" rx="2.5"/><path d="M16 10.5 21 8v8l-5-2.5z"/></svg></span><h3>פגישת וידאו עם נציג</h3><p>קובעים פגישת Zoom של 30 דקות, יום מראש — נציג מציג הצעת מחיר מותאמת, פנים מול פנים.</p></article>
           <article class="feature reveal"><span class="feature__icon"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="2.5" width="12" height="19" rx="2.5"/><line x1="10.5" y1="18.5" x2="13.5" y2="18.5"/></svg></span><h3>בקשת ניוד מספר</h3><p>שומרים על אותו מספר. ממלאים טופס קצר ואנחנו מבצעים את הניוד מול הספק הישן.</p></article>
@@ -191,7 +214,7 @@
 
     <section class="section section--alt" id="community">
       <div class="container">
-        <header class="section__head reveal"><span class="eyebrow">💬 קהילת חוסך</span><h2>הצ׳אט הקהילתי — חוכמת ההמון</h2><p>צ׳אט קהילתי עם ערוץ לכל נושא: שואלים, מגיבים, משתפים תמונה או הקלטה — ולומדים מאנשים שכבר עברו.</p></header>
+        <header class="section__head reveal"><span class="eyebrow eyebrow--ico"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8 9 9 0 0 1-3.8-.8L3 20l1.3-3.9A8 8 0 0 1 3.5 11 8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/></svg> קהילת חוסך</span><h2>הצ׳אט הקהילתי — חוכמת ההמון</h2><p>צ׳אט קהילתי עם ערוץ לכל נושא: שואלים, מגיבים, משתפים תמונה או הקלטה — ולומדים מאנשים שכבר עברו.</p></header>
         <div class="cta__inner reveal" style="text-align:center">
           <div class="providers__row" aria-label="ערוצי הקהילה">
           <span class="chip">המלצות</span>
@@ -211,12 +234,12 @@
 
     <section class="section">
       <div class="container">
-        <header class="section__head reveal"><span class="eyebrow">🤖 חוסך AI</span><h2>יועץ התקשורת החכם שלכם</h2><p>שואלים בשפה חופשית — מקבלים המלצה מנומקת עם חיסכון שנתי.</p></header>
+        <header class="section__head reveal"><span class="eyebrow eyebrow--ico"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="8" width="16" height="11" rx="3"/><path d="M12 8V5M8.5 13.5h.01M15.5 13.5h.01M9.5 16.5h5"/><circle cx="12" cy="4" r="1.5"/></svg> חוסך AI</span><h2>יועץ התקשורת החכם שלכם</h2><p>שואלים בשפה חופשית — מקבלים המלצה מנומקת עם חיסכון שנתי.</p></header>
         <div class="ai-demo reveal">
           <div class="ai-chat" id="aiChat">
             <div class="ai-bubble ai-bubble--bot">היי! אני חוסך AI — שאלו אותי על מסלולי סלולר, אינטרנט, טלוויזיה או חו״ל, ואני אענה לפי הנתונים האמיתיים שלנו.</div>
           </div>
-          <div class="ai-chips" aria-label="שאלות מהירות לדוגמה"><span class="ai-chip">✨ מה הכי משתלם לי?</span><span class="ai-chip">📱 סלולר הכי זול</span><span class="ai-chip">🌐 אינטרנט 1000Mb</span><span class="ai-chip">✅ ללא התחייבות</span><span class="ai-chip">✈️ חבילת חו״ל</span><span class="ai-chip">💰 פחות מ-₪50</span></div>
+          <div class="ai-chips" aria-label="שאלות מהירות לדוגמה"><span class="ai-chip" data-q="מה הכי משתלם לי?"><span class="ai-chip__ico" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.9 5.6L19 10l-5.1 1.4L12 17l-1.9-5.6L5 10l5.1-1.4z"/></svg></span><span class="ai-chip__txt">מה הכי משתלם לי?</span></span><span class="ai-chip" data-q="סלולר הכי זול"><span class="ai-chip__ico" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="2.5" width="12" height="19" rx="2.5"/><line x1="10.5" y1="18.5" x2="13.5" y2="18.5"/></svg></span><span class="ai-chip__txt">סלולר הכי זול</span></span><span class="ai-chip" data-q="אינטרנט 1000Mb"><span class="ai-chip__ico" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c2.6 2.4 4 5.5 4 9s-1.4 6.6-4 9c-2.6-2.4-4-5.5-4-9s1.4-6.6 4-9z"/></svg></span><span class="ai-chip__txt">אינטרנט 1000Mb</span></span><span class="ai-chip" data-q="ללא התחייבות"><span class="ai-chip__ico" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.5 2.5 5-5"/></svg></span><span class="ai-chip__txt">ללא התחייבות</span></span><span class="ai-chip" data-q="חבילת חו״ל"><span class="ai-chip__ico" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 14.5 14 12V5.5a2 2 0 0 0-4 0V12l-7 2.5V16l7-1.7V19l-2 1.3V22l4-1 4 1v-1.7L14 19v-4.7l7 1.7z"/></svg></span><span class="ai-chip__txt">חבילת חו״ל</span></span><span class="ai-chip" data-q="פחות מ-₪50"><span class="ai-chip__ico" aria-hidden="true"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6"/><path d="M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"/></svg></span><span class="ai-chip__txt">פחות מ-₪50</span></span></div>
           <form class="ai-input" id="aiChatForm">
             <input type="text" id="aiChatInput" maxlength="500" placeholder="שאלו אותי כל דבר על מסלולים..." aria-label="שאלו את חוסך AI" autocomplete="off" />
             <button type="submit" class="btn btn--primary">שלחו</button>
@@ -234,6 +257,7 @@
           <input type="text" id="leadCompany" name="company" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" />
           <input type="text" id="leadName" name="name" placeholder="שם מלא" aria-label="שם מלא" autocomplete="name" required />
           <input type="tel" id="leadPhone" name="phone" placeholder="טלפון (050-0000000)" aria-label="מספר טלפון" autocomplete="tel" inputmode="tel" required />
+          <p class="cta__form-note">נחזור בוואטסאפ או בטלפון • לא נשתף את המספר עם ספקים • הנתונים מוצפנים</p>
           <div class="consent">
             <label class="consent__row" for="consentTerms">
               <input type="checkbox" id="consentTerms" name="consentTerms" required />
@@ -262,8 +286,8 @@
   <footer class="footer">
     <div class="container footer__inner">
       <div class="footer__brand">
-        <a class="brand brand--light" href="index.html"><span class="brand__mark" aria-hidden="true">✦</span><span class="brand__name">חוסך</span></a>
-        <p>השוואת מחירי תקשורת חכמה. משווים, חוסכים, עוברים — בלי כאב ראש.</p>
+        <a class="brand brand--light" href="index.html" aria-label="חוסך — דף הבית"><svg class="brand__mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19V13M11 19V8M17 19v-9"/><path d="M4 9.5 10 5l4 2.5 6-4.5"/><circle cx="20" cy="3" r="1.4" fill="currentColor" stroke="none"/></svg><span class="brand__name">חוסך</span></a>
+        <p class="footer__tagline">השוואת מחירי תקשורת חכמה. משווים, חוסכים, עוברים — בלי כאב ראש.</p>
         <form class="subscribe" id="subscribeForm" novalidate>
           <label class="subscribe__label" for="subscribeEmail">קבלו עדכוני מחיר ומבצעים</label>
           <div class="subscribe__row">
@@ -273,6 +297,7 @@
           <label class="subscribe__consent" for="subscribeConsent"><input type="checkbox" id="subscribeConsent" name="consent" required /> אני מאשר/ת קבלת עדכוני מחיר ומבצעים במייל</label>
           <p class="subscribe__note" id="subscribeNote" role="status" aria-live="polite"></p>
         </form>
+        <div class="footer__socials" aria-label="ערוצי קשר"><a class="footer__social" href="https://wa.me/972505037537" target="_blank" rel="noopener" aria-label="וואטסאפ"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20l1.5-4.2A7.5 7.5 0 1 1 9 19l-5 1z"/><path d="M9 9.2c.2-.6.4-.6.7-.6h.5c.2 0 .4 0 .6.5l.6 1.4c.1.2 0 .4-.1.5l-.4.5c-.1.1-.2.3-.1.5.3.6 1.2 1.6 2 1.9.2.1.4.1.5-.1l.4-.5c.2-.2.4-.2.5-.1l1.3.7c.3.2.3.3.3.5 0 .5-.6 1.2-1.2 1.3-.5.1-1.1.1-2.6-.6-2.1-1-3.4-3.1-3.5-3.3-.1-.2-.6-1.1-.6-2 0-.9.5-1.3.7-1.4z"/></svg></a><a class="footer__social" href="mailto:hello@chosech.co.il" aria-label="אימייל"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m4 7 8 6 8-6"/></svg></a></div>
       </div>
       <nav class="footer__links footer__col" aria-label="קטגוריות">
         <h4>קטגוריות</h4>
@@ -293,10 +318,11 @@
         <a href="mailto:hello@chosech.co.il">hello@chosech.co.il</a>
       </nav>
     </div>
-    <div class="container footer__bottom"><span>© <span id="year"></span> חוסך · כל הזכויות שמורות</span><span>נבנה באהבה בישראל</span></div>
+    <div class="footer__divider" aria-hidden="true"></div>
+    <div class="container footer__bottom"><span>© <span id="year">2026</span> חוסך · כל הזכויות שמורות</span><span class="footer__made">נבנה באהבה בישראל</span></div>
   </footer>
   <a class="wa-fab" href="https://wa.me/972505037537?text=%D7%94%D7%99%D7%99%2C%20%D7%90%D7%A9%D7%9E%D7%97%20%D7%9C%D7%94%D7%A9%D7%95%D7%95%D7%AA%20%D7%9E%D7%A1%D7%9C%D7%95%D7%9C%D7%99%D7%9D" target="_blank" rel="noopener" aria-label="דברו איתנו בוואטסאפ"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" width="26" height="26"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.885-9.885 9.885M20.52 3.449C18.24 1.245 15.24 0 12.045 0 5.463 0 .104 5.359.101 11.892c0 2.096.549 4.142 1.595 5.945L0 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.582 0 11.943-5.359 11.945-11.893a11.821 11.821 0 00-3.418-8.452z"/></svg></a>
   <script>window.CHOSECH_SUPABASE={url:'https://orzitfqmlvopujsoyigr.supabase.co',anonKey:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9yeml0ZnFtbHZvcHVqc295aWdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5OTc5NzIsImV4cCI6MjA5NjU3Mzk3Mn0.NY4ZHzR3BAWUxm5as9Z054o8fwcfejAab9SIvduKlhM'};</script>
-  <script src="script.js?v=969b4492" defer></script>
+  <script src="script.js?v=30f04aa5" defer></script>
 </body>
 </html>

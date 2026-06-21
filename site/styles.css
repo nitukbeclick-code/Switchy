@@ -34,22 +34,45 @@
   /* Refined accent system — color used with intent over the ink/glass base.
      Green = action (CTAs, links, active, focus), matching the Switchy logo.
      Amber = value/savings. */
-  --accent: #16A34A;        /* brand green — primary action */
+  --accent: #16A34A;        /* brand green — primary action (fills/CTAs/borders/icons) */
   --accent-d: #15803D;      /* deep green for gradient depth + hover */
   --accent-t: #DCFCE7;      /* light green surface tint */
-  --value: #F59E0B;         /* amber — savings / value emphasis */
+  --value: #F59E0B;         /* amber — savings / value emphasis (fills/badges/icons) */
   --value-d: #D97706;
+  /* On-light TEXT tiers — the same brand hues, darkened so green/amber used as
+     small text clear WCAG AA (≥4.5:1) on white/glass. --accent (3.3:1 on white)
+     is fine for fills, borders, icons and large display, but fails for label-
+     sized text; these are the values to use whenever the colour IS the ink.
+     In dark mode the lifted --accent/--value already pass, so these alias back. */
+  --accent-ink: #15803D;    /* green text on light — 4.6:1 on white */
+  --value-ink: #B45309;     /* amber text on light — 5.9:1 on white */
 
-  --radius: 20px;           /* friendlier rounding */
+  /* Semantic status colours — driven from one place so toasts / field-errors /
+     callouts stop hand-coding raw hex. Light surfaces (--*-t) for tinted ground. */
+  --error: #DC2626;   --error-t: #FEE2E2;
+  --warning: #D97706; --warning-t: #FEF3C7;
+  --info: #2563EB;    --info-t: #DBEAFE;
+
+  --radius-xs: 8px;         /* chips, tight tablets, inner controls */
   --radius-sm: 12px;
+  --radius: 20px;           /* friendlier rounding */
   --radius-lg: 26px;
 
   /* Layered elevation — a soft ambient wash + a tighter key shadow, so cards
-     read as lifted glass rather than a flat drop. Cool ink-tinted, never black. */
+     read as lifted glass rather than a flat drop. Cool ink-tinted, never black.
+     An explicit elevation SCALE (--elev-0…3) names the same ramp by depth, so
+     components can request a tier rather than reach for a raw shadow token. */
   --shadow-sm: 0 1px 2px rgba(15,27,34,.04), 0 4px 14px rgba(15,27,34,.05);
   --shadow: 0 2px 6px rgba(15,27,34,.05), 0 14px 38px rgba(15,27,34,.09);
   --shadow-lg: 0 6px 16px rgba(15,27,34,.08), 0 30px 70px rgba(15,27,34,.16);
   --shadow-ink: 0 10px 24px rgba(17,24,39,.26), 0 2px 6px rgba(17,24,39,.18);
+  --elev-0: none;
+  --elev-1: var(--shadow-sm);
+  --elev-2: var(--shadow);
+  --elev-3: var(--shadow-lg);
+  /* Glass-glint — the signature 1px top-edge light that makes a surface read as
+     lifted glass. Layer it FIRST in a box-shadow list, before the elevation. */
+  --glint: inset 0 1px 0 rgba(255,255,255,.7);
   /* Focus rings — a two-layer ring (white inner gap + green halo) so the
      outline reads cleanly on both light glass and the dark ink bands. The
      value variant is for amber "best/value" controls. */
@@ -66,6 +89,16 @@
   --space-xl: 86px;
 
   --maxw: 1140px;
+
+  /* Fluid type scale — one clamp() ramp the headings tune against, so display
+     sizes breathe between phone and desktop without per-component media queries.
+     min / preferred (vw) / max are hand-tuned to the existing hero & section sizes. */
+  --fs-h1:   clamp(40px, 6.4vw, 76px);
+  --fs-h2:   clamp(30px, 4.4vw, 50px);
+  --fs-h3:   clamp(20px, 2.4vw, 25px);
+  --fs-lead: clamp(16px, 2vw, 19px);
+  --fs-body: clamp(15px, 1.2vw, 17px);
+
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
   --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
@@ -76,8 +109,13 @@
    below inherits it without per-rule overrides. Surfaces become dark ink, text
    lifts to light; the green ACTION and amber VALUE accents are nudged brighter
    so they stay legible (and clear WCAG AA) against the dark glass. */
-@media (prefers-color-scheme: dark) {
-  :root {
+/* ===== DARK THEME =====
+   Driven by [data-theme="dark"] on <html>. A tiny inline <head> guard (emitted
+   by build.js head() and present in index.html) sets data-theme from
+   localStorage or the system preference BEFORE first paint — so system users
+   still get dark with no flash, and the header toggle has full manual control.
+   Light is the default :root above. */
+:root[data-theme="dark"] {
     --green: #E5E7EB;        /* "ink" inverts to light for text/structure */
     --green-2: #C5CBD3;
     --green-d: #F3F5F7;       /* deepest "ink" → brightest text on dark */
@@ -106,6 +144,19 @@
     --accent-t: #0B2A18;      /* tinted green surface */
     --value: #FBBF24;         /* amber lifted */
     --value-d: #F59E0B;
+    /* On dark glass the lifted accents already clear AA (10:1+), so the on-light
+       text tiers alias back to them — green/amber text stays bright, not dark. */
+    --accent-ink: #4ADE80;
+    --value-ink: #FBBF24;
+
+    /* Semantic status — lifted hues + dark tinted grounds so callouts/toasts
+       stay legible on dark glass (the light --*-t tints would glare). */
+    --error: #F87171;   --error-t: #2A1416;
+    --warning: #FBBF24; --warning-t: #2A2110;
+    --info: #60A5FA;    --info-t: #11233A;
+
+    /* Glass-glint softens on dark surfaces (a bright white edge would shout). */
+    --glint: inset 0 1px 0 rgba(255,255,255,.08);
 
     --shadow-sm: 0 1px 2px rgba(0,0,0,.4), 0 4px 14px rgba(0,0,0,.45);
     --shadow: 0 2px 6px rgba(0,0,0,.45), 0 14px 38px rgba(0,0,0,.55);
@@ -117,29 +168,82 @@
     --ring-value: 0 0 0 2px var(--cream), 0 0 0 5px rgba(251,191,36,.5);
     --ring-flush: 0 0 0 3px rgba(129,140,248,.45);
   }
-  /* Glass utility adapts to a dark frosted panel rather than translucent white. */
-  .glass { background: rgba(28,36,46,.6); border-color: rgba(255,255,255,.08); }
-  @supports not ((backdrop-filter: blur(14px)) or (-webkit-backdrop-filter: blur(14px))) {
-    .glass { background: var(--white); }
-  }
-  .nav { background: rgba(17,22,28,.82); }
-  .nav.scrolled { background: rgba(17,22,28,.95); }
-  .feature, .guide-card, .plan, .post-card { background: rgba(28,36,46,.6); border-color: rgba(255,255,255,.08); }
-  @supports not ((backdrop-filter: blur(14px)) or (-webkit-backdrop-filter: blur(14px))) {
-    .feature, .guide-card, .plan, .post-card { background: var(--white); }
-  }
-  .plogo--img, .pchip { background: var(--white); }
-  /* Community + booking: re-skin the few surfaces that carry their own light-mode
-     tints so they read on dark glass; the rest inherit the re-skinned tokens. */
-  .post-card:hover { border-color: rgba(255,255,255,.14); }
-  .stars-row { color: var(--ink-200); }
-  .booking__note.is-error { color: #f87171; }
-  .booking__consent label, .post-card__body, .review-card__body { color: var(--ink); }
-  /* The green "join the app" panel keeps its tint but on dark it must stay legible. */
-  .community__join { color: var(--ink); }
-  .community__join small { color: var(--muted); }
-  .slot[disabled], .slot:disabled, .slot--taken { color: var(--ink-400); }
+/* Glass utility adapts to a dark frosted panel rather than translucent white. */
+:root[data-theme="dark"] .glass { background: rgba(28,36,46,.6); border-color: rgba(255,255,255,.08); }
+@supports not ((backdrop-filter: blur(14px)) or (-webkit-backdrop-filter: blur(14px))) {
+  :root[data-theme="dark"] .glass { background: var(--white); }
 }
+:root[data-theme="dark"] .nav { background: rgba(17,22,28,.82); }
+:root[data-theme="dark"] .nav.scrolled { background: rgba(17,22,28,.95); }
+:root[data-theme="dark"] .feature, :root[data-theme="dark"] .guide-card, :root[data-theme="dark"] .plan, :root[data-theme="dark"] .post-card { background: rgba(28,36,46,.6); border-color: rgba(255,255,255,.08); }
+@supports not ((backdrop-filter: blur(14px)) or (-webkit-backdrop-filter: blur(14px))) {
+  :root[data-theme="dark"] .feature, :root[data-theme="dark"] .guide-card, :root[data-theme="dark"] .plan, :root[data-theme="dark"] .post-card { background: var(--white); }
+}
+:root[data-theme="dark"] .plogo--img, :root[data-theme="dark"] .pchip { background: var(--white); }
+/* Surfaces with a HARD-CODED light background (#fff) and NO token to re-skin:
+   in dark mode their text flips light → light-on-light. Re-skin them to dark so
+   contrast holds. (.feature/.plan/etc. already covered above via their own
+   overrides; these are the remaining hand-coded whites.) */
+:root[data-theme="dark"] .trust { background: #161C24; }
+:root[data-theme="dark"] .section--alt { background: #0E141A; }
+:root[data-theme="dark"] .chip { background: #161C24; border-color: rgba(255,255,255,.10); color: var(--green-d); }
+:root[data-theme="dark"] a.chip:hover { background: #1F2733; border-color: rgba(255,255,255,.18); }
+:root[data-theme="dark"] .faq__list details[open] { background: rgba(28,36,46,.6); border-color: rgba(255,255,255,.12); }
+/* Hero phone is a device MOCKUP — its screen stays a light glass panel in both
+   themes, so pin its inner text to dark ink (it would otherwise inherit the
+   light-flipped tokens and vanish on the white screen). */
+:root[data-theme="dark"] .phone__screen .card { background: #fff; }
+:root[data-theme="dark"] .phone__screen .card__text b { color: #111827; }
+:root[data-theme="dark"] .phone__screen .card__text small { color: #4B5563; }
+:root[data-theme="dark"] .phone__screen .tag { color: #111827; }
+/* Community + booking: re-skin the few surfaces that carry their own light-mode
+   tints so they read on dark glass; the rest inherit the re-skinned tokens. */
+:root[data-theme="dark"] .post-card:hover { border-color: rgba(255,255,255,.14); }
+:root[data-theme="dark"] .stars-row { color: var(--ink-200); }
+:root[data-theme="dark"] .booking__note.is-error { color: #f87171; }
+:root[data-theme="dark"] .booking__consent label, :root[data-theme="dark"] .post-card__body, :root[data-theme="dark"] .review-card__body { color: var(--ink); }
+/* The green "join the app" panel keeps its tint but on dark it must stay legible. */
+:root[data-theme="dark"] .community__join { color: var(--ink); }
+:root[data-theme="dark"] .community__join small { color: var(--muted); }
+:root[data-theme="dark"] .slot[disabled], :root[data-theme="dark"] .slot:disabled, :root[data-theme="dark"] .slot--taken { color: var(--ink-400); }
+
+/* Premium INK bands — the dark hero cards, CTA, footer, calc card, compare
+   header and the "me" chat bubble are built on var(--green-d)/var(--green),
+   which INVERT to light in dark mode (turning these into near-white bands with
+   hardcoded white text → ~1:1 contrast). Pin them to a fixed dark ink so they
+   stay dark-on-light-text in BOTH themes, per the brand's "big dark cards stay
+   ink, not coloured" rule. Fixed hexes (not tokens) so theme inversion can't
+   reach them. */
+:root[data-theme="dark"] .cta,
+:root[data-theme="dark"] .calc__card,
+:root[data-theme="dark"] .article-cta,
+:root[data-theme="dark"] .card--save { background: linear-gradient(140deg, #0B0F14, #1F2733); }
+:root[data-theme="dark"] .footer { background: #0B0F14; }
+:root[data-theme="dark"] .cmp-table thead th { background: #1F2733; }
+:root[data-theme="dark"] .ai-bubble--me { background: #1F2733; color: #fff; }
+/* Text that sits ON these fixed-dark bands uses --lime (a LIGHT highlight in
+   light mode, but a DARK surface token in dark mode) — pin it light so the
+   note / consent links stay legible on the dark CTA band. */
+:root[data-theme="dark"] .cta__note,
+:root[data-theme="dark"] .consent__row a,
+:root[data-theme="dark"] .cta__form .consent__row input[type="checkbox"] { color: #E5E7EB; }
+:root[data-theme="dark"] .calc__row output { color: #E5E7EB; }
+/* Active/selected green fills carry WHITE text in light mode, but the dark theme
+   lifts --accent/--accent-d to BRIGHT green (#4ADE80/#22C55E) where white is only
+   1.7–2.3:1. Flip the label to dark ink (8–11:1) on every solid green fill. */
+:root[data-theme="dark"] .filter-btn.active,
+:root[data-theme="dark"] .community__chan--active,
+:root[data-theme="dark"] .community__chan[aria-pressed="true"],
+:root[data-theme="dark"] .community__chip[aria-pressed="true"],
+:root[data-theme="dark"] .booking__providers .provider-pick[aria-pressed="true"],
+:root[data-theme="dark"] .booking__providers .provider-pick.is-chosen,
+:root[data-theme="dark"] .booking__providers .booking__provider[aria-pressed="true"],
+:root[data-theme="dark"] .booking__providers .booking__provider.is-chosen,
+:root[data-theme="dark"] .slot--chosen,
+:root[data-theme="dark"] .slot[aria-pressed="true"],
+:root[data-theme="dark"] .step__num,
+:root[data-theme="dark"] .wa-fab { color: #0B0F14; }
+/* The calc card's range track + result figures already read on the dark ink. */
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -235,8 +339,12 @@ a:not([class]) { text-decoration: underline; text-underline-offset: 2px; text-de
 }
 .btn:hover::before, .btn:focus-visible::before { transform: translateX(-120%); }
 /* Inset top highlight = the glass edge that makes the gradient read dimensional. */
+/* Fixed deep-green gradient (theme-independent) so WHITE label text clears AA
+   (≥5:1) in BOTH themes — white on the brighter --accent (#16A34A) is only
+   3.3:1, and the dark theme would lift --accent to #4ADE80 (1.7:1). The vivid
+   brand green still reads through the green glow/halo shadows below. */
 .btn--primary {
-  background: linear-gradient(165deg, var(--accent), var(--accent-d)); color: #fff;
+  background: linear-gradient(165deg, #15803D, #126C34); color: #fff;
   box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 10px 24px rgba(22,163,74,.32), 0 2px 6px rgba(21,128,61,.24);
 }
 .btn--primary:hover { transform: translateY(-2px); filter: brightness(1.05); box-shadow: inset 0 1px 0 rgba(255,255,255,.22), 0 18px 36px rgba(22,163,74,.4), 0 3px 8px rgba(21,128,61,.26); }
@@ -267,11 +375,11 @@ a:not([class]) { text-decoration: underline; text-underline-offset: 2px; text-de
 @keyframes btn-spin { to { transform: rotate(360deg); } }
 
 .pill {
-  display: inline-block; background: var(--accent-t); color: var(--accent);
+  display: inline-block; background: var(--accent-t); color: var(--accent-ink);
   font-weight: 700; font-size: 13px; padding: 7px 15px; border-radius: 999px; margin-bottom: 18px;
 }
 .eyebrow {
-  display: inline-block; color: var(--accent); font-weight: 700; font-size: 13px;
+  display: inline-block; color: var(--accent-ink); font-weight: 700; font-size: 13px;
   letter-spacing: .04em; text-transform: uppercase; margin-bottom: 10px;
 }
 
@@ -297,16 +405,33 @@ a:not([class]) { text-decoration: underline; text-underline-offset: 2px; text-de
   content: ""; position: absolute; inset-inline: 0; bottom: -2px; height: 2px; border-radius: 2px;
   background: var(--accent); transform: scaleX(0); transform-origin: right; transition: transform .25s var(--ease);
 }
-.nav__links a:hover { color: var(--accent); }
+.nav__links a:hover { color: var(--accent-ink); }
 .nav__links a:hover::after { transform: scaleX(1); }
 /* Current page — stamped by script.js as aria-current="page". */
-.nav__links a[aria-current="page"] { color: var(--accent); font-weight: 700; }
+.nav__links a[aria-current="page"] { color: var(--accent-ink); font-weight: 700; }
 .nav__links a[aria-current="page"]::after { transform: scaleX(1); }
-.nav__mobile a[aria-current="page"] { color: var(--accent); font-weight: 700; }
+.nav__mobile a[aria-current="page"] { color: var(--accent-ink); font-weight: 700; }
 /* Compact, quieter nav CTA — it lives on EVERY viewport, so it must not
    compete with the page-level primaries below it. */
 .nav__cta { margin-inline-start: 6px; padding: 9px 16px; font-size: 14px; border-radius: 12px;
   box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 4px 12px rgba(22,163,74,.24); }
+/* ── Theme toggle (light/dark) ───────────────────────────────────────────────
+   An icon-only control (sun in dark mode → switch to light; moon in light mode →
+   switch to dark). 44px hit area, a quiet glass hover, and the standard focus
+   ring. Only ONE glyph shows per theme; the other is hidden from layout AND from
+   assistive tech so the accessible name (button aria-label) stays unambiguous. */
+.theme-toggle {
+  flex: none; width: 44px; height: 44px; display: grid; place-items: center;
+  background: none; border: 0; cursor: pointer; color: var(--green-d); border-radius: 12px;
+  transition: background .15s, color .15s;
+}
+.theme-toggle:hover { background: var(--mint); color: var(--accent-ink); }
+.theme-toggle .ico { width: 20px; height: 20px; }
+.theme-toggle__sun, .theme-toggle__moon { display: grid; place-items: center; }
+/* Light theme shows the moon (go-dark); dark theme shows the sun (go-light). */
+.theme-toggle__sun { display: none; }
+:root[data-theme="dark"] .theme-toggle__moon { display: none; }
+:root[data-theme="dark"] .theme-toggle__sun { display: grid; }
 .nav__toggle { display: none; background: none; border: 0; width: 44px; height: 44px; cursor: pointer; padding: 10px; }
 .nav__toggle span { display: block; height: 2.5px; background: var(--green-d); border-radius: 2px; margin: 4px 0; transition: .25s var(--ease); }
 .nav__toggle[aria-expanded="true"] span:nth-child(1) { transform: translateY(6.5px) rotate(45deg); }
@@ -318,11 +443,15 @@ a:not([class]) { text-decoration: underline; text-underline-offset: 2px; text-de
 
 /* ── Hero ────────────────────────────────────────────────────────────── */
 .hero { padding: 56px 0 40px; position: relative; }
+/* Parallax-ready: script.js may set --parallax (px) on .hero from scrollY; the
+   ambient light + dot-grid layers ride it at different rates for layered depth.
+   Defaults to 0 and is fully inert under reduced-motion (rules below). */
 .hero::before {
   content: ""; position: absolute; inset: 0 0 auto 0; height: 560px; z-index: -1;
   background:
     radial-gradient(820px 420px at 82% -12%, rgba(17,24,39,.07), transparent 60%),
     radial-gradient(620px 380px at 8% 4%, rgba(55,65,81,.05), transparent 62%);
+  transform: translate3d(0, calc(var(--parallax, 0px) * .35), 0); will-change: transform;
 }
 /* A fine ink dot-grid that fades out downward — engineered, formal texture. */
 .hero::after {
@@ -331,15 +460,17 @@ a:not([class]) { text-decoration: underline; text-underline-offset: 2px; text-de
   background-size: 26px 26px;
   -webkit-mask-image: linear-gradient(180deg, rgba(0,0,0,.5), transparent 72%);
   mask-image: linear-gradient(180deg, rgba(0,0,0,.5), transparent 72%);
+  transform: translate3d(0, calc(var(--parallax, 0px) * .6), 0); will-change: transform;
 }
+@media (prefers-reduced-motion: reduce) { .hero::before, .hero::after { transform: none; } }
 .hero__inner { display: grid; grid-template-columns: 1.05fr .95fr; gap: 48px; align-items: center; }
-.hero h1 { font-size: clamp(40px, 6.4vw, 76px); font-weight: 900; color: var(--green-d); letter-spacing: -2px; line-height: 1.02; }
+.hero h1 { font-size: var(--fs-h1); font-weight: 900; color: var(--green-d); letter-spacing: -2px; line-height: 1.02; }
 .hero .hl { color: var(--accent); position: relative; -webkit-text-fill-color: var(--accent); }
 .hero .hl::after {
   content: ""; position: absolute; left: 0; right: 0; bottom: 6%; height: 26%;
   background: var(--accent); opacity: .16; border-radius: 6px; z-index: -1;
 }
-.hero__sub { font-size: clamp(16px, 2vw, 19px); color: var(--muted); margin: 20px 0 28px; max-width: 30em; }
+.hero__sub { font-size: var(--fs-lead); color: var(--muted); margin: 20px 0 28px; max-width: 30em; }
 .hero__sub strong { color: var(--green); font-weight: 700; }
 .hero__fineprint { display: block; font-size: 12.5px; line-height: 1.5; color: var(--ink-600); margin-top: 10px; }
 .hero__fineprint a { color: inherit; text-decoration: underline; }
@@ -417,16 +548,26 @@ a.chip:hover { transform: translateY(-2px); border-color: var(--green-2); box-sh
 .section { padding: 86px 0; }
 .section--alt { background: #fff; }
 .section__head { text-align: center; max-width: 640px; margin: 0 auto 52px; }
-.section__head h2 { font-size: clamp(30px, 4.4vw, 50px); font-weight: 900; color: var(--green-d); letter-spacing: -1.4px; line-height: 1.05; }
-.section__head p { color: var(--muted); margin-top: 14px; font-size: 17px; line-height: 1.65; }
+.section__head h2 { font-size: var(--fs-h2); font-weight: 900; color: var(--green-d); letter-spacing: -1.4px; line-height: 1.05; }
+.section__head p { color: var(--muted); margin-top: 14px; font-size: var(--fs-lead); line-height: 1.65; }
 
 /* Steps */
-.steps { list-style: none; display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; counter-reset: s; }
-.step { background: var(--cream); border: 1px solid var(--line); border-radius: var(--radius); padding: 28px 24px; position: relative; }
+.steps { list-style: none; display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; counter-reset: s; position: relative; }
+/* Numbered step rail — a faint hairline connects the three numbered nodes so the
+   sequence reads as one guided path, not three loose cards. Sits behind the
+   badges, fades at both ends, and disappears once the grid stacks (≤900px). */
+.steps::before {
+  content: ""; position: absolute; z-index: 0;
+  top: calc(28px + 22px); height: 2px; inset-inline: 16%;
+  background: linear-gradient(90deg, transparent, var(--accent-t) 12%, var(--accent-t) 88%, transparent);
+  pointer-events: none;
+}
+.step { background: var(--cream); border: 1px solid var(--line); border-radius: var(--radius); padding: 28px 24px; position: relative; z-index: 1; }
 .section--alt .step { background: var(--cream); }
 .step { box-shadow: var(--shadow-sm); transition: transform .2s var(--ease), box-shadow .2s; }
 .step:hover { transform: translateY(-4px); box-shadow: var(--shadow); }
-.step__num { width: 44px; height: 44px; display: grid; place-items: center; background: linear-gradient(140deg, var(--accent), var(--accent-d)); color: #fff; font-family: 'Rubik'; font-weight: 800; border-radius: 14px; font-size: 19px; margin-bottom: 16px; box-shadow: 0 6px 16px rgba(22,163,74,.32); }
+.step__num { position: relative; width: 44px; height: 44px; display: grid; place-items: center; background: linear-gradient(140deg, var(--accent), var(--accent-d)); color: #fff; font-family: 'Rubik'; font-weight: 800; border-radius: 14px; font-size: 19px; margin-bottom: 16px; box-shadow: var(--glint), 0 6px 16px rgba(22,163,74,.32); }
+@media (max-width: 900px) { .steps::before { display: none; } }
 .step h3 { font-size: 19px; color: var(--green-d); margin-bottom: 8px; }
 .step p { color: var(--muted); }
 
@@ -444,8 +585,8 @@ a.chip:hover { transform: translateY(-2px); border-color: var(--green-2); box-sh
 /* Category cards are links to their landing pages — a quiet action cue that is
    always visible (so it reads as tappable on touch, where there is no hover)
    and nudges its arrow on hover. */
-.cat__go { display: block; margin-top: 12px; color: var(--accent); font-family: 'Rubik', sans-serif; font-weight: 700; font-size: 13px; opacity: .85; transition: opacity .18s, letter-spacing .18s var(--ease); }
-.cat:hover .cat__go { opacity: 1; letter-spacing: .01em; }
+.cat__go { display: block; margin-top: 12px; color: var(--accent-ink); font-family: 'Rubik', sans-serif; font-weight: 700; font-size: 13px; opacity: 1; transition: letter-spacing .18s var(--ease); }
+.cat:hover .cat__go { letter-spacing: .01em; }
 
 /* Calculator */
 .calc { display: grid; grid-template-columns: 1fr 1fr; gap: 44px; align-items: center; }
@@ -463,6 +604,10 @@ a.chip:hover { transform: translateY(-2px); border-color: var(--green-2); box-sh
 .calc__card input[type="range"] { width: 100%; -webkit-appearance: none; appearance: none; height: 6px; border-radius: 999px; background: rgba(255,255,255,.25); outline: none; }
 .calc__card input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 26px; height: 26px; border-radius: 50%; background: var(--accent); border: 3px solid #fff; cursor: pointer; box-shadow: 0 3px 10px rgba(0,0,0,.35); }
 .calc__card input[type="range"]::-moz-range-thumb { width: 22px; height: 22px; border: 3px solid #fff; border-radius: 50%; background: var(--accent); cursor: pointer; }
+/* Keyboard focus on the slider — a ring around the thumb (the bare outline:none
+   above left arrow-key users with no focus cue on the dark calc card). */
+.calc__card input[type="range"]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 3px var(--green-d), 0 0 0 6px #fff; }
+.calc__card input[type="range"]:focus-visible::-moz-range-thumb { box-shadow: 0 0 0 3px var(--green-d), 0 0 0 6px #fff; }
 .calc__result { text-align: center; margin: 26px 0 22px; }
 .calc__resultLabel { display: block; font-size: 14px; opacity: .8; }
 .calc__resultBig { display: block; font-family: 'Rubik'; font-size: 52px; font-weight: 900; color: var(--value); letter-spacing: -1px; }
@@ -477,13 +622,15 @@ a.chip:hover { transform: translateY(-2px); border-color: var(--green-2); box-sh
 .feature__icon { font-size: 30px; display: grid; place-items: center; width: 56px; height: 56px; background: var(--mint); border-radius: 16px; margin-bottom: 16px; }
 .feature h3 { font-size: 18px; color: var(--green-d); margin-bottom: 6px; }
 .feature p { color: var(--muted); }
-.feature em { color: var(--accent); font-style: normal; font-weight: 700; }
+.feature em { color: var(--accent-ink); font-style: normal; font-weight: 700; }
 
 /* Testimonials */
 .quotes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
 .quote { background: var(--cream); border: 1px solid var(--line); border-radius: var(--radius); padding: 26px; }
 .section--alt .quote { background: var(--cream); }
-.stars { color: #f5a623; letter-spacing: 2px; margin-bottom: 12px; }
+/* Rating stars — amber VALUE, darkened to clear the 3:1 graphical bar on white
+   (the bright #f5a623 fill sat at ~2.3:1). Still reads as warm gold. */
+.stars { color: var(--value-ink); letter-spacing: 2px; margin-bottom: 12px; }
 .quote blockquote { font-size: 17px; font-weight: 600; color: var(--green-d); line-height: 1.5; }
 .quote figcaption { color: var(--muted); font-size: 14px; margin-top: 12px; }
 .quote figcaption span { font-size: 12px; opacity: .7; }
@@ -496,15 +643,15 @@ a.chip:hover { transform: translateY(-2px); border-color: var(--green-2); box-sh
 .faq__list summary { font-family: 'Rubik'; font-weight: 700; font-size: 17px; color: var(--green-d); padding: 16px 0; cursor: pointer; list-style: none; display: flex; justify-content: space-between; align-items: center; gap: 12px; transition: color .15s; border-radius: 8px; }
 .faq__list summary::-webkit-details-marker { display: none; }
 .faq__list summary:focus-visible { outline: none; box-shadow: var(--ring-flush); }
-.faq__list details:not([open]) summary:hover { color: var(--accent); }
+.faq__list details:not([open]) summary:hover { color: var(--accent-ink); }
 /* The toggle marker as a soft ink chip — rotates to an × when the panel opens. */
 .faq__list summary::after {
   content: "+"; flex: none; width: 28px; height: 28px; display: grid; place-items: center;
   font-size: 22px; line-height: 1; color: var(--ink-600); background: var(--mint); border-radius: 9px;
   transition: transform .25s var(--ease), color .15s, background .15s;
 }
-.faq__list details:not([open]) summary:hover::after { color: var(--accent); background: var(--accent-t); }
-.faq__list details[open] summary::after { transform: rotate(45deg); color: var(--accent); background: var(--accent-t); }
+.faq__list details:not([open]) summary:hover::after { color: var(--accent-ink); background: var(--accent-t); }
+.faq__list details[open] summary::after { transform: rotate(45deg); color: var(--accent-ink); background: var(--accent-t); }
 .faq__list details p { color: var(--muted); padding: 0 0 18px; }
 
 /* CTA band */
@@ -544,14 +691,44 @@ a.chip:hover { transform: translateY(-2px); border-color: var(--green-2); box-sh
 .consent__row a:hover { opacity: .85; }
 
 /* Footer */
-.footer { background: var(--green-d); color: rgba(255,255,255,.8); padding: 48px 0 28px; }
+.footer { background: var(--green-d); color: rgba(255,255,255,.8); padding: 56px 0 28px; position: relative; }
+/* A 1px luminous top edge — the same glass-glint language, scaled to the band. */
+.footer::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 1px; background: linear-gradient(90deg, transparent, rgba(255,255,255,.14), transparent); }
 .footer__inner { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr 1fr; gap: 28px; }
-.footer__col h4 { font-family: 'Rubik'; font-size: 14px; color: rgba(255,255,255,.55); font-weight: 700; margin-bottom: 12px; }
-.footer__brand p { margin-top: 12px; max-width: 30em; font-size: 14px; }
-.footer__links, .footer__contact { display: flex; flex-direction: column; gap: 10px; padding-top: 6px; }
-.footer__links a, .footer__contact a { color: rgba(255,255,255,.8); font-weight: 600; transition: color .15s; }
+.footer__col { position: relative; }
+/* Hairline dividers between the link columns — a quiet editorial rhythm. RTL:
+   the rule sits on the inline-start of each column except the brand block. */
+.footer__col + .footer__col::before {
+  content: ""; position: absolute; inset-block: 0 8px; inset-inline-start: -14px; width: 1px;
+  background: linear-gradient(180deg, transparent, rgba(255,255,255,.10) 18%, rgba(255,255,255,.10) 82%, transparent);
+}
+.footer__col h4 { font-family: 'Rubik'; font-size: 13px; letter-spacing: .04em; text-transform: uppercase; color: rgba(255,255,255,.5); font-weight: 700; margin-bottom: 14px; }
+/* Brand row — the logo + tagline lead the footer with a touch more presence. */
+.footer__brand .brand { margin-bottom: 4px; }
+.footer__brand p { margin-top: 12px; max-width: 30em; font-size: 14px; color: rgba(255,255,255,.72); }
+.footer__links, .footer__contact { display: flex; flex-direction: column; gap: 11px; padding-top: 6px; }
+.footer__links a, .footer__contact a { position: relative; width: fit-content; color: rgba(255,255,255,.8); font-weight: 600; transition: color .15s; border-radius: 6px; }
 .footer__links a:hover, .footer__contact a:hover { color: var(--lime); }
-.footer__bottom { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-top: 34px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,.12); font-size: 13px; }
+.footer__links a:focus-visible, .footer__contact a:focus-visible { box-shadow: var(--ring); }
+/* Social row — a horizontal set of ink-glass icon buttons (markup may add
+   .footer__social with .footer__social-link children carrying an .ico/svg). */
+.footer__social { display: flex; gap: 10px; margin-top: 16px; }
+.footer__social-link {
+  width: 40px; height: 40px; flex: none; display: grid; place-items: center;
+  border-radius: 50%; color: rgba(255,255,255,.85);
+  background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.12);
+  box-shadow: var(--glint);
+  transition: background .18s, color .18s, transform .18s var(--ease-spring), border-color .18s;
+}
+.footer__social-link:hover { background: var(--accent); color: #fff; border-color: var(--accent); transform: translateY(-2px); }
+/* On dark, --accent lifts to bright green; a dark-ink glyph keeps the hover AA. */
+:root[data-theme="dark"] .footer__social-link:hover { color: #0B0F14; }
+/* Trust + form-reassurance microcopy (commission honesty + phone data-use). */
+.hero__trust-note { margin-top: 10px; font-size: 13px; color: var(--muted); }
+.cta__form-note { margin: 6px 2px 2px; font-size: 12px; color: var(--muted); line-height: 1.5; }
+.footer__social-link:focus-visible { box-shadow: var(--ring); }
+.footer__social-link svg, .footer__social-link .ico { width: 18px; height: 18px; }
+.footer__bottom { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-top: 40px; padding-top: 22px; border-top: 1px solid rgba(255,255,255,.12); font-size: 13px; color: rgba(255,255,255,.62); }
 
 /* ── Floating WhatsApp contact (mobile only) ─────────────────────────────────
    Keeps the editorial desktop layout clean; on touch it gives a one-tap line
@@ -591,7 +768,7 @@ body:has(.sticky-cta.is-visible) .wa-fab { bottom: 76px; }
 
 /* ── Post-submit referral nudge ──────────────────────────────────────────── */
 .cta__referral { margin-top: 14px; text-align: center; font-size: 14px; color: var(--muted); }
-.cta__referral a { color: var(--accent); font-weight: 700; }
+.cta__referral a { color: var(--accent-ink); font-weight: 700; }
 
 /* ── Category landing hero (generated pages) ─────────────────────────── */
 .lead-hero { padding: 56px 0 8px; text-align: center; position: relative; }
@@ -619,7 +796,7 @@ body:has(.sticky-cta.is-visible) .wa-fab { bottom: 76px; }
 .prose li { margin-bottom: 9px; font-size: 17px; color: var(--ink-700); line-height: 1.72; }
 /* Inline links in long-form copy: green (action), with an underline that
    thickens on hover — clearly clickable without shouting through the body. */
-.prose a:not([class]) { color: var(--accent); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; transition: text-decoration-thickness .15s, color .15s; }
+.prose a:not([class]) { color: var(--accent-ink); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; transition: text-decoration-thickness .15s, color .15s; }
 .prose a:not([class]):hover { color: var(--accent-d); text-decoration-thickness: 2px; }
 .tldr { background: var(--cream); border: 1px solid var(--line); border-inline-start: 4px solid var(--green); border-radius: 12px; padding: 16px 18px; margin: 0 0 30px; }
 .tldr b { color: var(--green-d); }
@@ -634,13 +811,13 @@ body:has(.sticky-cta.is-visible) .wa-fab { bottom: 76px; }
 .guide-card:hover { transform: translateY(-4px); box-shadow: var(--shadow); }
 /* The whole card is an <a> — give it the focus ring + the same lift as hover. */
 .guide-card:focus-visible { box-shadow: var(--ring), var(--shadow); border-color: var(--accent); transform: translateY(-4px); }
-.guide-card .tag-cat { align-self: flex-start; background: var(--accent-t); color: var(--accent); font-weight: 700; font-size: 12px; padding: 4px 11px; border-radius: 999px; margin-bottom: 14px; letter-spacing: .01em; transition: background .18s, color .18s; }
+.guide-card .tag-cat { align-self: flex-start; background: var(--accent-t); color: var(--accent-ink); font-weight: 700; font-size: 12px; padding: 4px 11px; border-radius: 999px; margin-bottom: 14px; letter-spacing: .01em; transition: background .18s, color .18s; }
 .guide-card h3 { font-family: 'Rubik'; font-size: 19px; color: var(--green-d); margin-bottom: 8px; line-height: 1.32; transition: color .15s; }
-.guide-card:hover h3, .guide-card:focus-visible h3 { color: var(--accent); }
+.guide-card:hover h3, .guide-card:focus-visible h3 { color: var(--accent-ink); }
 .guide-card p { color: var(--muted); flex: 1; line-height: 1.6; }
 /* Meta line sits under a hairline rule — separates the date/read-time from the
    body copy and gives the card a clear, editorial footer. */
-.guide-card .meta { color: var(--ink-400); font-size: 13px; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--ink-100); }
+.guide-card .meta { color: var(--ink-500); font-size: 13px; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--ink-100); }
 .guide-cards--2 { grid-template-columns: repeat(2, 1fr); max-width: 760px; margin-inline: auto; }
 /* Category-page related guides: a balanced 2×2 with a touch more air than the
    3-up guides grid, so each card reads as a deliberate pick, not a list item. */
@@ -665,9 +842,10 @@ body:has(.sticky-cta.is-visible) .wa-fab { bottom: 76px; }
 .plan__provider { font-family: 'Rubik'; font-weight: 800; color: var(--green-d); font-size: 16px; }
 .plan__id { display: flex; align-items: center; gap: 9px; min-width: 0; }
 .plogo { display: inline-grid; place-items: center; border-radius: 50%; border: 1.5px solid; border-color: currentColor; font-family: 'Rubik'; font-weight: 800; flex: none; vertical-align: middle; letter-spacing: -.5px; }
-/* Real logo image variant: white rounded tile, logo contained (real brand
-   marks, never recoloured). Falls back to the initials badge when absent. */
-.plogo--img { background: #fff; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; box-shadow: var(--shadow-sm); }
+/* Real logo image variant: a UNIFORM white rounded badge container that every
+   provider logo sits inside — a consistent tile rim + glass-glint, so a row of
+   mixed brand marks reads as one tidy set. The mark itself is never recoloured. */
+.plogo--img { background: #fff; border: 1px solid var(--line); border-radius: var(--radius-xs); overflow: hidden; box-shadow: var(--glint), var(--shadow-sm); }
 .plogo--img img { width: 100%; height: 100%; object-fit: contain; padding: 4px; display: block; }
 .provider-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; }
 .provider-card { background: var(--white); border: 1px solid var(--line); border-radius: 18px; padding: 18px; display: flex; align-items: center; gap: 12px; box-shadow: var(--shadow-sm); transition: transform .2s var(--ease), box-shadow .2s; }
@@ -696,7 +874,7 @@ body:has(.sticky-cta.is-visible) .wa-fab { bottom: 76px; }
 .plan__price b { font-family: 'Rubik'; font-size: 24px; font-weight: 800; color: var(--green); }
 .plan__price span { color: var(--muted); font-size: 12px; }
 .plan__after { display: block; color: var(--muted); font-size: 11px; }
-.plan--hasjump .plan__after { color: #d97706; font-weight: 600; }
+.plan--hasjump .plan__after { color: var(--value-ink); font-weight: 600; }
 .plan--hasjump .plan__after::before { content: '⚠ '; }
 /* The site's most-repeated CTA (every plan card) — a real green tertiary
    button: ACTION colour, 44px hit area (negative margin keeps the layout),
@@ -705,7 +883,7 @@ body:has(.sticky-cta.is-visible) .wa-fab { bottom: 76px; }
 .plan__cta {
   flex: 1 1 auto; align-self: flex-start;
   display: inline-flex; align-items: center; gap: 6px;
-  font-family: 'Rubik'; font-weight: 700; font-size: 14px; color: var(--accent);
+  font-family: 'Rubik'; font-weight: 700; font-size: 14px; color: var(--accent-ink);
   text-decoration: none; padding: 10px 14px; margin-inline-start: -14px; min-height: 44px;
   border-radius: 12px; transition: background .18s, color .15s, transform .15s var(--ease-spring);
 }
@@ -723,7 +901,9 @@ body:has(.sticky-cta.is-visible) .wa-fab { bottom: 76px; }
 .filter-btn:active { transform: scale(.97); }
 /* Selected = green, the one "active" language across the site (matches the
    nav's aria-current) — was solid ink here and grey one row below. */
-.filter-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+/* Solid green fills behind WHITE text use --accent-d: white on --accent (#16A34A)
+   is only 3.3:1 (fails normal AA), while on --accent-d (#15803D) it's 5.0:1. */
+.filter-btn.active { background: var(--accent-d); color: #fff; border-color: var(--accent-d); }
 .filter-search { flex: 1 1 220px; min-width: 0; min-height: 44px; padding: 10px 16px; border: 1px solid var(--line); border-radius: 999px; font-family: 'Assistant'; font-size: 15px; background: var(--white); transition: border-color .15s, box-shadow .15s; }
 .filter-search:hover { border-color: var(--ink-300); }
 /* Use the site's own focus ring (was a raw 2px outline — inconsistent with
@@ -739,7 +919,7 @@ input[type="number"].filter-search::-webkit-inner-spin-button { -webkit-appearan
 .flag-chip { background: var(--white); border: 1px solid var(--line); color: var(--green-d); font-family: 'Rubik'; font-weight: 700; font-size: 13px; padding: 8px 14px; min-height: 44px; border-radius: 999px; cursor: pointer; transition: background .15s, color .15s, border-color .15s, transform .15s var(--ease-spring), box-shadow .18s; }
 .flag-chip:hover { transform: translateY(-1px); border-color: var(--ink-300); box-shadow: var(--shadow-sm); }
 .flag-chip:active { transform: scale(.97); }
-.flag-chip.active { background: var(--accent-t); color: var(--accent); border-color: var(--accent); }
+.flag-chip.active { background: var(--accent-t); color: var(--accent-ink); border-color: var(--accent); }
 /* Empty state (no plans match the filters) — an intentional, illustrated
    pause rather than a bare line of grey text that could read as broken. */
 .plan-count { margin-right: auto; font-size: 13px; color: var(--ink-500, #6b7280); white-space: nowrap; }
@@ -748,7 +928,7 @@ input[type="number"].filter-search::-webkit-inner-spin-button { -webkit-appearan
 .calc-result__row strong { font-family: 'Rubik'; text-align: left; }
 .calc-result__sep { border: none; border-top: 1px solid #D1D5DB; margin: 2px 0; }
 .calc-result__row--main { font-size: 1.05rem; }
-.calc-result__row--main .saving { color: #F59E0B; font-size: 1.15rem; }
+.calc-result__row--main .saving { color: var(--value-ink); font-size: 1.15rem; }
 .plan-empty {
   text-align: center; color: var(--muted); padding: 56px 24px; display: none;
   background: var(--cream); border: 1px dashed var(--ink-200); border-radius: var(--radius);
@@ -756,10 +936,10 @@ input[type="number"].filter-search::-webkit-inner-spin-button { -webkit-appearan
 .plan-empty::before { content: "🔍"; display: block; font-size: 30px; margin-bottom: 12px; opacity: .7; }
 .plan-empty strong { display: block; font-family: 'Rubik'; font-weight: 800; color: var(--green-d); font-size: 17px; margin-bottom: 4px; }
 .plan-empty__reset {
-  background: none; border: none; padding: 0; font: inherit; color: var(--accent);
+  background: none; border: none; padding: 0; font: inherit; color: var(--accent-ink);
   font-weight: 700; text-decoration: underline; cursor: pointer;
 }
-.plan-empty__reset:hover, .plan-empty__reset:focus-visible { color: var(--accent-d, var(--accent)); }
+.plan-empty__reset:hover, .plan-empty__reset:focus-visible { color: var(--accent-d, var(--accent-ink)); }
 .cat-plans-head { display: flex; align-items: baseline; gap: 10px; margin: 30px 0 14px; }
 .cat-plans-head h2 { font-family: 'Rubik'; font-size: 24px; color: var(--green-d); }
 .cat-plans-head .count { color: var(--muted); font-size: 14px; }
@@ -784,7 +964,10 @@ input[type="number"].filter-search::-webkit-inner-spin-button { -webkit-appearan
 .cmp-price { font-family: 'Rubik'; font-weight: 900; font-size: 18px; color: var(--green-d); }
 .cmp-after { display: block; font-size: 11px; color: var(--muted); }
 .cmp-yes { color: var(--green); font-weight: 900; }
-.cmp-no { color: var(--line); }
+/* "Absent" mark — must stay VISIBLE (it carries meaning: feature not included).
+   --line was near-invisible on both white (1.2:1) and dark cards; --muted reads
+   as a quiet-but-legible grey in both themes. */
+.cmp-no { color: var(--muted); }
 .cmp-cta-row td { background: rgba(17,24,39,.05); }
 .cmp-cta-row .plan__cta { margin-top: 0; align-self: center; }
 .cmp-share { margin-top: 16px; font-size: 13px; }
@@ -807,7 +990,7 @@ input[type="number"].filter-search::-webkit-inner-spin-button { -webkit-appearan
 .ai-bubble--me { background: var(--green); color: #fff; justify-self: end; border-bottom-right-radius: 4px; }
 .ai-chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 16px; }
 .ai-chip { background: var(--white); border: 1px solid var(--line); color: var(--green-d); font-weight: 600; font-size: 13px; padding: 8px 14px; border-radius: 999px; cursor: pointer; transition: background .15s, border-color .15s, transform .15s var(--ease-spring); }
-.ai-chip:hover { background: var(--accent-t); border-color: var(--accent); color: var(--accent); }
+.ai-chip:hover { background: var(--accent-t); border-color: var(--accent); color: var(--accent-ink); }
 .ai-chip:active { transform: scale(.97); }
 .ai-foot { text-align: center; color: var(--muted); font-size: 13px; margin-top: 14px; }
 .ai-input { display: flex; gap: 8px; margin-top: 14px; }
@@ -953,10 +1136,16 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
 }
 .feature:hover::after, .step:hover::after, .cat:hover::after, .guide-card:hover::after, .plan:hover::after, .provider-card:hover::after { opacity: 1; }
 .feature, .step, .cat, .guide-card, .plan, .provider-card {
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.7), var(--shadow-sm);
+  /* Glass-glint (1px top-edge light) + elevation — the signature card surface. */
+  box-shadow: var(--glint), var(--shadow-sm);
+  /* 3D-tilt readiness: a perspective context + GPU hint, so script.js can apply
+     a pointer-driven rotateX/rotateY without re-triggering layout. The default
+     transform is identity, so nothing tilts until JS opts a card in. */
+  transform-style: preserve-3d;
 }
 .feature:hover, .step:hover, .cat:hover, .guide-card:hover, .plan:hover, .provider-card:hover {
   border-color: var(--ink-200);
+  will-change: transform;
 }
 
 /* ── Staggered reveals ──────────────────────────────────────────────────────
@@ -965,6 +1154,12 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
 .reveal { transition-delay: calc(var(--i, 0) * 65ms); }
 .reveal--blur { filter: blur(6px); }
 .reveal--blur.in { filter: none; }
+/* Signature choreographed entrance — a restrained 6px lift on the system easing,
+   staggered on the 0/80/160/240ms cadence (script.js sets --i 0..n). Opt-in so
+   existing reveals keep their current feel; reduced-motion already neutralises
+   .reveal above. */
+.reveal--choreo { transform: translateY(6px); transition-duration: .5s; transition-delay: calc(var(--i, 0) * 80ms); }
+.reveal--choreo.in { transform: none; }
 
 /* ── Hero savings card: deeper, glassier, with a moving spec highlight ────── */
 .card--save { position: relative; overflow: hidden; box-shadow: var(--shadow-ink); }
@@ -982,7 +1177,7 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
 
 /* ── Popular collections grid ────────────────────────────────────────────── */
 .collections-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; }
-.collection-chip { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 18px 20px; background: var(--cream); border: 1px solid var(--line); border-radius: var(--radius); text-decoration: none; color: inherit; transition: transform .18s var(--ease), box-shadow .18s; }
+.collection-chip { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 18px 20px; background: var(--cream); border: 1px solid var(--line); border-radius: var(--radius); text-decoration: none; color: inherit; box-shadow: var(--glint), var(--shadow-sm); transition: transform .18s var(--ease), box-shadow .18s, border-color .18s; }
 .collection-chip:hover { transform: translateY(-4px); box-shadow: var(--shadow); border-color: var(--accent); }
 .collection-chip:focus-visible { transform: translateY(-4px); box-shadow: var(--ring), var(--shadow); border-color: var(--accent); }
 .collection-chip__icon { font-size: 1.5rem; line-height: 1; }
@@ -1037,6 +1232,8 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
 .callout p { margin: 0; }
 .callout p + p { margin-top: 6px; }
 .callout--tip { --callout-c: var(--value); --callout-bg: rgba(245,158,11,.10); }
+.callout--warn { --callout-c: var(--warning); --callout-bg: var(--warning-t); }
+.callout--info { --callout-c: var(--info); --callout-bg: var(--info-t); }
 
 /* ── Table of contents ─────────────────────────────────────────────────────
    A sticky in-article nav with a scrollspy active state. Vertical ink rail on
@@ -1053,9 +1250,9 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
   color: var(--muted); font-weight: 600; text-decoration: none;
   transition: color .15s, background .15s;
 }
-.toc__link:hover { color: var(--accent); background: var(--accent-t); }
+.toc__link:hover { color: var(--accent-ink); background: var(--accent-t); }
 .toc__link:focus-visible { box-shadow: var(--ring-flush); }
-.toc__link--active { color: var(--accent); font-weight: 700; }
+.toc__link--active { color: var(--accent-ink); font-weight: 700; }
 .toc__link--active::before {
   content: ""; position: absolute; inset-inline-start: -2px; top: 50%; transform: translateY(-50%);
   width: 2px; height: 70%; background: var(--accent); border-radius: 2px;
@@ -1068,11 +1265,11 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
    with keyboard, mouse, and JS toggling. RTL-anchored to the inline-start. */
 .mega-menu { position: relative; }
 .mega-menu__panel {
-  position: absolute; inset-inline-start: 0; top: calc(100% + 10px); z-index: 55;
-  min-width: 460px; max-width: 92vw; padding: 18px;
+  position: absolute; inset-inline-start: 0; top: calc(100% + 12px); z-index: 55;
+  min-width: 500px; max-width: 92vw; padding: 22px;
   background: var(--white); border: 1px solid var(--line); border-radius: var(--radius);
-  box-shadow: var(--shadow-lg);
-  display: grid; grid-template-columns: 1fr 1fr; gap: 6px 18px;
+  box-shadow: var(--glint), var(--shadow-lg);
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px 22px;
   opacity: 0; visibility: hidden; transform: translateY(-6px);
   transition: opacity .18s var(--ease), transform .18s var(--ease), visibility .18s;
 }
@@ -1085,13 +1282,22 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
 .mega-menu__panel[hidden] { display: none; }
 .mega-menu__col h4 { grid-column: 1 / -1; font-family: 'Rubik', sans-serif; font-size: 12px; letter-spacing: .04em; text-transform: uppercase; color: var(--ink-400); margin: 4px 0 6px; }
 .mega-menu__link {
-  display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 12px;
-  color: var(--ink); font-weight: 600; text-decoration: none; transition: background .15s, color .15s;
+  display: flex; align-items: center; gap: 12px; padding: 11px 12px; border-radius: var(--radius-sm);
+  color: var(--ink); font-weight: 600; text-decoration: none; transition: background .15s, color .15s, transform .15s var(--ease);
 }
-.mega-menu__link:hover { background: var(--accent-t); color: var(--accent); }
+.mega-menu__link:hover { background: var(--accent-t); color: var(--accent-ink); }
+.mega-menu__link:hover .mega-menu__ico, .mega-menu__link:hover .ico { transform: translateX(-2px); }
 .mega-menu__link:focus-visible { box-shadow: var(--ring-flush); }
 .mega-menu__link small { display: block; color: var(--muted); font-size: 12px; font-weight: 500; }
-.mega-menu__link .ico { width: 18px; height: 18px; color: var(--accent); flex: none; }
+/* Icon slot — a tinted rounded tile housing each item's line-icon, so the menu
+   reads as a set of destinations rather than a bare link list. */
+.mega-menu__ico {
+  width: 34px; height: 34px; flex: none; display: grid; place-items: center;
+  border-radius: var(--radius-xs); background: var(--accent-t); color: var(--accent);
+  box-shadow: var(--glint); transition: transform .15s var(--ease);
+}
+.mega-menu__ico .ico { width: 18px; height: 18px; }
+.mega-menu__link .ico { width: 18px; height: 18px; color: var(--accent); flex: none; transition: transform .15s var(--ease); }
 @media (max-width: 560px) { .mega-menu__panel { min-width: 0; inset-inline: 0; grid-template-columns: 1fr; } }
 
 /* ── Toast ─────────────────────────────────────────────────────────────────
@@ -1112,7 +1318,8 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
 }
 .toast.is-visible { opacity: 1; transform: translateY(0); pointer-events: auto; }
 .toast--success { --toast-c: var(--value); }
-.toast--error { --toast-c: #ef4444; }
+.toast--error { --toast-c: var(--error); }
+.toast--info { --toast-c: var(--info); }
 .toast .ico { width: 18px; height: 18px; color: var(--toast-c); flex: none; }
 .toast__close { margin-inline-start: 6px; background: none; border: 0; color: rgba(255,255,255,.7); font-size: 18px; line-height: 1; cursor: pointer; padding: 2px 4px; border-radius: 6px; }
 .toast__close:hover { color: #fff; }
@@ -1122,15 +1329,66 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
    Invalid inputs get a red rim + a small message. Driven by aria-invalid so
    markup stays semantic; the message hides until the field is actually invalid. */
 .field { display: grid; gap: 6px; }
-.field-error { display: none; color: #dc2626; font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+.field-error { display: none; color: var(--error); font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
 .field-error .ico { width: 14px; height: 14px; flex: none; }
 [aria-invalid="true"] {
-  border-color: #dc2626 !important;
-  box-shadow: 0 0 0 1px #dc2626;
+  border-color: var(--error) !important;
+  box-shadow: 0 0 0 1px var(--error);
 }
 [aria-invalid="true"]:focus-visible { box-shadow: 0 0 0 2px #fff, 0 0 0 5px rgba(220,38,38,.4); }
 [aria-invalid="true"] ~ .field-error,
 .field--invalid .field-error { display: flex; }
+
+/* ── Floating-label fields ──────────────────────────────────────────────────
+   A premium input micro-interaction: the label rests inside the field, then
+   floats up + shrinks when the input is focused or filled. RTL-anchored to the
+   inline-start. Add `.field--float` to a .field that wraps <input>+<label> (the
+   label AFTER the input so `:placeholder-shown ~ label` can sense empty state).
+   The input must carry placeholder=" " so :placeholder-shown tracks emptiness. */
+.field--float { position: relative; display: block; }
+.field--float > input,
+.field--float > textarea {
+  width: 100%; padding: 20px 16px 8px; min-height: 56px;
+  border: 1px solid var(--line); border-radius: var(--radius-sm);
+  font-family: 'Assistant', sans-serif; font-size: 16px; background: var(--white); color: var(--ink);
+  transition: border-color .15s, box-shadow .2s var(--ease), background .15s;
+}
+.field--float > label {
+  position: absolute; inset-inline-start: 16px; top: 17px; margin: 0;
+  color: var(--ink-400); font-size: 16px; font-weight: 600; pointer-events: none;
+  transform-origin: inline-start top;
+  transition: transform .18s var(--ease), color .18s var(--ease), top .18s var(--ease);
+}
+.field--float > input:focus,
+.field--float > textarea:focus {
+  outline: none; border-color: var(--accent);
+  /* Focus-glow: the system focus ring + a soft accent halo for that lifted feel. */
+  box-shadow: var(--ring), 0 6px 20px rgba(22,163,74,.14);
+}
+.field--float > input:focus ~ label,
+.field--float > input:not(:placeholder-shown) ~ label,
+.field--float > textarea:focus ~ label,
+.field--float > textarea:not(:placeholder-shown) ~ label {
+  top: 8px; transform: scale(.74); color: var(--accent-ink); font-weight: 700;
+}
+/* Filled (but blurred) inputs keep a quietly tinted ground so the form reads as
+   "progress made", and the floated label settles to ink rather than accent. */
+.field--float > input:not(:placeholder-shown):not(:focus),
+.field--float > textarea:not(:placeholder-shown):not(:focus) { background: var(--cream); }
+.field--float > input:not(:placeholder-shown):not(:focus) ~ label,
+.field--float > textarea:not(:placeholder-shown):not(:focus) ~ label { color: var(--ink-500); }
+.field--float > input:hover:not(:focus),
+.field--float > textarea:hover:not(:focus) { border-color: var(--ink-300); }
+
+/* Focus-glow + filled affordance for the existing flat inputs too, so the polish
+   is system-wide rather than opt-in. Pairs with the rings already defined. */
+.subscribe input[type="email"]:focus-visible,
+.booking__input:focus-visible,
+.booking__date:focus-visible,
+.ai-input input:focus-visible {
+  box-shadow: var(--ring), 0 6px 20px rgba(22,163,74,.14);
+}
+.booking__input:not(:placeholder-shown):not(:focus) { background: var(--cream); }
 
 /* ── Skeleton ──────────────────────────────────────────────────────────────
    A shimmering placeholder block for loading states. The sheen sweeps RTL→LTR;
@@ -1177,7 +1435,7 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
 .advisor__option:hover { border-color: var(--accent); background: var(--accent-t); }
 .advisor__option:active { transform: scale(.98); }
 .advisor__option:focus-visible { box-shadow: var(--ring); border-color: var(--accent); }
-.advisor__option[aria-pressed="true"], .advisor__option.is-selected { border-color: var(--accent); background: var(--accent-t); color: var(--accent); }
+.advisor__option[aria-pressed="true"], .advisor__option.is-selected { border-color: var(--accent); background: var(--accent-t); color: var(--accent-ink); }
 .advisor__nav { display: flex; justify-content: space-between; gap: 10px; margin-top: 22px; }
 @keyframes advisor-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
 
@@ -1191,7 +1449,7 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
   transition: border-color .18s, background .18s, color .18s;
 }
 .bill-drop:hover { border-color: var(--accent); color: var(--ink-700); }
-.bill-drop.is-dragover { border-color: var(--accent); background: var(--accent-t); color: var(--accent); }
+.bill-drop.is-dragover { border-color: var(--accent); background: var(--accent-t); color: var(--accent-ink); }
 .bill-drop:focus-within { box-shadow: var(--ring); border-color: var(--accent); }
 .bill-drop__icon { width: 40px; height: 40px; color: var(--accent); }
 .bill-drop__icon .ico { width: 40px; height: 40px; }
@@ -1205,19 +1463,32 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
    narrow widths. Lives on light surfaces (distinct from the dark .cta__form). */
 .subscribe { display: flex; flex-wrap: wrap; gap: 10px; align-items: stretch; max-width: 440px; }
 .subscribe__field { flex: 1 1 220px; min-width: 0; display: grid; gap: 6px; }
-.subscribe input[type="email"] {
-  width: 100%; padding: 13px 16px; border: 1px solid var(--line); border-radius: 14px;
+/* The footer newsletter renders label → row(input+btn) → consent → note. These
+   were unstyled in markup; this lays them out as a tidy stacked capture block. */
+.subscribe__label { display: block; font-family: 'Rubik', sans-serif; font-weight: 700; font-size: 14px; color: rgba(255,255,255,.92); margin-bottom: 2px; flex: 1 1 100%; }
+.footer .subscribe__label { color: rgba(255,255,255,.85); }
+.subscribe__row { display: flex; flex-wrap: wrap; gap: 10px; align-items: stretch; flex: 1 1 100%; }
+.subscribe input[type="email"], .subscribe__input {
+  flex: 1 1 200px; min-width: 0;
+  width: 100%; padding: 13px 16px; border: 1px solid var(--line); border-radius: var(--radius-sm);
   font-family: 'Assistant', sans-serif; font-size: 16px; background: var(--white); color: var(--ink);
-  transition: border-color .15s, box-shadow .15s;
+  transition: border-color .15s, box-shadow .2s var(--ease);
 }
-.subscribe input[type="email"]:hover { border-color: var(--ink-300); }
-.subscribe input[type="email"]:focus-visible { outline: none; box-shadow: var(--ring); border-color: var(--accent); }
-.subscribe .btn { flex: 0 0 auto; }
+.subscribe input[type="email"]:hover, .subscribe__input:hover { border-color: var(--ink-300); }
+.subscribe input[type="email"]:focus-visible, .subscribe__input:focus-visible { outline: none; box-shadow: var(--ring), 0 6px 20px rgba(22,163,74,.14); border-color: var(--accent); }
+.subscribe .btn, .subscribe__btn { flex: 0 0 auto; }
+/* Consent line under the footer email field — small, legible fine print. */
+.subscribe__consent { display: flex; align-items: flex-start; gap: 9px; flex: 1 1 100%; cursor: pointer; font-size: 12.5px; line-height: 1.45; color: rgba(255,255,255,.78); font-weight: 500; }
+.subscribe__consent input[type="checkbox"] { flex: 0 0 auto; width: 18px; height: 18px; min-width: 18px; margin: 1px 0 0; border-radius: 5px; accent-color: var(--accent); cursor: pointer; }
+.subscribe__consent input[type="checkbox"]:focus-visible { outline: none; box-shadow: var(--ring-flush); }
 .subscribe__note { flex: 1 1 100%; font-size: 12.5px; color: var(--muted); }
-.subscribe__note a { color: var(--accent); font-weight: 600; }
+.footer .subscribe__note { color: rgba(255,255,255,.6); }
+.subscribe__note a { color: var(--accent-ink); font-weight: 600; }
+.footer .subscribe__note a { color: var(--lime); }
 @media (max-width: 480px) {
   .subscribe { flex-direction: column; }
-  .subscribe .btn { width: 100%; }
+  .subscribe__row { flex-direction: column; }
+  .subscribe .btn, .subscribe__btn { width: 100%; }
 }
 
 /* ╔══════════════════════════════════════════════════════════════════════╗
@@ -1242,6 +1513,33 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
 .community__join .btn { flex: 0 0 auto; }
 /* A quiet status/empty line while posts load or when none are available. */
 .community__status { text-align: center; color: var(--muted); font-size: 14px; padding: 28px 16px; }
+
+/* ── Community channel filter chips ──────────────────────────────────────────
+   Selectable channel filters. build.js renders `.community__chan` (pre-JS);
+   script.js swaps them for `.chip community__chip`. Both share this styling so
+   the SELECTED chip shows a visible green ACTION state (not colour-only — it
+   pairs with aria-pressed), with hover + the standard focus ring. */
+.community__filter { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-bottom: 18px; }
+.community__chan, .community__chip {
+  font-family: 'Rubik', sans-serif; font-weight: 700; font-size: 13.5px;
+  padding: 8px 16px; min-height: 44px; display: inline-flex; align-items: center;
+  background: var(--white); border: 1px solid var(--line); color: var(--green-d);
+  border-radius: 999px; cursor: pointer; box-shadow: var(--shadow-sm);
+  transition: background .15s, color .15s, border-color .15s, transform .15s var(--ease-spring), box-shadow .18s;
+}
+.community__chan:hover, .community__chip:hover { transform: translateY(-1px); border-color: var(--ink-300); box-shadow: var(--shadow-sm); }
+.community__chan:active, .community__chip:active { transform: scale(.97); }
+.community__chan:focus-visible, .community__chip:focus-visible { outline: none; box-shadow: var(--ring); border-color: var(--accent); }
+.community__chan--active,
+.community__chan[aria-pressed="true"],
+.community__chip[aria-pressed="true"] {
+  background: var(--accent-d); color: #fff; border-color: var(--accent-d);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 4px 12px rgba(22,163,74,.24);
+}
+@media (prefers-reduced-motion: reduce) {
+  .community__chan, .community__chip { transition: box-shadow .01s, border-color .01s, background .01s, color .01s; }
+  .community__chan:hover, .community__chip:hover { transform: none; }
+}
 
 /* ── Post card ──────────────────────────────────────────────────────────────
    White glass tile: author row (avatar + name + channel chip + time), body
@@ -1283,7 +1581,7 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
 /* Replies toggle — a borderless ACTION-coloured text button. */
 .post-card__more {
   margin-top: 12px; background: none; border: 0; padding: 6px 4px; cursor: pointer;
-  font-family: 'Rubik', sans-serif; font-weight: 700; font-size: 13.5px; color: var(--accent);
+  font-family: 'Rubik', sans-serif; font-weight: 700; font-size: 13.5px; color: var(--accent-ink);
   display: inline-flex; align-items: center; gap: 6px; border-radius: 8px; transition: color .15s;
 }
 .post-card__more:hover { color: var(--accent-d); }
@@ -1326,7 +1624,7 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
 }
 .stars-row::before {
   content: "★★★★★"; position: absolute; inset-inline-start: 0; top: 0; overflow: hidden;
-  width: calc(var(--stars, 0) / 5 * 100%); color: var(--value);
+  width: calc(var(--stars, 0) / 5 * 100%); color: var(--value-ink);
 }
 .stars-row__base { color: inherit; }
 .stars-row__base::before { content: "★★★★★"; }
@@ -1346,7 +1644,7 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
 /* Verified-customer pill — a small green VALUE-of-trust badge. */
 .verified-badge {
   display: inline-flex; align-items: center; gap: 5px;
-  background: var(--accent-t); color: var(--accent); border: 1px solid var(--accent);
+  background: var(--accent-t); color: var(--accent-ink); border: 1px solid var(--accent);
   font-family: 'Rubik', sans-serif; font-weight: 700; font-size: 11px; line-height: 1;
   padding: 4px 9px; border-radius: 999px; white-space: nowrap;
 }
@@ -1366,24 +1664,33 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
   display: block; font-family: 'Rubik', sans-serif; font-weight: 700; font-size: 14px;
   color: var(--green-d); margin-bottom: 10px;
 }
-.booking__label .req { color: var(--accent); font-weight: 800; }
+.booking__label .req { color: var(--accent-ink); font-weight: 800; }
 .booking__hint { color: var(--muted); font-size: 13px; margin: -4px 0 10px; }
 
-/* Provider chips — selectable; chosen = green ACTION. */
+/* Provider chips — selectable; chosen = green ACTION. The rendered button class
+   is `.booking__provider` (build.js/script.js); `.provider-pick` is kept as a
+   forward-compat alias so both carry the focus ring + the pressed (green) state. */
 .booking__providers { display: flex; flex-wrap: wrap; gap: 8px; }
-.booking__providers .provider-pick {
+.booking__providers .provider-pick,
+.booking__providers-grid .booking__provider,
+.booking__providers .booking__provider {
   font-family: 'Rubik', sans-serif; font-weight: 700; font-size: 14px;
   padding: 9px 16px; min-height: 44px; display: inline-flex; align-items: center;
   background: var(--cream); border: 1px solid var(--line); color: var(--green-d);
   border-radius: 999px; cursor: pointer;
   transition: background .15s, color .15s, border-color .15s, transform .15s var(--ease-spring), box-shadow .18s;
 }
-.booking__providers .provider-pick:hover { transform: translateY(-1px); border-color: var(--ink-300); box-shadow: var(--shadow-sm); }
-.booking__providers .provider-pick:active { transform: scale(.97); }
-.booking__providers .provider-pick:focus-visible { outline: none; box-shadow: var(--ring); border-color: var(--accent); }
+.booking__providers .provider-pick:hover,
+.booking__providers .booking__provider:hover { transform: translateY(-1px); border-color: var(--ink-300); box-shadow: var(--shadow-sm); }
+.booking__providers .provider-pick:active,
+.booking__providers .booking__provider:active { transform: scale(.97); }
+.booking__providers .provider-pick:focus-visible,
+.booking__providers .booking__provider:focus-visible { outline: none; box-shadow: var(--ring); border-color: var(--accent); }
 .booking__providers .provider-pick[aria-pressed="true"],
-.booking__providers .provider-pick.is-chosen {
-  background: var(--accent); color: #fff; border-color: var(--accent);
+.booking__providers .provider-pick.is-chosen,
+.booking__providers .booking__provider[aria-pressed="true"],
+.booking__providers .booking__provider.is-chosen {
+  background: var(--accent-d); color: #fff; border-color: var(--accent-d);
   box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 4px 12px rgba(22,163,74,.24);
 }
 
@@ -1411,7 +1718,7 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
 .slot:active { transform: scale(.96); }
 .slot:focus-visible { outline: none; box-shadow: var(--ring); border-color: var(--accent); }
 .slot--chosen, .slot[aria-pressed="true"] {
-  background: var(--accent); color: #fff; border-color: var(--accent);
+  background: var(--accent-d); color: #fff; border-color: var(--accent-d);
   box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 4px 12px rgba(22,163,74,.24);
 }
 .slot--chosen:hover, .slot[aria-pressed="true"]:hover { transform: translateY(-1px); filter: brightness(1.04); }
@@ -1447,9 +1754,16 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
   border-radius: 5px; accent-color: var(--accent); cursor: pointer;
 }
 .booking__consent input[type="checkbox"]:focus-visible { outline: none; box-shadow: var(--ring); }
-.booking__consent a { color: var(--accent); font-weight: 700; text-decoration: underline; text-underline-offset: 2px; }
+.booking__consent a { color: var(--accent-ink); font-weight: 700; text-decoration: underline; text-underline-offset: 2px; }
 .booking__consent a:hover { color: var(--accent-d); }
-.booking__consent .req { color: var(--accent); font-weight: 800; }
+.booking__consent .req { color: var(--accent-ink); font-weight: 800; }
+
+/* Booking is built as one form today, but the slot/step language is ready for a
+   multi-step flow: a `.booking__step` toggles on `.is-active` with a soft slide,
+   mirroring the advisor's step transition. Inert until markup opts in. */
+.booking__step { display: none; }
+.booking__step.is-active { display: block; animation: advisor-in .3s var(--ease) both; }
+@media (prefers-reduced-motion: reduce) { .booking__step.is-active { animation: none; } }
 
 .booking__submit { margin-top: 22px; }
 
@@ -1459,8 +1773,8 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
   text-align: center; line-height: 1.5;
 }
 .booking__note:empty { display: none; }
-.booking__note.is-success { color: var(--accent); }
-.booking__note.is-error { color: #dc2626; }
+.booking__note.is-success { color: var(--accent-ink); }
+.booking__note.is-error { color: var(--error); }
 
 @media (max-width: 560px) {
   .booking { padding: 20px; }

@@ -451,7 +451,7 @@ class _RecommendedPlanCard extends StatelessWidget {
                 ),
                 const SizedBox(width: 6),
                 Text('המסלול המומלץ למעבר',
-                    style: ffTheme.titleSmall.copyWith(color: ffTheme.brandAccent, fontWeight: FontWeight.w800)),
+                    style: ffTheme.titleSmall.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w800)),
                 const Spacer(),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -508,7 +508,7 @@ class _RecommendedPlanCard extends StatelessWidget {
                     color: Colors.white.withValues(alpha: 0.7),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Text(r, style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccent, fontWeight: FontWeight.w600)),
+                  child: Text(r, style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w600)),
                 )).toList(),
               ),
             ],
@@ -517,7 +517,7 @@ class _RecommendedPlanCard extends StatelessWidget {
             if (match.annualSaving > 0) ...[
               const SizedBox(height: 8),
               Text('חיסכון שנתי משוער: ₪${match.annualSaving}',
-                  style: ffTheme.bodySmall.copyWith(color: ffTheme.savingDark, fontWeight: FontWeight.w700)),
+                  style: ffTheme.bodySmall.copyWith(color: ffTheme.savingText, fontWeight: FontWeight.w700)),
             ],
 
             // Prefill action
@@ -645,7 +645,7 @@ class _LeadingPlanCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(color: ffTheme.brandAccentTint, borderRadius: BorderRadius.circular(8)),
-                child: Text('הצעה מובילה', style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccent, fontWeight: FontWeight.w700)),
+                child: Text('הצעה מובילה', style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w700)),
               ),
               if (matching.isEmpty) ...[
                 const SizedBox(width: 8),
@@ -690,7 +690,7 @@ class _LeadingPlanCard extends StatelessWidget {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 padding: const EdgeInsets.symmetric(vertical: 10),
               ),
-              child: Text('הצג מסלול', style: ffTheme.labelMedium.copyWith(color: ffTheme.brandAccent, fontWeight: FontWeight.w700)),
+              child: Text('הצג מסלול', style: ffTheme.labelMedium.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w700)),
             ),
           ),
         ],

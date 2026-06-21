@@ -15,6 +15,10 @@ import '../../components/logo_widget/logo_widget.dart';
 import '../../services/recommendation_engine.dart';
 import '../../services/backend/local_backend.dart';
 
+/// Ink read out on the amber VALUE surface — amber is fixed-hue in both
+/// themes, so this deep-amber ink stays legible on light AND dark.
+const Color _onSaving = Color(0xFF3A2900);
+
 class PlanDetailWidget extends StatefulWidget {
   const PlanDetailWidget({super.key, required this.planId});
   final String planId;
@@ -271,7 +275,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                                 child: Text(
                                   'חוסך ₪$saveYear בשנה',
                                   style: ffTheme.labelMedium.copyWith(
-                                    color: const Color(0xFF3A2900),
+                                    color: _onSaving,
                                     fontWeight: FontWeight.w700,
                                     fontFeatures: const [FontFeature.tabularFigures()],
                                   ),
@@ -280,6 +284,22 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                           ],
                         ),
                       ).animate().fadeIn(duration: 350.ms).slideY(begin: 0.1),
+
+                      // ── Above-the-fold VALUE anchor — the ₪ saving the user
+                      // gets vs their own bill, then 3 honest "why this plan"
+                      // bullets derived from the real spec + engine reasons.
+                      // Specs/fine-print follow below.
+                      const SizedBox(height: 14),
+                      _ValueAnchor(
+                        plan: plan,
+                        saveYear: saveYear,
+                        bill: bill,
+                        match: planMatch,
+                        billsPersonalized: appState.billsPersonalized,
+                      )
+                          .animate(delay: 60.ms)
+                          .fadeIn(duration: 320.ms)
+                          .slideY(begin: 0.08),
 
                       const SizedBox(height: 14),
 
@@ -439,16 +459,10 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                         const SizedBox(height: 14),
                         Container(
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: ffTheme.cardSurface,
                             borderRadius: BorderRadius.circular(14),
                             border: Border.all(color: ffTheme.alternate),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.04),
-                                blurRadius: 8,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
+                            boxShadow: ffTheme.shadowSoft,
                           ),
                           child: ExpansionTile(
                             title: Text('אותיות קטנות', style: ffTheme.titleSmall),
@@ -585,10 +599,10 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                                       width: 160,
                                       padding: const EdgeInsets.all(14),
                                       decoration: BoxDecoration(
-                                        color: Colors.white,
+                                        color: ffTheme.cardSurface,
                                         borderRadius: BorderRadius.circular(14),
                                         border: Border.all(color: ffTheme.alternate),
-                                        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
+                                        boxShadow: ffTheme.shadowSoft,
                                       ),
                                       child: Column(
                                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -604,7 +618,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                                           Text('₪${p.priceText}/${priceUnitShort(p)}', style: ffTheme.titleSmall.copyWith(color: ffTheme.primary)),
                                           const SizedBox(height: 3),
                                           if (pSave > 0)
-                                            Text('חוסך ₪$pSave/שנה', style: ffTheme.labelSmall.copyWith(color: ffTheme.savingDark, fontWeight: FontWeight.w700))
+                                            Text('חוסך ₪$pSave/שנה', style: ffTheme.labelSmall.copyWith(color: ffTheme.savingText, fontWeight: FontWeight.w700))
                                           else
                                             Text(p.plan, style: ffTheme.labelSmall, maxLines: 1, overflow: TextOverflow.ellipsis),
                                         ],
@@ -635,7 +649,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
               child: Container(
                 padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: ffTheme.cardSurface,
                   borderRadius: const BorderRadius.vertical(
                       top: Radius.circular(22)),
                   border: Border(
@@ -643,7 +657,9 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                           color: ffTheme.lineColor, width: 1)),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.08),
+                      color: ffTheme.dark
+                          ? const Color(0x66060A12)
+                          : Colors.black.withValues(alpha: 0.08),
                       blurRadius: 20,
                       offset: const Offset(0, -6),
                     ),
@@ -653,16 +669,18 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                   children: [
                     Expanded(
                       child: AppButton(
-                        text: 'עברו למסלול הזה ←',
+                        text: 'עברו למסלול הזה — נציג יסייע ←',
                         onPressed: () async => context.pushNamed('Lead',
                             pathParameters: {'planId': plan.id}, queryParameters: {'source': 'plan'}),
-                        
+
                           height: 56,
-                          color: ffTheme.primary,
+                          // Const brand ink → AppButton lifts this into the green
+                          // ACTION gradient + glow in BOTH themes (white-on-green).
+                          color: AppColors.primary,
                           textStyle:
                               ffTheme.titleSmall.copyWith(color: Colors.white),
                           borderRadius: BorderRadius.circular(16),
-                        
+
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -688,7 +706,9 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                         ),
                         child: Icon(
                           inCompare ? Icons.check_rounded : Icons.add_rounded,
-                          color: inCompare ? Colors.white : ffTheme.primary,
+                          color: inCompare
+                              ? (ffTheme.dark ? ffTheme.background : Colors.white)
+                              : ffTheme.primary,
                           size: 24,
                         ),
                       ),
@@ -735,9 +755,9 @@ class _FitPanel extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.72),
+        color: t.cardSurface.withValues(alpha: t.dark ? 0.85 : 0.72),
         borderRadius: BorderRadius.circular(t.radiusLg),
-        border: Border.all(color: t.primary.withValues(alpha: 0.16)),
+        border: Border.all(color: t.brandAccent.withValues(alpha: 0.22)),
         boxShadow: t.shadowGlass,
       ),
       child: Column(
@@ -898,13 +918,17 @@ class _FitPanel extends StatelessWidget {
                             ? Icons.check_rounded
                             : Icons.compare_arrows_rounded,
                         size: 18,
-                        color: inCompare ? Colors.white : t.primary,
+                        color: inCompare
+                            ? (t.dark ? t.background : Colors.white)
+                            : t.primary,
                       ),
                       const SizedBox(width: 8),
                       Text(
                         inCompare ? 'נוסף להשוואה' : 'הוסף להשוואה',
                         style: t.titleSmall.copyWith(
-                          color: inCompare ? Colors.white : t.primary,
+                          color: inCompare
+                              ? (t.dark ? t.background : Colors.white)
+                              : t.primary,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
@@ -1057,6 +1081,179 @@ class _RingPainter extends CustomPainter {
       old.cap != cap;
 }
 
+// ── Above-the-fold VALUE anchor ───────────────────────────────────────────────
+//
+// The first thing the user sees under the hero: the ₪ they save vs THEIR OWN
+// bill (the figure already computed in the build method — never fabricated),
+// framed as an estimate when the bill isn't personalised, plus three honest
+// "why this plan" bullets derived from the real plan spec + the engine reasons.
+
+class _ValueAnchor extends StatelessWidget {
+  const _ValueAnchor({
+    required this.plan,
+    required this.saveYear,
+    required this.bill,
+    required this.match,
+    required this.billsPersonalized,
+  });
+
+  final Plan plan;
+  final int saveYear;
+  final int bill;
+  final PlanMatch match;
+  final bool billsPersonalized;
+
+  /// Three honest, plan-specific reasons. We prefer the engine's own reasons
+  /// (already explainable + real), then top up from the plan's real spec —
+  /// budget fit, 5G, and the promo caveat — never inventing claims.
+  List<_ValueBullet> _bullets() {
+    final out = <_ValueBullet>[];
+
+    // 1) Budget — only when there's a real saving vs the user's own bill.
+    if (saveYear > 0 && bill > 0) {
+      out.add(_ValueBullet(
+        icon: Icons.account_balance_wallet_rounded,
+        text: 'בתוך התקציב — זול ב-₪${(bill - plan.price).clamp(0, bill)} בחודש מהחשבון הנוכחי שלכם',
+      ));
+    }
+
+    // 2) 5G / speed — straight from the plan's real features or specs.
+    final hay = [
+      ...plan.feats,
+      ...plan.specs.values,
+      ...plan.specs.keys,
+    ].join(' ').toLowerCase();
+    if (hay.contains('5g')) {
+      out.add(const _ValueBullet(
+        icon: Icons.network_cell_rounded,
+        text: 'כולל רשת 5G מהירה',
+      ));
+    }
+
+    // 3) Engine reasons — real, explainable; fill remaining slots.
+    for (final r in match.reasons) {
+      if (out.length >= 3) break;
+      if (out.any((b) => b.text == r)) continue;
+      out.add(_ValueBullet(icon: Icons.check_circle_rounded, text: r));
+    }
+
+    // Honest promo caveat — surface it up-front rather than burying it.
+    if (out.length < 3 && plan.hasPromo) {
+      out.add(_ValueBullet(
+        icon: Icons.schedule_rounded,
+        text: 'מחיר מבצע — יעלה ל-₪${plan.after} אחרי ${plan.intro ?? 'תקופת המבצע'}',
+      ));
+    }
+
+    return out.take(3).toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppTheme.of(context);
+    final bullets = _bullets();
+    final hasSaving = saveYear > 0;
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: t.cardSurface,
+        borderRadius: BorderRadius.circular(t.radiusLg),
+        border: Border.all(color: t.alternate),
+        boxShadow: t.shadowSoft,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Bold ₪ saving anchor (VALUE = amber) vs the user's real bill.
+          if (hasSaving) ...[
+            Text.rich(
+              TextSpan(
+                style: t.displaySmall.copyWith(
+                  color: t.saving,
+                  fontWeight: FontWeight.w800,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
+                children: [
+                  const TextSpan(text: 'תחסכו '),
+                  TextSpan(text: '₪$saveYear'),
+                  TextSpan(
+                    text: '/שנה',
+                    style: t.titleMedium.copyWith(
+                      color: t.saving,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                Text(
+                  'מול ₪$bill/חודש שאתם משלמים היום',
+                  style: t.bodySmall.copyWith(color: t.secondaryText),
+                ),
+                if (!billsPersonalized) ...[
+                  const SizedBox(width: 6),
+                  _EstimateTag(t: t),
+                ],
+              ],
+            ),
+          ] else ...[
+            // No personalised saving — anchor on the price + match, honestly.
+            Text(
+              'למה המסלול הזה',
+              style: t.titleMedium.copyWith(fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              bill > 0
+                  ? 'במחיר דומה לחשבון הנוכחי שלכם — הנה מה שמייחד אותו'
+                  : 'הוסיפו את החשבון הנוכחי כדי לראות כמה תחסכו',
+              style: t.bodySmall.copyWith(color: t.secondaryText),
+            ),
+          ],
+
+          if (bullets.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            Divider(height: 1, color: t.alternate),
+            const SizedBox(height: 14),
+            ...bullets.asMap().entries.map((e) {
+              final isLast = e.key == bullets.length - 1;
+              final b = e.value;
+              return Padding(
+                padding: EdgeInsets.only(bottom: isLast ? 0 : 10),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(b.icon, size: 19, color: t.primary),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        b.text,
+                        style: t.bodyMedium
+                            .copyWith(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// A single honest "why this plan" bullet for the above-the-fold anchor.
+class _ValueBullet {
+  const _ValueBullet({required this.icon, required this.text});
+  final IconData icon;
+  final String text;
+}
+
 // ── Helper widgets ────────────────────────────────────────────────────────────
 
 class _Card extends StatelessWidget {
@@ -1070,16 +1267,10 @@ class _Card extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ffTheme.cardSurface,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: ffTheme.alternate),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        boxShadow: ffTheme.shadowSoft,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1185,16 +1376,10 @@ class _SpecGrid extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ffTheme.cardSurface,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: ffTheme.alternate),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        boxShadow: ffTheme.shadowSoft,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1265,16 +1450,10 @@ class _CostBreakdownCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ffTheme.cardSurface,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: ffTheme.alternate),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        boxShadow: ffTheme.shadowSoft,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1348,16 +1527,10 @@ class _ExtraInfoSection extends StatelessWidget {
     final ffTheme = AppTheme.of(context);
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: ffTheme.cardSurface,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: ffTheme.alternate),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        boxShadow: ffTheme.shadowSoft,
       ),
       child: ExpansionTile(
         title: Text('מידע נוסף ואותיות קטנות', style: ffTheme.titleSmall),

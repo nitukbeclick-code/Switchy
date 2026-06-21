@@ -219,7 +219,10 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
         headerSliverBuilder: (context, _) => [
           SliverAppBar(
             title: const Text('דירוגי ספקים'),
-            backgroundColor: t.primary,
+            // Fixed ink header (const token) so the white tab labels keep their
+            // contrast in BOTH themes — the theme-aware getter would flip to
+            // off-white on dark and strand the white-on-ink TabBar.
+            backgroundColor: AppColors.primary,
             foregroundColor: Colors.white,
             floating: true,
             snap: true,
@@ -380,9 +383,9 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
                               duration: const Duration(milliseconds: 200),
                               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
                               decoration: BoxDecoration(
-                                color: active ? t.primary : Colors.white,
+                                color: active ? AppColors.primary : t.cardSurface,
                                 borderRadius: BorderRadius.circular(t.radiusPill),
-                                border: Border.all(color: active ? t.primary : t.alternate),
+                                border: Border.all(color: active ? AppColors.primary : t.alternate),
                                 boxShadow: active ? t.shadowPrimary : null,
                               ),
                               child: Row(
@@ -473,7 +476,7 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
                           borderSide: BorderSide(color: t.primary, width: 1.5),
                         ),
                         filled: true,
-                        fillColor: Colors.white.withValues(alpha: 0.6),
+                        fillColor: t.cardSurface.withValues(alpha: 0.6),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -655,10 +658,10 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.emoji_events_rounded, color: t.secondary, size: 18),
+                const Icon(Icons.emoji_events_rounded, color: AppColors.secondary, size: 18),
                 const SizedBox(width: 6),
                 Text('המדורגים הגבוה ביותר',
-                    style: t.titleSmall.copyWith(color: t.secondary, fontWeight: FontWeight.w700)),
+                    style: t.titleSmall.copyWith(color: AppColors.secondary, fontWeight: FontWeight.w700)),
               ],
             ),
             const SizedBox(height: 16),
@@ -721,7 +724,9 @@ class _LeaderboardCard extends StatelessWidget {
           margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.all(14),
           decoration: t.glassDecoration().copyWith(
-                border: Border.all(color: isTop ? t.secondary : Colors.white.withValues(alpha: 0.55), width: isTop ? 2 : 1),
+                // Gold ring for the #1 spot; the rest keep the theme-aware
+                // hairline (correct on light AND dark).
+                border: Border.all(color: isTop ? t.saving : t.alternate, width: isTop ? 2 : 1),
               ),
           child: Column(
             children: [
@@ -742,7 +747,7 @@ class _LeaderboardCard extends StatelessWidget {
                     ),
                     child: Center(
                       child: Text('${rank + 1}',
-                          style: GoogleFonts.rubik(fontSize: 13, fontWeight: FontWeight.w800, color: t.primaryDark)),
+                          style: GoogleFonts.rubik(fontSize: 13, fontWeight: FontWeight.w800, color: t.primaryText)),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -903,9 +908,9 @@ class _SortChip extends StatelessWidget {
           duration: const Duration(milliseconds: 150),
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
           decoration: BoxDecoration(
-            color: active ? t.primary : Colors.white,
+            color: active ? AppColors.primary : t.cardSurface,
             borderRadius: BorderRadius.circular(t.radiusPill),
-            border: Border.all(color: active ? t.primary : t.alternate),
+            border: Border.all(color: active ? AppColors.primary : t.alternate),
           ),
           child: Text(label, style: t.labelSmall.copyWith(
             color: active ? Colors.white : t.secondaryText,

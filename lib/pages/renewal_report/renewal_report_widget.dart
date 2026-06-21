@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/app_snackbar.dart';
+import '../../widgets/pressable.dart';
 import '../../core/nav.dart';
 import '../../app_state.dart';
 import '../../services/push_notification_service.dart';
@@ -140,11 +141,8 @@ class _Hero extends StatelessWidget {
         isAbroad ? unit : '$unit · ₪${tp.monthlyPrice * 12}/שנה';
     return Container(
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [ffTheme.primaryDark, ffTheme.primary],
-          begin: Alignment.topRight,
-          end: Alignment.bottomLeft,
-        ),
+        gradient: ffTheme.brandGradient,
+        boxShadow: ffTheme.shadowSoft,
       ),
       child: SafeArea(
         bottom: false,
@@ -172,13 +170,16 @@ class _Hero extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 8),
                 child: Row(
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
+                    Hero(
+                      tag: 'tracked-logo-${tp.id}',
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: LogoWidget(provider: tp.provider, size: 40),
                       ),
-                      child: LogoWidget(provider: tp.provider, size: 40),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -393,20 +394,19 @@ class _AlternativeRow extends StatelessWidget {
         ? 'חוסך ₪${currentPrice - plan.price} לחבילה'
         : 'חוסך ₪$saving/שנה';
     final rating = ProviderRatings.averageStars(plan.provider);
-    return GestureDetector(
+    return Pressable(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: ffTheme.cardSurface,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: isTop ? ffTheme.primary : ffTheme.alternate,
             width: isTop ? 2 : 1,
           ),
-          boxShadow: [
-            BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 6, offset: const Offset(0, 2)),
-          ],
+          // The top pick gets a slightly stronger lift to draw the eye.
+          boxShadow: isTop ? ffTheme.shadowCard : ffTheme.shadowSoft,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -525,7 +525,7 @@ class _ReminderCta extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: on ? ffTheme.primary.withValues(alpha: 0.07) : Colors.white,
+        color: on ? ffTheme.primary.withValues(alpha: 0.07) : ffTheme.cardSurface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: on ? ffTheme.primary.withValues(alpha: 0.4) : ffTheme.alternate),
       ),

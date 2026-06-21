@@ -44,7 +44,9 @@ class _SuccessWidgetState extends State<SuccessWidget> {
     final plan = appState.leadPlanId != null ? planById(appState.leadPlanId!) : null;
 
     return Scaffold(
-      backgroundColor: ffTheme.primary,
+      // Celebration hero stays a premium INK surface in both themes — the const
+      // ink token, not the theme-aware getter (which flips to off-white on dark).
+      backgroundColor: AppColors.primary,
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -56,7 +58,7 @@ class _SuccessWidgetState extends State<SuccessWidget> {
               Stack(
                 alignment: Alignment.center,
                 children: [
-                  // Outer pulse ring
+                  // Outer halo ring — expands in once behind the checkmark.
                   Container(
                     width: 120,
                     height: 120,
@@ -64,8 +66,7 @@ class _SuccessWidgetState extends State<SuccessWidget> {
                       color: Colors.white.withValues(alpha: 0.08),
                       shape: BoxShape.circle,
                     ),
-                  ).animate(onPlay: (c) => c.repeat(reverse: true))
-                    .scale(begin: const Offset(1, 1), end: const Offset(1.12, 1.12), duration: 1200.ms, curve: Curves.easeInOut),
+                  ).animate().scale(begin: const Offset(0.8, 0.8), end: const Offset(1, 1), duration: 500.ms, curve: Curves.easeOut),
 
                   // Main circle
                   Container(
@@ -153,7 +154,7 @@ class _SuccessWidgetState extends State<SuccessWidget> {
                                 style: GoogleFonts.rubik(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white)),
                             if (save > 0)
                               Text('חוסך ₪$save/שנה',
-                                  style: ffTheme.labelSmall.copyWith(color: ffTheme.saving, fontWeight: FontWeight.w700)),
+                                  style: ffTheme.labelSmall.copyWith(color: ffTheme.savingText, fontWeight: FontWeight.w700)),
                           ],
                         ),
                       ],
@@ -221,8 +222,8 @@ class _SuccessWidgetState extends State<SuccessWidget> {
                 
                   width: double.infinity,
                   height: 56,
-                  color: ffTheme.secondary,
-                  textStyle: GoogleFonts.rubik(fontSize: 15, fontWeight: FontWeight.w700, color: ffTheme.primary),
+                  color: AppColors.secondary,
+                  textStyle: GoogleFonts.rubik(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.primary),
                   borderRadius: BorderRadius.circular(16),
                 
               ).animate().fadeIn(delay: 800.ms),

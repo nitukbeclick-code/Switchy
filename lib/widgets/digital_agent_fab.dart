@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../theme/app_theme.dart';
 
-class DigitalAgentFab extends StatefulWidget {
+class DigitalAgentFab extends StatelessWidget {
   final String? ticketId;
   final int unreadCount;
 
@@ -14,15 +15,10 @@ class DigitalAgentFab extends StatefulWidget {
   });
 
   @override
-  State<DigitalAgentFab> createState() => _DigitalAgentFabState();
-}
-
-class _DigitalAgentFabState extends State<DigitalAgentFab> {
-  @override
   Widget build(BuildContext context) {
     final theme = AppTheme.of(context);
 
-    final unread = widget.unreadCount;
+    final unread = unreadCount;
     return Align(
       alignment: Alignment.centerLeft,
       child: Padding(
@@ -67,14 +63,23 @@ class _DigitalAgentFabState extends State<DigitalAgentFab> {
                       child: Text(
                         unread > 9 ? '9+' : '$unread',
                         style: const TextStyle(
-                          color: Colors.white,
+                          color: Color(0xFF3A2900), // dark ink on amber (AA); matches the home badge
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
                           height: 1.0,
                         ),
                         textAlign: TextAlign.center,
                       ),
-                    ),
+                    )
+                        // A brief one-shot nudge when the badge appears, instead of
+                        // a perpetual pulse — draws the eye once, then rests.
+                        .animate(key: ValueKey(unread))
+                        .scale(
+                          duration: 260.ms,
+                          begin: const Offset(0.6, 0.6),
+                          end: const Offset(1, 1),
+                          curve: Curves.easeOutBack,
+                        ),
                   ),
               ],
             ),
@@ -96,7 +101,7 @@ class _DigitalAgentFabState extends State<DigitalAgentFab> {
 
     context.pushNamed(
       'support-ticket',
-      pathParameters: {'ticketId': widget.ticketId ?? 'new'},
+      pathParameters: {'ticketId': ticketId ?? 'new'},
     );
   }
 }

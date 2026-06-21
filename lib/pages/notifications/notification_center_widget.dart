@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../../app_state.dart';
 import '../../core/nav.dart';
+import '../../services/backend/local_backend.dart';
 import '../../services/notifications.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/empty_state.dart';
@@ -17,6 +18,24 @@ class NotificationCenterWidget extends StatefulWidget {
 }
 
 class _NotificationCenterWidgetState extends State<NotificationCenterWidget> {
+  // Community notifications are persisted server-side, so they're fetched once
+  // when the center opens and merged with the on-the-fly computed alerts.
+  List<AppNotification> _community = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCommunity();
+  }
+
+  Future<void> _loadCommunity() async {
+    final items = await fetchCommunityNotifications();
+    // Opening the center counts as seeing them — clear the unread state.
+    appBackend.markCommunityNotificationsRead().catchError((_) {});
+    if (!mounted) return;
+    setState(() => _community = items);
+  }
+
   void _dismissAll(AppState appState, List<AppNotification> notifs) {
     for (final n in notifs) {
       appState.dismissNotification(n.id);
@@ -47,15 +66,31 @@ class _NotificationCenterWidgetState extends State<NotificationCenterWidget> {
       NotifKind.betterDeal => (Icons.lightbulb_rounded, ffTheme.primary),
       NotifKind.savings => (Icons.trending_down_rounded, ffTheme.success),
       NotifKind.meeting => (Icons.videocam_rounded, ffTheme.brandAccent),
+      NotifKind.community => (Icons.forum_rounded, ffTheme.brandAccent),
       NotifKind.info => (Icons.info_rounded, ffTheme.info),
     };
+  }
+
+  /// Hebrew relative time for community notifications.
+  String _timeAgo(DateTime t) {
+    final diff = DateTime.now().difference(t);
+    if (diff.inMinutes < 1) return 'הרגע';
+    if (diff.inMinutes == 1) return 'לפני דקה';
+    if (diff.inMinutes < 60) return 'לפני ${diff.inMinutes} דקות';
+    if (diff.inHours == 1) return 'לפני שעה';
+    if (diff.inHours < 24) return 'לפני ${diff.inHours} שעות';
+    if (diff.inDays == 1) return 'אתמול';
+    return 'לפני ${diff.inDays} ימים';
   }
 
   @override
   Widget build(BuildContext context) {
     final appState = Provider.of<AppState>(context);
     final ffTheme = AppTheme.of(context);
-    final notifs = computeNotifications(appState);
+    final notifs = [
+      ...computeNotifications(appState),
+      ..._community.where((n) => !appState.isNotificationDismissed(n.id)),
+    ]..sort((a, b) => b.priority.compareTo(a.priority));
 
     return Scaffold(
       backgroundColor: ffTheme.background,
@@ -104,6 +139,7 @@ class _NotificationCenterWidgetState extends State<NotificationCenterWidget> {
                   icon: icon,
                   iconColor: iconColor,
                   ffTheme: ffTheme,
+                  timeLabel: n.createdAt == null ? null : _timeAgo(n.createdAt!),
                   onTap: () => _onTap(context, appState, n),
                   onDismiss: () => _dismiss(appState, n.id),
                   delay: (i * 60).ms,
@@ -123,6 +159,7 @@ class _NotifCard extends StatelessWidget {
     required this.onTap,
     required this.onDismiss,
     required this.delay,
+    this.timeLabel,
   });
 
   final AppNotification notification;
@@ -132,6 +169,7 @@ class _NotifCard extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback onDismiss;
   final Duration delay;
+  final String? timeLabel; // relative time, shown for stored (community) notifs
 
   @override
   Widget build(BuildContext context) {
@@ -173,11 +211,32 @@ class _NotifCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        notification.title,
-                        style: ffTheme.titleSmall,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (notification.unread) ...[
+                            Padding(
+                              padding: const EdgeInsets.only(top: 6),
+                              child: Container(
+                                width: 8,
+                                height: 8,
+                                decoration: BoxDecoration(
+                                  color: ffTheme.brandAccent,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                          ],
+                          Expanded(
+                            child: Text(
+                              notification.title,
+                              style: ffTheme.titleSmall,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 3),
                       Text(
@@ -186,6 +245,13 @@ class _NotifCard extends StatelessWidget {
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
+                      if (timeLabel != null) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          timeLabel!,
+                          style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText),
+                        ),
+                      ],
                     ],
                   ),
                 ),

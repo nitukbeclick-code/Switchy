@@ -52,12 +52,13 @@ export function dataCheckString(initData: string): string {
 }
 
 /// Validates `initData` against the bot token; returns the Telegram user when
-/// the signature is valid and fresh, otherwise null. [maxAgeSec]=0 disables the
-/// freshness check (used in tests).
+/// the signature is valid and fresh, otherwise null. [maxAgeSec] defaults to a
+/// tight 10-minute replay window for console actions; pass a larger value to
+/// relax it or `0` to disable the freshness check (used in tests).
 export async function validateInitData(
   initData: string,
   botToken: string,
-  maxAgeSec = 86400,
+  maxAgeSec = 600,
   nowMs?: number,
 ): Promise<TgWebAppUser | null> {
   if (!initData || !botToken) return null;
@@ -91,7 +92,7 @@ export async function authorizeRep(
   initData: string,
   botToken: string,
   allowedUserIds: number[],
-  maxAgeSec = 86400,
+  maxAgeSec = 600,
   nowMs?: number,
 ): Promise<TgWebAppUser | null> {
   const user = await validateInitData(initData, botToken, maxAgeSec, nowMs);

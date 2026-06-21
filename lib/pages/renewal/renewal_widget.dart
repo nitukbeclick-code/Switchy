@@ -222,7 +222,7 @@ class _IntroCard extends StatelessWidget {
 Color _chipColor(int days, AppTheme ffTheme) {
   if (days < 0) return ffTheme.error;
   if (days <= 21) return ffTheme.error;
-  if (days <= 45) return const Color(0xFFF59E0B);
+  if (days <= 45) return ffTheme.savingDark;
   return ffTheme.secondaryText;
 }
 
@@ -367,35 +367,51 @@ class _PlanCard extends StatelessWidget {
             ),
           ],
 
-          // Best alternative banner
+          // Best alternative banner — a VALUE moment: amber savings wash.
           if (bestMatch != null && bestMatch.annualSaving > 0) ...[
             Padding(
               padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
-              child: GestureDetector(
-                onTap: () => onBestMatch(bestMatch.plan.id),
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: ffTheme.accent1,
+              child: Semantics(
+                button: true,
+                label: 'מצאנו מסלול שחוסך ₪${bestMatch.annualSaving} בשנה. הצג מסלול',
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () => onBestMatch(bestMatch.plan.id),
                     borderRadius: BorderRadius.circular(12),
-                    border:
-                        Border.all(color: ffTheme.primary.withValues(alpha: 0.2)),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.lightbulb_outline_rounded, size: 18, color: ffTheme.primary),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          'מצאנו לך מסלול שחוסך ₪${bestMatch.annualSaving}/שנה',
-                          style: ffTheme.bodySmall.copyWith(
-                              color: ffTheme.primary,
-                              fontWeight: FontWeight.w700),
-                        ),
+                    splashColor: ffTheme.saving.withValues(alpha: 0.12),
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: ffTheme.saving.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                        border:
+                            Border.all(color: ffTheme.saving.withValues(alpha: 0.4)),
                       ),
-                      Icon(Icons.arrow_back_ios_rounded,
-                          size: 12, color: ffTheme.primary),
-                    ],
+                      child: Row(
+                        children: [
+                          Icon(Icons.lightbulb_rounded, size: 18, color: ffTheme.savingDark),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: RichText(
+                              text: TextSpan(
+                                style: ffTheme.bodySmall.copyWith(
+                                    color: ffTheme.primaryText, fontWeight: FontWeight.w700),
+                                children: [
+                                  const TextSpan(text: 'מצאנו לך מסלול שחוסך '),
+                                  TextSpan(
+                                      text: '₪${bestMatch.annualSaving}/שנה',
+                                      style: ffTheme.bodySmall.copyWith(
+                                          color: ffTheme.savingDark, fontWeight: FontWeight.w800)),
+                                ],
+                              ),
+                            ),
+                          ),
+                          Icon(Icons.arrow_back_ios_rounded,
+                              size: 12, color: ffTheme.savingDark),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ),

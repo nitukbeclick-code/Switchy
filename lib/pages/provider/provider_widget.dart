@@ -232,7 +232,7 @@ class _HeroHeader extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
-          colors: [ffTheme.primary, ffTheme.tertiary],
+          colors: [ffTheme.primary, ffTheme.primaryDark],
           begin: Alignment.topRight,
           end: Alignment.bottomLeft,
         ),
@@ -260,10 +260,26 @@ class _HeroHeader extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 8),
-            LogoWidget(provider: providerName, size: 64)
+            // Logo on a white chip so per-provider brand colours read cleanly
+            // against the green hero (the logo itself is never recoloured).
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(ffTheme.radiusMd),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.12),
+                    blurRadius: 14,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: LogoWidget(provider: providerName, size: 56),
+            )
                 .animate()
                 .scale(begin: const Offset(0.7, 0.7), duration: 400.ms, curve: Curves.easeOut),
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
             Text(
               providerName,
               style: ffTheme.headlineMedium
@@ -292,7 +308,7 @@ class _HeroHeader extends StatelessWidget {
                               ? Icons.star_half_rounded
                               : Icons.star_outline_rounded,
                       size: 18,
-                      color: ffTheme.secondary,
+                      color: ffTheme.saving,
                     );
                   }),
                   const SizedBox(width: 6),
@@ -341,20 +357,52 @@ class _EmptyState extends StatelessWidget {
             style: ffTheme.titleMedium.copyWith(color: Colors.white)),
       ),
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.search_off_rounded, size: 64, color: ffTheme.alternate),
-            const SizedBox(height: 16),
-            Text('לא נמצאו מסלולים', style: ffTheme.titleMedium),
-            const SizedBox(height: 8),
-            Text(
-              'אין מסלולים זמינים עבור $providerName',
-              style: ffTheme.bodyMedium
-                  .copyWith(color: ffTheme.secondaryText),
-              textAlign: TextAlign.center,
-            ),
-          ],
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 96,
+                height: 96,
+                decoration: BoxDecoration(
+                  color: ffTheme.accent1,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(Icons.search_off_rounded,
+                    size: 48, color: ffTheme.secondaryText),
+              )
+                  .animate()
+                  .fadeIn(duration: 400.ms)
+                  .scale(begin: const Offset(0.7, 0.7)),
+              const SizedBox(height: 20),
+              Text('לא נמצאו מסלולים', style: ffTheme.titleMedium)
+                  .animate()
+                  .fadeIn(delay: 120.ms),
+              const SizedBox(height: 8),
+              Text(
+                'אין מסלולים זמינים עבור $providerName כרגע',
+                style: ffTheme.bodyMedium
+                    .copyWith(color: ffTheme.secondaryText),
+                textAlign: TextAlign.center,
+              ).animate().fadeIn(delay: 180.ms),
+              const SizedBox(height: 24),
+              OutlinedButton.icon(
+                onPressed: () => context.safePop(),
+                icon: const Icon(Icons.arrow_forward_rounded, size: 18),
+                label: const Text('חזרה'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: ffTheme.primary,
+                  side: BorderSide(
+                      color: ffTheme.primary.withValues(alpha: 0.4)),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(ffTheme.radiusSm)),
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 20, vertical: 12),
+                ),
+              ).animate().fadeIn(delay: 240.ms),
+            ],
+          ),
         ),
       ),
     );
@@ -463,21 +511,28 @@ class _BestMatchCard extends StatelessWidget {
               ],
             ),
             if (topReason.isNotEmpty) ...[
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  Icon(Icons.check_circle_rounded,
-                      color: ffTheme.success, size: 16),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      topReason,
-                      style: ffTheme.bodySmall.copyWith(
-                          color: ffTheme.primaryText,
-                          fontWeight: FontWeight.w500),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                decoration: BoxDecoration(
+                  color: ffTheme.primary.withValues(alpha: 0.06),
+                  borderRadius: BorderRadius.circular(ffTheme.radiusSm),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.check_circle_rounded,
+                        color: ffTheme.primary, size: 16),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        topReason,
+                        style: ffTheme.bodySmall.copyWith(
+                            color: ffTheme.primaryText,
+                            fontWeight: FontWeight.w600),
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ],
             const SizedBox(height: 12),
@@ -657,21 +712,23 @@ class _PlanCard extends StatelessWidget {
     final unit = priceUnitLabel(plan);
     final specEntries = plan.specs.entries.take(2).toList();
 
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
+    return Semantics(
+      button: true,
+      label: 'פתח את פרטי המסלול ${plan.plan}',
+      child: Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(14),
+      shadowColor: Colors.black.withValues(alpha: 0.08),
+      elevation: 1,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: ffTheme.alternate),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -752,6 +809,8 @@ class _PlanCard extends StatelessWidget {
             ],
           ],
         ),
+        ),
+      ),
       ),
     );
   }

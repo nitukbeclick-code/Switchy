@@ -22,41 +22,62 @@ class _DigitalAgentFabState extends State<DigitalAgentFab> {
   Widget build(BuildContext context) {
     final theme = AppTheme.of(context);
 
+    final unread = widget.unreadCount;
     return Align(
       alignment: Alignment.centerLeft,
       child: Padding(
         padding: const EdgeInsets.only(left: 16.0),
-        child: FloatingActionButton(
-          heroTag: 'digital-agent-fab',
-          backgroundColor: theme.primary,
-          onPressed: () => _openAgentChat(context),
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              const Icon(Icons.support_agent, color: Colors.white, size: 24),
-              if (widget.unreadCount > 0)
-                Positioned(
-                  top: 0,
-                  right: 0,
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: theme.saving, // Amber accent for notifications
-                      shape: BoxShape.circle,
-                    ),
-                    constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
-                    child: Text(
-                      widget.unreadCount > 9 ? '9+' : '${widget.unreadCount}',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
+        // The FAB is an ACTION affordance → it wears the green ACTION gradient
+        // and glow over a transparent FAB, instead of a flat ink fill.
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: theme.accentGradient,
+            boxShadow: theme.shadowAccent,
+          ),
+          child: FloatingActionButton(
+            heroTag: 'digital-agent-fab',
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            focusElevation: 0,
+            hoverElevation: 0,
+            highlightElevation: 0,
+            tooltip: unread > 0
+                ? 'נציג דיגיטלי — $unread הודעות חדשות'
+                : 'נציג דיגיטלי',
+            onPressed: () => _openAgentChat(context),
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                const Icon(Icons.support_agent, color: Colors.white, size: 24),
+                if (unread > 0)
+                  Positioned(
+                    top: 0,
+                    right: 0,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: theme.saving, // Amber VALUE accent for the badge
+                        shape: BoxShape.circle,
+                        // A ring so the badge stays legible on the green FAB.
+                        border: Border.all(color: Colors.white, width: 1.5),
                       ),
-                      textAlign: TextAlign.center,
+                      constraints:
+                          const BoxConstraints(minWidth: 18, minHeight: 18),
+                      child: Text(
+                        unread > 9 ? '9+' : '$unread',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          height: 1.0,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
                     ),
                   ),
-                ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

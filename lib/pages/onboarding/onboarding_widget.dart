@@ -109,11 +109,13 @@ class _OnboardingWidgetState extends State<OnboardingWidget> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: List.generate(3, (i) => AnimatedContainer(
                     duration: ffTheme.motionMedium,
+                    curve: Curves.easeOut,
                     margin: const EdgeInsets.symmetric(horizontal: 4),
                     width: i == _page ? 28 : 8,
                     height: 8,
                     decoration: BoxDecoration(
-                      color: i == _page ? ffTheme.primary : ffTheme.alternate,
+                      gradient: i == _page ? ffTheme.accentGradient : null,
+                      color: i == _page ? null : ffTheme.alternate,
                       borderRadius: BorderRadius.circular(4),
                     ),
                   )),
@@ -155,8 +157,15 @@ class _Page1 extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(24, 32, 24, 16),
       child: Column(
         children: [
-          Icon(Icons.savings_outlined, size: 72, color: ffTheme.primary)
-              .animate().scale(duration: 500.ms, curve: Curves.elasticOut),
+          Container(
+            width: 104,
+            height: 104,
+            decoration: BoxDecoration(
+              color: ffTheme.brandAccentTint,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.savings_outlined, size: 52, color: ffTheme.brandAccent),
+          ).animate().scale(duration: 500.ms, curve: Curves.elasticOut),
           const SizedBox(height: 20),
           Text(
             'כל המחירים\nבמקום אחד',
@@ -185,13 +194,13 @@ class _Page1 extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: ffTheme.accent1,
+              color: ffTheme.brandAccentTint,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: ffTheme.primary.withValues(alpha: 0.15)),
+              border: Border.all(color: ffTheme.brandAccent.withValues(alpha: 0.18)),
             ),
             child: Row(
               children: [
-                Icon(Icons.search_rounded, size: 24, color: ffTheme.primary),
+                ExcludeSemantics(child: Icon(Icons.verified_outlined, size: 24, color: ffTheme.brandAccent)),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
@@ -233,8 +242,15 @@ class _Page2 extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(24, 32, 24, 16),
       child: Column(
         children: [
-          Icon(Icons.search_rounded, size: 72, color: ffTheme.primary)
-              .animate().scale(duration: 500.ms, curve: Curves.elasticOut),
+          Container(
+            width: 104,
+            height: 104,
+            decoration: BoxDecoration(
+              color: ffTheme.brandAccentTint,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.search_rounded, size: 52, color: ffTheme.brandAccent),
+          ).animate().scale(duration: 500.ms, curve: Curves.elasticOut),
           const SizedBox(height: 20),
           Text(
             'כל הספקים\nבמקום אחד',
@@ -293,8 +309,15 @@ class _Page3 extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(24, 32, 24, 16),
       child: Column(
         children: [
-          Icon(Icons.handshake_outlined, size: 72, color: ffTheme.primary)
-              .animate().scale(duration: 500.ms, curve: Curves.elasticOut),
+          Container(
+            width: 104,
+            height: 104,
+            decoration: BoxDecoration(
+              color: ffTheme.brandAccentTint,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.handshake_outlined, size: 52, color: ffTheme.brandAccent),
+          ).animate().scale(duration: 500.ms, curve: Curves.elasticOut),
           const SizedBox(height: 20),
           Text(
             'מעבר קל\nוחלק',
@@ -361,7 +384,7 @@ class _StatChip extends StatelessWidget {
         ),
         child: Column(
           children: [
-            Text(value, style: GoogleFonts.rubik(fontSize: 20, fontWeight: FontWeight.w800, color: ffTheme.primary)),
+            Text(value, style: GoogleFonts.rubik(fontSize: 20, fontWeight: FontWeight.w800, color: ffTheme.brandAccent)),
             Text(label, style: ffTheme.labelSmall),
           ],
         ),
@@ -381,13 +404,13 @@ class _FeatureRow extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: ffTheme.accent1,
+        color: ffTheme.brandAccentTint,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: ffTheme.primary.withValues(alpha: 0.1)),
+        border: Border.all(color: ffTheme.brandAccent.withValues(alpha: 0.12)),
       ),
       child: Row(
         children: [
-          Icon(icon, color: ffTheme.primary, size: 20),
+          ExcludeSemantics(child: Icon(icon, color: ffTheme.brandAccent, size: 20)),
           const SizedBox(width: 10),
           Text(text, style: ffTheme.bodyMedium.copyWith(color: ffTheme.primaryText)),
         ],
@@ -430,10 +453,14 @@ class _StepTimeline extends StatelessWidget {
                   Container(
                     width: 32,
                     height: 32,
-                    decoration: BoxDecoration(color: ffTheme.primary, shape: BoxShape.circle),
-                    child: Center(child: Icon(s.$3, size: 16, color: Colors.white)),
+                    decoration: BoxDecoration(
+                      gradient: ffTheme.accentGradient,
+                      shape: BoxShape.circle,
+                      boxShadow: ffTheme.shadowAccent,
+                    ),
+                    child: Center(child: ExcludeSemantics(child: Icon(s.$3, size: 16, color: Colors.white))),
                   ),
-                  if (!isLast) Container(width: 2, height: 24, color: ffTheme.alternate, margin: const EdgeInsets.symmetric(vertical: 3)),
+                  if (!isLast) Container(width: 2, height: 24, color: ffTheme.brandAccent.withValues(alpha: 0.25), margin: const EdgeInsets.symmetric(vertical: 3)),
                 ],
               ),
               const SizedBox(width: 12),

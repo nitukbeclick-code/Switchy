@@ -161,18 +161,25 @@ class MeetingStatusCard extends StatelessWidget {
         Text(message, style: t.bodySmall),
         if (onPickNewSlot != null) ...[
           const SizedBox(height: 10),
-          Material(
-            color: t.primary,
-            borderRadius: BorderRadius.circular(t.radiusMd),
-            child: InkWell(
+          DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: t.accentGradient,
               borderRadius: BorderRadius.circular(t.radiusMd),
-              onTap: onPickNewSlot,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                child: Center(
-                  child: Text('בחירת מועד חדש',
-                      style: GoogleFonts.rubik(
-                          fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
+              boxShadow: t.shadowAccent,
+            ),
+            child: Material(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(t.radiusMd),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(t.radiusMd),
+                onTap: onPickNewSlot,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Center(
+                    child: Text('בחירת מועד חדש',
+                        style: GoogleFonts.rubik(
+                            fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
+                  ),
                 ),
               ),
             ),

@@ -271,8 +271,9 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                           ),
                           const Spacer(),
                           Text('${plans.length} מסלולים',
-                              style: ffTheme.labelMedium
-                                  .copyWith(color: ffTheme.secondaryText)),
+                              style: ffTheme.labelMedium.copyWith(
+                                  color: ffTheme.secondaryText,
+                                  fontFeatures: const [FontFeature.tabularFigures()])),
                           if (appState.activeFilters.isNotEmpty || _providerFilter.isNotEmpty) ...[
                             const SizedBox(width: 2),
                             // Padded InkWell — a comfortable target with press
@@ -335,7 +336,7 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                                       children: [
                                         Text('₪$bill',
                                             style: ffTheme.titleMedium
-                                                .copyWith(color: ffTheme.primary)),
+                                                .copyWith(color: ffTheme.primary, fontFeatures: const [FontFeature.tabularFigures()])),
                                         const SizedBox(width: 4),
                                         Icon(Icons.edit_rounded, size: 12, color: ffTheme.primary),
                                       ],
@@ -518,8 +519,16 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                             padding: const EdgeInsets.all(16),
                             child: Row(
                               children: [
-                                const Icon(Icons.lightbulb_outline_rounded, size: 20, color: Colors.white),
-                                const SizedBox(width: 10),
+                                Container(
+                                  width: 38,
+                                  height: 38,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: 0.14),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(Icons.auto_awesome_rounded, size: 20, color: Colors.white),
+                                ),
+                                const SizedBox(width: 12),
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -529,11 +538,12 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                                         style: ffTheme.titleSmall
                                             .copyWith(color: Colors.white),
                                       ),
+                                      const SizedBox(height: 2),
                                       Text(
                                         'תחסוך ₪$topSave בשנה',
                                         style: ffTheme.bodySmall.copyWith(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.w700),
+                                            color: ffTheme.saving,
+                                            fontWeight: FontWeight.w800),
                                       ),
                                     ],
                                   ),
@@ -559,15 +569,20 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Container(
-                          width: 88,
-                          height: 88,
+                          width: 96,
+                          height: 96,
                           decoration: BoxDecoration(
-                            color: ffTheme.alternate.withValues(alpha: 0.4),
+                            color: ffTheme.accent1,
                             shape: BoxShape.circle,
+                            border: Border.all(color: ffTheme.primary.withValues(alpha: 0.12), width: 1.5),
                           ),
-                          child: Icon(Icons.search_off_rounded, size: 44, color: ffTheme.secondaryText),
-                        ).animate(onPlay: (c) => c.repeat(reverse: true))
-                          .scale(begin: const Offset(1, 1), end: const Offset(1.06, 1.06), duration: 1400.ms, curve: Curves.easeInOut),
+                          child: Icon(Icons.search_off_rounded, size: 44, color: ffTheme.primary.withValues(alpha: 0.55)),
+                        ).animate().fadeIn(duration: 350.ms).scale(
+                              begin: const Offset(0.85, 0.85),
+                              end: const Offset(1, 1),
+                              duration: 350.ms,
+                              curve: Curves.easeOutBack,
+                            ),
                         const SizedBox(height: 20),
                         Text(
                           appState.searchQuery.isNotEmpty ? 'אין תוצאות לחיפוש' : 'לא נמצאו מסלולים',

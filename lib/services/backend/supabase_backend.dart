@@ -307,6 +307,7 @@ class SupabaseBackend implements Backend {
             'speed': (r['speed'] as num?)?.toInt() ?? 0,
           },
           text: r['body'] as String? ?? '',
+          isVerifiedCustomer: r['is_verified_customer'] as bool? ?? false,
         )).toList();
   }
 
@@ -323,6 +324,7 @@ class SupabaseBackend implements Backend {
             'speed': (r['speed'] as num?)?.toInt() ?? 0,
           },
           text: r['body'] as String? ?? '',
+          isVerifiedCustomer: r['is_verified_customer'] as bool? ?? false,
         )).toList();
   }
 
@@ -369,6 +371,7 @@ class SupabaseBackend implements Backend {
         mediaType: r['media_type'] as String?,
         mediaData: r['media_url'] as String?,
         mediaDurationMs: r['media_duration_ms'] as int?,
+        isFlagged: r['is_flagged'] as bool? ?? false,
       );
 
   @override
@@ -422,6 +425,7 @@ class SupabaseBackend implements Backend {
           mediaType: r['media_type'] as String?,
           media: r['media_url'] as String?,
           mediaDurationMs: r['media_duration_ms'] as int?,
+          isFlagged: r['is_flagged'] as bool? ?? false,
         )).toList();
   }
 
@@ -468,5 +472,48 @@ class SupabaseBackend implements Backend {
   Future<Set<String>> bookmarkedPostIds() async {
     final rows = await _db.from('post_bookmarks').select('post_id').eq('user_id', _uid!);
     return (rows as List).map((r) => r['post_id'] as String).toSet();
+  }
+
+  // ── Moderation & notifications ───────────────────────────────────────────────
+  @override
+  Future<void> reportContent({
+    required String targetType,
+    required String targetId,
+    required String reason,
+    String? body,
+  }) async {
+    // RLS lets a user INSERT a report as themselves; reporter_user_id = uid.
+    await _db.from('community_reports').insert({
+      'reporter_user_id': _uid,
+      'target_type': targetType,
+      'target_id': targetId,
+      'reason': reason,
+      if (body != null && body.isNotEmpty) 'body': body,
+    });
+  }
+
+  @override
+  Future<List<CommunityNotification>> fetchCommunityNotifications() async {
+    if (_uid == null) return const [];
+    // RLS scopes SELECT to the user's own rows.
+    final rows = await _db
+        .from('community_notifications')
+        .select()
+        .order('created_at', ascending: false)
+        .limit(50);
+    return (rows as List)
+        .map((r) => CommunityNotification.fromJson(r as Map<String, dynamic>))
+        .toList();
+  }
+
+  @override
+  Future<void> markCommunityNotificationsRead() async {
+    if (_uid == null) return;
+    // RLS scopes UPDATE to the user's own rows; only touch the unread ones.
+    await _db
+        .from('community_notifications')
+        .update({'read_at': DateTime.now().toUtc().toIso8601String()})
+        .eq('user_id', _uid!)
+        .isFilter('read_at', null);
   }
 }

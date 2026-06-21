@@ -256,6 +256,7 @@ class CommunityPost {
     this.planId,
     this.isVerified = false,
     this.isTeam = false,
+    this.isFlagged = false,
     // ── Rich media (WhatsApp-style attachments) ──────────────────────────────
     this.mediaType,
     this.mediaData,
@@ -272,6 +273,10 @@ class CommunityPost {
   final String? planId;
   final bool isVerified;
   final bool isTeam;
+
+  /// True when a moderator flagged the post (`community_posts.is_flagged`);
+  /// the feed hides or placeholders it.
+  final bool isFlagged;
 
   /// 'image' | 'video' | 'audio' (null = text-only).
   final String? mediaType;

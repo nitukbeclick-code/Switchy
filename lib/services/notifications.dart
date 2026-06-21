@@ -1,12 +1,13 @@
 import '../app_state.dart';
 import '../data.dart';
 import '../models.dart';
-import 'backend/backend.dart' show MeetingStatus;
+import 'backend/backend.dart' show MeetingStatus, CommunityNotification;
+import 'backend/local_backend.dart' show appBackend;
 import 'meeting_slots.dart' show formatMeetingDateHe, meetingLocalStart;
 import 'recommendation_engine.dart';
 
 /// The kind of actionable alert, used to pick an icon/accent in the UI.
-enum NotifKind { renewal, betterDeal, savings, meeting, info }
+enum NotifKind { renewal, betterDeal, savings, meeting, community, info }
 
 /// A computed, actionable notification. These are derived on the fly from app
 /// state (tracked plans, watchlist, bills) rather than stored as events, so they
@@ -22,6 +23,8 @@ class AppNotification {
     this.planId,
     this.category,
     this.priority = 0,
+    this.unread = false,
+    this.createdAt,
   });
 
   final String id;
@@ -33,6 +36,8 @@ class AppNotification {
   final String? planId; // when set, tap should open this plan's detail
   final String? category; // when set, set this category before navigating
   final int priority; // higher sorts first
+  final bool unread; // community notifs: show an unread dot until read
+  final DateTime? createdAt; // community notifs: drive relative-time display
 }
 
 /// Builds the list of actionable notifications for [s], newest/most-urgent
@@ -166,6 +171,57 @@ List<AppNotification> computeNotifications(AppState s) {
 
 /// Count of actionable, non-dismissed notifications (for the bell badge).
 int notificationCount(AppState s) => computeNotifications(s).length;
+
+/// Fetches stored community notifications (someone replied to / mentioned the
+/// user) from the backend and maps them to [AppNotification]s, newest first.
+///
+/// Unlike [computeNotifications] these are *events* persisted server-side, so
+/// this path is async. Each deep-links to the community feed (the `/community`
+/// route takes no path params today, so we don't attach the post id — once a
+/// per-post route exists, set [AppNotification.pathParameters] to `{'postId':…}`
+/// and the post id is already carried in [CommunityNotification.postId]).
+/// Failures degrade to an empty list so the notification center still renders
+/// its computed alerts.
+Future<List<AppNotification>> fetchCommunityNotifications() async {
+  final List<CommunityNotification> rows;
+  try {
+    rows = await appBackend.fetchCommunityNotifications();
+  } catch (_) {
+    return const [];
+  }
+  final out = <AppNotification>[];
+  for (final n in rows) {
+    final title = _communityNotifTitle(n);
+    if (title == null) continue; // skip kinds we don't surface (e.g. 'flag')
+    out.add(AppNotification(
+      id: 'community_${n.id}',
+      kind: NotifKind.community,
+      title: title,
+      body: _communityNotifBody(n),
+      routeName: 'Community',
+      unread: n.readAt == null,
+      createdAt: n.createdAt,
+      priority: 600, // above better-deal/savings, below renewal/meeting-today
+    ));
+  }
+  return out;
+}
+
+/// Hebrew headline for a community notification, or null for kinds the center
+/// doesn't surface to the post's author.
+String? _communityNotifTitle(CommunityNotification n) {
+  final actor = (n.actor == null || n.actor!.isEmpty) ? 'מישהו' : n.actor!;
+  return switch (n.kind) {
+    'reply' => '$actor הגיב/ה לפוסט שלך',
+    'mention' => '$actor הזכיר/ה אותך בקהילה',
+    _ => null,
+  };
+}
+
+String _communityNotifBody(CommunityNotification n) => switch (n.kind) {
+      'mention' => 'הקש/י כדי לראות את האזכור בקהילה',
+      _ => 'הקש/י כדי לראות את התגובה בקהילה',
+    };
 
 /// The best alternative to [watched] in its category, or null if none is clearly
 /// better (score margin > 4 and either cheaper or with a positive saving).

@@ -68,7 +68,7 @@ async function handleRenewLead(
     callback_time: "now",
     notes: `חידוש: ${r.plan_name} (₪${r.monthly_price}/חודש) מסתיים ב-${r.promo_end_date}`.slice(0, 600),
   });
-  await answer(ok ? "ליד נוצר ✅ — הכרטיס יופיע כאן מיד" : "יצירת הליד נכשלה");
+  await answer(ok ? "ליד נוצר ✅ — הכרטיס יופיע כאן מיד" : "שגיאת מסד נתונים — נסו שוב בעוד רגע");
   return { ok };
 }
 
@@ -116,8 +116,12 @@ export async function handleCallback(cfg: Cfg, cb: TgCallbackQuery): Promise<Han
       fetchRows<Lead>(`/rest/v1/leads?id=eq.${leadId}&select=*`),
       fetchRows<LeadEvent>(`/rest/v1/lead_events?lead_id=eq.${leadId}&order=created_at.asc&limit=30`),
     ]);
-    if (leadRows === null || evs === null || !leadRows[0]) {
-      await answer("טעינת ההיסטוריה נכשלה");
+    if (leadRows === null || evs === null) {
+      await answer("שגיאת מסד נתונים — נסו שוב בעוד רגע");
+      return { ok: false };
+    }
+    if (!leadRows[0]) {
+      await answer("הליד לא נמצא");
       return { ok: false };
     }
     await answer();
@@ -128,7 +132,7 @@ export async function handleCallback(cfg: Cfg, cb: TgCallbackQuery): Promise<Han
   if (action === "claimed") {
     const rows = await fetchRows<Lead>(`/rest/v1/leads?id=eq.${leadId}&select=claimed_by`);
     if (rows === null) {
-      await answer("הבדיקה נכשלה — נסו שוב");
+      await answer("שגיאת מסד נתונים — נסו שוב בעוד רגע");
       return { ok: false };
     }
     await answer(rows[0]?.claimed_by ? `בטיפול אצל ${rows[0].claimed_by}` : "פנוי לטיפול");
@@ -160,7 +164,7 @@ export async function handleCallback(cfg: Cfg, cb: TgCallbackQuery): Promise<Han
       `/rest/v1/lead_events?lead_id=eq.${leadId}&event=eq.status_change&order=created_at.desc&limit=1`,
     );
     if (evs === null) {
-      await answer("הביטול נכשל — נסו שוב");
+      await answer("שגיאת מסד נתונים — נסו שוב בעוד רגע");
       return { ok: false };
     }
     if (evs.length === 0) {
@@ -177,7 +181,8 @@ export async function handleCallback(cfg: Cfg, cb: TgCallbackQuery): Promise<Han
       : { status: prev };
     const n = await patchCount(`/rest/v1/leads?id=eq.${leadId}`, body);
     if (n === 0) {
-      await answer("הביטול נכשל — נסו שוב");
+      // the lead was just read above, so a zero-row revert is a DB failure.
+      await answer("שגיאת מסד נתונים — נסו שוב בעוד רגע");
       return { ok: false };
     }
     await logEvent({ lead_id: leadId, event: "undo", new_status: prev, actor_tg_id: cb.from?.id ?? null, actor_name: who });
@@ -189,7 +194,8 @@ export async function handleCallback(cfg: Cfg, cb: TgCallbackQuery): Promise<Han
   // status change: contacted | won | lost
   const beforeRows = await fetchRows<Lead>(`/rest/v1/leads?id=eq.${leadId}&select=*`);
   if (beforeRows === null) {
-    await answer("העדכון נכשל — נסו שוב");
+    // fetchRows === null is a real DB error, not an empty result set.
+    await answer("שגיאת מסד נתונים — נסו שוב בעוד רגע");
     return { ok: false };
   }
   const before = beforeRows[0];
@@ -206,7 +212,9 @@ export async function handleCallback(cfg: Cfg, cb: TgCallbackQuery): Promise<Han
   }
   const n = await patchCount(`/rest/v1/leads?id=eq.${leadId}`, { status: action });
   if (n === 0) {
-    await answer("העדכון נכשל — נסו שוב");
+    // the row existed a moment ago (beforeRows had it) and the status differs,
+    // so a zero-row patch means the DB call itself failed — not a no-match.
+    await answer("שגיאת מסד נתונים — נסו שוב בעוד רגע");
     return { ok: false };
   }
   if (action === "contacted" && !before.contacted_at) {
@@ -248,6 +256,15 @@ export function parseSavingAmount(text: string): number | null {
   return Number.isFinite(n) && n > 0 ? Math.min(n, 100_000) : null;
 }
 
+// A lone-number reply that parses to 0 ("0", "₪0") is a well-formed-but-invalid
+// amount — parseSavingAmount returns null for it (same as prose), but the rep
+// deserves the precise "positive amount required" nudge rather than the generic
+// "not recognized as a number" one.
+export function isLoneZeroAmount(text: string): boolean {
+  const m = text.replace(/[,،]/g, "").match(/^\s*₪?\s*(\d{1,6})(?:\s*(?:₪|ש"ח|שח))?\s*$/);
+  return m !== null && Number(m[1]) === 0;
+}
+
 export async function handleTeamMessage(cfg: Cfg, msg: TgMessage): Promise<HandlerResult> {
   const chatId = msg.chat?.id;
   // Fail-close: an unset tgChat rejects rather than accepting any chat.
@@ -273,19 +290,47 @@ export async function handleTeamMessage(cfg: Cfg, msg: TgMessage): Promise<Handl
     if (!leadId || !text) return { ok: true, skipped: "reply without lead context" };
     const who = tgDisplayName(msg.from);
     if (isWonAskMarkup(reply.reply_markup)) {
+      // A lone "0" is a well-formed amount that's just invalid — say so precisely
+      // instead of stashing it as a note like genuinely-unparseable prose.
+      if (isLoneZeroAmount(text)) {
+        await sendTelegram(cfg, "סכום חיובי נדרש (גדול מ-0) — השיבו עם מספר כמו <code>1200</code>");
+        return { ok: false, skipped: "non-positive saving" };
+      }
       const amount = parseSavingAmount(text);
       if (amount !== null) {
         const n = await patchCount(`/rest/v1/leads?id=eq.${leadId}`, { actual_saving: amount });
+        if (n === 0) {
+          // the won-ask prompt only exists for a real lead, so a zero-row write
+          // is a DB failure, not a missing lead.
+          await sendTelegram(cfg, "שגיאת מסד נתונים — נסו שוב בעוד רגע");
+          return { ok: false };
+        }
         await logEvent({ lead_id: leadId, event: "saving", note: String(amount), actor_tg_id: msg.from?.id ?? null, actor_name: who });
-        await sendTelegram(cfg, n > 0 ? `💰 נרשם: ₪${amount} חיסכון שנתי ללקוח` : "הרישום נכשל — נסו שוב");
-        return { ok: n > 0 };
+        await sendTelegram(cfg, `💰 נרשם: ₪${amount} חיסכון שנתי ללקוח`);
+        return { ok: true };
       }
       await logEvent({ lead_id: leadId, event: "note", note: text.slice(0, 1000), actor_tg_id: msg.from?.id ?? null, actor_name: who });
       await sendTelegram(cfg, "לא זיהיתי סכום (צריך מספר בלבד, למשל <code>1200</code>) — נשמר כהערה 📝");
       return { ok: true };
     }
+    // Plain note on a lead card. Reject notes on a closed (won/lost) lead — its
+    // card is frozen and a stray note would be misleading.
+    const leadRows = await fetchRows<Lead>(`/rest/v1/leads?id=eq.${leadId}&select=status`);
+    if (leadRows === null) {
+      await sendTelegram(cfg, "שגיאת מסד נתונים — נסו שוב בעוד רגע");
+      return { ok: false };
+    }
+    if (!leadRows[0]) {
+      await sendTelegram(cfg, "הליד לא נמצא");
+      return { ok: false, skipped: "lead not found" };
+    }
+    const st = String(leadRows[0].status ?? "new");
+    if (st === "won" || st === "lost") {
+      await sendTelegram(cfg, "הליד סגור — אי אפשר להוסיף הערות");
+      return { ok: false, skipped: "lead closed" };
+    }
     await logEvent({ lead_id: leadId, event: "note", note: text.slice(0, 1000), actor_tg_id: msg.from?.id ?? null, actor_name: who });
-    await sendTelegram(cfg, "📝 ההערה נשמרה על הליד");
+    await sendTelegram(cfg, "✅ הערה נשמרה");
     return { ok: true };
   }
 

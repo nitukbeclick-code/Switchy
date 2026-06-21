@@ -121,7 +121,7 @@ class _AuthWidgetState extends State<AuthWidget> {
                 child: _busy && _mode == _Mode.choose
                     ? Padding(
                         padding: const EdgeInsets.symmetric(vertical: 40),
-                        child: Center(child: CircularProgressIndicator(color: t.primary)),
+                        child: Center(child: CircularProgressIndicator(color: t.brandAccent)),
                       )
                     : switch (_mode) {
                         _Mode.choose => _chooseBody(t),
@@ -268,7 +268,7 @@ class _AuthWidgetState extends State<AuthWidget> {
                 TextSpan(
                   text: link,
                   style: t.bodySmall.copyWith(
-                      color: t.primary, fontWeight: FontWeight.w700, decoration: TextDecoration.underline),
+                      color: t.brandAccent, fontWeight: FontWeight.w700, decoration: TextDecoration.underline),
                 ),
               ]
             : null,
@@ -282,7 +282,7 @@ class _AuthWidgetState extends State<AuthWidget> {
           child: Checkbox(
             value: value,
             onChanged: onChanged,
-            activeColor: t.primary,
+            activeColor: t.brandAccent,
             visualDensity: VisualDensity.compact,
             materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
           ),
@@ -307,7 +307,9 @@ class _AuthWidgetState extends State<AuthWidget> {
           _SocialButton(
             label: 'כניסה מהירה עם Face ID',
             icon: Icons.fingerprint_rounded,
-            bg: t.primary,
+            gradient: t.accentGradient,
+            shadow: t.shadowAccent,
+            bg: t.brandAccent,
             fg: Colors.white,
             onTap: _busy ? null : _faceIdLogin,
           ),
@@ -351,7 +353,7 @@ class _AuthWidgetState extends State<AuthWidget> {
           child: Text.rich(TextSpan(
             text: 'כבר רשומים? ',
             style: t.bodyMedium.copyWith(color: t.secondaryText),
-            children: [TextSpan(text: 'התחברו', style: t.bodyMedium.copyWith(color: t.primary, fontWeight: FontWeight.w700))],
+            children: [TextSpan(text: 'התחברו', style: t.bodyMedium.copyWith(color: t.brandAccent, fontWeight: FontWeight.w700))],
           )),
         ),
       ],
@@ -402,7 +404,7 @@ class _AuthWidgetState extends State<AuthWidget> {
               alignment: AlignmentDirectional.centerStart,
               child: TextButton(
                 onPressed: _busy ? null : _forgotPassword,
-                child: Text('שכחתי סיסמה', style: t.labelMedium.copyWith(color: t.primary)),
+                child: Text('שכחתי סיסמה', style: t.labelMedium.copyWith(color: t.brandAccent)),
               ),
             ),
           ],
@@ -446,7 +448,7 @@ class _AuthWidgetState extends State<AuthWidget> {
             onPressed: () => setState(() => _mode = isSignup ? _Mode.login : _Mode.signup),
             child: Text(
               isSignup ? 'כבר רשומים? התחברו' : 'אין לכם חשבון? הרשמו',
-              style: t.bodyMedium.copyWith(color: t.primary, fontWeight: FontWeight.w700),
+              style: t.bodyMedium.copyWith(color: t.brandAccent, fontWeight: FontWeight.w700),
             ),
           ),
         ],
@@ -498,7 +500,7 @@ class _AuthWidgetState extends State<AuthWidget> {
         enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(t.radiusMd), borderSide: BorderSide(color: t.alternate)),
         focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(t.radiusMd), borderSide: BorderSide(color: t.primary, width: 1.5)),
+            borderRadius: BorderRadius.circular(t.radiusMd), borderSide: BorderSide(color: t.brandAccent, width: 1.5)),
       ),
     );
   }
@@ -514,6 +516,8 @@ class _SocialButton extends StatelessWidget {
     this.glyph,
     this.glyphColor,
     this.bordered = false,
+    this.gradient,
+    this.shadow,
   });
 
   final String label;
@@ -524,35 +528,48 @@ class _SocialButton extends StatelessWidget {
   final String? glyph;
   final Color? glyphColor;
   final bool bordered;
+  final Gradient? gradient;
+  final List<BoxShadow>? shadow;
 
   @override
   Widget build(BuildContext context) {
     final t = AppTheme.of(context);
+    final disabled = onTap == null;
     return Semantics(
       button: true,
+      enabled: !disabled,
       label: label,
-      child: Material(
-        color: bg,
-        borderRadius: BorderRadius.circular(t.radiusMd),
-        child: InkWell(
-          onTap: onTap,
+      child: Container(
+        decoration: gradient != null
+            ? BoxDecoration(
+                borderRadius: BorderRadius.circular(t.radiusMd),
+                boxShadow: disabled ? null : shadow,
+              )
+            : null,
+        child: Material(
+          color: gradient != null ? Colors.transparent : bg,
           borderRadius: BorderRadius.circular(t.radiusMd),
-          child: Container(
-            height: 52,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(t.radiusMd),
-              border: bordered ? Border.all(color: t.alternate) : null,
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                if (icon != null)
-                  Icon(icon, color: fg, size: 22)
-                else if (glyph != null)
-                  Text(glyph!, style: t.titleMedium.copyWith(color: glyphColor ?? fg, fontWeight: FontWeight.w800)),
-                const SizedBox(width: 10),
-                Text(label, style: t.titleSmall.copyWith(color: fg)),
-              ],
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(t.radiusMd),
+            child: Container(
+              height: 52,
+              decoration: BoxDecoration(
+                gradient: gradient,
+                borderRadius: BorderRadius.circular(t.radiusMd),
+                border: bordered ? Border.all(color: t.alternate) : null,
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (icon != null)
+                    Icon(icon, color: fg, size: 22)
+                  else if (glyph != null)
+                    Text(glyph!, style: t.titleMedium.copyWith(color: glyphColor ?? fg, fontWeight: FontWeight.w800)),
+                  const SizedBox(width: 10),
+                  Text(label, style: t.titleSmall.copyWith(color: fg)),
+                ],
+              ),
             ),
           ),
         ),

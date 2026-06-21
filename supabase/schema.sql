@@ -1129,6 +1129,370 @@ grant select, insert on public.chat_messages to service_role;
 -- object-listing `public read` policy that storage.sql deliberately omits per
 -- advisor 0025_public_bucket_allows_listing. Do not reintroduce it.)
 
+-- ═══════════════════════════════════════════════════════════════════════════
+-- 2026-06-21 — DRIFT-HEAL + COMMUNITY MODERATION migration
+-- ───────────────────────────────────────────────────────────────────────────
+-- (A) DRIFT-HEAL: objects that exist LIVE but were missing from this file, so a
+--     fresh install (or a `psql -f schema.sql` re-apply) reproduces production
+--     exactly. (B) COMMUNITY moderation/notification contract used by the
+--     community-moderate + community-notify Edge Functions. All idempotent.
+-- ═══════════════════════════════════════════════════════════════════════════
+
+-- ── (A1) AI rate-limit tables (advisor / bill-analyzer / newsletter) ─────────
+-- Mirror chat_messages: write-mostly throttle tables read only via service_role
+-- (which bypasses RLS but STILL needs the explicit base-table grant on this
+-- project — see the 2026-06 incident note on chat_messages). RLS on, no policies.
+create table if not exists public.advisor_sessions (
+  id         bigint generated always as identity primary key,
+  ip         text,
+  created_at timestamptz not null default now()
+);
+create index if not exists advisor_sessions_ip_idx
+  on public.advisor_sessions (ip, created_at desc);
+alter table public.advisor_sessions enable row level security;
+grant select, insert on public.advisor_sessions to service_role;
+
+create table if not exists public.bill_analyses (
+  id            bigint generated always as identity primary key,
+  ip            text,
+  provider      text,
+  current_spend numeric,
+  suggestions   jsonb,
+  created_at    timestamptz not null default now()
+);
+create index if not exists bill_analyses_ip_idx
+  on public.bill_analyses (ip, created_at desc);
+alter table public.bill_analyses enable row level security;
+grant select, insert on public.bill_analyses to service_role;
+
+create table if not exists public.newsletter_subscribers (
+  id           bigint generated always as identity primary key,
+  email        text not null,
+  consent      boolean default false,
+  source       text,
+  source_ip    text,
+  confirmed_at timestamptz,
+  created_at   timestamptz not null default now()
+);
+-- case-insensitive uniqueness on email (double opt-in re-subscribe is an upsert)
+create unique index if not exists newsletter_subscribers_email_lower_idx
+  on public.newsletter_subscribers (lower(email));
+create index if not exists newsletter_subscribers_ip_idx
+  on public.newsletter_subscribers (source_ip, created_at desc);
+alter table public.newsletter_subscribers enable row level security;
+grant select, insert, update on public.newsletter_subscribers to service_role;
+
+-- ── (A2) meetings / meeting_events service_role grants (belt-and-suspenders) ──
+-- Already granted inline above; re-stated so a partial re-apply can't regress
+-- (default privileges do not grant to service_role on this project).
+grant select, insert, update, delete on public.meetings        to service_role;
+grant select, insert, update, delete on public.meeting_events  to service_role;
+
+-- ── (A3) HARDEN advisor-flagged updated_at trigger fns: pin search_path ───────
+-- The two generic "stamp updated_at" trigger functions were flagged
+-- (function_search_path_mutable). Re-declare with `set search_path = public`,
+-- preserving their one-line body. set_updated_at already carries it above; this
+-- block also creates update_updated_at (live-only — was missing from this file).
+create or replace function public.set_updated_at()
+returns trigger language plpgsql set search_path = public as $$
+begin
+  new.updated_at = now();
+  return new;
+end; $$;
+
+create or replace function public.update_updated_at()
+returns trigger language plpgsql set search_path = public as $$
+begin
+  new.updated_at = now();
+  return new;
+end; $$;
+
+-- ── (A4) community → community-notify webhook (SECURITY DEFINER, fail-soft) ───
+-- Mirrors notify_meeting_on_insert: secret from Vault, pg_net fire-and-forget,
+-- never blocks the insert. Fires on new posts / replies / reviews so the
+-- community-notify function can fan out reply/mention notifications.
+create or replace function public.notify_community_on_insert()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  secret text;
+begin
+  begin
+    select decrypted_secret into secret
+      from vault.decrypted_secrets where name = 'lead_webhook_secret';
+  exception when others then
+    secret := null;
+  end;
+  if secret is null then return new; end if; -- not configured yet
+  perform net.http_post(
+    url     := 'https://orzitfqmlvopujsoyigr.supabase.co/functions/v1/community-notify',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'x-webhook-secret', secret
+    ),
+    body    := jsonb_build_object(
+      'type',   'INSERT',
+      'table',  tg_table_name,
+      'schema', tg_table_schema,
+      'record', to_jsonb(new)
+    )
+  );
+  return new;
+exception when others then
+  return new; -- never block the write on notification plumbing
+end;
+$$;
+-- trigger fn: only the trigger (table owner) ever invokes it — clients must not
+revoke execute on function public.notify_community_on_insert() from public, anon, authenticated;
+-- and the meeting/lead notify trigger fns get the same revoke (drift-heal)
+revoke execute on function public.notify_meeting_on_insert() from anon, authenticated;
+
+drop trigger if exists community_posts_notify_after_insert on public.community_posts;
+create trigger community_posts_notify_after_insert
+  after insert on public.community_posts
+  for each row execute function public.notify_community_on_insert();
+
+drop trigger if exists community_replies_notify_after_insert on public.community_replies;
+create trigger community_replies_notify_after_insert
+  after insert on public.community_replies
+  for each row execute function public.notify_community_on_insert();
+
+drop trigger if exists provider_reviews_notify_after_insert on public.provider_reviews;
+create trigger provider_reviews_notify_after_insert
+  after insert on public.provider_reviews
+  for each row execute function public.notify_community_on_insert();
+
+-- ── (A5) Canonical service_role posture (applied live 2026-06-21) ────────────
+-- This project's default privileges do NOT grant to service_role, which is why
+-- every table above needs an explicit grant. Rather than chase each one, apply
+-- the canonical posture: service_role gets everything in `public`, now and for
+-- future objects. (service_role is server-side only; it already bypasses RLS.)
+grant all on all tables    in schema public to service_role;
+grant all on all sequences in schema public to service_role;
+grant all on all functions in schema public to service_role;
+alter default privileges in schema public grant all on tables    to service_role;
+alter default privileges in schema public grant all on sequences to service_role;
+alter default privileges in schema public grant all on functions to service_role;
+
+-- ── (A2) PUBLIC-FACING grants for anon / authenticated ──────────────────────
+-- RLS is enabled on every table below with the right policies (public-read
+-- using(true); writes gated by auth.uid()=user_id; meetings insert-anyone with
+-- check(true)), but PostgREST checks table GRANTs *before* RLS — so without
+-- these the public-read policies are dead and BOTH the marketing site and the
+-- app's community read return 401. These only let the role reach the table;
+-- RLS still gates every row. (Same gap class as the service_role block above.)
+
+-- public read: community feed, replies, reviews, like counts, rating summary
+grant select on public.community_posts          to anon, authenticated;
+grant select on public.community_replies         to anon, authenticated;
+grant select on public.provider_reviews          to anon, authenticated;
+grant select on public.post_likes                to anon, authenticated;
+grant select on public.provider_rating_summary   to anon, authenticated;
+
+-- authenticated write paths (RLS with-check enforces auth.uid() = user_id)
+grant insert, update, delete on public.community_posts   to authenticated;
+grant insert, delete         on public.community_replies  to authenticated;
+grant insert, update, delete on public.provider_reviews   to authenticated;
+grant insert, delete         on public.post_likes         to authenticated;
+grant select, insert, update, delete on public.post_bookmarks to authenticated;
+
+-- video-consultation booking: anyone may insert a meeting (meetings_guard
+-- validates + stamps it); the customer gets the Zoom link by email after a rep
+-- confirms. authenticated may also read their own meetings.
+grant insert on public.meetings to anon, authenticated;
+grant select on public.meetings to authenticated;
+
+-- ═══════════════════════════════════════════════════════════════════════════
+-- (B) COMMUNITY moderation + notification contract
+-- ═══════════════════════════════════════════════════════════════════════════
+
+-- ── (B1) moderation columns on posts / replies ──────────────────────────────
+alter table public.community_posts   add column if not exists is_flagged      boolean not null default false;
+alter table public.community_posts   add column if not exists moderation_note text;
+alter table public.community_posts   add column if not exists flagged_at      timestamptz;
+alter table public.community_replies  add column if not exists is_flagged      boolean not null default false;
+alter table public.community_replies  add column if not exists moderation_note text;
+alter table public.community_replies  add column if not exists flagged_at      timestamptz;
+
+-- ── (B2) provider_reviews: verified-customer badge ───────────────────────────
+alter table public.provider_reviews add column if not exists is_verified_customer boolean not null default false;
+
+-- ── (B3) community_reports  (a user flags a post/reply for moderation) ───────
+create table if not exists public.community_reports (
+  id               uuid primary key default gen_random_uuid(),
+  target_type      text check (target_type in ('post','reply')),
+  target_id        uuid,
+  reporter_user_id uuid,
+  reason           text,
+  body             text,
+  created_at       timestamptz not null default now()
+);
+alter table public.community_reports enable row level security;
+
+-- a signed-in user may file a report as themselves; nobody reads via the API
+-- (the rep/moderation tooling uses service_role, which bypasses RLS).
+drop policy if exists "reports_insert_own" on public.community_reports;
+create policy "reports_insert_own" on public.community_reports
+  for insert with check (auth.uid() = reporter_user_id);
+drop policy if exists "reports_service_all" on public.community_reports;
+create policy "reports_service_all" on public.community_reports
+  for all to service_role using (true) with check (true);
+
+grant insert on public.community_reports to authenticated;
+grant select, insert, update, delete on public.community_reports to service_role;
+
+create index if not exists community_reports_target_idx
+  on public.community_reports (target_type, target_id, created_at desc);
+
+-- ── (B4) community_notifications  (reply / mention / flag inbox) ─────────────
+create table if not exists public.community_notifications (
+  id         bigint generated always as identity primary key,
+  user_id    uuid,
+  kind       text check (kind in ('reply','mention','flag')),
+  post_id    uuid,
+  reply_id   uuid,
+  actor      text,
+  read_at    timestamptz,
+  created_at timestamptz not null default now()
+);
+alter table public.community_notifications enable row level security;
+
+-- each user reads (and marks read) only their own notifications; rows are
+-- written by service_role / SECURITY DEFINER triggers, never by clients.
+drop policy if exists "notifications_select_own" on public.community_notifications;
+create policy "notifications_select_own" on public.community_notifications
+  for select using (auth.uid() = user_id);
+drop policy if exists "notifications_update_own" on public.community_notifications;
+create policy "notifications_update_own" on public.community_notifications
+  for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+drop policy if exists "notifications_service_all" on public.community_notifications;
+create policy "notifications_service_all" on public.community_notifications
+  for all to service_role using (true) with check (true);
+
+grant select, update on public.community_notifications to authenticated;
+grant select, insert, update, delete on public.community_notifications to service_role;
+
+create index if not exists community_notifications_user_idx
+  on public.community_notifications (user_id, created_at desc);
+create index if not exists community_notifications_unread_idx
+  on public.community_notifications (user_id, created_at desc)
+  where read_at is null;
+
+-- ── (B5) is_verified_customer auto-stamp (best-effort, fail-soft) ────────────
+-- A review is "verified customer" if the author has a won lead OR a tracked
+-- plan. SECURITY DEFINER so it can see leads/tracked_plans regardless of RLS;
+-- wrapped fail-soft so a lookup hiccup never blocks a review.
+create or replace function public.set_review_verified_customer()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  begin
+    new.is_verified_customer := exists (
+      select 1 from public.leads
+      where user_id = new.user_id and status = 'won'
+    ) or exists (
+      select 1 from public.tracked_plans
+      where user_id = new.user_id
+    );
+  exception when others then
+    new.is_verified_customer := coalesce(new.is_verified_customer, false);
+  end;
+  return new;
+end;
+$$;
+revoke execute on function public.set_review_verified_customer() from public, anon, authenticated;
+
+drop trigger if exists provider_reviews_verify_customer on public.provider_reviews;
+create trigger provider_reviews_verify_customer
+  before insert or update on public.provider_reviews
+  for each row execute function public.set_review_verified_customer();
+
+-- ── (B6) moderation webhook → community-moderate (SECURITY DEFINER, fail-soft) ─
+-- Mirrors notify_community_on_insert. The community-moderate function validates
+-- the shared secret, classifies the new post/reply, and PATCHes is_flagged when
+-- it detects spam/abuse.
+create or replace function public.notify_community_moderate_on_insert()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  secret text;
+begin
+  begin
+    select decrypted_secret into secret
+      from vault.decrypted_secrets where name = 'lead_webhook_secret';
+  exception when others then
+    secret := null;
+  end;
+  if secret is null then return new; end if;
+  perform net.http_post(
+    url     := 'https://orzitfqmlvopujsoyigr.supabase.co/functions/v1/community-moderate',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'x-webhook-secret', secret
+    ),
+    body    := jsonb_build_object(
+      'type',   'INSERT',
+      'table',  tg_table_name,
+      'record', to_jsonb(new)
+    )
+  );
+  return new;
+exception when others then
+  return new;
+end;
+$$;
+revoke execute on function public.notify_community_moderate_on_insert() from public, anon, authenticated;
+
+drop trigger if exists notify_community_moderate_on_insert on public.community_posts;
+create trigger notify_community_moderate_on_insert
+  after insert on public.community_posts
+  for each row execute function public.notify_community_moderate_on_insert();
+
+drop trigger if exists notify_community_moderate_on_insert on public.community_replies;
+create trigger notify_community_moderate_on_insert
+  after insert on public.community_replies
+  for each row execute function public.notify_community_moderate_on_insert();
+
+-- ── (B7) reply → notification fan-out (SECURITY DEFINER; skip self-replies) ──
+-- On a new reply, notify the parent post's author (unless they replied to their
+-- own post). DEFINER so it can read community_posts.user_id past RLS.
+create or replace function public.notify_post_author_on_reply()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  post_author_id uuid;
+begin
+  select user_id into post_author_id
+    from public.community_posts where id = new.post_id;
+  if post_author_id is null or post_author_id = new.user_id then
+    return new; -- post gone, or author replying to themselves
+  end if;
+  insert into public.community_notifications (user_id, kind, post_id, reply_id, actor)
+  values (post_author_id, 'reply', new.post_id, new.id, new.author);
+  return new;
+exception when others then
+  return new; -- never block the reply on notification plumbing
+end;
+$$;
+revoke execute on function public.notify_post_author_on_reply() from public, anon, authenticated;
+
+drop trigger if exists community_replies_notify_author on public.community_replies;
+create trigger community_replies_notify_author
+  after insert on public.community_replies
+  for each row execute function public.notify_post_author_on_reply();
+
 -- Done. Every table has RLS enabled; the anon/authenticated API can only do
 -- what the policies above allow. The service_role key bypasses RLS — keep it
 -- server-side only, never in the Flutter app.

@@ -125,14 +125,21 @@ class _CommunityWidgetState extends State<CommunityWidget> {
     }
   }
 
-  int _channelCount(String ch) =>
-      ch == 'הכל' ? _posts.length : _posts.where((p) => p.channel == ch).length;
+  int _channelCount(String ch) {
+    final appState = AppState();
+    final visible = _posts.where((p) => !p.isFlagged || appState.isOwnPost(p.id));
+    return ch == 'הכל' ? visible.length : visible.where((p) => p.channel == ch).length;
+  }
 
   List<CommunityPost> get _filtered {
     final appState = AppState();
-    var base = _activeChannel == 'הכל'
-        ? _posts
-        : _posts.where((p) => p.channel == _activeChannel).toList();
+    // Hide moderator-flagged posts from the feed. A user's OWN flagged post is
+    // kept so they see a subtle "בבדיקת מנהל" placeholder instead of it silently
+    // vanishing (the body is replaced in [_PostCard]).
+    var base = _posts.where((p) => !p.isFlagged || appState.isOwnPost(p.id)).toList();
+    if (_activeChannel != 'הכל') {
+      base = base.where((p) => p.channel == _activeChannel).toList();
+    }
     if (_showBookmarksOnly) {
       base = base.where((p) => appState.isBookmarked(p.id)).toList();
     }
@@ -183,6 +190,125 @@ class _CommunityWidgetState extends State<CommunityWidget> {
         ],
       ),
     );
+  }
+
+  // ── Report content ───────────────────────────────────────────────────────────
+
+  /// Opens a small bottom-sheet for reporting a post or reply. [targetType] is
+  /// 'post' | 'reply'. On submit it calls [Backend.reportContent] (fire-and-
+  /// forget) and toasts a thank-you. Own content can't reach here.
+  void _showReportSheet(BuildContext context, AppTheme ffTheme, {required String targetType, required String targetId}) {
+    const reasons = ['ספאם', 'הטרדה', 'תוכן לא הולם', 'אחר'];
+    String? selectedReason;
+    final noteCtrl = TextEditingController();
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setSheet) => AnimatedPadding(
+          duration: const Duration(milliseconds: 100),
+          padding: EdgeInsets.only(bottom: MediaQuery.of(ctx).viewInsets.bottom),
+          child: Container(
+            decoration: BoxDecoration(
+              color: ffTheme.background,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: ffTheme.alternate, borderRadius: BorderRadius.circular(2)))),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Icon(Icons.flag_rounded, size: 18, color: ffTheme.error),
+                    const SizedBox(width: 8),
+                    Text('דיווח על תוכן', style: ffTheme.titleLarge),
+                    const Spacer(),
+                    TextButton(
+                      onPressed: () => Navigator.pop(ctx),
+                      child: Text('ביטול', style: ffTheme.bodyMedium.copyWith(color: ffTheme.secondaryText)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text('מהי הסיבה לדיווח?', style: ffTheme.bodyMedium.copyWith(color: ffTheme.secondaryText)),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8, runSpacing: 8,
+                  children: reasons.map((r) {
+                    final active = selectedReason == r;
+                    return GestureDetector(
+                      onTap: () => setSheet(() => selectedReason = r),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: active ? ffTheme.primary : Colors.white,
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: active ? ffTheme.primary : ffTheme.alternate),
+                        ),
+                        child: Text(r, style: ffTheme.labelMedium.copyWith(color: active ? Colors.white : ffTheme.primaryText)),
+                      ),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: noteCtrl,
+                  maxLines: 3,
+                  minLines: 2,
+                  maxLength: 300,
+                  textDirection: TextDirection.rtl,
+                  decoration: InputDecoration(
+                    hintText: 'פרטים נוספים (לא חובה)...',
+                    filled: true,
+                    fillColor: Colors.white,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: ffTheme.alternate)),
+                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: ffTheme.alternate)),
+                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: ffTheme.primary, width: 1.5)),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: selectedReason == null
+                        ? null
+                        : () {
+                            HapticFeedback.lightImpact();
+                            final note = noteCtrl.text.trim();
+                            appBackend.reportContent(
+                              targetType: targetType,
+                              targetId: targetId,
+                              reason: selectedReason!,
+                              body: note.isEmpty ? null : note,
+                            ).catchError((_) {});
+                            Navigator.pop(ctx);
+                            AppSnackBar.success(context, 'תודה, הדיווח התקבל');
+                          },
+                    icon: const Icon(Icons.send_rounded, size: 18),
+                    label: const Text('שלח דיווח'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: ffTheme.error,
+                      foregroundColor: Colors.white,
+                      disabledBackgroundColor: ffTheme.alternate,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      textStyle: GoogleFonts.rubik(fontSize: 15, fontWeight: FontWeight.w700),
+                      elevation: 0,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ).then((_) => noteCtrl.dispose());
   }
 
   void _submitReply({
@@ -248,8 +374,9 @@ class _CommunityWidgetState extends State<CommunityWidget> {
     try {
       final remote = await appBackend.fetchReplies(post.id);
       if (remote.isNotEmpty && mounted) {
-        final remoteReplies = remote.map((r) => _Reply(
-          author: r.author, avatar: r.avatar, text: r.text,
+        // Drop moderator-flagged replies before they reach the thread UI.
+        final remoteReplies = remote.where((r) => !r.isFlagged).map((r) => _Reply(
+          id: r.id, author: r.author, avatar: r.avatar, text: r.text,
           time: r.createdAt, mediaType: r.mediaType, mediaData: r.media,
           mediaDurationMs: r.mediaDurationMs,
         )).toList();
@@ -358,8 +485,21 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                             controller: scrollCtrl,
                             padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                             itemCount: replies.length,
-                            itemBuilder: (_, i) => _ReplyBubble(reply: replies[i], ffTheme: ffTheme)
-                                .animate(delay: (i * 50).ms).fadeIn(duration: 250.ms).slideY(begin: 0.05),
+                            itemBuilder: (_, i) {
+                              final reply = replies[i];
+                              final appState = AppState();
+                              // Reportable only when it's a persisted backend reply
+                              // (has an id) authored by someone other than the user.
+                              final isOwnReply = appState.isLoggedIn && reply.author == appState.firstName;
+                              final canReport = reply.id != null && !isOwnReply;
+                              return _ReplyBubble(
+                                reply: reply,
+                                ffTheme: ffTheme,
+                                onReport: canReport
+                                    ? () => _showReportSheet(context, ffTheme, targetType: 'reply', targetId: reply.id!)
+                                    : null,
+                              ).animate(delay: (i * 50).ms).fadeIn(duration: 250.ms).slideY(begin: 0.05);
+                            },
                           ),
                   ),
 
@@ -1079,6 +1219,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                           },
                           onReply: () => _showReplies(context, post, ffTheme),
                           onDelete: () => _confirmDelete(context, post, appState, ffTheme),
+                          onReport: () => _showReportSheet(context, ffTheme, targetType: 'post', targetId: post.id),
                         ).animate(delay: (i * 50).ms).fadeIn(duration: 350.ms).slideY(begin: 0.05, end: 0);
                       },
                     ),
@@ -1102,6 +1243,7 @@ class _PostCard extends StatefulWidget {
     required this.onReply,
     this.isOwn = false,
     this.onDelete,
+    this.onReport,
   });
   final CommunityPost post;
   final AppTheme ffTheme;
@@ -1111,6 +1253,7 @@ class _PostCard extends StatefulWidget {
   final VoidCallback onReply;
   final bool isOwn;
   final VoidCallback? onDelete;
+  final VoidCallback? onReport;
 
   @override
   State<_PostCard> createState() => _PostCardState();
@@ -1240,8 +1383,9 @@ class _PostCardState extends State<_PostCard> {
                         ),
                       ),
                     ),
-                    // Own-post overflow menu
-                    if (widget.isOwn && widget.onDelete != null)
+                    // Overflow menu: own post → delete; others' post → report.
+                    if ((widget.isOwn && widget.onDelete != null) ||
+                        (!widget.isOwn && widget.onReport != null))
                       SizedBox(
                         height: 28,
                         width: 28,
@@ -1251,19 +1395,32 @@ class _PostCardState extends State<_PostCard> {
                           icon: Icon(Icons.more_vert_rounded, size: 18, color: ffTheme.secondaryText),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                           onSelected: (v) {
-                            if (v == 'delete') widget.onDelete!();
+                            if (v == 'delete') widget.onDelete?.call();
+                            if (v == 'report') widget.onReport?.call();
                           },
                           itemBuilder: (_) => [
-                            PopupMenuItem<String>(
-                              value: 'delete',
-                              child: Row(
-                                children: [
-                                  Icon(Icons.delete_outline_rounded, size: 18, color: ffTheme.error),
-                                  const SizedBox(width: 8),
-                                  Text('מחק פוסט', style: ffTheme.bodyMedium.copyWith(color: ffTheme.error)),
-                                ],
+                            if (widget.isOwn && widget.onDelete != null)
+                              PopupMenuItem<String>(
+                                value: 'delete',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.delete_outline_rounded, size: 18, color: ffTheme.error),
+                                    const SizedBox(width: 8),
+                                    Text('מחק פוסט', style: ffTheme.bodyMedium.copyWith(color: ffTheme.error)),
+                                  ],
+                                ),
                               ),
-                            ),
+                            if (!widget.isOwn && widget.onReport != null)
+                              PopupMenuItem<String>(
+                                value: 'report',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.flag_outlined, size: 18, color: ffTheme.error),
+                                    const SizedBox(width: 8),
+                                    Text('⚑ דווח', style: ffTheme.bodyMedium.copyWith(color: ffTheme.error)),
+                                  ],
+                                ),
+                              ),
                           ],
                         ),
                       ),
@@ -1271,12 +1428,34 @@ class _PostCardState extends State<_PostCard> {
                 ),
 
                 const SizedBox(height: 10),
-                // Post text
-                if (post.text.isNotEmpty)
-                  Text(post.text, style: ffTheme.bodyMedium.copyWith(height: 1.5)),
+                // Flagged-own post: hide the body behind a moderation placeholder
+                // instead of the content (others never reach here — it's filtered).
+                if (post.isFlagged) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: ffTheme.warning.withValues(alpha: 0.10),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: ffTheme.warning.withValues(alpha: 0.4)),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.visibility_off_rounded, size: 16, color: ffTheme.warning),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text('הפוסט בבדיקת מנהל', style: ffTheme.bodySmall.copyWith(color: ffTheme.warning, fontWeight: FontWeight.w600)),
+                        ),
+                      ],
+                    ),
+                  ),
+                ] else ...[
+                  // Post text
+                  if (post.text.isNotEmpty)
+                    Text(post.text, style: ffTheme.bodyMedium.copyWith(height: 1.5)),
+                ],
 
-                // Media
-                if (post.hasMedia) ...[
+                // Media (suppressed while a post is under moderation review)
+                if (!post.isFlagged && post.hasMedia) ...[
                   const SizedBox(height: 10),
                   if (post.media == MediaKind.image)
                     MediaImageBubble(dataUri: post.mediaData!)
@@ -1432,12 +1611,14 @@ class _StatPill extends StatelessWidget {
 }
 
 class _Reply {
+  final String? id; // backend reply id (null for locally authored, unsent replies)
   final String author, avatar, text;
   final DateTime time;
   final String? mediaType;
   final String? mediaData;
   final int? mediaDurationMs;
   const _Reply({
+    this.id,
     required this.author,
     required this.avatar,
     required this.text,
@@ -1449,9 +1630,10 @@ class _Reply {
 }
 
 class _ReplyBubble extends StatelessWidget {
-  const _ReplyBubble({required this.reply, required this.ffTheme});
+  const _ReplyBubble({required this.reply, required this.ffTheme, this.onReport});
   final _Reply reply;
   final AppTheme ffTheme;
+  final VoidCallback? onReport;
 
   String _timeAgo(DateTime t) {
     final diff = DateTime.now().difference(t);
@@ -1463,7 +1645,9 @@ class _ReplyBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
+    return GestureDetector(
+      onLongPress: onReport, // long-press a reply to report it
+      child: Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1483,6 +1667,20 @@ class _ReplyBubble extends StatelessWidget {
                     Text(reply.author, style: ffTheme.labelMedium),
                     const SizedBox(width: 8),
                     Text(_timeAgo(reply.time), style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText.withValues(alpha: 0.65), fontSize: 10)),
+                    if (onReport != null) ...[
+                      const Spacer(),
+                      Semantics(
+                        button: true,
+                        label: 'דווח על תגובה',
+                        child: GestureDetector(
+                          onTap: onReport,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                            child: Icon(Icons.flag_outlined, size: 14, color: ffTheme.secondaryText.withValues(alpha: 0.7)),
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
                 const SizedBox(height: 4),
@@ -1518,6 +1716,7 @@ class _ReplyBubble extends StatelessWidget {
             ),
           ),
         ],
+      ),
       ),
     );
   }

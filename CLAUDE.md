@@ -56,13 +56,16 @@ When adding logic, put it here with tests in `test/<service>_test.dart`, then re
   For line height use `height:` (standard Flutter), not `lineHeight:`.
 - **Colors:** `AppTheme.of(context).primary` / `.secondary` / `.brandAccent` /
   `.saving` … or `AppColors.*` constants. Brand = "white glass + black ink" base
-  (formal/editorial, NO green/teal) **+ a disciplined two-accent system**: ink
+  (formal/editorial; green-forward, matching the Switchy robot logo) **+ a disciplined two-accent system**: ink
   `#111827` for text/structure/borders, glass-white `#F5F7F8` background, text
   `#0B0F14`, borders `#222A35`, secondary `#E5E7EB`. **Accents (use with intent,
-  sparingly):** `brandAccent` **indigo `#4F46E5`** = ACTION (primary CTAs via
+  sparingly):** `brandAccent` **green `#16A34A`** (Switchy logo) = ACTION (primary CTAs via
   `AppTheme.accentGradient`+`shadowAccent`, active nav, links, focus); `saving`
   **amber `#F59E0B`** = VALUE (savings figures, "best value"/win states). Site
-  mirrors these as `--accent`/`--value` in `:root`. The big dark hero cards stay
+  mirrors these as `--accent`/`--value` in `:root` (the **site is recolored to
+  this green** as of 2026-06-21; the Flutter `AppColors`/`app_theme.dart`
+  `brandAccent` is still indigo and should be aligned indigo→green to match).
+  The big dark hero cards stay
   ink (premium), not coloured. Frosted glass: `AppTheme.glassDecoration()` /
   `AppTheme.shadowGlass` for soft cards, the `GlassPanel` widget
   (`lib/widgets/glass_panel.dart`) for real `BackdropFilter` blur (use sparingly).

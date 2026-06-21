@@ -32,10 +32,11 @@
   --ink-050: #F0F2F4;
 
   /* Refined accent system — color used with intent over the ink/glass base.
-     Indigo = action (CTAs, links, active, focus). Amber = value/savings. */
-  --accent: #4F46E5;        /* indigo — primary action */
-  --accent-d: #3730A3;      /* deep indigo for gradient depth */
-  --accent-t: #EEF0FB;      /* light indigo surface tint */
+     Green = action (CTAs, links, active, focus), matching the Switchy logo.
+     Amber = value/savings. */
+  --accent: #16A34A;        /* brand green — primary action */
+  --accent-d: #15803D;      /* deep green for gradient depth + hover */
+  --accent-t: #DCFCE7;      /* light green surface tint */
   --value: #F59E0B;         /* amber — savings / value emphasis */
   --value-d: #D97706;
 
@@ -49,12 +50,12 @@
   --shadow: 0 2px 6px rgba(15,27,34,.05), 0 14px 38px rgba(15,27,34,.09);
   --shadow-lg: 0 6px 16px rgba(15,27,34,.08), 0 30px 70px rgba(15,27,34,.16);
   --shadow-ink: 0 10px 24px rgba(17,24,39,.26), 0 2px 6px rgba(17,24,39,.18);
-  /* Focus rings — a two-layer ring (white inner gap + indigo halo) so the
+  /* Focus rings — a two-layer ring (white inner gap + green halo) so the
      outline reads cleanly on both light glass and the dark ink bands. The
      value variant is for amber "best/value" controls. */
-  --ring: 0 0 0 2px #fff, 0 0 0 5px rgba(79,70,229,.42);   /* focus ring (indigo) */
+  --ring: 0 0 0 2px #fff, 0 0 0 5px rgba(22,163,74,.42);   /* focus ring (green) */
   --ring-value: 0 0 0 2px #fff, 0 0 0 5px rgba(245,158,11,.45);
-  --ring-flush: 0 0 0 3px rgba(79,70,229,.34);   /* no white gap — for borderless/dark contexts */
+  --ring-flush: 0 0 0 3px rgba(22,163,74,.34);   /* no white gap — for borderless/dark contexts */
 
   /* Spacing scale — a single rhythm the whole system can tune against, so
      gaps/padding share one cadence instead of drifting magic numbers. */
@@ -73,7 +74,7 @@
 /* ── Dark theme ───────────────────────────────────────────────────────────
    A refined dark mode that re-skins the SAME token names, so every component
    below inherits it without per-rule overrides. Surfaces become dark ink, text
-   lifts to light; the indigo ACTION and amber VALUE accents are nudged brighter
+   lifts to light; the green ACTION and amber VALUE accents are nudged brighter
    so they stay legible (and clear WCAG AA) against the dark glass. */
 @media (prefers-color-scheme: dark) {
   :root {
@@ -100,9 +101,9 @@
     --ink-100: #2A3340;
     --ink-050: #1B232E;
 
-    --accent: #818CF8;        /* indigo lifted for contrast on dark glass */
-    --accent-d: #6366F1;
-    --accent-t: #20283C;      /* tinted indigo surface */
+    --accent: #4ADE80;        /* green lifted for contrast on dark glass */
+    --accent-d: #22C55E;
+    --accent-t: #0B2A18;      /* tinted green surface */
     --value: #FBBF24;         /* amber lifted */
     --value-d: #F59E0B;
 
@@ -123,11 +124,21 @@
   }
   .nav { background: rgba(17,22,28,.82); }
   .nav.scrolled { background: rgba(17,22,28,.95); }
-  .feature, .guide-card, .plan { background: rgba(28,36,46,.6); border-color: rgba(255,255,255,.08); }
+  .feature, .guide-card, .plan, .post-card { background: rgba(28,36,46,.6); border-color: rgba(255,255,255,.08); }
   @supports not ((backdrop-filter: blur(14px)) or (-webkit-backdrop-filter: blur(14px))) {
-    .feature, .guide-card, .plan { background: var(--white); }
+    .feature, .guide-card, .plan, .post-card { background: var(--white); }
   }
   .plogo--img, .pchip { background: var(--white); }
+  /* Community + booking: re-skin the few surfaces that carry their own light-mode
+     tints so they read on dark glass; the rest inherit the re-skinned tokens. */
+  .post-card:hover { border-color: rgba(255,255,255,.14); }
+  .stars-row { color: var(--ink-200); }
+  .booking__note.is-error { color: #f87171; }
+  .booking__consent label, .post-card__body, .review-card__body { color: var(--ink); }
+  /* The green "join the app" panel keeps its tint but on dark it must stay legible. */
+  .community__join { color: var(--ink); }
+  .community__join small { color: var(--muted); }
+  .slot[disabled], .slot:disabled, .slot--taken { color: var(--ink-400); }
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -226,15 +237,15 @@ a:not([class]) { text-decoration: underline; text-underline-offset: 2px; text-de
 /* Inset top highlight = the glass edge that makes the gradient read dimensional. */
 .btn--primary {
   background: linear-gradient(165deg, var(--accent), var(--accent-d)); color: #fff;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 10px 24px rgba(79,70,229,.32), 0 2px 6px rgba(55,48,163,.24);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 10px 24px rgba(22,163,74,.32), 0 2px 6px rgba(21,128,61,.24);
 }
-.btn--primary:hover { transform: translateY(-2px); filter: brightness(1.05); box-shadow: inset 0 1px 0 rgba(255,255,255,.22), 0 18px 36px rgba(79,70,229,.4), 0 3px 8px rgba(55,48,163,.26); }
+.btn--primary:hover { transform: translateY(-2px); filter: brightness(1.05); box-shadow: inset 0 1px 0 rgba(255,255,255,.22), 0 18px 36px rgba(22,163,74,.4), 0 3px 8px rgba(21,128,61,.26); }
 /* Keyboard focus keeps the button's depth AND adds the ring halo, so the CTA
    never goes flat when tabbed to (a bare box-shadow would erase its lift). */
-.btn--primary:focus-visible { box-shadow: inset 0 1px 0 rgba(255,255,255,.22), 0 10px 24px rgba(79,70,229,.32), var(--ring); }
+.btn--primary:focus-visible { box-shadow: inset 0 1px 0 rgba(255,255,255,.22), 0 10px 24px rgba(22,163,74,.32), var(--ring); }
 .btn--ghost:focus-visible { box-shadow: inset 0 0 0 1px var(--ink-200), var(--ring); }
 .btn--inverse:focus-visible { box-shadow: inset 0 1px 0 rgba(255,255,255,.6), var(--ring-value); }
-.btn--primary:active { transform: translateY(0) scale(.985); filter: brightness(.97); box-shadow: inset 0 2px 4px rgba(0,0,0,.18), 0 6px 14px rgba(79,70,229,.3); }
+.btn--primary:active { transform: translateY(0) scale(.985); filter: brightness(.97); box-shadow: inset 0 2px 4px rgba(0,0,0,.18), 0 6px 14px rgba(22,163,74,.3); }
 .btn--ghost { background: var(--mint); color: var(--green); box-shadow: inset 0 0 0 1px var(--line); }
 .btn--ghost:hover { background: #fff; transform: translateY(-2px); box-shadow: inset 0 0 0 1px var(--ink-200), var(--shadow-sm); }
 .btn--ghost:active { transform: translateY(0) scale(.985); }
@@ -295,7 +306,7 @@ a:not([class]) { text-decoration: underline; text-underline-offset: 2px; text-de
 /* Compact, quieter nav CTA — it lives on EVERY viewport, so it must not
    compete with the page-level primaries below it. */
 .nav__cta { margin-inline-start: 6px; padding: 9px 16px; font-size: 14px; border-radius: 12px;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 4px 12px rgba(79,70,229,.24); }
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 4px 12px rgba(22,163,74,.24); }
 .nav__toggle { display: none; background: none; border: 0; width: 44px; height: 44px; cursor: pointer; padding: 10px; }
 .nav__toggle span { display: block; height: 2.5px; background: var(--green-d); border-radius: 2px; margin: 4px 0; transition: .25s var(--ease); }
 .nav__toggle[aria-expanded="true"] span:nth-child(1) { transform: translateY(6.5px) rotate(45deg); }
@@ -415,7 +426,7 @@ a.chip:hover { transform: translateY(-2px); border-color: var(--green-2); box-sh
 .section--alt .step { background: var(--cream); }
 .step { box-shadow: var(--shadow-sm); transition: transform .2s var(--ease), box-shadow .2s; }
 .step:hover { transform: translateY(-4px); box-shadow: var(--shadow); }
-.step__num { width: 44px; height: 44px; display: grid; place-items: center; background: linear-gradient(140deg, var(--accent), var(--accent-d)); color: #fff; font-family: 'Rubik'; font-weight: 800; border-radius: 14px; font-size: 19px; margin-bottom: 16px; box-shadow: 0 6px 16px rgba(79,70,229,.32); }
+.step__num { width: 44px; height: 44px; display: grid; place-items: center; background: linear-gradient(140deg, var(--accent), var(--accent-d)); color: #fff; font-family: 'Rubik'; font-weight: 800; border-radius: 14px; font-size: 19px; margin-bottom: 16px; box-shadow: 0 6px 16px rgba(22,163,74,.32); }
 .step h3 { font-size: 19px; color: var(--green-d); margin-bottom: 8px; }
 .step p { color: var(--muted); }
 
@@ -544,7 +555,7 @@ a.chip:hover { transform: translateY(-2px); border-color: var(--green-2); box-sh
 
 /* ── Floating WhatsApp contact (mobile only) ─────────────────────────────────
    Keeps the editorial desktop layout clean; on touch it gives a one-tap line
-   to a human. On-brand indigo "action" (not WhatsApp-green) per the palette. */
+   to a human. On-brand green "action" (not WhatsApp-green) per the palette. */
 .wa-fab { display: none; }
 @media (max-width: 760px) {
   .wa-fab {
@@ -552,7 +563,7 @@ a.chip:hover { transform: translateY(-2px); border-color: var(--green-2); box-sh
     width: 54px; height: 54px; border-radius: 50%;
     display: grid; place-items: center; color: #fff;
     background: linear-gradient(165deg, var(--accent), var(--accent-d));
-    box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 10px 24px rgba(79,70,229,.36), 0 2px 6px rgba(55,48,163,.26);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 10px 24px rgba(22,163,74,.36), 0 2px 6px rgba(21,128,61,.26);
     transition: transform .2s var(--ease-spring), box-shadow .2s var(--ease);
   }
   .wa-fab:active { transform: scale(.94); }
@@ -606,7 +617,7 @@ body:has(.sticky-cta.is-visible) .wa-fab { bottom: 76px; }
 .prose h3 { font-family: 'Rubik'; font-size: 19px; color: var(--green-d); margin: 22px 0 8px; }
 .prose ul { padding-inline-start: 22px; margin: 0 0 18px; }
 .prose li { margin-bottom: 9px; font-size: 17px; color: var(--ink-700); line-height: 1.72; }
-/* Inline links in long-form copy: indigo (action), with an underline that
+/* Inline links in long-form copy: green (action), with an underline that
    thickens on hover — clearly clickable without shouting through the body. */
 .prose a:not([class]) { color: var(--accent); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px; transition: text-decoration-thickness .15s, color .15s; }
 .prose a:not([class]):hover { color: var(--accent-d); text-decoration-thickness: 2px; }
@@ -687,7 +698,7 @@ body:has(.sticky-cta.is-visible) .wa-fab { bottom: 76px; }
 .plan__after { display: block; color: var(--muted); font-size: 11px; }
 .plan--hasjump .plan__after { color: #d97706; font-weight: 600; }
 .plan--hasjump .plan__after::before { content: '⚠ '; }
-/* The site's most-repeated CTA (every plan card) — a real indigo tertiary
+/* The site's most-repeated CTA (every plan card) — a real green tertiary
    button: ACTION colour, 44px hit area (negative margin keeps the layout),
    hover pill + arrow nudge, tactile press. */
 .plan__actions { display: flex; align-items: center; gap: 6px; margin-top: 10px; }
@@ -710,7 +721,7 @@ body:has(.sticky-cta.is-visible) .wa-fab { bottom: 76px; }
 .filter-btn { background: var(--white); border: 1px solid var(--line); color: var(--green-d); font-family: 'Rubik'; font-weight: 700; font-size: 14px; padding: 8px 16px; min-height: 44px; display: inline-flex; align-items: center; border-radius: 999px; cursor: pointer; transition: background .15s, color .15s, border-color .15s, transform .15s var(--ease-spring), box-shadow .18s; }
 .filter-btn:hover { transform: translateY(-1px); border-color: var(--ink-300); box-shadow: var(--shadow-sm); }
 .filter-btn:active { transform: scale(.97); }
-/* Selected = indigo, the one "active" language across the site (matches the
+/* Selected = green, the one "active" language across the site (matches the
    nav's aria-current) — was solid ink here and grey one row below. */
 .filter-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
 .filter-search { flex: 1 1 220px; min-width: 0; min-height: 44px; padding: 10px 16px; border: 1px solid var(--line); border-radius: 999px; font-family: 'Assistant'; font-size: 15px; background: var(--white); transition: border-color .15s, box-shadow .15s; }
@@ -985,11 +996,11 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
 /* ╔══════════════════════════════════════════════════════════════════════╗
    ║  DESIGN-SYSTEM COMPONENTS — plan tiers, callouts, TOC, mega-menu,      ║
    ║  toast, field-error, skeleton, advisor, bill-drop, subscribe.         ║
-   ║  Indigo = ACTION, amber = VALUE. RTL-safe, reduced-motion honoured.    ║
+   ║  Green  = ACTION, amber = VALUE. RTL-safe, reduced-motion honoured.    ║
    ╚══════════════════════════════════════════════════════════════════════╝ */
 
 /* ── Plan tiers ────────────────────────────────────────────────────────────
-   Premium = indigo ACTION accent (top stripe + ring); budget = quiet, lighter
+   Premium = green ACTION accent (top stripe + ring); budget = quiet, lighter
    weight; the score badge wears the amber VALUE colour for "best value". */
 .plan--premium { position: relative; border-color: var(--accent); box-shadow: inset 0 1px 0 rgba(255,255,255,.7), 0 0 0 1px var(--accent), var(--shadow); }
 .plan--premium::before {
@@ -1029,7 +1040,7 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
 
 /* ── Table of contents ─────────────────────────────────────────────────────
    A sticky in-article nav with a scrollspy active state. Vertical ink rail on
-   the inline-start; the active link gets the indigo ACTION colour + a marker. */
+   the inline-start; the active link gets the green ACTION colour + a marker. */
 .toc {
   position: sticky; top: 96px; align-self: start;
   font-size: 14px; line-height: 1.5; padding-inline-start: 2px;
@@ -1172,7 +1183,7 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
 
 /* ── Bill-drop (drag/drop upload zone) ─────────────────────────────────────
    A dashed target for dropping/choosing a bill image. .is-dragover lights it
-   indigo; the whole zone is clickable (a label wrapping a hidden file input). */
+   green; the whole zone is clickable (a label wrapping a hidden file input). */
 .bill-drop {
   display: grid; place-items: center; gap: 10px; text-align: center;
   padding: 36px 24px; border: 2px dashed var(--ink-200); border-radius: var(--radius);
@@ -1207,6 +1218,255 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
 @media (max-width: 480px) {
   .subscribe { flex-direction: column; }
   .subscribe .btn { width: 100%; }
+}
+
+/* ╔══════════════════════════════════════════════════════════════════════╗
+   ║  COMMUNITY + BOOKING — live Supabase-backed surfaces on the site.      ║
+   ║  Read-only community feed (posts, replies, provider ratings/reviews)   ║
+   ║  + an anonymous Zoom-meeting booking form. Green = ACTION, amber =     ║
+   ║  VALUE. Glass/card patterns mirror the rest of the system; RTL-safe.   ║
+   ╚══════════════════════════════════════════════════════════════════════╝ */
+
+/* ── Community page wrapper ─────────────────────────────────────────────────
+   A single column of post cards with comfortable air; the join-the-app CTA
+   and ratings block sit inside the same rhythm. */
+.community { display: grid; gap: 16px; max-width: 760px; margin-inline: auto; }
+.community__join {
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between;
+  gap: 12px 18px; padding: 18px 22px; margin-bottom: 4px;
+  background: var(--accent-t); border: 1px solid var(--accent); border-radius: var(--radius);
+  color: var(--ink-700);
+}
+.community__join strong { font-family: 'Rubik', sans-serif; color: var(--green-d); display: block; font-size: 16px; }
+.community__join small { color: var(--muted); font-size: 13.5px; }
+.community__join .btn { flex: 0 0 auto; }
+/* A quiet status/empty line while posts load or when none are available. */
+.community__status { text-align: center; color: var(--muted); font-size: 14px; padding: 28px 16px; }
+
+/* ── Post card ──────────────────────────────────────────────────────────────
+   White glass tile: author row (avatar + name + channel chip + time), body
+   copy, optional media image, and an expandable replies thread. */
+.post-card {
+  position: relative; isolation: isolate;
+  background: rgba(255,255,255,.7);
+  backdrop-filter: blur(16px) saturate(130%); -webkit-backdrop-filter: blur(16px) saturate(130%);
+  border: 1px solid rgba(255,255,255,.65); border-radius: 18px;
+  padding: 18px 20px; box-shadow: inset 0 1px 0 rgba(255,255,255,.7), var(--shadow-sm);
+  transition: box-shadow .22s var(--ease), border-color .18s;
+}
+@supports not ((backdrop-filter: blur(14px)) or (-webkit-backdrop-filter: blur(14px))) { .post-card { background: #fff; } }
+.post-card:hover { box-shadow: inset 0 1px 0 rgba(255,255,255,.7), var(--shadow); border-color: var(--ink-200); }
+.post-card__head { display: flex; align-items: center; gap: 10px; }
+.post-card__avatar {
+  width: 40px; height: 40px; flex: none; border-radius: 50%; object-fit: cover;
+  display: grid; place-items: center; background: var(--lime); color: var(--green-d);
+  font-family: 'Rubik', sans-serif; font-weight: 800; font-size: 15px; overflow: hidden;
+  border: 1px solid var(--line);
+}
+.post-card__avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.post-card__who { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
+.post-card__author { font-family: 'Rubik', sans-serif; font-weight: 700; color: var(--green-d); font-size: 15px; }
+.post-card__time { color: var(--ink-400); font-size: 12.5px; }
+/* Channel chip — quiet ink tablet identifying the community channel. */
+.post-card__channel {
+  margin-inline-start: auto; flex: none;
+  background: var(--mint); color: var(--ink-700); border: 1px solid var(--line);
+  font-family: 'Rubik', sans-serif; font-weight: 700; font-size: 11.5px;
+  padding: 4px 11px; border-radius: 999px; white-space: nowrap;
+}
+.post-card__body { color: var(--ink-700); margin-top: 12px; line-height: 1.7; white-space: pre-line; word-break: break-word; }
+.post-card__media {
+  display: block; margin-top: 12px; max-width: 100%; max-height: 360px;
+  width: auto; border-radius: 14px; border: 1px solid var(--line);
+  box-shadow: var(--shadow-sm); object-fit: cover;
+}
+/* Replies toggle — a borderless ACTION-coloured text button. */
+.post-card__more {
+  margin-top: 12px; background: none; border: 0; padding: 6px 4px; cursor: pointer;
+  font-family: 'Rubik', sans-serif; font-weight: 700; font-size: 13.5px; color: var(--accent);
+  display: inline-flex; align-items: center; gap: 6px; border-radius: 8px; transition: color .15s;
+}
+.post-card__more:hover { color: var(--accent-d); }
+.post-card__more:focus-visible { box-shadow: var(--ring-flush); }
+.post-card__replies { display: grid; gap: 8px; margin-top: 12px; }
+
+/* ── Reply ──────────────────────────────────────────────────────────────────
+   Indented, lighter than the parent post; an inline-start ink rail ties each
+   reply to its thread. */
+.reply {
+  margin-inline-start: 18px; padding: 12px 14px;
+  background: var(--cream); border: 1px solid var(--line);
+  border-inline-start: 3px solid var(--ink-200); border-radius: 12px;
+}
+.reply__head { display: flex; align-items: baseline; gap: 8px; }
+.reply__author { font-family: 'Rubik', sans-serif; font-weight: 700; font-size: 13.5px; color: var(--green-d); }
+.reply__time { color: var(--ink-400); font-size: 12px; }
+.reply__body { color: var(--muted); font-size: 14px; line-height: 1.6; margin-top: 4px; white-space: pre-line; word-break: break-word; }
+.reply__media { display: block; margin-top: 8px; max-width: 220px; max-height: 200px; border-radius: 10px; border: 1px solid var(--line); }
+
+/* ── Provider ratings grid ──────────────────────────────────────────────────
+   A responsive grid of compact rating cards (one per provider): avg stars,
+   review count. Reviews list below shows individual verified reviews. */
+.ratings { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
+.rating-card {
+  background: var(--white); border: 1px solid var(--line); border-radius: 16px;
+  padding: 18px; box-shadow: inset 0 1px 0 rgba(255,255,255,.7), var(--shadow-sm);
+  transition: transform .2s var(--ease), box-shadow .2s, border-color .18s;
+}
+.rating-card:hover { transform: translateY(-3px); box-shadow: var(--shadow); border-color: var(--ink-200); }
+.rating-card__provider { font-family: 'Rubik', sans-serif; font-weight: 800; color: var(--green-d); font-size: 16px; }
+.rating-card__score { display: flex; align-items: baseline; gap: 8px; margin-top: 8px; }
+.rating-card__avg { font-family: 'Rubik', sans-serif; font-weight: 900; font-size: 26px; color: var(--green-d); letter-spacing: -.5px; }
+.rating-card__count { color: var(--muted); font-size: 13px; }
+/* Star rows — amber VALUE stars over a faint empty track. The filled width is
+   driven by --stars (0–5) set inline from the average. */
+.stars-row {
+  position: relative; display: inline-block; font-size: 15px; line-height: 1;
+  letter-spacing: 2px; color: var(--ink-200); white-space: nowrap;
+}
+.stars-row::before {
+  content: "★★★★★"; position: absolute; inset-inline-start: 0; top: 0; overflow: hidden;
+  width: calc(var(--stars, 0) / 5 * 100%); color: var(--value);
+}
+.stars-row__base { color: inherit; }
+.stars-row__base::before { content: "★★★★★"; }
+.rating-card .stars-row { margin-top: 6px; }
+
+/* ── Review card ─────────────────────────────────────────────────────────────
+   An individual provider review: stars, body, and an optional verified pill. */
+.reviews { display: grid; gap: 12px; margin-top: 22px; }
+.review-card {
+  background: var(--cream); border: 1px solid var(--line); border-radius: 14px;
+  padding: 16px 18px; box-shadow: var(--shadow-sm);
+}
+.review-card__head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.review-card__provider { font-family: 'Rubik', sans-serif; font-weight: 700; color: var(--green-d); font-size: 14.5px; }
+.review-card__time { color: var(--ink-400); font-size: 12px; margin-inline-start: auto; }
+.review-card__body { color: var(--ink-700); margin-top: 8px; line-height: 1.65; word-break: break-word; }
+/* Verified-customer pill — a small green VALUE-of-trust badge. */
+.verified-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: var(--accent-t); color: var(--accent); border: 1px solid var(--accent);
+  font-family: 'Rubik', sans-serif; font-weight: 700; font-size: 11px; line-height: 1;
+  padding: 4px 9px; border-radius: 999px; white-space: nowrap;
+}
+.verified-badge::before { content: "✓"; font-weight: 900; }
+
+/* ── Booking (Zoom meeting) form ─────────────────────────────────────────────
+   Anonymous video-consultation booking: provider chips → slot grid → contact
+   fields → consent → submit. White card on the page, mirrors .advisor padding. */
+.booking {
+  max-width: 620px; margin-inline: auto;
+  background: var(--white); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 28px; box-shadow: var(--shadow);
+}
+.booking__group { margin-bottom: 22px; }
+.booking__group:last-of-type { margin-bottom: 0; }
+.booking__label {
+  display: block; font-family: 'Rubik', sans-serif; font-weight: 700; font-size: 14px;
+  color: var(--green-d); margin-bottom: 10px;
+}
+.booking__label .req { color: var(--accent); font-weight: 800; }
+.booking__hint { color: var(--muted); font-size: 13px; margin: -4px 0 10px; }
+
+/* Provider chips — selectable; chosen = green ACTION. */
+.booking__providers { display: flex; flex-wrap: wrap; gap: 8px; }
+.booking__providers .provider-pick {
+  font-family: 'Rubik', sans-serif; font-weight: 700; font-size: 14px;
+  padding: 9px 16px; min-height: 44px; display: inline-flex; align-items: center;
+  background: var(--cream); border: 1px solid var(--line); color: var(--green-d);
+  border-radius: 999px; cursor: pointer;
+  transition: background .15s, color .15s, border-color .15s, transform .15s var(--ease-spring), box-shadow .18s;
+}
+.booking__providers .provider-pick:hover { transform: translateY(-1px); border-color: var(--ink-300); box-shadow: var(--shadow-sm); }
+.booking__providers .provider-pick:active { transform: scale(.97); }
+.booking__providers .provider-pick:focus-visible { outline: none; box-shadow: var(--ring); border-color: var(--accent); }
+.booking__providers .provider-pick[aria-pressed="true"],
+.booking__providers .provider-pick.is-chosen {
+  background: var(--accent); color: #fff; border-color: var(--accent);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 4px 12px rgba(22,163,74,.24);
+}
+
+/* Date row — native date picker styled like the filter fields. */
+.booking__date {
+  width: 100%; min-height: 46px; padding: 11px 16px;
+  border: 1px solid var(--line); border-radius: 14px;
+  font-family: 'Assistant', sans-serif; font-size: 16px; background: var(--white); color: var(--ink);
+  transition: border-color .15s, box-shadow .15s;
+}
+.booking__date:hover { border-color: var(--ink-300); }
+.booking__date:focus-visible { outline: none; box-shadow: var(--ring); border-color: var(--accent); }
+
+/* Slot grid — responsive grid of 30-min time buttons. Chosen = green; taken or
+   out-of-window slots render disabled. */
+.slot-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(82px, 1fr)); gap: 8px; }
+.slot {
+  font-family: 'Rubik', sans-serif; font-weight: 700; font-size: 14px;
+  min-height: 44px; padding: 10px 8px; text-align: center;
+  background: var(--cream); border: 1px solid var(--line); color: var(--green-d);
+  border-radius: 12px; cursor: pointer;
+  transition: background .15s, color .15s, border-color .15s, transform .15s var(--ease-spring), box-shadow .18s;
+}
+.slot:hover { transform: translateY(-1px); border-color: var(--accent); box-shadow: var(--shadow-sm); }
+.slot:active { transform: scale(.96); }
+.slot:focus-visible { outline: none; box-shadow: var(--ring); border-color: var(--accent); }
+.slot--chosen, .slot[aria-pressed="true"] {
+  background: var(--accent); color: #fff; border-color: var(--accent);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 4px 12px rgba(22,163,74,.24);
+}
+.slot--chosen:hover, .slot[aria-pressed="true"]:hover { transform: translateY(-1px); filter: brightness(1.04); }
+.slot[disabled], .slot:disabled, .slot--taken {
+  opacity: .4; cursor: not-allowed; background: var(--ink-050); color: var(--ink-400);
+  border-color: var(--line); text-decoration: line-through;
+  transform: none !important; box-shadow: none !important;
+}
+/* Empty slot-grid message (no date picked / no slots for the day). */
+.slot-grid__empty { grid-column: 1 / -1; color: var(--muted); font-size: 13.5px; padding: 12px 4px; }
+
+/* Contact fields — reuse the .field / .field-error contract already in the system. */
+.booking__fields { display: grid; gap: 14px; }
+.booking__input {
+  width: 100%; min-height: 46px; padding: 12px 16px;
+  border: 1px solid var(--line); border-radius: 14px;
+  font-family: 'Assistant', sans-serif; font-size: 16px; background: var(--white); color: var(--ink);
+  transition: border-color .15s, box-shadow .15s;
+}
+.booking__input::placeholder { color: var(--ink-400); }
+.booking__input:hover { border-color: var(--ink-300); }
+.booking__input:focus-visible { outline: none; box-shadow: var(--ring); border-color: var(--accent); }
+
+/* Consent block — mandatory terms/privacy + optional marketing. Native checkbox
+   tinted to the ACTION colour; rows read as quiet, legible fine print. */
+.booking__consent { display: grid; gap: 10px; margin-top: 4px; }
+.booking__consent label {
+  display: flex; align-items: flex-start; gap: 10px; cursor: pointer;
+  font-size: 13.5px; line-height: 1.5; color: var(--ink-700); font-weight: 500;
+}
+.booking__consent input[type="checkbox"] {
+  flex: 0 0 auto; width: 20px; height: 20px; min-width: 20px; margin: 1px 0 0;
+  border-radius: 5px; accent-color: var(--accent); cursor: pointer;
+}
+.booking__consent input[type="checkbox"]:focus-visible { outline: none; box-shadow: var(--ring); }
+.booking__consent a { color: var(--accent); font-weight: 700; text-decoration: underline; text-underline-offset: 2px; }
+.booking__consent a:hover { color: var(--accent-d); }
+.booking__consent .req { color: var(--accent); font-weight: 800; }
+
+.booking__submit { margin-top: 22px; }
+
+/* Status note — success = green, error = red. Hidden until a state is set. */
+.booking__note {
+  min-height: 22px; margin-top: 14px; font-weight: 700; font-size: 14.5px;
+  text-align: center; line-height: 1.5;
+}
+.booking__note:empty { display: none; }
+.booking__note.is-success { color: var(--accent); }
+.booking__note.is-error { color: #dc2626; }
+
+@media (max-width: 560px) {
+  .booking { padding: 20px; }
+  .community__join { padding: 16px; }
+  .reply { margin-inline-start: 10px; }
+  .slot-grid { grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 6px; }
 }
 
 /* ── Chips & pills: tactile press (links only) ─────────────────────────────── */

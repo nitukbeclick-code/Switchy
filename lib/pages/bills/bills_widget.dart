@@ -180,16 +180,17 @@ class _BillsWidgetState extends State<BillsWidget> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.12),
+                        color: ffTheme.saving.withValues(alpha: 0.18),
                         borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: ffTheme.saving.withValues(alpha: 0.45)),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.lightbulb_outline_rounded, size: 16, color: ffTheme.secondary),
+                          Icon(Icons.lightbulb_rounded, size: 16, color: ffTheme.saving),
                           const SizedBox(width: 8),
                           Text('חיסכון פוטנציאלי: ₪$totalSavings/שנה',
-                              style: GoogleFonts.rubik(fontSize: 13, fontWeight: FontWeight.w700, color: ffTheme.secondary)),
+                              style: GoogleFonts.rubik(fontSize: 13, fontWeight: FontWeight.w700, color: ffTheme.saving)),
                         ],
                       ),
                     ),
@@ -487,11 +488,11 @@ class _SavingsRing extends StatelessWidget {
                     sectionsSpace: 3,
                     centerSpaceRadius: 34,
                     sections: [
-                      // Ink for the saving (the emphasised share), pale grey for
-                      // the rest — high-contrast and legible in greyscale.
+                      // Amber for the saving (the VALUE share), pale grey for the
+                      // rest (market price) — the savings slice reads as money.
                       PieChartSectionData(
                         value: savingsPerMonth.toDouble(),
-                        color: ffTheme.primary,
+                        color: ffTheme.saving,
                         radius: 20,
                         showTitle: false,
                       ),
@@ -507,7 +508,7 @@ class _SavingsRing extends StatelessWidget {
                 Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text('$pct%', style: GoogleFonts.rubik(fontSize: 18, fontWeight: FontWeight.w800, color: ffTheme.primary)),
+                    Text('$pct%', style: GoogleFonts.rubik(fontSize: 18, fontWeight: FontWeight.w800, color: ffTheme.savingDark)),
                     Text('חיסכון', style: ffTheme.labelSmall.copyWith(fontSize: 10)),
                   ],
                 ),
@@ -521,18 +522,18 @@ class _SavingsRing extends StatelessWidget {
               children: [
                 Text('פוטנציאל החיסכון שלך', style: ffTheme.titleSmall),
                 const SizedBox(height: 10),
-                _RingLegendRow(color: ffTheme.primary, label: 'אפשר לחסוך', value: '₪$savingsPerMonth/חודש', ffTheme: ffTheme),
+                _RingLegendRow(color: ffTheme.saving, label: 'אפשר לחסוך', value: '₪$savingsPerMonth/חודש', ffTheme: ffTheme),
                 const SizedBox(height: 6),
                 _RingLegendRow(color: ffTheme.secondary, label: 'מחיר שוק', value: '₪$keep/חודש', ffTheme: ffTheme),
                 const SizedBox(height: 12),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
                   decoration: BoxDecoration(
-                    color: ffTheme.accent1,
+                    color: ffTheme.saving.withValues(alpha: 0.14),
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: ffTheme.primary.withValues(alpha: 0.15)),
+                    border: Border.all(color: ffTheme.saving.withValues(alpha: 0.4)),
                   ),
-                  child: Text('₪$totalSavings חיסכון שנתי', style: ffTheme.labelMedium.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+                  child: Text('₪$totalSavings חיסכון שנתי', style: ffTheme.labelMedium.copyWith(color: ffTheme.savingDark, fontWeight: FontWeight.w800)),
                 ),
               ],
             ),
@@ -623,11 +624,11 @@ class _OverpayCard extends StatelessWidget {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
-                              gradient: ffTheme.limeGradient,
+                              color: ffTheme.saving,
                               borderRadius: BorderRadius.circular(ffTheme.radiusPill),
                             ),
                             child: Text('הכי כדאי',
-                                style: ffTheme.labelSmall.copyWith(color: ffTheme.primaryDark, fontWeight: FontWeight.w700, fontSize: 10)),
+                                style: ffTheme.labelSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 10)),
                           ),
                         ],
                       ],
@@ -665,20 +666,26 @@ class _OverpayCard extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
                   decoration: BoxDecoration(
-                    color: ffTheme.accent1,
+                    color: o.annualSaving > 0 ? ffTheme.saving.withValues(alpha: 0.14) : ffTheme.accent1,
                     borderRadius: BorderRadius.circular(ffTheme.radiusSm),
-                    border: Border.all(color: ffTheme.primary.withValues(alpha: 0.15)),
+                    border: Border.all(
+                        color: o.annualSaving > 0
+                            ? ffTheme.saving.withValues(alpha: 0.4)
+                            : ffTheme.primary.withValues(alpha: 0.15)),
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.savings_rounded, size: 16, color: ffTheme.primary),
+                      Icon(Icons.savings_rounded, size: 16,
+                          color: o.annualSaving > 0 ? ffTheme.savingDark : ffTheme.primary),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
                           o.annualSaving > 0
                               ? 'חיסכון${estimate ? ' (הערכה)' : ''}: ₪${o.annualSaving} בשנה'
                               : 'בדקו חבילות זולות יותר',
-                          style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700),
+                          style: ffTheme.labelSmall.copyWith(
+                              color: o.annualSaving > 0 ? ffTheme.savingDark : ffTheme.primary,
+                              fontWeight: FontWeight.w700),
                         ),
                       ),
                     ],
@@ -918,7 +925,7 @@ class _BillCard extends StatelessWidget {
                     Text(category.name, style: ffTheme.titleSmall),
                     if (currentBill > 0 && yearlySave > 0)
                       Text('חיסכון פוטנציאלי: ₪$yearlySave/שנה',
-                          style: ffTheme.labelSmall.copyWith(color: ffTheme.success, fontWeight: FontWeight.w600)),
+                          style: ffTheme.labelSmall.copyWith(color: ffTheme.savingDark, fontWeight: FontWeight.w700)),
                     if (currentBill == 0)
                       Text('לא בשימוש', style: ffTheme.labelSmall),
                   ],

@@ -45,12 +45,13 @@ class AppColors {
   static const Color mint = Color(0xFFF0F2F4); // alias for accent1, semantic
 
   // Refined accent system — colour used with intent over the ink/glass base.
-  // brandAccent (indigo) = ACTION: primary CTAs, active states, links, focus.
-  // saving (amber) = VALUE: savings figures, "best value", win states.
-  // Provider/carrier brand colours are separate and never use these.
-  static const Color brandAccent = Color(0xFF4F46E5); // indigo 600
-  static const Color brandAccentDark = Color(0xFF3730A3); // indigo 800 (gradient depth)
-  static const Color brandAccentTint = Color(0xFFEEF0FB); // light indigo surface
+  // brandAccent (green) = ACTION: primary CTAs, active states, links, focus.
+  // Matches the Switchy logo. saving (amber) = VALUE: savings figures,
+  // "best value", win states. Provider/carrier brand colours are separate and
+  // never use these.
+  static const Color brandAccent = Color(0xFF16A34A); // green 600
+  static const Color brandAccentDark = Color(0xFF15803D); // green 700 (gradient depth)
+  static const Color brandAccentTint = Color(0xFFDCFCE7); // light green surface
   static const Color saving = Color(0xFFF59E0B); // amber 500
   static const Color savingDark = Color(0xFFD97706); // amber 600
 }
@@ -116,10 +117,10 @@ class AppTheme {
         BoxShadow(color: Color(0x26111827), blurRadius: 20, offset: Offset(0, 8)),
       ];
 
-  /// An indigo glow under the accent (CTA) gradient so it reads tappable.
+  /// A green glow under the accent (CTA) gradient so it reads tappable.
   List<BoxShadow> get shadowAccent => const [
-        BoxShadow(color: Color(0x4D4F46E5), blurRadius: 22, offset: Offset(0, 8)),
-        BoxShadow(color: Color(0x263730A3), blurRadius: 6, offset: Offset(0, 2)),
+        BoxShadow(color: Color(0x4D16A34A), blurRadius: 22, offset: Offset(0, 8)),
+        BoxShadow(color: Color(0x2615803D), blurRadius: 6, offset: Offset(0, 2)),
       ];
 
   /// A soft, diffuse, neutral shadow for frosted-glass surfaces.
@@ -160,7 +161,7 @@ class AppTheme {
         end: Alignment.centerLeft,
       );
 
-  /// The indigo ACTION gradient — primary CTAs. The single splash of colour
+  /// The green ACTION gradient — primary CTAs. The single splash of colour
   /// that guides the eye through the conversion flow over the ink/glass base.
   LinearGradient get accentGradient => const LinearGradient(
         colors: [AppColors.brandAccent, AppColors.brandAccentDark],

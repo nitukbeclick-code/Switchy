@@ -93,7 +93,7 @@ class SavingsWidget extends StatelessWidget {
                   ],
 
                   // Per-category breakdown
-                  Text('לפי קטגוריה', style: ffTheme.titleMedium.copyWith(fontWeight: FontWeight.w800)),
+                  _SectionHeader(title: 'לפי קטגוריה', ffTheme: ffTheme),
                   const SizedBox(height: 10),
                   ...summary.categories.asMap().entries.map((e) {
                     final cs = e.value;
@@ -121,7 +121,7 @@ class SavingsWidget extends StatelessWidget {
                   // Renewals
                   if (renewals.isNotEmpty) ...[
                     const SizedBox(height: 20),
-                    Text('חידושים מתקרבים', style: ffTheme.titleMedium.copyWith(fontWeight: FontWeight.w800)),
+                    _SectionHeader(title: 'חידושים מתקרבים', ffTheme: ffTheme),
                     const SizedBox(height: 10),
                     ...renewals.map((e) => Padding(
                           padding: const EdgeInsets.only(bottom: 10),
@@ -230,6 +230,34 @@ class _Hero extends StatelessWidget {
   }
 }
 
+// ── Section header ──────────────────────────────────────────────────────────
+
+/// A section title with a short leading accent bar (green ACTION rule) for a
+/// crisp, scannable hierarchy down the dashboard.
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader({required this.title, required this.ffTheme});
+  final String title;
+  final AppTheme ffTheme;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 4,
+          height: 18,
+          decoration: BoxDecoration(
+            color: ffTheme.primary,
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(title, style: ffTheme.titleMedium.copyWith(fontWeight: FontWeight.w800)),
+      ],
+    );
+  }
+}
+
 // ── Realized savings ────────────────────────────────────────────────────────
 
 class _RealizedCard extends StatelessWidget {
@@ -239,20 +267,40 @@ class _RealizedCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // "Already saved" is a realised win — render it in the green ACTION tint so
+    // it reads as money in the bank, distinct from the amber "potential" figures.
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: ffTheme.success.withValues(alpha: 0.1),
+        color: ffTheme.primary.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: ffTheme.success.withValues(alpha: 0.35)),
+        border: Border.all(color: ffTheme.primary.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
-          Icon(Icons.savings_rounded, color: ffTheme.success, size: 24),
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: ffTheme.primary.withValues(alpha: 0.14),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(Icons.savings_rounded, color: ffTheme.primary, size: 22),
+          ),
           const SizedBox(width: 12),
           Expanded(
-            child: Text('כבר חסכת ₪$amount דרך חוסך',
-                style: ffTheme.titleSmall.copyWith(color: ffTheme.primaryText, fontWeight: FontWeight.w700)),
+            child: RichText(
+              text: TextSpan(
+                style: ffTheme.titleSmall.copyWith(color: ffTheme.primaryText, fontWeight: FontWeight.w700),
+                children: [
+                  const TextSpan(text: 'כבר חסכת '),
+                  TextSpan(
+                      text: '₪$amount',
+                      style: ffTheme.titleSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w800)),
+                  const TextSpan(text: ' דרך חוסך'),
+                ],
+              ),
+            ),
           ),
         ],
       ),
@@ -280,39 +328,61 @@ class _TopOpportunityCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: ffTheme.secondary,
+    final savingText =
+        personalized ? 'חיסכון של ₪$saving בשנה' : 'חיסכון מוערך של ~₪$saving בשנה';
+    // The headline opportunity is a VALUE moment — wash it in the amber savings
+    // tint with a matching hairline so the figure reads as money, not chrome.
+    return Semantics(
+      button: true,
+      label: 'ההזדמנות הכי גדולה: $categoryName, $savingText. הצג מסלול',
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
           borderRadius: BorderRadius.circular(16),
-        ),
-        child: Row(
-          children: [
-            Icon(Icons.rocket_launch_outlined, size: 30, color: ffTheme.primaryDark),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('ההזדמנות הכי גדולה שלך · $categoryName',
-                      style: GoogleFonts.assistant(
-                          fontSize: 12, fontWeight: FontWeight.w700, color: ffTheme.primaryDark)),
-                  const SizedBox(height: 2),
-                  Text(personalized ? 'חיסכון של ₪$saving בשנה' : 'חיסכון מוערך של ~₪$saving בשנה',
-                      style: GoogleFonts.rubik(
-                          fontSize: 18, fontWeight: FontWeight.w800, color: ffTheme.primaryDark)),
-                  const SizedBox(height: 2),
-                  Text(providerAndPlan,
-                      style: GoogleFonts.assistant(
-                          fontSize: 12, fontWeight: FontWeight.w600, color: ffTheme.primaryDark),
-                      maxLines: 1, overflow: TextOverflow.ellipsis),
-                ],
-              ),
+          splashColor: ffTheme.saving.withValues(alpha: 0.12),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: ffTheme.saving.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: ffTheme.saving.withValues(alpha: 0.4)),
             ),
-            Icon(Icons.arrow_back_ios_rounded, size: 16, color: ffTheme.primaryDark),
-          ],
+            child: Row(
+              children: [
+                Container(
+                  width: 46,
+                  height: 46,
+                  decoration: BoxDecoration(
+                    color: ffTheme.saving.withValues(alpha: 0.18),
+                    borderRadius: BorderRadius.circular(13),
+                  ),
+                  child: Icon(Icons.rocket_launch_rounded, size: 24, color: ffTheme.savingDark),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('ההזדמנות הכי גדולה שלך · $categoryName',
+                          style: ffTheme.labelMedium
+                              .copyWith(color: ffTheme.secondaryText, fontWeight: FontWeight.w700)),
+                      const SizedBox(height: 3),
+                      Text(savingText,
+                          style: GoogleFonts.rubik(
+                              fontSize: 19, fontWeight: FontWeight.w800, color: ffTheme.savingDark)),
+                      const SizedBox(height: 2),
+                      Text(providerAndPlan,
+                          style: ffTheme.bodySmall.copyWith(
+                              color: ffTheme.primaryText, fontWeight: FontWeight.w600),
+                          maxLines: 1, overflow: TextOverflow.ellipsis),
+                    ],
+                  ),
+                ),
+                Icon(Icons.arrow_back_ios_rounded, size: 16, color: ffTheme.savingDark),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -399,7 +469,7 @@ class _PotentialDonutCard extends StatelessWidget {
                             style: GoogleFonts.rubik(
                                 fontSize: 18,
                                 fontWeight: FontWeight.w800,
-                                color: ffTheme.primaryText)),
+                                color: ffTheme.savingDark)),
                         Text('לשנה',
                             style: ffTheme.labelSmall
                                 .copyWith(color: ffTheme.secondaryText)),
@@ -476,7 +546,7 @@ class _LegendRow extends StatelessWidget {
         const SizedBox(width: 6),
         Text(personalized ? '₪$amount' : '~₪$amount',
             style: ffTheme.labelMedium
-                .copyWith(color: ffTheme.primaryText, fontWeight: FontWeight.w800)),
+                .copyWith(color: ffTheme.savingDark, fontWeight: FontWeight.w800)),
       ],
     );
   }
@@ -678,54 +748,83 @@ class _CategoryRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final has = saving.hasBill;
     final opportunity = saving.hasOpportunity;
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: Colors.white,
+    final hint = opportunity
+        ? 'אפשר לחסוך ${personalized ? '' : 'כ'}₪${saving.annualSaving} בשנה'
+        : has
+            ? 'מחיר תחרותי'
+            : 'הזן חשבון';
+    return Semantics(
+      button: true,
+      label: '$name. $hint',
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: ffTheme.alternate),
-        ),
-        child: Row(
-          children: [
-            Icon(categoryIconData(catId), size: 22, color: ffTheme.primaryText),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(name, style: ffTheme.bodyMedium.copyWith(fontWeight: FontWeight.w700)),
-                  Text(
-                    has ? 'משלם ₪${saving.currentBill}/חודש' : 'לא הוזן חשבון',
-                    style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText),
-                  ),
-                ],
-              ),
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: ffTheme.alternate),
             ),
-            if (opportunity)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                decoration: BoxDecoration(
-                  color: ffTheme.secondary,
-                  borderRadius: BorderRadius.circular(10),
+            child: Row(
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: ffTheme.accent1,
+                    borderRadius: BorderRadius.circular(11),
+                  ),
+                  child: Icon(categoryIconData(catId), size: 20, color: ffTheme.primaryText),
                 ),
-                child: Text(personalized ? '₪${saving.annualSaving}/שנה' : '~₪${saving.annualSaving}/שנה',
-                    style: GoogleFonts.rubik(
-                        fontSize: 12, fontWeight: FontWeight.w800, color: ffTheme.primaryDark)),
-              )
-            else if (has)
-              Text('מעולה — מחיר תחרותי',
-                  style: ffTheme.labelSmall.copyWith(color: ffTheme.success, fontWeight: FontWeight.w600))
-            else
-              Row(
-                children: [
-                  Text('הזן חשבון',
-                      style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
-                  Icon(Icons.chevron_left_rounded, size: 16, color: ffTheme.primary),
-                ],
-              ),
-          ],
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(name, style: ffTheme.bodyMedium.copyWith(fontWeight: FontWeight.w700)),
+                      Text(
+                        has ? 'משלם ₪${saving.currentBill}/חודש' : 'לא הוזן חשבון',
+                        style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText),
+                      ),
+                    ],
+                  ),
+                ),
+                if (opportunity)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: ffTheme.saving.withValues(alpha: 0.16),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(personalized ? '₪${saving.annualSaving}/שנה' : '~₪${saving.annualSaving}/שנה',
+                        style: GoogleFonts.rubik(
+                            fontSize: 12, fontWeight: FontWeight.w800, color: ffTheme.savingDark)),
+                  )
+                else if (has)
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.check_circle_rounded, size: 14, color: ffTheme.primary),
+                      const SizedBox(width: 4),
+                      Text('מחיר תחרותי',
+                          style: ffTheme.labelSmall
+                              .copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+                    ],
+                  )
+                else
+                  Row(
+                    children: [
+                      Text('הזן חשבון',
+                          style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+                      Icon(Icons.chevron_left_rounded, size: 16, color: ffTheme.primary),
+                    ],
+                  ),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -752,39 +851,68 @@ class _RenewalRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: Colors.white,
+    final timing = days == null
+        ? null
+        : days! < 0
+            ? 'המבצע הסתיים'
+            : 'מסתיים בעוד $days ימים';
+    return Semantics(
+      button: true,
+      label: '$provider $planName. ${timing == null ? '' : '$timing, '}חוסך ₪$saving בשנה במעבר',
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: ffTheme.alternate),
-        ),
-        child: Row(
-          children: [
-            Icon(Icons.alarm_rounded, color: ffTheme.warning, size: 22),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('$provider · $planName',
-                      style: ffTheme.bodyMedium.copyWith(fontWeight: FontWeight.w700),
-                      maxLines: 1, overflow: TextOverflow.ellipsis),
-                  Text(
-                    days == null
-                        ? 'חוסך ₪$saving/שנה במעבר'
-                        : days! < 0
-                            ? 'המבצע הסתיים — חוסך ₪$saving/שנה'
-                            : 'מסתיים בעוד $days ימים — חוסך ₪$saving/שנה',
-                    style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText),
-                  ),
-                ],
-              ),
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: ffTheme.alternate),
             ),
-            Icon(Icons.chevron_left_rounded, size: 18, color: ffTheme.secondaryText),
-          ],
+            child: Row(
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: ffTheme.warning.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(11),
+                  ),
+                  child: Icon(Icons.alarm_rounded, color: ffTheme.warning, size: 20),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('$provider · $planName',
+                          style: ffTheme.bodyMedium.copyWith(fontWeight: FontWeight.w700),
+                          maxLines: 1, overflow: TextOverflow.ellipsis),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          if (timing != null) ...[
+                            Flexible(
+                              child: Text(timing,
+                                  style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText),
+                                  maxLines: 1, overflow: TextOverflow.ellipsis),
+                            ),
+                            Text(' · ', style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText)),
+                          ],
+                          Text('חוסך ₪$saving/שנה',
+                              style: ffTheme.labelSmall.copyWith(
+                                  color: ffTheme.savingDark, fontWeight: FontWeight.w800)),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(Icons.chevron_left_rounded, size: 18, color: ffTheme.secondaryText),
+              ],
+            ),
+          ),
         ),
       ),
     );

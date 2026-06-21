@@ -124,9 +124,13 @@ class _CallbackWidgetState extends State<CallbackWidget> {
                   ),
                   Container(
                     width: 8, height: 8,
-                    decoration: BoxDecoration(color: ffTheme.success, shape: BoxShape.circle),
+                    decoration: BoxDecoration(
+                      color: ffTheme.brandAccent,
+                      shape: BoxShape.circle,
+                      boxShadow: [BoxShadow(color: ffTheme.brandAccent.withValues(alpha: 0.5), blurRadius: 6, spreadRadius: 1)],
+                    ),
                   ).animate(onPlay: (c) => c.repeat(reverse: true))
-                    .scale(begin: const Offset(1, 1), end: const Offset(1.5, 1.5), duration: 900.ms),
+                    .scale(begin: const Offset(1, 1), end: const Offset(1.4, 1.4), duration: 900.ms, curve: Curves.easeInOut),
                 ],
               ),
             ).animate().fadeIn(delay: 180.ms),
@@ -328,10 +332,10 @@ class _CallbackWidgetState extends State<CallbackWidget> {
             duration: const Duration(milliseconds: 200),
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             decoration: BoxDecoration(
-              color: active ? ffTheme.primary : Colors.white,
+              color: active ? ffTheme.brandAccent : Colors.white,
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: active ? ffTheme.primary : ffTheme.alternate),
-              boxShadow: active ? [BoxShadow(color: ffTheme.primary.withValues(alpha: 0.2), blurRadius: 8, offset: const Offset(0, 2))] : [],
+              border: Border.all(color: active ? ffTheme.brandAccent : ffTheme.alternate),
+              boxShadow: active ? [BoxShadow(color: ffTheme.brandAccent.withValues(alpha: 0.28), blurRadius: 10, offset: const Offset(0, 3))] : [],
             ),
             child: Text(t, style: ffTheme.labelMedium.copyWith(
               color: active ? Colors.white : ffTheme.primaryText,
@@ -357,10 +361,10 @@ class _CallbackWidgetState extends State<CallbackWidget> {
               margin: EdgeInsetsDirectional.only(end: i < _timings.length - 1 ? 8 : 0),
               padding: const EdgeInsets.symmetric(vertical: 10),
               decoration: BoxDecoration(
-                color: active ? ffTheme.primary : Colors.white,
+                color: active ? ffTheme.brandAccent : Colors.white,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: active ? ffTheme.primary : ffTheme.alternate),
-                boxShadow: active ? [BoxShadow(color: ffTheme.primary.withValues(alpha: 0.2), blurRadius: 8, offset: const Offset(0, 2))] : [],
+                border: Border.all(color: active ? ffTheme.brandAccent : ffTheme.alternate),
+                boxShadow: active ? [BoxShadow(color: ffTheme.brandAccent.withValues(alpha: 0.28), blurRadius: 10, offset: const Offset(0, 3))] : [],
               ),
               child: Column(
                 children: [
@@ -390,17 +394,17 @@ class _CallbackWidgetState extends State<CallbackWidget> {
                 children: [
                   Container(
                     width: 120, height: 120,
-                    decoration: BoxDecoration(color: ffTheme.primary.withValues(alpha: 0.08), shape: BoxShape.circle),
+                    decoration: BoxDecoration(color: ffTheme.brandAccent.withValues(alpha: 0.10), shape: BoxShape.circle),
                   ).animate(onPlay: (c) => c.repeat(reverse: true))
                     .scale(begin: const Offset(1, 1), end: const Offset(1.12, 1.12), duration: 1200.ms),
                   Container(
                     width: 92, height: 92,
-                    decoration: BoxDecoration(color: ffTheme.accent1, shape: BoxShape.circle),
-                    child: Icon(Icons.phone_in_talk_rounded, color: ffTheme.primary, size: 46),
+                    decoration: BoxDecoration(color: ffTheme.brandAccentTint, shape: BoxShape.circle),
+                    child: Icon(Icons.phone_in_talk_rounded, color: ffTheme.brandAccent, size: 46),
                   ).animate().scale(duration: 600.ms, curve: Curves.elasticOut),
                   PositionedDirectional(
                     top: 4, end: 4,
-                    child: ExcludeSemantics(child: Icon(Icons.auto_awesome, size: 16, color: ffTheme.primary)).animate(delay: 400.ms).fadeIn().slideY(begin: -0.5),
+                    child: ExcludeSemantics(child: Icon(Icons.auto_awesome, size: 16, color: ffTheme.saving)).animate(delay: 400.ms).fadeIn().slideY(begin: -0.5),
                   ),
                 ],
               ),
@@ -416,16 +420,16 @@ class _CallbackWidgetState extends State<CallbackWidget> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 decoration: BoxDecoration(
-                  color: ffTheme.accent1,
+                  color: ffTheme.brandAccentTint,
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: ffTheme.primary.withValues(alpha: 0.15)),
+                  border: Border.all(color: ffTheme.brandAccent.withValues(alpha: 0.18)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.access_time_rounded, size: 16, color: ffTheme.primary),
+                    Icon(Icons.access_time_rounded, size: 16, color: ffTheme.brandAccent),
                     const SizedBox(width: 8),
-                    Text('ימי א׳–ה׳, 9:00–21:00', style: ffTheme.labelMedium.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w600)),
+                    Text('ימי א׳–ה׳, 9:00–21:00', style: ffTheme.labelMedium.copyWith(color: ffTheme.brandAccent, fontWeight: FontWeight.w600)),
                   ],
                 ),
               ).animate().fadeIn(delay: 450.ms),
@@ -461,7 +465,7 @@ class _CallbackWidgetState extends State<CallbackWidget> {
       prefixIcon: Icon(icon, color: ffTheme.secondaryText),
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
       enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.alternate)),
-      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.primary, width: 1.5)),
+      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.brandAccent, width: 1.5)),
     );
   }
 }

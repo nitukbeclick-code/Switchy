@@ -321,8 +321,12 @@ function clientIp(req: Request): string {
   return "";
 }
 
-async function rateLimited(ip: string): Promise<boolean> {
-  if (!ip) return false; // fail-open on missing IP
+// Tri-state: true = limited (429), false = ok, null = DB error.
+// On a DB query error we FAIL-CLOSED (null → 503): the advisor calls the paid
+// Gemini/Groq providers, so a Supabase outage must not make them unmetered.
+// Only the "no IP" / "not configured" cases stay fail-open.
+async function rateLimited(ip: string): Promise<boolean | null> {
+  if (!ip) return false; // can't limit without an IP — fail-open
   const url = Deno.env.get("SUPABASE_URL") ?? "";
   const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
   if (!url || !key) return false; // not configured ⇒ fail open
@@ -334,15 +338,17 @@ async function rateLimited(ip: string): Promise<boolean> {
     );
     if (!r.ok) {
       jlog({ at: "rateLimited", ok: false, status: r.status });
-      return false; // table missing / query failed ⇒ fail OPEN
+      return null; // query failed ⇒ fail CLOSED (caller returns 503)
     }
     const rows = await r.json().catch(() => []);
     return Array.isArray(rows) && rows.length >= PER_IP_HOURLY_LIMIT;
   } catch (e) {
     jlog({ at: "rateLimited", ok: false, error: String(e) });
-    return false; // fail OPEN on infra hiccups
+    return null; // infra hiccup ⇒ fail CLOSED (caller returns 503)
   }
 }
+
+const FRIENDLY_BUSY = "שירות עמוס כרגע, נסו שוב בעוד רגע";
 
 function recordSession(ip: string): void {
   // best-effort audit/rate-limit row; never blocks the response
@@ -393,7 +399,9 @@ Deno.serve(async (req: Request) => {
     : [];
 
   const ip = clientIp(req);
-  if (await rateLimited(ip)) return json({ error: "rate limit exceeded" }, 429);
+  const limited = await rateLimited(ip);
+  if (limited === null) return json({ error: FRIENDLY_BUSY }, 503);
+  if (limited) return json({ error: "rate limit exceeded" }, 429);
 
   const plans = loadPlans();
   const candidates = pickCandidates(plans, ans);

@@ -4,9 +4,10 @@ import 'app_button.dart';
 
 /// A centered empty-state layout for pages with no data to display.
 ///
-/// Renders a large circular icon badge ([AppTheme.accent1] background), a
-/// [headline] in [AppTheme.headlineSmall], a centered [subtitle] in
-/// [AppTheme.bodyMedium]/secondaryText, and an optional CTA via [AppButton].
+/// Renders a large circular icon badge (soft green [AppTheme.brandAccentTint]
+/// wash with a green-tinted ring), a [headline] in [AppTheme.headlineSmall], a
+/// centered [subtitle] in [AppTheme.bodyMedium]/secondaryText, and an optional
+/// CTA via [AppButton].
 class EmptyState extends StatelessWidget {
   /// Icon rendered inside the circular badge.
   final IconData icon;
@@ -48,11 +49,14 @@ class EmptyState extends StatelessWidget {
               width: 96,
               height: 96,
               decoration: BoxDecoration(
-                color: ffTheme.mint,
+                color: ffTheme.brandAccentTint,
                 shape: BoxShape.circle,
+                border: Border.all(
+                  color: ffTheme.brandAccent.withValues(alpha: 0.18),
+                ),
                 boxShadow: ffTheme.shadowSoft,
               ),
-              child: Icon(icon, size: 48, color: ffTheme.tertiary),
+              child: Icon(icon, size: 46, color: ffTheme.brandAccent),
             ),
             const SizedBox(height: 24),
             Text(

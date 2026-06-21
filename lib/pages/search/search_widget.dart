@@ -32,7 +32,19 @@ class _SearchWidgetState extends State<SearchWidget> {
   String _q = '';
 
   @override
+  void initState() {
+    super.initState();
+    // Rebuild on focus change so the search field can show a green focus ring.
+    _focus.addListener(_onFocusChanged);
+  }
+
+  void _onFocusChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
   void dispose() {
+    _focus.removeListener(_onFocusChanged);
     _ctrl.dispose();
     _focus.dispose();
     super.dispose();
@@ -75,13 +87,16 @@ class _SearchWidgetState extends State<SearchWidget> {
           height: 44,
           padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
-            color: ffTheme.accent2,
+            color: ffTheme.secondaryBackground,
             borderRadius: BorderRadius.circular(ffTheme.radiusSm),
-            border: Border.all(color: ffTheme.alternate),
+            border: Border.all(
+              color: _focus.hasFocus ? ffTheme.brandAccent : ffTheme.alternate,
+              width: _focus.hasFocus ? 1.5 : 1,
+            ),
           ),
           child: Row(
             children: [
-              Icon(Icons.search_rounded, size: 20, color: ffTheme.primary),
+              Icon(Icons.search_rounded, size: 20, color: ffTheme.brandAccent),
               const SizedBox(width: 8),
               Expanded(
                 child: TextField(
@@ -266,11 +281,11 @@ class _SectionLabel extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
           decoration: BoxDecoration(
-            color: ffTheme.accent1,
+            color: ffTheme.brandAccentTint,
             borderRadius: BorderRadius.circular(ffTheme.radiusPill),
           ),
           child: Text('$count',
-              style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+              style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccent, fontWeight: FontWeight.w800)),
         ),
       ],
     );
@@ -315,7 +330,7 @@ class _Highlighted extends StatelessWidget {
     final low = text.toLowerCase();
     final hlStyle = base.copyWith(
       fontWeight: FontWeight.w800,
-      color: AppColors.primary,
+      color: AppColors.brandAccent,
       backgroundColor: highlight,
     );
 
@@ -404,14 +419,14 @@ class _HighlightedPlanCard extends StatelessWidget {
             padding: const EdgeInsets.only(bottom: 12, right: 4, left: 4),
             child: Row(
               children: [
-                Icon(Icons.check_circle_outline_rounded, size: 14, color: ffTheme.tertiary),
+                Icon(Icons.check_circle_outline_rounded, size: 14, color: ffTheme.brandAccent),
                 const SizedBox(width: 6),
                 Expanded(
                   child: _Highlighted(
                     text: feature,
                     query: query,
                     base: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText),
-                    highlight: ffTheme.secondary.withValues(alpha: 0.35),
+                    highlight: ffTheme.brandAccent.withValues(alpha: 0.16),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -448,9 +463,9 @@ class _CategoryResultChip extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
-            color: ffTheme.accent1,
+            color: ffTheme.brandAccentTint,
             borderRadius: BorderRadius.circular(ffTheme.radiusPill),
-            border: Border.all(color: ffTheme.primary.withValues(alpha: 0.15)),
+            border: Border.all(color: ffTheme.brandAccent.withValues(alpha: 0.22)),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -461,11 +476,11 @@ class _CategoryResultChip extends StatelessWidget {
                 text: hit.name,
                 query: query,
                 base: GoogleFonts.assistant(
-                    fontSize: 14, fontWeight: FontWeight.w700, color: ffTheme.primary),
-                highlight: ffTheme.secondary.withValues(alpha: 0.4),
+                    fontSize: 14, fontWeight: FontWeight.w700, color: ffTheme.brandAccent),
+                highlight: ffTheme.brandAccent.withValues(alpha: 0.16),
               ),
               const SizedBox(width: 6),
-              Icon(Icons.chevron_left_rounded, size: 18, color: ffTheme.primary),
+              Icon(Icons.chevron_left_rounded, size: 18, color: ffTheme.brandAccent),
             ],
           ),
         ),
@@ -510,7 +525,7 @@ class _ProviderChip extends StatelessWidget {
                 text: name,
                 query: query,
                 base: ffTheme.labelSmall.copyWith(fontWeight: FontWeight.w700),
-                highlight: ffTheme.secondary.withValues(alpha: 0.4),
+                highlight: ffTheme.brandAccent.withValues(alpha: 0.16),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -559,7 +574,7 @@ class _Suggestions extends StatelessWidget {
                 child: GestureDetector(
                   onTap: onClearRecent,
                   child: Text('נקה',
-                      style: ffTheme.labelMedium.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+                      style: ffTheme.labelMedium.copyWith(color: ffTheme.brandAccent, fontWeight: FontWeight.w700)),
                 ),
               ),
             ],
@@ -596,18 +611,18 @@ class _Suggestions extends StatelessWidget {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                         decoration: BoxDecoration(
-                          color: ffTheme.accent1,
+                          color: ffTheme.brandAccentTint,
                           borderRadius: BorderRadius.circular(ffTheme.radiusPill),
-                          border: Border.all(color: ffTheme.primary.withValues(alpha: 0.15)),
+                          border: Border.all(color: ffTheme.brandAccent.withValues(alpha: 0.22)),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(categoryIconData(c.id), size: 15, color: ffTheme.primary),
+                            Icon(categoryIconData(c.id), size: 15, color: ffTheme.brandAccent),
                             const SizedBox(width: 6),
                             Text(c.name,
                                 style: GoogleFonts.assistant(
-                                    fontSize: 13, fontWeight: FontWeight.w700, color: ffTheme.primary)),
+                                    fontSize: 13, fontWeight: FontWeight.w700, color: ffTheme.brandAccent)),
                           ],
                         ),
                       ),
@@ -636,17 +651,18 @@ class _Suggestions extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: ffTheme.accent1,
+            color: ffTheme.brandAccentTint,
             borderRadius: BorderRadius.circular(ffTheme.radiusMd),
+            border: Border.all(color: ffTheme.brandAccent.withValues(alpha: 0.15)),
           ),
           child: Row(
             children: [
-              Icon(Icons.search_rounded, size: 22, color: ffTheme.primary),
+              Icon(Icons.lightbulb_outline_rounded, size: 22, color: ffTheme.brandAccent),
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
                   'אפשר לחפש לפי שם ספק, שם מסלול, תכונה כמו "5G" או "סיב", או אפילו תקציב כמו "50"',
-                  style: ffTheme.bodySmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w600),
+                  style: ffTheme.bodySmall.copyWith(color: ffTheme.primaryText, fontWeight: FontWeight.w600),
                 ),
               ),
             ],
@@ -736,12 +752,12 @@ class _CheapestRow extends StatelessWidget {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                           decoration: BoxDecoration(
-                            color: ffTheme.accent1,
+                            color: ffTheme.brandAccentTint,
                             borderRadius: BorderRadius.circular(ffTheme.radiusXs),
                           ),
                           child: Text(catName,
                               style: ffTheme.labelSmall
-                                  .copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+                                  .copyWith(color: ffTheme.brandAccent, fontWeight: FontWeight.w800)),
                         ),
                         const SizedBox(width: 6),
                         Flexible(
@@ -764,7 +780,7 @@ class _CheapestRow extends StatelessWidget {
                 children: [
                   Text('₪${plan.priceText}',
                       style: ffTheme.titleMedium
-                          .copyWith(color: ffTheme.primary, fontWeight: FontWeight.w800)),
+                          .copyWith(color: ffTheme.brandAccent, fontWeight: FontWeight.w800)),
                   Text(priceUnitShort(plan),
                       style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText, fontSize: 10)),
                 ],

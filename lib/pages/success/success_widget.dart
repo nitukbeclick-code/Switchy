@@ -72,10 +72,11 @@ class _SuccessWidgetState extends State<SuccessWidget> {
                     width: 96,
                     height: 96,
                     decoration: BoxDecoration(
-                      color: ffTheme.secondary,
+                      color: ffTheme.brandAccent,
                       shape: BoxShape.circle,
+                      boxShadow: [BoxShadow(color: ffTheme.brandAccent.withValues(alpha: 0.5), blurRadius: 28, spreadRadius: 2)],
                     ),
-                    child: Icon(Icons.check_rounded, size: 56, color: ffTheme.primary),
+                    child: const Icon(Icons.check_rounded, size: 56, color: Colors.white),
                   ).animate()
                     .scale(duration: 500.ms, curve: Curves.elasticOut)
                     .then()
@@ -149,10 +150,10 @@ class _SuccessWidgetState extends State<SuccessWidget> {
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
                             Text('₪${plan.priceText}/${priceUnitShort(plan)}',
-                                style: GoogleFonts.rubik(fontSize: 16, fontWeight: FontWeight.w800, color: ffTheme.secondary)),
+                                style: GoogleFonts.rubik(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white)),
                             if (save > 0)
                               Text('חוסך ₪$save/שנה',
-                                  style: ffTheme.labelSmall.copyWith(color: ffTheme.secondary.withValues(alpha: 0.85))),
+                                  style: ffTheme.labelSmall.copyWith(color: ffTheme.saving, fontWeight: FontWeight.w700)),
                           ],
                         ),
                       ],
@@ -263,11 +264,11 @@ class _CheckItem extends StatelessWidget {
             width: 24,
             height: 24,
             decoration: BoxDecoration(
-              color: checked ? ffTheme.secondary : Colors.white.withValues(alpha: 0.15),
+              color: checked ? ffTheme.brandAccent : Colors.white.withValues(alpha: 0.15),
               shape: BoxShape.circle,
             ),
             child: checked
-                ? Icon(Icons.check_rounded, size: 14, color: ffTheme.primary)
+                ? const Icon(Icons.check_rounded, size: 14, color: Colors.white)
                 : null,
           ),
           const SizedBox(width: 12),

@@ -240,7 +240,7 @@ class _MeetingWidgetState extends State<MeetingWidget> {
           child: TextButton(
             onPressed: () => context.goNamed('Home'),
             child: Text('חזרה לדף הבית',
-                style: t.labelMedium.copyWith(color: t.primary, fontWeight: FontWeight.w700)),
+                style: t.labelMedium.copyWith(color: t.brandAccent, fontWeight: FontWeight.w700)),
           ),
         ),
       ],
@@ -413,10 +413,10 @@ class _MeetingWidgetState extends State<MeetingWidget> {
           selected: active,
           label: 'ספק $p',
           child: Material(
-            color: active ? t.primary : Colors.white,
+            color: active ? t.brandAccent : Colors.white,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(t.radiusPill),
-              side: BorderSide(color: active ? t.primary : t.alternate),
+              side: BorderSide(color: active ? t.brandAccent : t.alternate),
             ),
             child: InkWell(
               borderRadius: BorderRadius.circular(t.radiusPill),
@@ -464,10 +464,10 @@ class _MeetingWidgetState extends State<MeetingWidget> {
             selected: active,
             label: label,
             child: Material(
-              color: active ? t.primary : Colors.white,
+              color: active ? t.brandAccent : Colors.white,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(t.radiusMd),
-                side: BorderSide(color: active ? t.primary : t.alternate),
+                side: BorderSide(color: active ? t.brandAccent : t.alternate),
               ),
               child: InkWell(
                 borderRadius: BorderRadius.circular(t.radiusMd),
@@ -518,10 +518,10 @@ class _MeetingWidgetState extends State<MeetingWidget> {
           selected: active,
           label: 'שעה $s',
           child: Material(
-            color: active ? t.primary : Colors.white,
+            color: active ? t.brandAccent : Colors.white,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(t.radiusSm),
-              side: BorderSide(color: active ? t.primary : t.alternate),
+              side: BorderSide(color: active ? t.brandAccent : t.alternate),
             ),
             child: InkWell(
               borderRadius: BorderRadius.circular(t.radiusSm),
@@ -553,7 +553,7 @@ class _MeetingWidgetState extends State<MeetingWidget> {
       fillColor: Colors.white,
       border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: t.alternate)),
       enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: t.alternate)),
-      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: t.primary, width: 1.5)),
+      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: t.brandAccent, width: 1.5)),
       errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: t.error)),
       focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: t.error, width: 1.5)),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -630,7 +630,11 @@ class _SuccessHeader extends StatelessWidget {
         Container(
           width: 64,
           height: 64,
-          decoration: BoxDecoration(color: t.primary, shape: BoxShape.circle),
+          decoration: BoxDecoration(
+            color: t.brandAccent,
+            shape: BoxShape.circle,
+            boxShadow: [BoxShadow(color: t.brandAccent.withValues(alpha: 0.4), blurRadius: 20, spreadRadius: 1)],
+          ),
           child: const Icon(Icons.check_rounded, size: 34, color: Colors.white),
         ).animate().scale(
             begin: const Offset(0.6, 0.6),
@@ -677,7 +681,7 @@ class _NextSteps extends StatelessWidget {
                     width: 20,
                     height: 20,
                     decoration: BoxDecoration(
-                      color: done ? t.primary : t.alternate.withValues(alpha: 0.5),
+                      color: done ? t.brandAccent : t.alternate.withValues(alpha: 0.5),
                       shape: BoxShape.circle,
                     ),
                     child: done

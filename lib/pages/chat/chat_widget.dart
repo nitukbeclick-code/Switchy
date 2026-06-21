@@ -261,9 +261,12 @@ class _ChatWidgetState extends State<ChatWidget> {
 
   PreferredSizeWidget _buildAppBar(AppTheme ffTheme, BuildContext context) {
     return AppBar(
-      backgroundColor: ffTheme.primary,
+      backgroundColor: ffTheme.brandAccent,
       foregroundColor: Colors.white,
       elevation: 0,
+      flexibleSpace: Container(
+        decoration: BoxDecoration(gradient: ffTheme.accentGradient),
+      ),
       leading: IconButton(
         icon: const Icon(Icons.arrow_back_ios_rounded, color: Colors.white, size: 20),
         tooltip: 'חזרה',
@@ -278,8 +281,8 @@ class _ChatWidgetState extends State<ChatWidget> {
                 Container(
                   width: 40,
                   height: 40,
-                  decoration: BoxDecoration(color: ffTheme.secondary, shape: BoxShape.circle),
-                  child: Center(child: Text('ד', style: GoogleFonts.rubik(fontSize: 18, fontWeight: FontWeight.w800, color: ffTheme.primary))),
+                  decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                  child: Center(child: Text('ד', style: GoogleFonts.rubik(fontSize: 18, fontWeight: FontWeight.w800, color: ffTheme.brandAccent))),
                 ),
                 if (_agentOnline)
                   Positioned(
@@ -289,9 +292,9 @@ class _ChatWidgetState extends State<ChatWidget> {
                       width: 11,
                       height: 11,
                       decoration: BoxDecoration(
-                        color: const Color(0xFF111827),
+                        color: ffTheme.brandAccent,
                         shape: BoxShape.circle,
-                        border: Border.all(color: ffTheme.primary, width: 1.5),
+                        border: Border.all(color: Colors.white, width: 1.5),
                       ),
                     ),
                   ),
@@ -346,8 +349,8 @@ class _ChatWidgetState extends State<ChatWidget> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(
-        color: ffTheme.accent1,
-        border: Border(bottom: BorderSide(color: ffTheme.alternate)),
+        color: ffTheme.brandAccentTint,
+        border: Border(bottom: BorderSide(color: ffTheme.brandAccent.withValues(alpha: 0.15))),
       ),
       child: Row(
         children: [
@@ -357,14 +360,14 @@ class _ChatWidgetState extends State<ChatWidget> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(plan.provider, style: ffTheme.labelLarge.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+                Text(plan.provider, style: ffTheme.labelLarge.copyWith(color: ffTheme.primaryText, fontWeight: FontWeight.w700)),
                 Text(plan.plan, style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText), maxLines: 1, overflow: TextOverflow.ellipsis),
               ],
             ),
           ),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(color: ffTheme.primary, borderRadius: BorderRadius.circular(20)),
+            decoration: BoxDecoration(color: ffTheme.brandAccent, borderRadius: BorderRadius.circular(20)),
             child: Text('₪${plan.priceText}/${priceUnitShort(plan)}', style: ffTheme.labelSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
           ),
         ],
@@ -399,16 +402,20 @@ class _ChatWidgetState extends State<ChatWidget> {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
         itemCount: _quickReplies.length,
         separatorBuilder: (_, __) => const SizedBox(width: 8),
-        itemBuilder: (ctx, i) => GestureDetector(
-          onTap: () => _send(_quickReplies[i]),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: ffTheme.primary.withValues(alpha: 0.3)),
+        itemBuilder: (ctx, i) => Semantics(
+          button: true,
+          label: _quickReplies[i],
+          child: GestureDetector(
+            onTap: () => _send(_quickReplies[i]),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              decoration: BoxDecoration(
+                color: ffTheme.brandAccentTint,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: ffTheme.brandAccent.withValues(alpha: 0.28)),
+              ),
+              child: Text(_quickReplies[i], style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccent, fontWeight: FontWeight.w700)),
             ),
-            child: Text(_quickReplies[i], style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w600)),
           ),
         ),
       ),
@@ -436,7 +443,7 @@ class _ChatWidgetState extends State<ChatWidget> {
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: const BorderSide(color: Colors.black12)),
                   enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: const BorderSide(color: Colors.black12)),
-                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide(color: ffTheme.primary, width: 1.5)),
+                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide(color: ffTheme.brandAccent, width: 1.5)),
                   filled: true,
                   fillColor: const Color(0xFFF0F2F5),
                 ),
@@ -451,9 +458,13 @@ class _ChatWidgetState extends State<ChatWidget> {
               child: GestureDetector(
                 onTap: () => _send(_inputCtrl.text),
                 child: Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(color: ffTheme.primary, shape: BoxShape.circle),
+                  width: 46,
+                  height: 46,
+                  decoration: BoxDecoration(
+                    gradient: ffTheme.accentGradient,
+                    shape: BoxShape.circle,
+                    boxShadow: ffTheme.shadowAccent,
+                  ),
                   child: const Icon(Icons.send_rounded, color: Colors.white, size: 20),
                 ),
               ),
@@ -496,8 +507,8 @@ class _ChatWidgetState extends State<ChatWidget> {
                     width: 30,
                     height: 30,
                     margin: const EdgeInsetsDirectional.only(end: 8, bottom: 2),
-                    decoration: BoxDecoration(color: ffTheme.secondary, shape: BoxShape.circle),
-                    child: Center(child: Text('ד', style: GoogleFonts.rubik(fontSize: 13, fontWeight: FontWeight.w800, color: ffTheme.primary))),
+                    decoration: BoxDecoration(color: ffTheme.brandAccentTint, shape: BoxShape.circle),
+                    child: Center(child: Text('ד', style: GoogleFonts.rubik(fontSize: 13, fontWeight: FontWeight.w800, color: ffTheme.brandAccent))),
                   ),
                 ),
               ] else if (!isUser) ...[
@@ -507,14 +518,17 @@ class _ChatWidgetState extends State<ChatWidget> {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   decoration: BoxDecoration(
-                    color: isUser ? ffTheme.primary : Colors.white,
+                    gradient: isUser ? ffTheme.accentGradient : null,
+                    color: isUser ? null : Colors.white,
                     borderRadius: BorderRadius.only(
                       topLeft: const Radius.circular(18),
                       topRight: const Radius.circular(18),
                       bottomLeft: isUser ? const Radius.circular(18) : const Radius.circular(4),
                       bottomRight: isUser ? const Radius.circular(4) : const Radius.circular(18),
                     ),
-                    boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 6, offset: const Offset(0, 2))],
+                    boxShadow: isUser
+                        ? ffTheme.shadowAccent
+                        : [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 6, offset: const Offset(0, 2))],
                   ),
                   child: Text(
                     msg.text,
@@ -540,7 +554,7 @@ class _ChatWidgetState extends State<ChatWidget> {
                   Icon(
                     msg.isRead ? Icons.done_all_rounded : Icons.done_rounded,
                     size: 14,
-                    color: msg.isRead ? ffTheme.primary : Colors.black38,
+                    color: msg.isRead ? ffTheme.brandAccent : Colors.black38,
                   ),
                 ],
               ],
@@ -563,8 +577,8 @@ class _ChatWidgetState extends State<ChatWidget> {
               width: 30,
               height: 30,
               margin: const EdgeInsetsDirectional.only(end: 8, bottom: 2),
-              decoration: BoxDecoration(color: ffTheme.secondary, shape: BoxShape.circle),
-              child: Center(child: Text('ד', style: GoogleFonts.rubik(fontSize: 13, fontWeight: FontWeight.w800, color: ffTheme.primary))),
+              decoration: BoxDecoration(color: ffTheme.brandAccentTint, shape: BoxShape.circle),
+              child: Center(child: Text('ד', style: GoogleFonts.rubik(fontSize: 13, fontWeight: FontWeight.w800, color: ffTheme.brandAccent))),
             ),
           ),
           Container(

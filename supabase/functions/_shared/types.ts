@@ -40,6 +40,7 @@ export type MeetingRow = {
   status?: string;              // pending | confirmed | no_rep | cancelled | expired | completed
   join_url?: string | null;
   zoom_meeting_id?: string | null;
+  gcal_event_id?: string | null;
   notes?: string | null;
   source?: string | null;
   notified_at?: string | null;
@@ -102,6 +103,8 @@ export type Cfg = {
   zoomClientId: string;
   zoomClientSecret: string;
   zoomHostEmail: string; // '' = use the token's own user (/users/me)
+  googleServiceAccount: string; // base64 of the service-account JSON ('' = off)
+  googleCalendarId: string;     // target calendar id ('' = off)
   allowedUserIds: number[]; // empty = anyone in the team chat may act
   src: Record<string, string>;
 };

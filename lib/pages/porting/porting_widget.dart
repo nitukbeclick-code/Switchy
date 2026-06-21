@@ -97,18 +97,18 @@ class _PortingWidgetState extends State<PortingWidget> {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: ffTheme.accent1,
+                color: ffTheme.brandAccentTint,
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: ffTheme.primary.withValues(alpha: 0.2)),
+                border: Border.all(color: ffTheme.brandAccent.withValues(alpha: 0.2)),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
-                      Icon(Icons.info_outline_rounded, color: ffTheme.primary, size: 18),
+                      Icon(Icons.info_outline_rounded, color: ffTheme.brandAccent, size: 18),
                       const SizedBox(width: 8),
-                      Text('כיצד עובד הניוד?', style: ffTheme.labelLarge.copyWith(color: ffTheme.primary)),
+                      Text('כיצד עובד הניוד?', style: ffTheme.labelLarge.copyWith(color: ffTheme.brandAccent)),
                     ],
                   ),
                   const SizedBox(height: 14),
@@ -124,16 +124,16 @@ class _PortingWidgetState extends State<PortingWidget> {
                             children: [
                               Container(
                                 width: 36, height: 36,
-                                decoration: BoxDecoration(color: ffTheme.primary.withValues(alpha: 0.12), shape: BoxShape.circle),
-                                child: Icon(item.$1, size: 17, color: ffTheme.primary),
+                                decoration: BoxDecoration(color: ffTheme.brandAccent.withValues(alpha: 0.14), shape: BoxShape.circle),
+                                child: Icon(item.$1, size: 17, color: ffTheme.brandAccent),
                               ),
                               const SizedBox(height: 5),
-                              Text(item.$2, style: ffTheme.labelSmall.copyWith(color: ffTheme.primary), textAlign: TextAlign.center),
+                              Text(item.$2, style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccent), textAlign: TextAlign.center),
                             ],
                           ),
                         ),
                         if (item != (Icons.check_circle_rounded, 'ניוד הושלם'))
-                          Expanded(child: Divider(color: ffTheme.primary.withValues(alpha: 0.25), thickness: 1.5)),
+                          Expanded(child: Divider(color: ffTheme.brandAccent.withValues(alpha: 0.25), thickness: 1.5)),
                       ],
                     ],
                   ),
@@ -192,19 +192,19 @@ class _PortingWidgetState extends State<PortingWidget> {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 14, vertical: 8),
                     decoration: BoxDecoration(
-                      color: selected ? ffTheme.primary : Colors.white,
+                      color: selected ? ffTheme.brandAccent : Colors.white,
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
                         color:
-                            selected ? ffTheme.primary : ffTheme.alternate,
+                            selected ? ffTheme.brandAccent : ffTheme.alternate,
                         width: selected ? 1.5 : 1,
                       ),
                       boxShadow: selected
                           ? [
                               BoxShadow(
-                                  color: ffTheme.primary.withValues(alpha: 0.2),
-                                  blurRadius: 8,
-                                  offset: const Offset(0, 2))
+                                  color: ffTheme.brandAccent.withValues(alpha: 0.28),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 3))
                             ]
                           : [],
                     ),
@@ -263,12 +263,12 @@ class _PortingWidgetState extends State<PortingWidget> {
                     height: 24,
                     decoration: BoxDecoration(
                       color: _poaAccepted
-                          ? ffTheme.primary
+                          ? ffTheme.brandAccent
                           : Colors.white,
                       borderRadius: BorderRadius.circular(6),
                       border: Border.all(
                           color: _poaAccepted
-                              ? ffTheme.primary
+                              ? ffTheme.brandAccent
                               : ffTheme.alternate,
                           width: 1.5),
                     ),
@@ -373,7 +373,7 @@ class _PortingWidgetState extends State<PortingWidget> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: ffTheme.primary, width: 1.5),
+          borderSide: BorderSide(color: ffTheme.brandAccent, width: 1.5),
         ),
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -402,11 +402,12 @@ class _SuccessState extends StatelessWidget {
                 width: 100,
                 height: 100,
                 decoration: BoxDecoration(
-                  color: ffTheme.secondary,
+                  color: ffTheme.brandAccent,
                   shape: BoxShape.circle,
+                  boxShadow: [BoxShadow(color: ffTheme.brandAccent.withValues(alpha: 0.45), blurRadius: 26, spreadRadius: 2)],
                 ),
-                child: Icon(Icons.check_rounded,
-                    size: 60, color: ffTheme.primary),
+                child: const Icon(Icons.check_rounded,
+                    size: 60, color: Colors.white),
               )
                   .animate()
                   .scale(

@@ -273,41 +273,61 @@ class _SaverBanner extends StatelessWidget {
     final shareText = isAbroad
         ? 'גיליתי שאפשר לחסוך ₪$perPackage לחבילה במעבר ל${match.plan.provider} — עם חוסך'
         : 'גיליתי שאפשר לחסוך ₪${match.annualSaving} בשנה במעבר ל${match.plan.provider} — עם חוסך';
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: ffTheme.secondary,
+    // The headline saving is the page's hero VALUE moment — amber wash, amber
+    // figure, with a celebratory icon badge.
+    return Semantics(
+      button: true,
+      label: '$headline, מעבר ל${match.plan.provider}. הצג מסלול',
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
           borderRadius: BorderRadius.circular(16),
-        ),
-        child: Row(
-          children: [
-            Icon(Icons.celebration_outlined, size: 30, color: ffTheme.primaryDark),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(headline,
-                      style: GoogleFonts.rubik(
-                          fontSize: 17, fontWeight: FontWeight.w800, color: ffTheme.primaryDark)),
-                  const SizedBox(height: 2),
-                  Text('מעבר ל${match.plan.provider} · ${match.plan.plan}',
-                      style: GoogleFonts.assistant(
-                          fontSize: 13, fontWeight: FontWeight.w600, color: ffTheme.primaryDark),
-                      maxLines: 1, overflow: TextOverflow.ellipsis),
-                ],
-              ),
+          splashColor: ffTheme.saving.withValues(alpha: 0.12),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: ffTheme.saving.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: ffTheme.saving.withValues(alpha: 0.4)),
             ),
-            const SizedBox(width: 4),
-            IconButton(
-              tooltip: 'שתף',
-              icon: Icon(Icons.ios_share_rounded, size: 20, color: ffTheme.primaryDark),
-              onPressed: () => Share.share(shareText),
+            child: Row(
+              children: [
+                Container(
+                  width: 46,
+                  height: 46,
+                  decoration: BoxDecoration(
+                    color: ffTheme.saving.withValues(alpha: 0.18),
+                    borderRadius: BorderRadius.circular(13),
+                  ),
+                  child: Icon(Icons.celebration_rounded, size: 24, color: ffTheme.savingDark),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(headline,
+                          style: GoogleFonts.rubik(
+                              fontSize: 18, fontWeight: FontWeight.w800, color: ffTheme.savingDark)),
+                      const SizedBox(height: 2),
+                      Text('מעבר ל${match.plan.provider} · ${match.plan.plan}',
+                          style: ffTheme.bodySmall.copyWith(
+                              color: ffTheme.primaryText, fontWeight: FontWeight.w600),
+                          maxLines: 1, overflow: TextOverflow.ellipsis),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 4),
+                IconButton(
+                  tooltip: 'שתף',
+                  icon: Icon(Icons.ios_share_rounded, size: 20, color: ffTheme.savingDark),
+                  onPressed: () => Share.share(shareText),
+                ),
+                Icon(Icons.arrow_back_ios_rounded, size: 16, color: ffTheme.savingDark),
+              ],
             ),
-            Icon(Icons.arrow_back_ios_rounded, size: 16, color: ffTheme.primaryDark),
-          ],
+          ),
         ),
       ),
     );
@@ -460,17 +480,17 @@ class _AlternativeRow extends StatelessWidget {
                           color: ffTheme.primary, fontWeight: FontWeight.w700, fontSize: 10.5)),
                 ),
                 const SizedBox(width: 8),
-                // Saving vs current
+                // Saving vs current — VALUE chip in amber.
                 if (saving > 0)
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
-                      color: ffTheme.secondary,
+                      color: ffTheme.saving.withValues(alpha: 0.16),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(savingLabel,
                         style: GoogleFonts.rubik(
-                            fontSize: 10.5, fontWeight: FontWeight.w800, color: ffTheme.primaryDark)),
+                            fontSize: 10.5, fontWeight: FontWeight.w800, color: ffTheme.savingDark)),
                   )
                 else
                   Text(
@@ -505,14 +525,14 @@ class _ReminderCta extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: on ? ffTheme.success.withValues(alpha: 0.08) : Colors.white,
+        color: on ? ffTheme.primary.withValues(alpha: 0.07) : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: on ? ffTheme.success.withValues(alpha: 0.4) : ffTheme.alternate),
+        border: Border.all(color: on ? ffTheme.primary.withValues(alpha: 0.4) : ffTheme.alternate),
       ),
       child: on
           ? Row(
               children: [
-                Icon(Icons.check_circle_rounded, color: ffTheme.success, size: 24),
+                Icon(Icons.check_circle_rounded, color: ffTheme.primary, size: 24),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(

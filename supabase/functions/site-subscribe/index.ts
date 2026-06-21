@@ -63,13 +63,15 @@ function clientIp(req: Request): string {
   return "";
 }
 
-// Per-IP hourly cap by counting recent rows for this IP. Fail-OPEN on any
-// infra hiccup (missing creds / query error) — never block a real signup
-// because the counter read stumbled.
-async function rateLimited(ip: string): Promise<boolean> {
-  if (!ip) return false;
+// Per-IP hourly cap by counting recent rows for this IP. Tri-state:
+//   true  = limited (429), false = ok, null = DB error.
+// On a DB query error we FAIL-CLOSED (null → 503): this endpoint triggers a paid
+// Resend send, so a Supabase outage must not turn it into an unmetered mailer.
+// Only the "no IP" / "not configured" cases stay fail-open.
+async function rateLimited(ip: string): Promise<boolean | null> {
+  if (!ip) return false; // can't limit without an IP — fail-open
   const creds = serviceCreds();
-  if (!creds) return false;
+  if (!creds) return false; // not configured ⇒ fail open
   const since = new Date(Date.now() - 60 * 60_000).toISOString();
   try {
     const r = await fetch(
@@ -78,15 +80,17 @@ async function rateLimited(ip: string): Promise<boolean> {
     );
     if (!r.ok) {
       jlog({ at: "site-subscribe.rateLimited", ok: false, status: r.status });
-      return false; // fail open
+      return null; // query failed ⇒ fail CLOSED (caller returns 503)
     }
     const rows = await r.json().catch(() => []);
     return Array.isArray(rows) && rows.length >= PER_IP_HOURLY_LIMIT;
   } catch (e) {
     jlog({ at: "site-subscribe.rateLimited", ok: false, error: String(e) });
-    return false; // fail open
+    return null; // infra hiccup ⇒ fail CLOSED (caller returns 503)
   }
 }
+
+const FRIENDLY_BUSY = "שירות עמוס כרגע, נסו שוב בעוד רגע";
 
 // Insert the subscriber. Returns:
 //   "ok"        — inserted (or treated as already-subscribed on unique violation)
@@ -192,7 +196,9 @@ Deno.serve(async (req: Request) => {
   }
 
   const ip = clientIp(req);
-  if (await rateLimited(ip)) return json({ error: "בקשות רבות מדי, נסו שוב מאוחר יותר" }, 429);
+  const limited = await rateLimited(ip);
+  if (limited === null) return json({ error: FRIENDLY_BUSY }, 503);
+  if (limited) return json({ error: "בקשות רבות מדי, נסו שוב מאוחר יותר" }, 429);
 
   const result = await insertSubscriber(email, ip);
   if (result === "error") {

@@ -715,6 +715,7 @@ function jsonLd(c) {
 function comparisonTable(plans, catSlug) {
   if (!plans || plans.length < 2) return '';
   const spec = (p, ...keys) => { for (const k of keys) { const v = (p.specs || {})[k]; if (v) return esc(v); } return ''; };
+  const fee = (p, ...keys) => { for (const k of keys) { const v = (p.fees || {})[k]; if (v) return esc(v); } return ''; };
   const afterCell = (p) => (p.after && p.after > p.price)
     ? `<b class="cmp__jump">₪${p.afterExact != null ? p.afterExact : p.after}</b>`
     : `<span class="cmp__fixed">קבוע</span>`;
@@ -729,11 +730,11 @@ function comparisonTable(plans, catSlug) {
   const price = (p) => `<b>₪${priceText(p)}</b>`;
   let head, row;
   if (catSlug === 'internet') {
-    head = ['ספק', 'חבילה', 'מחיר מבצע', 'מחיר אחרי תקופה', 'מהירות', 'התקנה', 'מגדיל טווח', 'מידע נוסף'];
-    row = (p) => [prov(p), name(p), price(p), afterCell(p), spec(p, 'מהירות', 'גלישה') || '—', esc(p.setupFee || '') || spec(p, 'התקנה') || '—', esc(p.rangeExtender || '') || spec(p, 'מגדיל טווח') || '—', info(p)];
+    head = ['ספק', 'חבילה', 'מחיר מבצע', 'מחיר אחרי תקופה', 'מהירות', 'נתב', 'מגדיל טווח', 'התקנה', 'מידע נוסף'];
+    row = (p) => [prov(p), name(p), price(p), afterCell(p), spec(p, 'מהירות', 'גלישה') || '—', fee(p, 'נתב', 'ראוטר') || '—', fee(p, 'מגדיל טווח', 'מרחיב טווח') || '—', fee(p, 'התקנה', 'חיבור') || '—', info(p)];
   } else if (catSlug === 'tv' || catSlug === 'triple') {
-    head = ['ספק', 'חבילה', 'מחיר מבצע', 'מחיר אחרי תקופה', 'התקנה', 'מידע נוסף'];
-    row = (p) => [prov(p), name(p), price(p), afterCell(p), esc(p.setupFee || '') || spec(p, 'התקנה') || '—', info(p)];
+    head = ['ספק', 'חבילה', 'מחיר מבצע', 'מחיר אחרי תקופה', 'ממיר', 'נתב', 'התקנה', 'מידע נוסף'];
+    row = (p) => [prov(p), name(p), price(p), afterCell(p), fee(p, 'ממיר', 'ממירים') || '—', fee(p, 'נתב', 'ראוטר') || '—', fee(p, 'התקנה', 'חיבור') || '—', info(p)];
   } else if (catSlug === 'abroad') {
     head = ['ספק', 'חבילה', 'מחיר', 'נפח', 'תוקף', 'מידע נוסף'];
     row = (p) => [prov(p), name(p), price(p), spec(p, 'נתונים', 'נפח') || '—', spec(p, 'תוקף', 'ימים') || '—', info(p)];
@@ -743,7 +744,7 @@ function comparisonTable(plans, catSlug) {
       const sms = spec(p, 'SMS');
       const mins = [spec(p, 'דקות'), sms ? sms + ' SMS' : ''].filter(Boolean).join(' · ') || '—';
       const abroad = p.hasAbroad ? (spec(p, 'חו״ל', 'חו"ל') || '✓') : '—';
-      return [prov(p), name(p), price(p), afterCell(p), esc(p.setupFee || '') || 'אין', spec(p, 'נתונים', 'נפח') || '—', mins, abroad, info(p)];
+      return [prov(p), name(p), price(p), afterCell(p), fee(p, 'דמי חיבור') || 'אין', spec(p, 'נתונים', 'נפח') || '—', mins, abroad, info(p)];
     };
   }
   // Highlight the cheapest *regular* plan (plans are price-sorted, so that's the

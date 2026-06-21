@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 
@@ -96,6 +98,10 @@ class AppButton extends StatefulWidget {
 class _AppButtonState extends State<AppButton> {
   bool _loading = false;
   bool _pressed = false;
+  // Drives the brief overshoot on release: held → 0.98, release → 1.02, then
+  // settles to 1.0 — a tactile "spring-back" instead of a flat snap.
+  bool _overshoot = false;
+  Timer? _overshootTimer;
 
   Future<void> _handleTap() async {
     if (_loading) return;
@@ -108,7 +114,22 @@ class _AppButtonState extends State<AppButton> {
   }
 
   void _setPressed(bool v) {
-    if (_pressed != v) setState(() => _pressed = v);
+    if (_pressed == v) return;
+    setState(() => _pressed = v);
+    if (!v) {
+      // On release, briefly overshoot above rest before settling back to 1.0.
+      _overshootTimer?.cancel();
+      setState(() => _overshoot = true);
+      _overshootTimer = Timer(const Duration(milliseconds: 120), () {
+        if (mounted) setState(() => _overshoot = false);
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _overshootTimer?.cancel();
+    super.dispose();
   }
 
   @override
@@ -132,7 +153,12 @@ class _AppButtonState extends State<AppButton> {
     final useGradient = isPrimaryCta;
 
     final button = ElevatedButton(
-      onPressed: (_loading || !widget.enabled) ? null : _handleTap,
+      onPressed: (_loading || !widget.enabled)
+          ? null
+          : () {
+              HapticFeedback.selectionClick();
+              _handleTap();
+            },
       style: ElevatedButton.styleFrom(
         backgroundColor: useGradient
             ? Colors.transparent
@@ -211,12 +237,16 @@ class _AppButtonState extends State<AppButton> {
     // ElevatedButton's tap, and it goes flat under reduced-motion.
     final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
     if (reduceMotion || _loading || !widget.enabled) return sized;
+    // Held → 0.98 (pressScale), released → a brief 1.02 overshoot, then 1.0.
+    final scale = _pressed
+        ? ffTheme.pressScale
+        : (_overshoot ? 1.02 : 1.0);
     return Listener(
       onPointerDown: (_) => _setPressed(true),
       onPointerUp: (_) => _setPressed(false),
       onPointerCancel: (_) => _setPressed(false),
       child: AnimatedScale(
-        scale: _pressed ? ffTheme.pressScale : 1.0,
+        scale: scale,
         duration: _pressed ? ffTheme.motionFast : ffTheme.motionMedium,
         curve: _pressed ? ffTheme.easeOut : ffTheme.spring,
         child: sized,

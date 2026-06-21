@@ -17,12 +17,32 @@ class DigitalAgentFab extends StatefulWidget {
   State<DigitalAgentFab> createState() => _DigitalAgentFabState();
 }
 
-class _DigitalAgentFabState extends State<DigitalAgentFab> {
+class _DigitalAgentFabState extends State<DigitalAgentFab>
+    with SingleTickerProviderStateMixin {
+  // A gentle pulse on the unread badge to draw the eye to new messages.
+  late final AnimationController _pulse = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1100),
+  );
+
+  @override
+  void dispose() {
+    _pulse.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = AppTheme.of(context);
 
     final unread = widget.unreadCount;
+    final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    // Run the pulse only while there's something unread to call attention to.
+    if (unread > 0 && !reduceMotion) {
+      if (!_pulse.isAnimating) _pulse.repeat(reverse: true);
+    } else if (_pulse.isAnimating) {
+      _pulse.stop();
+    }
     return Align(
       alignment: Alignment.centerLeft,
       child: Padding(
@@ -54,25 +74,31 @@ class _DigitalAgentFabState extends State<DigitalAgentFab> {
                   Positioned(
                     top: 0,
                     right: 0,
-                    child: Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        color: theme.saving, // Amber VALUE accent for the badge
-                        shape: BoxShape.circle,
-                        // A ring so the badge stays legible on the green FAB.
-                        border: Border.all(color: Colors.white, width: 1.5),
+                    child: ScaleTransition(
+                      // 1.0 → ~1.18 gentle pulse; rests at 1.0 when paused.
+                      scale: Tween(begin: 1.0, end: 1.18).animate(
+                        CurvedAnimation(parent: _pulse, curve: Curves.easeInOut),
                       ),
-                      constraints:
-                          const BoxConstraints(minWidth: 18, minHeight: 18),
-                      child: Text(
-                        unread > 9 ? '9+' : '$unread',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          height: 1.0,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: theme.saving, // Amber VALUE accent for the badge
+                          shape: BoxShape.circle,
+                          // A ring so the badge stays legible on the green FAB.
+                          border: Border.all(color: Colors.white, width: 1.5),
                         ),
-                        textAlign: TextAlign.center,
+                        constraints:
+                            const BoxConstraints(minWidth: 18, minHeight: 18),
+                        child: Text(
+                          unread > 9 ? '9+' : '$unread',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            height: 1.0,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
                       ),
                     ),
                   ),

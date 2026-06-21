@@ -88,7 +88,22 @@ const ICONS = {
   bell: '<path d="M6 9a6 6 0 0 1 12 0c0 6 2 7 2 7H4s2-1 2-7z"/><path d="M10 20a2 2 0 0 0 4 0"/>',
   bulb: '<path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.5 10.9c.5.4.8 1 .9 1.6l.1.5h5l.1-.5c.1-.6.4-1.2.9-1.6A6 6 0 0 0 12 3z"/>',
   info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>',
+  star: '<path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 17l-5.2 2.6 1-5.8L3.5 9.7l5.9-.9z"/>',
+  scale: '<path d="M12 4v16M7 20h10M5 8h14M5 8l-2.5 6a3 3 0 0 0 5 0L5 8zm14 0l-2.5 6a3 3 0 0 0 5 0L19 8z"/><path d="M12 4 5 8M12 4l7 4"/>',
+  building: '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 7h.01M15 7h.01M9 11h.01M15 11h.01M9 15h.01M15 15h.01M10 21v-3h4v3"/>',
+  book: '<path d="M5 4.5A2.5 2.5 0 0 1 7.5 2H19v17H7.5A2.5 2.5 0 0 0 5 21.5z"/><path d="M5 19.5A2.5 2.5 0 0 1 7.5 17H19"/>',
+  sun: '<circle cx="12" cy="12" r="4.2"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M19.1 4.9l-1.8 1.8M6.7 17.3l-1.8 1.8"/>',
+  moon: '<path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/>',
+  mail: '<rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m4 7 8 6 8-6"/>',
+  whatsapp: '<path d="M4 20l1.5-4.2A7.5 7.5 0 1 1 9 19l-5 1z"/><path d="M9 9.2c.2-.6.4-.6.7-.6h.5c.2 0 .4 0 .6.5l.6 1.4c.1.2 0 .4-.1.5l-.4.5c-.1.1-.2.3-.1.5.3.6 1.2 1.6 2 1.9.2.1.4.1.5-.1l.4-.5c.2-.2.4-.2.5-.1l1.3.7c.3.2.3.3.3.5 0 .5-.6 1.2-1.2 1.3-.5.1-1.1.1-2.6-.6-2.1-1-3.4-3.1-3.5-3.3-.1-.2-.6-1.1-.6-2 0-.9.5-1.3.7-1.4z"/>',
+  instagram: '<rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17" cy="7" r="1.2" fill="currentColor" stroke="none"/>',
+  facebook: '<path d="M14 8h2.5V4.5H14a3.5 3.5 0 0 0-3.5 3.5v2.5H8V14h2.5v6h3.5v-6h2.5l.5-3.5H14V8.2c0-.2.2-.2.2-.2z"/>',
 };
+// Brand glyph — a compact green-forward "signal/savings" mark used by the nav +
+// footer brandmark (replaces the old ✦ text glyph). currentColor + small viewBox
+// so it scales with font-size; the rising-bars motif echoes the savings story.
+const brandMark = (cls = 'brand__mark') =>
+  `<svg class="${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19V13M11 19V8M17 19v-9"/><path d="M4 9.5 10 5l4 2.5 6-4.5"/><circle cx="20" cy="3" r="1.4" fill="currentColor" stroke="none"/></svg>`;
 const EMOJI_TO_ICON = {
   '📱': 'phone', '📲': 'phone', '📞': 'phone', '🌐': 'globe', '🌍': 'globe', '⚽': 'globe',
   '📺': 'tv', '🎬': 'tv', '🎥': 'video', '🏠': 'home', '✈': 'plane', '🧠': 'cpu', '⏰': 'clock',
@@ -97,7 +112,8 @@ const EMOJI_TO_ICON = {
   '🔎': 'search', '🔍': 'search', '✅': 'check', '✨': 'sparkle', '🧾': 'receipt', '🧮': 'calculator',
   '🤝': 'check', '📡': 'signal', '📶': 'signal', '👥': 'people', '🎧': 'headset', '🛟': 'headset',
   '⚡': 'bolt', '🔌': 'bolt', '🚀': 'rocket', '📍': 'pin', '📝': 'note', '📋': 'note', '🔔': 'bell',
-  '💡': 'bulb', '🛈': 'info', 'ℹ': 'info',
+  '💡': 'bulb', '🛈': 'info', 'ℹ': 'info', '⭐': 'star', '🌟': 'star', '⚖': 'scale', '🏢': 'building',
+  '📚': 'book', '📖': 'book', '☀': 'sun', '🌙': 'moon',
 };
 const svgIcon = (name) =>
   `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name] || ICONS.sparkle}</svg>`;
@@ -113,6 +129,28 @@ const iconFor = (token) => {
   const name = ICONS[t] ? t : EMOJI_TO_ICON[t];
   return svgIcon(name || 'sparkle');
 };
+
+// Decorative inline-SVG network/signal motif — single-color (currentColor),
+// purely ornamental (aria-hidden). Layered behind hero content via .hero-decor;
+// the CSS agent owns opacity/position/parallax. Deterministic, no randomness.
+const heroDecor = () =>
+  `<svg class="hero-decor__svg" viewBox="0 0 600 400" fill="none" stroke="currentColor" aria-hidden="true" preserveAspectRatio="xMidYMid slice">
+        <g class="hero-decor__net" stroke-width="1.1" opacity="0.5">
+          <path d="M60 320 L180 200 L320 260 L440 130 L560 190"/>
+          <path d="M60 120 L200 80 L340 150 L470 70 L560 110"/>
+          <path d="M180 200 L200 80M320 260 L340 150M440 130 L470 70"/>
+        </g>
+        <g class="hero-decor__nodes" fill="currentColor" stroke="none">
+          <circle cx="60" cy="320" r="3.5"/><circle cx="180" cy="200" r="4"/><circle cx="320" cy="260" r="3.5"/>
+          <circle cx="440" cy="130" r="4"/><circle cx="560" cy="190" r="3.5"/><circle cx="200" cy="80" r="3.5"/>
+          <circle cx="340" cy="150" r="3"/><circle cx="470" cy="70" r="3.5"/>
+        </g>
+        <g class="hero-decor__rings" stroke-width="1.4" fill="none" opacity="0.6">
+          <path d="M470 70 a18 18 0 0 1 22 22" stroke-linecap="round"/>
+          <path d="M470 70 a30 30 0 0 1 36 36" stroke-linecap="round" opacity="0.6"/>
+          <path d="M180 200 a16 16 0 0 0-20 20" stroke-linecap="round"/>
+        </g>
+      </svg>`;
 
 const categories = [
   {
@@ -362,7 +400,7 @@ function planCardHtml(p, best) {
         <div class="plan__bottom"><div class="plan__price"><b>₪${priceText(p)}</b> <span>${unit}</span>${after}</div></div>
         <div class="plan__actions">
           <a class="plan__cta" target="_blank" rel="noopener" href="${esc(waHref)}" aria-label="${esc(`מעוניין/ת ב${p.provider} ${p.plan} — פנייה בוואטסאפ`)}">${iconFor('💬')} מעוניין/ת בוואטסאפ ←</a>
-          <a class="plan__compare" href="${compareHref}" title="השוו מסלול זה" aria-label="${esc(`השוו את ${p.provider} ${p.plan}`)}"><span aria-hidden="true">⚖️</span></a>
+          <a class="plan__compare" href="${compareHref}" title="השוו מסלול זה" aria-label="${esc(`השוו את ${p.provider} ${p.plan}`)}">${svgIcon('scale')}</a>
         </div>
       </article>`;
 }
@@ -409,7 +447,7 @@ const navHtml = (ctaHref) => `  <a class="skip" href="#main">דלג לתוכן</
   <header class="nav" id="nav">
     <div class="container nav__inner">
       <a class="brand" href="index.html" aria-label="חוסך — דף הבית">
-        <span class="brand__mark" aria-hidden="true">✦</span><span class="brand__name">חוסך</span>
+        ${brandMark()}<span class="brand__name">חוסך</span>
       </a>
       <nav class="nav__links" aria-label="ניווט ראשי">
         <a href="plans.html">כל החבילות</a>
@@ -426,6 +464,9 @@ ${megaMenuColumns()}
         </div>
         <a href="index.html#calculator">מחשבון</a>
       </nav>
+      <button class="theme-toggle" id="themeToggle" type="button" aria-label="מעבר בין מצב בהיר וכהה" aria-pressed="false">
+        <span class="theme-toggle__sun" aria-hidden="true">${svgIcon('sun')}</span><span class="theme-toggle__moon" aria-hidden="true">${svgIcon('moon')}</span>
+      </button>
       <a class="btn btn--primary nav__cta" href="${ctaHref}">השוו עכשיו</a>
       <button class="nav__toggle" id="navToggle" aria-label="פתיחת תפריט" aria-expanded="false" aria-controls="mobileMenu"><span></span><span></span><span></span></button>
     </div>
@@ -443,11 +484,24 @@ ${mobileGuideLinks()}
     </div>
   </header>`;
 
+// Footer year is computed at build time (Node Date) so the copyright is correct
+// even with JS disabled; #year keeps the runtime hook for script.js to refresh
+// on a stale cached page, but it's pre-filled here.
+const BUILD_YEAR = new Date().getFullYear();
+// Social links — each an icon-only control with an accessible label. Real
+// channels only (WhatsApp + email today); kept in one place so footer markup
+// stays declarative.
+const FOOTER_SOCIAL = [
+  ['https://wa.me/972505037537', 'whatsapp', 'וואטסאפ', true],
+  ['mailto:hello@chosech.co.il', 'mail', 'אימייל', false],
+];
+const footerSocial = FOOTER_SOCIAL.map(([href, icon, label, ext]) =>
+  `<a class="footer__social" href="${href}"${ext ? ' target="_blank" rel="noopener"' : ''} aria-label="${esc(label)}">${svgIcon(icon)}</a>`).join('');
 const footer = `  <footer class="footer">
     <div class="container footer__inner">
       <div class="footer__brand">
-        <a class="brand brand--light" href="index.html"><span class="brand__mark" aria-hidden="true">✦</span><span class="brand__name">חוסך</span></a>
-        <p>השוואת מחירי תקשורת חכמה. משווים, חוסכים, עוברים — בלי כאב ראש.</p>
+        <a class="brand brand--light" href="index.html" aria-label="חוסך — דף הבית">${brandMark()}<span class="brand__name">חוסך</span></a>
+        <p class="footer__tagline">השוואת מחירי תקשורת חכמה. משווים, חוסכים, עוברים — בלי כאב ראש.</p>
         <form class="subscribe" id="subscribeForm" novalidate>
           <label class="subscribe__label" for="subscribeEmail">קבלו עדכוני מחיר ומבצעים</label>
           <div class="subscribe__row">
@@ -457,6 +511,7 @@ const footer = `  <footer class="footer">
           <label class="subscribe__consent" for="subscribeConsent"><input type="checkbox" id="subscribeConsent" name="consent" required /> אני מאשר/ת קבלת עדכוני מחיר ומבצעים במייל</label>
           <p class="subscribe__note" id="subscribeNote" role="status" aria-live="polite"></p>
         </form>
+        <div class="footer__socials" aria-label="ערוצי קשר">${footerSocial}</div>
       </div>
       <nav class="footer__links footer__col" aria-label="קטגוריות">
         <h4>קטגוריות</h4>
@@ -477,7 +532,8 @@ const footer = `  <footer class="footer">
         <a href="mailto:hello@chosech.co.il">hello@chosech.co.il</a>
       </nav>
     </div>
-    <div class="container footer__bottom"><span>© <span id="year"></span> חוסך · כל הזכויות שמורות</span><span>נבנה באהבה בישראל</span></div>
+    <div class="footer__divider" aria-hidden="true"></div>
+    <div class="container footer__bottom"><span>© <span id="year">${BUILD_YEAR}</span> חוסך · כל הזכויות שמורות</span><span class="footer__made">נבנה באהבה בישראל</span></div>
   </footer>
   <a class="wa-fab" href="https://wa.me/972505037537?text=%D7%94%D7%99%D7%99%2C%20%D7%90%D7%A9%D7%9E%D7%97%20%D7%9C%D7%94%D7%A9%D7%95%D7%95%D7%AA%20%D7%9E%D7%A1%D7%9C%D7%95%D7%9C%D7%99%D7%9D" target="_blank" rel="noopener" aria-label="דברו איתנו בוואטסאפ"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" width="26" height="26"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.885-9.885 9.885M20.52 3.449C18.24 1.245 15.24 0 12.045 0 5.463 0 .104 5.359.101 11.892c0 2.096.549 4.142 1.595 5.945L0 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.582 0 11.943-5.359 11.945-11.893a11.821 11.821 0 00-3.418-8.452z"/></svg></a>`;
 
@@ -655,7 +711,7 @@ function page(c) {
     const avg = Math.round(monthly.reduce((s, p) => s + p.price, 0) / monthly.length);
     const maxSave = (avg - cheapest) * 12;
     if (maxSave < 100) return '';
-    return `<p class="hero__social"><strong>${monthly.length} מסלולים</strong> · החל מ-₪${cheapest}/חודש · חסכו עד <strong>₪${maxSave.toLocaleString()}</strong> בשנה לעומת ממוצע קטלוג (₪${avg})</p>`;
+    return `<p class="hero__social"><strong><span data-count-to="${monthly.length}">${monthly.length}</span> מסלולים</strong> · החל מ-₪${cheapest}/חודש · חסכו עד <strong>₪<span data-count-to="${maxSave}" data-count-sep="1">${maxSave.toLocaleString()}</span></strong> בשנה לעומת ממוצע קטלוג (₪${avg})</p>`;
   })();
   const cols = (typeof builtCollections !== 'undefined' ? builtCollections : []).filter((col) => col.catSlug === c.slug);
   const colsStrip = cols.length ? `
@@ -677,6 +733,7 @@ ${head(c.title, c.desc, url, jsonLd(c), false, 'website')}
 ${nav}
   <main id="main">
     <section class="lead-hero lead-hero--split">
+      <div class="hero-decor" aria-hidden="true" data-parallax="0.18">${heroDecor()}</div>
       <div class="container lead-hero__grid">
         <div class="lead-hero__text">
           <p class="crumbs"><a href="index.html">דף הבית</a> ← ${esc(c.name)}</p>
@@ -1005,6 +1062,9 @@ function head(title, desc, url, extraJsonLd, noindex, ogType = 'article') {
   return `<head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />${noindex ? '\n  <base href="/" />' : ''}
+  <meta name="color-scheme" content="light dark" />
+  <!-- Theme guard: set data-theme before first paint (saved choice or system) so dark mode never flashes. -->
+  <script>try{var t=localStorage.getItem('chosech-theme');document.documentElement.setAttribute('data-theme',(t==='light'||t==='dark')?t:(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light'));}catch(e){}</script>
   <title>${esc(title)}</title>
   <meta name="description" content="${esc(desc)}" />
   <meta name="robots" content="${noindex ? 'noindex, follow' : 'index, follow, max-image-preview:large, max-snippet:-1'}" />
@@ -1371,11 +1431,11 @@ ${navNoCta}
       <div class="container">
         <header class="section__head reveal" style="text-align:center"><span class="eyebrow">ניווט מהיר</span><h2>לאן רוצים לעבור?</h2></header>
         <nav style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px;max-width:800px;margin:0 auto" aria-label="ניווט מהיר">
-          ${categories.map((c) => `<a href="${c.slug}.html" class="glass" style="display:block;padding:18px 20px;border-radius:14px;border:1px solid #E4E8EC;text-decoration:none;color:#0B0F14;font-weight:700"><span style="font-size:1.5rem" aria-hidden="true">${c.icon}</span><br>${esc(c.name)}</a>`).join('')}
-          <a href="compare.html" class="glass" style="display:block;padding:18px 20px;border-radius:14px;border:1px solid #E4E8EC;text-decoration:none;color:#0B0F14;font-weight:700"><span style="font-size:1.5rem" aria-hidden="true">⚖️</span><br>השוואת מסלולים</a>
-          <a href="providers.html" class="glass" style="display:block;padding:18px 20px;border-radius:14px;border:1px solid #E4E8EC;text-decoration:none;color:#0B0F14;font-weight:700"><span style="font-size:1.5rem" aria-hidden="true">🏢</span><br>כל הספקים</a>
-          <a href="guides.html" class="glass" style="display:block;padding:18px 20px;border-radius:14px;border:1px solid #E4E8EC;text-decoration:none;color:#0B0F14;font-weight:700"><span style="font-size:1.5rem" aria-hidden="true">📚</span><br>מדריכים</a>
-          <a href="app.html" class="glass" style="display:block;padding:18px 20px;border-radius:14px;border:1px solid #E4E8EC;text-decoration:none;color:#0B0F14;font-weight:700"><span style="font-size:1.5rem" aria-hidden="true">📱</span><br>האפליקציה</a>
+          ${categories.map((c) => `<a href="${c.slug}.html" class="glass quick-nav__card"><span class="quick-nav__ico" aria-hidden="true">${iconFor(c.icon)}</span><br>${esc(c.name)}</a>`).join('')}
+          <a href="compare.html" class="glass quick-nav__card"><span class="quick-nav__ico" aria-hidden="true">${svgIcon('scale')}</span><br>השוואת מסלולים</a>
+          <a href="providers.html" class="glass quick-nav__card"><span class="quick-nav__ico" aria-hidden="true">${svgIcon('building')}</span><br>כל הספקים</a>
+          <a href="guides.html" class="glass quick-nav__card"><span class="quick-nav__ico" aria-hidden="true">${svgIcon('book')}</span><br>מדריכים</a>
+          <a href="app.html" class="glass quick-nav__card"><span class="quick-nav__ico" aria-hidden="true">${svgIcon('phone')}</span><br>האפליקציה</a>
         </nav>
       </div>
     </section>
@@ -1426,10 +1486,11 @@ ${head('כל החבילות — מחירון מלא של כל חברות התק�
 ${nav}
   <main id="main">
     <section class="lead-hero">
+      <div class="hero-decor" aria-hidden="true" data-parallax="0.18">${heroDecor()}</div>
       <div class="container">
         <p class="crumbs"><a href="index.html">דף הבית</a> ← כל החבילות</p>
         <h1>כל החבילות — <span class="hl">מחירון מלא</span></h1>
-        <p>${catalogue.plans.length} מסלולים מכל חברות התקשורת, ממוינים מהזול ביותר. סננו לפי קטגוריה או חפשו ספק/מסלול/תכונה.</p>
+        <p><span data-count-to="${catalogue.plans.length}">${catalogue.plans.length}</span> מסלולים מכל חברות התקשורת, ממוינים מהזול ביותר. סננו לפי קטגוריה או חפשו ספק/מסלול/תכונה.</p>
       </div>
     </section>
     <section class="section">
@@ -1522,6 +1583,7 @@ ${head(`כל המסלולים של ${name} — מחירים והשוואה | ח�
 ${nav}
   <main id="main">
     <section class="lead-hero">
+      <div class="hero-decor" aria-hidden="true" data-parallax="0.18">${heroDecor()}</div>
       <div class="container">
         <p class="crumbs"><a href="index.html">דף הבית</a> ← <a href="plans.html">כל החבילות</a> ← ${esc(name)}</p>
         <div style="margin-bottom:14px">${providerLogo(name, 64)}</div>
@@ -1612,6 +1674,7 @@ ${head('כל הספקים — מסלולים ומחירים לפי חברה | ח
 ${navNoCta}
   <main id="main">
     <section class="lead-hero">
+      <div class="hero-decor" aria-hidden="true" data-parallax="0.18">${heroDecor()}</div>
       <div class="container">
         <p class="crumbs"><a href="index.html">דף הבית</a> ← ספקים</p>
         <h1>כל ה<span class="hl">ספקים</span></h1>
@@ -1668,6 +1731,7 @@ ${head('השוואת מסלולים צד לצד | חוסך', 'בחרו עד 3 מ
 ${nav}
   <main id="main">
     <section class="lead-hero">
+      <div class="hero-decor" aria-hidden="true" data-parallax="0.18">${heroDecor()}</div>
       <div class="container">
         <p class="crumbs"><a href="index.html">דף הבית</a> ← השוואה</p>
         <h1>השוואת מסלולים <span class="hl">צד לצד</span></h1>
@@ -1760,7 +1824,12 @@ const APP_GROUPS = [
 ];
 
 // AI advisor preview — a short scripted exchange + quick-start chips.
-const AI_CHIPS = ['✨ מה הכי משתלם לי?', '📱 סלולר הכי זול', '🌐 אינטרנט 1000Mb', '✅ ללא התחייבות', '✈️ חבילת חו״ל', '💰 פחות מ-₪50'];
+// Quick-start chips for the AI advisor preview — [icon, label]. The icon is an
+// inline SVG (not emoji); the label is what gets sent as the question text.
+const AI_CHIPS = [
+  ['✨', 'מה הכי משתלם לי?'], ['📱', 'סלולר הכי זול'], ['🌐', 'אינטרנט 1000Mb'],
+  ['✅', 'ללא התחייבות'], ['✈️', 'חבילת חו״ל'], ['💰', 'פחות מ-₪50'],
+];
 
 function appPage() {
   const url = `${SITE}/app.html`;
@@ -1770,7 +1839,7 @@ function appPage() {
     // <section> landmark labelled via aria (not a heading element) so the page's
     // h1→h2→h3 hierarchy stays intact while each feature group is still announced.
     return `      <section class="app-group" aria-label="${esc(gTitle)}">
-        <header class="section__head reveal"><span class="eyebrow">${gIcon} ${esc(gTitle)}</span></header>
+        <header class="section__head reveal"><span class="eyebrow eyebrow--ico">${iconFor(gIcon)} ${esc(gTitle)}</span></header>
         <div class="features">
 ${cards}
         </div>
@@ -1782,7 +1851,8 @@ ${cards}
   const channels = ['המלצות', 'סלולר', 'אינטרנט', 'טלוויזיה', 'חו״ל', 'עזרה בניתוק'];
   const chanChips = channels.map((c) => `<span class="chip">${esc(c)}</span>`).join('\n          ');
 
-  const aiChips = AI_CHIPS.map((c) => `<span class="ai-chip">${esc(c)}</span>`).join('');
+  const aiChips = AI_CHIPS.map(([ico, label]) =>
+    `<span class="ai-chip" data-q="${esc(label)}"><span class="ai-chip__ico" aria-hidden="true">${iconFor(ico)}</span><span class="ai-chip__txt">${esc(label)}</span></span>`).join('');
 
   const appJsonLd = jsonForScript({ '@context': 'https://schema.org', '@graph': [
     { '@type': 'BreadcrumbList', itemListElement: [
@@ -1805,6 +1875,7 @@ ${head('האפליקציה של חוסך — כל היכולות | חוסך', '�
 ${nav}
   <main id="main">
     <section class="lead-hero">
+      <div class="hero-decor" aria-hidden="true" data-parallax="0.18">${heroDecor()}</div>
       <div class="container">
         <p class="crumbs"><a href="index.html">דף הבית</a> ← האפליקציה</p>
         <h1>האפליקציה ש<span class="hl">עושה את העבודה</span></h1>
@@ -1813,7 +1884,7 @@ ${nav}
           <a class="btn btn--primary btn--lg" href="#cta">קבלו גישה מוקדמת</a>
           <a class="btn btn--ghost btn--lg" href="plans.html">או דפדפו במסלולים</a>
         </div>
-        <p class="hero__social"><span aria-hidden="true">👥</span> <strong>124 אנשים</strong> כבר ברשימת ההמתנה</p>
+        <p class="hero__social"><span class="hero__social-ico" aria-hidden="true">${svgIcon('people')}</span> <strong><span data-count-to="124">124</span> אנשים</strong> כבר ברשימת ההמתנה</p>
       </div>
     </section>
 
@@ -1837,7 +1908,7 @@ ${groups}
 
     <section class="section section--alt" id="community">
       <div class="container">
-        <header class="section__head reveal"><span class="eyebrow">💬 קהילת חוסך</span><h2>הצ׳אט הקהילתי — חוכמת ההמון</h2><p>צ׳אט קהילתי עם ערוץ לכל נושא: שואלים, מגיבים, משתפים תמונה או הקלטה — ולומדים מאנשים שכבר עברו.</p></header>
+        <header class="section__head reveal"><span class="eyebrow eyebrow--ico">${iconFor('💬')} קהילת חוסך</span><h2>הצ׳אט הקהילתי — חוכמת ההמון</h2><p>צ׳אט קהילתי עם ערוץ לכל נושא: שואלים, מגיבים, משתפים תמונה או הקלטה — ולומדים מאנשים שכבר עברו.</p></header>
         <div class="cta__inner reveal" style="text-align:center">
           <div class="providers__row" aria-label="ערוצי הקהילה">
           ${chanChips}
@@ -1852,7 +1923,7 @@ ${groups}
 
     <section class="section">
       <div class="container">
-        <header class="section__head reveal"><span class="eyebrow">🤖 חוסך AI</span><h2>יועץ התקשורת החכם שלכם</h2><p>שואלים בשפה חופשית — מקבלים המלצה מנומקת עם חיסכון שנתי.</p></header>
+        <header class="section__head reveal"><span class="eyebrow eyebrow--ico">${iconFor('🤖')} חוסך AI</span><h2>יועץ התקשורת החכם שלכם</h2><p>שואלים בשפה חופשית — מקבלים המלצה מנומקת עם חיסכון שנתי.</p></header>
         <div class="ai-demo reveal">
           <div class="ai-chat" id="aiChat">
             <div class="ai-bubble ai-bubble--bot">היי! אני חוסך AI — שאלו אותי על מסלולי סלולר, אינטרנט, טלוויזיה או חו״ל, ואני אענה לפי הנתונים האמיתיים שלנו.</div>
@@ -2071,6 +2142,7 @@ ${head(col.title, col.desc, url, extraJsonLd, false, 'website')}
 ${nav}
   <main id="main">
     <section class="lead-hero">
+      <div class="hero-decor" aria-hidden="true" data-parallax="0.18">${heroDecor()}</div>
       <div class="container">
         <p class="crumbs"><a href="index.html">דף הבית</a> ← <a href="plans.html">כל החבילות</a> ← ${esc(col.h1)}</p>
         <span class="pill">${esc(col.eyebrow)} · השוואה חינם · בלי התחייבות</span>
@@ -2152,6 +2224,7 @@ ${head(title, desc, url, jsonLd, false, 'website')}
 ${navNoCta}
   <main id="main">
     <section class="lead-hero">
+      <div class="hero-decor" aria-hidden="true" data-parallax="0.18">${heroDecor()}</div>
       <div class="container">
         <p class="crumbs"><a href="index.html">דף הבית</a> ← קהילה</p>
         <span class="pill pill--ico">${iconFor('💬')} חוכמת ההמון · ניסיון אמיתי</span>
@@ -2184,7 +2257,8 @@ ${navNoCta}
 
     <section class="section section--alt" id="ratings">
       <div class="container">
-        <header class="section__head reveal"><span class="eyebrow">דירוגי לקוחות</span><h2>דירוגי ספקים — מהקהילה</h2><p>ממוצע כוכבים וביקורות אמיתיות לכל ספק. נטען חי ממסד הנתונים של חוסך.</p></header>
+        <header class="section__head reveal"><span class="eyebrow eyebrow--ico">${svgIcon('star')} דירוגי לקוחות</span><h2>דירוגי ספקים — מהקהילה</h2><p>ממוצע כוכבים וביקורות אמיתיות לכל ספק. נטען חי ממסד הנתונים של חוסך.</p></header>
+        <div id="ratingsChart" class="ratings-chart" data-chart="ratings" aria-hidden="true"></div>
         <div id="ratingsSummary" class="ratings" aria-live="polite" aria-busy="true">
           <p class="booking__note">טוען דירוגים…</p>
         </div>
@@ -2245,6 +2319,7 @@ ${head(title, desc, url, jsonLd, false, 'website')}
 ${navNoCta}
   <main id="main">
     <section class="lead-hero">
+      <div class="hero-decor" aria-hidden="true" data-parallax="0.18">${heroDecor()}</div>
       <div class="container">
         <p class="crumbs"><a href="index.html">דף הבית</a> ← פגישת ייעוץ</p>
         <span class="pill pill--ico">${iconFor('🎥')} פגישת Zoom · חינם · ללא התחייבות</span>
@@ -2361,6 +2436,7 @@ ${head(title, desc, url, extraJsonLd, false, 'website')}
 ${nav}
   <main id="main">
     <section class="lead-hero">
+      <div class="hero-decor" aria-hidden="true" data-parallax="0.18">${heroDecor()}</div>
       <div class="container">
         <p class="crumbs"><a href="index.html">דף הבית</a> ← <a href="${c.slug}.html">${esc(c.name)}</a> ← מחשבון חיסכון</p>
         <span class="pill pill--ico">${svgIcon('calculator')} מחשבון חינמי · בלי התחייבות</span>
@@ -2389,6 +2465,7 @@ ${nav}
             <button id="calcBtn" class="btn btn--primary" type="button">חשבו חיסכון</button>
           </div>
           <p id="calcOut" role="status" aria-live="polite" style="display:none;margin:8px 0 0;padding:14px 16px;border-radius:12px;background:#F0F2F4;color:#0B0F14"></p>
+          <div id="calcChart" class="calc-chart" data-chart="savings" hidden></div>
           <p style="margin:12px 0 0;font-size:.85rem;color:#6b7280">* הערכה בלבד — החיסכון בפועל תלוי במסלול שתבחרו ובתנאים. מומלץ לאמת מול הספק.</p>
         </div>
         <div style="text-align:center;margin-top:22px">

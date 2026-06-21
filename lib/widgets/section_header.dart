@@ -54,13 +54,33 @@ class SectionHeader extends StatelessWidget {
               child: Padding(
                 // A small hit-padding so the inline link is comfortably tappable.
                 padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-                child: Text(
-                  trailingLabel!,
-                  style: ffTheme.labelMedium.copyWith(
-                    // Green = ACTION: the trailing link reads as the tappable
-                    // affordance in the row.
-                    color: ffTheme.brandAccent,
-                    fontWeight: FontWeight.w700,
+                // IntrinsicWidth so the underline stretches exactly to the
+                // label width — the trailing slot has unbounded width here, so a
+                // bare `stretch` Column would force an infinite constraint.
+                child: IntrinsicWidth(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        trailingLabel!,
+                        style: ffTheme.labelMedium.copyWith(
+                          // Green = ACTION: the trailing link reads as the
+                          // tappable affordance in the row.
+                          color: ffTheme.brandAccent,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 3),
+                      // A short accent underline — the editorial "see all" tell.
+                      Container(
+                        height: 2,
+                        decoration: BoxDecoration(
+                          color: ffTheme.brandAccent.withValues(alpha: 0.45),
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),

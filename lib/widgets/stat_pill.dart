@@ -42,6 +42,27 @@ class StatPill extends StatelessWidget {
     final bg = backgroundColor ?? ffTheme.secondary;
     final fg = textColor ?? ffTheme.primary;
 
+    final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    final valueStyle = ffTheme.labelSmall.copyWith(
+      color: fg,
+      fontWeight: FontWeight.w800,
+    );
+    // The value pops with a brief scale-up when it changes (e.g. a recomputed
+    // savings figure). Keyed on [value] so the switcher cross-fades+scales the
+    // new text in; flat under reduced-motion.
+    final valueText = reduceMotion
+        ? Text(value, style: valueStyle)
+        : AnimatedSwitcher(
+            duration: ffTheme.motionMedium,
+            switchInCurve: ffTheme.spring,
+            switchOutCurve: ffTheme.easeOut,
+            transitionBuilder: (child, anim) => ScaleTransition(
+              scale: anim,
+              child: FadeTransition(opacity: anim, child: child),
+            ),
+            child: Text(value, key: ValueKey(value), style: valueStyle),
+          );
+
     return Container(
       padding: padding,
       decoration: BoxDecoration(
@@ -51,13 +72,7 @@ class StatPill extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            value,
-            style: ffTheme.labelSmall.copyWith(
-              color: fg,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
+          valueText,
           const SizedBox(width: 3),
           Text(
             label,

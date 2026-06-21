@@ -32,20 +32,58 @@ class GlassPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = AppTheme.of(context);
+    final dark = t.dark;
     final radius = borderRadius ?? BorderRadius.circular(t.radiusLg);
+    final fillBase = tint ?? (dark ? AppColors.darkCard : Colors.white);
+    final borderColor = dark
+        ? AppColors.darkBorder.withValues(alpha: 0.9)
+        : Colors.white.withValues(alpha: 0.5);
+
+    // The inner surface, shared by both paths. The 1px glass-glint top edge is
+    // baked into the fill as a vertical gradient (a non-uniform border colour is
+    // incompatible with a rounded radius).
+    final surface = Container(
+      padding: padding,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Color.alphaBlend(
+              t.glassGlint.withValues(alpha: t.glassGlint.a * 0.5),
+              fillBase.withValues(alpha: alpha),
+            ),
+            fillBase.withValues(alpha: alpha),
+          ],
+          stops: const [0, 0.08],
+        ),
+        borderRadius: radius,
+        border: border ? Border.all(color: borderColor) : null,
+      ),
+      child: child,
+    );
+
+    // Capability gate: only spend a live BackdropFilter blur where it's cheap.
+    // On weak platforms fall back to a SOLID (more opaque) fill so the surface
+    // still reads as a frosted panel without the GPU cost.
+    if (!AppTheme.realGlass) {
+      final solid = Container(
+        padding: padding,
+        decoration: BoxDecoration(
+          color: fillBase.withValues(alpha: (alpha + 0.3).clamp(0.0, 1.0)),
+          borderRadius: radius,
+          border: border ? Border.all(color: borderColor) : null,
+        ),
+        child: child,
+      );
+      return ClipRRect(borderRadius: radius, child: solid);
+    }
+
     return ClipRRect(
       borderRadius: radius,
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: blur, sigmaY: blur),
-        child: Container(
-          padding: padding,
-          decoration: BoxDecoration(
-            color: (tint ?? Colors.white).withValues(alpha: alpha),
-            borderRadius: radius,
-            border: border ? Border.all(color: Colors.white.withValues(alpha: 0.5)) : null,
-          ),
-          child: child,
-        ),
+        child: surface,
       ),
     );
   }

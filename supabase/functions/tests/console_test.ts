@@ -1,4 +1,4 @@
-import { assert, assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
+import { assert, assertEquals } from "jsr:@std/assert";
 import { authorizeRep, dataCheckString, validateInitData } from "../_shared/webapp.ts";
 import { buildBoard, toConsoleMeeting } from "../notify-lead/console.ts";
 
@@ -9,7 +9,7 @@ const TOKEN = "123456:TEST-bot-token-abcDEF";
 async function signInitData(fields: Record<string, string>): Promise<string> {
   const enc = new TextEncoder();
   const hmac = async (keyData: Uint8Array, msg: string) => {
-    const key = await crypto.subtle.importKey("raw", keyData, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+    const key = await crypto.subtle.importKey("raw", keyData as BufferSource, { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
     return new Uint8Array(await crypto.subtle.sign("HMAC", key, enc.encode(msg)));
   };
   const hex = (u: Uint8Array) => [...u].map((b) => b.toString(16).padStart(2, "0")).join("");

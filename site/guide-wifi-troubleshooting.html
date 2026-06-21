@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WiFi איטי — אבחון ותיקון שלב אחר שלב | חוסך</title>
+  <meta name="description" content="WiFi איטי או לא יציב? מדריך אבחון מהיר: בעיות ראוטר, ערוצים, הפרעות, Mesh ומה לעשות." />
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
+  <style>.skip{position:absolute;left:-999px;top:0;z-index:100;background:#111827;color:#fff;padding:10px 16px;border-radius:0 0 8px 0}.skip:focus{left:0}</style>
+  <meta name="theme-color" content="#111827" />
+  <link rel="canonical" href="https://switchy-ai.com/guide-wifi-troubleshooting.html" />
+  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="favicon.svg" />
+  <link rel="manifest" href="site.webmanifest" />
+  <meta property="og:type" content="article" />
+  <meta property="og:locale" content="he_IL" />
+  <meta property="og:url" content="https://switchy-ai.com/guide-wifi-troubleshooting.html" />
+  <meta property="og:site_name" content="חוסך" />
+  <meta property="og:title" content="WiFi איטי — אבחון ותיקון שלב אחר שלב | חוסך" />
+  <meta property="og:description" content="WiFi איטי או לא יציב? מדריך אבחון מהיר: בעיות ראוטר, ערוצים, הפרעות, Mesh ומה לעשות." />
+  <meta property="og:image" content="https://switchy-ai.com/og-image.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="חוסך — השוואת מחירי תקשורת חכמה" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="WiFi איטי — אבחון ותיקון שלב אחר שלב | חוסך" />
+  <meta name="twitter:description" content="WiFi איטי או לא יציב? מדריך אבחון מהיר: בעיות ראוטר, ערוצים, הפרעות, Mesh ומה לעשות." />
+  <meta name="twitter:image" content="https://switchy-ai.com/og-image.png" />
+  <meta name="twitter:image:alt" content="חוסך — השוואת מחירי תקשורת חכמה" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="preconnect" href="https://plausible.io" />
+  <link rel="preconnect" href="https://orzitfqmlvopujsoyigr.supabase.co" />
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" />
+  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" rel="stylesheet" /></noscript>
+  <link rel="stylesheet" href="styles.css?v=2870ee58" />
+  <!-- Cookieless analytics (Plausible-style). Placeholder until configured — no cookies, no personal data. -->
+  <script defer data-domain="switchy-ai.com" src="https://plausible.io/js/script.outbound-links.tagged-events.js"></script>
+  <script>window.plausible=window.plausible||function(){(window.plausible.q=window.plausible.q||[]).push(arguments)};</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"Organization","@id":"https://switchy-ai.com/#organization","name":"חוסך","url":"https://switchy-ai.com/","logo":{"@type":"ImageObject","url":"https://switchy-ai.com/favicon.svg"},"description":"השוואת מחירי תקשורת חכמה — סלולר, אינטרנט, טלוויזיה, חבילות וחו״ל.","areaServed":"IL","email":"hello@chosech.co.il","contactPoint":{"@type":"ContactPoint","contactType":"customer support","telephone":"+972505037537","email":"hello@chosech.co.il","areaServed":"IL","availableLanguage":["he"]}},{"@type":"WebSite","@id":"https://switchy-ai.com/#website","name":"חוסך","url":"https://switchy-ai.com/","inLanguage":"he-IL","publisher":{"@id":"https://switchy-ai.com/#organization"},"potentialAction":{"@type":"SearchAction","target":{"@type":"EntryPoint","urlTemplate":"https://switchy-ai.com/plans.html?q={search_term_string}"},"query-input":"required name=search_term_string"}}]}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@graph":[{"@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"דף הבית","item":"https://switchy-ai.com/"},{"@type":"ListItem","position":2,"name":"מדריכים","item":"https://switchy-ai.com/guides.html"},{"@type":"ListItem","position":3,"name":"WiFi איטי — איך לאבחן ולתקן","item":"https://switchy-ai.com/guide-wifi-troubleshooting.html"}]},{"@type":"Article","headline":"WiFi איטי — איך לאבחן ולתקן","description":"WiFi איטי או לא יציב? מדריך אבחון מהיר: בעיות ראוטר, ערוצים, הפרעות, Mesh ומה לעשות.","datePublished":"2026-06-21","dateModified":"2026-06-21","inLanguage":"he-IL","articleSection":"אינטרנט","mainEntityOfPage":{"@type":"WebPage","@id":"https://switchy-ai.com/guide-wifi-troubleshooting.html"},"image":"https://switchy-ai.com/og-image.png","isPartOf":{"@id":"https://switchy-ai.com/#website"},"author":{"@id":"https://switchy-ai.com/#organization"},"publisher":{"@id":"https://switchy-ai.com/#organization"}},{"@type":"FAQPage","mainEntity":[{"@type":"Question","name":"WiFi 5GHz vs. 2.4GHz — מה ההבדל?","acceptedAnswer":{"@type":"Answer","text":"5GHz: מהיר יותר (300–1200Mbps), טווח קצר יותר (10–15 מטר). 2.4GHz: איטי (54–300Mbps), טווח ארוך (20–30 מטר), יותר הפרעות. בסלון/ליד הראוטר: 5GHz. בחדר רחוק: 2.4GHz."}},{"@type":"Question","name":"כמה Mbps אני אמור לקבל על WiFi?","acceptedAnswer":{"@type":"Answer","text":"WiFi 5 (802.11ac): ~60–70% ממהירות Ethernet. WiFi 6: ~80–90%. בחדר סמוך: אמורים לקבל >200Mbps על WiFi 5. בחדר רחוק: 50–100Mbps נחשב תקין. \u003c20Mbps = בעיה."}},{"@type":"Question","name":"ריסטארט ראוטר — כמה פעמים?","acceptedAnswer":{"@type":"Answer","text":"ריסטארט שבועי = מנקה state, פותר נזילות זיכרון. ראוטרים ישנים (\u003c2018): ריסטארט יומי-שבועי אוטומטי מומלץ. בהגדרות ראוטר: Scheduled Reboot בשעה 3:00 לילה."}},{"@type":"Question","name":"VPN מאט WiFi?","acceptedAnswer":{"@type":"Answer","text":"כן — VPN מוסיף overhead של 10–30% על מהירות. אם VPN = ₪25/חודש ומוריד מהירות: שקלו VPN נבחר רק לשימוש ספציפי, לא כל-הזמן. Wireguard-based VPN מהיר יותר מ-OpenVPN."}}]}]}</script>
+</head>
+<body id="top">
+  <a class="skip" href="#main">דלג לתוכן</a>
+  <header class="nav" id="nav">
+    <div class="container nav__inner">
+      <a class="brand" href="index.html" aria-label="חוסך — דף הבית">
+        <span class="brand__mark" aria-hidden="true">✦</span><span class="brand__name">חוסך</span>
+      </a>
+      <nav class="nav__links" aria-label="ניווט ראשי">
+        <a href="plans.html">כל החבילות</a>
+        <a href="providers.html">ספקים</a>
+        <a href="compare.html">השוואה</a>
+        <a href="app.html">האפליקציה</a>
+        <a href="guides.html">מדריכים</a>
+        <a href="index.html#calculator">מחשבון</a>
+      </nav>
+      <a class="btn btn--primary nav__cta" href="index.html#cta">השוו עכשיו</a>
+      <button class="nav__toggle" id="navToggle" aria-label="פתיחת תפריט" aria-expanded="false" aria-controls="mobileMenu"><span></span><span></span><span></span></button>
+    </div>
+    <div class="nav__mobile" id="mobileMenu" hidden>
+      <a href="plans.html">כל החבילות</a>
+      <a href="providers.html">ספקים</a>
+      <a href="compare.html">השוואה</a>
+      <a href="app.html">האפליקציה</a>
+      <a href="guides.html">מדריכים</a>
+      <a href="index.html#calculator">מחשבון</a>
+      <a class="btn btn--primary" href="index.html#cta">השוו עכשיו</a>
+    </div>
+  </header>
+  <main id="main">
+    <article>
+      <section class="article-hero">
+        <div class="container">
+          <p class="crumbs"><a href="index.html">דף הבית</a> ← <a href="guides.html">מדריכים</a> ← אינטרנט</p>
+          <h1>WiFi איטי — איך לאבחן ולתקן</h1>
+          <div class="article-meta"><span>אינטרנט</span><span>· 21 ביוני 2026</span><span>· 3 דק׳ קריאה</span></div>
+        </div>
+      </section>
+      <section class="section">
+        <div class="container">
+          <div class="prose">
+            <div class="tldr"><b>בקצרה:</b> בדקו קודם: speedtest על Ethernet (לא WiFi). אם מהיר על כבל — הבעיה ב-WiFi/ראוטר, לא בספק. פתרונות: מיקום ראוטר, ערוץ 5GHz, ריסטארט, WiFi 6 / Mesh.</div>
+        <h2>אבחון ראשוני</h2>
+        <ul>
+          <li>שלב 1: speedtest.net על Ethernet (כבל ישיר למחשב). אם מהיר — הבעיה ב-WiFi.</li>
+          <li>שלב 2: speedtest על WiFi 5GHz לידיד הראוטר. אם גם כאן איטי — ריסטארט ראוטר.</li>
+          <li>שלב 3: ריסטארט ראוטר + ONT (30 שניות כבוי). לרוב פותר 40% מהבעיות.</li>
+          <li>שלב 4: בדקו כמה מכשירים מחוברים. עומס רשת = כולם איטיים.</li>
+          <li>שלב 5: אם הבעיה על Ethernet גם — בעיה בספק. פנו לשירות לקוחות.</li>
+        </ul>
+
+        <h2>בעיות WiFi נפוצות ופתרונות</h2>
+        <ul>
+          <li>מיקום ראוטר: מרכז הבית, גובה, לא בתוך ארון. מרחק = חלשה. קיר בטון = חסימה.</li>
+          <li>ערוץ 2.4GHz עומוס: כלי ב-MacOS: Wireless Diagnostics → Scan. Windows: WiFi Analyzer App. לעבור ל-5GHz.</li>
+          <li>מכשירים ישנים שתוקעים ל-2.4GHz: iPhone 5/אנדרואיד 2013 = מוריד את כל הרשת.</li>
+          <li>הפרעות: מיקרוגל/Baby Monitor = הפרעה ל-2.4GHz. 5GHz = פחות בעיות הפרעה.</li>
+          <li>ראוטר ישן: ראוטר לפני 2018 = WiFi 5 (802.11ac). ראוטר 2020+ = WiFi 6 מהיר יותר.</li>
+        </ul>
+
+        <h2>שדרוגים אפשריים</h2>
+        <ul>
+          <li>ראוטר WiFi 6: ASUS RT-AX82U ~₪400, TP-Link Archer AX73 ~₪350. שיפור ניכר.</li>
+          <li>Mesh Network: 2–3 נקודות כי הבית גדול. ASUS ZenWiFi AX, TP-Link Deco, Eero.</li>
+          <li>Powerline / MoCA: כבל חשמל/קואקסיאל כ-backbone בבית. פתרון לבית גדול.</li>
+          <li>Access Point נוסף: חיבור Ethernet מהראוטר לחדר רחוק + AP שם = WiFi חזק.</li>
+          <li>בדיקה: לאחר שדרוג — speedtest ב-5 מיקומים שונים בבית לוודא כיסוי.</li>
+        </ul>
+
+        <h2>הגדרות ראוטר מיטוביות</h2>
+        <ul>
+          <li>ערוץ 5GHz: לבחור ערוץ 36/40/44/48 (DFS). פחות עמוס מ-149/153.</li>
+          <li>Band Steering: לאפשר — הראוטר מנתב מכשירים ל-5GHz אוטומטית.</li>
+          <li>QoS: להגדיר עדיפות לסטרימינג/גיימינג. ב-ASUS/NETGEAR = Adaptive QoS.</li>
+          <li>Security: WPA3 אם מכשירים תומכים. WPA2 = OK. WEP = אסור.</li>
+          <li>DNS: החלפה ל-1.1.1.1 (Cloudflare) או 8.8.8.8 (Google) לרוב מהירה יותר מ-DNS הספק.</li>
+        </ul>
+
+          </div>
+          <div class="article-cta">
+            <h3>רוצים לראות כמה תחסכו בפועל?</h3>
+            <p>השוואה חינם בשניות, בלי התחייבות.</p>
+            <a class="btn btn--inverse btn--lg" href="internet.html">השוו מסלולי אינטרנט ←</a>
+          </div>
+        </div>
+      </section>
+      <section class="section" aria-label="שאלות נפוצות">
+        <div class="container faq">
+          <header class="section__head reveal"><span class="eyebrow">שאלות נפוצות</span><h2>שאלות ותשובות</h2></header>
+          <div class="faq__list reveal">
+            <details><summary>WiFi 5GHz vs. 2.4GHz — מה ההבדל?</summary><p>5GHz: מהיר יותר (300–1200Mbps), טווח קצר יותר (10–15 מטר). 2.4GHz: איטי (54–300Mbps), טווח ארוך (20–30 מטר), יותר הפרעות. בסלון/ליד הראוטר: 5GHz. בחדר רחוק: 2.4GHz.</p></details>
+            <details><summary>כמה Mbps אני אמור לקבל על WiFi?</summary><p>WiFi 5 (802.11ac): ~60–70% ממהירות Ethernet. WiFi 6: ~80–90%. בחדר סמוך: אמורים לקבל &gt;200Mbps על WiFi 5. בחדר רחוק: 50–100Mbps נחשב תקין. &lt;20Mbps = בעיה.</p></details>
+            <details><summary>ריסטארט ראוטר — כמה פעמים?</summary><p>ריסטארט שבועי = מנקה state, פותר נזילות זיכרון. ראוטרים ישנים (&lt;2018): ריסטארט יומי-שבועי אוטומטי מומלץ. בהגדרות ראוטר: Scheduled Reboot בשעה 3:00 לילה.</p></details>
+            <details><summary>VPN מאט WiFi?</summary><p>כן — VPN מוסיף overhead של 10–30% על מהירות. אם VPN = ₪25/חודש ומוריד מהירות: שקלו VPN נבחר רק לשימוש ספציפי, לא כל-הזמן. Wireguard-based VPN מהיר יותר מ-OpenVPN.</p></details>
+          </div>
+        </div>
+      </section>
+      <section class="section" aria-label="מסלולים מומלצים">
+        <div class="container">
+          <header class="section__head reveal"><span class="eyebrow">המסלולים הזולים ביותר</span><h2>אינטרנט — הזולים עכשיו</h2><p>ממוינים מהזול ביותר מתוך הקטלוג המלא שלנו.</p></header>
+          <div class="plan-grid plan-grid--featured">
+<article class="plan plan--hasjump" data-cat="internet" data-text="פרטנר fiber 1000mb סיב אופטי עד 1000/100mb נתב wifi7 כלול cyberguard +₪4.90 עד 1000/100 wifi7 כלול" data-price="39" data-after="159" data-haspromo="true" data-5g="false" data-nocommit="true" data-abroad="false" data-kosher="false" data-provider="partner" data-id="net_partner_fiber1g">
+        
+        <div class="plan__top"><span class="plan__id"><span class="plogo plogo--img" style="width:36px;height:36px"><img src="assets/logos/partner.webp" alt="פרטנר" width="36" height="36" loading="lazy" decoding="async"></span><a class="plan__provider" href="provider-partner.html">פרטנר</a></span><span class="plan__net">סיב אופטי</span></div>
+        <div class="plan__name">Fiber 1000Mb</div>
+        <div class="plan__chips"><span class="pchip">עד 1000/100</span><span class="pchip">WiFi7 כלול</span></div>
+        <div class="plan__flags"><span class="pflag">ללא התחייבות</span></div>
+        <div class="plan__bottom"><div class="plan__price"><b>₪39</b> <span>לחודש</span><span class="plan__after">ואז ₪159</span></div></div>
+        <div class="plan__actions">
+          <a class="plan__cta" target="_blank" rel="noopener" href="https://wa.me/972505037537?text=%D7%94%D7%99%D7%99%2C%20%D7%9E%D7%A2%D7%A0%D7%99%D7%99%D7%9F%20%D7%90%D7%95%D7%AA%D7%99%20%D7%A4%D7%A8%D7%98%D7%A0%D7%A8%20-%20Fiber%201000Mb%20(%E2%82%AA39)" aria-label="מעוניין/ת בפרטנר Fiber 1000Mb — פנייה בוואטסאפ"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8 9 9 0 0 1-3.8-.8L3 20l1.3-3.9A8 8 0 0 1 3.5 11 8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/></svg> מעוניין/ת ←</a>
+          <a class="plan__compare" href="compare.html?p0=net_partner_fiber1g" title="השוו מסלול זה" aria-label="השוו את פרטנר Fiber 1000Mb"><span aria-hidden="true">⚖️</span></a>
+        </div>
+      </article>
+<article class="plan plan--hasjump" data-cat="internet" data-text="גילת 1gb מבצע אונליין סיב אופטי עד 1000/100mb נתב כלול ניוד חינם מסיב בזק עד 1000/100 כלול (wifi7 +₪10/ח׳)" data-price="49" data-after="95" data-haspromo="true" data-5g="false" data-nocommit="true" data-abroad="false" data-kosher="false" data-provider="gilat" data-id="net_gilat_1g_online">
+        
+        <div class="plan__top"><span class="plan__id"><span class="plogo plogo--img" style="width:36px;height:36px"><img src="assets/logos/gilat.webp" alt="גילת" width="36" height="36" loading="lazy" decoding="async"></span><a class="plan__provider" href="provider-gilat.html">גילת</a></span><span class="plan__net">סיב אופטי</span></div>
+        <div class="plan__name">1GB מבצע אונליין</div>
+        <div class="plan__chips"><span class="pchip">עד 1000/100</span><span class="pchip">כלול (WiFi7 +₪10/ח׳)</span></div>
+        <div class="plan__flags"><span class="pflag">ללא התחייבות</span></div>
+        <div class="plan__bottom"><div class="plan__price"><b>₪49</b> <span>לחודש</span><span class="plan__after">ואז ₪95</span></div></div>
+        <div class="plan__actions">
+          <a class="plan__cta" target="_blank" rel="noopener" href="https://wa.me/972505037537?text=%D7%94%D7%99%D7%99%2C%20%D7%9E%D7%A2%D7%A0%D7%99%D7%99%D7%9F%20%D7%90%D7%95%D7%AA%D7%99%20%D7%92%D7%99%D7%9C%D7%AA%20-%201GB%20%D7%9E%D7%91%D7%A6%D7%A2%20%D7%90%D7%95%D7%A0%D7%9C%D7%99%D7%99%D7%9F%20(%E2%82%AA49)" aria-label="מעוניין/ת בגילת 1GB מבצע אונליין — פנייה בוואטסאפ"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8 9 9 0 0 1-3.8-.8L3 20l1.3-3.9A8 8 0 0 1 3.5 11 8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/></svg> מעוניין/ת ←</a>
+          <a class="plan__compare" href="compare.html?p0=net_gilat_1g_online" title="השוו מסלול זה" aria-label="השוו את גילת 1GB מבצע אונליין"><span aria-hidden="true">⚖️</span></a>
+        </div>
+      </article>
+<article class="plan plan--hasjump" data-cat="internet" data-text="בזק אינטרנט 100 מגה (נחושת) נחושת vdsl עד 100/3mb נתב כלול ל-3 חודשים עד 100/3 +₪21.9/ח׳" data-price="65" data-after="158" data-haspromo="true" data-5g="false" data-nocommit="true" data-abroad="false" data-kosher="false" data-provider="bezeq" data-id="net_bezeq_copper100">
+        
+        <div class="plan__top"><span class="plan__id"><span class="plogo plogo--img" style="width:36px;height:36px"><img src="assets/logos/bezeq.svg" alt="בזק" width="36" height="36" loading="lazy" decoding="async"></span><a class="plan__provider" href="provider-bezeq.html">בזק</a></span><span class="plan__net">כבלים</span></div>
+        <div class="plan__name">אינטרנט 100 מגה (נחושת)</div>
+        <div class="plan__chips"><span class="pchip">עד 100/3</span><span class="pchip">+₪21.9/ח׳</span></div>
+        <div class="plan__flags"><span class="pflag">ללא התחייבות</span></div>
+        <div class="plan__bottom"><div class="plan__price"><b>₪65</b> <span>לחודש</span><span class="plan__after">ואז ₪158</span></div></div>
+        <div class="plan__actions">
+          <a class="plan__cta" target="_blank" rel="noopener" href="https://wa.me/972505037537?text=%D7%94%D7%99%D7%99%2C%20%D7%9E%D7%A2%D7%A0%D7%99%D7%99%D7%9F%20%D7%90%D7%95%D7%AA%D7%99%20%D7%91%D7%96%D7%A7%20-%20%D7%90%D7%99%D7%A0%D7%98%D7%A8%D7%A0%D7%98%20100%20%D7%9E%D7%92%D7%94%20(%D7%A0%D7%97%D7%95%D7%A9%D7%AA)%20(%E2%82%AA65)" aria-label="מעוניין/ת בבזק אינטרנט 100 מגה (נחושת) — פנייה בוואטסאפ"><svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.4 8.4 0 0 1-9 8 9 9 0 0 1-3.8-.8L3 20l1.3-3.9A8 8 0 0 1 3.5 11 8.4 8.4 0 0 1 12 3a8.4 8.4 0 0 1 9 8.5z"/></svg> מעוניין/ת ←</a>
+          <a class="plan__compare" href="compare.html?p0=net_bezeq_copper100" title="השוו מסלול זה" aria-label="השוו את בזק אינטרנט 100 מגה (נחושת)"><span aria-hidden="true">⚖️</span></a>
+        </div>
+      </article>
+          </div>
+          <div style="text-align:center;margin-top:20px">
+            <a class="btn btn--ghost" href="internet.html">לכל מסלולי האינטרנט ←</a>
+          </div>
+        </div>
+      </section>
+      <section class="section section--alt" aria-label="מדריכים נוספים">
+        <div class="container">
+          <header class="section__head reveal"><span class="eyebrow">להמשך קריאה</span><h2>מדריכים נוספים</h2></header>
+          <div class="guide-cards">
+          <a class="guide-card reveal" href="guide-fiber.html">
+            <span class="tag-cat">אינטרנט</span>
+            <h3>סיב אופטי מול כבלים: מה ההבדל וכמה זה עולה?</h3>
+            <p>מה זה סיב אופטי, במה הוא עדיף על כבלים ו-ADSL, איזו מהירות באמת צריך, ההבדל בין תשתית לספק, וכמה זה עולה — כולל מלכודת המבצע.</p>
+            <span class="meta">5 ביוני 2026 · 5 דק׳ קריאה</span>
+          </a>
+          <a class="guide-card reveal" href="guide-5g-home.html">
+            <span class="tag-cat">אינטרנט</span>
+            <h3>אינטרנט 5G ביתי (FWA) בישראל: המדריך המלא</h3>
+            <p>5G FWA (Fixed Wireless Access) הוא אינטרנט ביתי דרך רשת סלולרית ללא צורך בחפירות או טכנאי. מדריך לספקים הישראלים, מחירים ומתי זה עדיף על גלאל.</p>
+            <span class="meta">20 ביוני 2026 · 4 דק׳ קריאה</span>
+          </a>
+          <a class="guide-card reveal" href="guide-bezeq-review.html">
+            <span class="tag-cat">אינטרנט</span>
+            <h3>בזק 2026: כל מה שצריך לדעת</h3>
+            <p>סקירת בזק 2026 — חבילות גלאל, VDSL, שירות לקוחות, מחיר לעומת HOT ופרטנר, ומתי כדאי לעבור לבזק.</p>
+            <span class="meta">20 ביוני 2026 · 4 דק׳ קריאה</span>
+          </a>
+          </div>
+        </div>
+      </section>
+    </article>
+  </main>
+  <footer class="footer">
+    <div class="container footer__inner">
+      <div class="footer__brand">
+        <a class="brand brand--light" href="index.html"><span class="brand__mark" aria-hidden="true">✦</span><span class="brand__name">חוסך</span></a>
+        <p>השוואת מחירי תקשורת חכמה. משווים, חוסכים, עוברים — בלי כאב ראש.</p>
+      </div>
+      <nav class="footer__links footer__col" aria-label="קטגוריות">
+        <h4>קטגוריות</h4>
+        <a href="cellular.html">סלולר</a><a href="internet.html">אינטרנט</a><a href="tv.html">טלוויזיה</a><a href="triple.html">חבילה משולבת</a><a href="abroad.html">חו״ל</a><a href="plans.html">כל החבילות</a>
+      </nav>
+      <nav class="footer__links footer__col" aria-label="כלים ומדריכים">
+        <h4>כלים מומלצים</h4>
+        <a href="compare.html">השוואת מסלולים</a><a href="calc-cellular.html">מחשבון סלולר</a><a href="calc-internet.html">מחשבון אינטרנט</a><a href="providers.html">כל הספקים</a><a href="guide-switching.html">מדריך מעבר ספק</a><a href="guide-number-port.html">ניוד מספר</a>
+      </nav>
+      <nav class="footer__links footer__col" aria-label="קולקציות פופולריות">
+        <h4>חיפושים פופולריים</h4>
+        <a href="cellular-budget.html">סלולר מתחת ל-₪30</a><a href="cellular-5g.html">סלולר 5G</a><a href="internet-fiber-only.html">אינטרנט סיב אופטי</a><a href="internet-giga.html">אינטרנט גיגה</a><a href="plans-no-commitment.html">ללא התחייבות</a><a href="esim-abroad.html">eSIM לחו״ל</a>
+      </nav>
+      <nav class="footer__links footer__col" aria-label="החברה">
+        <h4>החברה</h4>
+        <a href="about.html">אודות</a><a href="app.html">האפליקציה</a><a href="guides.html">כל המדריכים</a><a href="privacy.html">מדיניות פרטיות</a><a href="terms.html">תנאי שימוש</a>
+        <a href="https://wa.me/972505037537" target="_blank" rel="noopener">וואטסאפ</a>
+        <a href="mailto:hello@chosech.co.il">hello@chosech.co.il</a>
+      </nav>
+    </div>
+    <div class="container footer__bottom"><span>© <span id="year"></span> חוסך · כל הזכויות שמורות</span><span>נבנה באהבה בישראל</span></div>
+  </footer>
+  <a class="wa-fab" href="https://wa.me/972505037537?text=%D7%94%D7%99%D7%99%2C%20%D7%90%D7%A9%D7%9E%D7%97%20%D7%9C%D7%94%D7%A9%D7%95%D7%95%D7%AA%20%D7%9E%D7%A1%D7%9C%D7%95%D7%9C%D7%99%D7%9D" target="_blank" rel="noopener" aria-label="דברו איתנו בוואטסאפ"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" width="26" height="26"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.885-9.885 9.885M20.52 3.449C18.24 1.245 15.24 0 12.045 0 5.463 0 .104 5.359.101 11.892c0 2.096.549 4.142 1.595 5.945L0 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.582 0 11.943-5.359 11.945-11.893a11.821 11.821 0 00-3.418-8.452z"/></svg></a>
+  <script>window.CHOSECH_SUPABASE={url:'https://orzitfqmlvopujsoyigr.supabase.co',anonKey:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9yeml0ZnFtbHZvcHVqc295aWdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5OTc5NzIsImV4cCI6MjA5NjU3Mzk3Mn0.NY4ZHzR3BAWUxm5as9Z054o8fwcfejAab9SIvduKlhM'};</script>
+  <script src="script.js?v=14b649b5" defer></script>
+</body>
+</html>

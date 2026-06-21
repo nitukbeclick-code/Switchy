@@ -1,0 +1,58 @@
+{
+  "slug": "guide-tv-soundbar",
+  "cat": "טלוויזיה",
+  "date": "2026-06-21",
+  "read": 3,
+  "title": "Soundbar — מדריך קנייה ובחירה 2026 | חוסך",
+  "desc": "כיצד לבחור Soundbar לטלוויזיה: Samsung vs. Sony vs. LG, Dolby Atmos, Subwoofer, ותקציב מומלץ.",
+  "h1": "Soundbar — מדריך קנייה",
+  "tldr": "Soundbar טוב מ-₪500 = שיפור דרמטי מרמקולי TV. ₪500–₪1,000: Samsung Q700C, Sony HT-S400. ₪1,000–₪2,500: LG S75Q, Samsung Q990C. Dolby Atmos = חובה לקולנוע ביתי. Subwoofer = מוסיף בס.",
+  "sections": [
+    {
+      "h2": "מדוע Soundbar?",
+      "ul": [
+        "TV Speakers: מסכי OLED/QLED = דקים = רמקולים חלשים. 10–20W, חד.",
+        "Soundbar: 60–400W, Dolby Atmos/DTS:X, Subwoofer = קולנוע ביתי.",
+        "קל להתקנה: HDMI ARC/eARC = חיבור יחיד לטלוויזיה. לא מערכת שלמה.",
+        "vs. מערכת 5.1: Soundbar = פשוטה, נקייה. 5.1 = צליל טוב יותר, מורכבת.",
+        "מחיר: ₪400–₪500 = שיפור ניכר. ₪2,000+ = קולנוע ביתי רציני."
+      ]
+    },
+    {
+      "h2": "תקציב ₪500–₪1,000",
+      "ul": [
+        "Samsung HW-B450: ₪499. 2.1ch. 300W. Subwoofer אלחוטי. בסיסי + טוב.",
+        "Sony HT-S400: ₪599. 2.1ch. 330W. X-Balanced Speaker. DTS Virtual:X.",
+        "LG S40Q: ₪549. 2.1ch. 300W. AI Sound. היחיד עם Dolby Atmos בתקציב.",
+        "Sonos Ray: ₪799. 2.0ch. קומפקטי. Sonos App = מערכת Sonos multi-room.",
+        "המלצה: Sony HT-S400 = ערך מצוין לכסף. Samsung HW-B450 = אמין."
+      ]
+    },
+    {
+      "h2": "תקציב ₪1,000–₪2,500",
+      "ul": [
+        "Samsung Q700C: ₪1,199. 3.1.2ch. Dolby Atmos. Up-firing speakers. Excelent.",
+        "Sony HT-A5000: ₪1,599. 5.1.2ch. 360 Reality Audio. מצוין.",
+        "LG S75Q: ₪1,299. 3.1.2ch. Dolby Atmos. Meridian Audio. LG TV Sync.",
+        "Sonos Arc: ₪1,999. 9ch. Dolby Atmos. Trueplay tuning. Premium.",
+        "Samsung Q990C: ₪2,299. 11.1.4ch. Rear speakers included. Hall האחים."
+      ]
+    },
+    {
+      "h2": "חיבורים ותאימות",
+      "ul": [
+        "HDMI eARC: חיבור הכי טוב — Dolby Atmos פס שלם. בדקו שה-TV יש eARC.",
+        "HDMI ARC: גרסה ישנה. Dolby Atmos = compressed. עדיין טוב.",
+        "Optical: Dolby Digital 5.1 = OK. Dolby Atmos = לא נתמך. לTV ישן.",
+        "Bluetooth: למוזיקה בלבד. לא ל-Dolby Atmos. שימוש אחר.",
+        "Samsung TV + Samsung Soundbar: Q-Symphony = שימוש ברמקולי TV + Soundbar ביחד."
+      ]
+    }
+  ],
+  "faq": [
+    ["Dolby Atmos — שווה?", "Dolby Atmos = צליל תלת-מימדי (גם מעל). Soundbar עם Up-firing speakers = אפקט Atmos. מה שצריך: Soundbar Atmos + תוכן Atmos (Netflix/Disney+ 4K). ₪1,000+ = Atmos משמעותי. ₪500 Soundbar LG S40Q = Atmos בסיסי."],
+    ["Subwoofer — חיוני?", "Subwoofer = בס עמוק לסרטי אקשן/מוזיקה. ללא Sub: צליל דק. 2.1ch (Soundbar + Sub) = שיפור ניכר. 3.1.2ch = עוד יותר טוב. Soundbar 2.0ch (ללא Sub) = עדיף Sonos Ray."],
+    ["Samsung TV + Soundbar — איזה?", "Samsung Q-Symphony: TV + Soundbar עובדים ביחד. מומלץ: Samsung HW-Q700C/Q800C. לא חייב Samsung-Samsung, אך Q-Symphony = בונוס. כל Soundbar עם HDMI eARC = עובד עם כל Samsung."],
+    ["Soundbar vs. מערכת 5.1?", "5.1 (AV Receiver + 5 רמקולים + Sub): צליל טוב יותר. עלות ₪2,500–₪5,000+. כבלים + מיקום רמקולים. Soundbar: נוח, נקי, ₪500–₪2,500. לסלון פתוח: Soundbar = פרקטי. לחדר קולנוע ייעודי: 5.1 = עדיף."]
+  ]
+}

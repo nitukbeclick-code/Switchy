@@ -1,0 +1,70 @@
+{
+  "slug": "guide-abroad-japan",
+  "cat": "חו״ל",
+  "date": "2026-06-21",
+  "read": 3,
+  "title": "סלולר ביפן לישראלים — SIM תייר, eSIM ורומינג | חוסך",
+  "desc": "כיצד להישאר מחוברים ביפן — eSIM Airalo, SIM תייר IIJmio/Docomo, ורומינג ישראלי. טוקיו, קיוטו, אוסקה.",
+  "h1": "סלולר ביפן — מדריך לישראלים",
+  "tldr": "יפן: SIM תייר IIJmio 15GB ¥3,740 (~₪95) ל-15 יום. eSIM Airalo Japan 10GB $18. Pocket WiFi: ¥500–₪1,000/יום — לקבוצות. רומינג ישראלי: ₪40–₪60/יום = יקר מאוד. SIM/eSIM = מומלץ.",
+  "sections": [
+    {
+      "h2": "eSIM ליפן",
+      "ul": [
+        "Airalo Japan: 3GB $8, 10GB $18, 20GB $26. רשת Docomo = כיסוי מצוין.",
+        "Holafly Japan: ללא הגבלה 15 ימים $49. לטיול ארוך = שווה.",
+        "Ubigi/aloSIM: גם זמינים. Airalo = הנפוץ ביותר לישראלים.",
+        "eSIM vs SIM: יפן ידועה ב-SIM Data-Only (ללא שיחות). eSIM = ידידותי לתייר.",
+        "הפעלה: רכישה מבית → QR code ביפן = 10 שניות להפעלה."
+      ]
+    },
+    {
+      "h2": "SIM תייר מקומי ביפן",
+      "ul": [
+        "IIJmio Traveler SIM: 15GB ל-15 יום ¥3,740 (~₪95). Data-Only. רשת Docomo.",
+        "Docomo Visitor SIM: 15GB ¥4,400 (~₪112) ל-15 יום. זמין ב-airport.",
+        "SIM יפני = Data-Only: שיחות יוצאות אינן כלולות. WhatsApp = עובד.",
+        "קנייה: Narita (NRT) ו-Haneda (HND) — דוכני IIJmio/Docomo. 7-Eleven (eSIM only).",
+        "לא נדרש תיעוד: SIM תייר ביפן ללא רישום ב-ID. הפעלה מיידית."
+      ]
+    },
+    {
+      "h2": "כיסוי ביפן",
+      "ul": [
+        "טוקיו/אוסקה/קיוטו: 4G/5G מצוין. Metro טוקיו = כיסוי 4G בכמעט כל התחנות.",
+        "הר פוג'י (Fuji): כיסוי 4G עד Station 5 (חמישי). מעל זה = חלש.",
+        "כפרי (Hokkaido/Okinawa): Docomo = כיסוי כפרי הטוב ביותר. SoftBank = חלש יותר.",
+        "Shinkansen: 4G ברוב המסלול. מנהרות = ניתוק. WiFi ב-Shinkansen = זמין (נוח).",
+        "מסקנה: SIM/eSIM Docomo = הכי בטוח לכיסוי יפני."
+      ]
+    },
+    {
+      "h2": "Pocket WiFi — אלטרנטיבה",
+      "ul": [
+        "Pocket WiFi: מכשיר נייד שמשתף אינטרנט ל-10 מכשירים. ¥500–₪1,000/יום.",
+        "מתאים ל: קבוצות 3+ אנשים. מחלקים עלות. מחבר מחשב + מצלמה + טלפונים.",
+        "חסרונות: סוללה מוגבלת (~8 שעות). חייב לטעון. מכשיר נוסף לשאת.",
+        "השכרה: בנמל תעופה (GloBird/Ninja WiFi) או שלוחים מהארץ.",
+        "לבד/זוג: eSIM/SIM = נוח יותר מ-Pocket WiFi."
+      ]
+    }
+  ],
+  "faq": [
+    [
+      "Line App ביפן?",
+      "Line = הוואטסאפ של יפן. חיוני לתקשורת עם יפנים. הורידו לפני הנסיעה. לא דורש SIM יפני — עובד עם מספר ישראלי. Line Pay: לא זמין לתיירים. IC Card (Suica) = תשלום תחבורה."
+    ],
+    [
+      "Google Maps ביפן?",
+      "Google Maps = מצוין ביפן (שיפור גדול ב-2024). הורידו offline לפני. Japan Transit Planner + Hyperdia = לרכבות. Navitime = אפליקציה יפנית עם אנגלית. Google Translate App = חיוני."
+    ],
+    [
+      "SIM יפני — שיחות?",
+      "SIM תייר ביפן = Data-Only בדרך כלל (לא יוצאות). שיחות נכנסות: לא. WhatsApp/LINE/FaceTime = עובדים מלא. לשיחה לבית מלון יפני: Google Voice / Skype. שיחת חירום: 110 (משטרה), 119 (אמבולנס) — חינם ללא SIM."
+    ],
+    [
+      "Cash vs Card ביפן?",
+      "יפן עדיין מועדפת Cash. ATM: 7-Eleven ו-PostBank מקבלים Visa/Mastercard/Amex. Suica (IC Card): לתחבורה + קניות. Rakuten Pay/PayPay: לא מתאים לתיירים. קחו ¥30,000–₪50,000 במזומן לשבוע."
+    ]
+  ]
+}

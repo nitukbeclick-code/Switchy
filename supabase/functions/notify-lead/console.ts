@@ -85,7 +85,7 @@ export function buildBoard(rows: MeetingRow[], nowMs: number): ConsoleBoard {
   const week = rows
     .filter((m) => {
       const t = ms(m);
-      return m.status === "confirmed" && t >= nowMs && t <= weekEnd;
+      return m.status === "confirmed" && m.meeting_date !== todayYmd && t >= nowMs && t <= weekEnd;
     })
     .map(toConsoleMeeting)
     .sort((a, b) => (Date.parse(a.startsAt) || 0) - (Date.parse(b.startsAt) || 0));

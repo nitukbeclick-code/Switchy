@@ -1,0 +1,70 @@
+{
+  "slug": "guide-abroad-scandinavia",
+  "cat": "חו״ל",
+  "date": "2026-06-21",
+  "read": 3,
+  "title": "סלולר בסקנדינביה לישראלים — נורבגיה, שוודיה, דנמרק | חוסך",
+  "desc": "מדריך סלולר לסקנדינביה: eSIM Airalo, SIM מקומי Telia/Telenor, ורומינג. אוסלו, שטוקהולם, קופנהגן.",
+  "h1": "סלולר בסקנדינביה — מדריך",
+  "tldr": "שוודיה/דנמרק = EU. נורבגיה = EEA (לא EU). Airalo Europe: שוודיה+דנמרק כלולות, נורבגיה = eSIM נפרד. SIM מקומי Telia/Telenor = 15–25GB €15–€25. רומינג ישראלי: EU Day Pass לשוודיה/דנמרק, לא נורבגיה.",
+  "sections": [
+    {
+      "h2": "שוודיה ודנמרק — EU",
+      "ul": [
+        "Airalo Europe: 10GB $20. שוודיה + דנמרק + פינלנד = כלולות ב-EU.",
+        "Airalo Sweden/Denmark: 10GB $14–$16 כל אחת. לנסיעה בודדת.",
+        "SIM מקומי: Telia/Telenor/3 Sweden = 15GB SEK 150 (~₪55). זמין בנמל תעופה.",
+        "רומינג ישראלי EU: שוודיה/דנמרק = EU Day Pass ₪12–₪20/יום.",
+        "מסקנה: לסיור מרובי-מדינות = Airalo Europe. לשוודיה בלבד = Airalo Sweden."
+      ]
+    },
+    {
+      "h2": "נורבגיה — לא EU",
+      "ul": [
+        "נורבגיה = EEA (אירופה כלכלית) אבל לא EU. רומינג EU = לא עובד אוטומטית.",
+        "Airalo Norway: 3GB $8, 10GB $19. רשת Telenor. יקר יותר מ-EU.",
+        "SIM מקומי: Telenor/Telia Norway. 15GB NOK 199 (~₪70). נמל תעופה OSL.",
+        "רומינג ישראלי: בדקו ספציפית — נורבגיה לרוב ₪20–₪40/יום. יקר.",
+        "מסקנה: נורבגיה = eSIM Airalo Norway הכי נוח. לא לסמוך על EU Roaming."
+      ]
+    },
+    {
+      "h2": "כיסוי בסקנדינביה",
+      "ul": [
+        "שטוקהולם/קופנהגן/אוסלו: 4G/5G מלא. Telenor/Telia = מצוינים.",
+        "Fjords נורבגיה: כיסוי 4G לאורך הדרכים הראשיות. ב-Fjordים הקטנים = חלש.",
+        "Lapland (שוודיה/פינלנד): 4G בעיירות. ב-Middle of nowhere = ללא כיסוי.",
+        "NSB (רכבת נורבגיה): WiFi ברכבות IC/IC3. SJ (שוודיה): WiFi מצוין.",
+        "Tunnels: נורבגיה = מנהרות רבות. 4G בחלקן."
+      ]
+    },
+    {
+      "h2": "מידע שימושי לסקנדינביה",
+      "ul": [
+        "מטבע: SEK (שוודיה), NOK (נורבגיה), DKK (דנמרק). לא יורו.",
+        "כרטיס: Scandinavia = Cashless society. Visa/Mastercard = בכל מקום.",
+        "Ruter (אוסלו)/SL (שטוקהולם)/Rejsekort (דנמרק): כרטיסי תחבורה ציבורית.",
+        "מחיר: סקנדינביה = יקרה. מסעדה ₪80–₪150 לאדם. בתי קפה ₪40–₪60 לקפה.",
+        "Northern Lights: אוסלו/Tromsø נורבגיה אוקטובר-מרץ. Offline maps חובה."
+      ]
+    }
+  ],
+  "faq": [
+    [
+      "Airalo Norway vs. Telenor Norway?",
+      "Airalo Norway = Telenor כ-backend. מחיר: Airalo 10GB $19 = ~₪72. Telenor Norway SIM = NOK 199 (~₪70) ל-15GB. SIM = יותר גיגות לכסף. eSIM = נוח יותר. לסיור >7 ימים: SIM מקומי."
+    ],
+    [
+      "Finland — כלול ב-Airalo Europe?",
+      "כן — פינלנד = EU מלאה. Airalo Europe 10GB $20 = פינלנד + שוודיה + דנמרק. Airalo Finland נפרד: 10GB $15. לסיור Scandinavia + Helsinki = Europe SIM = הפתרון הנוח."
+    ],
+    [
+      "נורבגיה — Fjords בלי אינטרנט?",
+      "Fjords Geirangerfjord/Sognefjord: 4G בנקודות ציון. במזחים וכפרים: 4G. ב-cruise ב-fjord: ייתכן חלש. Offline maps (Maps.me/Google Maps offline) = חובה. קאמרה = חיונית יותר מאינטרנט."
+    ],
+    [
+      "מחיר SIM בנורבגיה vs. eSIM?",
+      "Telenor Norway SIM: NOK 199 (~₪70) ל-15GB ל-30 ימים. Airalo Norway: $19 (~₪72) ל-10GB. מחיר/GB: SIM = יותר זול. נוחות: eSIM = קנייה מהבית. לנסיעה 7+ ימים = SIM עדיף."
+    ]
+  ]
+}

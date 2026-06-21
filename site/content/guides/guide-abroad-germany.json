@@ -1,0 +1,70 @@
+{
+  "slug": "guide-abroad-germany",
+  "cat": "חו״ל",
+  "date": "2026-06-21",
+  "read": 3,
+  "title": "סלולר בגרמניה לישראלים — eSIM, SIM ורומינג | חוסך",
+  "desc": "כיצד להישאר מחוברים בגרמניה — eSIM Airalo, SIM מקומי Telekom/O2/Lidl Connect, ורומינג EU. ברלין, מינכן, פרנקפורט.",
+  "h1": "סלולר בגרמניה — מדריך לישראלים",
+  "tldr": "גרמניה = EU. eSIM Airalo Germany 10GB $16. SIM מקומי Lidl Connect 10GB €10. Airalo Europe 10GB $20 = כולל גרמניה + צרפת + ספרד. רומינג ישראלי EU: ₪12–₪20/יום.",
+  "sections": [
+    {
+      "h2": "eSIM לגרמניה",
+      "ul": [
+        "Airalo Germany: 3GB $7, 10GB $16. רשת Telekom/O2.",
+        "Airalo Europe: 10GB $20 — 36 מדינות EU. לסיורים מרובי-מדינות.",
+        "Holafly Germany: ללא הגבלה 7 ימים $25. לשבוע = נוח.",
+        "יתרון: גרמניה = EU. eSIM Europe כולל גם אוסטריה/שוויץ/בלגיה.",
+        "Dual SIM: SIM ישראלי (WhatsApp) + eSIM גרמני (גלישה) = אידיאלי."
+      ]
+    },
+    {
+      "h2": "SIM מקומי בגרמניה",
+      "ul": [
+        "Lidl Connect: 10GB €10. 20GB €15. זמין ב-Lidl supermarket. זול ביותר.",
+        "REWE/Aldi Talk: SIM prepaid זולות. זמינות בסופרמרקטים.",
+        "Telekom Prepaid: 20GB €25. איכות גבוהה. Telekom = כיסוי מצוין.",
+        "O2 Tourist SIM: זמין בנמל תעופה FRA/BER. מחיר בינוני.",
+        "קנייה: Frankfurt (FRA), Munich (MUC), Berlin (BER) — נמל תעופה. Lidl = בעיר."
+      ]
+    },
+    {
+      "h2": "כיסוי בגרמניה",
+      "ul": [
+        "ברלין/מינכן/פרנקפורט: 4G/5G מצוין. Telekom = כיסוי פנים טוב.",
+        "כפרי (Bavaria, Black Forest): Telekom = הטוב ביותר. O2/Vodafone = חלש יחסית.",
+        "Autobahn (כביש מהיר): כיסוי טוב. פעמים ניתוק קצר.",
+        "מנהרות רכבת (ICE): ICE מהירה = WiFi כלול (חינם). 4G בחלק מהמסלול.",
+        "מסקנה: Telekom Prepaid/Airalo = הבחירה הבטוחה ביותר לכיסוי."
+      ]
+    },
+    {
+      "h2": "רומינג ישראלי בגרמניה (EU)",
+      "ul": [
+        "גרמניה = EU: ₪12–₪20/יום. לשבוע = ₪84–₪140.",
+        "בדיקת כיסוי EU: חלק מהמסלולים ישראלים כוללים 10–20GB EU חינם.",
+        "Airalo Germany $16 ל-10GB = ~₪60. vs רומינג ₪15×7 = ₪105. חיסכון ₪45.",
+        "מתאים לרומינג: 1–2 ימים עסקיים בלבד.",
+        "WhatsApp/FaceTime: גרמניה = EU חופשי, ללא חסימות."
+      ]
+    }
+  ],
+  "faq": [
+    [
+      "eSIM בגרמניה — Telekom vs. O2?",
+      "Telekom (Airalo, Holafly): כיסוי כפרי מצוין. O2 (Airalo Europe): כיסוי עירוני טוב. לנסיעה ספציפית לברלין/מינכן: שניהם. לכפרי/Bavaria: Telekom עדיף."
+    ],
+    [
+      "גרמניה — Uber/תחבורה?",
+      "Uber פועל בגרמניה. BVG App (ברלין) / MVV App (מינכן): כרטיסי תחבורה ציבורית. DB Navigator: רכבות ألمانية (ICE/IC). Google Maps: מצוין לניווט תחבורה ציבורית."
+    ],
+    [
+      "Lidl Connect — איך מפעילים?",
+      "קנו חבילת SIM ב-Lidl (~€10). רישום: אתר lidl-connect.de עם IBAN גרמני OR קרדיט אחד. לחלופין: eSIM Airalo = ללא רישום, מיידי."
+    ],
+    [
+      "גרמניה vs. גרמניה+אוסטריה — eSIM אחד?",
+      "Airalo Europe = 36 מדינות כולל גרמניה, אוסטריה, שוויץ. אם מתכננים Vienna + Munich + Salzburg = Europe SIM אחד = הפתרון הנוח."
+    ]
+  ]
+}

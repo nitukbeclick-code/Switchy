@@ -1,0 +1,615 @@
+{
+  "generated": "2026-06-10T17:51:27.801515",
+  "plans": [
+    {
+      "cat": "cellular",
+      "provider": "הוט מובייל",
+      "plan": "20GB Data Only",
+      "price": 11,
+      "is5G": false,
+      "noCommit": true,
+      "hasAbroad": false,
+      "priceUnit": "month"
+    },
+    {
+      "cat": "cellular",
+      "provider": "019 מובייל",
+      "plan": "SIM Data 2GB",
+      "price": 12,
+      "is5G": false,
+      "noCommit": true,
+      "hasAbroad": false,
+      "priceUnit": "month"
+    },
+    {
+      "cat": "cellular",
+      "provider": "רמי לוי",
+      "plan": "זול להיות בקשר כשר",
+      "price": 15,
+      "is5G": false,
+      "noCommit": true,
+      "hasAbroad": false,
+      "priceUnit": "month"
+    },
+    {
+      "cat": "cellular",
+      "provider": "רמי לוי",
+      "plan": "Max כשר",
+      "price": 17,
+      "is5G": false,
+      "noCommit": true,
+      "hasAbroad": false,
+      "priceUnit": "month"
+    },
+    {
+      "cat": "cellular",
+      "provider": "019 מובייל",
+      "plan": "לכל החיים 12GB",
+      "price": 20,
+      "is5G": false,
+      "noCommit": true,
+      "hasAbroad": false,
+      "priceUnit": "month"
+    },
+    {
+      "cat": "cellular",
+      "provider": "הוט מובייל",
+      "plan": "150GB Data Only",
+      "price": 22,
+      "is5G": false,
+      "noCommit": true,
+      "hasAbroad": false,
+      "priceUnit": "month"
+    },
+    {
+      "cat": "cellular",
+      "provider": "019 מובייל",
+      "plan": "בול בפוני 30GB",
+      "price": 22,
+      "is5G": false,
+      "noCommit": true,
+      "hasAbroad": false,
+      "priceUnit": "month"
+    },
+    {
+      "cat": "cellular",
+      "provider": "Xphone",
+      "plan": "מחוברים",
+      "price": 23,
+      "is5G": false,
+      "noCommit": true,
+      "hasAbroad": false,
+      "priceUnit": "month"
+    },
+    {
+      "cat": "cellular",
+      "provider": "Xphone",
+      "plan": "Young 50GB",
+      "price": 25,
+      "is5G": false,
+      "noCommit": true,
+      "hasAbroad": false,
+      "priceUnit": "month"
+    },
+    {
+      "cat": "cellular",
+      "provider": "019 מובייל",
+      "plan": "נטפרי S 10GB כשר",
+      "price": 25,
+      "is5G": false,
+      "noCommit": true,
+      "hasAbroad": false,
+      "priceUnit": "month"
+    },
+    {
+      "cat": "cellular",
+      "provider": "019 מובייל",
+      "plan": "הגזמנו 170GB",
+      "price": 26,
+      "is5G": true,
+      "noCommit": true,
+      "hasAbroad": false,
+      "priceUnit": "month"
+    },
+    {
+      "cat": "cellular",
+      "provider": "Xphone",
+      "plan": "Forever Plus",
+      "price": 30,
+      "is5G": false,
+      "noCommit": true,
+      "hasAbroad": true,
+      "priceUnit": "month"
+    },
+    {
+      "cat": "cellular",
+      "provider": "Xphone",
+      "plan": "צוברים 500GB",
+      "price": 30,
+      "is5G": false,
+      "noCommit": true,
+      "hasAbroad": true,
+      "priceUnit": "month"
+    },
+    {
+      "cat": "cellular",
+      "provider": "רמי לוי",
+      "plan": "מבצע זוגות 250GB",
+      "price": 30,
+      "is5G": true,
+      "noCommit": true,
+      "hasAbroad": false,
+      "priceUnit": "month"
+    },
+    {
+      "cat": "cellular",
+      "provider": "רמי לוי",
+      "plan": "זוג קווים 250GB",
+      "price": 30,
+      "is5G": true,
+      "noCommit": true,
+      "hasAbroad": false,
+      "priceUnit": "month"
+    },
+    {
+      "cat": "internet",
+      "provider": "פרטנר",
+      "plan": "Fiber 1000Mb",
+      "price": 39,
+      "is5G": false,
+      "noCommit": true,
+      "hasAbroad": false,
+      "priceUnit": "month"
+    },
+    {
+      "cat": "internet",
+      "provider": "גילת",
+      "plan": "1GB מבצע אונליין",
+      "price": 49,
+      "is5G": false,
+      "noCommit": true,
+      "hasAbroad": false,
+      "priceUnit": "month"
+    },
+    {
+      "cat": "internet",
+      "provider": "בזק",
+      "plan": "אינטרנט 100 מגה (נחושת)",
+      "price": 65,
+      "is5G": false,
+      "noCommit": true,
+      "hasAbroad": false,
+      "priceUnit": "month"
+    },
+    {
+      "cat": "internet",
+      "provider": "פרטנר",
+      "plan": "Fiber 600Mb",
+      "price": 69,
+      "is5G": false,
+      "noCommit": true,
+      "hasAbroad": false,
+      "priceUnit": "month"
+    },
+    {
+      "cat": "internet",
+      "provider": "גילת",
+      "plan": "1GB שנה",
+      "price": 79,
+      "is5G": false,
+      "noCommit": true,
+      "hasAbroad": false,
+      "priceUnit": "month"
+    },
+    {
+      "cat": "internet",
+      "provider": "CCC",
+      "plan": "דאבל 40 מגה (נחושת)",
+      "price": 80,
+      "is5G": false,
+      "noCommit": true,
+      "hasAbroad": false,
+      "priceUnit": "month"
+    },
+    {
+      "cat": "internet",
+      "provider": "CCC",
+      "plan": "דאבל 100 מגה (נחושת)",
+      "price": 85,
+      "is5G": false,
+      "noCommit": true,
+      "hasAbroad": false,
+      "priceUnit": "month"
+    },
+    {
+      "cat": "internet",
+      "provider": "גולן טלקום",
+      "plan": "אינטרנט סיבים משתלם",
+      "price": 89,
+      "is5G": false,
+      "noCommit": true,
+      "hasAbroad": false,
+      "priceUnit": "month"
+    },
+    {
+      "cat": "internet",
+      "provider": "CCC",
+      "plan": "פייבר 300 מגה",
+      "price": 90,
+      "is5G": false,
+      "noCommit": true,
+      "hasAbroad": false,
+      "priceUnit": "month"
+    },
+    {
+      "cat": "internet",
+      "provider": "גילת",
+      "plan": "1GB לכל החיים",
+      "price": 95,
+      "is5G": false,
+      "noCommit": true,
+      "hasAbroad": false,
+      "priceUnit": "month"
+    },
+    {
+      "cat": "internet",
+      "provider": "CCC",
+      "plan": "פייבר 500 מגה",
+      "price": 95,
+      "is5G": false,
+      "noCommit": true,
+      "hasAbroad": false,
+      "priceUnit": "month"
+    },
+    {
+      "cat": "internet",
+      "provider": "CCC",
+      "plan": "דאבל 200 מגה (נחושת)",
+      "price": 95,
+      "is5G": false,
+      "noCommit": true,
+      "hasAbroad": false,
+      "priceUnit": "month"
+    },
+    {
+      "cat": "internet",
+      "provider": "בזק",
+      "plan": "bFiber 1 ג׳יגה",
+      "price": 99,
+      "is5G": false,
+      "noCommit": true,
+      "hasAbroad": false,
+      "priceUnit": "month"
+    },
+    {
+      "cat": "internet",
+      "provider": "בזק",
+      "plan": "אינטרנט 100/10up (נחושת)",
+      "price": 99,
+      "is5G": false,
+      "noCommit": true,
+      "hasAbroad": false,
+      "priceUnit": "month"
+    },
+    {
+      "cat": "internet",
+      "provider": "HOT",
+      "plan": "אינטרנט 600Mb Fiber AI",
+      "price": 99,
+      "is5G": false,
+      "noCommit": true,
+      "hasAbroad": false,
+      "priceUnit": "month"
+    },
+    {
+      "cat": "tv",
+      "provider": "STING TV",
+      "plan": "HBO Max Standard",
+      "price": 49,
+      "is5G": false,
+      "noCommit": true,
+      "hasAbroad": false,
+      "priceUnit": "month"
+    },
+    {
+      "cat": "tv",
+      "provider": "STING TV",
+      "plan": "דיסני+",
+      "price": 49,
+      "is5G": false,
+      "noCommit": true,
+      "hasAbroad": false,
+      "priceUnit": "month"
+    },
+    {
+      "cat": "tv",
+      "provider": "STING TV",
+      "plan": "מבית yes",
+      "price": 49,
+      "is5G": false,
+      "noCommit": true,
+      "hasAbroad": false,
+      "priceUnit": "month"
+    },
+    {
+      "cat": "tv",
+      "provider": "yes",
+      "plan": "Sting+ by yes",
+      "price": 49,
+      "is5G": false,
+      "noCommit": true,
+      "hasAbroad": false,
+      "priceUnit": "month"
+    },
+    {
+      "cat": "tv",
+      "provider": "סלקום",
+      "plan": "סלקום TV + Netflix",
+      "price": 69,
+      "is5G": false,
+      "noCommit": true,
+      "hasAbroad": false,
+      "priceUnit": "month"
+    },
+    {
+      "cat": "tv",
+      "provider": "NextTV",
+      "plan": "אפליקציית Next TV",
+      "price": 70,
+      "is5G": false,
+      "noCommit": true,
+      "hasAbroad": false,
+      "priceUnit": "month"
+    },
+    {
+      "cat": "tv",
+      "provider": "HOT",
+      "plan": "רק טלוויזיה",
+      "price": 89,
+      "is5G": false,
+      "noCommit": true,
+      "hasAbroad": false,
+      "priceUnit": "month"
+    },
+    {
+      "cat": "tv",
+      "provider": "פרטנר",
+      "plan": "Partner TV + ספורט",
+      "price": 95,
+      "is5G": false,
+      "noCommit": true,
+      "hasAbroad": false,
+      "priceUnit": "month"
+    },
+    {
+      "cat": "tv",
+      "provider": "HOT",
+      "plan": "רק טלוויזיה + ספורט",
+      "price": 99,
+      "is5G": false,
+      "noCommit": true,
+      "hasAbroad": false,
+      "priceUnit": "month"
+    },
+    {
+      "cat": "triple",
+      "provider": "NextTV",
+      "plan": "אינטרנט סיבים + TV 1GB",
+      "price": 119,
+      "is5G": false,
+      "noCommit": true,
+      "hasAbroad": false,
+      "priceUnit": "month"
+    },
+    {
+      "cat": "triple",
+      "provider": "גולן טלקום",
+      "plan": "טריפל המושלם",
+      "price": 139,
+      "is5G": false,
+      "noCommit": true,
+      "hasAbroad": false,
+      "priceUnit": "month"
+    },
+    {
+      "cat": "triple",
+      "provider": "STING TV",
+      "plan": "Sting+Fiber HBO Max",
+      "price": 149,
+      "is5G": false,
+      "noCommit": true,
+      "hasAbroad": false,
+      "priceUnit": "month"
+    },
+    {
+      "cat": "triple",
+      "provider": "yes",
+      "plan": "Sting+Fiber by yes",
+      "price": 149,
+      "is5G": false,
+      "noCommit": true,
+      "hasAbroad": false,
+      "priceUnit": "month"
+    },
+    {
+      "cat": "triple",
+      "provider": "סלקום",
+      "plan": "טריפל 1GB מונדיאל (מקרן)",
+      "price": 159,
+      "is5G": false,
+      "noCommit": true,
+      "hasAbroad": false,
+      "priceUnit": "month"
+    },
+    {
+      "cat": "triple",
+      "provider": "NextTV",
+      "plan": "אינטרנט סיבים + TV 2GB",
+      "price": 164,
+      "is5G": false,
+      "noCommit": true,
+      "hasAbroad": false,
+      "priceUnit": "month"
+    },
+    {
+      "cat": "triple",
+      "provider": "HOT",
+      "plan": "טריפל מונדיאל עד 1000Mb",
+      "price": 169,
+      "is5G": false,
+      "noCommit": true,
+      "hasAbroad": false,
+      "priceUnit": "month"
+    },
+    {
+      "cat": "triple",
+      "provider": "סלקום",
+      "plan": "טריפל 2.5GB",
+      "price": 179,
+      "is5G": false,
+      "noCommit": true,
+      "hasAbroad": false,
+      "priceUnit": "month"
+    },
+    {
+      "cat": "triple",
+      "provider": "סלקום",
+      "plan": "טריפל 1GB מונדיאל (מסך)",
+      "price": 189,
+      "is5G": false,
+      "noCommit": true,
+      "hasAbroad": false,
+      "priceUnit": "month"
+    },
+    {
+      "cat": "triple",
+      "provider": "HOT",
+      "plan": "טריפל HBO Max",
+      "price": 199,
+      "is5G": false,
+      "noCommit": true,
+      "hasAbroad": false,
+      "priceUnit": "month"
+    },
+    {
+      "cat": "triple",
+      "provider": "yes",
+      "plan": "yes+Fiber הטריפל",
+      "price": 209,
+      "is5G": false,
+      "noCommit": true,
+      "hasAbroad": false,
+      "priceUnit": "month"
+    },
+    {
+      "cat": "abroad",
+      "provider": "019 מובייל",
+      "plan": "תעריף לדקה — אירופה",
+      "price": 1,
+      "is5G": false,
+      "noCommit": true,
+      "hasAbroad": false,
+      "priceUnit": "minute"
+    },
+    {
+      "cat": "abroad",
+      "provider": "סלקום",
+      "plan": "₪7.90/יום — כל אירופה",
+      "price": 8,
+      "is5G": false,
+      "noCommit": true,
+      "hasAbroad": false,
+      "priceUnit": "day"
+    },
+    {
+      "cat": "abroad",
+      "provider": "הוט מובייל",
+      "plan": "₪8.90/יום — אירופה",
+      "price": 9,
+      "is5G": false,
+      "noCommit": true,
+      "hasAbroad": false,
+      "priceUnit": "day"
+    },
+    {
+      "cat": "abroad",
+      "provider": "גולן טלקום",
+      "plan": "₪9.90/יום — כל אירופה",
+      "price": 10,
+      "is5G": false,
+      "noCommit": true,
+      "hasAbroad": false,
+      "priceUnit": "day"
+    },
+    {
+      "cat": "abroad",
+      "provider": "Airalo eSIM",
+      "plan": "eSIM אירופה 3GB",
+      "price": 13,
+      "is5G": false,
+      "noCommit": true,
+      "hasAbroad": false,
+      "priceUnit": "package"
+    },
+    {
+      "cat": "abroad",
+      "provider": "019 מובייל",
+      "plan": "2GB גלישה חודשי",
+      "price": 19,
+      "is5G": false,
+      "noCommit": true,
+      "hasAbroad": false,
+      "priceUnit": "month"
+    },
+    {
+      "cat": "abroad",
+      "provider": "Airalo eSIM",
+      "plan": "eSIM אירופה 10GB",
+      "price": 25,
+      "is5G": false,
+      "noCommit": true,
+      "hasAbroad": false,
+      "priceUnit": "package"
+    },
+    {
+      "cat": "abroad",
+      "provider": "פרטנר",
+      "plan": "World Pack 1GB חודשי",
+      "price": 29,
+      "is5G": false,
+      "noCommit": true,
+      "hasAbroad": false,
+      "priceUnit": "month"
+    },
+    {
+      "cat": "abroad",
+      "provider": "Airalo eSIM",
+      "plan": "eSIM גלובל 5GB",
+      "price": 37,
+      "is5G": false,
+      "noCommit": true,
+      "hasAbroad": false,
+      "priceUnit": "package"
+    },
+    {
+      "cat": "abroad",
+      "provider": "פלאפון",
+      "plan": "World 5GB חודשי",
+      "price": 49,
+      "is5G": false,
+      "noCommit": true,
+      "hasAbroad": false,
+      "priceUnit": "month"
+    },
+    {
+      "cat": "abroad",
+      "provider": "פרטנר",
+      "plan": "World Pack 3GB חודשי",
+      "price": 49,
+      "is5G": false,
+      "noCommit": true,
+      "hasAbroad": false,
+      "priceUnit": "month"
+    }
+  ]
+}

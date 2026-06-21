@@ -207,7 +207,7 @@ Deno.test("buildZoomMeetingBody normalizes start_time to Zoom's yyyy-MM-ddTHH:mm
 Deno.test("zoomConfigured requires all three S2S credentials", () => {
   const cfgWith = (over: Partial<Cfg>): Cfg => ({
     tgToken: "t", tgChat: "-100123", resend: "", resendFrom: "", notifyEmail: "",
-    openai: "", anthropic: "", webhookSecret: "s",
+    openai: "", anthropic: "", gemini: "", webhookSecret: "s",
     zoomAccountId: "acc", zoomClientId: "cid", zoomClientSecret: "sec", zoomHostEmail: "",
     allowedUserIds: [42], src: {},
     ...over,

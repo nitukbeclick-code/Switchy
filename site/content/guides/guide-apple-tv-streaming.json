@@ -1,0 +1,58 @@
+{
+  "slug": "guide-apple-tv-streaming",
+  "cat": "טלוויזיה",
+  "date": "2026-06-21",
+  "read": 3,
+  "title": "Apple TV+ בישראל — שווה? כל מה שצריך לדעת | חוסך",
+  "desc": "Apple TV+ בישראל: מה תמצאו, מחיר, שירותי Apple שאפשר לאגד, ומתי שווה לנסות.",
+  "h1": "Apple TV+ — האם שווה בישראל?",
+  "tldr": "Apple TV+ = ₪30/חודש. תוכן: הפקות מקוריות (Ted Lasso, Severance, The Morning Show). ספריה קטנה יחסית אבל באיכות גבוהה. 7 ימי ניסיון חינם + כולל עם מכשיר Apple חדש ל-3 חודשים. Apple One Bundle = מחיר טוב אם משתמשים גם ב-Music/iCloud.",
+  "sections": [
+    {
+      "h2": "מה כולל Apple TV+?",
+      "ul": [
+        "תוכן מקורי: Severance, Ted Lasso, The Morning Show, Slow Horses, Monarch, Killers of the Flower Moon.",
+        "ספריה: קטנה יחסית — Apple מתמקדת בפחות תוכן, יותר איכות.",
+        "4K HDR: כל התוכן ב-4K HDR Dolby Vision + Dolby Atmos. איכות מצוינת.",
+        "Offline: הורדה לצפייה ללא אינטרנט — נוח לטיסה.",
+        "מכשירים: iPhone, iPad, Mac, Apple TV, SmartTV (Samsung/LG/Sony), Chromecast, Amazon Fire TV."
+      ]
+    },
+    {
+      "h2": "מחיר ואפשרויות",
+      "ul": [
+        "Apple TV+ בלבד: ₪29.90/חודש. עד 6 משפחה בשיתוף Family Sharing.",
+        "Apple One Individual: TV+ + Music + Arcade + iCloud 50GB = ₪56/חודש.",
+        "Apple One Family: כנ\"ל + Family Sharing 6 אנשים = ₪79/חודש.",
+        "Apple One Premier: + Fitness+ + News+ = ₪109/חודש. (News+ = אנגלית בלבד).",
+        "מכשיר Apple חדש: TV+ חינם 3 חודשים. iPhone/iPad/Mac/Apple TV."
+      ]
+    },
+    {
+      "h2": "Apple TV+ vs. Netflix vs. Disney+",
+      "ul": [
+        "תוכן כמות: Netflix >> Disney+ > Apple TV+. Apple = הכי קטנה.",
+        "תוכן איכות: Apple = הכי גבוהה לממוצע. 90%+ ציונים ב-Rotten Tomatoes.",
+        "תוכן ישראלי: Netflix = יש. Apple = אין. Disney+ = מינימלי.",
+        "ספורט: Apple = MLS (כדורגל אמריקאי) + Friday Night Baseball (ארה\"ב). לא ישראלי.",
+        "מחיר: Apple ₪30. Netflix ₪55. Disney+ ₪40. Apple = הכי זול."
+      ]
+    },
+    {
+      "h2": "מתי Apple TV+ שווה?",
+      "ul": [
+        "כן שווה: יש לכם iPhone/iPad/Mac ⁠— חינם 3 חודשים = כן כדאי לנסות.",
+        "כן שווה: נרשמתם ל-Apple One ממילא. TV+ כלול.",
+        "שקלו שוב: אם אתם בעיקר מסטרמינג ישראלי — Apple TV+ = מינימלי.",
+        "משפחה: ₪30/חודש ל-6 אנשים = ₪5/אדם. מחיר מצוין לאיכות.",
+        "עצה: נסו 7 ימי ניסיון חינם → ראו אם הסדרות הספציפיות מעניינות."
+      ]
+    }
+  ],
+  "faq": [
+    ["האם Apple TV+ בעברית?", "חלק מהתוכן כולל כתוביות עבריות. דיבוב עברי — מינימלי. רוב התוכן = כתוביות + קול אנגלי. לבדיקה ספציפית: בדפי הסדרות ב-Apple TV."],
+    ["Apple One — שווה בישראל?", "תלוי בכמה שירותים Apple אתם משתמשים. אם משלמים כבר על: Music (₪25) + iCloud 50GB (₪5) + Arcade (₪18) = ₪48. Apple One Individual = ₪56 + TV+. כן שווה."],
+    ["Apple TV 4K vs. Apple TV+ — מה ההבדל?", "Apple TV 4K = קופסת סטרימינג (₪700–₪900). מציגה אפליקציות כולל Netflix/Disney+/Apple TV+ וכו'. Apple TV+ = שירות התוכן המנוי (₪30/חודש). ניתן לצפות ב-Apple TV+ ללא Apple TV (על SmartTV/iPhone)."],
+    ["כמה מכשירים יכולים לצפות בו-זמנית?", "Apple TV+: עד 3 מכשירים בו-זמנית. עם Family Sharing (6 אנשים): כל אחד יכול לצפות. ב-Apple One Family: שיתוף של כל השירותים עד 6 אנשים."]
+  ]
+}

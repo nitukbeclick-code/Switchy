@@ -969,6 +969,55 @@ grant execute on function public.get_lead_notify_config() to service_role;
 -- select vault.create_secret('<client id>',     'zoom_client_id');
 -- select vault.create_secret('<client secret>', 'zoom_client_secret');
 
+-- ── 8. ai-chat: Gemini key in the config RPC + a tiny rate-limit table ──────
+-- Adds 'gemini_api_key' to the same whitelist get_lead_notify_config() already
+-- exposes to service_role (see section 6). FULL REPLACEMENT for the same
+-- 42P13 reason noted there.
+drop function if exists public.get_lead_notify_config();
+create function public.get_lead_notify_config()
+returns jsonb
+language sql
+security definer
+set search_path = public
+as $$
+  select coalesce(jsonb_object_agg(name, decrypted_secret), '{}'::jsonb)
+    from vault.decrypted_secrets
+   where name in (
+     'telegram_bot_token', 'telegram_chat_id', 'telegram_allowed_user_ids',
+     'resend_api_key', 'resend_from', 'leads_notify_email',
+     'openai_api_key', 'anthropic_api_key', 'gemini_api_key', 'lead_webhook_secret',
+     'zoom_account_id', 'zoom_client_id', 'zoom_client_secret', 'zoom_host_email'
+   );
+$$;
+revoke execute on function public.get_lead_notify_config() from public, anon, authenticated;
+grant execute on function public.get_lead_notify_config() to service_role;
+
+-- select vault.create_secret('<your gemini api key>', 'gemini_api_key');
+
+-- chat_messages: write-only counter the ai-chat function uses to throttle
+-- itself (max 15/IP/hour — see PER_IP_HOURLY_LIMIT in the edge function).
+-- No message text is stored, only the IP + timestamp needed to count; the
+-- edge function uses the service_role key so no anon RLS policy is needed.
+create table if not exists public.chat_messages (
+  id bigint generated always as identity primary key,
+  ip text,
+  created_at timestamptz not null default now()
+);
+create index if not exists chat_messages_ip_idx on public.chat_messages (ip, created_at desc);
+alter table public.chat_messages enable row level security;
+-- Deliberately no policies: only service_role (which bypasses RLS) may
+-- read/write this table; anon/authenticated get nothing.
+-- BYPASSRLS skips the policy check but NOT the base table grant — so the
+-- service_role still needs an explicit GRANT here. (This project's default
+-- privileges do not grant to service_role, so relying on them silently 403s
+-- every insert/select from the edge function — see the 2026-06 incident.)
+grant select, insert on public.chat_messages to service_role;
+
+-- Trim old rows daily so the table doesn't grow unbounded (only the last
+-- hour is ever queried). Optional — register once if pg_cron is enabled:
+-- select cron.schedule('chat-messages-trim', '17 3 * * *',
+--   $$ delete from public.chat_messages where created_at < now() - interval '2 days' $$);
+
 -- ── pg_cron schedules  (digest, sweeps, weekly report) ──────────────────────
 -- Requires: `create extension if not exists pg_cron schema cron;`
 -- To register: run these selects once in the SQL editor. All POST to the

@@ -1,0 +1,70 @@
+{
+  "slug": "guide-abroad-uk",
+  "cat": "חו״ל",
+  "date": "2026-06-21",
+  "read": 3,
+  "title": "סלולר בבריטניה לישראלים — eSIM, SIM ורומינג | חוסך",
+  "desc": "כיצד להישאר מחוברים בבריטניה (UK) — eSIM Airalo, SIM מקומי EE/O2/Three, ורומינג ישראלי. לונדון ומעבר.",
+  "h1": "סלולר בבריטניה — מדריך לישראלים",
+  "tldr": "בריטניה: eSIM Airalo UK = 10GB $14. SIM מקומי (EE/O2/Three): 10–30GB = £10–£20. אחרי Brexit — UK לא חלק מ-EU roaming. ספקים ישראלים מחייבים בנפרד עבור UK. eSIM = פתרון הכי נוח.",
+  "sections": [
+    {
+      "h2": "eSIM לבריטניה",
+      "ul": [
+        "Airalo UK: 3GB $8, 10GB $14, 20GB $20 (30 ימים). רשת EE/O2.",
+        "Holafly UK: גלישה ללא הגבלה ל-7 ימים $22. נוח לחופשה.",
+        "iSIM GB: eSIM מקומי. מחירים תחרותיים.",
+        "יתרון: Brexit = UK לא EU roaming. eSIM ספציפי לUK = זול יותר מ-Europe bundle.",
+        "Dual SIM: SIM ישראלי + eSIM UK = iMessage ישראלי + גלישה מקומית."
+      ]
+    },
+    {
+      "h2": "SIM מקומי בבריטניה",
+      "ul": [
+        "EE: ספק מוביל. כיסוי מצוין. SIM prepaid בחנויות EE/Tesco/Amazon UK.",
+        "O2: SIM prepaid. 10GB £10. זמין בסופרמרקטים (Tesco, Sainsbury's).",
+        "Three UK: £10/month = ללא הגבלה (SIM prepaid). כיסוי טוב. מיועד לנסיעות.",
+        "Giffgaff (MVNO על O2): £10 ל-15GB. אנלוגי לגולן בישראל.",
+        "קנייה: Boots, Tesco, WH Smith, Amazon UK (משלוח לפני עלייה?). ללא SIM lock."
+      ]
+    },
+    {
+      "h2": "כיסוי בבריטניה",
+      "ul": [
+        "לונדון: 4G/5G מצוין. כיסוי Underground (מטרו) — EE/O2 רק בחלק מהתחנות.",
+        "עיר גדולה (מנצ'סטר, אדינבורו, ברמינגהם): 4G מצוין.",
+        "כפר/Countryside: כיסוי חלש. EE = כיסוי כפרי הטוב ביותר.",
+        "רכבות: כיסוי לרוב ה-lines. במנהרות — אין.",
+        "Scotland Highlands: כיסוי חלש מאוד. הכינו מפות offline."
+      ]
+    },
+    {
+      "h2": "Brexit ורומינג",
+      "ul": [
+        "לפני 2021: UK = EU = רומינג חינם עם מנויים ישראליים שכוללים EU.",
+        "אחרי Brexit: UK ≠ EU. רומינג ישראלי לUK = עלות נפרדת (₪15–₪25/יום).",
+        "חבילות UK ספציפיות: בדקו אם הספק שלכם מציע חבילת UK בנפרד.",
+        "עצה: לנסיעה שבוע — eSIM UK $14 << רומינג ₪25 × 7 = ₪175.",
+        "Airtel/Jio לUK: לא זמין — UK ≠ הודו. eSIM UK מומלץ."
+      ]
+    }
+  ],
+  "faq": [
+    [
+      "האם WhatsApp עובד בבריטניה?",
+      "כן — ללא כל הגבלה. UK = ללא חסימות. WhatsApp, FaceTime, Zoom — הכל פועל חופשי."
+    ],
+    [
+      "Three UK SIM — ה-Feel at Home Plan?",
+      "Three UK 'Feel at Home': בכמה מסלולים, Three UK כוללים רומינג ל-71 מדינות ללא תוספת. זה מסלול חודשי לתושבים — לא SIM תייר. כ-תייר: קנו SIM prepaid Three UK."
+    ],
+    [
+      "EE vs. O2 לתייר ישראלי?",
+      "EE: כיסוי הכי רחב (כולל כפרי). O2: מחיר אטרקטיבי, כיסוי עירוני מצוין. שניהם = מצוינים ללונדון. לסיורי Countryside → EE."
+    ],
+    [
+      "Oyster Card vs. Contactless בלונדון?",
+      "Contactless (כרטיס אשראי/Apple Pay) = עובד בלונדון Underground ואוטובוסים ישירות. Oyster Card = לתושבים. ישראלים: Apple Pay/Google Pay = קל וחסכוני."
+    ]
+  ]
+}

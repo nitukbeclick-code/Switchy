@@ -4,15 +4,37 @@
   const $ = (id) => document.getElementById(id);
   const nis = (n) => '₪' + Math.round(n).toLocaleString('he-IL');
 
+  // ── Shared scheduling helpers ──────────────────────────────────────────────
+  // rafThrottle: collapse a burst of high-frequency events (scroll/pointer) into
+  // one call per animation frame, so handlers that read layout don't thrash.
+  // debounce: defer a handler until input has settled (text fields), avoiding a
+  // full re-filter on every keystroke.
+  const rafThrottle = (fn) => {
+    let scheduled = false;
+    return (...args) => {
+      if (scheduled) return;
+      scheduled = true;
+      requestAnimationFrame(() => { scheduled = false; fn(...args); });
+    };
+  };
+  const debounce = (fn, wait = 120) => {
+    let t = 0;
+    return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), wait); };
+  };
+
   // ── Footer year ──────────────────────────────────────────────────────────
   const year = $('year');
   if (year) year.textContent = new Date().getFullYear();
 
   // ── Sticky nav shadow ────────────────────────────────────────────────────
+  // rAF-throttled: toggling a class is a write, but reading scrollY each event
+  // and reacting synchronously is wasteful at scroll cadence.
   const nav = $('nav');
   const onScroll = () => nav && nav.classList.toggle('scrolled', window.scrollY > 10);
-  window.addEventListener('scroll', onScroll, { passive: true });
-  onScroll();
+  if (nav) {
+    window.addEventListener('scroll', rafThrottle(onScroll), { passive: true });
+    onScroll();
+  }
 
   // ── Mobile menu ──────────────────────────────────────────────────────────
   const toggle = $('navToggle');
@@ -27,6 +49,11 @@
     toggle.addEventListener('click', () =>
       setMenu(toggle.getAttribute('aria-expanded') !== 'true'));
     menu.querySelectorAll('a').forEach((a) => a.addEventListener('click', () => setMenu(false)));
+    // Esc closes the menu and returns focus to the toggle — keyboard parity with
+    // the click-to-open affordance.
+    menu.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') { setMenu(false); toggle.focus(); }
+    });
   }
 
   // ── Current page in the nav ──────────────────────────────────────────────
@@ -129,25 +156,42 @@
   if (form) {
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
-      const name = ($('leadName').value || '').trim();
+      // Honeypot: real users never see/fill #leadCompany (offscreen + aria-hidden
+      // + tabindex -1). A filled value means a bot — fake success, skip the POST.
+      if (($('leadCompany') && $('leadCompany').value || '').trim()) {
+        form.reset();
+        if (note) { note.classList.remove('cta__note--err'); note.textContent = 'תודה! נחזור אליך בהקדם ✦'; }
+        return;
+      }
+      const nameEl = $('leadName');
+      const phoneEl = $('leadPhone');
+      const name = (nameEl && nameEl.value || '').trim();
       // Normalize to digits/+ — the leads gate rejects dots/parens/spaces.
-      const phone = ($('leadPhone').value || '').replace(/[^\d+]/g, '');
+      const phone = (phoneEl && phoneEl.value || '').replace(/[^\d+]/g, '');
       if (name.length < 2 || name.length > 80 || phone.replace(/\D/g, '').length < 9) {
         if (note) { note.classList.add('cta__note--err'); note.textContent = 'נא למלא שם וטלפון תקין 🙏'; }
+        // Move focus to the first invalid field so keyboard/AT users land on it.
+        const bad = (name.length < 2 || name.length > 80) ? nameEl : phoneEl;
+        if (bad) bad.focus();
         return;
       }
       // Legal consent gate (Privacy Protection Regulations + Spam/Communications
       // Law): terms + privacy are MANDATORY — block submission without both.
       // Marketing is optional opt-in. The server re-stamps these timestamps
       // authoritatively; we send them so the consent moment is captured client-side.
-      const termsOk = $('consentTerms') && $('consentTerms').checked;
-      const privacyOk = $('consentPrivacy') && $('consentPrivacy').checked;
+      const termsEl = $('consentTerms');
+      const privacyEl = $('consentPrivacy');
+      const termsOk = termsEl && termsEl.checked;
+      const privacyOk = privacyEl && privacyEl.checked;
       if (!termsOk || !privacyOk) {
         if (note) { note.classList.add('cta__note--err'); note.textContent = 'יש לאשר את תנאי השימוש ומדיניות הפרטיות כדי להמשיך 🙏'; }
+        const badConsent = !termsOk ? termsEl : privacyEl;
+        if (badConsent) badConsent.focus();
         return;
       }
       const now = new Date().toISOString();
       const marketingAt = $('consentMarketing') && $('consentMarketing').checked ? now : null;
+      const priceAlert = $('consentPriceAlert') && $('consentPriceAlert').checked;
       const btn = form.querySelector('button[type="submit"]');
       if (btn) { btn.disabled = true; btn.classList.add('is-loading'); }
       let sent = true;
@@ -159,6 +203,7 @@
           terms_accepted_at: now,
           privacy_accepted_at: now,
           marketing_accepted_at: marketingAt,
+          notes: priceAlert ? 'מעוניין/ת בהתראת ירידת מחיר' : null,
         });
       } catch (_) {
         sent = false;
@@ -166,6 +211,7 @@
       if (btn) { btn.disabled = false; btn.classList.remove('is-loading'); }
       if (!sent) {
         if (note) { note.classList.add('cta__note--err'); note.textContent = 'השליחה נכשלה — נסו שוב, או כתבו לנו בוואטסאפ 💬'; }
+        if (btn) btn.focus(); // keep focus on the retry affordance
         return;
       }
       track('lead_submit', { source: location.pathname });
@@ -174,7 +220,37 @@
         note.classList.remove('cta__note--err');
         note.textContent = 'תודה ' + name.split(' ')[0] + '! נחזור אליך בהקדם ✦';
       }
+      showReferralShare();
     });
+    // form_start — fires once, the moment the visitor first engages the form.
+    let formStarted = false;
+    form.addEventListener('focusin', () => {
+      if (formStarted) return;
+      formStarted = true;
+      track('form_start', { source: location.pathname });
+    });
+  }
+
+  // ── Referral share (after a successful lead) ───────────────────────────────
+  // No backend tracking table for referrals yet — the ?ref= param on the link
+  // is the entire mechanic; redeeming/crediting it is a future backend concern.
+  function showReferralShare() {
+    if ($('referralShare')) return; // already shown (e.g. double submit)
+    const cta = form.closest('.cta__inner, .container') || form.parentElement;
+    if (!cta) return;
+    let code = '';
+    try { code = (sessionStorage.getItem('chosechRef') || ''); } catch (_) { /* storage may be blocked */ }
+    if (!code) {
+      code = Math.random().toString(36).slice(2, 8);
+      try { sessionStorage.setItem('chosechRef', code); } catch (_) { /* best-effort */ }
+    }
+    const waText = encodeURIComponent('גיליתי אתר שמשווה מחירי סלולר/אינטרנט/טלוויזיה וחוסך כסף בלי כאב ראש — שווה לבדוק: https://switchy-ai.com/?ref=' + code);
+    const box = document.createElement('p');
+    box.id = 'referralShare';
+    box.className = 'cta__referral reveal in';
+    box.innerHTML = 'מכירים מישהו ששווה לו לחסוך? <a href="https://wa.me/?text=' + waText + '" target="_blank" rel="noopener">שתפו בוואטסאפ ←</a>';
+    cta.appendChild(box);
+    track('referral_share_shown', { source: location.pathname });
   }
 
   // ── All-plans filter (plans.html) ──────────────────────────────────────────
@@ -184,12 +260,17 @@
     const empty = $('planEmpty');
     const search = $('planSearch');
     const sort = $('planSort');
+    const providerSel = $('planProvider');
+    const maxPriceInput = $('planMaxPrice');
     const btns = Array.from(document.querySelectorAll('.filter-btn'));
     const flagChips = Array.from(document.querySelectorAll('.flag-chip'));
-    const flagKey = { '5g': 'data-5g', nocommit: 'data-nocommit', abroad: 'data-abroad' };
+    const flagKey = { '5g': 'data-5g', nocommit: 'data-nocommit', abroad: 'data-abroad', haspromo: 'data-haspromo', kosher: 'data-kosher' };
+    const planCount = $('planCount');
     let cat = 'all';
     const apply = () => {
       const q = (search && search.value || '').trim().toLowerCase();
+      const prov = providerSel ? providerSel.value : '';
+      const maxPrice = maxPriceInput && maxPriceInput.value ? Number(maxPriceInput.value) : Infinity;
       const activeFlags = flagChips.filter((c) => c.classList.contains('active')).map((c) => c.dataset.flag);
       let shown = 0;
       const visibleCards = [];
@@ -197,29 +278,66 @@
         const okCat = cat === 'all' || card.dataset.cat === cat;
         const okText = !q || (card.dataset.text || '').includes(q);
         const okFlags = activeFlags.every((f) => card.getAttribute(flagKey[f]) === 'true');
-        const visible = okCat && okText && okFlags;
+        const okProv = !prov || card.dataset.provider === prov;
+        const okPrice = Number(card.dataset.price) <= maxPrice;
+        const visible = okCat && okText && okFlags && okProv && okPrice;
         card.style.display = visible ? '' : 'none';
         if (visible) { shown++; visibleCards.push(card); }
       }
       const mode = (sort && sort.value) || 'price-asc';
       visibleCards.sort((a, b) => {
         if (mode === 'price-desc') return Number(b.dataset.price) - Number(a.dataset.price);
+        if (mode === 'after-asc') {
+          const aa = Number(a.dataset.after || a.dataset.price);
+          const ba = Number(b.dataset.after || b.dataset.price);
+          return aa - ba;
+        }
         return Number(a.dataset.price) - Number(b.dataset.price);
       });
-      visibleCards.forEach((card) => planGrid.appendChild(card));
+      // Re-order via a fragment so the visible cards reflow once, not per-append.
+      const frag = document.createDocumentFragment();
+      visibleCards.forEach((card) => frag.appendChild(card));
+      planGrid.appendChild(frag);
       if (empty) empty.style.display = shown ? 'none' : 'block';
+      if (planCount) planCount.textContent = shown < cards.length ? `${shown} מסלולים נמצאו` : '';
     };
-    btns.forEach((b) => b.addEventListener('click', () => {
-      btns.forEach((x) => x.classList.toggle('active', x === b));
-      cat = b.dataset.filter;
-      apply();
-    }));
-    flagChips.forEach((chip) => chip.addEventListener('click', () => {
-      chip.classList.toggle('active');
-      apply();
-    }));
-    if (search) search.addEventListener('input', apply);
+    // Reflect toggle state in ARIA so AT announces the active category/flag, not
+    // just the visual .active class.
+    const setPressed = (el, on) => el.setAttribute('aria-pressed', String(on));
+    btns.forEach((b) => {
+      setPressed(b, b.classList.contains('active'));
+      b.addEventListener('click', () => {
+        btns.forEach((x) => { const on = x === b; x.classList.toggle('active', on); setPressed(x, on); });
+        cat = b.dataset.filter;
+        apply();
+      });
+    });
+    flagChips.forEach((chip) => {
+      setPressed(chip, chip.classList.contains('active'));
+      chip.addEventListener('click', () => {
+        chip.classList.toggle('active');
+        setPressed(chip, chip.classList.contains('active'));
+        apply();
+      });
+    });
+    // Debounced: a full grid re-filter on every keystroke is wasteful; settle first.
+    if (search) search.addEventListener('input', debounce(apply, 120));
     if (sort) sort.addEventListener('change', apply);
+    if (providerSel) providerSel.addEventListener('change', apply);
+    if (maxPriceInput) maxPriceInput.addEventListener('input', debounce(apply, 120));
+    const emptyReset = $('planEmptyReset');
+    if (emptyReset) emptyReset.addEventListener('click', () => {
+      cat = 'all';
+      btns.forEach((x) => { const on = x.dataset.filter === 'all'; x.classList.toggle('active', on); setPressed(x, on); });
+      flagChips.forEach((c) => { c.classList.remove('active'); setPressed(c, false); });
+      if (search) search.value = '';
+      if (providerSel) providerSel.value = '';
+      if (maxPriceInput) maxPriceInput.value = '';
+      apply();
+    });
+    // Pre-fill search from URL ?q= param (for Sitelinks search box / deep links)
+    const initQ = new URLSearchParams(location.search).get('q');
+    if (initQ && search) { search.value = initQ; }
     apply();
   }
 
@@ -234,6 +352,10 @@
     const picks = [0, 1, 2].map((i) => $('cmp' + i)).filter(Boolean);
     const yes = '<span class="cmp-yes" aria-label="כן">✓</span>';
     const no = '<span class="cmp-no" aria-label="לא">—</span>';
+    // Distinct from `no` (—): a missing full-package detail is "not stated on
+    // the provider's site", not "none" — conflating them would read a blank
+    // setup fee as "free". Collected via the Claude-in-Chrome catalogue pass.
+    const na = '<span class="cmp-no">לא מצוין</span>';
     const catName = { cellular: 'סלולר', internet: 'אינטרנט', tv: 'טלוויזיה', triple: 'משולבת', abroad: 'חו״ל' };
     const render = () => {
       const chosen = picks.map((s) => byId[s.value]).filter(Boolean);
@@ -267,6 +389,15 @@
       specKeys.forEach((k) => {
         rows.push(row(k, chosen.map((p) => (p.specs && p.specs[k] != null) ? escHtml(p.specs[k]) : no)));
       });
+      // Full-package detail rows — shown only when at least one chosen plan
+      // carries the field, so the table stays clean for categories that don't
+      // have it (e.g. no "התקנה" row for cellular). Missing value → "לא מצוין".
+      [['התקנה', 'setupFee'], ['ציוד (נתב/ממיר)', 'equipment'], ['מגדיל טווח', 'rangeExtender']]
+        .forEach(([label, key]) => {
+          if (chosen.some((p) => p[key] != null && p[key] !== '')) {
+            rows.push(row(label, chosen.map((p) => (p[key] != null && p[key] !== '') ? escHtml(p[key]) : na)));
+          }
+        });
       const wa = (p) => 'https://wa.me/972505037537?text=' +
         encodeURIComponent('היי, מעניין אותי ' + p.provider + ' - ' + p.plan + ' (₪' + p.price + ')');
       const ctaRow = `<tr class="cmp-cta-row"><th scope="row"></th>${chosen.map((p) =>
@@ -274,45 +405,133 @@
       compareTable.innerHTML =
         `<table class="cmp-table"><thead><tr><th></th>${cols}</tr></thead><tbody>${rows.join('')}${ctaRow}</tbody></table>`;
     };
-    picks.forEach((s) => s.addEventListener('change', render));
+    // Initialise from URL params (?p0=id&p1=id&p2=id) so comparisons can be shared.
+    const sp = new URLSearchParams(location.search);
+    picks.forEach((s, i) => { const v = sp.get('p' + i); if (v && byId[v]) s.value = v; });
+    const updateUrl = () => {
+      const params = new URLSearchParams();
+      picks.forEach((s, i) => { if (s.value) params.set('p' + i, s.value); });
+      history.replaceState(null, '', '?' + params.toString());
+    };
+    const copyBtn = document.createElement('button');
+    copyBtn.className = 'btn btn--ghost btn--sm cmp-share';
+    copyBtn.textContent = '🔗 שתפו השוואה זו';
+    copyBtn.setAttribute('aria-live', 'polite');
+    compareTable.insertAdjacentElement('afterend', copyBtn);
+    copyBtn.addEventListener('click', () => {
+      const ok = () => {
+        copyBtn.textContent = '✓ הקישור הועתק!';
+        setTimeout(() => { copyBtn.textContent = '🔗 שתפו השוואה זו'; }, 2500);
+      };
+      const fail = () => {
+        // Clipboard API is unavailable on insecure origins / older browsers —
+        // tell the user instead of silently doing nothing.
+        copyBtn.textContent = '⚠ העתיקו את הכתובת מהדפדפן';
+        setTimeout(() => { copyBtn.textContent = '🔗 שתפו השוואה זו'; }, 2500);
+      };
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(location.href).then(ok, fail);
+        } else { fail(); }
+      } catch (_) { fail(); }
+      track('compare_share', { source: 'copy_link' });
+    });
+    picks.forEach((s) => s.addEventListener('change', () => { updateUrl(); render(); }));
+    updateUrl();
     render();
   }
 
-  // ── AI advisor demo chips (app.html) ────────────────────────────────────────
+  // ── חוסך AI — real Gemini-backed chat (app.html) ────────────────────────────
+  // Calls the Supabase Edge Function; falls back to a friendly error bubble
+  // (never a fake canned answer) if the call fails or isn't configured.
+  // NOTE: the function source lives at supabase/functions/ai-chat, but it was
+  // deployed to production under the name "site-ai-chat" — keep this in sync
+  // with whatever name is actually live, or rename the deployed function.
+  const AI_CHAT_FUNCTION = 'site-ai-chat';
   const aiChat = $('aiChat');
   if (aiChat) {
-    const replies = {
-      'מה הכי משתלם': 'בלי להיכנס לאפליקציה אני נותן הערכה — אבל בתוך חוסך אני קורא את החשבון האמיתי שלך וממליץ מדויק. בממוצע אנשים חוסכים ₪900–₪1,200 בשנה. 💰',
-      'סלולר': 'יש מסלולי סלולר מ-₪15/חודש, וכמה 5G ללא הגבלה ב-₪29 ללא התחייבות. רוצה שאמצא לך את הזול ביותר לפי השימוש שלך? 📱',
-      'אינטרנט': 'סיב אופטי עד 1000Mb מתחיל סביב ₪89/חודש — שימו לב למחיר אחרי המבצע. אני משווה גם את זה. 🌐',
-      'ללא התחייבות': 'רוב המסלולים הזולים היום הם ללא התחייבות בכלל — אפשר לעבור ולבטל בכל עת. אסנן רק כאלה? ✅',
-      'חו': 'לחו״ל יש eSIM נוחים: למשל 10GB לאירופה סביב ₪35 לחבילה, בלי הפתעות רומינג. ✈️',
-      'פחות מ': 'יש לא מעט מסלולים מתחת ל-₪50 — סלולר, ואפילו אינטרנט בסיסי. נסמן תקציב ונראה הכל. 💸',
-    };
-    const pick = (q) => {
-      for (const key of Object.keys(replies)) if (q.indexOf(key) !== -1) return replies[key];
-      return 'שאלה מצוינת! באפליקציה אני עונה על זה לפי הנתונים האמיתיים שלך וממליץ על המסלול המשתלם ביותר. ✨';
-    };
+    const aiForm = $('aiChatForm');
+    const aiInput = $('aiChatInput');
+    const aiHistory = [];
+    // Announce new bubbles to assistive tech: the chat log is a polite live
+    // region, so each appended user/bot message is read out in turn.
+    if (!aiChat.getAttribute('role')) aiChat.setAttribute('role', 'log');
+    aiChat.setAttribute('aria-live', 'polite');
+    aiChat.setAttribute('aria-atomic', 'false');
     const addBubble = (cls, text) => {
       const b = document.createElement('div');
       b.className = 'ai-bubble ' + cls;
       b.textContent = text;
       aiChat.appendChild(b);
-      b.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      b.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'nearest' });
+      return b;
     };
-    document.querySelectorAll('.ai-chip').forEach((chip) => {
+    const addTyping = () => {
+      const b = document.createElement('div');
+      b.className = 'ai-bubble ai-bubble--bot ai-bubble--typing';
+      b.setAttribute('aria-live', 'polite');
+      b.setAttribute('aria-label', 'חוסך AI כותב תשובה');
+      b.innerHTML = '<span></span><span></span><span></span>';
+      aiChat.appendChild(b);
+      b.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'nearest' });
+      return b;
+    };
+    let aiBusy = false;
+    const chips = Array.from(document.querySelectorAll('.ai-chip'));
+    // Reflect the in-flight state so chips read as disabled to AT and don't
+    // queue a second request mid-answer.
+    const setChipsBusy = (busy) => chips.forEach((c) => c.setAttribute('aria-disabled', String(busy)));
+    const askAi = async (q) => {
+      if (!q || aiBusy) return;
+      aiBusy = true;
+      setChipsBusy(true);
+      if (aiInput) aiInput.setAttribute('aria-busy', 'true');
+      addBubble('ai-bubble--me', q);
+      const typing = addTyping();
+      track('ai_chat_message', { source: location.pathname });
+      try {
+        const cfg = window.CHOSECH_SUPABASE;
+        if (!cfg || !cfg.url) throw new Error('ai chat not configured');
+        const res = await fetch(cfg.url.replace(/\/$/, '') + '/functions/v1/' + AI_CHAT_FUNCTION, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', apikey: cfg.anonKey, Authorization: 'Bearer ' + cfg.anonKey },
+          body: JSON.stringify({ message: q, history: aiHistory }),
+        });
+        const data = await res.json().catch(() => ({}));
+        typing.remove();
+        if (!res.ok || !data.reply) throw new Error('ai chat failed: ' + res.status);
+        addBubble('ai-bubble--bot', data.reply);
+        aiHistory.push({ role: 'user', text: q }, { role: 'bot', text: data.reply });
+        if (aiHistory.length > 12) aiHistory.splice(0, aiHistory.length - 12);
+      } catch (_) {
+        typing.remove();
+        addBubble('ai-bubble--bot', 'לא הצלחתי להתחבר כרגע — נסו שוב בעוד רגע, או דברו איתנו בוואטסאפ 💬');
+      }
+      aiBusy = false;
+      setChipsBusy(false);
+      if (aiInput) { aiInput.removeAttribute('aria-busy'); aiInput.focus(); }
+    };
+    chips.forEach((chip) => {
       chip.setAttribute('role', 'button');
       chip.setAttribute('tabindex', '0');
-      const ask = () => {
-        const q = chip.textContent.replace(/^[^א-ת]+/, '').trim();
-        addBubble('ai-bubble--me', q);
-        setTimeout(() => addBubble('ai-bubble--bot', pick(q)), 450);
-      };
+      // Strip the leading emoji/symbol for both the spoken label and the query.
+      const label = chip.textContent.replace(/^[^א-ת]+/, '').trim();
+      if (label && !chip.getAttribute('aria-label')) chip.setAttribute('aria-label', label);
+      const ask = () => { if (chip.getAttribute('aria-disabled') !== 'true') askAi(label); };
       chip.addEventListener('click', ask);
       chip.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); ask(); }
       });
     });
+    if (aiForm && aiInput) {
+      aiForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const q = aiInput.value.trim();
+        if (!q || aiBusy) return;
+        aiInput.value = '';
+        askAi(q);
+      });
+    }
   }
 
   // ══ Premium interactions ══════════════════════════════════════════════════
@@ -338,6 +557,58 @@
     setProgress();
   }
 
+  // ── Scroll-depth analytics ──────────────────────────────────────────────────
+  // Fires once per threshold per page load — a coarse read on how far visitors
+  // get before bouncing, no per-pixel tracking.
+  (() => {
+    const thresholds = [25, 50, 75, 100];
+    const fired = new Set();
+    let ticking = false;
+    const check = () => {
+      const h = document.documentElement;
+      const max = h.scrollHeight - h.clientHeight;
+      const pct = max > 0 ? (h.scrollTop / max) * 100 : 100;
+      thresholds.forEach((t) => {
+        if (pct >= t && !fired.has(t)) { fired.add(t); track('scroll_depth', { depth: t, source: location.pathname }); }
+      });
+      ticking = false;
+    };
+    window.addEventListener('scroll', () => {
+      if (!ticking) { ticking = true; requestAnimationFrame(check); }
+    }, { passive: true });
+  })();
+
+  // ── Sticky mobile CTA ────────────────────────────────────────────────────────
+  // Appears only after the visitor has scrolled past the first screen, so it
+  // doesn't compete with the hero CTA or shift layout during first paint.
+  if (form && window.matchMedia('(max-width: 720px)').matches) {
+    const stickyBar = document.createElement('div');
+    stickyBar.className = 'sticky-cta';
+    stickyBar.innerHTML = '<button type="button" class="btn btn--primary">קבלו השוואה חינם ←</button>';
+    document.body.appendChild(stickyBar);
+    const stickyBtn = stickyBar.querySelector('button');
+    stickyBtn.addEventListener('click', () => {
+      track('sticky_cta_click', { source: location.pathname });
+      form.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' });
+      const first = $('leadName');
+      if (first) first.focus({ preventScroll: true });
+    });
+    let visible = false;
+    let stickyTicking = false;
+    const updateSticky = () => {
+      const past = window.scrollY > window.innerHeight * 0.6;
+      const formRect = form.getBoundingClientRect();
+      const overForm = formRect.top < window.innerHeight && formRect.bottom > 0;
+      const show = past && !overForm;
+      if (show !== visible) { visible = show; stickyBar.classList.toggle('is-visible', show); }
+      stickyTicking = false;
+    };
+    window.addEventListener('scroll', () => {
+      if (!stickyTicking) { stickyTicking = true; requestAnimationFrame(updateSticky); }
+    }, { passive: true });
+    updateSticky();
+  }
+
   // ── Staggered reveals: index each .reveal within its own section ───────────
   // Per-section (sections don't nest), so each band cascades in from 0 rather
   // than continuing a global counter.
@@ -349,14 +620,22 @@
   });
 
   // ── Pointer-tracking spotlight on cards (feeds CSS --mx/--my) ──────────────
+  // rAF-batched: rect read + custom-prop write happen once per frame off the
+  // latest pointer position, so a fast pointermove can't force layout per event.
   if (!reduceMotion && window.matchMedia('(hover: hover)').matches) {
     const spotlightSel = '.feature, .step, .cat, .guide-card, .plan, .provider-card';
+    let spotCard = null, spotX = 0, spotY = 0;
+    const paintSpot = rafThrottle(() => {
+      if (!spotCard) return;
+      const r = spotCard.getBoundingClientRect();
+      spotCard.style.setProperty('--mx', ((spotX - r.left) / r.width * 100).toFixed(1) + '%');
+      spotCard.style.setProperty('--my', ((spotY - r.top) / r.height * 100).toFixed(1) + '%');
+    });
     document.addEventListener('pointermove', (e) => {
       const card = e.target.closest && e.target.closest(spotlightSel);
       if (!card) return;
-      const r = card.getBoundingClientRect();
-      card.style.setProperty('--mx', ((e.clientX - r.left) / r.width * 100).toFixed(1) + '%');
-      card.style.setProperty('--my', ((e.clientY - r.top) / r.height * 100).toFixed(1) + '%');
+      spotCard = card; spotX = e.clientX; spotY = e.clientY;
+      paintSpot();
     }, { passive: true });
   }
 
@@ -365,14 +644,16 @@
     document.querySelectorAll('.btn--primary').forEach((btn) => {
       btn.classList.add('magnetic');
       const strength = 0.28;
-      btn.addEventListener('pointermove', (e) => {
+      let mx = 0, my = 0;
+      const paint = rafThrottle(() => {
         const r = btn.getBoundingClientRect();
-        const x = (e.clientX - (r.left + r.width / 2)) * strength;
-        const y = (e.clientY - (r.top + r.height / 2)) * strength;
+        const x = (mx - (r.left + r.width / 2)) * strength;
+        const y = (my - (r.top + r.height / 2)) * strength;
         // CSS `translate` composes with the :hover/:active `transform` states —
         // an inline transform here used to clobber the lift and the press.
         btn.style.translate = `${x.toFixed(1)}px ${y.toFixed(1)}px`;
       });
+      btn.addEventListener('pointermove', (e) => { mx = e.clientX; my = e.clientY; paint(); });
       btn.addEventListener('pointerleave', () => { btn.style.translate = ''; });
     });
   }
@@ -385,17 +666,83 @@
     const out = $('calcOut');
     const btn = $('calcBtn');
     const show = (html) => { if (out) { out.style.display = 'block'; out.innerHTML = html; } };
+    const catNames = { cellular: 'סלולר', internet: 'אינטרנט', tv: 'טלוויזיה', triple: 'חבילה משולבת', abroad: 'חו"ל' };
     const run = () => {
       const cur = parseFloat(bill && bill.value);
       if (!cur || cur <= 0) { show('הזינו את הסכום שאתם משלמים היום.'); return; }
       const monthly = Math.max(0, cur - cheapest);
       const yearly = monthly * 12;
-      show(yearly > 0
-        ? 'הערכת חיסכון: עד <b>' + nis(yearly) + '</b> בשנה (' + nis(monthly) + ' בחודש). זו הערכה מול המסלול הזול בשוק — בדקו את ההשוואה המלאה.'
-        : 'אתם כבר משלמים פחות מהמסלול הזול שמצאנו — מצוין! עדיין שווה להשוות מדי פעם.');
-      if (window.plausible) window.plausible('calc_used', { props: { cat: calc.dataset.cat || '' } });
+      const cat = calc.dataset.cat || '';
+      const catHref = cat ? cat + '.html' : 'plans.html';
+      const catLabel = catNames[cat] || 'מסלולים';
+      if (yearly > 0) {
+        show('<div class="calc-result">'
+          + '<div class="calc-result__row"><span>משלמים היום</span><strong>' + nis(cur) + '/חודש · ' + nis(cur * 12) + '/שנה</strong></div>'
+          + '<div class="calc-result__row"><span>מסלול זול ביותר</span><strong>' + nis(cheapest) + '/חודש</strong></div>'
+          + '<hr class="calc-result__sep">'
+          + '<div class="calc-result__row calc-result__row--main"><span>חיסכון פוטנציאלי</span><strong class="saving">' + nis(monthly) + '/חודש · ' + nis(yearly) + '/שנה</strong></div>'
+          + '</div>'
+          + '<a href="' + catHref + '" class="btn btn--primary btn--block" style="margin-top:16px">לראות את כל מסלולי ' + catLabel + ' ←</a>'
+          + '<p style="margin:8px 0 0;font-size:.8rem;color:#6b7280;text-align:center">הערכה מול המסלול הזול בשוק. המחירים מתעדכנים ברציפות.</p>');
+      } else {
+        show('<p style="margin:0 0 12px">אתם כבר משלמים פחות מהמסלול הזול שמצאנו — מצוין!</p>'
+          + '<a href="' + catHref + '" class="btn btn--ghost btn--block">עדיין שווה להשוות מדי פעם ←</a>');
+      }
+      track('calc_used', { cat: calc.dataset.cat || '' });
     };
     if (btn) btn.addEventListener('click', run);
     if (bill) bill.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); run(); } });
+    const quickBtns = Array.from(document.querySelectorAll('.calc-quick__btn'));
+    quickBtns.forEach((qb) => {
+      qb.setAttribute('aria-pressed', 'false');
+      qb.addEventListener('click', () => {
+        if (bill) { bill.value = qb.dataset.val; }
+        quickBtns.forEach((b) => { const on = b === qb; b.classList.toggle('active', on); b.setAttribute('aria-pressed', String(on)); });
+        run();
+      });
+    });
+  }
+
+  // ── Guide search + category filter (guides.html) ──────────────────────────
+  const gs = document.getElementById('guideSearch');
+  if (gs) {
+    const cards = Array.from(document.querySelectorAll('.guide-card'));
+    const sectionEls = Array.from(document.querySelectorAll('main section[aria-label]'));
+    const empty = document.getElementById('guideEmpty');
+    const catBtns = Array.from(document.querySelectorAll('.guide-cat-filters .filter-btn'));
+    let activeCat = 'all';
+
+    // Cache each card's searchable text + owning section once — these never
+    // change, so we avoid re-reading textContent/closest() on every filter.
+    const cardMeta = cards.map((card) => {
+      const sec = card.closest('section[aria-label]');
+      return { card, sec, text: card.textContent.toLowerCase(), cat: sec ? sec.getAttribute('aria-label') : null };
+    });
+
+    const applyGuideFilters = () => {
+      const q = gs.value.trim().toLowerCase();
+      let visible = 0;
+      const secHasVisible = new Set();
+      cardMeta.forEach((m) => {
+        const catMatch = activeCat === 'all' || m.cat === activeCat;
+        const show = catMatch && (!q || m.text.includes(q));
+        m.card.style.display = show ? '' : 'none';
+        if (show) { visible++; if (m.sec) secHasVisible.add(m.sec); }
+      });
+      sectionEls.forEach((sec) => { sec.style.display = secHasVisible.has(sec) ? '' : 'none'; });
+      if (empty) empty.style.display = visible === 0 ? 'block' : 'none';
+    };
+
+    // Debounced: don't re-scan every card's textContent on each keystroke.
+    gs.addEventListener('input', debounce(applyGuideFilters, 120));
+
+    catBtns.forEach((btn) => {
+      btn.setAttribute('aria-pressed', String(btn.classList.contains('active')));
+      btn.addEventListener('click', () => {
+        activeCat = btn.dataset.guideCat || 'all';
+        catBtns.forEach((b) => { const on = b === btn; b.classList.toggle('active', on); b.setAttribute('aria-pressed', String(on)); });
+        applyGuideFilters();
+      });
+    });
   }
 })();

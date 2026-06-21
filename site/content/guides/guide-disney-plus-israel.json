@@ -1,0 +1,58 @@
+{
+  "slug": "guide-disney-plus-israel",
+  "cat": "טלוויזיה",
+  "date": "2026-06-21",
+  "read": 2,
+  "title": "Disney+ בישראל — מחיר, תוכן ואם שווה | חוסך",
+  "desc": "Disney+ בישראל: מה כולל, מחיר, תוכן מרוול/פיקסר/נשיונל ג'יאוגרפיק, ומתי שווה להירשם.",
+  "h1": "Disney+ ישראל — האם שווה?",
+  "tldr": "Disney+ = ₪40/חודש. כולל: Marvel, Star Wars, Pixar, National Geographic, FX. תוכן ישראלי: מינימלי. שיתוף: עד 4 מכשירים. מתי שווה: משפחה עם ילדים, מעריצי Marvel/Star Wars.",
+  "sections": [
+    {
+      "h2": "מה כולל Disney+?",
+      "ul": [
+        "Disney Classics: Lion King, Frozen, Encanto, Moana 2 — כל האנימציה.",
+        "Marvel: Avengers, Spider-Man, Thor, Loki, WandaVision, Moon Knight וסדרות מקוריות.",
+        "Star Wars: The Mandalorian, Andor, Obi-Wan Kenobi, Bad Batch.",
+        "National Geographic: Nature documentaries, Explorer — איכות גבוהה.",
+        "FX / Star (בחו\"ל 'Star'): The Bear, American Horror Story, It's Always Sunny — לא ילדים."
+      ]
+    },
+    {
+      "h2": "מחיר ותוכניות",
+      "ul": [
+        "Disney+ בלבד: ₪39.90/חודש. 4 מכשירים בו-זמנית. 4K HDR.",
+        "Disney+ + Hulu + ESPN+: לא זמין בישראל כחבילה (ארה\"ב בלבד).",
+        "שיתוף: Disney+ מאפשרת profile sharing עד 4 אנשים בבית (אותה כתובת).",
+        "הורדות: ניתן להוריד למכשיר צפייה offline. נוח לטיסה.",
+        "ניסיון חינם: לבדוק האם מוצע (משתנה לפי תקופה — לרוב 7 ימים)."
+      ]
+    },
+    {
+      "h2": "Disney+ vs. Netflix vs. Apple TV+",
+      "ul": [
+        "ילדים: Disney+ = ללא תחרות. Netflix Kids = גדול יותר. Apple = מינימלי.",
+        "מבוגרים: Netflix >> Disney+. FX/Star ב-Disney+ = אופציה למבוגרים.",
+        "תוכן ישראלי: Netflix = Fauda/Tehran. Disney+ = כמעט אין.",
+        "4K: שלושתם 4K. Disney+ Dolby Vision + Atmos = מצוין.",
+        "מחיר: Apple ₪30. Disney+ ₪40. Netflix Standard ₪55. Disney+ ביניהם."
+      ]
+    },
+    {
+      "h2": "מתי Disney+ שווה?",
+      "ul": [
+        "כן שווה: משפחה עם ילדים 4–12 — ספרייה ענקית, בטוחה, בעברית.",
+        "כן שווה: מעריצי Marvel/Star Wars בלעדיים — תוכן מקורי רק כאן.",
+        "שקלו שוב: אם בעיקר סדרות דרמה/קומדיה למבוגרים — Netflix עדיף.",
+        "חלופה: yes/HOT לעיתים כוללים Disney+ בחבילה — בדקו תוכן החבילה.",
+        "עצה: ניסיון 7 ימים (אם זמין) → ראו The Mandalorian/Loki → תחליטו."
+      ]
+    }
+  ],
+  "faq": [
+    ["Disney+ בעברית?", "ממשק: עברית מלאה. כתוביות: עברית לרוב התוכן. דיבוב עברי: חלק מהאנימציה (Encanto, Moana). קריאה: לבדוק ספציפית בדפי הסדרה/סרט לפני הרכישה."],
+    ["כמה מכשירים בו-זמנית?", "4 מכשירים בו-זמנית. שיתוף עם אנשים שגרים באותה כתובת. הורדות: 25 פריטים מקסימום. ב-4K = צריך להגדיר רזולוציה מקסימלית בהגדרות."],
+    ["Disney+ על Apple TV?", "כן — אפליקציית Disney+ על Apple TV 4K. גם על Samsung SmartTV, LG, Sony, Chromecast, Amazon Fire TV, Xbox, PlayStation. iPhone/iPad/Mac = מלא."],
+    ["Disney+ וילדים — הגבלות?", "Kids Profile: גישה רק לתוכן מדורג 7/12 ומטה. PIN להגדרת גיל. הורים יכולים לנהל profiles. חסימת Star (FX) לפרופיל ילדים: אוטומטית. GroupWatch: לצפות יחד עם friends (עד 7 מכשירים)."]
+  ]
+}

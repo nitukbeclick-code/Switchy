@@ -1,0 +1,58 @@
+{
+  "slug": "guide-gamer-internet",
+  "cat": "אינטרנט",
+  "date": "2026-06-21",
+  "read": 3,
+  "title": "אינטרנט לגיימינג — כמה Mbps ואיזה ספק? | חוסך",
+  "desc": "מה צריך גיימר מאינטרנט: Latency נמוך, Jitter, מהירות upload, ואיזה ספק אינטרנט הכי מתאים לגיימינג.",
+  "h1": "אינטרנט לגיימינג — המדריך המלא",
+  "tldr": "גיימינג: Latency (Ping) חשוב יותר ממהירות. FTTH גלאל = <10ms. 4G/5G = 15–40ms. מינימום: 10Mbps download + 3Mbps upload. מומלץ: 100Mbps+ על FTTH, Ethernet, לא WiFi.",
+  "sections": [
+    {
+      "h2": "מה חשוב לגיימינג?",
+      "ul": [
+        "Latency (Ping): ms לשרת המשחק. <20ms = מצוין. 50ms = OK. >100ms = גרוע.",
+        "Jitter: שונות ב-Ping. <5ms = מושלם. >20ms = תנועה לא חלקה.",
+        "Packet Loss: 0% = חובה לגיימינג תחרותי. 1% = מורגש. 5% = בלתי אפשרי.",
+        "Upload: גיימינג = בעיקר Download. Upload = 3Mbps מספיק לרוב המשחקים.",
+        "Download: Warzone/Fortnite = מורידים 100+ GB. 100Mbps+ = נוח."
+      ]
+    },
+    {
+      "h2": "FTTH גלאל — הבחירה הגיימינג",
+      "ul": [
+        "Ping לשרתי AWS/Azure ישראל: FTTH = 2–8ms. מושלם.",
+        "Jitter: FTTH = 0–2ms. יציב כמו כבל.",
+        "Packet Loss: FTTH = 0% בתנאים נורמלים.",
+        "ספקים: בזק גלאל / פרטנר גלאל / HOT גלאל / סלקום גלאל = כולם מצוינים.",
+        "כבל Ethernet: בין ראוטר למחשב/קונסול = חובה לגיימינג תחרותי."
+      ]
+    },
+    {
+      "h2": "WiFi לגיימינג — הכי פחות מומלץ",
+      "ul": [
+        "WiFi 5GHz: Ping ~+5–15ms לעומת Ethernet. Jitter = גבוה יותר.",
+        "WiFi 6/6E: שיפור ניכר. Ping ~+3–8ms. יציב יותר. עדיין פחות מ-Ethernet.",
+        "WiFi 2.4GHz: אל תנסו לגיימינג תחרותי. Ping 30–80ms נוסף.",
+        "Mesh: מרובי-נקודות = latency נוסף. אם חייבים WiFi: נקודה ישירה = עדיף.",
+        "Powerline: Cat6 דרך כבל חשמל = פתרון לחדר רחוק. ~Ethernet quality."
+      ]
+    },
+    {
+      "h2": "הגדרות אופטימליות לגיימינג",
+      "ul": [
+        "QoS: Gaming Priority בראוטר = מבטיח latency לגיימינג ראשון.",
+        "DNS: 1.1.1.1 (Cloudflare) = מהיר יותר לרזולוציה. בניחוש: מוריד Ping ל-CDN.",
+        "MTU: 1500 = רגיל. אם בעיות חיבור לPS/Xbox: נסו 1480.",
+        "IPv6: הפעילו אם הספק תומך. Xbox/PS5 = מועדפים IPv6.",
+        "Router Buffer Bloat: ב-dslreports.com/speedtest = בדיקה. A/B = מצוין."
+      ]
+    }
+  ],
+  "faq": [
+    ["4G סלולרי לגיימינג — אפשרי?", "4G: Ping 20–40ms. OK למשחקי RPG/Single-player. לגיימינג תחרותי (CSGO/Valorant): 4G = בדיוק על הגבול. 5G: 5–15ms. עדיף ל-LAN. Jitter גבוה ב-4G/5G = הבעיה העיקרית."],
+    ["Google Stadia/GeForce NOW — דרישות?", "Stadia (סגור). GeForce NOW: 15Mbps ל-1080p, 25Mbps ל-4K. Ping < 80ms לשרת. FTTH = מצוין. Xbox Cloud Gaming: 20Mbps, Ping < 60ms. בישראל: שרתי Azure = Ping 15–30ms מגלאל."],
+    ["PS5 vs. Xbox — איזה ספק אינטרנט?", "PS5/Xbox = ללא הבדל. שניהם תומכים IPv6 + FTTH. בישראל: כל FTTH (בזק/HOT/פרטנר) = מצוין ל-PS5/Xbox Online. Ping לPSN ישראל: ~10–15ms. לXbox Live: ~12–18ms."],
+    ["Steam Downloads — איטי?", "Steam throttles כדי לא להאט gaming. פתרון: Steam Settings → Downloads → Limit Bandwidth → 0 (ללא הגבלה). בחרו שרת קרוב: Steam → Settings → Downloads → Download Region → Israel (Cellcom/Partner)."]
+  ]
+}

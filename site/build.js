@@ -170,6 +170,7 @@ const categories = [
       ['כמה אפשר לחסוך על מסלול סלולר?', 'הרבה לקוחות משלמים ₪100–₪150 על מה שאפשר לקבל ב-₪29–₪49. ההשוואה לוקחת שניות וההמלצה מותאמת לשימוש שלכם.'],
       ['אפשר לשמור על מספר הטלפון?', 'בהחלט. ניוד המספר שומר על המספר הקיים ומתבצע תוך 1–3 ימי עסקים — אנחנו מלווים את התהליך.'],
       ['מה ההבדל בין מסלול עם וללא התחייבות?', 'מסלול ללא התחייבות ניתן לביטול בכל עת. רבים מהמסלולים הזולים היום הם ללא התחייבות בכלל.'],
+      ['זה באמת בחינם?', 'כן — אנחנו מקבלים עמלה מחברת התקשורת כשעוברים; ההמלצה ניטרלית ואתם לא משלמים.'],
     ],
   },
   {
@@ -189,6 +190,7 @@ const categories = [
       ['מה זה סיב אופטי וכמה זה עולה?', 'סיב אופטי הוא התשתית המהירה והיציבה ביותר, עם מהירויות עד גיגה. מחירי המבצע מתחילים סביב ₪49–₪99 לחודש.'],
       ['למה המחיר קופץ אחרי שנה?', 'הרבה חבילות זולות בשנה הראשונה ואז עולות. חוסך מציג את המחיר שאחרי המבצע ומזכיר לכם להשוות שוב לפני שהוא קופץ.'],
       ['אפשר אינטרנט בלי התחייבות?', 'כן, יש ספקים שמציעים חבילות ללא התחייבות — נסמן לכם אותן בהשוואה.'],
+      ['זה באמת בחינם?', 'כן — אנחנו מקבלים עמלה מחברת התקשורת כשעוברים; ההמלצה ניטרלית ואתם לא משלמים.'],
     ],
   },
   {
@@ -208,6 +210,7 @@ const categories = [
       ['כמה עולה חבילת טלוויזיה?', 'תלוי בתוכן — חבילות בסיס מתחילות נמוך, חבילות עם ספורט ו-VOD עולות יותר. ההשוואה עוזרת לבחור בדיוק את מה שצריך.'],
       ['אפשר טלוויזיה בלי ממיר?', 'כן, רוב הספקים מציעים אפליקציות סטרימינג לצפייה בכל מסך — נסמן את החבילות הרלוונטיות.'],
       ['אפשר לשלב טלוויזיה עם אינטרנט?', 'בהחלט — חבילה משולבת לרוב זולה יותר מרכישה בנפרד. ראו את עמוד החבילות המשולבות.'],
+      ['זה באמת בחינם?', 'כן — אנחנו מקבלים עמלה מחברת התקשורת כשעוברים; ההמלצה ניטרלית ואתם לא משלמים.'],
     ],
   },
   {
@@ -227,6 +230,7 @@ const categories = [
       ['כמה חוסכים בחבילה משולבת?', 'תלוי במה שאתם משלמים היום — במעבר לחבילה משולבת אפשר לחסוך עד ₪1,700 בשנה לעומת רכישת כל שירות בנפרד. ההשוואה מראה את החיסכון המדויק שלכם.'],
       ['מה כולל טריפל?', 'בדרך כלל אינטרנט (תשתית+ספק), טלוויזיה וקו סלולר אחד או יותר — בחשבון אחד ובמחיר אחד.'],
       ['אפשר להתאים את החבילה?', 'כן — אפשר להוסיף קווים, ערוצי ספורט או מהירות גבוהה יותר. ההמלצה שלנו מותאמת לצרכים שלכם.'],
+      ['זה באמת בחינם?', 'כן — אנחנו מקבלים עמלה מחברת התקשורת כשעוברים; ההמלצה ניטרלית ואתם לא משלמים.'],
     ],
   },
   {
@@ -246,6 +250,7 @@ const categories = [
       ['מה זה eSIM וזה עובד בטלפון שלי?', 'eSIM הוא כרטיס SIM דיגיטלי. רוב הטלפונים החדשים תומכים — מפעילים בסריקת קוד, בלי כרטיס פיזי.'],
       ['כמה גלישה צריך לטיול?', 'תלוי בשימוש — לניווט ורשתות חברתיות כמה ג״ב לרוב מספיקים. ההשוואה עוזרת לבחור לפי משך הטיול.'],
       ['אפשר לשמור על המספר הישראלי?', 'כן — חבילת eSIM נפרדת לגלישה מאפשרת לשמור על הקו הישראלי לשיחות ו-SMS.'],
+      ['זה באמת בחינם?', 'כן — אנחנו מקבלים עמלה מחברת התקשורת כשעוברים; ההמלצה ניטרלית ואתם לא משלמים.'],
     ],
   },
 ];
@@ -548,6 +553,7 @@ const leadFormHtml = (submitLabel) => `<form class="cta__form" id="leadForm" nov
           <input type="text" id="leadCompany" name="company" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0" />
           <input type="text" id="leadName" name="name" placeholder="שם מלא" aria-label="שם מלא" autocomplete="name" required />
           <input type="tel" id="leadPhone" name="phone" placeholder="טלפון (050-0000000)" aria-label="מספר טלפון" autocomplete="tel" inputmode="tel" required />
+          <p class="cta__form-note">נחזור בוואטסאפ או בטלפון • לא נשתף את המספר עם ספקים • הנתונים מוצפנים</p>
           <div class="consent">
             <label class="consent__row" for="consentTerms">
               <input type="checkbox" id="consentTerms" name="consentTerms" required />
@@ -740,6 +746,7 @@ ${nav}
           <span class="pill pill--ico">${iconFor(c.icon)} השוואה חינם · בלי התחייבות</span>
           <h1>${esc(c.h1[0])}<span class="hl">${esc(c.h1[1])}</span></h1>
           <p>${esc(c.intro)}</p>
+          <p class="hero__trust-note">חינם — אנחנו מקבלים עמלה מהספק, לא מכם</p>
           ${heroStats}
           <div class="hero__cta">
             <a class="btn btn--primary btn--lg" href="#cta">השוו ותחסכו ←</a>
@@ -804,7 +811,7 @@ ${catGuides}
       <div class="container cta__inner reveal">
         <h2>מוכנים לחסוך על ${esc(c.name)}?</h2>
         <p>השאירו פרטים ונחזור אליכם עם ההשוואה וההמלצה — חינם, בלי התחייבות.</p>
-        ${leadFormHtml('קבלו השוואה חינם')}
+        ${leadFormHtml('קבלו המלצה אישית תוך 2 דקות ←')}
         <p class="cta__note" id="leadNote" role="status" aria-live="polite"></p>
         <a class="cta__wa" href="https://wa.me/972505037537" target="_blank" rel="noopener">${svgIcon('chat')}מעדיפים וואטסאפ? דברו איתנו</a>
       </div>
@@ -1530,7 +1537,7 @@ ${collectionsSection}
       <div class="container cta__inner reveal">
         <h2>מצאתם משהו מעניין?</h2>
         <p>השאירו פרטים ונעזור לכם לעבור — חינם, בלי התחייבות.</p>
-        ${leadFormHtml('קבלו השוואה חינם')}
+        ${leadFormHtml('קבלו המלצה אישית תוך 2 דקות ←')}
         <p class="cta__note" id="leadNote" role="status" aria-live="polite"></p>
         <a class="cta__wa" href="https://wa.me/972505037537" target="_blank" rel="noopener">${svgIcon('chat')}מעדיפים וואטסאפ? דברו איתנו</a>
       </div>
@@ -1624,7 +1631,7 @@ ${gHtml}
       <div class="container cta__inner reveal">
         <h2>רוצים לעבור ל${esc(name)} — או ממנו?</h2>
         <p>השאירו פרטים ונעזור לכם למצוא ולעבור למסלול הכי משתלם, חינם ובלי התחייבות.</p>
-        ${leadFormHtml('קבלו השוואה חינם')}
+        ${leadFormHtml('קבלו המלצה אישית תוך 2 דקות ←')}
         <p class="cta__note" id="leadNote" role="status" aria-live="polite"></p>
         <a class="cta__wa" href="https://wa.me/972505037537" target="_blank" rel="noopener">${svgIcon('chat')}מעדיפים וואטסאפ? דברו איתנו</a>
       </div>
@@ -1777,7 +1784,7 @@ ${nav}
       <div class="container cta__inner reveal">
         <h2>בחרתם? נעזור לכם לעבור</h2>
         <p>השאירו פרטים ונדאג לכל המעבר — חינם, בלי התחייבות.</p>
-        ${leadFormHtml('קבלו השוואה חינם')}
+        ${leadFormHtml('קבלו המלצה אישית תוך 2 דקות ←')}
         <p class="cta__note" id="leadNote" role="status" aria-live="polite"></p>
         <a class="cta__wa" href="https://wa.me/972505037537" target="_blank" rel="noopener">${svgIcon('chat')}מעדיפים וואטסאפ? דברו איתנו</a>
       </div>
@@ -2177,7 +2184,7 @@ ${guidesHtml}
       <div class="container cta__inner reveal">
         <h2>מצאתם משהו מעניין?</h2>
         <p>השאירו פרטים ונעזור לכם לעבור — חינם, בלי התחייבות.</p>
-        ${leadFormHtml('קבלו השוואה חינם')}
+        ${leadFormHtml('קבלו המלצה אישית תוך 2 דקות ←')}
         <p class="cta__note" id="leadNote" role="status" aria-live="polite"></p>
         <a class="cta__wa" href="https://wa.me/972505037537" target="_blank" rel="noopener">${svgIcon('chat')}מעדיפים וואטסאפ? דברו איתנו</a>
       </div>
@@ -2466,6 +2473,7 @@ ${nav}
           </div>
           <p id="calcOut" role="status" aria-live="polite" style="display:none;margin:8px 0 0;padding:14px 16px;border-radius:12px;background:#F0F2F4;color:#0B0F14"></p>
           <div id="calcChart" class="calc-chart" data-chart="savings" hidden></div>
+          <a id="calcCta" class="btn btn--primary btn--lg" href="#cta" hidden style="margin-top:14px">בדקו אילו מסלולים חוסכים לכם את זה ←</a>
           <p style="margin:12px 0 0;font-size:.85rem;color:#6b7280">* הערכה בלבד — החיסכון בפועל תלוי במסלול שתבחרו ובתנאים. מומלץ לאמת מול הספק.</p>
         </div>
         <div style="text-align:center;margin-top:22px">
@@ -2487,7 +2495,7 @@ ${guidesHtml}
       <div class="container cta__inner reveal">
         <h2>רוצים שנמצא לכם את ההצעה הכי טובה?</h2>
         <p>השאירו פרטים ונחזור אליכם עם ההשוואה וההמלצה — חינם, בלי התחייבות.</p>
-        ${leadFormHtml('קבלו השוואה חינם')}
+        ${leadFormHtml('קבלו המלצה אישית תוך 2 דקות ←')}
         <p class="cta__note" id="leadNote" role="status" aria-live="polite"></p>
         <a class="cta__wa" href="https://wa.me/972505037537" target="_blank" rel="noopener">${svgIcon('chat')}מעדיפים וואטסאפ? דברו איתנו</a>
       </div>

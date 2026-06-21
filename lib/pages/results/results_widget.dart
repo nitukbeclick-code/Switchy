@@ -162,6 +162,13 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 children: _categories.map((c) {
                   final active = appState.selectedCat == c.$1;
+                  // The budget filter from the quiz silently applies to its own
+                  // category only — surface that with a "מהשאלון" badge on the
+                  // active chip so users see WHY this view is personalized (and
+                  // understand why the budget cap vanishes on other categories).
+                  final fromQuiz = appState.quizCompleted &&
+                      appState.quizCat == c.$1 &&
+                      active;
                   // Active = green ACTION fill (the brand's active-state cue);
                   // inactive = a faint glass chip on the ink header.
                   return Padding(
@@ -199,6 +206,30 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                                     active ? FontWeight.w700 : FontWeight.w500,
                               ),
                             ),
+                            if (fromQuiz) ...[
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.22),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    const Icon(Icons.filter_alt_rounded,
+                                        size: 10, color: Colors.white),
+                                    const SizedBox(width: 3),
+                                    Text('מהשאלון',
+                                        style: ffTheme.labelSmall.copyWith(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w700,
+                                            height: 1.0)),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                       ),
@@ -378,6 +409,16 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                   ),
                 ),
               ),
+
+              // Savings baseline banner — makes the comparison's reference point
+              // legible: every "תחסוך ₪X" figure is computed against THIS bill.
+              // When the bill is still the default (not personalized), nudge the
+              // user to enter their real bill so the savings reflect reality.
+              if (bill > 0)
+                SliverToBoxAdapter(
+                  child: _buildBaselineBanner(
+                      context, appState, ffTheme, cat, bill),
+                ),
 
               // Quick filter chips per category
               SliverToBoxAdapter(
@@ -898,6 +939,74 @@ class _ResultsWidgetState extends State<ResultsWidget> {
             );
           }),
         ],
+      ),
+    );
+  }
+
+  Widget _buildBaselineBanner(BuildContext context, AppState appState,
+      AppTheme ffTheme, String cat, int bill) {
+    // The default (un-personalized) bill is an estimate, not the user's real
+    // spend — flag that so the savings figures are read with the right caveat.
+    final isDefault = !appState.billsPersonalized;
+    final unit = cat == 'abroad' ? '/חבילה' : '/חודש';
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: ffTheme.cardSurface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: ffTheme.alternate),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.calculate_rounded,
+                size: 16, color: ffTheme.secondaryText),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text.rich(
+                TextSpan(
+                  style: ffTheme.labelSmall.copyWith(
+                      color: ffTheme.secondaryText, height: 1.3),
+                  children: [
+                    const TextSpan(text: 'החיסכון מחושב מול '),
+                    TextSpan(
+                      text: '₪$bill$unit',
+                      style: ffTheme.labelSmall.copyWith(
+                          color: ffTheme.primaryText,
+                          fontWeight: FontWeight.w700,
+                          fontFeatures: const [FontFeature.tabularFigures()]),
+                    ),
+                    if (isDefault)
+                      const TextSpan(text: ' (הערכה ברירת מחדל)'),
+                  ],
+                ),
+              ),
+            ),
+            // When the baseline is still the default, point the user to Bills to
+            // enter their real spend; otherwise let them tweak it inline.
+            const SizedBox(width: 4),
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(8),
+                onTap: () => isDefault
+                    ? context.pushNamed('Bills')
+                    : _showBillEditor(context, appState, cat, bill, ffTheme),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 8, vertical: 4),
+                  child: Text(
+                    isDefault ? 'הזן חשבון אמיתי' : 'עדכון',
+                    style: ffTheme.labelSmall.copyWith(
+                        color: ffTheme.brandAccentText,
+                        fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

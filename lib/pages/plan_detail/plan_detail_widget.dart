@@ -285,6 +285,22 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                         ),
                       ).animate().fadeIn(duration: 350.ms).slideY(begin: 0.1),
 
+                      // ── Above-the-fold VALUE anchor — the ₪ saving the user
+                      // gets vs their own bill, then 3 honest "why this plan"
+                      // bullets derived from the real spec + engine reasons.
+                      // Specs/fine-print follow below.
+                      const SizedBox(height: 14),
+                      _ValueAnchor(
+                        plan: plan,
+                        saveYear: saveYear,
+                        bill: bill,
+                        match: planMatch,
+                        billsPersonalized: appState.billsPersonalized,
+                      )
+                          .animate(delay: 60.ms)
+                          .fadeIn(duration: 320.ms)
+                          .slideY(begin: 0.08),
+
                       const SizedBox(height: 14),
 
                       // Features card
@@ -653,7 +669,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                   children: [
                     Expanded(
                       child: AppButton(
-                        text: 'עברו למסלול הזה ←',
+                        text: 'עברו למסלול הזה — נציג יסייע ←',
                         onPressed: () async => context.pushNamed('Lead',
                             pathParameters: {'planId': plan.id}, queryParameters: {'source': 'plan'}),
 
@@ -1063,6 +1079,179 @@ class _RingPainter extends CustomPainter {
       old.fill != fill ||
       old.track != track ||
       old.cap != cap;
+}
+
+// ── Above-the-fold VALUE anchor ───────────────────────────────────────────────
+//
+// The first thing the user sees under the hero: the ₪ they save vs THEIR OWN
+// bill (the figure already computed in the build method — never fabricated),
+// framed as an estimate when the bill isn't personalised, plus three honest
+// "why this plan" bullets derived from the real plan spec + the engine reasons.
+
+class _ValueAnchor extends StatelessWidget {
+  const _ValueAnchor({
+    required this.plan,
+    required this.saveYear,
+    required this.bill,
+    required this.match,
+    required this.billsPersonalized,
+  });
+
+  final Plan plan;
+  final int saveYear;
+  final int bill;
+  final PlanMatch match;
+  final bool billsPersonalized;
+
+  /// Three honest, plan-specific reasons. We prefer the engine's own reasons
+  /// (already explainable + real), then top up from the plan's real spec —
+  /// budget fit, 5G, and the promo caveat — never inventing claims.
+  List<_ValueBullet> _bullets() {
+    final out = <_ValueBullet>[];
+
+    // 1) Budget — only when there's a real saving vs the user's own bill.
+    if (saveYear > 0 && bill > 0) {
+      out.add(_ValueBullet(
+        icon: Icons.account_balance_wallet_rounded,
+        text: 'בתוך התקציב — זול ב-₪${(bill - plan.price).clamp(0, bill)} בחודש מהחשבון הנוכחי שלכם',
+      ));
+    }
+
+    // 2) 5G / speed — straight from the plan's real features or specs.
+    final hay = [
+      ...plan.feats,
+      ...plan.specs.values,
+      ...plan.specs.keys,
+    ].join(' ').toLowerCase();
+    if (hay.contains('5g')) {
+      out.add(const _ValueBullet(
+        icon: Icons.network_cell_rounded,
+        text: 'כולל רשת 5G מהירה',
+      ));
+    }
+
+    // 3) Engine reasons — real, explainable; fill remaining slots.
+    for (final r in match.reasons) {
+      if (out.length >= 3) break;
+      if (out.any((b) => b.text == r)) continue;
+      out.add(_ValueBullet(icon: Icons.check_circle_rounded, text: r));
+    }
+
+    // Honest promo caveat — surface it up-front rather than burying it.
+    if (out.length < 3 && plan.hasPromo) {
+      out.add(_ValueBullet(
+        icon: Icons.schedule_rounded,
+        text: 'מחיר מבצע — יעלה ל-₪${plan.after} אחרי ${plan.intro ?? 'תקופת המבצע'}',
+      ));
+    }
+
+    return out.take(3).toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppTheme.of(context);
+    final bullets = _bullets();
+    final hasSaving = saveYear > 0;
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: t.cardSurface,
+        borderRadius: BorderRadius.circular(t.radiusLg),
+        border: Border.all(color: t.alternate),
+        boxShadow: t.shadowSoft,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Bold ₪ saving anchor (VALUE = amber) vs the user's real bill.
+          if (hasSaving) ...[
+            Text.rich(
+              TextSpan(
+                style: t.displaySmall.copyWith(
+                  color: t.saving,
+                  fontWeight: FontWeight.w800,
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                ),
+                children: [
+                  const TextSpan(text: 'תחסכו '),
+                  TextSpan(text: '₪$saveYear'),
+                  TextSpan(
+                    text: '/שנה',
+                    style: t.titleMedium.copyWith(
+                      color: t.saving,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                Text(
+                  'מול ₪$bill/חודש שאתם משלמים היום',
+                  style: t.bodySmall.copyWith(color: t.secondaryText),
+                ),
+                if (!billsPersonalized) ...[
+                  const SizedBox(width: 6),
+                  _EstimateTag(t: t),
+                ],
+              ],
+            ),
+          ] else ...[
+            // No personalised saving — anchor on the price + match, honestly.
+            Text(
+              'למה המסלול הזה',
+              style: t.titleMedium.copyWith(fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              bill > 0
+                  ? 'במחיר דומה לחשבון הנוכחי שלכם — הנה מה שמייחד אותו'
+                  : 'הוסיפו את החשבון הנוכחי כדי לראות כמה תחסכו',
+              style: t.bodySmall.copyWith(color: t.secondaryText),
+            ),
+          ],
+
+          if (bullets.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            Divider(height: 1, color: t.alternate),
+            const SizedBox(height: 14),
+            ...bullets.asMap().entries.map((e) {
+              final isLast = e.key == bullets.length - 1;
+              final b = e.value;
+              return Padding(
+                padding: EdgeInsets.only(bottom: isLast ? 0 : 10),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(b.icon, size: 19, color: t.primary),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        b.text,
+                        style: t.bodyMedium
+                            .copyWith(fontWeight: FontWeight.w600),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// A single honest "why this plan" bullet for the above-the-fold anchor.
+class _ValueBullet {
+  const _ValueBullet({required this.icon, required this.text});
+  final IconData icon;
+  final String text;
 }
 
 // ── Helper widgets ────────────────────────────────────────────────────────────

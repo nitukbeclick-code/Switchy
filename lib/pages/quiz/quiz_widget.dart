@@ -125,11 +125,14 @@ class _QuizWidgetState extends State<QuizWidget> {
               if (_analyzing)
                 const SizedBox.shrink()
               else if (_revealed) ...[
+                // PRIMARY CTA — lead capture for the single best match.
                 AppButton(
-                  text: 'ראה את כל המסלולים ←',
+                  text: 'רוצה את המסלול הזה — השאירו פרטים ←',
                   onPressed: () async {
                     HapticFeedback.lightImpact();
-                    context.goNamed('Results');
+                    context.pushNamed('Lead',
+                        pathParameters: {'planId': _recs.first.plan.id},
+                        queryParameters: {'source': 'quiz'});
                   },
                   width: double.infinity,
                   height: 56,
@@ -138,6 +141,21 @@ class _QuizWidgetState extends State<QuizWidget> {
                   borderRadius: BorderRadius.circular(18),
                 ),
                 const SizedBox(height: 8),
+                // SECONDARY — browse the full list instead.
+                OutlinedButton(
+                  onPressed: () {
+                    HapticFeedback.lightImpact();
+                    context.goNamed('Results');
+                  },
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: ffTheme.brandAccentText,
+                    side: BorderSide(color: ffTheme.alternate),
+                    minimumSize: const Size(double.infinity, 52),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                  ),
+                  child: Text('ראו את כל המסלולים ←', style: ffTheme.titleMedium),
+                ),
+                const SizedBox(height: 4),
                 TextButton(
                   onPressed: () => setState(() => _revealed = false),
                   child: Text('↺ ערוך תשובות',
@@ -748,7 +766,7 @@ class _QuizWidgetState extends State<QuizWidget> {
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: Text('מצאנו לך התאמה!',
+                child: Text('זה המסלול הכי משתלם בשבילך',
                     style: ffTheme.headlineMedium.copyWith(color: ffTheme.brandAccent)),
               ),
             ],
@@ -806,6 +824,38 @@ class _QuizWidgetState extends State<QuizWidget> {
                       ),
                     ],
                   ),
+                  if (top.annualSaving > 0) ...[
+                    const SizedBox(height: 16),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      decoration: BoxDecoration(
+                        color: ffTheme.saving.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: ffTheme.saving.withValues(alpha: 0.35)),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(Icons.savings_rounded, size: 24, color: ffTheme.savingDark),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('תחסכו עד',
+                                    style: ffTheme.labelSmall
+                                        .copyWith(color: ffTheme.savingText)),
+                                Text('₪${top.annualSaving} בשנה',
+                                    style: ffTheme.headlineSmall.copyWith(
+                                        color: ffTheme.savingText,
+                                        fontWeight: FontWeight.w800)),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 12),
                   // Badge row
                   Row(
@@ -859,27 +909,6 @@ class _QuizWidgetState extends State<QuizWidget> {
                           ),
                         )),
                   ],
-                  if (top.annualSaving > 0) ...[
-                    const SizedBox(height: 10),
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-                      decoration: BoxDecoration(
-                        color: ffTheme.saving.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: ffTheme.saving.withValues(alpha: 0.30)),
-                      ),
-                      child: Row(
-                        children: [
-                          Icon(Icons.savings_rounded, size: 16, color: ffTheme.savingDark),
-                          const SizedBox(width: 8),
-                          Text('חיסכון שנתי של ₪${top.annualSaving}',
-                              style: ffTheme.labelMedium
-                                  .copyWith(color: ffTheme.savingText, fontWeight: FontWeight.w800)),
-                        ],
-                      ),
-                    ),
-                  ],
                 ],
               ),
             ),
@@ -908,7 +937,7 @@ class _QuizWidgetState extends State<QuizWidget> {
           // Alternatives
           if (_recs.length > 1) ...[
             const SizedBox(height: 20),
-            Text('חלופות נוספות',
+            Text('עוד אפשרויות שמתאימות לך',
                 style: ffTheme.labelLarge.copyWith(color: ffTheme.secondaryText)),
             const SizedBox(height: 10),
             ..._recs.skip(1).take(2).toList().asMap().entries.map((entry) {

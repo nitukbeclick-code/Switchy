@@ -128,6 +128,13 @@ class _LeadWidgetState extends State<LeadWidget> {
                 },
               ).animate(delay: 120.ms).fadeIn().slideY(begin: 0.05),
 
+              const SizedBox(height: 8),
+
+              // Data-use reassurance — directly under the phone field, where the
+              // hesitation lives. Complements (doesn't duplicate) the
+              // availability banner + the "what happens next" timeline.
+              _buildPhonePrivacyNote(ffTheme),
+
               const SizedBox(height: 14),
 
               // Email field (optional)
@@ -174,7 +181,7 @@ class _LeadWidgetState extends State<LeadWidget> {
               // the const-ink sentinel AppButton maps to the theme-aware accent
               // gradient, so the CTA stays vivid in dark too).
               AppButton(
-                text: _isSubmitting ? 'שולח...' : 'שלחו פרטים',
+                text: _isSubmitting ? 'שולח...' : 'קבלו המלצה אישית — נציג יחזור אליכם היום ←',
                 onPressed: _isSubmitting ? () async {} : () async {
                   if (!_formKey.currentState!.validate()) return;
                   if (!_acceptTerms || !_acceptPrivacy) {
@@ -295,6 +302,41 @@ class _LeadWidgetState extends State<LeadWidget> {
         ],
       ),
     ).animate().fadeIn(duration: 350.ms);
+  }
+
+  // Three honest reassurances next to the phone field: no sharing with
+  // providers, callback via WhatsApp/phone, data encrypted. Marked decorative
+  // (icon-only) so screen readers hear only the copy.
+  Widget _buildPhonePrivacyNote(AppTheme ffTheme) {
+    final items = [
+      (Icons.shield_outlined, 'לא נשתף את המספר עם ספקים'),
+      (Icons.chat_bubble_outline_rounded, 'נחזור בוואטסאפ או בטלפון'),
+      (Icons.lock_outline_rounded, 'הנתונים מוצפנים'),
+    ];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (final item in items)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                ExcludeSemantics(
+                  child: Icon(item.$1, size: 14, color: ffTheme.secondaryText),
+                ),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    item.$2,
+                    style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText),
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
+    ).animate(delay: 140.ms).fadeIn();
   }
 
   Widget _buildPlanCard(Plan plan, AppState appState, AppTheme ffTheme) {

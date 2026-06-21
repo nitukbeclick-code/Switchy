@@ -391,6 +391,12 @@
     <priority>0.6</priority>
   </url>
   <url>
+    <loc>https://chosech.co.il/guide-gaming-internet.html</loc>
+    <lastmod>2026-06-21</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
     <loc>https://chosech.co.il/guide-golan.html</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
@@ -475,6 +481,12 @@
     <priority>0.6</priority>
   </url>
   <url>
+    <loc>https://chosech.co.il/guide-pelephone-review.html</loc>
+    <lastmod>2026-06-21</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
     <loc>https://chosech.co.il/guide-prepaid-israel.html</loc>
     <lastmod>2026-06-20</lastmod>
     <changefreq>monthly</changefreq>
@@ -513,6 +525,12 @@
   <url>
     <loc>https://chosech.co.il/guide-starlink.html</loc>
     <lastmod>2026-06-20</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://chosech.co.il/guide-streaming-comparison.html</loc>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
@@ -561,6 +579,12 @@
   <url>
     <loc>https://chosech.co.il/guide-vacation-internet.html</loc>
     <lastmod>2026-06-20</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://chosech.co.il/guide-wifi-security.html</loc>
+    <lastmod>2026-06-21</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>

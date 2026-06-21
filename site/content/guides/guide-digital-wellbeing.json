@@ -1,0 +1,58 @@
+{
+  "slug": "guide-digital-wellbeing",
+  "cat": "סלולר",
+  "date": "2026-06-21",
+  "read": 3,
+  "title": "ניהול זמן מסך וגלישה — Digital Wellbeing | חוסך",
+  "desc": "כיצד לנהל שימוש בטלפון, להפחית גלישה, ולחסוך גיגות — Digital Wellbeing ב-iPhone ו-Android.",
+  "h1": "Digital Wellbeing — ניהול שימוש בטלפון",
+  "tldr": "iPhone Screen Time + Android Digital Wellbeing = כלים מובנים לניהול שימוש. יתרון נוסף: פחות גלישה = פחות גיגות = חיסכון בעלות מסלול. הגדרת מגבלות = 10 דקות, חיסכון של 1–3GB לחודש.",
+  "sections": [
+    {
+      "h2": "Screen Time ב-iPhone",
+      "ul": [
+        "פתיחה: הגדרות → Screen Time → הפעל Screen Time.",
+        "דוח שימוש: ראו כמה זמן בכל אפליקציה. Weekly Report = תמונה שבועית.",
+        "מגבלת אפליקציות: App Limits → בחרו קטגוריה (Social Media, Entertainment) → הגדירו שעות.",
+        "Downtime: שעות שבהן הטלפון 'ישן' — רק שיחות ואפליקציות שאישרתם.",
+        "Communication Limits: בקרה על מי יכול להתקשר/לשלוח הודעות בשעות מסוימות."
+      ]
+    },
+    {
+      "h2": "Digital Wellbeing ב-Android",
+      "ul": [
+        "פתיחה: הגדרות → Digital Wellbeing & Parental Controls.",
+        "Dashboard: תרשים שימוש יומי לפי אפליקציה. פתחתם TikTok 47 פעמים? = ראיתם פה.",
+        "App Timers: מגבלה על שעות לאפליקציות ספציפיות. אחרי ה-limit: האפליקציה אפורה.",
+        "Bedtime Mode: כיבוי מסך/התראות בשעות שינה. מסך שחור-לבן = פחות מפתה.",
+        "Focus Mode: כיבוי ידני של אפליקציות מסיחות לזמן עבודה."
+      ]
+    },
+    {
+      "h2": "חיסכון בגיגות דרך הפחתת שימוש",
+      "ul": [
+        "TikTok/Instagram Reels: 15 דקות = ~300MB. הפחתה ל-30 דקות/יום = 3GB חסכון לחודש.",
+        "YouTube background: כבו סרטוני אוטוplay — מונעים צריכת גיגות שלא שמתם לב.",
+        "Instagram: הגדירו 'מחסום נתונים' (Data Saver) בהגדרות Instagram — מורידים תמונות ב-resolution נמוך.",
+        "TikTok Data Saver: הגדרות → Data Saving — מפחית כמחצית הצריכה.",
+        "Pre-fetch: כבו Prefetch ב-Chrome (הגדרות → Lite Mode) — Chrome לא מוריד אתרים מראש."
+      ]
+    },
+    {
+      "h2": "כלים נוספים",
+      "ul": [
+        "Forest App: גדלו עצים וירטואליים בזמן שלא נוגעים בטלפון. גמיפיקציה פשוטה.",
+        "Freedom / One Sec: חוסמים אפליקציות לזמן קבוע. 'One Sec' מוסיף עיכוב 1 שנייה לפתיחת TikTok.",
+        "Grayscale: מסך שחור-לבן = פחות מפתה. iPhone: Settings → Accessibility → Triple-click shortcut.",
+        "Notification Diet: כבו כל התראות שלא דורשות פעולה מידית. ₪0 ופחות הפרעות.",
+        "Do Not Disturb: לוח זמנים קבוע ב-iPhone/Android — שעות עבודה + שינה."
+      ]
+    }
+  ],
+  "faq": [
+    ["האם מגבלות Screen Time ניתנות לעקיפה?", "על ידי ילדים — לפעמים כן. iPhone: בחרו סיסמה שהילד לא יודע. Android Family Link: ניהול ע\"י הורה מרחוק + קוד. לבוגרים שרוצים לעצור את עצמם — מגבלות = תזכורת, לא גדר."],
+    ["כמה גיגות חוסכים עם Data Saver?", "Chrome Lite Mode: 60% פחות גלישה (תמונות קומפרסד). Instagram Data Saver: 50% פחות. TikTok Data Saving: 40–60% פחות. בסך הכל: 2–4GB לחודש אפשרי — תלוי בשימוש."],
+    ["האם Screen Time מסנכרן בין מכשירים?", "iPhone: Screen Time מסנכרן דרך iCloud Family — ניתן לנהל כל מכשירי ילד מהiPhone של הורה. Android: Family Link = ניהול מרחוק. בין iPhone ל-Android = אין סנכרון."],
+    ["מה הזמן מסך הממוצע בישראל?", "ממוצע עולמי 2025: ~7 שעות/יום. ישראל: נתוני Apple/Google לא פומביים. הצפוי: דומה לממוצע מערבי. Screen Time שלכם מדויק — בדקו בפועל!"]
+  ]
+}

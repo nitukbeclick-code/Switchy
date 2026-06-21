@@ -1,6 +1,6 @@
 {
   "slug": "guide-abroad-scandinavia",
-  "cat": "חו\"ל",
+  "cat": "חו״ל",
   "date": "2026-06-21",
   "read": 3,
   "title": "סלולר בסקנדינביה לישראלים — נורבגיה, שוודיה, דנמרק | חוסך",
@@ -50,9 +50,21 @@
     }
   ],
   "faq": [
-    ["Airalo Norway vs. Telenor Norway?", "Airalo Norway = Telenor כ-backend. מחיר: Airalo 10GB $19 = ~₪72. Telenor Norway SIM = NOK 199 (~₪70) ל-15GB. SIM = יותר גיגות לכסף. eSIM = נוח יותר. לסיור >7 ימים: SIM מקומי."],
-    ["Finland — כלול ב-Airalo Europe?", "כן — פינלנד = EU מלאה. Airalo Europe 10GB $20 = פינלנד + שוודיה + דנמרק. Airalo Finland נפרד: 10GB $15. לסיור Scandinavia + Helsinki = Europe SIM = הפתרון הנוח."],
-    ["נורבגיה — Fjords בלי אינטרנט?", "Fjords Geirangerfjord/Sognefjord: 4G בנקודות ציון. במזחים וכפרים: 4G. ב-cruise ב-fjord: ייתכן חלש. Offline maps (Maps.me/Google Maps offline) = חובה. קאמרה = חיונית יותר מאינטרנט."],
-    ["מחיר SIM בנורבגיה vs. eSIM?", "Telenor Norway SIM: NOK 199 (~₪70) ל-15GB ל-30 ימים. Airalo Norway: $19 (~₪72) ל-10GB. מחיר/GB: SIM = יותר זול. נוחות: eSIM = קנייה מהבית. לנסיעה 7+ ימים = SIM עדיף."]
+    [
+      "Airalo Norway vs. Telenor Norway?",
+      "Airalo Norway = Telenor כ-backend. מחיר: Airalo 10GB $19 = ~₪72. Telenor Norway SIM = NOK 199 (~₪70) ל-15GB. SIM = יותר גיגות לכסף. eSIM = נוח יותר. לסיור >7 ימים: SIM מקומי."
+    ],
+    [
+      "Finland — כלול ב-Airalo Europe?",
+      "כן — פינלנד = EU מלאה. Airalo Europe 10GB $20 = פינלנד + שוודיה + דנמרק. Airalo Finland נפרד: 10GB $15. לסיור Scandinavia + Helsinki = Europe SIM = הפתרון הנוח."
+    ],
+    [
+      "נורבגיה — Fjords בלי אינטרנט?",
+      "Fjords Geirangerfjord/Sognefjord: 4G בנקודות ציון. במזחים וכפרים: 4G. ב-cruise ב-fjord: ייתכן חלש. Offline maps (Maps.me/Google Maps offline) = חובה. קאמרה = חיונית יותר מאינטרנט."
+    ],
+    [
+      "מחיר SIM בנורבגיה vs. eSIM?",
+      "Telenor Norway SIM: NOK 199 (~₪70) ל-15GB ל-30 ימים. Airalo Norway: $19 (~₪72) ל-10GB. מחיר/GB: SIM = יותר זול. נוחות: eSIM = קנייה מהבית. לנסיעה 7+ ימים = SIM עדיף."
+    ]
   ]
 }

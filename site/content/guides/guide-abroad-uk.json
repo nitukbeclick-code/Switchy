@@ -1,6 +1,6 @@
 {
   "slug": "guide-abroad-uk",
-  "cat": "חו\"ל",
+  "cat": "חו״ל",
   "date": "2026-06-21",
   "read": 3,
   "title": "סלולר בבריטניה לישראלים — eSIM, SIM ורומינג | חוסך",
@@ -50,9 +50,21 @@
     }
   ],
   "faq": [
-    ["האם WhatsApp עובד בבריטניה?", "כן — ללא כל הגבלה. UK = ללא חסימות. WhatsApp, FaceTime, Zoom — הכל פועל חופשי."],
-    ["Three UK SIM — ה-Feel at Home Plan?", "Three UK 'Feel at Home': בכמה מסלולים, Three UK כוללים רומינג ל-71 מדינות ללא תוספת. זה מסלול חודשי לתושבים — לא SIM תייר. כ-תייר: קנו SIM prepaid Three UK."],
-    ["EE vs. O2 לתייר ישראלי?", "EE: כיסוי הכי רחב (כולל כפרי). O2: מחיר אטרקטיבי, כיסוי עירוני מצוין. שניהם = מצוינים ללונדון. לסיורי Countryside → EE."],
-    ["Oyster Card vs. Contactless בלונדון?", "Contactless (כרטיס אשראי/Apple Pay) = עובד בלונדון Underground ואוטובוסים ישירות. Oyster Card = לתושבים. ישראלים: Apple Pay/Google Pay = קל וחסכוני."]
+    [
+      "האם WhatsApp עובד בבריטניה?",
+      "כן — ללא כל הגבלה. UK = ללא חסימות. WhatsApp, FaceTime, Zoom — הכל פועל חופשי."
+    ],
+    [
+      "Three UK SIM — ה-Feel at Home Plan?",
+      "Three UK 'Feel at Home': בכמה מסלולים, Three UK כוללים רומינג ל-71 מדינות ללא תוספת. זה מסלול חודשי לתושבים — לא SIM תייר. כ-תייר: קנו SIM prepaid Three UK."
+    ],
+    [
+      "EE vs. O2 לתייר ישראלי?",
+      "EE: כיסוי הכי רחב (כולל כפרי). O2: מחיר אטרקטיבי, כיסוי עירוני מצוין. שניהם = מצוינים ללונדון. לסיורי Countryside → EE."
+    ],
+    [
+      "Oyster Card vs. Contactless בלונדון?",
+      "Contactless (כרטיס אשראי/Apple Pay) = עובד בלונדון Underground ואוטובוסים ישירות. Oyster Card = לתושבים. ישראלים: Apple Pay/Google Pay = קל וחסכוני."
+    ]
   ]
 }

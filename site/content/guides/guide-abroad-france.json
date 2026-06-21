@@ -1,6 +1,6 @@
 {
   "slug": "guide-abroad-france",
-  "cat": "חו\"ל",
+  "cat": "חו״ל",
   "date": "2026-06-21",
   "read": 3,
   "title": "סלולר בצרפת לישראלים — eSIM, SIM ורומינג | חוסך",
@@ -50,9 +50,21 @@
     }
   ],
   "faq": [
-    ["האם VPN נדרש בצרפת?", "לא — צרפת = EU חופשי. אין חסימות על שירותים כמו WhatsApp/FaceTime/Netflix. VPN לא נדרש לשימוש רגיל. שימוש ב-VPN מותר לגמרי."],
-    ["Airalo France vs. Airalo Europe?", "רק צרפת ≤7 ימים: Airalo France $14 ל-10GB. צרפת + ספרד + איטליה: Airalo Europe $20 ל-10GB. לנסיעה מרובת-מדינות = Europe. לצרפת בלבד = France."],
-    ["Free Mobile — כמה מהיר?", "Free Mobile France = אחד מהמהירים: ממוצע 80–150Mbps ב-4G. 5G: זמין בפריז/ליון. איכות: טוב מאוד. מחיר: הכי זול. החיסרון: כיסוי כפרי נמוך יחסית ל-Orange."],
-    ["מפות offline לצרפת?", "Google Maps: הורידו פריז, ניצה, Lyon לפי עיר. Maps.me: כל צרפת בקובץ אחד ~1.2GB. Organic Maps: טיולי שביל מצוין. CityMapper: ניווט transport ציבורי בפריז (דורש גלישה חלקית)."]
+    [
+      "האם VPN נדרש בצרפת?",
+      "לא — צרפת = EU חופשי. אין חסימות על שירותים כמו WhatsApp/FaceTime/Netflix. VPN לא נדרש לשימוש רגיל. שימוש ב-VPN מותר לגמרי."
+    ],
+    [
+      "Airalo France vs. Airalo Europe?",
+      "רק צרפת ≤7 ימים: Airalo France $14 ל-10GB. צרפת + ספרד + איטליה: Airalo Europe $20 ל-10GB. לנסיעה מרובת-מדינות = Europe. לצרפת בלבד = France."
+    ],
+    [
+      "Free Mobile — כמה מהיר?",
+      "Free Mobile France = אחד מהמהירים: ממוצע 80–150Mbps ב-4G. 5G: זמין בפריז/ליון. איכות: טוב מאוד. מחיר: הכי זול. החיסרון: כיסוי כפרי נמוך יחסית ל-Orange."
+    ],
+    [
+      "מפות offline לצרפת?",
+      "Google Maps: הורידו פריז, ניצה, Lyon לפי עיר. Maps.me: כל צרפת בקובץ אחד ~1.2GB. Organic Maps: טיולי שביל מצוין. CityMapper: ניווט transport ציבורי בפריז (דורש גלישה חלקית)."
+    ]
   ]
 }

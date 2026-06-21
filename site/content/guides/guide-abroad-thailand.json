@@ -1,6 +1,6 @@
 {
   "slug": "guide-abroad-thailand",
-  "cat": "חו\"ל",
+  "cat": "חו״ל",
   "date": "2026-06-21",
   "read": 3,
   "title": "סלולר בתאילנד לישראלים — SIM, eSIM ורומינג | חוסך",
@@ -50,9 +50,21 @@
     }
   ],
   "faq": [
-    ["SIM ב-Suvarnabhumi — איפה בדיוק?", "בבנגקוק Suvarnabhumi: אחרי הגעה לאזור קבלת כבודה, לפני יציאה לפתח. דוכני AIS/DTAC/TrueMove. פתוחים 24/7. ב-Phuket: אחרי שטח מכס. לקחת 15–20 דקות."],
-    ["האם אפשר לחדש SIM תאילנדי?", "כן — ב-7-Eleven/TrueMove Shop ב-30 ฿ (ניתן גם בכרטיס אשראי). AIS app (Enlish available) = חידוש מהנייד. מינימום: 50 ฿ (~₪5)."],
-    ["WhatsApp בתאילנד?", "כן, WhatsApp פועל חופשי. גם FaceTime/Zoom/Telegram. אין חסימות על רשתות חברתיות בתאילנד. Facebook/Instagram = פועל. בשימוש VPN: מותר לגמרי."],
-    ["מפות offline לתאילנד?", "Google Maps Offline: הורידו Bangkok, Phuket, Chiang Mai בנפרד. Maps.me: כל תאילנד בקובץ. Grab App (מקביל ל-Uber): דורש גלישה — חשוב לנסיעות. מסעדות: Wongnai App (תאילנדי) או Grab Food."]
+    [
+      "SIM ב-Suvarnabhumi — איפה בדיוק?",
+      "בבנגקוק Suvarnabhumi: אחרי הגעה לאזור קבלת כבודה, לפני יציאה לפתח. דוכני AIS/DTAC/TrueMove. פתוחים 24/7. ב-Phuket: אחרי שטח מכס. לקחת 15–20 דקות."
+    ],
+    [
+      "האם אפשר לחדש SIM תאילנדי?",
+      "כן — ב-7-Eleven/TrueMove Shop ב-30 ฿ (ניתן גם בכרטיס אשראי). AIS app (Enlish available) = חידוש מהנייד. מינימום: 50 ฿ (~₪5)."
+    ],
+    [
+      "WhatsApp בתאילנד?",
+      "כן, WhatsApp פועל חופשי. גם FaceTime/Zoom/Telegram. אין חסימות על רשתות חברתיות בתאילנד. Facebook/Instagram = פועל. בשימוש VPN: מותר לגמרי."
+    ],
+    [
+      "מפות offline לתאילנד?",
+      "Google Maps Offline: הורידו Bangkok, Phuket, Chiang Mai בנפרד. Maps.me: כל תאילנד בקובץ. Grab App (מקביל ל-Uber): דורש גלישה — חשוב לנסיעות. מסעדות: Wongnai App (תאילנדי) או Grab Food."
+    ]
   ]
 }

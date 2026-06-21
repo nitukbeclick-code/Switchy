@@ -601,26 +601,40 @@
     });
   }
 
-  // ── Guide search (guides.html) ──────────────────────────────────────────────
+  // ── Guide search + category filter (guides.html) ──────────────────────────
   const gs = document.getElementById('guideSearch');
   if (gs) {
     const cards = Array.from(document.querySelectorAll('.guide-card'));
-    const sections = Array.from(document.querySelectorAll('main section[aria-label]'));
+    const sectionEls = Array.from(document.querySelectorAll('main section[aria-label]'));
     const empty = document.getElementById('guideEmpty');
-    gs.addEventListener('input', () => {
+    const catBtns = Array.from(document.querySelectorAll('.guide-cat-filters .filter-btn'));
+    let activeCat = 'all';
+
+    const applyGuideFilters = () => {
       const q = gs.value.trim().toLowerCase();
       let visible = 0;
       cards.forEach((card) => {
         const text = card.textContent.toLowerCase();
-        const show = !q || text.includes(q);
+        const catMatch = activeCat === 'all' || (card.closest('section[aria-label]') || {}).getAttribute('aria-label') === activeCat;
+        const show = catMatch && (!q || text.includes(q));
         card.style.display = show ? '' : 'none';
         if (show) visible++;
       });
-      sections.forEach((sec) => {
+      sectionEls.forEach((sec) => {
         const anyVisible = Array.from(sec.querySelectorAll('.guide-card')).some((c) => c.style.display !== 'none');
         sec.style.display = anyVisible ? '' : 'none';
       });
       if (empty) empty.style.display = visible === 0 ? 'block' : 'none';
+    };
+
+    gs.addEventListener('input', applyGuideFilters);
+
+    catBtns.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        activeCat = btn.dataset.guideCat || 'all';
+        catBtns.forEach((b) => b.classList.toggle('active', b === btn));
+        applyGuideFilters();
+      });
     });
   }
 })();

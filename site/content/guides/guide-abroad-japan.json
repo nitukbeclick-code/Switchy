@@ -1,6 +1,6 @@
 {
   "slug": "guide-abroad-japan",
-  "cat": "חו\"ל",
+  "cat": "חו״ל",
   "date": "2026-06-21",
   "read": 3,
   "title": "סלולר ביפן לישראלים — SIM תייר, eSIM ורומינג | חוסך",
@@ -50,9 +50,21 @@
     }
   ],
   "faq": [
-    ["Line App ביפן?", "Line = הוואטסאפ של יפן. חיוני לתקשורת עם יפנים. הורידו לפני הנסיעה. לא דורש SIM יפני — עובד עם מספר ישראלי. Line Pay: לא זמין לתיירים. IC Card (Suica) = תשלום תחבורה."],
-    ["Google Maps ביפן?", "Google Maps = מצוין ביפן (שיפור גדול ב-2024). הורידו offline לפני. Japan Transit Planner + Hyperdia = לרכבות. Navitime = אפליקציה יפנית עם אנגלית. Google Translate App = חיוני."],
-    ["SIM יפני — שיחות?", "SIM תייר ביפן = Data-Only בדרך כלל (לא יוצאות). שיחות נכנסות: לא. WhatsApp/LINE/FaceTime = עובדים מלא. לשיחה לבית מלון יפני: Google Voice / Skype. שיחת חירום: 110 (משטרה), 119 (אמבולנס) — חינם ללא SIM."],
-    ["Cash vs Card ביפן?", "יפן עדיין מועדפת Cash. ATM: 7-Eleven ו-PostBank מקבלים Visa/Mastercard/Amex. Suica (IC Card): לתחבורה + קניות. Rakuten Pay/PayPay: לא מתאים לתיירים. קחו ¥30,000–₪50,000 במזומן לשבוע."]
+    [
+      "Line App ביפן?",
+      "Line = הוואטסאפ של יפן. חיוני לתקשורת עם יפנים. הורידו לפני הנסיעה. לא דורש SIM יפני — עובד עם מספר ישראלי. Line Pay: לא זמין לתיירים. IC Card (Suica) = תשלום תחבורה."
+    ],
+    [
+      "Google Maps ביפן?",
+      "Google Maps = מצוין ביפן (שיפור גדול ב-2024). הורידו offline לפני. Japan Transit Planner + Hyperdia = לרכבות. Navitime = אפליקציה יפנית עם אנגלית. Google Translate App = חיוני."
+    ],
+    [
+      "SIM יפני — שיחות?",
+      "SIM תייר ביפן = Data-Only בדרך כלל (לא יוצאות). שיחות נכנסות: לא. WhatsApp/LINE/FaceTime = עובדים מלא. לשיחה לבית מלון יפני: Google Voice / Skype. שיחת חירום: 110 (משטרה), 119 (אמבולנס) — חינם ללא SIM."
+    ],
+    [
+      "Cash vs Card ביפן?",
+      "יפן עדיין מועדפת Cash. ATM: 7-Eleven ו-PostBank מקבלים Visa/Mastercard/Amex. Suica (IC Card): לתחבורה + קניות. Rakuten Pay/PayPay: לא מתאים לתיירים. קחו ¥30,000–₪50,000 במזומן לשבוע."
+    ]
   ]
 }

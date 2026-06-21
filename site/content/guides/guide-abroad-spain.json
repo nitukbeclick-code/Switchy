@@ -1,6 +1,6 @@
 {
   "slug": "guide-abroad-spain",
-  "cat": "חו\"ל",
+  "cat": "חו״ל",
   "date": "2026-06-21",
   "read": 3,
   "title": "סלולר בספרד לישראלים — eSIM, SIM ורומינג | חוסך",
@@ -50,9 +50,21 @@
     }
   ],
   "faq": [
-    ["האם WhatsApp עובד בספרד?", "כן — ספרד = EU. ללא כל הגבלה. WhatsApp, FaceTime, Zoom — הכל פועל חופשי."],
-    ["Airalo Spain vs. Airalo Europe — מה לבחור?", "רק ספרד ≤7 ימים: Airalo Spain $12 ל-10GB. ספרד + יוון + איטליה: Airalo Europe $20 ל-10GB. מחיר לGiga: Spain = זול יותר. Europe = נוח יותר לנסיעה מרובה."],
-    ["SIM מקומי — Lebara vs. Lycamobile?", "Lebara: ספרד + International calling (שיחות לישראל כלול!). Lycamobile: זול, נפוץ, גיגות מוזלות. שניהם = MVNO על תשתיות Movistar/Orange. לגלישה = שניהם שווים."],
-    ["מפות offline לספרד?", "Google Maps Offline: הורידו מדריד, ברצלונה, Andalusia לפי עיר/אזור. Maps.me: חינם, מלא. Organic Maps: ניווט offline מצוין עבור שבילי הליכה. Waze: דורש גלישה — פחות מתאים offline."]
+    [
+      "האם WhatsApp עובד בספרד?",
+      "כן — ספרד = EU. ללא כל הגבלה. WhatsApp, FaceTime, Zoom — הכל פועל חופשי."
+    ],
+    [
+      "Airalo Spain vs. Airalo Europe — מה לבחור?",
+      "רק ספרד ≤7 ימים: Airalo Spain $12 ל-10GB. ספרד + יוון + איטליה: Airalo Europe $20 ל-10GB. מחיר לGiga: Spain = זול יותר. Europe = נוח יותר לנסיעה מרובה."
+    ],
+    [
+      "SIM מקומי — Lebara vs. Lycamobile?",
+      "Lebara: ספרד + International calling (שיחות לישראל כלול!). Lycamobile: זול, נפוץ, גיגות מוזלות. שניהם = MVNO על תשתיות Movistar/Orange. לגלישה = שניהם שווים."
+    ],
+    [
+      "מפות offline לספרד?",
+      "Google Maps Offline: הורידו מדריד, ברצלונה, Andalusia לפי עיר/אזור. Maps.me: חינם, מלא. Organic Maps: ניווט offline מצוין עבור שבילי הליכה. Waze: דורש גלישה — פחות מתאים offline."
+    ]
   ]
 }

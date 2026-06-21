@@ -1,6 +1,6 @@
 {
   "slug": "guide-abroad-germany",
-  "cat": "חו\"ל",
+  "cat": "חו״ל",
   "date": "2026-06-21",
   "read": 3,
   "title": "סלולר בגרמניה לישראלים — eSIM, SIM ורומינג | חוסך",
@@ -50,9 +50,21 @@
     }
   ],
   "faq": [
-    ["eSIM בגרמניה — Telekom vs. O2?", "Telekom (Airalo, Holafly): כיסוי כפרי מצוין. O2 (Airalo Europe): כיסוי עירוני טוב. לנסיעה ספציפית לברלין/מינכן: שניהם. לכפרי/Bavaria: Telekom עדיף."],
-    ["גרמניה — Uber/תחבורה?", "Uber פועל בגרמניה. BVG App (ברלין) / MVV App (מינכן): כרטיסי תחבורה ציבורית. DB Navigator: רכבות ألمانية (ICE/IC). Google Maps: מצוין לניווט תחבורה ציבורית."],
-    ["Lidl Connect — איך מפעילים?", "קנו חבילת SIM ב-Lidl (~€10). רישום: אתר lidl-connect.de עם IBAN גרמני OR קרדיט אחד. לחלופין: eSIM Airalo = ללא רישום, מיידי."],
-    ["גרמניה vs. גרמניה+אוסטריה — eSIM אחד?", "Airalo Europe = 36 מדינות כולל גרמניה, אוסטריה, שוויץ. אם מתכננים Vienna + Munich + Salzburg = Europe SIM אחד = הפתרון הנוח."]
+    [
+      "eSIM בגרמניה — Telekom vs. O2?",
+      "Telekom (Airalo, Holafly): כיסוי כפרי מצוין. O2 (Airalo Europe): כיסוי עירוני טוב. לנסיעה ספציפית לברלין/מינכן: שניהם. לכפרי/Bavaria: Telekom עדיף."
+    ],
+    [
+      "גרמניה — Uber/תחבורה?",
+      "Uber פועל בגרמניה. BVG App (ברלין) / MVV App (מינכן): כרטיסי תחבורה ציבורית. DB Navigator: רכבות ألمانية (ICE/IC). Google Maps: מצוין לניווט תחבורה ציבורית."
+    ],
+    [
+      "Lidl Connect — איך מפעילים?",
+      "קנו חבילת SIM ב-Lidl (~€10). רישום: אתר lidl-connect.de עם IBAN גרמני OR קרדיט אחד. לחלופין: eSIM Airalo = ללא רישום, מיידי."
+    ],
+    [
+      "גרמניה vs. גרמניה+אוסטריה — eSIM אחד?",
+      "Airalo Europe = 36 מדינות כולל גרמניה, אוסטריה, שוויץ. אם מתכננים Vienna + Munich + Salzburg = Europe SIM אחד = הפתרון הנוח."
+    ]
   ]
 }

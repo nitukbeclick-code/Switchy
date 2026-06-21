@@ -1,6 +1,6 @@
 {
   "slug": "guide-abroad-poland",
-  "cat": "חו\"ל",
+  "cat": "חו״ל",
   "date": "2026-06-21",
   "read": 2,
   "title": "סלולר בפולין לישראלים — eSIM, SIM ורומינג | חוסך",
@@ -50,9 +50,21 @@
     }
   ],
   "faq": [
-    ["פולין זולה — כמה גיגות צריך?", "לסיור תיירות שבוע: 10GB מספיק. מפות Google/Waze = ~1GB/שבוע. Instagram/WhatsApp = ~2GB/שבוע. YouTube/Netflix offline = הורידו ב-WiFi מלון. 10GB = מספיק נוח."],
-    ["eSIM ל-Auschwitz/קרקוב?", "4G טוב ב-Auschwitz-Birkenau ובקרקוב. Airalo Poland $14 ל-10GB = מספיק לשבוע. Orange PL SIM = PLN 50 ל-30 ימים. שניהם = מצוינים לסיור."],
-    ["פולין-גרמניה-צ'כיה בסיור אחד?", "Airalo Europe $20 ל-10GB = שלושתם כלולים. eSIM אחד לכל המסלול. חלופה: SIM Orange PL ל-30 ימים = עובד גם בגרמניה/צ'כיה ב-EU roaming (מאותה כסה לא נפרדת)."],
-    ["WiFi בתחנות רכבת פולין?", "PKP Intercity: WiFi חינמי ברכבות IC/EIP. Pendolino (בין ורשה-קרקוב): WiFi. תחנות: ורשה Centralna = WiFi. לא ניתן לסמוך לאורך הנסיעה. eSIM = אמין יותר."]
+    [
+      "פולין זולה — כמה גיגות צריך?",
+      "לסיור תיירות שבוע: 10GB מספיק. מפות Google/Waze = ~1GB/שבוע. Instagram/WhatsApp = ~2GB/שבוע. YouTube/Netflix offline = הורידו ב-WiFi מלון. 10GB = מספיק נוח."
+    ],
+    [
+      "eSIM ל-Auschwitz/קרקוב?",
+      "4G טוב ב-Auschwitz-Birkenau ובקרקוב. Airalo Poland $14 ל-10GB = מספיק לשבוע. Orange PL SIM = PLN 50 ל-30 ימים. שניהם = מצוינים לסיור."
+    ],
+    [
+      "פולין-גרמניה-צ'כיה בסיור אחד?",
+      "Airalo Europe $20 ל-10GB = שלושתם כלולים. eSIM אחד לכל המסלול. חלופה: SIM Orange PL ל-30 ימים = עובד גם בגרמניה/צ'כיה ב-EU roaming (מאותה כסה לא נפרדת)."
+    ],
+    [
+      "WiFi בתחנות רכבת פולין?",
+      "PKP Intercity: WiFi חינמי ברכבות IC/EIP. Pendolino (בין ורשה-קרקוב): WiFi. תחנות: ורשה Centralna = WiFi. לא ניתן לסמוך לאורך הנסיעה. eSIM = אמין יותר."
+    ]
   ]
 }

@@ -995,6 +995,10 @@ ${navNoCta}
         <div style="margin-top:20px;max-width:480px">
           <input type="search" id="guideSearch" class="filter-search" placeholder="חפשו מדריך…" aria-label="חיפוש מדריכים" style="width:100%;font-size:16px" />
         </div>
+        <div class="filters guide-cat-filters" style="margin-top:16px" role="group" aria-label="סינון לפי קטגוריה">
+          <button class="filter-btn active" data-guide-cat="all">הכל (${guides.length})</button>
+${catOrder.filter((c) => grouped[c] && grouped[c].length).map((c) => `          <button class="filter-btn" data-guide-cat="${esc(c)}">${esc(c)} (${grouped[c].length})</button>`).join('\n')}
+        </div>
       </div>
     </section>
 ${sections}

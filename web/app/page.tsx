@@ -54,11 +54,12 @@ export default function Home() {
   const summaryText =
     `חוסך / Switchy הוא שירות חינמי להשוואת מסלולי תקשורת בישראל. ` +
     `אנו משווים ${planCount} מסלולים מ-${providers.length} ספקים בחמש קטגוריות — ` +
-    `סלולר, אינטרנט, טלוויזיה, חבילות משולבות וחבילות חו״ל. המחירים בשקלים ` +
-    `ומעודכנים; פנייה לספק נשלחת רק לאחר אישורכם.`;
+    `סלולר, אינטרנט, טלוויזיה, חבילות משולבות וחבילות חו״ל — ` +
+    `החל מ-${ils(minFeatured)} לחודש. המחירים בשקלים ומעודכנים, וכוללים גם את המחיר ` +
+    `אחרי המבצע; פנייה לספק נשלחת רק לאחר אישורכם.`;
 
   return (
-    <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-10 sm:px-6">
+    <main id="main" className="mx-auto w-full max-w-5xl flex-1 px-4 py-10 sm:px-6">
       {/* Structured data for engines: WebSite (SearchAction), the featured list, FAQ. */}
       <JsonLd data={websiteSchema()} />
       <JsonLd data={itemListSchema(featured)} />
@@ -194,7 +195,7 @@ export default function Home() {
         </ol>
         <Link
           href="/transparency"
-          className="mt-4 inline-block text-sm font-medium text-accent hover:text-accent-hover"
+          className="mt-4 inline-block text-sm font-medium text-accent-text hover:text-accent-hover"
         >
           איך אנחנו מדרגים? שקיפות מלאה ←
         </Link>
@@ -273,7 +274,7 @@ export default function Home() {
         </div>
         <Link
           href={`/compare/${featuredCat}`}
-          className="mt-4 inline-block font-medium text-accent hover:text-accent-hover"
+          className="mt-4 inline-block font-medium text-accent-text hover:text-accent-hover"
         >
           לכל מסלולי ה{CATEGORY_HE[featuredCat] ?? featuredCat} ←
         </Link>

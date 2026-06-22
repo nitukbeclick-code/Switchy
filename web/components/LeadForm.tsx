@@ -58,8 +58,18 @@ export interface LeadFormProps {
 const MANDATORY_CONSENT_TEXT =
   "אני מאשר/ת את תנאי השימוש ומדיניות הפרטיות ומסכים/ה ליצירת קשר בנוגע להצעות תקשורת";
 
-/** Israeli mobile/landline: 9–10 digits, optional leading 0, spaces/dashes ok. */
-const PHONE_RE = /^0?\d([\d\s-]{7,12})$/;
+/**
+ * Validate an Israeli phone the SAME way the server does (web/app/api/lead
+ * route.ts `normalizePhone`): strip non-digits (keeping a leading +), fold a
+ * leading +972 / 972 to 0, then require exactly 9–10 digits starting with 0.
+ * Mirroring the server here means the form never (a) wrongly rejects a valid
+ * `+972…` number, nor (b) accepts a number the server will reject at submit.
+ */
+function isValidPhone(raw: string): boolean {
+  const digits = raw.replace(/[^\d+]/g, "");
+  const local = digits.replace(/^\+?972/, "0");
+  return /^0\d{8,9}$/.test(local);
+}
 
 const STEP_FIELDS: (keyof LeadFormValues)[][] = [
   ["name"],
@@ -273,7 +283,8 @@ export default function LeadForm({
             className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-right text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
             {...register("phone", {
               required: "נא להזין מספר טלפון",
-              pattern: { value: PHONE_RE, message: "מספר הטלפון אינו תקין" },
+              validate: (v) =>
+                isValidPhone(v) || "מספר הטלפון אינו תקין",
             })}
           />
           {errors.phone && (

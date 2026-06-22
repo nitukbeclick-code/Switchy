@@ -197,7 +197,7 @@ export default async function ProviderPage({ params }: Params) {
     `ספקים אחרים בישראל — בשקלים וללא עלות.`;
 
   return (
-    <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-10 sm:px-6">
+    <main id="main" className="mx-auto w-full max-w-5xl flex-1 px-4 py-10 sm:px-6">
       {/* Entity structured data: ItemList + FAQ + Breadcrumb. */}
       <JsonLd data={itemListSchema(plans)} />
       <JsonLd data={faqPageSchema(faqs)} />
@@ -227,6 +227,10 @@ export default async function ProviderPage({ params }: Params) {
           בית
         </Link>
         <span className="px-1.5">/</span>
+        <Link href="/providers" className="hover:text-accent">
+          ספקים
+        </Link>
+        <span className="px-1.5">/</span>
         <span className="text-foreground">{provider.name}</span>
       </nav>
 
@@ -245,7 +249,7 @@ export default async function ProviderPage({ params }: Params) {
           </div>
           <div>
             <dt className="text-muted">מחיר התחלתי</dt>
-            <dd className="font-display text-xl font-bold text-value">
+            <dd className="font-display text-xl font-bold text-value-text">
               {ils(provider.minPrice)}
             </dd>
           </div>
@@ -291,12 +295,12 @@ export default async function ProviderPage({ params }: Params) {
                 <p className="mt-1 font-display font-semibold text-ink">
                   {plan.plan}
                 </p>
-                <p className="mt-2 font-display text-2xl font-bold text-value">
+                <p className="mt-2 font-display text-2xl font-bold text-value-text">
                   {ils(plan.price)}
                 </p>
                 <Link
                   href={`/compare/${cat}`}
-                  className="mt-3 inline-block text-sm font-medium text-accent hover:text-accent-hover"
+                  className="mt-3 inline-block text-sm font-medium text-accent-text hover:text-accent-hover"
                 >
                   להשוות בקטגוריה ←
                 </Link>

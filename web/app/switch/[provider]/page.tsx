@@ -244,7 +244,7 @@ export default async function SwitchProviderPage({ params }: Params) {
   });
 
   return (
-    <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-10 sm:px-6">
+    <main id="main" className="mx-auto w-full max-w-3xl flex-1 px-4 py-10 sm:px-6">
       {/* Structured data: HowTo + FAQ + Breadcrumb + Knowledge Graph. */}
       <JsonLd data={howToSchema({ providerName: provider.name, url: pageUrl, steps })} />
       <JsonLd data={faqPageSchema(faqs)} />

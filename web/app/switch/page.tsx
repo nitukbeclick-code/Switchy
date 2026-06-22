@@ -102,7 +102,7 @@ export default function SwitchIndexPage() {
   ];
 
   return (
-    <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-10 sm:px-6">
+    <main id="main" className="mx-auto w-full max-w-5xl flex-1 px-4 py-10 sm:px-6">
       {/* Structured data: CollectionPage + FAQ + Breadcrumb + Knowledge Graph. */}
       <JsonLd
         data={collectionPageSchema({
@@ -170,7 +170,7 @@ export default function SwitchIndexPage() {
                 <span className="mt-1 block text-sm text-muted">
                   {p.categories.map((c) => CATEGORY_HE[c] ?? c).join(", ")}
                 </span>
-                <span className="mt-3 inline-block text-sm font-medium text-accent">
+                <span className="mt-3 inline-block text-sm font-medium text-accent-text">
                   למדריך המלא ←
                 </span>
               </Link>

@@ -16,14 +16,22 @@
   --ink: #111827; /* structural ink (headings, dark cards) */
   --border: #e5e7eb; /* hairline borders */
   --border-strong: #222a35; /* strong/structural borders */
-  --muted: #6b7280; /* secondary text */
+  --muted: #5b616b; /* secondary text (≥5.3:1 on glass; was #6b7280 = 4.5:1 exactly) */
 
-  /* Accents — use with intent, sparingly */
-  --accent: #16a34a; /* ACTION (green) */
+  /* Accents — use with intent, sparingly.
+     IMPORTANT: split "fill" shades from "text" shades for WCAG AA (1.4.3).
+       • -fill shades are for backgrounds / borders / focus rings / chart bars,
+         where the 3:1 non-text threshold applies.
+       • -text shades are for the SAME accent used as small text / inline links on
+         a light surface, where 4.5:1 is required. The headline #16A34A green is
+         only 3.30:1 on white and #F59E0B amber only 2.15:1 — both FAIL as text. */
+  --accent: #16a34a; /* ACTION (green) — fills/CTAs/active nav/focus */
   --accent-hover: #15803d; /* darker green for hover */
   --accent-contrast: #ffffff; /* text on green */
-  --value: #f59e0b; /* VALUE (amber) */
+  --accent-text: #0f7a37; /* green for text/links on light bg (≥4.5:1) */
+  --value: #f59e0b; /* VALUE (amber) — fills/badges/win states */
   --value-contrast: #111827; /* text on amber */
+  --value-text: #b45309; /* amber for text/figures on light bg (≥4.5:1) */
 }
 
 /* Map brand tokens into Tailwind's theme so utilities like bg-accent, text-ink,
@@ -40,8 +48,10 @@
   --color-accent: var(--accent);
   --color-accent-hover: var(--accent-hover);
   --color-accent-contrast: var(--accent-contrast);
+  --color-accent-text: var(--accent-text);
   --color-value: var(--value);
   --color-value-contrast: var(--value-contrast);
+  --color-value-text: var(--value-text);
 
   --font-display: var(--font-rubik);
   --font-sans: var(--font-assistant);
@@ -71,16 +81,34 @@ h6 {
 }
 
 a {
-  color: var(--accent);
+  /* AA: link text on a light surface uses the text-grade green (≥4.5:1), not the
+     headline #16A34A fill green (3.30:1). */
+  color: var(--accent-text);
   text-decoration: none;
 }
 a:hover {
   color: var(--accent-hover);
 }
 
-/* Visible, accessible focus ring (green = focus, per brand). */
+/* Visible, accessible focus ring (green = focus, per brand). The fill green is
+   fine here — focus rings are non-text UI (3:1 threshold). */
 :focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
   border-radius: 4px;
+}
+
+/* Respect reduced-motion: disable smooth scroll + animations/transitions. */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

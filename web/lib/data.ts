@@ -41,12 +41,53 @@ const PLANS: Plan[] = Array.isArray(catalogue.plans) ? catalogue.plans : [];
 export { CATEGORY_HE };
 
 // ── Slugify ──────────────────────────────────────────────────────────────────
-const SLUG_OVERRIDES: Record<string, string> = {};
+/**
+ * Explicit, readable English slugs for providers whose display name is Hebrew (or
+ * otherwise non-ASCII). Without these the slug falls back to an opaque `p-<hash>`
+ * token (e.g. `p-nr0ams`), which is un-citeable by LLMs, keyword-dead in the URL,
+ * and looks untrustworthy in AI answers. Each value is the carrier's own
+ * well-known English brand handle. KEEP IN SYNC with the catalogue provider names.
+ */
+const SLUG_OVERRIDES: Record<string, string> = {
+  סלקום: "cellcom",
+  פרטנר: "partner",
+  פלאפון: "pelephone",
+  "גולן טלקום": "golan",
+  "הוט מובייל": "hot-mobile",
+  "רמי לוי": "rami-levy",
+  "וואלה מובייל": "walla-mobile",
+  בזק: "bezeq",
+  גילת: "gilat",
+  "019 מובייל": "019mobile",
+};
 
 /**
- * Slugify a provider name into a URL-safe ASCII slug. Latin names lowercase +
- * hyphenate; Hebrew (and other non-ASCII) names fall back to a transliterated /
- * hashed token so every provider gets a stable, unique, ASCII slug.
+ * Legacy `p-<hash>` slugs → the new readable slug, for 301 redirects so existing
+ * links / indexed URLs don't 404 after the slug change. These are the exact
+ * tokens {@link providerSlug} produced for the Hebrew-named providers BEFORE the
+ * {@link SLUG_OVERRIDES} map existed (computed from the char-code hash below).
+ * Consumed by `next.config.ts` `redirects()`.
+ */
+export const LEGACY_PROVIDER_SLUG_REDIRECTS: Readonly<Record<string, string>> = {
+  "p-nr0ams": "cellcom", // סלקום
+  "p-nsv1ek": "partner", // פרטנר
+  "p-rcv4fq": "pelephone", // פלאפון
+  "p-mkqt2p": "golan", // גולן טלקום
+  "p-v0b8ln": "hot-mobile", // הוט מובייל
+  "p-1irwebn": "rami-levy", // רמי לוי
+  "p-jcymt6": "walla-mobile", // וואלה מובייל
+  "p-vp0i": "bezeq", // בזק
+  "p-rb9jp": "gilat", // גילת
+  // NB: "019 מובייל" hashed to the readable "019" before (ASCII path), and is now
+  // "019mobile"; both old paths are redirected from next.config.ts.
+  "019": "019mobile",
+};
+
+/**
+ * Slugify a provider name into a URL-safe ASCII slug. An explicit
+ * {@link SLUG_OVERRIDES} entry wins (readable English brand handle); otherwise
+ * Latin names lowercase + hyphenate, and any remaining non-ASCII name falls back
+ * to a deterministic hashed token so every provider still gets a stable slug.
  */
 export function providerSlug(name: string): string {
   const trimmed = (name ?? "").trim();

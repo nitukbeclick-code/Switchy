@@ -15,28 +15,19 @@ import {
   getPlans,
   getCategories,
   providerSlug,
+  providerOfficialUrl,
   CATEGORY_HE,
 } from "@/lib/data";
 import { priceUnitLabel } from "@/lib/format";
 import { SITE_URL, SITE_NAME } from "@/lib/schema";
 import type { Plan } from "@/lib/types";
 
-// Real official provider homepages — used as Knowledge-Graph sameAs anchors.
-// Only verified, public official URLs; a provider without a known URL is omitted
-// rather than guessed.
-const OFFICIAL_URLS: Record<string, string> = {
-  בזק: "https://www.bezeq.co.il",
-  פרטנר: "https://www.partner.co.il",
-  HOT: "https://www.hot.net.il",
-  "הוט מובייל": "https://www.hotmobile.co.il",
-  סלקום: "https://www.cellcom.co.il",
-  yes: "https://www.yes.co.il",
-  פלאפון: "https://www.pelephone.co.il",
-};
-
-function officialUrl(name: string): string | undefined {
-  return OFFICIAL_URLS[name];
-}
+// Official provider homepages (Knowledge-Graph sameAs anchors) come from the
+// SINGLE source of truth — PROVIDER_OFFICIAL_URLS in @/lib/data — so this feed
+// can't drift from the rest of the app. (It used to keep a private 7-entry copy
+// that silently omitted golan / rami-levy / 019.) Only verified, public official
+// URLs; a provider without a known URL is omitted rather than guessed.
+const officialUrl = providerOfficialUrl;
 
 function cheapest(plans: Plan[], pred: (p: Plan) => boolean): Plan | undefined {
   return plans.filter(pred).sort((a, b) => a.price - b.price)[0];

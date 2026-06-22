@@ -85,7 +85,7 @@ export default function SiteFooter({ columns, className }: SiteFooterProps) {
           {/* Brand identity. */}
           <div className="lg:col-span-1">
             <p className="font-display text-lg font-bold text-ink">
-              חוסך / Switch AI
+              חוסך / Switchy
             </p>
             <p className="mt-1 text-sm text-muted">סוכן השוואה חכם</p>
             <p className="mt-3 max-w-xs text-sm leading-relaxed text-foreground">
@@ -118,12 +118,12 @@ export default function SiteFooter({ columns, className }: SiteFooterProps) {
 
         {/* Bottom row: copyright + transparency link (always present). */}
         <div className="mt-10 flex flex-col gap-3 border-t border-border pt-6 text-xs text-muted sm:flex-row sm:items-center sm:justify-between">
-          <p>© {year} חוסך / Switch AI. כל הזכויות שמורות.</p>
+          <p>© {year} חוסך / Switchy. כל הזכויות שמורות.</p>
           <p>
             המלצות ותוויות עריכה מוסברות בעמוד{" "}
             <Link
               href="/transparency"
-              className="font-medium text-accent hover:text-accent-hover"
+              className="font-medium text-accent-text hover:text-accent-hover"
             >
               השקיפות
             </Link>

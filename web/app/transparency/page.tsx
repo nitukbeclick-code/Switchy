@@ -93,7 +93,7 @@ export default function TransparencyPage() {
   ];
 
   return (
-    <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-10 sm:px-6">
+    <main id="main" className="mx-auto w-full max-w-3xl flex-1 px-4 py-10 sm:px-6">
       <JsonLd data={transparencyPageSchema()} />
       <JsonLd data={breadcrumbSchema(crumbs)} />
 
@@ -142,12 +142,12 @@ export default function TransparencyPage() {
       <aside className="mt-12 border-t border-border pt-8 text-sm text-muted">
         <p>
           רוצים לראות את הנתונים בצורה מובנית? עיינו ב
-          <Link href="/api/llm-feed" className="text-accent hover:text-accent-hover">
+          <Link href="/api/llm-feed" className="text-accent-text hover:text-accent-hover">
             {" "}
             מפה הסמנטית (JSON)
           </Link>{" "}
           או ב
-          <Link href="/glossary" className="text-accent hover:text-accent-hover">
+          <Link href="/glossary" className="text-accent-text hover:text-accent-hover">
             מילון המונחים
           </Link>
           .

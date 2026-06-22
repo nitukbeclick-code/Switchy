@@ -36,7 +36,6 @@ import type { Plan, Provider } from "@/lib/types";
 import {
   collectionPageSchema,
   itemListSchema,
-  productSchema,
   faqPageSchema,
   breadcrumbSchema,
   knowledgeGraphSchema,
@@ -276,20 +275,21 @@ export default async function ServiceHubPage({ params }: Params) {
   ];
 
   return (
-    <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-10 sm:px-6">
-      {/* GEO structured data: CollectionPage + ItemList + per-plan Product + FAQ + Breadcrumb + KnowledgeGraph. */}
+    <main id="main" className="mx-auto w-full max-w-5xl flex-1 px-4 py-10 sm:px-6">
+      {/* GEO structured data: CollectionPage + ItemList + FAQ + Breadcrumb + KnowledgeGraph.
+          Each plan's Product data is serialized ONCE in the standalone ItemList
+          (Google reads ItemList→Product) and once more, entity-linked, inside the
+          knowledgeWebSchema @graph below — we deliberately do NOT also embed it in
+          the CollectionPage (no `plans`) nor emit a per-plan productSchema loop,
+          to keep the JSON-LD payload lean. */}
       <JsonLd
         data={collectionPageSchema({
           name: `השוואת ${svc.label}`,
           description: `השוואת ${plans.length} מסלולי ${svc.label} מכל הספקים בישראל, מחירים בשקלים.`,
           url: `/compare/${service}`,
-          plans,
         })}
       />
       <JsonLd data={itemListSchema(plans)} />
-      {plans.map((p) => (
-        <JsonLd key={p.id} data={productSchema(p)} />
-      ))}
       <JsonLd data={faqPageSchema(faqs)} />
       <JsonLd data={breadcrumbSchema(crumbs)} />
       <JsonLd

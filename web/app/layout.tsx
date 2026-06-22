@@ -6,16 +6,20 @@ import JsonLd from "@/components/JsonLd";
 import SiteFooter from "@/components/SiteFooter";
 import { orgSchema, websiteSchema, SITE_URL, SITE_NAME } from "@/lib/schema";
 
-// Rubik for display/headings, Assistant for body/labels. Hebrew + latin subsets.
+// Rubik for display/headings, Assistant for body/labels. Hebrew-only subset: this
+// is a Hebrew-first RTL site, so the latin subset is mostly dead weight (the few
+// latin glyphs — "Switchy", digits, ₪ — fall back gracefully). Dropping it trims
+// the preloaded woff2 set that contends with the LCP resource. `display: swap`
+// keeps text visible immediately (no FOIT).
 const rubik = Rubik({
   variable: "--font-rubik",
-  subsets: ["hebrew", "latin"],
+  subsets: ["hebrew"],
   display: "swap",
 });
 
 const assistant = Assistant({
   variable: "--font-assistant",
-  subsets: ["hebrew", "latin"],
+  subsets: ["hebrew"],
   display: "swap",
 });
 
@@ -62,17 +66,28 @@ export default function RootLayout({
         <JsonLd data={websiteSchema()} />
       </head>
       <body className="min-h-full flex flex-col">
+        {/* Skip link — first focusable element; visually hidden until focused. */}
+        <a
+          href="#main"
+          className="sr-only focus:not-sr-only focus:absolute focus:start-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-accent focus:px-4 focus:py-2 focus:font-medium focus:text-accent-contrast focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-accent"
+        >
+          דלג לתוכן
+        </a>
         {children}
 
         {/* Site-wide footer — links to /transparency (and glossary etc.) on every route. */}
         <SiteFooter />
 
-        {/* Google Analytics 4 (loaded after the page is interactive). */}
+        {/* Google Analytics 4 — loaded during browser idle (lazyOnload) so the
+            3rd-party googletagmanager fetch doesn't compete with first-party LCP
+            resources. Analytics doesn't need to fire before the page is idle.
+            `gtag()` queues into dataLayer, so the init order stays correct even
+            though both scripts defer. */}
         <Script
           src={`https://www.googletagmanager.com/gtag/js?id=${GA4_MEASUREMENT_ID}`}
-          strategy="afterInteractive"
+          strategy="lazyOnload"
         />
-        <Script id="ga4-init" strategy="afterInteractive">
+        <Script id="ga4-init" strategy="lazyOnload">
           {`
             window.dataLayer = window.dataLayer || [];
             function gtag(){dataLayer.push(arguments);}

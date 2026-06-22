@@ -125,7 +125,7 @@ export default function MarketPulseCharts({
     >
       {/* ── Current-state label (honesty: no history yet) ─────────────────── */}
       <div className="flex flex-wrap items-center gap-2">
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-accent/40 bg-accent/10 px-3 py-1 text-xs font-semibold text-accent">
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-accent/40 bg-accent/10 px-3 py-1 text-xs font-semibold text-accent-text">
           <span
             aria-hidden="true"
             className="inline-block h-2 w-2 rounded-full bg-accent"
@@ -143,9 +143,38 @@ export default function MarketPulseCharts({
         <figcaption className="mb-4 font-display text-base font-semibold text-ink">
           מחיר ממוצע מול המחיר הזול ביותר, לפי קטגוריה
         </figcaption>
-        <div className="h-[340px] w-full" dir="ltr">
+        {/* a11y (WCAG 1.1.1): the SVG bars are image-only, so we expose the same
+            figures as a visually-hidden data table for screen readers, and label
+            the chart region. recharts also ships keyboard/SR support via its
+            accessibilityLayer (on by default in v3). */}
+        <table className="sr-only">
+          <caption>מחיר ממוצע והמחיר הזול ביותר בכל קטגוריה, בשקלים</caption>
+          <thead>
+            <tr>
+              <th scope="col">קטגוריה</th>
+              <th scope="col">מחיר ממוצע</th>
+              <th scope="col">המחיר הזול ביותר</th>
+            </tr>
+          </thead>
+          <tbody>
+            {chartData.map((d) => (
+              <tr key={d.label}>
+                <th scope="row">{d.label}</th>
+                <td>{ILS(d.avg)}</td>
+                <td>{ILS(d.min)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <div
+          className="h-[340px] w-full"
+          dir="ltr"
+          role="img"
+          aria-label="תרשים עמודות: מחיר ממוצע מול המחיר הזול ביותר בכל קטגוריה. הנתונים המלאים זמינים בטבלה הנלווית."
+        >
           <ResponsiveContainer width="100%" height="100%">
             <BarChart
+              accessibilityLayer
               data={chartData}
               margin={{ top: 16, right: 8, bottom: 8, left: 8 }}
               barGap={4}
@@ -247,7 +276,9 @@ export default function MarketPulseCharts({
                     </span>
                   </span>
                   <span className="shrink-0 rounded-lg bg-value/10 px-2.5 py-1 font-display text-base font-bold text-value-contrast">
-                    <span className="text-value">{ILS(d.cheapest.price)}</span>
+                    {/* AA: amber-as-text uses the darker text-grade amber (≥4.5:1
+                        on the near-white bg-value/10 pill); #F59E0B is 2.15:1. */}
+                    <span className="text-value-text">{ILS(d.cheapest.price)}</span>
                   </span>
                 </a>
               </li>

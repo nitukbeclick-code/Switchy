@@ -16,8 +16,16 @@ import {
 
 /** Canonical site origin (no trailing slash). */
 export const SITE_URL = "https://www.switchy-ai.com";
-/** Brand name as shown to users / engines. */
+/** Brand name as shown to users / engines (single canonical form everywhere). */
 export const SITE_NAME = "חוסך / Switchy";
+/**
+ * Alternate brand-name forms that MUST resolve to the same entity. GEO/knowledge
+ * graphs key `sameAs`/knowledge-panel on a single name, so we declare every form
+ * the brand appears under (the Hebrew "חוסך", the English "Switchy", and the
+ * "Switch AI" variant the site also uses) as `alternateName`. KEEP the footer +
+ * llm-context in sync with these.
+ */
+export const SITE_ALT_NAMES: readonly string[] = ["חוסך", "Switchy", "Switch AI"];
 const CURRENCY = "ILS";
 
 type Json = Record<string, unknown>;
@@ -29,6 +37,7 @@ export function orgSchema(): Json {
     "@context": "https://schema.org",
     "@type": "Organization",
     name: SITE_NAME,
+    alternateName: SITE_ALT_NAMES,
     url: SITE_URL,
     logo: `${SITE_URL}/favicon.png`,
     description:
@@ -39,22 +48,15 @@ export function orgSchema(): Json {
 }
 
 // ── WebSite (with SearchAction) ──────────────────────────────────────────────
-/** WebSite schema, including a SearchAction pointing at the on-site search. */
+/** WebSite schema for the brand site. */
 export function websiteSchema(): Json {
   return {
     "@context": "https://schema.org",
     "@type": "WebSite",
     name: SITE_NAME,
+    alternateName: SITE_ALT_NAMES,
     url: SITE_URL,
     inLanguage: "he-IL",
-    potentialAction: {
-      "@type": "SearchAction",
-      target: {
-        "@type": "EntryPoint",
-        urlTemplate: `${SITE_URL}/search?q={search_term_string}`,
-      },
-      "query-input": "required name=search_term_string",
-    },
   };
 }
 
@@ -65,11 +67,6 @@ export function websiteSchema(): Json {
  * highest the customer may pay.
  */
 export function productSchema(plan: Plan): Json {
-  const prices = [plan.price, plan.after].filter(
-    (n): n is number => typeof n === "number" && n > 0,
-  );
-  const low = prices.length ? Math.min(...prices) : plan.price;
-  const high = prices.length ? Math.max(...prices) : plan.price;
   const catHe = CATEGORY_HE[plan.cat] ?? plan.cat;
 
   return {
@@ -79,14 +76,40 @@ export function productSchema(plan: Plan): Json {
     brand: { "@type": "Brand", name: plan.provider },
     category: catHe,
     sku: plan.id,
-    offers: {
+    offers: planOffers(plan, { "@type": "Organization", name: plan.provider }),
+  };
+}
+
+/**
+ * Build the `offers` node for a plan. When the plan has a real post-promo `after`
+ * price that differs from the headline, we emit an honest {@link AggregateOffer}
+ * spanning `[low, high]`; a single fixed price is a plain {@link Offer} (an
+ * `AggregateOffer` with `offerCount: 1` is mildly self-contradictory to
+ * validators). `seller` is passed in so callers can use a concrete Organization
+ * or an `@id` reference. HONESTY: the price widening reflects only real `after`.
+ */
+function planOffers(plan: Plan, seller: Json): Json {
+  const prices = [plan.price, plan.after].filter(
+    (n): n is number => typeof n === "number" && n > 0,
+  );
+  const low = prices.length ? Math.min(...prices) : plan.price;
+  const high = prices.length ? Math.max(...prices) : plan.price;
+
+  if (high > low) {
+    return {
       "@type": "AggregateOffer",
       priceCurrency: CURRENCY,
       lowPrice: low,
       highPrice: high,
-      offerCount: 1,
-      seller: { "@type": "Organization", name: plan.provider },
-    },
+      offerCount: 2,
+      seller,
+    };
+  }
+  return {
+    "@type": "Offer",
+    priceCurrency: CURRENCY,
+    price: low,
+    seller,
   };
 }
 
@@ -612,12 +635,6 @@ function planKnowledgeNodes(plan: Plan, seenIds: Set<string>): Json[] {
     });
   }
 
-  const prices = [plan.price, plan.after].filter(
-    (n): n is number => typeof n === "number" && n > 0,
-  );
-  const low = prices.length ? Math.min(...prices) : plan.price;
-  const high = prices.length ? Math.max(...prices) : plan.price;
-
   const product: Json = {
     "@type": "Product",
     "@id": productId,
@@ -625,14 +642,7 @@ function planKnowledgeNodes(plan: Plan, seenIds: Set<string>): Json[] {
     category: catHe,
     sku: plan.id,
     brand: { "@id": providerId },
-    offers: {
-      "@type": "AggregateOffer",
-      priceCurrency: CURRENCY,
-      lowPrice: low,
-      highPrice: high,
-      offerCount: 1,
-      seller: { "@id": providerId },
-    },
+    offers: planOffers(plan, { "@id": providerId }),
   };
   if (terms.length) {
     product.mentions = terms.map((t) => ({

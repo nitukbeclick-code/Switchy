@@ -25,6 +25,32 @@ const SUPABASE_URL =
   "https://orzitfqmlvopujsoyigr.supabase.co";
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
+// Origin allow-list — the lead form is only ever submitted from our own pages.
+// Rejecting cross-origin browser POSTs blocks third-party sites from driving the
+// endpoint (CSRF / off-site abuse). Same-origin fetches send a matching Origin;
+// requests with NO Origin header (non-browser callers) are allowed through to the
+// DB rate-limit + consent gates, which remain the authoritative abuse controls.
+const ALLOWED_ORIGINS: ReadonlySet<string> = new Set(
+  [
+    "https://www.switchy-ai.com",
+    "https://switchy-ai.com",
+    "https://switchyy-omega.vercel.app",
+    process.env.NEXT_PUBLIC_SITE_URL,
+    process.env.VERCEL_PROJECT_PRODUCTION_URL
+      ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+      : undefined,
+    process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined,
+    process.env.NODE_ENV !== "production" ? "http://localhost:3000" : undefined,
+  ].filter((o): o is string => typeof o === "string" && o.length > 0),
+);
+
+/** True when the request's Origin is same-site (or absent → non-browser caller). */
+function isAllowedOrigin(req: Request): boolean {
+  const origin = req.headers.get("origin");
+  if (!origin) return true; // non-browser callers: DB gates still apply
+  return ALLOWED_ORIGINS.has(origin);
+}
+
 // Israeli mobile/landline: 9–10 digits, optionally with separators / +972.
 function normalizePhone(raw: string): string | null {
   const digits = raw.replace(/[^\d+]/g, "");
@@ -67,6 +93,11 @@ function isMissingCityColumn(error: {
 }
 
 export async function POST(req: Request) {
+  // ── Origin allow-list (block off-site / CSRF browser POSTs) ─────────────────
+  if (!isAllowedOrigin(req)) {
+    return Response.json({ ok: false, error: "forbidden origin" }, { status: 403 });
+  }
+
   // ── Service-role configured? ───────────────────────────────────────────────
   if (!SERVICE_ROLE_KEY) {
     return Response.json(

@@ -25,7 +25,7 @@ export default function GlossaryPage() {
   ];
 
   return (
-    <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-10 sm:px-6">
+    <main id="main" className="mx-auto w-full max-w-3xl flex-1 px-4 py-10 sm:px-6">
       {/* DefinedTermSet structured data covering the whole glossary. */}
       <JsonLd
         data={definedTermSetSchema({

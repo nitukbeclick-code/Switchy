@@ -35,7 +35,6 @@ import type { Plan } from "@/lib/types";
 import {
   collectionPageSchema,
   itemListSchema,
-  productSchema,
   faqPageSchema,
   breadcrumbSchema,
   knowledgeGraphSchema,
@@ -98,6 +97,12 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
       `מסלולים מכל הספקים כמו בכל הארץ.${minTxt} מחירים בשקלים, כולל המחיר אחרי ` +
       `המבצע. השוואה חינמית.`,
     alternates: { canonical: `/compare/${service}/${city}` },
+    // HONESTY + crawl-quality: mobile/abroad are uniformly NATIONAL, so 42 near-
+    // identical city pages per such service are thin/duplicate doorway content —
+    // we noindex (but keep follow, so they stay crawlable for internal linking).
+    // Infra-dependent services (fiber/internet/tv/triple) carry genuine local
+    // nuance (rollout differs per address) and stay indexable.
+    robots: isInfraDependent(svc) ? undefined : { index: false, follow: true },
   };
 }
 
@@ -294,23 +299,23 @@ export default async function ServiceCityPage({ params }: Params) {
   const geo = geoSchema({ lat: c.lat, lng: c.lng });
 
   return (
-    <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-10 sm:px-6">
+    <main id="main" className="mx-auto w-full max-w-5xl flex-1 px-4 py-10 sm:px-6">
       {/* GEO structured data: CollectionPage + Place/GeoCoordinates/AdminArea +
-          ItemList + per-plan Product + FAQ + Breadcrumb + KnowledgeGraph. */}
+          ItemList + FAQ + Breadcrumb + KnowledgeGraph. Each plan's Product data is
+          serialized ONCE in the standalone ItemList and once more (entity-linked)
+          in the knowledgeWebSchema @graph below — we deliberately do NOT also embed
+          it in the CollectionPage (no `plans`) nor emit a per-plan productSchema
+          loop, to keep the JSON-LD payload lean on these 252 geo pages. */}
       <JsonLd
         data={collectionPageSchema({
           name: `${svc.label} ב${c.name}`,
           description: `השוואת ${svc.label} ב${c.name} — זמינות ארצית, אותם ספקים ומחירים כמו בכל הארץ.`,
           url: `/compare/${service}/${city}`,
-          plans,
         })}
       />
       <JsonLd data={place} />
       <JsonLd data={geo} />
       <JsonLd data={itemListSchema(plans)} />
-      {plans.map((p) => (
-        <JsonLd key={p.id} data={productSchema(p)} />
-      ))}
       <JsonLd data={faqPageSchema(faqs)} />
       <JsonLd data={breadcrumbSchema(crumbs)} />
       <JsonLd

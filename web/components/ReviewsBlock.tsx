@@ -100,7 +100,7 @@ function Stars({ value }: { value: number }) {
     <span
       role="img"
       aria-label={label}
-      className="inline-flex items-center gap-0.5 text-value"
+      className="inline-flex items-center gap-0.5 text-value-text"
     >
       {[1, 2, 3, 4, 5].map((i) => {
         const fill = rounded >= i ? "full" : rounded >= i - 0.5 ? "half" : "empty";

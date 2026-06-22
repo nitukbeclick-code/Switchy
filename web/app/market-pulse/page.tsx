@@ -158,7 +158,7 @@ export default function MarketPulsePage() {
   ];
 
   return (
-    <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-10 sm:px-6">
+    <main id="main" className="mx-auto w-full max-w-5xl flex-1 px-4 py-10 sm:px-6">
       {/* GEO structured data: Dataset (current snapshot) + CollectionPage + Breadcrumb. */}
       <JsonLd data={datasetSchema(rows)} />
       <JsonLd

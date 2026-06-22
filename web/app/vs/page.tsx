@@ -24,7 +24,7 @@ import { ils } from "@/lib/format";
 export const dynamic = "force-static";
 
 export const metadata: Metadata = {
-  title: "השוואות ראש בראש — ספק מול ספק | חוסך / Switchy",
+  title: "השוואות ראש בראש — ספק מול ספק | חוסך / Switch AI",
   description:
     "השוואות ישירות בין ספקי התקשורת בישראל: סלקום מול פרטנר, בזק מול HOT ועוד. " +
     "מחיר התחלתי, מספר מסלולים ומאפיינים בכל קטגוריה — מהקטלוג ובשקלים. חינמי.",
@@ -173,8 +173,6 @@ export default function VsIndexPage() {
         links={related}
         className="mt-16 border-t border-border pt-8"
       />
-
-      <link rel="canonical" href={`${SITE_URL}/vs`} />
     </main>
   );
 }

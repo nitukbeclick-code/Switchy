@@ -10,7 +10,7 @@ const LAST_REVIEWED = "2026-06-22";
 export const metadata: Metadata = {
   title: "שקיפות ומתודולוגיה",
   description:
-    "איך חוסך / Switchy אוסף ומאמת נתונים, איך נקבעת בחירת העורך, ולמה כל מסלול " +
+    "איך חוסך / Switch AI אוסף ומאמת נתונים, איך נקבעת בחירת העורך, ולמה כל מסלול " +
     "מקודם מסומן בגלוי. מדיניות שקיפות מלאה — ללא ביקורות מומצאות ובלי דירוג סמוי.",
   alternates: { canonical: "/transparency" },
 };
@@ -153,8 +153,6 @@ export default function TransparencyPage() {
           .
         </p>
       </aside>
-
-      <link rel="canonical" href={`${SITE_URL}/transparency`} />
     </main>
   );
 }

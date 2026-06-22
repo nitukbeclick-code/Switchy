@@ -61,7 +61,7 @@ export function generateMetadata(): Metadata {
   const rows = buildRows();
   const total = rows.reduce((n, r) => n + r.count, 0);
   return {
-    title: "מצב שוק התקשורת — מחירים נוכחיים בישראל | חוסך / Switchy",
+    title: "מצב שוק התקשורת — מחירים נוכחיים בישראל | חוסך / Switch AI",
     description:
       `תמונת מצב עדכנית של מחירי התקשורת בישראל: מחיר ממוצע, מחיר מינימום והעסקה ` +
       `הזולה ביותר בכל קטגוריה, מתוך ${total} מסלולים. נתונים נוכחיים בלבד — ` +
@@ -129,7 +129,7 @@ function datasetSchema(rows: MarketPulseCategory[]): Record<string, unknown> {
     url: `${SITE_URL}${PAGE_PATH}`,
     inLanguage: "he-IL",
     dateModified: REVIEWED_AT,
-    creator: { "@type": "Organization", name: "חוסך / Switchy", url: SITE_URL },
+    creator: { "@type": "Organization", name: "חוסך / Switch AI", url: SITE_URL },
     isAccessibleForFree: true,
     measurementTechnique: "אגרגציה של מחירי מסלולים מקטלוג הספקים",
     variableMeasured: [
@@ -269,8 +269,6 @@ export default function MarketPulsePage() {
           ))}
         </ul>
       </nav>
-
-      <link rel="canonical" href={`${SITE_URL}${PAGE_PATH}`} />
     </main>
   );
 }

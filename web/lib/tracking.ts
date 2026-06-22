@@ -80,3 +80,35 @@ export function fireLeadConversion(details?: {
     /* no-op */
   }
 }
+
+/**
+ * Generic micro-funnel / engagement event. For NON-conversion signals only —
+ * lead-form start/step, CTA clicks, outbound clicks — never the lead conversion
+ * itself (use fireLeadConversion for that). Carries only category/source/step
+ * labels; NEVER pass PII (name/phone/city). Mirrors fireLeadConversion's defensive
+ * posture: no-ops on the server or when gtag/fbq are absent, and never throws into
+ * the UX. Emits to GA4 (gtag 'event') and, when configured, Meta (fbq custom event).
+ *
+ * @param name   GA4 event name (snake_case), e.g. "lead_form_start".
+ * @param params optional non-PII params, e.g. { source, step, location, label }.
+ */
+export function trackEvent(
+  name: string,
+  params?: Record<string, unknown>,
+): void {
+  if (typeof window === "undefined") return;
+  try {
+    if (typeof window.gtag === "function") {
+      window.gtag("event", name, params ?? {});
+    }
+  } catch {
+    /* tracking must never throw into the UX */
+  }
+  try {
+    if (FB_PIXEL_ID && typeof window.fbq === "function") {
+      window.fbq("trackCustom", name, params);
+    }
+  } catch {
+    /* no-op */
+  }
+}

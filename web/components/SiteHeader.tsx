@@ -1,7 +1,7 @@
 // ────────────────────────────────────────────────────────────────────────────
 // <SiteHeader> — the global, sticky site masthead, intended to render on EVERY
 // route (place it in app/layout.tsx, before {children}). Provides:
-//   • brand wordmark ("חוסך / Switchy") linking home,
+//   • brand wordmark ("חוסך / Switch AI") linking home,
 //   • primary internal nav (השוואה · ספקים · דופק השוק · מעבר ספק),
 //   • one green ACTION CTA (שיחת ייעוץ חינם → /#lead).
 //
@@ -18,6 +18,7 @@
 // ────────────────────────────────────────────────────────────────────────────
 
 import Link from "next/link";
+import TrackedCtaLink from "./TrackedCtaLink";
 
 /** A primary nav link. */
 interface NavLink {
@@ -60,7 +61,7 @@ export default function SiteHeader({ className }: SiteHeaderProps) {
             className="inline-block h-5 w-1.5 rounded-full bg-accent"
           />
           חוסך
-          <span className="text-sm font-semibold text-muted">/ Switchy</span>
+          <span className="text-sm font-semibold text-muted">/ Switch AI</span>
         </Link>
 
         {/* Primary nav — hidden on small screens (footer carries the full set). */}
@@ -80,12 +81,14 @@ export default function SiteHeader({ className }: SiteHeaderProps) {
         </nav>
 
         {/* CTA — the single green ACTION in the masthead. Pushed to the far end. */}
-        <Link
+        <TrackedCtaLink
           href="/#lead"
+          location="header"
+          label="consult"
           className="ms-auto rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-accent-contrast transition-all hover:bg-accent-hover hover:shadow-md hover:shadow-accent/20"
         >
           שיחת ייעוץ חינם
-        </Link>
+        </TrackedCtaLink>
       </div>
     </header>
   );

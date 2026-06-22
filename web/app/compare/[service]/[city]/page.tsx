@@ -40,7 +40,6 @@ import {
   knowledgeGraphSchema,
   placeSchema,
   geoSchema,
-  SITE_URL,
 } from "@/lib/schema";
 import type { QA } from "@/lib/schema";
 import { ils, leadCategory } from "@/lib/format";
@@ -460,8 +459,6 @@ export default async function ServiceCityPage({ params }: Params) {
         links={related}
         className="mt-16 border-t border-border pt-8"
       />
-
-      <link rel="canonical" href={`${SITE_URL}/compare/${service}/${city}`} />
     </main>
   );
 }

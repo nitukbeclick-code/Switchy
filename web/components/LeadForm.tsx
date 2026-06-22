@@ -11,11 +11,11 @@
 // this form enforces the checkbox client-side so a lead is never sent without it.
 // ────────────────────────────────────────────────────────────────────────────
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import { useForm, useWatch } from "react-hook-form";
 import { CATEGORY_HE } from "@/lib/categories";
-import { fireLeadConversion } from "@/lib/tracking";
+import { fireLeadConversion, trackEvent } from "@/lib/tracking";
 import { isValidIsraeliPhone } from "@/lib/phone";
 
 /** Categories offered in the "desired service" step (in display order). */
@@ -101,6 +101,10 @@ export default function LeadForm({
   const [done, setDone] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
 
+  // Fire "lead_form_start" at most once per mount, on the first successful
+  // advance — the denominator for the form's micro-funnel / drop-off analysis.
+  const startedRef = useRef(false);
+
   // Subscribe to the consent field so the submit button reflects its state.
   const consentChecked = useWatch({ control, name: "consent" });
 
@@ -109,7 +113,19 @@ export default function LeadForm({
 
   async function next() {
     const ok = await trigger(STEP_FIELDS[step], { shouldFocus: true });
-    if (ok) setStep((s) => Math.min(s + 1, lastStep));
+    if (!ok) return;
+    // Micro-funnel: start fires once (first valid advance), then a step event per
+    // advance so we can see which step bleeds users. Labels only — no PII.
+    if (!startedRef.current) {
+      startedRef.current = true;
+      trackEvent("lead_form_start", { source });
+    }
+    trackEvent("lead_form_step", {
+      source,
+      step: step + 1,
+      step_name: STEP_TITLES[step],
+    });
+    setStep((s) => Math.min(s + 1, lastStep));
   }
 
   function back() {
@@ -138,6 +154,8 @@ export default function LeadForm({
         const body = (await res.json().catch(() => null)) as {
           error?: string;
         } | null;
+        // Distinguishes "submit failed" from "user never submitted" in the funnel.
+        trackEvent("lead_form_error", { source, reason: "server" });
         setServerError(
           body?.error ??
             "אירעה שגיאה בשליחת הפרטים. נסו שוב בעוד רגע או פנו אלינו.",
@@ -149,6 +167,7 @@ export default function LeadForm({
       fireLeadConversion({ category: values.category || undefined, source });
       setDone(true);
     } catch {
+      trackEvent("lead_form_error", { source, reason: "network" });
       setServerError(
         "החיבור נכשל. בדקו את הרשת ונסו שוב — הפרטים לא נשלחו.",
       );

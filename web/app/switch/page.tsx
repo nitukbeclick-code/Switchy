@@ -19,7 +19,6 @@ import {
   breadcrumbSchema,
   faqPageSchema,
   knowledgeGraphSchema,
-  SITE_URL,
   type QA,
 } from "@/lib/schema";
 
@@ -210,7 +209,6 @@ export default function SwitchIndexPage() {
         className="mt-16 border-t border-border pt-8"
       />
 
-      <link rel="canonical" href={`${SITE_URL}/switch`} />
     </main>
   );
 }

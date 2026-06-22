@@ -2,7 +2,8 @@
 // <AuthorityBlock> — a high-authority, GEO/answer-engine-optimized block:
 //   1. a single-sentence DIRECT ANSWER (what AI engines lift as the answer),
 //   2. a native, semantic "Truth Table" <table> (factor → winner → reason), and
-//   3. a visible "עודכן לאחרונה" verification timestamp (dd/mm/yyyy hh:mm).
+//   3. a visible "עודכן לאחרונה" verification timestamp (dd/mm/yyyy, formatted in
+//      UTC so it's deterministic; date-only sources omit the meaningless time).
 //
 // Real <table>/<caption>/<th scope> markup so screen-readers and AI engines parse
 // it cleanly. Server component (no state).
@@ -30,7 +31,9 @@ export interface AuthorityBlockProps {
   rows: AuthorityRow[];
   /**
    * When the underlying facts were last verified. Accepts a Date or an ISO/parsable
-   * string. Rendered as dd/mm/yyyy hh:mm and as a machine-readable <time dateTime>.
+   * string. A date-only string ("YYYY-MM-DD") renders as dd/mm/yyyy (no time); a
+   * full timestamp renders as dd/mm/yyyy hh:mm (UTC). Also emitted as a
+   * machine-readable <time dateTime>.
    */
   updatedAt?: Date | string;
   /** Alias of `updatedAt` (kept for call sites that pass `reviewedAt`). */
@@ -51,13 +54,23 @@ function toDate(value: Date | string): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-/** Format a Date as dd/mm/yyyy hh:mm (zero-padded, 24h). */
-function formatStamp(d: Date): string {
+/** True when the source is a date-only string (e.g. "2026-06-23"), no time part. */
+function isDateOnly(value: Date | string): boolean {
+  return typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value.trim());
+}
+
+/**
+ * Format a Date for display, in UTC so the output is deterministic regardless of
+ * the build/runtime timezone. Date-only sources render as dd/mm/yyyy (no time) —
+ * a date-only value carries no meaningful clock time, so we don't fabricate one
+ * (a date-only string parses to UTC-midnight, which would otherwise print a
+ * spurious TZ-shifted hh:mm). Full timestamps render as dd/mm/yyyy hh:mm.
+ */
+function formatStamp(d: Date, dateOnly: boolean): string {
   const p = (n: number) => String(n).padStart(2, "0");
-  return (
-    `${p(d.getDate())}/${p(d.getMonth() + 1)}/${d.getFullYear()} ` +
-    `${p(d.getHours())}:${p(d.getMinutes())}`
-  );
+  const date = `${p(d.getUTCDate())}/${p(d.getUTCMonth() + 1)}/${d.getUTCFullYear()}`;
+  if (dateOnly) return date;
+  return `${date} ${p(d.getUTCHours())}:${p(d.getUTCMinutes())}`;
 }
 
 export default function AuthorityBlock({
@@ -73,6 +86,14 @@ export default function AuthorityBlock({
   const headingId = `${id}-heading`;
   const stamp = updatedAt ?? reviewedAt;
   const date = stamp != null ? toDate(stamp) : null;
+  const dateOnly = stamp != null && isDateOnly(stamp);
+  // Machine-readable value: a date-only source stays date-only (YYYY-MM-DD); a
+  // full timestamp keeps the full ISO instant.
+  const machineStamp = date
+    ? dateOnly
+      ? date.toISOString().slice(0, 10)
+      : date.toISOString()
+    : "";
 
   return (
     <section
@@ -161,8 +182,8 @@ export default function AuthorityBlock({
       {date && (
         <p className="mt-4 text-xs text-muted">
           עודכן לאחרונה:{" "}
-          <time dateTime={date.toISOString()} className="font-medium text-foreground">
-            {formatStamp(date)}
+          <time dateTime={machineStamp} className="font-medium text-foreground">
+            {formatStamp(date, dateOnly)}
           </time>
         </p>
       )}

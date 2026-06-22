@@ -18,7 +18,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import JsonLd from "@/components/JsonLd";
-import { breadcrumbSchema, webPageSchema, SITE_URL } from "@/lib/schema";
+import { breadcrumbSchema, webPageSchema } from "@/lib/schema";
 
 // Real last review of the site's accessibility status. Bump on each review.
 const LAST_REVIEWED = "2026-06-22";
@@ -26,7 +26,7 @@ const LAST_REVIEWED = "2026-06-22";
 export const metadata: Metadata = {
   title: "הצהרת נגישות",
   description:
-    "הצהרת הנגישות של חוסך / Switchy: רמת הנגישות הנוכחית של האתר, ההתאמות " +
+    "הצהרת הנגישות של חוסך / Switch AI: רמת הנגישות הנוכחית של האתר, ההתאמות " +
     "שבוצעו, מגבלות ידועות, וכיצד לדווח על תקלת נגישות או לבקש סיוע.",
   alternates: { canonical: "/accessibility" },
 };
@@ -114,7 +114,7 @@ export default function AccessibilityPage() {
     <main id="main" className="mx-auto w-full max-w-3xl flex-1 px-4 py-10 sm:px-6">
       <JsonLd
         data={webPageSchema({
-          name: "הצהרת נגישות — חוסך / Switchy",
+          name: "הצהרת נגישות — חוסך / Switch AI",
           description:
             "רמת הנגישות הנוכחית של האתר, ההתאמות שבוצעו, מגבלות ידועות, וכיצד " +
             "לדווח על תקלת נגישות.",
@@ -192,8 +192,6 @@ export default function AccessibilityPage() {
           .
         </p>
       </aside>
-
-      <link rel="canonical" href={`${SITE_URL}/accessibility`} />
     </main>
   );
 }

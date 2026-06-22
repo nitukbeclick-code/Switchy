@@ -40,7 +40,6 @@ import {
   breadcrumbSchema,
   knowledgeGraphSchema,
   knowledgeWebSchema,
-  SITE_URL,
 } from "@/lib/schema";
 import type { QA } from "@/lib/schema";
 import { faqForCategory } from "@/lib/faq";
@@ -488,8 +487,6 @@ export default async function ServiceHubPage({ params }: Params) {
         links={related}
         className="mt-16 border-t border-border pt-8"
       />
-
-      <link rel="canonical" href={`${SITE_URL}/compare/${service}`} />
     </main>
   );
 }

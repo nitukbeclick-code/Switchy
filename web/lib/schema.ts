@@ -17,15 +17,15 @@ import {
 /** Canonical site origin (no trailing slash). */
 export const SITE_URL = "https://www.switchy-ai.com";
 /** Brand name as shown to users / engines (single canonical form everywhere). */
-export const SITE_NAME = "חוסך / Switchy";
+export const SITE_NAME = "חוסך / Switch AI";
 /**
  * Alternate brand-name forms that MUST resolve to the same entity. GEO/knowledge
  * graphs key `sameAs`/knowledge-panel on a single name, so we declare every form
- * the brand appears under (the Hebrew "חוסך", the English "Switchy", and the
- * "Switch AI" variant the site also uses) as `alternateName`. KEEP the footer +
- * llm-context in sync with these.
+ * the brand appears under (the Hebrew "חוסך", the canonical English "Switch AI",
+ * and the legacy "Switchy" variant the site also appeared under) as
+ * `alternateName`. KEEP the footer + llm-context in sync with these.
  */
-export const SITE_ALT_NAMES: readonly string[] = ["חוסך", "Switchy", "Switch AI"];
+export const SITE_ALT_NAMES: readonly string[] = ["חוסך", "Switch AI", "Switchy"];
 const CURRENCY = "ILS";
 
 type Json = Record<string, unknown>;
@@ -395,7 +395,7 @@ export function definedTermSetSchema(
     "@context": "https://schema.org",
     "@type": "DefinedTermSet",
     "@id": `${SITE_URL}/glossary#set`,
-    name: opts.name ?? "מילון מונחי תקשורת — חוסך / Switchy",
+    name: opts.name ?? "מילון מונחי תקשורת — חוסך / Switch AI",
     description:
       opts.description ??
       "מילון מונחים עובדתי בעברית לשוק התקשורת בישראל: סלולר, אינטרנט, " +

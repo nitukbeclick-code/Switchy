@@ -14,7 +14,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import JsonLd from "@/components/JsonLd";
-import { breadcrumbSchema, webPageSchema, SITE_URL } from "@/lib/schema";
+import { breadcrumbSchema, webPageSchema } from "@/lib/schema";
 
 // Real last editorial review of this policy. Bump when the policy text changes.
 const LAST_REVIEWED = "2026-06-22";
@@ -22,7 +22,7 @@ const LAST_REVIEWED = "2026-06-22";
 export const metadata: Metadata = {
   title: "מדיניות פרטיות",
   description:
-    "מדיניות הפרטיות של חוסך / Switchy: אילו פרטים אנו אוספים בטופס יצירת הקשר, " +
+    "מדיניות הפרטיות של חוסך / Switch AI: אילו פרטים אנו אוספים בטופס יצירת הקשר, " +
     "כיצד אנו שומרים עליהם, מתי הם מועברים לספק (רק לאחר הסכמה), וכיצד לממש את " +
     "זכויותיכם לפי חוק הגנת הפרטיות.",
   alternates: { canonical: "/privacy" },
@@ -44,7 +44,7 @@ export default function PrivacyPage() {
     {
       h: "מי אנחנו",
       paras: [
-        "חוסך / Switchy הוא שירות מקוון להשוואת מסלולי תקשורת בישראל (סלולר, " +
+        "חוסך / Switch AI הוא שירות מקוון להשוואת מסלולי תקשורת בישראל (סלולר, " +
           "אינטרנט, טלוויזיה, חבילות משולבות וחבילות חו״ל). מדיניות זו מסבירה אילו " +
           "פרטים אישיים אנו אוספים דרך האתר, למה, ומה הזכויות שלכם.",
         "השירות מופעל תחת המותג Switch AI (חוסך), והוא הגורם האחראי לעיבוד " +
@@ -158,7 +158,7 @@ export default function PrivacyPage() {
     <main id="main" className="mx-auto w-full max-w-3xl flex-1 px-4 py-10 sm:px-6">
       <JsonLd
         data={webPageSchema({
-          name: "מדיניות פרטיות — חוסך / Switchy",
+          name: "מדיניות פרטיות — חוסך / Switch AI",
           description:
             "אילו פרטים אנו אוספים בטופס יצירת הקשר, כיצד אנו משתמשים בהם, ומתי " +
             "הם מועברים לספק — בהתאם להסכמתכם.",
@@ -243,8 +243,6 @@ export default function PrivacyPage() {
           .
         </p>
       </aside>
-
-      <link rel="canonical" href={`${SITE_URL}/privacy`} />
     </main>
   );
 }

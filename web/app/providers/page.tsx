@@ -169,8 +169,6 @@ export default function ProvidersIndexPage() {
         links={related}
         className="mt-16 border-t border-border pt-8"
       />
-
-      <link rel="canonical" href={`${SITE_URL}/providers`} />
     </main>
   );
 }

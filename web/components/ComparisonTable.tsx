@@ -9,7 +9,8 @@
 // `featured` map; this component only renders the disclosure it is told to.
 // ────────────────────────────────────────────────────────────────────────────
 
-import type { Plan, PriceUnit } from "@/lib/types";
+import type { Plan } from "@/lib/types";
+import { priceUnitLabel } from "@/lib/format";
 
 /** What kind of editorial label, if any, a row carries. */
 export type FeatureLabel = "promoted" | "editor";
@@ -26,24 +27,6 @@ export interface ComparisonTableProps {
   featured?: Record<string, FeatureLabel>;
   /** Optional extra classes on the outer scroll wrapper. */
   className?: string;
-}
-
-/** Hebrew per-unit suffix for a plan's headline price. */
-function priceUnitShort(plan: Plan): string {
-  // Abroad plans default to per-package when the unit is unset.
-  const unit: PriceUnit | undefined =
-    plan.priceUnit ?? (plan.cat === "abroad" ? "package" : "month");
-  switch (unit) {
-    case "package":
-      return "לחבילה";
-    case "day":
-      return "ליום";
-    case "minute":
-      return "לדקה";
-    case "month":
-    default:
-      return "לחודש";
-  }
 }
 
 /** Format a number as an ILS amount, e.g. 69.9 → "₪69.9", 70 → "₪70". */
@@ -151,7 +134,7 @@ export default function ComparisonTable({
                     {shekel(plan.price)}
                   </span>{" "}
                   <span className="text-xs text-muted">
-                    {priceUnitShort(plan)}
+                    {priceUnitLabel(plan)}
                   </span>
                 </td>
 
@@ -160,7 +143,7 @@ export default function ComparisonTable({
                     <span className="font-medium text-foreground">
                       {shekel(plan.after)}{" "}
                       <span className="text-xs text-muted">
-                        {priceUnitShort(plan)}
+                        {priceUnitLabel(plan)}
                       </span>
                     </span>
                   ) : (

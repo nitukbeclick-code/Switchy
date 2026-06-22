@@ -21,6 +21,7 @@ import JsonLd from "@/components/JsonLd";
 import SgeSummary from "@/components/SgeSummary";
 import AuthorityReasoning from "@/components/AuthorityReasoning";
 import RelatedAuthorityPages from "@/components/RelatedAuthorityPages";
+import TrackedOutboundLink from "@/components/TrackedOutboundLink";
 import LeadForm from "@/components/LeadForm";
 import {
   getProviders,
@@ -339,14 +340,16 @@ export default async function SwitchProviderPage({ params }: Params) {
               {provider.name}. הפרטים המחייבים מופיעים שם בלבד — אנחנו לא ממציאים
               מספרי טלפון או שלבים.
             </p>
-            <a
+            <TrackedOutboundLink
               href={official}
               target="_blank"
               rel="noopener noreferrer"
+              provider={slug}
+              dest="official"
               className="mt-4 inline-block rounded-xl bg-accent px-5 py-2.5 font-medium text-accent-contrast transition-colors hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
             >
               לאתר הרשמי של {provider.name} ←
-            </a>
+            </TrackedOutboundLink>
           </>
         ) : (
           <p className="mt-2 text-foreground">
@@ -416,8 +419,6 @@ export default async function SwitchProviderPage({ params }: Params) {
         links={related}
         className="mt-16 border-t border-border pt-8"
       />
-
-      <link rel="canonical" href={`${SITE_URL}${pageUrl}`} />
     </main>
   );
 }

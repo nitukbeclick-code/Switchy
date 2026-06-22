@@ -9,7 +9,7 @@ import { orgSchema, websiteSchema, SITE_URL, SITE_NAME } from "@/lib/schema";
 
 // Rubik for display/headings, Assistant for body/labels. Hebrew-only subset: this
 // is a Hebrew-first RTL site, so the latin subset is mostly dead weight (the few
-// latin glyphs — "Switchy", digits, ₪ — fall back gracefully). Dropping it trims
+// latin glyphs — "Switch AI", digits, ₪ — fall back gracefully). Dropping it trims
 // the preloaded woff2 set that contends with the LCP resource. `display: swap`
 // keeps text visible immediately (no FOIT).
 const rubik = Rubik({
@@ -30,8 +30,8 @@ const GA4_MEASUREMENT_ID = "G-YCTGRVN7SJ";
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "חוסך / Switchy — השוואת מסלולי תקשורת בישראל",
-    template: "%s | חוסך / Switchy",
+    default: "חוסך / Switch AI — השוואת מסלולי תקשורת בישראל",
+    template: "%s | חוסך / Switch AI",
   },
   description:
     "השוואה חינמית של מסלולי סלולר, אינטרנט, טלוויזיה, חבילות משולבות וחבילות " +
@@ -43,7 +43,7 @@ export const metadata: Metadata = {
     locale: "he_IL",
     url: SITE_URL,
     siteName: SITE_NAME,
-    title: "חוסך / Switchy — השוואת מסלולי תקשורת בישראל",
+    title: "חוסך / Switch AI — השוואת מסלולי תקשורת בישראל",
     description:
       "השוואה חינמית של מסלולי תקשורת בישראל — סלולר, אינטרנט, טלוויזיה ועוד.",
   },

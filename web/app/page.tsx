@@ -5,6 +5,7 @@ import AiSummary from "@/components/AiSummary";
 import ComparisonTable from "@/components/ComparisonTable";
 import LeadForm from "@/components/LeadFormLazy";
 import SmartTimer from "@/components/SmartTimerLazy";
+import TrackedCtaLink from "@/components/TrackedCtaLink";
 import {
   getCategories,
   getProviders,
@@ -52,7 +53,7 @@ export default function Home() {
   const cities = getCities().slice(0, 12);
 
   const summaryText =
-    `חוסך / Switchy הוא שירות חינמי להשוואת מסלולי תקשורת בישראל. ` +
+    `חוסך / Switch AI הוא שירות חינמי להשוואת מסלולי תקשורת בישראל. ` +
     `אנו משווים ${planCount} מסלולים מ-${providers.length} ספקים בחמש קטגוריות — ` +
     `סלולר, אינטרנט, טלוויזיה, חבילות משולבות וחבילות חו״ל — ` +
     `החל מ-${ils(minFeatured)} לחודש. המחירים בשקלים ומעודכנים, וכוללים גם את המחיר ` +
@@ -75,18 +76,22 @@ export default function Home() {
           וחבילות חו״ל מכל הספקים בישראל — מחירים מעודכנים בשקלים.
         </p>
         <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
-          <Link
+          <TrackedCtaLink
             href={`/compare/${featuredCat}`}
+            location="hero"
+            label="compare"
             className="rounded-xl bg-accent px-6 py-3 font-medium text-accent-contrast transition-all hover:bg-accent-hover hover:shadow-md hover:shadow-accent/20"
           >
             להשוואת מסלולים
-          </Link>
-          <a
+          </TrackedCtaLink>
+          <TrackedCtaLink
             href="#lead"
+            location="hero"
+            label="consult"
             className="rounded-xl border border-border-strong px-6 py-3 font-medium text-ink transition-colors hover:bg-surface"
           >
             שיחת ייעוץ חינם
-          </a>
+          </TrackedCtaLink>
         </div>
         {/* Trust band — the cheapest entry price is the product's hook, so it
             carries the amber VALUE token (the rest stays muted). */}

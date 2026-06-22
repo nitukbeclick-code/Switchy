@@ -13,7 +13,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import JsonLd from "@/components/JsonLd";
-import { breadcrumbSchema, webPageSchema, SITE_URL } from "@/lib/schema";
+import { breadcrumbSchema, webPageSchema } from "@/lib/schema";
 
 // Real last editorial review of these terms. Bump when the text changes.
 const LAST_REVIEWED = "2026-06-22";
@@ -21,7 +21,7 @@ const LAST_REVIEWED = "2026-06-22";
 export const metadata: Metadata = {
   title: "תנאי שימוש",
   description:
-    "תנאי השימוש בשירות ההשוואה של חוסך / Switchy: מהות השירות, אופן השימוש " +
+    "תנאי השימוש בשירות ההשוואה של חוסך / Switch AI: מהות השירות, אופן השימוש " +
     "בטופס יצירת הקשר, מקור המחירים והמלצה לאמת מול הספק, והגבלת אחריות.",
   alternates: { canonical: "/terms" },
 };
@@ -42,7 +42,7 @@ export default function TermsPage() {
     {
       h: "כללי",
       paras: [
-        "ברוכים הבאים לחוסך / Switchy (“השירות”, “האתר”, “אנחנו”). השימוש באתר " +
+        "ברוכים הבאים לחוסך / Switch AI (“השירות”, “האתר”, “אנחנו”). השימוש באתר " +
           "ובשירות כפוף לתנאים אלה. עצם השימוש מהווה הסכמה לתנאים; אם אינכם " +
           "מסכימים — אנא הימנעו משימוש בשירות. השירות מופעל תחת המותג " +
           "Switch AI (חוסך).",
@@ -139,7 +139,7 @@ export default function TermsPage() {
     <main id="main" className="mx-auto w-full max-w-3xl flex-1 px-4 py-10 sm:px-6">
       <JsonLd
         data={webPageSchema({
-          name: "תנאי שימוש — חוסך / Switchy",
+          name: "תנאי שימוש — חוסך / Switch AI",
           description:
             "התנאים החלים על השימוש בשירות ההשוואה: מהות השירות, מקור המחירים, " +
             "השימוש בטופס יצירת הקשר והגבלת אחריות.",
@@ -228,8 +228,6 @@ export default function TermsPage() {
           .
         </p>
       </aside>
-
-      <link rel="canonical" href={`${SITE_URL}/terms`} />
     </main>
   );
 }

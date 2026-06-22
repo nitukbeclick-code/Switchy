@@ -5,7 +5,6 @@ import { getGlossary } from "@/lib/data";
 import {
   definedTermSetSchema,
   breadcrumbSchema,
-  SITE_URL,
 } from "@/lib/schema";
 
 export const metadata: Metadata = {
@@ -73,7 +72,6 @@ export default function GlossaryPage() {
         ))}
       </dl>
 
-      <link rel="canonical" href={`${SITE_URL}/glossary`} />
     </main>
   );
 }

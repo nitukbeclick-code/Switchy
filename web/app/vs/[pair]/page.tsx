@@ -34,7 +34,6 @@ import {
   breadcrumbSchema,
   knowledgeGraphSchema,
   knowledgeWebSchema,
-  SITE_URL,
   type QA,
 } from "@/lib/schema";
 import { GENERAL_FAQ } from "@/lib/faq";
@@ -62,7 +61,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const aN = a.provider.name;
   const bN = b.provider.name;
   return {
-    title: `${aN} מול ${bN} — השוואת ${categoryLabel} | חוסך / Switchy`,
+    title: `${aN} מול ${bN} — השוואת ${categoryLabel} | חוסך / Switch AI`,
     description:
       `${aN} מול ${bN} ב${categoryLabel}: השוואה ישירה של מחירים ומסלולים — ` +
       `${aN} החל מ-${ils(a.minPrice)}, ${bN} החל מ-${ils(b.minPrice)}. ` +
@@ -448,7 +447,6 @@ export default async function VsPage({ params }: Params) {
         className="mt-16 border-t border-border pt-8"
       />
 
-      <link rel="canonical" href={`${SITE_URL}/vs/${slug}`} />
     </main>
   );
 }

@@ -94,7 +94,7 @@ export default function SiteFooter({ columns, className }: SiteFooterProps) {
           {/* Brand identity. */}
           <div className="lg:col-span-1">
             <p className="font-display text-lg font-bold text-ink">
-              חוסך / Switchy
+              חוסך / Switch AI
             </p>
             <p className="mt-1 text-sm text-muted">סוכן השוואה חכם</p>
             <p className="mt-3 max-w-xs text-sm leading-relaxed text-foreground">
@@ -127,7 +127,7 @@ export default function SiteFooter({ columns, className }: SiteFooterProps) {
 
         {/* Bottom row: copyright + legal/accessibility links (always present). */}
         <div className="mt-10 flex flex-col gap-3 border-t border-border pt-6 text-xs text-muted sm:flex-row sm:items-center sm:justify-between">
-          <p>© {year} חוסך / Switchy. כל הזכויות שמורות.</p>
+          <p>© {year} חוסך / Switch AI. כל הזכויות שמורות.</p>
           <nav
             aria-label="קישורים משפטיים ונגישות"
             className="flex flex-wrap items-center gap-x-3 gap-y-1"

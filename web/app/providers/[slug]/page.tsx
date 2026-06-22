@@ -22,7 +22,6 @@ import {
   breadcrumbSchema,
   knowledgeGraphSchema,
   knowledgeWebSchema,
-  SITE_URL,
   type QA,
 } from "@/lib/schema";
 import { GENERAL_FAQ } from "@/lib/faq";
@@ -427,8 +426,6 @@ export default async function ProviderPage({ params }: Params) {
         links={related}
         className="mt-16 border-t border-border pt-8"
       />
-
-      <link rel="canonical" href={`${SITE_URL}/providers/${slug}`} />
     </main>
   );
 }

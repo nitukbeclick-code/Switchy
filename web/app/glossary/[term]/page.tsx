@@ -7,7 +7,6 @@ import { getGlossary, getGlossaryTerm, CATEGORY_HE } from "@/lib/data";
 import {
   definedTermSchema,
   breadcrumbSchema,
-  SITE_URL,
 } from "@/lib/schema";
 
 // Pre-render one page per glossary term at build time.
@@ -103,8 +102,6 @@ export default async function GlossaryTermPage({ params }: Params) {
         links={related}
         className="mt-12 border-t border-border pt-8"
       />
-
-      <link rel="canonical" href={`${SITE_URL}/glossary/${entry.slug}`} />
     </main>
   );
 }

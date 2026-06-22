@@ -41,3 +41,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# commit the lockfile so Vercel can run a deterministic npm ci (root .gitignore ignores package-lock.json globally)
+!package-lock.json

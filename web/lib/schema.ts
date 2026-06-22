@@ -14,10 +14,11 @@ import {
   termsForCategory,
 } from "./data";
 
-/** Canonical site origin (no trailing slash). NON-www is the documented canonical
- * (the static site uses non-www too); keeping a single host avoids a www/non-www
- * split that fractures entity resolution across canonicals/sitemap/robots/JSON-LD. */
-export const SITE_URL = "https://switchy-ai.com";
+/** Canonical site origin (no trailing slash). During the SUBDOMAIN-FIRST phase the
+ * GEO app serves on app.switchy-ai.com and self-canonicals there so it can be indexed
+ * and ranked now; at the eventual apex cutover, flip this to https://switchy-ai.com and
+ * 301 app→apex. Drives canonicals/sitemap/robots/JSON-LD. */
+export const SITE_URL = "https://app.switchy-ai.com";
 /** Brand name as shown to users / engines (single canonical form everywhere). */
 export const SITE_NAME = "חוסך / Switch AI";
 /**

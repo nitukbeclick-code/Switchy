@@ -534,7 +534,7 @@ export function buildProviderRankings(category?: string): Provider[] {
 }
 
 // ── Recommendation engine (truthful "best for X") ────────────────────────────
-const SITE_ORIGIN = "https://switchy-ai.com";
+const SITE_ORIGIN = "https://app.switchy-ai.com";
 
 /** Cheapest plan in a list matching a predicate (by headline price). */
 function cheapestWhere(

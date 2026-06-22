@@ -167,7 +167,7 @@ export default function MarketPulseCharts({
           </tbody>
         </table>
         <div
-          className="h-[340px] w-full"
+          className="h-[300px] w-full sm:h-[360px]"
           dir="ltr"
           role="img"
           aria-label="תרשים עמודות: מחיר ממוצע מול המחיר הזול ביותר בכל קטגוריה. הנתונים המלאים זמינים בטבלה הנלווית."
@@ -176,7 +176,7 @@ export default function MarketPulseCharts({
             <BarChart
               accessibilityLayer
               data={chartData}
-              margin={{ top: 16, right: 8, bottom: 8, left: 8 }}
+              margin={{ top: 24, right: 8, bottom: 8, left: 8 }}
               barGap={4}
             >
               <CartesianGrid
@@ -275,10 +275,10 @@ export default function MarketPulseCharts({
                       {d.count.toLocaleString("he-IL")} מסלולים בקטגוריה
                     </span>
                   </span>
-                  <span className="shrink-0 rounded-lg bg-value/10 px-2.5 py-1 font-display text-base font-bold text-value-contrast">
-                    {/* AA: amber-as-text uses the darker text-grade amber (≥4.5:1
-                        on the near-white bg-value/10 pill); #F59E0B is 2.15:1. */}
-                    <span className="text-value-text">{ILS(d.cheapest.price)}</span>
+                  {/* AA: amber-as-text uses the darker text-grade amber (≥4.5:1
+                      on the near-white bg-value/10 pill); #F59E0B is 2.15:1. */}
+                  <span className="shrink-0 rounded-lg bg-value/10 px-2.5 py-1 font-display text-base font-bold text-value-text">
+                    {ILS(d.cheapest.price)}
                   </span>
                 </a>
               </li>

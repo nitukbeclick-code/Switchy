@@ -32,6 +32,12 @@
   --value: #f59e0b; /* VALUE (amber) — fills/badges/win states */
   --value-contrast: #111827; /* text on amber */
   --value-text: #b45309; /* amber for text/figures on light bg (≥4.5:1) */
+
+  /* Danger / error — the one state color outside the two-accent system. Split
+     fill vs text like the accents: -text is AA (≥4.5:1) for small error copy on
+     the glass surface; the fill is for borders/backgrounds (3:1 non-text). */
+  --danger: #dc2626; /* error fill (borders / icon backgrounds) */
+  --danger-text: #b91c1c; /* error text on light bg (≥4.5:1) */
 }
 
 /* Map brand tokens into Tailwind's theme so utilities like bg-accent, text-ink,
@@ -52,6 +58,8 @@
   --color-value: var(--value);
   --color-value-contrast: var(--value-contrast);
   --color-value-text: var(--value-text);
+  --color-danger: var(--danger);
+  --color-danger-text: var(--danger-text);
 
   --font-display: var(--font-rubik);
   --font-sans: var(--font-assistant);
@@ -60,6 +68,9 @@
 /* ── Base RTL / Hebrew-first styles ──────────────────────────────────────── */
 html {
   scroll-behavior: smooth;
+  /* Anchor jumps (e.g. #lead) must clear the sticky <SiteHeader> so the target
+     heading isn't hidden beneath it. Matches the header height + a little air. */
+  scroll-padding-top: 4.5rem;
 }
 
 body {
@@ -91,11 +102,49 @@ a:hover {
 }
 
 /* Visible, accessible focus ring (green = focus, per brand). The fill green is
-   fine here — focus rings are non-text UI (3:1 threshold). */
+   fine here — focus rings are non-text UI (3:1 threshold). We deliberately do
+   NOT force a border-radius: the offset outline already clears the element, and
+   forcing 4px clipped oddly around rounded-2xl cards. The element keeps its own
+   corner radius (outlines follow the box, not the radius, in all evergreen
+   browsers — the offset gap reads cleanly on pills and cards alike). */
 :focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
-  border-radius: 4px;
+}
+
+/* Horizontal scroll-shadow affordance (used on the comparison-table wrapper).
+   Two surface-colored "cover" layers (background-attachment:local) sit pinned to
+   the content's start/end and scroll WITH the content, revealing two fixed
+   (attachment:scroll) radial shadow layers underneath only when there's clipped
+   content to scroll to. So a soft shadow fades in on whichever edge is hidden —
+   a discoverability hint that the table extends sideways. RTL-safe (physical
+   left/right edges), pure CSS, no layout shift. */
+.scroll-shadow {
+  background-image:
+    linear-gradient(to right, var(--surface) 30%, rgba(255, 255, 255, 0)),
+    linear-gradient(to right, rgba(255, 255, 255, 0), var(--surface) 70%),
+    radial-gradient(
+      farthest-side at 0 50%,
+      rgba(2, 6, 23, 0.12),
+      rgba(2, 6, 23, 0)
+    ),
+    radial-gradient(
+      farthest-side at 100% 50%,
+      rgba(2, 6, 23, 0.12),
+      rgba(2, 6, 23, 0)
+    );
+  background-position:
+    0 0,
+    100% 0,
+    0 0,
+    100% 0;
+  background-repeat: no-repeat;
+  background-size:
+    40px 100%,
+    40px 100%,
+    14px 100%,
+    14px 100%;
+  background-attachment: local, local, scroll, scroll;
 }
 
 /* Respect reduced-motion: disable smooth scroll + animations/transitions. */

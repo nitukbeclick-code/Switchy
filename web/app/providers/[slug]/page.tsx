@@ -240,7 +240,7 @@ export default async function ProviderPage({ params }: Params) {
           {provider.name}
         </h1>
         <p className="mt-3 max-w-2xl text-lg text-foreground">{provider.summary}</p>
-        <dl className="mt-5 flex flex-wrap gap-x-8 gap-y-3 text-sm">
+        <dl className="mt-5 flex flex-wrap items-start gap-x-8 gap-y-4 text-sm">
           <div>
             <dt className="text-muted">מסלולים</dt>
             <dd className="font-display text-xl font-bold text-ink">
@@ -253,10 +253,20 @@ export default async function ProviderPage({ params }: Params) {
               {ils(provider.minPrice)}
             </dd>
           </div>
+          {/* Categories render as discrete tags (not one long bold sentence) so
+              the stat row reads "number · number · tags", not "number, number,
+              paragraph". Keeps the two numeric figures as the big anchors. */}
           <div>
             <dt className="text-muted">קטגוריות</dt>
-            <dd className="font-display text-xl font-bold text-ink">
-              {provider.categories.map((c) => CATEGORY_HE[c] ?? c).join(", ")}
+            <dd className="mt-1 flex flex-wrap gap-1.5">
+              {provider.categories.map((c) => (
+                <span
+                  key={c}
+                  className="inline-flex items-center rounded-full border border-border bg-surface px-2.5 py-0.5 text-xs font-medium text-foreground"
+                >
+                  {CATEGORY_HE[c] ?? c}
+                </span>
+              ))}
             </dd>
           </div>
         </dl>
@@ -344,8 +354,14 @@ export default async function ProviderPage({ params }: Params) {
         <div className="mt-5 divide-y divide-border rounded-xl border border-border bg-surface">
           {faqs.map((qa) => (
             <details key={qa.question} className="group p-5">
-              <summary className="cursor-pointer list-none font-display font-semibold text-ink marker:hidden">
-                {qa.question}
+              <summary className="flex cursor-pointer list-none items-center gap-2 font-display font-semibold text-ink marker:hidden">
+                <span>{qa.question}</span>
+                <span
+                  aria-hidden="true"
+                  className="ms-auto shrink-0 text-muted transition-transform group-open:rotate-180"
+                >
+                  ▾
+                </span>
               </summary>
               <p className="mt-2 text-foreground">{qa.answer}</p>
             </details>

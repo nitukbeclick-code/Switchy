@@ -3,6 +3,7 @@ import Script from "next/script";
 import { Rubik, Assistant } from "next/font/google";
 import "./globals.css";
 import JsonLd from "@/components/JsonLd";
+import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
 import { orgSchema, websiteSchema, SITE_URL, SITE_NAME } from "@/lib/schema";
 
@@ -73,6 +74,10 @@ export default function RootLayout({
         >
           דלג לתוכן
         </a>
+
+        {/* Site-wide sticky masthead — brand + primary nav + CTA, on every route. */}
+        <SiteHeader />
+
         {children}
 
         {/* Site-wide footer — links to /transparency (and glossary etc.) on every route. */}

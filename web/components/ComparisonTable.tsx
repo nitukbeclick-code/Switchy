@@ -65,8 +65,12 @@ export default function ComparisonTable({
   return (
     <div
       // Mobile horizontal-scroll wrapper; focusable so keyboard users can scroll.
+      // `scroll-shadow` (defined in globals.css) fades in soft edge shadows ONLY
+      // when there's hidden content to scroll to — a discoverability affordance so
+      // phone users know the table extends sideways. It shadows whichever physical
+      // edge is clipped, so it's RTL-correct. Pure CSS, no JS, no layout shift.
       className={[
-        "w-full overflow-x-auto rounded-2xl border border-border bg-surface",
+        "scroll-shadow w-full overflow-x-auto rounded-2xl border border-border bg-surface",
         className ?? "",
       ]
         .join(" ")
@@ -106,8 +110,11 @@ export default function ComparisonTable({
                 key={plan.id}
                 className={[
                   "border-b border-border last:border-b-0 align-top",
+                  // Editor's-pick / promoted row: a subtle tint PLUS an inset
+                  // start-border (logical, RTL-correct) so the labeled row reads
+                  // at a glance without raising the fill opacity.
                   label
-                    ? "bg-accent/[0.04] ring-1 ring-inset ring-accent/20"
+                    ? "bg-accent/[0.04] ring-1 ring-inset ring-accent/20 border-s-2 border-s-accent"
                     : "",
                 ]
                   .join(" ")
@@ -157,26 +164,33 @@ export default function ComparisonTable({
                       </span>
                     </span>
                   ) : (
-                    <span className="text-muted" aria-label="ללא שינוי מחיר">
+                    <span
+                      className="text-muted"
+                      aria-label="ללא שינוי מחיר"
+                      title="ללא שינוי מחיר"
+                    >
                       —
                     </span>
                   )}
                 </td>
 
                 <td className="px-4 py-3 text-start">
+                  {/* Neutral feature tags (NOT brand-colored — these aren't
+                      accents). A hairline border makes each read as a discrete
+                      chip rather than a single grey blob. */}
                   <span className="flex flex-wrap gap-1.5">
                     {plan.is5G ? (
-                      <span className="inline-flex items-center rounded-md bg-border px-1.5 py-0.5 text-[11px] text-foreground">
+                      <span className="inline-flex items-center rounded-md border border-border bg-surface px-1.5 py-0.5 text-[11px] text-foreground">
                         5G
                       </span>
                     ) : null}
                     {plan.noCommit ? (
-                      <span className="inline-flex items-center rounded-md bg-border px-1.5 py-0.5 text-[11px] text-foreground">
+                      <span className="inline-flex items-center rounded-md border border-border bg-surface px-1.5 py-0.5 text-[11px] text-foreground">
                         ללא התחייבות
                       </span>
                     ) : null}
                     {plan.hasAbroad ? (
-                      <span className="inline-flex items-center rounded-md bg-border px-1.5 py-0.5 text-[11px] text-foreground">
+                      <span className="inline-flex items-center rounded-md border border-border bg-surface px-1.5 py-0.5 text-[11px] text-foreground">
                         כולל חו״ל
                       </span>
                     ) : null}

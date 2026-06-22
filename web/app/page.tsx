@@ -77,19 +77,25 @@ export default function Home() {
         <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
           <Link
             href={`/compare/${featuredCat}`}
-            className="rounded-lg bg-accent px-6 py-3 font-medium text-accent-contrast hover:bg-accent-hover"
+            className="rounded-xl bg-accent px-6 py-3 font-medium text-accent-contrast transition-all hover:bg-accent-hover hover:shadow-md hover:shadow-accent/20"
           >
             להשוואת מסלולים
           </Link>
           <a
             href="#lead"
-            className="rounded-lg border border-border-strong px-6 py-3 font-medium text-ink hover:bg-surface"
+            className="rounded-xl border border-border-strong px-6 py-3 font-medium text-ink transition-colors hover:bg-surface"
           >
             שיחת ייעוץ חינם
           </a>
         </div>
+        {/* Trust band — the cheapest entry price is the product's hook, so it
+            carries the amber VALUE token (the rest stays muted). */}
         <p className="mt-4 text-sm text-muted">
-          {planCount} מסלולים · {providers.length} ספקים · החל מ-{ils(minFeatured)} לחודש
+          {planCount} מסלולים · {providers.length} ספקים · החל מ-
+          <span className="font-display font-bold text-value-text">
+            {ils(minFeatured)}
+          </span>{" "}
+          לחודש
         </p>
       </section>
 
@@ -114,9 +120,15 @@ export default function Home() {
         ].map((v) => (
           <article
             key={v.t}
-            className="rounded-xl border border-border bg-surface p-5"
+            className="rounded-2xl border border-border bg-surface p-5"
           >
-            <h3 className="font-display text-lg font-semibold text-ink">{v.t}</h3>
+            <h3 className="flex items-center gap-2 font-display text-lg font-semibold text-ink">
+              <span
+                aria-hidden="true"
+                className="inline-block h-4 w-1 shrink-0 rounded-full bg-accent"
+              />
+              {v.t}
+            </h3>
             <p className="mt-2 text-sm text-foreground">{v.d}</p>
           </article>
         ))}
@@ -213,7 +225,7 @@ export default function Home() {
           </p>
           <Link
             href="/market-pulse"
-            className="mt-5 inline-block rounded-lg bg-accent px-5 py-2.5 font-medium text-accent-contrast hover:bg-accent-hover"
+            className="mt-5 inline-block rounded-xl bg-accent px-5 py-2.5 font-medium text-accent-contrast transition-all hover:bg-accent-hover hover:shadow-md hover:shadow-accent/20"
           >
             לצפייה בדופק השוק ←
           </Link>

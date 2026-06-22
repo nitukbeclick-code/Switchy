@@ -188,8 +188,14 @@ export default function SwitchIndexPage() {
         <div className="mt-5 divide-y divide-border rounded-xl border border-border bg-surface">
           {RIGHTS_FAQ.map((qa) => (
             <details key={qa.question} className="group p-5">
-              <summary className="cursor-pointer list-none font-display font-semibold text-ink marker:hidden">
-                {qa.question}
+              <summary className="flex cursor-pointer list-none items-center gap-2 font-display font-semibold text-ink marker:hidden">
+                <span>{qa.question}</span>
+                <span
+                  aria-hidden="true"
+                  className="ms-auto shrink-0 text-muted transition-transform group-open:rotate-180"
+                >
+                  ▾
+                </span>
               </summary>
               <p className="mt-2 text-foreground">{qa.answer}</p>
             </details>

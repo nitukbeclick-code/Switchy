@@ -269,7 +269,7 @@ export default function LeadForm({
             })}
           />
           {errors.name && (
-            <p id="lead-name-error" role="alert" className="mt-1 text-xs text-red-600">
+            <p id="lead-name-error" role="alert" className="mt-1 text-xs text-danger-text">
               {errors.name.message}
             </p>
           )}
@@ -302,7 +302,7 @@ export default function LeadForm({
             })}
           />
           {errors.phone && (
-            <p id="lead-phone-error" role="alert" className="mt-1 text-xs text-red-600">
+            <p id="lead-phone-error" role="alert" className="mt-1 text-xs text-danger-text">
               {errors.phone.message}
             </p>
           )}
@@ -332,7 +332,7 @@ export default function LeadForm({
             })}
           />
           {errors.city && (
-            <p id="lead-city-error" role="alert" className="mt-1 text-xs text-red-600">
+            <p id="lead-city-error" role="alert" className="mt-1 text-xs text-danger-text">
               {errors.city.message}
             </p>
           )}
@@ -370,7 +370,7 @@ export default function LeadForm({
               <p
                 id="lead-category-error"
                 role="alert"
-                className="mt-1 text-xs text-red-600"
+                className="mt-1 text-xs text-danger-text"
               >
                 {errors.category.message}
               </p>
@@ -428,7 +428,7 @@ export default function LeadForm({
               <p
                 id="lead-consent-error"
                 role="alert"
-                className="mt-1 text-xs text-red-600"
+                className="mt-1 text-xs text-danger-text"
               >
                 {errors.consent.message}
               </p>
@@ -439,7 +439,7 @@ export default function LeadForm({
 
       {/* Server error */}
       {serverError && (
-        <p role="alert" className="mt-4 text-sm text-red-600">
+        <p role="alert" className="mt-4 text-sm text-danger-text">
           {serverError}
         </p>
       )}

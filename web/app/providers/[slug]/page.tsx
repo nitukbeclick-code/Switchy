@@ -15,6 +15,7 @@ import {
   plansByProvider,
   CATEGORY_HE,
 } from "@/lib/data";
+import { vsPairsForProvider } from "@/lib/vs";
 import {
   itemListSchema,
   faqPageSchema,
@@ -165,6 +166,8 @@ export default async function ProviderPage({ params }: Params) {
   const authority = buildAuthority(provider, plans);
   const reasoning = buildReasoning(provider, plans);
   const related = buildRelated(slug, provider.categories);
+  // Head-to-head match-ups this provider appears in (curated, catalogue-gated).
+  const vsPairs = vsPairsForProvider(slug);
 
   const crumbs = [
     { name: "בית", url: "/" },
@@ -313,6 +316,35 @@ export default async function ProviderPage({ params }: Params) {
                   className="mt-3 inline-block text-sm font-medium text-accent-text hover:text-accent-hover"
                 >
                   להשוות בקטגוריה ←
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {/* ── Head-to-head comparisons ("השווה מול ...") ────────────────────── */}
+      {vsPairs.length > 0 && (
+        <section aria-labelledby="vs-h" className="mt-12">
+          <h2 id="vs-h" className="font-display text-2xl font-bold text-ink">
+            השוו את {provider.name} מול ספק אחר
+          </h2>
+          <p className="mt-2 max-w-2xl text-sm text-muted">
+            השוואות ראש בראש באותה קטגוריה — מחיר התחלתי, מספר מסלולים ומאפיינים.
+          </p>
+          <ul className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {vsPairs.map(({ pair, other }) => (
+              <li key={pair.slug}>
+                <Link
+                  href={`/vs/${pair.slug}`}
+                  className="group flex items-center justify-between gap-3 rounded-xl border border-border bg-surface px-4 py-3 transition-colors hover:border-accent/40 hover:bg-accent/[0.04]"
+                >
+                  <span className="font-medium text-foreground group-hover:text-accent">
+                    {provider.name} מול {other.name}
+                  </span>
+                  <span className="shrink-0 text-xs text-muted">
+                    {pair.categoryLabel}
+                  </span>
                 </Link>
               </li>
             ))}

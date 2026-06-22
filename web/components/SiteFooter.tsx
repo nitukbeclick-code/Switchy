@@ -52,6 +52,7 @@ const DEFAULT_COLUMNS: FooterColumn[] = [
   {
     title: "ידע ושקיפות",
     links: [
+      { href: "/vs", label: "השוואות ראש בראש" },
       { href: "/glossary", label: "מילון מונחים" },
       { href: "/transparency", label: "שקיפות ומתודולוגיה" },
       { href: "/providers", label: "ספקים" },

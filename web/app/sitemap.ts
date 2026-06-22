@@ -11,6 +11,7 @@ import {
   getCities,
   getServices,
 } from "@/lib/data";
+import { getVsPairs } from "@/lib/vs";
 import { SITE_URL } from "@/lib/schema";
 
 export const dynamic = "force-static";
@@ -133,6 +134,23 @@ export default function sitemap(): MetadataRoute.Sitemap {
       })),
     );
 
+  // /vs (hub) + /vs/[pair] — curated provider-vs-provider head-to-head pages
+  // (catalogue-gated, same-category, high-intent "X מול Y" queries).
+  const vs: MetadataRoute.Sitemap = [
+    {
+      url: `${SITE_URL}/vs`,
+      lastModified: now,
+      changeFrequency: "weekly",
+      priority: 0.7,
+    },
+    ...getVsPairs().map((p) => ({
+      url: `${SITE_URL}/vs/${p.slug}`,
+      lastModified: now,
+      changeFrequency: "weekly" as const,
+      priority: 0.7,
+    })),
+  ];
+
   // /market-pulse — current-market snapshot hub.
   const marketPulse: MetadataRoute.Sitemap = [
     {
@@ -171,6 +189,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     ...serviceHubs,
     ...geo,
     ...providers,
+    ...vs,
     ...marketPulse,
     ...switchHub,
     ...switchProviders,

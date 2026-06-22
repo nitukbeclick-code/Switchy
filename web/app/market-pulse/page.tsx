@@ -5,7 +5,7 @@ import SgeSummary from "@/components/SgeSummary";
 import AuthorityBlock from "@/components/AuthorityBlock";
 import MarketPulseCharts, {
   type MarketPulseCategory,
-} from "@/components/MarketPulseChartsLazy";
+} from "@/components/MarketPulseCharts";
 import SmartTimer from "@/components/SmartTimer";
 import { priceStats, CATEGORY_HE } from "@/lib/data";
 import {

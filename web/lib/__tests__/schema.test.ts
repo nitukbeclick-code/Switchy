@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   productSchema,
+  comparisonSchema,
   aggregateRatingSchema,
   reviewSchema,
   knowledgeWebSchema,
@@ -119,6 +120,33 @@ describe("productSchema — price range from [price, after]", () => {
   it("treats an after <= price as a single fixed Offer (no negative range)", () => {
     const schema = productSchema(plan({ price: 50, after: 50 }));
     expect((schema.offers as Record<string, unknown>)["@type"]).toBe("Offer");
+  });
+});
+
+describe("comparisonSchema — descriptive ItemList, no winner", () => {
+  it("emits an ordered ItemList of the two plans (each a Product), absolute url", () => {
+    const plans = [
+      plan({ id: "a", provider: "פרטנר", price: 39 }),
+      plan({ id: "b", provider: "סלקום", price: 99 }),
+    ];
+    const schema = comparisonSchema({
+      name: "פרטנר מול סלקום",
+      url: "/vs/cellcom-vs-partner-internet",
+      plans,
+    });
+    expect(schema).toMatchObject({
+      "@type": "ItemList",
+      name: "פרטנר מול סלקום",
+      numberOfItems: 2,
+      url: `${SITE_URL}/vs/cellcom-vs-partner-internet`,
+      itemListOrder: "https://schema.org/ItemListOrderAscending",
+    });
+    const els = schema.itemListElement as Array<Record<string, unknown>>;
+    expect(els).toHaveLength(2);
+    expect(els[0].position).toBe(1);
+    // Each element wraps a Product (not a bare "winner" assertion).
+    expect((els[0].item as Record<string, unknown>)["@type"]).toBe("Product");
+    expect((els[1].item as Record<string, unknown>)["@type"]).toBe("Product");
   });
 });
 

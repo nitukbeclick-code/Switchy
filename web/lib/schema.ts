@@ -128,6 +128,37 @@ export function itemListSchema(plans: Plan[]): Json {
   };
 }
 
+// ── ItemList (comparison of two providers' representative plans) ──────────────
+/**
+ * Comparison ItemList for a head-to-head provider-vs-provider page. Each side's
+ * REPRESENTATIVE plan (the caller passes the cheapest in the compared category)
+ * becomes a positioned ListItem → Product, so answer engines read the match-up as
+ * a structured comparison. The list is ordered cheapest-first by the caller.
+ *
+ * HONESTY: this only serializes the two real plans handed in — it asserts no
+ * "winner" and fabricates nothing. The page's visible summary states the derived
+ * (cheaper / more-options) conclusion; the schema stays purely descriptive.
+ */
+export function comparisonSchema(args: {
+  name: string;
+  url: string;
+  plans: Plan[];
+}): Json {
+  return {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: args.name,
+    url: absUrl(args.url),
+    numberOfItems: args.plans.length,
+    itemListOrder: "https://schema.org/ItemListOrderAscending",
+    itemListElement: args.plans.map((plan, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      item: productSchema(plan),
+    })),
+  };
+}
+
 // ── FAQPage ──────────────────────────────────────────────────────────────────
 /** A single FAQ question/answer pair. */
 export interface QA {

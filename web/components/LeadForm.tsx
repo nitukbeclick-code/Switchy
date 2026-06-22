@@ -12,6 +12,7 @@
 // ────────────────────────────────────────────────────────────────────────────
 
 import { useState } from "react";
+import Link from "next/link";
 import { useForm, useWatch } from "react-hook-form";
 import { CATEGORY_HE } from "@/lib/categories";
 import { fireLeadConversion } from "@/lib/tracking";
@@ -54,10 +55,13 @@ export interface LeadFormProps {
   heading?: string;
   /** Optional extra classes on the form wrapper. */
   className?: string;
+  /**
+   * Optional REAL catalogue counts for an honest trust line ("משווים X מסלולים
+   * מ-Y ספקים"). Both must be real, catalogue-derived numbers passed by the
+   * server page — never fabricated. When omitted, no count line is shown.
+   */
+  trustStats?: { planCount: number; providerCount: number };
 }
-
-const MANDATORY_CONSENT_TEXT =
-  "אני מאשר/ת את תנאי השימוש ומדיניות הפרטיות ומסכים/ה ליצירת קשר בנוגע להצעות תקשורת";
 
 const STEP_FIELDS: (keyof LeadFormValues)[][] = [
   ["name"],
@@ -74,6 +78,7 @@ export default function LeadForm({
   defaultCity,
   heading = "קבלת הצעה — השוואה חינמית",
   className,
+  trustStats,
 }: LeadFormProps) {
   const {
     register,
@@ -172,7 +177,11 @@ export default function LeadForm({
           הפרטים התקבלו, תודה!
         </h3>
         <p className="mt-1 text-sm text-muted">
-          נציג יחזור אליכם עם השוואת הצעות מותאמת. השירות חינמי וללא התחייבות.
+          נציג יחזור אליכם בדרך כלל תוך יום עסקים אחד עם השוואת הצעות מותאמת.
+          השירות חינמי וללא התחייבות — תוכלו להחליט בנחת.
+        </p>
+        <p className="mt-2 text-xs text-muted">
+          לא מצאתם את ההודעה? נחזור אליכם בטלפון שהשארתם.
         </p>
       </div>
     );
@@ -196,6 +205,23 @@ export default function LeadForm({
       >
         {heading}
       </h3>
+
+      {/* Honest trust signals — free + no-commitment + real catalogue counts.
+          The counts render ONLY when the server page passes real numbers. */}
+      <p className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted">
+        <span className="inline-flex items-center gap-1 font-medium text-accent-text">
+          <span aria-hidden="true">✓</span> השוואה חינמית · ללא התחייבות
+        </span>
+        {trustStats && trustStats.planCount > 0 && (
+          <>
+            <span aria-hidden="true">·</span>
+            <span>
+              משווים {trustStats.planCount} מסלולים מ-
+              {trustStats.providerCount} ספקים
+            </span>
+          </>
+        )}
+      </p>
 
       {/* Progress */}
       <div className="mt-3 mb-5">
@@ -351,10 +377,14 @@ export default function LeadForm({
             )}
           </div>
 
-          {/* Mandatory consent — unchecked by default. */}
+          {/* Mandatory consent — unchecked by default. The links are NOT wrapped
+              in the <label> (a click on a link inside a label would also toggle
+              the box); instead the checkbox is associated via id/htmlFor, and the
+              text+links sit beside it so the links navigate without toggling. */}
           <div>
-            <label className="flex items-start gap-2.5 text-sm text-foreground">
+            <div className="flex items-start gap-2.5 text-sm text-foreground">
               <input
+                id="lead-consent"
                 type="checkbox"
                 aria-required="true"
                 aria-invalid={errors.consent ? "true" : "false"}
@@ -367,8 +397,33 @@ export default function LeadForm({
                     "יש לאשר את תנאי השימוש והסכמה ליצירת קשר כדי להמשיך",
                 })}
               />
-              <span className="leading-snug">{MANDATORY_CONSENT_TEXT}</span>
-            </label>
+              <span className="leading-snug">
+                <label htmlFor="lead-consent" className="cursor-pointer">
+                  אני מאשר/ת את
+                </label>{" "}
+                <Link
+                  href="/terms"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-accent-text underline hover:text-accent-hover"
+                >
+                  תנאי השימוש
+                </Link>{" "}
+                ו
+                <Link
+                  href="/privacy"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-accent-text underline hover:text-accent-hover"
+                >
+                  מדיניות הפרטיות
+                </Link>
+                <label htmlFor="lead-consent" className="cursor-pointer">
+                  {" "}
+                  ומסכים/ה ליצירת קשר בנוגע להצעות תקשורת.
+                </label>
+              </span>
+            </div>
             {errors.consent && (
               <p
                 id="lead-consent-error"
@@ -387,6 +442,45 @@ export default function LeadForm({
         <p role="alert" className="mt-4 text-sm text-red-600">
           {serverError}
         </p>
+      )}
+
+      {/* "What happens after you submit" — set expectations honestly, shown on
+          the final step right above the submit CTA. No fake urgency. */}
+      {step === lastStep && (
+        <div className="mt-5 rounded-xl border border-border bg-background/60 p-4">
+          <p className="text-xs font-semibold text-foreground">
+            מה קורה אחרי השליחה?
+          </p>
+          <ol className="mt-2 space-y-1.5 text-xs text-muted">
+            <li className="flex items-start gap-2">
+              <span
+                aria-hidden="true"
+                className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-accent/15 text-[10px] font-bold text-accent-text"
+              >
+                1
+              </span>
+              <span>נציג חוזר אליכם, בדרך כלל תוך יום עסקים אחד.</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span
+                aria-hidden="true"
+                className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-accent/15 text-[10px] font-bold text-accent-text"
+              >
+                2
+              </span>
+              <span>מקבלים השוואת הצעות מותאמת לצרכים שלכם.</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <span
+                aria-hidden="true"
+                className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-accent/15 text-[10px] font-bold text-accent-text"
+              >
+                3
+              </span>
+              <span>מחליטים בנחת — ללא עלות וללא התחייבות.</span>
+            </li>
+          </ol>
+        </div>
       )}
 
       {/* Navigation */}
@@ -423,7 +517,7 @@ export default function LeadForm({
       </div>
 
       <p className="mt-3 text-center text-xs text-muted">
-        השירות חינמי. הפנייה תיעשה רק לאחר הסכמתכם.
+        השירות חינמי. הפרטים משמשים אך ורק ליצירת קשר בנוגע לפנייה זו — ללא ספאם.
       </p>
     </form>
   );

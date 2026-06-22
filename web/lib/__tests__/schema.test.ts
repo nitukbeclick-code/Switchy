@@ -4,6 +4,7 @@ import {
   aggregateRatingSchema,
   reviewSchema,
   knowledgeWebSchema,
+  webPageSchema,
   SITE_URL,
 } from "@/lib/schema";
 import type { Plan, Provider } from "@/lib/types";
@@ -118,6 +119,43 @@ describe("productSchema — price range from [price, after]", () => {
   it("treats an after <= price as a single fixed Offer (no negative range)", () => {
     const schema = productSchema(plan({ price: 50, after: 50 }));
     expect((schema.offers as Record<string, unknown>)["@type"]).toBe("Offer");
+  });
+});
+
+describe("webPageSchema — compliance/info pages", () => {
+  it("resolves a relative url to absolute and links the WebSite", () => {
+    const schema = webPageSchema({
+      name: "מדיניות פרטיות",
+      description: "תיאור",
+      url: "/privacy",
+    });
+    expect(schema).toMatchObject({
+      "@context": "https://schema.org",
+      "@type": "WebPage",
+      name: "מדיניות פרטיות",
+      url: `${SITE_URL}/privacy`,
+      inLanguage: "he-IL",
+    });
+    expect((schema.isPartOf as Record<string, unknown>)["@type"]).toBe(
+      "WebSite",
+    );
+  });
+
+  it("emits lastReviewed + dateModified only when a date is given", () => {
+    const without = webPageSchema({ name: "x", description: "y", url: "/terms" });
+    expect(without.lastReviewed).toBeUndefined();
+    expect(without.dateModified).toBeUndefined();
+
+    const withDate = webPageSchema({
+      name: "x",
+      description: "y",
+      url: "/terms",
+      lastReviewed: "2026-06-22",
+      about: "תנאי שימוש",
+    });
+    expect(withDate.lastReviewed).toBe("2026-06-22");
+    expect(withDate.dateModified).toBe("2026-06-22");
+    expect((withDate.about as Record<string, unknown>).name).toBe("תנאי שימוש");
   });
 });
 

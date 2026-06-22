@@ -468,6 +468,10 @@ export default async function ServiceHubPage({ params }: Params) {
           <LeadForm
             source="compare"
             defaultCategory={leadCategory(svc.categories[0])}
+            trustStats={{
+              planCount: plans.length,
+              providerCount: svcProviders.length,
+            }}
           />
         </div>
       </section>

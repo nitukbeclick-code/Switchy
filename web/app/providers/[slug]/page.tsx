@@ -365,6 +365,10 @@ export default async function ProviderPage({ params }: Params) {
           <LeadForm
             source="provider"
             defaultCategory={leadCategory(provider.categories[0])}
+            trustStats={{
+              planCount: provider.planCount,
+              providerCount: getProviders().length,
+            }}
           />
         </div>
       </section>

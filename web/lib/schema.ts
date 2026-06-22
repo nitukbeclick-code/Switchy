@@ -424,6 +424,41 @@ export function geoSchema(args: { lat: number; lng: number }): Json {
   };
 }
 
+// ── WebPage (generic informational page) ─────────────────────────────────────
+/**
+ * Generic WebPage schema for an informational page (privacy / terms /
+ * accessibility statement). `lastReviewed` / `dateModified`, when given, should be
+ * the REAL last editorial review date (never a fabricated freshness signal).
+ * `isPartOf` links the page to the brand WebSite so engines connect it to the org.
+ */
+export function webPageSchema(args: {
+  name: string;
+  description: string;
+  url: string;
+  /** Real last-reviewed/modified date, e.g. "2026-06-22". Omitted when unknown. */
+  lastReviewed?: string;
+  /** schema.org subject of the page (e.g. "מדיניות פרטיות"). */
+  about?: string;
+}): Json {
+  const schema: Json = {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    name: args.name,
+    description: args.description,
+    url: absUrl(args.url),
+    inLanguage: "he-IL",
+    isPartOf: { "@type": "WebSite", name: SITE_NAME, url: SITE_URL },
+  };
+  if (args.lastReviewed) {
+    schema.lastReviewed = args.lastReviewed;
+    schema.dateModified = args.lastReviewed;
+  }
+  if (args.about) {
+    schema.about = { "@type": "Thing", name: args.about };
+  }
+  return schema;
+}
+
 // ── Dataset (Market Pulse — current price snapshot) ──────────────────────────
 /**
  * Dataset schema for the Market Pulse current-market snapshot. Describes the

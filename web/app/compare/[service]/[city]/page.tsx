@@ -439,6 +439,11 @@ export default async function ServiceCityPage({ params }: Params) {
           <LeadForm
             source="compare"
             defaultCategory={leadCategory(svc.categories[0])}
+            defaultCity={c.name}
+            trustStats={{
+              planCount: plans.length,
+              providerCount: svcProviders.length,
+            }}
           />
         </div>
       </section>

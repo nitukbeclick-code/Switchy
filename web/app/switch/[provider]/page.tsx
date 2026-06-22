@@ -25,6 +25,7 @@ import LeadForm from "@/components/LeadForm";
 import {
   getProviders,
   getProvider,
+  getPlans,
   providerOfficialUrl,
   CATEGORY_HE,
 } from "@/lib/data";
@@ -395,6 +396,10 @@ export default async function SwitchProviderPage({ params }: Params) {
           <LeadForm
             source="switch"
             defaultCategory={leadCategory(provider.categories[0])}
+            trustStats={{
+              planCount: getPlans().length,
+              providerCount: getProviders().length,
+            }}
           />
         </div>
       </section>

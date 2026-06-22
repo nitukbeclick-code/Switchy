@@ -64,6 +64,14 @@ const DEFAULT_COLUMNS: FooterColumn[] = [
       { href: "/transparency", label: "איך אנחנו ממליצים" },
     ],
   },
+  {
+    title: "מידע משפטי ונגישות",
+    links: [
+      { href: "/privacy", label: "מדיניות פרטיות" },
+      { href: "/terms", label: "תנאי שימוש" },
+      { href: "/accessibility", label: "הצהרת נגישות" },
+    ],
+  },
 ];
 
 export default function SiteFooter({ columns, className }: SiteFooterProps) {
@@ -81,7 +89,7 @@ export default function SiteFooter({ columns, className }: SiteFooterProps) {
         .trim()}
     >
       <div className="mx-auto w-full max-w-5xl px-4 py-10 sm:px-6">
-        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-5">
           {/* Brand identity. */}
           <div className="lg:col-span-1">
             <p className="font-display text-lg font-bold text-ink">
@@ -116,19 +124,41 @@ export default function SiteFooter({ columns, className }: SiteFooterProps) {
           ))}
         </div>
 
-        {/* Bottom row: copyright + transparency link (always present). */}
+        {/* Bottom row: copyright + legal/accessibility links (always present). */}
         <div className="mt-10 flex flex-col gap-3 border-t border-border pt-6 text-xs text-muted sm:flex-row sm:items-center sm:justify-between">
           <p>© {year} חוסך / Switchy. כל הזכויות שמורות.</p>
-          <p>
-            המלצות ותוויות עריכה מוסברות בעמוד{" "}
+          <nav
+            aria-label="קישורים משפטיים ונגישות"
+            className="flex flex-wrap items-center gap-x-3 gap-y-1"
+          >
+            <Link
+              href="/privacy"
+              className="font-medium text-accent-text hover:text-accent-hover"
+            >
+              פרטיות
+            </Link>
+            <span aria-hidden="true">·</span>
+            <Link
+              href="/terms"
+              className="font-medium text-accent-text hover:text-accent-hover"
+            >
+              תנאי שימוש
+            </Link>
+            <span aria-hidden="true">·</span>
+            <Link
+              href="/accessibility"
+              className="font-medium text-accent-text hover:text-accent-hover"
+            >
+              נגישות
+            </Link>
+            <span aria-hidden="true">·</span>
             <Link
               href="/transparency"
               className="font-medium text-accent-text hover:text-accent-hover"
             >
-              השקיפות
+              שקיפות
             </Link>
-            .
-          </p>
+          </nav>
         </div>
       </div>
     </footer>

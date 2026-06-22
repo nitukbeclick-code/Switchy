@@ -289,7 +289,13 @@ export default function Home() {
           השאירו פרטים ונחזור אליכם עם השוואה מותאמת — ללא עלות וללא התחייבות.
         </p>
         <div className="mt-5 max-w-xl">
-          <LeadForm source="home" />
+          <LeadForm
+            source="home"
+            trustStats={{
+              planCount,
+              providerCount: providers.length,
+            }}
+          />
         </div>
       </section>
     </main>

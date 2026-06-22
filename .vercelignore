@@ -4,4 +4,6 @@
 *
 !site
 !site/**
+!web
+!web/**
 !vercel.json

@@ -1,0 +1,4 @@
+# Deploy the whole Next.js app. Do NOT inherit the repo-root .vercelignore
+# (which keeps only site/). Vercel installs deps + builds .next itself.
+node_modules
+.next

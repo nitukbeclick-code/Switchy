@@ -1,0 +1,86 @@
+@import "tailwindcss";
+
+/* ════════════════════════════════════════════════════════════════════════════
+   Brand tokens — "white glass + ink" base + a disciplined two-accent system.
+     • green  #16A34A = ACTION  (CTAs, links, active nav, focus)
+     • amber  #F59E0B = VALUE   (savings figures, "best value" / win states)
+     • ink    #111827 = text / structure / borders
+     • glass  #F5F7F8 = page background
+   Per-provider brand colors are NOT defined here (never recolored to the theme).
+   ════════════════════════════════════════════════════════════════════════════ */
+:root {
+  /* Surfaces */
+  --background: #f5f7f8; /* glass-white page bg */
+  --foreground: #0b0f14; /* near-black body text */
+  --surface: #ffffff; /* card / panel surface */
+  --ink: #111827; /* structural ink (headings, dark cards) */
+  --border: #e5e7eb; /* hairline borders */
+  --border-strong: #222a35; /* strong/structural borders */
+  --muted: #6b7280; /* secondary text */
+
+  /* Accents — use with intent, sparingly */
+  --accent: #16a34a; /* ACTION (green) */
+  --accent-hover: #15803d; /* darker green for hover */
+  --accent-contrast: #ffffff; /* text on green */
+  --value: #f59e0b; /* VALUE (amber) */
+  --value-contrast: #111827; /* text on amber */
+}
+
+/* Map brand tokens into Tailwind's theme so utilities like bg-accent, text-ink,
+   border-border, font-display work out of the box (Tailwind v4 @theme). */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-ink: var(--ink);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-muted: var(--muted);
+
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-contrast: var(--accent-contrast);
+  --color-value: var(--value);
+  --color-value-contrast: var(--value-contrast);
+
+  --font-display: var(--font-rubik);
+  --font-sans: var(--font-assistant);
+}
+
+/* ── Base RTL / Hebrew-first styles ──────────────────────────────────────── */
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-assistant), system-ui, sans-serif;
+  /* RTL is set on <html dir="rtl">; ensure logical defaults read correctly. */
+  text-align: start;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-rubik), system-ui, sans-serif;
+  color: var(--ink);
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+a:hover {
+  color: var(--accent-hover);
+}
+
+/* Visible, accessible focus ring (green = focus, per brand). */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}

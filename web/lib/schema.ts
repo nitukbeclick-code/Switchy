@@ -14,8 +14,10 @@ import {
   termsForCategory,
 } from "./data";
 
-/** Canonical site origin (no trailing slash). */
-export const SITE_URL = "https://www.switchy-ai.com";
+/** Canonical site origin (no trailing slash). NON-www is the documented canonical
+ * (the static site uses non-www too); keeping a single host avoids a www/non-www
+ * split that fractures entity resolution across canonicals/sitemap/robots/JSON-LD. */
+export const SITE_URL = "https://switchy-ai.com";
 /** Brand name as shown to users / engines (single canonical form everywhere). */
 export const SITE_NAME = "חוסך / Switch AI";
 /**

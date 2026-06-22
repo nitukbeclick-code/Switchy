@@ -33,7 +33,9 @@ const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 // DB rate-limit + consent gates, which remain the authoritative abuse controls.
 const ALLOWED_ORIGINS: ReadonlySet<string> = new Set(
   [
-    "https://www.switchy-ai.com",
+    // Canonical host is non-www (single host avoids a www/non-www entity split).
+    // The hosting layer 301-redirects www→non-www, so browser POSTs always carry
+    // the non-www Origin; we list only the canonical host here.
     "https://switchy-ai.com",
     "https://switchyy-omega.vercel.app",
     process.env.NEXT_PUBLIC_SITE_URL,

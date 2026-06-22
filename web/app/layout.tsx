@@ -5,6 +5,7 @@ import "./globals.css";
 import JsonLd from "@/components/JsonLd";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
+import ConsentBanner from "@/components/ConsentBanner";
 import { orgSchema, websiteSchema, SITE_URL, SITE_NAME } from "@/lib/schema";
 
 // Rubik for display/headings, Assistant for body/labels. Hebrew-only subset: this
@@ -67,6 +68,26 @@ export default function RootLayout({
         <JsonLd data={websiteSchema()} />
       </head>
       <body className="min-h-full flex flex-col">
+        {/* GA4 Consent Mode v2 — DEFAULTS to denied for every storage type, set
+            BEFORE GA loads so Google Analytics stays cookieless until the user
+            opts in (mirrors the static site's <head> gtag snippet). This runs
+            with `beforeInteractive` so the default is queued into dataLayer ahead
+            of the GA `config` below; the <ConsentBanner> later replays/updates the
+            grant. Cookie-consent managers are the canonical beforeInteractive use
+            case per the next/script docs. */}
+        <Script id="ga4-consent-default" strategy="beforeInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('consent', 'default', {
+              ad_storage: 'denied',
+              ad_user_data: 'denied',
+              ad_personalization: 'denied',
+              analytics_storage: 'denied'
+            });
+          `}
+        </Script>
+
         {/* Skip link — first focusable element; visually hidden until focused. */}
         <a
           href="#main"
@@ -87,7 +108,9 @@ export default function RootLayout({
             3rd-party googletagmanager fetch doesn't compete with first-party LCP
             resources. Analytics doesn't need to fire before the page is idle.
             `gtag()` queues into dataLayer, so the init order stays correct even
-            though both scripts defer. */}
+            though both scripts defer — and the Consent Mode v2 default (denied,
+            set beforeInteractive above) is already queued ahead of this `config`,
+            so GA loads but tracks nothing until <ConsentBanner> grants consent. */}
         <Script
           src={`https://www.googletagmanager.com/gtag/js?id=${GA4_MEASUREMENT_ID}`}
           strategy="lazyOnload"
@@ -100,6 +123,11 @@ export default function RootLayout({
             gtag('config', '${GA4_MEASUREMENT_ID}');
           `}
         </Script>
+
+        {/* Cookie-consent gate — RTL Hebrew banner. Persists the choice in
+            localStorage; respects a stored choice on load (no flash for returning
+            users) and replays a stored grant via gtag('consent','update'). */}
+        <ConsentBanner />
       </body>
     </html>
   );

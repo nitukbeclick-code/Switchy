@@ -11,7 +11,7 @@ export const GA4_MEASUREMENT_ID = "G-YCTGRVN7SJ";
 export const FB_PIXEL_ID = process.env.NEXT_PUBLIC_FB_PIXEL_ID;
 
 type GtagFn = (
-  command: "event" | "config" | "js" | "set",
+  command: "event" | "config" | "js" | "set" | "consent",
   targetOrAction: string | Date,
   params?: Record<string, unknown>,
 ) => void;

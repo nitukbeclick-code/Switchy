@@ -3,8 +3,8 @@ import type { Metadata } from "next";
 import JsonLd from "@/components/JsonLd";
 import AiSummary from "@/components/AiSummary";
 import ComparisonTable from "@/components/ComparisonTable";
-import LeadForm from "@/components/LeadForm";
-import SmartTimer from "@/components/SmartTimer";
+import LeadForm from "@/components/LeadFormLazy";
+import SmartTimer from "@/components/SmartTimerLazy";
 import {
   getCategories,
   getProviders,

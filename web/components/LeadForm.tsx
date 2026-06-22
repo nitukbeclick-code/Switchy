@@ -15,6 +15,7 @@ import { useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { CATEGORY_HE } from "@/lib/categories";
 import { fireLeadConversion } from "@/lib/tracking";
+import { isValidIsraeliPhone } from "@/lib/phone";
 
 /** Categories offered in the "desired service" step (in display order). */
 const SERVICE_CATEGORIES = [
@@ -57,19 +58,6 @@ export interface LeadFormProps {
 
 const MANDATORY_CONSENT_TEXT =
   "אני מאשר/ת את תנאי השימוש ומדיניות הפרטיות ומסכים/ה ליצירת קשר בנוגע להצעות תקשורת";
-
-/**
- * Validate an Israeli phone the SAME way the server does (web/app/api/lead
- * route.ts `normalizePhone`): strip non-digits (keeping a leading +), fold a
- * leading +972 / 972 to 0, then require exactly 9–10 digits starting with 0.
- * Mirroring the server here means the form never (a) wrongly rejects a valid
- * `+972…` number, nor (b) accepts a number the server will reject at submit.
- */
-function isValidPhone(raw: string): boolean {
-  const digits = raw.replace(/[^\d+]/g, "");
-  const local = digits.replace(/^\+?972/, "0");
-  return /^0\d{8,9}$/.test(local);
-}
 
 const STEP_FIELDS: (keyof LeadFormValues)[][] = [
   ["name"],
@@ -284,7 +272,7 @@ export default function LeadForm({
             {...register("phone", {
               required: "נא להזין מספר טלפון",
               validate: (v) =>
-                isValidPhone(v) || "מספר הטלפון אינו תקין",
+                isValidIsraeliPhone(v) || "מספר הטלפון אינו תקין",
             })}
           />
           {errors.phone && (

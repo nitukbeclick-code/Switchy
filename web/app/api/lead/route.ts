@@ -16,6 +16,7 @@
 // ────────────────────────────────────────────────────────────────────────────
 
 import { createClient } from "@supabase/supabase-js";
+import { normalizeIsraeliPhone } from "@/lib/phone";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -52,12 +53,9 @@ function isAllowedOrigin(req: Request): boolean {
 }
 
 // Israeli mobile/landline: 9–10 digits, optionally with separators / +972.
-function normalizePhone(raw: string): string | null {
-  const digits = raw.replace(/[^\d+]/g, "");
-  const local = digits.replace(/^\+?972/, "0");
-  if (/^0\d{8,9}$/.test(local)) return local;
-  return null;
-}
+// Shared with <LeadForm> via lib/phone so client validation + server
+// normalization can never disagree.
+const normalizePhone = normalizeIsraeliPhone;
 
 interface LeadBody {
   name?: unknown;

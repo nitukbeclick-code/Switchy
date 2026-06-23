@@ -934,3 +934,63 @@ export function knowledgeWebSchema(
 
   return { "@context": "https://schema.org", "@graph": graph };
 }
+
+// ── Page-level AggregateOffer (AEO pillar 4) ─────────────────────────────────
+/**
+ * ONE `AggregateOffer` summarising the whole page's real plan set: `lowPrice` =
+ * the cheapest plan's price, `highPrice` = the priciest, `offerCount` = N priced
+ * plans, in ILS. This gives answer engines a single structured "prices range
+ * from ₪X to ₪Y across N plans" node for the comparison page — the formal,
+ * machine-parseable companion to the visible AEO direct answer + table.
+ *
+ * HONESTY: lowPrice/highPrice/offerCount are computed ONLY from the real prices
+ * handed in (the SAME list the page renders + answers from), so the schema can
+ * never disagree with the page. Plans without a finite positive price are skipped
+ * (they can't honestly set a bound). Returns `null` when no priced plan exists,
+ * so callers render it unconditionally without emitting an empty/false offer.
+ */
+export function pageAggregateOfferSchema(plans: Plan[]): Json | null {
+  const prices = plans
+    .map((p) => p.price)
+    .filter((n): n is number => typeof n === "number" && Number.isFinite(n) && n > 0);
+  if (prices.length === 0) return null;
+
+  return {
+    "@context": "https://schema.org",
+    "@type": "AggregateOffer",
+    priceCurrency: CURRENCY,
+    lowPrice: Math.min(...prices),
+    highPrice: Math.max(...prices),
+    offerCount: prices.length,
+  };
+}
+
+// ── Speakable (AEO pillar 7 — voice) ─────────────────────────────────────────
+/**
+ * `speakable` SpeakableSpecification keyed on CSS selectors — tells voice
+ * assistants which parts of the page are the concise, read-aloud answer (e.g. the
+ * AEO direct-answer paragraph + the page H1). Returns `null` when no selectors
+ * are supplied so callers can render it unconditionally.
+ *
+ * Emitted as a standalone `WebPage` carrying only the `speakable` spec; pages
+ * already declare their main WebPage via {@link webPageSchema}, and a second
+ * narrowly-scoped WebPage node purely for `speakable` is valid and keeps this
+ * builder additive (it does not need to rewrite the page's main WebPage).
+ *
+ * HONESTY: this marks up EXISTING on-page text for voice reading — it asserts no
+ * new claim and fabricates nothing; selectors must point at real rendered nodes.
+ */
+export function speakableSchema(selectors: string[]): Json | null {
+  const cssSelector = (selectors ?? []).filter(
+    (s): s is string => typeof s === "string" && s.trim().length > 0,
+  );
+  if (cssSelector.length === 0) return null;
+  return {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    speakable: {
+      "@type": "SpeakableSpecification",
+      cssSelector,
+    },
+  };
+}

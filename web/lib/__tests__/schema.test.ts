@@ -9,6 +9,8 @@ import {
   relatedLinksSchema,
   articleSchema,
   howToSchema,
+  pageAggregateOfferSchema,
+  speakableSchema,
   SITE_URL,
 } from "@/lib/schema";
 import type { Plan, Provider } from "@/lib/types";
@@ -399,5 +401,51 @@ describe("howToSchema — emitted only for real step-by-step guides", () => {
       steps: [{ name: "only name, no text" }],
     });
     expect(schema).toBeNull();
+  });
+});
+
+describe("pageAggregateOfferSchema — one offer across the page's real plans", () => {
+  it("sets lowPrice/highPrice/offerCount from real prices in ILS", () => {
+    const plans = [
+      plan({ id: "a", price: 70 }),
+      plan({ id: "b", price: 29 }),
+      plan({ id: "c", price: 49 }),
+    ];
+    const schema = pageAggregateOfferSchema(plans);
+    expect(schema).toMatchObject({
+      "@type": "AggregateOffer",
+      priceCurrency: "ILS",
+      lowPrice: 29,
+      highPrice: 70,
+      offerCount: 3,
+    });
+  });
+
+  it("skips unpriced rows and returns null when none are priced", () => {
+    const schema = pageAggregateOfferSchema([
+      plan({ id: "a", price: 0 }),
+      plan({ id: "b", price: 25 }),
+    ]);
+    expect(schema).toMatchObject({ lowPrice: 25, highPrice: 25, offerCount: 1 });
+    expect(pageAggregateOfferSchema([])).toBeNull();
+    expect(pageAggregateOfferSchema([plan({ price: 0 })])).toBeNull();
+  });
+});
+
+describe("speakableSchema — voice (pillar 7)", () => {
+  it("builds a SpeakableSpecification from non-empty selectors", () => {
+    const schema = speakableSchema(["#aeo-answer [data-direct-answer]", "h1"]);
+    expect(schema).toMatchObject({
+      "@type": "WebPage",
+      speakable: {
+        "@type": "SpeakableSpecification",
+        cssSelector: ["#aeo-answer [data-direct-answer]", "h1"],
+      },
+    });
+  });
+
+  it("filters blanks and returns null when no usable selector remains", () => {
+    expect(speakableSchema([])).toBeNull();
+    expect(speakableSchema(["", "   "])).toBeNull();
   });
 });

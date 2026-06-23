@@ -195,32 +195,37 @@ begin
   -- Lock the fn down: only the trigger (which runs as definer) invokes it.
   revoke all on function public.snapshot_plan_price() from public, anon, authenticated;
 
-  -- Fire on INSERT (a brand-new plan → its first snapshot) and on any price /
-  -- after change (a real movement). `is distinct from` handles nulls correctly.
+  -- Snapshot on INSERT (a brand-new plan → its first snapshot) and on any real
+  -- price / after movement. A combined INSERT-OR-UPDATE trigger's WHEN clause may
+  -- NOT reference OLD (no OLD on INSERT) and `tg_op` is unavailable in WHEN — so
+  -- we SPLIT into two triggers: an unconditional AFTER INSERT, and an AFTER UPDATE
+  -- whose WHEN (legally referencing OLD) fires only on a genuine change.
+  drop trigger if exists trg_snapshot_plan_price on public.plans;       -- legacy single-trigger name
+  drop trigger if exists trg_snapshot_plan_price_ins on public.plans;
+  drop trigger if exists trg_snapshot_plan_price_upd on public.plans;
+  create trigger trg_snapshot_plan_price_ins
+    after insert on public.plans
+    for each row execute function public.snapshot_plan_price();
   if has_after then
     execute $tg$
-      drop trigger if exists trg_snapshot_plan_price on public.plans;
-      create trigger trg_snapshot_plan_price
-        after insert or update of price, after, after_exact on public.plans
+      create trigger trg_snapshot_plan_price_upd
+        after update of price, after, after_exact on public.plans
         for each row
         when (
-          tg_op = 'INSERT'
-          or NEW.price is distinct from OLD.price
+          NEW.price is distinct from OLD.price
           or NEW.after is distinct from OLD.after
           or NEW.after_exact is distinct from OLD.after_exact
         )
         execute function public.snapshot_plan_price();
     $tg$;
   else
-    -- No `after` column — watch price (+ after_exact if it exists, guarded below).
+    -- No `after` column — watch price (+ after_exact).
     execute $tg$
-      drop trigger if exists trg_snapshot_plan_price on public.plans;
-      create trigger trg_snapshot_plan_price
-        after insert or update of price, after_exact on public.plans
+      create trigger trg_snapshot_plan_price_upd
+        after update of price, after_exact on public.plans
         for each row
         when (
-          tg_op = 'INSERT'
-          or NEW.price is distinct from OLD.price
+          NEW.price is distinct from OLD.price
           or NEW.after_exact is distinct from OLD.after_exact
         )
         execute function public.snapshot_plan_price();

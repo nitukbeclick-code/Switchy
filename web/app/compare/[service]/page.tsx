@@ -21,6 +21,8 @@ import AuthorityBlock from "@/components/AuthorityBlock";
 import AuthorityReasoning from "@/components/AuthorityReasoning";
 import ReviewsBlock from "@/components/ReviewsBlock";
 import ComparisonTable from "@/components/ComparisonTable";
+import CommissionDisclosure from "@/components/CommissionDisclosure";
+import PriceCaveat from "@/components/PriceCaveat";
 import RelatedAuthorityPages from "@/components/RelatedAuthorityPages";
 import LeadForm from "@/components/LeadForm";
 import {
@@ -332,6 +334,12 @@ export default async function ServiceHubPage({ params }: Params) {
         </p>
       </header>
 
+      {/* ── Commission disclosure (Consumer Protection §7b) — at the top of the
+          service hub, NOT buried. ────────────────────────────────────────── */}
+      <div className="mt-6">
+        <CommissionDisclosure variant="banner" />
+      </div>
+
       {/* ── SGE summary ───────────────────────────────────────────────────── */}
       <div className="mt-8">
         <SgeSummary>{summary}</SgeSummary>
@@ -356,6 +364,7 @@ export default async function ServiceHubPage({ params }: Params) {
           plans={plans}
           caption={`השוואת ${svc.label} — מחירים בשקלים, כולל מחיר אחרי המבצע`}
         />
+        <PriceCaveat className="mt-3" />
       </section>
 
       {/* ── Transparent provider ranking (stated methodology) ─────────────── */}
@@ -469,6 +478,8 @@ export default async function ServiceHubPage({ params }: Params) {
         <p className="mt-2 text-foreground">
           השאירו פרטים ונחזור אליכם עם המלצה מותאמת — חינם וללא התחייבות.
         </p>
+        {/* Commission disclosure repeated before the lead hand-off (§7b). */}
+        <CommissionDisclosure variant="inline" className="mt-3 max-w-xl" />
         <div className="mt-5 max-w-xl">
           <LeadForm
             source="compare"

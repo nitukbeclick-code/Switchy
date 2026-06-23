@@ -3,6 +3,8 @@ import type { Metadata } from "next";
 import JsonLd from "@/components/JsonLd";
 import AiSummary from "@/components/AiSummary";
 import ComparisonTable from "@/components/ComparisonTable";
+import CommissionDisclosure from "@/components/CommissionDisclosure";
+import PriceCaveat from "@/components/PriceCaveat";
 import LeadForm from "@/components/LeadFormLazy";
 import SmartTimer from "@/components/SmartTimerLazy";
 import TrackedCtaLink from "@/components/TrackedCtaLink";
@@ -103,6 +105,12 @@ export default function Home() {
           לחודש
         </p>
       </section>
+
+      {/* ── Commission disclosure (Consumer Protection §7b) — prominent, near
+          the hero/value-props, NOT buried. ───────────────────────────────── */}
+      <div className="mx-auto mt-8 max-w-3xl">
+        <CommissionDisclosure variant="banner" />
+      </div>
 
       {/* ── Value props ───────────────────────────────────────────────────── */}
       <section
@@ -288,6 +296,7 @@ export default function Home() {
             plans={featured}
             caption={`מסלולי ${CATEGORY_HE[featuredCat] ?? featuredCat} זולים — מחירים בשקלים`}
           />
+          <PriceCaveat className="mt-3" />
         </div>
         <Link
           href={`/compare/${featuredCat}`}
@@ -305,6 +314,8 @@ export default function Home() {
         <p className="mt-2 text-foreground">
           השאירו פרטים ונחזור אליכם עם השוואה מותאמת — ללא עלות וללא התחייבות.
         </p>
+        {/* Commission disclosure repeated before the lead hand-off (§7b). */}
+        <CommissionDisclosure variant="inline" className="mt-3 max-w-xl" />
         <div className="mt-5 max-w-xl">
           <LeadForm
             source="home"

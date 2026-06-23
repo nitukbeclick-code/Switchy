@@ -17,6 +17,12 @@ import { useForm, useWatch } from "react-hook-form";
 import { CATEGORY_HE } from "@/lib/categories";
 import { fireLeadConversion, trackEvent } from "@/lib/tracking";
 import { isValidIsraeliPhone } from "@/lib/phone";
+import {
+  MARKETING_CHANNELS,
+  MARKETING_OPTIN_HEADING,
+  MARKETING_OPTIN_NOTE,
+  marketingChannelLabel,
+} from "@/lib/legal";
 
 /** Categories offered in the "desired service" step (in display order). */
 const SERVICE_CATEGORIES = [
@@ -36,6 +42,12 @@ interface LeadFormValues {
   city: string;
   category: ServiceCategory | "";
   consent: boolean;
+  // OPTIONAL, default-UNCHECKED marketing opt-ins (Spam Law) — separate from the
+  // MANDATORY `consent` gate above. Each maps to a leads.consent_marketing_*
+  // column server-side.
+  marketingSms: boolean;
+  marketingEmail: boolean;
+  marketingWhatsapp: boolean;
 }
 
 export interface LeadFormProps {
@@ -94,6 +106,10 @@ export default function LeadForm({
       city: defaultCity ?? "",
       category: defaultCategory ?? "",
       consent: false,
+      // Marketing opt-ins are OFF by default — explicit opt-in only (Spam Law).
+      marketingSms: false,
+      marketingEmail: false,
+      marketingWhatsapp: false,
     },
   });
 
@@ -147,6 +163,11 @@ export default function LeadForm({
           source,
           // Mandatory consent — the server re-stamps the timestamps itself.
           consent: values.consent,
+          // OPTIONAL granular marketing opt-ins (Spam Law) — each maps to a
+          // dedicated leads.consent_marketing_* boolean column.
+          consent_marketing_sms: values.marketingSms,
+          consent_marketing_email: values.marketingEmail,
+          consent_marketing_whatsapp: values.marketingWhatsapp,
         }),
       });
 
@@ -479,6 +500,50 @@ export default function LeadForm({
               </p>
             )}
           </div>
+
+          {/* OPTIONAL marketing opt-ins (Spam Law — חוק התקשורת תיקון 40).
+              Three default-UNCHECKED, per-channel opt-ins, clearly SEPARATE from
+              the mandatory consent gate above. Each is marked as marketing
+              (פרסומת) and removable at any time. */}
+          <fieldset className="rounded-xl border border-border bg-background/60 p-3">
+            <legend className="px-1 text-sm font-medium text-foreground">
+              {MARKETING_OPTIN_HEADING}
+            </legend>
+            <p className="text-xs leading-relaxed text-muted">
+              {MARKETING_OPTIN_NOTE}
+            </p>
+            <div className="mt-3 space-y-2.5">
+              {MARKETING_CHANNELS.map((ch) => {
+                const fieldName = (
+                  ch.key === "sms"
+                    ? "marketingSms"
+                    : ch.key === "email"
+                      ? "marketingEmail"
+                      : "marketingWhatsapp"
+                ) as
+                  | "marketingSms"
+                  | "marketingEmail"
+                  | "marketingWhatsapp";
+                const id = `lead-marketing-${ch.key}`;
+                return (
+                  <div
+                    key={ch.key}
+                    className="flex items-start gap-2.5 text-sm text-foreground"
+                  >
+                    <input
+                      id={id}
+                      type="checkbox"
+                      className="mt-0.5 h-4 w-4 shrink-0 rounded border-border text-accent accent-accent focus:ring-2 focus:ring-accent/30"
+                      {...register(fieldName)}
+                    />
+                    <label htmlFor={id} className="cursor-pointer leading-snug">
+                      {marketingChannelLabel(ch.label)}
+                    </label>
+                  </div>
+                );
+              })}
+            </div>
+          </fieldset>
         </div>
       )}
 

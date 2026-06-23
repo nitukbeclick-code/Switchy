@@ -16,7 +16,7 @@ import JsonLd from "@/components/JsonLd";
 import { breadcrumbSchema, webPageSchema } from "@/lib/schema";
 
 // Real last editorial review of these terms. Bump when the text changes.
-const LAST_REVIEWED = "2026-06-22";
+const LAST_REVIEWED = "2026-06-23";
 
 export const metadata: Metadata = {
   title: "תנאי שימוש",
@@ -125,6 +125,27 @@ export default function TermsPage() {
       ],
     },
     {
+      h: "דיוור שיווקי והסרה ממנו",
+      items: [
+        "דיוור שיווקי (פרסומת) — בערוצי SMS, אימייל או וואטסאפ — יישלח רק אם " +
+          "בחרתם להצטרף אליו באופן יזום בטופס יצירת הקשר, בהתאם לחוק התקשורת " +
+          "(תיקון 40 — “חוק הספאם”).",
+        "ההסכמה לכל ערוץ היא אופציונלית ונפרדת מההסכמה ליצירת קשר בנוגע לפנייה; " +
+          "תיבות ההסכמה לדיוור אינן מסומנות כברירת מחדל.",
+        "ניתן להסיר את ההסכמה לקבלת דיוור בכל עת — בתשובת ״הסר״ להודעה, או " +
+          "בפנייה אלינו בכתובת hello@chosech.co.il או בוואטסאפ 050-503-7537.",
+      ],
+    },
+    {
+      h: "גילוי בדבר דמי תיווך",
+      paras: [
+        "השוואת המסלולים באתר חינמית עבורכם. אנו מקבלים דמי תיווך/הפניה מהספקים " +
+          "כאשר אתם עוברים ספק דרכנו — וזה אינו משפיע על המחיר שתשלמו. ההשוואה " +
+          "נעשית לפי המתודולוגיה השקופה שלנו, ואנו מסמנים בגלוי כל תוכן מקודם. " +
+          "פירוט מלא של אופן ההשוואה והדירוג מצוי בעמוד השקיפות והמתודולוגיה.",
+      ],
+    },
+    {
       h: "שינויים בתנאים",
       paras: [
         "אנו עשויים לעדכן תנאים אלה מעת לעת. הגרסה העדכנית תפורסם תמיד בעמוד זה, " +
@@ -206,6 +227,19 @@ export default function TermsPage() {
                       className="text-accent-text hover:text-accent-hover"
                     >
                       מדיניות הפרטיות
+                    </Link>
+                    .
+                  </>
+                )}
+                {/* Commission-disclosure clause links to the methodology page. */}
+                {s.h === "גילוי בדבר דמי תיווך" && (
+                  <>
+                    {" "}
+                    <Link
+                      href="/transparency"
+                      className="text-accent-text hover:text-accent-hover"
+                    >
+                      לעמוד השקיפות והמתודולוגיה
                     </Link>
                     .
                   </>

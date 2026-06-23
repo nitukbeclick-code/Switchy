@@ -11,6 +11,11 @@
 // user opted in); the BEFORE INSERT trigger `leads_consent_stamp` overwrites each
 // with now() when non-null (else null) so the proof can't be backdated.
 //
+// GRANULAR MARKETING (Spam Law): three OPTIONAL, default-false per-channel opt-ins
+// (consent_marketing_sms / _email / _whatsapp) are persisted to dedicated boolean
+// columns, SEPARATE from the mandatory consent gate. They're stripped on a retry
+// if the migration adding them hasn't run yet, so a lead is never lost.
+//
 // Server-managed columns (source_ip / status / bot workflow) are NOT set here —
 // the DB rate-limit gate nulls client values and stamps the IP itself.
 // ────────────────────────────────────────────────────────────────────────────
@@ -72,7 +77,12 @@ interface LeadBody {
   callback_time?: unknown;
   notes?: unknown;
   consent?: unknown; // mandatory terms+privacy — must be true
-  marketing?: unknown; // optional opt-in
+  marketing?: unknown; // legacy: single optional opt-in (kept for back-compat)
+  // Granular per-channel marketing opt-ins (Spam Law) — each optional, default
+  // false. Persisted to the dedicated leads.consent_marketing_* boolean columns.
+  consent_marketing_sms?: unknown;
+  consent_marketing_email?: unknown;
+  consent_marketing_whatsapp?: unknown;
 }
 
 function str(v: unknown): string {
@@ -92,6 +102,21 @@ function isMissingCityColumn(error: {
   if (error.code === "PGRST204") return true;
   const msg = (error.message || "").toLowerCase();
   return msg.includes("city") && msg.includes("column");
+}
+
+/**
+ * True when an insert error means a `consent_marketing_*` column doesn't exist
+ * yet (the granular-marketing-consent migration hasn't been applied). PostgREST
+ * reports a missing column as PGRST204; we also match the column-name signal so
+ * the route can retry WITHOUT the marketing columns and never lose the lead.
+ */
+function isMissingMarketingColumn(error: {
+  code?: string;
+  message?: string;
+}): boolean {
+  if (error.code === "PGRST204") return true;
+  const msg = (error.message || "").toLowerCase();
+  return msg.includes("consent_marketing");
 }
 
 export async function POST(req: Request) {
@@ -129,7 +154,17 @@ export async function POST(req: Request) {
   const planId = str(body.plan_id) || null;
   const notes = str(body.notes);
   const consent = body.consent === true;
-  const marketing = body.marketing === true;
+  // Granular per-channel marketing opt-ins (each optional, default false).
+  const marketingSms = body.consent_marketing_sms === true;
+  const marketingEmail = body.consent_marketing_email === true;
+  const marketingWhatsapp = body.consent_marketing_whatsapp === true;
+  // Legacy single opt-in OR any granular channel implies a marketing consent
+  // (used for the marketing_accepted_at consent timestamp).
+  const marketing =
+    body.marketing === true ||
+    marketingSms ||
+    marketingEmail ||
+    marketingWhatsapp;
 
   // callback_time is constrained by the schema comment to a known set.
   const allowedCallback = ["now", "noon", "evening", "tomorrow"];
@@ -176,7 +211,7 @@ export async function POST(req: Request) {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
-  // Shared row (everything except how `city` is stored).
+  // Shared row (everything except how `city` is stored and the marketing cols).
   const baseRow = {
     name,
     phone,
@@ -191,27 +226,64 @@ export async function POST(req: Request) {
     marketing_accepted_at: marketing ? nowIso : null,
   };
 
-  // Prefer the dedicated `leads.city` column (migration leads-city-2026-06).
-  // If it isn't present yet (column-missing schema-cache error), retry with the
-  // city folded into notes so the lead is never lost before the migration runs.
-  let error = (
-    await supabase.from("leads").insert({
-      ...baseRow,
-      city: city || null,
-      notes: baseNotes || null,
-    })
-  ).error;
+  // Granular per-channel marketing opt-ins (Spam Law) — written to dedicated
+  // boolean columns. Folded out into a retry if the migration isn't applied yet.
+  const marketingCols = {
+    consent_marketing_sms: marketingSms,
+    consent_marketing_email: marketingEmail,
+    consent_marketing_whatsapp: marketingWhatsapp,
+  };
 
-  if (error && isMissingCityColumn(error)) {
-    const notesWithCity = [city ? `עיר: ${city}` : "", baseNotes]
+  // The desired storage: dedicated `leads.city` column (leads-city-2026-06) +
+  // dedicated `consent_marketing_*` columns (granular-marketing-2026-06). If
+  // either migration isn't applied yet PostgREST returns a column-missing error;
+  // we retry, stripping the missing group, so a lead is NEVER lost. The opt-in
+  // booleans default false, so dropping them only ever loses an explicit opt-IN —
+  // we conservatively fold a recorded opt-in into notes on that fallback path.
+  let withCity = true;
+  let withMarketing = true;
+
+  function buildRow() {
+    const notesWithCity = withCity
+      ? baseNotes
+      : [city ? `עיר: ${city}` : "", baseNotes].filter(Boolean).join(" | ");
+    const optedInChannels = [
+      marketingSms ? "SMS" : "",
+      marketingEmail ? "אימייל" : "",
+      marketingWhatsapp ? "וואטסאפ" : "",
+    ].filter(Boolean);
+    const marketingNote =
+      !withMarketing && optedInChannels.length > 0
+        ? `אישור דיוור שיווקי: ${optedInChannels.join(", ")}`
+        : "";
+    const finalNotes = [notesWithCity, marketingNote]
       .filter(Boolean)
       .join(" | ");
-    error = (
-      await supabase.from("leads").insert({
-        ...baseRow,
-        notes: notesWithCity || null,
-      })
-    ).error;
+    return {
+      ...baseRow,
+      ...(withCity ? { city: city || null } : {}),
+      ...(withMarketing ? marketingCols : {}),
+      notes: finalNotes || null,
+    };
+  }
+
+  let error = (await supabase.from("leads").insert(buildRow())).error;
+
+  // Retry, stripping whichever optional column-group the error names, until the
+  // insert succeeds or there's nothing left to strip. Both migrations surface a
+  // missing column as PGRST204; the marketing detector also matches the explicit
+  // `consent_marketing` name, the city detector the explicit `city` name. We cap
+  // at two retries (one per optional group) so a lead is never lost to a pending
+  // migration, without risking an unbounded loop.
+  for (let attempt = 0; attempt < 2 && error; attempt++) {
+    if (withMarketing && isMissingMarketingColumn(error)) {
+      withMarketing = false;
+    } else if (withCity && isMissingCityColumn(error)) {
+      withCity = false;
+    } else {
+      break; // not a strippable missing-column error
+    }
+    error = (await supabase.from("leads").insert(buildRow())).error;
   }
 
   if (error) {

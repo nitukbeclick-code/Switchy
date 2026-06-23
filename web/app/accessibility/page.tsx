@@ -9,10 +9,13 @@
 //     tokens, reduced-motion support, RTL, keyboard nav), and
 //   • what we have NOT done — we do NOT claim a formal third-party audit or a
 //     signed compliance certificate, because none is verified here.
-// The accessibility-coordinator's real contact details are the owner's to fill in
-// ([[OWNER: …]]); the date is the real last review. No unverified compliance claim
-// is asserted (no "fully compliant"/"certified"). MUST be reviewed by the owner /
-// an accessibility consultant before being relied on as the binding statement.
+// RESPONSIBLE PARTY: at the current scale of activity (turnover < 1M ₪) a formal
+// accessibility COORDINATOR is not mandatory; the responsible party is named as the
+// team ("צוות Switch AI (חוסך)") with real contacts, plus a complaint/feedback
+// mechanism that commits to handling accessibility issues within 60 days. The date
+// is the real last review. No unverified compliance claim is asserted (no "fully
+// compliant"/"certified"). MUST be reviewed by the owner / an accessibility
+// consultant before being relied on as the binding statement.
 // ────────────────────────────────────────────────────────────────────────────
 
 import Link from "next/link";
@@ -21,7 +24,7 @@ import JsonLd from "@/components/JsonLd";
 import { breadcrumbSchema, webPageSchema } from "@/lib/schema";
 
 // Real last review of the site's accessibility status. Bump on each review.
-const LAST_REVIEWED = "2026-06-22";
+const LAST_REVIEWED = "2026-06-23";
 
 export const metadata: Metadata = {
   title: "הצהרת נגישות",
@@ -89,23 +92,38 @@ export default function AccessibilityPage() {
       ],
     },
     {
-      h: "דיווח על בעיית נגישות ופנייה לרכז הנגישות",
+      h: "הגורם האחראי על הנגישות",
       paras: [
-        "אם נתקלתם בבעיה בגלישה באתר, או אם דרושה לכם התאמת נגישות, נשמח לסייע. " +
-          "ניתן לפנות אלינו בערוצים הבאים:",
+        "בהיקף הפעילות הנוכחי של השירות לא חלה חובה למנות רכז נגישות ייעודי. עם " +
+          "זאת, אנו רואים בנגישות אחריות שלנו: הגורם האחראי לטיפול בנושאי נגישות " +
+          "באתר הוא צוות Switch AI (חוסך), שניתן לפנות אליו ישירות בערוצים הבאים:",
       ],
       items: [
-        "אחראי נגישות: צוות Switch AI (חוסך)",
+        "הגורם האחראי: צוות Switch AI (חוסך)",
         "דוא״ל: hello@chosech.co.il",
         "וואטסאפ: 050-503-7537",
       ],
     },
     {
-      h: "טיפול בפנייה",
+      h: "דיווח על בעיית נגישות ומנגנון טיפול בפנייה",
       paras: [
-        "בעת פנייה בנושא נגישות, נשמח אם תפרטו את הבעיה שבה נתקלתם, את הדף או " +
-          "הפעולה הרלוונטית, ואת סוג הדפדפן והטכנולוגיה המסייעת (אם רלוונטי). " +
-          "נעשה כמיטב יכולתנו לטפל בפנייתכם בתוך זמן סביר.",
+        "אם נתקלתם בבעיית נגישות באתר, או אם דרושה לכם התאמת נגישות, נשמח שתדווחו " +
+          "לנו ונפעל לתקן. ניתן לדווח/לפנות בכתובת hello@chosech.co.il או בוואטסאפ " +
+          "050-503-7537. כדי שנוכל לסייע במהירות, נשמח אם תפרטו בפנייה:",
+      ],
+      items: [
+        "תיאור הבעיה שבה נתקלתם.",
+        "הדף (כתובת ה-URL) או הפעולה שבה אירעה הבעיה.",
+        "סוג הדפדפן והטכנולוגיה המסייעת שבה אתם משתמשים (אם רלוונטי).",
+        "דרך ליצירת קשר חוזר (אימייל או טלפון).",
+      ],
+    },
+    {
+      h: "זמן הטיפול בפנייה",
+      paras: [
+        "אנו מתחייבים לבחון כל פנייה בנושא נגישות ולטפל בה בהקדם האפשרי, ולכל " +
+          "המאוחר בתוך 60 ימים ממועד קבלתה. נעדכן אתכם לגבי הטיפול בפנייתכם " +
+          "ולגבי הפתרון, ככל שניתן ליישמו.",
       ],
     },
   ];

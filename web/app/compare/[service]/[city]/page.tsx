@@ -20,6 +20,8 @@ import JsonLd from "@/components/JsonLd";
 import SgeSummary from "@/components/SgeSummary";
 import AuthorityBlock from "@/components/AuthorityBlock";
 import ComparisonTable from "@/components/ComparisonTable";
+import CommissionDisclosure from "@/components/CommissionDisclosure";
+import PriceCaveat from "@/components/PriceCaveat";
 import RelatedAuthorityPages from "@/components/RelatedAuthorityPages";
 import LeadForm from "@/components/LeadForm";
 import {
@@ -381,6 +383,7 @@ export default async function ServiceCityPage({ params }: Params) {
           plans={plans}
           caption={`השוואת ${svc.label} ב${c.name} — מחירים בשקלים (אחידים ארצית), כולל מחיר אחרי המבצע`}
         />
+        <PriceCaveat className="mt-3" />
       </section>
 
       {/* ── Honest local nuance note ──────────────────────────────────────── */}
@@ -440,6 +443,8 @@ export default async function ServiceCityPage({ params }: Params) {
         <p className="mt-2 text-foreground">
           השאירו פרטים ונחזור אליכם עם המלצה מותאמת — חינם וללא התחייבות.
         </p>
+        {/* Commission disclosure repeated before the lead hand-off (§7b). */}
+        <CommissionDisclosure variant="inline" className="mt-3 max-w-xl" />
         <div className="mt-5 max-w-xl">
           <LeadForm
             source="compare"

@@ -63,6 +63,7 @@ const DEFAULT_COLUMNS: FooterColumn[] = [
     title: "השירות",
     links: [
       { href: "/", label: "דף הבית" },
+      { href: "/bills", label: "צילום חשבון" },
       { href: "/transparency", label: "איך אנחנו ממליצים" },
     ],
   },

@@ -6,6 +6,8 @@ import JsonLd from "@/components/JsonLd";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
 import ConsentBanner from "@/components/ConsentBanner";
+import AiConcierge from "@/components/AiConcierge";
+import PwaInstaller from "@/components/PwaInstaller";
 import { orgSchema, websiteSchema, SITE_URL, SITE_NAME } from "@/lib/schema";
 
 // Rubik for display/headings, Assistant for body/labels. Hebrew-only subset: this
@@ -146,6 +148,16 @@ export default function RootLayout({
             localStorage; respects a stored choice on load (no flash for returning
             users) and replays a stored grant via gtag('consent','update'). */}
         <ConsentBanner />
+
+        {/* PWA shell: registers the service worker (offline shell + cache-busting
+            + push handlers) and surfaces the opt-in for price-drop / renewal web
+            push. Fail-soft — renders nothing when push is unsupported/unconfigured. */}
+        <PwaInstaller />
+
+        {/* AI concierge — floating grounded chat ("חוסך AI"). Answers only from
+            the real catalogue; offers consented lead capture (§7b disclosure +
+            mandatory consent) when a switch/contact intent is detected. */}
+        <AiConcierge />
       </body>
     </html>
   );

@@ -37,8 +37,15 @@ export default function sitemap(): MetadataRoute.Sitemap {
   }));
 
   // /compare and /providers — the authority index hubs (linked from the footer +
-  // every breadcrumb trail).
+  // every breadcrumb trail). /quiz is the high-intent matcher entry point (a few
+  // answers → instant real matches → lead hand-off), so it earns top priority.
   const hubs: MetadataRoute.Sitemap = [
+    {
+      url: `${SITE_URL}/quiz`,
+      lastModified: now,
+      changeFrequency: "weekly",
+      priority: 0.9,
+    },
     {
       url: `${SITE_URL}/compare`,
       lastModified: now,
@@ -163,6 +170,16 @@ export default function sitemap(): MetadataRoute.Sitemap {
     },
   ];
 
+  // /bills — the "צלמו את החשבון" → savings tool (bill photo → cheaper plans).
+  const bills: MetadataRoute.Sitemap = [
+    {
+      url: `${SITE_URL}/bills`,
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.7,
+    },
+  ];
+
   // /switch + /switch/[provider] — factual smart-exit guides.
   const switchHub: MetadataRoute.Sitemap = [
     {
@@ -211,6 +228,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     ...providers,
     ...vs,
     ...marketPulse,
+    ...bills,
     ...switchHub,
     ...switchProviders,
     ...guidesHub,

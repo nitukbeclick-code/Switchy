@@ -11,6 +11,8 @@
 
 import type { Plan } from "@/lib/types";
 import { priceUnitLabel } from "@/lib/format";
+import type { PriceDrop } from "@/lib/price-history";
+import PriceDropBadge from "@/components/PriceDropBadge";
 
 /** What kind of editorial label, if any, a row carries. */
 export type FeatureLabel = "promoted" | "editor";
@@ -25,6 +27,22 @@ export interface ComparisonTableProps {
    * visible "מקודם" / "בחירת העורך" badge on that row — honesty requirement.
    */
   featured?: Record<string, FeatureLabel>;
+  /**
+   * Optional per-plan REAL price-drop summary, keyed by plan id. When an entry is
+   * a non-null {@link PriceDrop}, the row's price cell shows an honest
+   * "ירד ₪X השבוע" badge (presentation only — the drop is decided upstream from
+   * public.plan_price_history; this component renders only what it's told). A
+   * `null` entry, or a missing key, shows no badge.
+   */
+  priceDrops?: Record<string, PriceDrop | null>;
+  /**
+   * When true AND `priceDrops` is NOT provided, each row's badge self-fetches its
+   * own history from /api/price-history (client-side) and shows the badge only if a
+   * real drop exists. Off by default so SSR pages opt in explicitly.
+   */
+  autoPriceDrops?: boolean;
+  /** Show the tiny trend sparkline inside any rendered drop badge. */
+  priceDropSparkline?: boolean;
   /** Optional extra classes on the outer scroll wrapper. */
   className?: string;
 }
@@ -43,6 +61,9 @@ export default function ComparisonTable({
   plans,
   caption,
   featured,
+  priceDrops,
+  autoPriceDrops = false,
+  priceDropSparkline = false,
   className,
 }: ComparisonTableProps) {
   return (
@@ -136,6 +157,31 @@ export default function ComparisonTable({
                   <span className="text-xs text-muted">
                     {priceUnitLabel(plan)}
                   </span>
+                  {/* Honest price-drop badge — renders ONLY when a real
+                      week-over-week drop exists (decided upstream from
+                      plan_price_history). Either driven by a pre-resolved
+                      `priceDrops` map, or self-fetched when `autoPriceDrops`. */}
+                  {priceDrops
+                    ? (() => {
+                        const drop = priceDrops[plan.id];
+                        return drop ? (
+                          <span className="mt-1 block">
+                            <PriceDropBadge
+                              planId={plan.id}
+                              drop={drop}
+                              sparkline={priceDropSparkline}
+                            />
+                          </span>
+                        ) : null;
+                      })()
+                    : autoPriceDrops ? (
+                        <span className="mt-1 block">
+                          <PriceDropBadge
+                            planId={plan.id}
+                            sparkline={priceDropSparkline}
+                          />
+                        </span>
+                      ) : null}
                 </td>
 
                 <td className="px-4 py-3 text-start whitespace-nowrap">

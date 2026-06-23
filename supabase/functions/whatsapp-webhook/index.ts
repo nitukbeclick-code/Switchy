@@ -23,6 +23,7 @@ import { fetchRows, serviceFetch } from "../_shared/db.ts";
 import { jlog } from "../_shared/log.ts";
 import {
   buildCatalogueContext,
+  buildRecommendBlock,
   buildSuggestions,
   catalogueProviders,
   CATEGORY_HE,
@@ -48,6 +49,14 @@ import {
   OPTOUT_CONFIRM_REPLY,
   withFirstContactNotice,
 } from "./intents.ts";
+import {
+  type ConvContext,
+  effectiveTopic,
+  extractSlots,
+  mergeContext,
+  parseContext,
+} from "./context.ts";
+import { buildSavingHint, buildTopicReply } from "./flows.ts";
 
 const VERIFY_TOKEN = Deno.env.get("WHATSAPP_VERIFY_TOKEN") ?? "";
 const APP_SECRET = Deno.env.get("WHATSAPP_APP_SECRET") ?? "";
@@ -270,7 +279,7 @@ async function upsertContact(phone: string, name?: string): Promise<Row | null> 
 
 async function getOrCreateConversation(contactId: string): Promise<Row | null> {
   const open = await fetchRows<Row>(
-    `/rest/v1/whatsapp_conversations?contact_id=eq.${contactId}&status=in.(open,bot,human)&order=created_at.desc&limit=1&select=id,status,bot_enabled`,
+    `/rest/v1/whatsapp_conversations?contact_id=eq.${contactId}&status=in.(open,bot,human)&order=created_at.desc&limit=1&select=id,status,bot_enabled,ai_state`,
   );
   if (open && open.length) return open[0];
   const created = await pgInsert("whatsapp_conversations", { contact_id: contactId, status: "open" }, { returnRep: true });
@@ -454,12 +463,28 @@ async function handleBill(mediaId: string, aiKeys: AiKeys): Promise<string> {
   return `${head}\nכמה מסלולים זולים יותר:\n${lines.join("\n")}\n\nרוצה שאחבר אותך לנציג שיסדר את המעבר?`;
 }
 
-async function handleChat(message: string, history: ChatTurn[], aiKeys: AiKeys, recommend: boolean): Promise<string> {
+async function handleChat(
+  message: string,
+  history: ChatTurn[],
+  aiKeys: AiKeys,
+  recommend: boolean,
+  ctx: ConvContext = {},
+): Promise<string> {
   const plans = await getPlans();
   const system = SYSTEM_PROMPT_HEADER + buildCatalogueContext(plans);
-  const userMsg = recommend
-    ? `${message}\n\n(המשתמש/ת מבקש/ת המלצה — הצע/י עד 3 מסלולים ספציפיים מהרשימה עם סיבה קצרה לכל אחד, ושאל/י שאלה אחת קצרה לדיוק.)`
-    : message;
+  let userMsg = message;
+  if (recommend) {
+    // Ground the advisor turn in a TIGHT candidate block built from the context
+    // we've gathered across turns (category/budget/abroad) so the model picks
+    // FROM real, relevant rows instead of scanning the whole catalogue. Falls
+    // back to the generic nudge when we have no hints yet.
+    const block = buildRecommendBlock(plans, { category: ctx.category, budget: ctx.budget, abroad: ctx.abroad }, 6);
+    const grounding = block
+      ? `\n\nמסלולים מתאימים מהקטלוג (בחר/י מתוכם בלבד):\n${block}`
+      : "";
+    userMsg =
+      `${message}\n\n(המשתמש/ת מבקש/ת המלצה — הצע/י עד 3 מסלולים ספציפיים מהרשימה עם סיבה קצרה לכל אחד, ושאל/י שאלה אחת קצרה לדיוק.)${grounding}`;
+  }
   const reply = await generateReply(aiKeys, system, history, userMsg || "שלום");
   return reply || FALLBACK_REPLY;
 }
@@ -559,6 +584,12 @@ async function handleMessage(m: Row, profileName: string | undefined, aiKeys: Ai
   const history = convo ? await recentHistory(String(convo.id), insertedId) : [];
   // Brand-new contact (no prior turns) → one-time welcome + quick-reply menu.
   const firstContact = contact ? await isFirstContact(String(contact.id), insertedId) : false;
+  // Multi-turn memory: the structured context we persisted on prior turns
+  // (last category/budget/abroad/topic), merged with whatever THIS message
+  // reveals. New slots win; old ones fill the gaps — so a terse follow-up like
+  // "וכמה זה עולה?" still routes against the category we were discussing.
+  const priorCtx = parseContext(convo?.ai_state);
+  let mergedCtx: ConvContext = { ...priorCtx };
   let reply = "";
   let intent = "qa";
   // When true, the reply is sent with the 3-button quick-reply menu instead of
@@ -579,6 +610,9 @@ async function handleMessage(m: Row, profileName: string | undefined, aiKeys: Ai
     } else { // BTN_COMPARE (or any unknown id) → the comparison/recommend prompt.
       intent = "recommend";
       reply = COMPARE_PROMPT_REPLY;
+      // Remember that we're in a compare flow so the next (likely terse) reply
+      // — "סלולר עד 50" — is routed straight to the grounded compare template.
+      mergedCtx = mergeContext(mergedCtx, { topic: "compare" });
     }
   } else if (firstContact) {
     // First message from this contact → greet, explain, offer the menu.
@@ -587,11 +621,39 @@ async function handleMessage(m: Row, profileName: string | undefined, aiKeys: Ai
     withMenu = true;
   } else {
     const t = text.trim();
+    // Update the structured memory with anything this message reveals
+    // (category/budget/abroad/topic), merged onto what we already knew.
+    const slots = extractSlots(t);
+    mergedCtx = mergeContext(mergedCtx, slots);
     intent = classifyTextIntent(t);
     if (intent === "human") {
       reply = contact ? await handleHandoff(contact, t, history) : FALLBACK_REPLY;
     } else {
-      reply = await handleChat(t, history, aiKeys, intent === "recommend");
+      // Effective topic: this message's own topic, or — when it's a terse
+      // continuation (a "וכמה?" follow-up OR a slot-only answer like "עד 40")
+      // — the topic we were on. Lets a budget reply continue a compare/recommend
+      // thread instead of dead-ending into generic chat.
+      const topic = effectiveTopic(t, slots, priorCtx.topic);
+      // Templated, fully-grounded answer for the common telecom asks
+      // (switching steps, roaming, compare, cheapest, coverage, cancel).
+      const templated = topic
+        ? buildTopicReply(topic, await getPlans(), { category: mergedCtx.category, budget: mergedCtx.budget })
+        : null;
+      if (templated && topic) {
+        // Remember the topic we just answered so the next terse follow-up
+        // ("וכמה?", "וזה כולל חו״ל?") stays on the same thread. Direct assign
+        // (not mergeContext) so the per-turn `turns` counter isn't double-bumped.
+        mergedCtx.topic = topic;
+        intent = topic === "switch" || topic === "cancel" || topic === "coverage" ? "qa" : "recommend";
+        // For compare/cheapest with a known budget, append a grounded saving
+        // hint (real cheaper rows + annual saving) — never a promised figure.
+        const hint = (topic === "compare" || topic === "cheapest")
+          ? buildSavingHint(await getPlans(), mergedCtx.category, mergedCtx.budget)
+          : "";
+        reply = hint ? `${templated}\n\n${hint}` : templated;
+      } else {
+        reply = await handleChat(t, history, aiKeys, intent === "recommend", mergedCtx);
+      }
     }
   }
 
@@ -623,6 +685,9 @@ async function handleMessage(m: Row, profileName: string | undefined, aiKeys: Ai
     await pgPatch("whatsapp_conversations", `id=eq.${convo.id}`, {
       intent,
       last_message_at: now,
+      // Persist the multi-turn memory (last category/budget/abroad/topic) so the
+      // next inbound continues the thread. Stored in the reserved ai_state jsonb.
+      ai_state: mergedCtx as Row,
       ...(intent === "human" ? { status: "human" } : {}),
     });
     await pgPatch("whatsapp_contacts", `id=eq.${contact!.id}`, { last_message_at: now });

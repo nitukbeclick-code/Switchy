@@ -9,9 +9,13 @@
   <title>חוסך — השוואת מחירי תקשורת: סלולר, אינטרנט, טלוויזיה וחו״ל</title>
   <meta name="description" content="חוסך משווה לכם מחירים על סלולר, אינטרנט, טלוויזיה, חבילות משולבות וחו״ל מכל חברות התקשורת בישראל — ומוצא את המסלול הכי משתלם. השוואה חינם, בלי התחייבות, עם ליווי אנושי במעבר." />
   <meta name="keywords" content="השוואת מחירי תקשורת, מסלול סלולר, חבילת אינטרנט, סיב אופטי, השוואת ספקים, ניוד מספר, eSIM חו״ל, מסלול 5G" />
-  <meta name="robots" content="index, follow, max-image-preview:large" />
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
+  <meta name="format-detection" content="telephone=no" />
   <meta name="theme-color" content="#111827" />
   <link rel="canonical" href="https://switchy-ai.com/" />
+  <!-- Self-referencing hreflang — single Hebrew (IL) locale; x-default points here too. -->
+  <link rel="alternate" hreflang="he-IL" href="https://switchy-ai.com/" />
+  <link rel="alternate" hreflang="x-default" href="https://switchy-ai.com/" />
   <link rel="icon" href="favicon.svg" type="image/svg+xml" />
   <link rel="apple-touch-icon" href="favicon.svg" />
   <link rel="manifest" href="site.webmanifest" />
@@ -24,6 +28,7 @@
   <meta property="og:title" content="חוסך — השוואת מחירי תקשורת בישראל" />
   <meta property="og:description" content="כל חברות התקשורת במקום אחד. משווים סלולר, אינטרנט, טלוויזיה וחו״ל, מוצאים את המסלול המשתלם ועוברים בליווי מלא — חינם, בלי התחייבות." />
   <meta property="og:image" content="https://switchy-ai.com/og-image.png" />
+  <meta property="og:image:type" content="image/png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:image:alt" content="חוסך — השוואת מחירי תקשורת חכמה" />
@@ -37,12 +42,16 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="preconnect" href="https://www.googletagmanager.com" />
   <link rel="preconnect" href="https://orzitfqmlvopujsoyigr.supabase.co" />
+  <!-- dns-prefetch fallbacks for older browsers / engines that skip preconnect. -->
+  <link rel="dns-prefetch" href="https://fonts.googleapis.com" />
+  <link rel="dns-prefetch" href="https://fonts.gstatic.com" />
+  <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" />
   <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'" />
   <noscript><link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" rel="stylesheet" /></noscript>
   <!-- ?v= cache-busting hash is owned by build.js (it prints the current
        values on every run) — keep this in sync when styles.css changes. -->
-  <link rel="stylesheet" href="styles.css?v=1666732f" />
+  <link rel="stylesheet" href="styles.css?v=d567b542" />
 
   <!-- Google Analytics 4 (Measurement ID G-YCTGRVN7SJ; mirror in site/build.js GA4_ID). -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-YCTGRVN7SJ"></script>
@@ -136,7 +145,7 @@
   <header class="nav" id="nav">
     <div class="container nav__inner">
       <a class="brand" href="#top" aria-label="חוסך — דף הבית">
-        <span class="brand__mark" aria-hidden="true">✦</span>
+        <svg class="brand__mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19V13M11 19V8M17 19v-9"/><path d="M4 9.5 10 5l4 2.5 6-4.5"/><circle cx="20" cy="3" r="1.4" fill="currentColor" stroke="none"/></svg>
         <span class="brand__name">חוסך</span>
       </a>
       <nav class="nav__links" aria-label="ניווט ראשי">
@@ -731,7 +740,7 @@
     <div class="container footer__inner">
       <div class="footer__brand">
         <a class="brand brand--light" href="#top">
-          <span class="brand__mark" aria-hidden="true">✦</span>
+          <svg class="brand__mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 19V13M11 19V8M17 19v-9"/><path d="M4 9.5 10 5l4 2.5 6-4.5"/><circle cx="20" cy="3" r="1.4" fill="currentColor" stroke="none"/></svg>
           <span class="brand__name">חוסך</span>
         </a>
         <p>השוואת מחירי תקשורת חכמה. משווים, חוסכים, עוברים — בלי כאב ראש.</p>
@@ -770,10 +779,12 @@
         <a href="guides.html">כל המדריכים</a>
         <a href="privacy.html">מדיניות פרטיות</a>
         <a href="terms.html">תנאי שימוש</a>
+        <a href="accessibility.html">הצהרת נגישות</a>
         <a href="https://wa.me/972505037537" target="_blank" rel="noopener">וואטסאפ</a>
         <a href="mailto:hello@chosech.co.il">hello@chosech.co.il</a>
       </nav>
     </div>
+    <p class="footer__disclosure">גילוי נאות: השירות חינמי לכם. חוסך (Switch AI) מקבלת עמלת תיווך מחברות התקשורת כאשר עוברים דרכנו — העמלה אינה משפיעה על המחיר שאתם משלמים ואינה משפיעה על הדירוג. אנחנו מדרגים מסלולים לפי ההתאמה לכם, לא לפי מי שמשלם לנו. <a href="about.html">המתודולוגיה שלנו</a></p>
     <div class="container footer__bottom">
       <span>© <span id="year"></span> חוסך · כל הזכויות שמורות</span>
       <span>נבנה באהבה בישראל</span>

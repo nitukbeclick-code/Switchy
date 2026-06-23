@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-/* Generates the per-category SEO landing pages (and refreshes sitemap.xml)
-   from the data below + a shared template. No dependencies.
+/* Generates the per-category SEO landing pages (and refreshes sitemap.xml +
+   robots.txt) from the data below + a shared template. No dependencies.
    Run:  node build.js   (from the site/ folder). Commit the generated *.html. */
 'use strict';
 const fs = require('fs');
@@ -252,6 +252,17 @@ const categories = [
   },
 ];
 
+// ── "How it works" — the 3-step process, single source of truth ──────────────
+// Mirrors the hand-written index.html #how section verbatim, so the homepage
+// summary and the dedicated /how-it-works.html page (+ its HowTo JSON-LD) can
+// never drift. Each step: [icon token, name, one-line description].
+// NOTE: index.html's #how steps must match this copy (it's hand-authored).
+const HOW_STEPS = [
+  ['📝', 'עונים על שאלון קצר', 'כמה אתם משלמים היום ומה חשוב לכם — מחיר, מהירות, ללא התחייבות. שתי דקות בלבד, בלי להירשם.'],
+  ['🔎', 'מקבלים המלצה חכמה', 'המנוע שלנו משווה את כל החברות ומדרג עבורכם את המסלולים — עם הסבר מלא למה כל מסלול דורג.'],
+  ['🤝', 'עוברים בליווי מלא', 'נציג חוזר אליכם, וניוד המספר נעשה תוך 1–3 ימי עסקים — בלי עמלות נסתרות ובלי כאב ראש.'],
+];
+
 const esc = (s) => String(s)
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
   .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
@@ -491,6 +502,9 @@ ${mobileGuideLinks()}
 // even with JS disabled; #year keeps the runtime hook for script.js to refresh
 // on a stale cached page, but it's pre-filled here.
 const BUILD_YEAR = new Date().getFullYear();
+// Human-readable build date (Hebrew) for the "accurate as of <date>" price caveat
+// near comparison tables — regenerated on every build so the stamp never goes stale.
+const BUILD_DATE_HE = new Date().toLocaleDateString('he-IL', { year: 'numeric', month: 'long', day: 'numeric' });
 // Social links — each an icon-only control with an accessible label. Real
 // channels only (WhatsApp + email today); kept in one place so footer markup
 // stays declarative.
@@ -522,7 +536,7 @@ const footer = `  <footer class="footer">
       </nav>
       <nav class="footer__links footer__col" aria-label="כלים ומדריכים">
         <h4>כלים מומלצים</h4>
-        <a href="compare.html">השוואת מסלולים</a><a href="community.html">קהילה ודירוגים</a><a href="book.html">תיאום פגישת וידאו</a><a href="calc-cellular.html">מחשבון סלולר</a><a href="calc-internet.html">מחשבון אינטרנט</a><a href="providers.html">כל הספקים</a><a href="guide-switching.html">מדריך מעבר ספק</a><a href="guide-number-port.html">ניוד מספר</a>
+        <a href="compare.html">השוואת מסלולים</a><a href="comparisons.html">השוואות ספקים</a><a href="community.html">קהילה ודירוגים</a><a href="book.html">תיאום פגישת וידאו</a><a href="calc-cellular.html">מחשבון סלולר</a><a href="calc-internet.html">מחשבון אינטרנט</a><a href="providers.html">כל הספקים</a><a href="glossary.html">מילון מונחים</a><a href="guide-switching.html">מדריך מעבר ספק</a><a href="guide-number-port.html">ניוד מספר</a>
       </nav>
       <nav class="footer__links footer__col" aria-label="חיפושים פופולריים">
         <h4>חיפושים פופולריים</h4>
@@ -530,12 +544,13 @@ const footer = `  <footer class="footer">
       </nav>
       <nav class="footer__links footer__col" aria-label="החברה">
         <h4>החברה</h4>
-        <a href="about.html">אודות</a><a href="app.html">האפליקציה</a><a href="guides.html">כל המדריכים</a><a href="privacy.html">מדיניות פרטיות</a><a href="terms.html">תנאי שימוש</a>
+        <a href="about.html">אודות</a><a href="how-it-works.html">איך זה עובד</a><a href="app.html">האפליקציה</a><a href="guides.html">כל המדריכים</a><a href="faq.html">שאלות נפוצות</a><a href="privacy.html">מדיניות פרטיות</a><a href="terms.html">תנאי שימוש</a><a href="accessibility.html">הצהרת נגישות</a>
         <a href="https://wa.me/972505037537" target="_blank" rel="noopener">וואטסאפ</a>
         <a href="mailto:hello@chosech.co.il">hello@chosech.co.il</a>
       </nav>
     </div>
     <div class="footer__divider" aria-hidden="true"></div>
+    <p class="footer__disclosure">גילוי נאות: השירות חינמי לכם. חוסך (Switch AI) מקבלת עמלת תיווך מחברות התקשורת כאשר עוברים דרכנו — העמלה אינה משפיעה על המחיר שאתם משלמים ואינה משפיעה על הדירוג. אנחנו מדרגים מסלולים לפי ההתאמה לכם, לא לפי מי שמשלם לנו. <a href="about.html">המתודולוגיה שלנו</a></p>
     <div class="container footer__bottom"><span>© <span id="year">${BUILD_YEAR}</span> חוסך · כל הזכויות שמורות</span><span class="footer__made">נבנה באהבה בישראל</span></div>
   </footer>
   <a class="wa-fab" href="https://wa.me/972505037537?text=%D7%94%D7%99%D7%99%2C%20%D7%90%D7%A9%D7%9E%D7%97%20%D7%9C%D7%94%D7%A9%D7%95%D7%95%D7%AA%20%D7%9E%D7%A1%D7%9C%D7%95%D7%9C%D7%99%D7%9D" target="_blank" rel="noopener" aria-label="דברו איתנו בוואטסאפ"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" width="26" height="26"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.885-9.885 9.885M20.52 3.449C18.24 1.245 15.24 0 12.045 0 5.463 0 .104 5.359.101 11.892c0 2.096.549 4.142 1.595 5.945L0 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.582 0 11.943-5.359 11.945-11.893a11.821 11.821 0 00-3.418-8.452z"/></svg></a>
@@ -608,8 +623,13 @@ const orgNode = {
   '@type': 'Organization',
   '@id': ORG_ID,
   name: 'חוסך',
+  // Canonical English wordmark is "Switch AI"; keep "Switchy" too for entity
+  // resolution (legacy/alt form). Hebrew "חוסך" stays the primary name.
+  alternateName: ['Switch AI', 'Switchy'],
   url: SITE + '/',
   logo: { '@type': 'ImageObject', url: `${SITE}/favicon.svg` },
+  image: OG_IMAGE,
+  slogan: 'משווים, חוסכים, עוברים — בלי כאב ראש',
   description: 'השוואת מחירי תקשורת חכמה — סלולר, אינטרנט, טלוויזיה, חבילות וחו״ל.',
   areaServed: 'IL',
   email: 'hello@chosech.co.il',
@@ -718,7 +738,11 @@ function jsonLd(c) {
 // (setupFee/equipment/rangeExtender), and feats (the qualitative "מידע נוסף").
 // Rendered ABOVE the detailed cards as a quick scan; each row links to the
 // provider page and a WhatsApp CTA, mirroring how "כמה זה" lays it out.
-function comparisonTable(plans, catSlug) {
+// `sectionId` overrides the section's id — provider pages render several tables
+// on one page (one per category), so they pass a unique id to avoid duplicate
+// `id="compare-table"` (invalid HTML). Category pages omit it and keep the
+// original single id, so their output is unchanged.
+function comparisonTable(plans, catSlug, sectionId = 'compare-table') {
   if (!plans || plans.length < 2) return '';
   const spec = (p, ...keys) => { for (const k of keys) { const v = (p.specs || {})[k]; if (v) return esc(v); } return ''; };
   const fee = (p, ...keys) => { for (const k of keys) { const v = (p.fees || {})[k]; if (v) return esc(v); } return ''; };
@@ -770,7 +794,7 @@ function comparisonTable(plans, catSlug) {
     return `              <tr${i === bestIdx ? ' class="cmp__best"' : ''}>${cells}${cta}</tr>`;
   }).join('\n');
   return `
-    <section class="section section--tight" id="compare-table" aria-label="טבלת השוואת מחירים">
+    <section class="section section--tight" id="${sectionId}" aria-label="טבלת השוואת מחירים">
       <div class="container">
         <header class="section__head reveal"><span class="eyebrow">השוואה מהירה</span><h2>טבלת השוואת מחירים</h2><p>כל המסלולים במבט אחד — מחיר מבצע מול המחיר אחרי תקופת המבצע, ומה כלול. ממוין מהזול ביותר.</p></header>
         <div class="cmp-wrap reveal" role="region" aria-label="טבלת השוואה — ניתן לגלול" tabindex="0">
@@ -781,6 +805,7 @@ ${trs}
             </tbody>
           </table>
         </div>
+        <p class="cmp__caveat">המחירים כוללים מע״מ ונכונים למועד עדכון הטבלה (${BUILD_DATE_HE}). מחירים ותנאים עשויים להשתנות — יש לאמת את הפרטים המלאים מול הספק לפני התקשרות.</p>
       </div>
     </section>`;
 }
@@ -807,6 +832,28 @@ function page(c) {
     return `<p class="hero__social"><strong><span data-count-to="${monthly.length}">${monthly.length}</span> מסלולים</strong> · החל מ-₪${cheapest}/חודש · חסכו עד <strong>₪<span data-count-to="${maxSave}" data-count-sep="1">${maxSave.toLocaleString()}</span></strong> בשנה לעומת ממוצע קטלוג (₪${avg})</p>`;
   })();
   const cols = (typeof builtCollections !== 'undefined' ? builtCollections : []).filter((col) => col.catSlug === c.slug);
+  // Versus pages anchored to this category (e.g. internet → "סיב אופטי מול כבלים")
+  // — surfaced as their own strip so the head-to-head comparisons are reachable
+  // one click from the category hub (crawl depth + a useful decision shortcut).
+  const vers = (typeof builtVersus !== 'undefined' ? builtVersus : []).filter((v) => v.catSlug === c.slug);
+  // Provider-vs-provider head-to-heads anchored to this category, surfaced in the
+  // same "ראש בראש" strip so both topic-vs and provider-vs comparisons are one
+  // click from the category hub (+ the comparisons hub for the full set).
+  const provVers = (typeof builtProviderVs !== 'undefined' ? builtProviderVs : []).filter((v) => v.catSlug === c.slug);
+  const versChips = [
+    ...vers.map((v) => `<a class="chip" href="${v.slug}.html">${svgIcon('scale')} ${esc(v.h1)}</a>`),
+    ...provVers.map((v) => `<a class="chip" href="${v.slug}.html">${svgIcon('scale')} ${esc(v.a.provider)} מול ${esc(v.b.provider)}</a>`),
+  ];
+  const versStrip = versChips.length ? `
+    <section class="section" aria-label="השוואות ראש בראש">
+      <div class="container">
+        <header class="section__head reveal"><span class="eyebrow">ראש בראש</span><h2>השוואות פופולריות ב${esc(c.name)}</h2></header>
+        <div class="providers__row" style="justify-content:center">
+          ${versChips.join('\n          ')}
+        </div>
+        <div style="text-align:center;margin-top:16px"><a class="btn btn--ghost" href="comparisons.html">לכל ההשוואות ←</a></div>
+      </div>
+    </section>` : '';
   const colsStrip = cols.length ? `
     <section class="section" aria-label="אוספים">
       <div class="container">
@@ -837,7 +884,7 @@ ${nav}
           ${heroStats}
           <div class="hero__cta">
             <a class="btn btn--primary btn--lg" href="#cta">השוו ותחסכו ←</a>
-            ${['cellular', 'internet', 'tv', 'triple'].includes(c.slug) ? `<a class="btn btn--ghost btn--lg" href="calc-${c.slug}.html">${svgIcon('calculator')} מחשבון חיסכון</a>` : '<a class="btn btn--ghost btn--lg" href="index.html#how">איך זה עובד?</a>'}
+            ${['cellular', 'internet', 'tv', 'triple'].includes(c.slug) ? `<a class="btn btn--ghost btn--lg" href="calc-${c.slug}.html">${svgIcon('calculator')} מחשבון חיסכון</a>` : '<a class="btn btn--ghost btn--lg" href="how-it-works.html">איך זה עובד?</a>'}
           </div>
         </div>
         <div class="lead-hero__media" aria-hidden="false">
@@ -868,6 +915,7 @@ ${comparisonTable(catPlans, c.slug)}
       </div>
     </section>
 
+${versStrip}
 ${colsStrip}
     <section class="section section--alt">
       <div class="container">
@@ -1179,6 +1227,7 @@ function head(title, desc, url, extraJsonLd, noindex, ogType = 'article') {
   <meta property="og:title" content="${esc(title)}" />
   <meta property="og:description" content="${esc(desc)}" />
   <meta property="og:image" content="${OG_IMAGE}" />
+  <meta property="og:image:type" content="image/png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
   <meta property="og:image:alt" content="${esc(OG_IMAGE_ALT)}" />
@@ -1402,6 +1451,333 @@ ${footer}
 `;
 }
 
+// ── FAQ hub (assembled from every page's real Q&A) ───────────────────────────
+// One canonical FAQ page that aggregates the [question, answer] pairs already
+// authored across the category pages (categories[].faq) and every guide
+// (guides[].faq, incl. the content/guides/*.json extras). It is NOT a new source
+// of copy — it re-surfaces existing answers so an organic "how do I…" query lands
+// on a single deep page, with a matching FAQPage JSON-LD for rich results.
+//
+// Grouping mirrors the brand categories (general → cellular → internet → tv →
+// triple → abroad). Within a group we dedupe by a normalised question key so the
+// many guides that repeat "זה באמת בחינם?"/"כמה אפשר לחסוך?" collapse to one
+// entry, and cap each group so the page stays scannable. The visible <details>
+// answers and the JSON-LD mainEntity are built from the SAME deduped list, so
+// they can never drift (a Google requirement for FAQ rich results).
+const FAQ_GROUPS = [
+  ['מדריך כללי', 'general', 'כללי — מעבר, חשבון וחיסכון'],
+  ['סלולר', 'cellular', 'סלולר'],
+  ['אינטרנט', 'internet', 'אינטרנט וסיב אופטי'],
+  ['טלוויזיה', 'tv', 'טלוויזיה וסטרימינג'],
+  ['חבילה משולבת', 'triple', 'חבילות משולבות'],
+  ['חו״ל', 'abroad', 'חו״ל ו-eSIM'],
+];
+// Per-group cap — enough to be a rich, authoritative page without an unwieldy
+// 600-item JSON-LD block. The pool is far larger; we keep the first N unique
+// questions in document order (category FAQs first, then guides).
+const FAQ_PER_GROUP = 14;
+
+// Collect deduped Q&A per group. Returns [{ catName, slug, heading, qas:[[q,a]] }].
+function collectFaqGroups() {
+  // catName → ordered unique [q, a] pairs (category FAQs seed each group first so
+  // the canonical category answers win over a guide's near-duplicate phrasing).
+  const byCat = {};
+  const seen = {};
+  const norm = (q) => q.replace(/\s+/g, ' ').replace(/[?!.…״"'׳]/g, '').trim();
+  const push = (catName, q, a) => {
+    if (!q || !a) return;
+    (byCat[catName] ||= []);
+    (seen[catName] ||= new Set());
+    const key = norm(q);
+    if (seen[catName].has(key)) return;
+    seen[catName].add(key);
+    byCat[catName].push([q, a]);
+  };
+  // Category FAQs first (canonical), mapped onto their guide-category label.
+  const catSlugToName = { cellular: 'סלולר', internet: 'אינטרנט', tv: 'טלוויזיה', triple: 'חבילה משולבת', abroad: 'חו״ל' };
+  for (const c of categories) {
+    const catName = catSlugToName[c.slug] || 'מדריך כללי';
+    for (const [q, a] of c.faq || []) push(catName, q, a);
+  }
+  // Then every guide's FAQ, bucketed into the nearest known group (unknown cats
+  // fall back to the general bucket so nothing is dropped).
+  const known = new Set(FAQ_GROUPS.map(([name]) => name));
+  for (const g of guides) {
+    const catName = known.has(g.cat) ? g.cat : 'מדריך כללי';
+    for (const [q, a] of g.faq || []) push(catName, q, a);
+  }
+  return FAQ_GROUPS
+    .map(([catName, slug, heading]) => ({
+      catName, slug, heading,
+      qas: (byCat[catName] || []).slice(0, FAQ_PER_GROUP),
+    }))
+    .filter((grp) => grp.qas.length);
+}
+
+function faqPage() {
+  const url = `${SITE}/faq.html`;
+  const groups = collectFaqGroups();
+  const totalQ = groups.reduce((n, g) => n + g.qas.length, 0);
+  // Section anchors (ASCII, stable) so the in-page TOC deep-links cleanly.
+  const sectionsHtmlOut = groups.map((grp, gi) => `
+    <section class="section${gi % 2 ? ' section--alt' : ''}" id="faq-${grp.slug}" aria-label="${esc(grp.heading)}">
+      <div class="container faq">
+        <header class="section__head reveal"><span class="eyebrow">${esc(grp.catName)}</span><h2>${esc(grp.heading)}</h2></header>
+        <div class="faq__list reveal">
+${grp.qas.map(([q, a]) => `          <details><summary>${esc(q)}</summary><p>${esc(a)}</p></details>`).join('\n')}
+        </div>
+        <p class="faq__more"><a href="${grp.slug === 'general' ? 'guides.html' : esc(grp.slug) + '.html'}">${esc(grp.slug === 'general' ? 'לכל המדריכים ←' : `השוו מסלולי ${grp.catName} ←`)}</a></p>
+      </div>
+    </section>`).join('');
+  const toc = groups.map((grp) =>
+    `<a class="chip" href="#faq-${grp.slug}">${esc(grp.heading)}</a>`).join('\n          ');
+  // FAQPage JSON-LD — mainEntity mirrors EXACTLY the rendered <details> answers
+  // above (built from the same `groups`). Plus a BreadcrumbList; the site-wide
+  // Organization/WebSite identity is emitted by head() via siteJsonLdTag().
+  const faqJsonLd = jsonForScript({ '@context': 'https://schema.org', '@graph': [
+    { '@type': 'BreadcrumbList', itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'דף הבית', item: SITE + '/' },
+      { '@type': 'ListItem', position: 2, name: 'שאלות נפוצות', item: url },
+    ] },
+    { '@type': 'FAQPage', name: 'שאלות נפוצות — חוסך', url, inLanguage: 'he-IL',
+      isPartOf: { '@id': WEBSITE_ID }, publisher: { '@id': ORG_ID },
+      mainEntity: groups.flatMap((grp) => grp.qas.map(([q, a]) => ({
+        '@type': 'Question', name: q,
+        acceptedAnswer: { '@type': 'Answer', text: a },
+      }))) },
+  ] });
+  return `<!DOCTYPE html>
+<html lang="he" dir="rtl">
+${head('שאלות נפוצות על מעבר ספק תקשורת, סלולר, אינטרנט וחו״ל | חוסך', `כל התשובות במקום אחד — ${totalQ} שאלות ותשובות על מעבר ספק, ניוד מספר, 5G, סיב אופטי, חבילות משולבות ו-eSIM לחו״ל. בלי ז'רגון, בלי הפתעות.`, url, faqJsonLd, false, 'website')}
+<body id="top">
+${navNoCta}
+  <main id="main">
+    <section class="article-hero">
+      <div class="container">
+        <p class="crumbs"><a href="index.html">דף הבית</a> ← שאלות נפוצות</p>
+        <h1>שאלות נפוצות</h1>
+        <div class="article-meta"><span>${totalQ} שאלות ותשובות על מעבר ספק, סלולר, אינטרנט, טלוויזיה, חבילות וחו״ל — מרוכזות במקום אחד.</span></div>
+        <div class="providers__row" style="justify-content:flex-start;margin-top:18px">
+          <a class="chip" href="how-it-works.html">${iconFor('✨')} איך חוסך עובד</a>
+          ${toc}
+        </div>
+      </div>
+    </section>
+${sectionsHtmlOut}
+    <section class="cta" id="cta">
+      <div class="container cta__inner reveal">
+        <h2>לא מצאתם תשובה?</h2>
+        <p>השאירו פרטים ונחזור אליכם עם המלצה אישית — חינם, בלי התחייבות. או דברו איתנו בוואטסאפ.</p>
+        ${leadFormHtml('קבלו המלצה אישית תוך 2 דקות ←')}
+        <p class="cta__note" id="leadNote" role="status" aria-live="polite"></p>
+        <a class="cta__wa" href="https://wa.me/972505037537" target="_blank" rel="noopener">${svgIcon('chat')}מעדיפים וואטסאפ? דברו איתנו</a>
+      </div>
+    </section>
+  </main>
+${footer}
+  ${leadsConfigTag()}
+  <script src="${JS_SRC}" defer></script>
+</body>
+</html>
+`;
+}
+
+// ── "How it works" explainer hub ────────────────────────────────────────────
+// An evergreen, crawl-deep landing page that explains the service end-to-end and
+// links out to every part of the site (categories, providers, compare, guides,
+// FAQ, calculators). 100% assembled from existing data — the shared HOW_STEPS,
+// the brand categories[] (+ real per-category min price/count from the
+// catalogue), the deduped "general" FAQ group (collectFaqGroups), and
+// relatedGuides — no telecom facts are invented here. JSON-LD: HowTo (the steps)
+// + FAQPage (mirrors the rendered answers) + BreadcrumbList; head() adds the
+// site-wide Organization/WebSite identity. This is the natural top-of-funnel hub
+// SEO visitors land on for "איך חוסך עובד" / "איך משווים מסלולי תקשורת".
+function howItWorksPage() {
+  const url = `${SITE}/how-it-works.html`;
+  const title = 'איך חוסך עובד — כך משווים ועוברים ספק תקשורת בלי כאב ראש | חוסך';
+  const desc = 'איך חוסך עובד? שלושה צעדים: עונים על שאלון קצר, מקבלים המלצה חכמה ומנומקת, ועוברים בליווי מלא — חינם, בלי התחייבות. כך משווים סלולר, אינטרנט, טלוויזיה, חבילות וחו״ל ומוצאים את המסלול המשתלם ביותר.';
+  // Step cards (shared HOW_STEPS) — numbered process matching the homepage.
+  const stepCards = HOW_STEPS.map(([icon, h, p], i) => `          <li class="step reveal">
+            <span class="step__num">${i + 1}</span>
+            <h3>${esc(h)}</h3>
+            <p>${esc(p)}</p>
+          </li>`).join('\n');
+  // Category explainer cards — each carries the brand intro + a real
+  // "from ₪X · N plans" line derived from the catalogue (never fabricated). The
+  // whole card links into the category hub, deepening crawl depth from this page.
+  const catCards = categories.map((c) => {
+    const list = plansByCat[c.slug] || [];
+    const monthly = list.filter((p) => !p.priceUnit || p.priceUnit === 'month');
+    // Count and price MUST come from the same set, or the line lies (e.g. abroad
+    // would pair "11 plans" with a ₪19 price that only exists in the 4-plan
+    // monthly subset, then stamp it /חודש on a mixed-unit category). Mirror the
+    // heroStats pattern: when we price from the monthly subset, count it too.
+    const set = monthly.length ? monthly : list;
+    const cheapest = set[0];
+    const fromTxt = cheapest
+      ? `${set.length} מסלולים · החל מ-₪${cheapest.price}${(!cheapest.priceUnit || cheapest.priceUnit === 'month') ? '/חודש' : ''}`
+      : `${list.length} מסלולים`;
+    return `          <a class="cat reveal" href="${c.slug}.html">
+            <span class="cat__icon" aria-hidden="true">${iconFor(c.icon)}</span>
+            <h3>${esc(c.name)}</h3>
+            <p>${esc(c.intro)}</p>
+            <span style="display:block;margin-top:8px;font-family:'Rubik',sans-serif;font-weight:700;font-size:13px;color:var(--value)">${esc(fromTxt)}</span>
+            <span class="cat__go" aria-hidden="true">להשוואה ←</span>
+          </a>`;
+  }).join('\n');
+  // "Why trust us" — reuse the honest about-page points (same copy, no new claims).
+  const trust = [
+    ['💰', 'חינם לחלוטין', 'אנחנו מקבלים עמלה מהספק כשעוברים — לא מכם. המחיר שאתם משלמים זהה, וההמלצה ניטרלית.'],
+    ['📊', 'המלצה מוסברת', 'רואים בדיוק למה כל מסלול דורג — ציון ערך לפי מחיר וגמישות, לא רשימה גנרית.'],
+    ['⏰', 'התראת חידוש', 'מזכירים לכם לבדוק שוב לפני שהמבצע נגמר — כדי שלא תשלמו את המחיר המלא בשקט.'],
+    ['🛡️', 'בלי הפתעות', 'מציגים גם את המחיר שאחרי המבצע ומלווים את כל המעבר, כולל ניוד מספר.'],
+  ].map(([icon, h, p]) => `        <article class="feature feature--check reveal"><span class="feature__icon">${iconFor(icon)}</span><h3>${esc(h)}</h3><p>${esc(p)}</p></article>`).join('\n');
+  // FAQ — reuse the deduped "general" group (mevar/bill/savings) so the visible
+  // <details> and the FAQPage JSON-LD are built from the SAME existing answers.
+  const generalGroup = collectFaqGroups().find((g) => g.slug === 'general');
+  const faqQas = (generalGroup ? generalGroup.qas : []).slice(0, 8);
+  const faqSection = faqQas.length ? `
+    <section class="section" id="faq">
+      <div class="container faq">
+        <header class="section__head reveal"><span class="eyebrow">שאלות נפוצות</span><h2>שאלות על השירות</h2></header>
+        <div class="faq__list reveal">
+${faqQas.map(([q, a]) => `          <details><summary>${esc(q)}</summary><p>${esc(a)}</p></details>`).join('\n')}
+        </div>
+        <p class="faq__more"><a href="faq.html">לכל השאלות הנפוצות ←</a></p>
+      </div>
+    </section>` : '';
+  // Useful guides — general decision guides first (relatedGuides with no cat
+  // returns the general pool first), capped at 4.
+  const guideCards = relatedGuides(null, null, 4).map(guideCard).join('\n');
+  // Popular shortcut collections (real, built pages only).
+  const colChips = (typeof builtCollections !== 'undefined' ? builtCollections : [])
+    .slice(0, 8)
+    .map((col) => `<a class="chip" href="${col.slug}.html">${esc(col.h1)}</a>`).join('\n          ');
+  // JSON-LD: HowTo (the 3 steps) + FAQPage (mirrors rendered answers) +
+  // BreadcrumbList. The HowTo totalTime/estimatedCost reflect the honest pitch
+  // (a few minutes, free). Each step references the on-page #step-N anchor.
+  const howToNode = {
+    '@type': 'HowTo',
+    name: 'איך לעבור ספק תקשורת ולחסוך עם חוסך',
+    description: 'שלושה צעדים פשוטים: שאלון קצר, המלצה חכמה ומנומקת, ומעבר בליווי מלא — חינם ובלי התחייבות.',
+    inLanguage: 'he-IL',
+    totalTime: 'PT3M',
+    estimatedCost: { '@type': 'MonetaryAmount', currency: 'ILS', value: '0' },
+    supply: [], tool: [],
+    step: HOW_STEPS.map(([, h, p], i) => ({
+      '@type': 'HowToStep', position: i + 1, name: h, text: p,
+      url: `${url}#step-${i + 1}`,
+    })),
+    isPartOf: { '@id': WEBSITE_ID }, publisher: { '@id': ORG_ID },
+  };
+  const graph = [
+    { '@type': 'BreadcrumbList', itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'דף הבית', item: SITE + '/' },
+      { '@type': 'ListItem', position: 2, name: 'איך זה עובד', item: url },
+    ] },
+    howToNode,
+  ];
+  if (faqQas.length) {
+    graph.push({
+      '@type': 'FAQPage',
+      mainEntity: faqQas.map(([q, a]) => ({
+        '@type': 'Question', name: q,
+        acceptedAnswer: { '@type': 'Answer', text: a },
+      })),
+    });
+  }
+  const howJsonLd = jsonForScript({ '@context': 'https://schema.org', '@graph': graph });
+  return `<!DOCTYPE html>
+<html lang="he" dir="rtl">
+${head(title, desc, url, howJsonLd, false, 'website')}
+<body id="top">
+${nav}
+  <main id="main">
+    <section class="lead-hero">
+      <div class="hero-decor" aria-hidden="true" data-parallax="0.18">${heroDecor()}</div>
+      <div class="container">
+        <p class="crumbs"><a href="index.html">דף הבית</a> ← איך זה עובד</p>
+        <span class="pill pill--ico">${iconFor('✨')} פשוט כמו 1·2·3 · חינם · בלי התחייבות</span>
+        <h1>איך <span class="hl">חוסך</span> עובד</h1>
+        <p>אנחנו מרכזים את כל מסלולי התקשורת בישראל — סלולר, אינטרנט, טלוויזיה, חבילות משולבות וחו״ל — במקום אחד, משווים בשבילכם ומלווים את המעבר. הנה כל התהליך, מהשאלון ועד החיסכון.</p>
+        <div class="hero__cta">
+          <a class="btn btn--primary btn--lg" href="#cta">השוו ותחסכו ←</a>
+          <a class="btn btn--ghost btn--lg" href="plans.html">דפדפו בכל המסלולים</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="how">
+      <div class="container">
+        <header class="section__head reveal"><span class="eyebrow">שלושה צעדים</span><h2>מהשאלון ועד מסלול חדש</h2><p>שלוש דקות מהצד שלכם — את כל השאר אנחנו עושים.</p></header>
+        <ol class="steps">
+${stepCards}
+        </ol>
+      </div>
+    </section>
+
+    <section class="section section--alt" id="categories">
+      <div class="container">
+        <header class="section__head reveal"><span class="eyebrow">מה משווים</span><h2>כל קטגוריות התקשורת</h2><p>בחרו קטגוריה כדי לראות את כל המסלולים, מחירים והשוואה מלאה.</p></header>
+        <div class="cats">
+${catCards}
+        </div>
+      </div>
+    </section>
+
+    <section class="section" aria-label="למה לסמוך עלינו">
+      <div class="container">
+        <header class="section__head reveal"><span class="eyebrow">למה חוסך</span><h2>למה אפשר לסמוך עלינו</h2></header>
+        <div class="features">
+${trust}
+        </div>
+      </div>
+    </section>
+
+    <section class="section section--alt" aria-label="כלים שימושיים">
+      <div class="container">
+        <header class="section__head reveal"><span class="eyebrow">כלים</span><h2>כלים שיעזרו לכם להחליט</h2></header>
+        <div class="providers__row">
+          <a class="chip" href="compare.html">${svgIcon('scale')} השוואת מסלולים צד לצד</a>
+          <a class="chip" href="providers.html">${svgIcon('building')} כל הספקים</a>
+${builtCalculators.map((c) => `          <a class="chip" href="calc-${c.slug}.html">${svgIcon('calculator')} מחשבון חיסכון ${esc(c.name)}</a>`).join('\n')}
+          <a class="chip" href="guides.html">${svgIcon('book')} כל המדריכים</a>
+          <a class="chip" href="glossary.html">${svgIcon('book')} מילון מונחים</a>
+          <a class="chip" href="faq.html">${svgIcon('info')} שאלות נפוצות</a>
+        </div>
+${colChips ? `        <div class="providers__row" style="margin-top:14px">
+          ${colChips}
+        </div>` : ''}
+      </div>
+    </section>
+
+    <section class="section" aria-label="מדריכים שימושיים">
+      <div class="container">
+        <header class="section__head reveal"><span class="eyebrow">כדאי לדעת</span><h2>מדריכים שיחסכו לכם כסף</h2></header>
+        <div class="guide-cards guide-cards--4">
+${guideCards}
+        </div>
+      </div>
+    </section>
+${faqSection}
+    <section class="cta" id="cta">
+      <div class="container cta__inner reveal">
+        <h2>מוכנים להתחיל לחסוך?</h2>
+        <p>השאירו פרטים ונחזור אליכם עם ההשוואה וההמלצה — חינם, בלי התחייבות.</p>
+        ${leadFormHtml('קבלו המלצה אישית תוך 2 דקות ←')}
+        <p class="cta__note" id="leadNote" role="status" aria-live="polite"></p>
+        <a class="cta__wa" href="https://wa.me/972505037537" target="_blank" rel="noopener">${svgIcon('chat')}מעדיפים וואטסאפ? דברו איתנו</a>
+      </div>
+    </section>
+  </main>
+${footer}
+  ${leadsConfigTag()}
+  <script src="${JS_SRC}" defer></script>
+</body>
+</html>
+`;
+}
+
 // ── Static pages (about / legal) ─────────────────────────────────────────────
 const staticPages = [
   {
@@ -1442,6 +1818,54 @@ const staticPages = [
       { h2: 'קניין רוחני', p: ['התכנים, העיצוב והסימנים באתר הם בבעלות חוסך או מי מטעמה, ואין לעשות בהם שימוש ללא רשות בכתב.'] },
       { h2: 'הגבלת אחריות', p: ['השירות ניתן כפי שהוא ("as is"). בכפוף לדין, חוסך לא תישא באחריות לנזק עקיף הנובע מהסתמכות על המידע או מהמעבר בין ספקים.'] },
       { h2: 'דין חל', p: ['על תנאים אלה יחולו דיני מדינת ישראל, וסמכות השיפוט הבלעדית נתונה לבתי המשפט המוסמכים בישראל.'] },
+    ],
+  },
+  {
+    // NOTE: this is a truthful draft. The [[OWNER: …]] placeholders mark details
+    // we cannot verify automatically (the exact conformance level actually
+    // achieved by an audit, the accessibility coordinator's name/phone, and the
+    // date of the last review). They MUST be reviewed and completed by the owner,
+    // and ideally checked by legal/an accessibility consultant, before relying on
+    // this page for regulatory compliance under תקנות שוויון זכויות לאנשים עם
+    // מוגבלות (התאמות נגישות לשירות), התשע"ג-2013.
+    slug: 'accessibility',
+    title: 'הצהרת נגישות — חוסך',
+    desc: 'הצהרת הנגישות של אתר חוסך — המחויבות שלנו להנגשת השירות הדיגיטלי, התאמות הנגישות שבוצעו, והדרך לפנות אלינו בנושאי נגישות.',
+    h1: 'הצהרת נגישות', intro: 'עודכן לאחרונה: יוני 2026',
+    sections: [
+      { h2: 'המחויבות שלנו לנגישות', p: [
+        'בחוסך אנו רואים חשיבות רבה במתן שירות שוויוני ונגיש לכלל המשתמשים, לרבות אנשים עם מוגבלות. אנו פועלים להנגשת האתר והשירותים הדיגיטליים שלנו כך שיהיו נוחים וזמינים ככל הניתן עבור כולם.',
+        'הנגשת האתר נעשית בהתאם להוראות תקנות שוויון זכויות לאנשים עם מוגבלות (התאמות נגישות לשירות), התשע"ג-2013, ובהתבסס על המלצות התקן הישראלי ת"י 5568 לנגישות תכנים באינטרנט, המבוסס על הנחיות WCAG 2.0.',
+      ] },
+      { h2: 'רמת ההנגשה באתר', p: [
+        'אנו שואפים לעמוד ברמת הנגישות AA לפי הנחיות WCAG 2.0 / ת"י 5568.',
+        'נכון למועד עדכון הצהרה זו, האתר טרם עבר בדיקת נגישות חיצונית פורמלית, ולכן איננו מצהירים על עמידה מלאה ומאושרת ברמה AA. אנו פועלים באופן שוטף להשגת יעד זה, ונעדכן הצהרה זו עם השלמת בדיקה מקצועית.',
+      ] },
+      { h2: 'התאמות הנגישות שבוצעו באתר', ul: [
+        'מבנה דפים סמנטי ותמיכה בניווט וקריאה מימין לשמאל (RTL) בעברית.',
+        'טקסט חלופי לתמונות ותוויות נגישות (aria-label) לפקדים ולכפתורים.',
+        'אפשרות ניווט והפעלה באמצעות מקלדת.',
+        'שמירה על ניגודיות צבעים קריאה בין הטקסט לרקע.',
+        'מבנה כותרות היררכי המסייע לקוראי מסך.',
+        'טפסים עם תוויות מקושרות והודעות שגיאה ברורות.',
+      ] },
+      { h2: 'הסתייגות ומגבלות ידועות', p: [
+        'למרות מאמצינו להנגיש את כלל הדפים והרכיבים, ייתכן שחלקים מסוימים באתר טרם הונגשו במלואם או נמצאים בתהליך הנגשה. אנו ממשיכים לשפר את נגישות האתר באופן שוטף.',
+        'אם נתקלתם בקושי נגישות בעמוד או ברכיב כלשהו, נשמח שתפנו אלינו ונפעל לתקן זאת בהקדם.',
+      ] },
+      { h2: 'הגורם האחראי לנגישות', p: [
+        'הגורם האחראי על הטיפול בנושאי נגישות בחוסך (Switch AI) הוא צוות Switch AI. בהתאם להיקף הפעילות של החברה, איננו נדרשים למינוי רכז נגישות ייעודי, וצוות Switch AI מרכז את הטיפול בפניות הנגישות ומחויב לתת להן מענה.',
+        'פרטי יצירת קשר לנושאי נגישות:',
+        'דוא"ל: hello@chosech.co.il',
+        'וואטסאפ / טלפון: 050-503-7537',
+      ] },
+      { h2: 'פנייה ומנגנון טיפול בתלונות נגישות', p: [
+        'נשמח לקבל פניות, הערות והצעות לשיפור בנושא נגישות האתר, וכן תלונות על ליקויי נגישות. בעת הפנייה נבקש לפרט את העמוד או הרכיב שבו נתקלתם בקושי, את סוג הקושי, ואת אמצעי הקשר לחזרה אליכם.',
+        'אנו מתחייבים לבחון כל פנייה, להשיב למגיש/ת הפנייה ולפעול לתיקון ליקוי הנגישות, ככל הניתן, בתוך 60 ימים ממועד קבלת הפנייה. במקרים מורכבים שבהם נדרש זמן טיפול ארוך יותר, נעדכן אתכם על כך ועל לוח הזמנים הצפוי.',
+      ] },
+      { h2: 'עדכון ההצהרה', p: [
+        'הצהרת נגישות זו עודכנה לאחרונה בחודש יוני 2026. אנו בוחנים ומעדכנים אותה מעת לעת בהתאם לשיפורים המתבצעים באתר.',
+      ] },
     ],
   },
 ];
@@ -1531,6 +1955,7 @@ ${navNoCta}
           <a href="compare.html" class="glass quick-nav__card"><span class="quick-nav__ico" aria-hidden="true">${svgIcon('scale')}</span><br>השוואת מסלולים</a>
           <a href="providers.html" class="glass quick-nav__card"><span class="quick-nav__ico" aria-hidden="true">${svgIcon('building')}</span><br>כל הספקים</a>
           <a href="guides.html" class="glass quick-nav__card"><span class="quick-nav__ico" aria-hidden="true">${svgIcon('book')}</span><br>מדריכים</a>
+          <a href="how-it-works.html" class="glass quick-nav__card"><span class="quick-nav__ico" aria-hidden="true">${svgIcon('sparkle')}</span><br>איך זה עובד</a>
           <a href="app.html" class="glass quick-nav__card"><span class="quick-nav__ico" aria-hidden="true">${svgIcon('phone')}</span><br>האפליקציה</a>
         </nav>
       </div>
@@ -1619,6 +2044,7 @@ ${nav}
         ${cards}
         </div>
         <p class="plan-empty" id="planEmpty">לא נמצאו חבילות שתואמות את החיפוש. נסו להסיר חלק מהמסננים או <button type="button" class="plan-empty__reset" id="planEmptyReset">לנקות הכל</button>.</p>
+        <p class="cmp__caveat">המחירים כוללים מע״מ ונכונים למועד עדכון המחירון (${BUILD_DATE_HE}). מחירים ותנאים עשויים להשתנות — יש לאמת את הפרטים המלאים מול הספק לפני התקשרות.</p>
       </div>
     </section>
 ${collectionsSection}
@@ -1648,6 +2074,28 @@ function providerPage(name, plans) {
   const sortedPlans = plans.slice().sort((a, b) => a.price - b.price);
   const cards = sortedPlans.map((p, i) => planCardHtml(p, i === 0 && sortedPlans.length > 1)).join('\n        ');
   const planCats = [...new Set(plans.map((p) => p.cat))];
+  // "Best plans" at-a-glance tables — one per category this provider sells in,
+  // reusing the same Kamaze-style comparisonTable() the category pages use. Each
+  // table is scoped to THIS provider's plans (price-sorted) so the page leads with
+  // a scannable price grid before the detailed cards. Categories are emitted in
+  // brand order; a single-plan category is skipped (the table needs ≥2 rows).
+  const provTables = categories
+    .filter((c) => planCats.includes(c.slug))
+    .map((c) => {
+      const catPlans = sortedPlans.filter((p) => p.cat === c.slug);
+      const table = comparisonTable(catPlans, c.slug, `compare-${c.slug}`);
+      if (!table) return '';
+      return `      <header class="section__head reveal" style="margin-bottom:8px"><span class="eyebrow">${esc(c.name)}</span><h2>${esc(name)} ${esc(c.name)} — המסלולים הזולים</h2></header>${table}`;
+    })
+    .filter(Boolean)
+    .join('\n');
+  // Per-category internal links into the matching comparison hub — lets a visitor
+  // (and a crawler) move from this provider to the broader "all providers in X"
+  // page, deepening the internal link graph rather than dead-ending here.
+  const catLinks = categories
+    .filter((c) => planCats.includes(c.slug))
+    .map((c) => `<a class="chip" href="${c.slug}.html">${iconFor(c.icon)} כל מסלולי ${esc(c.name)}</a>`)
+    .join('\n          ');
   const relatedProviders = [...new Set(
     catalogue.plans
       .filter((p) => p.provider !== name && planCats.includes(p.cat))
@@ -1656,6 +2104,16 @@ function providerPage(name, plans) {
   const relatedChips = relatedProviders.map((pname) =>
     `<a class="chip" href="provider-${providerSlug(pname)}.html">${providerLogo(pname, 22)} ${esc(pname)}</a>`
   ).join('\n          ');
+  // Head-to-head comparison pages this provider takes part in — links the
+  // provider hub straight into the "X מול Y" cluster (crawl depth + a high-intent
+  // shortcut). Guarded `typeof` because builtProviderVs is declared after this fn
+  // but populated before the write loop calls it.
+  const provVsLinks = (typeof builtProviderVs !== 'undefined' ? builtProviderVs : [])
+    .filter((v) => v.a.provider === name || v.b.provider === name)
+    .map((v) => {
+      const other = v.a.provider === name ? v.b.provider : v.a.provider;
+      return `<a class="chip" href="${v.slug}.html">${svgIcon('scale')} ${esc(name)} מול ${esc(other)} (${esc(v.catName)})</a>`;
+    }).join('\n          ');
   const jsonld = jsonForScript({
     '@context': 'https://schema.org',
     '@graph': [
@@ -1688,18 +2146,36 @@ ${nav}
         <div class="hero__cta"><a class="btn btn--primary btn--lg" href="#cta">קבלו השוואה חינם ←</a><a class="btn btn--ghost btn--lg" href="plans.html">לכל החבילות</a></div>
       </div>
     </section>
-    <section class="section">
+${provTables}
+    <section class="section" id="plans">
       <div class="container">
+        <header class="section__head reveal"><span class="eyebrow">${plans.length} מסלולים</span><h2>כל המסלולים של ${esc(name)} — בפירוט</h2><p>ממוין מהזול ביותר, עם כל הפרטים וכפתור פנייה ישיר.</p></header>
         <div class="plan-grid">
         ${cards}
         </div>
       </div>
     </section>
+    ${catLinks ? `<section class="providers" aria-label="השוואה לפי קטגוריה">
+      <div class="container">
+        <p class="providers__title">השוו את ${esc(name)} מול כל הספקים</p>
+        <div class="providers__row">
+          ${catLinks}
+        </div>
+      </div>
+    </section>` : ''}
     ${relatedChips ? `<section class="providers" aria-label="ספקים דומים">
       <div class="container">
         <p class="providers__title">ספקים נוספים באותן קטגוריות</p>
         <div class="providers__row">
           ${relatedChips}
+        </div>
+      </div>
+    </section>` : ''}
+    ${provVsLinks ? `<section class="providers" aria-label="השוואות ראש בראש">
+      <div class="container">
+        <p class="providers__title">${esc(name)} מול ספקים אחרים</p>
+        <div class="providers__row">
+          ${provVsLinks}
         </div>
       </div>
     </section>` : ''}
@@ -1793,6 +2269,59 @@ ${footer}
 `;
 }
 
+// ── Shared telecom glossary (single source of truth) ─────────────────────────
+// The plain-language definitions that used to live ONLY inline in comparePage()'s
+// <details> glossary. Lifting them to data lets the compare tool, the standalone
+// /glossary.html hub, and the glossary's DefinedTermSet JSON-LD all render from
+// the SAME copy — they can never drift. `tip` is the short tooltip (compare-page
+// help button); `term`/`def` are the heading + full definition. No new telecom
+// facts: identical wording to the previously-shipped glossary, plus a few terms
+// that already appear verbatim across the guides (sense-checked, evergreen).
+const GLOSSARY = [
+  { id: '5g', term: '5G והשהיה (latency)',
+    def: 'הדור החמישי של רשת הסלולר — מהיר ויציב יותר באזורים עמוסים, עם זמן תגובה קצר. דורש מכשיר תומך וכיסוי באזור.',
+    tip: '5G הוא הדור החמישי של הרשת — מהיר ויציב יותר באזורים עמוסים, עם השהיה (latency) נמוכה. דורש מכשיר שתומך וכיסוי באזור שלכם.' },
+  { id: 'commitment', term: 'התחייבות',
+    def: 'מסלול ללא התחייבות ניתן לביטול בכל עת ללא קנס; התחייבות פעילה עשויה לגרור חיוב יציאה.',
+    tip: 'מסלול ללא התחייבות ניתן לביטול בכל עת ללא קנס. מסלול עם התחייבות עשוי לגרור חיוב יציאה אם עוזבים מוקדם.' },
+  { id: 'price-after-promo', term: 'מחיר אחרי מבצע',
+    def: 'הסכום שתשלמו כשמסתיימת תקופת ההיכרות (לרוב אחרי 12 חודשים). השוו לפי המחיר הקבוע, לא רק לפי מחיר המבצע.',
+    tip: 'המחיר שתשלמו כשתקופת ההיכרות מסתיימת (לרוב אחרי 12 חודשים). תמיד השוו לפי המחיר הקבוע, לא רק לפי מחיר המבצע.' },
+  { id: 'esim', term: 'eSIM',
+    def: 'כרטיס SIM דיגיטלי בלי כרטיס פיזי, מופעל בסריקת קוד — נוח במיוחד לחבילות חו״ל.',
+    tip: 'כרטיס SIM דיגיטלי שמותקן בטלפון בלי כרטיס פיזי — מופעל בסריקת קוד, נוח במיוחד לחבילות גלישה בחו״ל.' },
+  { id: 'equipment', term: 'ציוד (נתב/ממיר)',
+    def: 'הנתב או הממיר הכלולים בחבילה. בדקו אם מדובר בהשאלה או רכישה ואם יש דמי התקנה.',
+    tip: 'הציוד הכלול בחבילה — נתב (אינטרנט) או ממיר (טלוויזיה). שימו לב אם יש דמי השאלה או רכישה חד-פעמית.' },
+  { id: 'fiber', term: 'סיב אופטי (Fiber / FTTH)',
+    def: 'התשתית המהירה והיציבה ביותר, עם מהירויות עד גיגה (1000Mb) והשהיה נמוכה — מצוין לעבודה מהבית, גיימינג וסטרימינג 4K.',
+    tip: 'סיב אופטי הוא התשתית המהירה והיציבה ביותר, עם מהירויות עד גיגה והשהיה נמוכה.' },
+  { id: 'infra-vs-isp', term: 'תשתית מול ספק (ISP)',
+    def: 'חשבון האינטרנט מורכב משניים: חברת התשתית (שמביאה את הקו לבית) וספק האינטרנט. אפשר לבחור כל אחד בנפרד, ולעיתים חבילה מאוחדת זולה יותר.',
+    tip: 'באינטרנט אתם משלמים על שני רכיבים — חברת התשתית שמביאה את הקו, וספק האינטרנט (ISP). השוו את שניהם.' },
+  { id: 'triple', term: 'חבילה משולבת (טריפל)',
+    def: 'אינטרנט, טלוויזיה וסלולר בחבילה אחת ובחשבון אחד — לרוב המסלול הכי חסכוני לעומת רכישת כל שירות בנפרד.',
+    tip: 'טריפל = אינטרנט + טלוויזיה + סלולר בחבילה אחת. לרוב זול יותר מרכישת כל שירות בנפרד.' },
+  { id: 'number-port', term: 'ניוד מספר',
+    def: 'תהליך מוסדר ומפוקח שבו הספק החדש מעביר אליו את המספר הקיים מהספק הישן — בלי שתצטרכו לבטל ידנית. בסלולר לרוב יום-יומיים.',
+    tip: 'ניוד מספר שומר על המספר הקיים שלכם במעבר ספק. הספק החדש מבצע אותו מול הישן, תוך 1–3 ימי עסקים.' },
+];
+
+// Render the glossary as a <details> block (compare page keeps its collapsible
+// help affordance) — built from GLOSSARY so it mirrors the standalone hub exactly.
+function compareGlossaryDetails() {
+  const items = GLOSSARY.map((t) => `            <div class="cmp-glossary__item">
+              <dt><button type="button" class="cmp-help" aria-label="${esc('הסבר: ' + t.term)}" data-tip="${esc(t.tip)}">?</button> ${esc(t.term)}</dt>
+              <dd>${esc(t.def)}</dd>
+            </div>`).join('\n');
+  return `        <details class="cmp-glossary">
+          <summary>מה המשמעות של כל שורה בטבלה?</summary>
+          <dl class="cmp-glossary__list">
+${items}
+          </dl>
+        </details>`;
+}
+
 function comparePage() {
   const url = `${SITE}/compare.html`;
   const data = catalogue.plans.map((p) => ({
@@ -1842,31 +2371,9 @@ ${nav}
           ${sel(2, '')}
         </div>
         <div id="compareTable" class="compare-table-wrap"></div>
-        <details class="cmp-glossary">
-          <summary>מה המשמעות של כל שורה בטבלה?</summary>
-          <dl class="cmp-glossary__list">
-            <div class="cmp-glossary__item">
-              <dt><button type="button" class="cmp-help" aria-label="הסבר: 5G והשהיה" data-tip="5G הוא הדור החמישי של הרשת — מהיר ויציב יותר באזורים עמוסים, עם השהיה (latency) נמוכה. דורש מכשיר שתומך וכיסוי באזור שלכם.">?</button> 5G והשהיה (latency)</dt>
-              <dd>הדור החמישי — מהיר ויציב יותר באזורים עמוסים, עם זמן תגובה קצר. דורש מכשיר תומך וכיסוי באזור.</dd>
-            </div>
-            <div class="cmp-glossary__item">
-              <dt><button type="button" class="cmp-help" aria-label="הסבר: התחייבות" data-tip="מסלול ללא התחייבות ניתן לביטול בכל עת ללא קנס. מסלול עם התחייבות עשוי לגרור חיוב יציאה אם עוזבים מוקדם.">?</button> התחייבות</dt>
-              <dd>מסלול ללא התחייבות ניתן לביטול בכל עת ללא קנס; התחייבות פעילה עשויה לגרור חיוב יציאה.</dd>
-            </div>
-            <div class="cmp-glossary__item">
-              <dt><button type="button" class="cmp-help" aria-label="הסבר: מחיר אחרי מבצע" data-tip="המחיר שתשלמו כשתקופת ההיכרות מסתיימת (לרוב אחרי 12 חודשים). תמיד השוו לפי המחיר הקבוע, לא רק לפי מחיר המבצע.">?</button> מחיר אחרי מבצע</dt>
-              <dd>הסכום שתשלמו כשמסתיימת תקופת ההיכרות. השוו לפי המחיר הקבוע, לא רק לפי מחיר המבצע.</dd>
-            </div>
-            <div class="cmp-glossary__item">
-              <dt><button type="button" class="cmp-help" aria-label="הסבר: eSIM" data-tip="כרטיס SIM דיגיטלי שמותקן בטלפון בלי כרטיס פיזי — מופעל בסריקת קוד, נוח במיוחד לחבילות גלישה בחו״ל.">?</button> eSIM</dt>
-              <dd>כרטיס SIM דיגיטלי בלי כרטיס פיזי, מופעל בסריקת קוד — נוח במיוחד לחבילות חו״ל.</dd>
-            </div>
-            <div class="cmp-glossary__item">
-              <dt><button type="button" class="cmp-help" aria-label="הסבר: ציוד" data-tip="הציוד הכלול בחבילה — נתב (אינטרנט) או ממיר (טלוויזיה). שימו לב אם יש דמי השאלה או רכישה חד-פעמית.">?</button> ציוד (נתב/ממיר)</dt>
-              <dd>הנתב או הממיר הכלולים בחבילה. בדקו אם מדובר בהשאלה או רכישה ואם יש דמי התקנה.</dd>
-            </div>
-          </dl>
-        </details>
+        <p class="cmp__caveat">המחירים כוללים מע״מ ונכונים למועד עדכון האתר (${BUILD_DATE_HE}). מחירים ותנאים עשויים להשתנות — יש לאמת את הפרטים המלאים מול הספק לפני התקשרות.</p>
+${compareGlossaryDetails()}
+        <p style="text-align:center;margin-top:14px"><a href="glossary.html">מילון מונחי תקשורת — כל ההסברים ←</a></p>
       </div>
     </section>
     <section class="cta" id="cta">
@@ -2196,7 +2703,7 @@ const collections = [
     filter: (p) => p.cat === 'tv' && (p.feats || []).some((f) => /ספורט|sport/i.test(f)), limit: 10,
   },
   {
-    slug: 'cellular-budget', catSlug: 'cellular', catName: 'סלולר', eyebrow: 'עד ₪40',
+    slug: 'cellular-under-40', catSlug: 'cellular', catName: 'סלולר', eyebrow: 'עד ₪40',
     title: 'מסלולי סלולר עד ₪40 לחודש — הזולים ביישראל | חוסך',
     h1: 'מסלולי סלולר עד ₪40',
     desc: 'מסלולי סלולר עד ₪40 לחודש — הזולים ביותר בשוק הישראלי. גלישה, שיחות ו-SMS בלי לשלם הרבה.',
@@ -2603,6 +3110,581 @@ const builtCalculators = CALC_SLUGS
 
 // Only collections with enough real matches become pages (no thin/empty pages).
 const builtCollections = collections.filter((col) => catalogue.plans.filter(col.filter).length >= 3);
+// Guard: two collections sharing a slug would silently overwrite each other's
+// HTML file and add a duplicate <loc> to the sitemap (a real SEO defect — see the
+// former cellular-budget collision). Fail the build loudly instead.
+(() => {
+  const seen = new Set(), dup = [];
+  for (const col of builtCollections) { if (seen.has(col.slug)) dup.push(col.slug); seen.add(col.slug); }
+  if (dup.length) throw new Error(`Duplicate collection slug(s): ${[...new Set(dup)].join(', ')} — each collection slug must be unique.`);
+})();
+
+// ── Glossary hub (evergreen explainer, single source of truth) ───────────────
+// A standalone "telecom dictionary" assembled from the shared GLOSSARY data —
+// the exact same definitions the compare tool surfaces, so they never drift.
+// 100% existing copy (no invented facts). Each term links into the most relevant
+// hub (category / collection / guide) to deepen crawl depth, and the page carries
+// a DefinedTermSet + BreadcrumbList JSON-LD; head() adds Organization/WebSite.
+// Each glossary term may name a related on-site destination (label + href) — all
+// targets are pages this build already emits, so there are no dead links.
+const GLOSSARY_LINKS = {
+  '5g': ['מסלולי 5G', 'cellular-5g.html'],
+  commitment: ['מסלולים ללא התחייבות', 'plans-no-commitment.html'],
+  'price-after-promo': ['איך לקרוא חשבון תקשורת', 'guide-read-bill.html'],
+  esim: ['חבילות eSIM לחו״ל', 'esim-abroad.html'],
+  equipment: ['השוואת מסלולי אינטרנט', 'internet.html'],
+  fiber: ['אינטרנט סיב אופטי', 'internet-fiber-only.html'],
+  'infra-vs-isp': ['סיב אופטי מול כבלים', 'guide-fiber.html'],
+  triple: ['חבילות משולבות', 'triple.html'],
+  'number-port': ['מדריך מעבר ספק', 'guide-switching.html'],
+};
+function glossaryPage() {
+  const url = `${SITE}/glossary.html`;
+  const title = 'מילון מונחי תקשורת — 5G, סיב אופטי, eSIM, טריפל וניוד מספר | חוסך';
+  const desc = 'מילון מונחי התקשורת של חוסך — כל המושגים שצריך להבין לפני שמשווים מסלול: 5G והשהיה, התחייבות, מחיר אחרי מבצע, eSIM, סיב אופטי, תשתית מול ספק, חבילה משולבת וניוד מספר. בעברית פשוטה.';
+  // Definition cards — each links into the matching hub for deeper crawl reach.
+  const cards = GLOSSARY.map((t) => {
+    const link = GLOSSARY_LINKS[t.id];
+    const linkHtml = link ? `\n            <a class="glossary__link" href="${esc(link[1])}">${esc(link[0])} ←</a>` : '';
+    return `          <article class="feature feature--check reveal" id="term-${esc(t.id)}">
+            <h3>${esc(t.term)}</h3>
+            <p>${esc(t.def)}</p>${linkHtml}
+          </article>`;
+  }).join('\n');
+  // DefinedTermSet — the structured-data twin of the rendered definitions.
+  const termSet = {
+    '@type': 'DefinedTermSet', '@id': `${url}#glossary`,
+    name: 'מילון מונחי תקשורת', url, inLanguage: 'he-IL',
+    isPartOf: { '@id': WEBSITE_ID }, publisher: { '@id': ORG_ID },
+    hasDefinedTerm: GLOSSARY.map((t) => ({
+      '@type': 'DefinedTerm', '@id': `${url}#term-${t.id}`, name: t.term, description: t.def,
+      inDefinedTermSet: { '@id': `${url}#glossary` },
+    })),
+  };
+  const glossaryJsonLd = jsonForScript({ '@context': 'https://schema.org', '@graph': [
+    { '@type': 'BreadcrumbList', itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'דף הבית', item: SITE + '/' },
+      { '@type': 'ListItem', position: 2, name: 'מילון מונחים', item: url },
+    ] },
+    termSet,
+  ] });
+  // Cross-links: every category hub + the decision guides — so this evergreen
+  // page is a genuine spoke back into the rest of the site.
+  const catChips = categories.map((c) => `<a class="chip" href="${c.slug}.html">${iconFor(c.icon)} ${esc(c.name)}</a>`).join('\n          ');
+  const guideCards = relatedGuides(null, null, 4).map(guideCard).join('\n');
+  return `<!DOCTYPE html>
+<html lang="he" dir="rtl">
+${head(title, desc, url, glossaryJsonLd, false, 'website')}
+<body id="top">
+${navNoCta}
+  <main id="main">
+    <section class="article-hero">
+      <div class="container">
+        <p class="crumbs"><a href="index.html">דף הבית</a> ← מילון מונחים</p>
+        <h1>מילון מונחי תקשורת</h1>
+        <div class="article-meta"><span>${GLOSSARY.length} מושגים שכדאי להבין לפני שמשווים מסלול — בעברית פשוטה, בלי ז׳רגון.</span></div>
+        <div class="providers__row" style="justify-content:flex-start;margin-top:18px">
+          <a class="chip" href="compare.html">${svgIcon('scale')} השוואת מסלולים</a>
+          <a class="chip" href="how-it-works.html">${iconFor('✨')} איך חוסך עובד</a>
+          <a class="chip" href="faq.html">${svgIcon('info')} שאלות נפוצות</a>
+        </div>
+      </div>
+    </section>
+    <section class="section">
+      <div class="container">
+        <header class="section__head reveal"><span class="eyebrow">מושגי מפתח</span><h2>כל המונחים שחשוב להכיר</h2><p>לחצו על מושג כדי לקפוץ לקטגוריה או למדריך הרלוונטי.</p></header>
+        <div class="features">
+${cards}
+        </div>
+      </div>
+    </section>
+    <section class="section section--alt" aria-label="קטגוריות">
+      <div class="container">
+        <header class="section__head reveal"><span class="eyebrow">להשוואה מלאה</span><h2>בחרו קטגוריה</h2></header>
+        <div class="providers__row" style="justify-content:center">
+          ${catChips}
+        </div>
+      </div>
+    </section>
+    <section class="section" aria-label="מדריכים שימושיים">
+      <div class="container">
+        <header class="section__head reveal"><span class="eyebrow">כדאי לדעת</span><h2>מדריכים שיעמיקו את התמונה</h2></header>
+        <div class="guide-cards guide-cards--4">
+${guideCards}
+        </div>
+      </div>
+    </section>
+    <section class="cta" id="cta">
+      <div class="container cta__inner reveal">
+        <h2>מבינים את המונחים — מוכנים להשוות?</h2>
+        <p>השאירו פרטים ונחזור אליכם עם ההשוואה וההמלצה — חינם, בלי התחייבות.</p>
+        ${leadFormHtml('קבלו המלצה אישית תוך 2 דקות ←')}
+        <p class="cta__note" id="leadNote" role="status" aria-live="polite"></p>
+        <a class="cta__wa" href="https://wa.me/972505037537" target="_blank" rel="noopener">${svgIcon('chat')}מעדיפים וואטסאפ? דברו איתנו</a>
+      </div>
+    </section>
+  </main>
+${footer}
+  ${leadsConfigTag()}
+  <script src="${JS_SRC}" defer></script>
+</body>
+</html>
+`;
+}
+
+// ── Versus pages (factual head-to-head, derived from the catalogue) ──────────
+// A "X מול Y" comparison page for two real sides of a category, where each side
+// is a filter over plans.json (e.g. סיב אופטי vs כבלים, 5G vs 4G). Everything is
+// pulled from the catalogue + the existing decision guide — NO telecom facts are
+// invented: the verdict copy comes from the guide's own tl;dr/answers, and the
+// per-side stats (cheapest price, plan count) are computed from real plans. Each
+// side reuses comparisonTable() + the cheapest planCardHtml, and the page links to
+// the category hub, the relevant collections and the guide. JSON-LD: BreadcrumbList
+// + a CollectionPage carrying an ItemList of every plan shown (real Offers).
+const VERSUS = [
+  {
+    slug: 'fiber-vs-cable', catSlug: 'internet', catName: 'אינטרנט',
+    title: 'סיב אופטי מול כבלים — מה עדיף וכמה זה עולה? | חוסך',
+    desc: 'השוואה אמיתית בין אינטרנט סיב אופטי לאינטרנט על כבל (HOT): מהירות, יציבות ומחיר — עם המסלולים הזולים בכל תשתית, מתוך הקטלוג המעודכן של חוסך.',
+    h1: 'סיב אופטי מול כבלים',
+    intro: 'שתי התשתיות הנפוצות לאינטרנט ביתי בישראל. סיב אופטי מהיר ויציב יותר; כבל זמין כמעט בכל מקום. הנה ההשוואה — עם המסלולים הזולים בכל צד.',
+    verdict: 'סיב אופטי הוא התשתית המהירה והיציבה ביותר, ולרוב הבתים מהירות של 300–500Mb יותר ממספיקה. כבל (HFC) מהיר וזמין נרחב אך לעיתים מאט בשעות עומס. אם סיב זמין בכתובת שלכם — לרוב כדאי. בכל מקרה זכרו שאתם משלמים על תשתית + ספק, והשוו את שניהם.',
+    sideA: { label: 'סיב אופטי', eyebrow: 'הכי מהיר', filter: (p) => p.cat === 'internet' && p.net === 'סיב אופטי', collection: 'internet-fiber-only.html' },
+    sideB: { label: 'כבלים (HOT)', eyebrow: 'זמין נרחב', filter: (p) => p.cat === 'internet' && p.net === 'כבלים', collection: 'internet-cable-only.html' },
+    guideSlug: 'guide-fiber',
+  },
+  {
+    slug: '5g-vs-4g', catSlug: 'cellular', catName: 'סלולר',
+    title: '5G מול 4G — מתי באמת כדאי לשדרג וכמה זה עולה? | חוסך',
+    desc: 'השוואה בין מסלולי 5G ל-4G: מה ההבדל האמיתי ביום-יום, מתי שווה לעבור, וכמה זה עולה — עם המסלולים הזולים בכל דור רשת, מתוך הקטלוג של חוסך.',
+    h1: '5G מול 4G בסלולר',
+    intro: '5G מהיר ויציב יותר באזורים עמוסים, וההפרש במחיר היום הצטמצם מאוד. הנה ההשוואה בין שני דורות הרשת — עם המסלולים הזולים בכל צד.',
+    verdict: 'אם הטלפון שלכם תומך ב-5G ויש כיסוי באזור — וההפרש במחיר זהה או קרוב למסלול 4G — אין סיבה לא לעבור, במיוחד באזורים עירוניים עמוסים. אבל אל תשלמו פרמיה גבוהה רק בשביל הכותרת: בגלישה רגילה רוב המשתמשים לא ירגישו הבדל דרמטי.',
+    sideA: { label: 'מסלולי 5G', eyebrow: 'הדור החדש', filter: (p) => p.cat === 'cellular' && p.is5G, collection: 'cellular-5g.html' },
+    sideB: { label: 'מסלולי 4G', eyebrow: 'מספיק לרוב', filter: (p) => p.cat === 'cellular' && !p.is5G, collection: null },
+    guideSlug: 'guide-5g',
+  },
+  {
+    slug: 'triple-vs-separate', catSlug: 'triple', catName: 'חבילה משולבת',
+    title: 'חבילה משולבת מול קנייה בנפרד — מה זול יותר? | חוסך',
+    desc: 'האם טריפל (אינטרנט + טלוויזיה + סלולר ביחד) זול יותר מקניית כל שירות בנפרד? השוואה אמיתית עם החבילות המשולבות הזולות והמסלולים הנפרדים הזולים, מהקטלוג של חוסך.',
+    h1: 'חבילה משולבת מול קנייה בנפרד',
+    intro: 'חבילה משולבת (טריפל) מרכזת אינטרנט, טלוויזיה וסלולר בחשבון אחד. לעומתה אפשר לקנות כל שירות בנפרד ולבחור את הזול בכל קטגוריה. הנה ההשוואה.',
+    verdict: 'חבילה משולבת היא לרוב המסלול הכי חסכוני וגם הכי נוח — הכול בחשבון אחד ובמעבר אחד. אבל לא תמיד: לפעמים מצרף של אינטרנט זול + טלוויזיה זולה + קו סלולר זול יוצא פחות. הכלל הפשוט — חשבו את העלות הכוללת של שתי הדרכים והשוו אותן זו לזו.',
+    sideA: { label: 'חבילה משולבת (טריפל)', eyebrow: 'הכול ביחד', filter: (p) => p.cat === 'triple', collection: 'triple-budget.html' },
+    sideB: { label: 'אינטרנט בנפרד', eyebrow: 'מרכיבים לבד', filter: (p) => p.cat === 'internet', collection: 'internet-fiber-only.html' },
+    guideSlug: 'guide-switching',
+  },
+];
+
+function versusSideHtml(side, catSlug, sideKey) {
+  const matched = catalogue.plans.filter(side.filter).sort((a, b) => offerPrice(a) - offerPrice(b));
+  if (matched.length < 1) return null;
+  const cheapest = matched[0];
+  const fromTxt = `${matched.length} מסלולים · החל מ-₪${cheapest.price}${(!cheapest.priceUnit || cheapest.priceUnit === 'month') ? '/חודש' : ''}`;
+  // `sideKey` (e.g. 'a'/'b') keeps each table's id unique on the page (the labels
+  // are Hebrew and would collapse to an empty ASCII slug → duplicate ids).
+  const table = comparisonTable(matched.slice(0, 6), catSlug, `vs-${sideKey}`);
+  const colLink = side.collection ? `<a class="btn btn--ghost" href="${esc(side.collection)}">לכל המסלולים בקטגוריה ←</a>` : '';
+  return { matched, html: `
+    <section class="section" aria-label="${esc(side.label)}">
+      <div class="container">
+        <header class="section__head reveal"><span class="eyebrow">${esc(side.eyebrow)}</span><h2>${esc(side.label)}</h2><p>${esc(fromTxt)} — ממוין מהזול ביותר.</p></header>
+        <div class="plan-grid plan-grid--featured">
+${matched.slice(0, 3).map((p) => planCardHtml(p, false)).join('\n')}
+        </div>
+${colLink ? `        <div style="text-align:center;margin-top:18px">${colLink}</div>` : ''}
+      </div>
+    </section>${table}` };
+}
+
+function versusPage(v) {
+  const url = `${SITE}/${v.slug}.html`;
+  const a = versusSideHtml(v.sideA, v.catSlug, 'a');
+  const b = versusSideHtml(v.sideB, v.catSlug, 'b');
+  if (!a || !b) return null;
+  const allShown = [...a.matched.slice(0, 6), ...b.matched.slice(0, 6)];
+  const guide = guides.find((g) => g.slug === v.guideSlug);
+  const guideCardHtml = guide ? guideCard(guide) : '';
+  const crumbs = { '@type': 'BreadcrumbList', itemListElement: [
+    { '@type': 'ListItem', position: 1, name: 'דף הבית', item: SITE + '/' },
+    { '@type': 'ListItem', position: 2, name: v.catName, item: `${SITE}/${v.catSlug}.html` },
+    { '@type': 'ListItem', position: 3, name: v.h1, item: url },
+  ] };
+  const collection = { '@type': 'CollectionPage', name: v.h1, description: v.desc, url, inLanguage: 'he-IL',
+    isPartOf: { '@id': WEBSITE_ID }, publisher: { '@id': ORG_ID },
+    ...(allShown.length ? { mainEntity: plansItemListJsonLd(allShown, url, v.h1) } : {}) };
+  const versusJsonLd = jsonForScript({ '@context': 'https://schema.org', '@graph': [crumbs, collection] });
+  return `<!DOCTYPE html>
+<html lang="he" dir="rtl">
+${head(v.title, v.desc, url, versusJsonLd, false, 'website')}
+<body id="top">
+${nav}
+  <main id="main">
+    <section class="lead-hero">
+      <div class="hero-decor" aria-hidden="true" data-parallax="0.18">${heroDecor()}</div>
+      <div class="container">
+        <p class="crumbs"><a href="index.html">דף הבית</a> ← <a href="${v.catSlug}.html">${esc(v.catName)}</a> ← ${esc(v.h1)}</p>
+        <span class="pill pill--ico">${svgIcon('scale')} השוואה אמיתית · בלי התחייבות</span>
+        <h1>${esc(v.h1)}</h1>
+        <p>${esc(v.intro)}</p>
+        <div class="hero__cta">
+          <a class="btn btn--primary btn--lg" href="#cta">השוו ותחסכו ←</a>
+          <a class="btn btn--ghost btn--lg" href="${v.catSlug}.html">לכל מסלולי ה${esc(v.catName)}</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section--alt" aria-label="המסקנה">
+      <div class="container">
+        <div class="prose" style="max-width:760px;margin:0 auto">
+          <div class="tldr"><b>השורה התחתונה:</b> ${esc(v.verdict)}</div>
+        </div>
+      </div>
+    </section>
+${a.html}
+${b.html}
+${guideCardHtml ? `
+    <section class="section section--alt" aria-label="מדריך מורחב">
+      <div class="container">
+        <header class="section__head reveal"><span class="eyebrow">להעמקה</span><h2>המדריך המלא</h2></header>
+        <div class="guide-cards guide-cards--2">
+${guideCardHtml}
+        </div>
+      </div>
+    </section>` : ''}
+    <section class="cta" id="cta">
+      <div class="container cta__inner reveal">
+        <h2>עדיין מתלבטים? נעזור לכם להחליט</h2>
+        <p>השאירו פרטים ונחזור אליכם עם ההשוואה וההמלצה המתאימה לכם — חינם, בלי התחייבות.</p>
+        ${leadFormHtml('קבלו המלצה אישית תוך 2 דקות ←')}
+        <p class="cta__note" id="leadNote" role="status" aria-live="polite"></p>
+        <a class="cta__wa" href="https://wa.me/972505037537" target="_blank" rel="noopener">${svgIcon('chat')}מעדיפים וואטסאפ? דברו איתנו</a>
+      </div>
+    </section>
+  </main>
+${footer}
+  ${leadsConfigTag()}
+  <script src="${JS_SRC}" defer></script>
+</body>
+</html>
+`;
+}
+
+// Only versus pages whose BOTH sides have real plans become pages (no thin pages).
+const builtVersus = VERSUS.filter((v) =>
+  catalogue.plans.filter(v.sideA.filter).length >= 1 && catalogue.plans.filter(v.sideB.filter).length >= 1);
+
+// ── Provider-vs-provider comparison pages ────────────────────────────────────
+// High-intent "X מול Y" head-to-head pages, one per category two named providers
+// both sell in. They DEEPEN crawl coverage on the most-searched comparison terms
+// ("סלקום מול פרטנר", "בזק מול הוט אינטרנט") and are built ENTIRELY from the
+// exported catalogue — the verdict facts (who is cheaper, who has more 5G/no-
+// commit/abroad plans, the cheapest plan on each side) are DERIVED from
+// plans.json, never invented. Every comparison is gated on BOTH providers having
+// ≥2 plans in the category (builtProviderVs), so no page is thin. The candidate
+// list below is intentionally broad; non-qualifying pairs are dropped at build.
+const PROVIDER_VS = [
+  // cellular — the most-searched head-to-heads (big-3 + the budget challengers)
+  ['cellular', 'סלקום', 'פרטנר'],
+  ['cellular', 'סלקום', 'פלאפון'],
+  ['cellular', 'פרטנר', 'פלאפון'],
+  ['cellular', 'גולן טלקום', '019 מובייל'],
+  ['cellular', 'רמי לוי', '019 מובייל'],
+  ['cellular', 'הוט מובייל', 'גולן טלקום'],
+  ['cellular', 'סלקום', 'גולן טלקום'],
+  ['cellular', 'פרטנר', 'הוט מובייל'],
+  ['cellular', 'Xphone', 'רמי לוי'],
+  // internet — fiber/cable infra rivals
+  ['internet', 'בזק', 'HOT'],
+  ['internet', 'בזק', 'פרטנר'],
+  ['internet', 'בזק', 'CCC'],
+  ['internet', 'HOT', 'פרטנר'],
+  // triple — the bundled-package rivals
+  ['triple', 'סלקום', 'HOT'],
+  ['triple', 'yes', 'HOT'],
+];
+
+// Hebrew possessive helper for catNames in copy ("מסלולי הסלולר של X").
+const PROVIDER_VS_MIN = 2; // plans per side required to publish a page
+
+// Build the comparison model for one provider in one category, all from data.
+function providerVsSide(provider, catSlug) {
+  const plans = catalogue.plans
+    .filter((p) => p.cat === catSlug && p.provider === provider)
+    .sort((a, b) => offerPrice(a) - offerPrice(b));
+  if (!plans.length) return null;
+  const monthly = plans.filter((p) => !p.priceUnit || p.priceUnit === 'month');
+  const priced = monthly.length ? monthly : plans;
+  const from = Math.min(...priced.map((p) => offerPrice(p)));
+  const avg = priced.reduce((s, p) => s + offerPrice(p), 0) / priced.length;
+  return {
+    provider, plans,
+    count: plans.length,
+    from,
+    avg: Math.round(avg),
+    cheapest: plans[0],
+    n5g: plans.filter((p) => p.is5G).length,
+    nNoCommit: plans.filter((p) => p.noCommit).length,
+    nAbroad: plans.filter((p) => p.hasAbroad).length,
+    bestScore: Math.max(...plans.map((p) => planValueScore(p))),
+  };
+}
+
+function providerVsSlug(catSlug, a, b) {
+  return `${providerSlug(a)}-vs-${providerSlug(b)}-${catSlug}`;
+}
+
+// Candidate pairs whose BOTH sides have ≥PROVIDER_VS_MIN plans in the category.
+const builtProviderVs = PROVIDER_VS
+  .map(([catSlug, a, b]) => {
+    const A = providerVsSide(a, catSlug);
+    const B = providerVsSide(b, catSlug);
+    if (!A || !B || A.count < PROVIDER_VS_MIN || B.count < PROVIDER_VS_MIN) return null;
+    const cat = categories.find((c) => c.slug === catSlug);
+    return { catSlug, catName: cat ? cat.name : catSlug, catIcon: cat ? cat.icon : '📱', a: A, b: B,
+      slug: providerVsSlug(catSlug, a, b) };
+  })
+  .filter(Boolean);
+
+// One row of the "who wins" dimension table — winner is the side with the better
+// figure; ties are honestly marked "תיקו". `lowerWins` flips the comparison for
+// price (cheaper wins). All values come straight from the data model above.
+function providerVsVerdictRows(v) {
+  const { a, b } = v;
+  const fmtMoney = (n) => '₪' + (Number.isInteger(n) ? n : n.toFixed(2));
+  const win = (av, bv, lowerWins) => {
+    if (av === bv) return 'tie';
+    const aWins = lowerWins ? av < bv : av > bv;
+    return aWins ? 'a' : 'b';
+  };
+  const rows = [
+    ['מחיר התחלתי', fmtMoney(a.from), fmtMoney(b.from), win(a.from, b.from, true)],
+    ['מספר מסלולים', String(a.count), String(b.count), win(a.count, b.count, false)],
+    ['מסלולי 5G', String(a.n5g), String(b.n5g), win(a.n5g, b.n5g, false)],
+    ['ללא התחייבות', String(a.nNoCommit), String(b.nNoCommit), win(a.nNoCommit, b.nNoCommit, false)],
+  ];
+  // "כולל חו״ל" only makes sense where at least one side bundles it (cellular).
+  if (a.nAbroad || b.nAbroad) rows.push(['מסלולים עם חו״ל', String(a.nAbroad), String(b.nAbroad), win(a.nAbroad, b.nAbroad, false)]);
+  return rows;
+}
+
+// A short, data-derived Hebrew verdict paragraph — no invented facts: it names
+// whoever is cheaper and by how much, then notes who carries more 5G / no-commit
+// plans. Deterministic for a given catalogue.
+function providerVsVerdict(v) {
+  const { a, b, catName } = v;
+  const cheaper = a.from < b.from ? a : (b.from < a.from ? b : null);
+  const dearer = cheaper === a ? b : (cheaper === b ? a : null);
+  const fmtMoney = (n) => '₪' + (Number.isInteger(n) ? n : n.toFixed(2));
+  let s;
+  if (cheaper) {
+    const gap = Math.round((dearer.from - cheaper.from) * 100) / 100;
+    s = `ב${esc(catName)}, ${esc(cheaper.provider)} פותח/ת זול יותר — מ-${fmtMoney(cheaper.from)} לעומת ${fmtMoney(dearer.from)} אצל ${esc(dearer.provider)} (פער של ${fmtMoney(gap)}). `;
+  } else {
+    s = `ב${esc(catName)}, שני הספקים פותחים באותו מחיר התחלתי (${fmtMoney(a.from)}). `;
+  }
+  const more5g = a.n5g === b.n5g ? null : (a.n5g > b.n5g ? a : b);
+  if (more5g && more5g.n5g > 0) s += `${esc(more5g.provider)} מציע/ה יותר מסלולי 5G (${more5g.n5g}). `;
+  const moreFlex = a.nNoCommit === b.nNoCommit ? null : (a.nNoCommit > b.nNoCommit ? a : b);
+  if (moreFlex && moreFlex.nNoCommit > 0) s += `${esc(moreFlex.provider)} מוביל/ה במסלולים ללא התחייבות (${moreFlex.nNoCommit}). `;
+  s += 'הכלל הפשוט: השוו לפי המסלול שמתאים לשימוש שלכם — ובדקו תמיד את המחיר שאחרי המבצע.';
+  return s;
+}
+
+function providerVsPage(v) {
+  const url = `${SITE}/${v.slug}.html`;
+  const { a, b, catSlug, catName } = v;
+  const title = `${a.provider} מול ${b.provider} ב${catName} — השוואת מחירים | חוסך`;
+  const desc = `${a.provider} או ${b.provider}? השוואה אמיתית של מסלולי ה${catName} — מחיר התחלתי, מספר מסלולים, 5G והתחייבות — עם המסלולים הזולים בכל צד, מהקטלוג המעודכן של חוסך.`;
+  const h1 = `${a.provider} מול ${b.provider}`;
+  // Verdict matrix — winner per dimension, marked with the value (amber) accent.
+  const rows = providerVsVerdictRows(v);
+  const cell = (val, isWin) => `<td class="cmp__num${isWin ? ' cmp__best' : ''}">${isWin ? `<b>${esc(val)}</b>` : esc(val)}</td>`;
+  const matrix = `
+    <section class="section section--tight" aria-label="טבלת השוואה ראש בראש">
+      <div class="container">
+        <header class="section__head reveal"><span class="eyebrow">ראש בראש</span><h2>${esc(a.provider)} מול ${esc(b.provider)} — במבט אחד</h2><p>כל המספרים מהקטלוג המעודכן. הערך המנצח בכל שורה מודגש.</p></header>
+        <div class="cmp-wrap reveal" role="region" aria-label="טבלת השוואה — ניתן לגלול" tabindex="0">
+          <table class="cmp">
+            <thead><tr><th>קריטריון</th><th class="cmp__num">${providerLogo(a.provider, 24)} ${esc(a.provider)}</th><th class="cmp__num">${providerLogo(b.provider, 24)} ${esc(b.provider)}</th></tr></thead>
+            <tbody>
+${rows.map(([label, av, bv, winner]) => `              <tr><td data-th="קריטריון">${esc(label)}</td>${cell(av, winner === 'a')}${cell(bv, winner === 'b')}</tr>`).join('\n')}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>`;
+  // Each side: featured cheapest cards + the full Kamaze-style comparison table,
+  // scoped to that provider's plans in this category (reuses comparisonTable).
+  const sideSection = (S, key) => {
+    const cards = S.plans.slice(0, 3).map((p) => planCardHtml(p, false)).join('\n');
+    const table = comparisonTable(S.plans, catSlug, `vs-${key}`);
+    const fromTxt = `${S.count} מסלולים · החל מ-₪${Number.isInteger(S.from) ? S.from : S.from.toFixed(2)}${(catSlug === 'cellular' || catSlug === 'internet' || catSlug === 'triple') ? '/חודש' : ''}`;
+    return `
+    <section class="section" aria-label="${esc(S.provider)} ${esc(catName)}">
+      <div class="container">
+        <header class="section__head reveal"><span class="eyebrow">${providerLogo(S.provider, 22)} ${esc(S.provider)}</span><h2>מסלולי ה${esc(catName)} של ${esc(S.provider)}</h2><p>${esc(fromTxt)} — ממוין מהזול ביותר.</p></header>
+        <div class="plan-grid plan-grid--featured">
+${cards}
+        </div>
+        <div style="text-align:center;margin-top:18px"><a class="btn btn--ghost" href="provider-${providerSlug(S.provider)}.html">לכל המסלולים של ${esc(S.provider)} ←</a></div>
+      </div>
+    </section>${table}`;
+  };
+  const allShown = [...a.plans.slice(0, 6), ...b.plans.slice(0, 6)];
+  // Other head-to-heads in the same category — keeps the comparison cluster
+  // interlinked so a crawler (and a visitor) can hop between rivalries.
+  const siblings = builtProviderVs.filter((x) => x.catSlug === catSlug && x.slug !== v.slug);
+  const siblingsStrip = siblings.length ? `
+    <section class="section section--alt" aria-label="השוואות נוספות">
+      <div class="container">
+        <header class="section__head reveal"><span class="eyebrow">עוד ראש בראש</span><h2>השוואות נוספות ב${esc(catName)}</h2></header>
+        <div class="providers__row" style="justify-content:center">
+          ${siblings.map((x) => `<a class="chip" href="${x.slug}.html">${svgIcon('scale')} ${esc(x.a.provider)} מול ${esc(x.b.provider)}</a>`).join('\n          ')}
+        </div>
+      </div>
+    </section>` : '';
+  const relatedGuideCards = relatedGuides(catName, null, 2).map(guideCard).join('\n');
+  const crumbs = { '@type': 'BreadcrumbList', itemListElement: [
+    { '@type': 'ListItem', position: 1, name: 'דף הבית', item: SITE + '/' },
+    { '@type': 'ListItem', position: 2, name: catName, item: `${SITE}/${catSlug}.html` },
+    { '@type': 'ListItem', position: 3, name: h1, item: url },
+  ] };
+  const collection = { '@type': 'CollectionPage', name: h1, description: desc, url, inLanguage: 'he-IL',
+    isPartOf: { '@id': WEBSITE_ID }, publisher: { '@id': ORG_ID },
+    about: [{ '@type': 'Brand', name: a.provider }, { '@type': 'Brand', name: b.provider }],
+    ...(allShown.length ? { mainEntity: plansItemListJsonLd(allShown, url, h1) } : {}) };
+  const providerVsLd = jsonForScript({ '@context': 'https://schema.org', '@graph': [crumbs, collection] });
+  return `<!DOCTYPE html>
+<html lang="he" dir="rtl">
+${head(title, desc, url, providerVsLd, false, 'website')}
+<body id="top">
+${nav}
+  <main id="main">
+    <section class="lead-hero">
+      <div class="hero-decor" aria-hidden="true" data-parallax="0.18">${heroDecor()}</div>
+      <div class="container">
+        <p class="crumbs"><a href="index.html">דף הבית</a> ← <a href="${catSlug}.html">${esc(catName)}</a> ← ${esc(h1)}</p>
+        <span class="pill pill--ico">${svgIcon('scale')} השוואה אמיתית · בלי התחייבות</span>
+        <h1>${esc(a.provider)} מול <span class="hl">${esc(b.provider)}</span></h1>
+        <p>השוואה אמיתית של מסלולי ה${esc(catName)} של ${esc(a.provider)} ו${esc(b.provider)} — מחיר, כמות מסלולים, 5G והתחייבות — עם המסלולים הזולים בכל צד.</p>
+        <div class="hero__cta">
+          <a class="btn btn--primary btn--lg" href="#cta">השוו ותחסכו ←</a>
+          <a class="btn btn--ghost btn--lg" href="${catSlug}.html">לכל מסלולי ה${esc(catName)}</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="section section--alt" aria-label="המסקנה">
+      <div class="container">
+        <div class="prose" style="max-width:760px;margin:0 auto">
+          <div class="tldr"><b>השורה התחתונה:</b> ${providerVsVerdict(v)}</div>
+        </div>
+      </div>
+    </section>
+${matrix}
+${sideSection(a, 'a')}
+${sideSection(b, 'b')}
+${siblingsStrip}${relatedGuideCards ? `
+    <section class="section" aria-label="מדריכים">
+      <div class="container">
+        <header class="section__head reveal"><span class="eyebrow">כדאי לדעת</span><h2>מדריכים שימושיים</h2></header>
+        <div class="guide-cards guide-cards--2">
+${relatedGuideCards}
+        </div>
+      </div>
+    </section>` : ''}
+    <section class="cta" id="cta">
+      <div class="container cta__inner reveal">
+        <h2>עדיין מתלבטים בין ${esc(a.provider)} ל${esc(b.provider)}?</h2>
+        <p>השאירו פרטים ונחזור אליכם עם ההשוואה וההמלצה המתאימה לכם — חינם, בלי התחייבות.</p>
+        ${leadFormHtml('קבלו המלצה אישית תוך 2 דקות ←')}
+        <p class="cta__note" id="leadNote" role="status" aria-live="polite"></p>
+        <a class="cta__wa" href="https://wa.me/972505037537" target="_blank" rel="noopener">${svgIcon('chat')}מעדיפים וואטסאפ? דברו איתנו</a>
+      </div>
+    </section>
+  </main>
+${footer}
+  ${leadsConfigTag()}
+  <script src="${JS_SRC}" defer></script>
+</body>
+</html>
+`;
+}
+
+// ── Comparisons hub (/comparisons.html) ──────────────────────────────────────
+// One index that gathers EVERY head-to-head — the topic-vs-topic versus pages and
+// all provider-vs-provider pages — grouped by category. This gives the comparison
+// cluster a single crawlable parent (better internal-link topology than scattered
+// strips) and a useful landing page for "השוואת ספקים" searches. All links point
+// at pages that are actually generated, so there are no dead links.
+function comparisonsHubPage() {
+  const url = `${SITE}/comparisons.html`;
+  const desc = 'כל ההשוואות ראש בראש במקום אחד — ספק מול ספק וסוג מול סוג, לפי קטגוריה. השוו סלולר, אינטרנט, טלוויזיה וחבילות משולבות ובחרו נכון.';
+  const groups = categories.map((c) => {
+    const vs = builtVersus.filter((x) => x.catSlug === c.slug);
+    const pvs = builtProviderVs.filter((x) => x.catSlug === c.slug);
+    if (!vs.length && !pvs.length) return '';
+    const topicLinks = vs.map((x) => `<a class="chip" href="${x.slug}.html">${svgIcon('scale')} ${esc(x.h1)}</a>`).join('\n          ');
+    const provLinks = pvs.map((x) => `<a class="chip" href="${x.slug}.html">${providerLogo(x.a.provider, 20)} ${esc(x.a.provider)} מול ${esc(x.b.provider)}</a>`).join('\n          ');
+    return `      <section class="section${vs.length || pvs.length ? '' : ''}" aria-label="${esc(c.name)}">
+        <div class="container">
+          <header class="section__head reveal"><span class="eyebrow">${iconFor(c.icon)} ${esc(c.name)}</span><h2>השוואות ב${esc(c.name)}</h2><p><a href="${c.slug}.html">לכל מסלולי ה${esc(c.name)} ←</a></p></header>
+          <div class="providers__row" style="justify-content:center">
+          ${[topicLinks, provLinks].filter(Boolean).join('\n          ')}
+          </div>
+        </div>
+      </section>`;
+  }).filter(Boolean).join('\n');
+  // ItemList of every comparison page on the hub → an explicit crawl map.
+  const allComparisons = [
+    ...builtVersus.map((x) => ({ name: x.h1, url: `${SITE}/${x.slug}.html` })),
+    ...builtProviderVs.map((x) => ({ name: `${x.a.provider} מול ${x.b.provider} (${x.catName})`, url: `${SITE}/${x.slug}.html` })),
+  ];
+  const hubLd = jsonForScript({ '@context': 'https://schema.org', '@graph': [
+    { '@type': 'BreadcrumbList', itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'דף הבית', item: SITE + '/' },
+      { '@type': 'ListItem', position: 2, name: 'השוואות', item: url },
+    ] },
+    { '@type': 'CollectionPage', name: 'כל ההשוואות', description: desc, url, inLanguage: 'he-IL',
+      isPartOf: { '@id': WEBSITE_ID }, publisher: { '@id': ORG_ID },
+      mainEntity: { '@type': 'ItemList', numberOfItems: allComparisons.length,
+        itemListElement: allComparisons.map((x, i) => ({ '@type': 'ListItem', position: i + 1, name: x.name, url: x.url })) } },
+  ] });
+  return `<!DOCTYPE html>
+<html lang="he" dir="rtl">
+${head('כל ההשוואות — ספק מול ספק וסוג מול סוג | חוסך', desc, url, hubLd, false, 'website')}
+<body id="top">
+${navNoCta}
+  <main id="main">
+    <section class="lead-hero">
+      <div class="hero-decor" aria-hidden="true" data-parallax="0.18">${heroDecor()}</div>
+      <div class="container">
+        <p class="crumbs"><a href="index.html">דף הבית</a> ← השוואות</p>
+        <span class="pill pill--ico">${svgIcon('scale')} ${builtVersus.length + builtProviderVs.length} השוואות ראש בראש</span>
+        <h1>כל ה<span class="hl">השוואות</span> במקום אחד</h1>
+        <p>ספק מול ספק וסוג מול סוג, לפי קטגוריה. כל הנתונים מהקטלוג המעודכן — בחרו השוואה וראו מי מנצח בכל קריטריון.</p>
+      </div>
+    </section>
+${groups}
+    <section class="cta" id="cta">
+      <div class="container cta__inner reveal">
+        <h2>רוצים שנשווה עבורכם?</h2>
+        <p>השאירו פרטים ונחזור אליכם עם ההשוואה וההמלצה המתאימה לכם — חינם, בלי התחייבות.</p>
+        ${leadFormHtml('קבלו המלצה אישית תוך 2 דקות ←')}
+        <p class="cta__note" id="leadNote" role="status" aria-live="polite"></p>
+        <a class="cta__wa" href="https://wa.me/972505037537" target="_blank" rel="noopener">${svgIcon('chat')}מעדיפים וואטסאפ? דברו איתנו</a>
+      </div>
+    </section>
+  </main>
+${footer}
+  ${leadsConfigTag()}
+  <script src="${JS_SRC}" defer></script>
+</body>
+</html>
+`;
+}
 
 // ── Write pages ────────────────────────────────────────────────────────────
 for (const c of categories) {
@@ -2613,6 +3695,13 @@ for (const col of builtCollections) {
 }
 for (const c of builtCalculators) {
   fs.writeFileSync(path.join(__dirname, `calc-${c.slug}.html`), calculatorPage(c));
+}
+for (const v of builtVersus) {
+  const html = versusPage(v);
+  if (html) fs.writeFileSync(path.join(__dirname, `${v.slug}.html`), html);
+}
+for (const v of builtProviderVs) {
+  fs.writeFileSync(path.join(__dirname, `${v.slug}.html`), providerVsPage(v));
 }
 
 // Per-provider pages (from the catalogue).
@@ -2630,9 +3719,13 @@ for (const p of staticPages) {
   fs.writeFileSync(path.join(__dirname, `${p.slug}.html`), staticPage(p));
 }
 fs.writeFileSync(path.join(__dirname, 'guides.html'), guidesIndexPage());
+fs.writeFileSync(path.join(__dirname, 'faq.html'), faqPage());
+fs.writeFileSync(path.join(__dirname, 'glossary.html'), glossaryPage());
+fs.writeFileSync(path.join(__dirname, 'how-it-works.html'), howItWorksPage());
 fs.writeFileSync(path.join(__dirname, 'plans.html'), plansPage());
 fs.writeFileSync(path.join(__dirname, 'providers.html'), providersIndexPage());
 fs.writeFileSync(path.join(__dirname, 'compare.html'), comparePage());
+fs.writeFileSync(path.join(__dirname, 'comparisons.html'), comparisonsHubPage());
 fs.writeFileSync(path.join(__dirname, 'community.html'), communityPage());
 fs.writeFileSync(path.join(__dirname, 'book.html'), bookPage());
 fs.writeFileSync(path.join(__dirname, 'app.html'), appPage());
@@ -2654,20 +3747,27 @@ const locs = [
   { loc: `${SITE}/plans.html`, lastmod: CATALOGUE_DATE, priority: '0.9', changefreq: 'daily' },
   { loc: `${SITE}/providers.html`, lastmod: CATALOGUE_DATE, priority: '0.8', changefreq: 'weekly' },
   { loc: `${SITE}/compare.html`, lastmod: CATALOGUE_DATE, priority: '0.8', changefreq: 'weekly' },
+  { loc: `${SITE}/comparisons.html`, lastmod: CATALOGUE_DATE, priority: '0.8', changefreq: 'weekly' },
   { loc: `${SITE}/community.html`, lastmod: BUILD_DATE, priority: '0.7', changefreq: 'daily' },
   { loc: `${SITE}/book.html`, lastmod: BUILD_DATE, priority: '0.7', changefreq: 'monthly' },
   { loc: `${SITE}/app.html`, lastmod: BUILD_DATE, priority: '0.7', changefreq: 'monthly', images: [
     `${SITE}/assets/app/shot-home.webp`, `${SITE}/assets/app/shot-results.webp`, `${SITE}/assets/app/shot-meeting.webp`,
   ] },
   { loc: `${SITE}/guides.html`, lastmod: BUILD_DATE, priority: '0.7', changefreq: 'weekly' },
+  { loc: `${SITE}/faq.html`, lastmod: CATALOGUE_DATE, priority: '0.7', changefreq: 'weekly' },
+  { loc: `${SITE}/how-it-works.html`, lastmod: CATALOGUE_DATE, priority: '0.7', changefreq: 'weekly' },
+  { loc: `${SITE}/glossary.html`, lastmod: BUILD_DATE, priority: '0.6', changefreq: 'monthly' },
   { loc: `${SITE}/about.html`, lastmod: BUILD_DATE, priority: '0.5', changefreq: 'monthly' },
   ...categories.map((c) => ({ loc: `${SITE}/${c.slug}.html`, lastmod: CATALOGUE_DATE, priority: '0.9', changefreq: 'daily' })),
+  ...builtVersus.map((v) => ({ loc: `${SITE}/${v.slug}.html`, lastmod: CATALOGUE_DATE, priority: '0.75', changefreq: 'weekly' })),
+  ...builtProviderVs.map((v) => ({ loc: `${SITE}/${v.slug}.html`, lastmod: CATALOGUE_DATE, priority: '0.7', changefreq: 'weekly' })),
   ...builtCollections.map((col) => ({ loc: `${SITE}/${col.slug}.html`, lastmod: CATALOGUE_DATE, priority: '0.75', changefreq: 'weekly' })),
   ...builtCalculators.map((c) => ({ loc: `${SITE}/calc-${c.slug}.html`, lastmod: CATALOGUE_DATE, priority: '0.7', changefreq: 'weekly' })),
   ...guides.map((g) => ({ loc: `${SITE}/${g.slug}.html`, lastmod: isoDate(g.date), priority: '0.6', changefreq: 'monthly' })),
   ...providerNames.map((n) => ({ loc: `${SITE}/provider-${providerSlug(n)}.html`, lastmod: CATALOGUE_DATE, priority: '0.7', changefreq: 'weekly' })),
   { loc: `${SITE}/privacy.html`, lastmod: BUILD_DATE, priority: '0.3', changefreq: 'yearly' },
   { loc: `${SITE}/terms.html`, lastmod: BUILD_DATE, priority: '0.3', changefreq: 'yearly' },
+  { loc: `${SITE}/accessibility.html`, lastmod: BUILD_DATE, priority: '0.3', changefreq: 'yearly' },
 ];
 const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
@@ -2676,5 +3776,34 @@ ${locs.map((u) => `  <url>\n    <loc>${u.loc}</loc>\n    <lastmod>${u.lastmod}</
 `;
 fs.writeFileSync(path.join(__dirname, 'sitemap.xml'), sitemap);
 
-console.log(`Generated ${categories.length} category + ${builtCollections.length} collections + ${builtCalculators.length} calculators + ${guides.length} guides + ${staticPages.length} static + guides index + plans + providers + community + book + 404 + sitemap.xml`);
+// ── Refresh robots.txt ───────────────────────────────────────────────────────
+// Generated (single source of truth) so the Sitemap line + Host always track the
+// canonical SITE domain — a stale absolute URL here silently breaks discovery on
+// a domain switch. Allow everything except the raw data export; point crawlers at
+// the sitemap. No crawl-delay (Google ignores it; it only throttles minor bots).
+// AI / answer-engine bots are listed EXPLICITLY (allow: /) so this content can be
+// cited in AI answers — kept in sync with the Next.js web app's app/robots.ts
+// (GEO consistency). `User-agent: *` already permits them implicitly; the explicit
+// stanzas make the intent unambiguous and survive any future tightening of `*`.
+const AI_BOTS = [
+  'GPTBot', 'OAI-SearchBot', 'ChatGPT-User', 'PerplexityBot', 'Perplexity-User',
+  'Google-Extended', 'ClaudeBot', 'Claude-Web', 'anthropic-ai', 'Applebot-Extended',
+  'CCBot', 'Amazonbot', 'Bytespider', 'Meta-ExternalAgent',
+];
+const robots = `# https://www.robotstxt.org/robotstxt.html
+User-agent: *
+Allow: /
+Disallow: /data/
+
+# AI / answer-engine crawlers — explicitly welcomed (kept in sync with web/app/robots.ts).
+${AI_BOTS.map((b) => `User-agent: ${b}`).join('\n')}
+Allow: /
+Disallow: /data/
+
+Sitemap: ${SITE}/sitemap.xml
+Host: ${SITE.replace(/^https?:\/\//, '')}
+`;
+fs.writeFileSync(path.join(__dirname, 'robots.txt'), robots);
+
+console.log(`Generated ${categories.length} category + ${builtVersus.length} versus + ${builtProviderVs.length} provider-vs + ${builtCollections.length} collections + ${builtCalculators.length} calculators + ${guides.length} guides + ${staticPages.length} static + guides index + faq + glossary + how-it-works + plans + providers + comparisons hub + community + book + 404 + sitemap.xml + robots.txt`);
 console.log(`Asset fingerprints: styles.css?v=${CSS_V}  script.js?v=${JS_V}  (hand-written index.html must reference these same values)`);

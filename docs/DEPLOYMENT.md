@@ -100,8 +100,69 @@ npx --no-install supabase functions deploy <slug> \
 
 Or push a commit containing `[deploy]`, or run the "Deploy edge functions"
 workflow manually. Requires the repo secret `SUPABASE_ACCESS_TOKEN`. SQL schema /
-migrations are applied separately in the Supabase SQL editor (see
-`supabase/README.md` and the dated `supabase/*.sql` deltas).
+migrations are applied separately in the Supabase SQL editor — see the order
+below.
+
+### Per-function deploy slug + auth
+
+The 12 deployable functions (the `support-agent` directory is a **stub** —
+`deno.json` only, no `index.ts`, not deployed) all deploy with the same recipe.
+Each enforces its own auth (full matrix in [`EDGE_FUNCTIONS.md`](./EDGE_FUNCTIONS.md)):
+
+```
+notify-lead  renewal-reminders  crm-api  analytics-track
+community-moderate  community-notify
+site-ai-chat  site-plan-advisor  site-bill-analyzer  site-subscribe
+whatsapp-webhook  telegram-webhook
+```
+
+After deploying a function that owns a webhook, re-register it (e.g. the Telegram
+bot via `notify-lead?action=set-telegram-webhook`, the Meta webhook in the Meta
+dashboard). See `supabase/README.md` §8 and [`EDGE_FUNCTIONS.md`](./EDGE_FUNCTIONS.md#post-deploy-registration).
+
+## SQL schema + migration order
+
+Migrations are **not applied automatically** — every dated `supabase/*.sql` file
+carries a "DO NOT auto-apply / apply manually after review" header. Apply them in
+the Supabase SQL editor (or `psql "$DATABASE_URL" -f <file>`). All files are
+idempotent / re-runnable (`create … if not exists`, `add column if not exists`,
+`drop policy if exists`, `cron.schedule` upserts by name), so a re-run is a no-op
+and partial re-applies are safe.
+
+Apply in this order — later files assume the tables/functions earlier ones create
+(several headers say "run AFTER schema.sql / upgrade / legal-consent"):
+
+| # | File | Adds | Depends on |
+|---|------|------|-----------|
+| 1 | `schema.sql` | base tables + RLS + the two helper views + the site-AI rate-limit/log tables (`chat_messages` / `advisor_sessions` / `bill_analyses` / `newsletter_subscribers`) + `pg_cron` schedule templates (`analytics_events` arrives at #8) | — (fresh install) |
+| 2 | `storage.sql` | the `community-media` Storage bucket + scoped RLS | schema |
+| 3 | `upgrade-2026-06-10.sql` | interactive-bot v2 delta + the lead `pg_net` notify trigger / Vault config RPC + the `renewal-reminders` cron jobs | schema |
+| 4 | `legal-consent-2026-06.sql` | consent columns on `profiles` + `leads`, `record_registration_consent` / `leads_consent_stamp`, `security_audit_log` + `log_security_event` | schema |
+| 5 | `meetings-2026-06.sql` | `meetings` / `meeting_events`, `meetings_guard()`, Zoom path; ⚠️ **REPLACES `get_lead_notify_config()`** — verify every existing Vault key survives | schema, upgrade, legal-consent |
+| 6 | `leads-city-2026-06.sql` | `leads.city` (regional routing) | schema |
+| 7 | `profiles-admin-2026-06.sql` | `profiles.is_admin` (the `crm-api` `requireAdmin` gate) | schema |
+| 8 | `analytics-events-2026-06.sql` | `analytics_events` sink (service-role) | schema |
+| 9 | `ai-sessions-2026-06.sql` | `ai_sessions` (site-chat memory) + `prune_ai_sessions()` | schema |
+| 10 | `plans-enrich-2026-06.sql` | bot-grounding columns on `public.plans` (`after` / `is_5g` / `specs` …) | schema (`plans` table) |
+| 11 | `providers-2026-06.sql` | `public.providers` directory (seeded) + plan curation columns | schema (`plans` table) |
+| 12 | `plan-price-history-2026-06.sql` | `plan_price_history` (Market Pulse ledger) | schema |
+| 13 | `whatsapp-2026-06.sql` | `whatsapp_contacts` / `whatsapp_conversations` / `whatsapp_messages` | schema, leads, profiles |
+| 14 | `whatsapp-control-2026-06.sql` | `bot_enabled` takeover gate + `crm_events` (v1: `kind`/`preview`) | whatsapp |
+| 15 | `crm-takeover-2026-06.sql` | widens `crm_events` with canonical `actor`/`event` (additive; safe in either order vs #14) | whatsapp, profiles |
+| 16 | `whatsapp-telegram-thread-2026-06.sql` | WhatsApp↔Telegram thread linkage | whatsapp |
+| 17 | `marketing-consent-2026-06.sql` | per-channel `leads.consent_marketing_*` + `marketing_suppression` registry | leads |
+| 18 | `data-protection-2026-06.sql` | `data_subject_requests` + `purge_expired_personal_data()` + `retention-purge-monthly` cron | leads, whatsapp, security_audit_log |
+| 19 | `audit-observability-2026-06.sql` | ensures `security_audit_log` + `get_analytics_events()` / `purge_analytics_events()` + `analytics-purge-monthly` cron | security_audit_log, analytics_events |
+| 20 | `function-search-path-2026-06.sql` | pins `search_path` on flagged SECURITY-context functions (advisor WARN fix) | the functions they harden |
+| 21 | `rls-defensive-2026-06.sql` | belt-and-braces deny-all policies on the service-role-only PII tables | whatsapp, analytics_events |
+| 22 | `support-tickets-2026-06-12.sql` | `support_tickets` / `support_messages` (UPDATE column-scoped to `status`) | schema |
+
+> Notes: files 8–22 are largely independent of one another except where the
+> "Depends on" column says so — the strict prerequisites are that **`schema.sql`
+> runs first** and that the consent/whatsapp/profiles/analytics tables exist
+> before the files that extend them. The two `crm_events` migrations (#14, #15)
+> are deliberately additive and order-independent. The grant-gap rule (every new
+> table needs an explicit `service_role` GRANT) is already baked into each file.
 
 ## Flutter app → app stores
 

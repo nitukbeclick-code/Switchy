@@ -111,9 +111,9 @@ Schema/migrations are applied in the Supabase SQL editor (see
 | Doc | What it covers |
 |-----|----------------|
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | The four surfaces + cross-surface data flow (catalogue, leads, meetings, WhatsApp CRM, the lead → notify-lead → Telegram/WhatsApp pipeline) |
-| [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) | How each surface ships — web→Vercel auto-deploy, the `.vercelignore`/Root-Directory gotchas, edge→CLI/CI, site→prebuilt HTML, app→stores |
-| [`docs/EDGE_FUNCTIONS.md`](docs/EDGE_FUNCTIONS.md) | Every `supabase/functions/*` — purpose, auth model, the `--no-verify-jwt` deploy recipe |
-| [`docs/DATA_MODEL.md`](docs/DATA_MODEL.md) | `public.*` tables (leads / community / meetings / whatsapp_* / analytics) + RLS posture |
+| [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) | How each surface ships — web→Vercel auto-deploy, the `.vercelignore`/Root-Directory gotchas, edge→CLI/CI, site→prebuilt HTML, app→stores, **plus the SQL migration application order** |
+| [`docs/EDGE_FUNCTIONS.md`](docs/EDGE_FUNCTIONS.md) | Every `supabase/functions/*` — purpose, per-function auth model, the `--no-verify-jwt` deploy recipe |
+| [`docs/DATA_MODEL.md`](docs/DATA_MODEL.md) | `public.*` tables (leads / community / meetings / whatsapp_* CRM / site-AI / analytics / catalogue mirror) + RLS posture + the compliance layer (consent, suppression, data-subject requests, audit, retention) |
 | `CLAUDE.md` | Authoritative coding directives — no FlutterFlow, design tokens, conventions, domain rules, validation gates |
 | `supabase/README.md` | Canonical backend setup, security model, Telegram bot, meetings, secret-rotation runbook |
 | `web/AGENTS.md` | The Next 16 "read the docs first" directive |

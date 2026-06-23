@@ -15,26 +15,11 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 import { fetchRows, insertRow } from "../_shared/db.ts";
 import { jlog } from "../_shared/log.ts";
+import { clientIp, isAllowedEvent, sanitizeProps } from "./lib.ts";
 
 // Light abuse cap: an analytics beacon is high-volume by nature, but one IP
 // hammering thousands of rows/hour is junk. Counts recent rows for the IP.
 const PER_IP_HOURLY_LIMIT = 600;
-const MAX_EVENT_LEN = 64;   // event names are short enum-ish strings
-const MAX_PROPS_BYTES = 2048; // keep the jsonb bag small; no payloads/bytes
-
-// Known funnel events (mirrors AnalyticsEvent in lib/services/analytics_service.dart).
-// An unknown name is rejected rather than stored, so the table can't be used as
-// arbitrary attacker-controlled storage.
-const ALLOWED_EVENTS = new Set<string>([
-  "leadStart",
-  "leadSubmit",
-  "quizComplete",
-  "compareView",
-  "searchQuery",
-  "whatsappClick",
-  "savingsViewed",
-  "planView",
-]);
 
 function cors(extra: Record<string, string> = {}): Record<string, string> {
   return { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*", ...extra };
@@ -45,19 +30,6 @@ function json(body: unknown, status = 200): Response {
     status,
     headers: { "Content-Type": "application/json", ...cors() },
   });
-}
-
-// Same trust order as site-subscribe / site-ai-chat: CDN header first, then the
-// last (infra-appended) X-Forwarded-For hop — never the spoofable first hop.
-function clientIp(req: Request): string {
-  const cf = req.headers.get("cf-connecting-ip");
-  if (cf) return cf.trim();
-  const xff = req.headers.get("x-forwarded-for");
-  if (xff) {
-    const hops = xff.split(",").map((s) => s.trim()).filter(Boolean);
-    if (hops.length) return hops[hops.length - 1];
-  }
-  return "";
 }
 
 // Per-IP hourly cap. Tri-state: true = limited, false = ok, null = DB error.
@@ -71,32 +43,6 @@ async function rateLimited(ip: string): Promise<boolean> {
   );
   if (rows === null) return false; // query failed ⇒ fail open (non-critical)
   return rows.length >= PER_IP_HOURLY_LIMIT;
-}
-
-// Reduce an arbitrary client value to a small, safe jsonb bag: only plain
-// scalar values (string/number/bool), strings clamped, total size bounded. Any
-// nested objects/arrays/PII-shaped blobs are dropped, not stored.
-function sanitizeProps(raw: unknown): Record<string, unknown> {
-  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return {};
-  const out: Record<string, unknown> = {};
-  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
-    if (typeof k !== "string" || k.length === 0 || k.length > 40) continue;
-    if (typeof v === "string") {
-      out[k] = v.length > 200 ? v.slice(0, 200) : v;
-    } else if (typeof v === "number" && Number.isFinite(v)) {
-      out[k] = v;
-    } else if (typeof v === "boolean") {
-      out[k] = v;
-    }
-    // everything else (objects, arrays, null, functions) is intentionally dropped
-  }
-  // Final size guard — if the bag is still too big, drop it entirely.
-  try {
-    if (JSON.stringify(out).length > MAX_PROPS_BYTES) return {};
-  } catch (_) {
-    return {};
-  }
-  return out;
 }
 
 Deno.serve(async (req: Request) => {
@@ -113,7 +59,7 @@ Deno.serve(async (req: Request) => {
   }
 
   const event = String(body.event ?? "").trim();
-  if (!event || event.length > MAX_EVENT_LEN || !ALLOWED_EVENTS.has(event)) {
+  if (!isAllowedEvent(event)) {
     return json({ error: "unknown event" }, 400);
   }
 

@@ -21,9 +21,23 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 // ─────────────────────────────────────────────────────────────────────────────
 
 import plansSnapshot from "./plans-snapshot.json" with { type: "json" };
+import { corsHeaders, preflight } from "../_shared/cors.ts";
+import { AiTimeoutError, fetchWithTimeout } from "../_shared/ai.ts";
+import {
+  annualSaving,
+  type Answers,
+  buildCatalogueContext,
+  parseAnswers,
+  pickCandidates,
+  type Plan,
+} from "./lib.ts";
 
 // ── Limits / tuning ──────────────────────────────────────────────────────────
 const MAX_HISTORY_TURNS = 8;
+// Per-LLM-call wall-clock budget. A hung provider would otherwise pin the
+// function (and stack Gemini+Groq hangs in series); we race each fetch against
+// an AbortController so a stuck provider fails fast and we fall through / 504.
+const TEXT_TIMEOUT_MS = 15_000;
 const MAX_TEXT_LEN = 600;
 // Hard ceiling on the combined raw conversation text — a cheap abuse/cost guard
 // that rejects oversized payloads BEFORE any (paid) AI call. The per-turn
@@ -33,25 +47,18 @@ const MAX_OUTPUT_TOKENS = 700;
 const PER_IP_HOURLY_LIMIT = 20; // advisor_sessions, per IP, ~20/hour
 const TEMPERATURE = 0.3;
 const MAX_RECOMMENDATIONS = 3;
-const CANDIDATES_PER_CAT = 12;
-
-// Valid plan categories (see lib/data.dart). Anything else is clipped to ''.
-const CATEGORIES = ["cellular", "internet", "tv", "triple", "abroad"];
-const PRIORITIES = ["price", "data", "abroad", "noCommit", "5g", "balanced"];
 
 // Gemini ids Google ships under the free tier; tried in order (404 ⇒ next).
 const GEMINI_MODELS = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"];
 const GROQ_MODEL = "llama-3.3-70b-versatile";
 
 // ── HTTP helpers (mirror site-ai-chat) ───────────────────────────────────────
-function cors(extra: Record<string, string> = {}): Record<string, string> {
-  return { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*", ...extra };
-}
-
-function json(body: unknown, status = 200): Response {
+// CORS is per-request: corsHeaders(req) reflects only an allowlisted Origin
+// (public, paid-LLM endpoint — `*` would let any site spend our Gemini/Groq quota).
+function json(req: Request, body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { "Content-Type": "application/json", ...cors() },
+    headers: { "Content-Type": "application/json", ...corsHeaders(req) },
   });
 }
 
@@ -64,105 +71,15 @@ function jlog(fields: Record<string, unknown>): void {
 }
 
 // ── Catalogue ────────────────────────────────────────────────────────────────
-type Plan = {
-  id?: string;
-  cat?: string;
-  provider?: string;
-  plan?: string;
-  price?: number;
-  is5G?: boolean;
-  noCommit?: boolean;
-  hasAbroad?: boolean;
-  priceUnit?: string;
-};
+// The Plan/Answers types + the pure ranking helpers (parseAnswers, pickCandidates,
+// scorePlan, buildCatalogueContext, annualSaving) live in ./lib.ts so they're
+// unit-tested without booting Deno.serve. Only loadPlans (which binds the bundled
+// snapshot) stays here.
 
 // Bundled at deploy time — no runtime fetch, no dependency on the live site.
 function loadPlans(): Plan[] {
   const rows = (plansSnapshot as { plans?: Plan[] })?.plans;
   return Array.isArray(rows) ? rows : [];
-}
-
-function unitLabel(p: Plan): string {
-  return p.priceUnit === "package"
-    ? "לחבילה"
-    : p.priceUnit === "day"
-    ? "ליום"
-    : p.priceUnit === "minute"
-    ? "לדקה"
-    : "לחודש";
-}
-
-type Answers = {
-  category: string;
-  budget: number | null;
-  priority: string;
-  lines: number;
-  abroad: boolean;
-};
-
-// Validate/clip everything the client sends — never trust raw input.
-function parseAnswers(raw: unknown): Answers {
-  const a = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
-  const category = CATEGORIES.includes(String(a.category)) ? String(a.category) : "";
-  let budget: number | null = null;
-  const b = Number(a.budget);
-  if (Number.isFinite(b) && b > 0) budget = Math.min(Math.round(b), 5000);
-  const priority = PRIORITIES.includes(String(a.priority)) ? String(a.priority) : "balanced";
-  let lines = Number(a.lines);
-  lines = Number.isFinite(lines) ? Math.min(Math.max(Math.round(lines), 1), 20) : 1;
-  const abroad = a.abroad === true || a.abroad === "true";
-  return { category, budget, priority, lines, abroad };
-}
-
-// Rank the catalogue for these answers and keep the top handful per the user's
-// category (or, if unset, the cheapest across all). This is what bounds the
-// model: it picks ONLY from these rows, so it can't invent plans/prices.
-function pickCandidates(plans: Plan[], ans: Answers): Plan[] {
-  const inScope = plans.filter((p) => {
-    if (typeof p.price !== "number" || !p.id) return false;
-    if (ans.category && p.cat !== ans.category) return false;
-    return true;
-  });
-
-  const score = (p: Plan): number => {
-    let s = 0;
-    // Cheaper is better, scaled so price dominates a "price" priority.
-    s -= (p.price ?? 0) * (ans.priority === "price" ? 1.5 : 1);
-    if (ans.abroad && p.hasAbroad) s += 40;
-    if (ans.priority === "abroad" && p.hasAbroad) s += 40;
-    if (ans.priority === "5g" && p.is5G) s += 30;
-    if (ans.priority === "noCommit" && p.noCommit) s += 30;
-    // Budget fit: reward plans at/under budget, lightly penalise overruns.
-    if (ans.budget != null) s += p.price! <= ans.budget ? 25 : -(p.price! - ans.budget);
-    return s;
-  };
-
-  const sorted = inScope.sort((x, y) => score(y) - score(x));
-  return sorted.slice(0, CANDIDATES_PER_CAT);
-}
-
-// Compact pipe-delimited rows — small prompt, only real data, with the stable id
-// so the model can echo planId back without us trusting a free-text name.
-function buildCatalogueContext(candidates: Plan[]): string {
-  return candidates
-    .map((p) => {
-      const flags = [p.is5G && "5G", p.noCommit && "ללא התחייבות", p.hasAbroad && "כולל חו״ל"]
-        .filter(Boolean)
-        .join(", ");
-      return `${p.id} | ${p.cat} | ${p.provider} | ${p.plan} | ₪${p.price} ${unitLabel(p)}${flags ? " | " + flags : ""}`;
-    })
-    .join("\n");
-}
-
-// annualSaving must be plausible and snapshot-derived: only computed when the
-// user gave a monthly budget (treated as their current bill) and the plan is
-// monthly. Otherwise omitted (null). Never client-supplied.
-function annualSaving(plan: Plan, ans: Answers): number | null {
-  if (ans.budget == null) return null;
-  if (plan.priceUnit && plan.priceUnit !== "month") return null;
-  const monthly = ans.budget - (plan.price ?? 0);
-  if (monthly <= 0) return null;
-  return Math.round(monthly * 12);
 }
 
 const SYSTEM_PROMPT = `את/ה יועץ/ת מסלולים חכם/ה באתר "חוסך" — שירות ישראלי להשוואת מסלולי סלולר/אינטרנט/טלוויזיה/טריפל/חו"ל.
@@ -245,7 +162,7 @@ async function callGeminiModel(model: string, apiKey: string, system: string, hi
     })),
     { role: "user", parts: [{ text: user }] },
   ];
-  return await fetch(
+  return await fetchWithTimeout(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`,
     {
       method: "POST",
@@ -260,6 +177,8 @@ async function callGeminiModel(model: string, apiKey: string, system: string, hi
         },
       }),
     },
+    TEXT_TIMEOUT_MS,
+    `gemini:${model}`,
   );
 }
 
@@ -290,7 +209,7 @@ async function callGroq(apiKey: string, system: string, history: { role: string;
     })),
     { role: "user", content: user },
   ];
-  const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+  const r = await fetchWithTimeout("https://api.groq.com/openai/v1/chat/completions", {
     method: "POST",
     headers: { "Content-Type": "application/json", "Authorization": `Bearer ${apiKey}` },
     body: JSON.stringify({
@@ -300,7 +219,7 @@ async function callGroq(apiKey: string, system: string, history: { role: string;
       max_tokens: MAX_OUTPUT_TOKENS,
       response_format: { type: "json_object" },
     }),
-  });
+  }, TEXT_TIMEOUT_MS, "groq");
   if (!r.ok) {
     jlog({ at: "callGroq", ok: false, status: r.status });
     throw new Error("groq request failed: " + r.status);
@@ -373,32 +292,25 @@ function recordSession(ip: string): void {
 
 // ─────────────────────────────────────────────────────────────────────────────
 Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", {
-      headers: cors({
-        "Access-Control-Allow-Methods": "POST, OPTIONS",
-        "Access-Control-Allow-Headers": "authorization, apikey, content-type",
-      }),
-    });
-  }
-  if (req.method !== "POST") return json({ error: "method not allowed" }, 405);
+  if (req.method === "OPTIONS") return preflight(req);
+  if (req.method !== "POST") return json(req, { error: "method not allowed" }, 405);
 
   const geminiKey = Deno.env.get("GEMINI_API_KEY") ?? Deno.env.get("GOOGLE_AI_KEY") ?? "";
   const groqKey = Deno.env.get("GROQ_API_KEY") ?? "";
-  if (!geminiKey && !groqKey) return json({ error: "advisor is not configured" }, 503);
+  if (!geminiKey && !groqKey) return json(req, { error: "advisor is not configured" }, 503);
 
   let body: { answers?: unknown; history?: { role: string; text: string }[] };
   try {
     body = await req.json();
   } catch (_) {
-    return json({ error: "invalid json" }, 400);
+    return json(req, { error: "invalid json" }, 400);
   }
 
   // Cheap abuse/cost guard: reject an oversized raw conversation before any AI
   // work (sum the incoming history turns' text, the only free-text the client sends).
   if (Array.isArray(body.history)) {
     const totalLen = body.history.reduce((n, h) => n + String(h?.text ?? "").length, 0);
-    if (totalLen > MAX_INPUT_LEN) return json({ error: "input too long" }, 400);
+    if (totalLen > MAX_INPUT_LEN) return json(req, { error: "input too long" }, 400);
   }
 
   const ans = parseAnswers(body.answers);
@@ -411,13 +323,13 @@ Deno.serve(async (req: Request) => {
 
   const ip = clientIp(req);
   const limited = await rateLimited(ip);
-  if (limited === null) return json({ error: FRIENDLY_BUSY }, 503);
-  if (limited) return json({ error: "rate limit exceeded" }, 429);
+  if (limited === null) return json(req, { error: FRIENDLY_BUSY }, 503);
+  if (limited) return json(req, { error: "rate limit exceeded" }, 429);
 
   const plans = loadPlans();
   const candidates = pickCandidates(plans, ans);
   if (candidates.length === 0) {
-    return json({
+    return json(req, {
       recommendations: [],
       followup: "לא מצאתי מסלולים מתאימים בקטגוריה הזו כרגע. תרצו שאבדוק קטגוריה אחרת?",
     });
@@ -433,12 +345,14 @@ Deno.serve(async (req: Request) => {
 
   let raw = "";
   let provider = "";
+  let timedOut = false;
   try {
     if (geminiKey) {
       try {
         raw = await callGemini(geminiKey, SYSTEM_PROMPT, history, userPrompt);
         provider = "gemini";
       } catch (e) {
+        if (e instanceof AiTimeoutError) timedOut = true;
         jlog({ at: "advisor", note: "gemini failed, trying groq", error: String(e) });
       }
     }
@@ -447,6 +361,7 @@ Deno.serve(async (req: Request) => {
       provider = "groq";
     }
   } catch (e) {
+    if (e instanceof AiTimeoutError) timedOut = true;
     jlog({ at: "advisor", ok: false, error: String(e) });
   }
 
@@ -494,6 +409,9 @@ Deno.serve(async (req: Request) => {
     "כדי לדייק עוד — חשוב לכם יותר מחיר נמוך או נפח גלישה גדול?";
 
   recordSession(ip);
-  jlog({ at: "advisor", ok: true, provider: provider || "fallback", recs: recommendations.length });
-  return json({ recommendations, followup });
+  // The deterministic fallback above is REAL grounded catalogue data, so even on
+  // an LLM timeout we return useful recommendations rather than 504-ing the flow.
+  // We just log the timeout (the AbortController already prevented the hang).
+  jlog({ at: "advisor", ok: true, provider: provider || "fallback", timedOut, recs: recommendations.length });
+  return json(req, { recommendations, followup });
 });

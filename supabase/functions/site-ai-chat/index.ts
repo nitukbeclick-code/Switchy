@@ -39,7 +39,8 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { firstEnv, resolveCfgCached } from "../_shared/config.ts";
 import { fetchRows, insertRow, serviceFetch } from "../_shared/db.ts";
 import { jlog } from "../_shared/log.ts";
-import { type AiKeys, generateReply } from "../_shared/ai.ts";
+import { type AiKeys, generateReply, type ReplyMeta } from "../_shared/ai.ts";
+import { corsHeaders, preflight } from "../_shared/cors.ts";
 import { buildCitedCatalogueContext, type Plan, plansFromSnapshot } from "../_shared/catalogue.ts";
 import { type AiLeadInput, captureAiLead, detectSwitchIntent } from "../_shared/leads.ts";
 import plansSnapshot from "./plans-snapshot.json" with { type: "json" };
@@ -57,14 +58,12 @@ const MAX_OUTPUT_TOKENS = 350;
 const PER_IP_HOURLY_LIMIT = 15;
 const MAX_SESSION_ID_LEN = 64;
 
-function cors(extra: Record<string, string> = {}): Record<string, string> {
-  return { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*", ...extra };
-}
-
-function json(body: unknown, status = 200): Response {
+// CORS is per-request now: corsHeaders(req) reflects only an allowlisted Origin
+// (this is a public, paid-LLM endpoint — `*` would let any site spend our quota).
+function json(req: Request, body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { "Content-Type": "application/json", ...cors() },
+    headers: { "Content-Type": "application/json", ...corsHeaders(req) },
   });
 }
 
@@ -181,17 +180,15 @@ const FALLBACK_REPLY =
   "מצטער/ת, לא הצלחתי לנסח תשובה כרגע — נסו לשאול אחרת או דברו איתנו בוואטסאפ.";
 
 Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: cors({ "Access-Control-Allow-Methods": "POST, OPTIONS" }) });
-  }
-  if (req.method !== "POST") return json({ error: "method not allowed" }, 405);
+  if (req.method === "OPTIONS") return preflight(req);
+  if (req.method !== "POST") return json(req, { error: "method not allowed" }, 405);
 
   const geminiKey = (await resolveCfgCached()).gemini || firstEnv(["GEMINI_API_KEY", "GOOGLE_AI_KEY"]);
   const groqKey = firstEnv(["GROQ_API_KEY"]);
   const openrouterKey = firstEnv(["OPENROUTER_API_KEY"]);
   // Configured if ANY provider in the fallback chain has a key.
   if (!geminiKey && !groqKey && !openrouterKey) {
-    return json({ error: "ai chat is not configured" }, 503);
+    return json(req, { error: "ai chat is not configured" }, 503);
   }
 
   let body: {
@@ -203,23 +200,23 @@ Deno.serve(async (req: Request) => {
   try {
     body = await req.json();
   } catch (_) {
-    return json({ error: "invalid json" }, 400);
+    return json(req, { error: "invalid json" }, 400);
   }
   // Cheap abuse/cost guard: reject an oversized raw payload before any AI work.
   if (String(body.message ?? "").length > MAX_INPUT_LEN) {
-    return json({ error: "message too long" }, 400);
+    return json(req, { error: "message too long" }, 400);
   }
   const message = String(body.message ?? "").trim();
-  if (!message) return json({ error: "message is required" }, 400);
-  if (message.length > MAX_MESSAGE_LEN) return json({ error: "message too long" }, 400);
+  if (!message) return json(req, { error: "message is required" }, 400);
+  if (message.length > MAX_MESSAGE_LEN) return json(req, { error: "message too long" }, 400);
 
   const sessionId = safeSessionId(body.sessionId);
   const clientHistory = sanitizeTurns(body.history).slice(-MAX_HISTORY_TURNS);
 
   const ip = clientIp(req);
   const limited = await rateLimited(ip);
-  if (limited === null) return json({ error: FRIENDLY_BUSY }, 503);
-  if (limited) return json({ error: "rate limit exceeded" }, 429);
+  if (limited === null) return json(req, { error: FRIENDLY_BUSY }, 503);
+  if (limited) return json(req, { error: "rate limit exceeded" }, 429);
 
   // ── Lead capture (only with explicit consent) ──────────────────────────────
   // If the client posted a structured lead (collected after we offered), capture
@@ -242,6 +239,10 @@ Deno.serve(async (req: Request) => {
     if (!merged.some((m) => m.role === h.role && m.text === h.text)) merged.push(h);
   }
   const history = merged.slice(-MAX_HISTORY_TURNS);
+  // Honesty signal: tell the client when older turns fell outside the window the
+  // model actually saw, so the UI can note the assistant has limited recall of
+  // earlier messages (the conversation isn't fully in-context).
+  const contextTruncated = merged.length > history.length;
 
   // ── Grounding: cited catalogue context ─────────────────────────────────────
   const plans = loadPlans();
@@ -249,12 +250,19 @@ Deno.serve(async (req: Request) => {
 
   // ── Generate (shared Gemini → Groq → OpenRouter chain, reply cleaned) ──────
   const keys: AiKeys = { gemini: geminiKey, groq: groqKey, openrouter: openrouterKey };
+  const replyMeta: ReplyMeta = { timedOut: false };
   let reply = "";
   try {
-    reply = await generateReply(keys, systemPrompt, history, message, MAX_OUTPUT_TOKENS);
+    reply = await generateReply(keys, systemPrompt, history, message, MAX_OUTPUT_TOKENS, replyMeta);
   } catch (e) {
     jlog({ at: "ai-chat", ok: false, error: String(e) });
-    return json({ error: "ai request failed" }, 502);
+    return json(req, { error: "ai request failed" }, 502);
+  }
+  // Every provider failed AND at least one aborted on its timeout → 504 so the
+  // client can show "try again" rather than a generic error or a fake answer.
+  if (!reply && replyMeta.timedOut) {
+    jlog({ at: "ai-chat", ok: false, timedOut: true });
+    return json(req, { error: FRIENDLY_BUSY }, 504);
   }
   const finalReply = reply || FALLBACK_REPLY;
 
@@ -274,6 +282,7 @@ Deno.serve(async (req: Request) => {
   const out: Record<string, unknown> = { reply: finalReply };
   if (offerLead) out.offerLead = true;
   if (leadCaptured) out.leadCaptured = true;
+  if (contextTruncated) out.contextTruncated = true;
   if (sessionId) out.sessionId = sessionId;
-  return json(out);
+  return json(req, out);
 });

@@ -2,7 +2,29 @@
 // they can be unit-tested without booting the Deno.serve entrypoint (mirrors the
 // whatsapp-webhook/intents.ts convention). No network, no env, no I/O.
 
-export type Extracted = { provider: string; monthly: number; category: string; confidence: number };
+export type Extracted = {
+  provider: string;
+  monthly: number;
+  category: string;
+  confidence: number;
+  // Honest, human-readable caveats from the vision model (e.g. "התמונה מעט
+  // מטושטשת", "הסכום החודשי לא ברור"). Always an array (possibly empty); each
+  // entry is trimmed + clipped so a misbehaving model can't bloat the response.
+  warnings: string[];
+};
+
+// Coerce the model's `warnings` into a clean string[]: accept an array of
+// strings, or a single string, drop empties, clip each to 120 chars, cap at 5.
+function parseWarnings(raw: unknown): string[] {
+  const arr = Array.isArray(raw) ? raw : (typeof raw === "string" ? [raw] : []);
+  const out: string[] = [];
+  for (const w of arr) {
+    const s = String(w ?? "").trim().slice(0, 120);
+    if (s) out.push(s);
+    if (out.length >= 5) break;
+  }
+  return out;
+}
 
 // Parse "data:image/png;base64,AAAA…" or raw base64. Returns mimeType + the
 // bare base64 payload (no prefix) so Gemini's inlineData gets clean bytes.
@@ -37,12 +59,16 @@ export function parseExtraction(raw: string): Extracted | null {
   try {
     const o = JSON.parse(s) as Record<string, unknown>;
     const monthly = Number(o.monthly);
-    const confidence = Number(o.confidence);
+    let confidence = Number(o.confidence);
+    if (!Number.isFinite(confidence)) confidence = 0;
+    // Clamp confidence into [0,1] — a model occasionally returns 0-100 or >1.
+    confidence = Math.max(0, Math.min(1, confidence));
     return {
       provider: String(o.provider ?? "").slice(0, 80),
       monthly: Number.isFinite(monthly) ? monthly : 0,
       category: String(o.category ?? "").slice(0, 40),
-      confidence: Number.isFinite(confidence) ? confidence : 0,
+      confidence,
+      warnings: parseWarnings(o.warnings),
     };
   } catch (_) {
     return null;

@@ -13,6 +13,46 @@ const OPENROUTER_MODEL = "meta-llama/llama-3.3-70b-instruct:free";
 const MAX_HISTORY_TURNS = 6;
 const MAX_MESSAGE_LEN = 800;
 
+// Per-call wall-clock budgets. A paid LLM that hangs would otherwise pin the
+// edge function until the platform kills it (and, for the fallback chain, stack
+// 3 hangs in series). We race every fetch against an AbortController so a stuck
+// provider fails fast and we move on (or surface a 504) instead of cascading.
+export const TEXT_TIMEOUT_MS = 15_000;
+export const VISION_TIMEOUT_MS = 30_000;
+
+// A 504-style sentinel a caller can map to an HTTP 504. Thrown by fetchWithTimeout
+// when the AbortController fires.
+export class AiTimeoutError extends Error {
+  constructor(label: string, ms: number) {
+    super(`${label} timed out after ${ms}ms`);
+    this.name = "AiTimeoutError";
+  }
+}
+
+// fetch() with a hard timeout via AbortController. On timeout the underlying
+// request is aborted (freeing the socket) and we throw AiTimeoutError; any other
+// network error propagates unchanged.
+export async function fetchWithTimeout(
+  url: string,
+  init: RequestInit,
+  ms: number,
+  label: string,
+): Promise<Response> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), ms);
+  try {
+    return await fetch(url, { ...init, signal: ctrl.signal });
+  } catch (e) {
+    if (ctrl.signal.aborted) {
+      jlog({ at: `ai.timeout`, label, ms });
+      throw new AiTimeoutError(label, ms);
+    }
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export type ChatTurn = { role: string; text: string };
 export type AiKeys = { gemini?: string; groq?: string; openrouter?: string; openai?: string };
 
@@ -60,7 +100,7 @@ async function callGeminiModel(
     })),
     { role: "user", parts: [{ text: message }] },
   ];
-  return await fetch(
+  return await fetchWithTimeout(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`,
     {
       method: "POST",
@@ -77,6 +117,8 @@ async function callGeminiModel(
         },
       }),
     },
+    TEXT_TIMEOUT_MS,
+    `gemini:${model}`,
   );
 }
 
@@ -125,7 +167,7 @@ async function callOpenAiCompatible(
   maxTokens: number,
   label: string,
 ): Promise<string> {
-  const r = await fetch(endpoint, {
+  const r = await fetchWithTimeout(endpoint, {
     method: "POST",
     headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -134,7 +176,7 @@ async function callOpenAiCompatible(
       temperature: 0.4,
       messages: buildOpenAiMessages(systemContext, history, message),
     }),
-  });
+  }, TEXT_TIMEOUT_MS, label);
   if (!r.ok) {
     jlog({ at: `ai.${label}`, ok: false, status: r.status });
     throw new Error(`${label} request failed: ${r.status}`);
@@ -184,21 +226,31 @@ export function cleanReply(raw: string): string {
   return s;
 }
 
+// A best-effort sink the caller can pass to learn *why* generateReply gave up:
+// `timedOut` is set when at least one provider in the chain aborted on the
+// AbortController timeout, so a site endpoint can answer 504 instead of a generic
+// failure. Purely informational — generateReply still returns "" on total failure.
+export type ReplyMeta = { timedOut: boolean };
+
 // Orchestrated chat reply: Gemini → Groq → OpenRouter. Returns "" only if every
 // configured provider fails (caller supplies a friendly fallback). Each reply is
-// passed through cleanReply() to drop any leaked reasoning preamble.
+// passed through cleanReply() to drop any leaked reasoning preamble. Each provider
+// fetch is bounded by an AbortController timeout (TEXT_TIMEOUT_MS): a hung provider
+// fails fast and we try the next one instead of pinning the function.
 export async function generateReply(
   keys: AiKeys,
   systemContext: string,
   history: ChatTurn[],
   message: string,
   maxTokens = 400,
+  meta?: ReplyMeta,
 ): Promise<string> {
   if (keys.gemini) {
     try {
       const t = cleanReply(await callGemini(keys.gemini, systemContext, history, message, maxTokens));
       if (t) return t;
     } catch (e) {
+      if (e instanceof AiTimeoutError && meta) meta.timedOut = true;
       jlog({ at: "ai.generateReply", provider: "gemini", ok: false, error: String(e) });
     }
   }
@@ -209,7 +261,9 @@ export async function generateReply(
         GROQ_MODEL, keys.groq, systemContext, history, message, maxTokens, "groq",
       ));
       if (t) return t;
-    } catch (_) { /* fall through */ }
+    } catch (e) {
+      if (e instanceof AiTimeoutError && meta) meta.timedOut = true;
+    }
   }
   if (keys.openrouter) {
     try {
@@ -218,7 +272,9 @@ export async function generateReply(
         OPENROUTER_MODEL, keys.openrouter, systemContext, history, message, maxTokens, "openrouter",
       ));
       if (t) return t;
-    } catch (_) { /* fall through */ }
+    } catch (e) {
+      if (e instanceof AiTimeoutError && meta) meta.timedOut = true;
+    }
   }
   return "";
 }
@@ -231,7 +287,7 @@ export async function callGeminiVision(
 ): Promise<string> {
   let lastStatus = 0;
   for (const model of GEMINI_MODELS) {
-    const r = await fetch(
+    const r = await fetchWithTimeout(
       `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`,
       {
         method: "POST",
@@ -252,6 +308,8 @@ export async function callGeminiVision(
           },
         }),
       },
+      VISION_TIMEOUT_MS,
+      `gemini-vision:${model}`,
     );
     if (r.ok) {
       const j = await r.json();

@@ -24,6 +24,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 import type { Cfg, Lead, MeetingRow, TgUpdate } from "../_shared/types.ts";
 import { botFullyConfigured, resolveCfgCached, safeEqual, tgWebhookToken } from "../_shared/config.ts";
+import { rateLimit, secretFingerprint } from "../_shared/ratelimit.ts";
 import { sendTelegram, tgApi } from "../_shared/telegram.ts";
 import { fetchRows, rpcRows, serviceFetch } from "../_shared/db.ts";
 import { sendEmail } from "../_shared/email.ts";
@@ -69,11 +70,28 @@ async function returningLineFor(
   return buildReturningLine(priorLeads, priorMeetings);
 }
 
-function json(body: unknown, status = 200): Response {
+function json(body: unknown, status = 200, extraHeaders?: Record<string, string>): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*" },
+    headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*", ...(extraHeaders ?? {}) },
   });
+}
+
+// Light per-route throttle, applied ONLY after a request has authenticated, so
+// it can never weaken the secret gate or be tripped by attacker-chosen pre-auth
+// input. Authenticated POST traffic here is a handful of trigger-driven lead /
+// meeting INSERTs and Telegram updates per minute; the cap sits far above that
+// so real bursts pass and only a runaway loop / leaked-secret flood gets a 429.
+// The bucket key is the route plus a non-reversible fingerprint of the secret —
+// never the raw secret. Returns a 429 Response when over the cap, else null.
+const RL_LIMIT = 120; // authenticated requests per route per window
+const RL_WINDOW_MS = 60_000; // 1 minute
+async function rateLimited(route: string, secret: string): Promise<Response | null> {
+  const fp = await secretFingerprint(secret);
+  const res = rateLimit(`notify-lead:${route}:${fp}`, RL_LIMIT, RL_WINDOW_MS);
+  if (res.allowed) return null;
+  jlog({ at: "rate-limit", fn: "notify-lead", route, secret_fp: fp, retry_after: res.retryAfterSec });
+  return json({ ok: false, error: "rate_limited" }, 429, { "Retry-After": String(res.retryAfterSec) });
 }
 
 // One compact "are the integrations wired?" object, surfaced both in ?action=health
@@ -215,6 +233,11 @@ Deno.serve(async (req: Request) => {
     if (!cfg.webhookSecret || !(await safeEqual(token, await tgWebhookToken(cfg.webhookSecret)))) {
       return json({ ok: false, error: "unauthorized" }, 401);
     }
+    // Throttle authenticated Telegram updates (post-auth, so a forged/unsigned
+    // flood is already shed by the 401 above). Real updates are a few presses /
+    // messages per minute — well under the cap.
+    const limited = await rateLimited("telegram-update", cfg.webhookSecret);
+    if (limited) return limited;
     // Fail-close: refuse to act on team chat / callback updates unless the bot
     // is fully configured — an empty allowlist or unset team chat would mean the
     // authorization gates default to "deny everyone", so dispatching is pointless
@@ -255,6 +278,13 @@ Deno.serve(async (req: Request) => {
   const provided = req.headers.get("x-webhook-secret") ?? "";
   if (!cfg.webhookSecret) return json({ ok: false, error: "webhook secret not configured" }, 503);
   if (!(await safeEqual(provided, cfg.webhookSecret))) return json({ ok: false, error: "unauthorized" }, 401);
+
+  // Authenticated → throttle the expensive fan-out path (triage + Telegram +
+  // email). The lead/meeting INSERT triggers fire a handful of times per minute
+  // at most; the cap is well above that, so this only sheds a runaway loop or a
+  // leaked-secret flood.
+  const limited = await rateLimited("webhook", cfg.webhookSecret);
+  if (limited) return limited;
 
   let payload: Record<string, unknown> = {};
   try { payload = await req.json(); } catch (_) { /* empty body */ }

@@ -23,6 +23,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 import type { Cfg, Lead, MeetingRow, RenewalRow } from "../_shared/types.ts";
 import { resolveCfgCached, safeEqual } from "../_shared/config.ts";
+import { rateLimit, secretFingerprint } from "../_shared/ratelimit.ts";
 import { esc, NL, sendTelegram } from "../_shared/telegram.ts";
 import { fetchRows, logMeetingEvent, patchCount, rpcRows, serviceFetch } from "../_shared/db.ts";
 import { jlog } from "../_shared/log.ts";
@@ -280,11 +281,27 @@ async function runFollowUp(cfg: Cfg) {
 
 // ── HTTP ─────────────────────────────────────────────────────────────────────
 
-function json(body: unknown, status = 200): Response {
+function json(body: unknown, status = 200, extraHeaders?: Record<string, string>): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*" },
+    headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*", ...(extraHeaders ?? {}) },
   });
+}
+
+// Light per-route throttle, applied ONLY after the x-webhook-secret gate passes,
+// so it can never weaken auth. Each scheduled run does heavy work (digest fan-out,
+// the lead/meeting sweep, SLA follow-ups, the weekly report). pg_cron fires these
+// at most a few times an hour, so the per-minute cap below sits far above real
+// traffic and only sheds a runaway loop / leaked-secret flood. The bucket key is
+// the route plus a non-reversible fingerprint of the secret — never the raw value.
+const RL_LIMIT = 60; // authenticated POSTs per window
+const RL_WINDOW_MS = 60_000; // 1 minute
+async function rateLimited(secret: string): Promise<Response | null> {
+  const fp = await secretFingerprint(secret);
+  const res = rateLimit(`renewal-reminders:post:${fp}`, RL_LIMIT, RL_WINDOW_MS);
+  if (res.allowed) return null;
+  jlog({ at: "rate-limit", fn: "renewal-reminders", secret_fp: fp, retry_after: res.retryAfterSec });
+  return json({ ok: false, error: "rate_limited" }, 429, { "Retry-After": String(res.retryAfterSec) });
 }
 
 Deno.serve(async (req: Request) => {
@@ -323,6 +340,10 @@ Deno.serve(async (req: Request) => {
   const provided = req.headers.get("x-webhook-secret") ?? "";
   if (!cfg.webhookSecret) return json({ ok: false, error: "webhook secret not configured" }, 503);
   if (!(await safeEqual(provided, cfg.webhookSecret))) return json({ ok: false, error: "unauthorized" }, 401);
+
+  // Authenticated → throttle. Scheduled runs are sparse; this only sheds abuse.
+  const limited = await rateLimited(cfg.webhookSecret);
+  if (limited) return limited;
 
   let payload: Record<string, unknown> = {};
   try { payload = await req.json(); } catch (_) { /* empty body */ }

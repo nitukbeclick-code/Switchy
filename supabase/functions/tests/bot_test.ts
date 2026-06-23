@@ -325,6 +325,32 @@ Deno.test("evalCronHealth flags stale and failing jobs, ignores unregistered", (
   assertEquals(empty.known, 0);
 });
 
+Deno.test("evalCronHealth watches the monthly retention purges with a 35-day window", () => {
+  const now = Date.parse("2026-06-23T12:00:00Z");
+  const hoursAgo = (h: number) => new Date(now - h * 3_600_000).toISOString();
+  // A monthly job that ran ~28 days ago is healthy (inside the ~35-day window) —
+  // a calendar-monthly cadence must not false-alarm.
+  const healthy = evalCronHealth([
+    { jobname: "retention-purge-monthly", schedule: "", active: true, last_start: hoursAgo(28 * 24), last_status: "succeeded" },
+    { jobname: "analytics-purge-monthly", schedule: "", active: true, last_start: hoursAgo(28 * 24), last_status: "succeeded" },
+  ], now);
+  assert(healthy.ok);
+  assertEquals(healthy.known, 2);
+  // A purge silent for 40 days is genuinely DEAD (PII / analytics rows piling up
+  // past their retention windows) -> stale.
+  const stale = evalCronHealth([
+    { jobname: "retention-purge-monthly", schedule: "", active: true, last_start: hoursAgo(40 * 24), last_status: "succeeded" },
+  ], now);
+  assertFalse(stale.ok);
+  assertEquals(stale.stale, ["retention-purge-monthly"]);
+  // A purge whose last run errored -> failing (caught even when recent).
+  const failing = evalCronHealth([
+    { jobname: "analytics-purge-monthly", schedule: "", active: true, last_start: hoursAgo(24), last_status: "failed" },
+  ], now);
+  assertFalse(failing.ok);
+  assertEquals(failing.failing, ["analytics-purge-monthly"]);
+});
+
 // ── digests ──────────────────────────────────────────────────────────────────
 
 Deno.test("buildDigest handles the empty case and renders urgency rows", () => {

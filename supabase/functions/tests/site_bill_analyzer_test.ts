@@ -13,7 +13,7 @@ import { buildSuggestions, type Plan } from "../_shared/catalogue.ts";
 
 Deno.test("parseExtraction reads a clean JSON object", () => {
   const out = parseExtraction('{"provider":"סלקום","monthly":89,"category":"cellular","confidence":0.9}');
-  assertEquals(out, { provider: "סלקום", monthly: 89, category: "cellular", confidence: 0.9 });
+  assertEquals(out, { provider: "סלקום", monthly: 89, category: "cellular", confidence: 0.9, warnings: [] });
 });
 
 Deno.test("parseExtraction strips a ```json fence", () => {
@@ -47,6 +47,37 @@ Deno.test("parseExtraction clips over-long provider/category strings", () => {
   const out = parseExtraction(JSON.stringify({ provider: longProvider, monthly: 50, category: longCategory, confidence: 1 }));
   assertEquals(out?.provider.length, 80);
   assertEquals(out?.category.length, 40);
+});
+
+// ── confidence clamping + warnings (honest about blurry photos) ───────────────
+
+Deno.test("parseExtraction clamps confidence into [0,1]", () => {
+  assertEquals(parseExtraction('{"monthly":50,"confidence":1.7}')?.confidence, 1);
+  assertEquals(parseExtraction('{"monthly":50,"confidence":-0.5}')?.confidence, 0);
+  // a 0-100 style score from a confused model still clamps to 1
+  assertEquals(parseExtraction('{"monthly":50,"confidence":85}')?.confidence, 1);
+});
+
+Deno.test("parseExtraction reads a warnings array, trims + clips entries", () => {
+  const out = parseExtraction(
+    '{"monthly":50,"confidence":0.5,"warnings":["  התמונה מטושטשת  ","",123]}',
+  );
+  // empties dropped, whitespace trimmed, the number coerced to its string form
+  assertEquals(out?.warnings, ["התמונה מטושטשת", "123"]);
+});
+
+Deno.test("parseExtraction accepts a single warning string", () => {
+  const out = parseExtraction('{"monthly":50,"confidence":0.4,"warnings":"הסכום לא ברור"}');
+  assertEquals(out?.warnings, ["הסכום לא ברור"]);
+});
+
+Deno.test("parseExtraction caps warnings at 5 entries", () => {
+  const many = JSON.stringify({ monthly: 50, confidence: 0.4, warnings: ["a", "b", "c", "d", "e", "f", "g"] });
+  assertEquals(parseExtraction(many)?.warnings.length, 5);
+});
+
+Deno.test("parseExtraction defaults warnings to [] when the model omits it", () => {
+  assertEquals(parseExtraction('{"provider":"yes","monthly":100,"category":"tv","confidence":0.7}')?.warnings, []);
 });
 
 Deno.test("parseExtraction returns null on empty input or unparseable garbage", () => {

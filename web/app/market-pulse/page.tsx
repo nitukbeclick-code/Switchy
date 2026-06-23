@@ -173,7 +173,7 @@ export default function MarketPulsePage() {
 
       {/* ── Breadcrumb (visible) ──────────────────────────────────────────── */}
       <nav aria-label="פירורי לחם" className="text-sm text-muted">
-        <Link href="/" className="hover:text-accent">
+        <Link href="/" className="interactive hover:text-accent">
           בית
         </Link>
         <span className="px-1.5">/</span>
@@ -181,11 +181,11 @@ export default function MarketPulsePage() {
       </nav>
 
       {/* ── Heading ───────────────────────────────────────────────────────── */}
-      <header className="mt-3">
-        <h1 className="font-display text-3xl font-bold text-ink sm:text-4xl">
+      <header className="mt-4">
+        <h1 className="font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
           מצב שוק התקשורת בישראל
         </h1>
-        <p className="mt-3 max-w-2xl text-lg text-foreground">
+        <p className="mt-4 max-w-2xl text-lg leading-relaxed text-foreground">
           תמונת מצב נוכחית של מחירי התקשורת — מחיר ממוצע, המחיר הזול ביותר והעסקה
           המשתלמת ביותר בכל קטגוריה. הנתונים עדכניים נכון להיום.
         </p>
@@ -217,7 +217,7 @@ export default function MarketPulsePage() {
 
       {/* ── Honesty note: history will accrue for real future trends. ─────── */}
       <aside
-        className="mt-8 rounded-2xl border border-border bg-surface p-5 text-sm text-foreground sm:p-6"
+        className="bento mt-10 p-5 text-sm text-foreground sm:p-6"
         aria-label="הערה על נתוני מגמה"
       >
         <h2 className="mb-1.5 flex items-center gap-2 font-display text-base font-semibold text-ink">
@@ -246,19 +246,19 @@ export default function MarketPulsePage() {
       {/* ── Onward links — no dead-ends. ──────────────────────────────────── */}
       <nav
         aria-label="המשך לעמודי השוואה"
-        className="mt-16 border-t border-border pt-8"
+        className="mt-16 border-t border-border/40 pt-10"
       >
-        <h2 className="mb-4 font-display text-xl font-bold text-ink">
+        <h2 className="mb-5 font-display text-xl font-bold tracking-tight text-ink">
           המשיכו להשוות
         </h2>
-        <ul className="grid gap-3 sm:grid-cols-2">
+        <ul className="grid gap-3 sm:grid-cols-2 sm:gap-4">
           {rows.map((r) => (
             <li key={r.category}>
               <Link
                 href={`/compare/${r.category}`}
-                className="group flex items-center justify-between gap-3 rounded-xl border border-border bg-surface p-3.5 transition-colors hover:border-accent"
+                className="card card-interactive group flex items-center justify-between gap-3 p-4"
               >
-                <span className="font-medium text-foreground group-hover:text-accent">
+                <span className="font-medium text-foreground transition-colors group-hover:text-accent">
                   השוואת מסלולי {r.label}
                 </span>
                 <span className="text-sm text-muted">

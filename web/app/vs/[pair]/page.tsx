@@ -152,31 +152,31 @@ function buildAuthorityRows(
 // One compact stat card per side (entry price + plan count + cheapest plan name).
 function SideCard({ side, label }: { side: VsSide; label: string }) {
   return (
-    <div className="rounded-2xl border border-border bg-surface p-5">
-      <span className="text-xs text-muted">{label}</span>
-      <h3 className="mt-1 font-display text-xl font-bold text-ink">
+    <div className="bento card-interactive p-6">
+      <span className="text-xs font-medium text-muted">{label}</span>
+      <h3 className="mt-1 font-display text-xl font-bold tracking-tight text-ink">
         <Link
           href={`/providers/${side.provider.slug}`}
-          className="hover:text-accent"
+          className="interactive hover:text-accent"
         >
           {side.provider.name}
         </Link>
       </h3>
-      <dl className="mt-4 flex flex-wrap items-start gap-x-6 gap-y-3 text-sm">
+      <dl className="mt-5 flex flex-wrap items-start gap-x-6 gap-y-3 text-sm">
         <div>
           <dt className="text-muted">מחיר התחלתי</dt>
-          <dd className="font-display text-2xl font-bold text-value-text">
+          <dd className="font-display text-3xl font-bold tracking-tight text-value-text">
             {ils(side.minPrice)}
           </dd>
         </div>
         <div>
           <dt className="text-muted">מסלולים בקטגוריה</dt>
-          <dd className="font-display text-2xl font-bold text-ink">
+          <dd className="font-display text-3xl font-bold tracking-tight text-ink">
             {side.planCount}
           </dd>
         </div>
       </dl>
-      <p className="mt-3 text-sm text-foreground">
+      <p className="mt-4 text-sm text-foreground">
         המסלול ההתחלתי:{" "}
         <span className="font-medium">{side.cheapest.plan}</span>
       </p>
@@ -345,18 +345,18 @@ export default async function VsPage({ params }: Params) {
       </nav>
 
       {/* ── Heading ───────────────────────────────────────────────────────── */}
-      <header className="mt-3">
-        <h1 className="font-display text-3xl font-bold text-ink sm:text-4xl">
+      <header className="mt-4">
+        <h1 className="font-display text-4xl font-bold tracking-tight text-ink sm:text-5xl">
           {aN} מול {bN} — השוואת {categoryLabel}
         </h1>
-        <p className="mt-3 max-w-2xl text-lg text-foreground">
+        <p className="mt-4 max-w-2xl text-lg leading-relaxed text-foreground">
           השוואה ישירה של מסלולי {categoryLabel} בין {aN} ל{bN} — מחיר התחלתי,
           מספר מסלולים ומאפיינים, הכל מתוך הקטלוג ובשקלים.
         </p>
       </header>
 
       {/* ── Side-by-side stat cards ───────────────────────────────────────── */}
-      <section aria-labelledby="sides-h" className="mt-8">
+      <section aria-labelledby="sides-h" className="mt-10">
         <h2 id="sides-h" className="sr-only">
           {aN} מול {bN} — נתוני הספקים
         </h2>
@@ -385,8 +385,8 @@ export default async function VsPage({ params }: Params) {
       </div>
 
       {/* ── Unified comparison table (every plan from both sides) ──────────── */}
-      <section aria-labelledby="table-h" className="mt-12">
-        <h2 id="table-h" className="font-display text-2xl font-bold text-ink">
+      <section aria-labelledby="table-h" className="mt-14">
+        <h2 id="table-h" className="font-display text-2xl font-bold tracking-tight text-ink">
           כל מסלולי {categoryLabel} — {aN} ו{bN}
         </h2>
         <div className="mt-5">
@@ -399,10 +399,10 @@ export default async function VsPage({ params }: Params) {
 
       {/* ── FAQ ───────────────────────────────────────────────────────────── */}
       <section aria-labelledby="faq-h" className="mt-14">
-        <h2 id="faq-h" className="font-display text-2xl font-bold text-ink">
+        <h2 id="faq-h" className="font-display text-2xl font-bold tracking-tight text-ink">
           שאלות נפוצות — {aN} מול {bN}
         </h2>
-        <div className="mt-5 divide-y divide-border rounded-xl border border-border bg-surface">
+        <div className="card mt-6 divide-y divide-border/60 overflow-hidden">
           {faqs.map((qa) => (
             <details key={qa.question} className="group p-5">
               <summary className="flex cursor-pointer list-none items-center gap-2 font-display font-semibold text-ink marker:hidden">
@@ -414,7 +414,7 @@ export default async function VsPage({ params }: Params) {
                   ▾
                 </span>
               </summary>
-              <p className="mt-2 text-foreground">{qa.answer}</p>
+              <p className="mt-2 leading-relaxed text-foreground">{qa.answer}</p>
             </details>
           ))}
         </div>
@@ -422,7 +422,7 @@ export default async function VsPage({ params }: Params) {
 
       {/* ── Lead form ─────────────────────────────────────────────────────── */}
       <section id="lead" aria-labelledby="lead-h" className="mt-16 scroll-mt-6">
-        <h2 id="lead-h" className="font-display text-2xl font-bold text-ink">
+        <h2 id="lead-h" className="font-display text-2xl font-bold tracking-tight text-ink">
           לא בטוחים מה מתאים — {aN} או {bN}?
         </h2>
         <p className="mt-2 text-foreground">

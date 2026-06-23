@@ -101,7 +101,7 @@ export default function AuthorityBlock({
       aria-labelledby={headingId}
       data-authority-block
       className={[
-        "rounded-2xl border border-border bg-surface p-5 sm:p-6 shadow-sm",
+        "bento p-6 sm:p-7",
         className ?? "",
       ]
         .join(" ")
@@ -109,11 +109,11 @@ export default function AuthorityBlock({
     >
       <h2
         id={headingId}
-        className="mb-2 flex items-center gap-2 font-display text-base font-semibold text-ink"
+        className="mb-2.5 flex items-center gap-2.5 font-display text-base font-semibold tracking-tight text-ink"
       >
         <span
           aria-hidden="true"
-          className="inline-block h-4 w-1 rounded-full bg-accent"
+          className="inline-block h-5 w-1.5 rounded-full bg-accent"
         />
         {heading}
       </h2>
@@ -129,7 +129,7 @@ export default function AuthorityBlock({
       {/* 2 — native truth table (factor / winner / reason). */}
       {rows.length > 0 && (
         <div
-          className="mt-5 w-full overflow-x-auto rounded-xl border border-border"
+          className="mt-5 w-full overflow-x-auto rounded-xl border border-border/60 elevate-soft"
           tabIndex={0}
           role="region"
           aria-label={tableCaption}
@@ -155,7 +155,7 @@ export default function AuthorityBlock({
               {rows.map((row, i) => (
                 <tr
                   key={`${row.factor}-${i}`}
-                  className="border-b border-border align-top last:border-b-0"
+                  className="border-b border-border/70 align-top transition-colors last:border-b-0 hover:bg-accent/[0.03]"
                 >
                   <th
                     scope="row"

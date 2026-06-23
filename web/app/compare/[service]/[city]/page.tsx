@@ -336,11 +336,11 @@ export default async function ServiceCityPage({ params }: Params) {
 
       {/* ── Breadcrumb (visible) ──────────────────────────────────────────── */}
       <nav aria-label="פירורי לחם" className="text-sm text-muted">
-        <Link href="/" className="hover:text-accent">
+        <Link href="/" className="interactive hover:text-accent">
           בית
         </Link>
         <span className="px-1.5">/</span>
-        <Link href={`/compare/${service}`} className="hover:text-accent">
+        <Link href={`/compare/${service}`} className="interactive hover:text-accent">
           השוואת {svc.label}
         </Link>
         <span className="px-1.5">/</span>
@@ -349,10 +349,10 @@ export default async function ServiceCityPage({ params }: Params) {
 
       {/* ── Heading ───────────────────────────────────────────────────────── */}
       <header className="mt-3">
-        <h1 className="font-display text-3xl font-bold text-ink sm:text-4xl">
+        <h1 className="font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
           {svc.label} ב{c.name}
         </h1>
-        <p className="mt-3 max-w-2xl text-lg text-foreground">
+        <p className="mt-4 max-w-2xl text-lg leading-relaxed text-foreground">
           הזמינות ארצית — אותם ספקים ומסלולי {svc.label} זמינים ב{c.name}
           {" "}({c.district}) כמו בכל הארץ, ובאותם מחירים. {plans.length} מסלולים,
           ממוינים מהזול ליקר.
@@ -389,11 +389,11 @@ export default async function ServiceCityPage({ params }: Params) {
       {/* ── Honest local nuance note ──────────────────────────────────────── */}
       <section
         aria-labelledby="local-note-h"
-        className="mt-10 rounded-2xl border border-border bg-surface p-5 sm:p-6"
+        className="bento mt-10 p-6 sm:p-7"
       >
         <h2
           id="local-note-h"
-          className="flex items-center gap-2 font-display text-base font-semibold text-ink"
+          className="flex items-center gap-2 font-display text-base font-semibold tracking-tight text-ink"
         >
           <span
             aria-hidden="true"
@@ -401,7 +401,7 @@ export default async function ServiceCityPage({ params }: Params) {
           />
           מה כדאי לדעת על {c.name}
         </h2>
-        <p className="mt-2 text-[15px] leading-relaxed text-foreground">
+        <p className="mt-3 text-[15px] leading-relaxed text-foreground">
           שוק התקשורת בישראל ארצי: אותם ספקים ומחירים ב{c.name} כמו בכל עיר.{" "}
           {isInfraDependent(svc)
             ? `הניואנס המקומי היחיד הוא תשתית קווית — זמינות סיב אופטי/כבלים תלויה ` +
@@ -413,14 +413,17 @@ export default async function ServiceCityPage({ params }: Params) {
       </section>
 
       {/* ── FAQ (honest local Qs) ─────────────────────────────────────────── */}
-      <section aria-labelledby="faq-h" className="mt-14">
-        <h2 id="faq-h" className="font-display text-2xl font-bold text-ink">
+      <section aria-labelledby="faq-h" className="mt-16">
+        <h2
+          id="faq-h"
+          className="font-display text-2xl font-bold tracking-tight text-ink"
+        >
           שאלות נפוצות — {svc.label} ב{c.name}
         </h2>
-        <div className="mt-5 divide-y divide-border rounded-xl border border-border bg-surface">
+        <div className="card mt-6 divide-y divide-border/60 overflow-hidden">
           {faqs.map((qa) => (
             <details key={qa.question} className="group p-5">
-              <summary className="flex cursor-pointer list-none items-center gap-2 font-display font-semibold text-ink marker:hidden">
+              <summary className="interactive flex cursor-pointer list-none items-center gap-2 font-display font-semibold text-ink marker:hidden group-hover:text-accent">
                 <span>{qa.question}</span>
                 <span
                   aria-hidden="true"
@@ -429,18 +432,21 @@ export default async function ServiceCityPage({ params }: Params) {
                   ▾
                 </span>
               </summary>
-              <p className="mt-2 text-foreground">{qa.answer}</p>
+              <p className="mt-2 leading-relaxed text-foreground">{qa.answer}</p>
             </details>
           ))}
         </div>
       </section>
 
       {/* ── Lead form ─────────────────────────────────────────────────────── */}
-      <section id="lead" aria-labelledby="lead-h" className="mt-16 scroll-mt-6">
-        <h2 id="lead-h" className="font-display text-2xl font-bold text-ink">
+      <section id="lead" aria-labelledby="lead-h" className="mt-20 scroll-mt-6">
+        <h2
+          id="lead-h"
+          className="font-display text-2xl font-bold tracking-tight text-ink"
+        >
           רוצים עזרה לבחור {svc.label} ב{c.name}?
         </h2>
-        <p className="mt-2 text-foreground">
+        <p className="mt-2 leading-relaxed text-foreground">
           השאירו פרטים ונחזור אליכם עם המלצה מותאמת — חינם וללא התחייבות.
         </p>
         {/* Commission disclosure repeated before the lead hand-off (§7b). */}

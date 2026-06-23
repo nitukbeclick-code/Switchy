@@ -277,11 +277,11 @@ export default async function SwitchProviderPage({ params }: Params) {
       </nav>
 
       {/* ── Heading ───────────────────────────────────────────────────────── */}
-      <header className="mt-3">
-        <h1 className="font-display text-3xl font-bold text-ink sm:text-4xl">
+      <header className="mt-4">
+        <h1 className="font-display text-4xl font-bold tracking-tight text-ink sm:text-5xl">
           איך לעזוב את {provider.name}
         </h1>
-        <p className="mt-3 text-lg text-foreground">
+        <p className="mt-4 text-lg leading-relaxed text-foreground">
           מדריך עובדתי לניתוק ולמעבר מ{provider.name} — מבוסס על זכויות הצרכן
           בישראל. בלי מספרי טלפון מומצאים ובלי הבטחות: רק מה שמותר לכם לפי הדין,
           ולאן לפנות באופן הרשמי.
@@ -296,26 +296,26 @@ export default async function SwitchProviderPage({ params }: Params) {
       </div>
 
       {/* ── Steps (HowTo, visible) ────────────────────────────────────────── */}
-      <section aria-labelledby="steps-h" className="mt-12">
-        <h2 id="steps-h" className="font-display text-2xl font-bold text-ink">
+      <section aria-labelledby="steps-h" className="mt-14">
+        <h2 id="steps-h" className="font-display text-2xl font-bold tracking-tight text-ink">
           שלב אחר שלב: לעזוב את {provider.name}
         </h2>
-        <ol className="mt-5 space-y-4">
+        <ol className="mt-6 space-y-4">
           {steps.map((s, i) => (
             <li
               key={s.name}
               id={`step-${i + 1}`}
-              className="flex gap-4 rounded-xl border border-border bg-surface p-5 scroll-mt-6"
+              className="card card-interactive flex gap-4 p-6 scroll-mt-6"
             >
               <span
                 aria-hidden="true"
-                className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-accent/10 font-display font-bold text-accent"
+                className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-accent/10 font-display font-bold text-accent"
               >
                 {i + 1}
               </span>
               <div>
-                <h3 className="font-display font-semibold text-ink">{s.name}</h3>
-                <p className="mt-1 text-foreground">{s.text}</p>
+                <h3 className="font-display font-semibold tracking-tight text-ink">{s.name}</h3>
+                <p className="mt-1.5 leading-relaxed text-foreground">{s.text}</p>
               </div>
             </li>
           ))}
@@ -325,17 +325,17 @@ export default async function SwitchProviderPage({ params }: Params) {
       {/* ── Official cancellation link (real only) ────────────────────────── */}
       <section
         aria-labelledby="official-h"
-        className="mt-12 rounded-2xl border border-border bg-surface p-5 sm:p-6"
+        className="bento mt-14 p-6 sm:p-8"
       >
         <h2
           id="official-h"
-          className="font-display text-xl font-bold text-ink"
+          className="font-display text-xl font-bold tracking-tight text-ink"
         >
           הדף הרשמי של {provider.name}
         </h2>
         {official ? (
           <>
-            <p className="mt-2 text-foreground">
+            <p className="mt-2 leading-relaxed text-foreground">
               להליך הניתוק המדויק ולפרטי הקשר העדכניים, פנו לאתר הרשמי של{" "}
               {provider.name}. הפרטים המחייבים מופיעים שם בלבד — אנחנו לא ממציאים
               מספרי טלפון או שלבים.
@@ -346,13 +346,13 @@ export default async function SwitchProviderPage({ params }: Params) {
               rel="noopener noreferrer"
               provider={slug}
               dest="official"
-              className="mt-4 inline-block rounded-xl bg-accent px-5 py-2.5 font-medium text-accent-contrast transition-colors hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+              className="interactive press mt-5 inline-flex items-center gap-1 rounded-xl bg-accent px-5 py-2.5 font-medium text-accent-contrast shadow-soft hover:bg-accent-hover hover:-translate-y-0.5 hover:shadow-card focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
             >
               לאתר הרשמי של {provider.name} ←
             </TrackedOutboundLink>
           </>
         ) : (
-          <p className="mt-2 text-foreground">
+          <p className="mt-2 leading-relaxed text-foreground">
             את הליך הניתוק המדויק ופרטי הקשר העדכניים יש לבדוק בערוצים הרשמיים של{" "}
             {provider.name} (אתר/שירות לקוחות). איננו מציגים מספרי טלפון או שלבים
             שלא אומתו ישירות מול הספק.
@@ -361,7 +361,7 @@ export default async function SwitchProviderPage({ params }: Params) {
       </section>
 
       {/* ── Editorial reasoning (rights, transparently stated) ────────────── */}
-      <section className="mt-12">
+      <section className="mt-14">
         <AuthorityReasoning
           heading={`הזכויות שלכם מול ${provider.name}`}
           points={reasoning}
@@ -371,11 +371,11 @@ export default async function SwitchProviderPage({ params }: Params) {
 
       {/* ── FAQ ───────────────────────────────────────────────────────────── */}
       <section aria-labelledby="faq-h" className="mt-14">
-        <h2 id="faq-h" className="font-display text-2xl font-bold text-ink">
+        <h2 id="faq-h" className="font-display text-2xl font-bold tracking-tight text-ink">
           שאלות נפוצות — מעבר מ{provider.name}
         </h2>
         <p className="mt-2 text-sm text-muted">עודכן לאחרונה: {REVIEWED_AT}</p>
-        <div className="mt-5 divide-y divide-border rounded-xl border border-border bg-surface">
+        <div className="card mt-6 divide-y divide-border/60 overflow-hidden">
           {faqs.map((qa) => (
             <details key={qa.question} className="group p-5">
               <summary className="flex cursor-pointer list-none items-center gap-2 font-display font-semibold text-ink marker:hidden">
@@ -387,7 +387,7 @@ export default async function SwitchProviderPage({ params }: Params) {
                   ▾
                 </span>
               </summary>
-              <p className="mt-2 text-foreground">{qa.answer}</p>
+              <p className="mt-2 leading-relaxed text-foreground">{qa.answer}</p>
             </details>
           ))}
         </div>
@@ -395,7 +395,7 @@ export default async function SwitchProviderPage({ params }: Params) {
 
       {/* ── Lead form — help with the switch ──────────────────────────────── */}
       <section id="lead" aria-labelledby="lead-h" className="mt-16 scroll-mt-6">
-        <h2 id="lead-h" className="font-display text-2xl font-bold text-ink">
+        <h2 id="lead-h" className="font-display text-2xl font-bold tracking-tight text-ink">
           רוצים שנעזור לכם לעבור?
         </h2>
         <p className="mt-2 text-foreground">

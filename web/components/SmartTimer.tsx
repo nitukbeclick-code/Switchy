@@ -93,7 +93,7 @@ export default function SmartTimer({
       id={id}
       aria-labelledby={headingId}
       className={[
-        "rounded-2xl border border-border bg-surface p-5 shadow-sm sm:p-6",
+        "bento p-6 sm:p-7",
         className ?? "",
       ]
         .join(" ")
@@ -101,11 +101,11 @@ export default function SmartTimer({
     >
       <h2
         id={headingId}
-        className="mb-1 flex items-center gap-2 font-display text-base font-semibold text-ink"
+        className="mb-1 flex items-center gap-2.5 font-display text-base font-semibold tracking-tight text-ink"
       >
         <span
           aria-hidden="true"
-          className="inline-block h-4 w-1 rounded-full bg-accent"
+          className="inline-block h-5 w-1.5 rounded-full bg-accent"
         />
         {heading}
       </h2>
@@ -124,7 +124,7 @@ export default function SmartTimer({
             type="date"
             value={start}
             onChange={(e) => setStart(e.target.value)}
-            className="rounded-lg border border-border bg-surface px-3 py-2 text-foreground focus-visible:border-accent"
+            className="interactive rounded-lg border border-border bg-surface px-3 py-2.5 text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30 focus-visible:border-accent"
           />
         </div>
 
@@ -140,7 +140,7 @@ export default function SmartTimer({
             inputMode="numeric"
             value={months}
             onChange={(e) => setMonths(e.target.value)}
-            className="rounded-lg border border-border bg-surface px-3 py-2 text-foreground focus-visible:border-accent"
+            className="interactive rounded-lg border border-border bg-surface px-3 py-2.5 text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30 focus-visible:border-accent"
           />
         </div>
       </div>
@@ -153,7 +153,7 @@ export default function SmartTimer({
         className="mt-5"
       >
         {computed && (
-          <div className="rounded-xl border border-border bg-background p-4">
+          <div className="rounded-xl border border-border/60 bg-background p-4 elevate-soft">
             <dl className="grid gap-3 sm:grid-cols-2">
               <div>
                 <dt className="text-xs text-muted">תאריך סיום ההתחייבות</dt>

@@ -39,36 +39,38 @@ export default function GlossaryPage() {
 
       {/* ── Breadcrumb (visible) ──────────────────────────────────────────── */}
       <nav aria-label="פירורי לחם" className="text-sm text-muted">
-        <Link href="/" className="hover:text-accent">
+        <Link href="/" className="interactive hover:text-accent">
           בית
         </Link>
         <span className="px-1.5">/</span>
         <span className="text-foreground">מילון מונחים</span>
       </nav>
 
-      <header className="mt-3">
-        <h1 className="font-display text-3xl font-bold text-ink sm:text-4xl">
+      <header className="mt-4">
+        <h1 className="font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
           מילון מונחי תקשורת
         </h1>
-        <p className="mt-3 text-lg text-foreground">
+        <p className="mt-4 max-w-2xl text-lg leading-relaxed text-foreground">
           {terms.length} מונחים בעברית שיעזרו לכם להבין ולהשוות מסלולי תקשורת —
           סלולר, אינטרנט, טלוויזיה וחבילות חו״ל.
         </p>
       </header>
 
-      <dl className="mt-10 divide-y divide-border rounded-2xl border border-border bg-surface">
+      {/* Bento grid of term cards — each tile lifts on hover, soft accent border. */}
+      <dl className="bento-grid mt-12">
         {terms.map((t) => (
-          <div key={t.slug} className="p-5 sm:p-6">
-            <dt className="font-display text-lg font-semibold text-ink">
-              <Link
-                href={`/glossary/${t.slug}`}
-                className="hover:text-accent"
-              >
-                {t.term}
-              </Link>
+          <Link
+            key={t.slug}
+            href={`/glossary/${t.slug}`}
+            className="card card-interactive group flex flex-col p-5 sm:p-6"
+          >
+            <dt className="font-display text-lg font-semibold tracking-tight text-ink transition-colors group-hover:text-accent">
+              {t.term}
             </dt>
-            <dd className="mt-2 text-foreground">{t.definition}</dd>
-          </div>
+            <dd className="mt-2 text-sm leading-relaxed text-foreground">
+              {t.definition}
+            </dd>
+          </Link>
         ))}
       </dl>
 

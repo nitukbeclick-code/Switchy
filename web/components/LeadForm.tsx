@@ -199,7 +199,7 @@ export default function LeadForm({
     return (
       <div
         className={[
-          "rounded-2xl border border-border bg-surface p-6 text-center",
+          "bento glow-accent p-7 text-center",
           className ?? "",
         ]
           .join(" ")
@@ -213,7 +213,7 @@ export default function LeadForm({
         >
           ✓
         </div>
-        <h3 className="font-display text-lg font-bold text-ink">
+        <h3 className="font-display text-lg font-bold tracking-tight text-ink">
           הפרטים התקבלו, תודה!
         </h3>
         <p className="mt-1 text-sm text-muted">
@@ -233,7 +233,7 @@ export default function LeadForm({
       noValidate
       aria-labelledby="lead-form-heading"
       className={[
-        "rounded-2xl border border-border bg-surface p-5 sm:p-6",
+        "bento p-6 sm:p-7",
         className ?? "",
       ]
         .join(" ")
@@ -241,7 +241,7 @@ export default function LeadForm({
     >
       <h3
         id="lead-form-heading"
-        className="font-display text-lg font-bold text-ink"
+        className="font-display text-lg font-bold tracking-tight text-ink"
       >
         {heading}
       </h3>
@@ -302,7 +302,7 @@ export default function LeadForm({
             aria-required="true"
             aria-invalid={errors.name ? "true" : "false"}
             aria-describedby={errors.name ? "lead-name-error" : undefined}
-            className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
+            className="interactive w-full rounded-xl border border-border bg-background px-3 py-2.5 text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
             {...register("name", {
               required: "נא להזין שם",
               minLength: { value: 2, message: "השם קצר מדי" },
@@ -334,7 +334,7 @@ export default function LeadForm({
             aria-required="true"
             aria-invalid={errors.phone ? "true" : "false"}
             aria-describedby={errors.phone ? "lead-phone-error" : undefined}
-            className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-right text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
+            className="interactive w-full rounded-xl border border-border bg-background px-3 py-2.5 text-right text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
             {...register("phone", {
               required: "נא להזין מספר טלפון",
               validate: (v) =>
@@ -365,7 +365,7 @@ export default function LeadForm({
             aria-required="true"
             aria-invalid={errors.city ? "true" : "false"}
             aria-describedby={errors.city ? "lead-city-error" : undefined}
-            className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
+            className="interactive w-full rounded-xl border border-border bg-background px-3 py-2.5 text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
             {...register("city", {
               required: "נא להזין עיר מגורים",
               minLength: { value: 2, message: "שם העיר קצר מדי" },
@@ -396,7 +396,7 @@ export default function LeadForm({
               aria-describedby={
                 errors.category ? "lead-category-error" : undefined
               }
-              className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
+              className="interactive w-full rounded-xl border border-border bg-background px-3 py-2.5 text-foreground outline-none focus:border-accent focus:ring-2 focus:ring-accent/30"
               {...register("category", { required: "נא לבחור שירות" })}
             >
               <option value="">בחרו שירות…</option>
@@ -422,7 +422,7 @@ export default function LeadForm({
               is voluntary, the consequence of not providing it, the purposes, that
               the inquiry reaches providers only AFTER consent, and how to exercise
               their access/correction/deletion rights. */}
-          <div className="rounded-xl border border-border bg-background/60 p-3 text-xs leading-relaxed text-muted">
+          <div className="rounded-xl border border-border/60 bg-background/60 p-3 text-xs leading-relaxed text-muted">
             <p>
               מסירת הפרטים נעשית מרצונכם ואינכם חייבים למוסרם — אך ללא מסירתם לא
               נוכל לחזור אליכם עם השוואה והצעה. הפרטים משמשים ליצירת קשר חוזר
@@ -505,7 +505,7 @@ export default function LeadForm({
               Three default-UNCHECKED, per-channel opt-ins, clearly SEPARATE from
               the mandatory consent gate above. Each is marked as marketing
               (פרסומת) and removable at any time. */}
-          <fieldset className="rounded-xl border border-border bg-background/60 p-3">
+          <fieldset className="rounded-xl border border-border/60 bg-background/60 p-3">
             <legend className="px-1 text-sm font-medium text-foreground">
               {MARKETING_OPTIN_HEADING}
             </legend>
@@ -557,7 +557,7 @@ export default function LeadForm({
       {/* "What happens after you submit" — set expectations honestly, shown on
           the final step right above the submit CTA. No fake urgency. */}
       {step === lastStep && (
-        <div className="mt-5 rounded-xl border border-border bg-background/60 p-4">
+        <div className="mt-5 rounded-xl border border-border/60 bg-background/60 p-4">
           <p className="text-xs font-semibold text-foreground">
             מה קורה אחרי השליחה?
           </p>
@@ -600,7 +600,7 @@ export default function LeadForm({
             type="button"
             onClick={back}
             disabled={isSubmitting}
-            className="rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-border/60 disabled:opacity-50"
+            className="interactive press rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-foreground hover:border-border-strong/30 hover:bg-border/60 disabled:opacity-50"
           >
             חזרה
           </button>
@@ -610,7 +610,7 @@ export default function LeadForm({
           <button
             type="button"
             onClick={next}
-            className="flex-1 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-accent-contrast transition-colors hover:bg-accent-hover"
+            className="interactive press flex-1 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-accent-contrast shadow-soft hover:-translate-y-0.5 hover:bg-accent-hover hover:shadow-card"
           >
             המשך
           </button>
@@ -619,7 +619,7 @@ export default function LeadForm({
             type="submit"
             disabled={isSubmitting || !consentChecked}
             aria-disabled={isSubmitting || !consentChecked}
-            className="flex-1 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-accent-contrast transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50"
+            className="interactive press flex-1 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-accent-contrast shadow-soft hover:-translate-y-0.5 hover:bg-accent-hover hover:shadow-card disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none"
           >
             {isSubmitting ? "שולח…" : "קבלת הצעה חינם"}
           </button>

@@ -145,33 +145,41 @@ export default function AccessibilityPage() {
 
       {/* ── Breadcrumb (visible) ──────────────────────────────────────────── */}
       <nav aria-label="פירורי לחם" className="text-sm text-muted">
-        <Link href="/" className="hover:text-accent">
+        <Link href="/" className="interactive hover:text-accent">
           בית
         </Link>
         <span className="px-1.5">/</span>
         <span className="text-foreground">הצהרת נגישות</span>
       </nav>
 
-      <header className="mt-3">
-        <h1 className="font-display text-3xl font-bold text-ink sm:text-4xl">
+      <header className="mt-4">
+        <h1 className="font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
           הצהרת נגישות
         </h1>
-        <p className="mt-3 text-lg text-foreground">
+        <p className="mt-4 max-w-2xl text-lg leading-relaxed text-foreground">
           אנו מחויבים להנגיש את האתר לכלל המשתמשים. כאן מפורטים מצב הנגישות
           הנוכחי, ההתאמות שבוצעו, מגבלות ידועות, וכיצד לפנות אלינו לקבלת סיוע.
         </p>
-        <p className="mt-3 text-sm text-muted">
+        <p className="mt-5 inline-flex items-center gap-2 rounded-full border border-border/60 bg-surface/70 px-3 py-1 text-sm text-muted backdrop-blur supports-[backdrop-filter]:bg-surface/60">
+          <span
+            aria-hidden="true"
+            className="inline-block h-1.5 w-1.5 rounded-full bg-accent"
+          />
           ההצהרה עודכנה לאחרונה:{" "}
           <time dateTime={LAST_REVIEWED}>{LAST_REVIEWED}</time>
         </p>
       </header>
 
-      <div className="mt-10 space-y-10">
+      <div className="mt-12 space-y-5 sm:space-y-6">
         {sections.map((s) => (
-          <section key={s.h} aria-labelledby={`s-${s.h}`}>
+          <section
+            key={s.h}
+            aria-labelledby={`s-${s.h}`}
+            className="bento p-6 sm:p-8"
+          >
             <h2
               id={`s-${s.h}`}
-              className="font-display text-2xl font-bold text-ink"
+              className="font-display text-2xl font-bold tracking-tight text-ink"
             >
               {s.h}
             </h2>
@@ -181,7 +189,7 @@ export default function AccessibilityPage() {
               </p>
             ))}
             {s.items && (
-              <ul className="mt-4 list-disc space-y-2 pe-5 text-foreground">
+              <ul className="mt-4 list-disc space-y-2 pe-5 leading-relaxed text-foreground">
                 {s.items.map((it) => (
                   <li key={it}>{it}</li>
                 ))}
@@ -191,7 +199,7 @@ export default function AccessibilityPage() {
         ))}
       </div>
 
-      <aside className="mt-12 border-t border-border pt-8 text-sm text-muted">
+      <aside className="mt-12 border-t border-border/40 pt-8 text-sm text-muted">
         <p>
           ראו גם את{" "}
           <Link

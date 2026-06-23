@@ -135,11 +135,11 @@ export default function SwitchIndexPage() {
       </nav>
 
       {/* ── Heading ───────────────────────────────────────────────────────── */}
-      <header className="mt-3">
-        <h1 className="font-display text-3xl font-bold text-ink sm:text-4xl">
+      <header className="mt-4">
+        <h1 className="font-display text-4xl font-bold tracking-tight text-ink sm:text-5xl">
           מדריכי מעבר וניתוק ספק
         </h1>
-        <p className="mt-3 max-w-2xl text-lg text-foreground">
+        <p className="mt-4 max-w-2xl text-lg leading-relaxed text-foreground">
           איך לעזוב כל ספק תקשורת בישראל — בלי להסתבך. כל מדריך מסביר באופן עובדתי
           את זכות הניתוק, ניוד המספר דרך מסלקת הניוד והודעת הניתוק בכתב, ומפנה
           להשוואת חלופות לפני שמחליטים.
@@ -152,24 +152,24 @@ export default function SwitchIndexPage() {
       </div>
 
       {/* ── Provider guide cards ──────────────────────────────────────────── */}
-      <section aria-labelledby="guides-h" className="mt-12">
-        <h2 id="guides-h" className="font-display text-2xl font-bold text-ink">
+      <section aria-labelledby="guides-h" className="mt-14">
+        <h2 id="guides-h" className="font-display text-2xl font-bold tracking-tight text-ink">
           בחרו את הספק שאתם רוצים לעזוב
         </h2>
-        <ul className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="mt-6 bento-grid">
           {providers.map((p) => (
             <li key={p.slug}>
               <Link
                 href={`/switch/${p.slug}`}
-                className="group block h-full rounded-xl border border-border bg-surface p-5 transition-colors hover:border-accent/40 hover:bg-accent/[0.04] focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                className="group bento card-interactive flex h-full flex-col p-6 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
               >
-                <span className="font-display text-lg font-semibold text-ink group-hover:text-accent">
+                <span className="font-display text-lg font-semibold tracking-tight text-ink transition-colors group-hover:text-accent">
                   מעבר וניתוק מ{p.name}
                 </span>
-                <span className="mt-1 block text-sm text-muted">
+                <span className="mt-1.5 block text-sm text-muted">
                   {p.categories.map((c) => CATEGORY_HE[c] ?? c).join(", ")}
                 </span>
-                <span className="mt-3 inline-block text-sm font-medium text-accent-text">
+                <span className="mt-auto pt-4 inline-flex items-center gap-1 text-sm font-medium text-accent-text transition-transform group-hover:-translate-x-0.5">
                   למדריך המלא ←
                 </span>
               </Link>
@@ -180,11 +180,11 @@ export default function SwitchIndexPage() {
 
       {/* ── Rights FAQ ────────────────────────────────────────────────────── */}
       <section aria-labelledby="faq-h" className="mt-14">
-        <h2 id="faq-h" className="font-display text-2xl font-bold text-ink">
+        <h2 id="faq-h" className="font-display text-2xl font-bold tracking-tight text-ink">
           שאלות נפוצות — זכויות בניתוק ומעבר
         </h2>
         <p className="mt-2 text-sm text-muted">עודכן לאחרונה: {REVIEWED_AT}</p>
-        <div className="mt-5 divide-y divide-border rounded-xl border border-border bg-surface">
+        <div className="card mt-6 divide-y divide-border/60 overflow-hidden">
           {RIGHTS_FAQ.map((qa) => (
             <details key={qa.question} className="group p-5">
               <summary className="flex cursor-pointer list-none items-center gap-2 font-display font-semibold text-ink marker:hidden">
@@ -196,7 +196,7 @@ export default function SwitchIndexPage() {
                   ▾
                 </span>
               </summary>
-              <p className="mt-2 text-foreground">{qa.answer}</p>
+              <p className="mt-2 leading-relaxed text-foreground">{qa.answer}</p>
             </details>
           ))}
         </div>

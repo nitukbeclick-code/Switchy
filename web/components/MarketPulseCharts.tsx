@@ -192,8 +192,8 @@ export default function MarketPulseCharts({
       </div>
 
       {/* ── Grouped bar chart: avg vs. min per category ───────────────────── */}
-      <figure className="rounded-2xl border border-border bg-surface p-4 shadow-sm sm:p-5">
-        <figcaption className="mb-4 font-display text-base font-semibold text-ink">
+      <figure className="bento p-5 sm:p-6">
+        <figcaption className="mb-4 font-display text-base font-semibold tracking-tight text-ink">
           מחיר ממוצע מול המחיר הזול ביותר, לפי קטגוריה
         </figcaption>
         {/* a11y (WCAG 1.1.1): the SVG bars are image-only, so we expose the same
@@ -335,8 +335,8 @@ export default function MarketPulseCharts({
       </figure>
 
       {/* ── Cheapest current deal per category ────────────────────────────── */}
-      <figure className="rounded-2xl border border-border bg-surface p-4 shadow-sm sm:p-5">
-        <figcaption className="mb-4 font-display text-base font-semibold text-ink">
+      <figure className="bento p-5 sm:p-6">
+        <figcaption className="mb-4 font-display text-base font-semibold tracking-tight text-ink">
           העסקה הזולה ביותר כרגע, לפי קטגוריה
         </figcaption>
         <ul className="grid gap-3 sm:grid-cols-2">
@@ -345,11 +345,11 @@ export default function MarketPulseCharts({
               <li key={d.category}>
                 <a
                   href={d.cheapest.href}
-                  className="group flex items-center justify-between gap-3 rounded-xl border border-border bg-background p-3.5 transition-colors hover:border-accent"
+                  className="group interactive press flex items-center justify-between gap-3 rounded-xl border border-border/60 bg-background p-3.5 hover:-translate-y-0.5 hover:border-accent hover:shadow-card"
                 >
                   <span className="min-w-0">
                     <span className="block text-xs text-muted">{d.label}</span>
-                    <span className="block truncate font-medium text-foreground group-hover:text-accent">
+                    <span className="block truncate font-medium text-foreground transition-colors group-hover:text-accent">
                       {d.cheapest.provider} — {d.cheapest.plan}
                     </span>
                     <span className="block text-xs text-muted">

@@ -69,20 +69,20 @@ export default function Home() {
       <JsonLd data={faqPageSchema(GENERAL_FAQ)} />
 
       {/* ── Hero ──────────────────────────────────────────────────────────── */}
-      <section className="text-center">
-        <h1 className="font-display text-3xl font-bold text-ink sm:text-5xl">
+      <section className="pt-4 text-center sm:pt-8">
+        <h1 className="font-display text-4xl font-bold tracking-tight text-ink sm:text-6xl">
           משווים תקשורת. חוסכים כסף.
         </h1>
-        <p className="mx-auto mt-4 max-w-2xl text-lg text-foreground sm:text-xl">
+        <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-foreground sm:text-xl">
           השוואה חינמית של מסלולי סלולר, אינטרנט, טלוויזיה, חבילות משולבות
           וחבילות חו״ל מכל הספקים בישראל — מחירים מעודכנים בשקלים.
         </p>
-        <div className="mt-7 flex flex-wrap items-center justify-center gap-3">
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
           <TrackedCtaLink
             href={`/compare/${featuredCat}`}
             location="hero"
             label="compare"
-            className="rounded-xl bg-accent px-6 py-3 font-medium text-accent-contrast transition-all hover:bg-accent-hover hover:shadow-md hover:shadow-accent/20"
+            className="interactive press rounded-xl bg-accent px-6 py-3 font-medium text-accent-contrast shadow-soft hover:-translate-y-0.5 hover:bg-accent-hover hover:shadow-float hover:shadow-accent/20"
           >
             להשוואת מסלולים
           </TrackedCtaLink>
@@ -90,7 +90,7 @@ export default function Home() {
             href="#lead"
             location="hero"
             label="consult"
-            className="rounded-xl border border-border-strong px-6 py-3 font-medium text-ink transition-colors hover:bg-surface"
+            className="interactive press rounded-xl border border-border/60 px-6 py-3 font-medium text-ink hover:-translate-y-0.5 hover:border-accent/40 hover:bg-surface hover:shadow-soft"
           >
             שיחת ייעוץ חינם
           </TrackedCtaLink>
@@ -115,7 +115,7 @@ export default function Home() {
       {/* ── Value props ───────────────────────────────────────────────────── */}
       <section
         aria-label="למה להשוות איתנו"
-        className="mt-12 grid grid-cols-1 gap-4 sm:grid-cols-3"
+        className="mt-14 grid grid-cols-1 gap-4 sm:grid-cols-3"
       >
         {[
           {
@@ -131,37 +131,37 @@ export default function Home() {
             d: "ניצור קשר רק אם תשאירו פרטים ותאשרו זאת בטופס.",
           },
         ].map((v) => (
-          <article
-            key={v.t}
-            className="rounded-2xl border border-border bg-surface p-5"
-          >
-            <h3 className="flex items-center gap-2 font-display text-lg font-semibold text-ink">
+          <article key={v.t} className="bento card-interactive p-6">
+            <h3 className="flex items-center gap-2 font-display text-lg font-semibold tracking-tight text-ink">
               <span
                 aria-hidden="true"
                 className="inline-block h-4 w-1 shrink-0 rounded-full bg-accent"
               />
               {v.t}
             </h3>
-            <p className="mt-2 text-sm text-foreground">{v.d}</p>
+            <p className="mt-2 text-sm leading-relaxed text-foreground">{v.d}</p>
           </article>
         ))}
       </section>
 
       {/* ── Category cards ────────────────────────────────────────────────── */}
-      <section aria-labelledby="cats-h" className="mt-14">
-        <h2 id="cats-h" className="font-display text-2xl font-bold text-ink">
+      <section aria-labelledby="cats-h" className="mt-16">
+        <h2
+          id="cats-h"
+          className="font-display text-2xl font-bold tracking-tight text-ink"
+        >
           קטגוריות להשוואה
         </h2>
-        <ul className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+        <ul className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           {categories.map((cat) => {
             const count = plansByCategory(cat).length;
             return (
               <li key={cat}>
                 <Link
                   href={`/compare/${cat}`}
-                  className="block h-full rounded-xl border border-border bg-surface p-4 transition hover:border-accent hover:shadow-sm"
+                  className="card card-interactive block h-full p-4"
                 >
-                  <span className="block font-display font-semibold text-ink">
+                  <span className="block font-display font-semibold tracking-tight text-ink">
                     {CATEGORY_HE[cat] ?? cat}
                   </span>
                   <span className="mt-1 block text-sm text-muted">
@@ -180,11 +180,14 @@ export default function Home() {
       </div>
 
       {/* ── Provider rankings (transparent "best value") ──────────────────── */}
-      <section aria-labelledby="rankings-h" className="mt-14">
-        <h2 id="rankings-h" className="font-display text-2xl font-bold text-ink">
+      <section aria-labelledby="rankings-h" className="mt-16">
+        <h2
+          id="rankings-h"
+          className="font-display text-2xl font-bold tracking-tight text-ink"
+        >
           ספקים לפי ערך — דירוג שקוף
         </h2>
-        <p className="mt-2 text-sm text-muted">
+        <p className="mt-2 text-sm leading-relaxed text-muted">
           הדירוג ממיין את הספקים לפי{" "}
           <strong className="font-semibold text-foreground">
             המחיר ההתחלתי הזול ביותר
@@ -193,21 +196,21 @@ export default function Home() {
           עובדתית ושקופה: אנו מציגים מי מציע את נקודת הכניסה הזולה ביותר, ללא דירוג
           איכות נסתר וללא תשלום על מיקום.
         </p>
-        <ol className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <ol className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
           {rankings.map((p, i) => (
             <li key={p.slug}>
               <Link
                 href={`/providers/${p.slug}`}
-                className="flex h-full items-center gap-4 rounded-xl border border-border bg-surface p-4 transition hover:border-accent hover:shadow-sm"
+                className="card card-interactive flex h-full items-center gap-4 p-4"
               >
                 <span
                   aria-hidden="true"
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent/15 font-display text-sm font-bold text-accent"
+                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent/15 font-display text-sm font-bold text-accent"
                 >
                   {i + 1}
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block font-display font-semibold text-ink">
+                  <span className="block font-display font-semibold tracking-tight text-ink">
                     {p.name}
                   </span>
                   <span className="mt-0.5 block text-sm text-muted">
@@ -220,25 +223,28 @@ export default function Home() {
         </ol>
         <Link
           href="/transparency"
-          className="mt-4 inline-block text-sm font-medium text-accent-text hover:text-accent-hover"
+          className="interactive mt-5 inline-block text-sm font-medium text-accent-text hover:text-accent-hover"
         >
           איך אנחנו מדרגים? שקיפות מלאה ←
         </Link>
       </section>
 
       {/* ── Market-Pulse teaser ───────────────────────────────────────────── */}
-      <section aria-labelledby="pulse-h" className="mt-14">
-        <div className="rounded-2xl border border-border bg-surface p-6 sm:p-8">
-          <h2 id="pulse-h" className="font-display text-2xl font-bold text-ink">
+      <section aria-labelledby="pulse-h" className="mt-16">
+        <div className="bento p-6 sm:p-9">
+          <h2
+            id="pulse-h"
+            className="font-display text-2xl font-bold tracking-tight text-ink"
+          >
             דופק השוק — מצב נוכחי
           </h2>
-          <p className="mt-2 max-w-2xl text-foreground">
+          <p className="mt-3 max-w-2xl leading-relaxed text-foreground">
             מחיר ממוצע, מינימלי ומקסימלי בכל קטגוריה — תמונת מצב עדכנית של שוק
             התקשורת בישראל לפי הקטלוג שלנו. נתונים אמיתיים בלבד, ללא גרפים מומצאים.
           </p>
           <Link
             href="/market-pulse"
-            className="mt-5 inline-block rounded-xl bg-accent px-5 py-2.5 font-medium text-accent-contrast transition-all hover:bg-accent-hover hover:shadow-md hover:shadow-accent/20"
+            className="interactive press mt-6 inline-block rounded-xl bg-accent px-5 py-2.5 font-medium text-accent-contrast shadow-soft hover:-translate-y-0.5 hover:bg-accent-hover hover:shadow-float hover:shadow-accent/20"
           >
             לצפייה בדופק השוק ←
           </Link>
@@ -246,34 +252,40 @@ export default function Home() {
       </section>
 
       {/* ── Smart-Timer teaser (commitment-end calculator) ────────────────── */}
-      <section aria-labelledby="timer-h" className="mt-14">
-        <h2 id="timer-h" className="font-display text-2xl font-bold text-ink">
+      <section aria-labelledby="timer-h" className="mt-16">
+        <h2
+          id="timer-h"
+          className="font-display text-2xl font-bold tracking-tight text-ink"
+        >
           מתי נגמרת ההתחייבות שלכם?
         </h2>
-        <p className="mt-2 max-w-2xl text-sm text-muted">
+        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">
           הזינו את תאריך תחילת ההתחייבות ואת אורכה כדי לדעת מתי תוכלו לעבור ספק ללא
           קנס יציאה. מחשבון פרטי לחלוטין — שום נתון לא נשלח לשרת.
         </p>
-        <div className="mt-5">
+        <div className="mt-6">
           <SmartTimer />
         </div>
       </section>
 
       {/* ── City quick-links (geo compare pages) ──────────────────────────── */}
       {cities.length > 0 && (
-        <section aria-labelledby="cities-h" className="mt-14">
-          <h2 id="cities-h" className="font-display text-2xl font-bold text-ink">
+        <section aria-labelledby="cities-h" className="mt-16">
+          <h2
+            id="cities-h"
+            className="font-display text-2xl font-bold tracking-tight text-ink"
+          >
             השוואת {CATEGORY_HE[featuredCat] ?? featuredCat} לפי עיר
           </h2>
-          <p className="mt-2 text-sm text-muted">
+          <p className="mt-2 text-sm leading-relaxed text-muted">
             אותם ספקים ומסלולים זמינים בכל הארץ. בחרו עיר להשוואה מקומית.
           </p>
-          <ul className="mt-5 flex flex-wrap gap-2">
+          <ul className="mt-6 flex flex-wrap gap-2">
             {cities.map((c) => (
               <li key={c.slug}>
                 <Link
                   href={`/compare/${featuredCat}/${c.slug}`}
-                  className="inline-block rounded-full border border-border bg-surface px-4 py-1.5 text-sm text-foreground transition hover:border-accent hover:text-accent"
+                  className="interactive press inline-block rounded-full border border-border/60 bg-surface px-4 py-1.5 text-sm text-foreground hover:-translate-y-0.5 hover:border-accent/50 hover:text-accent hover:shadow-soft"
                 >
                   {c.name}
                 </Link>
@@ -284,14 +296,17 @@ export default function Home() {
       )}
 
       {/* ── Featured comparison ───────────────────────────────────────────── */}
-      <section aria-labelledby="featured-h" className="mt-14">
-        <h2 id="featured-h" className="font-display text-2xl font-bold text-ink">
+      <section aria-labelledby="featured-h" className="mt-16">
+        <h2
+          id="featured-h"
+          className="font-display text-2xl font-bold tracking-tight text-ink"
+        >
           מסלולי {CATEGORY_HE[featuredCat] ?? featuredCat} משתלמים
         </h2>
-        <p className="mt-2 text-sm text-muted">
+        <p className="mt-2 text-sm leading-relaxed text-muted">
           ששת המסלולים הזולים ביותר בקטגוריה לפי המחיר ההתחלתי.
         </p>
-        <div className="mt-5">
+        <div className="mt-6">
           <ComparisonTable
             plans={featured}
             caption={`מסלולי ${CATEGORY_HE[featuredCat] ?? featuredCat} זולים — מחירים בשקלים`}
@@ -300,18 +315,21 @@ export default function Home() {
         </div>
         <Link
           href={`/compare/${featuredCat}`}
-          className="mt-4 inline-block font-medium text-accent-text hover:text-accent-hover"
+          className="interactive mt-5 inline-block font-medium text-accent-text hover:text-accent-hover"
         >
           לכל מסלולי ה{CATEGORY_HE[featuredCat] ?? featuredCat} ←
         </Link>
       </section>
 
       {/* ── Lead form ─────────────────────────────────────────────────────── */}
-      <section id="lead" aria-labelledby="lead-h" className="mt-16 scroll-mt-6">
-        <h2 id="lead-h" className="font-display text-2xl font-bold text-ink">
+      <section id="lead" aria-labelledby="lead-h" className="mt-20 scroll-mt-6">
+        <h2
+          id="lead-h"
+          className="font-display text-2xl font-bold tracking-tight text-ink"
+        >
           רוצים שנעזור לכם לחסוך?
         </h2>
-        <p className="mt-2 text-foreground">
+        <p className="mt-2 leading-relaxed text-foreground">
           השאירו פרטים ונחזור אליכם עם השוואה מותאמת — ללא עלות וללא התחייבות.
         </p>
         {/* Commission disclosure repeated before the lead hand-off (§7b). */}

@@ -38,6 +38,31 @@
      the glass surface; the fill is for borders/backgrounds (3:1 non-text). */
   --danger: #dc2626; /* error fill (borders / icon backgrounds) */
   --danger-text: #b91c1c; /* error text on light bg (≥4.5:1) */
+
+  /* ── Premium-2026 system primitives ───────────────────────────────────────
+     A consistent radius scale + soft modern shadow tiers + a subtle accent glow,
+     all derived from the EXISTING palette (ink shadows, green accent). These back
+     the .glass / .bento / .elevate-* / .glow-accent utilities below so every page
+     speaks the same visual language. Shadows are ink-tinted (rgba of #0b0f14),
+     soft and low-contrast — never harsh black drop-shadows. */
+  --radius-sm: 0.5rem; /* 8px  — chips, small controls */
+  --radius-md: 0.75rem; /* 12px — buttons, inputs */
+  --radius-lg: 1rem; /* 16px — cards (rounded-2xl parity) */
+  --radius-xl: 1.5rem; /* 24px — feature tiles, hero panels (rounded-3xl) */
+
+  /* Soft elevation tiers — modern, diffuse, ink-tinted. */
+  --shadow-soft: 0 1px 2px rgba(11, 15, 20, 0.04),
+    0 1px 3px rgba(11, 15, 20, 0.06);
+  --shadow-card: 0 2px 8px rgba(11, 15, 20, 0.05),
+    0 8px 24px rgba(11, 15, 20, 0.06);
+  --shadow-float: 0 4px 12px rgba(11, 15, 20, 0.06),
+    0 16px 40px rgba(11, 15, 20, 0.1);
+
+  /* Subtle accent glow — green action energy, kept faint (decorative, non-text). */
+  --glow-accent: 0 0 0 1px rgba(22, 163, 74, 0.12),
+    0 8px 28px rgba(22, 163, 74, 0.16);
+  --glow-value: 0 0 0 1px rgba(245, 158, 11, 0.14),
+    0 8px 28px rgba(245, 158, 11, 0.18);
 }
 
 /* Map brand tokens into Tailwind's theme so utilities like bg-accent, text-ink,
@@ -63,6 +88,19 @@
 
   --font-display: var(--font-rubik);
   --font-sans: var(--font-assistant);
+
+  /* Premium-2026 radius scale → enables rounded-md/lg/xl on the brand scale and
+     keeps cards consistent. (Tailwind's own rounded-* still work; these add named
+     brand steps tied to the tokens above.) */
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+
+  /* Soft shadow tiers → shadow-soft / shadow-card / shadow-float utilities. */
+  --shadow-soft: var(--shadow-soft);
+  --shadow-card: var(--shadow-card);
+  --shadow-float: var(--shadow-float);
 }
 
 /* ── Base RTL / Hebrew-first styles ──────────────────────────────────────── */
@@ -145,6 +183,151 @@ a:hover {
     14px 100%,
     14px 100%;
   background-attachment: local, local, scroll, scroll;
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   PREMIUM-2026 DESIGN LANGUAGE — reusable utility classes
+   ────────────────────────────────────────────────────────────────────────────
+   Layered on the EXISTING brand palette/tokens (no palette change). Page agents
+   compose these class names directly in JSX. Everything respects the AA text
+   tokens (--accent-text / --value-text), RTL, and prefers-reduced-motion (the
+   media query at the bottom neutralizes the transitions/animations here).
+
+   Reference — class names available to page agents:
+     Surfaces   .glass  .glass-strong
+     Cards      .bento  .card  .card-interactive
+     Elevation  .elevate-soft  .elevate-card  .elevate-float
+     Glow       .glow-accent  .glow-value
+     Motion     .interactive  .hover-lift  .press
+     Layout     .bento-grid  .section
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/* ── Glassmorphism surfaces ───────────────────────────────────────────────────
+   Translucent blurred surface for navbars / floating elements / sticky bars.
+   `supports-` guard: where backdrop-filter is unsupported the surface stays a
+   readable near-opaque white (no text-on-image legibility loss). */
+.glass {
+  background-color: color-mix(in srgb, var(--surface) 70%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 50%, transparent);
+  backdrop-filter: saturate(180%) blur(12px);
+  -webkit-backdrop-filter: saturate(180%) blur(12px);
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass {
+    background-color: var(--surface);
+  }
+}
+/* Stronger frost for overlays / modals / sticky action bars that sit over content. */
+.glass-strong {
+  background-color: color-mix(in srgb, var(--surface) 85%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+  backdrop-filter: saturate(180%) blur(18px);
+  -webkit-backdrop-filter: saturate(180%) blur(18px);
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass-strong {
+    background-color: var(--surface);
+  }
+}
+
+/* ── Cards & bento tiles ──────────────────────────────────────────────────────
+   .card        — the base surface card (soft border + soft shadow + lg radius).
+   .bento       — a bento tile: bigger radius, card shadow; pairs with .bento-grid.
+   .card-interactive — adds the hover-lift + focus motion for clickable cards. */
+.card {
+  background-color: var(--surface);
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft);
+}
+.bento {
+  background-color: var(--surface);
+  border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-card);
+}
+.card-interactive {
+  transition:
+    transform 200ms ease,
+    box-shadow 200ms ease,
+    border-color 200ms ease;
+}
+.card-interactive:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-float);
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+}
+.card-interactive:active {
+  transform: translateY(-1px) scale(0.995);
+}
+
+/* ── Elevation tiers (apply a soft shadow without the rest of a card) ────────── */
+.elevate-soft {
+  box-shadow: var(--shadow-soft);
+}
+.elevate-card {
+  box-shadow: var(--shadow-card);
+}
+.elevate-float {
+  box-shadow: var(--shadow-float);
+}
+
+/* ── Subtle accent glow (decorative emphasis — green=action, amber=value) ────── */
+.glow-accent {
+  box-shadow: var(--glow-accent);
+}
+.glow-value {
+  box-shadow: var(--glow-value);
+}
+
+/* ── Motion primitives ────────────────────────────────────────────────────────
+   .interactive — the BASE transition every interactive element should carry, so
+                  hovers/focus/press feel fluid (colors + transform + shadow).
+   .hover-lift  — nudges up + deepens shadow on hover (compose with .interactive).
+   .press       — tactile press feedback (compose with .interactive). */
+.interactive {
+  transition:
+    color 180ms ease,
+    background-color 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
+}
+.hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-card);
+}
+.press:active {
+  transform: scale(0.98);
+}
+
+/* ── Layout helpers ───────────────────────────────────────────────────────────
+   .bento-grid — asymmetric-friendly responsive grid for card/data sections.
+                 Children opt into spans with col-span-* / row-span-* as needed.
+   .section    — generous vertical breathing room for page sections. */
+.bento-grid {
+  display: grid;
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+@media (min-width: 640px) {
+  .bento-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+  }
+}
+@media (min-width: 1024px) {
+  .bento-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+.section {
+  padding-block: 3rem;
+}
+@media (min-width: 768px) {
+  .section {
+    padding-block: 4.5rem;
+  }
 }
 
 /* Respect reduced-motion: disable smooth scroll + animations/transitions. */

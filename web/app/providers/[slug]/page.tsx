@@ -237,34 +237,34 @@ export default async function ProviderPage({ params }: Params) {
       </nav>
 
       {/* ── Heading ───────────────────────────────────────────────────────── */}
-      <header className="mt-3">
-        <h1 className="font-display text-3xl font-bold text-ink sm:text-4xl">
+      <header className="mt-4">
+        <h1 className="font-display text-4xl font-bold tracking-tight text-ink sm:text-5xl">
           {provider.name}
         </h1>
-        <p className="mt-3 max-w-2xl text-lg text-foreground">{provider.summary}</p>
-        <dl className="mt-5 flex flex-wrap items-start gap-x-8 gap-y-4 text-sm">
-          <div>
+        <p className="mt-4 max-w-2xl text-lg leading-relaxed text-foreground">{provider.summary}</p>
+        <dl className="mt-6 flex flex-wrap items-stretch gap-3 text-sm">
+          <div className="bento px-5 py-4">
             <dt className="text-muted">מסלולים</dt>
-            <dd className="font-display text-xl font-bold text-ink">
+            <dd className="mt-0.5 font-display text-2xl font-bold tracking-tight text-ink">
               {provider.planCount}
             </dd>
           </div>
-          <div>
+          <div className="bento px-5 py-4">
             <dt className="text-muted">מחיר התחלתי</dt>
-            <dd className="font-display text-xl font-bold text-value-text">
+            <dd className="mt-0.5 font-display text-2xl font-bold tracking-tight text-value-text">
               {ils(provider.minPrice)}
             </dd>
           </div>
           {/* Categories render as discrete tags (not one long bold sentence) so
               the stat row reads "number · number · tags", not "number, number,
               paragraph". Keeps the two numeric figures as the big anchors. */}
-          <div>
+          <div className="bento px-5 py-4">
             <dt className="text-muted">קטגוריות</dt>
-            <dd className="mt-1 flex flex-wrap gap-1.5">
+            <dd className="mt-2 flex flex-wrap gap-1.5">
               {provider.categories.map((c) => (
                 <span
                   key={c}
-                  className="inline-flex items-center rounded-full border border-border bg-surface px-2.5 py-0.5 text-xs font-medium text-foreground"
+                  className="inline-flex items-center rounded-full border border-border/60 bg-surface px-2.5 py-0.5 text-xs font-medium text-foreground"
                 >
                   {CATEGORY_HE[c] ?? c}
                 </span>
@@ -291,28 +291,28 @@ export default async function ProviderPage({ params }: Params) {
 
       {/* ── Best for ──────────────────────────────────────────────────────── */}
       {picks.length > 0 && (
-        <section aria-labelledby="bestfor-h" className="mt-12">
-          <h2 id="bestfor-h" className="font-display text-2xl font-bold text-ink">
+        <section aria-labelledby="bestfor-h" className="mt-14">
+          <h2 id="bestfor-h" className="font-display text-2xl font-bold tracking-tight text-ink">
             המסלול ההתחלתי בכל קטגוריה
           </h2>
-          <ul className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <ul className="mt-6 bento-grid">
             {picks.map(({ cat, plan }) => (
               <li
                 key={cat}
-                className="rounded-xl border border-border bg-surface p-5"
+                className="bento flex flex-col p-6"
               >
                 <span className="text-sm text-muted">
                   {CATEGORY_HE[cat] ?? cat}
                 </span>
-                <p className="mt-1 font-display font-semibold text-ink">
+                <p className="mt-1.5 font-display font-semibold text-ink">
                   {plan.plan}
                 </p>
-                <p className="mt-2 font-display text-2xl font-bold text-value-text">
+                <p className="mt-2 font-display text-3xl font-bold tracking-tight text-value-text">
                   {ils(plan.price)}
                 </p>
                 <Link
                   href={`/compare/${cat}`}
-                  className="mt-3 inline-block text-sm font-medium text-accent-text hover:text-accent-hover"
+                  className="interactive mt-auto pt-4 inline-flex items-center gap-1 text-sm font-medium text-accent-text hover:text-accent-hover hover:-translate-x-0.5"
                 >
                   להשוות בקטגוריה ←
                 </Link>
@@ -324,21 +324,21 @@ export default async function ProviderPage({ params }: Params) {
 
       {/* ── Head-to-head comparisons ("השווה מול ...") ────────────────────── */}
       {vsPairs.length > 0 && (
-        <section aria-labelledby="vs-h" className="mt-12">
-          <h2 id="vs-h" className="font-display text-2xl font-bold text-ink">
+        <section aria-labelledby="vs-h" className="mt-14">
+          <h2 id="vs-h" className="font-display text-2xl font-bold tracking-tight text-ink">
             השוו את {provider.name} מול ספק אחר
           </h2>
           <p className="mt-2 max-w-2xl text-sm text-muted">
             השוואות ראש בראש באותה קטגוריה — מחיר התחלתי, מספר מסלולים ומאפיינים.
           </p>
-          <ul className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          <ul className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {vsPairs.map(({ pair, other }) => (
               <li key={pair.slug}>
                 <Link
                   href={`/vs/${pair.slug}`}
-                  className="group flex items-center justify-between gap-3 rounded-xl border border-border bg-surface px-4 py-3 transition-colors hover:border-accent/40 hover:bg-accent/[0.04]"
+                  className="group card card-interactive flex items-center justify-between gap-3 px-5 py-4"
                 >
-                  <span className="font-medium text-foreground group-hover:text-accent">
+                  <span className="font-medium text-foreground transition-colors group-hover:text-accent">
                     {provider.name} מול {other.name}
                   </span>
                   <span className="shrink-0 text-xs text-muted">
@@ -352,8 +352,8 @@ export default async function ProviderPage({ params }: Params) {
       )}
 
       {/* ── All plans table ───────────────────────────────────────────────── */}
-      <section aria-labelledby="plans-h" className="mt-12">
-        <h2 id="plans-h" className="font-display text-2xl font-bold text-ink">
+      <section aria-labelledby="plans-h" className="mt-14">
+        <h2 id="plans-h" className="font-display text-2xl font-bold tracking-tight text-ink">
           כל המסלולים של {provider.name}
         </h2>
         <div className="mt-5">
@@ -365,7 +365,7 @@ export default async function ProviderPage({ params }: Params) {
       </section>
 
       {/* ── Editorial reasoning ("למה זה מומלץ") ──────────────────────────── */}
-      <section className="mt-12">
+      <section className="mt-14">
         <AuthorityReasoning
           heading={`למה להשוות את ${provider.name} כאן`}
           points={reasoning}
@@ -373,16 +373,16 @@ export default async function ProviderPage({ params }: Params) {
       </section>
 
       {/* ── Reviews (real data only; renders empty-state when none) ────────── */}
-      <section className="mt-12">
+      <section className="mt-14">
         <ReviewsBlock subjectName={provider.name} plans={plans} />
       </section>
 
       {/* ── FAQ ───────────────────────────────────────────────────────────── */}
       <section aria-labelledby="faq-h" className="mt-14">
-        <h2 id="faq-h" className="font-display text-2xl font-bold text-ink">
+        <h2 id="faq-h" className="font-display text-2xl font-bold tracking-tight text-ink">
           שאלות נפוצות — {provider.name}
         </h2>
-        <div className="mt-5 divide-y divide-border rounded-xl border border-border bg-surface">
+        <div className="card mt-6 divide-y divide-border/60 overflow-hidden">
           {faqs.map((qa) => (
             <details key={qa.question} className="group p-5">
               <summary className="flex cursor-pointer list-none items-center gap-2 font-display font-semibold text-ink marker:hidden">
@@ -394,7 +394,7 @@ export default async function ProviderPage({ params }: Params) {
                   ▾
                 </span>
               </summary>
-              <p className="mt-2 text-foreground">{qa.answer}</p>
+              <p className="mt-2 leading-relaxed text-foreground">{qa.answer}</p>
             </details>
           ))}
         </div>
@@ -402,7 +402,7 @@ export default async function ProviderPage({ params }: Params) {
 
       {/* ── Lead form ─────────────────────────────────────────────────────── */}
       <section id="lead" aria-labelledby="lead-h" className="mt-16 scroll-mt-6">
-        <h2 id="lead-h" className="font-display text-2xl font-bold text-ink">
+        <h2 id="lead-h" className="font-display text-2xl font-bold tracking-tight text-ink">
           רוצים לעבור ל{provider.name} או להשוות?
         </h2>
         <p className="mt-2 text-foreground">

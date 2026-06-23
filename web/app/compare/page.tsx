@@ -101,7 +101,7 @@ export default function CompareIndexPage() {
 
       {/* ── Breadcrumb (visible) ──────────────────────────────────────────── */}
       <nav aria-label="פירורי לחם" className="text-sm text-muted">
-        <Link href="/" className="hover:text-accent">
+        <Link href="/" className="interactive hover:text-accent">
           בית
         </Link>
         <span className="px-1.5">/</span>
@@ -110,10 +110,10 @@ export default function CompareIndexPage() {
 
       {/* ── Heading ───────────────────────────────────────────────────────── */}
       <header className="mt-3">
-        <h1 className="font-display text-3xl font-bold text-ink sm:text-4xl">
+        <h1 className="font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
           השוואת מסלולי תקשורת בישראל
         </h1>
-        <p className="mt-3 max-w-2xl text-lg text-foreground">
+        <p className="mt-4 max-w-2xl text-lg leading-relaxed text-foreground">
           בחרו שירות להשוואת מסלולים מכל הספקים בישראל — מחירים בשקלים, כולל המחיר
           אחרי המבצע. הזמינות ארצית, אותם ספקים בכל הארץ.
         </p>
@@ -125,11 +125,11 @@ export default function CompareIndexPage() {
       </div>
 
       {/* ── Service cards ─────────────────────────────────────────────────── */}
-      <section aria-labelledby="services-h" className="mt-10">
+      <section aria-labelledby="services-h" className="mt-12">
         <h2 id="services-h" className="sr-only">
           שירותים להשוואה
         </h2>
-        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {services.map((s) => {
             const plans = plansForService(s.slug);
             const min = minPriceOf(plans);
@@ -137,9 +137,9 @@ export default function CompareIndexPage() {
               <li key={s.slug}>
                 <Link
                   href={`/compare/${s.slug}`}
-                  className="group flex h-full flex-col rounded-xl border border-border bg-surface p-5 transition-colors hover:border-accent/40 hover:bg-accent/[0.04] focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                  className="group bento card-interactive flex h-full flex-col p-6"
                 >
-                  <span className="font-display text-lg font-semibold text-ink group-hover:text-accent">
+                  <span className="font-display text-lg font-semibold tracking-tight text-ink transition-colors group-hover:text-accent">
                     השוואת {s.label}
                   </span>
                   <span className="mt-2 flex items-baseline gap-2 text-sm text-muted">
@@ -151,7 +151,7 @@ export default function CompareIndexPage() {
                       </>
                     )}
                   </span>
-                  <span className="mt-3 inline-block text-sm font-medium text-accent-text">
+                  <span className="mt-4 inline-block text-sm font-medium text-accent-text">
                     להשוואת {s.label} ←
                   </span>
                 </Link>

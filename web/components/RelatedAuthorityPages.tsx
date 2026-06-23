@@ -64,7 +64,7 @@ export default function RelatedAuthorityPages({
       aria-label={ariaLabel ?? heading}
       data-related-pages
       className={[
-        "rounded-2xl border border-border bg-surface p-5 sm:p-6 shadow-sm",
+        "bento p-6 sm:p-7",
         className ?? "",
       ]
         .join(" ")
@@ -72,24 +72,27 @@ export default function RelatedAuthorityPages({
     >
       <h2
         id={headingId}
-        className="mb-4 flex items-center gap-2 font-display text-base font-semibold text-ink"
+        className="mb-4 flex items-center gap-2.5 font-display text-base font-semibold tracking-tight text-ink"
       >
         <span
           aria-hidden="true"
-          className="inline-block h-4 w-1 rounded-full bg-accent"
+          className="inline-block h-5 w-1.5 rounded-full bg-accent"
         />
         {heading}
       </h2>
 
-      <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+      <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {links.map((link, i) => {
           const label = link.label ?? link.title ?? link.href;
           const hint = link.hint ?? link.description;
           const inner = (
             <>
-              <span className="flex items-center gap-1.5 font-medium text-foreground group-hover:text-accent">
+              <span className="flex items-center gap-1.5 font-medium text-foreground transition-colors group-hover:text-accent">
                 {label}
-                <span aria-hidden="true" className="text-accent">
+                <span
+                  aria-hidden="true"
+                  className="text-accent transition-transform duration-200 group-hover:-translate-x-0.5"
+                >
                   ←
                 </span>
               </span>
@@ -100,8 +103,8 @@ export default function RelatedAuthorityPages({
           );
 
           const itemClass =
-            "group block rounded-xl border border-border bg-background px-4 py-3 " +
-            "transition-colors hover:border-accent/40 hover:bg-accent/[0.04] " +
+            "group interactive press block rounded-xl border border-border/60 bg-background px-4 py-3.5 " +
+            "hover:-translate-y-0.5 hover:border-accent/40 hover:bg-accent/[0.04] hover:shadow-card " +
             "focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent";
 
           return (

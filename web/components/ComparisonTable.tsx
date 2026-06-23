@@ -53,7 +53,7 @@ export default function ComparisonTable({
       // phone users know the table extends sideways. It shadows whichever physical
       // edge is clipped, so it's RTL-correct. Pure CSS, no JS, no layout shift.
       className={[
-        "scroll-shadow w-full overflow-x-auto rounded-2xl border border-border bg-surface",
+        "scroll-shadow w-full overflow-x-auto rounded-2xl border border-border/60 bg-surface elevate-card",
         className ?? "",
       ]
         .join(" ")
@@ -63,7 +63,7 @@ export default function ComparisonTable({
       aria-label={caption}
     >
       <table className="w-full min-w-[640px] border-collapse text-right">
-        <caption className="px-4 pt-4 text-start font-display text-sm font-semibold text-ink">
+        <caption className="px-4 pt-5 text-start font-display text-sm font-semibold tracking-tight text-ink">
           {caption}
         </caption>
         <thead>
@@ -92,13 +92,13 @@ export default function ComparisonTable({
               <tr
                 key={plan.id}
                 className={[
-                  "border-b border-border last:border-b-0 align-top",
+                  "border-b border-border/70 last:border-b-0 align-top transition-colors",
                   // Editor's-pick / promoted row: a subtle tint PLUS an inset
                   // start-border (logical, RTL-correct) so the labeled row reads
                   // at a glance without raising the fill opacity.
                   label
                     ? "bg-accent/[0.04] ring-1 ring-inset ring-accent/20 border-s-2 border-s-accent"
-                    : "",
+                    : "hover:bg-accent/[0.03]",
                 ]
                   .join(" ")
                   .trim()}
@@ -163,17 +163,17 @@ export default function ComparisonTable({
                       chip rather than a single grey blob. */}
                   <span className="flex flex-wrap gap-1.5">
                     {plan.is5G ? (
-                      <span className="inline-flex items-center rounded-md border border-border bg-surface px-1.5 py-0.5 text-[11px] text-foreground">
+                      <span className="inline-flex items-center rounded-md border border-border/70 bg-background px-1.5 py-0.5 text-[11px] text-foreground">
                         5G
                       </span>
                     ) : null}
                     {plan.noCommit ? (
-                      <span className="inline-flex items-center rounded-md border border-border bg-surface px-1.5 py-0.5 text-[11px] text-foreground">
+                      <span className="inline-flex items-center rounded-md border border-border/70 bg-background px-1.5 py-0.5 text-[11px] text-foreground">
                         ללא התחייבות
                       </span>
                     ) : null}
                     {plan.hasAbroad ? (
-                      <span className="inline-flex items-center rounded-md border border-border bg-surface px-1.5 py-0.5 text-[11px] text-foreground">
+                      <span className="inline-flex items-center rounded-md border border-border/70 bg-background px-1.5 py-0.5 text-[11px] text-foreground">
                         כולל חו״ל
                       </span>
                     ) : null}

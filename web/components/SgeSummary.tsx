@@ -78,8 +78,7 @@ export default function SgeSummary({
       data-ai-summary
       data-sge-summary
       className={[
-        "rounded-2xl border border-border bg-surface p-5 sm:p-6",
-        "shadow-sm",
+        "bento glow-accent p-6 sm:p-7",
         className ?? "",
       ]
         .join(" ")
@@ -87,11 +86,11 @@ export default function SgeSummary({
     >
       <h2
         id={headingId}
-        className="mb-2 flex items-center gap-2 font-display text-base font-semibold text-ink"
+        className="mb-2.5 flex items-center gap-2.5 font-display text-base font-semibold tracking-tight text-ink"
       >
         <span
           aria-hidden="true"
-          className="inline-block h-4 w-1 rounded-full bg-accent"
+          className="inline-block h-5 w-1.5 rounded-full bg-accent"
         />
         {heading}
       </h2>

@@ -76,31 +76,34 @@ export default async function GlossaryTermPage({ params }: Params) {
 
       {/* ── Breadcrumb (visible) ──────────────────────────────────────────── */}
       <nav aria-label="פירורי לחם" className="text-sm text-muted">
-        <Link href="/" className="hover:text-accent">
+        <Link href="/" className="interactive hover:text-accent">
           בית
         </Link>
         <span className="px-1.5">/</span>
-        <Link href="/glossary" className="hover:text-accent">
+        <Link href="/glossary" className="interactive hover:text-accent">
           מילון מונחים
         </Link>
         <span className="px-1.5">/</span>
         <span className="text-foreground">{entry.term}</span>
       </nav>
 
-      <article className="mt-3">
-        <h1 className="font-display text-3xl font-bold text-ink sm:text-4xl">
+      <article className="mt-4">
+        <h1 className="font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
           {entry.term}
         </h1>
-        <p className="mt-4 text-lg leading-relaxed text-foreground">
-          {entry.definition}
-        </p>
+        {/* Definition lives in a soft bento card — breathing room + soft border. */}
+        <div className="bento mt-6 p-6 sm:p-8">
+          <p className="text-lg leading-relaxed text-foreground">
+            {entry.definition}
+          </p>
+        </div>
       </article>
 
       {/* ── Related — keep the entity web connected ───────────────────────── */}
       <RelatedAuthorityPages
         heading="קשור גם ל"
         links={related}
-        className="mt-12 border-t border-border pt-8"
+        className="mt-16 border-t border-border/40 pt-10"
       />
     </main>
   );

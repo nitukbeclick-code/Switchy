@@ -114,11 +114,11 @@ export default function VsIndexPage() {
       </nav>
 
       {/* ── Heading ───────────────────────────────────────────────────────── */}
-      <header className="mt-3">
-        <h1 className="font-display text-3xl font-bold text-ink sm:text-4xl">
+      <header className="mt-4">
+        <h1 className="font-display text-4xl font-bold tracking-tight text-ink sm:text-5xl">
           השוואות ראש בראש — ספק מול ספק
         </h1>
-        <p className="mt-3 max-w-2xl text-lg text-foreground">
+        <p className="mt-4 max-w-2xl text-lg leading-relaxed text-foreground">
           השוואות ישירות בין שני ספקים באותה קטגוריה — מחיר התחלתי, מספר מסלולים
           ומאפיינים זה מול זה. הנתונים מהקטלוג ובשקלים.
         </p>
@@ -134,30 +134,30 @@ export default function VsIndexPage() {
         <section
           key={group.label}
           aria-labelledby={`vs-cat-${group.label}`}
-          className="mt-10"
+          className="mt-12"
         >
           <h2
             id={`vs-cat-${group.label}`}
-            className="font-display text-2xl font-bold text-ink"
+            className="font-display text-2xl font-bold tracking-tight text-ink"
           >
             {group.label}
           </h2>
-          <ul className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <ul className="mt-6 bento-grid">
             {group.pairs.map((p) => (
               <li key={p.slug}>
                 <Link
                   href={`/vs/${p.slug}`}
-                  className="group flex h-full flex-col rounded-xl border border-border bg-surface p-5 transition-colors hover:border-accent/40 hover:bg-accent/[0.04] focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                  className="group bento card-interactive flex h-full flex-col p-6 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
                 >
-                  <span className="font-display text-lg font-semibold text-ink group-hover:text-accent">
+                  <span className="font-display text-lg font-semibold tracking-tight text-ink transition-colors group-hover:text-accent">
                     {p.a.provider.name} מול {p.b.provider.name}
                   </span>
-                  <span className="mt-2 flex items-baseline gap-2 text-sm text-muted">
+                  <span className="mt-2.5 flex items-baseline gap-2 text-sm text-muted">
                     <span>{p.a.provider.name} מ-{ils(p.a.minPrice)}</span>
                     <span aria-hidden="true">·</span>
                     <span>{p.b.provider.name} מ-{ils(p.b.minPrice)}</span>
                   </span>
-                  <span className="mt-3 inline-block text-sm font-medium text-accent-text">
+                  <span className="mt-auto pt-4 inline-flex items-center gap-1 text-sm font-medium text-accent-text transition-transform group-hover:-translate-x-0.5">
                     להשוואה ←
                   </span>
                 </Link>

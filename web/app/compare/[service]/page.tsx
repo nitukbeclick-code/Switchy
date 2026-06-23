@@ -315,7 +315,7 @@ export default async function ServiceHubPage({ params }: Params) {
 
       {/* ── Breadcrumb (visible) ──────────────────────────────────────────── */}
       <nav aria-label="פירורי לחם" className="text-sm text-muted">
-        <Link href="/" className="hover:text-accent">
+        <Link href="/" className="interactive hover:text-accent">
           בית
         </Link>
         <span className="px-1.5">/</span>
@@ -324,10 +324,10 @@ export default async function ServiceHubPage({ params }: Params) {
 
       {/* ── Heading ───────────────────────────────────────────────────────── */}
       <header className="mt-3">
-        <h1 className="font-display text-3xl font-bold text-ink sm:text-4xl">
+        <h1 className="font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
           השוואת {svc.label}
         </h1>
-        <p className="mt-3 max-w-2xl text-lg text-foreground">
+        <p className="mt-4 max-w-2xl text-lg leading-relaxed text-foreground">
           {plans.length} מסלולי {svc.label} מכל הספקים בישראל, ממוינים מהזול ליקר.
           הזמינות ארצית — אותם ספקים בכל עיר. המחירים בשקלים וכוללים את המחיר אחרי
           המבצע.
@@ -369,30 +369,30 @@ export default async function ServiceHubPage({ params }: Params) {
 
       {/* ── Transparent provider ranking (stated methodology) ─────────────── */}
       {ranked.length > 0 && (
-        <section aria-labelledby="rank-h" className="mt-12">
+        <section aria-labelledby="rank-h" className="mt-14">
           <h2
             id="rank-h"
-            className="font-display text-2xl font-bold text-ink"
+            className="font-display text-2xl font-bold tracking-tight text-ink"
           >
             ספקי {svc.label} לפי מחיר התחלתי
           </h2>
-          <p className="mt-2 max-w-2xl text-sm text-muted">
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">
             שיטת הדירוג שקופה: מיון לפי המחיר ההתחלתי הנמוך ביותר (מהזול ליקר),
             ובמקרה של שוויון — לפי מספר המסלולים. זהו דירוג &quot;ערך&quot; עובדתי,
             לא ציון איכות סמוי.
           </p>
-          <ol className="mt-5 grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <ol className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
             {ranked.map((pr, i) => (
               <li key={pr.slug}>
                 <Link
                   href={`/providers/${pr.slug}`}
-                  className="group flex items-center justify-between rounded-xl border border-border bg-surface px-4 py-3 transition-colors hover:border-accent/40 hover:bg-accent/[0.04]"
+                  className="group card card-interactive flex items-center justify-between px-4 py-3.5"
                 >
                   <span className="flex items-center gap-3">
-                    <span className="font-display text-sm font-bold text-muted">
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent/10 font-display text-sm font-bold text-accent">
                       {i + 1}
                     </span>
-                    <span className="font-medium text-foreground group-hover:text-accent">
+                    <span className="font-medium text-foreground transition-colors group-hover:text-accent">
                       {pr.name}
                     </span>
                   </span>
@@ -407,7 +407,7 @@ export default async function ServiceHubPage({ params }: Params) {
       )}
 
       {/* ── Editorial reasoning ("למה זה מומלץ") ──────────────────────────── */}
-      <section className="mt-12">
+      <section className="mt-14">
         <AuthorityReasoning
           heading={`למה להשוות ${svc.label} כאן`}
           points={reasoning}
@@ -415,30 +415,30 @@ export default async function ServiceHubPage({ params }: Params) {
       </section>
 
       {/* ── Reviews (real data only; renders empty-state when none) ────────── */}
-      <section className="mt-12">
+      <section className="mt-14">
         <ReviewsBlock subjectName={`מסלולי ${svc.label}`} plans={plans} />
       </section>
 
       {/* ── Per-city geo variants ─────────────────────────────────────────── */}
-      <section aria-labelledby="cities-h" className="mt-12">
+      <section aria-labelledby="cities-h" className="mt-14">
         <h2
           id="cities-h"
-          className="font-display text-2xl font-bold text-ink"
+          className="font-display text-2xl font-bold tracking-tight text-ink"
         >
           השוואת {svc.label} לפי עיר
         </h2>
-        <p className="mt-2 max-w-2xl text-sm text-muted">
+        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">
           ההשוואה זהה בכל הארץ — אותם ספקים ומסלולים. בחרו עיר כדי לראות את אותה
           השוואה ממוקדת מקומית.
         </p>
-        <ul className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+        <ul className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
           {cities.map((c) => (
             <li key={c.slug}>
               <Link
                 href={`/compare/${service}/${c.slug}`}
-                className="group block rounded-xl border border-border bg-surface px-4 py-2.5 text-sm transition-colors hover:border-accent/40 hover:bg-accent/[0.04]"
+                className="group card card-interactive block px-4 py-3 text-sm"
               >
-                <span className="font-medium text-foreground group-hover:text-accent">
+                <span className="font-medium text-foreground transition-colors group-hover:text-accent">
                   {svc.label} ב{c.name}
                 </span>
               </Link>
@@ -448,14 +448,17 @@ export default async function ServiceHubPage({ params }: Params) {
       </section>
 
       {/* ── FAQ ───────────────────────────────────────────────────────────── */}
-      <section aria-labelledby="faq-h" className="mt-14">
-        <h2 id="faq-h" className="font-display text-2xl font-bold text-ink">
+      <section aria-labelledby="faq-h" className="mt-16">
+        <h2
+          id="faq-h"
+          className="font-display text-2xl font-bold tracking-tight text-ink"
+        >
           שאלות נפוצות — {svc.label}
         </h2>
-        <div className="mt-5 divide-y divide-border rounded-xl border border-border bg-surface">
+        <div className="card mt-6 divide-y divide-border/60 overflow-hidden">
           {faqs.map((qa) => (
             <details key={qa.question} className="group p-5">
-              <summary className="flex cursor-pointer list-none items-center gap-2 font-display font-semibold text-ink marker:hidden">
+              <summary className="interactive flex cursor-pointer list-none items-center gap-2 font-display font-semibold text-ink marker:hidden group-hover:text-accent">
                 <span>{qa.question}</span>
                 <span
                   aria-hidden="true"
@@ -464,18 +467,21 @@ export default async function ServiceHubPage({ params }: Params) {
                   ▾
                 </span>
               </summary>
-              <p className="mt-2 text-foreground">{qa.answer}</p>
+              <p className="mt-2 leading-relaxed text-foreground">{qa.answer}</p>
             </details>
           ))}
         </div>
       </section>
 
       {/* ── Lead form ─────────────────────────────────────────────────────── */}
-      <section id="lead" aria-labelledby="lead-h" className="mt-16 scroll-mt-6">
-        <h2 id="lead-h" className="font-display text-2xl font-bold text-ink">
+      <section id="lead" aria-labelledby="lead-h" className="mt-20 scroll-mt-6">
+        <h2
+          id="lead-h"
+          className="font-display text-2xl font-bold tracking-tight text-ink"
+        >
           רוצים עזרה לבחור {svc.label}?
         </h2>
-        <p className="mt-2 text-foreground">
+        <p className="mt-2 leading-relaxed text-foreground">
           השאירו פרטים ונחזור אליכם עם המלצה מותאמת — חינם וללא התחייבות.
         </p>
         {/* Commission disclosure repeated before the lead hand-off (§7b). */}

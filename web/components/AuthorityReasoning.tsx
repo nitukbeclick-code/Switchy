@@ -80,27 +80,27 @@ export default function AuthorityReasoning({
       aria-labelledby={headingId}
       data-authority-reasoning
       className={[
-        "rounded-2xl border border-border bg-surface p-5 sm:p-6 shadow-sm",
+        "bento p-6 sm:p-7",
         className ?? "",
       ]
         .join(" ")
         .trim()}
     >
       <details open={defaultOpen} className="group">
-        <summary className="flex cursor-pointer list-none items-center gap-2 marker:hidden">
+        <summary className="-m-1 flex cursor-pointer list-none items-center gap-2.5 rounded-lg p-1 transition-colors marker:hidden hover:text-accent-text">
           <span
             aria-hidden="true"
-            className="inline-block h-4 w-1 rounded-full bg-accent"
+            className="inline-block h-5 w-1.5 rounded-full bg-accent"
           />
           <h2
             id={headingId}
-            className="font-display text-base font-semibold text-ink"
+            className="font-display text-base font-semibold tracking-tight text-ink"
           >
             {resolvedTitle}
           </h2>
           <span
             aria-hidden="true"
-            className="ms-auto text-muted transition-transform group-open:rotate-180"
+            className="ms-auto text-muted transition-transform duration-300 group-open:rotate-180"
           >
             ▾
           </span>

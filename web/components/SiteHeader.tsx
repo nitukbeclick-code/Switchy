@@ -44,7 +44,9 @@ export default function SiteHeader({ className }: SiteHeaderProps) {
     <header
       data-site-header
       className={[
-        "sticky top-0 z-40 border-b border-border bg-surface/80 backdrop-blur supports-[backdrop-filter]:bg-surface/70",
+        // Glass navbar (premium-2026): translucent, blurred, hairline bottom
+        // border + a soft shadow that lifts it off the page as you scroll past.
+        "glass sticky top-0 z-40 border-x-0 border-t-0 border-b border-border/60 shadow-soft",
         className ?? "",
       ]
         .join(" ")
@@ -54,11 +56,11 @@ export default function SiteHeader({ className }: SiteHeaderProps) {
         {/* Brand wordmark → home (RTL start = right edge). */}
         <Link
           href="/"
-          className="flex items-center gap-2 font-display text-lg font-bold text-ink transition-colors hover:text-accent"
+          className="group flex items-center gap-2 font-display text-lg font-bold tracking-tight text-ink transition-colors hover:text-accent"
         >
           <span
             aria-hidden="true"
-            className="inline-block h-5 w-1.5 rounded-full bg-accent"
+            className="inline-block h-5 w-1.5 rounded-full bg-accent transition-transform duration-200 group-hover:scale-y-110"
           />
           חוסך
           <span className="text-sm font-semibold text-muted">/ Switch AI</span>
@@ -73,7 +75,7 @@ export default function SiteHeader({ className }: SiteHeaderProps) {
             <Link
               key={link.href}
               href={link.href}
-              className="rounded-xl px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent/[0.06] hover:text-accent"
+              className="rounded-xl px-3 py-2 text-sm font-medium text-foreground transition-all duration-200 hover:-translate-y-0.5 hover:bg-accent/[0.06] hover:text-accent active:translate-y-0"
             >
               {link.label}
             </Link>
@@ -85,7 +87,7 @@ export default function SiteHeader({ className }: SiteHeaderProps) {
           href="/#lead"
           location="header"
           label="consult"
-          className="ms-auto rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-accent-contrast transition-all hover:bg-accent-hover hover:shadow-md hover:shadow-accent/20"
+          className="ms-auto rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-accent-contrast transition-all duration-200 hover:-translate-y-0.5 hover:bg-accent-hover hover:shadow-md hover:shadow-accent/25 active:translate-y-0 active:scale-[.98]"
         >
           שיחת ייעוץ חינם
         </TrackedCtaLink>

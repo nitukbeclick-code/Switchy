@@ -109,11 +109,11 @@ export default function ProvidersIndexPage() {
       </nav>
 
       {/* ── Heading ───────────────────────────────────────────────────────── */}
-      <header className="mt-3">
-        <h1 className="font-display text-3xl font-bold text-ink sm:text-4xl">
+      <header className="mt-4">
+        <h1 className="font-display text-4xl font-bold tracking-tight text-ink sm:text-5xl">
           כל ספקי התקשורת בישראל
         </h1>
-        <p className="mt-3 max-w-2xl text-lg text-foreground">
+        <p className="mt-4 max-w-2xl text-lg leading-relaxed text-foreground">
           {providers.length} ספקים בקטלוג שלנו, ממוינים לפי המחיר ההתחלתי הזול
           ביותר. בחרו ספק כדי לראות את כל המסלולים, המחירים והמחיר אחרי המבצע.
         </p>
@@ -132,29 +132,29 @@ export default function ProvidersIndexPage() {
       </p>
 
       {/* ── Provider grid ─────────────────────────────────────────────────── */}
-      <section aria-labelledby="providers-h" className="mt-6">
+      <section aria-labelledby="providers-h" className="mt-8">
         <h2 id="providers-h" className="sr-only">
           רשימת הספקים
         </h2>
-        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <ul className="bento-grid">
           {providers.map((p) => (
             <li key={p.slug}>
               <Link
                 href={`/providers/${p.slug}`}
-                className="group flex h-full flex-col rounded-xl border border-border bg-surface p-5 transition-colors hover:border-accent/40 hover:bg-accent/[0.04] focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                className="group bento card-interactive flex h-full flex-col p-6 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
               >
-                <span className="font-display text-lg font-semibold text-ink group-hover:text-accent">
+                <span className="font-display text-lg font-semibold tracking-tight text-ink transition-colors group-hover:text-accent">
                   {p.name}
                 </span>
-                <span className="mt-1 block text-sm text-muted">
+                <span className="mt-1.5 block text-sm text-muted">
                   {p.categories.map((c) => CATEGORY_HE[c] ?? c).join(", ")}
                 </span>
-                <span className="mt-3 flex items-baseline gap-2 text-sm text-muted">
+                <span className="mt-4 flex items-baseline gap-2 text-sm text-muted">
                   <span>{p.planCount} מסלולים</span>
                   <span aria-hidden="true">·</span>
                   <span>החל מ-{ils(p.minPrice)}</span>
                 </span>
-                <span className="mt-3 inline-block text-sm font-medium text-accent-text">
+                <span className="mt-auto pt-4 inline-flex items-center gap-1 text-sm font-medium text-accent-text transition-transform group-hover:-translate-x-0.5">
                   לכל המסלולים של {p.name} ←
                 </span>
               </Link>

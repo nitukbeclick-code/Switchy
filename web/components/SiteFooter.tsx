@@ -70,6 +70,7 @@ const DEFAULT_COLUMNS: FooterColumn[] = [
     links: [
       { href: "/privacy", label: "מדיניות פרטיות" },
       { href: "/terms", label: "תנאי שימוש" },
+      { href: "/rights", label: "מימוש זכויות" },
       { href: "/accessibility", label: "הצהרת נגישות" },
     ],
   },

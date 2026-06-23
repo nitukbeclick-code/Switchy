@@ -111,6 +111,20 @@ export default function TermsPage() {
       ],
     },
     {
+      h: "הסכמה, חזרה מהסכמה וזכויות לפי חוק הגנת הפרטיות",
+      paras: [
+        "מסירת הפרטים בטופס יצירת הקשר נעשית מרצונכם החופשי ועל בסיס הסכמתכם " +
+          "המפורשת. אינכם חייבים למסור פרטים — אך ללא מסירתם לא נוכל לחזור אליכם " +
+          "עם הצעה ולהעביר את הפנייה לספק. בהתאם לחוק הגנת הפרטיות, התשמ״א-1981 " +
+          "ותיקוניו (לרבות תיקון 13), עומדות לכם הזכויות לעיין במידע שנאסף עליכם, " +
+          "לבקש לתקנו, לבקש למחקו ולחזור בכם מהסכמתכם — בכל עת וללא תנאי. חזרה " +
+          "מהסכמה אינה פוגעת בחוקיות העיבוד שבוצע עד למועד החזרה.",
+        "למימוש זכויות אלה, או להסרה מרשימת יצירת הקשר, ניתן להגיש בקשה דרך עמוד " +
+          "מימוש הזכויות שלנו, או לפנות אלינו בכתובת hello@chosech.co.il. פרטים " +
+          "נוספים מצויים ב",
+      ],
+    },
+    {
       h: "שינויים בתנאים",
       paras: [
         "אנו עשויים לעדכן תנאים אלה מעת לעת. הגרסה העדכנית תפורסם תמיד בעמוד זה, " +
@@ -184,7 +198,7 @@ export default function TermsPage() {
             {s.paras?.map((p) => (
               <p key={p} className="mt-3 leading-relaxed text-foreground">
                 {p}
-                {s.h === "פרטיות" && (
+                {s.h === "פרטיות" && p.endsWith("ל") && (
                   <>
                     {" "}
                     <Link
@@ -196,6 +210,28 @@ export default function TermsPage() {
                     .
                   </>
                 )}
+                {/* Amendment-13 / consent-withdrawal clause links to the rights
+                    intake; only the closing paragraph (ending "ב") gets the link. */}
+                {s.h === "הסכמה, חזרה מהסכמה וזכויות לפי חוק הגנת הפרטיות" &&
+                  p.endsWith("ב") && (
+                    <>
+                      {" "}
+                      <Link
+                        href="/rights"
+                        className="text-accent-text hover:text-accent-hover"
+                      >
+                        עמוד מימוש הזכויות
+                      </Link>
+                      {" "}וב
+                      <Link
+                        href="/privacy"
+                        className="text-accent-text hover:text-accent-hover"
+                      >
+                        מדיניות הפרטיות
+                      </Link>
+                      .
+                    </>
+                  )}
               </p>
             ))}
             {s.items && (
@@ -217,6 +253,13 @@ export default function TermsPage() {
             className="text-accent-text hover:text-accent-hover"
           >
             מדיניות הפרטיות
+          </Link>
+          ,{" "}
+          <Link
+            href="/rights"
+            className="text-accent-text hover:text-accent-hover"
+          >
+            מימוש הזכויות
           </Link>{" "}
           ואת{" "}
           <Link

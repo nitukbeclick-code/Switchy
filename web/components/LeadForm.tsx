@@ -396,6 +396,32 @@ export default function LeadForm({
             )}
           </div>
 
+          {/* §11 disclosure (Amendment-13 / Privacy Law §11): collected before the
+              consent box so the user knows, before consenting, that providing data
+              is voluntary, the consequence of not providing it, the purposes, that
+              the inquiry reaches providers only AFTER consent, and how to exercise
+              their access/correction/deletion rights. */}
+          <div className="rounded-xl border border-border bg-background/60 p-3 text-xs leading-relaxed text-muted">
+            <p>
+              מסירת הפרטים נעשית מרצונכם ואינכם חייבים למוסרם — אך ללא מסירתם לא
+              נוכל לחזור אליכם עם השוואה והצעה. הפרטים משמשים ליצירת קשר חוזר
+              ולהתאמת הצעה, והפנייה מועברת לספק/ים רלוונטי/ים אך ורק לאחר אישורכם
+              להלן.
+            </p>
+            <p className="mt-2">
+              תוכלו לעיין בפרטים, לתקנם, למוחקם או לחזור בכם מהסכמתכם בכל עת דרך{" "}
+              <Link
+                href="/rights"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-accent-text underline hover:text-accent-hover"
+              >
+                עמוד מימוש הזכויות
+              </Link>
+              .
+            </p>
+          </div>
+
           {/* Mandatory consent — unchecked by default. The links are NOT wrapped
               in the <label> (a click on a link inside a label would also toggle
               the box); instead the checkbox is associated via id/htmlFor, and the

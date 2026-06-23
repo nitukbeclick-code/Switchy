@@ -82,11 +82,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.5,
   }));
 
-  // Legal / compliance pages — privacy, terms, accessibility statement. Linked
-  // site-wide from the footer; low change frequency.
+  // Legal / compliance pages — privacy, terms, rights intake, accessibility
+  // statement. Linked site-wide from the footer; low change frequency.
   const legal: MetadataRoute.Sitemap = [
     "/privacy",
     "/terms",
+    "/rights",
     "/accessibility",
   ].map((path) => ({
     url: `${SITE_URL}${path}`,

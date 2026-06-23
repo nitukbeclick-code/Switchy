@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:go_router/go_router.dart';
 import 'package:chosech/app.dart';
 import 'package:chosech/app_state.dart';
+import 'package:chosech/pages/profile/profile_widget.dart';
 
 /// Widget tests for the Wave-3 Profile screen (lib/pages/profile/profile_widget.dart).
 ///
@@ -110,6 +111,83 @@ void main() {
 
       expect(tester.takeException(), isNull);
     });
+  });
+
+  testWidgets(
+      'edit-profile sheet rejects an invalid phone then saves a valid one',
+      (tester) async {
+    // Pump the sheet in isolation (the full-app shell's live-blur GlassPanel
+    // bottom nav intercepts taps over the modal, which is a harness artefact —
+    // not a real-device issue). This still exercises the real EditProfileSheet:
+    // its controllers, IL-phone validation, error UX and the save → pop flow.
+    GoogleFonts.config.allowRuntimeFetching = false;
+    SharedPreferences.setMockInitialValues({});
+    AppState.reset();
+    await AppState().initializePersistedState();
+    final s = AppState();
+    s.login(name: 'ישראל ישראלי', phone: '0521234567');
+
+    await tester.pumpWidget(
+      ChangeNotifierProvider.value(
+        value: s,
+        child: MaterialApp(
+          home: Directionality(
+            textDirection: TextDirection.rtl,
+            child: Builder(
+              builder: (context) => Scaffold(
+                body: Center(
+                  child: ElevatedButton(
+                    onPressed: () => showModalBottomSheet(
+                      context: context,
+                      isScrollControlled: true,
+                      builder: (_) => const EditProfileSheet(),
+                    ),
+                    child: const Text('open'),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+    expect(find.text('עריכת פרופיל'), findsOneWidget);
+
+    final saveBtn = find.text('שמור שינויים');
+    final phoneField = find.byKey(const Key('editProfilePhone'));
+    expect(phoneField, findsOneWidget);
+
+    Future<void> tapSave() async {
+      await tester.ensureVisible(saveBtn);
+      await tester.pump();
+      await tester.tap(saveBtn);
+    }
+
+    // Enter an invalid phone and try to save → inline error, no state change.
+    await tester.enterText(phoneField, '123');
+    await tester.pump();
+    await tapSave();
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(find.text('מספר טלפון אינו תקין'), findsOneWidget);
+    // Phone in state is unchanged by a rejected save.
+    expect(AppState().userPhone, equals('0521234567'));
+
+    // Correct it to a valid number and save → sheet closes, state updates.
+    await tester.enterText(phoneField, '054-765-4321');
+    await tester.pump();
+    await tapSave();
+    // Drive the async save (local upsert is a no-op) + the close animation,
+    // without waiting on the success SnackBar's full on-screen duration.
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400));
+
+    expect(AppState().userPhone, equals('0547654321')); // normalized
+    expect(AppState().userName, equals('ישראל ישראלי'));
+    // The sheet has closed — its title is gone.
+    expect(find.text('עריכת פרופיל'), findsNothing);
   });
 
   testWidgets('degrades gracefully when there are no tracked plans and no bills',

@@ -573,6 +573,73 @@ class LocalBackend implements Backend {
         : _crmLeads.where((l) => l.status == status).toList();
     return List.unmodifiable(list);
   }
+
+  // ── Owner observability ──────────────────────────────────────────────────────
+  // A deterministic, plausible fake mirroring the `admin-metrics` edge-fn shape
+  // so the events-and-audit tab renders offline and in tests. The numbers are
+  // clearly synthetic demo data (not claimed to be production telemetry); the
+  // SupabaseBackend serves the real edge-fn payload.
+  @override
+  Future<AdminMetrics> fetchAdminMetrics({int windowDays = 14}) async {
+    final today = DateTime.now();
+    final n = windowDays.clamp(1, 90);
+    final midnight = DateTime(today.year, today.month, today.day);
+
+    // Build a per-event trailing series for two representative funnel events,
+    // newest-day-first (matching the edge fn). The chart sums these per day.
+    EventSeries series(String event, int base, int spread) {
+      final days = <EventDayCount>[
+        for (var i = 0; i < n; i++)
+          EventDayCount(
+            day: midnight.subtract(Duration(days: i)),
+            events: base + ((i * 5) % spread) + (i.isEven ? 3 : 0),
+          ),
+      ];
+      final total = days.fold<int>(0, (s, d) => s + d.events);
+      return EventSeries(event: event, total: total, days: days);
+    }
+
+    final events = [series('planView', 9, 11), series('leadStart', 4, 7)];
+    final total = events.fold<int>(0, (s, e) => s + e.total);
+
+    return AdminMetrics(
+      windowDays: n,
+      events: events,
+      totalEvents: total,
+      toolCalls: const ToolCallSummary(
+        total: 994,
+        ok: 970,
+        rate: 0.9759,
+        byTool: [
+          RateBucket(key: 'search_plans', calls: 412, ok: 406, rate: 0.9854),
+          RateBucket(key: 'recommend', calls: 257, ok: 254, rate: 0.9883),
+          RateBucket(key: 'analyze_bill', calls: 188, ok: 174, rate: 0.9255),
+          RateBucket(key: 'capture_lead', calls: 96, ok: 95, rate: 0.9896),
+          RateBucket(key: 'book_meeting', calls: 41, ok: 41, rate: 1.0),
+        ],
+        byChannel: [
+          RateBucket(key: 'whatsapp', calls: 560, ok: 545, rate: 0.9732),
+          RateBucket(key: 'site', calls: 311, ok: 306, rate: 0.9839),
+          RateBucket(key: 'app', calls: 123, ok: 119, rate: 0.9675),
+        ],
+      ),
+      audit: const AuditSummary(
+        total: 52,
+        byEvent: [
+          AuditBucket(event: 'status_change', count: 37),
+          AuditBucket(event: 'crm_takeover', count: 9),
+          AuditBucket(event: 'community_content_flagged', count: 4),
+          AuditBucket(event: 'analytics_purge', count: 2),
+        ],
+      ),
+      cron: const CronSummary(
+        ok: false,
+        known: 3,
+        stale: ['renewal_reminders'],
+        failing: [],
+      ),
+    );
+  }
 }
 
 /// The backend the app talks to. Defaults to on-device storage; `main.dart`

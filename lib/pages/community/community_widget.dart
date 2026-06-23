@@ -1063,28 +1063,35 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                Tooltip(
-                  message: 'פוסטים שמורים',
-                  child: GestureDetector(
-                    onTap: () {
-                      HapticFeedback.selectionClick();
-                      setState(() {
-                        _showBookmarksOnly = !_showBookmarksOnly;
-                        _visibleCount = _feedPageSize;
-                      });
-                    },
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: _showBookmarksOnly ? ffTheme.warning.withValues(alpha: 0.12) : ffTheme.background,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: _showBookmarksOnly ? ffTheme.warning : ffTheme.alternate),
-                      ),
-                      child: Icon(
-                        _showBookmarksOnly ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
-                        size: 15,
-                        color: _showBookmarksOnly ? ffTheme.warning : ffTheme.secondaryText,
+                Semantics(
+                  button: true,
+                  toggled: _showBookmarksOnly,
+                  label: 'פוסטים שמורים',
+                  child: Tooltip(
+                    message: 'פוסטים שמורים',
+                    child: GestureDetector(
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        setState(() {
+                          _showBookmarksOnly = !_showBookmarksOnly;
+                          _visibleCount = _feedPageSize;
+                        });
+                      },
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: _showBookmarksOnly ? ffTheme.warning.withValues(alpha: 0.12) : ffTheme.background,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: _showBookmarksOnly ? ffTheme.warning : ffTheme.alternate),
+                        ),
+                        child: ExcludeSemantics(
+                          child: Icon(
+                            _showBookmarksOnly ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+                            size: 15,
+                            color: _showBookmarksOnly ? ffTheme.warning : ffTheme.secondaryText,
+                          ),
+                        ),
                       ),
                     ),
                   ),

@@ -13,6 +13,8 @@ import '../../data.dart';
 import '../../components/logo_widget/logo_widget.dart';
 import '../../services/recommendation_engine.dart';
 import '../../services/backend/local_backend.dart';
+import '../../services/comparison_export.dart';
+import '../../services/comparison_share.dart';
 
 class CompareWidget extends StatelessWidget {
   const CompareWidget({super.key});
@@ -56,15 +58,13 @@ class CompareWidget extends StatelessWidget {
         title: Text('השוואת מסלולים',
             style: ffTheme.titleLarge.copyWith(color: Colors.white)),
         actions: [
-          if (plans.isNotEmpty)
+          if (plans.length >= 2)
+            _ShareMenu(plans: plans, appState: appState)
+          else if (plans.isNotEmpty)
             IconButton(
               icon: const Icon(Icons.ios_share_rounded, color: Colors.white),
               tooltip: 'שתף',
-              onPressed: () => Share.share(
-                'השוויתי בחוסך: '
-                '${plans.map((p) => '${p.provider} ${p.plan} ₪${p.priceText}').join(' מול ')}'
-                '',
-              ),
+              onPressed: () => Share.share(_quickShareText(plans)),
             ),
           if (ids.isNotEmpty)
             TextButton(
@@ -91,6 +91,133 @@ class CompareWidget extends StatelessWidget {
                   _PlanViewTracker(planId: p.id, provider: p.provider, category: p.cat),
               ],
             ),
+    );
+  }
+}
+
+/// One-line share text for the single-plan fallback (no full export yet).
+String _quickShareText(List<Plan> plans) =>
+    'השוויתי בחוסך: '
+    '${plans.map((p) => '${p.provider} ${p.plan} ₪${p.priceText}').join(' מול ')}';
+
+// ── Share menu (PDF / text) ────────────────────────────────────────────────────
+
+/// AppBar share affordance for a 2+ plan comparison. Offers a real PDF export
+/// (structured, RTL, Hebrew-typeset) and a plain-text share, both built from the
+/// pure [ComparisonExport]. PDF generation shows a brief spinner; failures fall
+/// back to text so the user is never stuck.
+class _ShareMenu extends StatefulWidget {
+  const _ShareMenu({required this.plans, required this.appState});
+  final List<Plan> plans;
+  final AppState appState;
+
+  @override
+  State<_ShareMenu> createState() => _ShareMenuState();
+}
+
+class _ShareMenuState extends State<_ShareMenu> {
+  bool _busy = false;
+
+  ComparisonExport? _buildExport() =>
+      ComparisonExport.build(widget.appState, widget.plans);
+
+  Future<void> _sharePdf() async {
+    final export = _buildExport();
+    if (export == null) {
+      _shareText(); // <2 plans shouldn't reach here, but stay safe.
+      return;
+    }
+    setState(() => _busy = true);
+    try {
+      await ComparisonShare.sharePdf(export);
+    } catch (_) {
+      if (!mounted) return;
+      // Graceful degradation: hand the user the text instead of failing silently.
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('יצירת ה-PDF נכשלה — שותף כטקסט')),
+      );
+      await Share.share(export.toShareText());
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _printPdf() async {
+    final export = _buildExport();
+    if (export == null) return;
+    setState(() => _busy = true);
+    try {
+      await ComparisonShare.printPdf(export);
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('ההדפסה אינה זמינה במכשיר זה')),
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  void _shareText() {
+    final export = _buildExport();
+    Share.share(export?.toShareText() ?? _quickShareText(widget.plans));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_busy) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(horizontal: 16),
+        child: SizedBox(
+          width: 18,
+          height: 18,
+          child: CircularProgressIndicator(
+              strokeWidth: 2, color: Colors.white),
+        ),
+      );
+    }
+    return PopupMenuButton<String>(
+      icon: const Icon(Icons.ios_share_rounded, color: Colors.white),
+      tooltip: 'שתף',
+      onSelected: (v) {
+        switch (v) {
+          case 'pdf':
+            _sharePdf();
+          case 'print':
+            _printPdf();
+          case 'text':
+            _shareText();
+        }
+      },
+      itemBuilder: (context) => const [
+        PopupMenuItem(
+          value: 'pdf',
+          child: ListTile(
+            dense: true,
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(Icons.picture_as_pdf_rounded),
+            title: Text('שתף כ-PDF'),
+          ),
+        ),
+        PopupMenuItem(
+          value: 'print',
+          child: ListTile(
+            dense: true,
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(Icons.print_rounded),
+            title: Text('הדפס'),
+          ),
+        ),
+        PopupMenuItem(
+          value: 'text',
+          child: ListTile(
+            dense: true,
+            contentPadding: EdgeInsets.zero,
+            leading: Icon(Icons.short_text_rounded),
+            title: Text('שתף כטקסט'),
+          ),
+        ),
+      ],
     );
   }
 }

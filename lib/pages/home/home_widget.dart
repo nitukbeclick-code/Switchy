@@ -728,7 +728,14 @@ class _HomeWidgetState extends State<HomeWidget> {
                 onTap: () {
                   HapticFeedback.selectionClick();
                   appState.setCategory(cat.id);
-                  context.goNamed('Results');
+                  // Electricity has its own dedicated comparison screen (private
+                  // suppliers, indicative pricing) rather than the generic
+                  // results list; every other category lands on Results.
+                  if (cat.id == 'electricity') {
+                    context.pushNamed('Electricity');
+                  } else {
+                    context.goNamed('Results');
+                  }
                 },
                 child: Container(
                   padding: const EdgeInsets.all(16),

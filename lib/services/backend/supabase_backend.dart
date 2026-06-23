@@ -695,4 +695,23 @@ class SupabaseBackend implements Backend {
         .map((l) => CrmLead.fromJson((l as Map).cast<String, dynamic>()))
         .toList();
   }
+
+  // ── Owner observability (admin-metrics edge fn) ──────────────────────────────
+  // The `admin-metrics` function is a read-only GET with a ?days= window (1..90,
+  // default 7). functions.invoke auto-attaches the signed-in user's JWT; the
+  // function re-checks profiles.is_admin before reading the service-role-only
+  // analytics_events / agent_tool_calls / security_audit_log / cron tables, and
+  // returns counts only (never PII). We never touch those tables directly.
+  @override
+  Future<AdminMetrics> fetchAdminMetrics({int windowDays = 14}) async {
+    final res = await _db.functions.invoke(
+      'admin-metrics',
+      method: HttpMethod.get,
+      queryParameters: {'days': '$windowDays'},
+    );
+    final data = res.data;
+    return AdminMetrics.fromJson(
+      data is Map ? data.cast<String, dynamic>() : const {},
+    );
+  }
 }

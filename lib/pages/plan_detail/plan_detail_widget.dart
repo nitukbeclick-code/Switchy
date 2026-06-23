@@ -281,6 +281,18 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                         ),
                       ).animate().fadeIn(duration: 350.ms).slideY(begin: 0.1),
 
+                      // ── Post-promo price badge ───────────────────────────
+                      // A clear "מחיר עכשיו → מחיר אחרי המבצע" badge built only
+                      // from the plan's REAL after/afterExact + intro. Renders
+                      // only when there is a genuine promo jump; never invented.
+                      if (plan.hasPromo) ...[
+                        const SizedBox(height: 14),
+                        _PostPromoBadge(plan: plan)
+                            .animate(delay: 40.ms)
+                            .fadeIn(duration: 320.ms)
+                            .slideY(begin: 0.08),
+                      ],
+
                       // ── Above-the-fold VALUE anchor — the ₪ saving the user
                       // gets vs their own bill, then 3 honest "why this plan"
                       // bullets derived from the real spec + engine reasons.
@@ -449,6 +461,19 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                           .animate(delay: 295.ms)
                           .fadeIn(duration: 300.ms)
                           .slideY(begin: 0.08),
+
+                      // ── Payments & equipment (router / installation) ─────
+                      // An expandable section surfacing the plan's REAL fees
+                      // dict — installation, router and any one-off charges —
+                      // so the true cost isn't buried. Real data only; renders
+                      // only when the plan actually carries fees.
+                      if (plan.fees.isNotEmpty) ...[
+                        const SizedBox(height: 14),
+                        _PaymentsEquipmentSection(plan: plan)
+                            .animate(delay: 300.ms)
+                            .fadeIn(duration: 300.ms)
+                            .slideY(begin: 0.08),
+                      ],
 
                       // Fine print
                       if (plan.fine != null) ...[
@@ -1230,6 +1255,210 @@ class _ValueBullet {
   const _ValueBullet({required this.icon, required this.text});
   final IconData icon;
   final String text;
+}
+
+// ── Post-promo price badge ────────────────────────────────────────────────────
+//
+// A compact, honest "price now → price after the promo" badge. Every figure is
+// real: the current price is the plan's headline, the after-price is its own
+// after/afterExact (via afterText), and the timeframe is the plan's intro. It
+// is only ever built when plan.hasPromo, so we never imply a jump that the data
+// doesn't carry.
+
+class _PostPromoBadge extends StatelessWidget {
+  const _PostPromoBadge({required this.plan});
+  final Plan plan;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppTheme.of(context);
+    final unit = priceUnitShort(plan);
+    final after = plan.afterText;
+    // Defensive: hasPromo already guarantees a value, but stay null-safe.
+    if (after == null) return const SizedBox.shrink();
+
+    return Semantics(
+      label:
+          'מחיר עכשיו ₪${plan.priceText} ל$unit, יעלה ל-₪$after ל$unit אחרי ${plan.intro ?? 'תקופת המבצע'}',
+      child: ExcludeSemantics(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: t.warning.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(t.radiusMd),
+            border: Border.all(color: t.warning.withValues(alpha: 0.35)),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.timelapse_rounded, size: 20, color: t.warning),
+              const SizedBox(width: 10),
+              // "עכשיו" price (the value the user pays today).
+              _PromoSide(
+                caption: 'מחיר עכשיו',
+                value: '₪${plan.priceText}',
+                unit: unit,
+                valueColor: t.primary,
+                t: t,
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Icon(Icons.arrow_back_rounded,
+                    size: 18, color: t.secondaryText),
+              ),
+              // "אחרי המבצע" price — the real post-promo figure.
+              _PromoSide(
+                caption: 'אחרי ${plan.intro ?? 'המבצע'}',
+                value: '₪$after',
+                unit: unit,
+                valueColor: t.warning,
+                t: t,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PromoSide extends StatelessWidget {
+  const _PromoSide({
+    required this.caption,
+    required this.value,
+    required this.unit,
+    required this.valueColor,
+    required this.t,
+  });
+  final String caption;
+  final String value;
+  final String unit;
+  final Color valueColor;
+  final AppTheme t;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          caption,
+          style: t.labelSmall.copyWith(color: t.secondaryText, fontSize: 11),
+        ),
+        const SizedBox(height: 2),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              value,
+              style: t.titleMedium.copyWith(
+                color: valueColor,
+                fontWeight: FontWeight.w800,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
+            ),
+            const SizedBox(width: 2),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 2),
+              child: Text('/$unit',
+                  style: t.labelSmall.copyWith(color: t.secondaryText)),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+// ── Payments & equipment section ───────────────────────────────────────────────
+//
+// An expandable card that surfaces the plan's REAL fees dict — installation,
+// router and any one-off charges. Labels and values are passed through verbatim
+// from the data (e.g. 'התקנה' → 'נחושת ₪49', 'נתב' → '+₪19.9/ח׳'); nothing is
+// computed or invented. A per-row icon is chosen heuristically from the label
+// (router / installation / SIM / joining), defaulting to a neutral receipt icon.
+
+IconData _feeIcon(String label) {
+  final l = label.toLowerCase();
+  if (l.contains('נתב') || l.contains('ראוטר') || l.contains('router')) {
+    return Icons.router_rounded;
+  }
+  if (l.contains('התקנה') || l.contains('install')) {
+    return Icons.build_rounded;
+  }
+  if (l.contains('sim') || l.contains('סים')) return Icons.sim_card_rounded;
+  if (l.contains('חיבור') || l.contains('הצטרפות') || l.contains('ניתוק')) {
+    return Icons.link_rounded;
+  }
+  if (l.contains('ציוד') || l.contains('מקלט') || l.contains('ממיר')) {
+    return Icons.devices_other_rounded;
+  }
+  return Icons.receipt_long_rounded;
+}
+
+class _PaymentsEquipmentSection extends StatelessWidget {
+  const _PaymentsEquipmentSection({required this.plan});
+  final Plan plan;
+
+  @override
+  Widget build(BuildContext context) {
+    final ffTheme = AppTheme.of(context);
+    final feeEntries = plan.fees.entries.toList();
+
+    return Container(
+      clipBehavior: Clip.antiAlias,
+      decoration: ffTheme.cardDecoration(radius: ffTheme.radiusCard),
+      child: ExpansionTile(
+        leading: Icon(Icons.payments_outlined,
+            size: 20, color: ffTheme.secondaryText),
+        title: Text('תשלומים וציוד', style: ffTheme.titleSmall),
+        subtitle: Text(
+          'התקנה, נתב ותשלומים חד-פעמיים',
+          style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText),
+        ),
+        iconColor: ffTheme.secondaryText,
+        collapsedIconColor: ffTheme.secondaryText,
+        tilePadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+        children: [
+          ...feeEntries.asMap().entries.map((entry) {
+            final isLast = entry.key == feeEntries.length - 1;
+            final label = entry.value.key;
+            final value = entry.value.value;
+            return Padding(
+              padding: EdgeInsets.only(bottom: isLast ? 0 : 12),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(_feeIcon(label), size: 18, color: ffTheme.primary),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          label,
+                          style: ffTheme.bodyMedium
+                              .copyWith(fontWeight: FontWeight.w700),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          value,
+                          style: ffTheme.bodySmall
+                              .copyWith(color: ffTheme.secondaryText),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
 }
 
 // ── Helper widgets ────────────────────────────────────────────────────────────

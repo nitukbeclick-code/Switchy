@@ -58,6 +58,33 @@ class _ErrorBackend extends LocalBackend {
   Future<List<CrmConversation>> crmListConversations({String? status, String? search}) async => throw Exception('boom');
   @override
   Future<CrmOverview> crmOverview() async => throw Exception('boom');
+  @override
+  Future<AdminMetrics> fetchAdminMetrics({int windowDays = 14}) async => throw Exception('boom');
+}
+
+// Owner-observability backend: real CRM reads (for tab 1) plus a deterministic
+// admin-metrics payload (for tab 2). [metrics] overrides the whole payload so a
+// test can force the empty/data variants.
+class _ObsBackend extends LocalBackend {
+  _ObsBackend({this.metrics});
+
+  final AdminMetrics? metrics;
+
+  static const _empty = AdminMetrics(
+    windowDays: 14,
+    events: [],
+    totalEvents: 0,
+    toolCalls: ToolCallSummary.empty,
+    audit: AuditSummary.empty,
+    cron: CronSummary.empty,
+  );
+
+  @override
+  Future<bool> fetchIsAdmin() async => true;
+
+  @override
+  Future<AdminMetrics> fetchAdminMetrics({int windowDays = 14}) async =>
+      metrics ?? await super.fetchAdminMetrics(windowDays: windowDays);
 }
 
 Widget _wrap(Widget child) => MaterialApp(
@@ -108,8 +135,12 @@ void main() {
     await tester.pump(const Duration(milliseconds: 700));
 
     // The page is a lazy ListView, so off-screen sections aren't built yet —
-    // scroll each into view before asserting.
-    final list = find.byType(Scrollable).first;
+    // scroll each into view before asserting. Scope to the funnel ListView's own
+    // Scrollable (the TabBarView's PageView is also a Scrollable, and comes
+    // first in the tree).
+    final list = find
+        .descendant(of: find.byType(ListView), matching: find.byType(Scrollable))
+        .first;
     await tester.scrollUntilVisible(find.text('לידים לאורך זמן'), 250, scrollable: list);
     await tester.pump();
     expect(find.text('לידים לאורך זמן'), findsOneWidget);
@@ -164,5 +195,89 @@ void main() {
     expect(find.text('שיעור המרה'), findsOneWidget);
     expect(find.text('—'), findsWidgets);
     expect(find.text('טרם נסגרו לידים'), findsOneWidget);
+  });
+
+  // ── Tab 2 — events & audit (owner observability) ──
+
+  testWidgets('two tabs are present; funnel is the default', (tester) async {
+    appBackend = _ObsBackend();
+    await tester.pumpWidget(_wrap(const AnalyticsWidget()));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 700));
+
+    expect(find.text('משפך'), findsOneWidget);
+    expect(find.text('אירועים וביקורת'), findsOneWidget);
+    // Default tab is the funnel.
+    expect(find.text('סה״כ לידים'), findsOneWidget);
+  });
+
+  testWidgets('events & audit tab renders the real admin-metrics sections', (tester) async {
+    appBackend = _ObsBackend();
+    await tester.pumpWidget(_wrap(const AnalyticsWidget()));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 700));
+
+    await tester.tap(find.text('אירועים וביקורת'));
+    await tester.pump(); // kick off the tab transition
+    await tester.pump(const Duration(milliseconds: 400)); // settle the tab swipe
+    await tester.pump(); // _EventsAuditTab.initState → _load()
+    await tester.pump(const Duration(milliseconds: 700)); // flush futures + entrance
+
+    expect(find.text('שיעור הצלחה'), findsOneWidget);
+    expect(find.text('קריאות-כלי'), findsOneWidget);
+
+    final list = find.byType(Scrollable).last;
+    await tester.scrollUntilVisible(find.text('הצלחת קריאות-כלי של הסוכן'), 250, scrollable: list);
+    await tester.pump();
+    expect(find.text('הצלחת קריאות-כלי של הסוכן'), findsOneWidget);
+    // A real tool name from the deterministic payload.
+    expect(find.text('search_plans'), findsOneWidget);
+
+    await tester.scrollUntilVisible(find.text('יומן ביקורת אבטחה'), 250, scrollable: list);
+    await tester.pump();
+    // A real, labelled audit event from the deterministic payload (status_change).
+    expect(find.text('שינוי סטטוס'), findsOneWidget);
+
+    await tester.scrollUntilVisible(find.text('בריאות משימות מתוזמנות'), 250, scrollable: list);
+    await tester.pump();
+    // The deterministic payload has one stale cron job by name.
+    expect(find.text('חלק מהמשימות דורשות טיפול'), findsOneWidget);
+    expect(find.text('renewal_reminders'), findsOneWidget);
+
+    // Drain the fl_chart one-shot grow-up so no timer is left pending.
+    await tester.pump(const Duration(milliseconds: 700));
+  });
+
+  testWidgets('events & audit tab shows the honest empty state with no data', (tester) async {
+    appBackend = _ObsBackend(metrics: _ObsBackend._empty);
+    await tester.pumpWidget(_wrap(const AnalyticsWidget()));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 700));
+
+    await tester.tap(find.text('אירועים וביקורת'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400)); // settle the tab swipe
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 700));
+
+    expect(find.text('אין עדיין נתוני תצפית'), findsOneWidget);
+    // No KPI grid / success-rate card when there's genuinely no data.
+    expect(find.text('שיעור הצלחה'), findsNothing);
+  });
+
+  testWidgets('events & audit tab shows a retry state on backend error', (tester) async {
+    appBackend = _ErrorBackend();
+    await tester.pumpWidget(_wrap(const AnalyticsWidget()));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 700));
+
+    await tester.tap(find.text('אירועים וביקורת'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 400)); // settle the tab swipe
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 700));
+
+    expect(find.text('לא הצלחנו לטעון'), findsWidgets);
+    expect(find.text('נסו שוב'), findsWidgets);
   });
 }

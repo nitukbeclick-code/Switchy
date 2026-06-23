@@ -127,4 +127,56 @@ void main() {
       tester.takeException();
     });
   });
+
+  testWidgets('Callback timing chips expose labelled selectable buttons',
+      (tester) async {
+    await _ignoringOverflow(() async {
+      final handle = tester.ensureSemantics();
+      await _bootApp(tester);
+
+      _go(tester, '/callback');
+      await _settle(tester);
+
+      // The timing chips sit partway down a scroll view; bring them on-screen
+      // so their semantics are compiled in the test viewport.
+      await tester.ensureVisible(find.text('בהקדם').first);
+      await _settle(tester);
+
+      // The "when is convenient?" timing chips render unconditionally and each
+      // exposes a labelled button ("זמן מועדף: <slot>") so screen readers
+      // announce both the option and its role; spot-check the row's ends.
+      expect(find.bySemanticsLabel('זמן מועדף: בהקדם'), findsOneWidget);
+      expect(find.bySemanticsLabel('זמן מועדף: ערב'), findsOneWidget);
+
+      handle.dispose();
+      tester.takeException();
+    });
+  });
+
+  testWidgets('Community feed bookmark filter exposes a labelled toggle button',
+      (tester) async {
+    await _ignoringOverflow(() async {
+      final handle = tester.ensureSemantics();
+      await _bootApp(tester);
+
+      _go(tester, '/community');
+      await _settle(tester);
+
+      // The toolbar row (sort toggle + bookmark filter + search field) fades in
+      // via flutter_animate; an Opacity(0) start hides the subtree from the
+      // semantics tree, so bring the row on-screen and let the 280ms fade finish
+      // before asserting (mirrors the callback-chips test above).
+      await tester.ensureVisible(find.text('חיפוש בפוסטים...').first);
+      await _settle(tester);
+
+      // The icon-only "saved posts" filter in the feed toolbar must expose a
+      // labelled button for screen-reader users (it sits next to the sort toggle
+      // and search field). The same label is reused on per-post bookmark
+      // controls, so allow more than one.
+      expect(find.bySemanticsLabel('פוסטים שמורים'), findsWidgets);
+
+      handle.dispose();
+      tester.takeException();
+    });
+  });
 }

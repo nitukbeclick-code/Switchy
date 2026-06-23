@@ -37,7 +37,22 @@ class _QuizWidgetState extends State<QuizWidget> {
   void initState() {
     super.initState();
     final appState = AppState();
-    // Pre-fill from existing quiz state if already completed
+    final draft = appState.quizDraft;
+    if (draft != null) {
+      // Resume an in-progress quiz exactly where the user left off — step and
+      // every answer, including the secondary filter that the completed-quiz
+      // fields don't carry.
+      final cfg = _budgetConfig(draft.cat);
+      _step = draft.step.clamp(0, 4);
+      _cat = draft.cat;
+      _lines = draft.lines;
+      _priority = draft.priority;
+      _extraFilter = draft.extraFilter;
+      _budget = draft.budget.toDouble().clamp(cfg.$1, cfg.$2);
+      _currentBill = draft.currentBill.toDouble().clamp(cfg.$1, cfg.$2);
+      return;
+    }
+    // No draft → pre-fill from existing (possibly completed) quiz state.
     _cat = appState.selectedCat;
     _lines = appState.quizLines;
     _priority = appState.quizPriority;
@@ -53,6 +68,20 @@ class _QuizWidgetState extends State<QuizWidget> {
     // Seed today's-bill from any saved bill, else a sensible default.
     _currentBill = (catBill > 0 ? catBill.toDouble() : _defaultBudget(appState.selectedCat))
         .clamp(cfg.$1, cfg.$2);
+  }
+
+  /// Snapshot the wizard's current slide + answers into AppState so leaving and
+  /// re-entering resumes here. Called on every slide change (forward/back).
+  void _saveDraft() {
+    AppState().saveQuizDraft(QuizDraft(
+      step: _step,
+      cat: _cat,
+      lines: _lines,
+      priority: _priority,
+      extraFilter: _extraFilter,
+      budget: _budget.round(),
+      currentBill: _currentBill.round(),
+    ));
   }
 
   static const _cats = [
@@ -167,7 +196,7 @@ class _QuizWidgetState extends State<QuizWidget> {
                     Padding(
                       padding: const EdgeInsetsDirectional.only(end: 12),
                       child: OutlinedButton(
-                        onPressed: () => setState(() => _step--),
+                        onPressed: () { setState(() => _step--); _saveDraft(); },
                         style: OutlinedButton.styleFrom(
                           foregroundColor: ffTheme.secondaryText,
                           side: BorderSide(color: ffTheme.alternate),
@@ -637,11 +666,15 @@ class _QuizWidgetState extends State<QuizWidget> {
   Future<void> _next() async {
     if (_step < 4) {
       setState(() => _step++);
+      _saveDraft(); // persist the answers from the slide we just left
       return;
     }
     if (_analyzing) return; // guard against re-entry during the reveal delay
 
     final appState = Provider.of<AppState>(context, listen: false);
+    // The quiz is finishing — its answers now live in the canonical quiz* fields
+    // below, so drop the resume draft (a completed quiz must not re-open mid-flow).
+    appState.clearQuizDraft();
     appState.setCategory(_cat);
     // Persist today's bill — the baseline every savings figure is measured against.
     appState.setCurrentBill(_cat, _currentBill.round());

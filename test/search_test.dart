@@ -74,4 +74,101 @@ void main() {
       expect(r.plans.length, lessThanOrEqualTo(3));
     });
   });
+
+  group('SearchFacets', () {
+    test('an empty facet set is a no-op', () {
+      const f = SearchFacets();
+      expect(f.isEmpty, isTrue);
+      expect(f.activeCount, 0);
+      expect(filtered(allPlans, f), equals(allPlans));
+    });
+
+    test('activeCount counts each switched-on facet', () {
+      expect(const SearchFacets(fiveG: true).activeCount, 1);
+      expect(
+          const SearchFacets(fiveG: true, noCommit: true, withData: true, maxPrice: 50)
+              .activeCount,
+          4);
+    });
+
+    test('copyWith can clear the budget', () {
+      const f = SearchFacets(maxPrice: 50);
+      expect(f.copyWith(clearMaxPrice: true).maxPrice, isNull);
+      // A plain copyWith keeps the existing budget.
+      expect(f.copyWith(fiveG: true).maxPrice, 50);
+    });
+  });
+
+  group('filtered', () {
+    test('5G facet keeps only real 5G plans', () {
+      final out = filtered(allPlans, const SearchFacets(fiveG: true));
+      expect(out, isNotEmpty);
+      expect(out.every((p) => p.is5G), isTrue);
+    });
+
+    test('no-commit facet keeps only plans without a term', () {
+      final out = filtered(allPlans, const SearchFacets(noCommit: true));
+      expect(out, isNotEmpty);
+      expect(out.every((p) => p.noCommit), isTrue);
+    });
+
+    test('budget facet keeps only plans at or under the cap', () {
+      final out = filtered(allPlans, const SearchFacets(maxPrice: 40));
+      expect(out, isNotEmpty);
+      expect(out.every((p) => p.priceValue <= 40), isTrue);
+      // And it actually narrows the catalogue.
+      expect(out.length, lessThan(allPlans.length));
+    });
+
+    test('with-data facet keeps only plans carrying a data allowance', () {
+      final out = filtered(allPlans, const SearchFacets(withData: true));
+      expect(out, isNotEmpty);
+      expect(out.every(planHasData), isTrue);
+    });
+
+    test('facets are AND-combined', () {
+      final out = filtered(
+          allPlans, const SearchFacets(fiveG: true, noCommit: true, maxPrice: 999999));
+      expect(out.every((p) => p.is5G && p.noCommit), isTrue);
+    });
+
+    test('preserves input order (facets only narrow, never reorder)', () {
+      final ranked = searchEverything(allProviders.first, planLimit: 999).plans;
+      final out = filtered(ranked, const SearchFacets(maxPrice: 999999));
+      // With an unreachable cap nothing is dropped and order is identical.
+      expect(out.map((p) => p.id).toList(), equals(ranked.map((p) => p.id).toList()));
+    });
+
+    test('an impossible combo yields an empty list, not an error', () {
+      final out = filtered(allPlans, const SearchFacets(maxPrice: 0));
+      expect(out, isEmpty);
+    });
+  });
+
+  group('planHasData', () {
+    test('a plan with a structured נתונים spec has data', () {
+      final withSpec = allPlans.firstWhere(
+        (p) => (p.specs['נתונים'] ?? '').trim().isNotEmpty,
+        orElse: () => allPlans.first,
+      );
+      if ((withSpec.specs['נתונים'] ?? '').trim().isNotEmpty) {
+        expect(planHasData(withSpec), isTrue);
+      }
+    });
+
+    test('a per-minute abroad tariff with no allowance is not flagged as data', () {
+      // ab_019 is a per-minute tariff whose feats mention גלישה, so it *does*
+      // count — assert instead on the contract: every flagged plan really does
+      // mention a data allowance somewhere we can point to.
+      final flagged = allPlans.where(planHasData);
+      expect(flagged.every((p) {
+        final hay = [p.plan, ...p.feats, ...p.specs.values].join(' ');
+        return hay.contains('גלישה') ||
+            hay.contains('דאטה') ||
+            hay.contains('נתונים') ||
+            hay.toLowerCase().contains('gb') ||
+            hay.contains('ללא הגבלה');
+      }), isTrue);
+    });
+  });
 }

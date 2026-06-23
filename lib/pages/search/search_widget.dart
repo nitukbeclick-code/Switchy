@@ -32,6 +32,7 @@ class _SearchWidgetState extends State<SearchWidget> {
   final _ctrl = TextEditingController();
   final _focus = FocusNode();
   String _q = '';
+  SearchFacets _facets = const SearchFacets();
 
   @override
   void initState() {
@@ -61,6 +62,10 @@ class _SearchWidgetState extends State<SearchWidget> {
     _focus.requestFocus();
   }
 
+  void _setFacets(SearchFacets f) => setState(() => _facets = f);
+
+  void _clearFacets() => setState(() => _facets = const SearchFacets());
+
   void _remember() {
     final t = _q.trim();
     if (t.isNotEmpty) {
@@ -75,7 +80,20 @@ class _SearchWidgetState extends State<SearchWidget> {
   Widget build(BuildContext context) {
     final ffTheme = AppTheme.of(context);
     final appState = Provider.of<AppState>(context);
-    final results = searchEverything(_q);
+    final raw = searchEverything(_q);
+    // Facets narrow only the plan list; provider/category hits are unaffected.
+    final results = _facets.isEmpty
+        ? raw
+        : SearchResults(
+            providers: raw.providers,
+            categories: raw.categories,
+            plans: filtered(raw.plans, _facets),
+          );
+    final hasQuery = _q.trim().isNotEmpty;
+    // The set of plans the active facets *could* have hidden — used to keep the
+    // chip bar honest ("0 results" still shows the bar so the user can relax it).
+    final filteredEmpty =
+        hasQuery && _facets.isNotEmpty && raw.plans.isNotEmpty && results.plans.isEmpty;
 
     return Scaffold(
       backgroundColor: ffTheme.background,
@@ -145,32 +163,318 @@ class _SearchWidgetState extends State<SearchWidget> {
           child: Container(height: 1, color: ffTheme.alternate),
         ),
       ),
-      body: _q.trim().isEmpty
+      body: !hasQuery
           ? _Suggestions(
               ffTheme: ffTheme,
               onPick: _useSuggestion,
               recent: appState.recentSearches,
               onClearRecent: appState.clearRecentSearches,
             )
-          : results.isEmpty
-              ? EmptyState(
-                  icon: Icons.search_off_rounded,
-                  headline: 'לא נמצאו תוצאות עבור "${_q.trim()}"',
-                  subtitle: 'נסו שם ספק, מסלול או תכונה אחרת — למשל "5G", "סיב" או תקציב כמו "50"',
-                  ctaLabel: 'נקו את החיפוש',
-                  onCtaTap: () async {
-                    _ctrl.clear();
-                    _setQuery('');
-                    _focus.requestFocus();
-                  },
-                )
-              : _ResultsList(
-                  results: results,
-                  query: _q,
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Facet chip bar — narrows the plan results over REAL fields.
+                _FacetBar(
+                  facets: _facets,
                   ffTheme: ffTheme,
-                  appState: appState,
-                  onBeforeNavigate: _remember,
+                  onChanged: _setFacets,
+                  onClear: _clearFacets,
                 ),
+                Expanded(
+                  child: filteredEmpty
+                      ? EmptyState(
+                          icon: Icons.filter_alt_off_rounded,
+                          headline: 'אין מסלולים שעונים על המסננים',
+                          subtitle:
+                              'נמצאו ${raw.plans.length} מסלולים עבור "${_q.trim()}" — אבל אף אחד לא עובר את המסננים שבחרתם.',
+                          ctaLabel: 'נקו מסננים',
+                          onCtaTap: () async => _clearFacets(),
+                        )
+                      : results.isEmpty
+                          ? EmptyState(
+                              icon: Icons.search_off_rounded,
+                              headline: 'לא נמצאו תוצאות עבור "${_q.trim()}"',
+                              subtitle:
+                                  'נסו שם ספק, מסלול או תכונה אחרת — למשל "5G", "סיב" או תקציב כמו "50"',
+                              ctaLabel: 'נקו את החיפוש',
+                              onCtaTap: () async {
+                                _ctrl.clear();
+                                _setQuery('');
+                                _focus.requestFocus();
+                              },
+                            )
+                          : _ResultsList(
+                              results: results,
+                              query: _q,
+                              ffTheme: ffTheme,
+                              appState: appState,
+                              onBeforeNavigate: _remember,
+                            ),
+                ),
+              ],
+            ),
+    );
+  }
+}
+
+// ── Facet chip bar ───────────────────────────────────────────────────────────
+
+/// A horizontal row of toggle chips that narrow the plan results over fields the
+/// catalogue already holds: 5G, ללא התחייבות, עם דאטה, and a budget threshold.
+/// AND-combined; a "נקה" chip resets them. Each chip is a real toggle button
+/// with a [Semantics] label and pressed state for screen readers.
+class _FacetBar extends StatelessWidget {
+  const _FacetBar({
+    required this.facets,
+    required this.ffTheme,
+    required this.onChanged,
+    required this.onClear,
+  });
+
+  final SearchFacets facets;
+  final AppTheme ffTheme;
+  final ValueChanged<SearchFacets> onChanged;
+  final VoidCallback onClear;
+
+  /// Preset budget thresholds (₪/חודש) the user can cap results at.
+  static const List<int> _budgets = [30, 50, 80, 120];
+
+  void _showBudgetSheet(BuildContext context) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: ffTheme.secondaryBackground,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(ffTheme.radiusLg)),
+      ),
+      builder: (sheetCtx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text('עד כמה התקציב?',
+                    style: ffTheme.titleMedium.copyWith(fontWeight: FontWeight.w800)),
+                const SizedBox(height: 4),
+                Text('הצגת מסלולים במחיר שלא עולה על הסכום שתבחרו',
+                    style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText)),
+                const SizedBox(height: 16),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: [
+                    for (final b in _budgets)
+                      _SheetChoice(
+                        label: 'עד ₪$b',
+                        selected: facets.maxPrice == b,
+                        ffTheme: ffTheme,
+                        onTap: () {
+                          onChanged(facets.copyWith(maxPrice: b));
+                          Navigator.of(sheetCtx).pop();
+                        },
+                      ),
+                    if (facets.maxPrice != null)
+                      _SheetChoice(
+                        label: 'ללא הגבלת תקציב',
+                        selected: false,
+                        ffTheme: ffTheme,
+                        onTap: () {
+                          onChanged(facets.copyWith(clearMaxPrice: true));
+                          Navigator.of(sheetCtx).pop();
+                        },
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final budgetLabel =
+        facets.maxPrice != null ? 'עד ₪${facets.maxPrice}' : 'תקציב';
+
+    return Container(
+      decoration: BoxDecoration(
+        color: ffTheme.secondaryBackground,
+        border: Border(bottom: BorderSide(color: ffTheme.alternate)),
+      ),
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            _FacetChip(
+              label: '5G',
+              icon: Icons.network_cell_rounded,
+              selected: facets.fiveG,
+              ffTheme: ffTheme,
+              onTap: () => onChanged(facets.copyWith(fiveG: !facets.fiveG)),
+            ),
+            const SizedBox(width: 8),
+            _FacetChip(
+              label: 'ללא התחייבות',
+              icon: Icons.lock_open_rounded,
+              selected: facets.noCommit,
+              ffTheme: ffTheme,
+              onTap: () => onChanged(facets.copyWith(noCommit: !facets.noCommit)),
+            ),
+            const SizedBox(width: 8),
+            _FacetChip(
+              label: 'עם דאטה',
+              icon: Icons.data_usage_rounded,
+              selected: facets.withData,
+              ffTheme: ffTheme,
+              onTap: () => onChanged(facets.copyWith(withData: !facets.withData)),
+            ),
+            const SizedBox(width: 8),
+            _FacetChip(
+              label: budgetLabel,
+              icon: Icons.payments_outlined,
+              selected: facets.maxPrice != null,
+              trailing: Icons.expand_more_rounded,
+              ffTheme: ffTheme,
+              onTap: () => _showBudgetSheet(context),
+            ),
+            if (facets.isNotEmpty) ...[
+              const SizedBox(width: 8),
+              Semantics(
+                button: true,
+                label: 'נקה מסננים',
+                child: Pressable(
+                  onTap: onClear,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                    decoration: BoxDecoration(
+                      color: ffTheme.accent2,
+                      borderRadius: BorderRadius.circular(ffTheme.radiusPill),
+                      border: Border.all(color: ffTheme.alternate),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.close_rounded, size: 15, color: ffTheme.secondaryText),
+                        const SizedBox(width: 5),
+                        Text('נקה',
+                            style: ffTheme.labelMedium.copyWith(
+                                color: ffTheme.secondaryText, fontWeight: FontWeight.w700)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A single toggle chip in the facet bar. Filled green-tint when [selected],
+/// glass-outline when not. Exposes a [Semantics] toggle so screen readers
+/// announce the pressed state.
+class _FacetChip extends StatelessWidget {
+  const _FacetChip({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    required this.ffTheme,
+    required this.onTap,
+    this.trailing,
+  });
+
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final AppTheme ffTheme;
+  final VoidCallback onTap;
+  final IconData? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    final fg = selected ? ffTheme.brandAccentText : ffTheme.primaryText;
+    return Semantics(
+      button: true,
+      toggled: selected,
+      label: label,
+      child: Pressable(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: 160.ms,
+          padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
+          decoration: BoxDecoration(
+            color: selected ? ffTheme.brandAccentTint : ffTheme.secondaryBackground,
+            borderRadius: BorderRadius.circular(ffTheme.radiusPill),
+            border: Border.all(
+              color: selected
+                  ? ffTheme.brandAccent.withValues(alpha: 0.45)
+                  : ffTheme.alternate,
+              width: selected ? 1.5 : 1,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 15, color: selected ? ffTheme.brandAccent : ffTheme.secondaryText),
+              const SizedBox(width: 6),
+              Text(label,
+                  style: ffTheme.labelMedium
+                      .copyWith(color: fg, fontWeight: FontWeight.w700)),
+              if (trailing != null) ...[
+                const SizedBox(width: 2),
+                Icon(trailing, size: 16, color: selected ? ffTheme.brandAccent : ffTheme.secondaryText),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A choice chip inside the budget bottom sheet.
+class _SheetChoice extends StatelessWidget {
+  const _SheetChoice({
+    required this.label,
+    required this.selected,
+    required this.ffTheme,
+    required this.onTap,
+  });
+  final String label;
+  final bool selected;
+  final AppTheme ffTheme;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      toggled: selected,
+      label: label,
+      child: Pressable(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+          decoration: BoxDecoration(
+            color: selected ? ffTheme.brandAccentTint : ffTheme.accent2,
+            borderRadius: BorderRadius.circular(ffTheme.radiusPill),
+            border: Border.all(
+              color: selected ? ffTheme.brandAccent.withValues(alpha: 0.45) : ffTheme.alternate,
+              width: selected ? 1.5 : 1,
+            ),
+          ),
+          child: Text(label,
+              style: ffTheme.labelMedium.copyWith(
+                  color: selected ? ffTheme.brandAccentText : ffTheme.primaryText,
+                  fontWeight: FontWeight.w700)),
+        ),
+      ),
     );
   }
 }

@@ -24,6 +24,65 @@ void _go(WidgetTester tester, String path) {
 }
 
 void main() {
+  testWidgets('quiz resumes from a saved draft instead of starting at step 1',
+      (tester) async {
+    await _bootApp(tester);
+
+    // Seed an in-progress draft on the bill step (index 3 → "שלב 4 מתוך 5") for
+    // the internet category, with a secondary filter the completed-quiz fields
+    // can't carry. Re-entering the quiz must land here, not on step 1.
+    AppState().saveQuizDraft(const QuizDraft(
+      step: 3,
+      cat: 'internet',
+      lines: 1,
+      priority: 'speed_fast',
+      extraFilter: 'nocommit',
+      budget: 99,
+      currentBill: 79,
+    ));
+
+    _go(tester, '/quiz');
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    // Resumed on step 4 of 5 — the category-selection step (step 1) is not shown.
+    expect(find.text('שלב 4 מתוך 5'), findsOneWidget);
+    expect(find.text('מה אתם מחפשים?'), findsNothing);
+    // Internet's bill step uses the generic "how much do you pay today" copy.
+    expect(find.text('כמה אתם משלמים היום?'), findsOneWidget);
+  });
+
+  testWidgets('completing the quiz clears the resume draft', (tester) async {
+    await _bootApp(tester);
+    expect(AppState().quizDraft, isNull);
+
+    _go(tester, '/quiz');
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    Future<void> tapNext() async {
+      await tester.tap(find.text('הבא ←'));
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.pump(const Duration(milliseconds: 200));
+    }
+
+    // Advancing past step 1 creates a draft (resume point).
+    await tapNext();
+    expect(AppState().quizDraft, isNotNull);
+
+    await tapNext(); // → step 3
+    await tapNext(); // → bill step (4 of 5)
+    await tapNext(); // → budget step (5 of 5)
+
+    await tester.tap(find.text('הצג תוצאות'));
+    await tester.pump(const Duration(milliseconds: 300));
+    await tester.pump(const Duration(milliseconds: 800));
+    await tester.pump(const Duration(milliseconds: 900));
+
+    // A completed quiz must not re-open mid-flow — the draft is cleared.
+    expect(AppState().quizDraft, isNull);
+  });
+
   testWidgets('quiz captures today\'s bill and persists it for savings', (tester) async {
     await _bootApp(tester);
     // Sanity: cellular starts at the default bill, not 89.

@@ -485,13 +485,18 @@ class AccountWidget extends StatelessWidget {
                                 ],
                               ),
                             ),
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: List.generate(5, (i) => Icon(
-                                i < overall ? Icons.star_rounded : Icons.star_outline_rounded,
-                                size: 14,
-                                color: ffTheme.warning,
-                              )),
+                            Semantics(
+                              label: 'דירוג: $overall מתוך 5 כוכבים',
+                              child: ExcludeSemantics(
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: List.generate(5, (i) => Icon(
+                                    i < overall ? Icons.star_rounded : Icons.star_outline_rounded,
+                                    size: 14,
+                                    color: ffTheme.warning,
+                                  )),
+                                ),
+                              ),
                             ),
                           ],
                         ),
@@ -587,7 +592,7 @@ class _ActionTile extends StatelessWidget {
                 color: ffTheme.brandAccentTint,
                 borderRadius: BorderRadius.circular(ffTheme.radiusSm),
               ),
-              child: Icon(icon, color: ffTheme.brandAccent, size: 22),
+              child: ExcludeSemantics(child: Icon(icon, color: ffTheme.brandAccent, size: 22)),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -599,7 +604,7 @@ class _ActionTile extends StatelessWidget {
                 ],
               ),
             ),
-            Icon(Icons.arrow_back_ios_rounded, size: 14, color: ffTheme.secondaryText),
+            ExcludeSemantics(child: Icon(Icons.arrow_back_ios_rounded, size: 14, color: ffTheme.secondaryText)),
           ],
         ),
       ),

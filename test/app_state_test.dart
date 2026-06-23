@@ -480,6 +480,155 @@ void main() {
     });
   });
 
+  // ── Israeli-phone validation + profile save ──────────────────────────────────
+
+  group('isValidIlPhone', () {
+    test('accepts a 10-digit mobile number', () {
+      expect(AppState.isValidIlPhone('0521234567'), isTrue);
+    });
+
+    test('accepts a 9-digit landline number', () {
+      expect(AppState.isValidIlPhone('021234567'), isTrue);
+    });
+
+    test('accepts numbers with spaces and dashes', () {
+      expect(AppState.isValidIlPhone('052-123-4567'), isTrue);
+      expect(AppState.isValidIlPhone('052 123 4567'), isTrue);
+    });
+
+    test('accepts a +972 / 972 country-prefixed number', () {
+      expect(AppState.isValidIlPhone('+972521234567'), isTrue);
+      expect(AppState.isValidIlPhone('972521234567'), isTrue);
+    });
+
+    test('rejects numbers that are too short or too long', () {
+      expect(AppState.isValidIlPhone('05212345'), isFalse); // 8 digits
+      expect(AppState.isValidIlPhone('05212345678'), isFalse); // 11 digits
+    });
+
+    test('rejects numbers that do not start with 0', () {
+      expect(AppState.isValidIlPhone('521234567'), isFalse);
+    });
+
+    test('rejects empty and non-numeric input', () {
+      expect(AppState.isValidIlPhone(''), isFalse);
+      expect(AppState.isValidIlPhone('not a phone'), isFalse);
+    });
+  });
+
+  group('normalizeIlPhone', () {
+    test('strips spaces and dashes', () {
+      expect(AppState.normalizeIlPhone('052-123 4567'), equals('0521234567'));
+    });
+
+    test('converts +972 prefix to a leading 0', () {
+      expect(AppState.normalizeIlPhone('+972521234567'), equals('0521234567'));
+    });
+
+    test('converts 972 prefix to a leading 0', () {
+      expect(AppState.normalizeIlPhone('972521234567'), equals('0521234567'));
+    });
+  });
+
+  group('saveProfile', () {
+    test('commits a valid profile and logs the user in', () {
+      final s = AppState();
+      final r = s.saveProfile(name: '  ישראל ישראלי  ', phone: '052-123-4567');
+      expect(r, equals(ProfileSaveResult.ok));
+      expect(s.isLoggedIn, isTrue);
+      expect(s.userName, equals('ישראל ישראלי')); // trimmed
+      expect(s.userPhone, equals('0521234567')); // normalized
+    });
+
+    test('rejects an empty name without mutating state', () {
+      final s = AppState();
+      final r = s.saveProfile(name: '   ', phone: '0521234567');
+      expect(r, equals(ProfileSaveResult.emptyName));
+      expect(s.isLoggedIn, isFalse);
+      expect(s.userName, isEmpty);
+    });
+
+    test('rejects an invalid phone without mutating state', () {
+      final s = AppState();
+      final r = s.saveProfile(name: 'דנה', phone: '123');
+      expect(r, equals(ProfileSaveResult.invalidPhone));
+      expect(s.isLoggedIn, isFalse);
+    });
+
+    test('notifies listeners on a successful save', () {
+      final s = AppState();
+      var notified = false;
+      s.addListener(() => notified = true);
+      s.saveProfile(name: 'דנה', phone: '0521234567');
+      expect(notified, isTrue);
+    });
+  });
+
+  // ── Quiz draft (resume mid-quiz) ─────────────────────────────────────────────
+
+  group('quiz draft', () {
+    test('defaults to null', () {
+      expect(AppState().quizDraft, isNull);
+    });
+
+    test('saveQuizDraft stores every resumable slot', () {
+      final s = AppState();
+      s.saveQuizDraft(const QuizDraft(
+        step: 2,
+        cat: 'internet',
+        lines: 3,
+        priority: 'speed_fast',
+        extraFilter: 'nocommit',
+        budget: 129,
+        currentBill: 99,
+      ));
+      final d = s.quizDraft;
+      expect(d, isNotNull);
+      expect(d!.step, equals(2));
+      expect(d.cat, equals('internet'));
+      expect(d.lines, equals(3));
+      expect(d.priority, equals('speed_fast'));
+      expect(d.extraFilter, equals('nocommit'));
+      expect(d.budget, equals(129));
+      expect(d.currentBill, equals(99));
+    });
+
+    test('clearQuizDraft removes the draft', () {
+      final s = AppState();
+      s.saveQuizDraft(const QuizDraft(
+        step: 1, cat: 'cellular', lines: 1, priority: 'price',
+        extraFilter: null, budget: 89, currentBill: 119,
+      ));
+      s.clearQuizDraft();
+      expect(s.quizDraft, isNull);
+    });
+
+    test('QuizDraft round-trips through JSON', () {
+      const d = QuizDraft(
+        step: 3, cat: 'tv', lines: 1, priority: 'channels',
+        extraFilter: 'sport', budget: 89, currentBill: 69,
+      );
+      final back = QuizDraft.fromJson(d.toJson());
+      expect(back.step, equals(3));
+      expect(back.cat, equals('tv'));
+      expect(back.priority, equals('channels'));
+      expect(back.extraFilter, equals('sport'));
+      expect(back.budget, equals(89));
+      expect(back.currentBill, equals(69));
+    });
+
+    test('saveQuizDraft notifies listeners', () {
+      final s = AppState();
+      var notified = false;
+      s.addListener(() => notified = true);
+      s.saveQuizDraft(const QuizDraft(
+        step: 0, cat: 'cellular', lines: 1, priority: 'price',
+        extraFilter: null, budget: 89, currentBill: 119,
+      ));
+      expect(notified, isTrue);
+    });
+  });
+
   // ── Renewal radar ────────────────────────────────────────────────────────────
 
   group('renewal radar', () {

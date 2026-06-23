@@ -9,6 +9,77 @@ import 'services/backend/backend.dart'
     show BookedMeeting, MeetingStatus, meetingStatusFromDb, meetingStatusToDb;
 import 'services/savings_summary.dart' show savingsCreditedOnLead;
 
+/// Outcome of [AppState.saveProfile] — lets the edit-profile UI pick the right
+/// Hebrew message without re-deriving validation rules in the widget.
+enum ProfileSaveResult { ok, emptyName, invalidPhone }
+
+/// An in-progress snapshot of the savings quiz so it can resume mid-flow.
+/// Holds exactly the wizard's resumable slots: the current [step] plus every
+/// answer the user has given so far. Serialized as a small JSON blob under the
+/// `quizDraft` key; absent until the user touches the wizard.
+class QuizDraft {
+  const QuizDraft({
+    required this.step,
+    required this.cat,
+    required this.lines,
+    required this.priority,
+    required this.extraFilter,
+    required this.budget,
+    required this.currentBill,
+  });
+
+  final int step;
+  final String cat;
+  final int lines;
+  final String priority;
+  final String? extraFilter;
+  final int budget;
+  final int currentBill;
+
+  QuizDraft copyWith({
+    int? step,
+    String? cat,
+    int? lines,
+    String? priority,
+    Object? extraFilter = _unset,
+    int? budget,
+    int? currentBill,
+  }) =>
+      QuizDraft(
+        step: step ?? this.step,
+        cat: cat ?? this.cat,
+        lines: lines ?? this.lines,
+        priority: priority ?? this.priority,
+        extraFilter: identical(extraFilter, _unset)
+            ? this.extraFilter
+            : extraFilter as String?,
+        budget: budget ?? this.budget,
+        currentBill: currentBill ?? this.currentBill,
+      );
+
+  static const Object _unset = Object();
+
+  Map<String, dynamic> toJson() => {
+        'step': step,
+        'cat': cat,
+        'lines': lines,
+        'priority': priority,
+        'extraFilter': extraFilter,
+        'budget': budget,
+        'currentBill': currentBill,
+      };
+
+  factory QuizDraft.fromJson(Map<String, dynamic> j) => QuizDraft(
+        step: (j['step'] as num?)?.toInt() ?? 0,
+        cat: j['cat'] as String? ?? 'cellular',
+        lines: (j['lines'] as num?)?.toInt() ?? 1,
+        priority: j['priority'] as String? ?? 'price',
+        extraFilter: j['extraFilter'] as String?,
+        budget: (j['budget'] as num?)?.toInt() ?? 0,
+        currentBill: (j['currentBill'] as num?)?.toInt() ?? 0,
+      );
+}
+
 class AppState extends ChangeNotifier {
   static AppState _instance = AppState._internal();
   static AppState get instance => _instance;
@@ -43,6 +114,12 @@ class AppState extends ChangeNotifier {
     _wants5G = p.getBool('wants5G') ?? false;
     _wantsAbroad = p.getBool('wantsAbroad') ?? false;
     _wantsNoCommit = p.getBool('wantsNoCommit') ?? false;
+    // Quiz draft (resume mid-quiz) — null until the user touches the wizard.
+    final draftJson = p.getString('quizDraft');
+    if (draftJson != null) {
+      _quizDraft = QuizDraft.fromJson(
+          (jsonDecode(draftJson) as Map).cast<String, dynamic>());
+    }
     // Lead & tracker
     _leadPlanId = p.getString('leadPlanId');
     _leadProvider = p.getString('leadProvider');
@@ -194,6 +271,15 @@ class AppState extends ChangeNotifier {
           await p.setBool('wantsAbroad', _wantsAbroad);
           await p.setBool('wantsNoCommit', _wantsNoCommit);
           break;
+        case 'quizDraft':
+          // null = the wizard was completed/cleared → drop the resume key so a
+          // finished quiz never re-opens mid-flow.
+          if (_quizDraft == null) {
+            await p.remove('quizDraft');
+          } else {
+            await p.setString('quizDraft', jsonEncode(_quizDraft!.toJson()));
+          }
+          break;
         case 'lead':
           if (_leadPlanId != null) await p.setString('leadPlanId', _leadPlanId!);
           if (_leadProvider != null) await p.setString('leadProvider', _leadProvider!);
@@ -320,7 +406,8 @@ class AppState extends ChangeNotifier {
   // re-serialize a photo blob. [_persist] is the catch-all the light setters
   // call; it marks every light group dirty (each write is cheap).
   static const Set<String> _lightGroups = {
-    'auth', 'totalSavings', 'selectedCat', 'bills', 'quiz', 'quizNeeds', 'lead',
+    'auth', 'totalSavings', 'selectedCat', 'bills', 'quiz', 'quizNeeds',
+    'quizDraft', 'lead',
     'meeting', 'telegram', 'supportTicket',
     'trackerStep', 'watchedPlans', 'recentlyViewed', 'recentSearches',
     'userReviews', 'likedPosts', 'bookmarkedPosts', 'myPlans',
@@ -402,6 +489,30 @@ class AppState extends ChangeNotifier {
   void setQuizCompleted(bool v) { _quizCompleted = v; notifyListeners(); _persist(); }
   void setQuizCat(String v) { _quizCat = v; notifyListeners(); _persist(); }
 
+  // ── Quiz draft (resume mid-quiz) ─────────────────────────────────────────────
+  // The wizard saves its in-progress answers here on every slide change so a user
+  // who leaves and returns lands back where they were — not at step 1. Cleared
+  // once the quiz finishes (the completed answers live in the canonical quiz*
+  // fields above). Only a draft "in flight" (step > 0 or any answer) is worth
+  // resuming; the widget decides, this just stores/clears.
+  QuizDraft? _quizDraft;
+  QuizDraft? get quizDraft => _quizDraft;
+
+  /// Persist the wizard's current slide + answers so the next entry resumes here.
+  void saveQuizDraft(QuizDraft draft) {
+    _quizDraft = draft;
+    _markDirty('quizDraft');
+    notifyListeners();
+  }
+
+  /// Drop any saved draft (call when the quiz completes or the user restarts).
+  void clearQuizDraft() {
+    if (_quizDraft == null) return;
+    _quizDraft = null;
+    _markDirty('quizDraft');
+    notifyListeners();
+  }
+
   // Quiz-derived needs — soft preferences the recommendation engine rewards
   // (each only bonuses a plan that actually has the attribute), persisted so
   // every screen's match profile reflects them, not just the quiz.
@@ -426,6 +537,48 @@ class AppState extends ChangeNotifier {
   String get firstName => _userName.isNotEmpty ? _userName.split(' ').first : 'אורח';
   void login({required String name, required String phone, String email = ''}) { _isLoggedIn = true; _userName = name; _userPhone = phone; _userEmail = email; notifyListeners(); _persist(); }
   void logout() { _isLoggedIn = false; _userName = ''; _userPhone = ''; _userEmail = ''; notifyListeners(); _persist(); }
+
+  // ── Profile editing — validation + in-memory save ────────────────────────────
+  // Single source of truth for "is this a valid Israeli phone" and for committing
+  // an edited profile to local state. The widget owns the network upsert (so the
+  // backend dependency stays out of AppState); this only validates, normalizes,
+  // and writes the name/phone into the logged-in session + SharedPreferences.
+
+  /// Strip spaces, dashes and an Israeli `+972`/`972` country prefix down to the
+  /// national `0XXXXXXXX(X)` form. Returns digits only.
+  static String normalizeIlPhone(String raw) {
+    var s = raw.replaceAll(RegExp(r'[\s\-()]'), '');
+    if (s.startsWith('+972')) {
+      s = '0${s.substring(4)}';
+    } else if (s.startsWith('972')) {
+      s = '0${s.substring(3)}';
+    }
+    return s;
+  }
+
+  /// True when [raw] normalizes to a plausible Israeli number: a leading 0 then
+  /// 8 digits (landline, 9 total) or 9 digits (mobile/10 total). Mirrors the
+  /// inline checks in the lead/callback forms, centralized so every entry agrees.
+  static bool isValidIlPhone(String raw) {
+    final s = normalizeIlPhone(raw);
+    return RegExp(r'^0\d{8,9}$').hasMatch(s);
+  }
+
+  /// Validate + commit an edited profile. Returns a [ProfileSaveResult] so the
+  /// caller can show the right Hebrew error (empty name / bad phone) or proceed.
+  /// On success the user is marked logged-in with the normalized phone and the
+  /// change is persisted; the network upsert is the caller's responsibility.
+  ProfileSaveResult saveProfile({required String name, required String phone}) {
+    final n = name.trim();
+    if (n.isEmpty) return ProfileSaveResult.emptyName;
+    if (!isValidIlPhone(phone)) return ProfileSaveResult.invalidPhone;
+    _isLoggedIn = true;
+    _userName = n;
+    _userPhone = normalizeIlPhone(phone);
+    notifyListeners();
+    _persist();
+    return ProfileSaveResult.ok;
+  }
 
   // Admin (CRM access) — session-derived from `profiles.is_admin` at startup,
   // not persisted (the edge function re-checks authoritatively). Gates the CRM

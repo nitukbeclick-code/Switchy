@@ -30,82 +30,12 @@ class _ProfileWidgetState extends State<ProfileWidget> {
   late SavingsSummary _savings;
 
   void _showEditProfile(BuildContext context, AppState appState, AppTheme ffTheme) {
-    final nameCtrl = TextEditingController(text: appState.userName);
-    final phoneCtrl = TextEditingController(text: appState.userPhone);
-
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: ffTheme.background,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.fromLTRB(20, 16, 20, MediaQuery.of(ctx).viewInsets.bottom + 32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(width: 40, height: 4, decoration: BoxDecoration(color: ffTheme.alternate, borderRadius: BorderRadius.circular(2))),
-            ),
-            const SizedBox(height: 16),
-            Text('עריכת פרופיל', style: ffTheme.headlineSmall),
-            const SizedBox(height: 20),
-            Text('שם מלא', style: ffTheme.labelLarge),
-            const SizedBox(height: 8),
-            TextField(
-              controller: nameCtrl,
-              textDirection: TextDirection.rtl,
-              decoration: InputDecoration(
-                hintText: 'ישראל ישראלי',
-                filled: true,
-                fillColor: ffTheme.cardSurface,
-                prefixIcon: Icon(Icons.person_outline_rounded, color: ffTheme.secondaryText),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.alternate)),
-                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.brandAccent, width: 1.5)),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text('מספר טלפון', style: ffTheme.labelLarge),
-            const SizedBox(height: 8),
-            TextField(
-              controller: phoneCtrl,
-              keyboardType: TextInputType.phone,
-              textDirection: TextDirection.ltr,
-              decoration: InputDecoration(
-                hintText: '050-0000000',
-                filled: true,
-                fillColor: ffTheme.cardSurface,
-                prefixIcon: Icon(Icons.phone_outlined, color: ffTheme.secondaryText),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.alternate)),
-                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.brandAccent, width: 1.5)),
-              ),
-            ),
-            const SizedBox(height: 24),
-            AppButton(
-              text: 'שמור שינויים',
-              onPressed: () async {
-                final name = nameCtrl.text.trim();
-                final phone = phoneCtrl.text.trim();
-                if (name.isEmpty || phone.isEmpty) {
-                  AppSnackBar.error(ctx, 'אנא מלאו שם ומספר טלפון',
-                      duration: const Duration(seconds: 2));
-                  return;
-                }
-                Provider.of<AppState>(ctx, listen: false).login(name: name, phone: phone);
-                appBackend.upsertProfile(name: name, phone: phone).catchError((_) {});
-                Navigator.pop(ctx);
-              },
-              width: double.infinity,
-              height: 52,
-              color: AppColors.primary,
-              textStyle: ffTheme.titleSmall.copyWith(color: Colors.white),
-              borderRadius: BorderRadius.circular(14),
-            ),
-          ],
-        ),
-      ),
+      builder: (ctx) => const EditProfileSheet(),
     );
   }
 
@@ -999,6 +929,175 @@ class _ToggleTile extends StatelessWidget {
             value: value,
             onChanged: onChanged,
             activeThumbColor: ffTheme.brandAccent,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The edit-profile bottom sheet. A [StatefulWidget] so its controllers are
+/// disposed and the save button can show an async loading state. Validates the
+/// Israeli phone (via [AppState.isValidIlPhone]), commits to local state through
+/// [AppState.saveProfile], then best-effort syncs to the backend via
+/// [appBackend.upsertProfile]; a network failure still keeps the local edit and
+/// only downgrades the success message.
+/// Public so it can be pumped directly in a widget test (the full-app shell's
+/// live-blur [GlassPanel] bottom nav otherwise intercepts taps on the sheet).
+class EditProfileSheet extends StatefulWidget {
+  const EditProfileSheet({super.key});
+
+  @override
+  State<EditProfileSheet> createState() => _EditProfileSheetState();
+}
+
+class _EditProfileSheetState extends State<EditProfileSheet> {
+  late final TextEditingController _nameCtrl;
+  late final TextEditingController _phoneCtrl;
+  bool _saving = false;
+  String? _nameError;
+  String? _phoneError;
+
+  @override
+  void initState() {
+    super.initState();
+    final appState = AppState();
+    _nameCtrl = TextEditingController(text: appState.userName);
+    _phoneCtrl = TextEditingController(text: appState.userPhone);
+  }
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _phoneCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    if (_saving) return;
+    final name = _nameCtrl.text.trim();
+    final phone = _phoneCtrl.text.trim();
+
+    // Inline field validation first so the error sits next to the offending field.
+    final nameErr = name.isEmpty ? 'נא להזין שם מלא' : null;
+    final phoneErr = !AppState.isValidIlPhone(phone) ? 'מספר טלפון אינו תקין' : null;
+    if (nameErr != null || phoneErr != null) {
+      setState(() {
+        _nameError = nameErr;
+        _phoneError = phoneErr;
+      });
+      return;
+    }
+
+    setState(() {
+      _saving = true;
+      _nameError = null;
+      _phoneError = null;
+    });
+
+    final appState = Provider.of<AppState>(context, listen: false);
+    final result = appState.saveProfile(name: name, phone: phone);
+    if (result != ProfileSaveResult.ok) {
+      // Defensive: validation already passed above, but keep the UI honest if a
+      // rule ever changes in AppState.
+      if (!mounted) return;
+      setState(() {
+        _saving = false;
+        if (result == ProfileSaveResult.emptyName) _nameError = 'נא להזין שם מלא';
+        if (result == ProfileSaveResult.invalidPhone) _phoneError = 'מספר טלפון אינו תקין';
+      });
+      return;
+    }
+
+    // Local save succeeded; sync to the backend and report honestly whether the
+    // remote write went through.
+    final savedPhone = appState.userPhone;
+    var remoteOk = true;
+    try {
+      await appBackend.upsertProfile(name: name, phone: savedPhone);
+    } catch (_) {
+      remoteOk = false;
+    }
+
+    if (!mounted) return;
+    Navigator.pop(context);
+    if (remoteOk) {
+      AppSnackBar.success(context, 'הפרופיל עודכן', duration: const Duration(seconds: 2));
+    } else {
+      AppSnackBar.info(context, 'הפרטים נשמרו במכשיר — הסנכרון לשרת ייעשה מאוחר יותר');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ffTheme = AppTheme.of(context);
+    // Scrollable so the on-screen keyboard never overflows the sheet — the
+    // viewInsets padding lifts the content above it and the user can scroll to
+    // the save button.
+    return SingleChildScrollView(
+      padding: EdgeInsets.fromLTRB(20, 16, 20, MediaQuery.of(context).viewInsets.bottom + 32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(width: 40, height: 4, decoration: BoxDecoration(color: ffTheme.alternate, borderRadius: BorderRadius.circular(2))),
+          ),
+          const SizedBox(height: 16),
+          Text('עריכת פרופיל', style: ffTheme.headlineSmall),
+          const SizedBox(height: 20),
+          Text('שם מלא', style: ffTheme.labelLarge),
+          const SizedBox(height: 8),
+          TextField(
+            key: const Key('editProfileName'),
+            controller: _nameCtrl,
+            textDirection: TextDirection.rtl,
+            enabled: !_saving,
+            textInputAction: TextInputAction.next,
+            onChanged: (_) { if (_nameError != null) setState(() => _nameError = null); },
+            decoration: InputDecoration(
+              hintText: 'ישראל ישראלי',
+              errorText: _nameError,
+              filled: true,
+              fillColor: ffTheme.cardSurface,
+              prefixIcon: Icon(Icons.person_outline_rounded, color: ffTheme.secondaryText),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.alternate)),
+              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.brandAccent, width: 1.5)),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text('מספר טלפון', style: ffTheme.labelLarge),
+          const SizedBox(height: 8),
+          TextField(
+            key: const Key('editProfilePhone'),
+            controller: _phoneCtrl,
+            keyboardType: TextInputType.phone,
+            textDirection: TextDirection.ltr,
+            enabled: !_saving,
+            textInputAction: TextInputAction.done,
+            onChanged: (_) { if (_phoneError != null) setState(() => _phoneError = null); },
+            onSubmitted: (_) => _save(),
+            decoration: InputDecoration(
+              hintText: '050-0000000',
+              errorText: _phoneError,
+              filled: true,
+              fillColor: ffTheme.cardSurface,
+              prefixIcon: Icon(Icons.phone_outlined, color: ffTheme.secondaryText),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.alternate)),
+              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.brandAccent, width: 1.5)),
+            ),
+          ),
+          const SizedBox(height: 24),
+          AppButton(
+            text: 'שמור שינויים',
+            onPressed: _save,
+            width: double.infinity,
+            height: 52,
+            color: AppColors.primary,
+            textStyle: ffTheme.titleSmall.copyWith(color: Colors.white),
+            borderRadius: BorderRadius.circular(14),
           ),
         ],
       ),

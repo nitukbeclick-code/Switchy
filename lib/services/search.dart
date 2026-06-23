@@ -155,6 +155,95 @@ SearchResults searchEverything(String query, {int planLimit = 40}) {
   );
 }
 
+// ── Facet filters ────────────────────────────────────────────────────────────
+
+/// The set of optional chip filters a user can toggle on top of a text search.
+/// Each facet maps to a field the [Plan] model *already* exposes — no invented
+/// attributes. All filters are AND-combined; an all-false set is a no-op.
+///
+/// • [fiveG]   → `plan.is5G` (the real `'5g'` flag)
+/// • [noCommit]→ `plan.noCommit` (term is null/0 — "ללא התחייבות")
+/// • [withData]→ the plan genuinely carries a data/גלישה allowance
+///   (a `specs['נתונים']`/`specs['דאטה']` value, or a feat/name mentioning GB)
+/// • [maxPrice]→ `plan.priceValue <= maxPrice` ("עד התקציב")
+class SearchFacets {
+  const SearchFacets({
+    this.fiveG = false,
+    this.noCommit = false,
+    this.withData = false,
+    this.maxPrice,
+  });
+
+  final bool fiveG;
+  final bool noCommit;
+  final bool withData;
+  final int? maxPrice;
+
+  /// True when no facet is active — callers can skip filtering entirely.
+  bool get isEmpty => !fiveG && !noCommit && !withData && maxPrice == null;
+  bool get isNotEmpty => !isEmpty;
+
+  /// How many facets are switched on (drives the "X מסננים" badge).
+  int get activeCount =>
+      (fiveG ? 1 : 0) +
+      (noCommit ? 1 : 0) +
+      (withData ? 1 : 0) +
+      (maxPrice != null ? 1 : 0);
+
+  SearchFacets copyWith({
+    bool? fiveG,
+    bool? noCommit,
+    bool? withData,
+    int? maxPrice,
+    bool clearMaxPrice = false,
+  }) {
+    return SearchFacets(
+      fiveG: fiveG ?? this.fiveG,
+      noCommit: noCommit ?? this.noCommit,
+      withData: withData ?? this.withData,
+      maxPrice: clearMaxPrice ? null : (maxPrice ?? this.maxPrice),
+    );
+  }
+}
+
+/// Does this plan genuinely carry a data / גלישה allowance? Truth-only: reads
+/// the existing structured `specs` (a 'נתונים'/'דאטה' key with a real value)
+/// and falls back to a GB / "גלישה" / "ללא הגבלה" mention in the plan name or
+/// features. Never fabricates an allowance the catalogue doesn't list.
+bool planHasData(Plan p) {
+  bool mentionsData(String s) {
+    final low = s.toLowerCase();
+    return low.contains('gb') ||
+        low.contains('ג״ב') ||
+        low.contains("ג'יגה") ||
+        s.contains('גלישה') ||
+        s.contains('דאטה') ||
+        s.contains('נתונים') ||
+        s.contains('ללא הגבלה');
+  }
+
+  for (final key in const ['נתונים', 'דאטה', 'גלישה']) {
+    final v = p.specs[key];
+    if (v != null && v.trim().isNotEmpty) return true;
+  }
+  if (mentionsData(p.plan)) return true;
+  return p.feats.any(mentionsData);
+}
+
+/// Apply the active [facets] to an already-ranked list of [plans], preserving
+/// the input order (so the text-search ranking is untouched — facets only
+/// *narrow* the set). Pure and testable; no UI, no navigation. AND-combined.
+List<Plan> filtered(List<Plan> plans, SearchFacets facets) {
+  if (facets.isEmpty) return plans;
+  return plans.where((p) {
+    if (facets.fiveG && !p.is5G) return false;
+    if (facets.noCommit && !p.noCommit) return false;
+    if (facets.withData && !planHasData(p)) return false;
+    if (facets.maxPrice != null && p.priceValue > facets.maxPrice!) return false;
+    return true;
+  }).toList();
+}
+
 /// The cheapest *regular* plan in each category, in catalogue category order —
 /// the real catalogue's honest "browse-by-category" highlight for the empty
 /// search state. Never invented popularity; just the genuine lowest price.

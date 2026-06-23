@@ -12,28 +12,82 @@ import '../../theme/app_theme.dart';
 import '../../widgets/empty_state.dart';
 import '../crm/crm_widget.dart' show leadStatusLabel, leadStatusColor;
 
-/// Owner analytics — a real, admin-only funnel dashboard.
+/// Owner analytics — a real, admin-only dashboard with two tabs.
 ///
-/// Every figure is aggregated by [AnalyticsDashboard] from the SAME admin-gated
-/// CRM reads the [CrmWidget] already uses ([Backend.crmListLeads],
-/// [Backend.crmListConversations], [Backend.crmOverview]) — no new tables, no
-/// fabricated numbers. A metric with no underlying rows shows an honest empty
-/// state; nothing is estimated. The page itself only renders; the math lives in
-/// the pure service so it unit-tests without a widget.
+/// Tab 1 (משפך): the sales funnel, aggregated by [AnalyticsDashboard] from the
+/// SAME admin-gated CRM reads the [CrmWidget] already uses
+/// ([Backend.crmListLeads], [Backend.crmListConversations],
+/// [Backend.crmOverview]) — no new tables, no fabricated numbers.
 ///
-/// Reached from the admin "ניהול לקוחות" area (Account → CRM gains an analytics
-/// entry) and route-gated to admins in `router.dart`, exactly like /crm.
-class AnalyticsWidget extends StatefulWidget {
+/// Tab 2 (אירועים וביקורת): owner observability — per-day analytics-event counts,
+/// agent tool-call success rates, recent security_audit_log counts, and cron
+/// health, all from the admin-gated `admin-metrics` edge function
+/// ([Backend.fetchAdminMetrics]).
+///
+/// Across both tabs, a metric with no underlying rows shows an honest empty
+/// state; nothing is estimated. The pages only render; the funnel math lives in
+/// the pure [AnalyticsDashboard] service so it unit-tests without a widget.
+///
+/// Reached from the admin "ניהול לקוחות" area and route-gated to admins in
+/// `router.dart`, exactly like /crm.
+class AnalyticsWidget extends StatelessWidget {
   const AnalyticsWidget({super.key});
 
   @override
-  State<AnalyticsWidget> createState() => _AnalyticsWidgetState();
+  Widget build(BuildContext context) {
+    final t = AppTheme.of(context);
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        backgroundColor: t.background,
+        appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_forward_ios_rounded, size: 20),
+            tooltip: 'חזרה',
+            onPressed: () => context.safePop(),
+          ),
+          title: const Text('דשבורד אנליטיקס'),
+          bottom: TabBar(
+            indicatorColor: t.brandAccent,
+            labelColor: t.brandAccentText,
+            unselectedLabelColor: t.secondaryText,
+            labelStyle: t.labelLarge.copyWith(fontWeight: FontWeight.w800),
+            tabs: const [
+              Tab(text: 'משפך'),
+              Tab(text: 'אירועים וביקורת'),
+            ],
+          ),
+        ),
+        body: const TabBarView(
+          children: [
+            _FunnelTab(),
+            _EventsAuditTab(),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
-class _AnalyticsWidgetState extends State<AnalyticsWidget> {
+// ═══════════════════════════════════════════════════════════════════════════
+// Tab 1 — sales funnel (the original dashboard body)
+// ═══════════════════════════════════════════════════════════════════════════
+
+class _FunnelTab extends StatefulWidget {
+  const _FunnelTab();
+
+  @override
+  State<_FunnelTab> createState() => _FunnelTabState();
+}
+
+class _FunnelTabState extends State<_FunnelTab>
+    with AutomaticKeepAliveClientMixin {
   AnalyticsDashboard? _data;
   bool _loading = true;
   Object? _error;
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -75,19 +129,9 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // keep-alive
     final t = AppTheme.of(context);
-    return Scaffold(
-      backgroundColor: t.background,
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_forward_ios_rounded, size: 20),
-          tooltip: 'חזרה',
-          onPressed: () => context.safePop(),
-        ),
-        title: const Text('דשבורד אנליטיקס'),
-      ),
-      body: _body(t),
-    );
+    return _body(t);
   }
 
   Widget _body(AppTheme t) {
@@ -227,6 +271,756 @@ class _AnalyticsWidgetState extends State<AnalyticsWidget> {
 
   static String _providerLabel(String key) =>
       key == unknownKey ? 'לא ידוע' : key;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Tab 2 — events & audit (owner observability from the admin-metrics edge fn)
+// ═══════════════════════════════════════════════════════════════════════════
+
+class _EventsAuditTab extends StatefulWidget {
+  const _EventsAuditTab();
+
+  @override
+  State<_EventsAuditTab> createState() => _EventsAuditTabState();
+}
+
+class _EventsAuditTabState extends State<_EventsAuditTab>
+    with AutomaticKeepAliveClientMixin {
+  AdminMetrics? _data;
+  bool _loading = true;
+  Object? _error;
+
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    if (mounted) setState(() => _loading = true);
+    try {
+      // Admin-gated server-side, exactly like the funnel's CRM reads.
+      final data = await appBackend.fetchAdminMetrics();
+      if (!mounted) return;
+      setState(() {
+        _data = data;
+        _error = null;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e;
+        _loading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context); // keep-alive
+    final t = AppTheme.of(context);
+    if (_loading) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (_error != null && _data == null) {
+      return EmptyState(
+        icon: Icons.cloud_off_rounded,
+        headline: 'לא הצלחנו לטעון',
+        subtitle: 'בדקו את החיבור ונסו שוב.',
+        ctaLabel: 'נסו שוב',
+        onCtaTap: _load,
+      );
+    }
+    final data = _data!;
+    if (data.isEmpty) {
+      return RefreshIndicator(
+        onRefresh: _load,
+        child: ListView(
+          children: const [
+            SizedBox(height: 80),
+            EmptyState(
+              icon: Icons.monitor_heart_outlined,
+              headline: 'אין עדיין נתוני תצפית',
+              subtitle:
+                  'ברגע שיתועדו אירועים, קריאות-כלי, רישומי אבטחה ומשימות מתוזמנות — הם יופיעו כאן. רק מספרים אמיתיים מהשרת, ללא הערכות.',
+            ),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _load,
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 36),
+        children: [
+          _ObservabilityNote(t: t),
+          const SizedBox(height: 16),
+
+          // ── Headline KPIs ──
+          _ObsKpiGrid(data: data, t: t)
+              .animate()
+              .fadeIn(duration: 300.ms)
+              .slideY(begin: 0.06, end: 0),
+          const SizedBox(height: 24),
+
+          // ── Analytics events over time ──
+          _SectionTitle(text: 'אירועי אנליטיקס לאורך זמן', t: t),
+          const SizedBox(height: 8),
+          _Card(
+            t: t,
+            child: data.eventsByDay.isEmpty || data.totalEvents == 0
+                ? _InlineEmpty(
+                    t: t,
+                    icon: Icons.show_chart_rounded,
+                    text:
+                        'אין עדיין אירועי אנליטיקס ב-${data.windowDays} הימים האחרונים.',
+                  )
+                : _EventsTimeChart(data: data, t: t),
+          ).animate().fadeIn(duration: 320.ms),
+          const SizedBox(height: 24),
+
+          // ── Agent tool-call success rates ──
+          _SectionTitle(text: 'הצלחת קריאות-כלי של הסוכן', t: t),
+          const SizedBox(height: 8),
+          _ToolCallsCard(data: data, t: t).animate().fadeIn(duration: 320.ms),
+          const SizedBox(height: 24),
+
+          // ── Security audit log ──
+          _SectionTitle(text: 'יומן ביקורת אבטחה', t: t),
+          const SizedBox(height: 8),
+          _AuditCard(data: data, t: t).animate().fadeIn(duration: 320.ms),
+          const SizedBox(height: 24),
+
+          // ── Cron health ──
+          _SectionTitle(text: 'בריאות משימות מתוזמנות', t: t),
+          const SizedBox(height: 8),
+          _CronCard(data: data, t: t).animate().fadeIn(duration: 320.ms),
+        ],
+      ),
+    );
+  }
+}
+
+class _ObservabilityNote extends StatelessWidget {
+  const _ObservabilityNote({required this.t});
+  final AppTheme t;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: t.info.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(t.radiusMd),
+        border: Border.all(color: t.info.withValues(alpha: 0.20)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.shield_outlined, size: 18, color: t.info),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'נתוני תצפית מהשרת בלבד (admin-metrics, מאובטח לאדמין). מדד ללא רישומים יוצג כריק — ללא הערכות.',
+              style: t.bodySmall
+                  .copyWith(color: t.primaryText, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ObsKpiGrid extends StatelessWidget {
+  const _ObsKpiGrid({required this.data, required this.t});
+  final AdminMetrics data;
+  final AppTheme t;
+
+  @override
+  Widget build(BuildContext context) {
+    final rate = data.overallToolSuccessRate;
+    final cron = data.cron;
+    // Real "needs attention" count = stale + failing jobs, server-derived.
+    final attention = cron.stale.length + cron.failing.length;
+    return GridView.count(
+      crossAxisCount: 2,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      mainAxisSpacing: 12,
+      crossAxisSpacing: 12,
+      childAspectRatio: 1.6,
+      children: [
+        _Kpi(
+          t: t,
+          label: 'אירועים',
+          value: '${data.totalEvents}',
+          subtitle: 'ב-${data.windowDays} ימים',
+          icon: Icons.bolt_rounded,
+          tint: t.brandAccent,
+        ),
+        _Kpi(
+          t: t,
+          label: 'קריאות-כלי',
+          value: '${data.totalToolCalls}',
+          subtitle: '${data.totalToolErrors} שגיאות',
+          icon: Icons.build_circle_rounded,
+          tint: t.info,
+        ),
+        _Kpi(
+          t: t,
+          label: 'שיעור הצלחה',
+          // Honest '—' when nothing was called; never a fabricated 100%.
+          value: rate == null ? '—' : '${(rate * 100).round()}%',
+          subtitle: rate == null ? 'אין קריאות' : 'כל הכלים',
+          icon: Icons.verified_rounded,
+          tint: t.saving,
+        ),
+        _Kpi(
+          t: t,
+          label: 'רישומי אבטחה',
+          value: '${data.totalAuditEvents}',
+          subtitle: cron.isUnknown
+              ? 'אין נתוני cron'
+              : (attention > 0
+                  ? '$attention משימות בעיה'
+                  : 'משימות תקינות'),
+          icon: Icons.gpp_good_rounded,
+          tint: attention > 0 ? t.error : t.brandAccentDark,
+        ),
+      ],
+    );
+  }
+}
+
+// ── Analytics events bar chart (mirrors the funnel's leads-over-time chart) ──
+
+class _EventsTimeChart extends StatelessWidget {
+  const _EventsTimeChart({required this.data, required this.t});
+  final AdminMetrics data;
+  final AppTheme t;
+
+  @override
+  Widget build(BuildContext context) {
+    final points = data.eventsByDay;
+    final peak =
+        points.map((p) => p.events).fold<int>(0, (a, b) => a > b ? a : b);
+    final maxY = peak.toDouble();
+    final tickEvery = (points.length / 6).ceil().clamp(1, points.length);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Text('${data.windowDays} הימים האחרונים',
+                style: t.labelMedium.copyWith(
+                    color: t.secondaryText, fontWeight: FontWeight.w700)),
+            const Spacer(),
+            Text('שיא: $peak ביום',
+                style: t.labelSmall.copyWith(color: t.secondaryText)),
+          ],
+        ),
+        const SizedBox(height: 14),
+        SizedBox(
+          height: 168,
+          child: Semantics(
+            label:
+                'גרף אירועי אנליטיקס יומי על פני ${data.windowDays} ימים. שיא של $peak אירועים ביום.',
+            child: BarChart(
+              BarChartData(
+                alignment: BarChartAlignment.spaceBetween,
+                maxY: maxY * 1.2,
+                minY: 0,
+                barTouchData: BarTouchData(
+                  touchTooltipData: BarTouchTooltipData(
+                    getTooltipColor: (_) => t.primaryDark,
+                    getTooltipItem: (group, _, rod, __) {
+                      final p = points[group.x];
+                      return BarTooltipItem(
+                        '${rod.toY.round()} אירועים\n${_dayLabel(p.day)}',
+                        t.labelSmall.copyWith(
+                            color: Colors.white, fontWeight: FontWeight.w700),
+                      );
+                    },
+                  ),
+                ),
+                gridData: FlGridData(
+                  show: true,
+                  drawVerticalLine: false,
+                  horizontalInterval: maxY <= 4 ? 1 : (maxY / 4).ceilToDouble(),
+                  getDrawingHorizontalLine: (_) => FlLine(
+                    color: t.lineColor.withValues(alpha: 0.5),
+                    strokeWidth: 1,
+                  ),
+                ),
+                borderData: FlBorderData(show: false),
+                titlesData: FlTitlesData(
+                  topTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false)),
+                  rightTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false)),
+                  leftTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 30,
+                      interval: maxY <= 4 ? 1 : (maxY / 4).ceilToDouble(),
+                      getTitlesWidget: (value, meta) {
+                        if (value != value.roundToDouble()) {
+                          return const SizedBox.shrink();
+                        }
+                        return Text('${value.round()}',
+                            style: t.labelSmall.copyWith(
+                                color: t.secondaryText, fontSize: 10));
+                      },
+                    ),
+                  ),
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      reservedSize: 24,
+                      getTitlesWidget: (value, meta) {
+                        final i = value.round();
+                        if (i < 0 || i >= points.length) {
+                          return const SizedBox.shrink();
+                        }
+                        if (i % tickEvery != 0) return const SizedBox.shrink();
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 6),
+                          child: Text(_shortDay(points[i].day),
+                              style: t.labelSmall.copyWith(
+                                  color: t.secondaryText, fontSize: 10)),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+                barGroups: [
+                  for (var i = 0; i < points.length; i++)
+                    BarChartGroupData(
+                      x: i,
+                      barRods: [
+                        BarChartRodData(
+                          toY: points[i].events.toDouble(),
+                          width: points.length > 20 ? 5 : 9,
+                          color: t.info,
+                          borderRadius: const BorderRadius.vertical(
+                              top: Radius.circular(4)),
+                        ),
+                      ],
+                    ),
+                ],
+              ),
+              // One-shot grow-up on first paint; no looping animation.
+              swapAnimationDuration: const Duration(milliseconds: 600),
+              swapAnimationCurve: t.easeOut,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _shortDay(DateTime d) => '${d.day}/${d.month}';
+  String _dayLabel(DateTime d) =>
+      '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}';
+}
+
+// ── Agent tool-call success rates ──
+
+class _ToolCallsCard extends StatelessWidget {
+  const _ToolCallsCard({required this.data, required this.t});
+  final AdminMetrics data;
+  final AppTheme t;
+
+  @override
+  Widget build(BuildContext context) {
+    final rows = data.toolCalls.byTool;
+    if (rows.isEmpty) {
+      return _Card(
+        t: t,
+        child: _InlineEmpty(
+          t: t,
+          icon: Icons.build_rounded,
+          text: 'אין עדיין קריאות-כלי בחלון הדיווח.',
+        ),
+      );
+    }
+    final overall = data.overallToolSuccessRate;
+    // Busiest tools first — a real ordering from the server, kept stable.
+    final sorted = [...rows]..sort((a, b) => b.calls.compareTo(a.calls));
+    return _Card(
+      t: t,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Text('כל הכלים',
+                  style: t.labelMedium.copyWith(
+                      color: t.secondaryText, fontWeight: FontWeight.w700)),
+              const Spacer(),
+              Text(
+                overall == null
+                    ? '${data.totalToolCalls} קריאות · —'
+                    : '${data.totalToolCalls} קריאות · ${(overall * 100).round()}%',
+                style: t.labelSmall.copyWith(color: t.secondaryText),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          for (var i = 0; i < sorted.length; i++) ...[
+            _ToolRow(stat: sorted[i], t: t),
+            if (i != sorted.length - 1) const SizedBox(height: 14),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _ToolRow extends StatelessWidget {
+  const _ToolRow({required this.stat, required this.t});
+  final RateBucket stat;
+  final AppTheme t;
+
+  @override
+  Widget build(BuildContext context) {
+    final rate = stat.successRate;
+    final pct = rate == null ? null : (rate * 100).round();
+    final fill = (rate ?? 0).clamp(0.0, 1.0);
+    // Green for healthy, amber under 90%, red under 70% — a real threshold map.
+    final color = rate == null
+        ? t.secondaryText
+        : rate >= 0.9
+            ? t.brandAccent
+            : rate >= 0.7
+                ? t.saving
+                : t.error;
+    return Semantics(
+      label: pct == null
+          ? '${stat.key}: אין קריאות'
+          : '${stat.key}: ${stat.calls} קריאות, $pct אחוז הצלחה',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(stat.key,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: t.bodyMedium.copyWith(
+                        fontWeight: FontWeight.w600,
+                        fontFeatures: const [FontFeature.tabularFigures()])),
+              ),
+              const SizedBox(width: 8),
+              Text('${stat.calls}',
+                  style: t.titleSmall.copyWith(
+                      fontWeight: FontWeight.w800,
+                      fontFeatures: const [FontFeature.tabularFigures()])),
+              const SizedBox(width: 6),
+              Text(pct == null ? '· —' : '· $pct%',
+                  style: t.labelSmall.copyWith(color: color)),
+            ],
+          ),
+          const SizedBox(height: 6),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(t.radiusPill),
+            child: Stack(
+              children: [
+                Container(height: 8, color: t.lineColor.withValues(alpha: 0.5)),
+                FractionallySizedBox(
+                  widthFactor: fill == 0 ? 0.02 : fill,
+                  child: Container(
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: color,
+                      borderRadius: BorderRadius.circular(t.radiusPill),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (stat.errors > 0)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text('${stat.errors} שגיאות',
+                  style: t.labelSmall.copyWith(color: t.secondaryText)),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Security audit log breakdown ──
+
+class _AuditCard extends StatelessWidget {
+  const _AuditCard({required this.data, required this.t});
+  final AdminMetrics data;
+  final AppTheme t;
+
+  @override
+  Widget build(BuildContext context) {
+    final rows = data.audit.byEvent;
+    if (rows.isEmpty) {
+      return _Card(
+        t: t,
+        child: _InlineEmpty(
+          t: t,
+          icon: Icons.fact_check_outlined,
+          text: 'אין רישומי ביקורת בחלון הדיווח.',
+        ),
+      );
+    }
+    final sorted = [...rows]..sort((a, b) => b.count.compareTo(a.count));
+    final maxCount =
+        sorted.map((r) => r.count).fold<int>(0, (a, b) => a > b ? a : b);
+    return _Card(
+      t: t,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (var i = 0; i < sorted.length; i++) ...[
+            _AuditRow(
+              row: sorted[i],
+              maxCount: maxCount,
+              t: t,
+            ),
+            if (i != sorted.length - 1) const SizedBox(height: 12),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _AuditRow extends StatelessWidget {
+  const _AuditRow({required this.row, required this.maxCount, required this.t});
+  final AuditBucket row;
+  final int maxCount;
+  final AppTheme t;
+
+  @override
+  Widget build(BuildContext context) {
+    final label = _auditLabel(row.event);
+    final fill = maxCount <= 0 ? 0.0 : (row.count / maxCount).clamp(0.0, 1.0);
+    return Semantics(
+      label: '$label: ${row.count}',
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: t.bodyMedium.copyWith(fontWeight: FontWeight.w600)),
+              ),
+              const SizedBox(width: 8),
+              Text('${row.count}',
+                  style: t.titleSmall.copyWith(
+                      fontWeight: FontWeight.w800,
+                      fontFeatures: const [FontFeature.tabularFigures()])),
+            ],
+          ),
+          const SizedBox(height: 6),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(t.radiusPill),
+            child: Stack(
+              children: [
+                Container(height: 8, color: t.lineColor.withValues(alpha: 0.5)),
+                FractionallySizedBox(
+                  widthFactor: fill == 0 ? 0.02 : fill,
+                  child: Container(
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: t.brandAccentDark,
+                      borderRadius: BorderRadius.circular(t.radiusPill),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Friendly Hebrew labels for the audit events the system actually logs
+  // (security_audit_log). Unknown keys render verbatim (honest — we don't invent
+  // a translation we don't have).
+  static String _auditLabel(String key) => switch (key) {
+        'crm_takeover' => 'נציג השתלט על שיחה',
+        'takeover' => 'השתלטות נציג',
+        'handback' => 'הוחזר לבוט',
+        'status_change' => 'שינוי סטטוס',
+        'community_content_flagged' => 'תוכן קהילה סומן',
+        'analytics_purge' => 'ניקוי אנליטיקס',
+        'analytics_events_deleted' => 'אירועי אנליטיקס נמחקו',
+        'rep_reply' => 'מענה נציג',
+        '(unknown)' => 'לא ידוע',
+        _ => key,
+      };
+}
+
+// ── Cron health ──
+// The edge fn returns a CronSummary {ok, known, stale[], failing[]} — how many
+// expected jobs are registered, plus the names that are stale (overdue) or
+// failing. We render the overall verdict and then the problem jobs by name.
+// When nothing is registered/observed (pg_cron not installed yet) we show an
+// honest "unknown" empty state rather than implying all-healthy.
+
+class _CronCard extends StatelessWidget {
+  const _CronCard({required this.data, required this.t});
+  final AdminMetrics data;
+  final AppTheme t;
+
+  @override
+  Widget build(BuildContext context) {
+    final cron = data.cron;
+    if (cron.isUnknown) {
+      return _Card(
+        t: t,
+        child: _InlineEmpty(
+          t: t,
+          icon: Icons.schedule_rounded,
+          text:
+              'אין נתוני משימות מתוזמנות (pg_cron אינו פעיל או שאין משימות רשומות).',
+        ),
+      );
+    }
+    final allOk = cron.ok;
+    final color = allOk ? t.brandAccent : t.error;
+    return _Card(
+      t: t,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Semantics(
+            label: allOk
+                ? '${cron.known} משימות רשומות, כולן תקינות'
+                : '${cron.known} משימות רשומות, ${cron.stale.length} תקועות, ${cron.failing.length} נכשלו',
+            child: Row(
+              children: [
+                Icon(
+                  allOk
+                      ? Icons.check_circle_outline_rounded
+                      : Icons.error_outline_rounded,
+                  size: 20,
+                  color: color,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    allOk
+                        ? 'כל המשימות תקינות'
+                        : 'חלק מהמשימות דורשות טיפול',
+                    style: t.bodyMedium.copyWith(fontWeight: FontWeight.w700),
+                  ),
+                ),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(t.radiusPill),
+                    border: Border.all(color: color.withValues(alpha: 0.20)),
+                  ),
+                  child: Text(
+                    '${cron.known} רשומות',
+                    style: t.labelSmall
+                        .copyWith(color: color, fontWeight: FontWeight.w800),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          if (cron.failing.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            _CronProblemList(
+              t: t,
+              title: 'נכשלו',
+              jobs: cron.failing,
+              color: t.error,
+              icon: Icons.cancel_outlined,
+            ),
+          ],
+          if (cron.stale.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            _CronProblemList(
+              t: t,
+              title: 'תקועות (לא רצו בזמן)',
+              jobs: cron.stale,
+              color: t.saving,
+              icon: Icons.hourglass_bottom_rounded,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _CronProblemList extends StatelessWidget {
+  const _CronProblemList({
+    required this.t,
+    required this.title,
+    required this.jobs,
+    required this.color,
+    required this.icon,
+  });
+
+  final AppTheme t;
+  final String title;
+  final List<String> jobs;
+  final Color color;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title,
+            style: t.labelSmall
+                .copyWith(color: color, fontWeight: FontWeight.w800)),
+        const SizedBox(height: 6),
+        for (final job in jobs)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Semantics(
+              label: '$title: $job',
+              child: Row(
+                children: [
+                  Icon(icon, size: 16, color: color),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(job,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: t.bodyMedium.copyWith(
+                            fontWeight: FontWeight.w600,
+                            fontFeatures: const [
+                              FontFeature.tabularFigures()
+                            ])),
+                  ),
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════════════════

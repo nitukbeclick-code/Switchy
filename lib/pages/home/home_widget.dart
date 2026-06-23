@@ -175,14 +175,16 @@ class _HomeWidgetState extends State<HomeWidget> {
                 boxShadow: ffTheme.shadowAccent,
               ),
               child: FloatingActionButton(
-                // Green ACTION — request a callback.
+                // Green ACTION — request a callback. Icon-only, so it carries a
+                // tooltip (also surfaced as a semantics label) per the a11y rule.
+                tooltip: 'בקשת שיחה חוזרת',
                 backgroundColor: ffTheme.brandAccent,
                 elevation: 0,
                 onPressed: () {
                   HapticFeedback.lightImpact();
                   context.pushNamed('Callback');
                 },
-                child: const Icon(Icons.phone_rounded, color: Colors.white, size: 26),
+                child: const ExcludeSemantics(child: Icon(Icons.phone_rounded, color: Colors.white, size: 26)),
               ),
             ),
           ),

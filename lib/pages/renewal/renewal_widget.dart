@@ -96,6 +96,8 @@ class _RenewalWidgetState extends State<RenewalWidget> {
               ffTheme: ffTheme,
               onAdd: () => _showAddSheet(context),
               onFind: () => context.goNamed('Results'),
+              onQuiz: () => context.goNamed('Quiz'),
+              onBills: () => context.goNamed('Bills'),
             ).animate().fadeIn(delay: 150.ms),
           ] else ...[
             // Price-watch summary: how many plans we're tracking and the total
@@ -595,10 +597,14 @@ class _EmptyState extends StatelessWidget {
     required this.ffTheme,
     required this.onAdd,
     required this.onFind,
+    required this.onQuiz,
+    required this.onBills,
   });
   final AppTheme ffTheme;
   final VoidCallback onAdd;
   final VoidCallback onFind;
+  final VoidCallback onQuiz;
+  final VoidCallback onBills;
 
   @override
   Widget build(BuildContext context) {
@@ -642,6 +648,45 @@ class _EmptyState extends StatelessWidget {
           icon: const Icon(Icons.search_rounded, size: 18),
           label: const Text('או מצא מסלול חדש לחיסכון'),
           style: TextButton.styleFrom(foregroundColor: ffTheme.primary),
+        ),
+        const SizedBox(height: 16),
+        // Two more ways to set one up without typing it all in by hand: answer a
+        // quick quiz to get a match, or fill in the current bill on the Bills
+        // screen — both feed straight back into something worth tracking.
+        Divider(color: ffTheme.lineColor, height: 1),
+        const SizedBox(height: 12),
+        Text('לא בטוחים מאיפה להתחיל?',
+            style: ffTheme.labelMedium.copyWith(color: ffTheme.secondaryText)),
+        const SizedBox(height: 10),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: onQuiz,
+                icon: const Icon(Icons.quiz_outlined, size: 18),
+                label: const Text('שאלון התאמה'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: ffTheme.primary,
+                  side: BorderSide(color: ffTheme.primary.withValues(alpha: 0.5)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: onBills,
+                icon: const Icon(Icons.receipt_long_outlined, size: 18),
+                label: const Text('החשבון שלי'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: ffTheme.primary,
+                  side: BorderSide(color: ffTheme.primary.withValues(alpha: 0.5)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 32),
       ],

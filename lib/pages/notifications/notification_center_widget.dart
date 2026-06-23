@@ -35,14 +35,25 @@ class _NotificationCenterWidgetState extends State<NotificationCenterWidget> {
   }
 
   Future<void> _loadCommunity() async {
-    final items = await fetchCommunityNotifications();
-    // Opening the center counts as seeing them — clear the unread state.
-    appBackend.markCommunityNotificationsRead().catchError((_) {});
-    if (!mounted) return;
-    setState(() {
-      _community = items;
-      _loadingCommunity = false;
-    });
+    // [fetchCommunityNotifications] already degrades a backend failure to an
+    // empty list, but guard with try/finally so any unexpected throw still
+    // clears the in-flight flag — the spinner must never hang forever, and the
+    // computed alerts (+ the honest "all caught up" state) always get to show.
+    List<AppNotification> items = const [];
+    try {
+      items = await fetchCommunityNotifications();
+      // Opening the center counts as seeing them — clear the unread state.
+      appBackend.markCommunityNotificationsRead().catchError((_) {});
+    } catch (_) {
+      // Degrade silently to the computed alerts; nothing fabricated.
+    } finally {
+      if (mounted) {
+        setState(() {
+          _community = items;
+          _loadingCommunity = false;
+        });
+      }
+    }
   }
 
   void _dismissAll(AppState appState, List<AppNotification> notifs) {

@@ -514,21 +514,35 @@ class _CallbackWidgetState extends State<CallbackWidget> {
                 ),
               ).animate().fadeIn(delay: 450.ms),
               const SizedBox(height: 32),
-              AppButton(
-                text: 'מעקב אחר התהליך',
-                onPressed: () async => context.goNamed('Tracker'),
-                
+              // Primary onward CTA. The tracker only has content once the user
+              // has tracked a plan — a callback request alone doesn't create
+              // one. So when the tracker is empty, sending them there is a
+              // dead-end; route them to browse plans instead.
+              if (AppState().myPlans.isNotEmpty)
+                AppButton(
+                  text: 'מעקב אחר התהליך',
+                  onPressed: () async => context.goNamed('Tracker'),
                   width: 240,
                   height: 52,
                   color: AppColors.primary,
                   textStyle: ffTheme.titleSmall.copyWith(color: Colors.white),
                   borderRadius: BorderRadius.circular(14),
-                
-              ).animate().fadeIn(delay: 500.ms),
+                ).animate().fadeIn(delay: 500.ms)
+              else
+                AppButton(
+                  text: 'בינתיים, עיינו במסלולים',
+                  onPressed: () async => context.goNamed('Results'),
+                  width: 260,
+                  height: 52,
+                  color: AppColors.primary,
+                  textStyle: ffTheme.titleSmall.copyWith(color: Colors.white),
+                  borderRadius: BorderRadius.circular(14),
+                ).animate().fadeIn(delay: 500.ms),
               const SizedBox(height: 12),
               TextButton(
-                onPressed: () => context.safePop(),
-                child: Text('חזרה', style: ffTheme.bodyMedium.copyWith(color: ffTheme.secondaryText)),
+                onPressed: () => context.goNamed('Home'),
+                child: Text('חזרה לדף הבית',
+                    style: ffTheme.bodyMedium.copyWith(color: ffTheme.secondaryText)),
               ).animate().fadeIn(delay: 600.ms),
             ],
           ),

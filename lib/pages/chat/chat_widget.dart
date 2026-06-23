@@ -204,6 +204,30 @@ class _ChatWidgetState extends State<ChatWidget> {
     _scrollToBottom();
   }
 
+  /// Escalate to a human: route to the callback flow so a real rep calls back.
+  /// Honest hand-off — we never invent a phone number or a live agent.
+  void _escalateToHuman() {
+    context.pushNamed('Callback');
+  }
+
+  /// End the chat: confirm, then leave the screen (the transcript is kept in
+  /// AppState so the user can return to it).
+  Future<void> _endChat() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('סיום שיחה', textDirection: TextDirection.rtl),
+        content: const Text('לסיים את השיחה? תוכלו לחזור אליה בכל עת.',
+            textDirection: TextDirection.rtl),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('המשך שיחה')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('סיים')),
+        ],
+      ),
+    );
+    if (confirmed == true && mounted) context.safePop();
+  }
+
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollCtrl.hasClients) {
@@ -249,6 +273,10 @@ class _ChatWidgetState extends State<ChatWidget> {
               },
             ),
           ),
+
+          // Escalate-to-human strip — a persistent, honest hand-off to a real
+          // rep (the callback flow) whenever the bot isn't enough.
+          _buildEscalateStrip(ffTheme),
 
           // Quick replies
           _buildQuickReplies(ffTheme),
@@ -318,28 +346,63 @@ class _ChatWidgetState extends State<ChatWidget> {
         ],
       ),
       actions: [
+        // Escalate to a human kept visible (not buried in the menu) — it's the
+        // key recovery path when the bot can't help.
         IconButton(
-          icon: const Icon(Icons.delete_sweep_rounded, color: Colors.white),
-          tooltip: 'נקה שיחה',
-          onPressed: () async {
-            final confirmed = await showDialog<bool>(
-              context: context,
-              builder: (ctx) => AlertDialog(
-                title: const Text('נקה שיחה', textDirection: TextDirection.rtl),
-                content: const Text('לנקות את השיחה?', textDirection: TextDirection.rtl),
-                actions: [
-                  TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('ביטול')),
-                  TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('נקה')),
-                ],
-              ),
-            );
-            if (confirmed == true) _resetToSeed();
-          },
+          icon: const Icon(Icons.support_agent_rounded, color: Colors.white),
+          tooltip: 'דברו עם נציג אנושי',
+          onPressed: _escalateToHuman,
         ),
-        IconButton(
-          icon: const Icon(Icons.track_changes_rounded, color: Colors.white),
-          tooltip: 'מעקב תהליך',
-          onPressed: () => context.pushNamed('Tracker'),
+        PopupMenuButton<String>(
+          icon: const Icon(Icons.more_vert_rounded, color: Colors.white),
+          tooltip: 'אפשרויות נוספות',
+          onSelected: (value) async {
+            switch (value) {
+              case 'track':
+                context.pushNamed('Tracker');
+              case 'clear':
+                final confirmed = await showDialog<bool>(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: const Text('נקה שיחה', textDirection: TextDirection.rtl),
+                    content: const Text('לנקות את השיחה?', textDirection: TextDirection.rtl),
+                    actions: [
+                      TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('ביטול')),
+                      TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('נקה')),
+                    ],
+                  ),
+                );
+                if (confirmed == true) _resetToSeed();
+              case 'end':
+                await _endChat();
+            }
+          },
+          itemBuilder: (ctx) => const [
+            PopupMenuItem(
+              value: 'track',
+              child: ListTile(
+                leading: Icon(Icons.track_changes_rounded),
+                title: Text('מעקב תהליך'),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+            PopupMenuItem(
+              value: 'clear',
+              child: ListTile(
+                leading: Icon(Icons.delete_sweep_rounded),
+                title: Text('נקה שיחה'),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+            PopupMenuItem(
+              value: 'end',
+              child: ListTile(
+                leading: Icon(Icons.logout_rounded),
+                title: Text('סיים שיחה'),
+                contentPadding: EdgeInsets.zero,
+              ),
+            ),
+          ],
         ),
       ],
     );
@@ -391,6 +454,50 @@ class _ChatWidgetState extends State<ChatWidget> {
           ),
           Expanded(child: Divider(color: ffTheme.lineColor)),
         ],
+      ),
+    );
+  }
+
+  Widget _buildEscalateStrip(AppTheme ffTheme) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: _escalateToHuman,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          decoration: BoxDecoration(
+            color: ffTheme.brandAccentTint,
+            border: Border(top: BorderSide(color: ffTheme.brandAccent.withValues(alpha: 0.15))),
+          ),
+          child: Row(
+            children: [
+              Icon(Icons.support_agent_rounded, size: 18, color: ffTheme.brandAccent),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'צריכים נציג אנושי? נשמח לחזור אליכם',
+                  style: ffTheme.labelMedium
+                      .copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w700),
+                ),
+              ),
+              Semantics(
+                button: true,
+                label: 'דברו עם נציג אנושי',
+                excludeSemantics: true,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: ffTheme.brandAccent,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text('דברו עם נציג',
+                      style: ffTheme.labelSmall
+                          .copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

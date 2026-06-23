@@ -57,6 +57,14 @@ const LABEL_HE: Record<FeatureLabel, string> = {
   editor: "בחירת העורך",
 };
 
+/**
+ * The visible column headers, in display order. Single source of truth so the
+ * <thead> and the empty-state row's colSpan can never drift apart — a crawler/LLM
+ * always sees a well-formed table whose body spans every column. Presentation
+ * only; changing copy here does not touch data, props, or logic.
+ */
+const COLUMNS = ["ספק", "מסלול", "מחיר", "מחיר אחרי מבצע", "מאפיינים"] as const;
+
 export default function ComparisonTable({
   plans,
   caption,
@@ -89,24 +97,31 @@ export default function ComparisonTable({
         </caption>
         <thead>
           <tr className="border-b border-border text-xs text-muted">
-            <th scope="col" className="px-4 py-3 text-start font-medium">
-              ספק
-            </th>
-            <th scope="col" className="px-4 py-3 text-start font-medium">
-              מסלול
-            </th>
-            <th scope="col" className="px-4 py-3 text-start font-medium">
-              מחיר
-            </th>
-            <th scope="col" className="px-4 py-3 text-start font-medium">
-              מחיר אחרי מבצע
-            </th>
-            <th scope="col" className="px-4 py-3 text-start font-medium">
-              מאפיינים
-            </th>
+            {COLUMNS.map((col) => (
+              <th
+                key={col}
+                scope="col"
+                className="px-4 py-3 text-start font-medium"
+              >
+                {col}
+              </th>
+            ))}
           </tr>
         </thead>
         <tbody>
+          {/* Empty-state row keeps the <tbody> non-empty so SSR always emits a
+              complete, parseable table (thead + a spanning body cell) for
+              crawlers/LLMs/screen-readers — never a bare header skeleton. */}
+          {plans.length === 0 ? (
+            <tr>
+              <td
+                colSpan={COLUMNS.length}
+                className="px-4 py-6 text-center text-sm text-muted"
+              >
+                אין מסלולים להשוואה כרגע
+              </td>
+            </tr>
+          ) : null}
           {plans.map((plan) => {
             const label = featured?.[plan.id];
             return (

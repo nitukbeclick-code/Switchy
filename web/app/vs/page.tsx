@@ -12,17 +12,23 @@ import type { Metadata } from "next";
 import JsonLd from "@/components/JsonLd";
 import SgeSummary from "@/components/SgeSummary";
 import RelatedAuthorityPages from "@/components/RelatedAuthorityPages";
+import DataMethodology from "@/components/DataMethodology";
+import LlmDataFeed from "@/components/LlmDataFeed";
 import { getVsPairs } from "@/lib/vs";
 import type { VsPair } from "@/lib/vs";
+import { getLivePlans } from "@/lib/live-catalogue";
+import { lastDataDate } from "@/lib/aeo";
 import {
   breadcrumbSchema,
   collectionPageSchema,
+  pageAggregateOfferSchema,
   SITE_URL,
 } from "@/lib/schema";
 import { pageMetadata } from "@/lib/seo";
 import { ils } from "@/lib/format";
 
-export const dynamic = "force-static";
+// ISR keeps the hub's static HTML fresh against the live catalogue (hourly).
+export const revalidate = 3600;
 
 // Bare title — the root layout's title template brands the <title> once. (The OG
 // title is brand-normalised by pageMetadata.) Previously the inline brand suffix
@@ -48,9 +54,16 @@ function groupByCategory(pairs: VsPair[]): { label: string; pairs: VsPair[] }[] 
     .sort((a, b) => b.pairs.length - a.pairs.length || a.label.localeCompare(b.label, "he"));
 }
 
-export default function VsIndexPage() {
+export default async function VsIndexPage() {
   const pairs = getVsPairs();
   const groups = groupByCategory(pairs);
+
+  // AEO: read the whole live catalogue ONCE so the hub's AggregateOffer, the
+  // machine-readable feed and the methodology stamp all read the SAME fresh rows.
+  // getLivePlans never throws (bundled fallback with stale: true).
+  const live = await getLivePlans();
+  const asOf = live.lastUpdated ?? lastDataDate(live.plans);
+  const offerSchema = pageAggregateOfferSchema(live.plans);
 
   const crumbs = [
     { name: "בית", url: "/" },
@@ -107,6 +120,14 @@ export default function VsIndexPage() {
       />
       <JsonLd data={itemList} />
       <JsonLd data={breadcrumbSchema(crumbs)} />
+      {/* AEO: AggregateOffer (catalogue-wide price range) — null when no data. */}
+      {offerSchema && <JsonLd data={offerSchema} />}
+
+      {/* AEO pillar 3: machine-readable feed of the live catalogue. */}
+      <LlmDataFeed
+        plans={live.plans}
+        meta={{ url: `${SITE_URL}/vs`, asOf, stale: live.stale }}
+      />
 
       {/* ── Breadcrumb (visible) ──────────────────────────────────────────── */}
       <nav aria-label="פירורי לחם" className="text-sm text-muted">
@@ -170,6 +191,14 @@ export default function VsIndexPage() {
           </ul>
         </section>
       ))}
+
+      {/* ── Sources & methodology — show your work (E-E-A-T) ──────────────── */}
+      <DataMethodology
+        dateModified={asOf}
+        stale={live.stale}
+        planCount={live.plans.length}
+        className="mt-14"
+      />
 
       {/* ── Related — no dead-ends ────────────────────────────────────────── */}
       <RelatedAuthorityPages

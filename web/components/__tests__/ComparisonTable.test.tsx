@@ -7,6 +7,7 @@
 
 import { describe, it, expect } from "vitest";
 import { render, screen, within } from "@testing-library/react";
+import { renderToStaticMarkup } from "react-dom/server";
 import ComparisonTable from "@/components/ComparisonTable";
 import type { Plan } from "@/lib/types";
 
@@ -116,5 +117,52 @@ describe("ComparisonTable — feature tags", () => {
     expect(screen.getByText("5G")).toBeInTheDocument();
     expect(screen.getByText("ללא התחייבות")).toBeInTheDocument();
     expect(screen.queryByText("כולל חו״ל")).not.toBeInTheDocument();
+  });
+});
+
+describe("ComparisonTable — always a clean semantic table (pillar-3)", () => {
+  it("renders a real <table> with <caption>, <thead> and <tbody> in SSR even with no plans", () => {
+    // Server-render to the raw HTML a crawler/LLM receives (no client JS).
+    const html = renderToStaticMarkup(
+      <ComparisonTable plans={[]} caption="השוואת סלולר" />,
+    );
+    expect(html).toContain("<table");
+    expect(html).toContain("<caption");
+    expect(html).toContain("<thead");
+    expect(html).toContain("<tbody");
+    // The body is never an empty skeleton — it carries a spanning placeholder row
+    // (case-insensitive: the serializer may emit colSpan or colspan).
+    expect(html).toContain("<td");
+    expect(html).toMatch(/colspan="5"/i);
+  });
+
+  it("shows an empty-state body row that spans all five columns when there are no plans", () => {
+    render(<ComparisonTable plans={[]} caption="cap" />);
+
+    // Five column headers are still present (the header is the schema for LLMs).
+    for (const col of ["ספק", "מסלול", "מחיר", "מחיר אחרי מבצע", "מאפיינים"]) {
+      expect(
+        screen.getByRole("columnheader", { name: col }),
+      ).toBeInTheDocument();
+    }
+
+    // A single spanning body cell explains the empty state semantically.
+    const emptyCell = screen.getByText("אין מסלולים להשוואה כרגע");
+    expect(emptyCell.tagName).toBe("TD");
+    expect(emptyCell).toHaveAttribute("colspan", "5");
+  });
+
+  it("emits exactly one tbody row per plan (no empty-state row when populated)", () => {
+    render(
+      <ComparisonTable
+        plans={[plan({ id: "a" }), plan({ id: "b", provider: "פרטנר" })]}
+        caption="cap"
+      />,
+    );
+    // Two data rows in the body + one header row in the thead = 3 total rows.
+    expect(screen.getAllByRole("row")).toHaveLength(3);
+    expect(
+      screen.queryByText("אין מסלולים להשוואה כרגע"),
+    ).not.toBeInTheDocument();
   });
 });

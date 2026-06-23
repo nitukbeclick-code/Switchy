@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import JsonLd from "@/components/JsonLd";
 import SgeSummary from "@/components/SgeSummary";
+import AeoAnswerBlock from "@/components/AeoAnswerBlock";
 import AuthorityBlock from "@/components/AuthorityBlock";
 import AuthorityReasoning from "@/components/AuthorityReasoning";
 import ReviewsBlock from "@/components/ReviewsBlock";
@@ -16,6 +17,8 @@ import {
   plansByProvider,
   CATEGORY_HE,
 } from "@/lib/data";
+import { getLivePlans } from "@/lib/live-catalogue";
+import { directAnswerFor, lastDataDate } from "@/lib/aeo";
 import { vsPairsForProvider } from "@/lib/vs";
 import {
   itemListSchema,
@@ -24,6 +27,7 @@ import {
   knowledgeGraphSchema,
   knowledgeWebSchema,
   relatedLinksSchema,
+  pageAggregateOfferSchema,
   type NavLink,
   type QA,
 } from "@/lib/schema";
@@ -31,6 +35,11 @@ import { pageMetadata } from "@/lib/seo";
 import { GENERAL_FAQ } from "@/lib/faq";
 import { ils, leadCategory } from "@/lib/format";
 import type { Plan } from "@/lib/types";
+
+// ISR: regenerate hourly so the live plan read (cheapest-plan answer, table,
+// AggregateOffer) reflects current DB prices, while serving instantly from the
+// static cache. dynamicParams=false still caps to known slugs.
+export const revalidate = 3600;
 
 // Pre-render one page per derived provider at build time. Unknown slugs return a
 // real 404 (not a soft-200) so crawlers + users get the not-found page correctly.
@@ -193,7 +202,39 @@ export default async function ProviderPage({ params }: Params) {
   const provider = getProvider(slug);
   if (!provider) notFound();
 
-  const plans = [...plansByProvider(slug)].sort((a, b) => a.price - b.price);
+  // ── Live plans for THIS provider (one read, threaded everywhere) ───────────
+  // Read the whole live catalogue once and keep only this provider's rows
+  // (matched by display name, exactly as the bundled plansByProvider does). If
+  // the live read is the bundled fallback, or yields no rows for this provider,
+  // fall back to the bundled provider plans so the page never renders empty. The
+  // SAME `plans` list then feeds the AEO answer, the table, the AggregateOffer
+  // schema and the methodology stamp — they can never disagree.
+  const live = await getLivePlans();
+  const liveForProvider = live.plans.filter((p) => p.provider === provider.name);
+  const usingLive = !live.stale && liveForProvider.length > 0;
+  const plans = (
+    usingLive ? liveForProvider : plansByProvider(slug)
+  )
+    .slice()
+    .sort((a, b) => a.price - b.price);
+  // Real "data as of": newest live updated_at when serving live, else the
+  // catalogue freshness of the plans we actually render.
+  const asOf =
+    usingLive && live.lastUpdated ? live.lastUpdated : lastDataDate(plans);
+  // Zero-click answer: the provider's REAL cheapest plan + price + provider,
+  // computed from the same list. Empty (omitted) when no priced plan exists.
+  const cheapestAnswer = directAnswerFor(
+    provider.categories[0] ?? "cellular",
+    undefined,
+    plans,
+  );
+  // Visible stats derived from the ACTUALLY-rendered plans so the header figures,
+  // FAQ and summary agree with the table / AggregateOffer / AEO answer. Falls back
+  // to the bundled provider aggregates only if (defensively) plans is empty.
+  const shownPlanCount = plans.length || provider.planCount;
+  const shownMinPrice = plans.length
+    ? Math.min(...plans.map((p) => p.price))
+    : provider.minPrice;
   const picks = bestFor(plans);
   const authority = buildAuthority(provider, plans);
   const reasoning = buildReasoning(provider, plans);
@@ -212,9 +253,9 @@ export default async function ProviderPage({ params }: Params) {
     {
       question: `כמה מסלולים יש ל${provider.name}?`,
       answer:
-        `בקטלוג שלנו מופיעים ${provider.planCount} מסלולים של ${provider.name} ` +
+        `בקטלוג שלנו מופיעים ${shownPlanCount} מסלולים של ${provider.name} ` +
         `בקטגוריות ${provider.categories.map((c) => CATEGORY_HE[c] ?? c).join(", ")}, ` +
-        `החל מ-${ils(provider.minPrice)}.`,
+        `החל מ-${ils(shownMinPrice)}.`,
     },
     {
       question: `איך עוברים ל${provider.name}?`,
@@ -226,9 +267,9 @@ export default async function ProviderPage({ params }: Params) {
   ];
 
   const summary =
-    `${provider.name} מציעה ${provider.planCount} מסלולים בקטלוג שלנו ` +
+    `${provider.name} מציעה ${shownPlanCount} מסלולים בקטלוג שלנו ` +
     `בקטגוריות ${provider.categories.map((c) => CATEGORY_HE[c] ?? c).join(", ")}, ` +
-    `החל מ-${ils(provider.minPrice)}. כאן אפשר להשוות את כל המסלולים שלה מול ` +
+    `החל מ-${ils(shownMinPrice)}. כאן אפשר להשוות את כל המסלולים שלה מול ` +
     `ספקים אחרים בישראל — בשקלים וללא עלות.`;
 
   return (
@@ -237,6 +278,13 @@ export default async function ProviderPage({ params }: Params) {
       <JsonLd data={itemListSchema(plans)} />
       <JsonLd data={faqPageSchema(faqs)} />
       <JsonLd data={breadcrumbSchema(crumbs)} />
+
+      {/* AggregateOffer across this provider's REAL plans (low/high/offerCount)
+          — null (omitted) when no priced plan exists, so it never fabricates. */}
+      {(() => {
+        const agg = pageAggregateOfferSchema(plans);
+        return agg ? <JsonLd data={agg} /> : null;
+      })()}
 
       {/* Knowledge Graph: Organization (with real sameAs) cross-linked to its plans. */}
       <JsonLd
@@ -288,13 +336,13 @@ export default async function ProviderPage({ params }: Params) {
           <div className="bento px-5 py-4">
             <dt className="text-muted">מסלולים</dt>
             <dd className="mt-0.5 font-display text-2xl font-bold tracking-tight text-ink">
-              {provider.planCount}
+              {shownPlanCount}
             </dd>
           </div>
           <div className="bento px-5 py-4">
             <dt className="text-muted">מחיר התחלתי</dt>
             <dd className="mt-0.5 font-display text-2xl font-bold tracking-tight text-value-text">
-              {ils(provider.minPrice)}
+              {ils(shownMinPrice)}
             </dd>
           </div>
           {/* Categories render as discrete tags (not one long bold sentence) so
@@ -315,6 +363,17 @@ export default async function ProviderPage({ params }: Params) {
           </div>
         </dl>
       </header>
+
+      {/* ── AEO zero-click answer: the provider's REAL cheapest plan + price ──
+          The block AI answer engines lift. Empty (omitted) when no priced plan;
+          carries the FactCheckBadge verification line + real dateModified. */}
+      <AeoAnswerBlock
+        className="mt-8"
+        heading={`הזול ביותר של ${provider.name}`}
+        answer={cheapestAnswer}
+        dateModified={asOf}
+        stale={!usingLive}
+      />
 
       {/* ── SGE summary (renamed from AiSummary; keeps id="ai-summary") ─────── */}
       <div className="mt-8">

@@ -16,11 +16,14 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import JsonLd from "@/components/JsonLd";
 import RelatedAuthorityPages from "@/components/RelatedAuthorityPages";
+import AeoAnswerBlock from "@/components/AeoAnswerBlock";
+import DataMethodology from "@/components/DataMethodology";
 import {
   getGuide,
   getGuides,
   relatedGuides,
   guideInternalLinks,
+  guideCompareSlug,
   type GuideSection,
 } from "@/lib/guides";
 import {
@@ -29,12 +32,18 @@ import {
   faqPageSchema,
   howToSchema,
 } from "@/lib/schema";
+import { getLivePlans } from "@/lib/live-catalogue";
+import { directAnswerFor, lastDataDate } from "@/lib/aeo";
 import { pageMetadata } from "@/lib/seo";
 
-export const dynamic = "force-static";
+// ISR: regenerate hourly so the AEO direct answer reads fresh DB prices for
+// price-related guides, while still serving instantly from the static cache.
+// (force-static is intentionally NOT set — it would pin the page and defeat the
+// hourly revalidation. dynamicParams=false below still caps to known slugs.)
+export const revalidate = 3600;
 
-// Pre-render one page per guide at build time. force-static means notFound()
-// would degrade to a soft-200, so cap to known slugs -> unknown slugs get a real 404.
+// Pre-render one page per guide at build time. dynamicParams=false caps to known
+// slugs -> unknown slugs get a real 404 (not a soft-200).
 export const dynamicParams = false;
 export function generateStaticParams() {
   return getGuides().map((g) => ({ slug: g.slug }));
@@ -111,6 +120,27 @@ export default async function GuidePage({ params }: Params) {
   const related = relatedGuides(guide, 3);
   const internalLinks = guideInternalLinks(guide);
 
+  // ── AEO direct answer ──────────────────────────────────────────────────────
+  // For a guide whose category maps to a real compare category, read the LIVE
+  // plans for that category ONCE and produce a price-grounded zero-click answer
+  // (real cheapest plan + price + provider). For an editorial "general" guide
+  // (no single category), there is no price-related answer to compute, so we fall
+  // back to the guide's own ported one-line summary (real content, not invented).
+  const aeoCategory = guideCompareSlug(guide.cat); // real id or null
+  const { plans, stale, lastUpdated } = aeoCategory
+    ? await getLivePlans({ category: aeoCategory })
+    : { plans: [], stale: false, lastUpdated: null };
+  // Same plan list feeds the answer + the asOf stamp so they never disagree.
+  const directAnswer = aeoCategory
+    ? directAnswerFor(aeoCategory, undefined, plans)
+    : "";
+  const aeoAnswer = directAnswer || guide.tldr; // factual summary fallback
+  // Real "data as of": newest live updated_at when available, else the catalogue
+  // freshness for the category; for general guides use the guide's publish date.
+  const asOf = aeoCategory
+    ? (lastUpdated ?? lastDataDate(plans))
+    : guide.date;
+
   const crumbs = [
     { name: "בית", url: "/" },
     { name: "מדריכים", url: "/guides" },
@@ -186,13 +216,29 @@ export default async function GuidePage({ params }: Params) {
           </div>
         </header>
 
-        {/* ── TLDR ────────────────────────────────────────────────────────── */}
-        <div className="bento mt-6 border-r-4 border-accent p-5 sm:p-6">
-          <p className="text-base leading-relaxed text-foreground">
-            <span className="font-display font-bold text-ink">בקצרה: </span>
-            {guide.tldr}
-          </p>
-        </div>
+        {/* ── AEO zero-click answer (the block answer engines lift) ───────────
+            Price-grounded for category guides (real cheapest plan + price), or
+            the guide's own ported summary for editorial guides. + FactCheckBadge
+            via the block's verification line. */}
+        <AeoAnswerBlock
+          className="mt-6"
+          heading="התשובה הקצרה"
+          answer={aeoAnswer}
+          dateModified={asOf}
+          stale={stale}
+        />
+
+        {/* ── TLDR ─────────────────────────────────────────────────────────
+            Only when the AEO answer above is the price-grounded one (distinct
+            from the tldr) — otherwise the AEO block already shows this summary. */}
+        {directAnswer ? (
+          <div className="bento mt-6 border-r-4 border-accent p-5 sm:p-6">
+            <p className="text-base leading-relaxed text-foreground">
+              <span className="font-display font-bold text-ink">בקצרה: </span>
+              {guide.tldr}
+            </p>
+          </div>
+        ) : null}
 
         {/* ── Table of contents ───────────────────────────────────────────── */}
         {showToc ? (
@@ -342,6 +388,17 @@ export default async function GuidePage({ params }: Params) {
             </div>
           </section>
         ) : null}
+
+        {/* ── Sources & methodology (E-E-A-T): how the figures are derived, where
+            the data comes from, when it was last checked. For category guides the
+            plan count reflects the live catalogue read; general guides show the
+            method + checked date without a (price-irrelevant) plan count. ────── */}
+        <DataMethodology
+          className="mt-12"
+          dateModified={asOf}
+          stale={stale}
+          planCount={aeoCategory ? plans.length : undefined}
+        />
       </article>
 
       {/* ── Internal links → real compare/providers pages ───────────────────── */}

@@ -28,6 +28,10 @@ import StickyLeadCta from "@/components/StickyLeadCta";
 import RelatedLinks from "@/components/RelatedLinks";
 import type { RelatedLinkGroup } from "@/components/RelatedLinks";
 import LeadForm from "@/components/LeadForm";
+import AeoAnswerBlock from "@/components/AeoAnswerBlock";
+import AeoQA from "@/components/AeoQA";
+import DataMethodology from "@/components/DataMethodology";
+import LlmDataFeed from "@/components/LlmDataFeed";
 import {
   getServices,
   serviceBySlug,
@@ -46,14 +50,27 @@ import {
   knowledgeGraphSchema,
   knowledgeWebSchema,
   relatedLinksSchema,
+  pageAggregateOfferSchema,
+  speakableSchema,
 } from "@/lib/schema";
 import type { NavLink, QA } from "@/lib/schema";
 import { pageMetadata } from "@/lib/seo";
 import { faqForCategory } from "@/lib/faq";
 import { ils, leadCategory } from "@/lib/format";
+import { getLivePlans } from "@/lib/live-catalogue";
+import {
+  directAnswerFor,
+  pageQuestions,
+  lastDataDate,
+  type AeoQuestion,
+} from "@/lib/aeo";
 
 // One page per service axis, pre-rendered at build time. Unknown service -> real 404.
 export const dynamicParams = false;
+// ISR: regenerate the static HTML hourly so the live DB catalogue (prices, the
+// direct answer, the table and every JSON-LD block) stays fresh while still being
+// served instantly from cache.
+export const revalidate = 3600;
 export function generateStaticParams() {
   return getServices().map((s) => ({ service: s.slug }));
 }
@@ -101,8 +118,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 }
 
 // A factual 40–50 word Hebrew conclusion computed from the catalogue.
-function buildSummary(svc: Service): string {
-  const plans = plansForService(svc.slug);
+function buildSummary(svc: Service, plans: Plan[]): string {
   const providerNames = [...new Set(plans.map((p) => p.provider))];
   const cheapest = cheapestOf(plans);
   const min = cheapest?.price ?? 0;
@@ -120,11 +136,11 @@ function cheapestBy(plans: Plan[], pred: (p: Plan) => boolean): Plan | undefined
   return plans.filter(pred).sort((a, b) => a.price - b.price)[0];
 }
 
-function buildAuthority(svc: Service): {
+function buildAuthority(svc: Service, plansIn: Plan[]): {
   answer: string;
   rows: { factor: string; winner: string; reason: string }[];
 } {
-  const plans = [...plansForService(svc.slug)];
+  const plans = [...plansIn];
   const cheapest = cheapestBy(plans, () => true);
   const cheapestNoCommit = cheapestBy(plans, (p) => p.noCommit);
   const cheapest5G = cheapestBy(plans, (p) => p.is5G);
@@ -246,8 +262,8 @@ function relatedNavLinks(groups: RelatedLinkGroup[]): NavLink[] {
 }
 
 // Editorial "why compare here" reasoning (truthful, catalogue-derived).
-function buildReasoning(svc: Service): { title: string; reason: string }[] {
-  const plans = [...plansForService(svc.slug)];
+function buildReasoning(svc: Service, plansIn: Plan[]): { title: string; reason: string }[] {
+  const plans = [...plansIn];
   const providerNames = [...new Set(plans.map((p) => p.provider))];
   const noCommitCount = plans.filter((p) => p.noCommit).length;
   const fiveGCount = plans.filter((p) => p.is5G).length;
@@ -286,24 +302,63 @@ export default async function ServiceHubPage({ params }: Params) {
   const svc = serviceBySlug(service);
   if (!svc) notFound();
 
-  const plans = plansForService(service);
+  // ── ONE source of truth per render ──────────────────────────────────────────
+  // Read the live catalogue ONCE (scoped to this service's category) and thread
+  // the SAME plan list through the table, the AEO answer/Q&A, the LLM feed and
+  // every JSON-LD block so they can never disagree. On any failure getLivePlans
+  // returns the bundled snapshot with stale: true (never throws).
+  const { plans: livePlans, stale, lastUpdated } = await getLivePlans({
+    category: svc.categories[0],
+  });
+  // Resilient fallback: if the live read yields an empty set for this service,
+  // fall back to the bundled service plans so the page is never blank.
+  const plans = livePlans.length ? livePlans : plansForService(service);
+  // Real "data as of" date: the newest live updated_at, else derived from rows.
+  const asOf = lastUpdated ?? lastDataDate(plans);
+
+  // AEO surfaces, all from the SAME `plans`.
+  const directAnswer = directAnswerFor(service, undefined, plans);
+  const questions: AeoQuestion[] = pageQuestions(service, plans);
+
   const cities: City[] = getCities();
-  const summary = buildSummary(svc);
-  const authority = buildAuthority(svc);
+  const summary = buildSummary(svc, plans);
+  const authority = buildAuthority(svc, plans);
   const ranked = topProviders(svc);
   const faqs = faqForService(svc);
-  const reasoning = buildReasoning(svc);
+  const reasoning = buildReasoning(svc, plans);
   const relatedGroups = buildRelatedGroups(svc);
   const cats = new Set(svc.categories);
   const svcProviders = getProviders().filter((pr) =>
     pr.categories.some((c) => cats.has(c)),
   );
 
+  const pagePath = `/compare/${service}`;
   const crumbs = [
     { name: "בית", url: "/" },
     { name: "השוואה", url: "/compare" },
-    { name: svc.label, url: `/compare/${service}` },
+    { name: svc.label, url: pagePath },
   ];
+
+  // Single FAQPage for the page: the category FAQ + the data-derived AEO Qs,
+  // deduped by question text (both are rendered visibly — `faqs` in the FAQ
+  // section, `questions` in <AeoQA>), so one FAQPage node mirrors all visible Q&A
+  // rather than emitting two competing FAQPage entities.
+  const faqSeen = new Set<string>();
+  const allFaqs: QA[] = [...faqs, ...questions].filter((qa) => {
+    if (faqSeen.has(qa.question)) return false;
+    faqSeen.add(qa.question);
+    return true;
+  });
+
+  // AEO JSON-LD, derived from the SAME `plans` the page renders so the structured
+  // data always matches the visible answer/table. null-returning builders are
+  // filtered out before render.
+  const aeoJsonLd = [
+    pageAggregateOfferSchema(plans),
+    directAnswer
+      ? speakableSchema(["#aeo-answer [data-direct-answer]", "h1"])
+      : null,
+  ].filter(Boolean) as Record<string, unknown>[];
 
   return (
     <main id="main" className="mx-auto w-full max-w-5xl flex-1 px-4 py-10 sm:px-6">
@@ -321,7 +376,8 @@ export default async function ServiceHubPage({ params }: Params) {
         })}
       />
       <JsonLd data={itemListSchema(plans)} />
-      <JsonLd data={faqPageSchema(faqs)} />
+      {/* ONE FAQPage mirroring all visible Q&A (category FAQ + AEO Q&A, deduped). */}
+      <JsonLd data={faqPageSchema(allFaqs)} />
       <JsonLd data={breadcrumbSchema(crumbs)} />
       <JsonLd
         data={knowledgeGraphSchema({
@@ -350,6 +406,20 @@ export default async function ServiceHubPage({ params }: Params) {
         });
         return nav ? <JsonLd data={nav} /> : null;
       })()}
+      {/* AEO structured data, all derived from the SAME `plans`/`questions`:
+          page-level AggregateOffer (price range across the real plans), the
+          FAQPage that mirrors the visible <AeoQA>, and a speakable spec pointing
+          at the real direct-answer node + H1. Each builder returns null on empty
+          data and is filtered out above, so nothing false is emitted. */}
+      {aeoJsonLd.map((data, i) => (
+        <JsonLd key={`aeo-${i}`} data={data} />
+      ))}
+      {/* Machine-readable LLM data feed: one compact JSON snapshot of the real
+          plans for scrapers, from the SAME `plans`. */}
+      <LlmDataFeed
+        plans={plans}
+        meta={{ service, url: pagePath, asOf, stale }}
+      />
 
       {/* ── Breadcrumb (visible) ──────────────────────────────────────────── */}
       <nav aria-label="פירורי לחם" className="text-sm text-muted">
@@ -361,9 +431,12 @@ export default async function ServiceHubPage({ params }: Params) {
       </nav>
 
       {/* ── Heading ───────────────────────────────────────────────────────── */}
+      {/* Conversational, intent-matching H1 (matches the real query "what's the
+          cheapest <service> in Israel?") — the question the AEO answer below
+          answers directly. */}
       <header className="mt-3">
         <h1 className="font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
-          השוואת {svc.label}
+          מהו מסלול ה{svc.label} הזול ביותר בישראל?
         </h1>
         <p className="mt-4 max-w-2xl text-lg leading-relaxed text-foreground">
           {plans.length} מסלולי {svc.label} מכל הספקים בישראל, ממוינים מהזול ליקר.
@@ -371,6 +444,17 @@ export default async function ServiceHubPage({ params }: Params) {
           המבצע.
         </p>
       </header>
+
+      {/* ── AEO zero-click direct answer (right below the H1) ──────────────── */}
+      {directAnswer && (
+        <div className="mt-6">
+          <AeoAnswerBlock
+            answer={directAnswer}
+            dateModified={asOf}
+            stale={stale}
+          />
+        </div>
+      )}
 
       {/* ── Commission disclosure (Consumer Protection §7b) — at the top of the
           service hub, NOT buried. ────────────────────────────────────────── */}
@@ -404,6 +488,15 @@ export default async function ServiceHubPage({ params }: Params) {
         />
         <PriceCaveat className="mt-3" />
       </section>
+
+      {/* ── AEO conversational Q&A (data-derived; mirrors the FAQPage JSON-LD) ─ */}
+      {questions.length > 0 && (
+        <AeoQA
+          questions={questions}
+          heading={`שאלות ותשובות — ${svc.label}`}
+          className="mt-10"
+        />
+      )}
 
       {/* ── Transparent provider ranking (stated methodology) ─────────────── */}
       {ranked.length > 0 && (
@@ -510,6 +603,14 @@ export default async function ServiceHubPage({ params }: Params) {
           ))}
         </div>
       </section>
+
+      {/* ── Sources & methodology (E-E-A-T "show your work") ───────────────── */}
+      <DataMethodology
+        dateModified={asOf}
+        stale={stale}
+        planCount={plans.length}
+        className="mt-12"
+      />
 
       {/* ── Lead form ─────────────────────────────────────────────────────── */}
       <section id="lead" aria-labelledby="lead-h" className="mt-20 scroll-mt-6">

@@ -93,7 +93,12 @@ const INITIAL: Answers = {
   abroad: "no",
 };
 
-type Phase = "quiz" | "loading" | "results" | "error";
+// "empty" is distinct from "error": the request succeeded but the formula found
+// no real catalogue plan that fits the answers (e.g. a very low budget ceiling in
+// a category whose cheapest plan is above it). We must NOT fabricate a match, so
+// we show an honest "no fit" state that routes to the full comparison + lead,
+// never a fake result. "error" stays reserved for a genuine network/server fault.
+type Phase = "quiz" | "loading" | "results" | "error" | "empty";
 
 const STEP_TITLES = [
   "מה מחפשים?",
@@ -145,7 +150,7 @@ export default function QuizWizard() {
   }
 
   function back() {
-    if (phase === "results" || phase === "error") {
+    if (phase === "results" || phase === "error" || phase === "empty") {
       setPhase("quiz");
       return;
     }
@@ -197,9 +202,17 @@ export default function QuizWizard() {
         matches?: RecommendMatch[];
         hasBill?: boolean;
       };
-      if (!data.ok || !Array.isArray(data.matches) || data.matches.length === 0) {
+      // A well-formed response that simply has no fitting plan is NOT an error —
+      // surface an honest "no match" empty state (→ /compare + lead) rather than
+      // the retry-error UI or, worse, a fabricated result.
+      if (data.ok && Array.isArray(data.matches) && data.matches.length === 0) {
+        setPhase("empty");
+        trackEvent("quiz_empty", { category: answers.category });
+        return;
+      }
+      if (!data.ok || !Array.isArray(data.matches)) {
         setPhase("error");
-        trackEvent("quiz_error", { reason: "empty" });
+        trackEvent("quiz_error", { reason: "malformed" });
         return;
       }
       setMatches(data.matches);
@@ -234,7 +247,9 @@ export default function QuizWizard() {
       <div ref={liveRef} className="sr-only" role="status" aria-live="polite">
         {phase === "loading"
           ? "מחשבים התאמות…"
-          : `שלב ${step + 1} מתוך ${TOTAL_STEPS}: ${STEP_TITLES[step]}`}
+          : phase === "empty"
+            ? "לא נמצאו מסלולים שתואמים את הבחירות. אפשר להרחיב את הסינון או לעבור להשוואה המלאה."
+            : `שלב ${step + 1} מתוך ${TOTAL_STEPS}: ${STEP_TITLES[step]}`}
       </div>
 
       {/* Progress */}
@@ -260,7 +275,36 @@ export default function QuizWizard() {
         </div>
       </div>
 
-      {phase === "error" ? (
+      {phase === "empty" ? (
+        <div className="py-4 text-center" role="status">
+          <p className="font-display text-lg font-bold text-ink">
+            לא מצאנו מסלול שמתאים בדיוק לבחירות שלכם
+          </p>
+          <p className="mt-2 text-sm leading-relaxed text-muted">
+            אף מסלול אמיתי בקטלוג שלנו לא עונה על כל הקריטריונים שסימנתם
+            {answers.category
+              ? ` בקטגוריית ${CATEGORY_HE[answers.category] ?? "זו"}`
+              : ""}
+            . נסו להרחיב את התקציב או לשנות עדיפות — או עברו להשוואה המלאה ובחרו
+            בעצמכם. לא נמציא לכם התאמה שלא קיימת.
+          </p>
+          <div className="mt-5 flex flex-wrap justify-center gap-3">
+            <button
+              type="button"
+              onClick={back}
+              className="interactive press rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-accent-contrast shadow-soft hover:-translate-y-0.5 hover:bg-accent-hover"
+            >
+              שינוי הבחירות
+            </button>
+            <Link
+              href={answers.category ? `/compare/${answers.category}` : "/compare"}
+              className="interactive press rounded-xl border border-border px-5 py-2.5 text-sm font-medium text-foreground hover:bg-border/60"
+            >
+              להשוואה המלאה
+            </Link>
+          </div>
+        </div>
+      ) : phase === "error" ? (
         <div className="py-4 text-center" role="alert">
           <p className="font-display text-lg font-bold text-ink">
             לא הצלחנו להביא התאמות כרגע

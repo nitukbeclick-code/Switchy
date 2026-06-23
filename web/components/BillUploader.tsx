@@ -22,6 +22,11 @@
 // ────────────────────────────────────────────────────────────────────────────
 
 import { useRef, useState } from "react";
+// Aliased to NextImage: this module also calls `new Image()` (the DOM
+// HTMLImageElement constructor) inside loadImage() for the canvas compression
+// step. Importing next/image as the bare name `Image` would shadow that global
+// constructor and break compression (and the test's globalThis.Image stub).
+import NextImage from "next/image";
 import { CATEGORY_HE } from "@/lib/categories";
 import { leadCategory, type LeadCategory } from "@/lib/format";
 import { trackEvent } from "@/lib/tracking";
@@ -257,13 +262,25 @@ export default function BillUploader() {
       <div aria-live="polite" className="mt-4">
         {previewUrl && (
           <div className="bento overflow-hidden p-3">
-            {/* Decorative preview of the user's own upload — alt kept minimal. */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={previewUrl}
-              alt="תצוגה מקדימה של החשבון שהעליתם"
-              className="mx-auto max-h-72 w-auto rounded-lg object-contain"
-            />
+            {/* Preview of the user's own upload. next/image with `fill` +
+                `unoptimized`: the src is a transient in-memory base64 data-URI of
+                the just-compressed photo (unknown intrinsic size, never a network
+                asset), so the Image Optimizer can't and shouldn't re-process it —
+                `unoptimized` serves the data-URI as-is. `fill` lets it size to a
+                capped, relatively-positioned box; `object-contain` shows the whole
+                bill un-cropped, matching the previous raw <img>. Using next/image
+                drops the eslint no-img-element disable and keeps a consistent
+                image pipeline. */}
+            <div className="relative mx-auto h-72 w-full">
+              <NextImage
+                src={previewUrl}
+                alt="תצוגה מקדימה של החשבון שהעליתם"
+                fill
+                unoptimized
+                sizes="(max-width: 640px) 100vw, 640px"
+                className="rounded-lg object-contain"
+              />
+            </div>
           </div>
         )}
 

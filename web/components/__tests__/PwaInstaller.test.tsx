@@ -6,9 +6,31 @@
 // supported + undecided it does; clicking "enable" subscribes; "dismiss" closes.
 // ────────────────────────────────────────────────────────────────────────────
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+
+// The opt-in is CONTEXT-AWARE: it doesn't pop on first paint but after an
+// engagement delay (ENGAGE_DELAY_MS in PwaInstaller). Tests that expect the
+// dialog must first flush that delay. We use fake timers ONLY to advance the
+// engagement timer, then restore real timers before driving userEvent (which is
+// brittle under fake timers). Keep this >= the component's ENGAGE_DELAY_MS.
+const ENGAGE_DELAY_MS = 12_000;
+
+/** Render, then advance past the engagement delay so the prompt may surface. */
+async function renderAndSettle() {
+  vi.useFakeTimers();
+  try {
+    render(<PwaInstaller />);
+    // Let the async effect (SW register + subscription check) run, then fire the
+    // engagement timer. advanceTimersByTimeAsync also drains awaited microtasks.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(ENGAGE_DELAY_MS + 50);
+    });
+  } finally {
+    vi.useRealTimers();
+  }
+}
 
 // Mockable push module — each test sets the behaviour it needs.
 const registerServiceWorker = vi.fn(async () => null);
@@ -38,6 +60,11 @@ beforeEach(() => {
   vi.stubGlobal("Notification", { permission: "default" });
 });
 
+afterEach(() => {
+  // Safety net: ensure no test leaks fake timers into the next one.
+  vi.useRealTimers();
+});
+
 describe("PwaInstaller — SW registration is unconditional", () => {
   it("registers the service worker on mount even when push is unsupported", async () => {
     render(<PwaInstaller />);
@@ -48,22 +75,77 @@ describe("PwaInstaller — SW registration is unconditional", () => {
 });
 
 describe("PwaInstaller — push opt-in prompt", () => {
-  it("shows the prompt when push is supported and undecided", async () => {
+  it("shows the prompt when push is supported and undecided (after the engagement delay)", async () => {
     isPushSupported.mockReturnValue(true);
-    render(<PwaInstaller />);
+    await renderAndSettle();
 
     expect(
-      await screen.findByRole("dialog", { name: "התראות על ירידות מחיר" }),
+      screen.getByRole("dialog", { name: "התראות על ירידות מחיר" }),
     ).toBeInTheDocument();
   });
 
-  it("does NOT prompt again once a choice is stored", async () => {
+  it("does NOT surface the prompt before the engagement delay elapses", async () => {
     isPushSupported.mockReturnValue(true);
-    localStorage.setItem("chosech-push-prompt", "dismissed");
-    render(<PwaInstaller />);
+    vi.useFakeTimers();
+    try {
+      render(<PwaInstaller />);
+      // Let the async effect resolve, but stop well short of ENGAGE_DELAY_MS.
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1_000);
+      });
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 
-    // Give the effect a tick; the prompt must stay hidden.
-    await waitFor(() => expect(registerServiceWorker).toHaveBeenCalled());
+  it("does NOT re-prompt within the cool-off after a recent dismissal", async () => {
+    isPushSupported.mockReturnValue(true);
+    // A structured first-dismissal one day ago: inside the 3-day cool-off, so the
+    // prompt must stay hidden even after the engagement delay elapses.
+    localStorage.setItem(
+      "chosech-push-prompt",
+      JSON.stringify({
+        state: "dismissed",
+        count: 1,
+        at: Date.now() - 24 * 60 * 60 * 1000,
+      }),
+    );
+    await renderAndSettle();
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("DOES re-prompt after the cool-off window has elapsed", async () => {
+    isPushSupported.mockReturnValue(true);
+    // First dismissal 4 days ago > the 3-day cool-off for the first re-ask: the
+    // context-aware policy may surface the prompt again.
+    localStorage.setItem(
+      "chosech-push-prompt",
+      JSON.stringify({
+        state: "dismissed",
+        count: 1,
+        at: Date.now() - 4 * 24 * 60 * 60 * 1000,
+      }),
+    );
+    await renderAndSettle();
+
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
+
+  it("stops nagging after the dismissal budget is spent", async () => {
+    isPushSupported.mockReturnValue(true);
+    // Dismissed the maximum number of times, long ago: terminal — never re-ask.
+    localStorage.setItem(
+      "chosech-push-prompt",
+      JSON.stringify({
+        state: "dismissed",
+        count: 3,
+        at: Date.now() - 365 * 24 * 60 * 60 * 1000,
+      }),
+    );
+    await renderAndSettle();
+
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
@@ -74,35 +156,53 @@ describe("PwaInstaller — push opt-in prompt", () => {
 
     await waitFor(() => expect(getExistingSubscription).toHaveBeenCalled());
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    expect(localStorage.getItem("chosech-push-prompt")).toBe("subscribed");
+    // The decision is now stored as a structured record (state machine), not a
+    // bare string, so the context-aware re-prompt policy can reason about it.
+    expect(
+      JSON.parse(localStorage.getItem("chosech-push-prompt") ?? "null"),
+    ).toEqual({ state: "subscribed" });
+  });
+
+  it("treats a legacy bare 'dismissed' string as a prior dismissal (no prompt)", async () => {
+    // Back-compat: the previous version persisted the bare strings. A stored
+    // "dismissed" must keep suppressing the prompt under the new policy.
+    isPushSupported.mockReturnValue(true);
+    localStorage.setItem("chosech-push-prompt", "dismissed");
+    await renderAndSettle();
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
   it("subscribes on 'enable' and closes the prompt", async () => {
     isPushSupported.mockReturnValue(true);
     subscribeToPush.mockResolvedValue({} as PushSubscription);
 
+    await renderAndSettle();
     const user = userEvent.setup();
-    render(<PwaInstaller />);
-    await screen.findByRole("dialog");
-
     await user.click(screen.getByRole("button", { name: "כן, עדכנו אותי" }));
 
     await waitFor(() => expect(subscribeToPush).toHaveBeenCalledTimes(1));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    expect(localStorage.getItem("chosech-push-prompt")).toBe("subscribed");
+    expect(
+      JSON.parse(localStorage.getItem("chosech-push-prompt") ?? "null"),
+    ).toEqual({ state: "subscribed" });
   });
 
   it("'dismiss' closes the prompt and records the refusal without subscribing", async () => {
     isPushSupported.mockReturnValue(true);
 
+    await renderAndSettle();
     const user = userEvent.setup();
-    render(<PwaInstaller />);
-    await screen.findByRole("dialog");
-
     await user.click(screen.getByRole("button", { name: "לא תודה" }));
 
     expect(subscribeToPush).not.toHaveBeenCalled();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
-    expect(localStorage.getItem("chosech-push-prompt")).toBe("dismissed");
+    // A dismissal records a structured first-refusal (count: 1) so the escalating
+    // cool-off can back off future prompts; it must NOT mark "subscribed".
+    const rec = JSON.parse(
+      localStorage.getItem("chosech-push-prompt") ?? "null",
+    );
+    expect(rec).toMatchObject({ state: "dismissed", count: 1 });
+    expect(typeof rec.at).toBe("number");
   });
 });

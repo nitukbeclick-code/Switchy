@@ -25,7 +25,7 @@
 
 // Bump this string on any deploy that changes the shell. The activate step purges
 // every cache whose name !== the current one, so stale assets can't linger.
-const CACHE_VERSION = "chosech-shell-v1";
+const CACHE_VERSION = "chosech-shell-v2";
 
 // The minimal offline shell. Kept deliberately tiny — just the offline fallback
 // document + brand icons + manifest. Real pages/prices are NEVER precached.
@@ -92,6 +92,22 @@ function isUncacheable(request, url) {
   return false;
 }
 
+// A same-origin GET to /api/* that we serve network-only, but with a graceful
+// offline fallback. We still NEVER cache these (live prices / lead / AI), but
+// when the network is unreachable we hand back a small JSON sentinel + HTTP 503
+// instead of letting fetch() reject with a TypeError. Clients that `await
+// res.json()` then branch on `res.ok` (as the site's fetch callers do) degrade
+// to their friendly "try again" path instead of an unhandled rejection. Only GET
+// is eligible: POST/PUT/etc. are mutations we must not silently fake a reply for —
+// those still pass through and surface the real network error to the caller.
+function isApiGet(request, url) {
+  return (
+    request.method === "GET" &&
+    url.origin === self.location.origin &&
+    url.pathname.startsWith("/api/")
+  );
+}
+
 // ── fetch: network-first for navigations, SWR for static, never cache prices ──
 self.addEventListener("fetch", (event) => {
   const { request } = event;
@@ -100,6 +116,35 @@ self.addEventListener("fetch", (event) => {
     url = new URL(request.url);
   } catch {
     return; // unparseable URL — let the browser handle it
+  }
+
+  // Same-origin /api/* GET: network-only (never cached) but with a graceful
+  // offline JSON fallback so clients fail soft instead of throwing. Checked
+  // BEFORE isUncacheable (which would otherwise pass these straight through).
+  if (isApiGet(request, url)) {
+    event.respondWith(
+      (async () => {
+        try {
+          return await fetch(request);
+        } catch {
+          return new Response(
+            JSON.stringify({
+              ok: false,
+              offline: true,
+              error: "אין חיבור לאינטרנט. נסו שוב כשהחיבור יחזור.",
+            }),
+            {
+              status: 503,
+              headers: {
+                "Content-Type": "application/json; charset=utf-8",
+                "Cache-Control": "no-store",
+              },
+            },
+          );
+        }
+      })(),
+    );
+    return;
   }
 
   if (isUncacheable(request, url)) return; // pass through to network untouched

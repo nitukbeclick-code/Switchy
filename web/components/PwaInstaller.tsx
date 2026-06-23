@@ -33,48 +33,115 @@ import {
 } from "@/lib/push";
 import { trackEvent } from "@/lib/tracking";
 
-/** Remembers the user's choice so we don't nag on every visit. */
+// ── Re-prompt policy ─────────────────────────────────────────────────────────
+// We store the push-opt-in decision as a small JSON record (not a bare flag) so
+// the prompt can be CONTEXT-AWARE rather than "ask once, then never / nag every
+// load". Rules:
+//   • "subscribed"  → terminal: never ask again.
+//   • "dismissed"   → backs off: re-ask only after a cool-off that grows with the
+//                     number of prior dismissals, and at most MAX_DISMISSALS times
+//                     total. After that we stop asking for good.
+// Everything is best-effort localStorage and fails soft (storage blocked ⇒ we
+// simply don't re-prompt, never throw).
 const DISMISS_KEY = "chosech-push-prompt";
+const DAY_MS = 24 * 60 * 60 * 1000;
+// Cool-off before re-asking after the Nth dismissal: 3d, then 10d, then 30d.
+const COOLOFF_DAYS = [3, 10, 30];
+const MAX_DISMISSALS = COOLOFF_DAYS.length;
+// Don't interrupt first paint / the LCP — wait for the visitor to settle in
+// before surfacing the prompt (context: they've stuck around past initial load).
+const ENGAGE_DELAY_MS = 12_000;
 
-function readDismissed(): boolean {
+type PromptRecord =
+  | { state: "subscribed" }
+  | { state: "dismissed"; count: number; at: number };
+
+function readRecord(): PromptRecord | null {
   try {
-    return localStorage.getItem(DISMISS_KEY) != null;
+    const raw = localStorage.getItem(DISMISS_KEY);
+    if (!raw) return null;
+    // Back-compat: the previous version stored the bare strings
+    // "subscribed" | "dismissed". Map a legacy dismissal to a first-dismissal
+    // record dated NOW (not the epoch) so the cool-off starts fresh — a returning
+    // user who once said "no" isn't immediately re-nagged on this load.
+    if (raw === "subscribed") return { state: "subscribed" };
+    if (raw === "dismissed") return { state: "dismissed", count: 1, at: Date.now() };
+    const parsed = JSON.parse(raw) as PromptRecord;
+    if (parsed && (parsed.state === "subscribed" || parsed.state === "dismissed")) {
+      return parsed;
+    }
+    return null;
   } catch {
-    return false;
+    return null;
   }
 }
 
-function persistDismissed(value: "subscribed" | "dismissed"): void {
+function persistSubscribed(): void {
   try {
-    localStorage.setItem(DISMISS_KEY, value);
+    localStorage.setItem(DISMISS_KEY, JSON.stringify({ state: "subscribed" }));
   } catch {
     /* ignore — best-effort */
   }
 }
 
+function persistDismissed(prevCount: number): void {
+  try {
+    const record: PromptRecord = {
+      state: "dismissed",
+      count: prevCount + 1,
+      at: Date.now(),
+    };
+    localStorage.setItem(DISMISS_KEY, JSON.stringify(record));
+  } catch {
+    /* ignore — best-effort */
+  }
+}
+
+/**
+ * Decide whether the opt-in may be shown given the stored decision.
+ * `true` only when: never asked, OR previously dismissed, still within the
+ * dismissal budget, and past the (escalating) cool-off window.
+ */
+function maySurface(record: PromptRecord | null): boolean {
+  if (!record) return true; // never asked
+  if (record.state === "subscribed") return false; // terminal
+  if (record.count >= MAX_DISMISSALS) return false; // budget spent → stop nagging
+  const coolOffDays = COOLOFF_DAYS[record.count - 1] ?? COOLOFF_DAYS[MAX_DISMISSALS - 1];
+  return Date.now() - record.at >= coolOffDays * DAY_MS;
+}
+
 export default function PwaInstaller() {
   const [showPrompt, setShowPrompt] = useState(false);
   const [busy, setBusy] = useState(false);
+  // The prior dismissal count, captured when we decide to surface, so enable()/
+  // dismiss() can persist the next record with the right escalating cool-off.
+  const [priorDismissals, setPriorDismissals] = useState(0);
 
   // Register the SW unconditionally (powers offline + push handlers), then decide
   // whether to surface the push opt-in. All branches fail soft.
   useEffect(() => {
     let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
 
     (async () => {
       await registerServiceWorker();
 
-      // Only consider the push prompt if the full stack is supported + a VAPID
-      // key is configured, and the user hasn't already decided this session.
-      if (!isPushSupported() || readDismissed()) return;
+      // Only consider the push prompt if the full stack is supported.
+      if (!isPushSupported()) return;
 
-      // Don't prompt if they're already subscribed (e.g. on another tab).
+      const record = readRecord();
+
+      // Already subscribed (this or another tab) → record it and never ask again.
       const existing = await getExistingSubscription();
       if (cancelled) return;
       if (existing) {
-        persistDismissed("subscribed");
+        persistSubscribed();
         return;
       }
+
+      // Respect the re-prompt policy: terminal subscribe, dismissal budget, and
+      // the escalating cool-off window.
+      if (!maySurface(record)) return;
 
       // Don't prompt if notifications are already blocked at the browser level —
       // we can't recover from that here and a prompt would be a dead end.
@@ -84,11 +151,34 @@ export default function PwaInstaller() {
         return;
       }
 
-      setShowPrompt(true);
+      setPriorDismissals(record?.state === "dismissed" ? record.count : 0);
+
+      // CONTEXT-AWARE: don't pop during initial load. Wait until the visitor has
+      // stuck around (a soft engagement signal) before surfacing, and only while
+      // the tab is actually visible — never interrupt a backgrounded tab.
+      const surface = () => {
+        if (!cancelled) setShowPrompt(true);
+      };
+      timer = setTimeout(() => {
+        if (cancelled) return;
+        if (typeof document !== "undefined" && document.visibilityState === "hidden") {
+          // Defer until the tab is foregrounded again.
+          const onVisible = () => {
+            if (document.visibilityState === "visible") {
+              document.removeEventListener("visibilitychange", onVisible);
+              surface();
+            }
+          };
+          document.addEventListener("visibilitychange", onVisible);
+          return;
+        }
+        surface();
+      }, ENGAGE_DELAY_MS);
     })();
 
     return () => {
       cancelled = true;
+      if (timer) clearTimeout(timer);
     };
   }, []);
 
@@ -97,19 +187,25 @@ export default function PwaInstaller() {
     trackEvent("push_optin_click", { source: "installer" });
     const sub = await subscribeToPush();
     setBusy(false);
-    // Either way we stop prompting; record the outcome.
-    persistDismissed(sub ? "subscribed" : "dismissed");
     setShowPrompt(false);
-    trackEvent(sub ? "push_subscribed" : "push_optin_failed", {
-      source: "installer",
-    });
-  }, []);
+    if (sub) {
+      persistSubscribed();
+      trackEvent("push_subscribed", { source: "installer" });
+    } else {
+      // Subscribe failed/denied → count it as a dismissal so the cool-off applies.
+      persistDismissed(priorDismissals);
+      trackEvent("push_optin_failed", { source: "installer" });
+    }
+  }, [priorDismissals]);
 
   const dismiss = useCallback(() => {
-    persistDismissed("dismissed");
+    persistDismissed(priorDismissals);
     setShowPrompt(false);
-    trackEvent("push_optin_dismiss", { source: "installer" });
-  }, []);
+    trackEvent("push_optin_dismiss", {
+      source: "installer",
+      dismissals: priorDismissals + 1,
+    });
+  }, [priorDismissals]);
 
   if (!showPrompt) return null;
 

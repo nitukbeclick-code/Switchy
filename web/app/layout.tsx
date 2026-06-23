@@ -15,16 +15,29 @@ import { orgSchema, websiteSchema, SITE_URL, SITE_NAME } from "@/lib/schema";
 // latin glyphs — "Switch AI", digits, ₪ — fall back gracefully). Dropping it trims
 // the preloaded woff2 set that contends with the LCP resource. `display: swap`
 // keeps text visible immediately (no FOIT).
+//
+// PRELOAD: `preload: true` (set explicitly, though it is also the next/font
+// default) makes next/font inject a `<link rel="preload" as="font" type="font/woff2"
+// crossorigin>` for the subsetted woff2 into <head> on every route this root layout
+// wraps — i.e. site-wide — so the LCP text font is fetched at the highest priority
+// instead of being discovered late via CSS. We deliberately do NOT hand-write those
+// <link> tags: the file names are content-hashed (e.g. `...-s.p.<hash>.woff2`) and
+// rotate every build, so a hardcoded href would 404, and a duplicate preload would
+// double-fetch the font and trip the browser's "preloaded but not used" warning.
+// Letting next/font own the tag keeps the href correct across builds. See next docs
+// -> Font / Preloading.
 const rubik = Rubik({
   variable: "--font-rubik",
   subsets: ["hebrew"],
   display: "swap",
+  preload: true,
 });
 
 const assistant = Assistant({
   variable: "--font-assistant",
   subsets: ["hebrew"],
   display: "swap",
+  preload: true,
 });
 
 // GA4 Measurement ID (Google Analytics 4). Loaded site-wide via next/script.

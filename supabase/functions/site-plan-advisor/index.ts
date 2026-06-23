@@ -25,6 +25,10 @@ import plansSnapshot from "./plans-snapshot.json" with { type: "json" };
 // ── Limits / tuning ──────────────────────────────────────────────────────────
 const MAX_HISTORY_TURNS = 8;
 const MAX_TEXT_LEN = 600;
+// Hard ceiling on the combined raw conversation text — a cheap abuse/cost guard
+// that rejects oversized payloads BEFORE any (paid) AI call. The per-turn
+// MAX_TEXT_LEN clip below still applies; this is the coarse "obviously abusive" gate.
+const MAX_INPUT_LEN = 2000;
 const MAX_OUTPUT_TOKENS = 700;
 const PER_IP_HOURLY_LIMIT = 20; // advisor_sessions, per IP, ~20/hour
 const TEMPERATURE = 0.3;
@@ -388,6 +392,13 @@ Deno.serve(async (req: Request) => {
     body = await req.json();
   } catch (_) {
     return json({ error: "invalid json" }, 400);
+  }
+
+  // Cheap abuse/cost guard: reject an oversized raw conversation before any AI
+  // work (sum the incoming history turns' text, the only free-text the client sends).
+  if (Array.isArray(body.history)) {
+    const totalLen = body.history.reduce((n, h) => n + String(h?.text ?? "").length, 0);
+    if (totalLen > MAX_INPUT_LEN) return json({ error: "input too long" }, 400);
   }
 
   const ans = parseAnswers(body.answers);

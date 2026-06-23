@@ -43,6 +43,14 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { firstEnv, resolveCfgCached } from "../_shared/config.ts";
 import { fetchRows, insertRow } from "../_shared/db.ts";
 import { jlog } from "../_shared/log.ts";
+import {
+  buildSuggestions,
+  catalogueProviders,
+  normalizeCategory,
+  normalizeProvider,
+  type Plan,
+} from "../_shared/catalogue.ts";
+import { type Extracted, parseExtraction, parseImage } from "./lib.ts";
 import plansSnapshot from "./plans-snapshot.json" with { type: "json" };
 
 // Reject anything larger than ~6MB of base64 payload (≈4.5MB decoded image) —
@@ -55,8 +63,6 @@ const MAX_SUGGESTIONS = 3;
 // Gemini Vision model ids, tried in order (404 → try next, see callGemini).
 const GEMINI_MODELS = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"];
 
-const CATEGORIES = ["cellular", "internet", "tv", "triple", "abroad"] as const;
-
 function cors(extra: Record<string, string> = {}): Record<string, string> {
   return { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*", ...extra };
 }
@@ -68,13 +74,6 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
-type Plan = {
-  cat?: string; provider?: string; plan?: string; price?: number;
-  is5G?: boolean; noCommit?: boolean; hasAbroad?: boolean; priceUnit?: string;
-};
-
-type Suggestion = { name: string; provider: string; price: number; annualSaving: number };
-
 // Bundled at deploy time — refresh from site/data/plans.json and redeploy when
 // prices change (the production site isn't fetched at runtime).
 function loadPlans(): Plan[] {
@@ -82,85 +81,13 @@ function loadPlans(): Plan[] {
   return Array.isArray(rows) ? rows : [];
 }
 
-// The canonical provider names that appear in our catalogue. Gemini is asked to
-// return one of these verbatim, but real bills spell brands many ways (English,
-// Hebrew, sub-brands), so normalizeProvider() maps loosely onto this set.
-function catalogueProviders(plans: Plan[]): string[] {
-  return Array.from(new Set(plans.map((p) => (p.provider ?? "").trim()).filter(Boolean)));
-}
-
-// Map whatever Gemini returns (or what's printed on the bill) onto one of our
-// catalogue provider names. Matches on a set of alias substrings per provider;
-// returns "" when nothing matches so we never invent a provider.
-const PROVIDER_ALIASES: { canonical: string; aliases: string[] }[] = [
-  { canonical: "סלקום", aliases: ["סלקום", "cellcom"] },
-  { canonical: "פרטנר", aliases: ["פרטנר", "partner", "orange"] },
-  { canonical: "פלאפון", aliases: ["פלאפון", "pelephone"] },
-  { canonical: "הוט מובייל", aliases: ["הוט מובייל", "hot mobile"] },
-  { canonical: "HOT", aliases: ["הוט", "hot"] },
-  { canonical: "בזק", aliases: ["בזק", "bezeq"] },
-  { canonical: "yes", aliases: ["yes", "יס"] },
-  { canonical: "גולן טלקום", aliases: ["גולן", "golan"] },
-  { canonical: "019 מובייל", aliases: ["019"] },
-  { canonical: "רמי לוי", aliases: ["רמי לוי", "rami levy", "rami levi"] },
-  { canonical: "וואלה מובייל", aliases: ["וואלה", "walla"] },
-  { canonical: "Xphone", aliases: ["xphone", "אקספון"] },
-  { canonical: "WeCom", aliases: ["wecom"] },
-  { canonical: "CCC", aliases: ["ccc"] },
-  { canonical: "STING TV", aliases: ["sting"] },
-  { canonical: "NextTV", aliases: ["nexttv", "next tv"] },
-  { canonical: "גילת", aliases: ["גילת", "gilat"] },
-  { canonical: "Airalo eSIM", aliases: ["airalo"] },
-];
-
-function normalizeProvider(raw: string, providers: string[]): string {
-  const s = (raw ?? "").trim().toLowerCase();
-  if (!s) return "";
-  // Exact catalogue match first (Gemini was told to use these names).
-  for (const p of providers) {
-    if (p.toLowerCase() === s) return p;
-  }
-  // Alias-substring match — longer/more-specific aliases (e.g. "הוט מובייל")
-  // are listed before the looser ones (e.g. "הוט") so they win.
-  for (const { canonical, aliases } of PROVIDER_ALIASES) {
-    if (aliases.some((a) => s.includes(a))) return canonical;
-  }
-  // Last resort: any catalogue provider whose name is contained in the string.
-  for (const p of providers) {
-    if (p && s.includes(p.toLowerCase())) return p;
-  }
-  return "";
-}
-
-function normalizeCategory(raw: string): string {
-  const s = (raw ?? "").trim().toLowerCase();
-  if ((CATEGORIES as readonly string[]).includes(s)) return s;
-  // Tolerate Hebrew/aliased labels Gemini might emit.
-  if (/(סלולר|נייד|mobile|phone|cellular)/.test(s)) return "cellular";
-  if (/(אינטרנט|גלישה|internet|fiber|סיב)/.test(s)) return "internet";
-  if (/(טלוויזיה|טלויזיה|tv|stream)/.test(s)) return "tv";
-  if (/(טריפל|triple|חבילה משולבת|משולב)/.test(s)) return "triple";
-  if (/(חו"ל|חול|abroad|roaming|esim)/.test(s)) return "abroad";
-  return "";
-}
-
-// Parse "data:image/png;base64,AAAA…" or raw base64. Returns mimeType + the
-// bare base64 payload (no prefix) so Gemini's inlineData gets clean bytes.
-function parseImage(input: string): { mimeType: string; data: string } | null {
-  const s = (input ?? "").trim();
-  if (!s) return null;
-  const m = s.match(/^data:([^;,]+)(?:;base64)?,(.*)$/s);
-  if (m) {
-    const mimeType = m[1] || "image/jpeg";
-    const data = m[2].replace(/\s/g, "");
-    if (!data) return null;
-    return { mimeType, data };
-  }
-  // Raw base64 (no data-URL wrapper) — assume jpeg, the most common camera output.
-  const data = s.replace(/\s/g, "");
-  if (!/^[A-Za-z0-9+/=]+$/.test(data.slice(0, 64))) return null;
-  return { mimeType: "image/jpeg", data };
-}
+// catalogueProviders / normalizeProvider / normalizeCategory / buildSuggestions
+// are imported from _shared/catalogue.ts — the single source of truth for the
+// provider-alias table and category synonyms, shared with the WhatsApp bot so a
+// brand either surface knows is matched on both. (B4/B8 drift fix.)
+//
+// parseImage / parseExtraction (+ the Extracted type) are imported from ./lib.ts
+// so they can be unit-tested without booting the Deno.serve entrypoint.
 
 const VISION_PROMPT = `אתה מנתח חשבונות תקשורת ישראליים מתוך תמונה (סלולר / אינטרנט / טלוויזיה / חבילה משולבת / חו"ל).
 החזר אך ורק אובייקט JSON תקין (ללא טקסט נוסף, ללא markdown) בפורמט:
@@ -225,51 +152,6 @@ async function callGeminiVision(
     if (r.status !== 404) break;
   }
   throw new Error("gemini vision request failed: " + lastStatus);
-}
-
-type Extracted = { provider: string; monthly: number; category: string; confidence: number };
-
-// Gemini is asked for raw JSON, but be defensive: strip ```json fences and pull
-// the first {...} block if it wrapped the object in prose anyway.
-function parseExtraction(raw: string): Extracted | null {
-  let s = (raw ?? "").trim();
-  if (!s) return null;
-  s = s.replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
-  if (!s.startsWith("{")) {
-    const i = s.indexOf("{");
-    const k = s.lastIndexOf("}");
-    if (i >= 0 && k > i) s = s.slice(i, k + 1);
-  }
-  try {
-    const o = JSON.parse(s) as Record<string, unknown>;
-    const monthly = Number(o.monthly);
-    const confidence = Number(o.confidence);
-    return {
-      provider: String(o.provider ?? "").slice(0, 80),
-      monthly: Number.isFinite(monthly) ? monthly : 0,
-      category: String(o.category ?? "").slice(0, 40),
-      confidence: Number.isFinite(confidence) ? confidence : 0,
-    };
-  } catch (_) {
-    return null;
-  }
-}
-
-// Up to MAX_SUGGESTIONS cheaper plans in the same category, sorted by price.
-// annualSaving = (currentSpend - plan.price) * 12, clamped ≥ 0. We never trust
-// any client-supplied total — currentSpend comes only from the image.
-function buildSuggestions(plans: Plan[], category: string, currentSpend: number): Suggestion[] {
-  if (!category || !(currentSpend > 0)) return [];
-  return plans
-    .filter((p) => p.cat === category && typeof p.price === "number" && (p.price as number) < currentSpend)
-    .sort((a, b) => (a.price ?? 0) - (b.price ?? 0))
-    .slice(0, MAX_SUGGESTIONS)
-    .map((p) => ({
-      name: String(p.plan ?? ""),
-      provider: String(p.provider ?? ""),
-      price: Number(p.price ?? 0),
-      annualSaving: Math.max(0, Math.round((currentSpend - Number(p.price ?? 0)) * 12)),
-    }));
 }
 
 function clientIp(req: Request): string {
@@ -356,7 +238,7 @@ Deno.serve(async (req: Request) => {
   // service are almost certainly a misread, so treat them as unreadable rather
   // than fabricate huge "savings".
   const currentSpend = Math.round(Math.min(5000, Math.max(0, extracted.monthly)));
-  const suggestions = buildSuggestions(plans, category, currentSpend);
+  const suggestions = buildSuggestions(plans, category, currentSpend, MAX_SUGGESTIONS);
 
   const note = suggestions.length
     ? `מצאנו ${suggestions.length} מסלולים זולים יותר באותה קטגוריה.`

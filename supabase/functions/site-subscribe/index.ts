@@ -1,4 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { EMAIL_RE, type InsertResult, shouldWelcome } from "./lib.ts";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // site-subscribe — newsletter signup for the חוסך marketing site.
@@ -92,15 +93,18 @@ async function rateLimited(ip: string): Promise<boolean | null> {
 
 const FRIENDLY_BUSY = "שירות עמוס כרגע, נסו שוב בעוד רגע";
 
-// Insert the subscriber. Returns:
-//   "ok"        — inserted (or treated as already-subscribed on unique violation)
-//   "error"     — service creds missing or an unexpected write failure
+// Insert the subscriber. Returns a tri-state so the caller can decide whether
+// to send the welcome email:
+//   "inserted" — a brand-new row was created (→ send welcome)
+//   "exists"   — already subscribed (unique violation, idempotent) (→ NO welcome)
+//   "error"    — service creds missing or an unexpected write failure
 // PostgREST surfaces a unique-constraint violation as 409 (code 23505); we
-// swallow it so re-subscribing is idempotent.
+// swallow it so re-subscribing is idempotent — but we DON'T re-welcome, which
+// would burn a paid Resend send every time the same person re-submits the form.
 async function insertSubscriber(
   email: string,
   ip: string,
-): Promise<"ok" | "error"> {
+): Promise<InsertResult> {
   const creds = serviceCreds();
   if (!creds) {
     jlog({ at: "site-subscribe.insert", ok: false, error: "service creds missing" });
@@ -122,12 +126,13 @@ async function insertSubscriber(
         source_ip: ip || null,
       }),
     });
-    if (r.ok) return "ok";
-    // Unique violation → already subscribed → idempotent success.
+    if (r.ok) return "inserted";
+    // Unique violation → already subscribed → idempotent success, but skip the
+    // welcome email (they already got one when they first signed up).
     const text = await r.text().catch(() => "");
     if (r.status === 409 || text.includes("23505") || text.includes("duplicate")) {
       jlog({ at: "site-subscribe.insert", ok: true, already: true });
-      return "ok";
+      return "exists";
     }
     jlog({ at: "site-subscribe.insert", ok: false, status: r.status });
     return "error";
@@ -169,10 +174,9 @@ async function sendWelcome(email: string): Promise<void> {
   }
 }
 
-// Pragmatic RFC-ish email check: a single @, non-empty local/domain parts, at
-// least one dot in the domain, no whitespace. Not a full RFC 5322 parser — just
-// enough to reject obvious garbage before we store it.
-const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+// EMAIL_RE / shouldWelcome are imported from ./lib.ts (the single source of
+// truth for the email shape + the no-re-welcome rule) so they can be unit-tested
+// without booting this Deno.serve entrypoint.
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -206,8 +210,14 @@ Deno.serve(async (req: Request) => {
   }
 
   // Best-effort welcome email — never blocks or fails the (already recorded)
-  // subscription.
-  await sendWelcome(email);
+  // subscription. Only for a genuinely new subscriber: re-submitting an
+  // existing address is an idempotent success but must NOT re-welcome (it would
+  // burn a paid Resend send on every duplicate form post).
+  if (shouldWelcome(result)) {
+    await sendWelcome(email);
+  } else {
+    jlog({ at: "site-subscribe", ok: true, already: true, welcomed: false });
+  }
 
   return json({ ok: true });
 });

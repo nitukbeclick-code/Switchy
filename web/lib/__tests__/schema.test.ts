@@ -6,6 +6,7 @@ import {
   reviewSchema,
   knowledgeWebSchema,
   webPageSchema,
+  relatedLinksSchema,
   SITE_URL,
 } from "@/lib/schema";
 import type { Plan, Provider } from "@/lib/types";
@@ -184,6 +185,56 @@ describe("webPageSchema — compliance/info pages", () => {
     expect(withDate.lastReviewed).toBe("2026-06-22");
     expect(withDate.dateModified).toBe("2026-06-22");
     expect((withDate.about as Record<string, unknown>).name).toBe("תנאי שימוש");
+  });
+});
+
+describe("relatedLinksSchema — internal nav ItemList, real urls only", () => {
+  it("returns null when there are no links", () => {
+    expect(relatedLinksSchema({ name: "x", links: [] })).toBeNull();
+  });
+
+  it("emits an ItemList of positioned SiteNavigationElements with absolute urls", () => {
+    const schema = relatedLinksSchema({
+      name: "עמודים קשורים",
+      links: [
+        { name: "השוואת סלולר", url: "/compare/cellular", description: "הכל" },
+        { name: "סלקום", url: `${SITE_URL}/providers/cellcom` },
+      ],
+    });
+    expect(schema).toMatchObject({
+      "@context": "https://schema.org",
+      "@type": "ItemList",
+      name: "עמודים קשורים",
+      numberOfItems: 2,
+    });
+    const els = schema!.itemListElement as Array<Record<string, unknown>>;
+    expect(els).toHaveLength(2);
+    expect(els[0]).toMatchObject({
+      "@type": "SiteNavigationElement",
+      position: 1,
+      name: "השוואת סלולר",
+      url: `${SITE_URL}/compare/cellular`,
+      description: "הכל",
+    });
+    // Already-absolute urls are passed through untouched; no description when absent.
+    expect(els[1].url).toBe(`${SITE_URL}/providers/cellcom`);
+    expect(els[1].description).toBeUndefined();
+  });
+
+  it("collapses duplicate urls so the list mirrors the rendered (deduped) block", () => {
+    const schema = relatedLinksSchema({
+      name: "x",
+      links: [
+        { name: "א", url: "/compare/cellular" },
+        { name: "ב", url: "/compare/cellular" }, // duplicate url → dropped
+        { name: "ג", url: "/compare/internet" },
+      ],
+    });
+    const els = schema!.itemListElement as Array<Record<string, unknown>>;
+    expect(els).toHaveLength(2);
+    expect(schema!.numberOfItems).toBe(2);
+    // Positions are re-sequenced after the de-dupe (1,2 — no gap).
+    expect(els.map((e) => e.position)).toEqual([1, 2]);
   });
 });
 

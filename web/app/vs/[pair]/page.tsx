@@ -23,7 +23,8 @@ import JsonLd from "@/components/JsonLd";
 import SgeSummary from "@/components/SgeSummary";
 import AuthorityBlock from "@/components/AuthorityBlock";
 import ComparisonTable from "@/components/ComparisonTable";
-import RelatedAuthorityPages from "@/components/RelatedAuthorityPages";
+import RelatedLinks from "@/components/RelatedLinks";
+import type { RelatedLinkGroup } from "@/components/RelatedLinks";
 import LeadForm from "@/components/LeadForm";
 import { getVsPairs, getVsPair, vsVerdict } from "@/lib/vs";
 import type { VsPair, VsSide } from "@/lib/vs";
@@ -34,6 +35,8 @@ import {
   breadcrumbSchema,
   knowledgeGraphSchema,
   knowledgeWebSchema,
+  relatedLinksSchema,
+  type NavLink,
   type QA,
 } from "@/lib/schema";
 import { GENERAL_FAQ } from "@/lib/faq";
@@ -225,31 +228,42 @@ function buildFaqs(pair: VsPair): QA[] {
   ];
 }
 
-// Related: each side's provider page, each side's category compare hub, and a few
-// other curated match-ups that share a provider. No dead-ends.
-function buildRelated(
-  pair: VsPair,
-): { title: string; href: string; description?: string }[] {
+// Grouped related links: both sides' provider pages ("עמודי הספקים"), the category
+// compare hub ("השוואה רחבה"), and other curated match-ups that share a provider
+// ("השוואות קשורות"). Every link is a real on-site URL. No dead-ends.
+function buildRelatedGroups(pair: VsPair): RelatedLinkGroup[] {
   const { a, b, category, categoryLabel } = pair;
-  const links: { title: string; href: string; description?: string }[] = [
-    {
-      title: a.provider.name,
-      href: `/providers/${a.provider.slug}`,
-      description: `כל מסלולי ${a.provider.name}.`,
-    },
-    {
-      title: b.provider.name,
-      href: `/providers/${b.provider.slug}`,
-      description: `כל מסלולי ${b.provider.name}.`,
-    },
-    {
-      title: `השוואת ${categoryLabel}`,
-      href: `/compare/${category}`,
-      description: `כל הספקים ב${categoryLabel}, לא רק שניים.`,
-    },
-  ];
+  const groups: RelatedLinkGroup[] = [];
 
-  // A few other match-ups that share one of the two providers.
+  groups.push({
+    title: "עמודי הספקים",
+    links: [
+      {
+        href: `/providers/${a.provider.slug}`,
+        label: a.provider.name,
+        hint: `כל מסלולי ${a.provider.name}.`,
+      },
+      {
+        href: `/providers/${b.provider.slug}`,
+        label: b.provider.name,
+        hint: `כל מסלולי ${b.provider.name}.`,
+      },
+    ],
+  });
+
+  groups.push({
+    title: "השוואה רחבה",
+    links: [
+      {
+        href: `/compare/${category}`,
+        label: `השוואת ${categoryLabel}`,
+        hint: `כל הספקים ב${categoryLabel}, לא רק שניים.`,
+      },
+    ],
+  });
+
+  // Other curated match-ups that share one of the two providers.
+  const relatedPairs: RelatedLinkGroup["links"] = [];
   for (const other of getVsPairs()) {
     if (other.slug === pair.slug) continue;
     const sharesA =
@@ -259,15 +273,23 @@ function buildRelated(
       other.a.provider.slug === b.provider.slug ||
       other.b.provider.slug === b.provider.slug;
     if (!sharesA && !sharesB) continue;
-    links.push({
-      title: `${other.a.provider.name} מול ${other.b.provider.name}`,
+    relatedPairs.push({
       href: `/vs/${other.slug}`,
-      description: `השוואת ${other.categoryLabel}.`,
+      label: `${other.a.provider.name} מול ${other.b.provider.name}`,
+      hint: `השוואת ${other.categoryLabel}.`,
     });
-    if (links.length >= 9) break;
+    if (relatedPairs.length >= 6) break;
   }
+  groups.push({ title: "השוואות קשורות", links: relatedPairs });
 
-  return links;
+  return groups;
+}
+
+/** Flatten the grouped links into NavLinks for the relatedLinksSchema ItemList. */
+function relatedNavLinks(groups: RelatedLinkGroup[]): NavLink[] {
+  return groups.flatMap((g) =>
+    g.links.map((l) => ({ name: l.label, url: l.href, description: l.hint })),
+  );
 }
 
 export default async function VsPage({ params }: Params) {
@@ -282,7 +304,7 @@ export default async function VsPage({ params }: Params) {
   const allPlans = combinedPlans(pair);
   const authorityRows = buildAuthorityRows(pair);
   const faqs = buildFaqs(pair);
-  const related = buildRelated(pair);
+  const relatedGroups = buildRelatedGroups(pair);
 
   // The two representative plans (cheapest per side), cheapest-first, for the
   // comparison ItemList JSON-LD.
@@ -328,6 +350,14 @@ export default async function VsPage({ params }: Params) {
           providers,
         })}
       />
+      {/* Internal cross-links as a SiteNavigationElement list (mirrors RelatedLinks). */}
+      {(() => {
+        const nav = relatedLinksSchema({
+          name: `עמודים קשורים — ${aN} מול ${bN}`,
+          links: relatedNavLinks(relatedGroups),
+        });
+        return nav ? <JsonLd data={nav} /> : null;
+      })()}
 
       {/* ── Breadcrumb (visible) ──────────────────────────────────────────── */}
       <nav aria-label="פירורי לחם" className="text-sm text-muted">
@@ -440,11 +470,11 @@ export default async function VsPage({ params }: Params) {
         </div>
       </section>
 
-      {/* ── Semantic interlinking — no dead-ends ──────────────────────────── */}
-      <RelatedAuthorityPages
+      {/* ── Semantic interlinking — grouped, no dead-ends ─────────────────── */}
+      <RelatedLinks
         heading="השוואות וספקים נוספים"
-        links={related}
-        className="mt-16 border-t border-border pt-8"
+        groups={relatedGroups}
+        className="mt-16"
       />
 
     </main>

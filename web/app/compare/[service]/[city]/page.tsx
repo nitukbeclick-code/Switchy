@@ -22,7 +22,8 @@ import AuthorityBlock from "@/components/AuthorityBlock";
 import ComparisonTable from "@/components/ComparisonTable";
 import CommissionDisclosure from "@/components/CommissionDisclosure";
 import PriceCaveat from "@/components/PriceCaveat";
-import RelatedAuthorityPages from "@/components/RelatedAuthorityPages";
+import RelatedLinks from "@/components/RelatedLinks";
+import type { RelatedLinkGroup } from "@/components/RelatedLinks";
 import LeadForm from "@/components/LeadForm";
 import {
   getServices,
@@ -42,8 +43,9 @@ import {
   knowledgeGraphSchema,
   placeSchema,
   geoSchema,
+  relatedLinksSchema,
 } from "@/lib/schema";
-import type { QA } from "@/lib/schema";
+import type { NavLink, QA } from "@/lib/schema";
 import { ils, leadCategory } from "@/lib/format";
 
 // Bounded matrix: every service × every city, pre-rendered at build time.
@@ -225,44 +227,57 @@ function buildLocalFaq(svc: Service, c: City): QA[] {
   return qa;
 }
 
-// Semantic interlinking: same service in nearby/other cities + the service hub +
-// other services in THIS city. No dead-ends.
-function buildRelated(
-  svc: Service,
-  c: City,
-): { title: string; href: string; description?: string }[] {
-  const links: { title: string; href: string; description?: string }[] = [];
+// Grouped semantic interlinking: up to the national service hub, OTHER services in
+// THIS city ("שירותים נוספים ב<city>"), and the SAME service in NEARBY cities
+// (same district first, then others) — "ערים קרובות". No dead-ends; every link is
+// a real on-site URL.
+function buildRelatedGroups(svc: Service, c: City): RelatedLinkGroup[] {
+  const groups: RelatedLinkGroup[] = [];
 
-  // Up to the service hub.
-  links.push({
-    title: `כל השוואת ${svc.label}`,
-    href: `/compare/${svc.slug}`,
-    description: `השוואת ${svc.label} הארצית המלאה.`,
+  groups.push({
+    title: "השוואה ארצית",
+    links: [
+      {
+        href: `/compare/${svc.slug}`,
+        label: `כל השוואת ${svc.label}`,
+        hint: `השוואת ${svc.label} הארצית המלאה.`,
+      },
+    ],
   });
 
-  // Other services in the same city (cross-axis).
-  for (const other of getServices()) {
-    if (other.slug === svc.slug) continue;
-    links.push({
-      title: `${other.label} ב${c.name}`,
-      href: `/compare/${other.slug}/${c.slug}`,
-      description: `השוואת ${other.label} ב${c.name}.`,
-    });
-  }
+  groups.push({
+    title: `שירותים נוספים ב${c.name}`,
+    links: getServices()
+      .filter((other) => other.slug !== svc.slug)
+      .map((other) => ({
+        href: `/compare/${other.slug}/${c.slug}`,
+        label: `${other.label} ב${c.name}`,
+        hint: `השוואת ${other.label} ב${c.name}.`,
+      })),
+  });
 
-  // Same service in other cities in the SAME district first, then a few others.
+  // Same service in nearby cities — same district first (genuinely "nearby"),
+  // then a few from other districts to keep the graph connected.
   const all = getCities().filter((x) => x.slug !== c.slug);
   const sameDistrict = all.filter((x) => x.district === c.district);
   const others = all.filter((x) => x.district !== c.district);
-  for (const city of [...sameDistrict, ...others].slice(0, 6)) {
-    links.push({
-      title: `${svc.label} ב${city.name}`,
+  groups.push({
+    title: "ערים קרובות",
+    links: [...sameDistrict, ...others].slice(0, 6).map((city) => ({
       href: `/compare/${svc.slug}/${city.slug}`,
-      description: `השוואת ${svc.label} ב${city.name} (${city.district}).`,
-    });
-  }
+      label: `${svc.label} ב${city.name}`,
+      hint: city.district,
+    })),
+  });
 
-  return links;
+  return groups;
+}
+
+/** Flatten the grouped links into NavLinks for the relatedLinksSchema ItemList. */
+function relatedNavLinks(groups: RelatedLinkGroup[]): NavLink[] {
+  return groups.flatMap((g) =>
+    g.links.map((l) => ({ name: l.label, url: l.href, description: l.hint })),
+  );
 }
 
 export default async function ServiceCityPage({ params }: Params) {
@@ -275,7 +290,7 @@ export default async function ServiceCityPage({ params }: Params) {
   const summary = buildSummary(svc, c);
   const authority = buildAuthority(svc, c);
   const faqs = buildLocalFaq(svc, c);
-  const related = buildRelated(svc, c);
+  const relatedGroups = buildRelatedGroups(svc, c);
   const cats = new Set(svc.categories);
   const svcProviders = getProviders().filter((pr) =>
     pr.categories.some((cat) => cats.has(cat)),
@@ -333,6 +348,14 @@ export default async function ServiceCityPage({ params }: Params) {
           ],
         })}
       />
+      {/* Internal cross-links as a SiteNavigationElement list (mirrors RelatedLinks). */}
+      {(() => {
+        const nav = relatedLinksSchema({
+          name: `עמודים קשורים — ${svc.label} ב${c.name}`,
+          links: relatedNavLinks(relatedGroups),
+        });
+        return nav ? <JsonLd data={nav} /> : null;
+      })()}
 
       {/* ── Breadcrumb (visible) ──────────────────────────────────────────── */}
       <nav aria-label="פירורי לחם" className="text-sm text-muted">
@@ -464,11 +487,11 @@ export default async function ServiceCityPage({ params }: Params) {
         </div>
       </section>
 
-      {/* ── Semantic interlinking — no dead-ends ──────────────────────────── */}
-      <RelatedAuthorityPages
+      {/* ── Semantic interlinking — grouped, no dead-ends ─────────────────── */}
+      <RelatedLinks
         heading="המשיכו להשוות"
-        links={related}
-        className="mt-16 border-t border-border pt-8"
+        groups={relatedGroups}
+        className="mt-16"
       />
     </main>
   );

@@ -23,7 +23,8 @@ import ReviewsBlock from "@/components/ReviewsBlock";
 import ComparisonTable from "@/components/ComparisonTable";
 import CommissionDisclosure from "@/components/CommissionDisclosure";
 import PriceCaveat from "@/components/PriceCaveat";
-import RelatedAuthorityPages from "@/components/RelatedAuthorityPages";
+import RelatedLinks from "@/components/RelatedLinks";
+import type { RelatedLinkGroup } from "@/components/RelatedLinks";
 import LeadForm from "@/components/LeadForm";
 import {
   getServices,
@@ -42,8 +43,9 @@ import {
   breadcrumbSchema,
   knowledgeGraphSchema,
   knowledgeWebSchema,
+  relatedLinksSchema,
 } from "@/lib/schema";
-import type { QA } from "@/lib/schema";
+import type { NavLink, QA } from "@/lib/schema";
 import { faqForCategory } from "@/lib/faq";
 import { ils, leadCategory } from "@/lib/format";
 
@@ -188,31 +190,55 @@ function faqForService(svc: Service): QA[] {
   return faqForCategory(svc.categories[0]);
 }
 
-// Semantic interlinking: other services + the providers active in this one.
-function buildRelated(
-  svc: Service,
-): { title: string; href: string; description?: string }[] {
-  const links: { title: string; href: string; description?: string }[] = [];
-  for (const other of getServices()) {
-    if (other.slug === svc.slug) continue;
-    const plans = plansForService(other.slug);
-    links.push({
-      title: `השוואת ${other.label}`,
-      href: `/compare/${other.slug}`,
-      description: `${plans.length} מסלולים בקטגוריית ${other.label}.`,
-    });
-  }
+// Grouped semantic interlinking: other services ("השוואות נוספות"), the providers
+// active in this service ("הספקים בקטגוריה"), and the per-city geo variants
+// ("השוואה לפי עיר"). Every link is a real on-site URL; counts are catalogue-derived.
+function buildRelatedGroups(svc: Service): RelatedLinkGroup[] {
+  const groups: RelatedLinkGroup[] = [];
+
+  groups.push({
+    title: "השוואות נוספות",
+    links: getServices()
+      .filter((other) => other.slug !== svc.slug)
+      .map((other) => ({
+        href: `/compare/${other.slug}`,
+        label: `השוואת ${other.label}`,
+        hint: `${plansForService(other.slug).length} מסלולים בקטגוריית ${other.label}.`,
+      })),
+  });
+
   const cats = new Set(svc.categories);
-  for (const pr of getProviders().filter((p) =>
+  const svcProviders = getProviders().filter((p) =>
     p.categories.some((c) => cats.has(c)),
-  )) {
-    links.push({
-      title: pr.name,
+  );
+  groups.push({
+    title: `הספקים ב${svc.label}`,
+    links: svcProviders.slice(0, 8).map((pr) => ({
       href: `/providers/${pr.slug}`,
-      description: `${pr.planCount} מסלולים, החל מ-${ils(pr.minPrice)}.`,
-    });
-  }
-  return links;
+      label: pr.name,
+      hint: `${pr.planCount} מסלולים, החל מ-${ils(pr.minPrice)}.`,
+    })),
+  });
+
+  groups.push({
+    title: `${svc.label} לפי עיר`,
+    links: getCities()
+      .slice(0, 6)
+      .map((c) => ({
+        href: `/compare/${svc.slug}/${c.slug}`,
+        label: `${svc.label} ב${c.name}`,
+        hint: c.district,
+      })),
+  });
+
+  return groups;
+}
+
+/** Flatten the grouped links into NavLinks for the relatedLinksSchema ItemList. */
+function relatedNavLinks(groups: RelatedLinkGroup[]): NavLink[] {
+  return groups.flatMap((g) =>
+    g.links.map((l) => ({ name: l.label, url: l.href, description: l.hint })),
+  );
 }
 
 // Editorial "why compare here" reasoning (truthful, catalogue-derived).
@@ -263,7 +289,7 @@ export default async function ServiceHubPage({ params }: Params) {
   const ranked = topProviders(svc);
   const faqs = faqForService(svc);
   const reasoning = buildReasoning(svc);
-  const related = buildRelated(svc);
+  const relatedGroups = buildRelatedGroups(svc);
   const cats = new Set(svc.categories);
   const svcProviders = getProviders().filter((pr) =>
     pr.categories.some((c) => cats.has(c)),
@@ -312,6 +338,14 @@ export default async function ServiceHubPage({ params }: Params) {
           providers: svcProviders,
         })}
       />
+      {/* Internal cross-links as a SiteNavigationElement list (mirrors RelatedLinks). */}
+      {(() => {
+        const nav = relatedLinksSchema({
+          name: `עמודים קשורים — השוואת ${svc.label}`,
+          links: relatedNavLinks(relatedGroups),
+        });
+        return nav ? <JsonLd data={nav} /> : null;
+      })()}
 
       {/* ── Breadcrumb (visible) ──────────────────────────────────────────── */}
       <nav aria-label="פירורי לחם" className="text-sm text-muted">
@@ -498,11 +532,11 @@ export default async function ServiceHubPage({ params }: Params) {
         </div>
       </section>
 
-      {/* ── Semantic interlinking — no dead-ends ──────────────────────────── */}
-      <RelatedAuthorityPages
+      {/* ── Semantic interlinking — grouped, no dead-ends ─────────────────── */}
+      <RelatedLinks
         heading="המשיכו להשוות"
-        links={related}
-        className="mt-16 border-t border-border pt-8"
+        groups={relatedGroups}
+        className="mt-16"
       />
     </main>
   );

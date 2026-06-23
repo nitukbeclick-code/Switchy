@@ -9,6 +9,9 @@
    Per-provider brand colors are NOT defined here (never recolored to the theme).
    ════════════════════════════════════════════════════════════════════════════ */
 :root {
+  /* Native UI (form controls, scrollbars) follow the light scheme by default. */
+  color-scheme: light;
+
   /* Surfaces */
   --background: #f5f7f8; /* glass-white page bg */
   --foreground: #0b0f14; /* near-black body text */
@@ -64,6 +67,67 @@
   --glow-value: 0 0 0 1px rgba(245, 158, 11, 0.14),
     0 8px 28px rgba(245, 158, 11, 0.18);
 }
+
+/* ════════════════════════════════════════════════════════════════════════════
+   DARK THEME — mirrors the static site (site/styles.css `[data-theme="dark"]`).
+   ────────────────────────────────────────────────────────────────────────────
+   Driven by `data-theme="dark"` on <html> (an inline <head> guard in layout.tsx
+   sets it from localStorage `chosech-theme` or the system preference BEFORE first
+   paint, so there is no flash; the <ThemeToggle> gives manual control). Light is
+   the default `:root` above.
+
+   We re-skin the SAME token NAMES so every utility / component inherits dark mode
+   with no per-rule overrides: surfaces become dark ink, body text lifts to light,
+   and the brand accents keep their meaning — green = ACTION, amber = VALUE — but
+   are NUDGED BRIGHTER so they clear WCAG AA on the dark glass:
+     • green  #16A34A → #4ADE80 (fill) / #22C55E (hover)
+     • amber  #F59E0B → #FBBF24 (fill)
+   On the dark surfaces these lifted accents already exceed 4.5:1 as small text,
+   so the `-text` tiers alias to the brighter fills (green/amber text stays bright,
+   never the dark light-mode text shade that would vanish on dark glass).
+   Per-provider/carrier brand colors are NOT defined here — never re-skinned.
+   ════════════════════════════════════════════════════════════════════════════ */
+:root[data-theme="dark"] {
+  /* Native UI (form controls, scrollbars, spellcheck) follow the dark scheme. */
+  color-scheme: dark;
+
+  /* Surfaces — dark ink grounds (not pure black) + raised dark panels. */
+  --background: #11161c; /* page background — dark ink */
+  --foreground: #e8ebef; /* primary body text on dark */
+  --surface: #161c24; /* "white" cards become raised dark panels */
+  --ink: #f3f5f7; /* structural ink inverts to brightest text */
+  --border: #2a3340; /* hairline on dark */
+  --border-strong: #3a4452; /* strong/structural borders on dark */
+  --muted: #aeb6c2; /* secondary text — ≥4.5:1 on the dark surfaces */
+
+  /* Accents — lifted for legibility on dark glass (green=action, amber=value). */
+  --accent: #4ade80; /* ACTION (green) — fills/CTAs/active nav/focus */
+  --accent-hover: #22c55e; /* brighter green for hover on dark */
+  --accent-contrast: #0b2a18; /* deep-green ink for text on the bright green */
+  --accent-text: #4ade80; /* green text/links — bright (already ≥4.5:1 on dark) */
+  --value: #fbbf24; /* VALUE (amber) — fills/badges/win states */
+  --value-contrast: #2a2410; /* dark amber-ink for text on the bright amber */
+  --value-text: #fbbf24; /* amber text/figures — bright (≥4.5:1 on dark) */
+
+  /* Danger / error — lifted hue + AA text shade for error copy on dark glass. */
+  --danger: #f87171; /* error fill (borders / icon backgrounds) */
+  --danger-text: #f87171; /* error text — bright (≥4.5:1 on dark) */
+
+  /* Soft elevation tiers — deepened for dark (ink-on-ink needs more presence). */
+  --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 14px rgba(0, 0, 0, 0.45);
+  --shadow-card: 0 2px 6px rgba(0, 0, 0, 0.45), 0 14px 38px rgba(0, 0, 0, 0.55);
+  --shadow-float: 0 6px 16px rgba(0, 0, 0, 0.5), 0 30px 70px rgba(0, 0, 0, 0.6);
+
+  /* Accent glow — re-tinted to the lifted accents so it reads on dark. */
+  --glow-accent: 0 0 0 1px rgba(74, 222, 128, 0.18),
+    0 8px 28px rgba(74, 222, 128, 0.22);
+  --glow-value: 0 0 0 1px rgba(251, 191, 36, 0.2),
+    0 8px 28px rgba(251, 191, 36, 0.24);
+}
+
+/* The .glass / .glass-strong surfaces use `var(--surface)` via color-mix, so they
+   re-skin to a dark frosted panel automatically. The fallback (no backdrop-filter)
+   already resolves to the dark `--surface`, so no extra dark override is needed. */
 
 /* Map brand tokens into Tailwind's theme so utilities like bg-accent, text-ink,
    border-border, font-display work out of the box (Tailwind v4 @theme). */

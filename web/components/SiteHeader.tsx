@@ -19,6 +19,7 @@
 
 import Link from "next/link";
 import TrackedCtaLink from "./TrackedCtaLink";
+import ThemeToggle from "./ThemeToggle";
 
 /** A primary nav link. */
 interface NavLink {
@@ -82,12 +83,16 @@ export default function SiteHeader({ className }: SiteHeaderProps) {
           ))}
         </nav>
 
-        {/* CTA — the single green ACTION in the masthead. Pushed to the far end. */}
+        {/* Light/dark toggle — pushed to the far end (RTL: left edge), with the
+            CTA. Stays visible on every breakpoint (unlike the primary nav). */}
+        <ThemeToggle className="ms-auto" />
+
+        {/* CTA — the single green ACTION in the masthead. */}
         <TrackedCtaLink
           href="/#lead"
           location="header"
           label="consult"
-          className="ms-auto rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-accent-contrast transition-all duration-200 hover:-translate-y-0.5 hover:bg-accent-hover hover:shadow-md hover:shadow-accent/25 active:translate-y-0 active:scale-[.98]"
+          className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-accent-contrast transition-all duration-200 hover:-translate-y-0.5 hover:bg-accent-hover hover:shadow-md hover:shadow-accent/25 active:translate-y-0 active:scale-[.98]"
         >
           שיחת ייעוץ חינם
         </TrackedCtaLink>

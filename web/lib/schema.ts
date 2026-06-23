@@ -205,6 +205,59 @@ export function breadcrumbSchema(items: Crumb[]): Json {
   };
 }
 
+// ── ItemList of internal links (RelatedLinks counterpart) ────────────────────
+/** One internal cross-link: a real on-site URL + its (truthful) anchor name. */
+export interface NavLink {
+  /** Visible/anchor name of the destination page. */
+  name: string;
+  /** On-site url (absolute or site-relative). MUST be a real internal page. */
+  url: string;
+  /** Optional factual description (catalogue-derived). */
+  description?: string;
+}
+
+/**
+ * `ItemList` of `SiteNavigationElement`s — the machine-readable counterpart of
+ * the visible {@link RelatedLinks} block. Strengthens crawl topology / topical
+ * authority by declaring the page's curated internal cross-links as a structured
+ * navigation list. Returns `null` when there are no links (callers omit it).
+ *
+ * HONESTY: every `url` is a real on-site page supplied by the caller (derived
+ * from the catalogue) — nothing is fabricated and no external/cloaked links are
+ * emitted. Duplicate urls are collapsed so the list mirrors what is rendered.
+ */
+export function relatedLinksSchema(args: {
+  /** Accessible name of the list (e.g. "המשיכו לחקור"). */
+  name: string;
+  /** The internal cross-links (real on-site urls). */
+  links: NavLink[];
+}): Json | null {
+  const seen = new Set<string>();
+  const items: Json[] = [];
+  for (const link of args.links) {
+    if (!link || !link.url) continue;
+    const url = absUrl(link.url);
+    if (seen.has(url)) continue; // mirror the de-duped rendered list
+    seen.add(url);
+    const el: Json = {
+      "@type": "SiteNavigationElement",
+      position: items.length + 1,
+      name: link.name,
+      url,
+    };
+    if (link.description) el.description = link.description;
+    items.push(el);
+  }
+  if (items.length === 0) return null;
+  return {
+    "@context": "https://schema.org",
+    "@type": "ItemList",
+    name: args.name,
+    numberOfItems: items.length,
+    itemListElement: items,
+  };
+}
+
 // ── CollectionPage ───────────────────────────────────────────────────────────
 /**
  * CollectionPage schema for a category/listing page. Pass the page's name +

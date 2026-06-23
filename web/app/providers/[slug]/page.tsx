@@ -6,7 +6,8 @@ import SgeSummary from "@/components/SgeSummary";
 import AuthorityBlock from "@/components/AuthorityBlock";
 import AuthorityReasoning from "@/components/AuthorityReasoning";
 import ReviewsBlock from "@/components/ReviewsBlock";
-import RelatedAuthorityPages from "@/components/RelatedAuthorityPages";
+import RelatedLinks from "@/components/RelatedLinks";
+import type { RelatedLinkGroup } from "@/components/RelatedLinks";
 import ComparisonTable from "@/components/ComparisonTable";
 import LeadForm from "@/components/LeadForm";
 import {
@@ -22,6 +23,8 @@ import {
   breadcrumbSchema,
   knowledgeGraphSchema,
   knowledgeWebSchema,
+  relatedLinksSchema,
+  type NavLink,
   type QA,
 } from "@/lib/schema";
 import { GENERAL_FAQ } from "@/lib/faq";
@@ -128,31 +131,58 @@ function buildReasoning(
   return points;
 }
 
-// Related pages: this provider's categories + a few peer providers. No dead-ends.
-function buildRelated(
+// Grouped related links: the provider's categories, peer providers that share a
+// category ("ספקים דומים"), and head-to-head match-ups it appears in. Every link
+// is a real on-site URL with a catalogue-derived hint. No dead-ends.
+function buildRelatedGroups(
   slug: string,
   categories: string[],
-): { title: string; href: string; description?: string }[] {
-  const links: { title: string; href: string; description?: string }[] = [];
-  for (const cat of categories) {
-    const he = CATEGORY_HE[cat] ?? cat;
-    links.push({
-      title: `השוואת מסלולי ${he}`,
-      href: `/compare/${cat}`,
-      description: `השוו את ${he} מול כל הספקים בישראל.`,
-    });
-  }
-  for (const peer of getProviders()
+  vsPairs: ReturnType<typeof vsPairsForProvider>,
+): RelatedLinkGroup[] {
+  const groups: RelatedLinkGroup[] = [];
+
+  groups.push({
+    title: "השוו בקטגוריות של הספק",
+    links: categories.map((cat) => {
+      const he = CATEGORY_HE[cat] ?? cat;
+      return {
+        href: `/compare/${cat}`,
+        label: `השוואת מסלולי ${he}`,
+        hint: `השוו את ${he} מול כל הספקים בישראל.`,
+      };
+    }),
+  });
+
+  const peers = getProviders()
     .filter((p) => p.slug !== slug)
     .filter((p) => p.categories.some((c) => categories.includes(c)))
-    .slice(0, 6)) {
-    links.push({
-      title: peer.name,
+    .slice(0, 6);
+  groups.push({
+    title: "ספקים דומים",
+    links: peers.map((peer) => ({
       href: `/providers/${peer.slug}`,
-      description: `${peer.planCount} מסלולים, החל מ-${ils(peer.minPrice)}.`,
-    });
-  }
-  return links;
+      label: peer.name,
+      hint: `${peer.planCount} מסלולים, החל מ-${ils(peer.minPrice)}.`,
+    })),
+  });
+
+  groups.push({
+    title: "השוואות ראש בראש",
+    links: vsPairs.slice(0, 6).map(({ pair, other }) => ({
+      href: `/vs/${pair.slug}`,
+      label: `מול ${other.name}`,
+      hint: pair.categoryLabel,
+    })),
+  });
+
+  return groups;
+}
+
+/** Flatten the grouped links into NavLinks for the relatedLinksSchema ItemList. */
+function relatedNavLinks(groups: RelatedLinkGroup[]): NavLink[] {
+  return groups.flatMap((g) =>
+    g.links.map((l) => ({ name: l.label, url: l.href, description: l.hint })),
+  );
 }
 
 export default async function ProviderPage({ params }: Params) {
@@ -164,9 +194,9 @@ export default async function ProviderPage({ params }: Params) {
   const picks = bestFor(plans);
   const authority = buildAuthority(provider, plans);
   const reasoning = buildReasoning(provider, plans);
-  const related = buildRelated(slug, provider.categories);
   // Head-to-head match-ups this provider appears in (curated, catalogue-gated).
   const vsPairs = vsPairsForProvider(slug);
+  const relatedGroups = buildRelatedGroups(slug, provider.categories, vsPairs);
 
   const crumbs = [
     { name: "בית", url: "/" },
@@ -222,6 +252,15 @@ export default async function ProviderPage({ params }: Params) {
           providers: [provider],
         })}
       />
+      {/* Internal cross-links as a machine-readable SiteNavigationElement list
+          (mirrors the visible RelatedLinks block). Omitted when no links. */}
+      {(() => {
+        const nav = relatedLinksSchema({
+          name: `עמודים קשורים — ${provider.name}`,
+          links: relatedNavLinks(relatedGroups),
+        });
+        return nav ? <JsonLd data={nav} /> : null;
+      })()}
 
       {/* ── Breadcrumb (visible) ──────────────────────────────────────────── */}
       <nav aria-label="פירורי לחם" className="text-sm text-muted">
@@ -420,11 +459,11 @@ export default async function ProviderPage({ params }: Params) {
         </div>
       </section>
 
-      {/* ── Semantic interlinking — no dead-ends ──────────────────────────── */}
-      <RelatedAuthorityPages
-        heading="ספקים וקטגוריות נוספים"
-        links={related}
-        className="mt-16 border-t border-border pt-8"
+      {/* ── Semantic interlinking — grouped, no dead-ends ─────────────────── */}
+      <RelatedLinks
+        heading="המשיכו לחקור"
+        groups={relatedGroups}
+        className="mt-16"
       />
     </main>
   );

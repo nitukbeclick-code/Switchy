@@ -60,9 +60,27 @@ export default function RootLayout({
     <html
       lang="he"
       dir="rtl"
+      data-theme="light"
+      suppressHydrationWarning
       className={`${rubik.variable} ${assistant.variable} h-full antialiased`}
     >
       <head>
+        {/* No-flash theme guard — runs synchronously during HTML parsing, BEFORE
+            first paint, so dark mode never flashes. Sets `data-theme` on <html>
+            from the saved choice (localStorage `chosech-theme`) or, with no saved
+            choice, the system preference (prefers-color-scheme). Mirrors the
+            static site's <head> guard exactly; the default rendered attribute is
+            `light` (above) so SSR + first client render agree. This is the Next
+            App Router-recommended inline-script pattern for pre-hydration theming
+            (see next docs: "Preventing Flash before hydration"). */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{var t=localStorage.getItem('chosech-theme');document.documentElement.setAttribute('data-theme',(t==='light'||t==='dark')?t:(matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light'));}catch(e){}`,
+          }}
+        />
+        {/* Tell the UA both schemes exist so native controls/scrollbars adapt. */}
+        <meta name="color-scheme" content="light dark" />
+
         {/* Site-wide structured data: Organization + WebSite (SearchAction). */}
         <JsonLd data={orgSchema()} />
         <JsonLd data={websiteSchema()} />

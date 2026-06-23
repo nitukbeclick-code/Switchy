@@ -4,10 +4,6 @@ import '../../models.dart';
 import '../../data.dart';
 import '../logo_widget/logo_widget.dart';
 
-/// Ink read out on the amber VALUE surface — amber is fixed-hue in both
-/// themes, so this deep-amber ink stays legible on light AND dark.
-const Color _onSaving = Color(0xFF3A2900);
-
 /// The compact plan row reused across home (hot deal / quiz match / top pick /
 /// watchlist / recently viewed), plan-detail similar-plans, account and profile.
 /// One source of truth for the "logo + provider + plan + savings badge + price
@@ -80,7 +76,7 @@ class MiniPlanCard extends StatelessWidget {
                         child: Text(
                           'חוסך ₪$savingsPerYear/שנה',
                           style: ffTheme.labelSmall.copyWith(
-                            color: _onSaving,
+                            color: ffTheme.onSaving,
                             fontWeight: FontWeight.w700,
                             fontFeatures: const [FontFeature.tabularFigures()],
                           ),

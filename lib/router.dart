@@ -39,6 +39,7 @@ import 'pages/notifications/notification_center_widget.dart';
 import 'pages/provider/provider_widget.dart';
 import 'pages/support_ticket/support_ticket_widget.dart';
 import 'pages/recap/annual_recap_widget.dart';
+import 'pages/crm/crm_widget.dart';
 
 final _rootNavKey = GlobalKey<NavigatorState>(debugLabel: 'root');
 final _shellNavKey = GlobalKey<NavigatorState>(debugLabel: 'shell');
@@ -64,6 +65,11 @@ GoRouter createRouter() {
       return '/lock';
     }
     final appState = Provider.of<AppState>(context, listen: false);
+    // Admin-only CRM — a non-admin who deep-links to /crm bounces home. The
+    // edge function re-checks authoritatively; this is just the UI gate.
+    if (state.uri.path == '/crm' && !appState.isAdmin) {
+      return '/home';
+    }
     final isOnboarding = state.uri.path == '/onboarding';
     final isFirstNavigation = !initialRedirectHandled;
     initialRedirectHandled = true;
@@ -121,6 +127,7 @@ GoRouter createRouter() {
         GoRoute(path: '/provider/:name', name: 'Provider', builder: (_, s) => ProviderWidget(providerName: s.pathParameters['name']!)),
         GoRoute(path: '/support-ticket/:ticketId', name: 'support-ticket', builder: (_, s) => SupportTicketWidget(ticketId: s.pathParameters['ticketId']!)),
         GoRoute(path: '/recap', name: 'AnnualRecap', builder: (_, __) => const AnnualRecapWidget()),
+        GoRoute(path: '/crm', name: 'Crm', builder: (_, __) => const CrmWidget()),
       ],
     ),
   ],

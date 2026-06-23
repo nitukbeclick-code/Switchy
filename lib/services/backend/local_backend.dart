@@ -54,6 +54,26 @@ class LocalBackend implements Backend {
     // No-op locally.
   }
 
+  // ── Bill OCR — deterministic fake ────────────────────────────────────────────
+  // Without Supabase there is no Gemini Vision; we return a fixed, readable
+  // analysis (cellular, ₪119 with two cheaper plans) so the camera→pre-fill UX
+  // can be exercised fully offline. The image is inspected only for emptiness
+  // and never stored.
+  @override
+  Future<BillAnalysis?> analyzeBill(String imageDataUri) async {
+    if (imageDataUri.trim().isEmpty) return null;
+    return const BillAnalysis(
+      provider: 'פרטנר',
+      currentSpend: 119,
+      category: 'cellular',
+      suggestions: [
+        BillSuggestion(name: 'סלולר 100GB', provider: 'רמי לוי', price: 29, annualSaving: 1080),
+        BillSuggestion(name: 'אנלימיטד', provider: 'גולן טלקום', price: 39, annualSaving: 960),
+      ],
+      note: 'מצאנו 2 מסלולים זולים יותר באותה קטגוריה.',
+    );
+  }
+
   @override
   Future<void> upsertQuiz(Map<String, dynamic> quiz) async {
     // No-op locally — quiz is managed by AppState + SharedPreferences.
@@ -249,6 +269,291 @@ class LocalBackend implements Backend {
   @override
   Future<void> markCommunityNotificationsRead() async {
     // No-op locally.
+  }
+
+  // ── WhatsApp CRM (admin-only) — in-memory demo store ─────────────────────────
+  // Without Supabase there is no crm-api edge function; we seed a handful of
+  // fake conversations, threads and leads so the dashboard renders fully
+  // offline. Replies / status changes mutate this store so the UI feels live.
+
+  bool _crmSeeded = false;
+  final List<CrmContact> _crmContacts = [];
+  final List<CrmConversation> _crmConversations = [];
+  final Map<String, List<CrmMessage>> _crmMessages = {}; // conversationId → msgs
+  final List<CrmLead> _crmLeads = [];
+
+  void _seedCrm() {
+    if (_crmSeeded) return;
+    _crmSeeded = true;
+    final now = DateTime.now();
+    DateTime ago(int minutes) => now.subtract(Duration(minutes: minutes));
+
+    void add({
+      required String cid,
+      required String contactId,
+      required String name,
+      required String phone,
+      required String status,
+      required String contactStatus,
+      String? intent,
+      String? leadId,
+      String? leadStatus,
+      required List<CrmMessage> msgs,
+    }) {
+      _crmContacts.add(CrmContact(
+        id: contactId,
+        name: name,
+        phone: phone,
+        status: contactStatus,
+        leadId: leadId,
+        leadStatus: leadStatus,
+      ));
+      final last = msgs.isNotEmpty ? msgs.last : null;
+      _crmConversations.add(CrmConversation(
+        conversationId: cid,
+        contactId: contactId,
+        name: name,
+        phone: phone,
+        status: status,
+        intent: intent,
+        lastSnippet: last?.body ?? '',
+        lastAt: last?.createdAt,
+        leadStatus: leadStatus,
+      ));
+      _crmMessages[cid] = msgs;
+    }
+
+    add(
+      cid: 'conv-1',
+      contactId: 'cnt-1',
+      name: 'דנה לוי',
+      phone: '0521234567',
+      status: 'human',
+      contactStatus: 'qualified',
+      intent: 'cellular',
+      leadId: 'lead-1',
+      leadStatus: 'contacted',
+      msgs: [
+        CrmMessage(id: 'm1', direction: 'in', actor: 'customer', body: 'היי, אפשר לעבור לחבילה זולה יותר?', createdAt: ago(58)),
+        CrmMessage(id: 'm2', direction: 'out', actor: 'bot', body: 'בטח! מה החבילה הנוכחית שלך?', createdAt: ago(57)),
+        CrmMessage(id: 'm3', direction: 'in', actor: 'customer', body: 'פרטנר 100 ש"ח לחודש', createdAt: ago(40)),
+        CrmMessage(id: 'm4', direction: 'out', actor: 'rep', body: 'מצאתי לך חבילה ב-39 ש"ח, אשמח לחבר אותך.', createdAt: ago(38)),
+      ],
+    );
+    add(
+      cid: 'conv-2',
+      contactId: 'cnt-2',
+      name: 'יוסי כהן',
+      phone: '0539876543',
+      status: 'bot',
+      contactStatus: 'active',
+      intent: 'internet',
+      msgs: [
+        CrmMessage(id: 'm5', direction: 'in', actor: 'customer', body: 'כמה עולה אינטרנט 1 גיגה?', createdAt: ago(25)),
+        CrmMessage(id: 'm6', direction: 'out', actor: 'bot', body: 'יש כמה אפשרויות מ-49 ש"ח. אבדוק לך את הזולה ביותר.', createdAt: ago(24)),
+      ],
+    );
+    add(
+      cid: 'conv-3',
+      contactId: 'cnt-3',
+      name: 'מירי אברהם',
+      phone: '0501112233',
+      status: 'open',
+      contactStatus: 'new',
+      intent: 'triple',
+      leadId: 'lead-2',
+      leadStatus: 'new',
+      msgs: [
+        CrmMessage(id: 'm7', direction: 'in', actor: 'customer', body: 'מעוניינת בחבילת טריפל לבית', createdAt: ago(8)),
+      ],
+    );
+
+    _crmLeads.addAll([
+      CrmLead(id: 'lead-1', name: 'דנה לוי', phone: '0521234567', provider: 'פרטנר', source: 'whatsapp', status: 'contacted', createdAt: ago(58)),
+      CrmLead(id: 'lead-2', name: 'מירי אברהם', phone: '0501112233', provider: 'בזק', source: 'whatsapp', status: 'new', createdAt: ago(8)),
+      CrmLead(id: 'lead-3', name: 'אבי דהן', phone: '0544455667', provider: 'סלקום', source: 'form', status: 'won', createdAt: ago(2880)),
+      CrmLead(id: 'lead-4', name: 'נועה שמש', phone: '0587778899', provider: 'HOT', source: 'whatsapp', status: 'lost', createdAt: ago(4320)),
+    ]);
+  }
+
+  @override
+  Future<bool> fetchIsAdmin() async => true;
+
+  @override
+  Future<CrmOverview> crmOverview() async {
+    _seedCrm();
+    final pipeline = <String, int>{'new': 0, 'contacted': 0, 'won': 0, 'lost': 0};
+    for (final l in _crmLeads) {
+      pipeline[l.status] = (pipeline[l.status] ?? 0) + 1;
+    }
+    final recent = [..._crmConversations]
+      ..sort((a, b) => (b.lastAt ?? DateTime(0)).compareTo(a.lastAt ?? DateTime(0)));
+    return CrmOverview(
+      pipeline: pipeline,
+      recent: recent.take(12).toList(),
+    );
+  }
+
+  @override
+  Future<List<CrmConversation>> crmListConversations({String? status, String? search}) async {
+    _seedCrm();
+    var list = [..._crmConversations];
+    if (status != null && status.isNotEmpty) {
+      list = list.where((c) => c.status == status).toList();
+    }
+    if (search != null && search.isNotEmpty) {
+      final q = search.toLowerCase();
+      list = list
+          .where((c) =>
+              c.name.toLowerCase().contains(q) || c.phone.contains(search))
+          .toList();
+    }
+    list.sort((a, b) => (b.lastAt ?? DateTime(0)).compareTo(a.lastAt ?? DateTime(0)));
+    return List.unmodifiable(list);
+  }
+
+  @override
+  Future<CrmThread> crmGetThread(String conversationId) async {
+    _seedCrm();
+    final conv = _crmConversations.firstWhere(
+      (c) => c.conversationId == conversationId,
+      orElse: () => const CrmConversation(
+        conversationId: '',
+        contactId: '',
+        name: '',
+        phone: '',
+        status: 'open',
+      ),
+    );
+    final contact = _crmContacts.firstWhere(
+      (c) => c.id == conv.contactId,
+      orElse: () => CrmContact(
+        id: conv.contactId,
+        name: conv.name,
+        phone: conv.phone,
+        status: 'new',
+      ),
+    );
+    return CrmThread(
+      contact: contact,
+      messages: List.unmodifiable(_crmMessages[conversationId] ?? const []),
+    );
+  }
+
+  @override
+  Future<void> crmSendReply(String conversationId, String body) async {
+    _seedCrm();
+    final msg = CrmMessage(
+      id: _nextId(),
+      direction: 'out',
+      actor: 'rep',
+      body: body,
+      createdAt: DateTime.now(),
+    );
+    (_crmMessages[conversationId] ??= []).add(msg);
+    final idx = _crmConversations.indexWhere((c) => c.conversationId == conversationId);
+    if (idx != -1) {
+      final c = _crmConversations[idx];
+      _crmConversations[idx] = CrmConversation(
+        conversationId: c.conversationId,
+        contactId: c.contactId,
+        name: c.name,
+        phone: c.phone,
+        status: c.status,
+        intent: c.intent,
+        lastSnippet: body,
+        lastAt: msg.createdAt,
+        leadStatus: c.leadStatus,
+      );
+    }
+  }
+
+  @override
+  Future<void> crmTakeOver(String conversationId) async => _setBotEnabled(conversationId, false);
+
+  @override
+  Future<void> crmHandBack(String conversationId) async => _setBotEnabled(conversationId, true);
+
+  /// Toggles the conversation's (and its contact's) bot gate, mirroring the
+  /// server's takeover/hand-back: `botEnabled=false` ⇒ status 'human', the AI
+  /// stays silent; `true` ⇒ status 'bot', the AI answers again.
+  void _setBotEnabled(String conversationId, bool enabled) {
+    _seedCrm();
+    final idx = _crmConversations.indexWhere((c) => c.conversationId == conversationId);
+    if (idx == -1) return;
+    final c = _crmConversations[idx];
+    _crmConversations[idx] = CrmConversation(
+      conversationId: c.conversationId,
+      contactId: c.contactId,
+      name: c.name,
+      phone: c.phone,
+      status: enabled ? 'bot' : 'human',
+      intent: c.intent,
+      lastSnippet: c.lastSnippet,
+      lastAt: c.lastAt,
+      leadStatus: c.leadStatus,
+      botEnabled: enabled,
+    );
+    final cIdx = _crmContacts.indexWhere((ct) => ct.id == c.contactId);
+    if (cIdx != -1) {
+      final ct = _crmContacts[cIdx];
+      _crmContacts[cIdx] = CrmContact(
+        id: ct.id,
+        name: ct.name,
+        phone: ct.phone,
+        status: ct.status,
+        leadId: ct.leadId,
+        leadStatus: ct.leadStatus,
+        botEnabled: enabled,
+      );
+    }
+  }
+
+  @override
+  Stream<void> crmEventStream() => const Stream<void>.empty();
+
+  @override
+  Future<void> crmSetContactStatus(String contactId, String status) async {
+    _seedCrm();
+    final idx = _crmContacts.indexWhere((c) => c.id == contactId);
+    if (idx != -1) {
+      final c = _crmContacts[idx];
+      _crmContacts[idx] = CrmContact(
+        id: c.id,
+        name: c.name,
+        phone: c.phone,
+        status: status,
+        leadId: c.leadId,
+        leadStatus: c.leadStatus,
+      );
+    }
+  }
+
+  @override
+  Future<void> crmSetLeadStatus(String leadId, String status) async {
+    _seedCrm();
+    final idx = _crmLeads.indexWhere((l) => l.id == leadId);
+    if (idx != -1) {
+      final l = _crmLeads[idx];
+      _crmLeads[idx] = CrmLead(
+        id: l.id,
+        name: l.name,
+        phone: l.phone,
+        provider: l.provider,
+        source: l.source,
+        status: status,
+        createdAt: l.createdAt,
+      );
+    }
+  }
+
+  @override
+  Future<List<CrmLead>> crmListLeads({String? status}) async {
+    _seedCrm();
+    final list = status == null || status.isEmpty
+        ? _crmLeads
+        : _crmLeads.where((l) => l.status == status).toList();
+    return List.unmodifiable(list);
   }
 }
 

@@ -82,7 +82,7 @@ class _AuthWidgetState extends State<AuthWidget> {
     if (res.pendingRedirect) {
       // OAuth: the session arrives via the auth-state listener in main.dart,
       // which logs in + navigates. Just show a gentle waiting state.
-      AppSnackBar.info(context, 'ממתינים לאישור ההתחברות…');
+      AppSnackBar.info(context, 'כמעט שם — משלימים את ההתחברות…');
       return;
     }
     // Email success → mirror identity locally and enter.
@@ -233,6 +233,44 @@ class _AuthWidgetState extends State<AuthWidget> {
     _runAuth(() => AuthService.instance.signInWithOAuth(provider), name: '');
   }
 
+  /// Three quiet benefit rows explaining what an account unlocks — keeps the
+  /// sign-in screen friendly and the value obvious. Decorative icons are
+  /// excluded from semantics; the copy carries the meaning.
+  Widget _benefitsStrip(AppTheme t) {
+    const items = <(IconData, String)>[
+      (Icons.bookmark_added_outlined, 'שמירת מסלולים והשוואות מועדפות'),
+      (Icons.notifications_active_outlined, 'התראה כשמגיע מחיר טוב יותר'),
+      (Icons.lock_outline_rounded, 'הנתונים שלכם נשמרים ומאובטחים'),
+    ];
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      decoration: t.cardDecoration(radius: t.radiusLg),
+      child: Column(
+        children: [
+          for (final (icon, label) in items) ...[
+            Row(
+              children: [
+                Container(
+                  width: 34,
+                  height: 34,
+                  decoration: BoxDecoration(
+                    color: t.brandAccentTint,
+                    borderRadius: BorderRadius.circular(t.radiusSm),
+                  ),
+                  child: ExcludeSemantics(child: Icon(icon, size: 18, color: t.brandAccent)),
+                ),
+                const SizedBox(width: 12),
+                Expanded(child: Text(label, style: t.bodySmall.copyWith(color: t.primaryText))),
+              ],
+            ),
+            if (label != items.last.$2) const SizedBox(height: 12),
+          ],
+        ],
+      ),
+    );
+  }
+
   /// The legal consent block (mandatory terms + privacy, optional marketing).
   Widget _consentPanel(AppTheme t) {
     return Column(
@@ -322,6 +360,10 @@ class _AuthWidgetState extends State<AuthWidget> {
           ),
           const SizedBox(height: 12),
         ],
+        // Why sign in — three honest benefits, so the choice feels worthwhile
+        // (and the guest option below stays a genuine choice, not a trap).
+        _benefitsStrip(t),
+        const SizedBox(height: 16),
         _consentPanel(t),
         const SizedBox(height: 14),
         _SocialButton(
@@ -470,7 +512,7 @@ class _AuthWidgetState extends State<AuthWidget> {
   Future<void> _forgotPassword() async {
     final email = _emailCtrl.text.trim();
     if (!email.contains('@')) {
-      AppSnackBar.info(context, 'הזינו מייל ולחצו שוב על "שכחתי סיסמה"');
+      AppSnackBar.info(context, 'הזינו את כתובת המייל שלכם ולחצו שוב על "שכחתי סיסמה"');
       return;
     }
     setState(() => _busy = true);

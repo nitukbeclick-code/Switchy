@@ -27,6 +27,11 @@ class HomeWidget extends StatefulWidget {
 class _HomeWidgetState extends State<HomeWidget> {
   final ScrollController _scrollController = ScrollController();
 
+  // Cheapest price per category — pure over the static catalogue, so cached
+  // across builds (the category grid would otherwise scan all plans for each
+  // of the 5 categories on every rebuild).
+  static final Map<String, int> _cheapestCache = {};
+
   // Memo for the savings summary: it runs the recommendation engine over all
   // five categories, but is pure over bills+quiz — recomputing it on every
   // unrelated AppState notify (a like, a watch toggle, a search) is wasted
@@ -427,7 +432,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                         // Amber VALUE dot — the unread badge pops against the ink
                         // header and reads as "needs attention" in both themes.
                         decoration: BoxDecoration(color: ffTheme.saving, shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 1.5)),
-                        child: Center(child: Text(count > 9 ? '9+' : '$count', style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: Color(0xFF3A2900)))),
+                        child: Center(child: Text(count > 9 ? '9+' : '$count', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: ffTheme.onSaving))),
                       ),
                     );
                   }),
@@ -680,11 +685,13 @@ class _HomeWidgetState extends State<HomeWidget> {
 
     // Real catalogue fact for the not-yet-personalised state: the cheapest
     // current price in the category. No fabricated "average saving" numbers.
-    int cheapestIn(String catId) {
-      final catPlans = plansByCat(catId);
-      if (catPlans.isEmpty) return 0;
-      return catPlans.map((p) => p.price).reduce((a, b) => a < b ? a : b);
-    }
+    // Pure over the static catalogue, so memoise it (each call would otherwise
+    // scan all plans, ×5 categories on every home rebuild).
+    int cheapestIn(String catId) => _cheapestCache.putIfAbsent(catId, () {
+          final catPlans = plansByCat(catId);
+          if (catPlans.isEmpty) return 0;
+          return catPlans.map((p) => p.price).reduce((a, b) => a < b ? a : b);
+        });
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
@@ -722,7 +729,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                   context.goNamed('Results');
                 },
                 child: Container(
-                  padding: const EdgeInsets.all(14),
+                  padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     // Active card sits on a subtle green-tinted ground; the rest
                     // on the plain card surface — both theme-aware.
@@ -731,12 +738,14 @@ class _HomeWidgetState extends State<HomeWidget> {
                             ffTheme.brandAccent.withValues(alpha: ffTheme.dark ? 0.16 : 0.07),
                             ffTheme.cardSurface)
                         : ffTheme.cardSurface,
-                    borderRadius: BorderRadius.circular(ffTheme.radiusLg),
+                    borderRadius: BorderRadius.circular(ffTheme.radiusCard),
                     border: Border.all(
-                      color: isActive ? ffTheme.brandAccent : ffTheme.alternate,
+                      color: isActive
+                          ? ffTheme.brandAccent
+                          : ffTheme.primary.withValues(alpha: 0.06),
                       width: isActive ? 2 : 1,
                     ),
-                    boxShadow: ffTheme.shadowSoft,
+                    boxShadow: ffTheme.shadowMd,
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -764,7 +773,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                     ],
                   ),
                 )
-                    .animate(delay: (i * 80).ms)
+                    .animate(delay: (i.clamp(0, 6) * 80).ms)
                     .fadeIn()
                     .slideY(begin: 0.2, end: 0),
               );
@@ -783,11 +792,11 @@ class _HomeWidgetState extends State<HomeWidget> {
       },
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(22),
         decoration: BoxDecoration(
           gradient: ffTheme.freshGradient,
-          borderRadius: BorderRadius.circular(ffTheme.radiusLg),
-          boxShadow: ffTheme.shadowCard,
+          borderRadius: BorderRadius.circular(ffTheme.radiusCard),
+          boxShadow: ffTheme.shadowLifted,
         ),
         child: Row(
           children: [
@@ -854,9 +863,19 @@ class _HomeWidgetState extends State<HomeWidget> {
               const SizedBox(width: 6),
               Text('קהילה', style: ffTheme.titleLarge),
               const Spacer(),
-              GestureDetector(
-                onTap: () => context.goNamed('Community'),
-                child: Text('הכל ←', style: ffTheme.labelMedium.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w700)),
+              // Comfortable hit area for the "see all" link (≥44px tall) rather
+              // than a bare text target.
+              Semantics(
+                button: true,
+                label: 'הצג את כל הדיונים בקהילה',
+                child: InkWell(
+                  onTap: () => context.goNamed('Community'),
+                  borderRadius: BorderRadius.circular(ffTheme.radiusSm),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                    child: Text('הכל ←', style: ffTheme.labelMedium.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w700)),
+                  ),
+                ),
               ),
             ],
           ),
@@ -925,7 +944,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                       ),
                     ],
                   ),
-                ).animate(delay: (i * 60).ms).fadeIn(duration: 300.ms).slideX(begin: 0.04, end: 0),
+                ).animate(delay: (i.clamp(0, 6) * 60).ms).fadeIn(duration: 300.ms).slideX(begin: 0.04, end: 0),
               );
             }),
         ],
@@ -1016,12 +1035,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                   child: Container(
                     width: 110,
                     padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: ffTheme.cardSurface,
-                      borderRadius: BorderRadius.circular(ffTheme.radiusLg),
-                      border: Border.all(color: ffTheme.alternate),
-                      boxShadow: ffTheme.shadowSoft,
-                    ),
+                    decoration: ffTheme.cardDecoration(),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -1057,9 +1071,20 @@ class _HomeWidgetState extends State<HomeWidget> {
               const SizedBox(width: 6),
               Text('מסלולים במעקב', style: ffTheme.titleLarge),
               const Spacer(),
-              TextButton(
-                onPressed: () => context.pushNamed('Account'),
-                child: Text('הכל', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary)),
+              // Match the file's other "see all" links: green link text, an
+              // arrow affordance, and a comfortable hit area (≥44px) so it isn't
+              // a tiny text-link trap.
+              Semantics(
+                button: true,
+                label: 'הצג את כל המסלולים במעקב',
+                child: InkWell(
+                  onTap: () => context.pushNamed('Account'),
+                  borderRadius: BorderRadius.circular(ffTheme.radiusSm),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+                    child: Text('הכל ←', style: ffTheme.labelMedium.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w700)),
+                  ),
+                ),
               ),
             ],
           ),
@@ -1082,16 +1107,15 @@ class _HomeWidgetState extends State<HomeWidget> {
                       Container(
                         width: 148,
                         padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: ffTheme.cardSurface,
-                          borderRadius: BorderRadius.circular(ffTheme.radiusMd),
-                          border: Border.all(
-                            // A better-deal card wears an amber VALUE ring.
-                            color: better != null ? ffTheme.saving.withValues(alpha: 0.55) : ffTheme.alternate,
-                            width: better != null ? 1.5 : 1,
-                          ),
-                          boxShadow: ffTheme.shadowSoft,
-                        ),
+                        // A better-deal card wears a thicker amber VALUE ring;
+                        // the rest get the standard premium card hairline.
+                        decoration: better != null
+                            ? ffTheme.cardDecoration(radius: ffTheme.radiusLg).copyWith(
+                                border: Border.all(
+                                    color: ffTheme.saving.withValues(alpha: 0.55),
+                                    width: 1.5),
+                              )
+                            : ffTheme.cardDecoration(radius: ffTheme.radiusLg),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -1130,12 +1154,12 @@ class _HomeWidgetState extends State<HomeWidget> {
                               border: Border.all(color: ffTheme.cardSurface, width: 1.5),
                               boxShadow: ffTheme.shadowSoft,
                             ),
-                            child: const Center(child: Icon(Icons.lightbulb_outline_rounded, size: 11, color: Color(0xFF3A2900))),
+                            child: Center(child: Icon(Icons.lightbulb_outline_rounded, size: 11, color: ffTheme.onSaving)),
                           ),
                         ),
                     ],
                   ),
-                ).animate(delay: (i * 50).ms).fadeIn(duration: 250.ms);
+                ).animate(delay: (i.clamp(0, 6) * 50).ms).fadeIn(duration: 250.ms);
               },
             ),
           ),
@@ -1172,12 +1196,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                   child: Container(
                     width: 148,
                     padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: ffTheme.cardSurface,
-                      borderRadius: BorderRadius.circular(ffTheme.radiusMd),
-                      border: Border.all(color: ffTheme.alternate),
-                      boxShadow: ffTheme.shadowSoft,
-                    ),
+                    decoration: ffTheme.cardDecoration(radius: ffTheme.radiusLg),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -1195,7 +1214,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                       ],
                     ),
                   ),
-                ).animate(delay: (i * 40).ms).fadeIn(duration: 200.ms);
+                ).animate(delay: (i.clamp(0, 6) * 40).ms).fadeIn(duration: 200.ms);
               },
             ),
           ),

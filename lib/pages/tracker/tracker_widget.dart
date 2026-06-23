@@ -232,14 +232,27 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                 AppButton(
                   text: 'חזרה לדף הבית',
                   onPressed: () async => context.goNamed('Home'),
-                  
+
                     width: double.infinity,
                     height: 52,
                     color: ffTheme.secondary,
                     textStyle: GoogleFonts.rubik(fontSize: 15, fontWeight: FontWeight.w700, color: ffTheme.primary),
                     borderRadius: BorderRadius.circular(14),
-                  
+
                 ).animate().fadeIn(delay: 700.ms),
+                const SizedBox(height: 12),
+                // The plan was just added to the renewal radar — point the user
+                // there so the completion screen never dead-ends.
+                TextButton.icon(
+                  onPressed: () => context.pushNamed('Renewal'),
+                  icon: const Icon(Icons.notifications_active_outlined,
+                      size: 18, color: Colors.white),
+                  label: Text('עקוב אחרי החידוש שלי',
+                      style: GoogleFonts.assistant(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white)),
+                ).animate().fadeIn(delay: 800.ms),
               ],
             ),
           ),
@@ -266,7 +279,8 @@ class _TrackerWidgetState extends State<TrackerWidget> {
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: ffTheme.secondary,
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(ffTheme.radiusMd),
+                boxShadow: ffTheme.shadowXs,
               ),
               child: Row(
                 children: [
@@ -291,13 +305,10 @@ class _TrackerWidgetState extends State<TrackerWidget> {
             if (plan != null) ...[
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(18),
-                decoration: BoxDecoration(
-                  color: ffTheme.cardSurface,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: ffTheme.alternate),
-                  boxShadow: ffTheme.shadowSoft,
-                ),
+                padding: const EdgeInsets.all(20),
+                // Premium bento tile — the expected-saving figure is a headline
+                // VALUE surface, so it gets the generous corner + soft elevation.
+                decoration: ffTheme.bentoDecoration(),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -453,12 +464,8 @@ class _TrackerWidgetState extends State<TrackerWidget> {
               },
               child: Container(
                 padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: ffTheme.cardSurface,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: ffTheme.alternate),
-                  boxShadow: ffTheme.shadowSoft,
-                ),
+                // Premium card surface — soft hairline + shadow.
+                decoration: ffTheme.cardDecoration(radius: ffTheme.radiusMd),
                 child: Row(
                   children: [
                     Stack(
@@ -752,11 +759,11 @@ class _PreSwitchChecklistState extends State<_PreSwitchChecklist> {
 
     return Container(
       width: double.infinity,
-      decoration: BoxDecoration(
-        color: ffTheme.cardSurface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: allDone ? ffTheme.primary.withValues(alpha: 0.4) : ffTheme.alternate),
-        boxShadow: ffTheme.shadowSoft,
+      // Premium card surface; once every task is done it adopts the ink accent
+      // border as a "ready" tell, otherwise the soft hairline.
+      decoration: ffTheme.cardDecoration(
+        radius: ffTheme.radiusMd,
+        borderColor: allDone ? ffTheme.primary.withValues(alpha: 0.4) : null,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

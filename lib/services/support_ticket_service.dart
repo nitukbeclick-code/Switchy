@@ -173,7 +173,7 @@ class SupportTicketService {
   /// Escalate to human (user taps "talk to human" chip)
   Future<void> escalateToHuman(String ticketId, String userId, String reason) async {
     try {
-      await sendMessage(ticketId, userId, 'চাই দাহ এট লি নকজেগ');
+      await sendMessage(ticketId, userId, 'אני רוצה לדבר עם נציג אנושי');
     } catch (e) {
       throw Exception('Failed to escalate to human: $e');
     }

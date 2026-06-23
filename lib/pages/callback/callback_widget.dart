@@ -28,12 +28,32 @@ class _CallbackWidgetState extends State<CallbackWidget> {
   static const _timings = ['בהקדם', 'בוקר', 'אחה"צ', 'ערב'];
   static const _topics = ['סלולר', 'אינטרנט', 'טלוויזיה', 'חבילה משולבת', 'ניתוק', 'אחר'];
 
+  // Whether the topic was pre-filled from the user's context — lets us show a
+  // gentle "based on your details" hint and keep the chip row collapsed by
+  // default so the form reads as fewer choices.
+  bool _topicPrefilled = false;
+  bool _showAllTopics = false;
+
+  static const _catToTopic = {
+    'cellular': 'סלולר',
+    'internet': 'אינטרנט',
+    'tv': 'טלוויזיה',
+    'triple': 'חבילה משולבת',
+  };
+
   @override
   void initState() {
     super.initState();
     final appState = AppState();
     if (appState.userName.isNotEmpty) _nameCtrl.text = appState.userName;
     if (appState.userPhone.isNotEmpty) _phoneCtrl.text = appState.userPhone;
+    // Pre-select the topic from the category the user is already focused on, so
+    // the common case is one fewer decision.
+    final preset = _catToTopic[appState.selectedCat];
+    if (preset != null) {
+      _topic = preset;
+      _topicPrefilled = true;
+    }
   }
 
   @override
@@ -67,8 +87,21 @@ class _CallbackWidgetState extends State<CallbackWidget> {
             _buildCallbackCard(ffTheme),
             const SizedBox(height: 24),
 
-            // Topic selector
-            Text('בנושא מה תרצו לדבר?', style: ffTheme.labelLarge.copyWith(fontWeight: FontWeight.w600)),
+            // Topic selector — pre-filled from context when possible, so the
+            // common path is just "name + phone".
+            Row(
+              children: [
+                Text('בנושא מה תרצו לדבר?', style: ffTheme.labelLarge.copyWith(fontWeight: FontWeight.w600)),
+                if (_topicPrefilled && !_showAllTopics) ...[
+                  const SizedBox(width: 8),
+                  Flexible(
+                    child: Text('· מולא לפי הבחירה שלכם',
+                        style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccentText),
+                        overflow: TextOverflow.ellipsis),
+                  ),
+                ],
+              ],
+            ),
             const SizedBox(height: 10),
             _buildTopicChips(ffTheme),
             const SizedBox(height: 20),
@@ -103,12 +136,8 @@ class _CallbackWidgetState extends State<CallbackWidget> {
 
             // Hours info
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              decoration: BoxDecoration(
-                color: ffTheme.cardSurface,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: ffTheme.alternate),
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              decoration: ffTheme.cardDecoration(radius: ffTheme.radiusMd),
               child: Row(
                 children: [
                   Icon(Icons.schedule_rounded, color: ffTheme.primary, size: 20),
@@ -201,12 +230,30 @@ class _CallbackWidgetState extends State<CallbackWidget> {
             const SizedBox(height: 12),
 
             Center(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+              child: Column(
                 children: [
-                  Icon(Icons.lock_outline_rounded, size: 13, color: ffTheme.secondaryText),
-                  const SizedBox(width: 4),
-                  Text('ללא עלות. פרטייך מוגנים לחלוטין', style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText)),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.lock_outline_rounded, size: 13, color: ffTheme.secondaryText),
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: Text('הפרטים שלכם מאובטחים ולא מועברים לאף אחד מלבדנו',
+                            style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText),
+                            textAlign: TextAlign.center),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.do_not_disturb_on_outlined, size: 13, color: ffTheme.secondaryText),
+                      const SizedBox(width: 4),
+                      Text('שיחה אחת בלבד — ללא דיוור או ספאם',
+                          style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText)),
+                    ],
+                  ),
                 ],
               ),
             ),
@@ -255,13 +302,13 @@ class _CallbackWidgetState extends State<CallbackWidget> {
       ('ליווי מלא', Icons.support_agent_outlined),
     ];
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         // Fixed ink hero (premium dark card) — uses the const ink tokens so it
         // stays dark-on-dark in BOTH themes (the theme-aware `ffTheme.primary`
         // would flip to off-white on dark and break the white-on-ink contrast).
         gradient: const LinearGradient(colors: [AppColors.primary, AppColors.tertiary], begin: Alignment.topRight, end: Alignment.bottomLeft),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(ffTheme.radiusCard),
         boxShadow: ffTheme.shadowLifted,
       ),
       child: Column(
@@ -298,10 +345,11 @@ class _CallbackWidgetState extends State<CallbackWidget> {
               for (final (label, icon) in valueProps) ...[
                 Expanded(
                   child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 6),
+                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 6),
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(ffTheme.radiusSm),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
                     ),
                     child: Column(
                       children: [
@@ -324,29 +372,58 @@ class _CallbackWidgetState extends State<CallbackWidget> {
   }
 
   Widget _buildTopicChips(AppTheme ffTheme) {
+    Widget chip(String t) {
+      final active = _topic == t;
+      return GestureDetector(
+        onTap: () => setState(() => _topic = t),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: active ? ffTheme.brandAccent : ffTheme.cardSurface,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: active ? ffTheme.brandAccent : ffTheme.alternate),
+            boxShadow: active ? [BoxShadow(color: ffTheme.brandAccent.withValues(alpha: 0.28), blurRadius: 10, offset: const Offset(0, 3))] : [],
+          ),
+          child: Text(t, style: ffTheme.labelMedium.copyWith(
+            color: active ? Colors.white : ffTheme.primaryText,
+            fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+          )),
+        ),
+      );
+    }
+
+    // Collapsed: when the topic is pre-filled, show only the chosen chip + a
+    // "change topic" affordance so the screen reads as fewer fields.
+    if (_topicPrefilled && !_showAllTopics) {
+      return Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        children: [
+          chip(_topic),
+          GestureDetector(
+            onTap: () => setState(() => _showAllTopics = true),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.edit_outlined, size: 14, color: ffTheme.brandAccent),
+                  const SizedBox(width: 4),
+                  Text('שנו נושא', style: ffTheme.labelMedium.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w700)),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ).animate().fadeIn(delay: 80.ms);
+    }
+
     return Wrap(
       spacing: 8,
       runSpacing: 8,
-      children: _topics.map((t) {
-        final active = _topic == t;
-        return GestureDetector(
-          onTap: () => setState(() => _topic = t),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            decoration: BoxDecoration(
-              color: active ? ffTheme.brandAccent : ffTheme.cardSurface,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: active ? ffTheme.brandAccent : ffTheme.alternate),
-              boxShadow: active ? [BoxShadow(color: ffTheme.brandAccent.withValues(alpha: 0.28), blurRadius: 10, offset: const Offset(0, 3))] : [],
-            ),
-            child: Text(t, style: ffTheme.labelMedium.copyWith(
-              color: active ? Colors.white : ffTheme.primaryText,
-              fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-            )),
-          ),
-        );
-      }).toList(),
+      children: _topics.map(chip).toList(),
     ).animate().fadeIn(delay: 80.ms);
   }
 
@@ -423,8 +500,9 @@ class _CallbackWidgetState extends State<CallbackWidget> {
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 decoration: BoxDecoration(
                   color: ffTheme.brandAccentTint,
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(ffTheme.radiusMd),
                   border: Border.all(color: ffTheme.brandAccent.withValues(alpha: 0.18)),
+                  boxShadow: ffTheme.shadowXs,
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,

@@ -9,10 +9,6 @@ import '../../models.dart';
 import '../../widgets/pressable.dart';
 import '../logo_widget/logo_widget.dart';
 
-/// Ink read out on the amber VALUE surface — amber is a fixed-hue accent in
-/// both themes, so this deep-amber ink stays legible on light AND dark.
-const Color _onSaving = Color(0xFF3A2900);
-
 class PlanCardWidget extends StatelessWidget {
   const PlanCardWidget({
     super.key,
@@ -362,7 +358,7 @@ class PlanCardWidget extends StatelessWidget {
                           style: GoogleFonts.rubik(
                             fontSize: 12,
                             fontWeight: FontWeight.w800,
-                            color: _onSaving,
+                            color: ffTheme.onSaving,
                             fontFeatures: const [FontFeature.tabularFigures()],
                           ),
                         ),
@@ -416,7 +412,7 @@ class PlanCardWidget extends StatelessWidget {
 
                   const SizedBox(height: 12),
 
-                  // Action row — the best match carries the single indigo
+                  // Action row — the best match carries the single green
                   // ACTION accent on the list; siblings stay formal ink.
                   Row(
                     children: [
@@ -460,14 +456,14 @@ class PlanCardWidget extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.star_rounded, size: 13, color: _onSaving),
+                    Icon(Icons.star_rounded, size: 13, color: ffTheme.onSaving),
                     const SizedBox(width: 4),
                     Text(
                       'ההתאמה הכי טובה',
                       style: GoogleFonts.rubik(
                         fontSize: 11,
                         fontWeight: FontWeight.w800,
-                        color: _onSaving,
+                        color: ffTheme.onSaving,
                       ),
                     ),
                   ],
@@ -481,7 +477,7 @@ class PlanCardWidget extends StatelessWidget {
   }
 }
 
-/// The card's "בחירה" CTA. The best match carries the indigo ACTION gradient
+/// The card's "בחירה" CTA. The best match carries the green ACTION gradient
 /// (the one splash of colour per list); regular cards stay formal ink. Both
 /// give ripple feedback and meet the 44px touch-target minimum.
 class _ChooseButton extends StatelessWidget {

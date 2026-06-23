@@ -39,6 +39,42 @@ class MeetingStatusCard extends StatelessWidget {
     }
   }
 
+  /// Two YYYYMMDDTHHMMSS stamps (start/end, +30 min) in the meeting's wall time.
+  /// Google reads these in [ctz] = Asia/Jerusalem, so the event lands at the
+  /// right local hour regardless of the user's device timezone.
+  String _calStamp(DateTime d) =>
+      '${d.year.toString().padLeft(4, '0')}'
+      '${d.month.toString().padLeft(2, '0')}'
+      '${d.day.toString().padLeft(2, '0')}'
+      'T${d.hour.toString().padLeft(2, '0')}'
+      '${d.minute.toString().padLeft(2, '0')}00';
+
+  /// Opens a Google Calendar "add event" page pre-filled with the meeting's
+  /// time, title, and (if known) the Zoom join link.
+  Future<void> _addToCalendar(BuildContext context, DateTime start) async {
+    final end = start.add(const Duration(minutes: 30));
+    final details = StringBuffer('פגישת וידאו של 30 דקות עם נציג חוסך.');
+    if (meeting.provider != null && meeting.provider!.isNotEmpty) {
+      details.write('\nספק: ${meeting.provider}');
+    }
+    if (meeting.joinUrl != null && meeting.joinUrl!.isNotEmpty) {
+      details.write('\nקישור הצטרפות: ${meeting.joinUrl}');
+    }
+    final uri = Uri.https('calendar.google.com', '/calendar/render', {
+      'action': 'TEMPLATE',
+      'text': 'פגישת וידאו עם נציג חוסך',
+      'dates': '${_calStamp(start)}/${_calStamp(end)}',
+      'ctz': 'Asia/Jerusalem',
+      'details': details.toString(),
+      if (meeting.joinUrl != null && meeting.joinUrl!.isNotEmpty) 'location': meeting.joinUrl!,
+    });
+    try {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      if (context.mounted) AppSnackBar.error(context, 'לא ניתן לפתוח את היומן כרגע');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = AppTheme.of(context);
@@ -62,19 +98,20 @@ class MeetingStatusCard extends StatelessWidget {
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(16),
-      decoration: t.glassDecoration(alpha: 0.78),
+      padding: const EdgeInsets.all(18),
+      decoration: t.glassDecoration(alpha: 0.78, radius: t.radiusCard),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
               Container(
-                width: 44,
-                height: 44,
+                width: 46,
+                height: 46,
                 decoration: BoxDecoration(
                   color: t.brandAccentTint,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(t.radiusMd),
+                  border: Border.all(color: t.brandAccent.withValues(alpha: 0.18)),
                 ),
                 child: Icon(Icons.videocam_rounded, size: 22, color: t.brandAccent),
               ),
@@ -138,10 +175,18 @@ class MeetingStatusCard extends StatelessWidget {
                     Text('ניתן להצטרף החל מ-15 דקות לפני תחילת הפגישה',
                         style: t.labelSmall, textAlign: TextAlign.center),
                   ],
+                  const SizedBox(height: 8),
+                  _AddToCalendarButton(t: t, onTap: () => _addToCalendar(context, start)),
                 ],
               ),
-            MeetingStatus.pending =>
-              Text('נעדכן אתכם ברגע שנציג יאשר את המועד.', style: t.bodySmall),
+            MeetingStatus.pending => Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text('נעדכן אתכם ברגע שנציג יאשר את המועד.', style: t.bodySmall),
+                  const SizedBox(height: 10),
+                  _AddToCalendarButton(t: t, onTap: () => _addToCalendar(context, start)),
+                ],
+              ),
             MeetingStatus.noRep => _newSlotCta(
                 t, 'לא נמצא נציג זמין במועד שבחרתם. נשמח אם תבחרו מועד חדש.'),
             MeetingStatus.expired =>
@@ -186,6 +231,49 @@ class MeetingStatusCard extends StatelessWidget {
           ),
         ],
       ],
+    );
+  }
+}
+
+// ── Add-to-calendar (secondary, outlined green ACTION) ────────────────────────
+
+/// A bordered "add to Google Calendar" affordance — secondary to the join CTA,
+/// so it never competes with it. Used for both pending and confirmed meetings.
+class _AddToCalendarButton extends StatelessWidget {
+  const _AddToCalendarButton({required this.t, required this.onTap});
+  final AppTheme t;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: 'הוספה ליומן Google',
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(t.radiusMd),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(t.radiusMd),
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 11),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(t.radiusMd),
+              border: Border.all(color: t.brandAccent.withValues(alpha: 0.5)),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                ExcludeSemantics(child: Icon(Icons.event_available_rounded, size: 17, color: t.brandAccent)),
+                const SizedBox(width: 7),
+                Text('הוספה ליומן',
+                    style: GoogleFonts.rubik(
+                        fontSize: 13.5, fontWeight: FontWeight.w700, color: t.brandAccent)),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

@@ -103,6 +103,46 @@ class _AppButtonState extends State<AppButton> {
   bool _overshoot = false;
   Timer? _overshootTimer;
 
+  // Keyboard-focus ring: shown only when the control is focused AND the user is
+  // navigating with a keyboard/directional input (never on a plain tap). Lets
+  // desktop/web keyboard users see where they are — the green ACTION halo from
+  // the shared [AppTheme.focusRingDecoration] token.
+  final FocusNode _focusNode = FocusNode();
+  bool _focusVisible = false;
+
+  void _onFocusChange(bool hasFocus) {
+    final visible = hasFocus &&
+        FocusManager.instance.highlightMode == FocusHighlightMode.traditional;
+    if (_focusVisible != visible) setState(() => _focusVisible = visible);
+  }
+
+  /// Wraps [child] in the shared green keyboard-focus halo when the button is
+  /// focus-visible. The ring is an inset [BoxDecoration] over the same rounded
+  /// shape (drawn just inside the bounds so it never clips against tight
+  /// parents), animated so focus fades in rather than snapping.
+  Widget _withFocusRing(Widget child, BorderRadius radius, AppTheme t) {
+    return AnimatedContainer(
+      duration: t.motionFast,
+      curve: t.easeOut,
+      foregroundDecoration: BoxDecoration(
+        borderRadius: radius,
+        border: Border.all(
+          color: _focusVisible ? t.focusRing : Colors.transparent,
+          width: t.focusRingWidth,
+        ),
+        boxShadow: _focusVisible
+            ? [
+                BoxShadow(
+                  color: t.focusRing.withValues(alpha: t.dark ? 0.35 : 0.28),
+                  blurRadius: 10,
+                ),
+              ]
+            : null,
+      ),
+      child: child,
+    );
+  }
+
   Future<void> _handleTap() async {
     if (_loading) return;
     setState(() => _loading = true);
@@ -129,6 +169,7 @@ class _AppButtonState extends State<AppButton> {
   @override
   void dispose() {
     _overshootTimer?.cancel();
+    _focusNode.dispose();
     super.dispose();
   }
 
@@ -153,6 +194,8 @@ class _AppButtonState extends State<AppButton> {
     final useGradient = isPrimaryCta;
 
     final button = ElevatedButton(
+      focusNode: _focusNode,
+      onFocusChange: _onFocusChange,
       onPressed: (_loading || !widget.enabled)
           ? null
           : () {
@@ -236,7 +279,9 @@ class _AppButtonState extends State<AppButton> {
     // Listener (not a GestureDetector) so it never swallows the underlying
     // ElevatedButton's tap, and it goes flat under reduced-motion.
     final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
-    if (reduceMotion || _loading || !widget.enabled) return sized;
+    if (reduceMotion || _loading || !widget.enabled) {
+      return _withFocusRing(sized, borderRadius, ffTheme);
+    }
     // Held → 0.98 (pressScale), released → a brief 1.02 overshoot, then 1.0.
     final scale = _pressed
         ? ffTheme.pressScale
@@ -249,7 +294,7 @@ class _AppButtonState extends State<AppButton> {
         scale: scale,
         duration: _pressed ? ffTheme.motionFast : ffTheme.motionMedium,
         curve: _pressed ? ffTheme.easeOut : ffTheme.spring,
-        child: sized,
+        child: _withFocusRing(sized, borderRadius, ffTheme),
       ),
     );
   }

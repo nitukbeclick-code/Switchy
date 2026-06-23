@@ -178,5 +178,10 @@ Future<void> _initBackend() async {
       );
       AppState().setQuizCompleted(true);
     }).catchError((_) {}),
+    // Resolve admin status (gates the CRM entry point). Fail-soft: any error
+    // leaves isAdmin false, so a fetch hiccup never exposes the dashboard.
+    appBackend.fetchIsAdmin().then((isAdmin) {
+      AppState().setIsAdmin(isAdmin);
+    }).catchError((_) {}),
   ]);
 }

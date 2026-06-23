@@ -263,8 +263,9 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
               padding: const EdgeInsets.all(22),
               decoration: BoxDecoration(
                 color: _resultColor(ffTheme).withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(ffTheme.radiusCard),
                 border: Border.all(color: _resultColor(ffTheme).withValues(alpha: 0.3), width: 2),
+                boxShadow: ffTheme.shadowSoft,
               ),
               child: Column(
                 children: [
@@ -297,7 +298,7 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 decoration: BoxDecoration(
                   color: ffTheme.warning.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(ffTheme.radiusLg),
                   border: Border.all(color: ffTheme.warning.withValues(alpha: 0.3)),
                 ),
                 child: Row(
@@ -320,11 +321,7 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
             if (econ.annualSaving > 0 && _selectedCat != 'abroad') ...[
               Container(
                 padding: const EdgeInsets.all(18),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: ffTheme.alternate),
-                ),
+                decoration: ffTheme.bentoDecoration(),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -436,7 +433,7 @@ class _RecommendedPlanCard extends StatelessWidget {
             begin: Alignment.topRight,
             end: Alignment.bottomLeft,
           ),
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(ffTheme.radiusLg),
           border: Border.all(color: ffTheme.brandAccent.withValues(alpha: 0.35), width: 1.5),
           boxShadow: [BoxShadow(color: ffTheme.brandAccent.withValues(alpha: 0.10), blurRadius: 12, offset: const Offset(0, 4))],
         ),
@@ -630,13 +627,8 @@ class _LeadingPlanCard extends StatelessWidget {
     final plan = matching.isNotEmpty ? matching.first : plans.first;
 
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: ffTheme.alternate),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2))],
-      ),
+      padding: const EdgeInsets.all(18),
+      decoration: ffTheme.cardDecoration(radius: ffTheme.radiusLg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -711,11 +703,7 @@ class _SliderSection extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: ffTheme.alternate),
-      ),
+      decoration: ffTheme.cardDecoration(radius: ffTheme.radiusLg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

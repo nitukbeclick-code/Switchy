@@ -70,17 +70,24 @@ class LogoWidget extends StatelessWidget {
     'NextTV': 'nexttv.png', 'NEXT TV': 'nexttv.png', 'Airalo': 'airalo.png',
   };
 
-  Color _colorFor(AppTheme t) {
-    for (final entry in _colors.entries) {
-      if (provider.contains(entry.key) || entry.key.contains(provider)) {
-        return entry.value;
-      }
-    }
-    return t.primary; // neutral brand fallback
+  // Resolving the brand color-key, logo file and initials each does a linear
+  // scan over its map with substring matching. They're pure functions of
+  // [provider] (an immutable string) yet this widget renders once per plan card
+  // in scrolling lists and rebuilds on every AppState notify — so the scans are
+  // memoised per provider. The colour itself stays theme-dependent (the fallback
+  // resolves against AppTheme), so only the *key lookup* is cached, not the Color.
+  static final Map<String, _LogoResolution> _resolved = {};
+
+  static _LogoResolution _resolve(String provider) {
+    return _resolved[provider] ??= _LogoResolution(
+      colorKey: _lookup(_colors, provider),
+      file: _lookup(_logoAsset, provider),
+      label: _deriveLabel(provider),
+    );
   }
 
-  String? get _logoFile {
-    for (final entry in _logoAsset.entries) {
+  static V? _lookup<V>(Map<String, V> map, String provider) {
+    for (final entry in map.entries) {
       if (provider.contains(entry.key) || entry.key.contains(provider)) {
         return entry.value;
       }
@@ -88,12 +95,9 @@ class LogoWidget extends StatelessWidget {
     return null;
   }
 
-  String get _label {
-    for (final entry in _initials.entries) {
-      if (provider.contains(entry.key) || entry.key.contains(provider)) {
-        return entry.value;
-      }
-    }
+  static String _deriveLabel(String provider) {
+    final override = _lookup(_initials, provider);
+    if (override != null) return override;
     // Auto-derive from provider string
     final trimmed = provider.trim();
     if (trimmed.isEmpty) return '?';
@@ -115,9 +119,10 @@ class LogoWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = AppTheme.of(context);
-    final color = _colorFor(t);
-    final label = _label;
-    final file = _logoFile;
+    final r = _resolve(provider);
+    final color = r.colorKey ?? t.primary; // neutral brand fallback
+    final label = r.label;
+    final file = r.file;
 
     // Real brand logo on a white tile (logo contained, never recoloured). Falls
     // back to the coloured initials badge if the asset is missing.
@@ -177,4 +182,15 @@ class LogoWidget extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Memoised, theme-independent lookup result for a provider name: the matched
+/// brand colour (null → theme fallback), the real-logo asset file (null →
+/// initials badge) and the initials label. Cached per provider in
+/// [LogoWidget._resolved] so the substring scans run once, not once per build.
+class _LogoResolution {
+  const _LogoResolution({required this.colorKey, required this.file, required this.label});
+  final Color? colorKey;
+  final String? file;
+  final String label;
 }

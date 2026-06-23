@@ -8,6 +8,7 @@ import '../../core/nav.dart';
 import '../../app_state.dart';
 import '../../data.dart';
 import '../../services/savings_summary.dart';
+import '../../widgets/app_button.dart';
 import '../../widgets/empty_state.dart';
 
 /// A polished, shareable yearly savings recap: the headline ₪ the user could
@@ -69,6 +70,19 @@ class AnnualRecapWidget extends StatelessWidget {
               personalized: personalized,
               opportunities: opportunities,
               ffTheme: ffTheme,
+              onShare: () => Share.share(_shareText(
+                total: total,
+                realized: realized,
+                personalized: personalized,
+              )),
+              onActOnTop: opportunities.isNotEmpty
+                  ? () {
+                      // Jump to the largest opportunity's category so the user
+                      // can act on the headline figure, not just read it.
+                      appState.setCategory(opportunities.first.categoryId);
+                      context.pushNamed('Results');
+                    }
+                  : null,
             )
           : EmptyRecap(ffTheme: ffTheme, onCta: () {
               appState.setCategory('cellular');
@@ -128,6 +142,8 @@ class _RecapBody extends StatelessWidget {
     required this.personalized,
     required this.opportunities,
     required this.ffTheme,
+    required this.onShare,
+    this.onActOnTop,
   });
   final int total;
   final int realized;
@@ -135,6 +151,8 @@ class _RecapBody extends StatelessWidget {
   final bool personalized;
   final List<CategorySaving> opportunities;
   final AppTheme ffTheme;
+  final VoidCallback onShare;
+  final VoidCallback? onActOnTop;
 
   @override
   Widget build(BuildContext context) {
@@ -215,6 +233,36 @@ class _RecapBody extends StatelessWidget {
             );
           }),
         ],
+
+        const SizedBox(height: 24),
+
+        // Bottom actions — act on the biggest opportunity (green ACTION) and a
+        // prominent share affordance so the recap never dead-ends.
+        if (onActOnTop != null) ...[
+          AppButton(
+            text: 'התחל לחסוך עכשיו',
+            icon: const Icon(Icons.bolt_rounded, color: Colors.white, size: 20),
+            onPressed: () async => onActOnTop!(),
+            color: AppColors.primary,
+            textStyle: ffTheme.titleSmall.copyWith(color: Colors.white),
+            width: double.infinity,
+            height: 52,
+            borderRadius: BorderRadius.circular(ffTheme.radiusMd),
+          ).animate(delay: 320.ms).fadeIn(duration: 300.ms),
+          const SizedBox(height: 12),
+        ],
+        OutlinedButton.icon(
+          onPressed: onShare,
+          icon: const Icon(Icons.ios_share_rounded, size: 18),
+          label: const Text('שתף את הסיכום שלי'),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: ffTheme.primary,
+            side: BorderSide(color: ffTheme.primary),
+            minimumSize: const Size(double.infinity, 48),
+            shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(ffTheme.radiusMd)),
+          ),
+        ).animate(delay: 380.ms).fadeIn(duration: 300.ms),
 
         const SizedBox(height: 8),
       ],
@@ -305,21 +353,23 @@ class _StatTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
-      decoration: ffTheme.glassDecoration(),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+      // Bento data tile — generous corners + soft elevation so each stat reads
+      // as an anchored grouped surface in the recap grid.
+      decoration: ffTheme.bentoDecoration(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 38,
-            height: 38,
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
               color: ffTheme.accent1,
-              borderRadius: BorderRadius.circular(11),
+              borderRadius: BorderRadius.circular(ffTheme.radiusSm),
             ),
             child: Icon(icon, size: 20, color: ffTheme.primary),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           Text(value,
               style: GoogleFonts.rubik(
                   fontSize: 24, fontWeight: FontWeight.w800, color: ffTheme.primaryText)),
@@ -401,20 +451,18 @@ class _OpportunityRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: ffTheme.cardSurface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: ffTheme.alternate),
-      ),
+      padding: const EdgeInsets.all(15),
+      // Standard opaque card — a low-opacity ink hairline + soft shadow lifts the
+      // row off the page (vs. the old harsh full-strength border).
+      decoration: ffTheme.cardDecoration(radius: ffTheme.radiusMd),
       child: Row(
         children: [
           Container(
-            width: 38,
-            height: 38,
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
               color: ffTheme.accent1,
-              borderRadius: BorderRadius.circular(11),
+              borderRadius: BorderRadius.circular(ffTheme.radiusSm),
             ),
             child: Icon(categoryIconData(saving.categoryId), size: 20, color: ffTheme.primaryText),
           ),
@@ -438,7 +486,7 @@ class _OpportunityRow extends StatelessWidget {
             child: Text(
               personalized ? '₪${saving.annualSaving}/שנה' : '~₪${saving.annualSaving}/שנה',
               style: GoogleFonts.rubik(
-                  fontSize: 12, fontWeight: FontWeight.w800, color: ffTheme.saving),
+                  fontSize: 12, fontWeight: FontWeight.w800, color: ffTheme.savingText),
             ),
           ),
         ],

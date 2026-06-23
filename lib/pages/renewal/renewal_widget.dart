@@ -83,13 +83,28 @@ class _RenewalWidgetState extends State<RenewalWidget> {
           const SizedBox(height: 20),
 
           if (plans.isEmpty) ...[
-            _EmptyState(ffTheme: ffTheme, onAdd: () => _showAddSheet(context))
-                .animate()
-                .fadeIn(delay: 150.ms),
+            _EmptyState(
+              ffTheme: ffTheme,
+              onAdd: () => _showAddSheet(context),
+              onFind: () => context.goNamed('Results'),
+            ).animate().fadeIn(delay: 150.ms),
           ] else ...[
-            Text('המסלולים שלי', style: ffTheme.titleLarge)
+            // Price-watch summary: how many plans we're tracking and the total
+            // monthly spend across them — an at-a-glance VALUE read.
+            _WatchSummary(plans: plans, ffTheme: ffTheme)
                 .animate()
-                .fadeIn(delay: 100.ms),
+                .fadeIn(delay: 80.ms),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: Text('המסלולים במעקב', style: ffTheme.titleLarge),
+                ),
+                Text('${plans.length}',
+                    style: ffTheme.titleLarge
+                        .copyWith(color: ffTheme.secondaryText)),
+              ],
+            ).animate().fadeIn(delay: 100.ms),
             const SizedBox(height: 12),
             ...plans.asMap().entries.map((e) => _PlanCard(
                   plan: e.value,
@@ -179,9 +194,10 @@ class _IntroCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
+        // Premium ink hero — generous bento corner + a soft lift.
         gradient: ffTheme.brandGradient,
-        borderRadius: BorderRadius.circular(18),
-        boxShadow: ffTheme.shadowSoft,
+        borderRadius: BorderRadius.circular(ffTheme.radiusCard),
+        boxShadow: ffTheme.shadowLifted,
       ),
       child: Row(
         children: [
@@ -190,7 +206,7 @@ class _IntroCard extends StatelessWidget {
             height: 48,
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(ffTheme.radiusMd),
             ),
             child: const Center(
               child: Icon(Icons.access_time_rounded, size: 24, color: Colors.white),
@@ -206,6 +222,69 @@ class _IntroCard extends StatelessWidget {
                 fontWeight: FontWeight.w500,
                 height: 1.45,
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Watch summary ─────────────────────────────────────────────────────────────
+
+/// A compact price-watch strip above the tracked-plan list: the number of plans
+/// we're watching and the combined monthly spend. The nearest renewal (smallest
+/// positive `daysUntilRenewal`) is surfaced so the user sees what needs
+/// attention first.
+class _WatchSummary extends StatelessWidget {
+  const _WatchSummary({required this.plans, required this.ffTheme});
+  final List<TrackedPlan> plans;
+  final AppTheme ffTheme;
+
+  @override
+  Widget build(BuildContext context) {
+    final monthlyTotal =
+        plans.fold<int>(0, (sum, p) => sum + p.monthlyPrice);
+    // Soonest upcoming renewal across all tracked plans, if any.
+    int? soonest;
+    for (final p in plans) {
+      final d = p.daysUntilRenewal;
+      if (d == null || d < 0) continue;
+      if (soonest == null || d < soonest) soonest = d;
+    }
+    return Container(
+      padding: const EdgeInsets.all(16),
+      // Premium card surface — soft hairline + shadow, replacing the old border.
+      decoration: ffTheme.cardDecoration(radius: ffTheme.radiusMd),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: ffTheme.accent1,
+              borderRadius: BorderRadius.circular(ffTheme.radiusSm),
+            ),
+            child: Icon(Icons.monitor_heart_outlined,
+                size: 22, color: ffTheme.primary),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('עוקבים אחרי המחירים שלך',
+                    style: ffTheme.titleSmall
+                        .copyWith(fontWeight: FontWeight.w700)),
+                const SizedBox(height: 2),
+                Text(
+                  soonest != null
+                      ? 'סה"כ ₪$monthlyTotal/חודש · החידוש הקרוב בעוד $soonest ימים'
+                      : 'סה"כ ₪$monthlyTotal/חודש על ${plans.length} מסלולים',
+                  style: ffTheme.bodySmall
+                      .copyWith(color: ffTheme.secondaryText),
+                ),
+              ],
             ),
           ),
         ],
@@ -320,12 +399,8 @@ class _PlanCard extends StatelessWidget {
 
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
-      decoration: BoxDecoration(
-        color: ffTheme.cardSurface,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: ffTheme.alternate),
-        boxShadow: ffTheme.shadowSoft,
-      ),
+      // Premium card surface — generous corner, soft hairline + a touch of lift.
+      decoration: ffTheme.cardDecoration(radius: ffTheme.radiusLg, elevated: true),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -507,9 +582,14 @@ class _PlanCard extends StatelessWidget {
 // ── Empty State ───────────────────────────────────────────────────────────────
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.ffTheme, required this.onAdd});
+  const _EmptyState({
+    required this.ffTheme,
+    required this.onAdd,
+    required this.onFind,
+  });
   final AppTheme ffTheme;
   final VoidCallback onAdd;
+  final VoidCallback onFind;
 
   @override
   Widget build(BuildContext context) {
@@ -532,7 +612,7 @@ class _EmptyState extends StatelessWidget {
                 .copyWith(fontWeight: FontWeight.w700)),
         const SizedBox(height: 8),
         Text(
-          'הוסף את המסלולים שלך ונעקוב אחרי מועד חידושם',
+          'הוסף את המסלולים שלך ונעקוב אחרי מועד חידושם — ונזכיר לך לפני שהמחיר קופץ',
           style: ffTheme.bodyMedium.copyWith(color: ffTheme.secondaryText),
           textAlign: TextAlign.center,
         ),
@@ -544,6 +624,15 @@ class _EmptyState extends StatelessWidget {
           textStyle: GoogleFonts.rubik(
               fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white),
           onPressed: () async => onAdd(),
+        ),
+        const SizedBox(height: 12),
+        // Onward link so the empty state never dead-ends — jump straight to
+        // browsing plans.
+        TextButton.icon(
+          onPressed: onFind,
+          icon: const Icon(Icons.search_rounded, size: 18),
+          label: const Text('או מצא מסלול חדש לחיסכון'),
+          style: TextButton.styleFrom(foregroundColor: ffTheme.primary),
         ),
         const SizedBox(height: 32),
       ],
@@ -565,11 +654,8 @@ class _ReminderTile extends StatelessWidget {
         ? 'התזכורת הבאה: ${DateFormat('d/M/yyyy').format(next.fireDate)} · ${next.plan.provider}'
         : 'נשלח לך התראה ~21 יום לפני סיום המבצע';
     return Container(
-      decoration: BoxDecoration(
-        color: ffTheme.cardSurface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: ffTheme.alternate),
-      ),
+      // Premium card surface — soft hairline + shadow, replacing the old border.
+      decoration: ffTheme.cardDecoration(radius: ffTheme.radiusMd),
       child: SwitchListTile(
         value: appState.renewalReminders,
         onChanged: (v) async {

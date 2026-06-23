@@ -1111,16 +1111,20 @@ class _CommunityWidgetState extends State<CommunityWidget> {
 
           // Hot deal banner
           ..._posts.where((p) => p.isTeam && p.planId != null).take(1).map((p) =>
-            GestureDetector(
+            Semantics(
+              button: true,
+              label: 'עסקת השבוע — צפייה בחבילה',
+              child: GestureDetector(
               onTap: () => context.pushNamed('PlanDetail', pathParameters: {'planId': p.planId!}),
               child: Container(
                 margin: const EdgeInsets.fromLTRB(16, 10, 16, 0),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                decoration: const BoxDecoration(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                decoration: BoxDecoration(
                   // Fixed ink "deal of the week" banner — const ink gradient so
                   // the white content reads in both themes.
-                  gradient: LinearGradient(colors: [AppColors.primaryDark, AppColors.primary]),
-                  borderRadius: BorderRadius.all(Radius.circular(14)),
+                  gradient: const LinearGradient(colors: [AppColors.primaryDark, AppColors.primary]),
+                  borderRadius: BorderRadius.circular(ffTheme.radiusLg),
+                  boxShadow: ffTheme.shadowPrimary,
                 ),
                 child: Row(
                   children: [
@@ -1139,6 +1143,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                     const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Colors.white54),
                   ],
                 ),
+              ),
               ),
             ).animate().fadeIn(duration: 400.ms),
           ),
@@ -1293,15 +1298,15 @@ class _PostCardState extends State<_PostCard> {
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: ffTheme.cardSurface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isTrending ? ffTheme.warning.withValues(alpha: 0.5) : ffTheme.alternate,
-          width: isTrending ? 1.5 : 1,
-        ),
-        boxShadow: ffTheme.shadowSoft,
-      ),
+      decoration: isTrending
+          // A trending post keeps its amber "win" hairline as the VALUE tell.
+          ? ffTheme.cardDecoration(radius: ffTheme.radiusLg).copyWith(
+              border: Border.all(
+                color: ffTheme.warning.withValues(alpha: 0.5),
+                width: 1.5,
+              ),
+            )
+          : ffTheme.cardDecoration(radius: ffTheme.radiusLg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1480,22 +1485,26 @@ class _PostCardState extends State<_PostCard> {
                 // Plan chip
                 if (post.planId != null) ...[
                   const SizedBox(height: 10),
-                  GestureDetector(
-                    onTap: () => context.pushNamed('PlanDetail', pathParameters: {'planId': post.planId!}),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: ffTheme.accent1,
-                        borderRadius: BorderRadius.circular(10),
-                        border: Border.all(color: ffTheme.primary.withValues(alpha: 0.2)),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.open_in_new_rounded, size: 12, color: ffTheme.primary),
-                          const SizedBox(width: 6),
-                          Text('צפה בחבילה', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
-                        ],
+                  Semantics(
+                    button: true,
+                    label: 'צפייה בחבילה',
+                    child: GestureDetector(
+                      onTap: () => context.pushNamed('PlanDetail', pathParameters: {'planId': post.planId!}),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: ffTheme.accent1,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: ffTheme.primary.withValues(alpha: 0.2)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            ExcludeSemantics(child: Icon(Icons.open_in_new_rounded, size: 12, color: ffTheme.primary)),
+                            const SizedBox(width: 6),
+                            Text('צפה בחבילה', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+                          ],
+                        ),
                       ),
                     ),
                   ),

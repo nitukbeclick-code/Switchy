@@ -348,13 +348,8 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                       // Bill stepper
                       Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 12),
-                        decoration: BoxDecoration(
-                          color: ffTheme.cardSurface,
-                          borderRadius: BorderRadius.circular(14),
-                          border: Border.all(color: ffTheme.alternate),
-                          boxShadow: ffTheme.shadowSoft,
-                        ),
+                            horizontal: 16, vertical: 14),
+                        decoration: ffTheme.cardDecoration(radius: ffTheme.radiusCard),
                         child: Row(
                           children: [
                             Text('החשבון שלך:',
@@ -550,6 +545,50 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                   ),
                 ),
 
+              // Quiz nudge — when the user is browsing WITHOUT a quiz for this
+              // category, offer the 2-minute path to personalized matches so the
+              // funnel always points onward instead of leaving them to scroll.
+              if (!(appState.quizCompleted && appState.quizCat == cat) &&
+                  plans.isNotEmpty)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                    child: Material(
+                      color: ffTheme.brandAccent.withValues(alpha: 0.10),
+                      borderRadius: BorderRadius.circular(12),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(12),
+                        onTap: () {
+                          HapticFeedback.lightImpact();
+                          context.pushNamed('Quiz');
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 10),
+                          child: Row(
+                            children: [
+                              Icon(Icons.auto_awesome_rounded,
+                                  size: 18, color: ffTheme.brandAccent),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'ענו על שאלון קצר ונסנן בדיוק לפי הצרכים שלכם',
+                                  style: ffTheme.labelMedium
+                                      .copyWith(color: ffTheme.brandAccentText),
+                                ),
+                              ),
+                              Text('לשאלון ←',
+                                  style: ffTheme.labelSmall.copyWith(
+                                      color: ffTheme.brandAccentText,
+                                      fontWeight: FontWeight.w700)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ).animate().fadeIn(duration: 250.ms),
+                ),
+
               // AI banner
               if (topPlan != null && topSave > 0)
                 SliverToBoxAdapter(
@@ -561,13 +600,13 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                         // ink in BOTH themes (the theme-aware getters would turn
                         // near-white on dark).
                         gradient: ffTheme.freshGradient,
-                        borderRadius: BorderRadius.circular(14),
-                        boxShadow: ffTheme.shadowCard,
+                        borderRadius: BorderRadius.circular(ffTheme.radiusCard),
+                        boxShadow: ffTheme.shadowLifted,
                       ),
                       child: Material(
                         color: Colors.transparent,
                         child: InkWell(
-                          borderRadius: BorderRadius.circular(14),
+                          borderRadius: BorderRadius.circular(ffTheme.radiusCard),
                           splashColor: Colors.white.withValues(alpha: 0.12),
                           highlightColor: Colors.white.withValues(alpha: 0.06),
                           onTap: () => context.pushNamed('PlanDetail',
@@ -631,7 +670,8 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                           decoration: BoxDecoration(
                             color: ffTheme.accent1,
                             shape: BoxShape.circle,
-                            border: Border.all(color: ffTheme.primary.withValues(alpha: 0.12), width: 1.5),
+                            border: Border.all(color: ffTheme.primary.withValues(alpha: 0.08), width: 1.5),
+                            boxShadow: ffTheme.shadowMd,
                           ),
                           child: Icon(Icons.search_off_rounded, size: 44, color: ffTheme.primary.withValues(alpha: 0.55)),
                         ).animate().fadeIn(duration: 350.ms).scale(
@@ -732,7 +772,10 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                           matchPct: match?.scorePct,
                           bestMatch: isTopMatch || plan.highlight,
                         )
-                            .animate(delay: (index * 60).ms)
+                            // Cap the stagger so long result lists settle
+                            // quickly — the reveal reads premium for the first
+                            // few cards, slow past that.
+                            .animate(delay: (index.clamp(0, 6) * 60).ms)
                             .fadeIn(duration: 300.ms)
                             .slideX(begin: 0.05);
                       },

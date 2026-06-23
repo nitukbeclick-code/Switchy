@@ -81,12 +81,35 @@ class _OnboardingWidgetState extends State<OnboardingWidget> {
                         const SizedBox(width: 10),
                         Text('חוסך', style: GoogleFonts.rubik(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white)),
                         const Spacer(),
-                        TextButton(
-                          onPressed: () {
-                            AppState().markOnboardingSeen();
-                            context.goNamed('Home');
-                          },
-                          child: Text('דלג', style: ffTheme.labelMedium.copyWith(color: Colors.white.withValues(alpha: 0.7))),
+                        // Skip stays available through the first two pages; on the
+                        // last page the primary CTA *is* the finish, so a second
+                        // "skip" would only add noise.
+                        AnimatedOpacity(
+                          opacity: _page < 2 ? 1 : 0,
+                          duration: ffTheme.motionMedium,
+                          child: IgnorePointer(
+                            ignoring: _page >= 2,
+                            child: TextButton(
+                              onPressed: () {
+                                AppState().markOnboardingSeen();
+                                context.goNamed('Home');
+                              },
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text('דלג',
+                                      style: ffTheme.labelMedium.copyWith(
+                                          color: Colors.white
+                                              .withValues(alpha: 0.85),
+                                          fontWeight: FontWeight.w600)),
+                                  const SizedBox(width: 2),
+                                  Icon(Icons.arrow_back_ios_new_rounded,
+                                      size: 11,
+                                      color: Colors.white.withValues(alpha: 0.85)),
+                                ],
+                              ),
+                            ),
+                          ),
                         ),
                       ],
                     ),
@@ -198,11 +221,12 @@ class _Page1 extends StatelessWidget {
           ).animate().fadeIn(delay: 350.ms).slideY(begin: 0.1, end: 0),
           const SizedBox(height: 20),
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
               color: ffTheme.brandAccentTint,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(ffTheme.radiusLg),
               border: Border.all(color: ffTheme.brandAccent.withValues(alpha: 0.18)),
+              boxShadow: ffTheme.shadowXs,
             ),
             child: Row(
               children: [
@@ -340,14 +364,15 @@ class _Page3 extends StatelessWidget {
           _StepTimeline(ffTheme: ffTheme).animate().fadeIn(delay: 350.ms),
           const SizedBox(height: 20),
           Container(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [ffTheme.primaryDark, ffTheme.primary],
                 begin: Alignment.topRight,
                 end: Alignment.bottomLeft,
               ),
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(ffTheme.radiusCard),
+              boxShadow: ffTheme.shadowLifted,
             ),
             child: Column(
               children: [
@@ -381,8 +406,8 @@ class _StatChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
-        decoration: ffTheme.glassDecoration(radius: 14),
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: ffTheme.cardDecoration(radius: ffTheme.radiusMd),
         child: Column(
           children: [
             Text(value, style: GoogleFonts.rubik(fontSize: 20, fontWeight: FontWeight.w800, color: ffTheme.brandAccent)),
@@ -434,8 +459,8 @@ class _StepTimeline extends StatelessWidget {
     ];
 
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: ffTheme.glassDecoration(radius: 16),
+      padding: const EdgeInsets.all(18),
+      decoration: ffTheme.bentoDecoration(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: steps.asMap().entries.map((e) {

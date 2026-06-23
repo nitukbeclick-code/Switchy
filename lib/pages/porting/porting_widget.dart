@@ -94,11 +94,12 @@ class _PortingWidgetState extends State<PortingWidget> {
           children: [
             // Process steps mini-timeline
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(18),
               decoration: BoxDecoration(
                 color: ffTheme.brandAccentTint,
-                borderRadius: BorderRadius.circular(14),
+                borderRadius: BorderRadius.circular(ffTheme.radiusLg),
                 border: Border.all(color: ffTheme.brandAccent.withValues(alpha: 0.2)),
+                boxShadow: ffTheme.shadowXs,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -226,10 +227,10 @@ class _PortingWidgetState extends State<PortingWidget> {
 
             // Timing info row
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               decoration: BoxDecoration(
                 color: ffTheme.accent2,
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(ffTheme.radiusSm),
                 border: Border.all(color: ffTheme.warning.withValues(alpha: 0.25)),
               ),
               child: Row(
@@ -438,7 +439,8 @@ class _SuccessState extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(ffTheme.radiusPill),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,

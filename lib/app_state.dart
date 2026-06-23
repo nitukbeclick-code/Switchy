@@ -418,6 +418,13 @@ class AppState extends ChangeNotifier {
   void login({required String name, required String phone, String email = ''}) { _isLoggedIn = true; _userName = name; _userPhone = phone; _userEmail = email; notifyListeners(); _persist(); }
   void logout() { _isLoggedIn = false; _userName = ''; _userPhone = ''; _userEmail = ''; notifyListeners(); _persist(); }
 
+  // Admin (CRM access) — session-derived from `profiles.is_admin` at startup,
+  // not persisted (the edge function re-checks authoritatively). Gates the CRM
+  // entry tile + the /crm route bounce in the router.
+  bool _isAdmin = false;
+  bool get isAdmin => _isAdmin;
+  void setIsAdmin(bool v) { _isAdmin = v; notifyListeners(); }
+
   // Lead
   String? _leadName; String? _leadPhone; String? _leadProvider; String? _leadPlanId; String? _leadEmail; String? _leadCallbackTime;
   String? get leadName => _leadName;

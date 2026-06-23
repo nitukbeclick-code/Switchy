@@ -12,10 +12,12 @@ import 'package:google_fonts/google_fonts.dart';
 class AppColors {
   const AppColors._();
 
-  // Brand — "white glass & black ink": a formal, editorial monochrome. Ink
-  // black for CTAs/accents, true black for depth, slate + grey neutrals. NO
-  // green/teal — the look is sharp, official, high-contrast.
-  static const Color primary = Color(0xFF111827); // ink black — CTAs, key accents, borders
+  // Brand — "white glass & black ink": a formal, editorial base of ink black
+  // for text/structure/borders, true black for depth, slate + grey neutrals.
+  // Colour is carried by a disciplined two-accent system layered on top —
+  // green = ACTION, amber = VALUE (see the accent block below); the ink/glass
+  // base stays monochrome so those accents read clearly.
+  static const Color primary = Color(0xFF111827); // ink black — text, structure, borders
   static const Color primaryDark = Color(0xFF000000); // true black — gradient depth
   static const Color tertiary = Color(0xFF374151); // slate grey
   static const Color secondary = Color(0xFFE5E7EB); // light-grey highlight (badges/chips)
@@ -36,7 +38,7 @@ class AppColors {
   // Status (kept functional — errors/warnings still need their semantic hue)
   static const Color error = Color(0xFFDC2626);
   static const Color warning = Color(0xFFB45309);
-  static const Color success = Color(0xFF111827); // formal: success reads as ink, not green
+  static const Color success = Color(0xFF111827); // neutral ink base; the green ACTION accent (brandAccent) carries positive emphasis
   static const Color info = Color(0xFF374151);
 
   // Surface tints — neutral grey washes for tinted cards/chips (no color).
@@ -63,6 +65,12 @@ class AppColors {
   // AA-safe ink for amber VALUE TEXT on light glass. Amber 500/600 fail 4.5:1
   // as normal text; amber 800 clears it while keeping the warm "value" read.
   static const Color savingText = Color(0xFF92400E); // amber 800 — small savings text
+  // The ink read out ON the amber VALUE fill (savings pills, "best value"
+  // badges). A deep amber-brown that clears AA on the amber surface in BOTH
+  // themes (amber is a fixed-hue accent), so it never needs a dark variant.
+  // The canonical "ink-on-amber" pair — use everywhere a chip/badge fills with
+  // [saving] and prints text/icons on top, instead of re-declaring the literal.
+  static const Color onSaving = Color(0xFF3A2900);
 
   // ── Dark variant ──────────────────────────────────────────────────────────
   // NOT a colour flip — a cohesive night theme. Deep blue-ink surfaces, slate
@@ -190,6 +198,11 @@ class AppTheme {
   /// [saving]/[savingDark] (≥3:1 at 18px+ bold).
   Color get savingText => dark ? AppColors.darkSaving : AppColors.savingText;
 
+  /// The ink read out ON the amber VALUE fill (savings pills, "best value"
+  /// badges). Amber is a fixed-hue accent in both themes, so this deep-amber ink
+  /// is theme-independent — use it wherever a chip fills with [saving].
+  Color get onSaving => AppColors.onSaving;
+
   // ── Spacing scale — one shared rhythm for gaps, padding, insets ────────────
   // Use these instead of ad-hoc magic numbers so vertical/horizontal rhythm
   // stays consistent across screens (matches the site's 4/8/12/16/24/32/48).
@@ -209,10 +222,50 @@ class AppTheme {
   /// Disabled-content opacity.
   double get disabledOpacity => 0.55;
 
+  // ── Focus ring — one shared keyboard-focus treatment ───────────────────────
+  // Keyboard/desktop/web users get a visible green ACTION ring on focusable
+  // controls (taps don't trigger it — only true keyboard/directional focus).
+  // Centralised so every interactive surface adopts the SAME focus tell instead
+  // of each widget improvising. The ring is the brand green so focus reads as
+  // "this is the live control" — matching links/active-nav.
+  /// The colour of the keyboard-focus ring (brand green, AA-strong on glass).
+  Color get focusRing => brandAccent;
+  /// Stroke width of the focus ring.
+  double get focusRingWidth => 2.5;
+  /// Gap between a control's own edge and its focus ring, so the ring reads as
+  /// a halo rather than crowding the border.
+  double get focusRingGap => 2;
+
+  /// A ready-made focus halo: a rounded [Border] in [focusRing] plus a soft
+  /// green glow, sized to sit just outside a control with the given [radius].
+  /// Paint this in a wrapping box that is [focusRingGap] larger on every side.
+  BoxDecoration focusRingDecoration({double? radius}) => BoxDecoration(
+        borderRadius: BorderRadius.circular((radius ?? radiusMd) + focusRingGap),
+        border: Border.all(color: focusRing, width: focusRingWidth),
+        boxShadow: [
+          BoxShadow(
+            color: focusRing.withValues(alpha: dark ? 0.35 : 0.28),
+            blurRadius: 10,
+            spreadRadius: 0,
+          ),
+        ],
+      );
+
   // ── Elevation — soft, layered, cool ink-tinted shadows (not flat black) ─────
   // Every shadow is now 2-layer (a wide AMBIENT diffuse + a tight KEY contact)
   // to match the site's depth. On dark the tint shifts to a deep blue-black so
   // shadows read as recessed slate, never muddy grey.
+  /// The faintest lift — a near-flush contact shadow for inline chips, pills,
+  /// inputs and other surfaces that should read as raised by a hair, not float.
+  /// One tight layer; cheaper than [shadowSoft] for very frequently-painted bits.
+  List<BoxShadow> get shadowXs => dark
+      ? const [
+          BoxShadow(color: Color(0x33060A12), blurRadius: 8, offset: Offset(0, 2)),
+        ]
+      : const [
+          BoxShadow(color: Color(0x0A0F1B22), blurRadius: 8, offset: Offset(0, 2)),
+        ];
+
   /// Subtle lift for chips, list rows, low-emphasis surfaces.
   List<BoxShadow> get shadowSoft => dark
       ? const [
@@ -222,6 +275,19 @@ class AppTheme {
       : const [
           BoxShadow(color: Color(0x0F0F1B22), blurRadius: 14, offset: Offset(0, 4)),
           BoxShadow(color: Color(0x080F1B22), blurRadius: 3, offset: Offset(0, 1)),
+        ];
+
+  /// The medium step between [shadowSoft] and [shadowCard] — for grouped bento
+  /// cards and resting interactive surfaces that want a touch more presence than
+  /// a list row but shouldn't read as a hero. Two-layer ambient + key contact.
+  List<BoxShadow> get shadowMd => dark
+      ? const [
+          BoxShadow(color: Color(0x4D060A12), blurRadius: 20, offset: Offset(0, 7)),
+          BoxShadow(color: Color(0x2E060A12), blurRadius: 5, offset: Offset(0, 2)),
+        ]
+      : const [
+          BoxShadow(color: Color(0x120F1B22), blurRadius: 18, offset: Offset(0, 6)),
+          BoxShadow(color: Color(0x090F1B22), blurRadius: 4, offset: Offset(0, 2)),
         ];
 
   /// The default card shadow — gentle, cool, two-layer.
@@ -323,6 +389,61 @@ class AppTheme {
     );
   }
 
+  /// The premium-2026 **card** surface — an OPAQUE rounded card with a soft
+  /// ink-tinted shadow, a low-opacity hairline border (never harsh black) and
+  /// the 1px top glass-glint. Unlike [glassDecoration] (translucent, for
+  /// list/overlay cards) this is a solid surface for the everyday grouped card.
+  ///
+  /// Pass [elevated] for a touch more presence ([shadowMd] instead of
+  /// [shadowSoft]); [radius] defaults to [radiusLg] (20). Use [bentoDecoration]
+  /// for the larger-radius bento grouping; this is the standard card.
+  BoxDecoration cardDecoration({
+    double? radius,
+    Color? color,
+    bool elevated = false,
+    Color? borderColor,
+  }) {
+    final r = radius ?? radiusLg;
+    final fill = color ?? cardSurface;
+    return BoxDecoration(
+      gradient: LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          Color.alphaBlend(glassGlint.withValues(alpha: glassGlint.a * 0.4), fill),
+          fill,
+        ],
+        stops: const [0, 0.07],
+      ),
+      borderRadius: BorderRadius.circular(r),
+      border: Border.all(
+        // A low-opacity ink hairline — structure without a harsh black edge.
+        color: borderColor ??
+            (dark
+                ? AppColors.darkBorder.withValues(alpha: 0.7)
+                : AppColors.primary.withValues(alpha: 0.06)),
+      ),
+      boxShadow: elevated ? shadowMd : shadowSoft,
+    );
+  }
+
+  /// The premium-2026 **bento** surface — a generously-rounded grouped card
+  /// ([radiusCard] = 24) with [shadowMd], a low-opacity ink hairline and the top
+  /// glass-glint. Use for the big grouped data tiles (a savings tile, a stat
+  /// cluster, a section block) that anchor a bento layout; reach for
+  /// [cardDecoration] for ordinary list/content cards.
+  BoxDecoration bentoDecoration({
+    double? radius,
+    Color? color,
+    Color? borderColor,
+  }) =>
+      cardDecoration(
+        radius: radius ?? radiusCard,
+        color: color,
+        elevated: true,
+        borderColor: borderColor,
+      );
+
   // ── Gradients — the brand washes used on heroes, headers, primary CTAs ──────
   LinearGradient get brandGradient => const LinearGradient(
         colors: [AppColors.primaryDark, AppColors.primary],
@@ -360,6 +481,7 @@ class AppTheme {
   double get radiusSm => 12;
   double get radiusMd => 16;
   double get radiusLg => 20;
+  double get radiusCard => 24; // the canonical premium-2026 card/bento corner
   double get radiusXl => 28;
   double get radiusPill => 999;
 

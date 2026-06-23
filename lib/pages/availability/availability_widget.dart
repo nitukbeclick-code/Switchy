@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../theme/app_theme.dart';
 import '../../core/nav.dart';
 import '../../widgets/app_button.dart';
+import '../../widgets/app_snackbar.dart';
 import '../../app_state.dart';
 import '../../data.dart';
 import '../../components/logo_widget/logo_widget.dart';
@@ -60,7 +61,12 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
   }
 
   Future<void> _check() async {
-    if (_cityCtrl.text.trim().isEmpty) return;
+    if (_cityCtrl.text.trim().isEmpty) {
+      // Tapping "בדוק זמינות" with no city used to do nothing silently — tell
+      // the user what's missing instead of leaving the button feeling broken.
+      AppSnackBar.info(context, 'הזינו עיר כדי לבדוק זמינות');
+      return;
+    }
     setState(() { _loading = true; _checked = false; _revealedCount = 0; });
     await Future.delayed(const Duration(milliseconds: 900));
     if (!mounted) return;

@@ -783,10 +783,10 @@ class _QuizWidgetState extends State<QuizWidget> {
                 pathParameters: {'planId': top.plan.id}),
             child: Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(22),
               decoration: BoxDecoration(
                 color: ffTheme.secondaryBackground,
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(ffTheme.radiusCard),
                 border: Border.all(color: ffTheme.brandAccent, width: 2),
                 boxShadow: ffTheme.shadowAccent,
               ),
@@ -831,7 +831,7 @@ class _QuizWidgetState extends State<QuizWidget> {
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                       decoration: BoxDecoration(
                         color: ffTheme.saving.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(ffTheme.radiusLg),
                         border: Border.all(color: ffTheme.saving.withValues(alpha: 0.35)),
                       ),
                       child: Row(
@@ -948,11 +948,7 @@ class _QuizWidgetState extends State<QuizWidget> {
                   child: Container(
                     margin: const EdgeInsets.only(bottom: 10),
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    decoration: BoxDecoration(
-                      color: ffTheme.secondaryBackground,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: ffTheme.alternate),
-                    ),
+                    decoration: ffTheme.cardDecoration(radius: ffTheme.radiusMd),
                     child: Row(
                       children: [
                         Expanded(
@@ -1047,9 +1043,9 @@ class _ChoiceChip extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
           color: selected ? ffTheme.brandAccent : ffTheme.secondaryBackground,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(ffTheme.radiusMd),
           border: Border.all(color: selected ? ffTheme.brandAccent : ffTheme.alternate, width: 1.5),
-          boxShadow: selected ? ffTheme.shadowAccent : null,
+          boxShadow: selected ? ffTheme.shadowAccent : ffTheme.shadowXs,
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -1085,8 +1081,9 @@ class _RadioTile extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
           color: selected ? ffTheme.brandAccentTint : ffTheme.secondaryBackground,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(ffTheme.radiusMd),
           border: Border.all(color: selected ? ffTheme.brandAccent : ffTheme.alternate, width: selected ? 2 : 1),
+          boxShadow: selected ? null : ffTheme.shadowXs,
         ),
         child: Row(
           children: [

@@ -14,10 +14,6 @@ import '../../components/logo_widget/logo_widget.dart';
 import '../../services/recommendation_engine.dart';
 import '../../services/backend/local_backend.dart';
 
-/// Ink read out on the amber VALUE surface — amber is fixed-hue in both
-/// themes, so this deep-amber ink stays legible on light AND dark.
-const Color _onSaving = Color(0xFF3A2900);
-
 class CompareWidget extends StatelessWidget {
   const CompareWidget({super.key});
 
@@ -147,12 +143,10 @@ class _EmptyState extends StatelessWidget {
             if (hasPlan && firstPlan != null) ...[
               const SizedBox(height: 20),
               Container(
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: ffTheme.cardSurface,
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: ffTheme.primary.withValues(alpha: 0.25)),
-                  boxShadow: ffTheme.shadowSoft,
+                padding: const EdgeInsets.all(16),
+                decoration: ffTheme.cardDecoration(
+                  radius: ffTheme.radiusCard,
+                  borderColor: ffTheme.primary.withValues(alpha: 0.20),
                 ),
                 child: Row(
                   children: [
@@ -248,6 +242,13 @@ class _CompareTable extends StatelessWidget {
           }).toList(),
           isHighlight: true),
       _Row('רשת', plans.map((p) => p.netLabel).toList()),
+      // Equipment / setup fees — the kamaze "ציוד / עלויות נלוות" parity. We show
+      // a compact summary of the real plan.fees, or '—' when the plan has none.
+      _Row('ציוד ועמלות',
+          plans.map((p) {
+            if (p.fees.isEmpty) return '—';
+            return p.fees.entries.map((e) => '${e.key} ${e.value}').join('\n');
+          }).toList()),
       _Row('ללא התחייבות',
           plans.map((p) => p.noCommit ? '✓' : '—').toList()),
       _Row('5G', plans.map((p) => p.is5G ? '✓' : '—').toList()),
@@ -537,15 +538,15 @@ class _WinnerSummaryCard extends StatelessWidget {
           // Champion banner
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 colors: [ffTheme.primaryDark, ffTheme.primary],
                 begin: Alignment.topRight,
                 end: Alignment.bottomLeft,
               ),
-              borderRadius: BorderRadius.circular(18),
-              boxShadow: [BoxShadow(color: ffTheme.primary.withValues(alpha: 0.3), blurRadius: 14, offset: const Offset(0, 4))],
+              borderRadius: BorderRadius.circular(ffTheme.radiusCard),
+              boxShadow: ffTheme.shadowLifted,
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -559,9 +560,9 @@ class _WinnerSummaryCard extends StatelessWidget {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.emoji_events_rounded, size: 13, color: _onSaving),
+                          Icon(Icons.emoji_events_rounded, size: 13, color: ffTheme.onSaving),
                           const SizedBox(width: 4),
-                          Text('ההמלצה שלנו', style: ffTheme.labelSmall.copyWith(color: _onSaving, fontWeight: FontWeight.w800)),
+                          Text('ההמלצה שלנו', style: ffTheme.labelSmall.copyWith(color: ffTheme.onSaving, fontWeight: FontWeight.w800)),
                         ],
                       ),
                     ),
@@ -767,20 +768,15 @@ class _PlanHeader extends StatelessWidget {
       child: Container(
       width: 140,
       margin: const EdgeInsetsDirectional.only(start: 10),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: isWinner
-            ? ffTheme.saving.withValues(alpha: ffTheme.dark ? 0.16 : 0.10)
-            : ffTheme.cardSurface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: isWinner ? ffTheme.saving : ffTheme.alternate,
-          width: isWinner ? 2 : 1,
-        ),
-        boxShadow: isWinner
-            ? [BoxShadow(color: ffTheme.saving.withValues(alpha: 0.24), blurRadius: 14, offset: const Offset(0, 5))]
-            : ffTheme.shadowSoft,
-      ),
+      padding: const EdgeInsets.all(14),
+      decoration: isWinner
+          ? BoxDecoration(
+              color: ffTheme.saving.withValues(alpha: ffTheme.dark ? 0.16 : 0.10),
+              borderRadius: BorderRadius.circular(ffTheme.radiusLg),
+              border: Border.all(color: ffTheme.saving, width: 2),
+              boxShadow: [BoxShadow(color: ffTheme.saving.withValues(alpha: 0.24), blurRadius: 14, offset: const Offset(0, 5))],
+            )
+          : ffTheme.cardDecoration(),
       child: Column(
         children: [
           if (isWinner)
@@ -795,12 +791,12 @@ class _PlanHeader extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.emoji_events_rounded,
-                      size: 13, color: _onSaving),
+                  Icon(Icons.emoji_events_rounded,
+                      size: 13, color: ffTheme.onSaving),
                   const SizedBox(width: 4),
                   Text('זוכה',
                       style: ffTheme.labelSmall.copyWith(
-                          color: _onSaving,
+                          color: ffTheme.onSaving,
                           fontWeight: FontWeight.w700)),
                 ],
               ),

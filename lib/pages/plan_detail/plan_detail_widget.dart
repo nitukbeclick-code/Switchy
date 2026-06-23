@@ -15,10 +15,6 @@ import '../../components/logo_widget/logo_widget.dart';
 import '../../services/recommendation_engine.dart';
 import '../../services/backend/local_backend.dart';
 
-/// Ink read out on the amber VALUE surface — amber is fixed-hue in both
-/// themes, so this deep-amber ink stays legible on light AND dark.
-const Color _onSaving = Color(0xFF3A2900);
-
 class PlanDetailWidget extends StatefulWidget {
   const PlanDetailWidget({super.key, required this.planId});
   final String planId;
@@ -275,7 +271,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                                 child: Text(
                                   'חוסך ₪$saveYear בשנה',
                                   style: ffTheme.labelMedium.copyWith(
-                                    color: _onSaving,
+                                    color: ffTheme.onSaving,
                                     fontWeight: FontWeight.w700,
                                     fontFeatures: const [FontFeature.tabularFigures()],
                                   ),
@@ -458,12 +454,8 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                       if (plan.fine != null) ...[
                         const SizedBox(height: 14),
                         Container(
-                          decoration: BoxDecoration(
-                            color: ffTheme.cardSurface,
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: ffTheme.alternate),
-                            boxShadow: ffTheme.shadowSoft,
-                          ),
+                          clipBehavior: Clip.antiAlias,
+                          decoration: ffTheme.cardDecoration(radius: ffTheme.radiusCard),
                           child: ExpansionTile(
                             title: Text('אותיות קטנות', style: ffTheme.titleSmall),
                             iconColor: ffTheme.secondaryText,
@@ -598,12 +590,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                                     child: Container(
                                       width: 160,
                                       padding: const EdgeInsets.all(14),
-                                      decoration: BoxDecoration(
-                                        color: ffTheme.cardSurface,
-                                        borderRadius: BorderRadius.circular(14),
-                                        border: Border.all(color: ffTheme.alternate),
-                                        boxShadow: ffTheme.shadowSoft,
-                                      ),
+                                      decoration: ffTheme.cardDecoration(),
                                       child: Column(
                                         crossAxisAlignment: CrossAxisAlignment.start,
                                         children: [
@@ -647,23 +634,15 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
             right: 0,
             child: SafeArea(
               child: Container(
-                padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
                 decoration: BoxDecoration(
                   color: ffTheme.cardSurface,
-                  borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(22)),
+                  borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(ffTheme.radiusXl)),
                   border: Border(
                       top: BorderSide(
-                          color: ffTheme.lineColor, width: 1)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: ffTheme.dark
-                          ? const Color(0x66060A12)
-                          : Colors.black.withValues(alpha: 0.08),
-                      blurRadius: 20,
-                      offset: const Offset(0, -6),
-                    ),
-                  ],
+                          color: ffTheme.primary.withValues(alpha: 0.06), width: 1)),
+                  boxShadow: ffTheme.shadowLifted,
                 ),
                 child: Row(
                   children: [
@@ -1155,13 +1134,9 @@ class _ValueAnchor extends StatelessWidget {
     final hasSaving = saveYear > 0;
 
     return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: t.cardSurface,
-        borderRadius: BorderRadius.circular(t.radiusLg),
-        border: Border.all(color: t.alternate),
-        boxShadow: t.shadowSoft,
-      ),
+      padding: const EdgeInsets.all(20),
+      // The above-the-fold VALUE anchor reads as the page's hero bento tile.
+      decoration: t.bentoDecoration(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1169,8 +1144,11 @@ class _ValueAnchor extends StatelessWidget {
           if (hasSaving) ...[
             Text.rich(
               TextSpan(
+                // AA-safe amber ink for the savings figure on the light card —
+                // the fill hue (#F59E0B) fails 4.5:1 as text, savingText (amber
+                // 800) clears it while keeping the warm VALUE read.
                 style: t.displaySmall.copyWith(
-                  color: t.saving,
+                  color: t.savingText,
                   fontWeight: FontWeight.w800,
                   fontFeatures: const [FontFeature.tabularFigures()],
                 ),
@@ -1180,7 +1158,7 @@ class _ValueAnchor extends StatelessWidget {
                   TextSpan(
                     text: '/שנה',
                     style: t.titleMedium.copyWith(
-                      color: t.saving,
+                      color: t.savingText,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -1265,13 +1243,10 @@ class _Card extends StatelessWidget {
   Widget build(BuildContext context) {
     final ffTheme = AppTheme.of(context);
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: ffTheme.cardSurface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: ffTheme.alternate),
-        boxShadow: ffTheme.shadowSoft,
-      ),
+      padding: const EdgeInsets.all(18),
+      // Premium-2026 opaque card: low-opacity ink hairline + soft shadow + the
+      // 1px top glass-glint, at the canonical card radius.
+      decoration: ffTheme.cardDecoration(radius: ffTheme.radiusCard),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1374,13 +1349,9 @@ class _SpecGrid extends StatelessWidget {
     final ffTheme = AppTheme.of(context);
     final entries = plan.specs.entries.toList();
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: ffTheme.cardSurface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: ffTheme.alternate),
-        boxShadow: ffTheme.shadowSoft,
-      ),
+      padding: const EdgeInsets.all(18),
+      // Anchor bento tile for the spec cluster.
+      decoration: ffTheme.bentoDecoration(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1394,8 +1365,9 @@ class _SpecGrid extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                 decoration: BoxDecoration(
                   color: ffTheme.background,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: ffTheme.alternate),
+                  borderRadius: BorderRadius.circular(ffTheme.radiusSm),
+                  border: Border.all(color: ffTheme.alternate.withValues(alpha: 0.6)),
+                  boxShadow: ffTheme.shadowXs,
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -1448,13 +1420,8 @@ class _CostBreakdownCard extends StatelessWidget {
     final feeEntries = plan.fees.entries.toList();
 
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: ffTheme.cardSurface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: ffTheme.alternate),
-        boxShadow: ffTheme.shadowSoft,
-      ),
+      padding: const EdgeInsets.all(18),
+      decoration: ffTheme.cardDecoration(radius: ffTheme.radiusCard),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1526,12 +1493,8 @@ class _ExtraInfoSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final ffTheme = AppTheme.of(context);
     return Container(
-      decoration: BoxDecoration(
-        color: ffTheme.cardSurface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: ffTheme.alternate),
-        boxShadow: ffTheme.shadowSoft,
-      ),
+      clipBehavior: Clip.antiAlias,
+      decoration: ffTheme.cardDecoration(radius: ffTheme.radiusCard),
       child: ExpansionTile(
         title: Text('מידע נוסף ואותיות קטנות', style: ffTheme.titleSmall),
         iconColor: ffTheme.secondaryText,

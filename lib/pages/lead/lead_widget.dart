@@ -12,6 +12,8 @@ import '../../data.dart';
 import '../../models.dart';
 import '../../services/backend/backend.dart';
 import '../../services/backend/local_backend.dart';
+import '../../services/analytics_service.dart';
+import '../../widgets/whatsapp_button.dart';
 import '../../components/logo_widget/logo_widget.dart';
 
 class LeadWidget extends StatefulWidget {
@@ -89,7 +91,10 @@ class _LeadWidgetState extends State<LeadWidget> {
           // Validate each field when the user LEAVES it (not only on submit,
           // and not on every keystroke) — the error shows next to the field.
           autovalidateMode: AutovalidateMode.onUnfocus,
-          child: Column(
+          // Group the fields so the OS autofill bar fills name+phone+email in
+          // one tap — fewer keystrokes is fewer drop-offs.
+          child: AutofillGroup(
+            child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Honest availability note — no fake countdown.
@@ -108,6 +113,8 @@ class _LeadWidgetState extends State<LeadWidget> {
               TextFormField(
                 controller: _nameCtrl,
                 textDirection: TextDirection.rtl,
+                textInputAction: TextInputAction.next,
+                autofillHints: const [AutofillHints.name],
                 decoration: _inputDecoration(hint: 'ישראל ישראלי', icon: Icons.person_outline_rounded, ffTheme: ffTheme),
                 validator: (v) => (v == null || v.trim().isEmpty) ? 'שדה חובה' : null,
               ).animate(delay: 80.ms).fadeIn().slideY(begin: 0.05),
@@ -121,6 +128,8 @@ class _LeadWidgetState extends State<LeadWidget> {
                 controller: _phoneCtrl,
                 keyboardType: TextInputType.phone,
                 textDirection: TextDirection.ltr,
+                textInputAction: TextInputAction.next,
+                autofillHints: const [AutofillHints.telephoneNumber],
                 decoration: _inputDecoration(hint: '050-0000000', icon: Icons.phone_outlined, ffTheme: ffTheme),
                 validator: (v) {
                   final digits = (v ?? '').replaceAll(RegExp(r'\D'), '');
@@ -144,7 +153,16 @@ class _LeadWidgetState extends State<LeadWidget> {
                 controller: _emailCtrl,
                 keyboardType: TextInputType.emailAddress,
                 textDirection: TextDirection.ltr,
+                textInputAction: TextInputAction.done,
+                autofillHints: const [AutofillHints.email],
                 decoration: _inputDecoration(hint: 'example@email.com', icon: Icons.mail_outline_rounded, ffTheme: ffTheme),
+                // Optional, but if filled it must look like an email — a typo'd
+                // address silently breaks the only written follow-up channel.
+                validator: (v) {
+                  final s = (v ?? '').trim();
+                  if (s.isEmpty) return null;
+                  return RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(s) ? null : 'כתובת אימייל לא תקינה';
+                },
               ).animate(delay: 160.ms).fadeIn().slideY(begin: 0.05),
 
               const SizedBox(height: 20),
@@ -241,6 +259,12 @@ class _LeadWidgetState extends State<LeadWidget> {
                     email: email,
                     callbackTime: _callbackTime,
                   );
+                  // Funnel beacon — fire-and-forget, only after the team got it.
+                  AnalyticsService.track(AnalyticsEvent.leadSubmit, props: {
+                    'source': widget.source,
+                    if (plan != null) 'provider': plan.provider,
+                    if (plan != null) 'category': plan.cat,
+                  });
                   // Tactile confirmation that the lead actually reached the team.
                   HapticFeedback.mediumImpact();
                   context.goNamed('Success');
@@ -262,7 +286,20 @@ class _LeadWidgetState extends State<LeadWidget> {
                   style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText),
                 ),
               ),
+
+              const SizedBox(height: 16),
+
+              // Prefer to talk now? A direct WhatsApp channel as an alternative
+              // to leaving details — same green ACTION CTA.
+              WhatsAppButton(
+                source: 'lead',
+                width: double.infinity,
+                prefillText: plan != null
+                    ? 'היי, ראיתי את ${plan.provider} – ${plan.plan} בחוסך ואשמח לפרטים'
+                    : 'היי, אשמח לעזרה במציאת מסלול משתלם דרך חוסך',
+              ).animate().fadeIn(delay: 340.ms),
             ],
+            ),
           ),
         ),
       ),
@@ -271,11 +308,12 @@ class _LeadWidgetState extends State<LeadWidget> {
 
   Widget _buildAvailabilityBanner(AppTheme ffTheme) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
         color: ffTheme.brandAccentTint,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(ffTheme.radiusMd),
         border: Border.all(color: ffTheme.brandAccent.withValues(alpha: 0.3)),
+        boxShadow: ffTheme.shadowXs,
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -343,15 +381,16 @@ class _LeadWidgetState extends State<LeadWidget> {
     final bill = appState.currentBill(plan.cat);
     final saveYear = planSaveYear(plan, bill);
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [ffTheme.accent1, ffTheme.cardSurface],
           begin: Alignment.topRight,
           end: Alignment.bottomLeft,
         ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: ffTheme.primary.withValues(alpha: 0.2)),
+        borderRadius: BorderRadius.circular(ffTheme.radiusCard),
+        border: Border.all(color: ffTheme.primary.withValues(alpha: 0.12)),
+        boxShadow: ffTheme.shadowMd,
       ),
       child: Column(
         children: [
@@ -428,8 +467,15 @@ class _LeadWidgetState extends State<LeadWidget> {
       children: options.map((opt) {
         final selected = _callbackTime == opt.$1;
         return Expanded(
-          child: GestureDetector(
-            onTap: () => setState(() => _callbackTime = opt.$1),
+          child: Semantics(
+            button: true,
+            selected: selected,
+            label: opt.$2,
+            child: GestureDetector(
+            onTap: () {
+              HapticFeedback.selectionClick();
+              setState(() => _callbackTime = opt.$1);
+            },
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               margin: EdgeInsets.only(right: opt.$1 != 'tomorrow' ? 8 : 0),
@@ -453,6 +499,7 @@ class _LeadWidgetState extends State<LeadWidget> {
               ),
             ),
           ),
+          ),
         );
       }).toList(),
     ).animate(delay: 200.ms).fadeIn().slideY(begin: 0.05);
@@ -460,12 +507,8 @@ class _LeadWidgetState extends State<LeadWidget> {
 
   Widget _buildNextStepsCard(AppTheme ffTheme) {
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: ffTheme.cardSurface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: ffTheme.alternate),
-      ),
+      padding: const EdgeInsets.all(18),
+      decoration: ffTheme.cardDecoration(radius: ffTheme.radiusLg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

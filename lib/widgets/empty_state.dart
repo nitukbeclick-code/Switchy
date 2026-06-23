@@ -87,18 +87,22 @@ class _EmptyStateState extends State<EmptyState>
       _float.forward();
     }
 
-    Widget badge = Container(
-      width: 96,
-      height: 96,
-      decoration: BoxDecoration(
-        color: ffTheme.brandAccentTint,
-        shape: BoxShape.circle,
-        border: Border.all(
-          color: ffTheme.brandAccent.withValues(alpha: 0.18),
+    // The badge icon is purely decorative — the headline/subtitle carry the
+    // meaning — so it is hidden from assistive tech (per the a11y convention).
+    Widget badge = ExcludeSemantics(
+      child: Container(
+        width: 96,
+        height: 96,
+        decoration: BoxDecoration(
+          color: ffTheme.brandAccentTint,
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: ffTheme.brandAccent.withValues(alpha: 0.18),
+          ),
+          boxShadow: ffTheme.shadowSoft,
         ),
-        boxShadow: ffTheme.shadowSoft,
+        child: Icon(widget.icon, size: 46, color: ffTheme.brandAccent),
       ),
-      child: Icon(widget.icon, size: 46, color: ffTheme.brandAccent),
     );
 
     if (!reduceMotion) {

@@ -4,6 +4,7 @@ import 'theme/app_theme.dart';
 import 'data/plans_cellular.dart';
 import 'data/plans_internet.dart';
 import 'data/plans_tv_triple.dart';
+import 'data/plans_electricity.dart';
 
 // ── Categories ────────────────────────────────────────────────────────────────
 
@@ -13,6 +14,7 @@ final List<Category> categories = [
   const Category(id: 'tv', name: 'טלוויזיה', icon: '📺', currentBill: 130, color: Color(0xFF7C3AED), planCount: 9, description: 'ערוצי טלוויזיה ושידורים'),
   const Category(id: 'triple', name: 'חבילה משולבת', icon: '🏠', currentBill: 260, color: Color(0xFFE07034), planCount: 11, description: 'אינטרנט + טלוויזיה + טלפון'),
   const Category(id: 'abroad', name: 'חבילות חו"ל', icon: '✈️', currentBill: 0, color: Color(0xFF0891B2), planCount: 11, description: 'גלישה ושיחות בחו"ל'),
+  const Category(id: 'electricity', name: 'חשמל', icon: '⚡', currentBill: 0, color: Color(0xFFCA8A04), planCount: 5, description: 'ספקי חשמל פרטיים — הנחה על התעריף'),
 ];
 
 /// The category's monochrome line icon — the brand renders categories with
@@ -30,6 +32,8 @@ IconData categoryIconData(String catId) {
       return Icons.home_rounded;
     case 'abroad':
       return Icons.flight_takeoff_rounded;
+    case 'electricity':
+      return Icons.bolt_rounded;
     default:
       return Icons.category_rounded;
   }
@@ -61,6 +65,7 @@ final List<Plan> allPlans = [
   ...tvPlans,
   ...triplePlans,
   ...abroadPlans,
+  ...electricityPlans,
 ];
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

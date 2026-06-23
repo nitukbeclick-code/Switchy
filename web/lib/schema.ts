@@ -205,6 +205,113 @@ export function breadcrumbSchema(items: Crumb[]): Json {
   };
 }
 
+// ── Article (guide) ──────────────────────────────────────────────────────────
+/**
+ * Shared brand Organization node used as Article `author`/`publisher`. Inlined
+ * (name + url + logo) rather than `@id`-referenced because the layout's
+ * orgSchema() does not declare an `@id`; this keeps each Article self-contained
+ * and validator-clean. HONESTY: the brand is the genuine author/publisher of its
+ * own editorial guides — no third party is credited.
+ */
+function brandOrgNode(): Json {
+  return {
+    "@type": "Organization",
+    name: SITE_NAME,
+    url: SITE_URL,
+    logo: `${SITE_URL}/favicon.png`,
+  };
+}
+
+/** Input for {@link articleSchema} — the REAL guide metadata. */
+export interface ArticleInput {
+  /** The article headline (visible H1 — bare, no brand suffix). */
+  headline: string;
+  /** Meta description / summary. */
+  description: string;
+  /** Canonical url of the article (absolute or site-relative). */
+  url: string;
+  /** REAL publish date (ISO yyyy-mm-dd). Never fabricated. */
+  datePublished: string;
+  /**
+   * REAL last-modified date (ISO). Defaults to `datePublished` when no separate
+   * edit time is tracked — a valid, honest freshness signal (mirrors the static
+   * site's behaviour), never an invented future date.
+   */
+  dateModified?: string;
+  /** The article's category/section label (e.g. "סלולר"). */
+  section?: string;
+}
+
+/**
+ * Article schema for a guide. `author`/`publisher` are the brand Organization
+ * (the genuine author of its editorial guides); `mainEntityOfPage` and
+ * `isPartOf` tie the article to its canonical page and the brand WebSite.
+ *
+ * HONESTY (E-E-A-T): dates are the REAL publish/modified dates supplied by the
+ * caller; nothing here fabricates authorship, ratings, or freshness.
+ */
+export function articleSchema(input: ArticleInput): Json {
+  const url = absUrl(input.url);
+  const org = brandOrgNode();
+  return {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: input.headline,
+    description: input.description,
+    inLanguage: "he-IL",
+    datePublished: input.datePublished,
+    dateModified: input.dateModified ?? input.datePublished,
+    ...(input.section ? { articleSection: input.section } : {}),
+    mainEntityOfPage: { "@type": "WebPage", "@id": url },
+    image: `${SITE_URL}/opengraph-image.png`,
+    isPartOf: { "@type": "WebSite", name: SITE_NAME, url: SITE_URL },
+    author: org,
+    publisher: org,
+  };
+}
+
+// ── HowTo (step-by-step guide) ───────────────────────────────────────────────
+/** One ordered HowTo step (name + instruction text). */
+export interface HowToStepInput {
+  name: string;
+  text: string;
+}
+
+/**
+ * HowTo schema for a step-by-step guide. Emitted ONLY when the guide genuinely is
+ * a procedure (the caller passes its real ordered steps); a non-procedural guide
+ * must NOT get a HowTo (callers omit it). Returns `null` when there are no steps,
+ * so callers can render it unconditionally without fabricating a procedure.
+ *
+ * HONESTY: every step mirrors the real on-page instructions — no invented steps.
+ */
+export function howToSchema(args: {
+  name: string;
+  description?: string;
+  url?: string;
+  steps: HowToStepInput[];
+}): Json | null {
+  const steps = (args.steps ?? []).filter(
+    (s) => s && typeof s.name === "string" && typeof s.text === "string",
+  );
+  if (steps.length === 0) return null;
+  const schema: Json = {
+    "@context": "https://schema.org",
+    "@type": "HowTo",
+    name: args.name,
+    inLanguage: "he-IL",
+    step: steps.map((s, i) => ({
+      "@type": "HowToStep",
+      position: i + 1,
+      name: s.name,
+      text: s.text,
+    })),
+  };
+  if (args.description) schema.description = args.description;
+  if (args.url) schema.url = absUrl(args.url);
+  return schema;
+}
+
 // ── ItemList of internal links (RelatedLinks counterpart) ────────────────────
 /** One internal cross-link: a real on-site URL + its (truthful) anchor name. */
 export interface NavLink {

@@ -12,6 +12,7 @@ import {
   getServices,
 } from "@/lib/data";
 import { getVsPairs } from "@/lib/vs";
+import { getGuides } from "@/lib/guides";
 import { SITE_URL } from "@/lib/schema";
 
 export const dynamic = "force-static";
@@ -178,6 +179,24 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.5,
   }));
 
+  // /guides (hub) + /guides/[slug] — the editorial authority layer (150 ported,
+  // real articles). lastModified uses each article's genuine publish date so the
+  // <lastmod> is truthful rather than a build-time stamp.
+  const guidesHub: MetadataRoute.Sitemap = [
+    {
+      url: `${SITE_URL}/guides`,
+      lastModified: now,
+      changeFrequency: "weekly",
+      priority: 0.7,
+    },
+  ];
+  const guides: MetadataRoute.Sitemap = getGuides().map((g) => ({
+    url: `${SITE_URL}/guides/${g.slug}`,
+    lastModified: new Date(g.date),
+    changeFrequency: "monthly",
+    priority: 0.5,
+  }));
+
   // Dedupe by URL — services and categories overlap on the 5 shared slugs
   // (cellular/internet/tv/triple/abroad); only `fiber` is unique to services.
   // Keep the FIRST occurrence so the higher-priority `compare` (categories) entry
@@ -194,6 +213,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     ...marketPulse,
     ...switchHub,
     ...switchProviders,
+    ...guidesHub,
+    ...guides,
     ...authority,
     ...glossary,
     ...legal,

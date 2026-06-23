@@ -222,18 +222,25 @@ export default function MarketPulseCharts({
         {/* Fixed-aspect SVG: width=100% + a constant viewBox → constant reserved
             height (CLS-safe). dir="ltr" so the numeric axis reads left-to-right;
             category labels are Hebrew but center-anchored so they stay legible. */}
-        <div
-          className="w-full"
-          dir="ltr"
-          role="img"
-          aria-label="תרשים עמודות: מחיר ממוצע מול המחיר הזול ביותר בכל קטגוריה. הנתונים המלאים זמינים בטבלה הנלווית."
-        >
+        <div className="w-full" dir="ltr">
+          {/* a11y: role="img" + an in-SVG <title>/<desc> (referenced via
+              aria-labelledby) so assistive tech announces a name AND a longer
+              description; the adjacent sr-only data table carries the figures. */}
           <svg
             viewBox={`0 0 ${VB_W} ${VB_H}`}
             width="100%"
             className="h-auto w-full"
             preserveAspectRatio="xMidYMid meet"
+            role="img"
+            aria-labelledby="market-pulse-chart-title market-pulse-chart-desc"
           >
+            <title id="market-pulse-chart-title">
+              מחיר ממוצע מול המחיר הזול ביותר בכל קטגוריה
+            </title>
+            <desc id="market-pulse-chart-desc">
+              תרשים עמודות המשווה, לכל קטגוריית תקשורת, את המחיר הממוצע מול המחיר
+              הזול ביותר בשקלים. הנתונים המלאים זמינים בטבלה הנלווית.
+            </desc>
             {/* Horizontal gridlines + y-axis tick labels. */}
             {ticks.map((t) => (
               <g key={t.value}>

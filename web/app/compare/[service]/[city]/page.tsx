@@ -52,6 +52,8 @@ import { pageMetadata } from "@/lib/seo";
 import { ils, leadCategory } from "@/lib/format";
 
 // Bounded matrix: every service × every city, pre-rendered at build time.
+// Unknown service/city combos -> real 404 (we only serve the curated matrix).
+export const dynamicParams = false;
 export function generateStaticParams() {
   const cities = getCities();
   return getServices().flatMap((s) =>

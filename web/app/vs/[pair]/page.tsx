@@ -45,6 +45,8 @@ import { ils, leadCategory } from "@/lib/format";
 import type { Plan } from "@/lib/types";
 
 // One page per curated, catalogue-gated match-up, pre-rendered at build time.
+// Unknown pairs -> real 404.
+export const dynamicParams = false;
 export function generateStaticParams() {
   return getVsPairs().map((p) => ({ pair: p.slug }));
 }

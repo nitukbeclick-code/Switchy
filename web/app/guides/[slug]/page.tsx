@@ -33,7 +33,9 @@ import { pageMetadata } from "@/lib/seo";
 
 export const dynamic = "force-static";
 
-// Pre-render one page per guide at build time.
+// Pre-render one page per guide at build time. force-static means notFound()
+// would degrade to a soft-200, so cap to known slugs -> unknown slugs get a real 404.
+export const dynamicParams = false;
 export function generateStaticParams() {
   return getGuides().map((g) => ({ slug: g.slug }));
 }

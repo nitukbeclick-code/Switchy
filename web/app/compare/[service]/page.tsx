@@ -52,7 +52,8 @@ import { pageMetadata } from "@/lib/seo";
 import { faqForCategory } from "@/lib/faq";
 import { ils, leadCategory } from "@/lib/format";
 
-// One page per service axis, pre-rendered at build time.
+// One page per service axis, pre-rendered at build time. Unknown service -> real 404.
+export const dynamicParams = false;
 export function generateStaticParams() {
   return getServices().map((s) => ({ service: s.slug }));
 }

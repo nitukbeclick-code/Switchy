@@ -32,7 +32,9 @@ import { GENERAL_FAQ } from "@/lib/faq";
 import { ils, leadCategory } from "@/lib/format";
 import type { Plan } from "@/lib/types";
 
-// Pre-render one page per derived provider at build time.
+// Pre-render one page per derived provider at build time. Unknown slugs return a
+// real 404 (not a soft-200) so crawlers + users get the not-found page correctly.
+export const dynamicParams = false;
 export function generateStaticParams() {
   return getProviders().map((p) => ({ slug: p.slug }));
 }

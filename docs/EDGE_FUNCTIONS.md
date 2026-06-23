@@ -23,6 +23,7 @@ table below records each function's own auth model, taken from the source.
 | `site-plan-advisor` | Public, multi-turn plan recommender behind the website "מצא לי מסלול" flow. Strictly grounded in the bundled catalogue snapshot (cannot invent providers/plans/prices). Does **not** capture leads. Per-IP rate-limited (~20/hr) via `advisor_sessions`. | Public; grounded to bundled catalogue. | yes |
 | `site-bill-analyzer` | Public endpoint behind "צלמו את החשבון". Gemini Vision extracts provider / monthly ₪ / category from a bill photo and matches cheaper catalogue options. The image is **never stored** — only a summary row in `bill_analyses` (provider / spend / suggestions). | Public. | yes |
 | `site-subscribe` | Newsletter signup. Records the subscriber in `newsletter_subscribers` (service role, idempotent double-opt-in upsert) and sends a Hebrew welcome email via Resend. | Public. | yes |
+| `site-push-notify` | Scheduled deal-feed **Web Push** sender. Reads `plan_price_history` for material price drops (≥ ₪5 OR ≥ 10%), reads opted-in `push_subscriptions`, and sends end-to-end-encrypted (VAPID + `aes128gcm`) pushes to each matching subscriber — honoring opt-out, quiet hours (23:00–08:00 Israel), category prefs, and per-(subscription, drop) dedupe (`push_deliveries`). `GET ?action=health` reports config/grants; `POST { dryRun:true }` selects + counts without sending. **Fail-soft**: absent VAPID keys → `503 "not configured"`, sends nothing. Pure selection logic in `deals.ts`; WebCrypto VAPID/encryption in `webpush.ts`. See [`AI_AGENT.md`](./AI_AGENT.md#the-deal-feed-sender--site-push-notify). | Shared `x-webhook-secret` (constant-time, fail-closed) + a post-auth in-memory rate-limit. | yes |
 | `whatsapp-webhook` | Meta WhatsApp Cloud API webhook — a catalogue-grounded AI agent + CRM. GET = Meta verification (echoes `hub.challenge`); POST = incoming messages, de-duped by `wamid`, persisted (contact / conversation / message), routed by intent. Honours **STOP/opt-out** (Spam Law — flips the contact to `opted_out`, logs to `security_audit_log`) and the **§11 first-contact notice** *even when a human has taken over* (`bot_enabled = false` silences only the AI auto-reply, not storage/STOP/§11). | POST authenticated via `X-Hub-Signature-256` (HMAC-SHA256 of the raw body with the Meta App Secret); GET via the verify token. | yes |
 | `telegram-webhook` | Telegram deep-link account linking (`/start <uuid>`) between a Telegram chat and an app profile, with a per-chat link cap to prevent notification harvesting. | Telegram webhook `secret_token` (`tgWebhookToken`) + strict UUID validation of the untrusted `/start` payload. | yes |
 | `support-agent` | **Stub only** — the directory contains a `deno.json` but no `index.ts`. Not a deployed function at present. | — | — |
@@ -41,12 +42,24 @@ tables they read/write are in [`DATA_MODEL.md`](./DATA_MODEL.md).
 ## Shared helpers (`supabase/functions/_shared/`)
 
 `config.ts` (Vault-first / env-fallback config resolution, `safeEqual`,
-`tgWebhookToken`), `telegram.ts`, `whatsapp.ts`, `email.ts` (Resend), `ai.ts`,
-`db.ts` (service-role `insertRow` etc.), `leads.ts`, `digests.ts`, `weekly.ts`,
-`followup.ts`, `agenda.ts`, `meetings.ts` / `meeting_followup.ts` / `reschedule.ts`,
-`google_calendar.ts`, `zoom.ts`, `webapp.ts` (`authorizeRep` — HMAC-validates
-Telegram `initData`), `admin.ts` (`requireAdmin`), `catalogue.ts`,
+`tgWebhookToken`), `telegram.ts`, `whatsapp.ts`, `email.ts` (Resend), `ai.ts`
+(Gemini text + Vision + the function-calling step + the Groq/OpenRouter fallback
+chain), `db.ts` (service-role `insertRow` etc.), `leads.ts` (the single
+honest-consent lead gate), `digests.ts`, `weekly.ts`, `followup.ts`, `agenda.ts`,
+`meetings.ts` / `meeting_followup.ts` / `reschedule.ts`, `google_calendar.ts`,
+`zoom.ts`, `webapp.ts` (`authorizeRep` — HMAC-validates Telegram `initData`),
+`admin.ts` (`requireAdmin`), `catalogue.ts`, `cors.ts`, `ratelimit.ts`,
 `cron_health.ts`, `log.ts` (structured JSON logs), `types.ts`.
+
+### The unified AI agent core
+
+`agent.ts` (`runAgent` — the grounded, tool-using brain), `tools.ts` (the agent
+tool registry + Gemini `functionDeclaration`s), `scoring.ts` (THE
+provider-neutral plan-ranking formula), and `session.ts` (the unified
+`ChatSession` memory) form one shared brain across WhatsApp, the site, and the
+app. The WhatsApp webhook bridges to it via `whatsapp-webhook/agent_runner.ts`.
+The full design — the loop, the tools, the compliance guardrails, the deal feed —
+is documented in **[`AI_AGENT.md`](./AI_AGENT.md)**.
 
 ## Config resolution (Vault first, env fallback)
 

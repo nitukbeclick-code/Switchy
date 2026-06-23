@@ -105,16 +105,20 @@ below.
 
 ### Per-function deploy slug + auth
 
-The 12 deployable functions (the `support-agent` directory is a **stub** —
+The 13 deployable functions (the `support-agent` directory is a **stub** —
 `deno.json` only, no `index.ts`, not deployed) all deploy with the same recipe.
 Each enforces its own auth (full matrix in [`EDGE_FUNCTIONS.md`](./EDGE_FUNCTIONS.md)):
 
 ```
 notify-lead  renewal-reminders  crm-api  analytics-track
 community-moderate  community-notify
-site-ai-chat  site-plan-advisor  site-bill-analyzer  site-subscribe
+site-ai-chat  site-plan-advisor  site-bill-analyzer  site-subscribe  site-push-notify
 whatsapp-webhook  telegram-webhook
 ```
+
+> `site-push-notify` is the scheduled deal-feed Web-Push sender (see
+> [`AI_AGENT.md`](./AI_AGENT.md#the-deal-feed-sender--site-push-notify)); it needs
+> the VAPID owner action below before it can send.
 
 After deploying a function that owns a webhook, re-register it (e.g. the Telegram
 bot via `notify-lead?action=set-telegram-webhook`, the Meta webhook in the Meta
@@ -156,13 +160,50 @@ Apply in this order — later files assume the tables/functions earlier ones cre
 | 20 | `function-search-path-2026-06.sql` | pins `search_path` on flagged SECURITY-context functions (advisor WARN fix) | the functions they harden |
 | 21 | `rls-defensive-2026-06.sql` | belt-and-braces deny-all policies on the service-role-only PII tables | whatsapp, analytics_events |
 | 22 | `support-tickets-2026-06-12.sql` | `support_tickets` / `support_messages` (UPDATE column-scoped to `status`) | schema |
+| 23 | `agent-platform-2026-06.sql` | `push_subscriptions` (Web-Push endpoints) + `agent_tool_calls` (optional agent audit) + the `plan_price_history` **population trigger** on `public.plans` (`snapshot_plan_price()`) | schema (`plans`), plan-price-history (#12) |
+| 24 | `site-push-notify-2026-06.sql` | `push_subscriptions` prefs (`opted_out` / `quiet_hours` / `last_notified_at`) + `push_deliveries` (deal-feed dedupe ledger) | agent-platform (#23) |
 
-> Notes: files 8–22 are largely independent of one another except where the
+> Notes: files 8–24 are largely independent of one another except where the
 > "Depends on" column says so — the strict prerequisites are that **`schema.sql`
 > runs first** and that the consent/whatsapp/profiles/analytics tables exist
 > before the files that extend them. The two `crm_events` migrations (#14, #15)
 > are deliberately additive and order-independent. The grant-gap rule (every new
 > table needs an explicit `service_role` GRANT) is already baked into each file.
+
+## Owner action: VAPID keys for the deal-feed Web Push
+
+The `site-push-notify` deal-feed sender needs a VAPID (Web-Push application
+server) keypair. **The keys are owner-set secrets — they are NOT committed and
+NOT in any migration.** Until they're set, the function fails soft (`POST` →
+`503 "not configured"`, sends nothing) and `/api/push` returns `503` so the PWA
+toggles push off gracefully.
+
+1. **Generate a P-256 keypair** (any standard Web-Push key generator, e.g.
+   `npx web-push generate-vapid-keys`). You need the public key as the base64url
+   of the 65-byte uncompressed point and the private key as the base64url 32-byte
+   scalar.
+2. **Set them as edge-function secrets** (the function reads env, Vault-extensible
+   later) — the names `site-push-notify/index.ts` resolves:
+
+   ```
+   VAPID_PUBLIC_KEY   = <base64url 65-byte uncompressed P-256 point>
+   VAPID_PRIVATE_KEY  = <base64url 32-byte private scalar>
+   VAPID_SUBJECT      = mailto:hello@switchy-ai.com   # or an https: contact
+   ```
+
+3. **Expose the public key to the browser** so the PWA can subscribe — set
+   `NEXT_PUBLIC_VAPID_PUBLIC_KEY` (same value as `VAPID_PUBLIC_KEY`) in the Vercel
+   web project env. `web/lib/push.ts` disables push entirely when it's unset.
+4. **Schedule the sender** with `pg_cron` to `POST` the function a few times a day
+   (a `{ "dryRun": true }` body selects + counts without sending — useful to
+   verify wiring). Confirm config + grants first:
+
+   ```bash
+   curl 'https://orzitfqmlvopujsoyigr.supabase.co/functions/v1/site-push-notify?action=health'
+   ```
+
+See [`AI_AGENT.md`](./AI_AGENT.md#deal-feed--web-push-pwa) for how the feed works
+end to end.
 
 ## Flutter app → app stores
 

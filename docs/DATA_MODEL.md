@@ -130,6 +130,28 @@ UPSERTs these tables from `lib/data.dart`.
 > the human "why". They are never auto-populated — E-E-A-T rule. DDL:
 > `plans-enrich-2026-06.sql`, `providers-2026-06.sql`, `plan-price-history-2026-06.sql`.
 
+`plan_price_history` is **populated by a trigger** (`snapshot_plan_price()`, added
+by `agent-platform-2026-06.sql`) that inserts a snapshot row whenever a
+`public.plans` price (or post-promo `after`) changes — so the trend ledger records
+every move as it happens. Guarded + idempotent; a no-op until both tables exist.
+
+### AI agent platform + deal-feed Web Push
+
+Tables that back the unified AI agent and the deal-feed Web Push sender
+(`site-push-notify`). See **[`AI_AGENT.md`](./AI_AGENT.md)** for how they're used.
+
+| Table | Holds | RLS posture |
+|-------|-------|-------------|
+| `push_subscriptions` | one row per browser/PWA Web-Push subscription (`endpoint` unique + `p256dh`/`auth` keys, opted-in `categories[]`, `opted_out` / `quiet_hours` / `last_notified_at` prefs, nullable `user_id`) | **own-row** for a signed-in user (select/insert/update/delete `auth.uid() = user_id`); service_role (the sender) reads all + writes anon PWA rows (`user_id` null) |
+| `push_deliveries` | dedupe ledger — one row per (subscription, price-drop) delivered, so a drop is never pushed to the same browser twice | **service-role only** (deny-all to clients); pruned by age (~30 days) |
+| `agent_tool_calls` | OPTIONAL deeper audit of agent tool runs (`channel`, `conversation_id`, `tool`, `ok`, PII-light `preview`), complementing the `crm_events` activity feed | **service-role only** (deny-all to clients); written by the agent, read by an admin rollup |
+
+> The unified agent's conversation *memory* is **not** a new table — it reuses
+> `ai_sessions` (site/app) and `whatsapp_conversations.ai_state` (whatsapp); see
+> the site-AI and WhatsApp CRM sections. DDL: `agent-platform-2026-06.sql`,
+> `site-push-notify-2026-06.sql`. VAPID keys are owner-set secrets, not in any
+> migration (see [`DEPLOYMENT.md`](./DEPLOYMENT.md#owner-action-vapid-keys-for-the-deal-feed-web-push)).
+
 ### Meetings (video consultation with a rep)
 
 | Table | Holds | RLS posture |

@@ -23,6 +23,14 @@ All four share one catalogue of real plans (owned by the Flutter app in
 request from **any** front-end converges on `public.leads`, which fans out to the
 team's Telegram "digital rep" via the `notify-lead` edge function.
 
+The conversational and recommendation surfaces also share **one AI agent** — a
+catalogue-grounded, tool-using brain (`supabase/functions/_shared/{agent,tools,
+scoring,session}.ts`) with one persona, one ranking formula, and one set of
+compliance guardrails, so WhatsApp, the site chat, the web concierge/quiz, and the
+bill analyzer can't drift on what they know or how they behave. A scheduled
+deal-feed turns real `plan_price_history` price drops into Web Push notifications.
+See **[`docs/AI_AGENT.md`](docs/AI_AGENT.md)**.
+
 See **[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)** for the full picture and
 data flow.
 
@@ -111,7 +119,8 @@ Schema/migrations are applied in the Supabase SQL editor (see
 | Doc | What it covers |
 |-----|----------------|
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | The four surfaces + cross-surface data flow (catalogue, leads, meetings, WhatsApp CRM, the lead → notify-lead → Telegram/WhatsApp pipeline) |
-| [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) | How each surface ships — web→Vercel auto-deploy, the `.vercelignore`/Root-Directory gotchas, edge→CLI/CI, site→prebuilt HTML, app→stores, **plus the SQL migration application order** |
+| [`docs/AI_AGENT.md`](docs/AI_AGENT.md) | The unified, catalogue-grounded AI agent — the shared core (`_shared/{agent,tools,scoring,session}.ts`), the WhatsApp agent + tool registry, the web concierge/quiz + bill analyzer, and the deal-feed Web Push (PWA) built on `plan_price_history` |
+| [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) | How each surface ships — web→Vercel auto-deploy, the `.vercelignore`/Root-Directory gotchas, edge→CLI/CI, site→prebuilt HTML, app→stores, **plus the SQL migration application order** + the VAPID owner action |
 | [`docs/EDGE_FUNCTIONS.md`](docs/EDGE_FUNCTIONS.md) | Every `supabase/functions/*` — purpose, per-function auth model, the `--no-verify-jwt` deploy recipe |
 | [`docs/DATA_MODEL.md`](docs/DATA_MODEL.md) | `public.*` tables (leads / community / meetings / whatsapp_* CRM / site-AI / analytics / catalogue mirror) + RLS posture + the compliance layer (consent, suppression, data-subject requests, audit, retention) |
 | `CLAUDE.md` | Authoritative coding directives — no FlutterFlow, design tokens, conventions, domain rules, validation gates |

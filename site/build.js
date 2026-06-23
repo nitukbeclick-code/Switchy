@@ -49,6 +49,13 @@ const plansByCat = {};
 for (const p of catalogue.plans) (plansByCat[p.cat] ||= []).push(p);
 for (const k of Object.keys(plansByCat)) plansByCat[k].sort((a, b) => a.price - b.price);
 
+// Real, verifiable catalogue counts — derived straight from the exported plan
+// data, never hardcoded. Used by the honest trust block (no invented user
+// counts / fake reviews: the only numbers we show are the ones we can prove).
+const PLAN_COUNT = catalogue.plans.length;
+const PROVIDER_COUNT = new Set(catalogue.plans.map((p) => p.provider)).size;
+const CATEGORY_COUNT = new Set(catalogue.plans.map((p) => p.cat)).size;
+
 // ── Monochrome SVG icon set ─────────────────────────────────────────────────
 // Formal brand uses line icons, not emoji (per UI/UX best practice + the
 // white-glass/black-ink identity). Icons inherit `currentColor`; sizing/colour
@@ -600,7 +607,59 @@ const leadFormHtml = (submitLabel) => `<form class="cta__form" id="leadForm" nov
             </label>
           </div>
           <button class="btn btn--primary btn--lg" type="submit">${esc(submitLabel)}</button>
+          ${ctaObjections()}
         </form>`;
+
+// Objection-handling microcopy — the small reassurance chips that sit right
+// above the lead form, exactly where hesitation peaks. Every line is an honest,
+// already-true fact about the service (no fabricated claims): free because the
+// provider pays the referral fee, no commitment, the number is kept on porting,
+// and the ranking is neutral. Reused verbatim across every CTA section so the
+// promise can never drift. `ico` keys map to the existing svgIcon() set.
+const CTA_OBJECTIONS = [
+  ['shield', 'חינם לכם — הספק משלם, לא אתם'],
+  ['scale', 'המלצה ניטרלית — לפי ההתאמה, לא לפי מי שמשלם'],
+  ['check', 'בלי התחייבות · המספר שלכם נשמר בניוד'],
+  ['lock', 'לא נשתף את המספר עם ספקים · נתונים מוצפנים'],
+];
+const ctaObjections = () => `<ul class="cta__objections" aria-label="למה אפשר להירשם בראש שקט">
+${CTA_OBJECTIONS.map(([ico, t]) => `          <li>${svgIcon(ico)}<span>${esc(t)}</span></li>`).join('\n')}
+        </ul>`;
+
+// Honest trust block — the real-only E-E-A-T strip placed just before a CTA on
+// the main conversion pages. EVERYTHING here is verifiable: catalogue counts come
+// straight from the exported plan data (PLAN_COUNT / PROVIDER_COUNT /
+// CATEGORY_COUNT), the methodology line is the same transparent pitch as the
+// about page, the commission line reuses the footer's §7b disclosure wording, and
+// the caveat is the same VAT-incl / verify-with-provider note used near every
+// price table. No invented user counts, no fake testimonials or ratings.
+const trustBlock = () => `    <section class="section trust-block" aria-label="למה אפשר לסמוך עלינו">
+      <div class="container">
+        <div class="trust-block__inner reveal">
+          <header class="trust-block__head">
+            <span class="eyebrow">שקיפות מלאה</span>
+            <h2>למה אפשר לסמוך על ההשוואה</h2>
+          </header>
+          <dl class="trust-stats" aria-label="היקף הקטלוג">
+            <div class="trust-stat"><dt>מסלולים בהשוואה</dt><dd><span data-count-to="${PLAN_COUNT}">${PLAN_COUNT}</span></dd></div>
+            <div class="trust-stat"><dt>חברות תקשורת</dt><dd><span data-count-to="${PROVIDER_COUNT}">${PROVIDER_COUNT}</span></dd></div>
+            <div class="trust-stat"><dt>קטגוריות</dt><dd><span data-count-to="${CATEGORY_COUNT}">${CATEGORY_COUNT}</span></dd></div>
+          </dl>
+          <ul class="trust-points">
+            <li>${svgIcon('scale')}<span><b>מתודולוגיה שקופה.</b> אנחנו משווים את כל ${PROVIDER_COUNT} החברות ומדרגים לפי ערך — מחיר, גמישות והמחיר שאחרי המבצע — עם הסבר לכל המלצה. <a href="about.html">המתודולוגיה המלאה ←</a></span></li>
+            <li>${svgIcon('shield')}<span><b>גילוי נאות.</b> השירות חינמי לכם. אנחנו מקבלים עמלת תיווך מחברות התקשורת כשעוברים דרכנו — העמלה אינה משפיעה על המחיר שאתם משלמים ואינה משפיעה על הדירוג.</span></li>
+            <li>${svgIcon('info')}<span><b>מחירים אמיתיים.</b> המחירים כוללים מע״מ ונכונים למועד עדכון האתר (${BUILD_DATE_HE}). מחירים ותנאים עשויים להשתנות — תמיד כדאי לאמת מול הספק לפני התקשרות.</span></li>
+          </ul>
+        </div>
+      </div>
+    </section>`;
+
+// NOTE: the sticky mobile lead CTA is NOT emitted here — script.js injects it at
+// runtime (only when a page has a lead form and the viewport is ≤720px), with
+// scroll-reveal and auto-hide while the form is in view. Adding a static bar in
+// the markup would duplicate that element and fight its CSS contract. The honest
+// win on the static site is therefore: give the conversion hubs a real lead form
+// (see providersIndexPage) so script.js's sticky bar activates there too.
 
 // Offer price for structured data — the exact advertised figure when present,
 // otherwise the rounded int. Always a plain number (schema.org/Offer.price).
@@ -944,6 +1003,7 @@ ${catGuides}
       </div>
     </section>
 
+${trustBlock()}
     <section class="cta" id="cta">
       <div class="container cta__inner reveal">
         <h2>מוכנים לחסוך על ${esc(c.name)}?</h2>
@@ -2048,6 +2108,7 @@ ${nav}
       </div>
     </section>
 ${collectionsSection}
+${trustBlock()}
     <section class="cta" id="cta">
       <div class="container cta__inner reveal">
         <h2>מצאתם משהו מעניין?</h2>
@@ -2192,6 +2253,7 @@ ${gHtml}
       </div>
     </section>` : '';
     })()}
+${trustBlock()}
     <section class="cta" id="cta">
       <div class="container cta__inner reveal">
         <h2>רוצים לעבור ל${esc(name)} — או ממנו?</h2>
@@ -2258,6 +2320,16 @@ ${navNoCta}
         <div class="provider-grid">
 ${cards}
         </div>
+      </div>
+    </section>
+${trustBlock()}
+    <section class="cta" id="cta">
+      <div class="container cta__inner reveal">
+        <h2>לא בטוחים איזה ספק מתאים לכם?</h2>
+        <p>השאירו פרטים ונשווה את כל החברות עבורכם, עם המלצה מנומקת — חינם, בלי התחייבות.</p>
+        ${leadFormHtml('קבלו המלצה אישית תוך 2 דקות ←')}
+        <p class="cta__note" id="leadNote" role="status" aria-live="polite"></p>
+        <a class="cta__wa" href="https://wa.me/972505037537" target="_blank" rel="noopener">${svgIcon('chat')}מעדיפים וואטסאפ? דברו איתנו</a>
       </div>
     </section>
   </main>
@@ -2376,6 +2448,7 @@ ${compareGlossaryDetails()}
         <p style="text-align:center;margin-top:14px"><a href="glossary.html">מילון מונחי תקשורת — כל ההסברים ←</a></p>
       </div>
     </section>
+${trustBlock()}
     <section class="cta" id="cta">
       <div class="container cta__inner reveal">
         <h2>בחרתם? נעזור לכם לעבור</h2>
@@ -2776,6 +2849,7 @@ ${guidesHtml}
       </div>
     </section>
 ` : ''}
+${trustBlock()}
     <section class="cta" id="cta">
       <div class="container cta__inner reveal">
         <h2>מצאתם משהו מעניין?</h2>
@@ -3087,6 +3161,7 @@ ${guidesHtml}
       </div>
     </section>
 ` : ''}
+${trustBlock()}
     <section class="cta" id="cta">
       <div class="container cta__inner reveal">
         <h2>רוצים שנמצא לכם את ההצעה הכי טובה?</h2>
@@ -3353,6 +3428,7 @@ ${guideCardHtml}
         </div>
       </div>
     </section>` : ''}
+${trustBlock()}
     <section class="cta" id="cta">
       <div class="container cta__inner reveal">
         <h2>עדיין מתלבטים? נעזור לכם להחליט</h2>
@@ -3595,6 +3671,7 @@ ${relatedGuideCards}
         </div>
       </div>
     </section>` : ''}
+${trustBlock()}
     <section class="cta" id="cta">
       <div class="container cta__inner reveal">
         <h2>עדיין מתלבטים בין ${esc(a.provider)} ל${esc(b.provider)}?</h2>
@@ -3668,6 +3745,7 @@ ${navNoCta}
       </div>
     </section>
 ${groups}
+${trustBlock()}
     <section class="cta" id="cta">
       <div class="container cta__inner reveal">
         <h2>רוצים שנשווה עבורכם?</h2>

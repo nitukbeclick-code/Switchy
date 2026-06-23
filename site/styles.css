@@ -776,6 +776,57 @@ body:has(.sticky-cta.is-visible) .wa-fab { bottom: 76px; }
 .cta__referral { margin-top: 14px; text-align: center; font-size: 14px; color: var(--muted); }
 .cta__referral a { color: var(--accent-ink); font-weight: 700; }
 
+/* ── CTA objection-handling chips ─────────────────────────────────────────────
+   Sits inside the dark CTA band, just below the submit button — light-on-dark
+   reassurance (free / neutral / no-commitment / number-kept). Every line is an
+   already-true fact about the service, not a marketing claim. */
+.cta__objections {
+  list-style: none; margin: 16px 0 0; padding: 0;
+  display: flex; flex-wrap: wrap; gap: 8px 14px; justify-content: center;
+  flex: 1 1 100%;
+}
+.cta__objections li {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: 13px; font-weight: 600; line-height: 1.3;
+  color: rgba(255,255,255,.88);
+}
+.cta__objections .ico { width: 15px; height: 15px; flex: none; color: var(--lime); }
+
+/* ── Honest trust block (real-only E-E-A-T strip before a CTA) ─────────────────
+   Verifiable catalogue counts + transparent methodology + commission disclosure
+   + price caveat. Light-surface glass panel using the standard tokens; the dark
+   theme overrides come for free from the [data-theme] token swap. */
+.trust-block__inner {
+  max-width: 920px; margin: 0 auto; padding: clamp(24px, 4vw, 40px);
+  background: var(--white); border: 1px solid var(--line);
+  border-radius: var(--radius-lg); box-shadow: var(--shadow-sm);
+}
+.trust-block__head { text-align: center; margin-bottom: 22px; }
+.trust-block__head .eyebrow { justify-content: center; }
+.trust-block__head h2 { font-family: 'Rubik'; font-size: clamp(22px, 3vw, 30px); font-weight: 800; color: var(--green-d); letter-spacing: -.6px; margin-top: 8px; }
+/* Real catalogue counters — the only numbers shown are the provable ones. */
+.trust-stats {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+  margin: 0 0 22px; padding: 0;
+}
+.trust-stat {
+  text-align: center; padding: 16px 8px;
+  background: var(--mint); border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+.trust-stat dd { font-family: 'Rubik'; font-size: clamp(28px, 5vw, 40px); font-weight: 900; color: var(--accent-ink); line-height: 1; }
+.trust-stat dt { margin-top: 6px; font-size: 13px; font-weight: 600; color: var(--muted); }
+.trust-points { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
+.trust-points li { display: flex; align-items: flex-start; gap: 12px; font-size: 15px; line-height: 1.6; color: var(--muted); }
+.trust-points li b { color: var(--green-d); font-weight: 700; }
+.trust-points .ico { width: 22px; height: 22px; flex: none; margin-top: 2px; color: var(--accent); }
+.trust-points a { color: var(--accent-ink); font-weight: 700; text-decoration: underline; text-underline-offset: 2px; white-space: nowrap; }
+.trust-points a:hover { opacity: .85; }
+@media (max-width: 560px) {
+  .trust-stats { grid-template-columns: 1fr; }
+  .trust-points a { white-space: normal; }
+}
+
 /* ── Category landing hero (generated pages) ─────────────────────────── */
 .lead-hero { padding: 56px 0 8px; text-align: center; position: relative; }
 .lead-hero::before {

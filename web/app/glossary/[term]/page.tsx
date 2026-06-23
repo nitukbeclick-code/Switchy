@@ -8,6 +8,7 @@ import {
   definedTermSchema,
   breadcrumbSchema,
 } from "@/lib/schema";
+import { pageMetadata } from "@/lib/seo";
 
 // Pre-render one page per glossary term at build time.
 export function generateStaticParams() {
@@ -22,11 +23,11 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { term } = await params;
   const entry = getGlossaryTerm(term);
   if (!entry) return {};
-  return {
+  return pageMetadata({
     title: `${entry.term} — מילון מונחי תקשורת`,
     description: entry.definition.slice(0, 155),
-    alternates: { canonical: `/glossary/${entry.slug}` },
-  };
+    path: `/glossary/${entry.slug}`,
+  });
 }
 
 export default async function GlossaryTermPage({ params }: Params) {

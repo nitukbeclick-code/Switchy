@@ -17,17 +17,18 @@ import {
   getCities,
   CATEGORY_HE,
 } from "@/lib/data";
-import { websiteSchema, itemListSchema, faqPageSchema } from "@/lib/schema";
+import { itemListSchema, faqPageSchema } from "@/lib/schema";
+import { pageMetadata } from "@/lib/seo";
 import { GENERAL_FAQ } from "@/lib/faq";
 import { ils } from "@/lib/format";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "השוואת מסלולי תקשורת בישראל — חינם",
   description:
     "משווים מסלולי סלולר, אינטרנט, טלוויזיה, חבילות משולבות וחבילות חו״ל מכל " +
     "הספקים בישראל. השוואה חינמית, מחירים מעודכנים בשקלים, ומעבר ספק בהסכמתכם.",
-  alternates: { canonical: "/" },
-};
+  path: "/",
+});
 
 // Pick the N cheapest plans in a category as a representative featured table.
 function cheapestIn(cat: string, n: number) {
@@ -63,8 +64,8 @@ export default function Home() {
 
   return (
     <main id="main" className="mx-auto w-full max-w-5xl flex-1 px-4 py-10 sm:px-6">
-      {/* Structured data for engines: WebSite (SearchAction), the featured list, FAQ. */}
-      <JsonLd data={websiteSchema()} />
+      {/* Structured data for engines: the featured list and FAQ. (The site-wide
+          WebSite/SearchAction node is emitted once in the root layout.) */}
       <JsonLd data={itemListSchema(featured)} />
       <JsonLd data={faqPageSchema(GENERAL_FAQ)} />
 

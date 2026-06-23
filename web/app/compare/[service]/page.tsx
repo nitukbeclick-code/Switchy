@@ -46,6 +46,7 @@ import {
   relatedLinksSchema,
 } from "@/lib/schema";
 import type { NavLink, QA } from "@/lib/schema";
+import { pageMetadata } from "@/lib/seo";
 import { faqForCategory } from "@/lib/faq";
 import { ils, leadCategory } from "@/lib/format";
 
@@ -87,13 +88,13 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const plans = plansForService(service);
   const min = minPriceOf(plans);
   const minTxt = min != null ? ` החל מ-${ils(min)}.` : "";
-  return {
+  return pageMetadata({
     title: `השוואת ${svc.label} — כל הספקים בישראל`,
     description:
       `השוואת ${plans.length} מסלולי ${svc.label} מכל הספקים בישראל.${minTxt} ` +
       `מחירים בשקלים, כולל המחיר אחרי המבצע — והשוואה מותאמת לכל עיר. השוואה חינמית.`,
-    alternates: { canonical: `/compare/${service}` },
-  };
+    path: `/compare/${service}`,
+  });
 }
 
 // A factual 40–50 word Hebrew conclusion computed from the catalogue.

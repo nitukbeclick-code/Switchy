@@ -19,17 +19,21 @@ import {
   collectionPageSchema,
   SITE_URL,
 } from "@/lib/schema";
+import { pageMetadata } from "@/lib/seo";
 import { ils } from "@/lib/format";
 
 export const dynamic = "force-static";
 
-export const metadata: Metadata = {
-  title: "השוואות ראש בראש — ספק מול ספק | חוסך / Switch AI",
+// Bare title — the root layout's title template brands the <title> once. (The OG
+// title is brand-normalised by pageMetadata.) Previously the inline brand suffix
+// here was double-applied by the template → "… | brand | brand".
+export const metadata: Metadata = pageMetadata({
+  title: "השוואות ראש בראש — ספק מול ספק",
   description:
     "השוואות ישירות בין ספקי התקשורת בישראל: סלקום מול פרטנר, בזק מול HOT ועוד. " +
     "מחיר התחלתי, מספר מסלולים ומאפיינים בכל קטגוריה — מהקטלוג ובשקלים. חינמי.",
-  alternates: { canonical: "/vs" },
-};
+  path: "/vs",
+});
 
 /** Group the resolved pairs by their Hebrew category label, in stable order. */
 function groupByCategory(pairs: VsPair[]): { label: string; pairs: VsPair[] }[] {

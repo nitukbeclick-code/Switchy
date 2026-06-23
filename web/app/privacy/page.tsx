@@ -15,6 +15,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import JsonLd from "@/components/JsonLd";
 import { breadcrumbSchema, webPageSchema } from "@/lib/schema";
+import { pageMetadata } from "@/lib/seo";
 
 // Real last editorial review of this policy. Bump when the policy text changes.
 const LAST_REVIEWED = "2026-06-23";
@@ -24,14 +25,14 @@ const LAST_REVIEWED = "2026-06-23";
 // '2026-06'). Bump together with the consent text + LAST_REVIEWED.
 const CONSENT_VERSION = "2026-06";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "מדיניות פרטיות",
   description:
     "מדיניות הפרטיות של חוסך / Switch AI: אילו פרטים אנו אוספים בטופס יצירת הקשר, " +
     "כיצד אנו שומרים עליהם, מתי הם מועברים לספק (רק לאחר הסכמה), מי הם מעבדי " +
     "המידע שלנו, וכיצד לממש את זכויותיכם לפי חוק הגנת הפרטיות (תיקון 13).",
-  alternates: { canonical: "/privacy" },
-};
+  path: "/privacy",
+});
 
 interface Section {
   h: string;

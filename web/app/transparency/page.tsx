@@ -2,18 +2,19 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import JsonLd from "@/components/JsonLd";
 import { breadcrumbSchema, SITE_URL, SITE_NAME } from "@/lib/schema";
+import { pageMetadata } from "@/lib/seo";
 import { getProviders, getPlans, getCategories } from "@/lib/data";
 
 // Last editorial review of this methodology page. Bumped when the policy changes.
 const LAST_REVIEWED = "2026-06-22";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "שקיפות ומתודולוגיה",
   description:
     "איך חוסך / Switch AI אוסף ומאמת נתונים, איך נקבעת בחירת העורך, ולמה כל מסלול " +
     "מקודם מסומן בגלוי. מדיניות שקיפות מלאה — ללא ביקורות מומצאות ובלי דירוג סמוי.",
-  alternates: { canonical: "/transparency" },
-};
+  path: "/transparency",
+});
 
 // WebPage schema carrying lastReviewed — signals the authority/freshness of the
 // methodology to engines. Honest: the date is the real last editorial review.

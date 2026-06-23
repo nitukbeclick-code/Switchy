@@ -27,15 +27,16 @@ import {
   knowledgeGraphSchema,
   SITE_URL,
 } from "@/lib/schema";
+import { pageMetadata } from "@/lib/seo";
 import { ils } from "@/lib/format";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "כל ספקי התקשורת בישראל — מסלולים ומחירים",
   description:
     "אינדקס כל ספקי התקשורת בישראל בקטלוג שלנו — סלולר, אינטרנט, טלוויזיה, " +
     "חבילות משולבות וחו״ל. מספר מסלולים, מחיר התחלתי וקטגוריות לכל ספק. השוואה חינמית.",
-  alternates: { canonical: "/providers" },
-};
+  path: "/providers",
+});
 
 export default function ProvidersIndexPage() {
   // Transparent "best value" order: cheapest entry point first (stated below).

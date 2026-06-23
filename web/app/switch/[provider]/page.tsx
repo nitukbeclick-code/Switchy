@@ -37,6 +37,7 @@ import {
   SITE_URL,
   type QA,
 } from "@/lib/schema";
+import { pageMetadata } from "@/lib/seo";
 import { leadCategory } from "@/lib/format";
 
 // Pre-render one guide per derived provider at build time.
@@ -55,14 +56,14 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { provider: slug } = await params;
   const provider = getProvider(slug);
   if (!provider) return {};
-  return {
+  return pageMetadata({
     title: `איך לעזוב את ${provider.name} — מדריך ניתוק וניוד מספר`,
     description:
       `מדריך עובדתי לניתוק ומעבר מ${provider.name}: זכות הניתוק, ניוד המספר דרך ` +
       `מסלקת הניוד, והודעה בכתב — בלי קנסות מיותרים. כולל קישור לדף הניתוק הרשמי ` +
       `והשוואת חלופות. חינם.`,
-    alternates: { canonical: `/switch/${slug}` },
-  };
+    path: `/switch/${slug}`,
+  });
 }
 
 /** Factual exit steps (general, accurate — never invented per-provider specifics). */

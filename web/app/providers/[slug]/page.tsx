@@ -27,6 +27,7 @@ import {
   type NavLink,
   type QA,
 } from "@/lib/schema";
+import { pageMetadata } from "@/lib/seo";
 import { GENERAL_FAQ } from "@/lib/faq";
 import { ils, leadCategory } from "@/lib/format";
 import type { Plan } from "@/lib/types";
@@ -48,13 +49,13 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const provider = getProvider(slug);
   if (!provider) return {};
   const cats = provider.categories.map((c) => CATEGORY_HE[c] ?? c).join(", ");
-  return {
+  return pageMetadata({
     title: `${provider.name} — מסלולים ומחירים`,
     description:
       `כל מסלולי ${provider.name} (${cats}) במקום אחד — ${provider.planCount} ` +
       `מסלולים, החל מ-${ils(provider.minPrice)}. השוואה חינמית ומחירים בשקלים.`,
-    alternates: { canonical: `/providers/${slug}` },
-  };
+    path: `/providers/${slug}`,
+  });
 }
 
 // "Best for" — pick a representative cheapest plan per category this provider has.

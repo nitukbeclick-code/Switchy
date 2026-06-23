@@ -6,14 +6,15 @@ import {
   definedTermSetSchema,
   breadcrumbSchema,
 } from "@/lib/schema";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "מילון מונחי תקשורת",
   description:
     "מילון מונחי תקשורת בעברית — 5G, eSIM, סיב אופטי, ניוד מספר, התחייבות ועוד. " +
     "הסברים ברורים שיעזרו לכם להשוות מסלולי סלולר, אינטרנט וטלוויזיה נכון.",
-  alternates: { canonical: "/glossary" },
-};
+  path: "/glossary",
+});
 
 export default function GlossaryPage() {
   const terms = getGlossary();

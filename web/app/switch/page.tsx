@@ -21,14 +21,15 @@ import {
   knowledgeGraphSchema,
   type QA,
 } from "@/lib/schema";
+import { pageMetadata } from "@/lib/seo";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "מדריכי מעבר וניתוק ספק — איך לעזוב כל ספק בישראל",
   description:
     "מדריך עובדתי לניתוק ומעבר מכל ספק תקשורת בישראל — סלולר, אינטרנט, טלוויזיה " +
     "וחבילות משולבות. זכות הניתוק, ניוד מספר דרך מסלקת הניוד, והשוואת חלופות. חינם.",
-  alternates: { canonical: "/switch" },
-};
+  path: "/switch",
+});
 
 // Verification timestamp — when the data behind this page was last regenerated.
 const REVIEWED_AT = new Date().toISOString().slice(0, 10);

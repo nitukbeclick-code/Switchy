@@ -13,6 +13,7 @@ import {
   breadcrumbSchema,
   SITE_URL,
 } from "@/lib/schema";
+import { pageMetadata } from "@/lib/seo";
 import { ils } from "@/lib/format";
 
 // ── Static, no secrets: the page reads the bundled catalogue via priceStats(). ──
@@ -60,14 +61,17 @@ function buildRows(): MarketPulseCategory[] {
 export function generateMetadata(): Metadata {
   const rows = buildRows();
   const total = rows.reduce((n, r) => n + r.count, 0);
-  return {
-    title: "מצב שוק התקשורת — מחירים נוכחיים בישראל | חוסך / Switch AI",
+  // Bare title — the root layout's title template brands the <title> once (the OG
+  // title is brand-normalised by pageMetadata). The inline brand suffix here was
+  // previously double-applied by the template → "… | brand | brand".
+  return pageMetadata({
+    title: "מצב שוק התקשורת — מחירים נוכחיים בישראל",
     description:
       `תמונת מצב עדכנית של מחירי התקשורת בישראל: מחיר ממוצע, מחיר מינימום והעסקה ` +
       `הזולה ביותר בכל קטגוריה, מתוך ${total} מסלולים. נתונים נוכחיים בלבד — ` +
       `היסטוריית מחירים תיאסף לאורך זמן להצגת מגמות אמיתיות.`,
-    alternates: { canonical: PAGE_PATH },
-  };
+    path: PAGE_PATH,
+  });
 }
 
 // A factual 40–50 word Hebrew conclusion computed from the catalogue.

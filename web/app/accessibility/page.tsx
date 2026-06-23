@@ -22,17 +22,18 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import JsonLd from "@/components/JsonLd";
 import { breadcrumbSchema, webPageSchema } from "@/lib/schema";
+import { pageMetadata } from "@/lib/seo";
 
 // Real last review of the site's accessibility status. Bump on each review.
 const LAST_REVIEWED = "2026-06-23";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "הצהרת נגישות",
   description:
     "הצהרת הנגישות של חוסך / Switch AI: רמת הנגישות הנוכחית של האתר, ההתאמות " +
     "שבוצעו, מגבלות ידועות, וכיצד לדווח על תקלת נגישות או לבקש סיוע.",
-  alternates: { canonical: "/accessibility" },
-};
+  path: "/accessibility",
+});
 
 interface Section {
   h: string;

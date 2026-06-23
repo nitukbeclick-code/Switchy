@@ -39,6 +39,7 @@ import {
   type NavLink,
   type QA,
 } from "@/lib/schema";
+import { pageMetadata } from "@/lib/seo";
 import { GENERAL_FAQ } from "@/lib/faq";
 import { ils, leadCategory } from "@/lib/format";
 import type { Plan } from "@/lib/types";
@@ -63,14 +64,17 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { a, b, categoryLabel } = pair;
   const aN = a.provider.name;
   const bN = b.provider.name;
-  return {
-    title: `${aN} מול ${bN} — השוואת ${categoryLabel} | חוסך / Switch AI`,
+  // Bare title — the root layout's title template brands the <title> once (the OG
+  // title is brand-normalised by pageMetadata). The inline brand suffix here was
+  // previously double-applied by the template → "… | brand | brand".
+  return pageMetadata({
+    title: `${aN} מול ${bN} — השוואת ${categoryLabel}`,
     description:
       `${aN} מול ${bN} ב${categoryLabel}: השוואה ישירה של מחירים ומסלולים — ` +
       `${aN} החל מ-${ils(a.minPrice)}, ${bN} החל מ-${ils(b.minPrice)}. ` +
       `מי זול יותר, מי מציע יותר אפשרויות, ומחירים בשקלים. השוואה חינמית.`,
-    alternates: { canonical: `/vs/${slug}` },
-  };
+    path: `/vs/${slug}`,
+  });
 }
 
 /** Merge both sides' plans into one cheapest-first list for the unified table. */

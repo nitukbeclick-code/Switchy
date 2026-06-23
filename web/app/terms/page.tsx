@@ -14,17 +14,18 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import JsonLd from "@/components/JsonLd";
 import { breadcrumbSchema, webPageSchema } from "@/lib/schema";
+import { pageMetadata } from "@/lib/seo";
 
 // Real last editorial review of these terms. Bump when the text changes.
 const LAST_REVIEWED = "2026-06-23";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "תנאי שימוש",
   description:
     "תנאי השימוש בשירות ההשוואה של חוסך / Switch AI: מהות השירות, אופן השימוש " +
     "בטופס יצירת הקשר, מקור המחירים והמלצה לאמת מול הספק, והגבלת אחריות.",
-  alternates: { canonical: "/terms" },
-};
+  path: "/terms",
+});
 
 interface Section {
   h: string;

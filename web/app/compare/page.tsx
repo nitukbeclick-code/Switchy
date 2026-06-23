@@ -19,15 +19,16 @@ import {
   collectionPageSchema,
   SITE_URL,
 } from "@/lib/schema";
+import { pageMetadata } from "@/lib/seo";
 import { ils } from "@/lib/format";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "השוואת מסלולי תקשורת בישראל — לפי שירות",
   description:
     "מרכז ההשוואה של כל שירותי התקשורת בישראל: סלולר, אינטרנט, סיב אופטי, " +
     "טלוויזיה, חבילות משולבות וחו״ל. בחרו שירות להשוואת מסלולים מכל הספקים בשקלים.",
-  alternates: { canonical: "/compare" },
-};
+  path: "/compare",
+});
 
 /** Lowest headline price across a service's plans, or null when none priced. */
 function minPriceOf(plans: { price?: number }[]): number | null {

@@ -46,6 +46,7 @@ import {
   relatedLinksSchema,
 } from "@/lib/schema";
 import type { NavLink, QA } from "@/lib/schema";
+import { pageMetadata } from "@/lib/seo";
 import { ils, leadCategory } from "@/lib/format";
 
 // Bounded matrix: every service × every city, pre-rendered at build time.
@@ -93,20 +94,20 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const plans = plansForService(service);
   const cheapest = cheapestOf(plans);
   const minTxt = cheapest ? ` החל מ-${ils(cheapest.price)}.` : "";
-  return {
+  return pageMetadata({
     title: `${svc.label} ב${c.name} — השוואת מסלולים וספקים`,
     description:
       `השוואת ${svc.label} ב${c.name}: הזמינות ארצית — אותם ${plans.length} ` +
       `מסלולים מכל הספקים כמו בכל הארץ.${minTxt} מחירים בשקלים, כולל המחיר אחרי ` +
       `המבצע. השוואה חינמית.`,
-    alternates: { canonical: `/compare/${service}/${city}` },
+    path: `/compare/${service}/${city}`,
     // HONESTY + crawl-quality: mobile/abroad are uniformly NATIONAL, so 42 near-
     // identical city pages per such service are thin/duplicate doorway content —
     // we noindex (but keep follow, so they stay crawlable for internal linking).
     // Infra-dependent services (fiber/internet/tv/triple) carry genuine local
     // nuance (rollout differs per address) and stay indexable.
     robots: isInfraDependent(svc) ? undefined : { index: false, follow: true },
-  };
+  });
 }
 
 // A factual, HONEST 40–50 word Hebrew localized conclusion. It states national

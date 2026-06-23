@@ -16,18 +16,19 @@ import type { Metadata } from "next";
 import JsonLd from "@/components/JsonLd";
 import RightsForm from "@/components/RightsForm";
 import { breadcrumbSchema, webPageSchema } from "@/lib/schema";
+import { pageMetadata } from "@/lib/seo";
 
 // Real last editorial review of this page. Bump when the text changes.
 const LAST_REVIEWED = "2026-06-23";
 
-export const metadata: Metadata = {
+export const metadata: Metadata = pageMetadata({
   title: "מימוש זכויות (פרטיות)",
   description:
     "מימוש הזכויות שלכם לפי חוק הגנת הפרטיות (תיקון 13): עיון, תיקון או מחיקת " +
     "מידע, וחזרה מהסכמה / הסרה מדיוור. הגישו בקשה מאובטחת — אנו נטפל בה בתוך " +
     "פרק הזמן הקבוע בדין.",
-  alternates: { canonical: "/rights" },
-};
+  path: "/rights",
+});
 
 interface Right {
   h: string;

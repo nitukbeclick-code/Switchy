@@ -51,7 +51,16 @@ class _RenewalWidgetState extends State<RenewalWidget> {
   Widget build(BuildContext context) {
     final ffTheme = AppTheme.of(context);
     final appState = Provider.of<AppState>(context);
-    final plans = [...appState.myPlans, ..._remoteOnly];
+    // Re-dedup the remote-only plans against the current local list on every
+    // build — adding a plan locally that matches a remote row (same
+    // provider/name/category) must not leave it showing twice.
+    final localKeys = appState.myPlans
+        .map((p) => '${p.provider}|${p.planName}|${p.category}')
+        .toSet();
+    final remoteOnly = _remoteOnly
+        .where((p) => !localKeys.contains('${p.provider}|${p.planName}|${p.category}'))
+        .toList();
+    final plans = [...appState.myPlans, ...remoteOnly];
 
     return Scaffold(
       backgroundColor: ffTheme.background,

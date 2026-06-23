@@ -645,15 +645,39 @@ class _NotFound extends StatelessWidget {
         title: const Text('טבלת השוואה'),
       ),
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.search_off_rounded, size: 56, color: ffTheme.alternate),
-            const SizedBox(height: 12),
-            Text('המסלול לא נמצא', style: ffTheme.titleMedium),
-            const SizedBox(height: 6),
-            Text('ייתכן שהוסר מהמעקב', style: ffTheme.bodyMedium.copyWith(color: ffTheme.secondaryText)),
-          ],
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.search_off_rounded, size: 56, color: ffTheme.alternate),
+              const SizedBox(height: 12),
+              Text('המסלול לא נמצא', style: ffTheme.titleMedium),
+              const SizedBox(height: 6),
+              Text('ייתכן שהוסר מהמעקב',
+                  style: ffTheme.bodyMedium.copyWith(color: ffTheme.secondaryText),
+                  textAlign: TextAlign.center),
+              const SizedBox(height: 24),
+              // Never dead-end — route back to the renewal radar so the user can
+              // re-add or pick another tracked plan to compare.
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () =>
+                      context.canPop() ? context.safePop() : context.goNamed('Renewal'),
+                  icon: const Icon(Icons.notifications_active_outlined, size: 18),
+                  label: const Text('חזרה למעקב חידושים'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: ffTheme.primary,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    textStyle: GoogleFonts.rubik(fontSize: 14, fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

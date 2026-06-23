@@ -145,6 +145,9 @@ void main() {
 
       expect(find.text('המסלול לא נמצא'), findsOneWidget);
       expect(find.text('צפה במסלול החוסך'), findsNothing);
+      // The not-found state must never dead-end — it offers a way back to the
+      // renewal radar.
+      expect(find.text('חזרה למעקב חידושים'), findsOneWidget);
 
       expect(tester.takeException(), isNull);
     });

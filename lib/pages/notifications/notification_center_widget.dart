@@ -22,6 +22,12 @@ class _NotificationCenterWidgetState extends State<NotificationCenterWidget> {
   // when the center opens and merged with the on-the-fly computed alerts.
   List<AppNotification> _community = const [];
 
+  // The community fetch is in-flight until the first load completes. While it
+  // runs AND no computed alerts exist we show a spinner rather than the "all
+  // caught up" empty state — otherwise the empty state would flash and then be
+  // replaced the moment a server-side reply/mention lands.
+  bool _loadingCommunity = true;
+
   @override
   void initState() {
     super.initState();
@@ -33,7 +39,10 @@ class _NotificationCenterWidgetState extends State<NotificationCenterWidget> {
     // Opening the center counts as seeing them — clear the unread state.
     appBackend.markCommunityNotificationsRead().catchError((_) {});
     if (!mounted) return;
-    setState(() => _community = items);
+    setState(() {
+      _community = items;
+      _loadingCommunity = false;
+    });
   }
 
   void _dismissAll(AppState appState, List<AppNotification> notifs) {
@@ -135,15 +144,25 @@ class _NotificationCenterWidgetState extends State<NotificationCenterWidget> {
         ],
       ),
       body: notifs.isEmpty
-          ? EmptyState(
-              icon: Icons.notifications_none_rounded,
-              headline: 'הכל מעודכן',
-              subtitle: 'אין התראות חדשות כרגע. נעדכן אתכם כשמבצע מסתיים או כשנמצא לכם עסקה זולה יותר.',
-              // Never dead-end: an idle inbox still routes to the core flow —
-              // a fresh comparison — so the screen always has somewhere to go.
-              ctaLabel: 'השוואת מסלולים',
-              onCtaTap: () async => context.goNamed('Results'),
-            )
+          // Still waiting on the community fetch and nothing computed yet —
+          // a spinner avoids flashing the "all caught up" state then replacing
+          // it the instant a stored reply/mention arrives.
+          ? _loadingCommunity
+              ? Center(
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.5,
+                    valueColor: AlwaysStoppedAnimation(ffTheme.brandAccent),
+                  ),
+                )
+              : EmptyState(
+                  icon: Icons.notifications_none_rounded,
+                  headline: 'הכל מעודכן',
+                  subtitle: 'אין התראות חדשות כרגע. נעדכן אתכם כשמבצע מסתיים או כשנמצא לכם עסקה זולה יותר.',
+                  // Never dead-end: an idle inbox still routes to the core flow —
+                  // a fresh comparison — so the screen always has somewhere to go.
+                  ctaLabel: 'השוואת מסלולים',
+                  onCtaTap: () async => context.goNamed('Results'),
+                )
           : ListView.builder(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
               itemCount: notifs.length,

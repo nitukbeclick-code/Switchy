@@ -120,6 +120,7 @@ class AppState extends ChangeNotifier {
       final list = jsonDecode(advisorHistoryJson) as List<dynamic>;
       _advisorHistory.addAll(list.cast<Map<String, dynamic>>());
     }
+    _advisorSessionId = p.getString('advisorSessionId');
     // Preferences
     _prefPriceAlerts = p.getBool('prefPriceAlerts') ?? true;
     _prefRequestUpdates = p.getBool('prefRequestUpdates') ?? true;
@@ -269,6 +270,14 @@ class AppState extends ChangeNotifier {
           break;
         case 'advisorHistory':
           await p.setString('advisorHistory', jsonEncode(_advisorHistory));
+          break;
+        case 'advisorSessionId':
+          final sid = _advisorSessionId;
+          if (sid == null) {
+            await p.remove('advisorSessionId');
+          } else {
+            await p.setString('advisorSessionId', sid);
+          }
           break;
         case 'myPlans':
           await p.setString('myPlans', jsonEncode(_myPlans.map((e) => e.toJson()).toList()));
@@ -696,7 +705,26 @@ class AppState extends ChangeNotifier {
     notifyListeners();
     _markDirty('advisorHistory');
   }
-  void clearAdvisorHistory() { _advisorHistory.clear(); notifyListeners(); _markDirty('advisorHistory'); }
+  void clearAdvisorHistory() {
+    _advisorHistory.clear();
+    // A cleared conversation starts a fresh edge session — the old server-side
+    // transcript must not bleed into the new chat.
+    _advisorSessionId = null;
+    notifyListeners();
+    _markDirty('advisorHistory');
+    _markDirty('advisorSessionId');
+  }
+
+  /// The opaque session id for the `site-ai-chat` edge agent's multi-turn memory.
+  /// Issued by the server on the first turn, replayed on each subsequent turn so
+  /// the conversation survives a reload. Null until the first live reply.
+  String? _advisorSessionId;
+  String? get advisorSessionId => _advisorSessionId;
+  void setAdvisorSessionId(String? id) {
+    if (_advisorSessionId == id) return;
+    _advisorSessionId = id;
+    _markDirty('advisorSessionId');
+  }
 
   // ── Renewal radar — the user's current plans + promo-end tracking ────────────
   final List<TrackedPlan> _myPlans = [];

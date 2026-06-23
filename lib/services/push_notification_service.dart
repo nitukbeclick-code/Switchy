@@ -41,4 +41,15 @@ class PushNotificationService {
 
   /// Back-compat alias — existing call sites sync everything now.
   Future<void> syncRenewalReminders(AppState state) => syncAll(state);
+
+  /// Fire an immediate price-drop alert (tapping it opens the Deals feed). Used
+  /// by the deals screen when a fresh, honest drop lands in `plan_price_history`
+  /// while the app is open. No-op on web and before [init]. The copy is the
+  /// caller's (already grounded in real old→new prices) so this layer never
+  /// fabricates a figure. Returns whether a notification was shown.
+  Future<bool> notifyPriceDrop({required String title, required String body}) async {
+    if (!_ready) return false;
+    await impl.showNow(title: title, body: body);
+    return true;
+  }
 }

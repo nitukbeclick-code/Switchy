@@ -1000,6 +1000,7 @@ class _HomeWidgetState extends State<HomeWidget> {
 
   Widget _buildToolsRow(BuildContext context, AppTheme ffTheme) {
     final tools = [
+      const _Tool(icon: Icons.local_fire_department_rounded, label: 'מבצעים חמים', route: 'Deals'),
       const _Tool(icon: Icons.videocam_rounded, label: 'פגישת וידאו', route: 'Meeting'),
       const _Tool(icon: Icons.adjust_rounded, label: 'ההתאמות שלי', route: 'Matches'),
       const _Tool(icon: Icons.savings_rounded, label: 'החיסכון שלי', route: 'Savings'),

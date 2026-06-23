@@ -30,6 +30,52 @@ class SupabaseBackend implements Backend {
   RealtimeChannel? _crmEventChannel;
   StreamController<void>? _crmEventCtrl;
 
+  RealtimeChannel? _priceHistoryChannel;
+  StreamController<void>? _priceHistoryCtrl;
+
+  // ── AI advisor (site-ai-chat edge agent) ─────────────────────────────────────
+  @override
+  Future<Map<String, dynamic>> aiChat(Map<String, dynamic> body) async {
+    // functions.invoke auto-attaches the anon/session JWT. A non-2xx (rate
+    // limit / outage / model error) throws here so the advisor widget falls back
+    // to the on-device AdvisorEngine.
+    final res = await _db.functions.invoke('site-ai-chat', body: body);
+    final data = res.data;
+    if (data is Map) return data.cast<String, dynamic>();
+    // A 2xx with an unexpected body is as useless as an error — make the caller
+    // fall back rather than render nothing.
+    throw StateError('site-ai-chat returned no JSON body');
+  }
+
+  // ── Real-time deals (plan_price_history) ─────────────────────────────────────
+  @override
+  Future<List<PriceSnapshot>> fetchPriceSnapshots({int limit = 400}) async {
+    final rows = await _db
+        .from('plan_price_history')
+        .select('plan_id, category, provider, price, after, captured_at')
+        .order('captured_at', ascending: false)
+        .limit(limit);
+    return (rows as List)
+        .map((r) => PriceSnapshot.fromJson((r as Map).cast<String, dynamic>()))
+        .toList();
+  }
+
+  @override
+  Stream<void> priceHistoryChanges() {
+    _priceHistoryCtrl ??= StreamController<void>.broadcast();
+    _priceHistoryChannel?.unsubscribe();
+    _priceHistoryChannel = _db
+        .channel('plan-price-history')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.insert,
+          schema: 'public',
+          table: 'plan_price_history',
+          callback: (_) => _priceHistoryCtrl?.add(null),
+        )
+        .subscribe();
+    return _priceHistoryCtrl!.stream;
+  }
+
   // ── User profile ─────────────────────────────────────────────────────────────
   @override
   Future<void> upsertProfile({required String name, required String phone, String? email}) async {

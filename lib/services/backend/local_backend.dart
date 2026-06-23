@@ -28,6 +28,24 @@ class LocalBackend implements Backend {
   /// Tests set this to [Duration.zero]; the real flow is Supabase-only.
   Duration demoConfirmDelay = const Duration(seconds: 6);
 
+  // ── AI advisor — no edge function offline ────────────────────────────────────
+  // There's no site-ai-chat edge agent without Supabase, so this always throws;
+  // the advisor widget catches it and falls back to the on-device AdvisorEngine.
+  @override
+  Future<Map<String, dynamic>> aiChat(Map<String, dynamic> body) async {
+    throw StateError('aiChat unavailable offline (LocalBackend)');
+  }
+
+  // ── Real-time deals — no price ledger offline ────────────────────────────────
+  // The plan_price_history ledger only exists in Supabase, so offline the deals
+  // feed shows an honest empty state (no fabricated drops).
+  @override
+  Future<List<PriceSnapshot>> fetchPriceSnapshots({int limit = 400}) async =>
+      const [];
+
+  @override
+  Stream<void> priceHistoryChanges() => const Stream<void>.empty();
+
   @override
   Future<void> upsertProfile({required String name, required String phone, String? email}) async {
     // No-op locally — profile is managed by AppState + SharedPreferences.

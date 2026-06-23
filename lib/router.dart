@@ -21,6 +21,7 @@ import 'pages/tracker/tracker_widget.dart';
 import 'pages/account/account_widget.dart';
 import 'pages/community/community_widget.dart';
 import 'pages/ai_advisor/ai_advisor_widget.dart';
+import 'pages/deals/deals_widget.dart';
 import 'pages/profile/profile_widget.dart';
 import 'pages/bills/bills_widget.dart';
 import 'pages/ratings/ratings_widget.dart';
@@ -104,6 +105,7 @@ GoRouter createRouter() {
         GoRoute(path: '/account', name: 'Account', builder: (_, __) => const AccountWidget()),
         GoRoute(path: '/community', name: 'Community', builder: (_, __) => const CommunityWidget()),
         GoRoute(path: '/advisor', name: 'AIAdvisor', builder: (_, __) => const AIAdvisorWidget()),
+        GoRoute(path: '/deals', name: 'Deals', builder: (_, __) => const DealsWidget()),
         GoRoute(path: '/profile', name: 'Profile', builder: (_, __) => const ProfileWidget()),
         GoRoute(path: '/bills', name: 'Bills', builder: (_, __) => const BillsWidget()),
         GoRoute(path: '/ratings', name: 'Ratings', builder: (_, __) => const RatingsWidget()),

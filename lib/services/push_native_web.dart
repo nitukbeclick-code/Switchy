@@ -14,3 +14,5 @@ Future<void> scheduleAll(
 ) async {}
 
 Future<void> cancelAllPush() async {}
+
+Future<void> showNow({required String title, required String body}) async {}

@@ -557,6 +557,40 @@ class BillAnalysis {
       );
 }
 
+/// One row from `plan_price_history` — an append-only daily price snapshot for a
+/// catalogue plan (the Market-Pulse ledger). Null-tolerant: a partial/legacy row
+/// never crashes the deals feed. [price] is the promo/current monthly price (₪)
+/// at capture time; [after] is the post-promo price (null when there's no
+/// step-up); [capturedAt] is when the snapshot was taken.
+class PriceSnapshot {
+  const PriceSnapshot({
+    required this.planId,
+    required this.category,
+    required this.provider,
+    required this.price,
+    this.after,
+    required this.capturedAt,
+  });
+
+  final String planId;
+  final String category;
+  final String provider;
+  final double price;
+  final double? after;
+  final DateTime capturedAt;
+
+  factory PriceSnapshot.fromJson(Map<String, dynamic> r) => PriceSnapshot(
+        planId: r['plan_id'] as String? ?? '',
+        category: r['category'] as String? ?? '',
+        provider: r['provider'] as String? ?? '',
+        price: (r['price'] as num?)?.toDouble() ?? 0,
+        after: (r['after'] as num?)?.toDouble(),
+        capturedAt:
+            DateTime.tryParse(r['captured_at'] as String? ?? '')?.toLocal() ??
+                DateTime.fromMillisecondsSinceEpoch(0),
+      );
+}
+
 /// The app's data backend — the seam between the UI and where shared data lives.
 ///
 /// [LocalBackend] keeps everything on-device (the default). `SupabaseBackend`
@@ -567,6 +601,31 @@ class BillAnalysis {
 /// Scope here is the user-owned data with clean mappings (leads, tracked plans,
 /// reviews); the community feed (posts/replies/media) is the next domain to add.
 abstract interface class Backend {
+  // ── AI advisor (site-ai-chat edge agent) ─────────────────────────────────────
+  /// Calls the `site-ai-chat` edge agent (the grounded, multi-turn חוסך AI) and
+  /// returns its decoded JSON body (`{reply, offerLead?, leadCaptured?,
+  /// contextTruncated?, sessionId?}`). [body] is the request shape
+  /// (`{message, history, sessionId?}`). Throws on a transport / non-2xx / parse
+  /// failure so the caller can fall back to the on-device [AdvisorEngine].
+  /// [LocalBackend] throws unconditionally (no edge function offline), which the
+  /// advisor widget treats as "fall back to local".
+  Future<Map<String, dynamic>> aiChat(Map<String, dynamic> body);
+
+  // ── Real-time deals (plan_price_history) ─────────────────────────────────────
+  /// The most-recent price snapshots from `plan_price_history`, newest-first,
+  /// capped at [limit]. The deals feed diffs consecutive snapshots per plan to
+  /// surface honest price drops. [LocalBackend] returns an empty list (no ledger
+  /// offline) so the feed shows an honest empty state.
+  Future<List<PriceSnapshot>> fetchPriceSnapshots({int limit = 400});
+
+  /// Emits void whenever a `plan_price_history` row is inserted (a fresh price
+  /// snapshot). [LocalBackend] returns an empty stream; [SupabaseBackend] opens a
+  /// Realtime channel so the deals feed refreshes the moment a new drop lands,
+  /// with the [RealtimePoller] heartbeat as the polling fallback.
+  Stream<void> priceHistoryChanges();
+
+  // ── User profile ─────────────────────────────────────────────────────────────
+  /// Upserts the user's identity into the `profiles` table. No-op when the
   // ── User profile ─────────────────────────────────────────────────────────────
   /// Upserts the user's identity into the `profiles` table. No-op when the
   /// user isn't signed in (anonymous session without a real uid is fine —

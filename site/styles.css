@@ -2035,6 +2035,33 @@ body.pmodal-lock { overflow: hidden; }
 .ai-bubble--error { border-bottom-inline-start-color: var(--error); }
 @media (prefers-reduced-motion: reduce) { .ai-chat { scroll-behavior: auto; } }
 
+/* ── Inline AI lead capture — injected when the server flags switch intent ────
+   Sits inside the .ai-chat log (light surface), so ink-on-light. Mirrors the
+   page lead form's consent contract: terms+privacy mandatory, marketing
+   optional + default-off. No hard-coded brand colours — tokens flip in dark. */
+.ai-lead {
+  display: grid; gap: 10px; margin-top: 4px; padding: 16px;
+  background: var(--accent-t); border: 1px solid var(--line); border-radius: 16px;
+  border-bottom-inline-start: 4px solid var(--accent); justify-self: stretch;
+}
+.ai-lead__intro { margin: 0; font-weight: 600; color: var(--ink); font-size: 14.5px; line-height: 1.45; }
+.ai-lead input[type="text"], .ai-lead input[type="tel"] {
+  width: 100%; padding: 11px 14px; border: 1px solid var(--line); border-radius: 12px;
+  font-family: inherit; font-size: 15px; background: var(--white); color: var(--ink);
+}
+.ai-lead input[type="text"]:focus-visible, .ai-lead input[type="tel"]:focus-visible {
+  outline: none; box-shadow: var(--ring); border-color: var(--accent);
+}
+.ai-lead__consent { display: flex; align-items: flex-start; gap: 10px; cursor: pointer; font-size: 13.5px; line-height: 1.45; color: var(--ink); font-weight: 500; }
+.ai-lead__consent input[type="checkbox"] { flex: 0 0 auto; width: 20px; height: 20px; min-width: 20px; margin: 1px 0 0; accent-color: var(--accent); cursor: pointer; }
+.ai-lead__consent input[type="checkbox"]:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.ai-lead__consent a { color: var(--accent-ink); font-weight: 700; text-decoration: underline; text-underline-offset: 2px; }
+.ai-lead__consent a:hover { opacity: .85; }
+.ai-lead__note { margin: 0; min-height: 0; font-size: 13px; color: var(--muted); }
+.ai-lead__note:empty { display: none; }
+.ai-lead__note--err { color: var(--error); font-weight: 600; }
+.ai-lead__submit { justify-self: stretch; }
+
 /* ── Plan advisor — the JS-rendered question/recommendation flow ─────────────
    The static .advisor__step/option markup is the shell; script.js renders the
    live flow into .advisor__stage with these classes. Mirror the advisor's card

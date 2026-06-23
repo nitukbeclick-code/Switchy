@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../theme/app_theme.dart';
 import '../../core/nav.dart';
 import '../../app_state.dart';
@@ -9,6 +11,7 @@ import '../../models.dart';
 import '../../data.dart';
 import '../../components/logo_widget/logo_widget.dart';
 import '../../widgets/pressable.dart';
+import '../../widgets/whatsapp_button.dart';
 import '../../services/recommendation_engine.dart';
 import '../../services/provider_ratings.dart';
 import '../../services/backend/local_backend.dart';
@@ -114,6 +117,23 @@ class ProviderWidget extends StatelessWidget {
                               pathParameters: {'planId': bestMatch!.plan.id},
                             ),
                           ).animate().fadeIn(duration: 350.ms).slideY(begin: 0.1),
+                          const SizedBox(height: 12),
+
+                          // ── Quick actions: Compare / Renewal / WhatsApp ──────
+                          _ProviderActions(
+                            providerName: providerName,
+                            bestPlanId: bestMatch.plan.id,
+                            shareText: shareText,
+                            ffTheme: ffTheme,
+                          ).animate(delay: 60.ms).fadeIn(duration: 320.ms),
+                          const SizedBox(height: 12),
+
+                          // Primary "talk to us" channel — the reusable green CTA.
+                          WhatsAppButton(
+                            source: 'provider',
+                            width: double.infinity,
+                            prefillText: shareText,
+                          ).animate(delay: 90.ms).fadeIn(duration: 320.ms),
                           const SizedBox(height: 20),
                         ],
 
@@ -435,12 +455,10 @@ class _BestMatchCard extends StatelessWidget {
     return Pressable(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: ffTheme.cardSurface,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: ffTheme.brandAccent.withValues(alpha: 0.30)),
-          boxShadow: ffTheme.shadowCard,
+        padding: const EdgeInsets.all(18),
+        // The recommendation hero — a bento tile wearing the green ACTION ring.
+        decoration: ffTheme.bentoDecoration(
+          borderColor: ffTheme.brandAccent.withValues(alpha: 0.30),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -553,6 +571,145 @@ class _BestMatchCard extends StatelessWidget {
   }
 }
 
+// ── Quick actions row ──────────────────────────────────────────────────────────
+//
+// Three honest next steps from a provider page: add the provider's best plan to
+// the compare tray, open the renewal radar (so we can alert before a price jump),
+// and reach out over WhatsApp with a pre-filled message. The WhatsApp action
+// never invents a phone number — it opens WhatsApp's own share/contact sheet via
+// `wa.me?text=…`, and falls back to the native share sheet when WhatsApp isn't
+// installed (web/desktop), so the button always does *something* useful.
+
+class _ProviderActions extends StatelessWidget {
+  const _ProviderActions({
+    required this.providerName,
+    required this.bestPlanId,
+    required this.shareText,
+    required this.ffTheme,
+  });
+
+  final String providerName;
+  final String bestPlanId;
+  final String shareText;
+  final AppTheme ffTheme;
+
+  Future<void> _openWhatsApp() async {
+    final text = Uri.encodeComponent(shareText);
+    final uri = Uri.parse('https://wa.me/?text=$text');
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+        return;
+      }
+    } catch (_) {/* fall through to the native share sheet */}
+    await Share.share(shareText);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: _ActionButton(
+            icon: Icons.compare_arrows_rounded,
+            label: 'השוואה',
+            ffTheme: ffTheme,
+            onTap: () {
+              HapticFeedback.selectionClick();
+              final app = Provider.of<AppState>(context, listen: false);
+              if (!app.isInCompare(bestPlanId)) app.toggleCompare(bestPlanId);
+              context.pushNamed('Compare');
+            },
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _ActionButton(
+            icon: Icons.event_repeat_rounded,
+            label: 'מעקב חידוש',
+            ffTheme: ffTheme,
+            onTap: () {
+              HapticFeedback.selectionClick();
+              context.pushNamed('Renewal');
+            },
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: _ActionButton(
+            icon: Icons.chat_rounded,
+            label: 'וואטסאפ',
+            // WhatsApp green is the brand-accent ACTION colour here.
+            primary: true,
+            ffTheme: ffTheme,
+            onTap: () {
+              HapticFeedback.selectionClick();
+              _openWhatsApp();
+            },
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ActionButton extends StatelessWidget {
+  const _ActionButton({
+    required this.icon,
+    required this.label,
+    required this.ffTheme,
+    required this.onTap,
+    this.primary = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final AppTheme ffTheme;
+  final VoidCallback onTap;
+  final bool primary;
+
+  @override
+  Widget build(BuildContext context) {
+    final fg = primary ? Colors.white : ffTheme.primaryText;
+    return Semantics(
+      button: true,
+      label: label,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(ffTheme.radiusMd),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            decoration: BoxDecoration(
+              gradient: primary ? ffTheme.accentGradient : null,
+              color: primary ? null : ffTheme.cardSurface,
+              borderRadius: BorderRadius.circular(ffTheme.radiusMd),
+              border: Border.all(
+                  color: primary ? Colors.transparent : ffTheme.alternate),
+              boxShadow: primary ? ffTheme.shadowAccent : null,
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 20, color: fg),
+                const SizedBox(height: 5),
+                Text(
+                  label,
+                  style: ffTheme.labelSmall
+                      .copyWith(color: fg, fontWeight: FontWeight.w700),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 // ── Ratings panel ──────────────────────────────────────────────────────────────
 
 class _RatingPanel extends StatelessWidget {
@@ -569,13 +726,8 @@ class _RatingPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: ffTheme.cardSurface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: ffTheme.alternate),
-        boxShadow: ffTheme.shadowSoft,
-      ),
+      padding: const EdgeInsets.all(18),
+      decoration: ffTheme.cardDecoration(radius: ffTheme.radiusCard),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -702,25 +854,24 @@ class _PlanCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final unit = priceUnitLabel(plan);
     final specEntries = plan.specs.entries.take(2).toList();
+    // kamaze-parity detail: surface equipment/setup fees and the headline
+    // benefit so the card answers "what does it really cost / include" without
+    // a tap. Fees are real (plan.fees); the benefit is the first real feature.
+    final feeEntries = plan.fees.entries.take(2).toList();
+    final benefit = plan.feats.isNotEmpty ? plan.feats.first : null;
 
     return Semantics(
       button: true,
       label: 'פתח את פרטי המסלול ${plan.plan}',
       child: Material(
-      color: ffTheme.cardSurface,
-      borderRadius: BorderRadius.circular(14),
-      shadowColor: ffTheme.dark ? Colors.black : Colors.black.withValues(alpha: 0.08),
-      elevation: 1,
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(ffTheme.radiusLg),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(ffTheme.radiusLg),
         child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: ffTheme.cardSurface,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: ffTheme.alternate),
-        ),
+        padding: const EdgeInsets.all(16),
+        decoration: ffTheme.cardDecoration(),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -765,10 +916,14 @@ class _PlanCard extends StatelessWidget {
                 ),
                 if (plan.hasPromo) ...[
                   const SizedBox(width: 8),
-                  Text(
-                    '← ₪${plan.afterText} אחרי',
-                    style: ffTheme.labelSmall
-                        .copyWith(color: ffTheme.secondaryText),
+                  Flexible(
+                    child: Text(
+                      '← ₪${plan.afterText} אחרי ${plan.intro ?? 'המבצע'}',
+                      style: ffTheme.labelSmall
+                          .copyWith(color: ffTheme.secondaryText),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
                 ],
                 const Spacer(),
@@ -780,14 +935,15 @@ class _PlanCard extends StatelessWidget {
               const SizedBox(height: 8),
               Wrap(
                 spacing: 6,
+                runSpacing: 6,
                 children: specEntries.map((e) {
                   return Container(
                     padding: const EdgeInsets.symmetric(
                         horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
                       color: ffTheme.background,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: ffTheme.alternate),
+                      borderRadius: BorderRadius.circular(ffTheme.radiusXs),
+                      border: Border.all(color: ffTheme.alternate.withValues(alpha: 0.6)),
                     ),
                     child: Text(
                       '${e.key}: ${e.value}',
@@ -796,6 +952,46 @@ class _PlanCard extends StatelessWidget {
                     ),
                   );
                 }).toList(),
+              ),
+            ],
+            // Equipment / setup fees — real plan.fees, the kamaze "ציוד" parity.
+            if (feeEntries.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Icon(Icons.receipt_long_rounded,
+                      size: 13, color: ffTheme.secondaryText),
+                  const SizedBox(width: 5),
+                  Expanded(
+                    child: Text(
+                      feeEntries.map((e) => '${e.key} ${e.value}').join(' · '),
+                      style: ffTheme.labelSmall.copyWith(
+                          color: ffTheme.secondaryText, fontSize: 11),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+            // Headline benefit — the first real feature, "מה כלול" at a glance.
+            if (benefit != null) ...[
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  Icon(Icons.check_circle_outline_rounded,
+                      size: 13, color: ffTheme.brandAccent),
+                  const SizedBox(width: 5),
+                  Expanded(
+                    child: Text(
+                      benefit,
+                      style: ffTheme.labelSmall.copyWith(
+                          color: ffTheme.primaryText, fontSize: 11),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
               ),
             ],
           ],
@@ -823,13 +1019,8 @@ class _CommunityCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: ffTheme.cardSurface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: ffTheme.alternate),
-        boxShadow: ffTheme.shadowSoft,
-      ),
+      padding: const EdgeInsets.all(16),
+      decoration: ffTheme.cardDecoration(),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

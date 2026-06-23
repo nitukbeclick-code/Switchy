@@ -1,0 +1,410 @@
+@import "tailwindcss";
+
+/* ════════════════════════════════════════════════════════════════════════════
+   Brand tokens — "white glass + ink" base + a disciplined two-accent system.
+     • green  #16A34A = ACTION  (CTAs, links, active nav, focus)
+     • amber  #F59E0B = VALUE   (savings figures, "best value" / win states)
+     • ink    #111827 = text / structure / borders
+     • glass  #F5F7F8 = page background
+   Per-provider brand colors are NOT defined here (never recolored to the theme).
+   ════════════════════════════════════════════════════════════════════════════ */
+:root {
+  /* Native UI (form controls, scrollbars) follow the light scheme by default. */
+  color-scheme: light;
+
+  /* Surfaces */
+  --background: #f5f7f8; /* glass-white page bg */
+  --foreground: #0b0f14; /* near-black body text */
+  --surface: #ffffff; /* card / panel surface */
+  --ink: #111827; /* structural ink (headings, dark cards) */
+  --border: #e5e7eb; /* hairline borders */
+  --border-strong: #222a35; /* strong/structural borders */
+  --muted: #5b616b; /* secondary text (≥5.3:1 on glass; was #6b7280 = 4.5:1 exactly) */
+
+  /* Accents — use with intent, sparingly.
+     IMPORTANT: split "fill" shades from "text" shades for WCAG AA (1.4.3).
+       • -fill shades are for backgrounds / borders / focus rings / chart bars,
+         where the 3:1 non-text threshold applies.
+       • -text shades are for the SAME accent used as small text / inline links on
+         a light surface, where 4.5:1 is required. The headline #16A34A green is
+         only 3.30:1 on white and #F59E0B amber only 2.15:1 — both FAIL as text. */
+  --accent: #16a34a; /* ACTION (green) — fills/CTAs/active nav/focus */
+  --accent-hover: #15803d; /* darker green for hover */
+  --accent-contrast: #ffffff; /* text on green */
+  --accent-text: #0f7a37; /* green for text/links on light bg (≥4.5:1) */
+  --value: #f59e0b; /* VALUE (amber) — fills/badges/win states */
+  --value-contrast: #111827; /* text on amber */
+  --value-text: #b45309; /* amber for text/figures on light bg (≥4.5:1) */
+
+  /* Danger / error — the one state color outside the two-accent system. Split
+     fill vs text like the accents: -text is AA (≥4.5:1) for small error copy on
+     the glass surface; the fill is for borders/backgrounds (3:1 non-text). */
+  --danger: #dc2626; /* error fill (borders / icon backgrounds) */
+  --danger-text: #b91c1c; /* error text on light bg (≥4.5:1) */
+
+  /* ── Premium-2026 system primitives ───────────────────────────────────────
+     A consistent radius scale + soft modern shadow tiers + a subtle accent glow,
+     all derived from the EXISTING palette (ink shadows, green accent). These back
+     the .glass / .bento / .elevate-* / .glow-accent utilities below so every page
+     speaks the same visual language. Shadows are ink-tinted (rgba of #0b0f14),
+     soft and low-contrast — never harsh black drop-shadows. */
+  --radius-sm: 0.5rem; /* 8px  — chips, small controls */
+  --radius-md: 0.75rem; /* 12px — buttons, inputs */
+  --radius-lg: 1rem; /* 16px — cards (rounded-2xl parity) */
+  --radius-xl: 1.5rem; /* 24px — feature tiles, hero panels (rounded-3xl) */
+
+  /* Soft elevation tiers — modern, diffuse, ink-tinted. */
+  --shadow-soft: 0 1px 2px rgba(11, 15, 20, 0.04),
+    0 1px 3px rgba(11, 15, 20, 0.06);
+  --shadow-card: 0 2px 8px rgba(11, 15, 20, 0.05),
+    0 8px 24px rgba(11, 15, 20, 0.06);
+  --shadow-float: 0 4px 12px rgba(11, 15, 20, 0.06),
+    0 16px 40px rgba(11, 15, 20, 0.1);
+
+  /* Subtle accent glow — green action energy, kept faint (decorative, non-text). */
+  --glow-accent: 0 0 0 1px rgba(22, 163, 74, 0.12),
+    0 8px 28px rgba(22, 163, 74, 0.16);
+  --glow-value: 0 0 0 1px rgba(245, 158, 11, 0.14),
+    0 8px 28px rgba(245, 158, 11, 0.18);
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   DARK THEME — mirrors the static site (site/styles.css `[data-theme="dark"]`).
+   ────────────────────────────────────────────────────────────────────────────
+   Driven by `data-theme="dark"` on <html> (an inline <head> guard in layout.tsx
+   sets it from localStorage `chosech-theme` or the system preference BEFORE first
+   paint, so there is no flash; the <ThemeToggle> gives manual control). Light is
+   the default `:root` above.
+
+   We re-skin the SAME token NAMES so every utility / component inherits dark mode
+   with no per-rule overrides: surfaces become dark ink, body text lifts to light,
+   and the brand accents keep their meaning — green = ACTION, amber = VALUE — but
+   are NUDGED BRIGHTER so they clear WCAG AA on the dark glass:
+     • green  #16A34A → #4ADE80 (fill) / #22C55E (hover)
+     • amber  #F59E0B → #FBBF24 (fill)
+   On the dark surfaces these lifted accents already exceed 4.5:1 as small text,
+   so the `-text` tiers alias to the brighter fills (green/amber text stays bright,
+   never the dark light-mode text shade that would vanish on dark glass).
+   Per-provider/carrier brand colors are NOT defined here — never re-skinned.
+   ════════════════════════════════════════════════════════════════════════════ */
+:root[data-theme="dark"] {
+  /* Native UI (form controls, scrollbars, spellcheck) follow the dark scheme. */
+  color-scheme: dark;
+
+  /* Surfaces — dark ink grounds (not pure black) + raised dark panels. */
+  --background: #11161c; /* page background — dark ink */
+  --foreground: #e8ebef; /* primary body text on dark */
+  --surface: #161c24; /* "white" cards become raised dark panels */
+  --ink: #f3f5f7; /* structural ink inverts to brightest text */
+  --border: #2a3340; /* hairline on dark */
+  --border-strong: #3a4452; /* strong/structural borders on dark */
+  --muted: #aeb6c2; /* secondary text — ≥4.5:1 on the dark surfaces */
+
+  /* Accents — lifted for legibility on dark glass (green=action, amber=value). */
+  --accent: #4ade80; /* ACTION (green) — fills/CTAs/active nav/focus */
+  --accent-hover: #22c55e; /* brighter green for hover on dark */
+  --accent-contrast: #0b2a18; /* deep-green ink for text on the bright green */
+  --accent-text: #4ade80; /* green text/links — bright (already ≥4.5:1 on dark) */
+  --value: #fbbf24; /* VALUE (amber) — fills/badges/win states */
+  --value-contrast: #2a2410; /* dark amber-ink for text on the bright amber */
+  --value-text: #fbbf24; /* amber text/figures — bright (≥4.5:1 on dark) */
+
+  /* Danger / error — lifted hue + AA text shade for error copy on dark glass. */
+  --danger: #f87171; /* error fill (borders / icon backgrounds) */
+  --danger-text: #f87171; /* error text — bright (≥4.5:1 on dark) */
+
+  /* Soft elevation tiers — deepened for dark (ink-on-ink needs more presence). */
+  --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 14px rgba(0, 0, 0, 0.45);
+  --shadow-card: 0 2px 6px rgba(0, 0, 0, 0.45), 0 14px 38px rgba(0, 0, 0, 0.55);
+  --shadow-float: 0 6px 16px rgba(0, 0, 0, 0.5), 0 30px 70px rgba(0, 0, 0, 0.6);
+
+  /* Accent glow — re-tinted to the lifted accents so it reads on dark. */
+  --glow-accent: 0 0 0 1px rgba(74, 222, 128, 0.18),
+    0 8px 28px rgba(74, 222, 128, 0.22);
+  --glow-value: 0 0 0 1px rgba(251, 191, 36, 0.2),
+    0 8px 28px rgba(251, 191, 36, 0.24);
+}
+
+/* The .glass / .glass-strong surfaces use `var(--surface)` via color-mix, so they
+   re-skin to a dark frosted panel automatically. The fallback (no backdrop-filter)
+   already resolves to the dark `--surface`, so no extra dark override is needed. */
+
+/* Map brand tokens into Tailwind's theme so utilities like bg-accent, text-ink,
+   border-border, font-display work out of the box (Tailwind v4 @theme). */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-ink: var(--ink);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-muted: var(--muted);
+
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-contrast: var(--accent-contrast);
+  --color-accent-text: var(--accent-text);
+  --color-value: var(--value);
+  --color-value-contrast: var(--value-contrast);
+  --color-value-text: var(--value-text);
+  --color-danger: var(--danger);
+  --color-danger-text: var(--danger-text);
+
+  --font-display: var(--font-rubik);
+  --font-sans: var(--font-assistant);
+
+  /* Premium-2026 radius scale → enables rounded-md/lg/xl on the brand scale and
+     keeps cards consistent. (Tailwind's own rounded-* still work; these add named
+     brand steps tied to the tokens above.) */
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+
+  /* Soft shadow tiers → shadow-soft / shadow-card / shadow-float utilities. */
+  --shadow-soft: var(--shadow-soft);
+  --shadow-card: var(--shadow-card);
+  --shadow-float: var(--shadow-float);
+}
+
+/* ── Base RTL / Hebrew-first styles ──────────────────────────────────────── */
+html {
+  scroll-behavior: smooth;
+  /* Anchor jumps (e.g. #lead) must clear the sticky <SiteHeader> so the target
+     heading isn't hidden beneath it. Matches the header height + a little air. */
+  scroll-padding-top: 4.5rem;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-assistant), system-ui, sans-serif;
+  /* RTL is set on <html dir="rtl">; ensure logical defaults read correctly. */
+  text-align: start;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-rubik), system-ui, sans-serif;
+  color: var(--ink);
+}
+
+a {
+  /* AA: link text on a light surface uses the text-grade green (≥4.5:1), not the
+     headline #16A34A fill green (3.30:1). */
+  color: var(--accent-text);
+  text-decoration: none;
+}
+a:hover {
+  color: var(--accent-hover);
+}
+
+/* Visible, accessible focus ring (green = focus, per brand). The fill green is
+   fine here — focus rings are non-text UI (3:1 threshold). We deliberately do
+   NOT force a border-radius: the offset outline already clears the element, and
+   forcing 4px clipped oddly around rounded-2xl cards. The element keeps its own
+   corner radius (outlines follow the box, not the radius, in all evergreen
+   browsers — the offset gap reads cleanly on pills and cards alike). */
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Horizontal scroll-shadow affordance (used on the comparison-table wrapper).
+   Two surface-colored "cover" layers (background-attachment:local) sit pinned to
+   the content's start/end and scroll WITH the content, revealing two fixed
+   (attachment:scroll) radial shadow layers underneath only when there's clipped
+   content to scroll to. So a soft shadow fades in on whichever edge is hidden —
+   a discoverability hint that the table extends sideways. RTL-safe (physical
+   left/right edges), pure CSS, no layout shift. */
+.scroll-shadow {
+  background-image:
+    linear-gradient(to right, var(--surface) 30%, rgba(255, 255, 255, 0)),
+    linear-gradient(to right, rgba(255, 255, 255, 0), var(--surface) 70%),
+    radial-gradient(
+      farthest-side at 0 50%,
+      rgba(2, 6, 23, 0.12),
+      rgba(2, 6, 23, 0)
+    ),
+    radial-gradient(
+      farthest-side at 100% 50%,
+      rgba(2, 6, 23, 0.12),
+      rgba(2, 6, 23, 0)
+    );
+  background-position:
+    0 0,
+    100% 0,
+    0 0,
+    100% 0;
+  background-repeat: no-repeat;
+  background-size:
+    40px 100%,
+    40px 100%,
+    14px 100%,
+    14px 100%;
+  background-attachment: local, local, scroll, scroll;
+}
+
+/* ════════════════════════════════════════════════════════════════════════════
+   PREMIUM-2026 DESIGN LANGUAGE — reusable utility classes
+   ────────────────────────────────────────────────────────────────────────────
+   Layered on the EXISTING brand palette/tokens (no palette change). Page agents
+   compose these class names directly in JSX. Everything respects the AA text
+   tokens (--accent-text / --value-text), RTL, and prefers-reduced-motion (the
+   media query at the bottom neutralizes the transitions/animations here).
+
+   Reference — class names available to page agents:
+     Surfaces   .glass  .glass-strong
+     Cards      .bento  .card  .card-interactive
+     Elevation  .elevate-soft  .elevate-card  .elevate-float
+     Glow       .glow-accent  .glow-value
+     Motion     .interactive  .hover-lift  .press
+     Layout     .bento-grid  .section
+   ════════════════════════════════════════════════════════════════════════════ */
+
+/* ── Glassmorphism surfaces ───────────────────────────────────────────────────
+   Translucent blurred surface for navbars / floating elements / sticky bars.
+   `supports-` guard: where backdrop-filter is unsupported the surface stays a
+   readable near-opaque white (no text-on-image legibility loss). */
+.glass {
+  background-color: color-mix(in srgb, var(--surface) 70%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 50%, transparent);
+  backdrop-filter: saturate(180%) blur(12px);
+  -webkit-backdrop-filter: saturate(180%) blur(12px);
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass {
+    background-color: var(--surface);
+  }
+}
+/* Stronger frost for overlays / modals / sticky action bars that sit over content. */
+.glass-strong {
+  background-color: color-mix(in srgb, var(--surface) 85%, transparent);
+  border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+  backdrop-filter: saturate(180%) blur(18px);
+  -webkit-backdrop-filter: saturate(180%) blur(18px);
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass-strong {
+    background-color: var(--surface);
+  }
+}
+
+/* ── Cards & bento tiles ──────────────────────────────────────────────────────
+   .card        — the base surface card (soft border + soft shadow + lg radius).
+   .bento       — a bento tile: bigger radius, card shadow; pairs with .bento-grid.
+   .card-interactive — adds the hover-lift + focus motion for clickable cards. */
+.card {
+  background-color: var(--surface);
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft);
+}
+.bento {
+  background-color: var(--surface);
+  border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-card);
+}
+.card-interactive {
+  transition:
+    transform 200ms ease,
+    box-shadow 200ms ease,
+    border-color 200ms ease;
+}
+.card-interactive:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-float);
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+}
+.card-interactive:active {
+  transform: translateY(-1px) scale(0.995);
+}
+
+/* ── Elevation tiers (apply a soft shadow without the rest of a card) ────────── */
+.elevate-soft {
+  box-shadow: var(--shadow-soft);
+}
+.elevate-card {
+  box-shadow: var(--shadow-card);
+}
+.elevate-float {
+  box-shadow: var(--shadow-float);
+}
+
+/* ── Subtle accent glow (decorative emphasis — green=action, amber=value) ────── */
+.glow-accent {
+  box-shadow: var(--glow-accent);
+}
+.glow-value {
+  box-shadow: var(--glow-value);
+}
+
+/* ── Motion primitives ────────────────────────────────────────────────────────
+   .interactive — the BASE transition every interactive element should carry, so
+                  hovers/focus/press feel fluid (colors + transform + shadow).
+   .hover-lift  — nudges up + deepens shadow on hover (compose with .interactive).
+   .press       — tactile press feedback (compose with .interactive). */
+.interactive {
+  transition:
+    color 180ms ease,
+    background-color 180ms ease,
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
+}
+.hover-lift:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-card);
+}
+.press:active {
+  transform: scale(0.98);
+}
+
+/* ── Layout helpers ───────────────────────────────────────────────────────────
+   .bento-grid — asymmetric-friendly responsive grid for card/data sections.
+                 Children opt into spans with col-span-* / row-span-* as needed.
+   .section    — generous vertical breathing room for page sections. */
+.bento-grid {
+  display: grid;
+  grid-template-columns: repeat(1, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+@media (min-width: 640px) {
+  .bento-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+  }
+}
+@media (min-width: 1024px) {
+  .bento-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+.section {
+  padding-block: 3rem;
+}
+@media (min-width: 768px) {
+  .section {
+    padding-block: 4.5rem;
+  }
+}
+
+/* Respect reduced-motion: disable smooth scroll + animations/transitions. */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

@@ -10,6 +10,7 @@ import '../../models.dart';
 import '../../components/logo_widget/logo_widget.dart';
 import '../../components/plan_card/plan_card_widget.dart';
 import '../../services/search.dart';
+import '../../services/analytics_service.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/pressable.dart';
 
@@ -64,6 +65,9 @@ class _SearchWidgetState extends State<SearchWidget> {
     final t = _q.trim();
     if (t.isNotEmpty) {
       Provider.of<AppState>(context, listen: false).addRecentSearch(t);
+      // Funnel beacon for a committed search (submit / before navigating to a
+      // result). Fire-and-forget; `q` is a catalogue search term, not PII.
+      AnalyticsService.track(AnalyticsEvent.searchQuery, props: {'q': t});
     }
   }
 
@@ -149,10 +153,16 @@ class _SearchWidgetState extends State<SearchWidget> {
               onClearRecent: appState.clearRecentSearches,
             )
           : results.isEmpty
-              ? const EmptyState(
+              ? EmptyState(
                   icon: Icons.search_off_rounded,
-                  headline: 'לא נמצאו תוצאות',
-                  subtitle: 'נסו שם ספק, מסלול או תכונה אחרת',
+                  headline: 'לא נמצאו תוצאות עבור "${_q.trim()}"',
+                  subtitle: 'נסו שם ספק, מסלול או תכונה אחרת — למשל "5G", "סיב" או תקציב כמו "50"',
+                  ctaLabel: 'נקו את החיפוש',
+                  onCtaTap: () async {
+                    _ctrl.clear();
+                    _setQuery('');
+                    _focus.requestFocus();
+                  },
                 )
               : _ResultsList(
                   results: results,
@@ -186,9 +196,25 @@ class _ResultsList extends StatelessWidget {
   Widget build(BuildContext context) {
     var i = 0; // running stagger index across all sections
 
+    // Honest total across every section — a quick "how many hits" read so the
+    // user knows the search worked before scanning the grouped lists.
+    final total = results.categories.length +
+        results.providers.length +
+        results.plans.length;
+
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 32),
       children: [
+        // Result summary line.
+        Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Text(
+            total == 1 ? 'תוצאה אחת עבור "$query"' : '$total תוצאות עבור "$query"',
+            style: ffTheme.bodySmall.copyWith(
+                color: ffTheme.secondaryText, fontWeight: FontWeight.w600),
+          ),
+        ),
+
         // Categories — quick jump into a whole catalogue section.
         if (results.categories.isNotEmpty) ...[
           _SectionLabel(text: 'קטגוריות', count: results.categories.length, ffTheme: ffTheme),
@@ -650,11 +676,12 @@ class _Suggestions extends StatelessWidget {
 
         // Help card.
         Container(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: ffTheme.brandAccentTint,
-            borderRadius: BorderRadius.circular(ffTheme.radiusMd),
+            borderRadius: BorderRadius.circular(ffTheme.radiusLg),
             border: Border.all(color: ffTheme.brandAccent.withValues(alpha: 0.15)),
+            boxShadow: ffTheme.shadowXs,
           ),
           child: Row(
             children: [

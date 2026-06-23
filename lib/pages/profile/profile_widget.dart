@@ -13,6 +13,7 @@ import '../../widgets/pressable.dart';
 import '../../components/logo_widget/logo_widget.dart';
 import '../../components/plan_card/mini_plan_card.dart';
 import '../../services/backend/local_backend.dart';
+import '../../services/savings_summary.dart';
 
 class ProfileWidget extends StatefulWidget {
   const ProfileWidget({super.key});
@@ -23,6 +24,10 @@ class ProfileWidget extends StatefulWidget {
 
 class _ProfileWidgetState extends State<ProfileWidget> {
   String _lang = 'עברית';
+
+  /// Whole-app saving potential from the user's bills + the recommendation
+  /// engine. Recomputed each build (pure, cheap) so it tracks bill edits.
+  late SavingsSummary _savings;
 
   void _showEditProfile(BuildContext context, AppState appState, AppTheme ffTheme) {
     final nameCtrl = TextEditingController(text: appState.userName);
@@ -108,6 +113,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
   Widget build(BuildContext context) {
     final ffTheme = AppTheme.of(context);
     final appState = Provider.of<AppState>(context);
+    _savings = computeSavings(appState);
 
     return Scaffold(
       backgroundColor: ffTheme.background,
@@ -130,6 +136,28 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                   if (appState.leadPlanId != null) ...[
                     _buildSectionHeader('מעבר פעיל', ffTheme),
                     _buildActivePlanCard(context, ffTheme, appState),
+                    const SizedBox(height: 20),
+                  ],
+
+                  // Upcoming renewal alert — surfaces the soonest promo end from
+                  // the renewal radar so a deal about to expire never hides on
+                  // the tracker screen. Taps into the full comparison report.
+                  if (appState.nextRenewal != null) ...[
+                    _buildRenewalAlert(context, ffTheme, appState),
+                    const SizedBox(height: 20),
+                  ],
+
+                  // Saving potential — the whole-app opportunity from the user's
+                  // bills (amber = VALUE). Links to the per-category breakdown.
+                  if (_savings.hasAnyBill && _savings.totalAnnualPotential > 0) ...[
+                    _buildSavingsCard(context, ffTheme),
+                    const SizedBox(height: 20),
+                  ],
+
+                  // Tracked plans (renewal radar)
+                  if (appState.myPlans.isNotEmpty) ...[
+                    _buildSectionHeader('המסלולים שלי', ffTheme, actionLabel: 'מעקב חידושים', onAction: () => context.pushNamed('Tracker')),
+                    _buildTrackedPlans(context, ffTheme, appState),
                     const SizedBox(height: 20),
                   ],
 
@@ -230,7 +258,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                   _buildSectionHeader('שפה', ffTheme),
                   Container(
                     padding: const EdgeInsets.all(16),
-                    decoration: ffTheme.glassDecoration(radius: 14),
+                    decoration: ffTheme.cardDecoration(radius: ffTheme.radiusLg),
                     child: Row(
                       children: ['עברית', 'English', 'العربية'].map((lang) {
                         final active = _lang == lang;
@@ -261,7 +289,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                   _buildSectionHeader('מראה', ffTheme),
                   Container(
                     padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
-                    decoration: ffTheme.glassDecoration(radius: 14),
+                    decoration: ffTheme.cardDecoration(radius: ffTheme.radiusLg),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
@@ -272,7 +300,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                               height: 38,
                               decoration: BoxDecoration(
                                 color: ffTheme.brandAccentTint,
-                                borderRadius: BorderRadius.circular(10),
+                                borderRadius: BorderRadius.circular(ffTheme.radiusSm),
                               ),
                               child: Icon(Icons.dark_mode_rounded, color: ffTheme.brandAccent, size: 20),
                             ),
@@ -434,10 +462,10 @@ class _ProfileWidgetState extends State<ProfileWidget> {
     return Pressable(
       onTap: () => context.pushNamed('Auth'),
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
           gradient: ffTheme.accentGradient,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(ffTheme.radiusLg),
           boxShadow: ffTheme.shadowAccent,
         ),
         child: Row(
@@ -471,8 +499,8 @@ class _ProfileWidgetState extends State<ProfileWidget> {
     return Pressable(
       onTap: () => context.pushNamed('Tracker'),
       child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: ffTheme.glassDecoration(radius: 14).copyWith(
+        padding: const EdgeInsets.all(16),
+        decoration: ffTheme.glassDecoration(radius: ffTheme.radiusLg).copyWith(
           border: Border.all(color: ffTheme.brandAccent.withValues(alpha: 0.3), width: 1.5),
           boxShadow: [BoxShadow(color: ffTheme.brandAccent.withValues(alpha: 0.1), blurRadius: 12, offset: const Offset(0, 4))],
         ),
@@ -510,6 +538,173 @@ class _ProfileWidgetState extends State<ProfileWidget> {
         ),
       ),
     ).animate().fadeIn(duration: 300.ms).slideY(begin: 0.08);
+  }
+
+  /// A compact alert for the soonest upcoming renewal — the radar's headline,
+  /// surfaced here so an expiring promo is impossible to miss. The border/icon
+  /// run amber as it nears (VALUE/urgency), green otherwise. Taps open the full
+  /// comparison report for that exact tracked plan.
+  Widget _buildRenewalAlert(BuildContext context, AppTheme ffTheme, AppState appState) {
+    final tp = appState.nextRenewal!;
+    final days = tp.daysUntilRenewal;
+    final soon = days != null && days <= 30;
+    final accent = soon ? ffTheme.warning : ffTheme.brandAccent;
+    final daysLabel = days == null
+        ? 'מועד החידוש לא ידוע'
+        : days <= 0
+            ? 'המבצע מסתיים היום'
+            : 'המבצע מסתיים בעוד $days ימים';
+    return Pressable(
+      onTap: () => context.pushNamed('RenewalReport', pathParameters: {'trackedId': tp.id}),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: ffTheme.glassDecoration(radius: ffTheme.radiusLg).copyWith(
+          border: Border.all(color: accent.withValues(alpha: 0.4), width: 1.5),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: accent.withValues(alpha: 0.14),
+                borderRadius: BorderRadius.circular(ffTheme.radiusSm),
+              ),
+              child: Icon(Icons.event_repeat_rounded, color: accent, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('חידוש קרוב', style: ffTheme.titleSmall.copyWith(fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 2),
+                  Text('${tp.provider} · ${tp.planName}',
+                      style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText),
+                      maxLines: 1, overflow: TextOverflow.ellipsis),
+                  const SizedBox(height: 4),
+                  Text(daysLabel, style: ffTheme.labelSmall.copyWith(color: accent, fontWeight: FontWeight.w700)),
+                ],
+              ),
+            ),
+            Icon(Icons.arrow_back_ios_rounded, color: ffTheme.secondaryText, size: 14),
+          ],
+        ),
+      ),
+    ).animate().fadeIn(duration: 300.ms).slideY(begin: 0.08);
+  }
+
+  /// The total annual saving potential across the user's bills (amber = VALUE),
+  /// with the top opportunity called out. Links to the per-category breakdown.
+  Widget _buildSavingsCard(BuildContext context, AppTheme ffTheme) {
+    final total = _savings.totalAnnualPotential;
+    final top = _savings.topOpportunity;
+    final topLabel = top == null ? null : categoryById(top.categoryId)?.name;
+    return Pressable(
+      onTap: () => context.pushNamed('Savings'),
+      child: Container(
+        padding: const EdgeInsets.all(18),
+        decoration: ffTheme.glassDecoration(radius: ffTheme.radiusLg).copyWith(
+          border: Border.all(color: ffTheme.saving.withValues(alpha: 0.4), width: 1.5),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                color: ffTheme.saving.withValues(alpha: 0.14),
+                borderRadius: BorderRadius.circular(ffTheme.radiusSm),
+              ),
+              child: Icon(Icons.savings_rounded, color: ffTheme.savingDark, size: 24),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('פוטנציאל החיסכון שלך', style: ffTheme.titleSmall.copyWith(fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 2),
+                  Text(
+                    topLabel != null
+                        ? 'הכי משתלם להחליף ב$topLabel'
+                        : 'לפי החשבונות שעדכנת',
+                    style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText),
+                    maxLines: 1, overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 6),
+                  Text('עד ₪$total בשנה',
+                      style: ffTheme.titleMedium.copyWith(color: ffTheme.savingDark, fontWeight: FontWeight.w800)),
+                ],
+              ),
+            ),
+            Icon(Icons.arrow_back_ios_rounded, color: ffTheme.secondaryText, size: 14),
+          ],
+        ),
+      ),
+    ).animate().fadeIn(duration: 320.ms).slideY(begin: 0.08);
+  }
+
+  /// The user's own tracked plans (renewal radar). Each row shows the carrier,
+  /// the monthly spend, and a renewal-countdown chip, and links to the full
+  /// comparison report so the section never dead-ends.
+  Widget _buildTrackedPlans(BuildContext context, AppTheme ffTheme, AppState appState) {
+    final plans = appState.myPlans.take(3).toList();
+    return Column(
+      children: plans.asMap().entries.map((e) {
+        final i = e.key;
+        final tp = e.value;
+        final days = tp.daysUntilRenewal;
+        final hasCountdown = days != null;
+        final soon = hasCountdown && days <= 30;
+        final chipColor = !hasCountdown
+            ? ffTheme.secondaryText
+            : soon
+                ? ffTheme.warning
+                : ffTheme.brandAccent;
+        final chipText = !hasCountdown
+            ? 'ללא מועד'
+            : days <= 0
+                ? 'מסתיים היום'
+                : 'בעוד $days ימים';
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Pressable(
+            onTap: () => context.pushNamed('RenewalReport', pathParameters: {'trackedId': tp.id}),
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: ffTheme.glassDecoration(radius: 14),
+              child: Row(
+                children: [
+                  LogoWidget(provider: tp.provider, size: 40),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(tp.provider, style: ffTheme.labelLarge.copyWith(fontWeight: FontWeight.w700)),
+                        Text(tp.planName, style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText), maxLines: 1, overflow: TextOverflow.ellipsis),
+                        const SizedBox(height: 4),
+                        Text('₪${tp.monthlyPrice}/חודש', style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: chipColor.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(chipText, style: ffTheme.labelSmall.copyWith(color: chipColor, fontWeight: FontWeight.w700)),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ).animate(delay: (i * 50).ms).fadeIn(duration: 250.ms).slideX(begin: 0.05);
+      }).toList(),
+    );
   }
 
   Widget _buildWatchlist(BuildContext context, AppTheme ffTheme, AppState appState) {
@@ -601,10 +796,10 @@ class _ProfileWidgetState extends State<ProfileWidget> {
     return Pressable(
       onTap: () => context.pushNamed('Quiz'),
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
           gradient: ffTheme.accentGradient,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(ffTheme.radiusLg),
           boxShadow: ffTheme.shadowAccent,
         ),
         child: Row(

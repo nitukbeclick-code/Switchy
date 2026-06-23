@@ -82,6 +82,24 @@ void main() {
     });
   });
 
+  group('bill OCR (analyzeBill)', () {
+    test('returns a deterministic readable analysis with cheaper suggestions', () async {
+      final a = await backend.analyzeBill('data:image/jpeg;base64,AAAA');
+      expect(a, isNotNull);
+      expect(a!.isReadable, isTrue);
+      expect(a.category, 'cellular');
+      expect(a.currentSpend, greaterThan(0));
+      expect(a.suggestions, isNotEmpty);
+      // Suggested plans are cheaper than the detected spend.
+      expect(a.suggestions.every((s) => s.price < a.currentSpend), isTrue);
+    });
+
+    test('returns null for an empty image (nothing to analyse)', () async {
+      expect(await backend.analyzeBill(''), isNull);
+      expect(await backend.analyzeBill('   '), isNull);
+    });
+  });
+
   group('community', () {
     PostInput post(String channel) => PostInput(
         author: 'דנה', avatar: 'ד', channel: channel, text: 'שלום');

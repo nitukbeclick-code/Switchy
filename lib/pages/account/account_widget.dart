@@ -75,13 +75,16 @@ class AccountWidget extends StatelessWidget {
                       else
                         TextButton(
                           onPressed: () => context.pushNamed('Auth'),
+                          // Solid white chip with ink text — reads as a clear CTA on
+                          // the ink header in both themes (the old `secondary` fill
+                          // went dark slate on dark, hiding the black label).
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                             decoration: BoxDecoration(
-                              color: ffTheme.secondary,
+                              color: Colors.white,
                               borderRadius: BorderRadius.circular(10),
                             ),
-                            child: Text('כניסה', style: GoogleFonts.rubik(fontSize: 13, fontWeight: FontWeight.w700, color: ffTheme.primaryDark)),
+                            child: Text('כניסה', style: GoogleFonts.rubik(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.primary)),
                           ),
                         ),
                     ],
@@ -101,8 +104,9 @@ class AccountWidget extends StatelessWidget {
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: ffTheme.brandAccentTint,
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(ffTheme.radiusLg),
                     border: Border.all(color: ffTheme.brandAccent.withValues(alpha: 0.22)),
+                    boxShadow: ffTheme.shadowXs,
                   ),
                   child: Row(
                     children: [
@@ -130,24 +134,39 @@ class AccountWidget extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Savings hero — only for users who have an active plan/savings
+                  // Savings hero — only for users who have an active plan/savings.
+                  // Tapping opens the full /savings dashboard (never a dead-end);
+                  // the figure is rendered in amber (VALUE) and all labels use a
+                  // white-alpha so they stay legible on the ink hero in BOTH themes
+                  // (the old `secondary` label collapsed to dark slate on dark).
                   if (appState.isLoggedIn || appState.totalSavings > 0)
-                  Container(
+                  Pressable(
+                    onTap: () => context.pushNamed('Savings'),
+                    child: Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.all(20),
+                    padding: const EdgeInsets.all(22),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(colors: [ffTheme.primaryDark, ffTheme.primary]),
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(ffTheme.radiusCard),
+                      boxShadow: ffTheme.shadowLifted,
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text('חסכת עד כה!', style: GoogleFonts.assistant(fontSize: 13, color: ffTheme.secondary, fontWeight: FontWeight.w600)),
+                        Row(
+                          children: [
+                            Text('חסכת עד כה!', style: GoogleFonts.assistant(fontSize: 13, color: Colors.white.withValues(alpha: 0.75), fontWeight: FontWeight.w600)),
+                            const Spacer(),
+                            Text('פירוט החיסכון', style: ffTheme.labelSmall.copyWith(color: Colors.white.withValues(alpha: 0.75), fontWeight: FontWeight.w700)),
+                            Icon(Icons.arrow_back_ios_rounded, size: 11, color: Colors.white.withValues(alpha: 0.75)),
+                          ],
+                        ),
                         const SizedBox(height: 6),
-                        Text('₪${appState.totalSavings}', style: GoogleFonts.rubik(fontSize: 44, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: -1)),
-                        Text('מאז שהצטרפת לחוסך', style: GoogleFonts.assistant(fontSize: 12, color: Colors.white60)),
+                        Text('₪${appState.totalSavings}', style: GoogleFonts.rubik(fontSize: 44, fontWeight: FontWeight.w800, color: ffTheme.saving, letterSpacing: -1)),
+                        Text('מאז שהצטרפת לחוסך', style: GoogleFonts.assistant(fontSize: 12, color: Colors.white.withValues(alpha: 0.62))),
                       ],
                     ),
+                  ),
                   ).animate().scale(begin: const Offset(0.97, 0.97), delay: 100.ms, duration: 400.ms),
 
                   const SizedBox(height: 16),
@@ -172,8 +191,8 @@ class AccountWidget extends StatelessWidget {
                   if (plan != null) const SizedBox(height: 12),
                   if (plan != null)
                     Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: ffTheme.glassDecoration(radius: 16),
+                      padding: const EdgeInsets.all(18),
+                      decoration: ffTheme.cardDecoration(radius: ffTheme.radiusLg),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
@@ -310,7 +329,8 @@ class AccountWidget extends StatelessWidget {
                             begin: Alignment.topRight,
                             end: Alignment.bottomLeft,
                           ),
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(ffTheme.radiusCard),
+                          boxShadow: ffTheme.shadowMd,
                         ),
                         child: Row(
                           children: [
@@ -319,7 +339,7 @@ class AccountWidget extends StatelessWidget {
                               height: 48,
                               decoration: BoxDecoration(
                                 color: Colors.white.withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(14),
+                                borderRadius: BorderRadius.circular(ffTheme.radiusSm),
                               ),
                               child: const Center(child: ExcludeSemantics(child: Icon(Icons.adjust, size: 24, color: Colors.white))),
                             ),
@@ -338,13 +358,16 @@ class AccountWidget extends StatelessWidget {
                             ),
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              // White chip + ink label — legible on the ink quiz
+                              // card in both themes (the old `secondary` fill went
+                              // dark slate on dark, swallowing the black text).
                               decoration: BoxDecoration(
-                                color: ffTheme.secondary,
+                                color: Colors.white,
                                 borderRadius: BorderRadius.circular(10),
                               ),
                               child: Text('התחל ←',
                                   style: ffTheme.labelSmall.copyWith(
-                                      color: ffTheme.primaryDark,
+                                      color: AppColors.primary,
                                       fontWeight: FontWeight.w700)),
                             ),
                           ],
@@ -354,11 +377,12 @@ class AccountWidget extends StatelessWidget {
                   ] else ...[
                     const SizedBox(height: 20),
                     Container(
-                      padding: const EdgeInsets.all(14),
+                      padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
                         color: ffTheme.brandAccentTint,
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(ffTheme.radiusLg),
                         border: Border.all(color: ffTheme.brandAccent.withValues(alpha: 0.22)),
+                        boxShadow: ffTheme.shadowXs,
                       ),
                       child: Row(
                         children: [
@@ -481,6 +505,10 @@ class AccountWidget extends StatelessWidget {
                   Text('פעולות מהירות', style: ffTheme.titleLarge),
                   const SizedBox(height: 12),
                   ...[
+                    if (appState.isAdmin) ...[
+                      _ActionTile(icon: Icons.dashboard_rounded, title: 'ניהול לקוחות / CRM', subtitle: 'שיחות וואטסאפ, לידים וצבר מכירות', onTap: () => context.pushNamed('Crm'), ffTheme: ffTheme),
+                      _ActionTile(icon: Icons.insights_rounded, title: 'דשבורד אנליטיקס', subtitle: 'מדדי משפך אמיתיים — לידים, ערוצים והמרה', onTap: () => context.pushNamed('Analytics'), ffTheme: ffTheme),
+                    ],
                     _ActionTile(icon: Icons.alarm_rounded, title: 'מעקב חידושים', subtitle: 'אל תשלם יותר מדי כשהמבצע נגמר', onTap: () => context.pushNamed('Renewal'), ffTheme: ffTheme),
                     _ActionTile(icon: Icons.compare_arrows_rounded, title: 'השוואה חדשה', subtitle: 'מצא את המסלול הכי מתאים לך', onTap: () => context.goNamed('Results'), ffTheme: ffTheme),
                     _ActionTile(icon: Icons.auto_awesome_rounded, title: 'יועץ AI', subtitle: 'שאל שאלות על מסלולי תקשורת', onTap: () => context.pushNamed('AIAdvisor'), ffTheme: ffTheme),
@@ -511,12 +539,20 @@ class _QuickLink extends StatelessWidget {
       child: Pressable(
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          decoration: ffTheme.glassDecoration(radius: 14),
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          decoration: ffTheme.cardDecoration(radius: ffTheme.radiusMd),
           child: Column(
             children: [
-              Icon(icon, color: ffTheme.brandAccent, size: 24),
-              const SizedBox(height: 6),
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: ffTheme.brandAccentTint,
+                  borderRadius: BorderRadius.circular(ffTheme.radiusSm),
+                ),
+                child: Icon(icon, color: ffTheme.brandAccent, size: 22),
+              ),
+              const SizedBox(height: 8),
               Text(label, style: ffTheme.labelSmall.copyWith(color: ffTheme.primaryText)),
             ],
           ),
@@ -541,7 +577,7 @@ class _ActionTile extends StatelessWidget {
       child: Container(
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.all(16),
-        decoration: ffTheme.glassDecoration(radius: 14),
+        decoration: ffTheme.glassDecoration(radius: ffTheme.radiusMd),
         child: Row(
           children: [
             Container(
@@ -549,7 +585,7 @@ class _ActionTile extends StatelessWidget {
               height: 44,
               decoration: BoxDecoration(
                 color: ffTheme.brandAccentTint,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(ffTheme.radiusSm),
               ),
               child: Icon(icon, color: ffTheme.brandAccent, size: 22),
             ),

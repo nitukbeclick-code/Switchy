@@ -618,6 +618,25 @@
   // deployed to production under the name "site-ai-chat" — keep this in sync
   // with whatever name is actually live, or rename the deployed function.
   const AI_CHAT_FUNCTION = 'site-ai-chat';
+  // Persistent opaque session id (localStorage). Sent with every chat request so
+  // the server's ai_sessions table can stitch multi-turn memory across reloads.
+  // Opaque + random — never tied to identity; matches the server's
+  // ^[A-Za-z0-9_-]{6,64}$ gate. Storage may be blocked (private mode); the chat
+  // still works statelessly when this returns ''.
+  const aiSessionId = (() => {
+    const KEY = 'chosechAiSession';
+    try {
+      let id = localStorage.getItem(KEY);
+      if (!id || !/^[A-Za-z0-9_-]{6,64}$/.test(id)) {
+        const rnd = (window.crypto && window.crypto.getRandomValues)
+          ? Array.from(window.crypto.getRandomValues(new Uint8Array(16)), (b) => b.toString(16).padStart(2, '0')).join('')
+          : (Date.now().toString(36) + Math.random().toString(36).slice(2)).replace(/[^a-z0-9]/gi, '');
+        id = ('s' + rnd).slice(0, 64);
+        localStorage.setItem(KEY, id);
+      }
+      return id;
+    } catch (_) { return ''; } // storage blocked — memory disabled, chat still works
+  })();
   const aiChat = $('aiChat');
   if (aiChat) {
     const aiForm = $('aiChatForm');
@@ -662,10 +681,13 @@
       try {
         const cfg = window.CHOSECH_SUPABASE;
         if (!cfg || !cfg.url) throw new Error('ai chat not configured');
+        const body = { message: q, history: aiHistory };
+        // Send the opaque session id so the server can load/persist memory.
+        if (aiSessionId) body.sessionId = aiSessionId;
         const res = await fetch(cfg.url.replace(/\/$/, '') + '/functions/v1/' + AI_CHAT_FUNCTION, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', apikey: cfg.anonKey, Authorization: 'Bearer ' + cfg.anonKey },
-          body: JSON.stringify({ message: q, history: aiHistory }),
+          body: JSON.stringify(body),
         });
         const data = await res.json().catch(() => ({}));
         typing.remove();
@@ -673,6 +695,11 @@
         addBubble('ai-bubble--bot', data.reply);
         aiHistory.push({ role: 'user', text: q }, { role: 'bot', text: data.reply });
         if (aiHistory.length > 12) aiHistory.splice(0, aiHistory.length - 12);
+        // The server flags a genuine switch/contact intent. Offer to collect a
+        // lead — through the SAME mandatory-consent gate the page lead form uses
+        // (terms+privacy required; marketing opt-in OFF by default). We never
+        // fabricate consent: no consent ⇒ no capture.
+        if (data.offerLead && !leadOffered) showLeadOffer();
       } catch (_) {
         typing.remove();
         addBubble('ai-bubble--bot', 'לא הצלחתי להתחבר כרגע — נסו שוב בעוד רגע, או דברו איתנו בוואטסאפ 💬');
@@ -681,6 +708,101 @@
       setChipsBusy(false);
       if (aiInput) { aiInput.removeAttribute('aria-busy'); aiInput.focus(); }
     };
+
+    // ── Consent-gated inline lead capture (server offerLead → form) ────────────
+    // Reuses the page's consent contract: terms+privacy MANDATORY, marketing
+    // opt-in OPTIONAL and default-OFF. On submit we POST the structured `lead`
+    // back to the SAME site-ai-chat function, which captures it (service role)
+    // ONLY when consent === true. Consent is NEVER pre-checked or fabricated.
+    let leadOffered = false; // show the offer at most once per page load
+    const IL_PHONE_RE_AI = /^(\+?972|0)5[0-9](-?\d){7}$/;
+    const showLeadOffer = () => {
+      if (leadOffered) return;
+      leadOffered = true;
+      const wrap = document.createElement('form');
+      wrap.className = 'ai-lead';
+      wrap.setAttribute('novalidate', '');
+      wrap.setAttribute('aria-label', 'השארת פרטים ליצירת קשר');
+      wrap.innerHTML =
+        '<p class="ai-lead__intro">רוצים שנחזור אליכם עם השוואה אישית? השאירו שם וטלפון — חינם, בלי התחייבות.</p>' +
+        '<input type="text" class="ai-lead__name" autocomplete="name" maxlength="80" placeholder="שם מלא" aria-label="שם מלא" required />' +
+        '<input type="tel" class="ai-lead__phone" autocomplete="tel" inputmode="tel" maxlength="20" placeholder="טלפון (050-0000000)" aria-label="מספר טלפון" required />' +
+        '<label class="ai-lead__consent"><input type="checkbox" class="ai-lead__terms" required />' +
+        '<span>קראתי ואני מסכים/ה ל<a href="terms.html" target="_blank" rel="noopener">תנאי השימוש</a></span></label>' +
+        '<label class="ai-lead__consent"><input type="checkbox" class="ai-lead__privacy" required />' +
+        '<span>קראתי ואני מסכים/ה ל<a href="privacy.html" target="_blank" rel="noopener">מדיניות הפרטיות</a></span></label>' +
+        '<label class="ai-lead__consent"><input type="checkbox" class="ai-lead__mkt" />' +
+        '<span>אשמח לקבל עדכונים, מבצעים והטבות (אופציונלי, ניתן לבטל בכל עת)</span></label>' +
+        '<p class="ai-lead__note" role="status" aria-live="polite"></p>' +
+        '<button type="submit" class="btn btn--primary ai-lead__submit">שלחו פרטים</button>';
+      aiChat.appendChild(wrap);
+      wrap.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'nearest' });
+      const nameEl = wrap.querySelector('.ai-lead__name');
+      const phoneEl = wrap.querySelector('.ai-lead__phone');
+      const termsEl = wrap.querySelector('.ai-lead__terms');
+      const privacyEl = wrap.querySelector('.ai-lead__privacy');
+      const mktEl = wrap.querySelector('.ai-lead__mkt');
+      const noteEl = wrap.querySelector('.ai-lead__note');
+      const submit = wrap.querySelector('.ai-lead__submit');
+      if (nameEl) setTimeout(() => nameEl.focus({ preventScroll: true }), reduceMotion ? 0 : 250);
+      const fail = (msg, focusEl) => {
+        if (noteEl) { noteEl.classList.add('ai-lead__note--err'); noteEl.textContent = msg; }
+        toast(msg, 'error');
+        if (focusEl) focusEl.focus();
+      };
+      wrap.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (wrap.getAttribute('aria-busy') === 'true') return;
+        const name = (nameEl && nameEl.value || '').trim();
+        const phoneRaw = (phoneEl && phoneEl.value || '').trim();
+        const phone = phoneRaw.replace(/[^\d+]/g, '');
+        const nameOk = name.length >= 2 && name.length <= 80;
+        const phoneOk = IL_PHONE_RE_AI.test(phoneRaw.replace(/[^\d+\-\s]/g, '')) || phone.replace(/\D/g, '').length >= 9;
+        if (!nameOk || !phoneOk) { fail('נא למלא שם וטלפון תקין 🙏', !nameOk ? nameEl : phoneEl); return; }
+        // MANDATORY consent gate — identical to the page lead form.
+        if (!(termsEl && termsEl.checked) || !(privacyEl && privacyEl.checked)) {
+          fail('יש לאשר את תנאי השימוש ומדיניות הפרטיות כדי להמשיך 🙏', (termsEl && !termsEl.checked) ? termsEl : privacyEl);
+          return;
+        }
+        const cfg = window.CHOSECH_SUPABASE;
+        if (!cfg || !cfg.url || !cfg.anonKey) { fail('השליחה לא זמינה כרגע — דברו איתנו בוואטסאפ 💬'); return; }
+        wrap.setAttribute('aria-busy', 'true');
+        if (submit) { submit.disabled = true; submit.classList.add('is-loading'); submit.textContent = 'שולח…'; }
+        if (noteEl) { noteEl.classList.remove('ai-lead__note--err'); noteEl.textContent = ''; }
+        let captured = false;
+        try {
+          const res = await fetch(cfg.url.replace(/\/$/, '') + '/functions/v1/' + AI_CHAT_FUNCTION, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', apikey: cfg.anonKey, Authorization: 'Bearer ' + cfg.anonKey },
+            // A no-op message keeps the endpoint contract (message required) while
+            // the structured lead rides along. The server captures only with
+            // consent===true and re-stamps the timestamps authoritatively.
+            body: JSON.stringify({
+              message: 'בקשת יצירת קשר',
+              sessionId: aiSessionId || undefined,
+              lead: {
+                name: name,
+                phone: phone,
+                consent: true, // terms+privacy confirmed above
+                consent_marketing_sms: !!(mktEl && mktEl.checked),
+                consent_marketing_whatsapp: !!(mktEl && mktEl.checked),
+                notes: 'נשלח מצ׳אט חוסך AI באתר',
+              },
+            }),
+          });
+          const data = await res.json().catch(() => ({}));
+          captured = res.ok && data && data.leadCaptured === true;
+        } catch (_) { captured = false; }
+        if (submit) { submit.disabled = false; submit.classList.remove('is-loading'); submit.textContent = 'שלחו פרטים'; }
+        wrap.removeAttribute('aria-busy');
+        if (!captured) { fail('השליחה נכשלה — נסו שוב, או כתבו לנו בוואטסאפ 💬', submit); return; }
+        track('ai_lead_submit', { source: location.pathname });
+        wrap.remove();
+        addBubble('ai-bubble--bot', 'תודה ' + name.split(' ')[0] + '! נחזור אליכם בהקדם עם השוואה אישית ✦');
+        toast('תודה! נחזור אליכם בהקדם', 'success');
+      });
+    };
+
     chips.forEach((chip) => {
       chip.setAttribute('role', 'button');
       chip.setAttribute('tabindex', '0');

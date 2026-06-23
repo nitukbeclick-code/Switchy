@@ -1,5 +1,25 @@
+# https://www.robotstxt.org/robotstxt.html
 User-agent: *
 Allow: /
 Disallow: /data/
 
+# AI / answer-engine crawlers — explicitly welcomed (kept in sync with web/app/robots.ts).
+User-agent: GPTBot
+User-agent: OAI-SearchBot
+User-agent: ChatGPT-User
+User-agent: PerplexityBot
+User-agent: Perplexity-User
+User-agent: Google-Extended
+User-agent: ClaudeBot
+User-agent: Claude-Web
+User-agent: anthropic-ai
+User-agent: Applebot-Extended
+User-agent: CCBot
+User-agent: Amazonbot
+User-agent: Bytespider
+User-agent: Meta-ExternalAgent
+Allow: /
+Disallow: /data/
+
 Sitemap: https://switchy-ai.com/sitemap.xml
+Host: switchy-ai.com

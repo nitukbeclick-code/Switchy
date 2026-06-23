@@ -27,6 +27,9 @@ class SupabaseBackend implements Backend {
   RealtimeChannel? _communityChannel;
   StreamController<void>? _communityCtrl;
 
+  RealtimeChannel? _crmEventChannel;
+  StreamController<void>? _crmEventCtrl;
+
   // ── User profile ─────────────────────────────────────────────────────────────
   @override
   Future<void> upsertProfile({required String name, required String phone, String? email}) async {
@@ -47,6 +50,28 @@ class SupabaseBackend implements Backend {
       'category': category,
       if (_uid != null) 'user_id': _uid,
     });
+  }
+
+  // ── Bill OCR ─────────────────────────────────────────────────────────────────
+  @override
+  Future<BillAnalysis?> analyzeBill(String imageDataUri) async {
+    if (imageDataUri.trim().isEmpty) return null;
+    try {
+      // The edge function accepts a data-URI ("data:image/...;base64,…") or raw
+      // base64 under `imageBase64`. functions.invoke auto-attaches the anon JWT.
+      // The function returns 200 with a friendly `error` field on an unreadable
+      // photo, but a non-2xx (rate limit / oversized / outage) throws here.
+      final res = await _db.functions.invoke('site-bill-analyzer', body: {
+        'imageBase64': imageDataUri,
+      });
+      final data = res.data;
+      if (data is Map) return BillAnalysis.fromJson(data.cast<String, dynamic>());
+      return null;
+    } catch (_) {
+      // Transport / non-2xx / parse failure → null; the caller shows a friendly
+      // Hebrew message. The image is never retried or stored.
+      return null;
+    }
   }
 
   @override
@@ -515,5 +540,113 @@ class SupabaseBackend implements Backend {
         .update({'read_at': DateTime.now().toUtc().toIso8601String()})
         .eq('user_id', _uid!)
         .isFilter('read_at', null);
+  }
+
+  // ── WhatsApp CRM (admin-only) ────────────────────────────────────────────────
+  // All access goes through the `crm-api` edge function. functions.invoke
+  // auto-attaches the signed-in user's JWT; the function gates on
+  // profiles.is_admin and reads/writes the whatsapp_* / leads tables via the
+  // service role. We never touch those tables directly from the client.
+
+  // Calls a `crm-api` action and returns its decoded JSON body, raising on a
+  // non-2xx so callers surface the same kind of error as the other methods.
+  Future<Map<String, dynamic>> _crm(String action, [Map<String, dynamic>? extra]) async {
+    final res = await _db.functions.invoke('crm-api', body: {
+      'action': action,
+      if (extra != null) ...extra,
+    });
+    final data = res.data;
+    if (data is Map) return data.cast<String, dynamic>();
+    return const {};
+  }
+
+  @override
+  Future<bool> fetchIsAdmin() async {
+    if (_uid == null) return false;
+    final row = await _db
+        .from('profiles')
+        .select('is_admin')
+        .eq('id', _uid!)
+        .maybeSingle();
+    return row?['is_admin'] as bool? ?? false;
+  }
+
+  @override
+  Future<CrmOverview> crmOverview() async {
+    final data = await _crm('overview');
+    return CrmOverview.fromJson(data);
+  }
+
+  @override
+  Future<List<CrmConversation>> crmListConversations({String? status, String? search}) async {
+    final data = await _crm('listConversations', {
+      if (status != null) 'status': status,
+      if (search != null && search.isNotEmpty) 'search': search,
+    });
+    return ((data['conversations'] as List?) ?? const [])
+        .map((c) => CrmConversation.fromJson((c as Map).cast<String, dynamic>()))
+        .toList();
+  }
+
+  @override
+  Future<CrmThread> crmGetThread(String conversationId) async {
+    final data = await _crm('getThread', {'conversationId': conversationId});
+    return CrmThread.fromJson(data);
+  }
+
+  @override
+  Future<void> crmSendReply(String conversationId, String body) async {
+    await _crm('sendReply', {'conversationId': conversationId, 'body': body});
+  }
+
+  @override
+  Future<void> crmTakeOver(String conversationId) async {
+    await _crm('takeOver', {'conversationId': conversationId});
+  }
+
+  @override
+  Future<void> crmHandBack(String conversationId) async {
+    await _crm('handBack', {'conversationId': conversationId});
+  }
+
+  // ── CRM realtime (crm_events) ────────────────────────────────────────────────
+  // crm_events is in the supabase_realtime publication; admins can SELECT it via
+  // RLS. We mirror the leads/community channel pattern so the dashboard refreshes
+  // the moment a rep_reply / takeover / hand-back row lands, with the 12s poll as
+  // a fallback.
+  @override
+  Stream<void> crmEventStream() {
+    _crmEventCtrl ??= StreamController<void>.broadcast();
+    _crmEventChannel?.unsubscribe();
+    _crmEventChannel = _db
+        .channel('crm-events')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.insert,
+          schema: 'public',
+          table: 'crm_events',
+          callback: (_) => _crmEventCtrl?.add(null),
+        )
+        .subscribe();
+    return _crmEventCtrl!.stream;
+  }
+
+  @override
+  Future<void> crmSetContactStatus(String contactId, String status) async {
+    await _crm('setContactStatus', {'contactId': contactId, 'status': status});
+  }
+
+  @override
+  Future<void> crmSetLeadStatus(String leadId, String status) async {
+    await _crm('setLeadStatus', {'leadId': leadId, 'status': status});
+  }
+
+  @override
+  Future<List<CrmLead>> crmListLeads({String? status}) async {
+    final data = await _crm('listLeads', {
+      if (status != null) 'status': status,
+    });
+    return ((data['leads'] as List?) ?? const [])
+        .map((l) => CrmLead.fromJson((l as Map).cast<String, dynamic>()))
+        .toList();
   }
 }

@@ -82,6 +82,13 @@ class RenewalReportWidget extends StatelessWidget {
                           style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText)),
                     ],
                   ),
+                  const SizedBox(height: 2),
+                  Text(
+                    isAbroad
+                        ? 'החיסכון מחושב מול המחיר שאתה משלם לחבילה היום'
+                        : 'החיסכון מחושב מול המחיר שאתה משלם היום',
+                    style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText),
+                  ),
                   const SizedBox(height: 12),
 
                   ...matches.asMap().entries.map((e) {
@@ -292,40 +299,63 @@ class _SaverBanner extends StatelessWidget {
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: ffTheme.saving.withValues(alpha: 0.4)),
             ),
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  width: 46,
-                  height: 46,
-                  decoration: BoxDecoration(
-                    color: ffTheme.saving.withValues(alpha: 0.18),
-                    borderRadius: BorderRadius.circular(13),
+                Row(
+                  children: [
+                    Container(
+                      width: 46,
+                      height: 46,
+                      decoration: BoxDecoration(
+                        color: ffTheme.saving.withValues(alpha: 0.18),
+                        borderRadius: BorderRadius.circular(13),
+                      ),
+                      child: Icon(Icons.celebration_rounded, size: 24, color: ffTheme.savingDark),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(headline,
+                              style: GoogleFonts.rubik(
+                                  fontSize: 18, fontWeight: FontWeight.w800, color: ffTheme.savingDark)),
+                          const SizedBox(height: 2),
+                          Text('מעבר ל${match.plan.provider} · ${match.plan.plan}',
+                              style: ffTheme.bodySmall.copyWith(
+                                  color: ffTheme.primaryText, fontWeight: FontWeight.w600),
+                              maxLines: 1, overflow: TextOverflow.ellipsis),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    IconButton(
+                      tooltip: 'שתף',
+                      icon: Icon(Icons.ios_share_rounded, size: 20, color: ffTheme.savingDark),
+                      onPressed: () => Share.share(shareText),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                // Explicit green ACTION CTA — the saving figure is the VALUE
+                // (amber wash); switching is the ACTION, so the button leads.
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: onTap,
+                    icon: const Icon(Icons.arrow_back_rounded, size: 18),
+                    label: const Text('צפה במסלול החוסך'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: ffTheme.brandAccent,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      textStyle: GoogleFonts.rubik(fontSize: 14.5, fontWeight: FontWeight.w800),
+                    ),
                   ),
-                  child: Icon(Icons.celebration_rounded, size: 24, color: ffTheme.savingDark),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(headline,
-                          style: GoogleFonts.rubik(
-                              fontSize: 18, fontWeight: FontWeight.w800, color: ffTheme.savingDark)),
-                      const SizedBox(height: 2),
-                      Text('מעבר ל${match.plan.provider} · ${match.plan.plan}',
-                          style: ffTheme.bodySmall.copyWith(
-                              color: ffTheme.primaryText, fontWeight: FontWeight.w600),
-                          maxLines: 1, overflow: TextOverflow.ellipsis),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 4),
-                IconButton(
-                  tooltip: 'שתף',
-                  icon: Icon(Icons.ios_share_rounded, size: 20, color: ffTheme.savingDark),
-                  onPressed: () => Share.share(shareText),
-                ),
-                Icon(Icons.arrow_back_ios_rounded, size: 16, color: ffTheme.savingDark),
               ],
             ),
           ),
@@ -397,15 +427,11 @@ class _AlternativeRow extends StatelessWidget {
     return Pressable(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: ffTheme.cardSurface,
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: isTop ? ffTheme.primary : ffTheme.alternate,
-            width: isTop ? 2 : 1,
-          ),
-          // The top pick gets a slightly stronger lift to draw the eye.
+        padding: const EdgeInsets.all(14),
+        // Premium card surface; the top pick keeps its strong ink border + a
+        // stronger lift, the rest fall back to the soft ink hairline.
+        decoration: ffTheme.cardDecoration(radius: ffTheme.radiusMd).copyWith(
+          border: isTop ? Border.all(color: ffTheme.primary, width: 2) : null,
           boxShadow: isTop ? ffTheme.shadowCard : ffTheme.shadowSoft,
         ),
         child: Column(
@@ -524,11 +550,15 @@ class _ReminderCta extends StatelessWidget {
 
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: on ? ffTheme.primary.withValues(alpha: 0.07) : ffTheme.cardSurface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: on ? ffTheme.primary.withValues(alpha: 0.4) : ffTheme.alternate),
-      ),
+      // Active (reminder on) keeps its ink-tinted wash + accent border; the
+      // inactive state uses the premium soft card hairline.
+      decoration: on
+          ? BoxDecoration(
+              color: ffTheme.primary.withValues(alpha: 0.07),
+              borderRadius: BorderRadius.circular(ffTheme.radiusMd),
+              border: Border.all(color: ffTheme.primary.withValues(alpha: 0.4)),
+            )
+          : ffTheme.cardDecoration(radius: ffTheme.radiusMd),
       child: on
           ? Row(
               children: [
@@ -615,15 +645,39 @@ class _NotFound extends StatelessWidget {
         title: const Text('טבלת השוואה'),
       ),
       body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.search_off_rounded, size: 56, color: ffTheme.alternate),
-            const SizedBox(height: 12),
-            Text('המסלול לא נמצא', style: ffTheme.titleMedium),
-            const SizedBox(height: 6),
-            Text('ייתכן שהוסר מהמעקב', style: ffTheme.bodyMedium.copyWith(color: ffTheme.secondaryText)),
-          ],
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.search_off_rounded, size: 56, color: ffTheme.alternate),
+              const SizedBox(height: 12),
+              Text('המסלול לא נמצא', style: ffTheme.titleMedium),
+              const SizedBox(height: 6),
+              Text('ייתכן שהוסר מהמעקב',
+                  style: ffTheme.bodyMedium.copyWith(color: ffTheme.secondaryText),
+                  textAlign: TextAlign.center),
+              const SizedBox(height: 24),
+              // Never dead-end — route back to the renewal radar so the user can
+              // re-add or pick another tracked plan to compare.
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () =>
+                      context.canPop() ? context.safePop() : context.goNamed('Renewal'),
+                  icon: const Icon(Icons.notifications_active_outlined, size: 18),
+                  label: const Text('חזרה למעקב חידושים'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: ffTheme.primary,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    textStyle: GoogleFonts.rubik(fontSize: 14, fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

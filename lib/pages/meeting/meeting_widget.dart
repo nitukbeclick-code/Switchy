@@ -36,6 +36,7 @@ class _MeetingWidgetState extends State<MeetingWidget> {
   final _nameCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
+  final _noteCtrl = TextEditingController();
   final _formKey = GlobalKey<FormState>();
 
   String? _provider;
@@ -76,6 +77,7 @@ class _MeetingWidgetState extends State<MeetingWidget> {
     _nameCtrl.dispose();
     _phoneCtrl.dispose();
     _emailCtrl.dispose();
+    _noteCtrl.dispose();
     super.dispose();
   }
 
@@ -113,6 +115,7 @@ class _MeetingWidgetState extends State<MeetingWidget> {
     final name = _nameCtrl.text.trim();
     final phone = _phoneCtrl.text.replaceAll(RegExp(r'[^\d+]'), '');
     final email = _emailCtrl.text.trim();
+    final note = _noteCtrl.text.trim();
     final nowIso = DateTime.now().toUtc().toIso8601String();
     final dateIso = meetingDateIso(_effectiveDate(bookableMeetingDates()));
 
@@ -126,6 +129,7 @@ class _MeetingWidgetState extends State<MeetingWidget> {
             planId: widget.planId,
             meetingDate: dateIso,
             slot: _slot!,
+            notes: note.isNotEmpty ? note : null,
             source: widget.source,
             termsAcceptedAt: nowIso,
             privacyAcceptedAt: nowIso,
@@ -325,6 +329,18 @@ class _MeetingWidgetState extends State<MeetingWidget> {
           const SizedBox(height: 4),
           Text('קישור ההצטרפות יישלח גם לכתובת זו.', style: t.labelSmall),
 
+          const SizedBox(height: 12),
+          TextFormField(
+            controller: _noteCtrl,
+            textDirection: TextDirection.rtl,
+            minLines: 2,
+            maxLines: 4,
+            maxLength: 300,
+            decoration: _inputDecoration(t, hint: 'מה תרצו לבדוק בפגישה? (אופציונלי)', icon: Icons.sticky_note_2_outlined),
+          ),
+          Text('כמה מילים לנציג מראש — למשל הספק הנוכחי, התקציב, או מה חשוב לכם.',
+              style: t.labelSmall.copyWith(color: t.secondaryText)),
+
           const SizedBox(height: 18),
           ConsentPanel(
             acceptTerms: _acceptTerms,
@@ -359,11 +375,11 @@ class _MeetingWidgetState extends State<MeetingWidget> {
   Widget _buildHero(AppTheme t) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: t.brandGradient,
-        borderRadius: BorderRadius.circular(t.radiusLg),
-        boxShadow: t.shadowPrimary,
+        borderRadius: BorderRadius.circular(t.radiusCard),
+        boxShadow: t.shadowLifted,
       ),
       child: Row(
         children: [
@@ -375,7 +391,7 @@ class _MeetingWidgetState extends State<MeetingWidget> {
             padding: const EdgeInsets.all(7),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: BorderRadius.circular(14),
+              borderRadius: BorderRadius.circular(t.radiusMd),
             ),
             child: ExcludeSemantics(
               child: Image.asset('assets/images/zoom.png', fit: BoxFit.contain),
@@ -597,10 +613,10 @@ class _DemoBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
       decoration: BoxDecoration(
         color: t.saving.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(t.radiusMd),
         border: Border.all(color: t.saving.withValues(alpha: 0.4)),
       ),
       child: Row(
@@ -661,12 +677,8 @@ class _NextSteps extends StatelessWidget {
       ('קישור ההצטרפות יופיע כאן ויישלח אליכם', status == MeetingStatus.confirmed),
     ];
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: t.cardSurface,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: t.alternate),
-      ),
+      padding: const EdgeInsets.all(18),
+      decoration: t.cardDecoration(radius: t.radiusLg),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

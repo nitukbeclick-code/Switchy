@@ -6,10 +6,13 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../theme/app_theme.dart';
 import '../../core/nav.dart';
 import '../../widgets/app_button.dart';
+import '../../widgets/app_snackbar.dart';
 import '../../app_state.dart';
 import '../../data.dart';
 import '../../models.dart';
 import '../../services/savings_summary.dart';
+import '../../services/media_service.dart';
+import '../../services/backend/backend.dart';
 import '../../services/backend/local_backend.dart';
 
 class BillsWidget extends StatefulWidget {
@@ -75,6 +78,230 @@ List<_Overpay> _overpaysFor(AppState appState, Map<String, int> savingByCat) {
 
 class _BillsWidgetState extends State<BillsWidget> {
   int _touchedIndex = -1;
+  bool _busyPhoto = false;
+
+  /// "Upload a bill photo" affordance — REAL OCR. The image is captured/picked
+  /// via the shared [MediaService] (downscaled JPEG, size-capped) and sent to
+  /// `appBackend.analyzeBill` (the `site-bill-analyzer` edge function: Gemini
+  /// Vision extracts provider/amount/category). On a readable bill we pre-fill
+  /// that category's current bill via [AppState.setCurrentBill] and show the
+  /// detected provider/amount + cheaper suggestions in a sheet; an unreadable
+  /// photo or any failure surfaces a friendly Hebrew message. Fail-soft and
+  /// self-contained: the image is never kept in state beyond the call.
+  Future<void> _uploadBillPhoto({required bool fromCamera}) async {
+    if (_busyPhoto) return;
+    setState(() => _busyPhoto = true);
+    try {
+      final dataUri = await MediaService.pickImageDataUri(fromCamera: fromCamera);
+      if (!mounted) return;
+      if (dataUri == null) {
+        // User cancelled or the image was too large to keep.
+        AppSnackBar.info(context, 'לא נבחרה תמונה');
+        return;
+      }
+
+      final analysis = await appBackend.analyzeBill(dataUri);
+      if (!mounted) return;
+
+      // Transport / outage / parse failure → friendly nudge to the manual editor.
+      if (analysis == null) {
+        AppSnackBar.error(
+          context,
+          'לא הצלחנו לנתח את החשבון כרגע — עדכנו את הסכום למטה ידנית',
+          duration: const Duration(seconds: 4),
+        );
+        return;
+      }
+
+      // Unreadable / not-a-bill → the analyzer's own friendly Hebrew message.
+      if (!analysis.isReadable) {
+        AppSnackBar.info(
+          context,
+          analysis.error ??
+              'לא הצלחנו לקרוא את החשבון מהתמונה. נסו לצלם שוב באור טוב, ישר מול הדף',
+          duration: const Duration(seconds: 5),
+        );
+        return;
+      }
+
+      // Readable: pre-fill the detected category's bill (when we recognised one)
+      // so every savings surface updates, then show the detected details.
+      final appState = Provider.of<AppState>(context, listen: false);
+      final cat = categoryById(analysis.category);
+      if (cat != null && analysis.currentSpend > 0) {
+        appState.setCurrentBill(cat.id, analysis.currentSpend);
+        appBackend.upsertBills(AppState().currentBills).catchError((_) {});
+      }
+      _showBillAnalysisResult(AppTheme.of(context), analysis, cat);
+    } catch (_) {
+      if (!mounted) return;
+      AppSnackBar.error(context, 'לא ניתן לצרף תמונה כרגע — נסו שוב');
+    } finally {
+      if (mounted) setState(() => _busyPhoto = false);
+    }
+  }
+
+  /// Bottom sheet with the OCR result: the detected provider + monthly amount,
+  /// a note that the matching category's bill was pre-filled, and up to 3
+  /// cheaper plans in the same category. Read-only — the user keeps editing in
+  /// the manual list below.
+  void _showBillAnalysisResult(AppTheme ffTheme, BillAnalysis a, Category? cat) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: ffTheme.cardSurface,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetCtx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(color: ffTheme.alternate, borderRadius: BorderRadius.circular(2)),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: ffTheme.brandAccent.withValues(alpha: 0.16),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(Icons.check_circle_rounded, size: 22, color: ffTheme.brandAccent),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('קראנו את החשבון', style: ffTheme.titleMedium),
+                        const SizedBox(height: 2),
+                        Text(
+                          [
+                            if (a.provider.isNotEmpty) a.provider,
+                            if (cat != null) cat.name,
+                          ].join(' · '),
+                          style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              // Detected monthly amount.
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: ffTheme.accent1,
+                  borderRadius: BorderRadius.circular(ffTheme.radiusSm),
+                  border: Border.all(color: ffTheme.primary.withValues(alpha: 0.15)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.receipt_long_rounded, size: 18, color: ffTheme.primary),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        cat != null
+                            ? 'זוהה תשלום חודשי של ₪${a.currentSpend} — עדכנו את ${cat.name} עבורכם'
+                            : 'זוהה תשלום חודשי של ₪${a.currentSpend}',
+                        style: ffTheme.labelMedium.copyWith(fontWeight: FontWeight.w700, color: ffTheme.primaryText),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (a.suggestions.isNotEmpty) ...[
+                const SizedBox(height: 18),
+                Text('מסלולים זולים יותר', style: ffTheme.titleSmall),
+                const SizedBox(height: 10),
+                ...a.suggestions.map((s) => _BillSuggestionRow(suggestion: s, ffTheme: ffTheme)),
+              ] else ...[
+                const SizedBox(height: 14),
+                Text(
+                  a.note ?? 'לא מצאנו מסלול זול יותר באותה קטגוריה — נראה שאתם משלמים מחיר טוב.',
+                  style: ffTheme.bodySmall,
+                ),
+              ],
+              const SizedBox(height: 16),
+              if (cat != null)
+                AppButton(
+                  text: 'השווה חבילות ${cat.name}',
+                  color: AppColors.primary,
+                  width: double.infinity,
+                  onPressed: () async {
+                    final appState = Provider.of<AppState>(context, listen: false);
+                    appState.setCategory(cat.id);
+                    Navigator.pop(sheetCtx);
+                    if (mounted) context.pushNamed('Results');
+                  },
+                )
+              else
+                AppButton.ghost(
+                  text: 'סגירה',
+                  width: double.infinity,
+                  onPressed: () async => Navigator.pop(sheetCtx),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Bottom sheet to choose camera vs gallery for the bill photo.
+  void _pickBillPhotoSource(AppTheme ffTheme) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: ffTheme.cardSurface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetCtx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 12),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(color: ffTheme.alternate, borderRadius: BorderRadius.circular(2)),
+            ),
+            const SizedBox(height: 8),
+            ListTile(
+              leading: Icon(Icons.photo_camera_rounded, color: ffTheme.primary),
+              title: Text('צילום חשבון במצלמה', style: ffTheme.titleSmall),
+              onTap: () {
+                Navigator.pop(sheetCtx);
+                _uploadBillPhoto(fromCamera: true);
+              },
+            ),
+            ListTile(
+              leading: Icon(Icons.photo_library_rounded, color: ffTheme.primary),
+              title: Text('בחירה מהגלריה', style: ffTheme.titleSmall),
+              onTap: () {
+                Navigator.pop(sheetCtx);
+                _uploadBillPhoto(fromCamera: false);
+              },
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
 
   /// A formal monochrome ramp (ink → grey → light) for the per-category bars so
   /// each category reads as a distinct shade in greyscale. Indexed by position;
@@ -159,11 +386,13 @@ class _BillsWidgetState extends State<BillsWidget> {
             // Hero total card
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(22),
               decoration: BoxDecoration(
+                // Premium ink hero: generous bento corner + a pronounced lift so
+                // the headline figure floats off the page.
                 gradient: ffTheme.brandGradient,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: ffTheme.shadowSoft,
+                borderRadius: BorderRadius.circular(ffTheme.radiusCard),
+                boxShadow: ffTheme.shadowLifted,
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -243,13 +472,9 @@ class _BillsWidgetState extends State<BillsWidget> {
               const SizedBox(height: 12),
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.fromLTRB(12, 20, 12, 12),
-                decoration: BoxDecoration(
-                  color: ffTheme.cardSurface,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: ffTheme.alternate),
-                  boxShadow: ffTheme.shadowSoft,
-                ),
+                padding: const EdgeInsets.fromLTRB(14, 22, 14, 14),
+                // Premium bento tile — the breakdown chart is an anchor surface.
+                decoration: ffTheme.bentoDecoration(),
                 child: Column(
                   children: [
                     SizedBox(
@@ -418,7 +643,64 @@ class _BillsWidgetState extends State<BillsWidget> {
 
             Text('עדכן חשבונות', style: ffTheme.titleMedium),
             const SizedBox(height: 4),
-            Text('הכנס את הסכום שאתה משלם כיום', style: ffTheme.bodySmall),
+            Text('הכניסו את הסכום שאתם משלמים כיום בכל קטגוריה', style: ffTheme.bodySmall),
+            const SizedBox(height: 12),
+
+            // ── "Upload bill photo" affordance — real OCR ───────────────────
+            // Captures/picks a bill photo and sends it to the site-bill-analyzer
+            // edge function, which reads the amount/provider and pre-fills the
+            // matching category. Wrapped in Semantics for the icon-led control.
+            Semantics(
+              button: true,
+              label: 'צרפו צילום של החשבון לזיהוי אוטומטי',
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(14),
+                  onTap: _busyPhoto ? null : () => _pickBillPhotoSource(ffTheme),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: ffTheme.brandAccentTint,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: ffTheme.brandAccent.withValues(alpha: 0.22)),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: ffTheme.brandAccent.withValues(alpha: 0.16),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: _busyPhoto
+                              ? Padding(
+                                  padding: const EdgeInsets.all(10),
+                                  child: CircularProgressIndicator(strokeWidth: 2, color: ffTheme.brandAccent),
+                                )
+                              : Icon(Icons.document_scanner_rounded, size: 20, color: ffTheme.brandAccent),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('צרפו צילום של החשבון', style: ffTheme.titleSmall),
+                              const SizedBox(height: 2),
+                              Text('מהמצלמה או מהגלריה — נזהה את הסכום אוטומטית',
+                                  style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText)),
+                            ],
+                          ),
+                        ),
+                        Icon(Icons.add_a_photo_rounded, size: 18, color: ffTheme.brandAccent),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ).animate().fadeIn(delay: 60.ms).slideY(begin: 0.05, end: 0),
             const SizedBox(height: 14),
 
             ...categories.asMap().entries.map((entry) {
@@ -450,6 +732,58 @@ class _BillsWidgetState extends State<BillsWidget> {
   }
 }
 
+/// One cheaper-plan row inside the OCR result sheet: the plan name + provider on
+/// the right, the monthly price and (when known) the annual saving on the left.
+class _BillSuggestionRow extends StatelessWidget {
+  const _BillSuggestionRow({required this.suggestion, required this.ffTheme});
+  final BillSuggestion suggestion;
+  final AppTheme ffTheme;
+
+  @override
+  Widget build(BuildContext context) {
+    final s = suggestion;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: ffTheme.background,
+        borderRadius: BorderRadius.circular(ffTheme.radiusSm),
+        border: Border.all(color: ffTheme.alternate),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(s.name.isEmpty ? s.provider : s.name,
+                    style: ffTheme.titleSmall, overflow: TextOverflow.ellipsis),
+                if (s.name.isNotEmpty && s.provider.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(s.provider, style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText)),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text('₪${s.price}/חודש',
+                  style: ffTheme.labelMedium.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w800)),
+              if (s.annualSaving > 0) ...[
+                const SizedBox(height: 2),
+                Text('חיסכון ₪${s.annualSaving}/שנה',
+                    style: ffTheme.labelSmall.copyWith(color: ffTheme.savingText, fontWeight: FontWeight.w700)),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
 class _SavingsRing extends StatelessWidget {
   const _SavingsRing({required this.total, required this.totalSavings, required this.ffTheme});
   final int total;
@@ -465,12 +799,8 @@ class _SavingsRing extends StatelessWidget {
     final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
     return Container(
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: ffTheme.cardSurface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: ffTheme.alternate),
-        boxShadow: ffTheme.shadowSoft,
-      ),
+      // Premium bento tile — the savings ring is a headline VALUE surface.
+      decoration: ffTheme.bentoDecoration(),
       child: Row(
         children: [
           // Donut chart — the amber savings slice sweeps in clockwise and the
@@ -637,7 +967,7 @@ class _OverpayCard extends StatelessWidget {
                               borderRadius: BorderRadius.circular(ffTheme.radiusPill),
                             ),
                             child: Text('הכי כדאי',
-                                style: ffTheme.labelSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 10)),
+                                style: ffTheme.labelSmall.copyWith(color: ffTheme.onSaving, fontWeight: FontWeight.w800, fontSize: 10)),
                           ),
                         ],
                       ],
@@ -905,13 +1235,13 @@ class _BillCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: ffTheme.cardSurface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: currentBill > 0 ? ffTheme.primary.withValues(alpha: 0.2) : ffTheme.alternate),
-        boxShadow: ffTheme.shadowSoft,
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(15),
+      // Premium card surface; an active (entered) bill keeps its subtle ink
+      // accent border, an empty one falls back to the soft hairline.
+      decoration: ffTheme.cardDecoration(
+        radius: ffTheme.radiusMd,
+        borderColor: currentBill > 0 ? ffTheme.primary.withValues(alpha: 0.2) : null,
       ),
       child: Column(
         children: [
@@ -922,7 +1252,7 @@ class _BillCard extends StatelessWidget {
                 height: 44,
                 decoration: BoxDecoration(
                   color: ffTheme.accent1,
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(ffTheme.radiusSm),
                 ),
                 child: Center(child: Icon(categoryIconData(category.id), size: 22, color: ffTheme.primary)),
               ),

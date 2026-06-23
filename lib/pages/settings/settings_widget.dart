@@ -39,7 +39,7 @@ class SettingsWidget extends StatelessWidget {
             const SizedBox(height: 8),
 
             // ── Section 1: Notifications ──────────────────────────────────
-            _SectionHeader(title: 'התראות', ffTheme: ffTheme),
+            _SectionHeader(title: 'התראות', subtitle: 'בחרו אילו עדכונים תקבלו', ffTheme: ffTheme),
             _Card(
               ffTheme: ffTheme,
               child: Column(
@@ -79,7 +79,7 @@ class SettingsWidget extends StatelessWidget {
             const SizedBox(height: 24),
 
             // ── Section 2: Data & Privacy ─────────────────────────────────
-            _SectionHeader(title: 'נתונים ופרטיות', ffTheme: ffTheme),
+            _SectionHeader(title: 'נתונים ופרטיות', subtitle: 'נהלו את המידע השמור במכשיר', ffTheme: ffTheme),
             _Card(
               ffTheme: ffTheme,
               child: Column(
@@ -150,7 +150,7 @@ class SettingsWidget extends StatelessWidget {
             const SizedBox(height: 24),
 
             // ── Appearance: theme mode (system / light / dark) ────────────
-            _SectionHeader(title: 'מראה', ffTheme: ffTheme),
+            _SectionHeader(title: 'מראה', subtitle: 'איך האפליקציה נראית', ffTheme: ffTheme),
             _Card(
               ffTheme: ffTheme,
               child: Padding(
@@ -198,7 +198,7 @@ class SettingsWidget extends StatelessWidget {
             _BiometricSection(ffTheme: ffTheme),
 
             // ── Section 3: About ──────────────────────────────────────────
-            _SectionHeader(title: 'אודות', ffTheme: ffTheme),
+            _SectionHeader(title: 'אודות', subtitle: 'גרסה ופרטי האפליקציה', ffTheme: ffTheme),
             _Card(
               ffTheme: ffTheme,
               child: Column(
@@ -239,10 +239,10 @@ class SettingsWidget extends StatelessWidget {
                   const SizedBox(height: 16),
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.all(12),
+                    padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
                       color: ffTheme.background,
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(ffTheme.radiusMd),
                       border: Border.all(color: ffTheme.alternate),
                     ),
                     child: Text(
@@ -406,7 +406,7 @@ class _BiometricSectionState extends State<_BiometricSection> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _SectionHeader(title: 'אבטחה', ffTheme: ffTheme),
+        _SectionHeader(title: 'אבטחה', subtitle: 'כניסה מהירה ומאובטחת לחשבון', ffTheme: ffTheme),
         _Card(
           ffTheme: ffTheme,
           child: _ToggleRow(
@@ -427,15 +427,25 @@ class _BiometricSectionState extends State<_BiometricSection> {
 // ── Shared helpers ─────────────────────────────────────────────────────────────
 
 class _SectionHeader extends StatelessWidget {
-  const _SectionHeader({required this.title, required this.ffTheme});
+  const _SectionHeader({required this.title, required this.ffTheme, this.subtitle});
   final String title;
+  final String? subtitle;
   final AppTheme ffTheme;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
-      child: Text(title, style: ffTheme.titleMedium.copyWith(color: ffTheme.primaryText)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: ffTheme.titleMedium.copyWith(color: ffTheme.primaryText)),
+          if (subtitle != null) ...[
+            const SizedBox(height: 2),
+            Text(subtitle!, style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText)),
+          ],
+        ],
+      ),
     );
   }
 }
@@ -520,7 +530,7 @@ class _Card extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 4),
-      decoration: ffTheme.glassDecoration(radius: 16),
+      decoration: ffTheme.cardDecoration(radius: ffTheme.radiusLg),
       child: child,
     );
   }

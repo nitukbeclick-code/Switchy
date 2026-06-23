@@ -65,6 +65,48 @@ void main() {
     });
   });
 
+  group('zero-review providers report uniformly empty', () {
+    test('every catalogue provider starts with no fabricated rating data', () {
+      // The whole point: a fresh catalogue (no real reviews anywhere) must yield
+      // zeros across the board — no provider gets a seeded average or sub-rating.
+      for (final provider in allProviders) {
+        expect(ProviderRatings.averageStars(provider), 0,
+            reason: '$provider must not show a fabricated average');
+        expect(ProviderRatings.reviewCount(provider), 0);
+        final r = ProviderRatings.forProvider(provider);
+        expect(r.hasData, isFalse);
+        expect(r.stars, 0);
+        expect(r.ratedByUser, isFalse);
+        // The sub map is always fully-keyed (no missing dimensions), all zero.
+        expect(r.sub.keys.toSet(), ProviderRatings.subKeys.toSet());
+        expect(r.sub.values.every((v) => v == 0), isTrue);
+      }
+    });
+
+    test('an empty/whitespace provider name also reports no data', () {
+      final r = ProviderRatings.forProvider('');
+      expect(r.hasData, isFalse);
+      expect(r.stars, 0);
+      expect(r.reviewCount, 0);
+    });
+
+    test('a review with overall 0 does not fabricate a star average', () {
+      final state = AppState();
+      final provider = allProviders.first;
+      // A degenerate review (overall 0) must not flip hasData on via the stars
+      // path — only the count of the user's own review bumps reviewCount.
+      state.addReview(
+        provider: provider,
+        overall: 0,
+        subRatings: const {'price': 0, 'service': 0, 'coverage': 0, 'speed': 0},
+        text: '',
+      );
+      final r = ProviderRatings.forProvider(provider, appState: state);
+      expect(r.stars, 0); // no positive overall → no average fabricated
+      expect(r.sub.values.every((v) => v == 0), isTrue);
+    });
+  });
+
   group('ProviderRatings.forProvider', () {
     test('reports no data until a real review exists, then aggregates it', () {
       final state = AppState();

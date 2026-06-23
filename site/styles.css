@@ -730,7 +730,11 @@ a.chip:hover { transform: translateY(-2px); border-color: var(--green-2); box-sh
 .cta__form-note { margin: 6px 2px 2px; font-size: 12px; color: var(--muted); line-height: 1.5; }
 .footer__social-link:focus-visible { box-shadow: var(--ring); }
 .footer__social-link svg, .footer__social-link .ico { width: 18px; height: 18px; }
-.footer__bottom { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-top: 40px; padding-top: 22px; border-top: 1px solid rgba(255,255,255,.12); font-size: 13px; color: rgba(255,255,255,.62); }
+.footer__bottom { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; margin-top: 24px; padding-top: 22px; border-top: 1px solid rgba(255,255,255,.12); font-size: 13px; color: rgba(255,255,255,.62); }
+/* Commission disclosure (Consumer-Protection §7b) — prominent, full-width, on
+   every page; brighter than the copyright line so the honesty reads at a glance. */
+.footer__disclosure { width: 100%; max-width: var(--maxw); margin: 40px auto 0; padding: 14px 20px 0; font-size: 13.5px; line-height: 1.65; color: rgba(255,255,255,.78); border-top: 1px solid rgba(255,255,255,.12); }
+.footer__disclosure a { color: #fff; text-decoration: underline; }
 
 /* ── Floating WhatsApp contact (mobile only) ─────────────────────────────────
    Keeps the editorial desktop layout clean; on touch it gives a one-tap line
@@ -771,6 +775,57 @@ body:has(.sticky-cta.is-visible) .wa-fab { bottom: 76px; }
 /* ── Post-submit referral nudge ──────────────────────────────────────────── */
 .cta__referral { margin-top: 14px; text-align: center; font-size: 14px; color: var(--muted); }
 .cta__referral a { color: var(--accent-ink); font-weight: 700; }
+
+/* ── CTA objection-handling chips ─────────────────────────────────────────────
+   Sits inside the dark CTA band, just below the submit button — light-on-dark
+   reassurance (free / neutral / no-commitment / number-kept). Every line is an
+   already-true fact about the service, not a marketing claim. */
+.cta__objections {
+  list-style: none; margin: 16px 0 0; padding: 0;
+  display: flex; flex-wrap: wrap; gap: 8px 14px; justify-content: center;
+  flex: 1 1 100%;
+}
+.cta__objections li {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: 13px; font-weight: 600; line-height: 1.3;
+  color: rgba(255,255,255,.88);
+}
+.cta__objections .ico { width: 15px; height: 15px; flex: none; color: var(--lime); }
+
+/* ── Honest trust block (real-only E-E-A-T strip before a CTA) ─────────────────
+   Verifiable catalogue counts + transparent methodology + commission disclosure
+   + price caveat. Light-surface glass panel using the standard tokens; the dark
+   theme overrides come for free from the [data-theme] token swap. */
+.trust-block__inner {
+  max-width: 920px; margin: 0 auto; padding: clamp(24px, 4vw, 40px);
+  background: var(--white); border: 1px solid var(--line);
+  border-radius: var(--radius-lg); box-shadow: var(--shadow-sm);
+}
+.trust-block__head { text-align: center; margin-bottom: 22px; }
+.trust-block__head .eyebrow { justify-content: center; }
+.trust-block__head h2 { font-family: 'Rubik'; font-size: clamp(22px, 3vw, 30px); font-weight: 800; color: var(--green-d); letter-spacing: -.6px; margin-top: 8px; }
+/* Real catalogue counters — the only numbers shown are the provable ones. */
+.trust-stats {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+  margin: 0 0 22px; padding: 0;
+}
+.trust-stat {
+  text-align: center; padding: 16px 8px;
+  background: var(--mint); border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+.trust-stat dd { font-family: 'Rubik'; font-size: clamp(28px, 5vw, 40px); font-weight: 900; color: var(--accent-ink); line-height: 1; }
+.trust-stat dt { margin-top: 6px; font-size: 13px; font-weight: 600; color: var(--muted); }
+.trust-points { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 14px; }
+.trust-points li { display: flex; align-items: flex-start; gap: 12px; font-size: 15px; line-height: 1.6; color: var(--muted); }
+.trust-points li b { color: var(--green-d); font-weight: 700; }
+.trust-points .ico { width: 22px; height: 22px; flex: none; margin-top: 2px; color: var(--accent); }
+.trust-points a { color: var(--accent-ink); font-weight: 700; text-decoration: underline; text-underline-offset: 2px; white-space: nowrap; }
+.trust-points a:hover { opacity: .85; }
+@media (max-width: 560px) {
+  .trust-stats { grid-template-columns: 1fr; }
+  .trust-points a { white-space: normal; }
+}
 
 /* ── Category landing hero (generated pages) ─────────────────────────── */
 .lead-hero { padding: 56px 0 8px; text-align: center; position: relative; }
@@ -1841,6 +1896,9 @@ a.chip:active { transform: translateY(0) scale(.97); }
 .cmp__jump { color: var(--ink); }
 .cmp__fixed { color: var(--accent); font-weight: 600; }
 .cmp__info { display: inline-block; max-width: 280px; white-space: normal; color: var(--muted); font-size: .84rem; line-height: 1.4; }
+/* VAT-inclusive + "accurate as of <date>, verify with provider" caveat under the
+   comparison table — consumer-protection price honesty next to the figures. */
+.cmp__caveat { margin: 12px 2px 0; font-size: .82rem; line-height: 1.55; color: var(--muted); }
 .cmp__cta { width: 1%; white-space: nowrap; }
 .cmp__cta a { display: inline-flex; width: 34px; height: 34px; align-items: center; justify-content: center; border-radius: var(--radius-xs); background: var(--accent-t); color: var(--accent); transition: background .16s, color .16s; }
 .cmp__cta a:hover { background: var(--accent); color: #fff; }
@@ -1952,3 +2010,525 @@ body.pmodal-lock { overflow: hidden; }
 .cbanner .cbanner__btn { padding-block: 10px; padding-inline: 20px; font-size: .9rem; }
 @media (prefers-reduced-motion: reduce) { .cbanner:not([hidden]) { animation: none; } }
 @media (max-width: 480px) { .cbanner__actions { width: 100%; } .cbanner .cbanner__btn { flex: 1; } }
+
+/* ╔══════════════════════════════════════════════════════════════════════╗
+   ║  RUNTIME UI — surfaces that script.js BUILDS at runtime.              ║
+   ║  Everything below styles class names emitted by script.js (toast      ║
+   ║  stack, advisor recs, bill-analyzer results, bar charts, rating       ║
+   ║  meters, community feed, 3D-tilt, press feedback). Markup-driven      ║
+   ║  selectors above own first paint; these own the JS-rendered DOM, so   ║
+   ║  the two never collided — they just weren't authored yet. Same        ║
+   ║  token-driven, white-glass + ink + green/amber language; RTL-safe,    ║
+   ║  dark-mode inherits via tokens, reduced-motion honoured.              ║
+   ╚══════════════════════════════════════════════════════════════════════╝ */
+
+/* ── Toast host + lifecycle ──────────────────────────────────────────────────
+   script.js stacks toasts inside a fixed .toast-host (bottom-centred) and drives
+   each one with .is-in / .is-out — NOT the .is-visible the base .toast rule used,
+   so toasts had no entrance, no pointer-events, and overlapped (each was its own
+   position:fixed). The host now owns positioning; the toast is static within it
+   and animates on .is-in. (.is-visible kept as a harmless alias.) */
+.toast-host {
+  position: fixed; inset-inline: 0; bottom: 24px; z-index: 70;
+  display: flex; flex-direction: column-reverse; align-items: center; gap: 10px;
+  padding-inline: 16px; pointer-events: none;
+}
+.toast-host .toast {
+  position: static; inset: auto; margin: 0; bottom: auto;
+}
+.toast.is-in { opacity: 1; transform: translateY(0); pointer-events: auto; }
+.toast.is-out { opacity: 0; transform: translateY(16px); pointer-events: none; }
+.toast__msg { line-height: 1.4; }
+@media (max-width: 480px) { .toast-host { inset-inline: 0; } .toast-host .toast { width: 100%; max-width: none; } }
+
+/* ── Inline form error notes (cta + booking) ─────────────────────────────────
+   script.js flags a failed submit by toggling these on the shared status note.
+   They had no styling, so the error text stayed the band's default colour. */
+.cta__note--err { color: #FECACA; }
+.booking__note--err { color: var(--error); }
+.booking__note.booking__note--err { color: var(--error); }
+
+/* ── Skeleton stack (AI shells' loading state) ───────────────────────────────
+   callAiFunction callers drop a .skeleton-stack of .skeleton rows in while a
+   request is in flight. Give the rows graduated widths so they read as content. */
+.skeleton-stack { display: grid; gap: 10px; margin: 4px 0; }
+.skeleton-stack .skeleton { height: 14px; }
+.skeleton-stack .skeleton:first-child { height: 20px; width: 55%; }
+.skeleton-stack .skeleton:nth-child(3) { width: 80%; }
+
+/* ── AI chat widget — prominent + robust busy states ─────────────────────────
+   The on-site chat (.ai-chat) is the hero of app.html / the homepage AI band.
+   Lift it into a real conversation surface: a glass shell with a soft accent
+   wash, a scrollable log, and clear busy/disabled affordances so the input and
+   the example chips visibly stop accepting taps mid-answer (script.js sets
+   aria-busy / aria-disabled — these make that legible without colour alone). */
+.ai-demo { position: relative; }
+.ai-chat {
+  max-height: min(58vh, 520px); overflow-y: auto; scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch; scrollbar-width: thin;
+}
+.ai-chat::before {
+  content: ""; position: absolute; inset: 0; z-index: -1; border-radius: 20px; pointer-events: none;
+  background: radial-gradient(420px 200px at 90% -10%, var(--accent-t), transparent 70%);
+  opacity: .5;
+}
+/* The input row reads as one pill: field + send button share a lifted ground. */
+.ai-input { align-items: stretch; }
+.ai-input input[aria-busy="true"] { opacity: .7; }
+/* In-flight: the example chips dim and stop responding (aria-disabled), so a
+   second question can't be queued mid-answer. */
+.ai-chip[aria-disabled="true"] {
+  opacity: .45; cursor: default; pointer-events: none; filter: saturate(.7);
+}
+/* Error bubble — same shell as a bot bubble but a quiet red rail, so a failed
+   call reads as a state, not a normal answer. script.js reuses --bot; this is
+   future-proofing for an explicit --error variant. */
+.ai-bubble--error { border-bottom-inline-start-color: var(--error); }
+@media (prefers-reduced-motion: reduce) { .ai-chat { scroll-behavior: auto; } }
+
+/* ── Inline AI lead capture — injected when the server flags switch intent ────
+   Sits inside the .ai-chat log (light surface), so ink-on-light. Mirrors the
+   page lead form's consent contract: terms+privacy mandatory, marketing
+   optional + default-off. No hard-coded brand colours — tokens flip in dark. */
+.ai-lead {
+  display: grid; gap: 10px; margin-top: 4px; padding: 16px;
+  background: var(--accent-t); border: 1px solid var(--line); border-radius: 16px;
+  border-bottom-inline-start: 4px solid var(--accent); justify-self: stretch;
+}
+.ai-lead__intro { margin: 0; font-weight: 600; color: var(--ink); font-size: 14.5px; line-height: 1.45; }
+.ai-lead input[type="text"], .ai-lead input[type="tel"] {
+  width: 100%; padding: 11px 14px; border: 1px solid var(--line); border-radius: 12px;
+  font-family: inherit; font-size: 15px; background: var(--white); color: var(--ink);
+}
+.ai-lead input[type="text"]:focus-visible, .ai-lead input[type="tel"]:focus-visible {
+  outline: none; box-shadow: var(--ring); border-color: var(--accent);
+}
+.ai-lead__consent { display: flex; align-items: flex-start; gap: 10px; cursor: pointer; font-size: 13.5px; line-height: 1.45; color: var(--ink); font-weight: 500; }
+.ai-lead__consent input[type="checkbox"] { flex: 0 0 auto; width: 20px; height: 20px; min-width: 20px; margin: 1px 0 0; accent-color: var(--accent); cursor: pointer; }
+.ai-lead__consent input[type="checkbox"]:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.ai-lead__consent a { color: var(--accent-ink); font-weight: 700; text-decoration: underline; text-underline-offset: 2px; }
+.ai-lead__consent a:hover { opacity: .85; }
+.ai-lead__note { margin: 0; min-height: 0; font-size: 13px; color: var(--muted); }
+.ai-lead__note:empty { display: none; }
+.ai-lead__note--err { color: var(--error); font-weight: 600; }
+.ai-lead__submit { justify-self: stretch; }
+
+/* ── Plan advisor — the JS-rendered question/recommendation flow ─────────────
+   The static .advisor__step/option markup is the shell; script.js renders the
+   live flow into .advisor__stage with these classes. Mirror the advisor's card
+   language so the rendered steps + recs read as one component. */
+.advisor__stage { display: grid; gap: 4px; }
+.advisor__q { font-family: 'Rubik', sans-serif; font-size: 20px; color: var(--green-d); margin: 4px 0 14px; line-height: 1.25; }
+.advisor__progress { color: var(--ink-400); font-size: 13px; font-weight: 700; letter-spacing: .02em; margin-bottom: 2px; }
+.advisor__back { align-self: start; margin-top: 14px; }
+.advisor__followup { color: var(--muted); margin: -6px 0 14px; line-height: 1.6; }
+.advisor__recs { display: grid; gap: 12px; }
+/* Each recommendation = a tinted glass card; the first (top pick) wears the
+   green ACTION rail so the lead recommendation stands out. */
+.advisor__rec {
+  background: var(--cream); border: 1px solid var(--line);
+  border-inline-start: 4px solid var(--ink-200); border-radius: 14px;
+  padding: 16px 18px; box-shadow: var(--shadow-sm);
+}
+.advisor__rec:first-child { border-inline-start-color: var(--accent); background: var(--accent-t); }
+.advisor__rec h4 { font-family: 'Rubik', sans-serif; font-size: 16px; color: var(--green-d); margin: 0 0 4px; }
+.advisor__rec-price { font-family: 'Rubik', sans-serif; font-weight: 800; font-size: 18px; color: var(--green-d); margin: 2px 0; }
+/* Saving = amber VALUE; the one figure on the card that wears the value colour. */
+.advisor__rec-saving { color: var(--value-ink); font-weight: 700; font-size: 14px; margin: 2px 0; }
+.advisor__rec-reason { color: var(--muted); font-size: 14px; line-height: 1.6; margin: 6px 0 0; }
+.advisor__actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
+.advisor__actions .btn { flex: 1 1 auto; }
+
+/* ── Bill analyzer — the JS-rendered upload result ───────────────────────────
+   After site-bill-analyzer returns, script.js renders .bill-drop__result inside
+   the drop zone. Style the summary + suggestion cards (same rec language as the
+   advisor) and a busy state on the zone itself while the call is in flight. */
+.bill-drop.is-loading { pointer-events: none; opacity: .75; cursor: progress; }
+.bill-drop__result { width: 100%; display: grid; gap: 12px; margin-top: 6px; text-align: start; }
+.bill-drop__title { font-family: 'Rubik', sans-serif; font-size: 17px; color: var(--green-d); margin: 0; }
+.bill-drop__summary { color: var(--ink-700); font-size: 14.5px; line-height: 1.6; margin: 0; }
+.bill-drop__suggestions { display: grid; gap: 10px; }
+.bill-drop__suggestion {
+  background: var(--cream); border: 1px solid var(--line);
+  border-inline-start: 4px solid var(--accent); border-radius: 12px;
+  padding: 14px 16px; box-shadow: var(--shadow-sm); text-align: start;
+}
+.bill-drop__suggestion h4 { font-family: 'Rubik', sans-serif; font-size: 15px; color: var(--green-d); margin: 0 0 4px; }
+.bill-drop__suggestion-price { font-family: 'Rubik', sans-serif; font-weight: 800; font-size: 16px; color: var(--green-d); margin: 2px 0; }
+.bill-drop__suggestion-saving { color: var(--value-ink); font-weight: 700; font-size: 13.5px; margin: 2px 0; }
+.bill-drop__result .btn { justify-self: start; }
+
+/* ── Bar charts — [data-chart] + the calc/ratings injected charts ────────────
+   renderBarChart() builds an accessible RTL horizontal bar chart out of these
+   classes. Bars animate width 0→n on reveal (script.js sets the inline width +
+   transition); colours come ONLY from brand tokens via the kind modifier —
+   never per-provider brand colours. */
+.barchart { display: block; margin: 0 0 18px; }
+.calc-result__chart.barchart { margin-bottom: 16px; }
+.barchart__rows { display: grid; gap: 12px; }
+.barchart__row { display: grid; grid-template-columns: minmax(72px, max-content) 1fr; align-items: center; gap: 12px; }
+.barchart__label { font-family: 'Rubik', sans-serif; font-weight: 700; font-size: 13.5px; color: var(--ink-700); white-space: nowrap; }
+.barchart__track {
+  position: relative; height: 30px; border-radius: 999px;
+  background: var(--ink-050); border: 1px solid var(--line); overflow: hidden;
+  display: flex; align-items: center;
+}
+.barchart__bar {
+  height: 100%; border-radius: 999px; min-width: 2px;
+  background: linear-gradient(90deg, var(--ink-500), var(--ink-700));
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.18);
+}
+/* kind=now → ink (today's spend); best/save → the value/accent figure. */
+.barchart__row--now .barchart__bar { background: linear-gradient(90deg, var(--ink-500), var(--ink-700)); }
+.barchart__row--best .barchart__bar { background: linear-gradient(90deg, var(--accent), var(--accent-d)); }
+.barchart__row--save .barchart__bar { background: linear-gradient(90deg, var(--value), var(--value-d)); }
+/* The value label rides at the inline-end of the track, on the inside. */
+.barchart__val {
+  position: absolute; inset-inline-end: 12px;
+  font-family: 'Rubik', sans-serif; font-weight: 800; font-size: 13px;
+  color: var(--green-d); font-variant-numeric: tabular-nums;
+}
+@media (max-width: 480px) {
+  .barchart__row { grid-template-columns: 1fr; gap: 4px; }
+  .barchart__label { font-size: 12.5px; }
+}
+@media (prefers-reduced-motion: reduce) { .barchart__bar { transition: none !important; } }
+
+/* ── Rating meter — the animated 0→5 bar under each rating card ───────────────
+   The community module renders .rating-card__stars (glyphs); the ratings-chart
+   module then inserts a .rating-card__meter whose fill grows to score/5. */
+.rating-card__stars { display: block; color: var(--value-ink); letter-spacing: 2px; font-size: 15px; line-height: 1; margin-top: 6px; }
+.rating-card__meter {
+  display: block; height: 8px; margin-top: 10px; border-radius: 999px;
+  background: var(--ink-050); border: 1px solid var(--line); overflow: hidden;
+}
+.rating-card__meter-fill {
+  display: block; height: 100%; border-radius: 999px;
+  background: linear-gradient(90deg, var(--value), var(--value-d));
+}
+@media (prefers-reduced-motion: reduce) { .rating-card__meter-fill { transition: none !important; } }
+
+/* ── Ratings + community runtime states ──────────────────────────────────────
+   script.js paints these load/empty/error strings and the dynamic grid. The
+   markup-side .ratings/.rating-card rules above style the cards; these add the
+   container layout + status lines the build doesn't pre-render. */
+.ratings__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
+.ratings__loading, .ratings__empty, .ratings__error,
+.community__loading, .community__empty, .community__error {
+  text-align: center; color: var(--muted); font-size: 14px; padding: 28px 16px;
+}
+.ratings__error, .community__error { color: var(--error); }
+.rating-card__score { display: block; font-family: 'Rubik', sans-serif; font-weight: 900; font-size: 24px; color: var(--green-d); margin-top: 8px; letter-spacing: -.5px; }
+.rating-card__count { display: block; color: var(--muted); font-size: 13px; margin-top: 2px; }
+
+/* ── Post card runtime bits (dynamic feed) ───────────────────────────────────
+   The build pre-renders one post-card shape (.post-card__who / __more); the live
+   Supabase feed renders a sibling shape (.post-card__meta / __toggle). Style the
+   latter to match so both look identical regardless of which path rendered. */
+.post-card__meta { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1; }
+.post-card__avatar--ph { background: var(--lime); color: var(--green-d); }
+.post-card__toggle {
+  margin-top: 12px; background: none; border: 0; padding: 6px 4px; cursor: pointer;
+  font-family: 'Rubik', sans-serif; font-weight: 700; font-size: 13.5px; color: var(--accent-ink);
+  display: inline-flex; align-items: center; gap: 6px; border-radius: 8px; transition: color .15s;
+}
+.post-card__toggle:hover { color: var(--accent-d); }
+.post-card__toggle:focus-visible { box-shadow: var(--ring-flush); }
+.post-card__noreplies { color: var(--muted); font-size: 13.5px; padding: 6px 4px; }
+
+/* ── 3D card tilt — consume the --tilt-x/--tilt-y vars script.js sets ─────────
+   The pointer-tilt module sets these custom props + .is-tilting on plan/provider/
+   rec/rating cards, but nothing read them, so the tilt was inert. Apply a real
+   perspective rotation that COMPOSES with the existing hover lift (translate is
+   owned by hover/magnetic; rotate lives here). Desktop hover only, off under
+   reduced-motion. */
+.plan.is-tilting, .provider-card.is-tilting, .advisor__rec.is-tilting, .rating-card.is-tilting {
+  transform: perspective(900px) rotateX(var(--tilt-x, 0deg)) rotateY(var(--tilt-y, 0deg));
+  transition: transform .12s var(--ease);
+}
+@media (hover: none), (prefers-reduced-motion: reduce) {
+  .plan.is-tilting, .provider-card.is-tilting, .advisor__rec.is-tilting, .rating-card.is-tilting { transform: none; }
+}
+
+/* ── Press feedback — the delegated .is-pressed hook (pointer + keyboard) ─────
+   script.js adds .is-pressed on pointerdown / Space / Enter so touch + keyboard
+   activation get the same tactile dip the CSS :active gives a mouse press. */
+.is-pressed:not([disabled]):not(.is-loading) { transform: scale(.97); }
+.btn.is-pressed:not([disabled]):not(.is-loading) { transform: translateY(0) scale(.97); }
+@media (prefers-reduced-motion: reduce) { .is-pressed { transform: none !important; } }
+
+/* ╔══════════════════════════════════════════════════════════════════════╗
+   ║  PREMIUM-2026 UPGRADE  ·  bento · deeper glass · air · soft glow       ║
+   ║                                                                        ║
+   ║  A final, presentation-only layer that elevates the existing system    ║
+   ║  to a 2026 aesthetic WITHOUT changing the brand: same green --accent / ║
+   ║  amber --value / ink palette, same [data-theme] dark mode + tokens,    ║
+   ║  same RTL + a11y. It layers (1) generous whitespace, (2) tighter/      ║
+   ║  larger display headings (-0.02em), (3) BENTO css-grids for card /     ║
+   ║  data sections, (4) deeper glassmorphism on the header + floating      ║
+   ║  elements, (5) softer low-opacity borders + a subtle accent glow on    ║
+   ║  hover, and (6) smooth transitions + :focus-visible parity on every    ║
+   ║  interactive surface. prefers-reduced-motion is honoured throughout.   ║
+   ╚══════════════════════════════════════════════════════════════════════╝ */
+
+:root {
+  /* A touch more breathing room in the rhythm — section padding & grid gaps
+     tune against these, so the whole site gains air from one place. */
+  --space-2xl: 120px;
+  --gap-bento: 22px;
+  /* Soft, low-opacity hairlines — the 2026 "no hard black border" rule. The
+     existing --line stays for legacy callers; these are the soft variants the
+     upgraded surfaces reach for. */
+  --line-soft: rgba(17, 24, 39, .08);
+  --line-softer: rgba(17, 24, 39, .055);
+  /* Signature subtle accent glow (green ACTION) — layered after a card's own
+     elevation on hover/focus so the surface picks up a faint brand halo. */
+  --glow-accent: 0 0 0 1px rgba(22, 163, 74, .18), 0 18px 50px -18px rgba(22, 163, 74, .35);
+  --glow-value: 0 0 0 1px rgba(245, 158, 11, .22), 0 18px 50px -18px rgba(245, 158, 11, .34);
+  /* A deeper, glassier ambient shadow for floating bento tiles. */
+  --shadow-float: 0 2px 8px rgba(15, 27, 34, .05), 0 24px 60px -20px rgba(15, 27, 34, .22);
+}
+:root[data-theme="dark"] {
+  --line-soft: rgba(255, 255, 255, .085);
+  --line-softer: rgba(255, 255, 255, .06);
+  --glow-accent: 0 0 0 1px rgba(74, 222, 128, .26), 0 18px 50px -18px rgba(74, 222, 128, .4);
+  --glow-value: 0 0 0 1px rgba(251, 191, 36, .28), 0 18px 50px -18px rgba(251, 191, 36, .4);
+  --shadow-float: 0 2px 8px rgba(0, 0, 0, .5), 0 24px 60px -20px rgba(0, 0, 0, .65);
+}
+
+/* ── Display headings: tighter, larger, modern tracking ─────────────────────
+   The 2026 look = big display type pulled tight. -0.02em across the heading
+   scale, applied without overriding the existing ink-gradient clip. */
+h1 { letter-spacing: -.02em; }
+.hero h1, .lead-hero h1, .article-hero h1 { letter-spacing: -.022em; }
+.section__head h2, .cta h2 { letter-spacing: -.02em; }
+.section__head { max-width: 680px; }
+.section__head h2 { line-height: 1.04; }
+/* Lead paragraphs get a hair more measure for editorial calm. */
+.section__head p { max-width: 52ch; margin-inline: auto; }
+
+/* ── More whitespace — bigger section rhythm on roomy viewports ──────────────
+   Scales up only where there's room (>=1024px); the existing mobile clamps in
+   the responsive block keep phones tight. */
+@media (min-width: 1024px) {
+  .section { padding-block: var(--space-2xl); }
+  .section__head { margin-bottom: 64px; }
+  .cta { padding-block: 104px; }
+  .lead-hero { padding-top: 72px; }
+}
+
+/* ── Deeper header glassmorphism (with opaque fallback) ─────────────────────
+   A stronger frosted-glass header: more blur + saturation, a hairline glass
+   edge, and a soft lifted shadow once scrolled. */
+.nav {
+  background: rgba(246, 248, 249, .68);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border-bottom: 1px solid var(--line-softer);
+}
+.nav.scrolled {
+  background: rgba(246, 248, 249, .8);
+  border-bottom-color: var(--line-soft);
+  box-shadow: 0 8px 30px -12px rgba(15, 27, 34, .14);
+}
+:root[data-theme="dark"] .nav { background: rgba(17, 22, 28, .62); }
+:root[data-theme="dark"] .nav.scrolled { background: rgba(17, 22, 28, .82); }
+@supports not ((backdrop-filter: blur(14px)) or (-webkit-backdrop-filter: blur(14px))) {
+  .nav { background: var(--cream); }
+  :root[data-theme="dark"] .nav { background: #11161C; }
+}
+
+/* ── Deeper glass on floating overlays (mega-menu, cookie banner) ─────────── */
+.mega-menu__panel {
+  background: rgba(255, 255, 255, .82);
+  backdrop-filter: blur(22px) saturate(150%);
+  -webkit-backdrop-filter: blur(22px) saturate(150%);
+  border-color: var(--line-soft);
+  box-shadow: var(--glint), var(--shadow-float);
+}
+:root[data-theme="dark"] .mega-menu__panel { background: rgba(22, 28, 36, .82); }
+@supports not ((backdrop-filter: blur(14px)) or (-webkit-backdrop-filter: blur(14px))) {
+  .mega-menu__panel { background: var(--white); }
+}
+.cbanner {
+  background: rgba(255, 255, 255, .8);
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  border-color: var(--line-soft);
+}
+:root[data-theme="dark"] .cbanner { background: rgba(22, 28, 36, .85); }
+@supports not ((backdrop-filter: blur(14px)) or (-webkit-backdrop-filter: blur(14px))) {
+  .cbanner { background: var(--white); }
+}
+
+/* ── Decorative hero network motif (was unstyled markup) ────────────────────
+   build.js layers a single-colour <svg class="hero-decor__svg"> behind the
+   lead-hero / versus / collection heroes via .hero-decor. Place it as a faint,
+   pointer-inert ambient backdrop tinted with the brand green. */
+.hero-decor {
+  position: absolute; inset: 0; z-index: -1; overflow: hidden; pointer-events: none;
+  -webkit-mask-image: radial-gradient(120% 90% at 75% 0%, #000 35%, transparent 78%);
+  mask-image: radial-gradient(120% 90% at 75% 0%, #000 35%, transparent 78%);
+}
+.hero-decor__svg {
+  position: absolute; inset-block-start: -8%; inset-inline-end: -6%;
+  width: min(760px, 78%); height: auto; color: var(--accent); opacity: .14;
+  transform: translate3d(0, calc(var(--parallax, 0px) * .25), 0); will-change: transform;
+}
+:root[data-theme="dark"] .hero-decor__svg { opacity: .2; }
+@media (max-width: 760px) { .hero-decor__svg { width: 120%; inset-inline-end: -30%; opacity: .1; } }
+@media (prefers-reduced-motion: reduce) { .hero-decor__svg { transform: none; } }
+
+/* ── Split lead-hero (was unstyled) — text + app-shot, two-column ────────────
+   The category hero ships .lead-hero--split with a .lead-hero__grid wrapping
+   .lead-hero__text and .lead-hero__media (a phone screenshot). Lay it out as a
+   roomy asymmetric two-column hero that collapses to one column on tablet. */
+.lead-hero--split { text-align: start; }
+.lead-hero__grid {
+  display: grid; grid-template-columns: 1.08fr .92fr; gap: clamp(28px, 5vw, 64px);
+  align-items: center;
+}
+.lead-hero--split .pill { margin-top: 4px; }
+.lead-hero--split h1 { margin-top: 6px; }
+.lead-hero--split .hero__cta { justify-content: flex-start; }
+.lead-hero__media { display: grid; place-items: center; }
+.app-shot--hero {
+  margin: 0; position: relative; max-width: 340px; width: 100%;
+}
+.app-shot--hero img {
+  width: 100%; height: auto; display: block; border-radius: 34px;
+  border: 1px solid var(--line-soft);
+  box-shadow: var(--shadow-lg), inset 0 1px 0 rgba(255, 255, 255, .5);
+  background: var(--cream);
+}
+/* A soft brand-tinted glow puddle behind the floating device. */
+.app-shot--hero::before {
+  content: ""; position: absolute; inset: 8% 6% -6%; z-index: -1; border-radius: 40px;
+  background: radial-gradient(closest-side, rgba(22, 163, 74, .22), transparent 72%);
+  filter: blur(18px);
+}
+@media (max-width: 900px) {
+  .lead-hero__grid { grid-template-columns: 1fr; gap: 32px; }
+  .lead-hero__media { order: -1; }
+  .lead-hero--split { text-align: center; }
+  .lead-hero--split .hero__cta { justify-content: center; }
+  .app-shot--hero { max-width: 280px; }
+}
+
+/* ── BENTO grids — asymmetric, generous-gap card/data layouts ────────────────
+   The 2026 signature. We re-cast the existing equal-grid sections into bento
+   compositions: a slightly larger "anchor" tile leads, the rest flow in. All
+   gracefully collapse to one column on small screens (handled below + by the
+   existing responsive block). Markup unchanged — pure CSS over current classes. */
+
+/* Features ("how to choose" / category bullets): roomier auto-fit bento. */
+.features {
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: var(--gap-bento);
+}
+/* The 4-bullet category feature grid reads best as a balanced 2x2 bento with a
+   leading emphasis tile. */
+@media (min-width: 760px) {
+  .section--alt .features:has(> .feature:nth-child(4):last-child) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .section--alt .features:has(> .feature:nth-child(4):last-child) > .feature:first-child {
+    grid-column: span 2;
+    background: linear-gradient(150deg, rgba(22, 163, 74, .07), rgba(255, 255, 255, .66) 55%);
+  }
+  :root[data-theme="dark"] .section--alt .features:has(> .feature:nth-child(4):last-child) > .feature:first-child {
+    background: linear-gradient(150deg, rgba(74, 222, 128, .12), rgba(28, 36, 46, .6) 55%);
+  }
+}
+
+/* Homepage category tiles -> bento: 5-up becomes a 2+2+2 / 3+3 asymmetric set,
+   the first tile spanning wider as the hero category. */
+@media (min-width: 760px) {
+  .cats:has(> .cat:nth-child(5)) { grid-template-columns: repeat(6, 1fr); gap: var(--gap-bento); }
+  .cats:has(> .cat:nth-child(5)) > .cat { grid-column: span 2; }
+  .cats:has(> .cat:nth-child(5)) > .cat:nth-child(4) { grid-column: span 3; }
+  .cats:has(> .cat:nth-child(5)) > .cat:nth-child(5) { grid-column: span 3; }
+}
+
+/* Collections grid -> relaxed bento with a wider lead tile. */
+.collections-grid { gap: var(--gap-bento); }
+@media (min-width: 900px) {
+  .collections-grid:has(> .collection-chip:nth-child(5)) > .collection-chip:first-child {
+    grid-column: span 2;
+  }
+}
+
+/* Guide / quote / ratings grids — keep their counts but gain the bento gap. */
+.guide-cards, .quotes, .ratings, .ratings__grid { gap: var(--gap-bento); }
+
+/* ── Softer borders site-wide — replace harsh hairlines with low-opacity ─────
+   Only the structural card/panel rims; semantic rims (errors, best-value,
+   active states) keep their stronger colour. */
+.feature, .step, .cat, .guide-card, .plan, .provider-card, .quote, .rating-card,
+.collection-chip, .review-card, .post-card, .ai-chat, .booking, .advisor,
+.cmp-wrap, .faq__list details, .tldr, .callout, .cbanner {
+  border-color: var(--line-soft);
+}
+
+/* ── Subtle accent glow on hover / focus — the brand halo ────────────────────
+   Layered on top of each surface's own hover elevation, so cards pick up a
+   faint green ACTION glow when pointed at or tabbed to. Value-tier surfaces use
+   the amber glow. Composes with the existing transform lift. */
+.feature, .guide-card, .plan, .provider-card, .cat, .collection-chip, .step,
+.rating-card {
+  transition: transform .24s var(--ease), box-shadow .28s var(--ease), border-color .2s;
+}
+.feature:hover, .guide-card:hover, .provider-card:hover, .cat:hover,
+.collection-chip:hover, .rating-card:hover {
+  border-color: rgba(22, 163, 74, .3);
+  box-shadow: var(--glint), var(--shadow), var(--glow-accent);
+}
+.guide-card:focus-visible, .provider-card:focus-visible, .cat:focus-visible,
+.collection-chip:focus-visible, .provider-card:focus-within {
+  box-shadow: var(--ring), var(--shadow), var(--glow-accent);
+}
+/* Plan cards lean to the value glow only on the best-value anchor; regular
+   plan cards keep the neutral lift so the catalogue stays calm. */
+.plan:hover { box-shadow: var(--glint), var(--shadow), var(--glow-accent); border-color: rgba(22, 163, 74, .28); }
+.plan.plan--best:hover {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .7), 0 0 0 2px var(--value), var(--shadow-lg), var(--glow-value);
+}
+
+/* ── Buttons: a touch more presence + universal smooth transition ───────────
+   The primary CTA already glows green; deepen its rest + hover halo a notch. */
+.btn--primary {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .2), 0 12px 28px -8px rgba(22, 163, 74, .5), 0 2px 6px rgba(21, 128, 61, .24);
+}
+.btn--primary:hover {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .24), 0 20px 42px -10px rgba(22, 163, 74, .62), 0 3px 8px rgba(21, 128, 61, .28);
+}
+.btn--lg { border-radius: 20px; }
+
+/* ── Chips / pills: softer rims + smooth lift parity ────────────────────────── */
+.chip { border-color: var(--line-soft); }
+a.chip:hover { border-color: rgba(22, 163, 74, .35); box-shadow: 0 10px 24px -10px rgba(22, 163, 74, .4); color: var(--accent-ink); }
+
+/* ── Comparison tables: lift into a soft glass panel ───────────────────────── */
+.cmp-wrap { box-shadow: var(--glint), var(--shadow-float); border-color: var(--line-soft); }
+.cmp thead th { border-bottom-color: var(--line-soft); }
+.cmp td { border-bottom-color: var(--line-softer); }
+
+/* ── Plan spec chips: softer rim ──────────────────────────────────────────── */
+.pchip { border-color: var(--line-soft); }
+
+/* ── FAQ: roomier, softer, smoother ───────────────────────────────────────── */
+.faq__list details { border-radius: var(--radius-sm); }
+.faq__list details[open] { box-shadow: var(--shadow), var(--glow-accent); border-color: rgba(22, 163, 74, .2); }
+
+/* ── Footer: a hair more air on roomy viewports ───────────────────────────── */
+@media (min-width: 1024px) { .footer { padding-top: 72px; } }
+
+/* ── Section alt band: soften the block rule to the new hairline ───────────── */
+.section--alt { border-block-color: var(--line-soft); }
+
+/* ── Reduced-motion: neutralise the new motion, keep state cues ─────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .hero-decor__svg, .app-shot--hero { transform: none; }
+  .feature, .guide-card, .plan, .provider-card, .cat, .collection-chip, .step,
+  .rating-card { transition: box-shadow .01s, border-color .01s; }
+}

@@ -68,6 +68,10 @@ class StatPill extends StatelessWidget {
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(borderRadius),
+        // A faint contact shadow + a low-opacity ink hairline lift the chip off
+        // the surface — the premium-2026 polish — without altering its layout.
+        border: Border.all(color: fg.withValues(alpha: 0.08)),
+        boxShadow: ffTheme.shadowXs,
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,

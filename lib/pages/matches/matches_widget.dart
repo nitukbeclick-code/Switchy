@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 import '../../theme/app_theme.dart';
@@ -10,6 +11,7 @@ import '../../services/savings_summary.dart';
 import '../../widgets/app_card.dart';
 import '../../widgets/stat_pill.dart';
 import '../../widgets/empty_state.dart';
+import '../../widgets/whatsapp_button.dart';
 
 class MatchesWidget extends StatelessWidget {
   const MatchesWidget({super.key});
@@ -68,24 +70,100 @@ class MatchesWidget extends StatelessWidget {
               ctaLabel: 'התחל שאלון',
               onCtaTap: () async => context.pushNamed('Quiz'),
             )
-          : ListView(
-              padding: const EdgeInsets.fromLTRB(16, 20, 16, 100),
+          : Stack(
               children: [
-                // ── Hero summary card ──────────────────────────────────────────
-                _buildHeroCard(context, ffTheme, totalAnnualSaving, analyzedCount, personalized)
-                    .animate()
-                    .fadeIn(duration: 500.ms),
-                const SizedBox(height: 24),
+                ListView(
+                  padding: EdgeInsets.fromLTRB(
+                      16, 20, 16, appState.comparePlans.isEmpty ? 100 : 160),
+                  children: [
+                    // ── Hero summary card ──────────────────────────────────────
+                    _buildHeroCard(context, ffTheme, totalAnnualSaving,
+                            analyzedCount, personalized)
+                        .animate()
+                        .fadeIn(duration: 500.ms),
+                    const SizedBox(height: 24),
 
-                // ── Per-category match cards ───────────────────────────────────
-                ...catMatches.asMap().entries.map((entry) {
-                  final i = entry.key;
-                  final item = entry.value;
-                  return _buildMatchCard(context, ffTheme, item.catId, item.catName, item.match, appState, personalized)
-                      .animate(delay: (120 + i * 80).ms)
-                      .fadeIn(duration: 400.ms)
-                      .slideY(begin: 0.06, end: 0);
-                }),
+                    // ── Per-category match cards ───────────────────────────────
+                    ...catMatches.asMap().entries.map((entry) {
+                      final i = entry.key;
+                      final item = entry.value;
+                      return _buildMatchCard(context, ffTheme, item.catId,
+                              item.catName, item.match, appState, personalized)
+                          .animate(delay: (120 + i * 80).ms)
+                          .fadeIn(duration: 400.ms)
+                          .slideY(begin: 0.06, end: 0);
+                    }),
+
+                    // ── Browse-all footer — the list never dead-ends. ──────────
+                    const SizedBox(height: 8),
+                    Center(
+                      child: TextButton.icon(
+                        onPressed: () {
+                          HapticFeedback.lightImpact();
+                          context.goNamed('Results');
+                        },
+                        icon: Icon(Icons.grid_view_rounded,
+                            size: 18, color: ffTheme.brandAccent),
+                        label: Text('עיין בכל המסלולים ←',
+                            style: ffTheme.labelLarge.copyWith(
+                                color: ffTheme.brandAccentText,
+                                fontWeight: FontWeight.w700)),
+                      ),
+                    ).animate(delay: 360.ms).fadeIn(duration: 300.ms),
+                  ],
+                ),
+
+                // ── Compare sticky bar — mirrors Results so the "השוואה" CTA on
+                // each card leads somewhere instead of silently filling a list. ──
+                Positioned(
+                  bottom: 16,
+                  left: 16,
+                  right: 16,
+                  child: AnimatedSlide(
+                    offset: appState.comparePlans.isEmpty
+                        ? const Offset(0, 2)
+                        : Offset.zero,
+                    duration: ffTheme.motionMedium,
+                    curve: ffTheme.emphasized,
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        gradient: ffTheme.accentGradient,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: ffTheme.shadowAccent,
+                      ),
+                      child: Row(
+                        children: [
+                          Text(
+                            'השווה ${appState.comparePlans.length} מסלולים',
+                            style:
+                                ffTheme.titleSmall.copyWith(color: Colors.white),
+                          ),
+                          const Spacer(),
+                          ElevatedButton(
+                            onPressed: () {
+                              HapticFeedback.lightImpact();
+                              context.goNamed('Compare');
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              foregroundColor: AppColors.brandAccentDark,
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10)),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 8),
+                            ),
+                            child: Text('השוואה ←',
+                                style: ffTheme.labelMedium.copyWith(
+                                    color: AppColors.brandAccentDark,
+                                    fontWeight: FontWeight.w700)),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
               ],
             ),
     );
@@ -217,7 +295,11 @@ class MatchesWidget extends StatelessWidget {
   ) {
     final plan = match.plan;
     final priceLabel = priceUnitLabel(plan);
-    final topReason = match.reasons.isNotEmpty ? match.reasons.first : null;
+    // "Why this" — up to two affirmative reasons; the engine already orders the
+    // strongest first (saving, in-budget, then capability tells).
+    final reasons = match.reasons.take(2).toList();
+    final topCaveat = match.caveats.isNotEmpty ? match.caveats.first : null;
+    final inCompare = appState.isInCompare(plan.id);
 
     return AppCard(
       margin: const EdgeInsets.only(bottom: 14),
@@ -282,20 +364,56 @@ class MatchesWidget extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    if (topReason != null) ...[
-                      const SizedBox(height: 6),
+                    // "למה זה מתאים לך" — explicit, scannable reasons so the
+                    // ranking is explainable, not a black box.
+                    if (reasons.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        'למה זה מתאים לך',
+                        style: ffTheme.labelSmall.copyWith(
+                          color: ffTheme.secondaryText,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      ...reasons.map((r) => Padding(
+                            padding: const EdgeInsets.only(bottom: 3),
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Green = the affirmative "why it fits" tell.
+                                Icon(Icons.check_circle_rounded,
+                                    size: 13, color: ffTheme.brandAccent),
+                                const SizedBox(width: 4),
+                                Expanded(
+                                  child: Text(
+                                    r,
+                                    style: ffTheme.labelSmall.copyWith(
+                                      color: ffTheme.brandAccentText,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )),
+                    ],
+                    // A single honest caveat (promo expiry / commitment) — the
+                    // amber VALUE note so the trade-off is visible up-front.
+                    if (topCaveat != null) ...[
+                      const SizedBox(height: 2),
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Green = the affirmative "why it fits" tell.
-                          Icon(Icons.check_circle_rounded, size: 13, color: ffTheme.brandAccent),
+                          Icon(Icons.info_outline_rounded,
+                              size: 13, color: ffTheme.savingDark),
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
-                              topReason,
+                              topCaveat,
                               style: ffTheme.labelSmall.copyWith(
-                                color: ffTheme.brandAccentText,
-                                fontWeight: FontWeight.w600,
+                                color: ffTheme.secondaryText,
                                 fontSize: 11,
                               ),
                             ),
@@ -335,35 +453,113 @@ class MatchesWidget extends StatelessWidget {
                     priceLabel,
                     style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText),
                   ),
-                  const SizedBox(height: 8),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      // Green = ACTION: the "details" affordance tinted to the
-                      // brand accent so the navigational cue is consistent.
-                      color: ffTheme.brandAccent.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(ffTheme.radiusSm),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          'פרטים',
-                          style: ffTheme.labelSmall.copyWith(
-                            color: ffTheme.brandAccentText,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const SizedBox(width: 2),
-                        Icon(Icons.arrow_back_ios_new_rounded, size: 10, color: ffTheme.brandAccent),
-                      ],
-                    ),
-                  ),
                 ],
               ),
             ],
           ),
+          const SizedBox(height: 14),
+          const Divider(height: 1),
+          const SizedBox(height: 12),
+          // ── CTA row: details · compare · WhatsApp lead ──────────────────────
+          // Three explicit next steps so a match never dead-ends at a card.
+          Row(
+            children: [
+              Expanded(
+                child: _MatchAction(
+                  icon: Icons.article_outlined,
+                  label: 'פרטים',
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    context.pushNamed('PlanDetail',
+                        pathParameters: {'planId': plan.id});
+                  },
+                  ffTheme: ffTheme,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _MatchAction(
+                  icon: inCompare
+                      ? Icons.check_circle_rounded
+                      : Icons.compare_arrows_rounded,
+                  label: inCompare ? 'בהשוואה' : 'השוואה',
+                  active: inCompare,
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    appState.toggleCompare(plan.id);
+                  },
+                  ffTheme: ffTheme,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          // Primary lead CTA — WhatsApp, the brand green ACTION button, with a
+          // plan-aware prefill so the rep lands on context.
+          WhatsAppButton(
+            source: 'matches',
+            width: double.infinity,
+            height: 46,
+            label: 'קבלו הצעה ל${plan.provider}',
+            prefillText:
+                'היי, ראיתי את ${plan.provider} – ${plan.plan} (₪${plan.priceText}) בחוסך ואשמח לפרטים',
+          ),
         ],
+      ),
+    );
+  }
+}
+
+/// A compact, equal-width secondary action used in the match-card CTA row.
+/// Tinted-green when idle; solid-green "active" when the plan is in compare.
+class _MatchAction extends StatelessWidget {
+  const _MatchAction({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    required this.ffTheme,
+    this.active = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final AppTheme ffTheme;
+  final bool active;
+
+  @override
+  Widget build(BuildContext context) {
+    final fg = active ? Colors.white : ffTheme.brandAccentText;
+    return Semantics(
+      button: true,
+      label: label,
+      child: Material(
+        color: active
+            ? ffTheme.brandAccent
+            : ffTheme.brandAccent.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(ffTheme.radiusSm),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(ffTheme.radiusSm),
+          onTap: onTap,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(icon, size: 16, color: active ? Colors.white : ffTheme.brandAccent),
+                const SizedBox(width: 6),
+                Text(
+                  label,
+                  style: ffTheme.labelMedium.copyWith(
+                    color: fg,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

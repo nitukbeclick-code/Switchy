@@ -125,7 +125,10 @@ void main() {
     });
 
     test('every plan belongs to a known category', () {
-      const valid = {'cellular', 'internet', 'tv', 'triple', 'abroad'};
+      // Derive the valid set from the categories list (the single source of
+      // truth) so adding a category can't leave a plan stranded in one no test
+      // knows about, and so this stays in sync as the catalogue grows.
+      final valid = categories.map((c) => c.id).toSet();
       for (final p in allPlans) {
         expect(valid, contains(p.cat), reason: 'plan ${p.id} has category ${p.cat}');
       }

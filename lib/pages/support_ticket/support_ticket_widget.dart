@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:provider/provider.dart';
 import '../../theme/app_theme.dart';
 import '../../app_state.dart';
@@ -142,6 +143,42 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
     return _ticket?.status != 'human_assigned' && !_isTyping;
   }
 
+  /// Maps a raw ticket status to friendly Hebrew copy + a colour + an icon, so
+  /// the status banner reads at a glance instead of leaking the DB enum.
+  ({String label, String detail, IconData icon, Color color}) _statusMeta(AppTheme theme) {
+    switch (_ticket?.status) {
+      case 'human_assigned':
+        return (
+          label: 'מחובר/ת לנציג אנושי',
+          detail: 'נציג מטעמנו עונה לך כעת',
+          icon: Icons.headset_mic_rounded,
+          color: theme.brandAccent,
+        );
+      case 'resolved':
+        return (
+          label: 'הפנייה נסגרה',
+          detail: 'אפשר לכתוב שוב כדי לפתוח שיחה חדשה',
+          icon: Icons.check_circle_rounded,
+          color: theme.success,
+        );
+      case 'open':
+        return (
+          label: 'הפנייה נפתחה',
+          detail: 'מתחילים — כתבו לנו במה אפשר לעזור',
+          icon: Icons.mark_chat_unread_rounded,
+          color: theme.secondaryText,
+        );
+      case 'agent_active':
+      default:
+        return (
+          label: 'עוזר חכם זמין',
+          detail: 'מענה מיידי 24/7 • אפשר תמיד לבקש נציג אנושי',
+          icon: Icons.bolt_rounded,
+          color: theme.brandAccent,
+        );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = AppTheme.of(context);
@@ -185,6 +222,7 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
       ),
       body: Column(
         children: [
+          _buildStatusBanner(theme),
           if (_error != null)
             Container(
               width: double.infinity,
@@ -231,6 +269,47 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
     );
   }
 
+  /// A compact status strip under the app bar: friendly label + sub-line + an
+  /// SLA hint, so the user always knows who is answering and what to expect.
+  Widget _buildStatusBanner(AppTheme theme) {
+    final s = _statusMeta(theme);
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: s.color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(theme.radiusLg),
+        border: Border.all(color: s.color.withValues(alpha: 0.25)),
+        boxShadow: theme.shadowXs,
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: s.color.withValues(alpha: 0.16),
+              borderRadius: BorderRadius.circular(theme.radiusMd),
+            ),
+            child: Icon(s.icon, size: 20, color: s.color),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(s.label, style: theme.titleSmall.copyWith(fontWeight: FontWeight.w800)),
+                const SizedBox(height: 2),
+                Text(s.detail, style: theme.labelSmall.copyWith(color: theme.secondaryText)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    ).animate().fadeIn(duration: 300.ms).slideY(begin: -0.1, end: 0);
+  }
+
   Widget _buildEmptyState(AppTheme theme) {
     return Center(
       child: Padding(
@@ -239,27 +318,32 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              width: 76,
-              height: 76,
+              width: 80,
+              height: 80,
               decoration: BoxDecoration(
                 gradient: theme.accentGradient,
                 shape: BoxShape.circle,
                 boxShadow: theme.shadowAccent,
               ),
-              child: const Icon(Icons.support_agent_rounded, size: 38, color: Colors.white),
-            ),
-            const SizedBox(height: 18),
+              child: const Icon(Icons.support_agent_rounded, size: 40, color: Colors.white),
+            ).animate().scale(
+                  begin: const Offset(0.7, 0.7),
+                  end: const Offset(1, 1),
+                  duration: theme.motionSlow,
+                  curve: theme.spring,
+                ),
+            const SizedBox(height: 20),
             Text(
               'ברוכים הבאים לתמיכה',
               style: theme.titleMedium,
               textAlign: TextAlign.center,
-            ),
+            ).animate().fadeIn(delay: 120.ms, duration: 300.ms),
             const SizedBox(height: 8),
             Text(
-              'שאלו אותי כל דבר על התוכניות או החשבון שלכם',
+              'שאלו אותי כל דבר על התוכניות או החשבון שלכם.\nמענה מיידי 24/7 — ותמיד אפשר לעבור לנציג אנושי.',
               textAlign: TextAlign.center,
-              style: theme.bodySmall.copyWith(color: theme.secondaryText),
-            ),
+              style: theme.bodySmall.copyWith(color: theme.secondaryText, height: 1.4),
+            ).animate().fadeIn(delay: 200.ms, duration: 300.ms),
           ],
         ),
       ),
@@ -278,17 +362,17 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
 
     final alignment = isUser ? Alignment.centerRight : Alignment.centerLeft;
     final borderRadius = isUser
-        ? const BorderRadius.only(
-            topLeft: Radius.circular(16),
-            topRight: Radius.circular(4),
-            bottomLeft: Radius.circular(16),
-            bottomRight: Radius.circular(16),
+        ? BorderRadius.only(
+            topLeft: Radius.circular(theme.radiusLg),
+            topRight: const Radius.circular(4),
+            bottomLeft: Radius.circular(theme.radiusLg),
+            bottomRight: Radius.circular(theme.radiusLg),
           )
-        : const BorderRadius.only(
-            topLeft: Radius.circular(4),
-            topRight: Radius.circular(16),
-            bottomLeft: Radius.circular(16),
-            bottomRight: Radius.circular(16),
+        : BorderRadius.only(
+            topLeft: const Radius.circular(4),
+            topRight: Radius.circular(theme.radiusLg),
+            bottomLeft: Radius.circular(theme.radiusLg),
+            bottomRight: Radius.circular(theme.radiusLg),
           );
 
     return Align(

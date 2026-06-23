@@ -297,7 +297,10 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
                 const SizedBox(height: 8),
                 Text('ממתינים לדירוג ראשון', style: t.titleSmall.copyWith(color: t.secondaryText)),
                 const SizedBox(height: 10),
-                ...unrated.map((provider) => GestureDetector(
+                ...unrated.map((provider) => Semantics(
+                      button: true,
+                      label: 'פתח את עמוד הספק $provider — אין עדיין דירוגים',
+                      child: GestureDetector(
                       onTap: () => context.pushNamed('Provider', pathParameters: {'name': provider}),
                       child: Container(
                         margin: const EdgeInsets.only(bottom: 10),
@@ -305,7 +308,7 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
                         decoration: t.glassDecoration(radius: t.radiusMd),
                         child: Row(
                           children: [
-                            LogoWidget(provider: provider, size: 34),
+                            ExcludeSemantics(child: LogoWidget(provider: provider, size: 34)),
                             const SizedBox(width: 10),
                             Expanded(
                               child: Column(
@@ -328,6 +331,7 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
                           ],
                         ),
                       ),
+                      ),
                     )),
               ],
 
@@ -336,8 +340,9 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
               // Write review section
               Container(
                 key: _formKey,
-                padding: const EdgeInsets.all(18),
-                decoration: t.glassDecoration(),
+                padding: const EdgeInsets.all(20),
+                // Anchor bento tile for the review composer.
+                decoration: t.bentoDecoration(),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -518,8 +523,8 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
               if (appState.userReviews.isNotEmpty) ...[
                 const SizedBox(height: 16),
                 Container(
-                  padding: const EdgeInsets.all(18),
-                  decoration: t.glassDecoration(),
+                  padding: const EdgeInsets.all(20),
+                  decoration: t.cardDecoration(radius: t.radiusCard),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -563,8 +568,8 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
               if (_remoteReviews.isNotEmpty) ...[
                 const SizedBox(height: 16),
                 Container(
-                  padding: const EdgeInsets.all(18),
-                  decoration: t.glassDecoration(),
+                  padding: const EdgeInsets.all(20),
+                  decoration: t.cardDecoration(radius: t.radiusCard),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -645,13 +650,13 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
     final avgs = top.map((e) => e.value).toList();
 
     return ClipRRect(
-      borderRadius: BorderRadius.circular(t.radiusLg),
+      borderRadius: BorderRadius.circular(t.radiusCard),
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
           gradient: t.brandGradient,
-          borderRadius: BorderRadius.circular(t.radiusLg),
-          boxShadow: t.shadowGlass,
+          borderRadius: BorderRadius.circular(t.radiusCard),
+          boxShadow: t.shadowLifted,
         ),
         child: Column(
           children: [

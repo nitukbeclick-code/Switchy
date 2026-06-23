@@ -10,11 +10,24 @@ import '../../app_state.dart';
 import '../../data.dart';
 import '../../services/savings_summary.dart';
 import '../../services/renewal_report.dart';
+import '../../services/analytics_service.dart';
 
 /// A whole-app savings dashboard: total potential, the biggest opportunity, a
 /// per-category breakdown, near renewals, and what the user has already saved.
-class SavingsWidget extends StatelessWidget {
+class SavingsWidget extends StatefulWidget {
   const SavingsWidget({super.key});
+
+  @override
+  State<SavingsWidget> createState() => _SavingsWidgetState();
+}
+
+class _SavingsWidgetState extends State<SavingsWidget> {
+  @override
+  void initState() {
+    super.initState();
+    // Funnel beacon — once per view of the savings dashboard. Fire-and-forget.
+    AnalyticsService.track(AnalyticsEvent.savingsViewed);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -41,6 +54,9 @@ class SavingsWidget extends StatelessWidget {
               personalized: appState.billsPersonalized,
               ffTheme: ffTheme,
               onBack: () => context.safePop(),
+              // Not-yet-personalized → a green ACTION cue straight into the bills
+              // flow so the estimate hero converts instead of dead-ending.
+              onStart: appState.billsPersonalized ? null : () => context.pushNamed('Bills'),
             ),
           ),
           SliverToBoxAdapter(
@@ -151,12 +167,13 @@ class SavingsWidget extends StatelessWidget {
 // ── Hero ────────────────────────────────────────────────────────────────────
 
 class _Hero extends StatelessWidget {
-  const _Hero({required this.total, required this.hasBill, required this.personalized, required this.ffTheme, required this.onBack});
+  const _Hero({required this.total, required this.hasBill, required this.personalized, required this.ffTheme, required this.onBack, this.onStart});
   final int total;
   final bool hasBill;
   final bool personalized;
   final AppTheme ffTheme;
   final VoidCallback onBack;
+  final VoidCallback? onStart; // shown only in the not-personalized estimate state
 
   @override
   Widget build(BuildContext context) {
@@ -210,7 +227,10 @@ class _Hero extends StatelessWidget {
                       builder: (_, value, __) => Text(
                         hasBill ? '₪$value' : '₪—',
                         style: ffTheme.displaySmall.copyWith(
-                            color: hasBill ? ffTheme.saving : ffTheme.secondary,
+                            // Amber VALUE for a real figure; a legible white-alpha
+                            // dash for the placeholder (the old `secondary` token
+                            // went dark slate on dark, vanishing on the ink hero).
+                            color: hasBill ? ffTheme.saving : Colors.white.withValues(alpha: 0.45),
                             fontWeight: FontWeight.bold,
                             // Fixed-width digits — the count-up doesn't jitter sideways.
                             fontFeatures: const [FontFeature.tabularFigures()]),
@@ -224,6 +244,28 @@ class _Hero extends StatelessWidget {
                       style: ffTheme.bodySmall.copyWith(color: Colors.white.withValues(alpha: 0.55)),
                       textAlign: TextAlign.center,
                     ),
+                    if (onStart != null) ...[
+                      const SizedBox(height: 16),
+                      Semantics(
+                        button: true,
+                        label: 'עדכנו חשבונות לחישוב מדויק',
+                        child: GestureDetector(
+                          onTap: onStart,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 11),
+                            decoration: BoxDecoration(
+                              // Green ACTION pill — the one conversion cue on the
+                              // estimate hero, with its accent glow.
+                              gradient: ffTheme.accentGradient,
+                              borderRadius: BorderRadius.circular(ffTheme.radiusPill),
+                              boxShadow: ffTheme.shadowAccent,
+                            ),
+                            child: Text('עדכנו חשבונות לחישוב מדויק ←',
+                                style: ffTheme.titleSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -274,12 +316,14 @@ class _RealizedCard extends StatelessWidget {
   Widget build(BuildContext context) {
     // "Already saved" is a realised win — render it in the green ACTION tint so
     // it reads as money in the bank, distinct from the amber "potential" figures.
+    // The figure itself uses the AA-safe green text token (the fill hue is too
+    // light as small text); the surface/icon use the brand green.
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: ffTheme.primary.withValues(alpha: 0.08),
+        color: ffTheme.brandAccent.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: ffTheme.primary.withValues(alpha: 0.3)),
+        border: Border.all(color: ffTheme.brandAccent.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
@@ -287,10 +331,10 @@ class _RealizedCard extends StatelessWidget {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: ffTheme.primary.withValues(alpha: 0.14),
+              color: ffTheme.brandAccent.withValues(alpha: 0.14),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(Icons.savings_rounded, color: ffTheme.primary, size: 22),
+            child: Icon(Icons.savings_rounded, color: ffTheme.brandAccent, size: 22),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -301,7 +345,7 @@ class _RealizedCard extends StatelessWidget {
                   const TextSpan(text: 'כבר חסכת '),
                   TextSpan(
                       text: '₪$amount',
-                      style: ffTheme.titleSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w800)),
+                      style: ffTheme.titleSmall.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w800)),
                   const TextSpan(text: ' דרך חוסך'),
                 ],
               ),
@@ -426,8 +470,10 @@ class _PotentialDonutCard extends StatelessWidget {
     final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
 
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: ffTheme.glassDecoration(),
+      padding: const EdgeInsets.all(18),
+      // Premium bento tile — the donut is an anchor data surface, so it gets the
+      // generous corner + soft elevation rather than the flat list glass.
+      decoration: ffTheme.bentoDecoration(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -593,8 +639,9 @@ class _ProgressCard extends StatelessWidget {
     final safeMax = maxVal <= 0 ? 1.0 : maxVal;
 
     return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: ffTheme.glassDecoration(),
+      padding: const EdgeInsets.all(18),
+      // Premium bento tile — the potential-vs-realized chart anchors the page.
+      decoration: ffTheme.bentoDecoration(),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -783,22 +830,20 @@ class _CategoryRow extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(ffTheme.radiusMd),
           child: Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: ffTheme.cardSurface,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: ffTheme.alternate),
-            ),
+            padding: const EdgeInsets.all(15),
+            // Premium card hairline (low-opacity ink) + soft shadow, replacing
+            // the old full-strength border.
+            decoration: ffTheme.cardDecoration(radius: ffTheme.radiusMd),
             child: Row(
               children: [
                 Container(
-                  width: 38,
-                  height: 38,
+                  width: 40,
+                  height: 40,
                   decoration: BoxDecoration(
                     color: ffTheme.accent1,
-                    borderRadius: BorderRadius.circular(11),
+                    borderRadius: BorderRadius.circular(ffTheme.radiusSm),
                   ),
                   child: Icon(categoryIconData(catId), size: 20, color: ffTheme.primaryText),
                 ),
@@ -886,22 +931,19 @@ class _RenewalRow extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(ffTheme.radiusMd),
           child: Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: ffTheme.cardSurface,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: ffTheme.alternate),
-            ),
+            padding: const EdgeInsets.all(15),
+            // Premium card hairline + soft shadow, replacing the old border.
+            decoration: ffTheme.cardDecoration(radius: ffTheme.radiusMd),
             child: Row(
               children: [
                 Container(
-                  width: 38,
-                  height: 38,
+                  width: 40,
+                  height: 40,
                   decoration: BoxDecoration(
                     color: ffTheme.warning.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(11),
+                    borderRadius: BorderRadius.circular(ffTheme.radiusSm),
                   ),
                   child: Icon(Icons.alarm_rounded, color: ffTheme.warning, size: 20),
                 ),

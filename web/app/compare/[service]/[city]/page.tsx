@@ -22,6 +22,8 @@ import AuthorityBlock from "@/components/AuthorityBlock";
 import ComparisonTable from "@/components/ComparisonTable";
 import CommissionDisclosure from "@/components/CommissionDisclosure";
 import PriceCaveat from "@/components/PriceCaveat";
+import TrustSignals from "@/components/TrustSignals";
+import StickyLeadCta from "@/components/StickyLeadCta";
 import RelatedLinks from "@/components/RelatedLinks";
 import type { RelatedLinkGroup } from "@/components/RelatedLinks";
 import LeadForm from "@/components/LeadForm";
@@ -473,6 +475,28 @@ export default async function ServiceCityPage({ params }: Params) {
         <p className="mt-2 leading-relaxed text-foreground">
           השאירו פרטים ונחזור אליכם עם המלצה מותאמת — חינם וללא התחייבות.
         </p>
+        {/* Compact trust strip — real counts (national availability) + methodology. */}
+        <TrustSignals
+          variant="compact"
+          planCount={plans.length}
+          providerCount={svcProviders.length}
+          className="mt-4 max-w-xl"
+        />
+        {/* Objection-handling / reassurance microcopy before the hand-off. */}
+        <ul className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted">
+          {[
+            "אין עלות ואין התחייבות",
+            "פונים אליכם רק אחרי אישור בטופס",
+            "אפשר להסיר את הפרטים בכל עת",
+          ].map((point) => (
+            <li key={point} className="flex items-center gap-1.5">
+              <span aria-hidden="true" className="text-accent-text">
+                ✓
+              </span>
+              {point}
+            </li>
+          ))}
+        </ul>
         {/* Commission disclosure repeated before the lead hand-off (§7b). */}
         <CommissionDisclosure variant="inline" className="mt-3 max-w-xl" />
         <div className="mt-5 max-w-xl">
@@ -494,6 +518,9 @@ export default async function ServiceCityPage({ params }: Params) {
         groups={relatedGroups}
         className="mt-16"
       />
+
+      {/* ── Mobile sticky lead CTA — scrolls to #lead; auto-hides in view. ─── */}
+      <StickyLeadCta source="city" />
     </main>
   );
 }

@@ -12,8 +12,15 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import JsonLd from "@/components/JsonLd";
 import SgeSummary from "@/components/SgeSummary";
+import TrustSignals from "@/components/TrustSignals";
 import RelatedAuthorityPages from "@/components/RelatedAuthorityPages";
-import { getServices, plansForService } from "@/lib/data";
+import {
+  getServices,
+  plansForService,
+  getPlans,
+  getProviders,
+  getCategories,
+} from "@/lib/data";
 import {
   breadcrumbSchema,
   collectionPageSchema,
@@ -41,6 +48,10 @@ function minPriceOf(plans: { price?: number }[]): number | null {
 
 export default function CompareIndexPage() {
   const services = getServices();
+  // REAL catalogue totals for the honest trust block (no fabricated figures).
+  const planCount = getPlans().length;
+  const providerCount = getProviders().length;
+  const categoryCount = getCategories().length;
 
   const crumbs = [
     { name: "בית", url: "/" },
@@ -123,6 +134,17 @@ export default function CompareIndexPage() {
       {/* ── SGE summary ───────────────────────────────────────────────────── */}
       <div className="mt-8">
         <SgeSummary heading="השורה התחתונה: השוואה">{summary}</SgeSummary>
+      </div>
+
+      {/* ── Trust signals — real catalogue counts + honest trust points + the
+          §7b disclosure + §17 price caveat. Builds trust before the user picks
+          a service (the single primary action on this hub). ──────────────── */}
+      <div className="mt-8">
+        <TrustSignals
+          planCount={planCount}
+          providerCount={providerCount}
+          categoryCount={categoryCount}
+        />
       </div>
 
       {/* ── Service cards ─────────────────────────────────────────────────── */}

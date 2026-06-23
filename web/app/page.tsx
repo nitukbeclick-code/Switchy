@@ -5,6 +5,8 @@ import AiSummary from "@/components/AiSummary";
 import ComparisonTable from "@/components/ComparisonTable";
 import CommissionDisclosure from "@/components/CommissionDisclosure";
 import PriceCaveat from "@/components/PriceCaveat";
+import TrustSignals from "@/components/TrustSignals";
+import StickyLeadCta from "@/components/StickyLeadCta";
 import LeadForm from "@/components/LeadFormLazy";
 import SmartTimer from "@/components/SmartTimerLazy";
 import TrackedCtaLink from "@/components/TrackedCtaLink";
@@ -107,10 +109,16 @@ export default function Home() {
         </p>
       </section>
 
-      {/* ── Commission disclosure (Consumer Protection §7b) — prominent, near
-          the hero/value-props, NOT buried. ───────────────────────────────── */}
+      {/* ── Trust signals — REAL catalogue counts + honest trust points + the
+          §7b commission disclosure (inline) + the §17 price caveat, all in one
+          block. Prominent near the hero, NOT buried. Every number here is
+          catalogue-derived; nothing is fabricated. ───────────────────────── */}
       <div className="mx-auto mt-8 max-w-3xl">
-        <CommissionDisclosure variant="banner" />
+        <TrustSignals
+          planCount={planCount}
+          providerCount={providers.length}
+          categoryCount={categories.length}
+        />
       </div>
 
       {/* ── Value props ───────────────────────────────────────────────────── */}
@@ -333,6 +341,22 @@ export default function Home() {
         <p className="mt-2 leading-relaxed text-foreground">
           השאירו פרטים ונחזור אליכם עם השוואה מותאמת — ללא עלות וללא התחייבות.
         </p>
+        {/* Objection-handling / reassurance microcopy — answers the real hesitations
+            right before the hand-off. Honest only: no fake urgency or social proof. */}
+        <ul className="mt-4 flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted">
+          {[
+            "אין עלות ואין התחייבות — רק השוואה",
+            "פונים אליכם רק אחרי שתאשרו בטופס",
+            "אפשר להסיר את הפרטים בכל עת",
+          ].map((point) => (
+            <li key={point} className="flex items-center gap-1.5">
+              <span aria-hidden="true" className="text-accent-text">
+                ✓
+              </span>
+              {point}
+            </li>
+          ))}
+        </ul>
         {/* Commission disclosure repeated before the lead hand-off (§7b). */}
         <CommissionDisclosure variant="inline" className="mt-3 max-w-xl" />
         <div className="mt-5 max-w-xl">
@@ -345,6 +369,10 @@ export default function Home() {
           />
         </div>
       </section>
+
+      {/* ── Mobile sticky lead CTA — scrolls to the existing #lead form; hides
+          once it is in view. One primary CTA per view (sm:hidden). ────────── */}
+      <StickyLeadCta source="home" />
     </main>
   );
 }

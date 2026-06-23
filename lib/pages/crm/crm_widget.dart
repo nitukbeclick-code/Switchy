@@ -7,6 +7,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../core/nav.dart';
 import '../../services/backend/backend.dart';
 import '../../services/backend/local_backend.dart' show appBackend;
+import '../../services/realtime_service.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/app_button.dart';
 import '../../widgets/app_snackbar.dart';
@@ -18,9 +19,14 @@ import '../../widgets/empty_state.dart';
 /// proxies the service-role-only WhatsApp tables through the `crm-api` edge
 /// function. The screen NEVER touches those tables directly.
 ///
-/// All reads poll on a ~12s [Timer.periodic] while mounted and back a
-/// [RefreshIndicator] for manual pulls. Sending a reply appends optimistically,
-/// then refreshes the thread so the authoritative DB row replaces it.
+/// Live updates ride a Supabase Realtime subscription on `crm_events`
+/// ([Backend.crmEventStream]): a [RealtimePoller] refreshes the moment a rep
+/// reply / takeover / hand-back / new lead lands, and keeps a heartbeat poll as
+/// a graceful fallback (slow while realtime is healthy, dropping back to the
+/// legacy ~12s cadence if the channel goes quiet — and [LocalBackend]/CI, whose
+/// stream is empty, simply poll). A [RefreshIndicator] still backs manual pulls.
+/// Sending a reply appends optimistically, then refreshes the thread so the
+/// authoritative DB row replaces it.
 class CrmWidget extends StatefulWidget {
   const CrmWidget({super.key});
 
@@ -30,7 +36,7 @@ class CrmWidget extends StatefulWidget {
 
 class _CrmWidgetState extends State<CrmWidget> with TickerProviderStateMixin {
   late final TabController _tabs = TabController(length: 3, vsync: this);
-  Timer? _poll;
+  RealtimePoller? _poller;
 
   // ── Overview ──────────────────────────────────────────────────────────────
   CrmOverview? _overview;
@@ -55,14 +61,19 @@ class _CrmWidgetState extends State<CrmWidget> with TickerProviderStateMixin {
   void initState() {
     super.initState();
     _refreshAll();
-    _poll = Timer.periodic(const Duration(seconds: 12), (_) {
-      if (mounted) _refreshAll(silent: true);
-    });
+    // Realtime-first: refresh on every crm_events row, with a heartbeat poll as
+    // the fallback. Under LocalBackend/CI the stream is empty, so this is purely
+    // the heartbeat (which starts on the fast cadence until realtime proves
+    // alive) — preserving the old polling behaviour with no live channel.
+    _poller = RealtimePoller(
+      eventStream: appBackend.crmEventStream(),
+      onRefresh: () => _refreshAll(silent: true),
+    )..start();
   }
 
   @override
   void dispose() {
-    _poll?.cancel();
+    _poller?.dispose();
     _searchDebounce?.cancel();
     _tabs.dispose();
     _searchCtrl.dispose();
@@ -689,7 +700,7 @@ class _ThreadViewState extends State<_ThreadView> {
   CrmThread? _thread;
   bool _loading = true;
   Object? _error;
-  Timer? _poll;
+  RealtimePoller? _poller;
 
   final TextEditingController _reply = TextEditingController();
   final ScrollController _scroll = ScrollController();
@@ -702,14 +713,18 @@ class _ThreadViewState extends State<_ThreadView> {
   void initState() {
     super.initState();
     _load();
-    _poll = Timer.periodic(const Duration(seconds: 12), (_) {
-      if (mounted) _load(silent: true);
-    });
+    // A rep reply / takeover / inbound message all land as crm_events rows;
+    // refresh the open thread the moment one arrives, with the heartbeat poll as
+    // the fallback (empty stream under LocalBackend/CI → heartbeat only).
+    _poller = RealtimePoller(
+      eventStream: appBackend.crmEventStream(),
+      onRefresh: () => _load(silent: true),
+    )..start();
   }
 
   @override
   void dispose() {
-    _poll?.cancel();
+    _poller?.dispose();
     _reply.dispose();
     _scroll.dispose();
     super.dispose();

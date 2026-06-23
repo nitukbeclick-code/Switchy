@@ -75,6 +75,28 @@ class MeetingStatusCard extends StatelessWidget {
     }
   }
 
+  /// Only meetings still ahead of us get a countdown line.
+  static bool _isUpcoming(MeetingStatus s) =>
+      s == MeetingStatus.pending || s == MeetingStatus.confirmed;
+
+  /// A static, human Hebrew "starts in…" label, or null once [start] is in the
+  /// past (the join gating + status copy take over from there). Buckets keep it
+  /// honest without a ticking clock: days → hours → "less than an hour" → "soon".
+  static String? _countdown(DateTime now, DateTime start) {
+    final d = start.difference(now);
+    if (d.isNegative) return null;
+    if (d.inDays >= 1) {
+      final days = d.inDays;
+      return days == 1 ? 'מתחילה מחר' : 'מתחילה בעוד $days ימים';
+    }
+    if (d.inHours >= 1) {
+      final hours = d.inHours;
+      return hours == 1 ? 'מתחילה בעוד שעה' : 'מתחילה בעוד $hours שעות';
+    }
+    if (d.inMinutes >= 15) return 'מתחילה בעוד פחות משעה';
+    return 'מתחילה בקרוב';
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = AppTheme.of(context);
@@ -153,6 +175,23 @@ class MeetingStatusCard extends StatelessWidget {
               Text('· 30 דקות · Zoom', style: t.labelSmall),
             ],
           ),
+          // A static "starts in…" line for upcoming (pending/confirmed)
+          // meetings — computed once per build from [now] (no ticker, so no idle
+          // animation/test timer); the realtime status changes + AppState
+          // rebuilds keep it fresh enough.
+          if (_countdown(n, start) case final c?
+              when _isUpcoming(meeting.status)) ...[
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                Icon(Icons.schedule_rounded, size: 14, color: t.brandAccent),
+                const SizedBox(width: 6),
+                Text(c,
+                    style: t.labelSmall
+                        .copyWith(color: t.brandAccent, fontWeight: FontWeight.w700)),
+              ],
+            ),
+          ],
           const SizedBox(height: 12),
           switch (meeting.status) {
             MeetingStatus.confirmed => Column(

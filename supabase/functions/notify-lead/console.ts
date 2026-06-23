@@ -241,7 +241,7 @@ export function renderConsoleHtml(mockJson: string | null = null): string {
 <style>
 :root{
   --ink:#111827; --ink-700:#1F2733; --ink-500:#4B5563; --line:#E4E8EC;
-  --bg:#F5F7F8; --card:#fff; --accent:#4F46E5; --accent-t:#EEF0FB; --value:#F59E0B; --value-t:#FEF3E2;
+  --bg:#F5F7F8; --card:#fff; --accent:#16A34A; --accent-t:#E8F6EE; --value:#F59E0B; --value-t:#FEF3E2;
   --ok:#0E7C5A; --danger:#DC2626;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -297,7 +297,7 @@ h1{font-size:20px;font-weight:800;margin:0;letter-spacing:-.4px}
 .btn{flex:1 1 auto;min-width:96px;border:0;font-family:inherit;font-weight:700;font-size:13px;padding:11px 12px;border-radius:12px;
   cursor:pointer;transition:.15s}
 .btn:active{transform:scale(.97)}
-.btn--primary{background:linear-gradient(165deg,var(--accent),#3730A3);color:#fff;box-shadow:0 6px 14px rgba(79,70,229,.3)}
+.btn--primary{background:linear-gradient(165deg,var(--accent),#15803D);color:#fff;box-shadow:0 6px 14px rgba(22,163,74,.3)}
 .btn--ghost{background:var(--bg);color:var(--ink-700);border:1px solid var(--line)}
 .btn--danger{background:#FEECEC;color:var(--danger)}
 .btn[disabled]{opacity:.5;pointer-events:none}
@@ -314,7 +314,7 @@ h1{font-size:20px;font-weight:800;margin:0;letter-spacing:-.4px}
   background-size:200% 100%;animation:sk 1.2s linear infinite}
 @keyframes sk{to{background-position:-200% 0}}
 @media(prefers-color-scheme:dark){
-  :root{--bg:#0F141A;--card:#19212B;--ink:#F2F5F7;--ink-700:#D7DDE3;--ink-500:#9AA6B2;--line:#27313D;--accent-t:#222A4A;--value-t:#3A2E16}
+  :root{--bg:#0F141A;--card:#19212B;--ink:#F2F5F7;--ink-700:#D7DDE3;--ink-500:#9AA6B2;--line:#27313D;--accent:#22C55E;--accent-t:#16321F;--value-t:#3A2E16}
 }
 </style>
 </head>

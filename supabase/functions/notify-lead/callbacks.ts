@@ -98,7 +98,7 @@ export async function handleCallback(cfg: Cfg, cb: TgCallbackQuery): Promise<Han
   const renewM = data.match(/^renew:([0-9a-fA-F-]{36}):lead$/);
   if (renewM) return await handleRenewLead(cfg, answer, renewM[1]);
 
-  const m = data.match(/^lead:([0-9a-fA-F-]{36}):(contacted|won|lost|claim|claimed|undo|wonask|noop|history)$/);
+  const m = data.match(/^lead:([0-9a-fA-F-]{36}):(contacted|won|lost|claim|claimed|undo|snooze|wonask|noop|history)$/);
   if (!m) {
     await answer();
     return { ok: true, skipped: "unrecognized callback" };
@@ -156,6 +156,37 @@ export async function handleCallback(cfg: Cfg, cb: TgCallbackQuery): Promise<Han
     await logEvent({ lead_id: leadId, event: "claim", actor_tg_id: cb.from?.id ?? null, actor_name: who });
     await answer("נתפס על ידך 🙋");
     await refreshKeyboard(cfg, msg, leadId);
+    return { ok: true };
+  }
+
+  if (action === "snooze") {
+    // "Not now, but not dropping it": push the SLA nudge back ~2h by stamping
+    // nudged_at forward (the follow-up planner treats nudged_at as the last
+    // reminder and waits its 2h/6h/24h gap from it). The lead stays status=new
+    // so it still shows in the agenda — only the reminder is deferred. Only
+    // applies to OPEN leads; a won/lost lead has no pending nudge to defer.
+    const rows = await fetchRows<Lead>(`/rest/v1/leads?id=eq.${leadId}&select=status`);
+    if (rows === null) {
+      await answer("שגיאת מסד נתונים — נסו שוב בעוד רגע");
+      return { ok: false };
+    }
+    if (!rows[0]) {
+      await answer("הליד לא נמצא");
+      return { ok: false };
+    }
+    const st = String(rows[0].status ?? "new");
+    if (st === "won" || st === "lost") {
+      await answer("הליד סגור — אין מה לדחות");
+      return { ok: false, skipped: "lead closed" };
+    }
+    const until = new Date(Date.now() + 2 * 3_600_000).toISOString();
+    const n = await patchCount(`/rest/v1/leads?id=eq.${leadId}`, { nudged_at: until });
+    if (n === 0) {
+      await answer("שגיאת מסד נתונים — נסו שוב בעוד רגע");
+      return { ok: false };
+    }
+    await logEvent({ lead_id: leadId, event: "snooze", note: until, actor_tg_id: cb.from?.id ?? null, actor_name: who });
+    await answer("נדחה ל-~שעתיים ⏰");
     return { ok: true };
   }
 

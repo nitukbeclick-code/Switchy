@@ -17,6 +17,10 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 //                               + "the customer asked for evening" pings
 //                               + meeting rep-reminders (≤2h) and expirations
 // POST {mode:"weekly"}       -> weekly business report (also /weekly in chat)
+// POST {mode:"renewal-emails",days?} -> customer-facing renewal-radar reminder
+//                               EMAILS (opt-in tracked plans only; claim-before-
+//                               send; deploy-safe no-op until the opt-in columns
+//                               exist — see supabase/renewal-email-optin-*.sql)
 //
 // Deploy: supabase functions deploy renewal-reminders --no-verify-jwt
 // ─────────────────────────────────────────────────────────────────────────────
@@ -35,6 +39,8 @@ import { buildWeeklyReport } from "../_shared/weekly.ts";
 import { israelDateOf, israelHourOf, planFollowUps } from "../_shared/followup.ts";
 import { planMeetingFollowUps } from "../_shared/meeting_followup.ts";
 import { type CronJobRow, evalCronHealth } from "../_shared/cron_health.ts";
+import { sendCustomerEmail } from "../_shared/email.ts";
+import { buildRenewalReminderEmail, RENEWAL_EMAIL_SUBJECT } from "./email.ts";
 
 const enc = encodeURIComponent;
 
@@ -279,6 +285,83 @@ async function runFollowUp(cfg: Cfg) {
   };
 }
 
+// ── mode: renewal-emails ─────────────────────────────────────────────────────
+//
+// Customer-facing renewal-radar reminder by EMAIL (the Telegram digest above is
+// team-facing). Sent ONLY to tracked plans that:
+//   • carry an email address,
+//   • opted in to renewal reminders (reminder_opt_in = true), and
+//   • haven't already been emailed for this renewal window
+//     (reminder_email_sent_at is null OR predates the current promo_end_date).
+//
+// CLAIM-BEFORE-SEND: we stamp reminder_email_sent_at (atomic, guarded on the
+// still-unstamped condition) BEFORE the send, so two overlapping cron runs can't
+// double-mail; on a send failure we revert our own stamp so the next run retries.
+//
+// DEPLOY-SAFE BEFORE THE MIGRATION: the reminder_opt_in / reminder_email_sent_at
+// columns ship in a NOT-yet-applied migration (supabase/renewal-email-optin-*.sql).
+// Until they exist, the filtered SELECT 400s → fetchRows returns null → this mode
+// is a logged no-op. It only starts mailing once the columns + opt-in exist.
+// The webhook-secret gate above is unchanged; this runs inside it.
+const RENEWAL_EMAIL_BATCH = 20; // cap per run — keeps inside the edge wall-clock
+
+async function runRenewalEmails(cfg: Cfg, days: number) {
+  if (!cfg.resend || !cfg.resendFrom) {
+    return { ok: true, sent: 0, skipped: 0, note: "resend not configured" };
+  }
+  const horizon = enc(
+    new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10),
+  );
+  const today = enc(new Date().toISOString().slice(0, 10));
+  // Filter on the opt-in column + a not-yet-mailed-for-this-window condition.
+  // or(...) keeps a row whose last reminder predates the upcoming renewal.
+  const rows = await fetchRows<RenewalRow & { reminder_email_sent_at?: string | null }>(
+    `/rest/v1/tracked_plans?select=id,user_id,provider,plan_name,monthly_price,promo_end_date,category,reminder_email_sent_at,profiles(name,phone,email)` +
+      `&reminder_opt_in=is.true` +
+      `&promo_end_date=gte.${today}&promo_end_date=lte.${horizon}` +
+      `&order=promo_end_date.asc&limit=${RENEWAL_EMAIL_BATCH}`,
+  );
+  if (rows === null) {
+    // columns missing (pre-migration) or transient — log + no-op, never throw
+    jlog({ at: "renewal-emails", ok: true, note: "query unavailable (pre-migration?)" });
+    return { ok: true, sent: 0, skipped: 0, note: "query unavailable" };
+  }
+  let sent = 0, skipped = 0, failed = 0;
+  for (const r of rows) {
+    // PostgREST embeds the joined profile under `profiles`; normalise onto the
+    // flat RenewalRow shape the email builder expects.
+    const prof = (r as unknown as { profiles?: { name?: string; phone?: string; email?: string } }).profiles;
+    const email = prof?.email ?? r.email ?? null;
+    if (!email) { skipped++; continue; }
+    const norm: RenewalRow = {
+      id: r.id, user_id: r.user_id, provider: r.provider, plan_name: r.plan_name,
+      monthly_price: r.monthly_price, promo_end_date: r.promo_end_date, category: r.category,
+      name: prof?.name ?? r.name ?? null, phone: prof?.phone ?? r.phone ?? null, email,
+    };
+    // Claim: stamp sent-at only if still unmailed for THIS renewal window.
+    const claimTs = new Date().toISOString();
+    const claimed = await patchCount(
+      `/rest/v1/tracked_plans?id=eq.${r.id}` +
+        `&or=(reminder_email_sent_at.is.null,reminder_email_sent_at.lt.${enc(r.promo_end_date)})`,
+      { reminder_email_sent_at: claimTs },
+    );
+    if (claimed === 0) { skipped++; continue; } // already mailed / lost race
+    const res = await sendCustomerEmail(cfg, email, RENEWAL_EMAIL_SUBJECT, buildRenewalReminderEmail(norm));
+    if (res.ok) {
+      sent++;
+    } else {
+      failed++;
+      // revert ONLY our own claim so the next run retries this row
+      await patchCount(
+        `/rest/v1/tracked_plans?id=eq.${r.id}&reminder_email_sent_at=eq.${enc(claimTs)}`,
+        { reminder_email_sent_at: null },
+      );
+    }
+  }
+  if (failed > 0) jlog({ at: "renewal-emails", candidates: rows.length, sent, skipped, failed });
+  return { ok: true, candidates: rows.length, sent, skipped, failed };
+}
+
 // ── HTTP ─────────────────────────────────────────────────────────────────────
 
 function json(body: unknown, status = 200, extraHeaders?: Record<string, string>): Response {
@@ -327,7 +410,7 @@ Deno.serve(async (req: Request) => {
     return json({
       ok: true,
       function: "renewal-reminders",
-      modes: ["digest", "sweep", "follow-up", "weekly"],
+      modes: ["digest", "sweep", "follow-up", "weekly", "renewal-emails"],
       configured: {
         telegram: { present: !!(cfg.tgToken && cfg.tgChat) },
         webhook_secret: { present: !!cfg.webhookSecret },
@@ -355,6 +438,9 @@ Deno.serve(async (req: Request) => {
       return json(await runSweep(cfg));
     case "follow-up":
       return json(await runFollowUp(cfg));
+    case "renewal-emails":
+      // customer-facing renewal-radar reminder emails (opt-in only)
+      return json(await runRenewalEmails(cfg, days));
     case "weekly": {
       let report = await buildWeeklyReport();
       // surface dead/failing schedules to the team — pg_cron fails silently

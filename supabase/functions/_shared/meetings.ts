@@ -221,7 +221,7 @@ export function buildMeetingCustomerEmailHtml(m: MeetingRow): string {
     + (m.provider ? ` בנושא <b>${esc(m.provider)}</b>` : "")
     + `.</p>`
     + (m.join_url
-      ? `<p style="margin:24px 0"><a href="${esc(m.join_url)}" style="background:#4F46E5;color:#ffffff;padding:12px 28px;border-radius:8px;text-decoration:none;display:inline-block">הצטרפות לפגישת ה-Zoom</a></p>`
+      ? `<p style="margin:24px 0"><a href="${esc(m.join_url)}" style="background:#16A34A;color:#ffffff;padding:12px 28px;border-radius:8px;text-decoration:none;display:inline-block">הצטרפות לפגישת ה-Zoom</a></p>`
         + `<p style="font-size:13px;color:#222A35">אם הכפתור אינו נפתח, העתיקו את הקישור לדפדפן: <a href="${esc(m.join_url)}">${esc(m.join_url)}</a></p>`
       : "")
     + `<p>מומלץ להצטרף דקה-שתיים לפני המועד. אם המועד אינו מתאים, השיבו למייל זה ונתאם מועד חדש.</p>`

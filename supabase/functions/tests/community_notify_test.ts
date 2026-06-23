@@ -184,3 +184,140 @@ Deno.test("community-notify tolerates a missing/non-numeric review score", async
   // No crash; the score placeholder is rendered.
   assertStringIncludes(sent[0] ?? "", "(?/5)");
 });
+
+// ── @mention fan-out ────────────────────────────────────────────────────────────
+// With SUPABASE_URL set, the function calls the resolve_community_mentions RPC via
+// the service role. We intercept that POST to assert the parsed names + context the
+// edge function sends, and stub the Vault RPC (get_lead_notify_config) so config
+// resolution never hits the network. The RPC returns a count, which surfaces in the
+// response as `mentioned`.
+
+// Records the resolve_community_mentions payload; returns the configured count.
+function mentionRoutes(captured: Array<Record<string, unknown>>, notified = 0) {
+  return [
+    { match: (u: string) => u.includes("api.telegram.org"), respond: () => jsonResponse({ ok: true, result: {} }) },
+    // Vault config RPC — return {} so the env secret/token win (no network secret).
+    { match: (u: string) => u.includes("/rpc/get_lead_notify_config"), respond: () => jsonResponse({}) },
+    {
+      match: (u: string) => u.includes("/rpc/resolve_community_mentions"),
+      respond: (_u: string, init?: RequestInit) => {
+        captured.push(JSON.parse(String(init?.body ?? "{}")));
+        return jsonResponse([{ notified }]);
+      },
+    },
+  ];
+}
+
+async function withSupabaseEnv(fn: () => Promise<void>) {
+  Deno.env.set("SUPABASE_URL", "https://stub.supabase.co");
+  Deno.env.set("SUPABASE_SERVICE_ROLE_KEY", "service-role-stub");
+  try {
+    await fn();
+  } finally {
+    Deno.env.delete("SUPABASE_URL");
+    Deno.env.delete("SUPABASE_SERVICE_ROLE_KEY");
+  }
+}
+
+Deno.test("community-notify fans out @mentions from a new post to the resolve RPC", async () => {
+  const captured: Array<Record<string, unknown>> = [];
+  await withSupabaseEnv(async () => {
+    await withFetchStub(mentionRoutes(captured, 2), async () => {
+      const r = await post(SECRET, {
+        type: "INSERT",
+        table: "community_posts",
+        record: { id: "post-9", user_id: "author-uid", author: "רון", body: "מה דעתכם @דנה ו @Yossi_2024 ?" },
+      });
+      assertEquals(r.status, 200);
+      assertEquals((await r.json()).mentioned, 2);
+    });
+  });
+  assertEquals(captured.length, 1);
+  const p = captured[0];
+  assertEquals(p.p_post_id, "post-9");
+  assertEquals(p.p_reply_id, null);          // a post has no reply id
+  assertEquals(p.p_actor_id, "author-uid");
+  assertEquals(p.p_actor, "רון");
+  // Both Hebrew and Latin handles parsed, '@' stripped, deduped.
+  const names = p.p_names as string[];
+  assert(names.includes("דנה"));
+  assert(names.includes("Yossi_2024"));
+});
+
+Deno.test("community-notify passes the reply id when a reply mentions someone", async () => {
+  const captured: Array<Record<string, unknown>> = [];
+  await withSupabaseEnv(async () => {
+    await withFetchStub(mentionRoutes(captured, 1), async () => {
+      const r = await post(SECRET, {
+        type: "INSERT",
+        table: "community_replies",
+        record: { id: "reply-3", post_id: "post-1", user_id: "u2", author: "מאיה", body: "תודה @רון!" },
+      });
+      assertEquals(r.status, 200);
+      assertEquals((await r.json()).mentioned, 1);
+    });
+  });
+  const p = captured[0];
+  assertEquals(p.p_post_id, "post-1");       // the parent post
+  assertEquals(p.p_reply_id, "reply-3");     // and the reply it came from
+  assertEquals((p.p_names as string[])[0], "רון");
+});
+
+Deno.test("community-notify does NOT call the resolve RPC when there are no @mentions", async () => {
+  const captured: Array<Record<string, unknown>> = [];
+  await withSupabaseEnv(async () => {
+    await withFetchStub(mentionRoutes(captured, 0), async (calls) => {
+      const r = await post(SECRET, {
+        type: "INSERT",
+        table: "community_posts",
+        record: { id: "post-x", user_id: "u", author: "א", body: "שאלה כללית בלי תיוגים" },
+      });
+      assertEquals(r.status, 200);
+      assertEquals((await r.json()).mentioned, 0);
+      assertEquals(calls.filter((u) => u.includes("resolve_community_mentions")).length, 0);
+    });
+  });
+  assertEquals(captured.length, 0);
+});
+
+Deno.test("community-notify does not fan out @mentions for provider reviews", async () => {
+  const captured: Array<Record<string, unknown>> = [];
+  await withSupabaseEnv(async () => {
+    await withFetchStub(mentionRoutes(captured, 0), async (calls) => {
+      const r = await post(SECRET, {
+        type: "INSERT",
+        table: "provider_reviews",
+        record: { provider: "HOT", overall: 5, body: "תודה @דנה" },
+      });
+      assertEquals(r.status, 200);
+      // Reviews are not a mention surface — the resolve RPC is never called.
+      assertEquals(calls.filter((u) => u.includes("resolve_community_mentions")).length, 0);
+    });
+  });
+  assertEquals(captured.length, 0);
+});
+
+Deno.test("community-notify still sends the team ping when the mention RPC fails", async () => {
+  // The resolve RPC erroring (here: 500) must not drop the team Telegram ping —
+  // the two are independent. mentioned falls back to 0, the ping still goes out.
+  const sent: string[] = [];
+  await withSupabaseEnv(async () => {
+    await withFetchStub([
+      { match: (u: string) => u.includes("api.telegram.org"), respond: (_u, init) => {
+        sent.push(JSON.parse(String(init?.body ?? "{}")).text ?? "");
+        return jsonResponse({ ok: true, result: {} });
+      } },
+      { match: (u: string) => u.includes("/rpc/get_lead_notify_config"), respond: () => jsonResponse({}) },
+      { match: (u: string) => u.includes("/rpc/resolve_community_mentions"), respond: () => new Response("boom", { status: 500 }) },
+    ], async () => {
+      const r = await post(SECRET, {
+        type: "INSERT",
+        table: "community_posts",
+        record: { id: "p1", user_id: "u", author: "ניר", body: "היי @דנה" },
+      });
+      assertEquals(r.status, 200);
+      assertEquals((await r.json()).mentioned, 0); // fail-soft
+    });
+  });
+  assertStringIncludes(sent[0] ?? "", "פוסט חדש בקהילה"); // team ping still sent
+});

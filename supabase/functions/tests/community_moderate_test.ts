@@ -17,7 +17,7 @@
 // restored (no global leak, no network).
 // Run from supabase/functions/:  deno task test
 
-import { assertEquals, assertStringIncludes } from "@std/assert";
+import { assert, assertEquals, assertStringIncludes } from "@std/assert";
 import { captureServeHandler, jsonResponse, withFetchStub } from "./_capture_handler.ts";
 
 const SECRET = "community-moderate-test-secret";
@@ -123,6 +123,70 @@ Deno.test("community-moderate is a no-op when no classifier is configured", asyn
     assertEquals(r.status, 200);
     assertStringIncludes(await r.text(), "no-classifier");
     assertEquals(calls.filter((u) => u.includes("api.groq.com")).length, 0); // nothing called
+  });
+});
+
+// ── heuristic pre-screen: the deterministic safety net (no LLM needed) ──────────
+
+Deno.test("community-moderate heuristic flags obvious scam even with NO classifier", async () => {
+  // No classifier configured: the LLM never runs, but the deterministic pre-screen
+  // still catches a money-scam + contact-harvest combo. No SUPABASE_URL ⇒ the PATCH
+  // reports 0 rows, so we see the fail-soft "no-match" — proof a flag was attempted.
+  Deno.env.delete("GEMINI_API_KEY");
+  Deno.env.delete("GOOGLE_AI_KEY");
+  Deno.env.delete("GROQ_API_KEY");
+  await withFetchStub(classifierRoutes("noflag"), async (calls) => {
+    const r = await post(SECRET, insert("community_posts", {
+      id: "scam-1",
+      body: "הלוואה מיידית ללא ריבית! העבר כסף עכשיו, צור קשר 050-1234567",
+    }));
+    assertEquals(r.status, 200);
+    const j = await r.json();
+    assertEquals(j.ok, true);
+    assertEquals(j.flagged, false);    // patchCount=0 with no SUPABASE_URL …
+    assertEquals(j.note, "no-match");  // … but a flag WAS attempted (not "no-classifier")
+    assertEquals(calls.filter((u) => u.includes("api.groq.com")).length, 0); // LLM untouched
+  });
+});
+
+Deno.test("community-moderate heuristic flags 'buy followers' spam", async () => {
+  Deno.env.delete("GROQ_API_KEY");
+  await withFetchStub(classifierRoutes("noflag"), async () => {
+    const r = await post(SECRET, insert("community_replies", {
+      id: "spam-1",
+      body: "Buy followers cheap! 10000 followers for $5",
+    }));
+    assertEquals((await r.json()).note, "no-match"); // flag attempted
+  });
+});
+
+Deno.test("community-moderate heuristic does NOT flag ordinary frustration / criticism", async () => {
+  // A real angry-customer post with NO spam signals must pass when no LLM is set
+  // (heuristic stays silent ⇒ no-classifier short-circuit, never a flag).
+  Deno.env.delete("GEMINI_API_KEY");
+  Deno.env.delete("GOOGLE_AI_KEY");
+  Deno.env.delete("GROQ_API_KEY");
+  await withFetchStub(classifierRoutes("flag-high"), async () => {
+    const r = await post(SECRET, insert("community_posts", {
+      id: "ok-1",
+      body: "השירות של פלאפון נוראי, חיכיתי שעה במוקד וניתקו לי. מאוכזב מאוד!!",
+    }));
+    assertStringIncludes(await r.text(), "no-classifier");
+  });
+});
+
+Deno.test("community-moderate heuristic does NOT flag a single bare link", async () => {
+  // One link with no other signal is below threshold (people share comparison
+  // pages legitimately) — only a link + contact-harvest combo trips it.
+  Deno.env.delete("GEMINI_API_KEY");
+  Deno.env.delete("GOOGLE_AI_KEY");
+  Deno.env.delete("GROQ_API_KEY");
+  await withFetchStub(classifierRoutes("flag-high"), async () => {
+    const r = await post(SECRET, insert("community_posts", {
+      id: "ok-2",
+      body: "ראיתי השוואה טובה כאן example.com שווה לבדוק",
+    }));
+    assertStringIncludes(await r.text(), "no-classifier");
   });
 });
 

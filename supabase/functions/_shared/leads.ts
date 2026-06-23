@@ -158,9 +158,43 @@ export const SOURCE_HE: Record<string, string> = { form: "טופס", plan: "דף
 export const STATUS_HE: Record<string, string> = { new: "חדש", contacted: "דיברתי", won: "נסגר", lost: "לא רלוונטי" };
 export const STATUS_EMOJI: Record<string, string> = { new: "🆕", contacted: "📞", won: "🏆", lost: "❌" };
 
+// Plan categories (lib/data.dart's owned set) → Hebrew, for the "desired need"
+// card line. Mirrors digests.ts CAT_HE; kept here so leads.ts stays dependency-light.
+export const CATEGORY_HE: Record<string, string> = {
+  cellular: "סלולר", internet: "אינטרנט", tv: "טלוויזיה",
+  triple: "חבילה משולבת (טריפל)", abroad: 'חבילת חו"ל',
+};
+
+// The leads table has no category column — the desired service is captured in
+// the notes free text (the AI-chat capture writes "שירות מבוקש: <category>") or
+// implied by the plan_id prefix. Surface it ONLY when it's actually present:
+// honesty over a fabricated guess. Returns the Hebrew category label, or "".
+export function desiredCategory(lead: Lead): string {
+  // 1) Explicit, structured hint the AI-chat capture (or any form) wrote.
+  const tagged = String(lead.notes ?? "").match(/שירות מבוקש:\s*([^\n|]{1,40})/);
+  if (tagged) {
+    const raw = tagged[1].trim();
+    // map a known english key if that's what was stored, else show the free text
+    const key = raw.toLowerCase();
+    return CATEGORY_HE[key] ?? raw;
+  }
+  // 2) plan_id is "<provider>-<cat>-…" in the catalogue, so a leading known
+  // category token is a reliable, non-fabricated signal.
+  const planCat = String(lead.plan_id ?? "").toLowerCase().split(/[-_ ]/).find((t) => t in CATEGORY_HE);
+  if (planCat) return CATEGORY_HE[planCat];
+  return "";
+}
+
 export function tgDisplayName(from?: { first_name?: string; last_name?: string }): string {
   return [from?.first_name, from?.last_name].filter(Boolean).join(" ");
 }
+
+// A one-line compliance reminder for the rep, shown on the inbound card. The
+// rep is about to call the customer, so they must remember §7b (disclose the
+// commission/affiliation when recommending a deal) + §30A (get consent before
+// any marketing follow-up). Italic, low-key — a nudge, not a wall of text.
+export const REP_COMPLIANCE_LINE =
+  '⚖️ <i>תזכורת: גלו עמלה/שיוך בהמלצה (§7b) · אישור ללקוח לפני פולואו-אפ שיווקי (§30A).</i>';
 
 // Default WhatsApp opener when the AI didn't supply one.
 export function defaultDraft(lead: Lead): string {
@@ -173,6 +207,7 @@ export function buildText(lead: Lead, triage?: TriageResult | null): string {
   const cb = CALLBACK_HE[String(lead.callback_time ?? "")] ?? String(lead.callback_time ?? "—");
   const wa = waLink(lead.phone);
   const sourceLabel = SOURCE_HE[String(lead.source ?? "")] ?? (lead.source ? String(lead.source) : null);
+  const category = desiredCategory(lead);
   const hot = (triage?.score ?? 0) >= 4;
   const lines: (string | null)[] = [
     hot ? "🔥 <b>ליד חם — חוסך</b>" : "🔔 <b>פנייה חדשה — חוסך</b>",
@@ -180,6 +215,9 @@ export function buildText(lead: Lead, triage?: TriageResult | null): string {
     `👤 <b>שם:</b> ${esc(lead.name)}`,
     `📞 <b>טלפון:</b> ${esc(lead.phone)}` + (wa ? ` — <a href="${wa}">WhatsApp</a>` : ""),
     lead.email ? `📧 <b>אימייל:</b> ${esc(lead.email)}` : null,
+    // Desired-service line first — it's the "what does this customer want?" the
+    // rep reads before dialing. Shown only when we honestly have it.
+    category ? `🎯 <b>צריך:</b> ${esc(category)}` : null,
     (lead.provider || lead.plan_id) ? `📦 <b>ספק / מסלול:</b> ${esc(lead.provider ?? "—")} / ${esc(lead.plan_id ?? "—")}` : null,
     `⏰ <b>זמן חזרה מועדף:</b> ${esc(cb)}`,
     sourceLabel ? `📌 <b>מקור:</b> ${esc(sourceLabel)}` : null,
@@ -189,6 +227,8 @@ export function buildText(lead: Lead, triage?: TriageResult | null): string {
     lead.notes ? `📋 <b>הקשר:</b> ${esc(String(lead.notes).slice(0, 700))}` : null,
     triage?.line ? "" : null,
     triage?.line ? `🤖 <i>${esc(triage.line)}</i>${triage.score > 0 ? ` (כוונה: ${triage.score}/5)` : ""}` : null,
+    "",
+    REP_COMPLIANCE_LINE,
   ];
   return lines.filter((x) => x !== null).join(NL);
 }
@@ -207,12 +247,15 @@ export function buildHtml(lead: Lead, triage?: TriageResult | null): string {
     + (lead.notes ? `<b>הקשר:</b> ${esc(String(lead.notes).slice(0, 700))}<br>` : "")
     + `</p>`
     + (triage?.line ? `<p style="background:#F4F0E8;padding:10px;border-radius:8px">🤖 ${esc(triage.line)}</p>` : "")
+    + `<p style="font-size:12px;color:#4B5563;margin-top:14px">תזכורת לנציג: גלו עמלה/שיוך בעת המלצה (§7b לחוק הגנת הצרכן) · קבלו אישור מהלקוח לפני פולואו-אפ שיווקי (§30A לחוק התקשורת).</p>`
     + `</div>`;
 }
 
-// Live keyboard: status row + lost row + claim/WhatsApp row.
+// Live keyboard: status row + lost/snooze row + history + claim/WhatsApp row.
 // Every callback_data carries the lead id so reply-notes can resolve the lead
-// even from frozen stamps.
+// even from frozen stamps. The ⏰ snooze button pushes the SLA nudge back ~2h
+// (sets nudged_at forward) for a rep who'll get to it later but isn't dropping
+// it — a softer middle ground than "לא רלוונטי".
 export function leadKeyboard(lead: Lead, draft = ""): TgInlineKeyboard | undefined {
   if (!lead.id) return undefined;
   const id = String(lead.id);
@@ -223,6 +266,9 @@ export function leadKeyboard(lead: Lead, draft = ""): TgInlineKeyboard | undefin
     ],
     [
       { text: `${STATUS_EMOJI.lost} לא רלוונטי`, callback_data: `lead:${id}:lost` },
+      { text: "⏰ דחה", callback_data: `lead:${id}:snooze` },
+    ],
+    [
       { text: "📜 היסטוריה", callback_data: `lead:${id}:history` },
     ],
   ];
@@ -294,6 +340,9 @@ export function formatTimeline(lead: Lead, events: LeadEvent[]): string {
       }
       case "note":
         lines.push(`📝 ${at} — ${who}: ${esc(String(ev.note ?? "").slice(0, 200))}`);
+        break;
+      case "snooze":
+        lines.push(`⏰ ${at} — ${who} דחה את התזכורת`);
         break;
       case "undo":
         lines.push(`↩️ ${at} — ${who} שחזר ל"${esc(STATUS_HE[String(ev.new_status ?? "")] ?? String(ev.new_status ?? ""))}"`);

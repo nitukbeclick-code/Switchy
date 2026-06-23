@@ -325,6 +325,150 @@ export async function callGeminiVision(
   throw new Error("gemini vision request failed: " + lastStatus);
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Gemini FUNCTION CALLING (the tool-using agent path) — added alongside the text
+// path above WITHOUT touching it. callGemini/generateReply/callGeminiVision keep
+// working exactly as before; this is a separate, opt-in surface that _shared/
+// agent.ts drives. Same model-fallthrough-on-404, same AbortController timeout,
+// same thinkingConfig disable for gemini-2.5.
+//
+// Gemini's wire shape (generateContent REST):
+//   request.tools = [{ functionDeclarations: [ {name, description, parameters} ] }]
+//   a tool call comes back as a part:  { functionCall: { name, args } }
+//   we reply with a part:              { functionResponse: { name, response } }
+// We expose those as plain TS types so the agent loop never hand-builds the JSON.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// A JSON-schema-ish parameter spec for one tool (Gemini's OpenAPI subset). We
+// keep it permissive (Record) so tools.ts can author the schema directly.
+export type GeminiFunctionDeclaration = {
+  name: string;
+  description: string;
+  parameters: Record<string, unknown>; // { type:"object", properties:{...}, required:[...] }
+};
+
+// A model-requested tool call parsed out of the response.
+export type GeminiFunctionCall = { name: string; args: Record<string, unknown> };
+
+// One step of the tool loop's result: EITHER the model asked to call tools
+// (`calls` non-empty) OR it produced a final text answer (`text`). Never both
+// meaningfully populated — the agent acts on whichever is present.
+export type GeminiToolStep = { calls: GeminiFunctionCall[]; text: string };
+
+// A turn in the function-calling contents array. `user`/`model` carry text;
+// `functionResponse` carries a tool result the model consumes on the next step.
+export type ToolContent =
+  | { role: "user" | "model"; parts: Array<{ text: string }> }
+  | { role: "model"; parts: Array<{ functionCall: GeminiFunctionCall }> }
+  | { role: "function"; parts: Array<{ functionResponse: { name: string; response: Record<string, unknown> } }> };
+
+function buildToolContents(history: ChatTurn[], message: string): ToolContent[] {
+  const out: ToolContent[] = history.slice(-MAX_HISTORY_TURNS).map((h) => ({
+    role: (h.role === "user" ? "user" : "model") as "user" | "model",
+    parts: [{ text: String(h.text ?? "").slice(0, MAX_MESSAGE_LEN) }],
+  }));
+  out.push({ role: "user", parts: [{ text: message }] });
+  return out;
+}
+
+// One raw generateContent call with tools. `contents` is the running transcript
+// (text turns + prior functionCall/functionResponse turns). Returns the parsed
+// step. Model fallthrough on 404 like the text path; any other status throws.
+async function callGeminiToolsModel(
+  model: string,
+  apiKey: string,
+  systemContext: string,
+  contents: ToolContent[],
+  tools: GeminiFunctionDeclaration[],
+  maxTokens: number,
+): Promise<Response> {
+  return await fetchWithTimeout(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: systemContext }] },
+        contents,
+        tools: tools.length ? [{ functionDeclarations: tools }] : undefined,
+        generationConfig: {
+          maxOutputTokens: maxTokens,
+          temperature: 0.3,
+          ...(model.startsWith("gemini-2.5") ? { thinkingConfig: { thinkingBudget: 0 } } : {}),
+        },
+      }),
+    },
+    TEXT_TIMEOUT_MS,
+    `gemini-tools:${model}`,
+  );
+}
+
+function parseToolStep(j: unknown): GeminiToolStep {
+  const parts: Array<{ text?: string; thought?: boolean; functionCall?: { name?: string; args?: unknown } }> =
+    (j as { candidates?: Array<{ content?: { parts?: unknown } }> })?.candidates?.[0]?.content?.parts as
+      Array<{ text?: string; thought?: boolean; functionCall?: { name?: string; args?: unknown } }> ?? [];
+  const calls: GeminiFunctionCall[] = [];
+  let text = "";
+  for (const p of parts) {
+    if (p?.functionCall?.name) {
+      const args = (p.functionCall.args && typeof p.functionCall.args === "object")
+        ? p.functionCall.args as Record<string, unknown>
+        : {};
+      calls.push({ name: String(p.functionCall.name), args });
+    } else if (!p.thought && typeof p.text === "string") {
+      text += p.text;
+    }
+  }
+  return { calls, text: text.trim() };
+}
+
+// Low-level single step: send the running `contents` (+ tool declarations) and
+// return what the model wants next (tool calls or final text). The agent loop in
+// agent.ts owns appending the model's functionCall turn and the functionResponse
+// turn between steps. Throws on a hard failure (so the caller can fall back to
+// the no-tools text chain).
+export async function generateWithToolsStep(
+  apiKey: string,
+  systemContext: string,
+  contents: ToolContent[],
+  tools: GeminiFunctionDeclaration[],
+  maxTokens = 500,
+): Promise<GeminiToolStep> {
+  let lastStatus = 0;
+  for (const model of GEMINI_MODELS) {
+    const r = await callGeminiToolsModel(model, apiKey, systemContext, contents, tools, maxTokens);
+    if (r.ok) {
+      const j = await r.json();
+      jlog({ at: "ai.generateWithToolsStep", ok: true, model });
+      return parseToolStep(j);
+    }
+    lastStatus = r.status;
+    jlog({ at: "ai.generateWithToolsStep", ok: false, model, status: r.status });
+    if (r.status !== 404) break;
+  }
+  throw new Error("gemini tools request failed: " + lastStatus);
+}
+
+// Append a model functionCall turn to the running transcript (so the model sees
+// its own call when it consumes the result on the next step).
+export function appendFunctionCall(contents: ToolContent[], call: GeminiFunctionCall): void {
+  contents.push({ role: "model", parts: [{ functionCall: call }] });
+}
+
+// Append a tool result the model will consume on the next step.
+export function appendFunctionResponse(
+  contents: ToolContent[],
+  name: string,
+  response: Record<string, unknown>,
+): void {
+  contents.push({ role: "function", parts: [{ functionResponse: { name, response } }] });
+}
+
+// Seed a fresh tool-loop transcript from prior chat history + the new message.
+export function newToolContents(history: ChatTurn[], message: string): ToolContent[] {
+  return buildToolContents(history, message);
+}
+
 // Defensive JSON extraction: strip ```json fences and pull the first {...} block.
 export function extractJson(raw: string): Record<string, unknown> | null {
   let s = (raw ?? "").trim();

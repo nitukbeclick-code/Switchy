@@ -8,7 +8,7 @@ import { buildText, keyboardFor, SOURCE_HE, STATUS_EMOJI, STATUS_HE } from "../_
 import { buildMeetingText, MEETING_STATUS_EMOJI, MEETING_STATUS_HE, meetingKeyboardFor } from "../_shared/meetings.ts";
 import { formatMinutes, medianMinutes } from "../_shared/digests.ts";
 import { buildWeeklyReport } from "../_shared/weekly.ts";
-import { buildAgenda, buildDossier, buildStats, buildWeek, type DossierInput } from "../_shared/agenda.ts";
+import { buildAgenda, buildDailyDigest, buildDossier, buildStats, buildWeek, type DossierInput } from "../_shared/agenda.ts";
 
 type CmdResult = { ok: boolean; command: string; failures?: number };
 
@@ -105,6 +105,14 @@ export async function handleCommand(cfg: Cfg, cmd: string, args: string): Promis
     const data = await fetchAgenda();
     if (data === null) return await reportQueryFailure(cfg, cmd);
     await sendTelegram(cfg, buildAgenda(data, Date.now()));
+    return { ok: true, command: cmd };
+  }
+
+  if (cmd === "/digest") {
+    // The count-led executive brief over the same agenda data as /today.
+    const data = await fetchAgenda();
+    if (data === null) return await reportQueryFailure(cfg, cmd);
+    await sendTelegram(cfg, buildDailyDigest(data, Date.now()));
     return { ok: true, command: cmd };
   }
 
@@ -247,6 +255,7 @@ export async function handleCommand(cfg: Cfg, cmd: string, args: string): Promis
     "",
     "/today — סדר היום: פגישות מאושרות וממתינות + לידים שלא טופלו",
     "/agenda — כינוי ל-/today",
+    "/digest — דייג'סט יומי קצר: המספרים של היום + מה דחוף עכשיו",
     "/week — הפגישות המאושרות ב-7 הימים הקרובים, לפי יום",
     "/leads — הלידים הפתוחים האחרונים, עם כפתורי סטטוס",
     "/meetings — פגישות הווידאו הקרובות, עם כפתורי אישור",
@@ -257,7 +266,7 @@ export async function handleCommand(cfg: Cfg, cmd: string, args: string): Promis
     "/weekly — הדוח העסקי השבועי, עכשיו",
     "/help — ההודעה הזו",
     "",
-    "<i>טיפים: כפתור 🙋 תופס בעלות על ליד; תשובה (reply) להודעת ליד נשמרת כהערה; אחרי 🏆 השיבו עם סכום החיסכון; כפתור 🔄 על כרטיס פגישה מאפשר לשנות מועד.</i>",
+    "<i>טיפים: כפתור 🙋 תופס בעלות על ליד; ⏰ דחה דוחה את התזכורת בכשעתיים; תשובה (reply) להודעת ליד נשמרת כהערה; אחרי 🏆 השיבו עם סכום החיסכון; כפתור 🔄 על כרטיס פגישה מאפשר לשנות מועד.</i>",
   ].join(NL));
   return { ok: true, command: cmd };
 }
@@ -265,6 +274,7 @@ export async function handleCommand(cfg: Cfg, cmd: string, args: string): Promis
 export const BOT_COMMANDS = [
   { command: "today", description: "סדר היום — פגישות ולידים פתוחים" },
   { command: "agenda", description: "כינוי ל-/today" },
+  { command: "digest", description: "דייג'סט יומי — המספרים של היום ומה דחוף" },
   { command: "week", description: "פגישות מאושרות ב-7 הימים הקרובים" },
   { command: "leads", description: "לידים פתוחים עם כפתורי סטטוס" },
   { command: "meetings", description: "פגישות וידאו קרובות" },

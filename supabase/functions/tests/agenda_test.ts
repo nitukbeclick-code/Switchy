@@ -5,7 +5,7 @@
 import { assert, assertEquals, assertFalse, assertStringIncludes } from "@std/assert";
 import type { Lead, MeetingRow } from "../_shared/types.ts";
 import {
-  agendaIsEmpty, type AgendaInput, buildAgenda, buildDossier, buildReturningLine,
+  agendaIsEmpty, type AgendaInput, buildAgenda, buildDailyDigest, buildDossier, buildReturningLine,
   buildStats, buildWeek, israelDay,
 } from "../_shared/agenda.ts";
 import { parseReschedule } from "../_shared/reschedule.ts";
@@ -97,6 +97,55 @@ Deno.test("agendaIsEmpty matches buildAgenda's all-clear case", () => {
   assert(agendaIsEmpty({ confirmed: [meeting({ starts_at: "2026-06-17T11:30:00Z" })], pending: [], uncontacted: [] }, NOW));
   assertFalse(agendaIsEmpty({ confirmed: [meeting({})], pending: [], uncontacted: [] }, NOW));
   assertFalse(agendaIsEmpty({ confirmed: [], pending: [], uncontacted: [lead({})] }, NOW));
+});
+
+// ── buildDailyDigest ─────────────────────────────────────────────────────────
+
+Deno.test("buildDailyDigest leads with a count band and the §7b/§30A reminder", () => {
+  const input: AgendaInput = {
+    confirmed: [meeting({})],
+    pending: [meeting({ status: "pending", name: "ממתינה" })],
+    uncontacted: [lead({ name: "חדש", created_at: "2026-06-16T08:30:00Z" })], // 30m old
+  };
+  const text = buildDailyDigest(input, NOW);
+  assertStringIncludes(text, "דייג'סט יומי");
+  assertStringIncludes(text, "1 פגישות מאושרות");
+  assertStringIncludes(text, "1 ממתינות לאישור");
+  assertStringIncludes(text, "1 לידים פתוחים");
+  assertStringIncludes(text, "§7b");
+  assertStringIncludes(text, "§30A");
+});
+
+Deno.test("buildDailyDigest flags SLA-overdue leads (>2h, status=new) and surfaces the oldest", () => {
+  const input: AgendaInput = {
+    confirmed: [], pending: [],
+    uncontacted: [
+      lead({ name: "ותיק", created_at: "2026-06-16T05:00:00Z" }),  // 4h old → overdue
+      lead({ name: "טרי", created_at: "2026-06-16T08:55:00Z" }),   // 5m old
+    ],
+  };
+  const text = buildDailyDigest(input, NOW);
+  assertStringIncludes(text, "מעבר ל-SLA");
+  // oldest-waiting lead is surfaced by name
+  assertStringIncludes(text, "ותיק");
+  // and the rest are summarised, not all dumped
+  assertStringIncludes(text, "ועוד 1");
+});
+
+Deno.test("buildDailyDigest renders the all-clear line when nothing is open", () => {
+  assertStringIncludes(buildDailyDigest({ confirmed: [], pending: [], uncontacted: [] }, NOW), "הכול נקי");
+});
+
+Deno.test("buildDailyDigest trims meetings/leads to the Israel day and escapes HTML", () => {
+  const input: AgendaInput = {
+    confirmed: [meeting({ name: "מחר", starts_at: "2026-06-17T11:30:00Z" })], // tomorrow → trimmed
+    pending: [],
+    uncontacted: [lead({ name: "<b>x</b>" })],
+  };
+  const text = buildDailyDigest(input, NOW);
+  assertFalse(text.includes("מחר"));
+  assertFalse(text.includes("<b>x</b>"));
+  assertStringIncludes(text, "&lt;b&gt;x&lt;/b&gt;");
 });
 
 // ── buildWeek ────────────────────────────────────────────────────────────────

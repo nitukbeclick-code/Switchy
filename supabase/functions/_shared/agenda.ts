@@ -88,6 +88,69 @@ export function buildAgenda(rows: AgendaInput, nowMs: number): string {
   return lines.join(NL);
 }
 
+// ── /digest — the on-demand daily executive brief ───────────────────────────
+// A count-led companion to buildAgenda: a one-glance band of the day's numbers,
+// the next confirmed meetings with times, and the leads that need a call now —
+// with the oldest-waiting lead surfaced + an SLA-overdue flag (status=new and
+// created more than 2h ago, the same 2h first-nudge threshold the follow-up
+// planner uses). Closes with the §7b/§30A rep reminder. Pure over (rows, now).
+export function buildDailyDigest(rows: AgendaInput, nowMs: number): string {
+  const today = israelDay(nowMs);
+  const onToday = (m: MeetingRow) => {
+    const t = startsMs(m);
+    return Number.isFinite(t) && israelDay(t) === today;
+  };
+  const byTime = (a: MeetingRow, b: MeetingRow) => startsMs(a) - startsMs(b);
+  const confirmed = rows.confirmed.filter(onToday).sort(byTime);
+  const pending = rows.pending.filter(onToday).sort(byTime);
+  const uncontacted = rows.uncontacted
+    .filter((l) => String(l.status ?? "new") === "new")
+    .sort((a, b) => Date.parse(String(a.created_at ?? "")) - Date.parse(String(b.created_at ?? "")));
+
+  // SLA-overdue: a new lead waiting more than 2h is the rep's most urgent number.
+  const TWO_H = 2 * 3_600_000;
+  const overdue = uncontacted.filter((l) => {
+    const created = Date.parse(String(l.created_at ?? ""));
+    return Number.isFinite(created) && nowMs - created >= TWO_H;
+  });
+
+  const lines: string[] = [
+    `📋 <b>דייג'סט יומי — חוסך</b> · ${esc(ilDayLabel(nowMs))}`,
+    "",
+    `📅 ${confirmed.length} פגישות מאושרות · 🕐 ${pending.length} ממתינות לאישור · 🆕 ${uncontacted.length} לידים פתוחים` +
+      (overdue.length > 0 ? ` · 🔴 ${overdue.length} מעבר ל-SLA` : ""),
+  ];
+
+  if (confirmed.length > 0) {
+    lines.push("", "✅ <b>הפגישות של היום:</b>");
+    for (const m of confirmed.slice(0, 6)) {
+      lines.push(`• ${esc(ilTime(startsMs(m)))} — ${esc(m.name ?? "")}` +
+        (m.provider ? ` (${esc(m.provider)})` : "") +
+        (m.join_url ? ` · <a href="${esc(m.join_url)}">קישור</a>` : ""));
+    }
+    if (confirmed.length > 6) lines.push(`<i>…ועוד ${confirmed.length - 6}. שלחו /today לפירוט.</i>`);
+  }
+
+  if (pending.length > 0) {
+    lines.push("", `🕐 <b>${pending.length} פגישות ממתינות לאישור</b> — שלחו /meetings לאשר.`);
+  }
+
+  if (uncontacted.length > 0) {
+    const oldest = uncontacted[0];
+    const wa = waLink(oldest.phone);
+    lines.push("", `🆕 <b>הליד שממתין הכי הרבה:</b> ${esc(oldest.name ?? "ללא שם")} — ${esc(oldest.phone ?? "")}` +
+      (wa ? ` <a href="${wa}">WhatsApp</a>` : ""));
+    if (uncontacted.length > 1) lines.push(`<i>ועוד ${uncontacted.length - 1} לידים פתוחים. שלחו /leads לכרטיסים.</i>`);
+  }
+
+  if (confirmed.length === 0 && pending.length === 0 && uncontacted.length === 0) {
+    lines.push("", "🎉 הכול נקי — אין פגישות פתוחות ואין לידים שממתינים לטיפול.");
+  }
+
+  lines.push("", "⚖️ <i>תזכורת: גלו עמלה/שיוך בהמלצה (§7b) · אישור ללקוח לפני פולואו-אפ שיווקי (§30A).</i>");
+  return lines.join(NL);
+}
+
 // True when the agenda has nothing actionable — the morning push skips it.
 export function agendaIsEmpty(rows: AgendaInput, nowMs: number): boolean {
   const today = israelDay(nowMs);

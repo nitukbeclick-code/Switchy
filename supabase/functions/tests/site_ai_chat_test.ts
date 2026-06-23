@@ -3,6 +3,8 @@
 //                          detectSwitchIntent
 //   • _shared/catalogue.ts — buildCitedCatalogueContext (citation markers,
 //                            grounded-only rows)
+// The handler's agent-routing + memory-merge behavior is covered separately in
+// site_ai_chat_agent_test.ts (which captures the Deno.serve handler).
 // No network, no env. Run from supabase/functions/:
 //   deno task test
 

@@ -2,7 +2,30 @@
 // out of index.ts so they can be unit-tested without booting the Deno.serve
 // entrypoint or importing the bundled snapshot (mirrors site-bill-analyzer/lib.ts
 // and whatsapp-webhook/intents.ts). No network, no env, no I/O.
+//
+// RANKING DRIFT FIX (2026-06): this file no longer carries its OWN scoring
+// formula. The flat additive scorePlan that used to live here has been replaced
+// by the single shared brain in ../_shared/scoring.ts (rankPlans), so the site
+// advisor, the app's recommendation_engine, and the WhatsApp/site agent all rank
+// plans IDENTICALLY for the same inputs. We keep this file's site-specific
+// responsibilities — untrusted-input validation (parseAnswers), the
+// catalogue-grounded candidate selection (pickCandidates) with its
+// provider-neutral tie-break + never-empty guarantee, the compact catalogue
+// prompt (buildCatalogueContext), and the model-writes-reasons-only savings math
+// (annualSaving) — but it adapts the site's Answers shape to the shared
+// MatchProfile and delegates the actual scoring/ordering to rankPlans.
 
+import {
+  annualSaving as sharedAnnualSaving,
+  type MatchProfile,
+  priorityFromId,
+  rankPlans,
+  type ScorablePlan,
+} from "../_shared/scoring.ts";
+
+// The site's catalogue row shape. A strict subset of the shared ScorablePlan
+// (so a Plan[] flows straight into rankPlans), kept here as the snapshot's own
+// type so index.ts and the tests don't need to import the richer shared type.
 export type Plan = {
   id?: string;
   cat?: string;
@@ -53,8 +76,10 @@ export function parseAnswers(raw: unknown): Answers {
   return { category, budget, priority, lines, abroad };
 }
 
-// Fisher–Yates in-place shuffle (used only to break score ties, see below).
-// Accepts an injectable RNG so tests can make the tie-break deterministic.
+// Fisher–Yates in-place shuffle. The shared rankPlans owns the production
+// tie-break now (a deterministic, seeded, provider-neutral shuffle); this stays
+// exported as a small, separately-testable utility (injectable RNG hook) and is
+// the same algorithm rankPlans uses internally.
 export function shuffle<T>(arr: T[], rnd: () => number = Math.random): T[] {
   for (let i = arr.length - 1; i > 0; i--) {
     const j = Math.floor(rnd() * (i + 1));
@@ -63,39 +88,48 @@ export function shuffle<T>(arr: T[], rnd: () => number = Math.random): T[] {
   return arr;
 }
 
-// The score for a plan given the user's answers. Depends ONLY on price + the
-// features the user asked for — NEVER on the provider (no brand weighting).
-export function scorePlan(p: Plan, ans: Answers): number {
-  let s = 0;
-  // Cheaper is better, scaled so price dominates a "price" priority.
-  s -= (p.price ?? 0) * (ans.priority === "price" ? 1.5 : 1);
-  if (ans.abroad && p.hasAbroad) s += 40;
-  if (ans.priority === "abroad" && p.hasAbroad) s += 40;
-  if (ans.priority === "5g" && p.is5G) s += 30;
-  if (ans.priority === "noCommit" && p.noCommit) s += 30;
-  // Budget fit: reward plans at/under budget, lightly penalise overruns.
-  if (ans.budget != null) s += p.price! <= ans.budget ? 25 : -(p.price! - ans.budget);
-  return s;
+// Adapt the site quiz's Answers into the shared MatchProfile so the advisor
+// scores through the same brain as the app + WhatsApp. The site's `priority` id
+// ("price"/"data"/"abroad"/"noCommit"/"5g"/"balanced") is normalized to a shared
+// MatchPriority via priorityFromId (the single mapping every surface uses). The
+// quiz collects one money figure, so budget is treated as BOTH the desired ceiling
+// AND the current monthly bill (what annualSaving keys off). wants5G/wantsNoCommit/
+// wantsAbroad surface the needs-met bonuses for the matching priority/toggle.
+export function toProfile(ans: Answers): MatchProfile {
+  return {
+    category: ans.category,
+    currentBill: ans.budget ?? undefined,
+    budget: ans.budget ?? undefined,
+    priority: priorityFromId(ans.priority),
+    lines: ans.lines,
+    wants5G: ans.priority === "5g",
+    wantsAbroad: ans.abroad || ans.priority === "abroad",
+    wantsNoCommit: ans.priority === "noCommit",
+  };
 }
 
 // Rank the catalogue for these answers and keep the top handful per the user's
-// category (or, if unset, the cheapest across all). This is what bounds the
-// model: it picks ONLY from these rows, so it can't invent plans/prices.
+// category (or, if unset, across all). This is what bounds the model: it picks
+// ONLY from these rows, so it can't invent plans/prices.
 //
-// PROVIDER NEUTRALITY: the score (scorePlan) never looks at the provider. When two
-// plans score equally we must NOT let snapshot order decide (that would silently,
-// persistently favour whichever brand happens to sort first). We shuffle FIRST so
-// the stable sort preserves a RANDOM order within each equal-score group — higher
-// scores still win, only genuine ties are randomized. (E-E-A-T: no hidden bias.)
-export function pickCandidates(plans: Plan[], ans: Answers, rnd: () => number = Math.random): Plan[] {
-  const inScope = plans.filter((p) => {
-    if (typeof p.price !== "number" || !p.id) return false;
-    if (ans.category && p.cat !== ans.category) return false;
-    return true;
+// SCORING is delegated to the shared rankPlans (../_shared/scoring.ts) — the ONE
+// formula every surface uses, so the advisor's order matches the app + WhatsApp.
+// rankPlans already guarantees PROVIDER NEUTRALITY (its score never reads the
+// provider) and breaks score ties with a deterministic, seeded, provider-free
+// shuffle: higher scores always win, genuine ties are reproducibly randomized
+// (no brand gets a structural edge, and the same inputs rank the same way on
+// every surface). We pre-filter to priced rows that have a stable id — the
+// advisor needs `id` to validate the model's planIds against the snapshot, which
+// is a site-specific requirement rankPlans (which only needs a finite price)
+// doesn't impose. An injectable RNG stays available for deterministic tests.
+export function pickCandidates(plans: Plan[], ans: Answers, rnd?: () => number): Plan[] {
+  const idPriced = plans.filter((p) => typeof p.price === "number" && !!p.id);
+  const profile = toProfile(ans);
+  const ranked = rankPlans(idPriced as ScorablePlan[], profile, {
+    limit: CANDIDATES_PER_CAT,
+    rnd,
   });
-  const scored = shuffle(inScope.map((p) => ({ p, s: scorePlan(p, ans) })), rnd);
-  scored.sort((a, b) => b.s - a.s);
-  return scored.map((x) => x.p).slice(0, CANDIDATES_PER_CAT);
+  return ranked.map((m) => m.plan as Plan);
 }
 
 // Compact pipe-delimited rows — small prompt, only real data, with the stable id
@@ -113,11 +147,13 @@ export function buildCatalogueContext(candidates: Plan[]): string {
 
 // annualSaving must be plausible and snapshot-derived: only computed when the
 // user gave a monthly budget (treated as their current bill) and the plan is
-// monthly. Otherwise omitted (null). Never client-supplied.
+// monthly. Otherwise OMITTED — index.ts only attaches the field when this returns
+// non-null, so a recommendation never carries a fabricated/zero saving. The math
+// itself is the shared sharedAnnualSaving ((bill - price) * 12, clamped ≥ 0, real
+// monthly bill only), so the figure matches the app + agent; we map its "no real
+// saving" sentinel (0) back to null to keep this site contract. Never client-supplied.
 export function annualSaving(plan: Plan, ans: Answers): number | null {
   if (ans.budget == null) return null;
-  if (plan.priceUnit && plan.priceUnit !== "month") return null;
-  const monthly = ans.budget - (plan.price ?? 0);
-  if (monthly <= 0) return null;
-  return Math.round(monthly * 12);
+  const saving = sharedAnnualSaving(plan as ScorablePlan, ans.budget);
+  return saving > 0 ? saving : null;
 }

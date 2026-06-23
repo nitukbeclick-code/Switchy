@@ -17,11 +17,27 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 // Hebrew slang is fine; only clear spam/scam/harassment/hate/sexual/ad violations
 // are flagged. Fail-soft AND fail-OPEN: if every classifier errors we do NOT flag.
 //
+// Two-layer screening (both honest, both fail-soft):
+//   1. heuristicScreen() — a DETERMINISTIC, high-precision Hebrew/English pre-screen
+//      for the unambiguous spam/scam patterns an LLM outage would otherwise let
+//      through (link+phone harvesting, money/crypto/loan-scam phrasing, "buy
+//      followers", grossly repetitive spam). Tuned for precision, not recall: it
+//      only fires on combinations that are spam with near-certainty, so it never
+//      hides ordinary frustration or provider criticism. A user-report signal
+//      (community_reports rows on the same id) lowers its bar slightly.
+//   2. the LLM classifier — the nuanced judge. Runs even when the heuristic stays
+//      silent. A heuristic hit pre-flags immediately AND is recorded; the LLM can
+//      still raise severity.
+//
+// Every flag (heuristic or LLM) appends ONE row to public.security_audit_log
+// (service-role only; RLS-locked) so moderation actions are auditable. We FLAG/
+// HOLD (is_flagged + a Hebrew note for a human reviewer) — never hard-delete.
+//
 // Deploy: supabase functions deploy community-moderate --no-verify-jwt
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { firstEnv, resolveCfgCached, safeEqual } from "../_shared/config.ts";
-import { patchCount } from "../_shared/db.ts";
+import { fetchRows, insertRow, patchCount } from "../_shared/db.ts";
 import { esc, NL, sendTelegram } from "../_shared/telegram.ts";
 import { jlog } from "../_shared/log.ts";
 
@@ -37,6 +53,7 @@ type Verdict = {
   flag: boolean;
   reason: string;
   severity: "low" | "med" | "high";
+  source?: "heuristic" | "gemini" | "groq"; // which layer produced the verdict (for audit)
 };
 
 // Gemini ids Google ships on the free tier, tried in order (a 404 just means
@@ -56,6 +73,100 @@ function json(body: unknown, status = 200): Response {
 function clip(v: unknown, n = MAX_BODY_LEN): string {
   const s = String(v ?? "").trim().replace(/\s+/g, " ");
   return s.length > n ? s.slice(0, n - 1) + "…" : s;
+}
+
+// ── Deterministic Hebrew/English spam-scam pre-screen ───────────────────────────
+// High PRECISION, low recall: each signal below is a thing that, on its own, is
+// almost never present in a genuine "I'm frustrated with my provider" post but is
+// a hallmark of spam/scam. We require a COMBINATION (or one extreme signal) before
+// flagging, so honest slang/criticism/venting is never caught. This is the honest
+// safety net for an LLM outage — it is NOT a substitute for the nuanced classifier.
+//
+// Hebrew-aware: scam phrasing in Hebrew (הלוואה מיידית, רווח מובטח, העבר כסף),
+// link+phone harvesting, crypto/forex pitches, follower/like selling, and grossly
+// repetitive character spam. Returns a Verdict (source:"heuristic") or null.
+
+// URL-ish: http(s), www., or bare domain.tld (incl. common Israeli TLDs). No `g`
+// flag — these are used only with .test() (a global regex makes .test() stateful).
+const RE_URL = /\b(?:https?:\/\/|www\.)\S+|\b[a-z0-9-]+\.(?:com|net|co|io|me|ru|cn|xyz|top|link|click|info|biz|online|site|store|il)\b/i;
+// A phone number being solicited (Israeli mobile or generic 9-15 digit run with separators).
+const RE_PHONE = /(?:\+?972|0)?5\d[-\s]?\d{3}[-\s]?\d{4}|\b\d[\d\s().-]{7,}\d\b/;
+// WhatsApp / Telegram contact handles, a classic spam "DM me" CTA.
+const RE_CONTACT_HANDLE = /\b(?:wa\.me|t\.me|telegram\.me|whatsapp)\b|@[A-Za-z0-9_]{4,}/i;
+
+// Money / crypto / "get rich" / loan-shark phrasing in Hebrew + English. Each is a
+// scam tell in a telecom community; none appears in ordinary plan-comparison talk.
+const SCAM_PHRASES: RegExp[] = [
+  /\b(?:bitcoin|btc|ethereum|forex|crypto|invest(?:ment)?|trading|binary option)\b/i,
+  /רווח\s*מובטח|הכנסה\s*פסיבית|הרווח[יו]?\s*(?:אלפים|כסף|מהבית)|תרווי?חו?\s*כסף/,
+  /הלוואה\s*(?:מיידית|מהירה|ללא)|אשראי\s*מיידי|כסף\s*מהיר|הלוואות\b/,
+  /העבר[ות]?\s*(?:כסף|תשלום)|תשלח[יו]?\s*כסף|bit\b|פייבוקס|paybox/i,
+  /\b(?:casino|gambling|בטים|הימור(?:ים)?|קזינו)\b/i,
+];
+// "Buy followers / likes / cheap traffic" — pure spam, never a real telecom post.
+const SPAM_OFFERS: RegExp[] = [
+  /\b(?:followers?|likes?|subscribers?)\b.*\b(?:cheap|buy|sale|\$|usd)\b/i,
+  /(?:עוקבים|לייקים|מנויים)\s*(?:בזול|למכירה|זול)/,
+  /\b(?:viagra|cialis|loan|earn \$|make money|work from home)\b/i,
+];
+
+// True when `s` repeats one character (e.g. "!!!!!!!!!!") or one short token to a
+// degree no human composes — a cheap spam/flood tell.
+function isGrosslyRepetitive(s: string): boolean {
+  if (/(.)\1{9,}/.test(s)) return true; // 10+ of the same char in a row
+  const tokens = s.toLowerCase().split(/\s+/).filter(Boolean);
+  if (tokens.length >= 8) {
+    const top = new Map<string, number>();
+    for (const t of tokens) top.set(t, (top.get(t) ?? 0) + 1);
+    const max = Math.max(...top.values());
+    if (max / tokens.length >= 0.6) return true; // one token is ≥60% of the post
+  }
+  return false;
+}
+
+// reportBoost = true relaxes the threshold by one signal (real users already
+// flagged this row, so a single strong signal is enough to hold it for review).
+export function heuristicScreen(body: string, reportBoost = false): Verdict | null {
+  const s = String(body ?? "");
+  if (!s.trim()) return null;
+
+  const hasUrl = RE_URL.test(s);
+  const hasPhone = RE_PHONE.test(s);
+  const hasHandle = RE_CONTACT_HANDLE.test(s);
+  const scam = SCAM_PHRASES.some((re) => re.test(s));
+  const offer = SPAM_OFFERS.some((re) => re.test(s));
+  const repetitive = isGrosslyRepetitive(s);
+  const contactCTA = hasPhone || hasHandle;
+
+  // Score the unambiguous spam/scam signals. A real frustrated-customer post has
+  // ~none of these; spam stacks several. Threshold is intentionally high.
+  let score = 0;
+  if (offer) score += 2;                 // "buy followers cheap" is spam on its own
+  if (scam && (hasUrl || contactCTA)) score += 2; // scam pitch + a way to contact = scam
+  else if (scam) score += 1;
+  if (hasUrl && contactCTA) score += 2;  // link + phone/handle harvesting = spam combo
+  else if (hasUrl) score += 1;
+  if (repetitive) score += 1;
+
+  const threshold = reportBoost ? 1 : 2;
+  if (score < threshold) return null;
+
+  const reason = offer
+    ? "פרסום/ספאם מסחרי (מכירת שירותים לא רלוונטיים)"
+    : scam
+    ? "חשד להונאה/נוכלות כספית"
+    : "ספאם (קישורים/פרטי קשר חוזרים)";
+  const severity: Verdict["severity"] = score >= 4 || scam ? "high" : "med";
+  return { flag: true, reason, severity, source: "heuristic" };
+}
+
+// How many user reports already exist for this row. null/0 ⇒ none (or lookup
+// failed — fail-soft: we simply don't apply the report boost). Bounded query.
+async function reportCount(targetType: "post" | "reply", targetId: string): Promise<number> {
+  const rows = await fetchRows<{ id: string }>(
+    `/rest/v1/community_reports?target_type=eq.${targetType}&target_id=eq.${encodeURIComponent(targetId)}&select=id&limit=20`,
+  );
+  return rows?.length ?? 0;
 }
 
 const SYSTEM_PROMPT = `את/ה מנהל/ת קהילה אוטומטי/ת באפליקציה ישראלית להשוואת מסלולי תקשורת (סלולר/אינטרנט/טלוויזיה).
@@ -191,6 +302,52 @@ async function classify(geminiKey: string, groqKey: string, userText: string): P
   return null;
 }
 
+// Pick the verdict to ACT on from the (optional) heuristic hit + (optional) LLM
+// verdict. We flag if EITHER fires; severity is the higher of the two so an LLM
+// "high" is never downgraded by a heuristic "med". The reason prefers the LLM
+// (nuanced, Hebrew) but falls back to the heuristic. `source` records the basis.
+function combineVerdicts(heuristic: Verdict | null, llm: Verdict | null): Verdict | null {
+  const sev = (v: Verdict | null) => (v?.flag ? (v.severity === "high" ? 3 : v.severity === "med" ? 2 : 1) : 0);
+  const hFlag = !!heuristic?.flag;
+  const lFlag = !!llm?.flag;
+  if (!hFlag && !lFlag) return null;
+  const severity = sev(heuristic) >= sev(llm) ? heuristic!.severity : llm!.severity;
+  // Prefer the LLM's Hebrew reason when it flagged; else the heuristic's.
+  const reason = (lFlag ? llm!.reason : heuristic!.reason) || "הפרת כללי הקהילה";
+  const source: Verdict["source"] = hFlag && lFlag ? (llm!.source ?? "groq") : hFlag ? "heuristic" : (llm!.source ?? "groq");
+  return { flag: true, reason, severity, source };
+}
+
+// Append ONE bounded, PII-light row to public.security_audit_log for a flag. The
+// service-role key bypasses RLS on that table (see audit-observability-2026-06.sql);
+// best-effort by contract — a logging failure must NEVER fail moderation.
+async function auditModeration(
+  table: string,
+  rowId: string,
+  record: Record<string, unknown>,
+  verdict: Verdict,
+  reports: number,
+): Promise<void> {
+  try {
+    await insertRow("security_audit_log", {
+      user_id: typeof record.user_id === "string" ? record.user_id : null,
+      event: "community_content_flagged",
+      detail: {
+        table,
+        row_id: rowId,
+        severity: verdict.severity,
+        source: verdict.source ?? "llm",
+        reason: clip(verdict.reason, 200),
+        reports,                         // how many user reports preceded the flag
+        author: clip(record.author ?? "", 60),
+        preview: clip(record.body, 160), // PII-light snippet for the reviewer
+      },
+    });
+  } catch (e) {
+    jlog({ at: "community-moderate.audit", ok: false, error: String(e) });
+  }
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method !== "POST") return json({ error: "method not allowed" }, 405);
 
@@ -222,22 +379,35 @@ Deno.serve(async (req: Request) => {
   const text = clip(record.body, MAX_BODY_LEN);
   if (!rowId || !text) return json({ ok: true, skipped: "empty" });
 
+  // Layer 1 — deterministic pre-screen. If real users already reported this row,
+  // relax the heuristic threshold by one signal (reportBoost). The report lookup
+  // is fail-soft (0 on any error), so it never blocks moderation.
+  const targetType = table === "community_posts" ? "post" : "reply";
+  const reports = await reportCount(targetType, rowId);
+  const heuristic = heuristicScreen(text, reports > 0);
+
+  // Layer 2 — the nuanced LLM classifier (Gemini → Groq), when configured. It runs
+  // even on a heuristic hit so it can RAISE severity; it never lowers it.
   const geminiKey = cfg.gemini || firstEnv(["GEMINI_API_KEY", "GOOGLE_AI_KEY"]);
   const groqKey = firstEnv(["GROQ_API_KEY"]);
-  if (!geminiKey && !groqKey) {
-    // No classifier configured — fail-open (never flag) rather than erroring.
+  let llm: Verdict | null = null;
+  if (geminiKey || groqKey) {
+    llm = await classify(geminiKey, groqKey, buildClassifierInput(record));
+  } else if (!heuristic) {
+    // No classifier AND no deterministic hit — fail-open (never flag).
     jlog({ at: "community-moderate", ok: true, skipped: "no-classifier" });
     return json({ ok: true, skipped: "no-classifier" });
   }
 
-  const verdict = await classify(geminiKey, groqKey, buildClassifierInput(record));
-
-  // Fail-OPEN: a null verdict (every classifier errored) must NOT flag content.
+  // Fail-OPEN: with no heuristic hit, a null/false LLM verdict (or model outage)
+  // must NOT flag content. The heuristic only ever raises a high-precision flag.
+  const verdict = combineVerdicts(heuristic, llm);
   if (!verdict || !verdict.flag) {
     return json({ ok: true, flagged: false });
   }
 
-  // Flag the offending row — service role, scoped to the exact id. Never delete.
+  // Flag the offending row — service role, scoped to the exact id. Never delete;
+  // a human still reviews everything held here (is_flagged + a Hebrew note).
   const n = await patchCount(
     `/rest/v1/${table}?id=eq.${encodeURIComponent(rowId)}`,
     { is_flagged: true, moderation_note: verdict.reason, flagged_at: new Date().toISOString() },
@@ -247,7 +417,10 @@ Deno.serve(async (req: Request) => {
     jlog({ at: "community-moderate", ok: false, table, rowId, error: "patch matched 0 rows" });
     return json({ ok: true, flagged: false, note: "no-match" });
   }
-  jlog({ at: "community-moderate", ok: true, table, rowId, severity: verdict.severity });
+  jlog({ at: "community-moderate", ok: true, table, rowId, severity: verdict.severity, source: verdict.source, reports });
+
+  // Audit trail: one PII-light row per flag (service-role only, RLS-locked).
+  await auditModeration(table, rowId, record, verdict, reports);
 
   // High-severity violations get a short Hebrew team ping so a human can review
   // fast. Best-effort: a Telegram failure must not fail the moderation result.
@@ -256,7 +429,8 @@ Deno.serve(async (req: Request) => {
     const reason = esc(clip(verdict.reason, 120));
     const snippet = esc(clip(text, 200));
     const kind = table === "community_posts" ? "פוסט" : "תגובה";
-    const msg = `🚩 <b>תוכן קהילה סומן (חמור)</b> · ${kind}${NL}מאת ${author}${NL}סיבה: ${reason}${NL}${snippet}`;
+    const reportLine = reports > 0 ? `${NL}דיווחי משתמשים: ${reports}` : "";
+    const msg = `🚩 <b>תוכן קהילה סומן (חמור)</b> · ${kind}${NL}מאת ${author}${NL}סיבה: ${reason}${reportLine}${NL}${snippet}`;
     const tg = await sendTelegram(cfg, msg);
     if (!tg.ok) jlog({ at: "community-moderate", ok: false, error: "telegram alert failed", detail: tg.error });
   }

@@ -22,7 +22,6 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { fetchRows, serviceFetch } from "../_shared/db.ts";
 import { jlog } from "../_shared/log.ts";
 import {
-  buildCatalogueContext,
   buildRecommendBlock,
   buildSuggestions,
   catalogueProviders,
@@ -37,8 +36,6 @@ import {
   callGeminiVision,
   type ChatTurn,
   extractJson,
-  generateReply,
-  SYSTEM_PROMPT_HEADER,
   VISION_PROMPT,
 } from "../_shared/ai.ts";
 import {
@@ -57,6 +54,8 @@ import {
   parseContext,
 } from "./context.ts";
 import { buildSavingHint, buildTopicReply } from "./flows.ts";
+import { captureAiLead } from "../_shared/leads.ts";
+import { type AgentRunnerDeps, runWhatsappAgent } from "./agent_runner.ts";
 
 const VERIFY_TOKEN = Deno.env.get("WHATSAPP_VERIFY_TOKEN") ?? "";
 const APP_SECRET = Deno.env.get("WHATSAPP_APP_SECRET") ?? "";
@@ -403,7 +402,12 @@ async function handleOptOut(contact: Row, inText: string): Promise<void> {
   jlog({ at: "wa.optout", phone, ok: true });
 }
 
-async function handleHandoff(contact: Row, inText: string, history: ChatTurn[]): Promise<string> {
+// Create the hand-off lead (Telegram rep card via the leads trigger) and flip the
+// contact to handed_off. Returns whether the lead landed. Shared by the explicit
+// handoff intent AND the agent's escalate_to_human tool, so both paths behave
+// identically (one source of truth for "raise a human"). This is a SERVICE action
+// — no marketing consent is required (the person asked for a human).
+async function createHandoffLead(contact: Row, inText: string, history: ChatTurn[]): Promise<boolean> {
   const transcript = history
     .slice(-4)
     .map((h) => `${h.role === "user" ? "לקוח" : "בוט"}: ${h.text}`)
@@ -422,38 +426,75 @@ async function handleHandoff(contact: Row, inText: string, history: ChatTurn[]):
     status: "handed_off",
     ...(leadId ? { lead_id: leadId } : {}),
   });
-  if (!created) {
+  return !!created;
+}
+
+async function handleHandoff(contact: Row, inText: string, history: ChatTurn[]): Promise<string> {
+  const ok = await createHandoffLead(contact, inText, history);
+  if (!ok) {
     // Insert blocked (e.g. per-phone rate limit) — still reassure the customer.
     return "אני כאן לכל שאלה 🙂 רשמתי שתרצה/י לדבר עם נציג — ננסה לחזור אליך בהקדם. בינתיים אפשר לשאול אותי כל דבר על המסלולים.";
   }
   return "מעולה 🙌 נציג אנושי שלנו יחזור אליך כאן בוואטסאפ בהקדם. בינתיים אפשר להמשיך לשאול אותי כל דבר על המסלולים והמחירים.";
 }
 
-async function handleBill(mediaId: string, aiKeys: AiKeys): Promise<string> {
+// A bill photo, read by Gemini Vision into grounded facts. Returns the extracted
+// {provider, monthly, category} (the agent's analyze_bill turns it into cheaper
+// suggestions) plus a deterministic `fallbackReply` used verbatim when the agent
+// path is unavailable (no Gemini key, image unreadable, or amount not found).
+// `hint` is null only when we couldn't read a usable monthly amount.
+type BillExtract = {
+  hint: { provider?: string; monthly: number; category?: string; imageId?: string } | null;
+  fallbackReply: string;
+};
+
+async function extractBillHint(mediaId: string, aiKeys: AiKeys): Promise<BillExtract> {
   if (!aiKeys.gemini) {
-    return "אפשר לכתוב לי מה הספק הנוכחי והסכום החודשי, ואמליץ על מסלולים זולים יותר 🙂";
+    return {
+      hint: null,
+      fallbackReply: "אפשר לכתוב לי מה הספק הנוכחי והסכום החודשי, ואמליץ על מסלולים זולים יותר 🙂",
+    };
   }
   const plans = await getPlans();
   const providers = catalogueProviders(plans);
   const img = await downloadMedia(mediaId);
   if (!img) {
-    return "לא הצלחתי לקרוא את התמונה 🙏 אפשר לשלוח שוב, או פשוט לכתוב לי מה הספק והסכום החודשי?";
+    return {
+      hint: null,
+      fallbackReply: "לא הצלחתי לקרוא את התמונה 🙏 אפשר לשלוח שוב, או פשוט לכתוב לי מה הספק והסכום החודשי?",
+    };
   }
   let out = "";
   try {
     out = await callGeminiVision(aiKeys.gemini, VISION_PROMPT.replace("__PROVIDERS__", providers.join(", ")), img);
   } catch (e) {
     jlog({ at: "wa.bill", ok: false, error: String(e) });
-    return "לא הצלחתי לנתח את החשבון כרגע 🙏 אפשר לנסות שוב, או לכתוב לי את הספק והסכום החודשי?";
+    return {
+      hint: null,
+      fallbackReply: "לא הצלחתי לנתח את החשבון כרגע 🙏 אפשר לנסות שוב, או לכתוב לי את הספק והסכום החודשי?",
+    };
   }
   const ex = extractJson(out);
   const monthly = Number(ex?.monthly);
   if (!ex || !(monthly > 0)) {
-    return "לא הצלחתי לקרוא את הסכום מהחשבון 🙏 אפשר לשלוח תמונה ברורה יותר, או לכתוב לי את הספק והסכום החודשי?";
+    return {
+      hint: null,
+      fallbackReply: "לא הצלחתי לקרוא את הסכום מהחשבון 🙏 אפשר לשלוח תמונה ברורה יותר, או לכתוב לי את הספק והסכום החודשי?",
+    };
   }
   const category = normalizeCategory(String(ex.category ?? ""));
   const provider = normalizeProvider(String(ex.provider ?? ""), providers);
   const spend = Math.round(Math.min(5000, Math.max(0, monthly)));
+  return {
+    hint: { provider: provider || undefined, monthly: spend, category: category || undefined, imageId: mediaId },
+    fallbackReply: buildBillFallbackReply(plans, provider, spend, category),
+  };
+}
+
+// Deterministic, grounded bill reply (the old handleBill body) — used as the
+// agent's templateFallback for the bill flow so the customer always gets a real,
+// catalogue-backed answer even when the LLM is unavailable.
+function buildBillFallbackReply(plans: Plan[], provider: string, spend: number, category: string): string {
   const sugg = buildSuggestions(plans, category, spend, 3);
   const head = `קראתי את החשבון 📄 ${provider ? provider + ", " : ""}סביב ₪${spend} לחודש${category ? ` (${CATEGORY_HE[category] ?? category})` : ""}.`;
   if (!sugg.length) {
@@ -463,30 +504,26 @@ async function handleBill(mediaId: string, aiKeys: AiKeys): Promise<string> {
   return `${head}\nכמה מסלולים זולים יותר:\n${lines.join("\n")}\n\nרוצה שאחבר אותך לנציג שיסדר את המעבר?`;
 }
 
-async function handleChat(
-  message: string,
-  history: ChatTurn[],
-  aiKeys: AiKeys,
-  recommend: boolean,
-  ctx: ConvContext = {},
-): Promise<string> {
-  const plans = await getPlans();
-  const system = SYSTEM_PROMPT_HEADER + buildCatalogueContext(plans);
-  let userMsg = message;
-  if (recommend) {
-    // Ground the advisor turn in a TIGHT candidate block built from the context
-    // we've gathered across turns (category/budget/abroad) so the model picks
-    // FROM real, relevant rows instead of scanning the whole catalogue. Falls
-    // back to the generic nudge when we have no hints yet.
-    const block = buildRecommendBlock(plans, { category: ctx.category, budget: ctx.budget, abroad: ctx.abroad }, 6);
-    const grounding = block
-      ? `\n\nמסלולים מתאימים מהקטלוג (בחר/י מתוכם בלבד):\n${block}`
-      : "";
-    userMsg =
-      `${message}\n\n(המשתמש/ת מבקש/ת המלצה — הצע/י עד 3 מסלולים ספציפיים מהרשימה עם סיבה קצרה לכל אחד, ושאל/י שאלה אחת קצרה לדיוק.)${grounding}`;
+// The DETERMINISTIC chat fallback — the agent's last-resort templateFallback for
+// a free-text turn. The agent already tried the Gemini tool loop AND the no-tools
+// grounded text chain (Gemini→Groq→OpenRouter) before reaching here, so this does
+// NOT make another LLM call: it returns a grounded, catalogue-backed nudge built
+// from the context we've gathered (a real recommend block when we know the
+// category, else the generic FALLBACK_REPLY). Never fabricates a plan/price.
+function buildChatFallback(plans: Plan[], recommend: boolean, ctx: ConvContext): string {
+  if (recommend || ctx.category) {
+    const block = buildRecommendBlock(
+      plans,
+      { category: ctx.category, budget: ctx.budget, abroad: ctx.abroad },
+      3,
+    );
+    if (block) {
+      const heCat = ctx.category ? (CATEGORY_HE[ctx.category] ?? ctx.category) : "";
+      const head = heCat ? `כמה מסלולי ${heCat} מתאימים מהקטלוג שלנו 👇` : "כמה מסלולים מתאימים מהקטלוג שלנו 👇";
+      return `${head}\n${block}\n\nרוצה שאמליץ לפי תקציב מסוים, או אחבר אותך לנציג שיסדר את המעבר?`;
+    }
   }
-  const reply = await generateReply(aiKeys, system, history, userMsg || "שלום");
-  return reply || FALLBACK_REPLY;
+  return FALLBACK_REPLY;
 }
 
 // ── per-message orchestration ────────────────────────────────────────────────
@@ -595,10 +632,64 @@ async function handleMessage(m: Row, profileName: string | undefined, aiKeys: Ai
   // When true, the reply is sent with the 3-button quick-reply menu instead of
   // plain text (welcome, or any moment we want to re-offer the main actions).
   let withMenu = false;
+  // When true, runWhatsappAgent already persisted ai_state (transcript + slots +
+  // tool-call history nested under ai_state.agent). Step 6 must NOT then overwrite
+  // ai_state with the bare top-level slots — that would drop the agent envelope.
+  // For non-agent turns (welcome / button prompts / explicit handoff) this stays
+  // false and step 6 writes mergedCtx as before.
+  let agentSaved = false;
+
+  // The agent's side-effect sinks (audit / consent-gated lead / human escalation).
+  // Built once per message; only used when we route a turn through runWhatsappAgent.
+  // Every sink is best-effort and reuses the webhook's existing honest paths:
+  //   • captureLead → _shared/leads.ts captureAiLead (consent===true gate + §7b)
+  //   • escalate    → createHandoffLead (service action: lead + status=handed_off)
+  const agentDeps: AgentRunnerDeps = {
+    conversationId: convo ? String(convo.id) : null,
+    contactId: contact ? String(contact.id) : null,
+    logCrmEvent: (ev) =>
+      logCrmEvent({
+        conversationId: convo ? String(convo.id) : null,
+        contactId: contact ? String(contact.id) : null,
+        actor: ev.actor,
+        event: ev.event,
+        preview: ev.preview,
+      }),
+    logSecurityEvent: (event, detail) => logSecurityEvent(event, detail as Row),
+    captureLead: (lead) => captureAiLead(lead),
+    escalate: (reason) =>
+      contact ? createHandoffLead(contact, reason || "המשתמש ביקש נציג", history) : false,
+  };
+
   if (type === "image") {
     intent = "bill";
     const mediaId = (m as Row & { image?: { id?: string } }).image?.id;
-    reply = mediaId ? await handleBill(String(mediaId), aiKeys) : "שלחת תמונה אבל לא הצלחתי לקרוא אותה — אפשר לשלוח שוב?";
+    if (!mediaId) {
+      reply = "שלחת תמונה אבל לא הצלחתי לקרוא אותה — אפשר לשלוח שוב?";
+    } else {
+      // Read the bill with Vision into grounded facts, then let the AGENT turn
+      // them into cheaper suggestions (analyze_bill) so a bill photo gets the
+      // same tool-using treatment as text. The deterministic suggestion builder
+      // is the agent's templateFallback (used when the LLM is unavailable, or
+      // when Vision couldn't read an amount — then we have no hint to pass).
+      const bill = await extractBillHint(String(mediaId), aiKeys);
+      if (!bill.hint) {
+        reply = bill.fallbackReply; // no usable amount → deterministic ask
+      } else {
+        const r = await runWhatsappAgent({
+          sessionKey: convo ? String(convo.id) : "",
+          message: text || 'צירפתי צילום של החשבון שלי, אפשר לנתח ולמצוא מסלול זול יותר?',
+          plans: await getPlans(),
+          keys: aiKeys,
+          deps: agentDeps,
+          billHint: bill.hint,
+          templateFallback: () => bill.fallbackReply,
+          slotPatch: bill.hint.category ? { category: bill.hint.category } : undefined,
+        });
+        reply = r.reply || bill.fallbackReply;
+        if (convo) agentSaved = true;
+      }
+    }
   } else if (buttonId) {
     // Inbound quick-reply tap → route by the button id.
     if (buttonId === BTN_HUMAN) {
@@ -627,33 +718,56 @@ async function handleMessage(m: Row, profileName: string | undefined, aiKeys: Ai
     mergedCtx = mergeContext(mergedCtx, slots);
     intent = classifyTextIntent(t);
     if (intent === "human") {
+      // An explicit "I want a human" stays a deterministic service action — we
+      // don't need an LLM round-trip to honour it (create the lead, reassure).
       reply = contact ? await handleHandoff(contact, t, history) : FALLBACK_REPLY;
     } else {
-      // Effective topic: this message's own topic, or — when it's a terse
-      // continuation (a "וכמה?" follow-up OR a slot-only answer like "עד 40")
-      // — the topic we were on. Lets a budget reply continue a compare/recommend
-      // thread instead of dead-ending into generic chat.
+      // Effective topic for THIS turn (this message's topic, or a continuation of
+      // the prior thread) — used both to remember the thread and to build the
+      // deterministic templateFallback the agent falls back to.
       const topic = effectiveTopic(t, slots, priorCtx.topic);
-      // Templated, fully-grounded answer for the common telecom asks
-      // (switching steps, roaming, compare, cheapest, coverage, cancel).
-      const templated = topic
-        ? buildTopicReply(topic, await getPlans(), { category: mergedCtx.category, budget: mergedCtx.budget })
-        : null;
-      if (templated && topic) {
-        // Remember the topic we just answered so the next terse follow-up
-        // ("וכמה?", "וזה כולל חו״ל?") stays on the same thread. Direct assign
-        // (not mergeContext) so the per-turn `turns` counter isn't double-bumped.
+      if (topic) {
         mergedCtx.topic = topic;
         intent = topic === "switch" || topic === "cancel" || topic === "coverage" ? "qa" : "recommend";
-        // For compare/cheapest with a known budget, append a grounded saving
-        // hint (real cheaper rows + annual saving) — never a promised figure.
-        const hint = (topic === "compare" || topic === "cheapest")
-          ? buildSavingHint(await getPlans(), mergedCtx.category, mergedCtx.budget)
-          : "";
-        reply = hint ? `${templated}\n\n${hint}` : templated;
-      } else {
-        reply = await handleChat(t, history, aiKeys, intent === "recommend", mergedCtx);
+      } else if (intent === "recommend") {
+        // keep intent
       }
+      const plans = await getPlans();
+      // The deterministic, fully-grounded fallback: a templated topic answer
+      // (switch/roaming/compare/cheapest/coverage/cancel) enriched with a real
+      // saving hint when we know the budget, else a grounded recommend block.
+      const templateFallback = (): string => {
+        const templated = topic
+          ? buildTopicReply(topic, plans, { category: mergedCtx.category, budget: mergedCtx.budget })
+          : null;
+        if (templated && topic) {
+          const hint = (topic === "compare" || topic === "cheapest")
+            ? buildSavingHint(plans, mergedCtx.category, mergedCtx.budget)
+            : "";
+          return hint ? `${templated}\n\n${hint}` : templated;
+        }
+        return buildChatFallback(plans, intent === "recommend", mergedCtx);
+      };
+      // PRIMARY path: the shared tool-using agent. It recommends from the
+      // catalogue, captures consent-gated leads (§7b first), books callbacks,
+      // and escalates — all via tools — then degrades to the templateFallback
+      // above and finally a hard fallback, so the customer always gets a reply.
+      const r = await runWhatsappAgent({
+        sessionKey: convo ? String(convo.id) : "",
+        message: t,
+        plans,
+        keys: aiKeys,
+        deps: agentDeps,
+        templateFallback,
+        slotPatch: {
+          ...(mergedCtx.category ? { category: mergedCtx.category } : {}),
+          ...(mergedCtx.budget ? { budget: mergedCtx.budget } : {}),
+          ...(mergedCtx.abroad ? { abroad: mergedCtx.abroad } : {}),
+          ...(mergedCtx.topic ? { topic: mergedCtx.topic } : {}),
+        },
+      });
+      reply = r.reply || templateFallback();
+      if (convo) agentSaved = true;
     }
   }
 
@@ -687,7 +801,11 @@ async function handleMessage(m: Row, profileName: string | undefined, aiKeys: Ai
       last_message_at: now,
       // Persist the multi-turn memory (last category/budget/abroad/topic) so the
       // next inbound continues the thread. Stored in the reserved ai_state jsonb.
-      ai_state: mergedCtx as Row,
+      // SKIP when the agent already saved ai_state this turn — its envelope nests
+      // the transcript + tool-call history under ai_state.agent, and overwriting
+      // with the bare slots here would drop it (the agent's save already carried
+      // the same merged top-level slots forward).
+      ...(agentSaved ? {} : { ai_state: mergedCtx as Row }),
       ...(intent === "human" ? { status: "human" } : {}),
     });
     await pgPatch("whatsapp_contacts", `id=eq.${contact!.id}`, { last_message_at: now });

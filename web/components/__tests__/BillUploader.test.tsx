@@ -134,10 +134,12 @@ describe("BillUploader — readable result", () => {
     expect(screen.getByText("₪120")).toBeInTheDocument();
     expect(screen.getByText("סלולר")).toBeInTheDocument();
 
-    // Real cheaper plan + its saving.
+    // Real cheaper plan + its saving. The figure now appears in BOTH the deepened
+    // forensics "best alternative" card and the cheaper-plans list, so assert it is
+    // present (≥1) rather than uniquely once.
     expect(screen.getByText("מסלול חוסך")).toBeInTheDocument();
-    expect(screen.getByText("פרטנר")).toBeInTheDocument();
-    expect(screen.getByText(/חיסכון ₪852 בשנה/)).toBeInTheDocument();
+    expect(screen.getAllByText("פרטנר").length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/חיסכון ₪852 בשנה/).length).toBeGreaterThan(0);
 
     // Honest OCR disclaimer.
     expect(screen.getByText(/הקריאה אוטומטית ועשויה לטעות/)).toBeInTheDocument();

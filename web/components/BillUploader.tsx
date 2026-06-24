@@ -30,8 +30,10 @@ import NextImage from "next/image";
 import { CATEGORY_HE } from "@/lib/categories";
 import { leadCategory, type LeadCategory } from "@/lib/format";
 import { trackEvent } from "@/lib/tracking";
+import { analyzeBill, type ForensicsPlan } from "@/lib/bill-forensics";
 import LeadForm from "@/components/LeadForm";
 import PriceCaveat from "@/components/PriceCaveat";
+import BillForensics from "@/components/BillForensics";
 
 // Compression budget: cap the longest edge and re-encode as JPEG. A bill is text-
 // heavy, so 1600px / q0.72 stays crisp for OCR while keeping the base64 payload
@@ -121,7 +123,18 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
-export default function BillUploader() {
+export interface BillUploaderProps {
+  /**
+   * A slim, serializable projection of the REAL catalogue (cat/provider/plan/
+   * price/after/kind only), passed from the server /bills page. Used solely by the
+   * forensics' expired-promo detection (it needs the promo→`after` step-up the
+   * analyzer's suggestions don't carry). Optional — with none, forensics still
+   * runs on the bill-level overpay vs the surfaced suggestions.
+   */
+  promoPlans?: ForensicsPlan[];
+}
+
+export default function BillUploader({ promoPlans = [] }: BillUploaderProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [phase, setPhase] = useState<Phase>("idle");
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -377,6 +390,22 @@ export default function BillUploader() {
               warnings={result.warnings}
             />
           </div>
+
+          {/* Itemized forensics — "ייתכן שאתה משלם ₪X מיותר" + expired-promo /
+              unused-line flags + total-overpay summary. Pure analyzer over the
+              SAME read + the REAL catalogue; renders nothing on an unreadable bill. */}
+          <BillForensics
+            report={analyzeBill(
+              {
+                provider: result.provider,
+                currentSpend: result.currentSpend,
+                category: result.category,
+                suggestions: result.suggestions,
+                confidence: result.confidence,
+              },
+              promoPlans,
+            )}
+          />
 
           {/* Cheaper plans (REAL catalogue), or an honest "no cheaper plan" note. */}
           {result.suggestions.length > 0 ? (

@@ -21,6 +21,7 @@ import TrustSignals from "@/components/TrustSignals";
 import CommissionDisclosure from "@/components/CommissionDisclosure";
 import RelatedAuthorityPages from "@/components/RelatedAuthorityPages";
 import BillUploader from "@/components/BillUploader";
+import type { ForensicsPlan } from "@/lib/bill-forensics";
 import { getPlans, getProviders, getCategories } from "@/lib/data";
 import { breadcrumbSchema, webPageSchema } from "@/lib/schema";
 import { pageMetadata } from "@/lib/seo";
@@ -36,9 +37,25 @@ export const metadata: Metadata = pageMetadata({
 
 export default function BillsPage() {
   // REAL catalogue totals for the honest trust block (no fabricated figures).
-  const planCount = getPlans().length;
+  const plans = getPlans();
+  const planCount = plans.length;
   const providerCount = getProviders().length;
   const categoryCount = getCategories().length;
+
+  // Slim, serializable catalogue projection for the bill-forensics expired-promo
+  // detection (needs the promo→post-promo `after` step-up). Only plans that carry
+  // a real `after` price are useful, so we ship just those — never the full rich
+  // payload across the RSC → client boundary, and never any fabricated row.
+  const promoPlans: ForensicsPlan[] = plans
+    .filter((p) => typeof p.after === "number" && (p.after as number) > 0)
+    .map((p) => ({
+      cat: p.cat,
+      provider: p.provider,
+      plan: p.plan,
+      price: p.price,
+      after: typeof p.after === "number" ? p.after : null,
+      kind: p.kind,
+    }));
 
   const crumbs = [
     { name: "בית", url: "/" },
@@ -111,7 +128,10 @@ export default function BillsPage() {
       <CommissionDisclosure variant="banner" className="mt-8" />
 
       {/* ── The interactive uploader (client) ─────────────────────────────── */}
-      <BillUploader />
+      {/* promoPlans: REAL catalogue rows with a post-promo `after` price, projected
+          to a slim serializable shape, so the in-result forensics can spot a likely
+          expired promo. */}
+      <BillUploader promoPlans={promoPlans} />
 
       {/* ── Trust signals — real catalogue counts + §7b + §17 caveat. ─────── */}
       <div className="mt-12">

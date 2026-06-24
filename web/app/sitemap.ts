@@ -210,6 +210,26 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.5,
   }));
 
+  // /switch-kit — the interactive "ערכת מעבר" (Switch Autopilot): pick current
+  // provider + target plan → personalised cancellation letter + ניוד checklist +
+  // tracker. A high-intent action tool, so it earns a prominent priority.
+  // /street-prices — the community-reported "street price" aggregate page (shown
+  // only above a real minimum-reports threshold). Both surfaces are crawlable.
+  const switchKitAndStreet: MetadataRoute.Sitemap = [
+    {
+      url: `${SITE_URL}/switch-kit`,
+      lastModified: now,
+      changeFrequency: "weekly",
+      priority: 0.8,
+    },
+    {
+      url: `${SITE_URL}/street-prices`,
+      lastModified: now,
+      changeFrequency: "weekly",
+      priority: 0.7,
+    },
+  ];
+
   // /guides (hub) + /guides/[slug] — the editorial authority layer (150 ported,
   // real articles). lastModified uses each article's genuine publish date so the
   // <lastmod> is truthful rather than a build-time stamp.
@@ -245,6 +265,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     ...bills,
     ...switchHub,
     ...switchProviders,
+    ...switchKitAndStreet,
     ...guidesHub,
     ...guides,
     ...authority,

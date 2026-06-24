@@ -10,10 +10,12 @@ import '../../app_state.dart';
 import '../../models.dart';
 import '../../data.dart';
 import '../../components/logo_widget/logo_widget.dart';
+import '../../widgets/app_button.dart';
 import '../../widgets/pressable.dart';
 import '../../widgets/whatsapp_button.dart';
 import '../../services/recommendation_engine.dart';
 import '../../services/provider_ratings.dart';
+import '../../services/street_price.dart';
 import '../../services/backend/local_backend.dart';
 
 class ProviderWidget extends StatelessWidget {
@@ -146,6 +148,16 @@ class ProviderWidget extends StatelessWidget {
                           ).animate(delay: 80.ms).fadeIn(duration: 320.ms),
                           const SizedBox(height: 20),
                         ],
+
+                        // ── Street price (מחיר הרחוב) ────────────────────────
+                        // The honest "what people actually pay" panel: an
+                        // aggregate ONLY above the real report threshold, else a
+                        // plain "report yours" CTA. Never a fabricated figure.
+                        _StreetPricePanel(
+                          providerName: providerName,
+                          ffTheme: ffTheme,
+                        ).animate(delay: 90.ms).fadeIn(duration: 320.ms),
+                        const SizedBox(height: 20),
 
                         // ── Plans by category ────────────────────────────────
                         ...catGroups.asMap().entries.expand((entry) {
@@ -1063,6 +1075,553 @@ class _CommunityCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ── Street price (מחיר הרחוב) ──────────────────────────────────────────────────
+//
+// "What people actually pay" — the real Israeli truth that the advertised price
+// is a starting point and retention/deal prices land lower. We surface a per-
+// category aggregate ONLY above the real report threshold (StreetPriceService's
+// kStreetPriceMinReports); below that there is nothing honest to show, so the
+// panel shows a plain "report your price" CTA instead of an invented number.
+//
+// TRUTH-ONLY: every figure here comes from StreetPriceService.aggregateFor (real
+// user reports, screened) and the provider's real catalogue baseline. A user
+// report passes a deterministic sanity gate before it can count, mirroring the
+// community-moderate pre-screen. We never auto-anything and never fabricate a
+// count — "מבוסס על N דיווחים" always states the real N.
+
+class _StreetPricePanel extends StatefulWidget {
+  const _StreetPricePanel({required this.providerName, required this.ffTheme});
+  final String providerName;
+  final AppTheme ffTheme;
+
+  @override
+  State<_StreetPricePanel> createState() => _StreetPricePanelState();
+}
+
+class _StreetPricePanelState extends State<_StreetPricePanel> {
+  Future<void> _openReportSheet() async {
+    final submitted = await showModalBottomSheet<bool>(
+      context: context,
+      backgroundColor: widget.ffTheme.cardSurface,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => _ReportPriceSheet(
+        providerName: widget.providerName,
+        ffTheme: widget.ffTheme,
+      ),
+    );
+    // Refresh so a just-accepted report that crosses the threshold appears, and
+    // the "reports needed" counters tick down — all from real session data.
+    if (submitted == true && mounted) setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ffTheme = widget.ffTheme;
+    final aggregates =
+        StreetPriceService.aggregatesForProvider(widget.providerName);
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: ffTheme.cardDecoration(radius: ffTheme.radiusCard),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.storefront_rounded, color: ffTheme.primary, size: 18),
+              const SizedBox(width: 6),
+              Expanded(child: Text('מחיר הרחוב', style: ffTheme.titleSmall)),
+              // VALUE chip — amber — only when at least one category beats catalogue.
+              if (aggregates.any((a) => a.beatsCatalogue))
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: ffTheme.saving.withValues(alpha: 0.14),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    'נמוך מהמחירון',
+                    style: ffTheme.labelSmall.copyWith(
+                        color: ffTheme.savingText, fontWeight: FontWeight.w700),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'מה לקוחות מדווחים שהם משלמים בפועל — לא מחיר המחירון.',
+            style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText),
+          ),
+          const SizedBox(height: 14),
+
+          if (aggregates.isEmpty)
+            // Below the threshold across the board → no fabricated figure, just
+            // an honest invitation to contribute the first real data point.
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: ffTheme.background,
+                borderRadius: BorderRadius.circular(ffTheme.radiusSm),
+                border:
+                    Border.all(color: ffTheme.alternate.withValues(alpha: 0.7)),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.insights_rounded,
+                      size: 18, color: ffTheme.secondaryText),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'עדיין אין מספיק דיווחים על ${widget.providerName} כדי להציג מחיר רחוב. היו הראשונים לדווח.',
+                      style: ffTheme.bodySmall
+                          .copyWith(color: ffTheme.primaryText),
+                    ),
+                  ),
+                ],
+              ),
+            )
+          else
+            ...aggregates.asMap().entries.map((e) {
+              final agg = e.value;
+              return Padding(
+                padding: EdgeInsets.only(bottom: e.key == aggregates.length - 1 ? 0 : 10),
+                child: _StreetPriceRow(agg: agg, ffTheme: ffTheme),
+              );
+            }),
+
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: _openReportSheet,
+              icon: const Icon(Icons.add_chart_rounded, size: 18),
+              label: const Text('דווח/י את המחיר שלך'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: ffTheme.primary,
+                side: BorderSide(color: ffTheme.primary.withValues(alpha: 0.4)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'הדיווחים אנונימיים ומשמשים רק לחישוב ממוצע. מוצג רק כשיש מספיק דיווחים אמיתיים.',
+            style: ffTheme.labelSmall.copyWith(
+                color: ffTheme.secondaryText, fontSize: 11, height: 1.4),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// One category's street-price line: the typical (median) figure, the real
+/// report count, the range when there's spread, and the honest VALUE delta vs
+/// the provider's cheapest catalogue plan when the street beats the sticker.
+class _StreetPriceRow extends StatelessWidget {
+  const _StreetPriceRow({required this.agg, required this.ffTheme});
+  final StreetPriceAggregate agg;
+  final AppTheme ffTheme;
+
+  @override
+  Widget build(BuildContext context) {
+    final cat = categoryById(agg.category);
+    final catName = cat?.name ?? agg.category;
+    final saving = agg.savingVsCatalogueText;
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: ffTheme.background,
+        borderRadius: BorderRadius.circular(ffTheme.radiusSm),
+        border: Border.all(color: ffTheme.alternate.withValues(alpha: 0.7)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(categoryIconData(agg.category),
+                  size: 16, color: ffTheme.primaryText),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  catName,
+                  style: ffTheme.labelMedium
+                      .copyWith(fontWeight: FontWeight.w700),
+                ),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    '₪${agg.typicalText}',
+                    style: ffTheme.titleMedium.copyWith(
+                        color: ffTheme.primary, fontWeight: FontWeight.w800),
+                  ),
+                  Text('בממוצע לחודש',
+                      style: ffTheme.labelSmall
+                          .copyWith(color: ffTheme.secondaryText, fontSize: 10)),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              // Real report count — never fabricated.
+              _MiniChip(
+                icon: Icons.groups_rounded,
+                label: 'מבוסס על ${agg.reportCount} דיווחים',
+                ffTheme: ffTheme,
+              ),
+              if (agg.hasSpread)
+                _MiniChip(
+                  icon: Icons.straighten_rounded,
+                  label: '₪${agg.lowText}–₪${agg.highText}',
+                  ffTheme: ffTheme,
+                ),
+              // VALUE: street beats catalogue → amber, the honest "pay less" win.
+              if (saving != null)
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: ffTheme.saving.withValues(alpha: 0.14),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.trending_down_rounded,
+                          size: 13, color: ffTheme.savingText),
+                      const SizedBox(width: 4),
+                      Text(
+                        '₪$saving מתחת למחירון (₪${agg.catalogueLowestText})',
+                        style: ffTheme.labelSmall.copyWith(
+                            color: ffTheme.savingText,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 11),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MiniChip extends StatelessWidget {
+  const _MiniChip(
+      {required this.icon, required this.label, required this.ffTheme});
+  final IconData icon;
+  final String label;
+  final AppTheme ffTheme;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: ffTheme.cardSurface,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: ffTheme.alternate.withValues(alpha: 0.7)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 13, color: ffTheme.secondaryText),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: ffTheme.labelSmall
+                .copyWith(color: ffTheme.secondaryText, fontSize: 11),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Report-your-price bottom sheet ─────────────────────────────────────────────
+//
+// The user picks a real (provider, category) the provider actually serves, types
+// the monthly ₪ they pay, and optionally the plan name. On submit we screen the
+// number through StreetPriceService's deterministic sanity gate: a typo/out-of-
+// range value is REJECTED (held out of the aggregate) with an honest Hebrew note;
+// an accepted value counts. We never auto-send anything; the user taps submit.
+
+class _ReportPriceSheet extends StatefulWidget {
+  const _ReportPriceSheet(
+      {required this.providerName, required this.ffTheme});
+  final String providerName;
+  final AppTheme ffTheme;
+
+  @override
+  State<_ReportPriceSheet> createState() => _ReportPriceSheetState();
+}
+
+class _ReportPriceSheetState extends State<_ReportPriceSheet> {
+  final _priceCtrl = TextEditingController();
+  final _planCtrl = TextEditingController();
+  late List<String> _catIds;
+  String? _catId;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _catIds = providerCategoryIds(widget.providerName);
+    if (_catIds.isNotEmpty) _catId = _catIds.first;
+  }
+
+  @override
+  void dispose() {
+    _priceCtrl.dispose();
+    _planCtrl.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    final ffTheme = widget.ffTheme;
+    final catId = _catId;
+    final price = double.tryParse(_priceCtrl.text.trim().replaceAll(',', '.'));
+    if (catId == null) {
+      setState(() => _error = 'בחרו קטגוריה');
+      return;
+    }
+    if (price == null || price <= 0) {
+      setState(() => _error = 'הזינו מחיר חודשי תקין');
+      return;
+    }
+
+    final report = StreetPriceService.submitReport(
+      provider: widget.providerName,
+      category: catId,
+      monthlyPrice: price,
+      planName: _planCtrl.text,
+    );
+
+    if (!report.accepted) {
+      // Honest rejection: the number is held out of the aggregate, and we say so
+      // — we never silently fabricate or silently drop.
+      setState(() => _error =
+          'המחיר שהוזן חורג מהטווח הסביר ולכן לא ייכלל בממוצע. בדקו את הסכום ונסו שוב.');
+      return;
+    }
+
+    final catName = categoryById(catId)?.name ?? catId;
+    final needed = StreetPriceService.reportsNeeded(widget.providerName, catId);
+    final msg = needed > 0
+        ? 'תודה! נדרשים עוד $needed דיווחים ב$catName כדי להציג מחיר רחוב.'
+        : 'תודה! הדיווח נכלל במחיר הרחוב של $catName.';
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        backgroundColor: ffTheme.primary,
+        behavior: SnackBarBehavior.floating,
+      ),
+    );
+    Navigator.pop(context, true);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ffTheme = widget.ffTheme;
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(20, 12, 20, 20 + bottomInset),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                    color: ffTheme.alternate,
+                    borderRadius: BorderRadius.circular(2)),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: ffTheme.brandAccent.withValues(alpha: 0.16),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(Icons.storefront_rounded,
+                      size: 22, color: ffTheme.brandAccent),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('דווח/י את המחיר שלך', style: ffTheme.titleMedium),
+                      const SizedBox(height: 2),
+                      Text(
+                        widget.providerName,
+                        style: ffTheme.labelSmall
+                            .copyWith(color: ffTheme.secondaryText),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+
+            if (_catIds.isEmpty)
+              Text(
+                'אין קטגוריות זמינות לדיווח עבור ספק זה.',
+                style: ffTheme.bodyMedium,
+              )
+            else ...[
+              Text('קטגוריה',
+                  style: ffTheme.labelMedium
+                      .copyWith(fontWeight: FontWeight.w700)),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: _catIds.map((id) {
+                  final selected = id == _catId;
+                  final name = categoryById(id)?.name ?? id;
+                  return ChoiceChip(
+                    label: Text(name),
+                    selected: selected,
+                    onSelected: (_) => setState(() {
+                      _catId = id;
+                      _error = null;
+                    }),
+                    showCheckmark: false,
+                    labelStyle: ffTheme.labelMedium.copyWith(
+                      color: selected ? Colors.white : ffTheme.primaryText,
+                      fontWeight: FontWeight.w700,
+                    ),
+                    backgroundColor: ffTheme.background,
+                    selectedColor: ffTheme.primary,
+                    side: BorderSide(
+                        color: selected
+                            ? Colors.transparent
+                            : ffTheme.alternate),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10)),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 16),
+              Text('כמה אתם משלמים בחודש? (₪)',
+                  style: ffTheme.labelMedium
+                      .copyWith(fontWeight: FontWeight.w700)),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _priceCtrl,
+                keyboardType:
+                    const TextInputType.numberWithOptions(decimal: true),
+                inputFormatters: [
+                  FilteringTextInputFormatter.allow(RegExp(r'[0-9.,]')),
+                ],
+                onChanged: (_) {
+                  if (_error != null) setState(() => _error = null);
+                },
+                decoration: InputDecoration(
+                  prefixText: '₪ ',
+                  hintText: 'לדוגמה: 49',
+                  filled: true,
+                  fillColor: ffTheme.background,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(ffTheme.radiusSm),
+                    borderSide: BorderSide(color: ffTheme.alternate),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(ffTheme.radiusSm),
+                    borderSide: BorderSide(color: ffTheme.alternate),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text('שם המסלול (לא חובה)',
+                  style: ffTheme.labelMedium
+                      .copyWith(fontWeight: FontWeight.w700)),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _planCtrl,
+                textInputAction: TextInputAction.done,
+                decoration: InputDecoration(
+                  hintText: 'לדוגמה: 100GB + שיחות',
+                  filled: true,
+                  fillColor: ffTheme.background,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(ffTheme.radiusSm),
+                    borderSide: BorderSide(color: ffTheme.alternate),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(ffTheme.radiusSm),
+                    borderSide: BorderSide(color: ffTheme.alternate),
+                  ),
+                ),
+              ),
+              if (_error != null) ...[
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Icon(Icons.error_outline_rounded,
+                        size: 16, color: ffTheme.error),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        _error!,
+                        style: ffTheme.labelSmall
+                            .copyWith(color: ffTheme.error),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+              const SizedBox(height: 18),
+              SizedBox(
+                width: double.infinity,
+                child: AppButton(
+                  text: 'שליחת דיווח',
+                  color: AppColors.primary,
+                  width: double.infinity,
+                  onPressed: () async => _submit(),
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                'הדיווח אנונימי ומשמש רק לחישוב ממוצע מחיר הרחוב. מספרים חריגים מסוננים אוטומטית.',
+                style: ffTheme.labelSmall.copyWith(
+                    color: ffTheme.secondaryText, fontSize: 11, height: 1.4),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }

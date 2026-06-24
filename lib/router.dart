@@ -46,6 +46,8 @@ import 'pages/analytics/analytics_widget.dart';
 import 'pages/wallet/wallet_widget.dart';
 import 'pages/referral/referral_widget.dart';
 import 'pages/negotiate/negotiate_widget.dart';
+import 'pages/switch_kit/switch_kit_widget.dart';
+import 'pages/switch_kit/street_price_widget.dart';
 
 final _rootNavKey = GlobalKey<NavigatorState>(debugLabel: 'root');
 final _shellNavKey = GlobalKey<NavigatorState>(debugLabel: 'shell');
@@ -144,6 +146,23 @@ GoRouter createRouter() {
           builder: (_, s) => NegotiateWidget(
             initialCategory: s.uri.queryParameters['category'],
             initialProvider: s.uri.queryParameters['provider'],
+          ),
+        ),
+        GoRoute(
+          path: '/switch-kit',
+          name: 'SwitchKit',
+          builder: (_, s) => SwitchKitWidget(
+            initialProvider: s.uri.queryParameters['provider'],
+            initialCategory: s.uri.queryParameters['category'],
+            trackedId: s.uri.queryParameters['trackedId'],
+          ),
+        ),
+        GoRoute(
+          path: '/street-price',
+          name: 'StreetPrice',
+          builder: (_, s) => StreetPriceWidget(
+            initialProvider: s.uri.queryParameters['provider'],
+            initialCategory: s.uri.queryParameters['category'],
           ),
         ),
         GoRoute(path: '/crm', name: 'Crm', builder: (_, __) => const CrmWidget()),

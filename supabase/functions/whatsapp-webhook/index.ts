@@ -378,6 +378,18 @@ async function handleOptOut(contact: Row, inText: string): Promise<void> {
     status: "opted_out",
     last_message_at: new Date().toISOString(),
   });
+  // §30A durable opt-out: append the phone to the cross-channel suppression
+  // registry so EVERY proactive sender (the savings-watch watcher, any future
+  // SMS/email/WhatsApp blast) honours this STOP — not just this conversation's
+  // opted_out flag. UNIQUE(channel, contact) → re-opting-out is a harmless no-op
+  // (ignore-duplicates). Best-effort: never blocks the single confirmation below.
+  if (phone) {
+    await pgInsert(
+      "marketing_suppression",
+      { channel: "whatsapp", contact: phone, reason: "whatsapp_stop" },
+      { onConflict: "channel,contact", ignore: true },
+    );
+  }
   await logSecurityEvent("whatsapp_marketing_opt_out", {
     channel: "whatsapp",
     wa_phone: phone,

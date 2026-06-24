@@ -1,7 +1,7 @@
 "use client";
 
 // ────────────────────────────────────────────────────────────────────────────
-// <AiConcierge> — floating AI chat widget ("חוסך AI").
+// <AiConcierge> — floating AI chat widget ("Switchy AI").
 //
 // A bottom-corner launcher that opens a chat panel calling /api/ai-chat ->
 // site-ai-chat (the grounded agent: answers ONLY from the real catalogue, cites
@@ -43,7 +43,7 @@ const MAX_MESSAGE_LEN = 500;
 const MAX_HISTORY_SENT = 6;
 
 const GREETING =
-  "היי! אני חוסך AI 🤖 אפשר לשאול אותי על מסלולי סלולר, אינטרנט, טלוויזיה, " +
+  "היי! אני Switchy AI 🤖 אפשר לשאול אותי על מסלולי סלולר, אינטרנט, טלוויזיה, " +
   "חבילות משולבות וחבילות לחו״ל — ואני אעזור למצוא מה משתלם. במה אפשר לעזור?";
 
 /** Read or mint a session id (sessionStorage, fail-soft). */
@@ -238,7 +238,7 @@ export default function AiConcierge() {
             name,
             phone,
             consent: true,
-            notes: "נלכד דרך חוסך AI (צ׳אט באתר)",
+            notes: "נלכד דרך Switchy AI (צ׳אט באתר)",
           },
         }),
       });
@@ -282,7 +282,7 @@ export default function AiConcierge() {
         onClick={toggle}
         aria-expanded={open}
         aria-controls={open ? titleId : undefined}
-        aria-label={open ? "סגירת הצ׳אט עם חוסך AI" : "פתיחת צ׳אט עם חוסך AI"}
+        aria-label={open ? "סגירת הצ׳אט עם Switchy AI" : "פתיחת צ׳אט עם Switchy AI"}
         className={[
           "fixed bottom-4 z-40 flex h-14 w-14 items-center justify-center rounded-full",
           // Bottom-START (RTL → right side of the screen visually mirrors LTR's
@@ -328,7 +328,7 @@ export default function AiConcierge() {
                   id={titleId}
                   className="font-display text-sm font-bold leading-tight text-ink"
                 >
-                  חוסך AI
+                  Switchy AI
                 </h2>
                 <p className="text-[11px] leading-tight text-muted">
                   עוזר חכם להשוואת מסלולי תקשורת
@@ -378,8 +378,8 @@ export default function AiConcierge() {
             {sending && (
               <div className="flex justify-end">
                 <div className="rounded-2xl bg-background px-3 py-2 text-sm text-muted">
-                  <span className="sr-only">חוסך AI מקליד…</span>
-                  <span aria-hidden="true">חוסך AI מקליד…</span>
+                  <span className="sr-only">Switchy AI מקליד…</span>
+                  <span aria-hidden="true">Switchy AI מקליד…</span>
                 </div>
               </div>
             )}
@@ -504,7 +504,7 @@ export default function AiConcierge() {
             className="flex items-center gap-2 border-t border-border bg-surface px-3 py-3"
           >
             <label htmlFor={`${titleId}-input`} className="sr-only">
-              כתבו הודעה לחוסך AI
+              כתבו הודעה ל-Switchy AI
             </label>
             <input
               id={`${titleId}-input`}

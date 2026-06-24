@@ -24,7 +24,7 @@ import { insertRow } from "./db.ts";
 // without confusion. Uppercase only (codes are case-insensitive on lookup).
 const CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 const CODE_BODY_LEN = 6; // 30^6 ≈ 729M combinations — collision-safe at our volume
-const CODE_PREFIX = "SW"; // Switchy/חוסך brand prefix, e.g. "SW-7KQ4M9"
+const CODE_PREFIX = "SW"; // Switchy AI brand prefix, e.g. "SW-7KQ4M9"
 
 // A cryptographically-random referral code, e.g. "SW-7KQ4M9". Uses Web Crypto
 // (available in Deno + edge) so codes are unguessable, not sequential. The `rng`

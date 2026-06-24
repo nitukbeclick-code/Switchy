@@ -1,6 +1,6 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// telegram-user-webhook — the PUBLIC, customer-facing Telegram bot for חוסך
-// (Switchy). End users DM this bot; it answers with the SHARED grounded,
+// telegram-user-webhook — the PUBLIC, customer-facing Telegram bot for
+// Switchy AI. End users DM this bot; it answers with the SHARED grounded,
 // multilingual agent (_shared/agent.ts runAgent) over the live catalogue, captures
 // consent-gated leads, and honours §30A STOP. This is NOT the internal rep bot
 // (telegram-webhook/) — that one trusts an allowlist and relays to WhatsApp; this
@@ -103,6 +103,7 @@ async function aiKeys(): Promise<AiKeys> {
   return {
     gemini: cfg.gemini || firstEnv(["GEMINI_API_KEY", "GOOGLE_AI_KEY"]),
     groq: firstEnv(["GROQ_API_KEY"]),
+    cerebras: firstEnv(["CEREBRAS_API_KEY"]),
     openrouter: firstEnv(["OPENROUTER_API_KEY"]),
   };
 }

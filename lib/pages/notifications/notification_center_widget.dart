@@ -221,13 +221,19 @@ class _NotifCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(ffTheme.radiusLg),
-        child: InkWell(
-          onTap: onTap,
+      // The whole card is tappable (deep-links into a plan/route), so announce
+      // it as a button to screen readers with the notification's title + body —
+      // the inner texts are otherwise read as inert labels with no affordance.
+      child: Semantics(
+        button: true,
+        label: '${notification.title}. ${notification.body}',
+        child: Material(
+          color: Colors.transparent,
           borderRadius: BorderRadius.circular(ffTheme.radiusLg),
-          child: Container(
+          child: InkWell(
+            onTap: onTap,
+            borderRadius: BorderRadius.circular(ffTheme.radiusLg),
+            child: Container(
             decoration: ffTheme.cardDecoration(radius: ffTheme.radiusLg),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             child: Row(
@@ -300,7 +306,8 @@ class _NotifCard extends StatelessWidget {
                   constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
                   onPressed: onDismiss,
                 ),
-              ],
+                ],
+              ),
             ),
           ),
         ),

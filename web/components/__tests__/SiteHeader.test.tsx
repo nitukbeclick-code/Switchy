@@ -28,8 +28,8 @@ describe("SiteHeader — landmarks & brand", () => {
 
   it("links the brand wordmark home", () => {
     render(<SiteHeader />);
-    // The brand link contains the wordmark text 'חוסך'.
-    const brand = screen.getByRole("link", { name: /חוסך/ });
+    // The brand link contains the wordmark text 'Switchy'.
+    const brand = screen.getByRole("link", { name: /Switchy/ });
     expect(brand).toHaveAttribute("href", "/");
   });
 });

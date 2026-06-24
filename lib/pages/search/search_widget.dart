@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
@@ -33,6 +35,8 @@ class _SearchWidgetState extends State<SearchWidget> {
   final _focus = FocusNode();
   String _q = '';
   SearchFacets _facets = const SearchFacets();
+  // Debounce keystrokes so we don't re-run searchEverything on every character.
+  Timer? _debounce;
 
   @override
   void initState() {
@@ -47,13 +51,28 @@ class _SearchWidgetState extends State<SearchWidget> {
 
   @override
   void dispose() {
+    _debounce?.cancel();
     _focus.removeListener(_onFocusChanged);
     _ctrl.dispose();
     _focus.dispose();
     super.dispose();
   }
 
-  void _setQuery(String v) => setState(() => _q = v);
+  /// Applies a query value to state immediately (no debounce). Used for clear,
+  /// submit and suggestion picks where the result should update at once.
+  void _setQuery(String v) {
+    _debounce?.cancel();
+    setState(() => _q = v);
+  }
+
+  /// Debounced handler for live typing — coalesces rapid keystrokes (~300ms)
+  /// so the catalogue re-filter runs once the user pauses, not per character.
+  void _onTyped(String v) {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 300), () {
+      if (mounted) setState(() => _q = v);
+    });
+  }
 
   void _useSuggestion(String v) {
     _ctrl.text = v;
@@ -128,8 +147,13 @@ class _SearchWidgetState extends State<SearchWidget> {
                   autofocus: true,
                   textDirection: TextDirection.rtl,
                   textInputAction: TextInputAction.search,
-                  onChanged: _setQuery,
-                  onSubmitted: (_) => _remember(),
+                  onChanged: _onTyped,
+                  onSubmitted: (v) {
+                    // Flush any pending debounce so submit reflects the typed
+                    // text immediately, then record the committed search.
+                    _setQuery(v);
+                    _remember();
+                  },
                   style: ffTheme.bodyMedium,
                   decoration: InputDecoration(
                     isDense: true,

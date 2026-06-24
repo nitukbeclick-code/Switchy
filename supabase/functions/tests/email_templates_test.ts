@@ -48,7 +48,7 @@ function assertClientSafe(html: string) {
   assert(!/<style[\s>]/i.test(html), "must NOT use a <style> block (stripped by Gmail)");
   assert(!/display:\s*flex|display:\s*grid/i.test(html), "must NOT use flex/grid");
   assertStringIncludes(html, "מדיניות פרטיות"); // privacy link (footer)
-  assertStringIncludes(html, "Switch AI"); // sender identity
+  assertStringIncludes(html, "Switchy AI"); // sender identity
   // no leaked placeholders
   for (const bad of ["undefined", "NaN", "null/חודש"]) {
     assert(!html.includes(bad), `must not contain "${bad}"`);

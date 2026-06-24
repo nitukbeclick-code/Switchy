@@ -1,9 +1,9 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// site-ai-chat — חוסך AI  (now routed through the SHARED agent)
+// site-ai-chat — Switchy AI  (now routed through the SHARED agent)
 //
-// Public chat endpoint behind the "חוסך AI" widget on app.html. As of the
+// Public chat endpoint behind the "Switchy AI" widget on app.html. As of the
 // agent-platform work this function no longer carries its own grounding /
 // generation logic — it delegates to the ONE shared brain so the site, the app
 // and WhatsApp can never drift:
@@ -157,9 +157,10 @@ Deno.serve(async (req: Request) => {
 
   const geminiKey = (await resolveCfgCached()).gemini || firstEnv(["GEMINI_API_KEY", "GOOGLE_AI_KEY"]);
   const groqKey = firstEnv(["GROQ_API_KEY"]);
+  const cerebrasKey = firstEnv(["CEREBRAS_API_KEY"]);
   const openrouterKey = firstEnv(["OPENROUTER_API_KEY"]);
   // Configured if ANY provider in the fallback chain has a key.
-  if (!geminiKey && !groqKey && !openrouterKey) {
+  if (!geminiKey && !groqKey && !cerebrasKey && !openrouterKey) {
     return json(req, { error: "ai chat is not configured" }, 503);
   }
 
@@ -226,7 +227,7 @@ Deno.serve(async (req: Request) => {
   };
 
   // ── Generate via the shared agent (grounded, tool-using, graceful) ─────────
-  const keys: AiKeys = { gemini: geminiKey, groq: groqKey, openrouter: openrouterKey };
+  const keys: AiKeys = { gemini: geminiKey, groq: groqKey, cerebras: cerebrasKey, openrouter: openrouterKey };
   let agentReply = "";
   let via = "hard_fallback";
   let timedOut = false;

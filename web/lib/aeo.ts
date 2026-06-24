@@ -268,7 +268,7 @@ export function llmDataFeed(plans: Plan[], meta: LlmFeedMeta = {}): LlmDataFeed 
 
   return {
     "@context": "https://switchy-ai.com/llm-data-feed",
-    source: "חוסך / Switch AI — מנוע הנתונים",
+    source: "Switchy AI — מנוע הנתונים",
     ...(meta.service ? { service: meta.service } : {}),
     ...(meta.city ? { city: meta.city } : {}),
     ...(meta.url ? { url: meta.url } : {}),

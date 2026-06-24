@@ -58,7 +58,7 @@ export default function Home() {
   const cities = getCities().slice(0, 12);
 
   const summaryText =
-    `חוסך / Switch AI הוא שירות חינמי להשוואת מסלולי תקשורת בישראל. ` +
+    `Switchy AI הוא שירות חינמי להשוואת מסלולי תקשורת בישראל. ` +
     `אנו משווים ${planCount} מסלולים מ-${providers.length} ספקים בחמש קטגוריות — ` +
     `סלולר, אינטרנט, טלוויזיה, חבילות משולבות וחבילות חו״ל — ` +
     `החל מ-${ils(minFeatured)} לחודש. המחירים בשקלים ומעודכנים, וכוללים גם את המחיר ` +

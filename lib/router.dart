@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'app_state.dart';
@@ -237,24 +238,48 @@ class _ScaffoldWithNav extends StatelessWidget {
                         : tab.label,
                     excludeSemantics: true,
                     child: InkWell(
-                    onTap: () => context.go(tab.route),
+                    onTap: () {
+                      // Tactile confirm on tab change — the tabs were silent,
+                      // a classic webview tell; every native bar buzzes here.
+                      HapticFeedback.selectionClick();
+                      context.go(tab.route);
+                    },
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Stack(clipBehavior: Clip.none, children: [
-                          Icon(tab.icon, size: 26, color: active ? ffTheme.brandAccent : ffTheme.secondaryText),
-                          if (isCompare && compareCount > 0)
-                            PositionedDirectional(
-                              top: -5, end: -8,
-                              child: Container(
-                                width: 18, height: 18,
-                                decoration: BoxDecoration(color: ffTheme.secondary, shape: BoxShape.circle),
-                                child: Center(child: Text('$compareCount', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: ffTheme.primary))),
+                        // Animated selection indicator — a soft green pill grows
+                        // in behind the active icon (Material-3 NavigationBar
+                        // feel) instead of a flat colour flip.
+                        AnimatedContainer(
+                          duration: ffTheme.motionMedium,
+                          curve: ffTheme.easeOut,
+                          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: active
+                                ? ffTheme.brandAccent.withValues(alpha: 0.14)
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Stack(clipBehavior: Clip.none, children: [
+                            Icon(tab.icon, size: 24, color: active ? ffTheme.brandAccent : ffTheme.secondaryText),
+                            if (isCompare && compareCount > 0)
+                              PositionedDirectional(
+                                top: -5, end: -8,
+                                child: Container(
+                                  width: 18, height: 18,
+                                  decoration: BoxDecoration(color: ffTheme.secondary, shape: BoxShape.circle),
+                                  child: Center(child: Text('$compareCount', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: ffTheme.primary))),
+                                ),
                               ),
-                            ),
-                        ]),
-                        const SizedBox(height: 3),
-                        Text(tab.label, style: TextStyle(fontSize: 10.5, fontWeight: active ? FontWeight.w700 : FontWeight.w500, color: active ? ffTheme.brandAccent : ffTheme.secondaryText)),
+                          ]),
+                        ),
+                        const SizedBox(height: 2),
+                        AnimatedDefaultTextStyle(
+                          duration: ffTheme.motionMedium,
+                          curve: ffTheme.easeOut,
+                          style: TextStyle(fontSize: 10.5, fontWeight: active ? FontWeight.w700 : FontWeight.w500, color: active ? ffTheme.brandAccent : ffTheme.secondaryText),
+                          child: Text(tab.label),
+                        ),
                       ],
                     ),
                   ),

@@ -256,7 +256,7 @@ export function talkingPoints(lead: BriefLead, need: ParsedNeed, plans: BriefPla
   const sourceHe = SOURCE_HE[s(lead.source)] ?? "";
   const points: string[] = [];
   points.push(
-    `פתיחה: "היי${first ? " " + first : ""}, כאן חוסך${sourceHe ? ` — קיבלנו את הפנייה שלך מ${sourceHe}` : ""}. מתי נוח לך לדבר דקה?"`,
+    `פתיחה: "היי${first ? " " + first : ""}, כאן Switchy AI${sourceHe ? ` — קיבלנו את הפנייה שלך מ${sourceHe}` : ""}. מתי נוח לך לדבר דקה?"`,
   );
   if (need.category) {
     points.push(
@@ -414,7 +414,7 @@ function renderText(
 // the model — they come from buildBrief. This keeps the brief honest (E-E-A-T)
 // even if the model would otherwise embellish.
 export const AI_SYSTEM_PROMPT =
-  `את/ה עוזר/ת פנימי/ת של "חוסך" (Switch AI) שמכין/ה תדריך שיחה לנציג טלפוני אנושי (לא ללקוח).
+  `את/ה עוזר/ת פנימי/ת של "Switchy AI" שמכין/ה תדריך שיחה לנציג טלפוני אנושי (לא ללקוח).
 כללים מחייבים:
 - כתוב/י בעברית בלבד, בהיר וקצר, בטון מקצועי לנציג.
 - התבסס/י אך ורק על נתוני התדריך שמסופקים לך. אסור להוסיף, להמציא או לשנות שום ספק, מסלול, מחיר או סכום חיסכון שלא מופיע בתדריך.

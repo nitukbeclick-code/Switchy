@@ -30,7 +30,7 @@ const BRAND_SUFFIX = ` | ${SITE_NAME}`;
 
 /** Shared OG/Twitter alt text (mirrors app/opengraph-image.alt.txt). */
 const SHARE_IMAGE_ALT =
-  "חוסך / Switch AI — השוואת מסלולי תקשורת בישראל: סלולר, אינטרנט, טלוויזיה " +
+  "Switchy AI — השוואת מסלולי תקשורת בישראל: סלולר, אינטרנט, טלוויזיה " +
   "וחבילות. חינם ובלי התחייבות.";
 
 /**

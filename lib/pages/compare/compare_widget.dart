@@ -97,7 +97,7 @@ class CompareWidget extends StatelessWidget {
 
 /// One-line share text for the single-plan fallback (no full export yet).
 String _quickShareText(List<Plan> plans) =>
-    'השוויתי בחוסך: '
+    'השוויתי ב-Switchy AI: '
     '${plans.map((p) => '${p.provider} ${p.plan} ₪${p.priceText}').join(' מול ')}';
 
 // ── Share menu (PDF / text) ────────────────────────────────────────────────────
@@ -528,34 +528,38 @@ class _CompareTable extends StatelessWidget {
                     width: 140,
                     child: Padding(
                       padding: const EdgeInsetsDirectional.only(start: 10),
-                      child: ElevatedButton(
-                        onPressed: () {
-                          HapticFeedback.lightImpact();
-                          context.pushNamed('Lead', pathParameters: {'planId': p.id}, queryParameters: {'source': 'compare'});
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: p.id == winnerId
-                              ? ffTheme.primary
-                              : ffTheme.cardSurface,
-                          foregroundColor: p.id == winnerId
-                              ? (ffTheme.dark ? ffTheme.background : Colors.white)
-                              : ffTheme.primaryText,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            side: BorderSide(
-                                color: p.id == winnerId
-                                    ? ffTheme.primary
-                                    : ffTheme.alternate),
+                      child: Semantics(
+                        button: true,
+                        label: 'בחר את המסלול ${p.plan} של ${p.provider}',
+                        child: ElevatedButton(
+                          onPressed: () {
+                            HapticFeedback.lightImpact();
+                            context.pushNamed('Lead', pathParameters: {'planId': p.id}, queryParameters: {'source': 'compare'});
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: p.id == winnerId
+                                ? ffTheme.primary
+                                : ffTheme.cardSurface,
+                            foregroundColor: p.id == winnerId
+                                ? (ffTheme.dark ? ffTheme.background : Colors.white)
+                                : ffTheme.primaryText,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              side: BorderSide(
+                                  color: p.id == winnerId
+                                      ? ffTheme.primary
+                                      : ffTheme.alternate),
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
                           ),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                        ),
-                        child: Text(
-                          'בחר ←',
-                          style: ffTheme.titleSmall.copyWith(
-                              color: p.id == winnerId
-                                  ? (ffTheme.dark ? ffTheme.background : Colors.white)
-                                  : ffTheme.primaryText),
+                          child: Text(
+                            'בחר ←',
+                            style: ffTheme.titleSmall.copyWith(
+                                color: p.id == winnerId
+                                    ? (ffTheme.dark ? ffTheme.background : Colors.white)
+                                    : ffTheme.primaryText),
+                          ),
                         ),
                       ),
                     ),

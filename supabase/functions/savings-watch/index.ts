@@ -1,7 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// savings-watch — חוסך Proactive Savings Watcher (Communications Law §30A)
+// savings-watch — Switchy AI Proactive Savings Watcher (Communications Law §30A)
 //
 // Scheduled (pg_cron) edge fn that turns REAL, grounded saving opportunities into
 // proactive alerts to users who explicitly opted in to watch a plan. For each

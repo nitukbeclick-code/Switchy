@@ -3,7 +3,7 @@ import { EMAIL_RE, type InsertResult, shouldWelcome } from "./lib.ts";
 import { listUnsubscribeHeader, unsubscribeUrlFor, welcomeEmail } from "../_shared/email.ts";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// site-subscribe — newsletter signup for the חוסך marketing site.
+// site-subscribe — newsletter signup for the Switchy AI marketing site.
 //
 // Public endpoint behind the "הרשמה לניוזלטר" form. Records the subscriber in
 // `newsletter_subscribers` (service role) and sends a short Hebrew welcome
@@ -17,8 +17,8 @@ import { listUnsubscribeHeader, unsubscribeUrlFor, welcomeEmail } from "../_shar
 
 const PER_IP_HOURLY_LIMIT = 10;
 const MAX_EMAIL_LEN = 254; // RFC 5321 max address length
-const DEFAULT_FROM = "חוסך <noreply@switchy-ai.com>";
-const WELCOME_SUBJECT = "ברוכים הבאים ל-חוסך";
+const DEFAULT_FROM = "Switchy AI <noreply@switchy-ai.com>";
+const WELCOME_SUBJECT = "ברוכים הבאים ל-Switchy AI";
 
 // ── logging ──────────────────────────────────────────────────────────────────
 // One JSON line per event so the Supabase log explorer can filter on fields

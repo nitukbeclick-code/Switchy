@@ -220,7 +220,7 @@ class SettingsWidget extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('חוסך', style: ffTheme.titleMedium.copyWith(color: ffTheme.primaryText)),
+                            Text('Switchy AI', style: ffTheme.titleMedium.copyWith(color: ffTheme.primaryText)),
                             Text('השוואת מחירי תקשורת בישראל', style: ffTheme.bodySmall),
                           ],
                         ),

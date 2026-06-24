@@ -71,7 +71,7 @@ class ProviderWidget extends StatelessWidget {
         ? 0
         : plans.map((p) => p.price).reduce((a, b) => a < b ? a : b);
     final shareText =
-        'בדקו את $providerName בחוסך — ${plans.length} מסלולים מ-₪$cheapest.';
+        'בדקו את $providerName ב-Switchy AI — ${plans.length} מסלולים מ-₪$cheapest.';
 
     return Scaffold(
       backgroundColor: ffTheme.background,
@@ -619,7 +619,10 @@ class _ProviderActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return Semantics(
+      container: true,
+      label: 'פעולות מהירות',
+      child: Row(
       children: [
         Expanded(
           child: _ActionButton(
@@ -661,6 +664,7 @@ class _ProviderActions extends StatelessWidget {
           ),
         ),
       ],
+      ),
     );
   }
 }

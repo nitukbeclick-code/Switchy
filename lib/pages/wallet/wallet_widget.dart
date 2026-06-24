@@ -170,7 +170,7 @@ class _RealizedHero extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              'כשתעברו למסלול משתלם דרך חוסך, החיסכון השנתי יופיע כאן.',
+              'כשתעברו למסלול משתלם דרך Switchy AI, החיסכון השנתי יופיע כאן.',
               style: GoogleFonts.assistant(
                   fontSize: 13,
                   height: 1.4,

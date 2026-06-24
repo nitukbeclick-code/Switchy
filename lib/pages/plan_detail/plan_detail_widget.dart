@@ -109,7 +109,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                     onPressed: () {
                       HapticFeedback.selectionClick();
                       final unit = priceUnitShort(plan);
-                      Share.share('${plan.provider} — ${plan.plan}\n₪${plan.priceText}/$unit\n\nמצאתי בחוסך');
+                      Share.share('${plan.provider} — ${plan.plan}\n₪${plan.priceText}/$unit\n\nמצאתי ב-Switchy AI');
                     },
                   ),
                   IconButton(
@@ -405,27 +405,31 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
 
                       // Rate provider CTA — honest entry point to leave the
                       // first real review (no fabricated rating shown).
-                      GestureDetector(
-                        onTap: () => context.pushNamed('Ratings'),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                          decoration: BoxDecoration(
-                            color: ffTheme.accent1,
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: ffTheme.primary.withValues(alpha: 0.15)),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.rate_review_rounded, size: 16, color: ffTheme.primary),
-                              const SizedBox(width: 6),
-                              Text(
-                                appState.hasReviewedProvider(plan.provider) ? 'עדכן דירוג עבור ${plan.provider}' : 'דרג את ${plan.provider}',
-                                style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700),
-                              ),
-                              const Spacer(),
-                              Icon(Icons.chevron_left_rounded, size: 16, color: ffTheme.primary),
-                            ],
+                      Semantics(
+                        button: true,
+                        label: appState.hasReviewedProvider(plan.provider) ? 'עדכן דירוג עבור ${plan.provider}' : 'דרג את ${plan.provider}',
+                        child: GestureDetector(
+                          onTap: () => context.pushNamed('Ratings'),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: ffTheme.accent1,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: ffTheme.primary.withValues(alpha: 0.15)),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.rate_review_rounded, size: 16, color: ffTheme.primary),
+                                const SizedBox(width: 6),
+                                Text(
+                                  appState.hasReviewedProvider(plan.provider) ? 'עדכן דירוג עבור ${plan.provider}' : 'דרג את ${plan.provider}',
+                                  style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700),
+                                ),
+                                const Spacer(),
+                                Icon(Icons.chevron_left_rounded, size: 16, color: ffTheme.primary),
+                              ],
+                            ),
                           ),
                         ),
                       ).animate(delay: 250.ms).fadeIn(duration: 300.ms),

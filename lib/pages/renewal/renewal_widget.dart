@@ -1074,7 +1074,7 @@ class _AddPlanSheetState extends State<_AddPlanSheet> {
                   value: _joinedViaUs,
                   onChanged: (v) => setState(() => _joinedViaUs = v),
                   activeThumbColor: ffTheme.primary,
-                  title: Text('הצטרפתי דרך חוסך',
+                  title: Text('הצטרפתי דרך Switchy AI',
                       style: ffTheme.bodyMedium
                           .copyWith(fontWeight: FontWeight.w600)),
                   contentPadding:

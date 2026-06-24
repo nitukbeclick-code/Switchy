@@ -22,7 +22,7 @@ const LAST_REVIEWED = "2026-06-23";
 export const metadata: Metadata = pageMetadata({
   title: "תנאי שימוש",
   description:
-    "תנאי השימוש בשירות ההשוואה של חוסך / Switch AI: מהות השירות, אופן השימוש " +
+    "תנאי השימוש בשירות ההשוואה של Switchy AI: מהות השירות, אופן השימוש " +
     "בטופס יצירת הקשר, מקור המחירים והמלצה לאמת מול הספק, והגבלת אחריות.",
   path: "/terms",
 });
@@ -43,10 +43,10 @@ export default function TermsPage() {
     {
       h: "כללי",
       paras: [
-        "ברוכים הבאים לחוסך / Switch AI (“השירות”, “האתר”, “אנחנו”). השימוש באתר " +
+        "ברוכים הבאים ל-Switchy AI (“השירות”, “האתר”, “אנחנו”). השימוש באתר " +
           "ובשירות כפוף לתנאים אלה. עצם השימוש מהווה הסכמה לתנאים; אם אינכם " +
           "מסכימים — אנא הימנעו משימוש בשירות. השירות מופעל תחת המותג " +
-          "Switch AI (חוסך).",
+          "Switchy AI.",
       ],
     },
     {
@@ -175,7 +175,7 @@ export default function TermsPage() {
     <main id="main" className="mx-auto w-full max-w-3xl flex-1 px-4 py-10 sm:px-6">
       <JsonLd
         data={webPageSchema({
-          name: "תנאי שימוש — חוסך / Switch AI",
+          name: "תנאי שימוש — Switchy AI",
           description:
             "התנאים החלים על השימוש בשירות ההשוואה: מהות השירות, מקור המחירים, " +
             "השימוש בטופס יצירת הקשר והגבלת אחריות.",

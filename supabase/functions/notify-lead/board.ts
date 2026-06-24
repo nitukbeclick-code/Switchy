@@ -158,7 +158,7 @@ export function pipelineCounts(leads: Lead[]): LeadsPipeline["counts"] {
 export function renderLeadsPipeline(pipeline: LeadsPipeline): RenderedMessage {
   const c = pipeline.counts;
   const lines: string[] = [
-    "📊 <b>צינור הלידים — חוסך</b>",
+    "📊 <b>צינור הלידים — Switchy AI</b>",
     "",
     `${LEAD_STATUS_EMOJI.new} חדשים: <b>${c.new}</b>  ·  ` +
       `${LEAD_STATUS_EMOJI.contacted} בטיפול: <b>${c.contacted}</b>  ·  ` +

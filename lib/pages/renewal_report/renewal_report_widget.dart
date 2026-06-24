@@ -279,8 +279,8 @@ class _SaverBanner extends StatelessWidget {
         ? 'אפשר לחסוך ₪$perPackage לחבילה'
         : 'אפשר לחסוך ₪${match.annualSaving} בשנה';
     final shareText = isAbroad
-        ? 'גיליתי שאפשר לחסוך ₪$perPackage לחבילה במעבר ל${match.plan.provider} — עם חוסך'
-        : 'גיליתי שאפשר לחסוך ₪${match.annualSaving} בשנה במעבר ל${match.plan.provider} — עם חוסך';
+        ? 'גיליתי שאפשר לחסוך ₪$perPackage לחבילה במעבר ל${match.plan.provider} — עם Switchy AI'
+        : 'גיליתי שאפשר לחסוך ₪${match.annualSaving} בשנה במעבר ל${match.plan.provider} — עם Switchy AI';
     // The headline saving is the page's hero VALUE moment — amber wash, amber
     // figure, with a celebratory icon badge.
     return Semantics(

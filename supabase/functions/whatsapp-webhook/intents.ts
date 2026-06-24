@@ -251,7 +251,7 @@ export const OPTOUT_CONFIRM_REPLY =
 // and how to stop. Kept to one short paragraph so it doesn't bury the greeting,
 // and NOT repeated on later messages.
 export const FIRST_CONTACT_NOTICE =
-  'ℹ️ זהו השירות של Switch AI (חוסך). ההודעות מטופלות בהתאם למדיניות הפרטיות שלנו: https://app.switchy-ai.com/privacy . בכל רגע אפשר להשיב "הסר" כדי להפסיק לקבל הודעות.';
+  'ℹ️ זהו השירות של Switchy AI. ההודעות מטופלות בהתאם למדיניות הפרטיות שלנו: https://app.switchy-ai.com/privacy . בכל רגע אפשר להשיב "הסר" כדי להפסיק לקבל הודעות.';
 
 /**
  * Append the one-time §11 privacy notice to a bot reply, but only on a contact's

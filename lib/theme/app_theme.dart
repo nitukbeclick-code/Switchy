@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart'
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// Central design tokens for the חוסך app.
+/// Central design tokens for the Switchy AI app.
 ///
 /// This is hand-authored, idiomatic Flutter — no FlutterFlow runtime,
 /// no code generation. Colors live in [AppColors]; the [AppTheme] facade
@@ -610,6 +610,21 @@ class AppTheme {
           fontWeight: FontWeight.w700,
           color: isDark ? t.primaryText : Colors.white,
         ),
+      ),
+      // Native page motion app-wide: every pushed MaterialPage now slides in
+      // (iOS-style + RTL-aware, with edge swipe-back on iOS) instead of swapping
+      // with no motion — the single biggest fix for the "feels like a website"
+      // tell. go_router builds each route as a MaterialPage, so this themes all
+      // ~40 routes at once with zero per-route changes.
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.android: ZoomPageTransitionsBuilder(),
+          TargetPlatform.fuchsia: ZoomPageTransitionsBuilder(),
+          TargetPlatform.linux: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.windows: CupertinoPageTransitionsBuilder(),
+        },
       ),
       cardTheme: CardThemeData(
         color: t.cardSurface,

@@ -142,6 +142,7 @@ async function aiKeys(): Promise<AiKeys> {
   return {
     gemini,
     groq: firstEnv(["GROQ_API_KEY"]),
+    cerebras: firstEnv(["CEREBRAS_API_KEY"]),
     openrouter: firstEnv(["OPENROUTER_API_KEY"]),
   };
 }
@@ -200,7 +201,7 @@ Deno.serve(async (req: Request) => {
     const wantAi = body.ai !== false; // default on; caller can opt out with {ai:false}
     if (wantAi) {
       const keys = await aiKeys();
-      if (keys.gemini || keys.groq || keys.openrouter) {
+      if (keys.gemini || keys.groq || keys.cerebras || keys.openrouter) {
         try {
           narrative = await generateReply(keys, AI_SYSTEM_PROMPT, [], aiUserMessage(brief), 700);
         } catch (e) {

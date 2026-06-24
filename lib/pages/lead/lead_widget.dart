@@ -112,10 +112,12 @@ class _LeadWidgetState extends State<LeadWidget> {
       appBackend
           .upsertProfile(name: name, phone: phone, email: email.isNotEmpty ? email : null)
           .catchError((_) {});
-    } catch (_) {
+    } catch (e) {
       // The lead never reached the team — keep the form AND raise a persistent
       // recovery panel (retry + WhatsApp + support) so the user can act, rather
-      // than believing someone will call.
+      // than believing someone will call. Log for diagnostics (debug-only, no
+      // user-facing change) so a flaky backend/timeout is traceable.
+      debugPrint('LeadWidget submit failed: $e');
       if (!mounted) return;
       setState(() {
         _isSubmitting = false;
@@ -330,8 +332,8 @@ class _LeadWidgetState extends State<LeadWidget> {
                 source: 'lead',
                 width: double.infinity,
                 prefillText: plan != null
-                    ? 'היי, ראיתי את ${plan.provider} – ${plan.plan} בחוסך ואשמח לפרטים'
-                    : 'היי, אשמח לעזרה במציאת מסלול משתלם דרך חוסך',
+                    ? 'היי, ראיתי את ${plan.provider} – ${plan.plan} ב-Switchy AI ואשמח לפרטים'
+                    : 'היי, אשמח לעזרה במציאת מסלול משתלם דרך Switchy AI',
               ).animate().fadeIn(delay: 340.ms),
             ],
             ),
@@ -376,8 +378,8 @@ class _LeadWidgetState extends State<LeadWidget> {
             source: 'lead_recovery',
             width: double.infinity,
             prefillText: plan != null
-                ? 'היי, ניסיתי להשאיר פרטים על ${plan.provider} – ${plan.plan} בחוסך אבל זה נכשל — אפשר לעזור?'
-                : 'היי, ניסיתי להשאיר פרטים בחוסך אבל זה נכשל — אפשר לעזור?',
+                ? 'היי, ניסיתי להשאיר פרטים על ${plan.provider} – ${plan.plan} ב-Switchy AI אבל זה נכשל — אפשר לעזור?'
+                : 'היי, ניסיתי להשאיר פרטים ב-Switchy AI אבל זה נכשל — אפשר לעזור?',
           ),
           const SizedBox(height: 8),
           SizedBox(

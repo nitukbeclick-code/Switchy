@@ -116,7 +116,7 @@ class AccountWidget extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('הצטרפו לחוסך בחינם', style: ffTheme.titleSmall.copyWith(color: ffTheme.brandAccentText)),
+                            Text('הצטרפו ל-Switchy AI בחינם', style: ffTheme.titleSmall.copyWith(color: ffTheme.brandAccentText)),
                             Text('שמרו תוצאות, עקבו אחר מחירים ועוד', style: ffTheme.bodySmall),
                           ],
                         ),
@@ -163,7 +163,7 @@ class AccountWidget extends StatelessWidget {
                         ),
                         const SizedBox(height: 6),
                         Text('₪${appState.totalSavings}', style: GoogleFonts.rubik(fontSize: 44, fontWeight: FontWeight.w800, color: ffTheme.saving, letterSpacing: -1)),
-                        Text('מאז שהצטרפת לחוסך', style: GoogleFonts.assistant(fontSize: 12, color: Colors.white.withValues(alpha: 0.62))),
+                        Text('מאז שהצטרפת ל-Switchy AI', style: GoogleFonts.assistant(fontSize: 12, color: Colors.white.withValues(alpha: 0.62))),
                       ],
                     ),
                   ),
@@ -519,7 +519,7 @@ class AccountWidget extends StatelessWidget {
                     _ActionTile(icon: Icons.support_agent_rounded, title: 'תסריט מיקוח', subtitle: 'רוצים להישאר? בקשו הנחה עם נתונים אמיתיים', onTap: () => context.pushNamed('Negotiate'), ffTheme: ffTheme),
                     _ActionTile(icon: Icons.compare_arrows_rounded, title: 'השוואה חדשה', subtitle: 'מצא את המסלול הכי מתאים לך', onTap: () => context.goNamed('Results'), ffTheme: ffTheme),
                     _ActionTile(icon: Icons.auto_awesome_rounded, title: 'יועץ AI', subtitle: 'שאל שאלות על מסלולי תקשורת', onTap: () => context.pushNamed('AIAdvisor'), ffTheme: ffTheme),
-                    _ActionTile(icon: Icons.card_giftcard_rounded, title: 'הזמינו חבר', subtitle: 'עזרו לחבר לחסוך — שתפו את חוסך', onTap: () => context.pushNamed('Referral'), ffTheme: ffTheme),
+                    _ActionTile(icon: Icons.card_giftcard_rounded, title: 'הזמינו חבר', subtitle: 'עזרו לחבר לחסוך — שתפו את Switchy AI', onTap: () => context.pushNamed('Referral'), ffTheme: ffTheme),
                     _ActionTile(icon: Icons.person_rounded, title: 'הגדרות פרופיל', subtitle: 'עדכן פרטים ועדפות', onTap: () => context.pushNamed('Profile'), ffTheme: ffTheme),
                   ].animate(interval: 70.ms).fadeIn(duration: 300.ms).slideY(begin: 0.06, end: 0),
 

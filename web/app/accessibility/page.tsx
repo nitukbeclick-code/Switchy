@@ -11,7 +11,7 @@
 //     signed compliance certificate, because none is verified here.
 // RESPONSIBLE PARTY: at the current scale of activity (turnover < 1M ₪) a formal
 // accessibility COORDINATOR is not mandatory; the responsible party is named as the
-// team ("צוות Switch AI (חוסך)") with real contacts, plus a complaint/feedback
+// team ("צוות Switchy AI") with real contacts, plus a complaint/feedback
 // mechanism that commits to handling accessibility issues within 60 days. The date
 // is the real last review. No unverified compliance claim is asserted (no "fully
 // compliant"/"certified"). MUST be reviewed by the owner / an accessibility
@@ -30,7 +30,7 @@ const LAST_REVIEWED = "2026-06-23";
 export const metadata: Metadata = pageMetadata({
   title: "הצהרת נגישות",
   description:
-    "הצהרת הנגישות של חוסך / Switch AI: רמת הנגישות הנוכחית של האתר, ההתאמות " +
+    "הצהרת הנגישות של Switchy AI: רמת הנגישות הנוכחית של האתר, ההתאמות " +
     "שבוצעו, מגבלות ידועות, וכיצד לדווח על תקלת נגישות או לבקש סיוע.",
   path: "/accessibility",
 });
@@ -97,10 +97,10 @@ export default function AccessibilityPage() {
       paras: [
         "בהיקף הפעילות הנוכחי של השירות לא חלה חובה למנות רכז נגישות ייעודי. עם " +
           "זאת, אנו רואים בנגישות אחריות שלנו: הגורם האחראי לטיפול בנושאי נגישות " +
-          "באתר הוא צוות Switch AI (חוסך), שניתן לפנות אליו ישירות בערוצים הבאים:",
+          "באתר הוא צוות Switchy AI, שניתן לפנות אליו ישירות בערוצים הבאים:",
       ],
       items: [
-        "הגורם האחראי: צוות Switch AI (חוסך)",
+        "הגורם האחראי: צוות Switchy AI",
         "דוא״ל: hello@chosech.co.il",
         "וואטסאפ: 050-503-7537",
       ],
@@ -133,7 +133,7 @@ export default function AccessibilityPage() {
     <main id="main" className="mx-auto w-full max-w-3xl flex-1 px-4 py-10 sm:px-6">
       <JsonLd
         data={webPageSchema({
-          name: "הצהרת נגישות — חוסך / Switch AI",
+          name: "הצהרת נגישות — Switchy AI",
           description:
             "רמת הנגישות הנוכחית של האתר, ההתאמות שבוצעו, מגבלות ידועות, וכיצד " +
             "לדווח על תקלת נגישות.",

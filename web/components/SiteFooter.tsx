@@ -1,7 +1,7 @@
 // ────────────────────────────────────────────────────────────────────────────
 // <SiteFooter> — the global site footer, intended to render on EVERY route (place
 // it in app/layout.tsx). Provides:
-//   • brand identity ("חוסך / Switch AI" + tagline "סוכן השוואה חכם"),
+//   • brand identity ("Switchy AI" + tagline "סוכן השוואה חכם"),
 //   • a real internal-nav grid (no dead-ends → topical authority + crawl depth),
 //   • prominent links to /transparency and /glossary (authority hubs),
 //   • a short, TRUTHFUL disclosure line about the service.
@@ -98,7 +98,7 @@ export default function SiteFooter({ columns, className }: SiteFooterProps) {
           {/* Brand identity. */}
           <div className="lg:col-span-1">
             <p className="font-display text-lg font-bold tracking-tight text-ink">
-              חוסך / Switch AI
+              Switchy AI
             </p>
             <p className="mt-1 text-sm text-muted">סוכן השוואה חכם</p>
             <p className="mt-3 max-w-xs text-sm leading-relaxed text-foreground">
@@ -131,7 +131,7 @@ export default function SiteFooter({ columns, className }: SiteFooterProps) {
 
         {/* Bottom row: copyright + legal/accessibility links (always present). */}
         <div className="mt-12 flex flex-col gap-3 border-t border-border/60 pt-6 text-xs text-muted sm:flex-row sm:items-center sm:justify-between">
-          <p>© {year} חוסך / Switch AI. כל הזכויות שמורות.</p>
+          <p>© {year} Switchy AI. כל הזכויות שמורות.</p>
           <nav
             aria-label="קישורים משפטיים ונגישות"
             className="flex flex-wrap items-center gap-x-3 gap-y-1"

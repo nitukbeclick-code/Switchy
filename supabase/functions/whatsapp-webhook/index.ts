@@ -577,7 +577,7 @@ const FALLBACK_REPLY =
 // One-time greeting for a brand-new contact — explains what the bot can do,
 // then offers the quick-reply menu (sent as interactive buttons).
 const WELCOME_REPLY =
-  'היי, אני העוזר החכם של חוסך (Switchy) 🤖\nאני משווה בשבילך מסלולי סלולר, אינטרנט, טלוויזיה וחבילות חו"ל ועוזר לחסוך בחשבון. אפשר לשאול אותי כל דבר, לשלוח צילום של החשבון לניתוח, או לבחור למטה 👇';
+  'היי, אני העוזר החכם של Switchy AI 🤖\nאני משווה בשבילך מסלולי סלולר, אינטרנט, טלוויזיה וחבילות חו"ל ועוזר לחסוך בחשבון. אפשר לשאול אותי כל דבר, לשלוח צילום של החשבון לניתוח, או לבחור למטה 👇';
 
 // Sent right after the welcome buttons land — primes the conversation.
 const BILL_PROMPT_REPLY =
@@ -1185,6 +1185,7 @@ Deno.serve(async (req: Request) => {
         const aiKeys: AiKeys = {
           gemini: await geminiKey(),
           groq: Deno.env.get("GROQ_API_KEY") ?? "",
+          cerebras: Deno.env.get("CEREBRAS_API_KEY") ?? "",
           openrouter: Deno.env.get("OPENROUTER_API_KEY") ?? "",
         };
         const profileName: string | undefined = value?.contacts?.[0]?.profile?.name;

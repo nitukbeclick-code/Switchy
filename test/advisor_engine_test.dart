@@ -119,7 +119,7 @@ void main() {
     test('greeting', () {
       final r = ask('שלום');
       expect(r.intent, AdvisorIntent.greeting);
-      expect(r.text, contains('חוסך AI'));
+      expect(r.text, contains('Switchy AI'));
       expect(r.planIds, isEmpty);
     });
 

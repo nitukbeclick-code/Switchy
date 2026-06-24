@@ -5,7 +5,7 @@
 // the same wording can be unit-tested once and reused everywhere without drift.
 //
 // HONESTY / LEGAL (owner-confirmed facts):
-//   • Switch AI (חוסך) earns a referral fee from providers when a user switches
+//   • Switchy AI earns a referral fee from providers when a user switches
 //     through us — this MUST be disclosed prominently (Consumer Protection Law
 //     §7b / §17). The disclosure is truthful: the comparison is free to the user,
 //     the fee is paid by the provider, and it does NOT change the price the user

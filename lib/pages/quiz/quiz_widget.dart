@@ -114,15 +114,18 @@ class _QuizWidgetState extends State<QuizWidget> {
               topRight: Radius.circular(3),
               topLeft: Radius.circular(3),
             ),
-            child: TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0, end: (_step + 1) / 5),
-              duration: ffTheme.motionMedium,
-              curve: ffTheme.easeOut,
-              builder: (context, value, _) => LinearProgressIndicator(
-                value: value,
-                minHeight: 6,
-                backgroundColor: ffTheme.secondary,
-                valueColor: AlwaysStoppedAnimation(ffTheme.brandAccent),
+            child: Semantics(
+              label: 'התקדמות בשאלון: שלב ${_step + 1} מתוך 5',
+              child: TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0, end: (_step + 1) / 5),
+                duration: ffTheme.motionMedium,
+                curve: ffTheme.easeOut,
+                builder: (context, value, _) => LinearProgressIndicator(
+                  value: value,
+                  minHeight: 6,
+                  backgroundColor: ffTheme.secondary,
+                  valueColor: AlwaysStoppedAnimation(ffTheme.brandAccent),
+                ),
               ),
             ),
           ),
@@ -958,7 +961,7 @@ class _QuizWidgetState extends State<QuizWidget> {
               onPressed: () {
                 HapticFeedback.lightImpact();
                 Share.share(
-                    'מצאתי מסלול ${top.plan.provider} ב-₪${top.plan.priceText} — ${top.annualSaving > 0 ? 'חוסך ₪${top.annualSaving} בשנה ' : ''}עם חוסך');
+                    'מצאתי מסלול ${top.plan.provider} ב-₪${top.plan.priceText} — ${top.annualSaving > 0 ? 'חוסך ₪${top.annualSaving} בשנה ' : ''}עם Switchy AI');
               },
               icon: Icon(Icons.ios_share_rounded, size: 18, color: ffTheme.brandAccent),
               label: Text('שתף',
@@ -1039,18 +1042,22 @@ class _StepCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('שלב $step מתוך 5', style: ffTheme.labelMedium),
-          const SizedBox(height: 8),
-          Text(title, style: ffTheme.headlineMedium),
-          const SizedBox(height: 4),
-          Text(subtitle, style: ffTheme.bodyMedium.copyWith(color: ffTheme.secondaryText)),
-          const SizedBox(height: 32),
-          child,
-        ],
+    return Semantics(
+      container: true,
+      label: 'שלב $step מתוך 5: $title. $subtitle',
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('שלב $step מתוך 5', style: ffTheme.labelMedium),
+            const SizedBox(height: 8),
+            Text(title, style: ffTheme.headlineMedium),
+            const SizedBox(height: 4),
+            Text(subtitle, style: ffTheme.bodyMedium.copyWith(color: ffTheme.secondaryText)),
+            const SizedBox(height: 32),
+            child,
+          ],
+        ),
       ),
     );
   }

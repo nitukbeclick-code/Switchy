@@ -82,7 +82,7 @@ void main() {
     await tester.pump(); // kick off the load
     await tester.pump(const Duration(milliseconds: 500)); // flush + entrance
 
-    expect(find.text('קהילת חוסך'), findsOneWidget);
+    expect(find.text('קהילת Switchy AI'), findsOneWidget);
     expect(find.text('מצאתי מסלול מעולה ב-30 שקל'), findsOneWidget);
     // Drain the staggered card entrance so no animation timer is left pending.
     await tester.pump(const Duration(milliseconds: 500));

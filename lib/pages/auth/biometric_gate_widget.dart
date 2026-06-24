@@ -42,7 +42,7 @@ class _BiometricGateWidgetState extends State<BiometricGateWidget> {
       _failed = false;
     });
     final ok = await AuthService.instance.authenticateBiometric(
-      reason: 'כניסה מהירה ל"חוסך"',
+      reason: 'כניסה מהירה ל-Switchy AI',
     );
     if (!mounted) return;
     if (ok) {

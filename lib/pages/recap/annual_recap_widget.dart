@@ -97,7 +97,7 @@ class AnnualRecapWidget extends StatelessWidget {
     required int realized,
     required bool personalized,
   }) {
-    final buf = StringBuffer('הסיכום השנתי שלי בחוסך 📊\n');
+    final buf = StringBuffer('הסיכום השנתי שלי ב-Switchy AI 📊\n');
     if (total > 0) {
       buf.write(personalized
           ? 'גיליתי שאפשר לחסוך עד ₪$total בשנה על חשבונות התקשורת'
@@ -105,9 +105,9 @@ class AnnualRecapWidget extends StatelessWidget {
     }
     if (realized > 0) {
       if (total > 0) buf.write('\n');
-      buf.write('וכבר חסכתי ₪$realized דרך חוסך');
+      buf.write('וכבר חסכתי ₪$realized דרך Switchy AI');
     }
-    buf.write('\nבדקו גם אתם עם חוסך!');
+    buf.write('\nבדקו גם אתם עם Switchy AI!');
     return buf.toString();
   }
 }
@@ -423,7 +423,7 @@ class _RealizedCard extends StatelessWidget {
                   TextSpan(
                       text: '₪$amount',
                       style: ffTheme.titleSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w800)),
-                  const TextSpan(text: ' דרך חוסך השנה'),
+                  const TextSpan(text: ' דרך Switchy AI השנה'),
                 ],
               ),
             ),

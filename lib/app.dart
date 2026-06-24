@@ -6,6 +6,18 @@ import 'app_state.dart';
 import 'theme/app_theme.dart';
 import 'router.dart';
 
+/// App-wide scroll feel: iOS-style bouncing over-scroll on EVERY scrollable, on
+/// Android too, so the premium-glass brand bounces consistently instead of
+/// showing Android's material glow. Physics only — no AlwaysScrollable here, so
+/// short pages don't rubber-band (per-screen pull-to-refresh adds that where
+/// it's actually needed). Keeps the default Material scrollbars + drag devices.
+class _AppScrollBehavior extends MaterialScrollBehavior {
+  const _AppScrollBehavior();
+  @override
+  ScrollPhysics getScrollPhysics(BuildContext context) =>
+      const BouncingScrollPhysics(parent: RangeMaintainingScrollPhysics());
+}
+
 class ChosechApp extends StatefulWidget {
   const ChosechApp({super.key});
 
@@ -32,7 +44,7 @@ class _ChosechAppState extends State<ChosechApp> {
     // here rebuilds MaterialApp the moment the Settings toggle flips it.
     final themeMode = context.watch<AppState>().themeMode;
     return MaterialApp.router(
-      title: 'חוסך',
+      title: 'Switchy AI',
       debugShowCheckedModeBanner: false,
       locale: const Locale('he'),
       localizationsDelegates: const [
@@ -44,6 +56,7 @@ class _ChosechAppState extends State<ChosechApp> {
       theme: AppTheme.lightTheme(),
       darkTheme: AppTheme.darkTheme(),
       themeMode: themeMode,
+      scrollBehavior: const _AppScrollBehavior(),
       routerConfig: _router,
       builder: (ctx, child) {
         // Honour the OS "reduce motion" setting globally: flutter_animate has

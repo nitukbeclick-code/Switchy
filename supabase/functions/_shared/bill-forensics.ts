@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// bill-forensics — חוסך · ביקורת חשבון (truth-only)
+// bill-forensics — Switchy AI · ביקורת חשבון (truth-only)
 // Pure, dependency-light forensic auditor over a PARSED telecom bill. Given the
 // line items a Vision model extracted from a photographed bill + the REAL plan
 // catalogue, it surfaces concrete, ₪-quantified anomalies a customer can act on:

@@ -133,7 +133,7 @@ function datasetSchema(rows: MarketPulseCategory[]): Record<string, unknown> {
     url: `${SITE_URL}${PAGE_PATH}`,
     inLanguage: "he-IL",
     dateModified: REVIEWED_AT,
-    creator: { "@type": "Organization", name: "חוסך / Switch AI", url: SITE_URL },
+    creator: { "@type": "Organization", name: "Switchy AI", url: SITE_URL },
     isAccessibleForFree: true,
     measurementTechnique: "אגרגציה של מחירי מסלולים מקטלוג הספקים",
     variableMeasured: [

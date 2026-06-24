@@ -1,7 +1,7 @@
 // ────────────────────────────────────────────────────────────────────────────
 // <SiteHeader> — the global, sticky site masthead, intended to render on EVERY
 // route (place it in app/layout.tsx, before {children}). Provides:
-//   • brand wordmark ("חוסך / Switch AI") linking home,
+//   • brand wordmark ("Switchy AI") linking home,
 //   • primary internal nav (השוואה · ספקים · דופק השוק · מעבר ספק),
 //   • one green ACTION CTA (שיחת ייעוץ חינם → /#lead).
 //
@@ -63,8 +63,8 @@ export default function SiteHeader({ className }: SiteHeaderProps) {
             aria-hidden="true"
             className="inline-block h-5 w-1.5 rounded-full bg-accent transition-transform duration-200 group-hover:scale-y-110"
           />
-          חוסך
-          <span className="text-sm font-semibold text-muted">/ Switch AI</span>
+          Switchy
+          <span className="text-sm font-semibold text-muted">AI</span>
         </Link>
 
         {/* Primary nav — hidden on small screens (footer carries the full set). */}

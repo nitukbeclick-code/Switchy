@@ -79,7 +79,7 @@ class _OnboardingWidgetState extends State<OnboardingWidget> {
                           ),
                         ),
                         const SizedBox(width: 10),
-                        Text('חוסך', style: GoogleFonts.rubik(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white)),
+                        Text('Switchy AI', style: GoogleFonts.rubik(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white)),
                         const Spacer(),
                         // Skip stays available through the first two pages; on the
                         // last page the primary CTA *is* the finish, so a second
@@ -203,7 +203,7 @@ class _Page1 extends StatelessWidget {
           ).animate().fadeIn(delay: 150.ms).slideY(begin: 0.2, end: 0),
           const SizedBox(height: 12),
           Text(
-            'חוסך משווה לכם את החבילות של כל הספקים על סלולר, אינטרנט וטלוויזיה – בשניות.',
+            'Switchy AI משווה לכם את החבילות של כל הספקים על סלולר, אינטרנט וטלוויזיה – בשניות.',
             style: ffTheme.bodyLarge.copyWith(color: ffTheme.secondaryText),
             textAlign: TextAlign.center,
           ).animate().fadeIn(delay: 250.ms),

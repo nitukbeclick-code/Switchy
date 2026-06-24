@@ -90,7 +90,7 @@ class ComparisonPdf {
           children: [
             pw.Text(ComparisonExport.title,
                 style: pw.TextStyle(font: title, fontSize: 18, color: _ink)),
-            pw.Text('חוסך',
+            pw.Text('Switchy AI',
                 style: pw.TextStyle(font: title, fontSize: 14, color: _ink)),
           ],
         ),

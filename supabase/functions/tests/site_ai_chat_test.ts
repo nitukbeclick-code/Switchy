@@ -87,7 +87,7 @@ Deno.test("buildAiLeadRow builds a clean row with consent and stamps terms+priva
   assertEquals(row!.consent_marketing_email, false);
   assertEquals(row!.consent_marketing_whatsapp, false);
   assert(row!.notes !== null);
-  assertStringIncludes(row!.notes!, "חוסך AI");
+  assertStringIncludes(row!.notes!, "Switchy AI");
   assertStringIncludes(row!.notes!, "cellular");
   assertStringIncludes(row!.notes!, "רוצה לעבור");
 });

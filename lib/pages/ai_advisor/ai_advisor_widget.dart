@@ -42,9 +42,9 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
     final appState = AppState();
     final String greeting;
     if (appState.isLoggedIn && appState.firstName.isNotEmpty && appState.firstName != 'אורח') {
-      greeting = 'שלום ${appState.firstName}! אני חוסך AI\nיועץ התקשורת החכם שלך.\n\nמה מחפשים?';
+      greeting = 'שלום ${appState.firstName}! אני Switchy AI\nיועץ התקשורת החכם שלך.\n\nמה מחפשים?';
     } else {
-      greeting = 'שלום! אני חוסך AI\nיועץ התקשורת החכם שלך.\n\nמה מחפשים?';
+      greeting = 'שלום! אני Switchy AI\nיועץ התקשורת החכם שלך.\n\nמה מחפשים?';
     }
     return [_ChatMsg(text: greeting, isUser: false, time: DateTime.now())];
   }
@@ -243,7 +243,7 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('חוסך AI', style: GoogleFonts.rubik(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
+                Text('Switchy AI', style: GoogleFonts.rubik(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
                 Row(
                   children: [
                     Container(

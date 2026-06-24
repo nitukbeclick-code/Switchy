@@ -36,7 +36,7 @@ const SITE_URL = "https://app.switchy-ai.com";
 // without confusion. Uppercase only (codes are case-insensitive on lookup).
 const CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 const CODE_BODY_LEN = 6; // 30^6 ≈ 729M combinations — collision-safe at our volume
-const CODE_PREFIX = "SW"; // Switchy/חוסך brand prefix, e.g. "SW-7KQ4M9"
+const CODE_PREFIX = "SW"; // Switchy AI brand prefix, e.g. "SW-7KQ4M9"
 
 /** The canonical SW-XXXXXX shape (UPPERCASE body, unambiguous alphabet). */
 export const REFERRAL_CODE_RE = /^SW-[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{6}$/;

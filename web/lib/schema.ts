@@ -20,13 +20,13 @@ import {
  * 301 app→apex. Drives canonicals/sitemap/robots/JSON-LD. */
 export const SITE_URL = "https://app.switchy-ai.com";
 /** Brand name as shown to users / engines (single canonical form everywhere). */
-export const SITE_NAME = "חוסך / Switch AI";
+export const SITE_NAME = "Switchy AI";
 /**
  * Alternate brand-name forms that MUST resolve to the same entity. GEO/knowledge
  * graphs key `sameAs`/knowledge-panel on a single name, so we declare every form
- * the brand appears under (the Hebrew "חוסך", the canonical English "Switch AI",
- * and the legacy "Switchy" variant the site also appeared under) as
- * `alternateName`. KEEP the footer + llm-context in sync with these.
+ * the brand has appeared under (the legacy Hebrew "חוסך", the older English
+ * "Switch AI", and the bare "Switchy" wordmark) as `alternateName`. KEEP the
+ * footer + llm-context in sync with these.
  */
 export const SITE_ALT_NAMES: readonly string[] = ["חוסך", "Switch AI", "Switchy"];
 const CURRENCY = "ILS";
@@ -558,7 +558,7 @@ export function definedTermSetSchema(
     "@context": "https://schema.org",
     "@type": "DefinedTermSet",
     "@id": `${SITE_URL}/glossary#set`,
-    name: opts.name ?? "מילון מונחי תקשורת — חוסך / Switch AI",
+    name: opts.name ?? "מילון מונחי תקשורת — Switchy AI",
     description:
       opts.description ??
       "מילון מונחים עובדתי בעברית לשוק התקשורת בישראל: סלולר, אינטרנט, " +

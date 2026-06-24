@@ -33,9 +33,9 @@ const REVIEWED_AT = new Date().toISOString().slice(0, 10);
 
 export function generateMetadata(): Metadata {
   return pageMetadata({
-    title: "הזמינו חבר לחסוך — שיתוף חוסך",
+    title: "הזמינו חבר לחסוך — שיתוף Switchy AI",
     description:
-      "קבלו קוד הזמנה אישי ושתפו את חוסך עם חברים. כלי חינמי להשוואת מסלולי " +
+      "קבלו קוד הזמנה אישי ושתפו את Switchy AI עם חברים. כלי חינמי להשוואת מסלולי " +
       "תקשורת בישראל — שיתוף הכלי, ללא עלות וללא הבטחת תגמול כספי.",
     path: PAGE_PATH,
   });
@@ -51,9 +51,9 @@ export default function ReferralPage() {
     <main id="main" className="mx-auto w-full max-w-3xl flex-1 px-4 py-10 sm:px-6">
       <JsonLd
         data={webPageSchema({
-          name: "הזמינו חבר לחסוך — שיתוף חוסך",
+          name: "הזמינו חבר לחסוך — שיתוף Switchy AI",
           description:
-            "קבלו קוד הזמנה אישי ושתפו את חוסך, כלי חינמי להשוואת מסלולי תקשורת בישראל. שיתוף הכלי בלבד — ללא הבטחת תגמול כספי.",
+            "קבלו קוד הזמנה אישי ושתפו את Switchy AI, כלי חינמי להשוואת מסלולי תקשורת בישראל. שיתוף הכלי בלבד — ללא הבטחת תגמול כספי.",
           url: PAGE_PATH,
           lastReviewed: REVIEWED_AT,
           about: "הזמנת חברים לכלי השוואת תקשורת",
@@ -73,10 +73,10 @@ export default function ReferralPage() {
       {/* ── Heading ───────────────────────────────────────────────────────── */}
       <header className="mt-4">
         <h1 className="font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
-          שתפו את חוסך עם חברים
+          שתפו את Switchy AI עם חברים
         </h1>
         <p className="mt-4 max-w-2xl text-lg leading-relaxed text-foreground">
-          אם חוסך עזר לכם לבדוק כמה אתם יכולים לחסוך, יש סיכוי טוב שהוא יעזור גם
+          אם Switchy AI עזר לכם לבדוק כמה אתם יכולים לחסוך, יש סיכוי טוב שהוא יעזור גם
           לחברים שלכם. קבלו קוד הזמנה אישי ושתפו אותו — חינם, בלי התחייבות.
         </p>
       </header>

@@ -883,7 +883,7 @@ class AdminMetrics {
 /// reviews); the community feed (posts/replies/media) is the next domain to add.
 abstract interface class Backend {
   // ── AI advisor (site-ai-chat edge agent) ─────────────────────────────────────
-  /// Calls the `site-ai-chat` edge agent (the grounded, multi-turn חוסך AI) and
+  /// Calls the `site-ai-chat` edge agent (the grounded, multi-turn Switchy AI) and
   /// returns its decoded JSON body (`{reply, offerLead?, leadCaptured?,
   /// contextTruncated?, sessionId?}`). [body] is the request shape
   /// (`{message, history, sessionId?}`). Throws on a transport / non-2xx / parse

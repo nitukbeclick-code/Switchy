@@ -1,7 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// renewal-reminders — חוסך
+// renewal-reminders — Switchy AI
 // The bot's scheduled brain. pg_cron POSTs here with a `mode` (see the
 // schedule block in supabase/schema.sql); auth is the shared x-webhook-secret.
 //

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show HapticFeedback;
 import '../theme/app_theme.dart';
 
 /// Wraps any [child] so it gently scales down while pressed, then springs back
@@ -17,6 +18,7 @@ class Pressable extends StatefulWidget {
     this.scale,
     this.behavior = HitTestBehavior.opaque,
     this.enableFeedback = true,
+    this.haptic = true,
   });
 
   final Widget child;
@@ -27,6 +29,11 @@ class Pressable extends StatefulWidget {
   final double? scale;
   final HitTestBehavior behavior;
   final bool enableFeedback;
+
+  /// Fire a light selection haptic when [onTap] fires (default on). Set false
+  /// for controls that emit their own feedback (e.g. wrapping an [AppButton])
+  /// or that should stay silent.
+  final bool haptic;
 
   @override
   State<Pressable> createState() => _PressableState();
@@ -47,7 +54,12 @@ class _PressableState extends State<Pressable> {
 
     return GestureDetector(
       behavior: widget.behavior,
-      onTap: widget.onTap,
+      onTap: widget.onTap == null
+          ? null
+          : () {
+              if (widget.haptic) HapticFeedback.selectionClick();
+              widget.onTap!();
+            },
       onLongPress: widget.onLongPress,
       onTapDown: (_) => _set(true),
       onTapUp: (_) => _set(false),

@@ -50,7 +50,7 @@ export function buildAgenda(rows: AgendaInput, nowMs: number): string {
   const pending = rows.pending.filter(onToday).sort(byTime);
   const uncontacted = rows.uncontacted.filter((l) => String(l.status ?? "new") === "new");
 
-  const lines: string[] = [`🗓️ <b>סדר היום — חוסך</b> · ${esc(ilDayLabel(nowMs))}`];
+  const lines: string[] = [`🗓️ <b>סדר היום — Switchy AI</b> · ${esc(ilDayLabel(nowMs))}`];
 
   lines.push("", "✅ <b>פגישות מאושרות היום:</b>");
   if (confirmed.length === 0) {
@@ -115,7 +115,7 @@ export function buildDailyDigest(rows: AgendaInput, nowMs: number): string {
   });
 
   const lines: string[] = [
-    `📋 <b>דייג'סט יומי — חוסך</b> · ${esc(ilDayLabel(nowMs))}`,
+    `📋 <b>דייג'סט יומי — Switchy AI</b> · ${esc(ilDayLabel(nowMs))}`,
     "",
     `📅 ${confirmed.length} פגישות מאושרות · 🕐 ${pending.length} ממתינות לאישור · 🆕 ${uncontacted.length} לידים פתוחים` +
       (overdue.length > 0 ? ` · 🔴 ${overdue.length} מעבר ל-SLA` : ""),
@@ -180,9 +180,9 @@ export function buildWeek(meetings: MeetingRow[], nowMs: number): string {
     .sort((a, b) => startsMs(a) - startsMs(b));
 
   if (inWindow.length === 0) {
-    return `📆 <b>השבוע הקרוב — חוסך</b>${NL}${NL}אין פגישות מאושרות ב-7 הימים הקרובים.`;
+    return `📆 <b>השבוע הקרוב — Switchy AI</b>${NL}${NL}אין פגישות מאושרות ב-7 הימים הקרובים.`;
   }
-  const lines: string[] = [`📆 <b>השבוע הקרוב — חוסך</b> (${inWindow.length} פגישות מאושרות)`, ""];
+  const lines: string[] = [`📆 <b>השבוע הקרוב — Switchy AI</b> (${inWindow.length} פגישות מאושרות)`, ""];
   let curDay = "";
   for (const m of inWindow) {
     const t = startsMs(m);
@@ -217,7 +217,7 @@ export function buildStats(input: StatsInput): string {
   const mCompleted = ms.filter((m) => String(m.status ?? "") === "completed").length;
 
   return [
-    "📊 <b>המשפך השבועי — חוסך</b> (7 ימים אחרונים)",
+    "📊 <b>המשפך השבועי — Switchy AI</b> (7 ימים אחרונים)",
     "",
     `🔔 לידים חדשים: <b>${total}</b>`,
     `   🆕 ${newL} ממתינים · 📞 ${contacted} נוצר קשר · 🏆 ${won} נסגרו · ❌ ${lost} לא רלוונטי`,

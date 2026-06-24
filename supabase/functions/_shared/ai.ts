@@ -8,6 +8,9 @@ import { jlog } from "./log.ts";
 // "try the next candidate"; any other status (auth/quota/5xx) is a real failure.
 export const GEMINI_MODELS = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"];
 const GROQ_MODEL = "llama-3.3-70b-versatile";
+// Cerebras Cloud — OpenAI-compatible, wafer-scale inference (very fast). A 3rd
+// free fallback so the agent never goes dark when Gemini AND Groq are both busy.
+const CEREBRAS_MODEL = "llama-3.3-70b";
 const OPENROUTER_MODEL = "meta-llama/llama-3.3-70b-instruct:free";
 
 // ── Model ROUTING (the "tier" opt) ───────────────────────────────────────────
@@ -88,12 +91,12 @@ export async function fetchWithTimeout(
 }
 
 export type ChatTurn = { role: string; text: string };
-export type AiKeys = { gemini?: string; groq?: string; openrouter?: string; openai?: string };
+export type AiKeys = { gemini?: string; groq?: string; cerebras?: string; openrouter?: string; openai?: string };
 
 // WhatsApp persona — short, warm, grounded. The catalogue context is appended
 // to this header by the caller (buildCatalogueContext).
 export const SYSTEM_PROMPT_HEADER =
-  `את/ה הסוכן/ת החכם/ה של "חוסך" (Switchy) בוואטסאפ — שירות ישראלי להשוואת מסלולי סלולר/אינטרנט/טלוויזיה/חבילה משולבת/חו"ל וחיסכון בחשבונות התקשורת.
+  `את/ה הסוכן/ת החכם/ה של "Switchy AI" בוואטסאפ — שירות ישראלי להשוואת מסלולי סלולר/אינטרנט/טלוויזיה/חבילה משולבת/חו"ל וחיסכון בחשבונות התקשורת.
 כללים מחייבים:
 - ענה/י בעברית בלבד, קצר וזורם לוואטסאפ (1-4 משפטים), בטון חם, אנושי ומקצועי. מותר אימוג'י אחד-שניים.
 - התבסס/י אך ורק על נתוני המסלולים שמופיעים למטה. אסור להמציא ספק, מסלול, מחיר או תכונה שלא מופיעים ברשימה.
@@ -305,6 +308,17 @@ export async function generateReply(
       if (e instanceof AiTimeoutError && meta) meta.timedOut = true;
     }
   }
+  if (keys.cerebras) {
+    try {
+      const t = cleanReply(await callOpenAiCompatible(
+        "https://api.cerebras.ai/v1/chat/completions",
+        CEREBRAS_MODEL, keys.cerebras, systemContext, history, message, maxTokens, "cerebras",
+      ));
+      if (t) return t;
+    } catch (e) {
+      if (e instanceof AiTimeoutError && meta) meta.timedOut = true;
+    }
+  }
   if (keys.openrouter) {
     try {
       const t = cleanReply(await callOpenAiCompatible(
@@ -326,41 +340,64 @@ export async function callGeminiVision(
   img: { mimeType: string; data: string },
 ): Promise<string> {
   let lastStatus = 0;
-  for (const model of GEMINI_MODELS) {
-    const r = await fetchWithTimeout(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{
-            role: "user",
-            parts: [
-              { text: promptText },
-              { inlineData: { mimeType: img.mimeType, data: img.data } },
-            ],
-          }],
-          generationConfig: {
-            maxOutputTokens: 300,
-            temperature: 0.1,
-            responseMimeType: "application/json",
-            ...(model.startsWith("gemini-2.5") ? { thinkingConfig: { thinkingBudget: 0 } } : {}),
-          },
-        }),
-      },
-      VISION_TIMEOUT_MS,
-      `gemini-vision:${model}`,
-    );
+  // Vision model order: LEAD with the fast, widely-available gemini-2.0-flash — bill
+  // OCR doesn't need 2.5's reasoning, and gemini-2.5 is the most overloaded model (it
+  // 503s under load), then fall through to 2.5 / 1.5. Unlike the text path, Vision has
+  // NO cross-provider (Groq/OpenRouter) fallback — so the loop below ALSO retries the
+  // next model on a transient 429/5xx, a network timeout, OR a 200-but-empty reply
+  // (not just a 404). That fragility was why bill photos returned "couldn't analyze".
+  const VISION_MODELS = ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-1.5-flash"];
+  for (const model of VISION_MODELS) {
+    let r: Response;
+    try {
+      r = await fetchWithTimeout(
+        `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{
+              role: "user",
+              parts: [
+                { text: promptText },
+                { inlineData: { mimeType: img.mimeType, data: img.data } },
+              ],
+            }],
+            generationConfig: {
+              maxOutputTokens: 512,
+              temperature: 0.1,
+              responseMimeType: "application/json",
+              ...(model.startsWith("gemini-2.5") ? { thinkingConfig: { thinkingBudget: 0 } } : {}),
+            },
+          }),
+        },
+        VISION_TIMEOUT_MS,
+        `gemini-vision:${model}`,
+      );
+    } catch (e) {
+      // Network error / AbortController timeout on THIS model → try the next one.
+      lastStatus = 504;
+      jlog({ at: "ai.callGeminiVision", ok: false, model, error: String(e) });
+      continue;
+    }
     if (r.ok) {
       const j = await r.json();
       const parts: Array<{ text?: string; thought?: boolean }> = j?.candidates?.[0]?.content?.parts ?? [];
-      const text = parts.filter((p) => !p.thought).map((p) => p.text ?? "").join("");
-      jlog({ at: "ai.callGeminiVision", ok: true, model });
-      return String(text).trim();
+      const text = parts.filter((p) => !p.thought).map((p) => p.text ?? "").join("").trim();
+      if (text) {
+        jlog({ at: "ai.callGeminiVision", ok: true, model });
+        return text;
+      }
+      // 200 but empty (safety block / token budget consumed) → try the next model.
+      jlog({ at: "ai.callGeminiVision", ok: false, model, empty: true });
+      continue;
     }
     lastStatus = r.status;
     jlog({ at: "ai.callGeminiVision", ok: false, model, status: r.status });
-    if (r.status !== 404) break;
+    // Retry the next model on transient / overload / model-gone; stop only on a hard
+    // client/auth error (400/401/403) where a different model won't help.
+    if (r.status === 404 || r.status === 429 || r.status >= 500) continue;
+    break;
   }
   throw new Error("gemini vision request failed: " + lastStatus);
 }

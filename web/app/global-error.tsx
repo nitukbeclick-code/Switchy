@@ -43,7 +43,7 @@ export default function GlobalError({
   return (
     <html lang="he" dir="rtl" data-theme="light" suppressHydrationWarning>
       <head>
-        <title>משהו השתבש — חוסך / Switch AI</title>
+        <title>משהו השתבש — Switchy AI</title>
         <meta name="color-scheme" content="light dark" />
         {/* No-flash theme guard — the root layout's guard is gone when this file
             is active, so replay it here to avoid a light/dark flash. */}

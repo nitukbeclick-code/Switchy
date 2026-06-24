@@ -13,14 +13,26 @@ class PushNotificationService {
   bool _ready = false;
 
   /// Initialize the plugin + timezone DB. Safe (no-op) on web. Call once at startup.
+  /// Fails soft: a registration error leaves the service un-ready instead of throwing.
   Future<void> init() async {
-    await impl.initPush();
-    _ready = true;
+    try {
+      await impl.initPush();
+      _ready = true;
+    } catch (_) {
+      _ready = false;
+    }
   }
 
   /// Ask the OS for notification permission (Android 13+ / iOS). Returns whether
-  /// it was granted. No-op/false on web.
-  Future<bool> requestPermission() => impl.requestPush();
+  /// it was granted. No-op/false on web. Fails soft: a permission error is
+  /// treated as not granted (never throws).
+  Future<bool> requestPermission() async {
+    try {
+      return await impl.requestPush();
+    } catch (_) {
+      return false;
+    }
+  }
 
   /// (Re)schedule EVERYTHING from the pure schedules in one pass: renewal
   /// reminders (when opted in) + video-meeting reminders. One pass because the

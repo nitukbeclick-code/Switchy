@@ -1,7 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// site-plan-advisor — חוסך מנוע המלצות מסלולים (רב-שלבי)
+// site-plan-advisor — Switchy AI מנוע המלצות מסלולים (רב-שלבי)
 //
 // Public, multi-turn plan recommender behind the website's "מצא לי מסלול" flow.
 // Grounded STRICTLY in a bundled catalogue snapshot (plans-snapshot.json, copied
@@ -82,7 +82,7 @@ function loadPlans(): Plan[] {
   return Array.isArray(rows) ? rows : [];
 }
 
-const SYSTEM_PROMPT = `את/ה יועץ/ת מסלולים חכם/ה באתר "חוסך" — שירות ישראלי להשוואת מסלולי סלולר/אינטרנט/טלוויזיה/טריפל/חו"ל.
+const SYSTEM_PROMPT = `את/ה יועץ/ת מסלולים חכם/ה באתר "Switchy AI" — שירות ישראלי להשוואת מסלולי סלולר/אינטרנט/טלוויזיה/טריפל/חו"ל.
 המשימה: לבחור עבור המשתמש/ת את המסלולים המתאימים ביותר מתוך רשימת המסלולים האמיתית בלבד שמופיעה למטה, ולנסח שאלת המשך אחת קצרה שתחדד את ההמלצה.
 
 כללים מחייבים:

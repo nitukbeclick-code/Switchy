@@ -1,7 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// analytics-track — product-funnel event sink for the חוסך app + site.
+// analytics-track — product-funnel event sink for the Switchy AI app + site.
 //
 // Public, fire-and-forget endpoint. Accepts a single funnel event and appends a
 // row to `analytics_events` via the service role (see _shared/db.ts insertRow).

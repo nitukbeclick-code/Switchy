@@ -468,6 +468,7 @@ class MatchesWidget extends StatelessWidget {
                 child: _MatchAction(
                   icon: Icons.article_outlined,
                   label: 'פרטים',
+                  semanticLabel: 'פרטים על ${plan.provider} ${plan.plan}',
                   onTap: () {
                     HapticFeedback.selectionClick();
                     context.pushNamed('PlanDetail',
@@ -483,6 +484,9 @@ class MatchesWidget extends StatelessWidget {
                       ? Icons.check_circle_rounded
                       : Icons.compare_arrows_rounded,
                   label: inCompare ? 'בהשוואה' : 'השוואה',
+                  semanticLabel: inCompare
+                      ? 'הסר את ${plan.provider} ${plan.plan} מההשוואה'
+                      : 'הוסף את ${plan.provider} ${plan.plan} להשוואה',
                   active: inCompare,
                   onTap: () {
                     HapticFeedback.selectionClick();
@@ -502,7 +506,7 @@ class MatchesWidget extends StatelessWidget {
             height: 46,
             label: 'קבלו הצעה ל${plan.provider}',
             prefillText:
-                'היי, ראיתי את ${plan.provider} – ${plan.plan} (₪${plan.priceText}) בחוסך ואשמח לפרטים',
+                'היי, ראיתי את ${plan.provider} – ${plan.plan} (₪${plan.priceText}) ב-Switchy AI ואשמח לפרטים',
           ),
         ],
       ),
@@ -519,6 +523,7 @@ class _MatchAction extends StatelessWidget {
     required this.onTap,
     required this.ffTheme,
     this.active = false,
+    this.semanticLabel,
   });
 
   final IconData icon;
@@ -526,13 +531,14 @@ class _MatchAction extends StatelessWidget {
   final VoidCallback onTap;
   final AppTheme ffTheme;
   final bool active;
+  final String? semanticLabel;
 
   @override
   Widget build(BuildContext context) {
     final fg = active ? Colors.white : ffTheme.brandAccentText;
     return Semantics(
       button: true,
-      label: label,
+      label: semanticLabel ?? label,
       child: Material(
         color: active
             ? ffTheme.brandAccent

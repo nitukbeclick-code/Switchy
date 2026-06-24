@@ -821,7 +821,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                       borderRadius: BorderRadius.circular(ffTheme.radiusSm),
                     ),
                     child: Text(
-                      '✦ חוסך AI',
+                      '✦ Switchy AI',
                       style: ffTheme.labelSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w800),
                     ),
                   ),

@@ -71,7 +71,7 @@ export default function RightsPage() {
     <main id="main" className="mx-auto w-full max-w-3xl flex-1 px-4 py-10 sm:px-6">
       <JsonLd
         data={webPageSchema({
-          name: "מימוש זכויות (פרטיות) — חוסך / Switch AI",
+          name: "מימוש זכויות (פרטיות) — Switchy AI",
           description:
             "הגשת בקשה לעיון, תיקון או מחיקת מידע, או חזרה מהסכמה / הסרה מדיוור, " +
             "לפי חוק הגנת הפרטיות.",

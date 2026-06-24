@@ -99,7 +99,7 @@ export default function ReferralCard({ className }: { className?: string }) {
     };
     if (typeof nav.share === "function") {
       try {
-        await nav.share({ title: "חוסך — השוואת תקשורת", text: shareText, url: link });
+        await nav.share({ title: "Switchy AI — השוואת תקשורת", text: shareText, url: link });
         setFeedback("ההזמנה נשלחה");
         return;
       } catch {
@@ -120,7 +120,7 @@ export default function ReferralCard({ className }: { className?: string }) {
         הזמינו חבר לחסוך
       </h2>
       <p className="mt-3 max-w-prose text-sm leading-relaxed text-foreground sm:text-base">
-        חוסך הוא כלי חינמי להשוואת מסלולי תקשורת בישראל. שתפו את הקוד או הקישור עם
+        Switchy AI הוא כלי חינמי להשוואת מסלולי תקשורת בישראל. שתפו את הקוד או הקישור עם
         חברים — וכשהם יבדקו את החשבון שלהם, הם יוכלו לחסוך בדיוק כמוכם. בלי עלות,
         בלי התחייבות.
       </p>

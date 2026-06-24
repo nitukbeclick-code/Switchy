@@ -20,7 +20,7 @@ type CmdResult = { ok: boolean; command: string; failures?: number };
 // (no key, error, non-200) so the board still renders without it. Truth-only:
 // the prompt carries only the real numbers, never invented status.
 const SUMMARY_SYS =
-  'אתה עוזר לנציג מכירות של חברת השוואת תקשורת ישראלית בשם "חוסך". ' +
+  'אתה עוזר לנציג מכירות של חברת השוואת תקשורת ישראלית בשם "Switchy AI". ' +
   "קיבלת נתונים אמיתיים על לוח הפגישות של היום. החזר משפט אחד קצר בעברית (עד 20 מילים) " +
   "שמתעדף מה דחוף עכשיו. אל תמציא נתונים — השתמש רק במה שניתן. בלי מקדימות, רק המשפט.";
 
@@ -275,7 +275,7 @@ export async function handleCommand(cfg: Cfg, cmd: string, args: string): Promis
     const tot = (k: string) => rows.reduce((s, r) => s + Number(r[k] ?? 0), 0);
     const med = medianMinutes(contacted ?? []);
     const lines = [
-      "📊 <b>סטטיסטיקת לידים — חוסך (כל הזמנים)</b>",
+      "📊 <b>סטטיסטיקת לידים — Switchy AI (כל הזמנים)</b>",
       "",
       `סה"כ: <b>${tot("total")}</b> | 🆕 ${tot("new_leads")} | 📞 ${tot("contacted")} | 🏆 ${tot("won")} | ❌ ${tot("lost")}`,
       med !== null ? `⚡ מהירות תגובה חציונית: <b>${formatMinutes(med)}</b>` : null,
@@ -317,7 +317,7 @@ export async function handleCommand(cfg: Cfg, cmd: string, args: string): Promis
 
   // /help and anything unrecognized
   await sendTelegram(cfg, [
-    "🤖 <b>הנציג הדיגיטלי של חוסך</b>",
+    "🤖 <b>הנציג הדיגיטלי של Switchy AI</b>",
     "",
     "/today — סדר היום: פגישות מאושרות וממתינות + לידים שלא טופלו",
     "/agenda — כינוי ל-/today",

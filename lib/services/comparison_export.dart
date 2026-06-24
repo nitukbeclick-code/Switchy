@@ -64,12 +64,12 @@ class ComparisonExport {
   final DateTime generatedAt;
   final bool mixedCategories;
 
-  static const String title = 'השוואת מסלולים — חוסך';
+  static const String title = 'השוואת מסלולים — Switchy AI';
 
   /// Commission / sponsorship disclosure required by §7b of the Israeli Consumer
   /// Protection regulations — always shown, regardless of the plans compared.
   static const String disclosure =
-      'חוסך עשוי לקבל עמלה מספקים בעת מעבר. הנתונים אינדיקטיביים '
+      'Switchy AI עשוי לקבל עמלה מספקים בעת מעבר. הנתונים אינדיקטיביים '
       'ולאימות מול הספק לפני התקשרות.';
 
   /// Canonical spec key order — mirrors `_CompareTable._canonicalSpecOrder`.

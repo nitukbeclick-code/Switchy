@@ -52,8 +52,8 @@ export function safeUrl(u: unknown): string {
 // Switchy logo + the app's `brandAccent`). Amber is the VALUE accent, used only
 // on saving figures. Big surfaces stay ink/white; colour is used sparingly.
 const BRAND = {
-  name: "חוסך",
-  wordmark: "חוסך · Switch AI",
+  name: "Switchy AI",
+  wordmark: "Switchy AI",
   tagline: "להשוות. לחסוך. בלי כאב ראש.",
   ink: "#111827", // text / structure / dark hero
   text: "#0B0F14", // body text
@@ -77,7 +77,7 @@ function privacyUrl(): string {
 // The legal mailer identity shown in the footer (Spam-Law §30A: the sender must
 // be identifiable). Overridable; the default names the brand + a contact inbox.
 function senderIdentity(): string {
-  return Deno.env.get("EMAIL_SENDER_IDENTITY") || "חוסך (Switch AI) · hello@switchy-ai.com";
+  return Deno.env.get("EMAIL_SENDER_IDENTITY") || "Switchy AI · hello@switchy-ai.com";
 }
 
 // The address an unsubscribe request goes to. Defaults to the contact inbox.
@@ -244,7 +244,7 @@ export function renderEmail(opts: EmailOptions): string {
 export function welcomeEmail(opts: { unsubscribeUrl?: string } = {}): string {
   return renderEmail({
     preheader: "תודה שנרשמתם — מעכשיו תדעו ראשונים על מסלולים משתלמים.",
-    heading: "ברוכים הבאים לחוסך",
+    heading: "ברוכים הבאים ל-Switchy AI",
     bodyHtml: [
       "תודה שנרשמתם לרשימת התפוצה שלנו.",
       "מעכשיו תקבלו עדכונים על מסלולים משתלמים בסלולר, אינטרנט, טלוויזיה וחבילות לחו״ל — וטיפים קצרים שיעזרו לכם לשלם פחות על אותו שירות.",
@@ -252,7 +252,7 @@ export function welcomeEmail(opts: { unsubscribeUrl?: string } = {}): string {
     ],
     cta: { label: "להשוואת מסלולים", url: siteBase() },
     unsubscribeUrl: opts.unsubscribeUrl,
-    footerReason: "קיבלתם את המייל הזה כי נרשמתם לרשימת התפוצה באתר חוסך ואישרתם קבלת דיוור.",
+    footerReason: "קיבלתם את המייל הזה כי נרשמתם לרשימת התפוצה באתר Switchy AI ואישרתם קבלת דיוור.",
   });
 }
 
@@ -305,7 +305,7 @@ export function renewalRadarEmail(d: RenewalEmailData): string {
     bodyHtml: body,
     cta: { label: "להשוואה מעודכנת", url: d.compareUrl },
     unsubscribeUrl: d.unsubscribeUrl,
-    footerReason: "קיבלתם תזכורת זו כי ביקשתם מעקב חידושים (ראדר החידושים) בחוסך.",
+    footerReason: "קיבלתם תזכורת זו כי ביקשתם מעקב חידושים (ראדר החידושים) ב-Switchy AI.",
   });
 }
 
@@ -328,16 +328,16 @@ export function leadConfirmEmail(d: LeadConfirmData = {}): string {
       : "קיבלנו את פנייתכם.");
 
   return renderEmail({
-    preheader: "קיבלנו את פנייתכם — נציג חוסך יחזור אליכם בהקדם.",
+    preheader: "קיבלנו את פנייתכם — נציג Switchy AI יחזור אליכם בהקדם.",
     heading: "קיבלנו את פנייתכם",
     bodyHtml: [
       hello,
       about,
-      "נציג מצוות חוסך יחזור אליכם בהקדם כדי לעזור לבחור את המסלול שמתאים לכם ביותר.",
+      "נציג מצוות Switchy AI יחזור אליכם בהקדם כדי לעזור לבחור את המסלול שמתאים לכם ביותר.",
       "אם בינתיים תרצו להמשיך לבד — אפשר להשוות מסלולים בכל רגע באתר.",
     ],
     cta: d.siteUrl ? { label: "להשוואת מסלולים", url: d.siteUrl } : undefined,
-    footerReason: "קיבלתם את המייל הזה כי השארתם פנייה באתר חוסך ואישרתם שניצור עמכם קשר.",
+    footerReason: "קיבלתם את המייל הזה כי השארתם פנייה באתר Switchy AI ואישרתם שניצור עמכם קשר.",
   });
 }
 

@@ -121,7 +121,7 @@ Deno.test("withFirstContactNote: appends the identification + privacy + STOP not
   const reply = "המסלול הזול ביותר הוא X.";
   const first = withFirstContactNote(reply, true);
   assertStringIncludes(first, reply);
-  assertStringIncludes(first, "חוסך");
+  assertStringIncludes(first, "Switchy AI");
   assertStringIncludes(first, "switchy-ai.com/privacy");
   assertStringIncludes(first, "STOP");
   // The note text itself is present exactly once.
@@ -137,7 +137,7 @@ Deno.test("FIRST_CONTACT_NOTE + OPTOUT_CONFIRM_REPLY are honest, non-empty Hebre
   assertStringIncludes(FIRST_CONTACT_NOTE, "Switchy");
   assertStringIncludes(OPTOUT_CONFIRM_REPLY, "הוסרתם");
   // Welcome + help identify the brand and never promise anything.
-  assertStringIncludes(WELCOME_REPLY, "חוסך");
+  assertStringIncludes(WELCOME_REPLY, "Switchy AI");
   assertStringIncludes(HELP_REPLY, "/help");
 });
 

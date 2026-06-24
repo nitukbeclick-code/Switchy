@@ -1,7 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// site-bill-analyzer — חוסך · מנתח חשבונות
+// site-bill-analyzer — Switchy AI · מנתח חשבונות
 // Public endpoint behind the "צלמו את החשבון" feature on the marketing site.
 // The user photographs a phone/internet/TV bill; Gemini Vision extracts the
 // provider, the total monthly amount (₪) and the service category, and we match

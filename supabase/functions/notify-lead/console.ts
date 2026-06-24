@@ -162,7 +162,7 @@ export async function applyMeetingAct(
       let zoomId: string | null = null;
       if (zoomConfigured(cfg)) {
         const created = await createZoomMeeting(cfg, {
-          topic: `חוסך — פגישת ייעוץ ${m.provider ?? ""} עם ${m.name ?? ""}`.trim(),
+          topic: `Switchy AI — פגישת ייעוץ ${m.provider ?? ""} עם ${m.name ?? ""}`.trim(),
           startsAtIso: m.starts_at ?? "",
         });
         if (created) { joinUrl = created.join_url; zoomId = String(created.id); }
@@ -259,7 +259,7 @@ async function reloadMeeting(id: string): Promise<ConsoleMeeting | null> {
 async function notifyCustomer(cfg: Cfg, m: MeetingRow): Promise<void> {
   if (!m.email) return;
   try {
-    await sendCustomerEmail(cfg, m.email, "אישור פגישת וידאו — חוסך", buildMeetingCustomerEmailHtml(m));
+    await sendCustomerEmail(cfg, m.email, "אישור פגישת וידאו — Switchy AI", buildMeetingCustomerEmailHtml(m));
   } catch (_) { /* best-effort */ }
 }
 
@@ -280,7 +280,7 @@ export function renderConsoleHtml(mockJson: string | null = null): string {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>לוח הפגישות · חוסך</title>
+<title>לוח הפגישות · Switchy AI</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
 :root{
@@ -366,7 +366,7 @@ h1{font-size:20px;font-weight:800;margin:0;letter-spacing:-.4px}
 <div class="wrap">
   <header>
     <div class="h-row">
-      <div><h1>לוח הפגישות</h1><div class="rep" id="rep">חוסך · קונסולת נציגים</div></div>
+      <div><h1>לוח הפגישות</h1><div class="rep" id="rep">Switchy AI · קונסולת נציגים</div></div>
       <div class="h-actions">
         <span class="updated" id="updated"></span>
         <button class="refresh" id="refresh" aria-label="רענון הלוח" title="רענון"><span class="ref-ico">⟳</span></button>

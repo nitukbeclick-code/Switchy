@@ -39,12 +39,12 @@ describe("AiConcierge — launcher + panel", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 
     await user.click(
-      screen.getByRole("button", { name: "פתיחת צ׳אט עם חוסך AI" }),
+      screen.getByRole("button", { name: "פתיחת צ׳אט עם Switchy AI" }),
     );
 
-    expect(screen.getByRole("dialog", { name: "חוסך AI" })).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "Switchy AI" })).toBeInTheDocument();
     // Greeting bot message is present.
-    expect(screen.getByText(/אני חוסך AI/)).toBeInTheDocument();
+    expect(screen.getByText(/אני Switchy AI/)).toBeInTheDocument();
   });
 });
 
@@ -59,11 +59,11 @@ describe("AiConcierge — messaging", () => {
     const user = userEvent.setup();
     render(<AiConcierge />);
     await user.click(
-      screen.getByRole("button", { name: "פתיחת צ׳אט עם חוסך AI" }),
+      screen.getByRole("button", { name: "פתיחת צ׳אט עם Switchy AI" }),
     );
 
     await user.type(
-      screen.getByLabelText("כתבו הודעה לחוסך AI"),
+      screen.getByLabelText("כתבו הודעה ל-Switchy AI"),
       "מה המסלול הזול ביותר?",
     );
     await user.click(screen.getByRole("button", { name: "שליחה" }));
@@ -92,9 +92,9 @@ describe("AiConcierge — messaging", () => {
     const user = userEvent.setup();
     render(<AiConcierge />);
     await user.click(
-      screen.getByRole("button", { name: "פתיחת צ׳אט עם חוסך AI" }),
+      screen.getByRole("button", { name: "פתיחת צ׳אט עם Switchy AI" }),
     );
-    await user.type(screen.getByLabelText("כתבו הודעה לחוסך AI"), "שלום");
+    await user.type(screen.getByLabelText("כתבו הודעה ל-Switchy AI"), "שלום");
     await user.click(screen.getByRole("button", { name: "שליחה" }));
 
     expect(
@@ -115,10 +115,10 @@ describe("AiConcierge — in-chat lead capture consent gate", () => {
     const user = userEvent.setup();
     render(<AiConcierge />);
     await user.click(
-      screen.getByRole("button", { name: "פתיחת צ׳אט עם חוסך AI" }),
+      screen.getByRole("button", { name: "פתיחת צ׳אט עם Switchy AI" }),
     );
     await user.type(
-      screen.getByLabelText("כתבו הודעה לחוסך AI"),
+      screen.getByLabelText("כתבו הודעה ל-Switchy AI"),
       "אני רוצה לעבור ספק",
     );
     await user.click(screen.getByRole("button", { name: "שליחה" }));
@@ -165,9 +165,9 @@ describe("AiConcierge — in-chat lead capture consent gate", () => {
     const user = userEvent.setup();
     render(<AiConcierge />);
     await user.click(
-      screen.getByRole("button", { name: "פתיחת צ׳אט עם חוסך AI" }),
+      screen.getByRole("button", { name: "פתיחת צ׳אט עם Switchy AI" }),
     );
-    await user.type(screen.getByLabelText("כתבו הודעה לחוסך AI"), "לעבור ספק");
+    await user.type(screen.getByLabelText("כתבו הודעה ל-Switchy AI"), "לעבור ספק");
     await user.click(screen.getByRole("button", { name: "שליחה" }));
 
     await screen.findByRole("form", { name: "השארת פרטים ליצירת קשר" });

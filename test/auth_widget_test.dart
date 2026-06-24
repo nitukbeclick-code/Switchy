@@ -59,7 +59,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 300));
 
       // Header copy for the default (choose) mode.
-      expect(find.text('מצטרפים לחוסך'), findsOneWidget);
+      expect(find.text('מצטרפים ל-Switchy AI'), findsOneWidget);
 
       // The three honest benefit rows that explain what an account unlocks.
       expect(find.text('שמירת מסלולים והשוואות מועדפות'), findsOneWidget);

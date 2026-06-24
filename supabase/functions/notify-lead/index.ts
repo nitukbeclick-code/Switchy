@@ -1,7 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// notify-lead — חוסך
+// notify-lead — Switchy AI
 // The team's Telegram "digital rep". Fired by a Postgres trigger on every
 // INSERT into public.leads AND public.meetings ({ table: 'meetings', record });
 // also serves the bot's webhook and chat commands.
@@ -202,9 +202,9 @@ Deno.serve(async (req: Request) => {
       const cmds = await tgApi(cfg, "setMyCommands", { commands: BOT_COMMANDS });
       // bot profile: what new team members see before the first message
       await tgApi(cfg, "setMyDescription", {
-        description: "הנציג הדיגיטלי של חוסך — מקבל כל ליד בזמן אמת עם כפתורי סטטוס, שולח תזכורות חכמות, ומפיק דוחות. שלחו /help לרשימת הפקודות.",
+        description: "הנציג הדיגיטלי של Switchy AI — מקבל כל ליד בזמן אמת עם כפתורי סטטוס, שולח תזכורות חכמות, ומפיק דוחות. שלחו /help לרשימת הפקודות.",
       });
-      await tgApi(cfg, "setMyShortDescription", { short_description: "ניהול הלידים של חוסך בטלגרם" });
+      await tgApi(cfg, "setMyShortDescription", { short_description: "ניהול הלידים של Switchy AI בטלגרם" });
       // The Mini App web_app menu button was unreliable in-group; the board now
       // lives NATIVELY in chat. Reset the menu button to the default commands list
       // and post a one-tap inline button (callback_data "board:today") into the
@@ -214,7 +214,7 @@ Deno.serve(async (req: Request) => {
       const boardButton = cfg.tgChat
         ? await sendTelegram(
           cfg,
-          "📋 <b>לוח הפגישות של חוסך</b> — הקישו לפתיחת הלוח בצ׳אט (פגישות היום, ממתינות והשבוע, עם כפתורי אישור/דחייה).",
+          "📋 <b>לוח הפגישות של Switchy AI</b> — הקישו לפתיחת הלוח בצ׳אט (פגישות היום, ממתינות והשבוע, עם כפתורי אישור/דחייה).",
           { inline_keyboard: [[{ text: "📋 פתח את לוח הפגישות", callback_data: "board:today" }]] },
         )
         : { ok: false, error: "telegram chat not configured" };
@@ -318,7 +318,7 @@ Deno.serve(async (req: Request) => {
   const triage = await aiTriage(cfg, lead);
   const [tg, email] = await Promise.all([
     sendTelegram(cfg, returningLine + buildText(lead, triage), leadKeyboard(lead, triage.draft)),
-    sendEmail(cfg, "🔔 פנייה חדשה — חוסך", buildHtml(lead, triage)),
+    sendEmail(cfg, "🔔 פנייה חדשה — Switchy AI", buildHtml(lead, triage)),
   ]);
   // stamp only on Telegram success: an email-only delivery has no interactive
   // card, so the sweep should keep retrying the chat path

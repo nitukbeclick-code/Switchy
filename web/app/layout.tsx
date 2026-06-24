@@ -12,7 +12,7 @@ import { orgSchema, websiteSchema, SITE_URL, SITE_NAME } from "@/lib/schema";
 
 // Rubik for display/headings, Assistant for body/labels. Hebrew-only subset: this
 // is a Hebrew-first RTL site, so the latin subset is mostly dead weight (the few
-// latin glyphs — "Switch AI", digits, ₪ — fall back gracefully). Dropping it trims
+// latin glyphs — "Switchy AI", digits, ₪ — fall back gracefully). Dropping it trims
 // the preloaded woff2 set that contends with the LCP resource. `display: swap`
 // keeps text visible immediately (no FOIT).
 //
@@ -46,8 +46,8 @@ const GA4_MEASUREMENT_ID = "G-YCTGRVN7SJ";
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "חוסך / Switch AI — השוואת מסלולי תקשורת בישראל",
-    template: "%s | חוסך / Switch AI",
+    default: "Switchy AI — השוואת מסלולי תקשורת בישראל",
+    template: "%s | Switchy AI",
   },
   description:
     "השוואה חינמית של מסלולי סלולר, אינטרנט, טלוויזיה, חבילות משולבות וחבילות " +
@@ -59,7 +59,7 @@ export const metadata: Metadata = {
     locale: "he_IL",
     url: SITE_URL,
     siteName: SITE_NAME,
-    title: "חוסך / Switch AI — השוואת מסלולי תקשורת בישראל",
+    title: "Switchy AI — השוואת מסלולי תקשורת בישראל",
     description:
       "השוואה חינמית של מסלולי תקשורת בישראל — סלולר, אינטרנט, טלוויזיה ועוד.",
   },
@@ -167,7 +167,7 @@ export default function RootLayout({
             push. Fail-soft — renders nothing when push is unsupported/unconfigured. */}
         <PwaInstaller />
 
-        {/* AI concierge — floating grounded chat ("חוסך AI"). Answers only from
+        {/* AI concierge — floating grounded chat ("Switchy AI"). Answers only from
             the real catalogue; offers consented lead capture (§7b disclosure +
             mandatory consent) when a switch/contact intent is detected. */}
         <AiConcierge />

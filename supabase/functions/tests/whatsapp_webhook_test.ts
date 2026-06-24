@@ -74,7 +74,7 @@ Deno.test("isOptedOut recognises the opted_out contact status only", () => {
 // ── §11 first-contact privacy notice gate ─────────────────────────────────────
 
 Deno.test("withFirstContactNotice appends the notice ONLY on the first inbound", () => {
-  const reply = "היי, אני העוזר החכם של חוסך";
+  const reply = "היי, אני העוזר החכם של Switchy AI";
   // First contact → reply + notice, separated by a blank line.
   const first = withFirstContactNotice(reply, true);
   assertStringIncludes(first, reply);
@@ -85,7 +85,7 @@ Deno.test("withFirstContactNotice appends the notice ONLY on the first inbound",
 
 Deno.test("the first-contact notice carries the required §11 disclosures", () => {
   // Brand identity, the privacy-policy URL, and the opt-out keyword.
-  assertStringIncludes(FIRST_CONTACT_NOTICE, "Switch AI");
+  assertStringIncludes(FIRST_CONTACT_NOTICE, "Switchy AI");
   assertStringIncludes(FIRST_CONTACT_NOTICE, "https://app.switchy-ai.com/privacy");
   assertStringIncludes(FIRST_CONTACT_NOTICE, "הסר");
   // The opt-out keyword in the notice is itself a real opt-out trigger.

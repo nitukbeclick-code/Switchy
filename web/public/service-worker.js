@@ -1,5 +1,5 @@
 // ─────────────────────────────────────────────────────────────────────────────
-// service-worker.js — חוסך / Switch AI PWA service worker.
+// service-worker.js — Switchy AI PWA service worker.
 //
 // Two jobs, both fail-soft:
 //   1. OFFLINE SHELL — precache a tiny app shell (offline fallback page + icons)
@@ -211,7 +211,7 @@ self.addEventListener("push", (event) => {
     }
   }
 
-  const title = data.title || "חוסך / Switch AI";
+  const title = data.title || "Switchy AI";
   const options = {
     body: data.body || "",
     icon: data.icon || "/icons/Icon-192.png",

@@ -109,21 +109,21 @@ export function isOptOut(text: string): boolean {
 }
 
 // ── §11 first-contact identification + §30A privacy/STOP note ──────────────────
-// On the FIRST message from a chat we MUST identify who we are (חוסך/Switchy),
+// On the FIRST message from a chat we MUST identify who we are (Switchy AI),
 // link the privacy policy, and tell the user how to stop. Shown exactly once;
 // every later turn returns the reply unchanged. The note is appended below the
 // agent's actual reply so the conversation still answers the question.
 const PRIVACY_URL = "https://switchy-ai.com/privacy";
 
 export const FIRST_CONTACT_NOTE =
-  `\n\nℹ️ זהו הבוט הרשמי של <b>חוסך (Switchy)</b> — השוואת מסלולי תקשורת וחיסכון בחשבון. ` +
+  `\n\nℹ️ זהו הבוט הרשמי של <b>Switchy AI</b> — השוואת מסלולי תקשורת וחיסכון בחשבון. ` +
   `מדיניות הפרטיות: ${PRIVACY_URL} · לעצירת הודעות שלחו «STOP».`;
 
 // The ONE confirmation we send back when a user opts out. Hebrew (the default
 // audience); the agent's multilingual reply path doesn't run on an opt-out, so a
 // single bilingual-friendly Hebrew line is the honest, minimal acknowledgement.
 export const OPTOUT_CONFIRM_REPLY =
-  "הוסרתם מרשימת ההודעות של חוסך ✅ לא נשלח אליכם יותר הודעות יזומות. אם תרצו לחזור — פשוט כתבו לנו שוב כאן.";
+  "הוסרתם מרשימת ההודעות של Switchy AI ✅ לא נשלח אליכם יותר הודעות יזומות. אם תרצו לחזור — פשוט כתבו לנו שוב כאן.";
 
 // Append the first-contact §11 note exactly once. No-op on later turns.
 export function withFirstContactNote(reply: string, firstContact: boolean): string {
@@ -162,7 +162,7 @@ export function langFromTelegramLocale(languageCode: string): AgentLangHint | un
 
 // ── /help copy (Hebrew, the default audience) ──────────────────────────────────
 export const HELP_REPLY =
-  `<b>עזרה — חוסך (Switchy) 🤖</b>\n\n` +
+  `<b>עזרה — Switchy AI 🤖</b>\n\n` +
   `אני משווה בשבילכם מסלולי סלולר, אינטרנט, טלוויזיה, חבילות משולבות וחבילות חו"ל, ` +
   `ועוזר לחסוך בחשבון.\n\n` +
   `<b>פקודות:</b>\n` +
@@ -173,6 +173,6 @@ export const HELP_REPLY =
 
 // The one-time welcome for a brand-new chat (before the §11 note is appended).
 export const WELCOME_REPLY =
-  `היי! אני העוזר החכם של <b>חוסך (Switchy)</b> 🤖\n` +
+  `היי! אני העוזר החכם של <b>Switchy AI</b> 🤖\n` +
   `אני משווה בשבילכם מסלולי סלולר, אינטרנט, טלוויזיה וחבילות חו"ל ועוזר לחסוך בחשבון.\n` +
   `אפשר לשאול אותי כל דבר על המסלולים והמחירים, ואם תרצו — אחבר אתכם לנציג אנושי.`;

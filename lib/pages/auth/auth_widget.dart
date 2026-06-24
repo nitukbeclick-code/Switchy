@@ -140,7 +140,7 @@ class _AuthWidgetState extends State<AuthWidget> {
     final title = switch (_mode) {
       _Mode.login => 'ברוכים הבאים חזרה',
       _Mode.signup => 'יוצרים חשבון',
-      _Mode.choose => 'מצטרפים לחוסך',
+      _Mode.choose => 'מצטרפים ל-Switchy AI',
     };
     final sub = switch (_mode) {
       _Mode.login => 'התחברו כדי לראות את החיסכון שלכם',
@@ -197,7 +197,7 @@ class _AuthWidgetState extends State<AuthWidget> {
                   ),
                 ),
                 const SizedBox(width: 12),
-                Text('חוסך', style: t.headlineMedium.copyWith(color: Colors.white)),
+                Text('Switchy AI', style: t.headlineMedium.copyWith(color: Colors.white)),
               ],
             ),
             const SizedBox(height: 14),

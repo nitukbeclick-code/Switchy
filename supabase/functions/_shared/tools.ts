@@ -51,7 +51,7 @@ export type ToolLang = "he" | "ar" | "ru" | "en";
 
 // §7b: the commission disclosure the agent MUST state before any lead hand-off.
 export const COMMISSION_DISCLOSURE =
-  'שקיפות: חוסך עשוי לקבל עמלה מהספק אם תעברו דרכנו — זה לא משפיע על המחיר שלכם ולא על ההמלצה, שמבוססת רק על הנתונים.';
+  'שקיפות: Switchy AI עשוי לקבל עמלה מהספק אם תעברו דרכנו — זה לא משפיע על המחיר שלכם ולא על ההמלצה, שמבוססת רק על הנתונים.';
 
 // What every tool gets: the live catalogue, the conversation/contact ids for the
 // audit trail, the actor (channel), and pluggable side-effect sinks so tests can
@@ -817,7 +817,7 @@ export async function suggestRetentionOffer(
 
 // ── generate_referral_code ────────────────────────────────────────────────────
 // Issues a REAL referral code (via _shared/referrals.ts → service-role insert) so
-// the user can invite a friend to חוסך. Attribution-only: the row records who
+// the user can invite a friend to Switchy AI. Attribution-only: the row records who
 // shared it for later crediting. NO advertised monetary reward — the framing is
 // share-the-tool ("help a friend save"), value-based, since the owner hasn't
 // defined a cash reward. If the persistence sink is absent (e.g. tests), we still
@@ -851,10 +851,10 @@ export async function generateReferralCode(
   await audit(ctx, "generate_referral_code", persisted, persisted ? "issued" : "minted_unpersisted");
 
   const note = tr(lang, {
-    he: `הקוד שלך לשיתוף: ${code} — שתפו אותו עם חבר/ה כדי שגם הוא/היא יחסכו בחשבונות התקשורת עם חוסך. (שיתוף הכלי, ללא תמורה כספית.)`,
-    ar: `رمز المشاركة الخاص بك: ${code} — شاركه مع صديق ليوفّر هو أيضًا في فواتير الاتصالات مع חוסך. (مشاركة الأداة، دون مقابل مالي.)`,
-    ru: `Ваш код для приглашения: ${code} — поделитесь им с другом, чтобы он тоже экономил на счетах за связь с חוסך. (Это приглашение в сервис, без денежного вознаграждения.)`,
-    en: `Your referral code: ${code} — share it with a friend so they can save on their telecom bills with חוסך too. (Sharing the tool, no cash reward.)`,
+    he: `הקוד שלך לשיתוף: ${code} — שתפו אותו עם חבר/ה כדי שגם הוא/היא יחסכו בחשבונות התקשורת עם Switchy AI. (שיתוף הכלי, ללא תמורה כספית.)`,
+    ar: `رمز المشاركة الخاص بك: ${code} — شاركه مع صديق ليوفّر هو أيضًا في فواتير الاتصالات مع Switchy AI. (مشاركة الأداة، دون مقابل مالي.)`,
+    ru: `Ваш код для приглашения: ${code} — поделитесь им с другом, чтобы он тоже экономил на счетах за связь с Switchy AI. (Это приглашение в сервис, без денежного вознаграждения.)`,
+    en: `Your referral code: ${code} — share it with a friend so they can save on their telecom bills with Switchy AI too. (Sharing the tool, no cash reward.)`,
   });
 
   return { ok: true, data: { code, persisted, reward: null }, note };
@@ -1129,7 +1129,7 @@ export const TOOL_DECLARATIONS: GeminiFunctionDeclaration[] = [
   {
     name: "generate_referral_code",
     description:
-      "יצירת קוד הפניה אמיתי לשיתוף עם חבר/ה. מתי: כשהמשתמש רוצה לשתף את חוסך — \"יש לכם קוד הזמנה?\", \"איך אני ממליץ לחבר?\", \"תן לי לינק לשתף\". הקוד אמיתי ונשמר לשיוך. אין תמורה כספית מפורסמת — המסגור הוא שיתוף הכלי (עזרה לחבר לחסוך); אל תבטיח פרס/כסף. לא דורש הסכמת שיווק (המשתמש בוחר לשתף).",
+      "יצירת קוד הפניה אמיתי לשיתוף עם חבר/ה. מתי: כשהמשתמש רוצה לשתף את Switchy AI — \"יש לכם קוד הזמנה?\", \"איך אני ממליץ לחבר?\", \"תן לי לינק לשתף\". הקוד אמיתי ונשמר לשיוך. אין תמורה כספית מפורסמת — המסגור הוא שיתוף הכלי (עזרה לחבר לחסוך); אל תבטיח פרס/כסף. לא דורש הסכמת שיווק (המשתמש בוחר לשתף).",
     parameters: {
       type: "object",
       properties: {

@@ -10,7 +10,7 @@
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     <uses-feature android:name="android.hardware.microphone" android:required="false" />
     <application
-        android:label="חוסך"
+        android:label="Switchy AI"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

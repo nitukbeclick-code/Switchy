@@ -6,7 +6,7 @@ import { esc, NL, waDraftLink, waLink } from "./telegram.ts";
 import { insertRow } from "./db.ts";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// AI-chat lead capture (Track 2E) — when the site "חוסך AI" chat detects a
+// AI-chat lead capture (Track 2E) — when the site "Switchy AI" chat detects a
 // genuine switch/contact intent and the user supplies name + phone + the
 // MANDATORY consent, we capture a lead via the service role. The leads table's
 // BEFORE INSERT gate re-stamps consent + IP and rate-limits; the pg_net trigger
@@ -89,7 +89,7 @@ export function buildAiLeadRow(input: AiLeadInput, nowIso = new Date().toISOStri
   const anyMarketing = marketingSms || marketingEmail || marketingWhatsapp;
 
   const category = clip(input.category, 40);
-  const notesParts: string[] = ["נוצר משיחת חוסך AI באתר"];
+  const notesParts: string[] = ["נוצר משיחת Switchy AI באתר"];
   if (category) notesParts.push(`שירות מבוקש: ${category}`);
   const extra = clip(input.notes, 600);
   if (extra) notesParts.push(extra);
@@ -200,7 +200,7 @@ export const REP_COMPLIANCE_LINE =
 export function defaultDraft(lead: Lead): string {
   const first = String(lead.name ?? "").trim().split(/\s+/)[0] || "";
   const about = lead.provider ? ` לגבי ${lead.provider}` : "";
-  return `היי${first ? " " + first : ""}, כאן חוסך 💚 קיבלנו את הפנייה שלך${about} — מתי נוח לדבר?`;
+  return `היי${first ? " " + first : ""}, כאן Switchy AI 💚 קיבלנו את הפנייה שלך${about} — מתי נוח לדבר?`;
 }
 
 export function buildText(lead: Lead, triage?: TriageResult | null): string {
@@ -210,7 +210,7 @@ export function buildText(lead: Lead, triage?: TriageResult | null): string {
   const category = desiredCategory(lead);
   const hot = (triage?.score ?? 0) >= 4;
   const lines: (string | null)[] = [
-    hot ? "🔥 <b>ליד חם — חוסך</b>" : "🔔 <b>פנייה חדשה — חוסך</b>",
+    hot ? "🔥 <b>ליד חם — Switchy AI</b>" : "🔔 <b>פנייה חדשה — Switchy AI</b>",
     "",
     `👤 <b>שם:</b> ${esc(lead.name)}`,
     `📞 <b>טלפון:</b> ${esc(lead.phone)}` + (wa ? ` — <a href="${wa}">WhatsApp</a>` : ""),
@@ -237,7 +237,7 @@ export function buildHtml(lead: Lead, triage?: TriageResult | null): string {
   const cb = CALLBACK_HE[String(lead.callback_time ?? "")] ?? String(lead.callback_time ?? "—");
   const sourceLabel = SOURCE_HE[String(lead.source ?? "")] ?? (lead.source ? String(lead.source) : null);
   return `<div dir="rtl" style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#15281e">`
-    + `<h2 style="color:#15603E">🔔 פנייה חדשה — חוסך</h2>`
+    + `<h2 style="color:#15603E">🔔 פנייה חדשה — Switchy AI</h2>`
     + `<p><b>שם:</b> ${esc(lead.name)}<br>`
     + `<b>טלפון:</b> ${esc(lead.phone)}<br>`
     + (lead.email ? `<b>אימייל:</b> ${esc(lead.email)}<br>` : "")

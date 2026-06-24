@@ -11,7 +11,7 @@ const LAST_REVIEWED = "2026-06-22";
 export const metadata: Metadata = pageMetadata({
   title: "שקיפות ומתודולוגיה",
   description:
-    "איך חוסך / Switch AI אוסף ומאמת נתונים, איך נקבעת בחירת העורך, ולמה כל מסלול " +
+    "איך Switchy AI אוסף ומאמת נתונים, איך נקבעת בחירת העורך, ולמה כל מסלול " +
     "מקודם מסומן בגלוי. מדיניות שקיפות מלאה — ללא ביקורות מומצאות ובלי דירוג סמוי.",
   path: "/transparency",
 });

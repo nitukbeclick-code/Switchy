@@ -921,7 +921,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('קהילת חוסך', style: GoogleFonts.rubik(fontSize: 17, fontWeight: FontWeight.w800, color: Colors.white)),
+            Text('קהילת Switchy AI', style: GoogleFonts.rubik(fontSize: 17, fontWeight: FontWeight.w800, color: Colors.white)),
             Text('שתפו חוויות, טיפים ועצות חיסכון', style: GoogleFonts.assistant(fontSize: 11, color: Colors.white70)),
           ],
         ),
@@ -1587,7 +1587,7 @@ class _PostCardState extends State<_PostCard> {
                   semanticLabel: 'שתף פוסט',
                   onTap: () {
                     HapticFeedback.selectionClick();
-                    Share.share('${post.author}:\n${post.text}\n\nמתוך אפליקציית חוסך');
+                    Share.share('${post.author}:\n${post.text}\n\nמתוך אפליקציית Switchy AI');
                   },
                 ),
               ],

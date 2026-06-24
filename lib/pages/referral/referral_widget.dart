@@ -9,7 +9,7 @@ import '../../widgets/app_button.dart';
 import '../../widgets/app_snackbar.dart';
 import '../../services/referral_code.dart';
 
-/// "הזמינו חבר" (Refer a friend) — share חוסך with a REAL, shareable code in the
+/// "הזמינו חבר" (Refer a friend) — share Switchy AI with a REAL, shareable code in the
 /// same `SW-XXXXXX` shape the backend issues.
 ///
 /// HONESTY / §30A: there is NO advertised cash reward — the framing is
@@ -34,7 +34,7 @@ class _ReferralWidgetState extends State<ReferralWidget> {
 
   String get _shareText =>
       'מצאתי אפליקציה שעוזרת לחסוך בחשבונות הסלולר, האינטרנט והטלוויזיה — '
-      'השוואה חינמית ושקופה. הקוד שלי: $_code\nחוסך — https://chosech.co.il';
+      'השוואה חינמית ושקופה. הקוד שלי: $_code\nSwitchy AI — https://chosech.co.il';
 
   void _copyCode() {
     Clipboard.setData(ClipboardData(text: _code));
@@ -97,7 +97,7 @@ class _ReferralWidgetState extends State<ReferralWidget> {
                         color: Colors.white)),
                 const SizedBox(height: 8),
                 Text(
-                  'שתפו את חוסך עם מי שמשלם יותר מדי על תקשורת. השוואה חינמית, '
+                  'שתפו את Switchy AI עם מי שמשלם יותר מדי על תקשורת. השוואה חינמית, '
                   'שקופה וללא התחייבות — מתנה אמיתית, בלי אותיות קטנות.',
                   style: GoogleFonts.assistant(
                       fontSize: 14,

@@ -1,7 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// site-push-notify — חוסך deal-feed Web Push sender
+// site-push-notify — Switchy AI deal-feed Web Push sender
 //
 // Scheduled (pg_cron) edge fn that turns REAL price drops into browser/PWA push
 // notifications. It reads the price ledger (public.plan_price_history) for

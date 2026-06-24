@@ -206,7 +206,7 @@ class _Hero extends StatelessWidget {
                       icon: const Icon(Icons.ios_share_rounded, color: Colors.white, size: 22),
                       tooltip: 'שתף את החיסכון',
                       onPressed: () => Share.share(
-                        'גיליתי שאפשר לחסוך עד ₪$total בשנה על חשבונות התקשורת — בדקו גם אתם עם חוסך',
+                        'גיליתי שאפשר לחסוך עד ₪$total בשנה על חשבונות התקשורת — בדקו גם אתם עם Switchy AI',
                       ),
                     ),
                 ],
@@ -346,7 +346,7 @@ class _RealizedCard extends StatelessWidget {
                   TextSpan(
                       text: '₪$amount',
                       style: ffTheme.titleSmall.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w800)),
-                  const TextSpan(text: ' דרך חוסך'),
+                  const TextSpan(text: ' דרך Switchy AI'),
                 ],
               ),
             ),

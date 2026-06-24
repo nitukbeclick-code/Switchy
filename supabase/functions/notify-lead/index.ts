@@ -205,18 +205,24 @@ Deno.serve(async (req: Request) => {
         description: "הנציג הדיגיטלי של חוסך — מקבל כל ליד בזמן אמת עם כפתורי סטטוס, שולח תזכורות חכמות, ומפיק דוחות. שלחו /help לרשימת הפקודות.",
       });
       await tgApi(cfg, "setMyShortDescription", { short_description: "ניהול הלידים של חוסך בטלגרם" });
-      // Menu button → the rep console Mini App (one tap in the chat).
-      const menu = await tgApi(cfg, "setChatMenuButton", {
-        menu_button: {
-          type: "web_app",
-          text: "לוח הפגישות",
-          web_app: { url: `${base}/functions/v1/notify-lead?action=console` },
-        },
-      });
+      // The Mini App web_app menu button was unreliable in-group; the board now
+      // lives NATIVELY in chat. Reset the menu button to the default commands list
+      // and post a one-tap inline button (callback_data "board:today") into the
+      // team chat — tapping it posts the native meetings board. Posting needs a
+      // configured team chat; skip gracefully (and report) when it's unset.
+      const menu = await tgApi(cfg, "setChatMenuButton", { menu_button: { type: "commands" } });
+      const boardButton = cfg.tgChat
+        ? await sendTelegram(
+          cfg,
+          "📋 <b>לוח הפגישות של חוסך</b> — הקישו לפתיחת הלוח בצ׳אט (פגישות היום, ממתינות והשבוע, עם כפתורי אישור/דחייה).",
+          { inline_keyboard: [[{ text: "📋 פתח את לוח הפגישות", callback_data: "board:today" }]] },
+        )
+        : { ok: false, error: "telegram chat not configured" };
       return json({
         ...r,
         commands_registered: cmds.ok,
-        menu_button_set: menu.ok,
+        menu_button_reset: menu.ok,
+        board_button_posted: boardButton.ok,
         webhook_url: hookUrl,
         note: "getUpdates (?action=telegram-chats) is disabled while a webhook is set — delete-telegram-webhook re-enables it.",
       });

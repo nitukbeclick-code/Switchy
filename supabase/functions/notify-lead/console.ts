@@ -102,7 +102,8 @@ export function buildBoard(rows: MeetingRow[], nowMs: number): ConsoleBoard {
 
 /// Fetch the open meetings the console shows: anything pending/confirmed plus
 /// today's terminal rows (so the rep still sees a meeting that just completed).
-async function fetchBoardRows(): Promise<MeetingRow[]> {
+/// Exported so the in-chat /meetings board feeds buildBoard from the SAME query.
+export async function fetchOpenMeetings(): Promise<MeetingRow[]> {
   const rows = await fetchRows<MeetingRow>(
     "/rest/v1/meetings?status=in.(pending,confirmed,no_rep,completed)" +
       "&select=id,name,phone,provider,plan_id,meeting_date,slot,starts_at,status,join_url,email" +
@@ -114,9 +115,114 @@ async function fetchBoardRows(): Promise<MeetingRow[]> {
 export async function handleConsoleData(cfg: Cfg, initData: string): Promise<Response> {
   const rep = await authorizeRep(initData, cfg.tgToken, cfg.allowedUserIds);
   if (!rep) return json({ ok: false, error: "unauthorized" }, 401);
-  const board = buildBoard(await fetchBoardRows(), Date.now());
+  const board = buildBoard(await fetchOpenMeetings(), Date.now());
   const repName = [rep.first_name, rep.last_name].filter(Boolean).join(" ") || rep.username || "נציג";
   return json({ ok: true, rep: { name: repName }, ...board });
+}
+
+// The outcome of a single meeting action. Pure data — the caller decides how to
+// surface it (the console returns JSON; the bot board edits/replies in chat).
+//   ok:false + error  → a user-facing Hebrew reason (already-handled, bad input…)
+//   ok:true + needsLink → confirm ran but no auto-Zoom; collect a link, then act
+//                         again with act="sendlink" + the link as payload
+//   ok:true + meeting → the action applied; meeting is the trimmed updated row
+export interface MeetingActResult {
+  ok: boolean;
+  error?: string;
+  needsLink?: boolean;
+  notFound?: boolean;     // distinguishes "no such meeting" from a soft refusal
+  meeting?: ConsoleMeeting | null;
+}
+
+/// Apply ONE meeting action by id — the shared write path behind both the Mini
+/// App console (handleConsoleAct) and the in-chat board callbacks (mtg:<id>:…).
+/// PURE of auth: callers MUST authorize the rep before invoking this. `actor` is
+/// the rep's display name for the audit trail. Acts: confirm | sendlink | norep
+/// | cancel | reschedule. Fail-soft over a DB miss (returns ok:false, never
+/// throws). Notifies the customer on confirm/sendlink/reschedule (best-effort).
+export async function applyMeetingAct(
+  cfg: Cfg,
+  id: string,
+  act: string,
+  payload?: string,
+  actor = "נציג",
+): Promise<MeetingActResult> {
+  if (!/^[0-9a-fA-F-]{36}$/.test(id)) return { ok: false, error: "bad id" };
+
+  const rows = await fetchRows<MeetingRow>(
+    `/rest/v1/meetings?id=eq.${id}&select=id,name,phone,provider,plan_id,meeting_date,slot,starts_at,status,join_url,email&limit=1`,
+  );
+  const m = rows?.[0];
+  if (!m) return { ok: false, notFound: true, error: "not found" };
+
+  switch (act) {
+    case "confirm": {
+      if (m.status !== "pending") return { ok: false, error: "כבר טופל" };
+      let joinUrl: string | null = null;
+      let zoomId: string | null = null;
+      if (zoomConfigured(cfg)) {
+        const created = await createZoomMeeting(cfg, {
+          topic: `חוסך — פגישת ייעוץ ${m.provider ?? ""} עם ${m.name ?? ""}`.trim(),
+          startsAtIso: m.starts_at ?? "",
+        });
+        if (created) { joinUrl = created.join_url; zoomId = String(created.id); }
+      }
+      if (!joinUrl) {
+        // No auto-Zoom — the caller collects a link, then re-acts with sendlink.
+        return { ok: true, needsLink: true };
+      }
+      const n = await patchCount(
+        `/rest/v1/meetings?id=eq.${id}&status=eq.pending`,
+        { status: "confirmed", join_url: joinUrl, zoom_meeting_id: zoomId, confirmed_at: new Date().toISOString() },
+      );
+      if (n === 0) return { ok: false, error: "כבר טופל" };
+      await logMeetingEvent({ meeting_id: id, event: "status_change", old_status: "pending", new_status: "confirmed", actor_name: actor });
+      await logMeetingEvent({ meeting_id: id, event: "link_set", actor_name: actor, note: "console" });
+      await notifyCustomer(cfg, { ...m, status: "confirmed", join_url: joinUrl });
+      return { ok: true, meeting: await reloadMeeting(id) };
+    }
+    case "sendlink": {
+      const link = String(payload ?? "").trim();
+      if (!/^https:\/\/([a-z0-9-]+\.)?zoom\.us\//i.test(link)) {
+        return { ok: false, error: "קישור Zoom לא תקין" };
+      }
+      const n = await patchCount(
+        `/rest/v1/meetings?id=eq.${id}&status=eq.pending`,
+        { status: "confirmed", join_url: link, confirmed_at: new Date().toISOString() },
+      );
+      if (n === 0) return { ok: false, error: "כבר טופל" };
+      await logMeetingEvent({ meeting_id: id, event: "status_change", old_status: "pending", new_status: "confirmed", actor_name: actor });
+      await logMeetingEvent({ meeting_id: id, event: "link_set", actor_name: actor, note: "console reply" });
+      await notifyCustomer(cfg, { ...m, status: "confirmed", join_url: link });
+      return { ok: true, meeting: await reloadMeeting(id) };
+    }
+    case "norep":
+    case "cancel": {
+      const newStatus = act === "norep" ? "no_rep" : "cancelled";
+      const n = await patchCount(
+        `/rest/v1/meetings?id=eq.${id}&status=in.(pending,confirmed)`,
+        { status: newStatus },
+      );
+      if (n === 0) return { ok: false, error: "כבר טופל" };
+      await logMeetingEvent({ meeting_id: id, event: "status_change", old_status: m.status, new_status: newStatus, actor_name: actor });
+      return { ok: true, meeting: await reloadMeeting(id) };
+    }
+    case "reschedule": {
+      // Shares the bot's reschedule rules + DST-safe starts_at (single source).
+      const parsed = parseReschedule(String(payload ?? ""), Date.now());
+      if (!parsed.ok) return { ok: false, error: parsed.error };
+      const n = await patchCount(
+        `/rest/v1/meetings?id=eq.${id}&status=in.(pending,confirmed)`,
+        { meeting_date: parsed.meetingDate, slot: parsed.slot, starts_at: parsed.startsAt },
+      );
+      if (n === 0) return { ok: false, error: "כבר טופל" };
+      await logMeetingEvent({ meeting_id: id, event: "reschedule", actor_name: actor, note: `${parsed.meetingDate} ${parsed.slot}` });
+      await notifyCustomer(cfg, { ...m, meeting_date: parsed.meetingDate, slot: parsed.slot, starts_at: parsed.startsAt });
+      return { ok: true, meeting: await reloadMeeting(id) };
+    }
+    default:
+      return { ok: false, error: "unknown act" };
+  }
 }
 
 export async function handleConsoleAct(
@@ -129,80 +235,25 @@ export async function handleConsoleAct(
   if (!/^[0-9a-fA-F-]{36}$/.test(id)) return json({ ok: false, error: "bad id" }, 400);
   const actor = [rep.first_name, rep.last_name].filter(Boolean).join(" ") || rep.username || "נציג";
 
-  const rows = await fetchRows<MeetingRow>(
-    `/rest/v1/meetings?id=eq.${id}&select=id,name,phone,provider,plan_id,meeting_date,slot,starts_at,status,join_url,email&limit=1`,
-  );
-  const m = rows?.[0];
-  if (!m) return json({ ok: false, error: "not found" }, 404);
+  const res = await applyMeetingAct(cfg, id, String(body.act ?? ""), body.payload, actor);
+  // Map the shared result onto the console's JSON contract (preserved exactly):
+  //   bad id → 400, not found → 404, unknown act → 400, soft refusals → 200 {ok:false},
+  //   needsLink → 200 {ok:true, needsLink, id}, success → 200 {ok:true, meeting}.
+  if (res.notFound) return json({ ok: false, error: "not found" }, 404);
+  if (!res.ok && res.error === "bad id") return json({ ok: false, error: "bad id" }, 400);
+  if (!res.ok && res.error === "unknown act") return json({ ok: false, error: "unknown act" }, 400);
+  if (!res.ok) return json({ ok: false, error: res.error });
+  if (res.needsLink) return json({ ok: true, needsLink: true, id });
+  return json({ ok: true, meeting: res.meeting ?? null });
+}
 
-  switch (body.act) {
-    case "confirm": {
-      if (m.status !== "pending") return json({ ok: false, error: "כבר טופל" });
-      let joinUrl: string | null = null;
-      let zoomId: string | null = null;
-      if (zoomConfigured(cfg)) {
-        const created = await createZoomMeeting(cfg, {
-          topic: `חוסך — פגישת ייעוץ ${m.provider ?? ""} עם ${m.name ?? ""}`.trim(),
-          startsAtIso: m.starts_at ?? "",
-        });
-        if (created) { joinUrl = created.join_url; zoomId = String(created.id); }
-      }
-      if (!joinUrl) {
-        // No auto-Zoom — the page collects a link via the `sendlink` act.
-        return json({ ok: true, needsLink: true, id });
-      }
-      const n = await patchCount(
-        `/rest/v1/meetings?id=eq.${id}&status=eq.pending`,
-        { status: "confirmed", join_url: joinUrl, zoom_meeting_id: zoomId, confirmed_at: new Date().toISOString() },
-      );
-      if (n === 0) return json({ ok: false, error: "כבר טופל" });
-      await logMeetingEvent({ meeting_id: id, event: "status_change", old_status: "pending", new_status: "confirmed", actor_name: actor });
-      await logMeetingEvent({ meeting_id: id, event: "link_set", actor_name: actor, note: "console" });
-      await notifyCustomer(cfg, { ...m, status: "confirmed", join_url: joinUrl });
-      return okMeeting(id);
-    }
-    case "sendlink": {
-      const link = String(body.payload ?? "").trim();
-      if (!/^https:\/\/([a-z0-9-]+\.)?zoom\.us\//i.test(link)) {
-        return json({ ok: false, error: "קישור Zoom לא תקין" });
-      }
-      const n = await patchCount(
-        `/rest/v1/meetings?id=eq.${id}&status=eq.pending`,
-        { status: "confirmed", join_url: link, confirmed_at: new Date().toISOString() },
-      );
-      if (n === 0) return json({ ok: false, error: "כבר טופל" });
-      await logMeetingEvent({ meeting_id: id, event: "status_change", old_status: "pending", new_status: "confirmed", actor_name: actor });
-      await logMeetingEvent({ meeting_id: id, event: "link_set", actor_name: actor, note: "console reply" });
-      await notifyCustomer(cfg, { ...m, status: "confirmed", join_url: link });
-      return okMeeting(id);
-    }
-    case "norep":
-    case "cancel": {
-      const newStatus = body.act === "norep" ? "no_rep" : "cancelled";
-      const n = await patchCount(
-        `/rest/v1/meetings?id=eq.${id}&status=in.(pending,confirmed)`,
-        { status: newStatus },
-      );
-      if (n === 0) return json({ ok: false, error: "כבר טופל" });
-      await logMeetingEvent({ meeting_id: id, event: "status_change", old_status: m.status, new_status: newStatus, actor_name: actor });
-      return okMeeting(id);
-    }
-    case "reschedule": {
-      // Shares the bot's reschedule rules + DST-safe starts_at (single source).
-      const parsed = parseReschedule(String(body.payload ?? ""), Date.now());
-      if (!parsed.ok) return json({ ok: false, error: parsed.error });
-      const n = await patchCount(
-        `/rest/v1/meetings?id=eq.${id}&status=in.(pending,confirmed)`,
-        { meeting_date: parsed.meetingDate, slot: parsed.slot, starts_at: parsed.startsAt },
-      );
-      if (n === 0) return json({ ok: false, error: "כבר טופל" });
-      await logMeetingEvent({ meeting_id: id, event: "reschedule", actor_name: actor, note: `${parsed.meetingDate} ${parsed.slot}` });
-      await notifyCustomer(cfg, { ...m, meeting_date: parsed.meetingDate, slot: parsed.slot, starts_at: parsed.startsAt });
-      return okMeeting(id);
-    }
-    default:
-      return json({ ok: false, error: "unknown act" }, 400);
-  }
+// Reload the trimmed meeting row after a write (the shape the console + board
+// re-render from).
+async function reloadMeeting(id: string): Promise<ConsoleMeeting | null> {
+  const rows = await fetchRows<MeetingRow>(
+    `/rest/v1/meetings?id=eq.${id}&select=id,name,phone,provider,meeting_date,slot,starts_at,status,join_url&limit=1`,
+  );
+  return rows?.[0] ? toConsoleMeeting(rows[0]) : null;
 }
 
 async function notifyCustomer(cfg: Cfg, m: MeetingRow): Promise<void> {
@@ -210,13 +261,6 @@ async function notifyCustomer(cfg: Cfg, m: MeetingRow): Promise<void> {
   try {
     await sendCustomerEmail(cfg, m.email, "אישור פגישת וידאו — חוסך", buildMeetingCustomerEmailHtml(m));
   } catch (_) { /* best-effort */ }
-}
-
-async function okMeeting(id: string): Promise<Response> {
-  const rows = await fetchRows<MeetingRow>(
-    `/rest/v1/meetings?id=eq.${id}&select=id,name,phone,provider,meeting_date,slot,starts_at,status,join_url&limit=1`,
-  );
-  return json({ ok: true, meeting: rows?.[0] ? toConsoleMeeting(rows[0]) : null });
 }
 
 function json(obj: unknown, status = 200): Response {

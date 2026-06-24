@@ -1,14 +1,23 @@
 // Telegram callback_query + chat-message handling: status buttons, claiming,
 // undo, won-flow savings capture, reply-notes, renewal→lead creation.
 
-import type { Cfg, Lead, RenewalRow, TgCallbackQuery, TgMessage } from "../_shared/types.ts";
+import type { Cfg, Lead, RenewalRow, TgCallbackQuery, TgInlineKeyboard, TgMessage } from "../_shared/types.ts";
 import { esc, NL, sendTelegram, tgApi } from "../_shared/telegram.ts";
 import { fetchRows, insertRow, logEvent, patchCount, rpcRows, serviceFetch } from "../_shared/db.ts";
 import { formatTimeline, frozenKeyboard, isWonAskMarkup, keyboardFor, leadIdFromMarkup, type LeadEvent, STATUS_HE, tgDisplayName } from "../_shared/leads.ts";
 import { isLinkAskMarkup, isRescheduleAskMarkup } from "../_shared/meetings.ts";
 import { sendText as waSendText } from "../_shared/whatsapp.ts";
-import { baresPhone, handleCommand } from "./commands.ts";
+import { aiMeetingsSummary, baresPhone, handleCommand } from "./commands.ts";
 import { handleMeetingCallback, handleMeetingLinkReply, handleMeetingRescheduleReply } from "./meeting_callbacks.ts";
+import { applyMeetingAct, buildBoard, fetchOpenMeetings } from "./console.ts";
+import {
+  type BoardTab,
+  type LeadsPipeline,
+  pipelineCounts,
+  renderLeadCard,
+  renderLeadsPipeline,
+  renderMeetingsBoard,
+} from "./board.ts";
 
 type HandlerResult = Record<string, unknown>;
 
@@ -255,6 +264,241 @@ async function handleRelayHandback(
   return { ok: true };
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// In-chat NATIVE board (Wave 16) — the rep's meetings board + leads pipeline as a
+// tap-to-act Telegram message (the richer Mini App console is a separate surface).
+//
+// CALLBACK-DATA CONTRACT (shared verbatim with board.ts + console.ts; do NOT drift):
+//   meeting actions = "mtg:<id>:zoom" | "mtg:<id>:reschedule"
+//                   | "mtg:<id>:confirm" | "mtg:<id>:cancel"
+//   board tab switch = "board:today" | "board:pending" | "board:week"
+//   leads view       = "leads:new" | "leads:all"
+// The per-meeting action LOGIC lives in console.ts applyMeetingAct (the shared
+// write path); here we authorize, call it, then re-render the board + toast.
+// zoom/reschedule need free-text input, so they prompt the rep to REPLY (the
+// same reply-capture pattern as the meeting cards) and apply on the reply.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Open leads for the pipeline view: status new|contacted|won so the counts header
+// reflects the live funnel, newest first. `recent` (the cards we surface) is the
+// caller's filtered slice. Returns null on a failed query (the caller reports it).
+async function fetchLeadsPipeline(view: "new" | "all"): Promise<LeadsPipeline | null> {
+  const open = await fetchRows<Lead>(
+    "/rest/v1/leads?status=in.(new,contacted,won)&order=created_at.desc&limit=60&select=*",
+  );
+  if (open === null) return null;
+  const counts = pipelineCounts(open);
+  // "new" view → only uncontacted cards; "all" → the live funnel (new+contacted),
+  // never the closed (won/lost) rows. Cap the cards so we don't flood the chat.
+  const recent = (view === "new"
+    ? open.filter((l) => String(l.status ?? "new") === "new")
+    : open.filter((l) => ["new", "contacted"].includes(String(l.status ?? "new"))))
+    .slice(0, 5);
+  return { counts, recent };
+}
+
+// The reply-capture markers for the native board's free-text acts. A board zoom /
+// reschedule tap posts a single-button prompt whose callback_data is the marker;
+// a reply to that prompt resolves the meeting id + which act to apply. Mirrors
+// isLinkAskMarkup / isRescheduleAskMarkup but for the mtg:<id>:… namespace.
+export function isBoardZoomAskMarkup(markup?: { inline_keyboard?: { callback_data?: string }[][] }): string | null {
+  const rows = markup?.inline_keyboard ?? [];
+  if (rows.length === 1 && rows[0].length === 1) {
+    const m = String(rows[0][0].callback_data ?? "").match(/^mtg:([0-9a-fA-F-]{36}):zoom$/);
+    if (m) return m[1];
+  }
+  return null;
+}
+export function isBoardRescheduleAskMarkup(markup?: { inline_keyboard?: { callback_data?: string }[][] }): string | null {
+  const rows = markup?.inline_keyboard ?? [];
+  if (rows.length === 1 && rows[0].length === 1) {
+    const m = String(rows[0][0].callback_data ?? "").match(/^mtg:([0-9a-fA-F-]{36}):reschedule$/);
+    if (m) return m[1];
+  }
+  return null;
+}
+
+const boardZoomAskMarkup = (id: string): TgInlineKeyboard => ({
+  inline_keyboard: [[{ text: "🔗 ממתין לקישור Zoom", callback_data: `mtg:${id}:zoom` }]],
+});
+const boardRescheduleAskMarkup = (id: string): TgInlineKeyboard => ({
+  inline_keyboard: [[{ text: "⏰ ממתין למועד חדש", callback_data: `mtg:${id}:reschedule` }]],
+});
+
+// Re-render the board message in place for `tab`. Re-fetches the open meetings so
+// the board reflects the action that just landed; the AI day-line is fail-soft
+// (omitted when there's no key / it errors). Edits the message the rep tapped.
+async function renderBoardInto(cfg: Cfg, msg: TgMessage | undefined, tab: BoardTab): Promise<void> {
+  if (!msg || msg.chat?.id == null) return;
+  const board = buildBoard(await fetchOpenMeetings(), Date.now());
+  const summary = await aiMeetingsSummary(cfg, board);
+  const { text, reply_markup } = renderMeetingsBoard(board, summary, tab);
+  await tgApi(cfg, "editMessageText", {
+    chat_id: msg.chat.id,
+    message_id: msg.message_id,
+    text,
+    parse_mode: "HTML",
+    disable_web_page_preview: true,
+    reply_markup,
+  });
+}
+
+// "board:<tab>" — re-render the board for the chosen tab (re-fetch + buildBoard +
+// renderMeetingsBoard, edit the message). Always toasts so the rep gets feedback.
+async function handleBoardTab(
+  cfg: Cfg,
+  answer: (text?: string) => Promise<unknown>,
+  tab: BoardTab,
+  msg: TgMessage | undefined,
+): Promise<HandlerResult> {
+  await answer();
+  await renderBoardInto(cfg, msg, tab);
+  return { ok: true, board: tab };
+}
+
+// "mtg:<id>:confirm|cancel" — apply via the shared applyMeetingAct, then re-render
+// the board + toast. confirm with no auto-Zoom returns needsLink → we prompt the
+// rep to reply with the link (the zoom reply-capture below applies it).
+async function handleMeetingAct(
+  cfg: Cfg,
+  answer: (text?: string) => Promise<unknown>,
+  id: string,
+  act: "confirm" | "cancel",
+  cb: TgCallbackQuery,
+): Promise<HandlerResult> {
+  const actor = tgDisplayName(cb.from) || "נציג";
+  const res = await applyMeetingAct(cfg, id, act, undefined, actor);
+  if (res.notFound) {
+    await answer("הפגישה לא נמצאה");
+    return { ok: false, skipped: "meeting not found" };
+  }
+  if (res.needsLink) {
+    // confirm ran but there's no auto-Zoom — collect a link, then apply sendlink.
+    await answer("Zoom לא מוגדר — השיבו עם קישור");
+    await sendTelegram(
+      cfg,
+      "🔗 השיבו (reply) להודעה זו עם קישור ה-Zoom לפגישה — https://zoom.us/...",
+      boardZoomAskMarkup(id),
+    );
+    return { ok: true, pending: "manual link" };
+  }
+  if (!res.ok) {
+    await answer(res.error ?? "הפעולה נכשלה");
+    return { ok: false, skipped: res.error };
+  }
+  await answer(act === "confirm" ? "אושר ✅" : "בוטל");
+  // Re-render the tab the action belongs to: a confirm shows under today/week, a
+  // cancel removes a pending row — re-rendering "today" is the safe default that
+  // always reflects the change; the rep can switch tabs from the board.
+  await renderBoardInto(cfg, cb.message, "today");
+  return { ok: true, meeting: id, act };
+}
+
+// "mtg:<id>:zoom" / "mtg:<id>:reschedule" — these need free text, so prompt the
+// rep to REPLY; the reply handler (handleBoardMeetingReply) applies it via
+// applyMeetingAct. Mirrors the meeting-card link/reschedule-ask flow.
+async function handleMeetingPrompt(
+  cfg: Cfg,
+  answer: (text?: string) => Promise<unknown>,
+  id: string,
+  act: "zoom" | "reschedule",
+): Promise<HandlerResult> {
+  if (act === "zoom") {
+    await answer("השיבו עם קישור Zoom");
+    await sendTelegram(
+      cfg,
+      "🔗 השיבו (reply) להודעה זו עם קישור ה-Zoom לפגישה — https://zoom.us/...",
+      boardZoomAskMarkup(id),
+    );
+    return { ok: true, pending: "zoom link" };
+  }
+  await answer("השיבו עם מועד חדש");
+  await sendTelegram(
+    cfg,
+    "⏰ השיבו (reply) להודעה זו עם מועד חדש בפורמט <code>YYYY-MM-DD HH:MM</code> (שעון ישראל), למשל <code>2026-06-18 14:30</code>.",
+    boardRescheduleAskMarkup(id),
+  );
+  return { ok: true, pending: "reschedule" };
+}
+
+// "leads:new|all" — render the leads pipeline: a counts header (+ §7b reminder)
+// followed by the recent lead cards (each with the EXISTING lead keyboard). Sends
+// fresh messages rather than editing, so the live cards carry their own buttons.
+async function handleLeadsView(
+  cfg: Cfg,
+  answer: (text?: string) => Promise<unknown>,
+  view: "new" | "all",
+): Promise<HandlerResult> {
+  const pipeline = await fetchLeadsPipeline(view);
+  if (pipeline === null) {
+    await answer("שגיאת מסד נתונים — נסו שוב בעוד רגע");
+    return { ok: false };
+  }
+  await answer();
+  const header = renderLeadsPipeline(pipeline);
+  await sendTelegram(cfg, header.text, header.reply_markup);
+  let failures = 0;
+  // oldest first so the newest lead lands closest to the input box
+  for (const lead of [...pipeline.recent].reverse()) {
+    const card = renderLeadCard(lead);
+    const r = await sendTelegram(cfg, card.text, card.reply_markup);
+    if (!r.ok) failures++;
+  }
+  if (failures > 0) {
+    await sendTelegram(cfg, `⚠️ ${failures} כרטיסים לא נשלחו (תקלת טלגרם) — נסו שוב עוד רגע.`);
+  }
+  return { ok: true, leads: view, failures };
+}
+
+// A reply to a board zoom/reschedule prompt → apply via applyMeetingAct (the same
+// shared write path the console uses). Called from handleTeamMessage after its
+// chat/allowlist gates pass. zoom → act="sendlink"; reschedule → act="reschedule".
+export async function handleBoardMeetingReply(
+  cfg: Cfg,
+  msg: TgMessage,
+  id: string,
+  act: "sendlink" | "reschedule",
+  text: string,
+): Promise<HandlerResult> {
+  const actor = tgDisplayName(msg.from) || "נציג";
+  const res = await applyMeetingAct(cfg, id, act, text, actor);
+  if (res.notFound) {
+    await sendTelegram(cfg, "הפגישה לא נמצאה.");
+    return { ok: false, skipped: "meeting not found" };
+  }
+  if (!res.ok) {
+    await sendTelegram(cfg, res.error ?? "הפעולה נכשלה — נסו שוב.");
+    return { ok: false, skipped: res.error };
+  }
+  await sendTelegram(cfg, act === "sendlink" ? "✅ הקישור נרשם והלקוח עודכן." : "✅ המועד עודכן והלקוח עודכן.");
+  return { ok: true, meeting: id, act };
+}
+
+// Route the native-board callbacks (board:/mtg:/leads:). Returns null when `data`
+// isn't a board callback so the caller falls through to the lead callbacks. The
+// allowlist + team-chat gates were already enforced by handleCallback.
+async function handleBoardCallback(
+  cfg: Cfg,
+  answer: (text?: string) => Promise<unknown>,
+  cb: TgCallbackQuery,
+  data: string,
+): Promise<HandlerResult | null> {
+  const boardM = data.match(/^board:(today|pending|week)$/);
+  if (boardM) return await handleBoardTab(cfg, answer, boardM[1] as BoardTab, cb.message);
+
+  const mtgM = data.match(/^mtg:([0-9a-fA-F-]{36}):(zoom|reschedule|confirm|cancel)$/);
+  if (mtgM) {
+    const [, id, act] = mtgM;
+    if (act === "confirm" || act === "cancel") return await handleMeetingAct(cfg, answer, id, act, cb);
+    return await handleMeetingPrompt(cfg, answer, id, act as "zoom" | "reschedule");
+  }
+
+  const leadsM = data.match(/^leads:(new|all)$/);
+  if (leadsM) return await handleLeadsView(cfg, answer, leadsM[1] as "new" | "all");
+
+  return null;
+}
+
 export async function handleCallback(cfg: Cfg, cb: TgCallbackQuery): Promise<HandlerResult> {
   // Meeting cards live in their own namespace and carry the same gates inside.
   if (String(cb.data ?? "").startsWith("meet:")) return await handleMeetingCallback(cfg, cb);
@@ -276,6 +520,15 @@ export async function handleCallback(cfg: Cfg, cb: TgCallbackQuery): Promise<Han
   if (!cfg.tgChat || String(chatId ?? "") !== cfg.tgChat) {
     await answer();
     return { ok: false, skipped: "wrong chat" };
+  }
+
+  // Native in-chat board (board:/mtg:/leads:) — same allowlist + team-chat gates
+  // above apply. Returns null for non-board data so we fall through to the rest.
+  if (data.startsWith("board:") || data.startsWith("mtg:") || data.startsWith("leads:")) {
+    const handled = await handleBoardCallback(cfg, answer, cb, data);
+    if (handled) return handled;
+    await answer();
+    return { ok: true, skipped: "unrecognized board callback" };
   }
 
   const renewM = data.match(/^renew:([0-9a-fA-F-]{36}):lead$/);
@@ -605,6 +858,13 @@ export async function handleTeamMessage(cfg: Cfg, msg: TgMessage): Promise<Handl
     // reply must be a valid 'YYYY-MM-DD HH:MM' (validated inside).
     const reschedId = isRescheduleAskMarkup(reply.reply_markup);
     if (reschedId) return await handleMeetingRescheduleReply(cfg, msg, reschedId, text);
+
+    // Native-board (mtg:<id>:…) reply-capture: a board zoom / reschedule tap posts
+    // a marker prompt, and the reply applies via the shared applyMeetingAct path.
+    const boardZoomId = isBoardZoomAskMarkup(reply.reply_markup);
+    if (boardZoomId) return await handleBoardMeetingReply(cfg, msg, boardZoomId, "sendlink", text);
+    const boardReschedId = isBoardRescheduleAskMarkup(reply.reply_markup);
+    if (boardReschedId) return await handleBoardMeetingReply(cfg, msg, boardReschedId, "reschedule", text);
 
     const leadId = leadIdFromMarkup(reply.reply_markup);
     if (!leadId || !text) return { ok: true, skipped: "reply without lead context" };

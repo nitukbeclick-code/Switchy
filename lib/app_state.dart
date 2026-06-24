@@ -142,9 +142,10 @@ class AppState extends ChangeNotifier {
     _telegramEnabled = p.getBool('telegramEnabled') ?? false;
     // Support ticket
     _supportTicketId = p.getString('supportTicketId');
-    // Watched plans
+    // Watched plans + the §30A watch-notification opt-in stamp.
     final watched = p.getStringList('watchedPlans') ?? [];
     _watchedPlans.addAll(watched);
+    _watchOptInAt = p.getString('watchOptInAt');
     // Recently viewed
     final recent = p.getStringList('recentlyViewed') ?? [];
     _recentlyViewed.addAll(recent);
@@ -329,6 +330,13 @@ class AppState extends ChangeNotifier {
           break;
         case 'watchedPlans':
           await p.setStringList('watchedPlans', _watchedPlans.toList());
+          // The §30A opt-in stamp travels with the watch list: null ⇒ no
+          // consent on record, so drop the key entirely.
+          if (_watchOptInAt == null) {
+            await p.remove('watchOptInAt');
+          } else {
+            await p.setString('watchOptInAt', _watchOptInAt!);
+          }
           break;
         case 'recentlyViewed':
           await p.setStringList('recentlyViewed', _recentlyViewed);
@@ -729,12 +737,43 @@ class AppState extends ChangeNotifier {
   final Set<String> _watchedPlans = {};
   List<String> get watchedPlans => List.unmodifiable(_watchedPlans.toList());
   bool isWatching(String planId) => _watchedPlans.contains(planId);
+
+  /// When the user first armed price-watch notifications — the explicit opt-in
+  /// timestamp that satisfies Spam-Law §30A consent for sending price-drop
+  /// alerts. Null until they turn watching ON for the first time; once set it
+  /// survives even after un-watching every plan (the consent record itself is
+  /// the legal artefact, distinct from whether any plan is currently watched).
+  /// Persisted under the 'watchedPlans' group so it loads/saves with the list.
+  String? _watchOptInAt;
+  String? get watchOptInAt => _watchOptInAt;
+
+  /// True once the user has explicitly opted in to price-watch notifications.
+  /// Gates the §30A microcopy state and any push we'd send for a watched plan.
+  bool get hasWatchConsent => _watchOptInAt != null;
+
+  /// Turn the watch on or off for [planId]. Turning a plan ON for the very first
+  /// time stamps [_watchOptInAt] — the explicit §30A opt-in — so we have a real,
+  /// persisted consent record before any price-watch notification is sent. The
+  /// caller is responsible for showing the consent microcopy beside the toggle.
   void toggleWatch(String planId) {
     if (_watchedPlans.contains(planId)) {
       _watchedPlans.remove(planId);
     } else {
       _watchedPlans.add(planId);
+      // First-ever opt-in → record explicit consent (Spam-Law §30A).
+      _watchOptInAt ??= DateTime.now().toIso8601String();
     }
+    notifyListeners();
+    _persist();
+  }
+
+  /// Withdraw price-watch consent entirely: clears every watched plan AND the
+  /// §30A opt-in stamp, so no further price-watch notification may be sent until
+  /// the user opts in again. The honest counterpart to [toggleWatch]'s opt-in.
+  void clearWatchConsent() {
+    if (_watchedPlans.isEmpty && _watchOptInAt == null) return;
+    _watchedPlans.clear();
+    _watchOptInAt = null;
     notifyListeners();
     _persist();
   }

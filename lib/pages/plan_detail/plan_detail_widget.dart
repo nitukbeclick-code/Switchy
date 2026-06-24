@@ -559,27 +559,59 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
 
                       const SizedBox(height: 14),
 
-                      // Price alert card
+                      // Price-watch card — turning it on writes an explicit
+                      // §30A opt-in (see AppState.toggleWatch); the consent
+                      // microcopy below the toggle states exactly that.
                       _Card(
-                        child: Row(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Icon(Icons.notifications_outlined,
-                                color: ffTheme.primary, size: 22),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                'עקוב אחר שינויי מחיר',
-                                style: ffTheme.bodyMedium,
+                            Row(
+                              children: [
+                                Icon(Icons.notifications_outlined,
+                                    color: ffTheme.primary, size: 22),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    'עקוב אחר שינויי מחיר',
+                                    style: ffTheme.bodyMedium,
+                                  ),
+                                ),
+                                Switch(
+                                  value: appState.isWatching(plan.id),
+                                  onChanged: (v) {
+                                    HapticFeedback.selectionClick();
+                                    appState.toggleWatch(plan.id);
+                                  },
+                                  activeThumbColor: ffTheme.primary,
+                                ),
+                              ],
+                            ),
+                            // Explicit opt-in microcopy (Spam-Law §30A): only
+                            // shown once watching is ON, stating that the user is
+                            // consenting to receive price-drop notifications and
+                            // can turn them off any time.
+                            if (appState.isWatching(plan.id)) ...[
+                              const SizedBox(height: 8),
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Icon(Icons.verified_user_outlined,
+                                      size: 14, color: ffTheme.secondaryText),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      'בהפעלה אישרת לקבל התראות על ירידות מחיר במסלול הזה. '
+                                      'אפשר לבטל בכל רגע מאותו מתג.',
+                                      style: ffTheme.labelSmall.copyWith(
+                                        color: ffTheme.secondaryText,
+                                        height: 1.4,
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
-                            ),
-                            Switch(
-                              value: appState.isWatching(plan.id),
-                              onChanged: (v) {
-                                HapticFeedback.selectionClick();
-                                appState.toggleWatch(plan.id);
-                              },
-                              activeThumbColor: ffTheme.primary,
-                            ),
+                            ],
                           ],
                         ),
                       )

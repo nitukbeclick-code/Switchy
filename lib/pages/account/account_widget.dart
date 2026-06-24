@@ -514,9 +514,12 @@ class AccountWidget extends StatelessWidget {
                       _ActionTile(icon: Icons.dashboard_rounded, title: 'ניהול לקוחות / CRM', subtitle: 'שיחות וואטסאפ, לידים וצבר מכירות', onTap: () => context.pushNamed('Crm'), ffTheme: ffTheme),
                       _ActionTile(icon: Icons.insights_rounded, title: 'דשבורד אנליטיקס', subtitle: 'מדדי משפך אמיתיים — לידים, ערוצים והמרה', onTap: () => context.pushNamed('Analytics'), ffTheme: ffTheme),
                     ],
+                    _ActionTile(icon: Icons.account_balance_wallet_rounded, title: 'ארנק התקשורת', subtitle: 'כמה כבר חסכת דרכנו', onTap: () => context.pushNamed('Wallet'), ffTheme: ffTheme),
                     _ActionTile(icon: Icons.alarm_rounded, title: 'מעקב חידושים', subtitle: 'אל תשלם יותר מדי כשהמבצע נגמר', onTap: () => context.pushNamed('Renewal'), ffTheme: ffTheme),
+                    _ActionTile(icon: Icons.support_agent_rounded, title: 'תסריט מיקוח', subtitle: 'רוצים להישאר? בקשו הנחה עם נתונים אמיתיים', onTap: () => context.pushNamed('Negotiate'), ffTheme: ffTheme),
                     _ActionTile(icon: Icons.compare_arrows_rounded, title: 'השוואה חדשה', subtitle: 'מצא את המסלול הכי מתאים לך', onTap: () => context.goNamed('Results'), ffTheme: ffTheme),
                     _ActionTile(icon: Icons.auto_awesome_rounded, title: 'יועץ AI', subtitle: 'שאל שאלות על מסלולי תקשורת', onTap: () => context.pushNamed('AIAdvisor'), ffTheme: ffTheme),
+                    _ActionTile(icon: Icons.card_giftcard_rounded, title: 'הזמינו חבר', subtitle: 'עזרו לחבר לחסוך — שתפו את חוסך', onTap: () => context.pushNamed('Referral'), ffTheme: ffTheme),
                     _ActionTile(icon: Icons.person_rounded, title: 'הגדרות פרופיל', subtitle: 'עדכן פרטים ועדפות', onTap: () => context.pushNamed('Profile'), ffTheme: ffTheme),
                   ].animate(interval: 70.ms).fadeIn(duration: 300.ms).slideY(begin: 0.06, end: 0),
 

@@ -710,38 +710,68 @@ class _ReminderTile extends StatelessWidget {
     return Container(
       // Premium card surface — soft hairline + shadow, replacing the old border.
       decoration: ffTheme.cardDecoration(radius: ffTheme.radiusMd),
-      child: SwitchListTile(
-        value: appState.renewalReminders,
-        onChanged: (v) async {
-          appState.setRenewalReminders(v);
-          appBackend.setRenewalReminder(v).catchError((_) {});
-          if (v) await PushNotificationService.instance.requestPermission();
-          await PushNotificationService.instance.syncRenewalReminders(appState);
-        },
-        activeThumbColor: ffTheme.primary,
-        title: Text('תזכורות חידוש',
-            style: ffTheme.titleSmall
-                .copyWith(fontWeight: FontWeight.w700)),
-        subtitle: Padding(
-          padding: const EdgeInsets.only(top: 2),
-          child: Text(
-            subtitle,
-            style: ffTheme.bodySmall
-                .copyWith(color: ffTheme.secondaryText),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SwitchListTile(
+            value: appState.renewalReminders,
+            onChanged: (v) async {
+              appState.setRenewalReminders(v);
+              appBackend.setRenewalReminder(v).catchError((_) {});
+              if (v) await PushNotificationService.instance.requestPermission();
+              await PushNotificationService.instance.syncRenewalReminders(appState);
+            },
+            activeThumbColor: ffTheme.primary,
+            title: Text('תזכורות חידוש',
+                style: ffTheme.titleSmall
+                    .copyWith(fontWeight: FontWeight.w700)),
+            subtitle: Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text(
+                subtitle,
+                style: ffTheme.bodySmall
+                    .copyWith(color: ffTheme.secondaryText),
+              ),
+            ),
+            secondary: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: ffTheme.accent1,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(Icons.notifications_active_outlined,
+                  color: ffTheme.primary, size: 20),
+            ),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
           ),
-        ),
-        secondary: Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: ffTheme.accent1,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Icon(Icons.notifications_active_outlined,
-              color: ffTheme.primary, size: 20),
-        ),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          // Explicit opt-in microcopy (Spam-Law §30A): shown once reminders are
+          // ON, stating the user consented to receive renewal notifications and
+          // can withdraw consent any time from the same switch.
+          if (appState.renewalReminders)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.verified_user_outlined,
+                      size: 14, color: ffTheme.secondaryText),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'בהפעלה אישרת לקבל מאיתנו התראות חידוש (התראה באפליקציה, '
+                      'ואם תאשר גם אימייל עם קישור הסרה). אפשר לבטל בכל רגע.',
+                      style: ffTheme.labelSmall.copyWith(
+                        color: ffTheme.secondaryText,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
       ),
     );
   }

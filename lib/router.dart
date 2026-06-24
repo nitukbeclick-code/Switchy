@@ -43,6 +43,9 @@ import 'pages/support_ticket/support_ticket_widget.dart';
 import 'pages/recap/annual_recap_widget.dart';
 import 'pages/crm/crm_widget.dart';
 import 'pages/analytics/analytics_widget.dart';
+import 'pages/wallet/wallet_widget.dart';
+import 'pages/referral/referral_widget.dart';
+import 'pages/negotiate/negotiate_widget.dart';
 
 final _rootNavKey = GlobalKey<NavigatorState>(debugLabel: 'root');
 final _shellNavKey = GlobalKey<NavigatorState>(debugLabel: 'shell');
@@ -133,6 +136,16 @@ GoRouter createRouter() {
         GoRoute(path: '/provider/:name', name: 'Provider', builder: (_, s) => ProviderWidget(providerName: s.pathParameters['name']!)),
         GoRoute(path: '/support-ticket/:ticketId', name: 'support-ticket', builder: (_, s) => SupportTicketWidget(ticketId: s.pathParameters['ticketId']!)),
         GoRoute(path: '/recap', name: 'AnnualRecap', builder: (_, __) => const AnnualRecapWidget()),
+        GoRoute(path: '/wallet', name: 'Wallet', builder: (_, __) => const WalletWidget()),
+        GoRoute(path: '/referral', name: 'Referral', builder: (_, __) => const ReferralWidget()),
+        GoRoute(
+          path: '/negotiate',
+          name: 'Negotiate',
+          builder: (_, s) => NegotiateWidget(
+            initialCategory: s.uri.queryParameters['category'],
+            initialProvider: s.uri.queryParameters['provider'],
+          ),
+        ),
         GoRoute(path: '/crm', name: 'Crm', builder: (_, __) => const CrmWidget()),
         GoRoute(path: '/analytics', name: 'Analytics', builder: (_, __) => const AnalyticsWidget()),
       ],

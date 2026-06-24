@@ -46,6 +46,20 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "weekly",
       priority: 0.9,
     },
+    // /referral — the share-the-tool invite page (mints a real referral code).
+    {
+      url: `${SITE_URL}/referral`,
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.6,
+    },
+    // /negotiate — the data-grounded retention/negotiation coach (market rate).
+    {
+      url: `${SITE_URL}/negotiate`,
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.6,
+    },
     {
       url: `${SITE_URL}/compare`,
       lastModified: now,

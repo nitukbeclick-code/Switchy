@@ -3,13 +3,93 @@
 
 import type { Cfg, Lead, RenewalRow, TgCallbackQuery, TgMessage } from "../_shared/types.ts";
 import { esc, NL, sendTelegram, tgApi } from "../_shared/telegram.ts";
-import { fetchRows, insertRow, logEvent, patchCount, rpcRows } from "../_shared/db.ts";
+import { fetchRows, insertRow, logEvent, patchCount, rpcRows, serviceFetch } from "../_shared/db.ts";
 import { formatTimeline, frozenKeyboard, isWonAskMarkup, keyboardFor, leadIdFromMarkup, type LeadEvent, STATUS_HE, tgDisplayName } from "../_shared/leads.ts";
 import { isLinkAskMarkup, isRescheduleAskMarkup } from "../_shared/meetings.ts";
+import { sendText as waSendText } from "../_shared/whatsapp.ts";
 import { baresPhone, handleCommand } from "./commands.ts";
 import { handleMeetingCallback, handleMeetingLinkReply, handleMeetingRescheduleReply } from "./meeting_callbacks.ts";
 
 type HandlerResult = Record<string, unknown>;
+
+// Outbound rep relay body cap — matches the CRM's MAX_REPLY_LEN intent and stays
+// well under Graph's 4096-char text limit. A rep paste longer than this is clipped.
+const MAX_RELAY_LEN = 3000;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// WhatsApp live-relay (human takeover) — rep→customer half.
+//
+// RELAY CONTRACT (shared with whatsapp-webhook's customer→rep half):
+//   whatsapp_conversations.relay_tg_chat_id (text, nullable; NULL = no relay).
+//   TAKE-OVER : bot_enabled=false + relay_tg_chat_id = <pressing rep's TG chat id>.
+//   HAND-BACK : bot_enabled=true  + relay_tg_chat_id = NULL.
+//   RELAY-ACTIVE = (bot_enabled=false AND relay_tg_chat_id IS NOT NULL).
+// Rep→customer relay sends via _shared/whatsapp.ts sendText to the customer phone;
+// the webhook side sends customer→rep via _shared/telegram.ts sendTelegram.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// A WhatsApp conversation row, narrowed to the fields the relay needs.
+type WaConvo = {
+  id: string;
+  contact_id?: string | null;
+  bot_enabled?: boolean | null;
+  relay_tg_chat_id?: string | null;
+};
+
+// National IL phone → E.164 digits (the form whatsapp_contacts.wa_phone stores,
+// e.g. "0501234567" → "972501234567"). Returns "" when there aren't enough
+// digits to be a real number. Mirrors telegram.ts intlPhone (kept local so leads
+// stays dependency-light) — used only to derive a match suffix, never to send.
+export function leadPhoneToE164(phone: unknown): string {
+  const d = String(phone ?? "").replace(/[^0-9]/g, "");
+  if (d.length < 9) return "";
+  return d.startsWith("0") ? "972" + d.slice(1) : d;
+}
+
+// Resolve a lead's phone → its live WhatsApp conversation (contact by wa_phone,
+// then the newest open/bot/human conversation). Matches on the last 9 digits via
+// ilike so a contact stored as 972… or 0… both resolve (same suffix-match the
+// dossier uses for meetings). Returns null on no-match OR a DB error — the caller
+// reports "no live WhatsApp conversation" either way (fail-soft, never throws).
+export async function resolveWaConvoByPhone(phone: unknown): Promise<WaConvo | null> {
+  const e164 = leadPhoneToE164(phone);
+  if (!e164) return null;
+  const suffix = e164.slice(-9);
+  const contacts = await fetchRows<{ id: string }>(
+    `/rest/v1/whatsapp_contacts?wa_phone=ilike.*${encodeURIComponent(suffix)}&select=id&order=last_message_at.desc.nullslast&limit=1`,
+  );
+  if (!contacts || contacts.length === 0) return null;
+  const contactId = String(contacts[0].id);
+  const convos = await fetchRows<WaConvo>(
+    `/rest/v1/whatsapp_conversations?contact_id=eq.${encodeURIComponent(contactId)}&status=in.(open,bot,human)&order=created_at.desc&limit=1&select=id,contact_id,bot_enabled,relay_tg_chat_id`,
+  );
+  if (!convos || convos.length === 0) return null;
+  return convos[0];
+}
+
+// RELAY-ACTIVE: a rep has the conversation (bot_enabled=false) AND a relay target
+// is set. NULL relay_tg_chat_id (or bot_enabled still true) = not relaying.
+export function isRelayActive(convo: WaConvo | null | undefined): boolean {
+  if (!convo) return false;
+  const target = String(convo.relay_tg_chat_id ?? "").trim();
+  return convo.bot_enabled === false && target.length > 0;
+}
+
+// Reg.13 security-audit row for a relay control/action — mirrors crm-api's
+// logAudit + auditDetail: the actor uid is stamped LAST so a caller can never
+// spoof it, and the detail stays PII-light (ids + a short preview, never the raw
+// customer-controlled body). Best-effort: never blocks the relay, never throws.
+async function logRelayAudit(
+  actorTgId: number | null,
+  event: string,
+  detail: Record<string, unknown>,
+): Promise<void> {
+  await insertRow("security_audit_log", {
+    user_id: null, // Telegram reps are not auth.users; the tg id lives inside detail
+    event,
+    detail: { ...detail, actor_tg_id: actorTgId ?? null },
+  });
+}
 
 // Exported for unit tests. Fail-close: an empty allowlist means the bot is not
 // fully configured, so nobody is authorized. The config guard in index.ts
@@ -72,6 +152,109 @@ async function handleRenewLead(
   return { ok };
 }
 
+// TAKE-OVER: the pressing rep takes the live WhatsApp conversation off the bot and
+// into Telegram. Flips whatsapp_conversations: bot_enabled=false + relay_tg_chat_id
+// = the rep's Telegram chat id (cb.from?.id). After this, the webhook relays the
+// customer's inbound to this chat, and a rep reply here relays back to the customer.
+// Atomic on the conversation id (the patchCount confirms a row actually changed);
+// re-pressing just re-points the relay to whoever pressed last. Audited (Reg.13).
+async function handleRelayTakeover(
+  cfg: Cfg,
+  answer: (text?: string) => Promise<unknown>,
+  leadId: string,
+  cb: TgCallbackQuery,
+): Promise<HandlerResult> {
+  const leads = await fetchRows<Lead>(`/rest/v1/leads?id=eq.${leadId}&select=id,phone,name`);
+  if (leads === null) {
+    await answer("שגיאת מסד נתונים — נסו שוב בעוד רגע");
+    return { ok: false };
+  }
+  const lead = leads[0];
+  if (!lead) {
+    await answer("הליד לא נמצא");
+    return { ok: false };
+  }
+  const convo = await resolveWaConvoByPhone(lead.phone);
+  if (!convo) {
+    await answer("אין שיחת וואטסאפ פעילה ללקוח הזה");
+    return { ok: false, skipped: "no whatsapp conversation" };
+  }
+  const repChat = cb.from?.id;
+  if (repChat == null) {
+    await answer("לא זוהה צ׳אט נציג");
+    return { ok: false, skipped: "no rep chat id" };
+  }
+  // Flip the gate OFF + point the relay at THIS rep's Telegram chat. patchCount on
+  // the conversation id confirms the write landed (0 rows = the conv vanished or a
+  // DB error) — the atomic-claim style: act on a filtered id, trust the row count.
+  const n = await patchCount(`/rest/v1/whatsapp_conversations?id=eq.${encodeURIComponent(convo.id)}`, {
+    bot_enabled: false,
+    relay_tg_chat_id: String(repChat),
+  });
+  if (n === 0) {
+    await answer("ההשתלטות נכשלה — נסו שוב בעוד רגע");
+    return { ok: false };
+  }
+  await logRelayAudit(repChat, "wa_relay_takeover", {
+    lead_id: leadId,
+    conversation_id: convo.id,
+    contact_id: convo.contact_id ?? null,
+    relay_tg_chat_id: String(repChat),
+  });
+  await answer("השתלטת על השיחה 🤝 — הודעות הלקוח יגיעו לכאן");
+  await sendTelegram(
+    cfg,
+    `🤝 <b>השתלטת על שיחת הוואטסאפ</b>${lead.name ? ` עם ${esc(lead.name)}` : ""}.${NL}` +
+      `הבוט הושתק — הודעות הלקוח יופנו לכאן, וכל הודעה שתשיבו (reply) לכרטיס תישלח אליו בוואטסאפ.`,
+  );
+  return { ok: true };
+}
+
+// HAND-BACK: return the conversation to the AI bot. Flips bot_enabled=true +
+// relay_tg_chat_id=NULL (per the contract). Idempotent — handing back a bot-driven
+// conversation is a harmless no-op flip. Audited (Reg.13).
+async function handleRelayHandback(
+  cfg: Cfg,
+  answer: (text?: string) => Promise<unknown>,
+  leadId: string,
+  cb: TgCallbackQuery,
+): Promise<HandlerResult> {
+  const leads = await fetchRows<Lead>(`/rest/v1/leads?id=eq.${leadId}&select=id,phone,name`);
+  if (leads === null) {
+    await answer("שגיאת מסד נתונים — נסו שוב בעוד רגע");
+    return { ok: false };
+  }
+  const lead = leads[0];
+  if (!lead) {
+    await answer("הליד לא נמצא");
+    return { ok: false };
+  }
+  const convo = await resolveWaConvoByPhone(lead.phone);
+  if (!convo) {
+    await answer("אין שיחת וואטסאפ פעילה ללקוח הזה");
+    return { ok: false, skipped: "no whatsapp conversation" };
+  }
+  const n = await patchCount(`/rest/v1/whatsapp_conversations?id=eq.${encodeURIComponent(convo.id)}`, {
+    bot_enabled: true,
+    relay_tg_chat_id: null,
+  });
+  if (n === 0) {
+    await answer("ההחזרה לבוט נכשלה — נסו שוב בעוד רגע");
+    return { ok: false };
+  }
+  await logRelayAudit(cb.from?.id ?? null, "wa_relay_handback", {
+    lead_id: leadId,
+    conversation_id: convo.id,
+    contact_id: convo.contact_id ?? null,
+  });
+  await answer("הוחזר לבוט 🤖");
+  await sendTelegram(
+    cfg,
+    `🤖 <b>השיחה הוחזרה לבוט</b>${lead.name ? ` (${esc(lead.name)})` : ""} — הבוט האוטומטי חזר לענות ללקוח.`,
+  );
+  return { ok: true };
+}
+
 export async function handleCallback(cfg: Cfg, cb: TgCallbackQuery): Promise<HandlerResult> {
   // Meeting cards live in their own namespace and carry the same gates inside.
   if (String(cb.data ?? "").startsWith("meet:")) return await handleMeetingCallback(cfg, cb);
@@ -97,6 +280,16 @@ export async function handleCallback(cfg: Cfg, cb: TgCallbackQuery): Promise<Han
 
   const renewM = data.match(/^renew:([0-9a-fA-F-]{36}):lead$/);
   if (renewM) return await handleRenewLead(cfg, answer, renewM[1]);
+
+  // WhatsApp live-relay controls live in the lead namespace but resolve through
+  // the conversation, not the lead status machine — route them first.
+  const relayM = data.match(/^lead:([0-9a-fA-F-]{36}):(takeover|handback)$/);
+  if (relayM) {
+    const [, relayLeadId, relayAction] = relayM;
+    return relayAction === "takeover"
+      ? await handleRelayTakeover(cfg, answer, relayLeadId, cb)
+      : await handleRelayHandback(cfg, answer, relayLeadId, cb);
+  }
 
   const m = data.match(/^lead:([0-9a-fA-F-]{36}):(contacted|won|lost|claim|claimed|undo|snooze|wonask|noop|history)$/);
   if (!m) {
@@ -296,6 +489,102 @@ export function isLoneZeroAmount(text: string): boolean {
   return m !== null && Number(m[1]) === 0;
 }
 
+// Relay a rep's Telegram reply to the customer over WhatsApp — the rep→customer
+// half of the live relay. Preconditions (checked by the caller): the conversation
+// is RELAY-ACTIVE (bot_enabled=false + relay_tg_chat_id set). Here we:
+//   §30A FIRST  — refuse if the customer has opted out (contact opted_out OR a
+//                 marketing_suppression row). The relay is an ACTIVE human
+//                 conversation, not marketing, but the STOP gate still WINS:
+//                 we never push a message to someone who asked us to stop.
+//   1) sendText(customer phone, text) via _shared/whatsapp.ts (the shared sender).
+//   2) Store the outbound in whatsapp_messages (direction=out, actor=rep, wamid).
+//   3) Reg.13 audit (who/when, PII-light preview) — exactly like crm-api sendReply.
+//   4) Keep bot_enabled=false (the human stays in the loop; we do NOT re-enable).
+// Fail-soft: the DB write is authoritative; a Graph failure is recorded as failed.
+async function relayRepReplyToCustomer(
+  cfg: Cfg,
+  msg: TgMessage,
+  leadId: string,
+  convo: WaConvo,
+  text: string,
+  who: string,
+): Promise<HandlerResult> {
+  const contactId = String(convo.contact_id ?? "").trim();
+  if (!contactId) {
+    await sendTelegram(cfg, "לא נמצא איש קשר לשיחה — ההודעה לא נשלחה");
+    return { ok: false, skipped: "relay conversation has no contact" };
+  }
+  const contacts = await fetchRows<{ wa_phone?: string; status?: string }>(
+    `/rest/v1/whatsapp_contacts?id=eq.${encodeURIComponent(contactId)}&select=wa_phone,status&limit=1`,
+  );
+  if (contacts === null) {
+    await sendTelegram(cfg, "שגיאת מסד נתונים — נסו שוב בעוד רגע");
+    return { ok: false };
+  }
+  const contact = contacts[0];
+  const phone = String(contact?.wa_phone ?? "").trim();
+  if (!phone) {
+    await sendTelegram(cfg, "אין מספר וואטסאפ לאיש הקשר — ההודעה לא נשלחה");
+    return { ok: false, skipped: "contact has no wa_phone" };
+  }
+
+  // §30A STOP gate — runs FIRST and WINS. opted_out contact status OR a durable
+  // marketing_suppression row blocks the relay outright (we never message someone
+  // who asked to stop, even inside an active conversation).
+  if (String(contact?.status ?? "").toLowerCase() === "opted_out") {
+    await sendTelegram(cfg, "⛔ הלקוח ביקש להפסיק לקבל הודעות (STOP) — ההודעה לא נשלחה.");
+    return { ok: false, skipped: "customer opted out" };
+  }
+  const suppressed = await fetchRows<{ id?: string }>(
+    `/rest/v1/marketing_suppression?channel=eq.whatsapp&contact=eq.${encodeURIComponent(phone)}&select=id&limit=1`,
+  );
+  if (suppressed && suppressed.length > 0) {
+    await sendTelegram(cfg, "⛔ הלקוח ברשימת ההסרה (STOP) — ההודעה לא נשלחה.");
+    return { ok: false, skipped: "customer suppressed" };
+  }
+
+  const body = text.slice(0, MAX_RELAY_LEN);
+  // 1) Best-effort Graph send first so we can store the real wamid + status.
+  const wamid = await waSendText(phone, body);
+  // 2) DB write is authoritative — store the outbound regardless of send success.
+  const wrote = await insertRow("whatsapp_messages", {
+    conversation_id: convo.id,
+    contact_id: contactId,
+    direction: "out",
+    actor: "rep",
+    msg_type: "text",
+    body,
+    wa_message_id: wamid,
+    status: wamid ? "sent" : "failed",
+  });
+  // 3) Keep the human in the loop: re-assert bot_enabled=false (idempotent; the
+  //    conversation was already RELAY-ACTIVE) + bump last_message_at. We do NOT
+  //    touch relay_tg_chat_id — only hand-back clears it.
+  await serviceFetch(`/rest/v1/whatsapp_conversations?id=eq.${encodeURIComponent(convo.id)}`, {
+    method: "PATCH",
+    body: JSON.stringify({ bot_enabled: false, last_message_at: new Date().toISOString() }),
+  });
+  // 4) Reg.13 audit (who/when, PII-light preview) — like crm-api actSendReply.
+  await logRelayAudit(msg.from?.id ?? null, "wa_relay_reply", {
+    lead_id: leadId,
+    conversation_id: convo.id,
+    contact_id: contactId,
+    delivered: Boolean(wamid),
+    preview: body.slice(0, 120),
+  });
+  if (!wrote) {
+    await sendTelegram(cfg, "⚠️ שמירת ההודעה נכשלה — בדקו אם נשלחה ללקוח.");
+    return { ok: false, skipped: "message store failed", delivered: Boolean(wamid) };
+  }
+  await sendTelegram(
+    cfg,
+    wamid
+      ? `📤 נשלח ללקוח בוואטסאפ (${esc(who || "נציג")}).`
+      : "⚠️ ההודעה נשמרה אך השליחה לוואטסאפ נכשלה — נסו שוב.",
+  );
+  return { ok: true, relayed: true, delivered: Boolean(wamid) };
+}
+
 export async function handleTeamMessage(cfg: Cfg, msg: TgMessage): Promise<HandlerResult> {
   const chatId = msg.chat?.id;
   // Fail-close: an unset tgChat rejects rather than accepting any chat.
@@ -345,8 +634,9 @@ export async function handleTeamMessage(cfg: Cfg, msg: TgMessage): Promise<Handl
       return { ok: true };
     }
     // Plain note on a lead card. Reject notes on a closed (won/lost) lead — its
-    // card is frozen and a stray note would be misleading.
-    const leadRows = await fetchRows<Lead>(`/rest/v1/leads?id=eq.${leadId}&select=status`);
+    // card is frozen and a stray note would be misleading. We also need the phone
+    // to resolve a possible live WhatsApp relay (the rep→customer half).
+    const leadRows = await fetchRows<Lead>(`/rest/v1/leads?id=eq.${leadId}&select=status,phone`);
     if (leadRows === null) {
       await sendTelegram(cfg, "שגיאת מסד נתונים — נסו שוב בעוד רגע");
       return { ok: false };
@@ -359,6 +649,15 @@ export async function handleTeamMessage(cfg: Cfg, msg: TgMessage): Promise<Handl
     if (st === "won" || st === "lost") {
       await sendTelegram(cfg, "הליד סגור — אי אפשר להוסיף הערות");
       return { ok: false, skipped: "lead closed" };
+    }
+    // LIVE RELAY: if this lead's WhatsApp conversation is RELAY-ACTIVE (a rep took
+    // it over → bot_enabled=false + relay_tg_chat_id set), a reply is a message to
+    // the customer, not a CRM note — relay it. Otherwise fall through to a note,
+    // preserving the existing non-relay behaviour. Resolved by phone; a no-match or
+    // a not-relaying conversation simply means "note", never an error.
+    const convo = await resolveWaConvoByPhone(leadRows[0].phone);
+    if (isRelayActive(convo) && convo) {
+      return await relayRepReplyToCustomer(cfg, msg, leadId, convo, text, who);
     }
     await logEvent({ lead_id: leadId, event: "note", note: text.slice(0, 1000), actor_tg_id: msg.from?.id ?? null, actor_name: who });
     await sendTelegram(cfg, "✅ הערה נשמרה");

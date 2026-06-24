@@ -66,6 +66,12 @@ import {
 import { buildSavingHint, buildTopicReply } from "./flows.ts";
 import { captureAiLead } from "../_shared/leads.ts";
 import { type AgentRunnerDeps, runWhatsappAgent } from "./agent_runner.ts";
+// Live-relay (human takeover): when a rep has the conversation, forward the
+// customer's inbound text to the rep's Telegram chat so they see the live
+// conversation. Reuses the shared telegram sender + config resolver — we do NOT
+// reinvent sending.
+import { esc as tgEsc, sendTelegram } from "../_shared/telegram.ts";
+import { resolveCfgCached } from "../_shared/config.ts";
 
 const VERIFY_TOKEN = Deno.env.get("WHATSAPP_VERIFY_TOKEN") ?? "";
 const APP_SECRET = Deno.env.get("WHATSAPP_APP_SECRET") ?? "";
@@ -457,7 +463,7 @@ async function upsertContact(phone: string, name?: string): Promise<Row | null> 
 
 async function getOrCreateConversation(contactId: string): Promise<Row | null> {
   const open = await fetchRows<Row>(
-    `/rest/v1/whatsapp_conversations?contact_id=eq.${contactId}&status=in.(open,bot,human)&order=created_at.desc&limit=1&select=id,status,bot_enabled,ai_state`,
+    `/rest/v1/whatsapp_conversations?contact_id=eq.${contactId}&status=in.(open,bot,human)&order=created_at.desc&limit=1&select=id,status,bot_enabled,ai_state,relay_tg_chat_id`,
   );
   if (open && open.length) return open[0];
   const created = await pgInsert("whatsapp_conversations", { contact_id: contactId, status: "open" }, { returnRep: true });
@@ -474,6 +480,42 @@ function botEnabled(convo: Row | null): boolean {
   const v = convo.bot_enabled;
   if (v === undefined || v === null) return true; // column not present yet → behave as before
   return v !== false;
+}
+
+// RELAY-ACTIVE = a rep has taken the conversation over (bot_enabled=false) AND a
+// relay target is set (whatsapp_conversations.relay_tg_chat_id, see the takeover
+// contract). When both hold, an inbound customer message is forwarded to the rep's
+// Telegram chat so they follow the live conversation; NULL relay = no relay.
+function relayChatId(convo: Row | null): string | null {
+  if (!convo) return null;
+  const v = convo.relay_tg_chat_id;
+  if (v === undefined || v === null) return null;
+  const id = String(v).trim();
+  return id || null;
+}
+
+// Forward ONE inbound customer message to the rep's Telegram relay chat. This is
+// the customer→rep half of the live relay (rep→customer is the CRM/telegram side):
+// the customer is in an ACTIVE human conversation, so this is NOT marketing and
+// runs only AFTER the §30A opt-out gate. Best-effort + fail-soft: a Telegram error
+// never blocks going silent for the human takeover. The customer inbound is already
+// stored above — we send nothing back to the customer and store no new outbound.
+async function relayInboundToRep(contact: Row, convo: Row, text: string): Promise<void> {
+  const chatId = relayChatId(convo);
+  if (!chatId) return;
+  const who = String(contact.wa_name ?? "").trim() || String(contact.wa_phone ?? "").trim() || "לקוח";
+  // HTML-escape the customer-controlled label + body (sendTelegram posts parse_mode
+  // HTML), and clip the body so a long message can't blow past Telegram's limit.
+  const body = tgEsc(text.slice(0, 3500));
+  const prefix = `📩 <b>${tgEsc(who)}</b>:`;
+  try {
+    const cfg = await resolveCfgCached();
+    // Route to the rep's specific relay chat (not the team default tgChat) by
+    // overriding tgChat on the resolved config — sendTelegram sends to cfg.tgChat.
+    await sendTelegram({ ...cfg, tgChat: chatId }, `${prefix} ${body}`);
+  } catch (e) {
+    jlog({ at: "wa.relay", ok: false, convId: String(convo.id), error: String(e) });
+  }
 }
 
 // Append a crm_events audit row (inbound/outbound/system) for the activity feed
@@ -805,10 +847,19 @@ async function handleMessage(m: Row, profileName: string | undefined, aiKeys: Ai
   // 2b) HUMAN TAKEOVER GATE. When a rep has taken the conversation over
   //     (whatsapp_conversations.bot_enabled = false) the AI bot must NOT
   //     auto-reply. The inbound is already stored + audited above and STOP was
-  //     already honoured; we simply go silent and let the human handle it. Only
-  //     the inbound timestamps are touched (no outbound, no AI fan-out).
+  //     already honoured (step 2, BEFORE this gate — opt-out always wins); we go
+  //     silent for the BOT and let the human handle it. If a relay target is set
+  //     (RELAY-ACTIVE), we additionally FORWARD this inbound to the rep's Telegram
+  //     chat so they follow the live conversation — instead of the old silent
+  //     store-only. The bot still does NOT auto-reply to the customer. Only the
+  //     inbound timestamps are touched (no customer-facing outbound, no AI fan-out).
   if (convo && !botEnabled(convo)) {
     jlog({ at: "wa.silent", reason: "human_takeover", convId: String(convo.id) });
+    if (contact && type !== "image") {
+      // Customer→rep relay (NOT marketing — this is the customer's live human
+      // conversation, gated behind the §30A opt-out above). Best-effort.
+      await relayInboundToRep(contact, convo, text);
+    }
     if (contact) {
       const now = new Date().toISOString();
       await pgPatch("whatsapp_conversations", `id=eq.${convo.id}`, { last_message_at: now });

@@ -251,11 +251,26 @@ export function buildHtml(lead: Lead, triage?: TriageResult | null): string {
     + `</div>`;
 }
 
+// A lead originated by the WhatsApp bot — its phone is a live WhatsApp contact, so
+// the rep can take the conversation over IN-PLACE (relay) instead of only opening
+// a fresh wa.me draft. The bot stamps source='whatsapp' (SOURCE_HE has the label);
+// anything else is a form/plan/advisor lead with no live WhatsApp thread to relay.
+export function isWhatsappLead(lead: Lead): boolean {
+  return String(lead.source ?? "").toLowerCase() === "whatsapp";
+}
+
 // Live keyboard: status row + lost/snooze row + history + claim/WhatsApp row.
 // Every callback_data carries the lead id so reply-notes can resolve the lead
 // even from frozen stamps. The ⏰ snooze button pushes the SLA nudge back ~2h
 // (sets nudged_at forward) for a rep who'll get to it later but isn't dropping
 // it — a softer middle ground than "לא רלוונטי".
+//
+// For a WhatsApp-source lead we add a relay control row: "🤝 השתלט ושוחח כאן"
+// (take over → bot goes silent, the live conversation is relayed to THIS rep's
+// Telegram chat) and "🤖 החזר לבוט" (hand back → the AI bot resumes). Both flip
+// whatsapp_conversations.bot_enabled / relay_tg_chat_id per the take-over contract
+// in callbacks.ts handleCallback; the existing wa.me draft button stays for the
+// non-relay "just message them" path.
 export function leadKeyboard(lead: Lead, draft = ""): TgInlineKeyboard | undefined {
   if (!lead.id) return undefined;
   const id = String(lead.id);
@@ -272,6 +287,15 @@ export function leadKeyboard(lead: Lead, draft = ""): TgInlineKeyboard | undefin
       { text: "📜 היסטוריה", callback_data: `lead:${id}:history` },
     ],
   ];
+  // WhatsApp-source leads get a live take-over / hand-back relay row. This is the
+  // human-in-the-loop control: take-over silences the bot and pipes the customer's
+  // messages to the pressing rep's Telegram; hand-back returns the AI bot.
+  if (isWhatsappLead(lead)) {
+    rows.push([
+      { text: "🤝 השתלט ושוחח כאן", callback_data: `lead:${id}:takeover` },
+      { text: "🤖 החזר לבוט", callback_data: `lead:${id}:handback` },
+    ]);
+  }
   const actionRow: TgInlineKeyboard["inline_keyboard"][number] = [];
   if (lead.claimed_by) {
     actionRow.push({ text: `👤 בטיפול: ${lead.claimed_by}`.slice(0, 60), callback_data: `lead:${id}:claimed` });

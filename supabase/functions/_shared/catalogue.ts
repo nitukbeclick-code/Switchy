@@ -198,39 +198,134 @@ export function buildCatalogueContext(plans: Plan[], perCat = 14): string {
 // signal the front-end can render. Refusing/omitting when data is missing is
 // enforced by the system prompt (see buildGroundedSystemPrompt): the model only
 // ever sees these rows, so it can't cite a plan that isn't here.
-export function buildCitedCatalogueContext(plans: Plan[], perCat = 14): string {
-  const byCat = new Map<string, Plan[]>();
+//
+// SIZE BOUND: the system prompt grows with the catalogue, so the row set is
+// capped at `topK` rows total (default DEFAULT_CITED_TOP_K). The cap keeps the
+// cheapest / most-relevant rows: rows are taken per-category cheapest-first
+// (perCat) and then globally trimmed to topK by interleaving the categories in
+// price-rank order (round-robin), so no single category is starved and the rows
+// the model is most likely to recommend always survive. CRITICAL invariant:
+// [Sn] markers are assigned AFTER the cap, over the surviving rows only — we
+// only ever number (and so can only ever cite) rows that are actually in the
+// context, so truncation can never drop a row the model later references.
+
+// Default total-row cap for the cited context. Sized just above the live
+// catalogue's emitted-row count at the default perCat so today's output is
+// unchanged, while bounding pathological growth as the catalogue expands.
+export const DEFAULT_CITED_TOP_K = 50;
+
+export type CitedCatalogueOptions = {
+  // Max rows taken per category (cheapest-first) before the global cap.
+  perCat?: number;
+  // Max rows total across all categories (the system-prompt size bound).
+  topK?: number;
+  // Locale tag — part of the memo key; the row copy is Hebrew today, so this
+  // only affects caching, not output. Reserved for future localized rendering.
+  locale?: string;
+};
+
+// Memo cache for built contexts, keyed by (locale, plan-count, perCat, topK)
+// plus the plans array identity. Bounded to avoid unbounded growth on a
+// long-lived isolate; the working set is tiny (one or two live catalogues).
+const CITED_CTX_CACHE = new Map<string, string>();
+// Parallel map holding the plans array identity per memo key (so a same-count
+// but different catalogue array correctly recomputes instead of serving stale).
+const CITED_CTX_CACHE_REFS = new Map<string, Plan[]>();
+const CITED_CTX_CACHE_MAX = 32;
+
+// One enriched, [Sn]-less line for a plan (numbering is applied after the cap).
+function citedLine(p: Plan, cat: string): string {
+  const unit = unitLabel(p.priceUnit);
+  const after = (typeof p.after === "number" && p.after > 0 && p.after !== p.price)
+    ? `, אחרי המבצע ₪${p.after}`
+    : "";
+  const flags = [p.is5G && "5G", p.noCommit && "ללא התחייבות", p.hasAbroad && 'כולל חו"ל']
+    .filter(Boolean).join(", ");
+  const spec = p.specs?.data ?? p.specs?.["נתונים"] ?? "";
+  const extra = cat === "internet"
+    ? (p.specs?.speed ?? "")
+    : cat === "tv"
+    ? (p.specs?.channels ?? "")
+    : (spec || p.specs?.minutes || "");
+  const detail = extra ? `, ${extra}` : "";
+  return `${CATEGORY_HE[cat] ?? cat} | ${p.provider} | ${p.plan} | ₪${p.price} ${unit}${after}${detail}${flags ? " | " + flags : ""}`;
+}
+
+// Accepts either the legacy positional `perCat` number (back-compat) or an
+// options object. `buildCitedCatalogueContext(plans)` and
+// `buildCitedCatalogueContext(plans, 14)` behave exactly as before.
+export function buildCitedCatalogueContext(
+  plans: Plan[],
+  optsOrPerCat: number | CitedCatalogueOptions = {},
+): string {
+  const opts: CitedCatalogueOptions = typeof optsOrPerCat === "number"
+    ? { perCat: optsOrPerCat }
+    : optsOrPerCat;
+  const perCat = opts.perCat ?? 14;
+  const topK = opts.topK ?? DEFAULT_CITED_TOP_K;
+  const locale = opts.locale ?? "he";
+
+  // Memoize by (locale, plan-count, perCat, topK). plansFromSnapshot/Rows hand
+  // back a fresh array per build, so we also gate on the array identity: a new
+  // catalogue array (new count or new reference) recomputes; a repeated call
+  // with the same array + params is served from cache.
+  const key = `${locale}|${plans.length}|${perCat}|${topK}`;
+  const cached = CITED_CTX_CACHE.get(key);
+  if (cached !== undefined && CITED_CTX_CACHE_REFS.get(key) === plans) {
+    return cached;
+  }
+
+  // Per-category cheapest-first lists, each pre-capped at perCat.
+  const perCatRows = new Map<string, Plan[]>();
   for (const p of plans) {
     if (!p.cat || typeof p.price !== "number") continue;
     if ((p.kind ?? "regular") !== "regular") continue;
-    if (!byCat.has(p.cat)) byCat.set(p.cat, []);
-    byCat.get(p.cat)!.push(p);
+    if (!perCatRows.has(p.cat)) perCatRows.set(p.cat, []);
+    perCatRows.get(p.cat)!.push(p);
   }
-  const lines: string[] = [];
-  let n = 0;
+  const queues: { cat: string; rows: Plan[] }[] = [];
   for (const cat of CATEGORIES) {
-    const rows = byCat.get(cat);
+    const rows = perCatRows.get(cat);
     if (!rows) continue;
     rows.sort((a, b) => (a.price ?? 0) - (b.price ?? 0));
-    for (const p of rows.slice(0, perCat)) {
-      n += 1;
-      const unit = unitLabel(p.priceUnit);
-      const after = (typeof p.after === "number" && p.after > 0 && p.after !== p.price)
-        ? `, אחרי המבצע ₪${p.after}`
-        : "";
-      const flags = [p.is5G && "5G", p.noCommit && "ללא התחייבות", p.hasAbroad && 'כולל חו"ל']
-        .filter(Boolean).join(", ");
-      const spec = p.specs?.data ?? p.specs?.["נתונים"] ?? "";
-      const extra = cat === "internet"
-        ? (p.specs?.speed ?? "")
-        : cat === "tv"
-        ? (p.specs?.channels ?? "")
-        : (spec || p.specs?.minutes || "");
-      const detail = extra ? `, ${extra}` : "";
-      lines.push(`[S${n}] ${CATEGORY_HE[cat] ?? cat} | ${p.provider} | ${p.plan} | ₪${p.price} ${unit}${after}${detail}${flags ? " | " + flags : ""}`);
-    }
+    queues.push({ cat, rows: rows.slice(0, perCat) });
   }
-  return lines.join("\n");
+
+  // Round-robin across categories so the global topK keeps category diversity
+  // and the cheapest rows of every category survive the cap before deeper rows
+  // of any single category are added.
+  const limit = topK > 0 ? topK : 0;
+  const picked: { p: Plan; cat: string }[] = [];
+  for (let depth = 0; picked.length < limit; depth++) {
+    let advanced = false;
+    for (const q of queues) {
+      if (depth < q.rows.length) {
+        advanced = true;
+        if (picked.length >= limit) break;
+        picked.push({ p: q.rows[depth], cat: q.cat });
+      }
+    }
+    if (!advanced) break;
+  }
+
+  // [Sn] assigned over survivors only, in CATEGORIES order then price (stable,
+  // matches the legacy grouping) so the rendered block stays category-grouped.
+  picked.sort((a, b) => {
+    const ca = CATEGORIES.indexOf(a.cat as typeof CATEGORIES[number]);
+    const cb = CATEGORIES.indexOf(b.cat as typeof CATEGORIES[number]);
+    if (ca !== cb) return ca - cb;
+    return (a.p.price ?? 0) - (b.p.price ?? 0);
+  });
+  const lines = picked.map(({ p, cat }, i) => `[S${i + 1}] ${citedLine(p, cat)}`);
+  const out = lines.join("\n");
+
+  if (CITED_CTX_CACHE.size >= CITED_CTX_CACHE_MAX) {
+    CITED_CTX_CACHE.clear();
+    CITED_CTX_CACHE_REFS.clear();
+  }
+  CITED_CTX_CACHE.set(key, out);
+  CITED_CTX_CACHE_REFS.set(key, plans);
+  return out;
 }
 
 export function annualSaving(currentSpend: number, planPrice: number): number {

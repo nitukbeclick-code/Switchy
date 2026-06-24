@@ -198,13 +198,271 @@ export async function recommendPlans(
   if (!matches.length) {
     return { ok: true, data: { recommendations: [], note: "אין מסלולים מתאימים בקטגוריה הזו כרגע." } };
   }
+  // Enriched, honest reasoning. We DON'T re-derive any score/saving (scoring.ts is
+  // the single source of truth) — we just expose, in plain language, WHY the top
+  // pick led and how the picks differ, grounded only in real fields. `whyTop` is a
+  // one-liner the model can cite; `comparedToTop` tells the runner-up's trade-off
+  // vs #1 (cheaper-but-slower / pricier-but-faster) from REAL prices/speed flags.
+  const top = matches[0];
+  const topReason = top.reasons[0] ??
+    (top.annualSaving > 0
+      ? `חוסך ₪${top.annualSaving} בשנה`
+      : (top.plan.noCommit ? "ללא התחייבות — גמיש" : "ההתאמה הגבוהה ביותר לפרופיל שלך"));
+  const whyTop = `הבחירה המובילה (${top.plan.provider} ${top.plan.plan}, ₪${top.plan.price}): ${topReason} — ציון התאמה ${top.scorePct}.`;
+
   return {
     ok: true,
     data: {
       category,
       // Only surface a saving when a real current bill backed it.
       hasBaseline: (profile.currentBill ?? 0) > 0,
-      recommendations: matches.map((m) => ({
+      // A grounded, plain-language lead-in the model can open with (no fabrication).
+      whyTop,
+      recommendations: matches.map((m, i) => {
+        const p = m.plan;
+        // Honest, real-field trade-off vs the top pick (only for runners-up).
+        let comparedToTop: string | undefined;
+        if (i > 0 && typeof p.price === "number" && typeof top.plan.price === "number") {
+          const dPrice = p.price - top.plan.price;
+          const priceWord = dPrice < 0
+            ? `זול ב-₪${Math.abs(dPrice)}`
+            : dPrice > 0
+            ? `יקר ב-₪${dPrice}`
+            : "באותו מחיר";
+          const speedWord = (p.is5G && !top.plan.is5G)
+            ? ", אך מהיר יותר (5G)"
+            : (!p.is5G && top.plan.is5G)
+            ? ", אך פחות מהיר"
+            : "";
+          comparedToTop = `${priceWord} מהבחירה המובילה${speedWord}`;
+        }
+        return {
+          ...planView(p),
+          rank: i + 1,
+          score: m.scorePct,
+          label: m.label,
+          annualSaving: m.annualSaving > 0 ? m.annualSaving : undefined,
+          reasons: m.reasons,
+          caveats: m.caveats,
+          ...(comparedToTop ? { comparedToTop } : {}),
+        };
+      }),
+    },
+    note: whyTop,
+  };
+}
+
+// ── refine_recommendation ────────────────────────────────────────────────────
+// THE OBJECTION-HANDLING re-rank. When the user pushed back on a first set of
+// recommendations — "too expensive", "I don't want a commitment", "I need it
+// faster", "I'm happy with my provider" — this tool RE-RANKS the SAME real
+// catalogue (via scoring.ts, the single source of truth) with the objection folded
+// into the profile, and EXCLUDES the plans the user already dismissed (prevPlanIds).
+// It returns a FRESH top-3 with the same explainable Hebrew reasons/caveats.
+//
+// TRUTH-ONLY: this never fabricates a cheaper price, a faster plan, or a saving —
+// it only re-sorts and re-filters REAL rows. If the objection can't be honoured
+// from the catalogue (e.g. "cheaper" but nothing is below the rejected floor) it
+// says so honestly via `note` rather than pretending. The annual saving is still
+// only surfaced against a real `currentBill` (never a promise without a baseline).
+//
+// The `feedback` free-text is parsed for the common Israeli-telecom objections so
+// the model can pass the raw user words; explicit flags (budget/noCommit/minSpeed)
+// override the parse. `prevPlanIds` are the ids already shown/rejected — they're
+// excluded from the fresh set AND echoed back so the caller can persist them into
+// the session's rejectedPlanIds slot.
+export type RefineSignals = {
+  priority: MatchProfile["priority"];
+  budget?: number;
+  wantsNoCommit: boolean;
+  wants5G: boolean;
+  wantsAbroad?: boolean;
+  cheaper: boolean; // "too expensive" with no explicit budget → push the price axis
+  matchedObjections: string[]; // short tags for the audit / session.objections
+};
+
+// Parse a free-text objection (any supported language, but tuned for Hebrew) into
+// ranking signals. Heuristic + deterministic (no model call) so it's unit-testable
+// and can't drift. Only RECOGNISES intent — it never invents data.
+export function parseObjection(feedback: string): RefineSignals {
+  const s = String(feedback ?? "").toLowerCase();
+  const tags: string[] = [];
+  // Price / "too expensive" — Hebrew + Arabic + Russian + English cues.
+  const cheaper = /יקר|ביוקר|מחיר גבוה|זול יותר|פחות כסף|תקציב|cheap|expensive|غالي|أرخص|дорог|дешевл/.test(s);
+  if (cheaper) tags.push("price");
+  // Lock-in / commitment aversion.
+  const noCommit =
+    /התחייב|בלי התחייבות|ללא התחייבות|לא רוצה להתחייב|חופשי|גמיש|commit|lock|التزام|بدون التزام|обязательств|без обязательств/
+      .test(s);
+  if (noCommit) tags.push("nocommit");
+  // Speed / "too slow" / wants faster.
+  const fast = /מהיר|מהירות|איטי|לאט|גלישה מהירה|5g|fast|speed|slow|سريع|بطيء|سرعة|быстр|скорост|медленн/.test(s);
+  if (fast) tags.push("speed");
+  // Coverage / reception.
+  const coverage = /כיסוי|קליטה|רשת חלשה|coverage|reception|تغطية|إرسال|покрыт|связь/.test(s);
+  if (coverage) tags.push("coverage");
+  // Service / quality / loyalty ("happy with my provider", "good service").
+  const service = /שירות|תמיכה|מרוצה|נאמן|טוב לי|service|support|happy|loyal|خدمة|راض|راضي|обслуж|сервис|доволен/.test(s);
+  if (service) tags.push("service");
+  // Abroad.
+  const abroad = /חו"ל|חול|בחו|abroad|roaming|الخارج|سفر|за границ|роуминг/.test(s);
+  if (abroad) tags.push("abroad");
+
+  // Map the dominant objection to a ranking priority (price wins ties — it's the
+  // most common and the safest re-rank to lead with).
+  let priority: MatchProfile["priority"] = "balanced";
+  if (cheaper) priority = "price";
+  else if (fast) priority = "speed";
+  else if (coverage) priority = "coverage";
+  else if (service) priority = "service";
+  else if (noCommit) priority = "flexibility";
+
+  return {
+    priority,
+    wantsNoCommit: noCommit,
+    wants5G: fast,
+    wantsAbroad: abroad || undefined,
+    cheaper,
+    matchedObjections: tags,
+  };
+}
+
+export async function refineRecommendation(
+  ctx: ToolContext,
+  args: {
+    category?: unknown;
+    feedback?: unknown;
+    budget?: unknown;
+    noCommit?: unknown;
+    minSpeed?: unknown;
+    currentBill?: unknown;
+    abroad?: unknown;
+    prevPlanIds?: unknown;
+    limit?: unknown;
+  },
+): Promise<ToolResult> {
+  const lang = ctxLang(ctx);
+  const category = normalizeCategory(clipStr(args.category, 40));
+
+  // Parse the free-text objection, then let EXPLICIT flags override the parse.
+  const parsed = parseObjection(clipStr(args.feedback, 400));
+  const explicitBudget = asBudget(args.budget);
+  const explicitNoCommit = args.noCommit === true || args.noCommit === "true";
+  // minSpeed: a truthy flag OR a string like "5g"/"fast" pushes the speed axis.
+  const minSpeedRaw = clipStr(args.minSpeed, 20).toLowerCase();
+  const explicitMinSpeed = args.minSpeed === true || args.minSpeed === "true" ||
+    minSpeedRaw === "5g" || minSpeedRaw === "fast" || minSpeedRaw === "fiber" ||
+    (Number.isFinite(Number(args.minSpeed)) && Number(args.minSpeed) > 0);
+
+  const wantsNoCommit = explicitNoCommit || parsed.wantsNoCommit;
+  const wants5G = explicitMinSpeed || parsed.wants5G;
+  const wantsAbroad = args.abroad === true || args.abroad === "true" ||
+    parsed.wantsAbroad === true || category === "abroad";
+
+  // Choose the priority: an explicit flag's intent wins; else the parsed one.
+  let priority = parsed.priority;
+  if (explicitNoCommit && !parsed.cheaper) priority = "flexibility";
+  if (explicitMinSpeed) priority = "speed";
+  if (explicitBudget) priority = "price";
+
+  // The ids the user already saw/rejected — excluded from the fresh set.
+  const prevIds = Array.isArray(args.prevPlanIds)
+    ? [...new Set(args.prevPlanIds.filter((x): x is string => typeof x === "string" && !!x).map((x) => x.slice(0, 80)))]
+    : [];
+  const prevSet = new Set(prevIds);
+
+  // The price ceiling we re-rank under. If the user said "too expensive" without a
+  // number, derive an HONEST ceiling: just under the cheapest plan they rejected,
+  // so the fresh set is genuinely cheaper than what they dismissed (never invented —
+  // it's a real row's real price). An explicit budget always wins.
+  let budget = explicitBudget;
+  if (!budget && parsed.cheaper && prevSet.size) {
+    const rejectedPrices = ctx.plans
+      .filter((p) => prevSet.has(String(p.id)) && typeof p.price === "number")
+      .map((p) => p.price as number);
+    if (rejectedPrices.length) {
+      const floor = Math.min(...rejectedPrices);
+      if (floor > 1) budget = floor - 1; // strictly cheaper than the cheapest rejected
+    }
+  }
+
+  const profile: MatchProfile = {
+    category,
+    budget: budget ?? 0,
+    currentBill: asBudget(args.currentBill) ?? 0,
+    priority: priorityFromId(priority ?? "balanced"),
+    wantsAbroad,
+    wants5G,
+    wantsNoCommit,
+  };
+
+  const limit = Math.min(Math.max(Number(args.limit) || 3, 1), 3);
+  // Rank the FULL catalogue, then drop the rejected ids, then keep the top N. We
+  // over-fetch (limit + rejected count) so excluding rejects still yields up to N.
+  const ranked = rankPlans(ctx.plans, profile, { limit: limit + prevSet.size + 4 });
+  const fresh = ranked.filter((m) => !prevSet.has(String(m.plan.id))).slice(0, limit);
+
+  await audit(ctx, "refine_recommendation", true, `${category || "all"}/${parsed.matchedObjections.join(",") || "generic"}×${fresh.length}`);
+
+  if (!fresh.length) {
+    // Honest: we couldn't honour the objection from the real catalogue.
+    return {
+      ok: true,
+      data: {
+        category,
+        objections: parsed.matchedObjections,
+        rejectedPlanIds: prevIds,
+        recommendations: [],
+      },
+      note: tr(lang, {
+        he: "אין לי כרגע מסלול אמיתי בקטלוג שעונה על מה שביקשת מעבר למה שכבר הצעתי — לא אמציא משהו שלא קיים. אפשר לנסות קריטריון אחר או לדבר עם נציג.",
+        ar: "لا توجد لدي حاليًا باقة حقيقية في الكتالوج تلبي طلبك أكثر مما عرضته — لن أختلق شيئًا غير موجود. جرّب معيارًا آخر أو تحدّث مع مندوب.",
+        ru: "Сейчас в каталоге нет реального тарифа, который отвечал бы вашему запросу лучше предложенного — я не придумываю несуществующее. Попробуйте другой критерий или поговорите с представителем.",
+        en: "I don't have a real catalogue plan that meets your request beyond what I already offered — I won't invent one. Try a different criterion or talk to a rep.",
+      }),
+    };
+  }
+
+  // A short, honest note acknowledging the objection we re-ranked for.
+  const objNote = parsed.cheaper || explicitBudget
+    ? tr(lang, {
+      he: "הנה אפשרויות זולות יותר מהקטלוג, מדורגות מחדש לפי המחיר:",
+      ar: "إليك خيارات أرخص من الكتالوج، أعيد ترتيبها حسب السعر:",
+      ru: "Вот более дешёвые варианты из каталога, пересортированные по цене:",
+      en: "Here are cheaper catalogue options, re-ranked by price:",
+    })
+    : wantsNoCommit
+    ? tr(lang, {
+      he: "התמקדתי במסלולים גמישים יותר (ללא התחייבות) מהקטלוג:",
+      ar: "ركّزت على باقات أكثر مرونة (بدون التزام) من الكتالوج:",
+      ru: "Я сделал акцент на более гибких тарифах (без обязательств) из каталога:",
+      en: "I focused on more flexible (no-commitment) catalogue plans:",
+    })
+    : wants5G
+    ? tr(lang, {
+      he: "דירגתי מחדש לפי מהירות מהקטלוג:",
+      ar: "أعدت الترتيب حسب السرعة من الكتالوج:",
+      ru: "Я пересортировал по скорости из каталога:",
+      en: "I re-ranked by speed from the catalogue:",
+    })
+    : tr(lang, {
+      he: "הנה התאמה מעודכנת מהקטלוג לפי מה שאמרת:",
+      ar: "إليك توصية محدّثة من الكتالوج بناءً على ما قلته:",
+      ru: "Вот обновлённая подборка из каталога с учётом сказанного:",
+      en: "Here's an updated catalogue match based on what you said:",
+    });
+
+  return {
+    ok: true,
+    data: {
+      category,
+      // What objection(s) we recognised (for the session's objections slot).
+      objections: parsed.matchedObjections,
+      // Echo the rejected ids back so the caller can persist rejectedPlanIds.
+      rejectedPlanIds: prevIds,
+      // Only surface a saving when a real current bill backed it.
+      hasBaseline: (profile.currentBill ?? 0) > 0,
+      recommendations: fresh.map((m) => ({
         ...planView(m.plan),
         score: m.scorePct,
         label: m.label,
@@ -213,6 +471,7 @@ export async function recommendPlans(
         caveats: m.caveats,
       })),
     },
+    note: objNote,
   };
 }
 
@@ -749,6 +1008,7 @@ export type ToolExecutor = (ctx: ToolContext, args: Record<string, unknown>) => 
 export const TOOL_EXECUTORS: Record<string, ToolExecutor> = {
   search_plans: (c, a) => searchPlans(c, a),
   recommend_plans: (c, a) => recommendPlans(c, a),
+  refine_recommendation: (c, a) => refineRecommendation(c, a),
   get_provider: (c, a) => getProvider(c, a),
   analyze_bill: (c, a) => analyzeBill(c, a),
   suggest_retention_offer: (c, a) => suggestRetentionOffer(c, a),
@@ -760,13 +1020,16 @@ export const TOOL_EXECUTORS: Record<string, ToolExecutor> = {
 };
 
 // The JSON-schema declarations the LLM sees (Gemini functionDeclarations). Order
-// is the order the model perceives them. Descriptions are prescriptive about
-// WHEN to call (improves should-call precision) and bake in the consent rule.
+// is the order the model perceives them. Descriptions are DIAGNOSTIC: they teach
+// the model to map INDIRECT user language (an objection, a loyalty signal, a
+// hesitation) to the right tool, not just the obvious keyword — and they bake in
+// the consent + truth-only rules so the model can't pick a tool that would break
+// them.
 export const TOOL_DECLARATIONS: GeminiFunctionDeclaration[] = [
   {
     name: "search_plans",
     description:
-      "חיפוש מסלולים אמיתיים מהקטלוג לפי קטגוריה (ותקציב/חו\"ל אופציונליים). השתמש כשהמשתמש שואל מה יש / מה זול / מה כולל תכונה. מחזיר שורות אמיתיות בלבד.",
+      "חיפוש/דפדוף במסלולים אמיתיים מהקטלוג לפי קטגוריה (ותקציב/חו\"ל אופציונליים). מתי: כשהמשתמש רוצה לראות מה קיים בלי פרופיל — \"מה יש בסלולר?\", \"תראה לי מסלולים\", \"מה זול?\", \"מי מציע אינטרנט?\", \"מה כולל 5G?\". זהו כלי גלם (cheapest-first, ללא דירוג). אם המשתמש מתאר את הצרכים שלו ורוצה את ההמלצה הכי טובה — העדף recommend_plans. מחזיר שורות אמיתיות בלבד; אם אין התאמה — אומר זאת, לא ממציא.",
     parameters: {
       type: "object",
       properties: {
@@ -781,7 +1044,7 @@ export const TOOL_DECLARATIONS: GeminiFunctionDeclaration[] = [
   {
     name: "recommend_plans",
     description:
-      "המלצה מדורגת (עד 3) מהקטלוג לפי פרופיל המשתמש. השתמש כשהמשתמש מבקש המלצה / 'מה הכי משתלם לי'. החיסכון השנתי מחושב רק אם נמסר חשבון נוכחי אמיתי — אחרת אל תבטיח סכום.",
+      "המלצה ראשונה מדורגת (עד 3) מהקטלוג לפי פרופיל המשתמש, עם סיבה קצרה לכל מסלול והשוואה בין הבחירות. מתי: בפעם הראשונה שהמשתמש מבקש מה הכי מתאים/משתלם לו — \"מה הכי טוב בשבילי?\", \"מה כדאי לי?\", \"איזה מסלול שווה?\", או אחרי שסיפר על צרכיו (תקציב/מהירות/חו\"ל/בלי התחייבות). חשוב: זו ההמלצה הראשונית. אם המשתמש כבר קיבל המלצה והתנגד/דחה אותה (\"יקר לי\", \"לא רוצה להתחייב\", \"צריך יותר מהיר\") — אל תקרא שוב ל-recommend_plans; קרא ל-refine_recommendation. החיסכון השנתי מחושב רק אם נמסר חשבון נוכחי אמיתי — אחרת אל תבטיח סכום.",
     parameters: {
       type: "object",
       properties: {
@@ -791,7 +1054,7 @@ export const TOOL_DECLARATIONS: GeminiFunctionDeclaration[] = [
         priority: {
           type: "string",
           enum: ["price", "speed", "coverage", "service", "flexibility", "balanced"],
-          description: "מה הכי חשוב למשתמש",
+          description: "מה הכי חשוב למשתמש (מחיר/מהירות/כיסוי/שירות/גמישות/מאוזן)",
         },
         abroad: { type: "boolean" },
         wants5G: { type: "boolean" },
@@ -801,8 +1064,32 @@ export const TOOL_DECLARATIONS: GeminiFunctionDeclaration[] = [
     },
   },
   {
+    name: "refine_recommendation",
+    description:
+      "דירוג-מחדש אחרי התנגדות: כשהמשתמש כבר קיבל המלצה ודחה אותה או ביקש משהו אחר. זהו הכלי לזהות שפה עקיפה של התנגדות ולפעול עליה — \"יקר לי מדי\" / \"אין לי כסף לזה\" (זול יותר), \"לא רוצה להתחייב\" / \"בלי חוזה\" (גמיש), \"צריך יותר מהיר\" / \"איטי לי\" (מהירות), \"הקליטה גרועה\" (כיסוי), \"אני מרוצה מהספק שלי\" / \"חבל לי לעזוב\" (אות נאמנות — שקול גם suggest_retention_offer). מעביר את מילות המשתמש ב-feedback (אני מזהה את ההתנגדות), ואת המסלולים שכבר הוצעו ונדחו ב-prevPlanIds כדי לא לחזור עליהם. מדרג מחדש מאותו קטלוג אמיתי דרך מנוע הניקוד — אף פעם לא ממציא מחיר זול יותר או מסלול שלא קיים; אם אי אפשר לענות על ההתנגדות מהקטלוג, אומר זאת בכנות. החיסכון מחושב רק מול חשבון נוכחי אמיתי.",
+    parameters: {
+      type: "object",
+      properties: {
+        category: { type: "string", enum: ["cellular", "internet", "tv", "triple", "abroad"], description: "קטגוריית השירות (כמו בהמלצה הקודמת)" },
+        feedback: { type: "string", description: "מילות ההתנגדות/הבקשה של המשתמש כפי שנאמרו (למשל 'יקר לי', 'לא רוצה להתחייב', 'צריך יותר מהיר')" },
+        budget: { type: "number", description: "תקרת מחיר חדשה אם המשתמש נקב בסכום (אופציונלי; גובר על הניתוח מ-feedback)" },
+        noCommit: { type: "boolean", description: "המשתמש רוצה ללא התחייבות (אופציונלי; גובר)" },
+        minSpeed: { type: "string", description: "דרישת מהירות מינימלית — '5g'/'fast'/'fiber' או דגל (אופציונלי; גובר)" },
+        currentBill: { type: "number", description: "החשבון החודשי הנוכחי (לחישוב חיסכון אמיתי, אופציונלי)" },
+        abroad: { type: "boolean", description: "לדרוש מסלולים שכוללים חו\"ל (אופציונלי)" },
+        prevPlanIds: {
+          type: "array",
+          items: { type: "string" },
+          description: "מזהי המסלולים שכבר הוצעו ונדחו — יוחרגו מהסט החדש",
+        },
+      },
+      required: ["category", "feedback"],
+    },
+  },
+  {
     name: "get_provider",
-    description: "עובדות אמיתיות על ספק מסוים מהקטלוג (כמה מסלולים, המסלול הזול בכל קטגוריה). השתמש כששואלים על ספק ספציפי.",
+    description:
+      "עובדות אמיתיות על ספק מסוים מהקטלוג (כמה מסלולים יש לו, המסלול הזול שלו בכל קטגוריה). מתי: כשהמשתמש שואל על ספק בשם — \"מה יש לסלקום?\", \"כמה גובים בפרטנר?\", \"אני בבזק, מה האפשרויות?\", \"שווה להישאר עם הוט?\". לא ממציא דירוג/כיסוי שאין עליו נתון אמיתי — משמיט.",
     parameters: {
       type: "object",
       properties: { name: { type: "string", description: "שם הספק" } },
@@ -812,7 +1099,7 @@ export const TOOL_DECLARATIONS: GeminiFunctionDeclaration[] = [
   {
     name: "analyze_bill",
     description:
-      "ניתוח חשבון: קבל ספק/סכום/קטגוריה (שכבר חולצו מתמונת החשבון) והחזר מסלולים זולים יותר. החיסכון הוא 'עד ~₪X' מתוך שורה אמיתית מול הסכום שנקרא — לא הבטחה.",
+      "ניתוח חשבון אחרי שחולצו ממנו ספק/סכום/קטגוריה (התמונה כבר נקראה ע\"י הקורא). מתי: כשהמשתמש שיתף חשבון/צילום או אמר כמה הוא משלם היום ורוצה לדעת אם אפשר לחסוך — \"אני משלם 120 ש\"ח, זה הרבה?\", \"תבדוק לי את החשבון\". מחזיר מסלולים זולים יותר אמיתיים; החיסכון הוא 'עד ~₪X' מול הסכום שנקרא — לא הבטחה.",
     parameters: {
       type: "object",
       properties: {
@@ -827,7 +1114,7 @@ export const TOOL_DECLARATIONS: GeminiFunctionDeclaration[] = [
   {
     name: "suggest_retention_offer",
     description:
-      "תסריט מיקוח אמיתי לשימור: כשהמשתמש רוצה להישאר אצל הספק הנוכחי אבל לשלם פחות. מחזיר את מחיר השוק האמיתי (המסלול הזול בקטגוריה + המסלול הזול של אותו ספק) ומשפט לומר לנציג השימור. אף פעם לא הבטחה — נקודת פתיחה למשא ומתן בלבד. החיסכון מחושב רק אם נמסר חשבון נוכחי אמיתי.",
+      "תסריט מיקוח אמיתי לשימור מול הספק הנוכחי. מתי: כשהמשתמש מאותת נאמנות או חוסר רצון לעבור אבל רוצה לשלם פחות — \"אני מרוצה מהספק שלי אבל יקר\", \"לא בא לי להתחיל מעבר\", \"חבל לי לעזוב, אפשר להוריד מחיר?\", \"מה אני אומר לשימור?\". מחזיר את מחיר השוק האמיתי (המסלול הזול בקטגוריה + הזול של אותו ספק) ומשפט לומר לנציג השימור. אף פעם לא הבטחה — נקודת פתיחה למשא ומתן בלבד. החיסכון מחושב רק אם נמסר חשבון נוכחי אמיתי.",
     parameters: {
       type: "object",
       properties: {
@@ -842,7 +1129,7 @@ export const TOOL_DECLARATIONS: GeminiFunctionDeclaration[] = [
   {
     name: "generate_referral_code",
     description:
-      "יצירת קוד הפניה אמיתי לשיתוף עם חבר/ה. השתמש כשהמשתמש מבקש קוד/לינק להזמין חבר. הקוד אמיתי ונשמר לשיוך. אין תמורה כספית מפורסמת — המסגור הוא שיתוף הכלי (עזרה לחבר לחסוך). לא דורש הסכמת שיווק (המשתמש בוחר לשתף).",
+      "יצירת קוד הפניה אמיתי לשיתוף עם חבר/ה. מתי: כשהמשתמש רוצה לשתף את חוסך — \"יש לכם קוד הזמנה?\", \"איך אני ממליץ לחבר?\", \"תן לי לינק לשתף\". הקוד אמיתי ונשמר לשיוך. אין תמורה כספית מפורסמת — המסגור הוא שיתוף הכלי (עזרה לחבר לחסוך); אל תבטיח פרס/כסף. לא דורש הסכמת שיווק (המשתמש בוחר לשתף).",
     parameters: {
       type: "object",
       properties: {
@@ -854,7 +1141,7 @@ export const TOOL_DECLARATIONS: GeminiFunctionDeclaration[] = [
   {
     name: "generate_switch_kit",
     description:
-      "בניית ערכת מעבר (Switch Autopilot): מכתב ניתוק לעריכה, צ'ק-ליסט ניוד, שלבי מעבר ותאריכי מפתח — למעבר מהספק הנוכחי למסלול יעד אמיתי מהקטלוג. השתמש כשהמשתמש החליט לעבור ורוצה לדעת איך לעזוב/לנתק/לנייד. מסלול היעד חייב להיות אמיתי מהקטלוג (id או ספק+שם מסלול). חשוב: המכתב הוא טיוטה בלבד — המשתמש בודק ושולח אותו בעצמו בערוצים הרשמיים של הספק; אנחנו לא שולחים. הנחיה כללית, לא ייעוץ משפטי. לא ממציאים מספרי טלפון/שלבים/לוחות זמנים.",
+      "בניית ערכת מעבר (Switch Autopilot): מכתב ניתוק לעריכה, צ'ק-ליסט ניוד, שלבי מעבר ותאריכי מפתח — למעבר מהספק הנוכחי למסלול יעד אמיתי מהקטלוג. מתי: כשהמשתמש כבר החליט לעבור ושואל על הביצוע — \"איך אני עוזב?\", \"איך מנתקים?\", \"איך מנייד מספר?\", \"מה צריך כדי לעבור ל...?\". (אם הוא עוד מתלבט בין מסלולים — קודם recommend_plans/refine_recommendation; אם הוא רוצה להישאר ולמקח — suggest_retention_offer.) מסלול היעד חייב להיות אמיתי מהקטלוג (id או ספק+שם מסלול). חשוב: המכתב הוא טיוטה בלבד — המשתמש בודק ושולח אותו בעצמו בערוצים הרשמיים של הספק; אנחנו לא שולחים. הנחיה כללית, לא ייעוץ משפטי. לא ממציאים מספרי טלפון/שלבים/לוחות זמנים.",
     parameters: {
       type: "object",
       properties: {
@@ -876,13 +1163,13 @@ export const TOOL_DECLARATIONS: GeminiFunctionDeclaration[] = [
   {
     name: "create_lead",
     description:
-      "יצירת פנייה לנציג. חובה לקבל אישור מפורש (consent=true) לתנאי השימוש ומדיניות הפרטיות לפני הקריאה — בלי אישור הפנייה לא נשמרת. יש לציין גילוי עמלה (§7b) למשתמש לפני ההעברה.",
+      "יצירת פנייה לנציג אנושי שייצור קשר. מתי: כשהמשתמש מאותת שהוא רוצה להתקדם עם אדם — \"תחזרו אליי\", \"אני רוצה להירשם\", \"חבר אותי לנציג\", \"בואו נתקדם\", \"איך נסגור?\". חובה לפני הקריאה: לקבל אישור מפורש (consent=true) לתנאי השימוש ומדיניות הפרטיות, ולציין למשתמש את גילוי העמלה (§7b). בלי consent=true — הפנייה לא נשמרת והכלי מסרב; אסוף קודם שם+טלפון+אישור. אל תזמין consent=true אם המשתמש לא אישר במפורש.",
     parameters: {
       type: "object",
       properties: {
         name: { type: "string", description: "שם המשתמש" },
         phone: { type: "string", description: "טלפון ישראלי" },
-        consent: { type: "boolean", description: "אישור מפורש לתנאים+פרטיות — חובה true" },
+        consent: { type: "boolean", description: "אישור מפורש לתנאים+פרטיות — חובה true; רק אם המשתמש אישר בפועל" },
         provider: { type: "string", description: "ספק נוכחי/מבוקש (אם נמסר)" },
         category: { type: "string", description: "השירות המבוקש" },
         notes: { type: "string", description: "הקשר קצר" },
@@ -893,14 +1180,14 @@ export const TOOL_DECLARATIONS: GeminiFunctionDeclaration[] = [
   {
     name: "book_callback",
     description:
-      "בקשת שיחה חוזרת במועד מועדף. אותו כלל הסכמה כמו create_lead — חובה consent=true. המועד נשמר בהערות והנציג חוזר.",
+      "בקשת שיחה חוזרת במועד מועדף. מתי: כשהמשתמש רוצה שיחזרו אליו בזמן מסוים — \"תתקשרו בערב\", \"תחזרו אליי מחר\", \"מתי נוח לכם להתקשר?\". אותו כלל הסכמה כמו create_lead — חובה consent=true (אישור מפורש לתנאים+פרטיות) וגילוי עמלה §7b. המועד נשמר בהערות והנציג חוזר.",
     parameters: {
       type: "object",
       properties: {
         slot: { type: "string", description: "מועד מועדף (עכשיו/בצהריים/בערב/מחר)" },
         name: { type: "string" },
         phone: { type: "string" },
-        consent: { type: "boolean", description: "אישור מפורש — חובה true" },
+        consent: { type: "boolean", description: "אישור מפורש — חובה true; רק אם המשתמש אישר בפועל" },
         notes: { type: "string" },
       },
       required: ["name", "phone", "consent"],
@@ -909,7 +1196,7 @@ export const TOOL_DECLARATIONS: GeminiFunctionDeclaration[] = [
   {
     name: "escalate_to_human",
     description:
-      "העברת השיחה לנציג אנושי (פעולת שירות, לא שיווק — לא דורש הסכמה). השתמש כשהמשתמש מתעקש לדבר עם בנאדם או כשנתקעת.",
+      "העברת השיחה לנציג אנושי באופן מיידי (פעולת שירות, לא שיווק — לא דורש הסכמה). מתי: כשהמשתמש מתעקש לדבר עם בנאדם (\"תן לי לדבר עם נציג\", \"אני לא רוצה בוט\"), כשהוא מתוסכל/כועס, כשהשאלה מורכבת מדי או רגישה, או כשנתקעת ואין לך תשובה אמיתית מהקטלוג. בניגוד ל-create_lead זו לא לכידת ליד שיווקי — זו חבירה לאדם; אין צורך באישור.",
     parameters: {
       type: "object",
       properties: { reason: { type: "string", description: "סיבה קצרה להעברה" } },

@@ -68,3 +68,52 @@ Deno.test("asChatTurns returns the recent transcript as {role,text} turns", () =
   assertEquals(turns[0].role, "user");
   assertEquals(turns[1].role, "bot");
 });
+
+Deno.test("recordToolCall keeps lastToolName + turnCount slots in sync", () => {
+  const s = emptySession("site", "sess-tooly1");
+  assertEquals(s.slots.turnCount, undefined);
+  recordToolCall(s, "search_plans", true, "p1");
+  assertEquals(s.slots.lastToolName, "search_plans");
+  assertEquals(s.slots.turnCount, 1);
+  recordToolCall(s, "refine_recommendation", true);
+  assertEquals(s.slots.lastToolName, "refine_recommendation");
+  assertEquals(s.slots.turnCount, 2); // counts past MAX_TOOLCALLS cap on the audit
+});
+
+Deno.test("mergeSlots UNIONs rejectedPlanIds / objections, overwrites scalars", () => {
+  const s = emptySession("whatsapp", "conv-refine");
+  mergeSlots(s, { rejectedPlanIds: ["p1", "p2"], objections: ["יקר מדי"] });
+  mergeSlots(s, { rejectedPlanIds: ["p2", "p3"], objections: ["נעילה לשנתיים"] });
+  assertEquals(s.slots.rejectedPlanIds, ["p1", "p2", "p3"]); // de-duped union
+  assertEquals(s.slots.objections, ["יקר מדי", "נעילה לשנתיים"]);
+  // turnCount is a scalar slot: last value wins.
+  mergeSlots(s, { turnCount: 5 });
+  mergeSlots(s, { turnCount: 7 });
+  assertEquals(s.slots.turnCount, 7);
+});
+
+Deno.test("new slots survive a clip round-trip (load drops nothing, sanitizes junk)", () => {
+  // clipSlots is internal; round-trip it the way load does — through the same
+  // shape the save path writes. We assert via mergeSlots+recordToolCall here and
+  // pin the bounds/sanitization that clipSlots enforces on reload.
+  const s = emptySession("site", "sess-round1");
+  // Over-cap + duplicate + non-string junk; mergeSlots should clamp + de-dupe.
+  const many = Array.from({ length: 40 }, (_, i) => `plan-${i}`);
+  mergeSlots(s, { rejectedPlanIds: [...many, "plan-0"] });
+  assert(s.slots.rejectedPlanIds!.length <= 24); // MAX_REJECTED
+  assert(new Set(s.slots.rejectedPlanIds).size === s.slots.rejectedPlanIds!.length);
+  // The most-recent ids are the ones kept (slice(-cap)).
+  assertEquals(s.slots.rejectedPlanIds!.at(-1), "plan-39");
+});
+
+Deno.test("backward-compat: ChatSession with no new slots is unchanged", () => {
+  const s = emptySession("app", "sess-compat");
+  mergeSlots(s, { category: "cellular", budget: 50, consent: true });
+  // No new-slot keys leak in when none were set.
+  assertEquals("rejectedPlanIds" in s.slots, false);
+  assertEquals("objections" in s.slots, false);
+  assertEquals("turnCount" in s.slots, false);
+  assertEquals("lastToolName" in s.slots, false);
+  assertEquals(s.slots.category, "cellular");
+  assertEquals(s.slots.consent, true);
+});

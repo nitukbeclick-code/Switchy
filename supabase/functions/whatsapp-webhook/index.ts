@@ -38,6 +38,16 @@ import {
   extractJson,
   VISION_PROMPT,
 } from "../_shared/ai.ts";
+// Shared Cloud API toolkit (fail-soft): markRead/markTyping make the bot feel
+// responsive, sendList drives the >3-option category picker. sendText keeps its
+// signature but now retries once on a 5xx internally — see _shared/whatsapp.ts.
+import {
+  type ListSection,
+  markRead as waMarkRead,
+  markTyping as waMarkTyping,
+  sendList as waSendList,
+  sendText as waSendText,
+} from "../_shared/whatsapp.ts";
 import {
   classifyTextIntent,
   isOptedOut,
@@ -69,6 +79,15 @@ const enc = new TextEncoder();
 // out to a (paid) AI call; beyond it the bot sends a soft "one moment" reply.
 const PER_CONTACT_HOURLY = 30;
 const MAX_MEDIA_BYTES = 6_000_000;
+
+// WhatsApp renders very long bubbles awkwardly (and Graph hard-caps a text body
+// at 4096). A grounded recommend block + reasons can run long, so we split any
+// reply past this soft budget into ordered bubbles on natural boundaries. Kept
+// well under Meta's hard limit so a single chunk is always sendable.
+const CHUNK_SOFT_LIMIT = 1000;
+// Small pause between ordered chunks so they arrive (and render) in order rather
+// than racing — WhatsApp orders by receipt, and back-to-back posts can invert.
+const CHUNK_GAP_MS = 350;
 
 // Catalogue is loaded once per function instance from the live public.plans
 // table (service-role read) — always fresh, no bundled snapshot to redeploy.
@@ -126,25 +145,15 @@ async function validSignature(raw: string, header: string | null): Promise<boole
 
 // ── outbound (Graph API) ─────────────────────────────────────────────────────
 
-// Sends a text reply; returns Meta's wamid (for idempotent outbound storage) or null.
+// Sends a text reply; returns Meta's wamid (for idempotent outbound storage) or
+// null. Delegates to the shared _shared/whatsapp.ts sendText so EVERY outbound
+// path (here + the CRM) sends identically AND gets the retry-once-on-5xx that
+// helper now does internally. The signature + fail-soft contract are unchanged:
+// a missing token / bad request / network throw still returns null, exactly as
+// the old inline implementation did. (PHONE_ID/GRAPH_VER are read by the shared
+// module from the same env with the same Switchy defaults.)
 async function sendText(to: string, body: string): Promise<string | null> {
-  if (!TOKEN) { jlog({ at: "wa.sendText", ok: false, error: "WHATSAPP_TOKEN not set" }); return null; }
-  try {
-    const res = await fetch(`https://graph.facebook.com/${GRAPH_VER}/${PHONE_ID}/messages`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${TOKEN}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ messaging_product: "whatsapp", to, type: "text", text: { body } }),
-    });
-    if (!res.ok) {
-      jlog({ at: "wa.sendText", ok: false, status: res.status, msg: await res.text().catch(() => "") });
-      return null;
-    }
-    const j = await res.json().catch(() => ({}));
-    return j?.messages?.[0]?.id ?? null;
-  } catch (e) {
-    jlog({ at: "wa.sendText", ok: false, error: String(e) });
-    return null;
-  }
+  return await waSendText(to, body);
 }
 
 // Quick-reply button ids (echoed back by Meta in interactive.button_reply.id)
@@ -157,6 +166,73 @@ const MENU_BUTTONS: { id: string; title: string }[] = [
   { id: BTN_HUMAN, title: "דבר עם נציג" },
   { id: BTN_BILL, title: "ניתוח חשבון" },
 ];
+
+// Category-picker list rows (sent as an interactive LIST, not buttons, because
+// there are 5 categories and Meta caps buttons at 3). Each row id is prefixed
+// "cat:" + the canonical catalogue category so the inbound-tap router can seed
+// that category and drop straight into the grounded compare flow — reusing the
+// SAME compare handler the "השוואת מסלול" button already triggers (no new path).
+const CAT_ROW_PREFIX = "cat:";
+// Budget quick-reply button rows (≤ 3, so these go out as real buttons). Tapping
+// one seeds the budget and runs the recommend flow. The "no cap" row recommends
+// the best value with no ceiling. Ids are "bud:<n>" / "bud:any".
+const BUD_BTN_PREFIX = "bud:";
+
+// The ordered category list shown in the picker — canonical category + its
+// Hebrew label from the shared CATEGORY_HE map (single source of truth).
+const PICKER_CATEGORIES = [
+  "cellular",
+  "internet",
+  "tv",
+  "triple",
+  "abroad",
+] as const;
+
+// Build the interactive-list sections for the category picker. Pure (no I/O) so
+// the row ids/labels can be pinned in tests. One section, one row per category,
+// each row id = "cat:<category>" and title = the Hebrew label (≤ 24 chars, well
+// within Meta's cap). The compare button id is intentionally NOT here — this is
+// the drill-down AFTER the user chose "compare".
+export function buildCategoryPickerSections(): ListSection[] {
+  return [{
+    title: "קטגוריות",
+    rows: PICKER_CATEGORIES.map((c) => ({
+      id: `${CAT_ROW_PREFIX}${c}`,
+      title: CATEGORY_HE[c] ?? c,
+    })),
+  }];
+}
+
+// The dynamic budget quick-reply buttons (≤ 3). Reuses the existing button path:
+// each id is "bud:<n>"/"bud:any" and routes to the recommend flow with the budget
+// seeded. Pure so the option set is testable.
+export function buildBudgetButtons(): { id: string; title: string }[] {
+  return [
+    { id: `${BUD_BTN_PREFIX}50`, title: "עד ₪50" },
+    { id: `${BUD_BTN_PREFIX}100`, title: "עד ₪100" },
+    { id: `${BUD_BTN_PREFIX}any`, title: "הכי משתלם" },
+  ];
+}
+
+// Parse a picker/budget tap id back into a slot patch. Returns the canonical
+// category for a "cat:*" id, the numeric budget for "bud:<n>" (null budget for
+// "bud:any"), or null when the id isn't one of ours. Pure + total.
+export function parsePickerTapId(
+  id: string,
+): { category?: string; budget?: number | null } | null {
+  const raw = (id ?? "").trim();
+  if (raw.startsWith(CAT_ROW_PREFIX)) {
+    const cat = normalizeCategory(raw.slice(CAT_ROW_PREFIX.length));
+    return cat ? { category: cat } : null;
+  }
+  if (raw.startsWith(BUD_BTN_PREFIX)) {
+    const v = raw.slice(BUD_BTN_PREFIX.length);
+    if (v === "any") return { budget: null };
+    const n = Number(v);
+    return Number.isFinite(n) && n > 0 ? { budget: Math.round(n) } : null;
+  }
+  return null;
+}
 
 // Sends a text body with up to 3 reply buttons; returns Meta's wamid or null.
 // Falls back to a plain text send if the interactive call is rejected (so the
@@ -197,6 +273,109 @@ async function sendButtons(
     jlog({ at: "wa.sendButtons", ok: false, error: String(e) });
     return await sendText(to, body);
   }
+}
+
+// Split a reply into ordered bubbles, each ≤ `limit` chars, on the most natural
+// boundary available: paragraph breaks first (blank line), then single newlines,
+// then sentence ends, then whitespace, and only as a last resort a hard cut. A
+// short reply returns a single-element array unchanged, so the common case is a
+// no-op. Pure + total (never throws, never drops text) so the boundary logic can
+// be pinned in tests. The concatenation of the result always equals the input
+// with run-of-blank-lines normalised between merged paragraphs.
+export function chunkReply(text: string, limit = CHUNK_SOFT_LIMIT): string[] {
+  const body = (text ?? "").trim();
+  if (!body) return [];
+  if (body.length <= limit) return [body];
+
+  // Greedily pack paragraphs (split on blank lines) into chunks; a paragraph
+  // that is itself too long is recursively broken on softer boundaries.
+  const paras = body.split(/\n{2,}/);
+  const chunks: string[] = [];
+  let cur = "";
+  const flush = () => {
+    if (cur) chunks.push(cur);
+    cur = "";
+  };
+  for (const para of paras) {
+    const piece = para.trim();
+    if (!piece) continue;
+    if (piece.length > limit) {
+      // The paragraph alone overflows — flush what we have, then break it.
+      flush();
+      for (const sub of breakLong(piece, limit)) chunks.push(sub);
+      continue;
+    }
+    const joined = cur ? `${cur}\n\n${piece}` : piece;
+    if (joined.length <= limit) {
+      cur = joined;
+    } else {
+      flush();
+      cur = piece;
+    }
+  }
+  flush();
+  return chunks.length ? chunks : [body.slice(0, limit)];
+}
+
+// Break a single over-long block on softer boundaries: newline → sentence end →
+// space → hard cut. Always makes progress (a chunk is never empty) so it can't
+// loop. Used only by chunkReply for a paragraph that exceeds the limit on its own.
+function breakLong(block: string, limit: number): string[] {
+  const out: string[] = [];
+  let rest = block.trim();
+  while (rest.length > limit) {
+    const window = rest.slice(0, limit);
+    // Prefer the latest newline, then sentence terminator, then space.
+    let cut = Math.max(
+      window.lastIndexOf("\n"),
+      window.lastIndexOf("! "),
+      window.lastIndexOf("? "),
+      window.lastIndexOf(". "),
+      window.lastIndexOf("׃ "),
+      window.lastIndexOf("; "),
+    );
+    if (cut < limit * 0.5) cut = window.lastIndexOf(" "); // avoid a tiny first piece
+    if (cut <= 0) cut = limit; // no boundary at all → hard cut
+    else cut += 1; // keep the boundary char on the left piece
+    out.push(rest.slice(0, cut).trim());
+    rest = rest.slice(cut).trim();
+  }
+  if (rest) out.push(rest);
+  return out;
+}
+
+// Send a (possibly long) text reply as one or more ordered bubbles, pausing
+// briefly between them so WhatsApp renders them in order. Returns the wamid of
+// the FIRST bubble (the one we store as the canonical outbound row) or null.
+// Each send goes through sendText, which already retries once on a 5xx; we add a
+// one-shot retry around the FIRST bubble specifically so the stored message is as
+// reliable as possible. Fail-soft throughout — a failed later chunk is logged,
+// never thrown.
+async function sendChunkedText(to: string, body: string): Promise<string | null> {
+  const parts = chunkReply(body);
+  if (parts.length === 0) return null;
+  if (parts.length === 1) {
+    // Single bubble: send once, and retry once on a null (covers a transient
+    // failure the shared 5xx-retry didn't catch, e.g. a network throw).
+    let id = await sendText(to, parts[0]);
+    if (!id) id = await sendText(to, parts[0]);
+    return id;
+  }
+  let firstId: string | null = null;
+  for (let i = 0; i < parts.length; i++) {
+    let id = await sendText(to, parts[i]);
+    if (i === 0) {
+      if (!id) id = await sendText(to, parts[i]); // protect the canonical bubble
+      firstId = id;
+    } else if (!id) {
+      jlog({ at: "wa.chunk", ok: false, idx: i, total: parts.length });
+    }
+    // Brief inter-bubble gap so ordering holds; skip after the last one.
+    if (i < parts.length - 1) {
+      await new Promise((r) => setTimeout(r, CHUNK_GAP_MS));
+    }
+  }
+  return firstId;
 }
 
 // Inbound bill image → bytes → base64 (two bearer-gated, short-lived Graph hops).
@@ -545,19 +724,27 @@ async function handleMessage(m: Row, profileName: string | undefined, aiKeys: Ai
   if (!from) return;
   const wamid = m?.id ? String(m.id) : null;
   const type = String(m?.type ?? "text");
-  // A quick-reply tap arrives as type "interactive" with button_reply.{id,title}.
-  // We carry the id (cmp/human/bill) for routing and store the title as the body.
-  const buttonId = type === "interactive"
-    ? String(
-      (m as Row & { interactive?: { button_reply?: { id?: string } } }).interactive?.button_reply?.id ?? "",
-    )
-    : "";
-  // Text + image bodies come from the shared messageText extractor; a quick-reply
-  // tap's label lives in button_reply.title, which messageText doesn't cover.
+  // A tap arrives as type "interactive": a quick-reply button is under
+  // interactive.button_reply.{id,title}; a LIST selection (the category picker we
+  // now send) is under interactive.list_reply.{id,title}. We read either, carry
+  // the id (cmp/human/bill OR cat:*/bud:*) for routing, and store the title as the
+  // body. One `tapReply` accessor so both shapes route through the same branch.
+  const tapReply = type === "interactive"
+    ? (() => {
+      const ix = (m as Row & {
+        interactive?: {
+          button_reply?: { id?: string; title?: string };
+          list_reply?: { id?: string; title?: string };
+        };
+      }).interactive;
+      return ix?.button_reply ?? ix?.list_reply ?? undefined;
+    })()
+    : undefined;
+  const buttonId = tapReply ? String(tapReply.id ?? "") : "";
+  // Text + image bodies come from the shared messageText extractor; a tap's label
+  // lives in its reply.title, which messageText doesn't cover.
   const text = type === "interactive"
-    ? String(
-      (m as Row & { interactive?: { button_reply?: { title?: string } } }).interactive?.button_reply?.title ?? "",
-    )
+    ? String(tapReply?.title ?? "")
     : messageText(m);
 
   // 1) Persist contact + conversation, idempotently store the inbound message.
@@ -584,6 +771,13 @@ async function handleMessage(m: Row, profileName: string | undefined, aiKeys: Ai
   // Carry the conversation id on the contact so opt-out (handled before the
   // normal reply path) can store its single outbound against this conversation.
   if (contact && convo) contact._convId = convo.id;
+
+  // Acknowledge receipt with a read tick as soon as we've accepted a NEW (non-
+  // duplicate) inbound. This is a benign service acknowledgement — NOT a menu,
+  // typing indicator, or marketing — so it's correct for every inbound we handle,
+  // including a STOP (the person sees we registered their request) and a
+  // human-takeover turn. Best-effort + fail-soft (returns null on any error).
+  if (wamid) await waMarkRead(wamid);
 
   // Audit every (non-duplicate) inbound on the CRM activity feed — this is what
   // a human rep watches while they have a conversation taken over. Logged
@@ -644,6 +838,12 @@ async function handleMessage(m: Row, profileName: string | undefined, aiKeys: Ai
   // When true, the reply is sent with the 3-button quick-reply menu instead of
   // plain text (welcome, or any moment we want to re-offer the main actions).
   let withMenu = false;
+  // When true, the reply is sent as an interactive LIST (the 5-category picker) —
+  // used after the user taps "compare". When true, the reply is sent with the
+  // dynamic budget quick-reply buttons — used after they pick a category. Both are
+  // reactive drill-downs of an action the user just chose, never proactive blasts.
+  let withCategoryPicker = false;
+  let withBudgetButtons = false;
   // When true, runWhatsappAgent already persisted ai_state (transcript + slots +
   // tool-call history nested under ai_state.agent). Step 6 must NOT then overwrite
   // ai_state with the bare top-level slots — that would drop the agent envelope.
@@ -672,6 +872,17 @@ async function handleMessage(m: Row, profileName: string | undefined, aiKeys: Ai
     escalate: (reason) =>
       contact ? createHandoffLead(contact, reason || "המשתמש ביקש נציג", history) : false,
   };
+
+  // Whether this contact has opted out of marketing — computed up here because it
+  // ALSO gates the typing indicator: an opted-out person gets reactive service
+  // replies but never a "typing…" affordance (treated as part of the proactive
+  // surface we suppress for them, alongside the menus). Reused in step 6.
+  const optedOut = contact ? isOptedOut(contact.status) : false;
+  // Show the "typing…" indicator while we work on the reply (it can involve a
+  // Vision + agent round-trip). Suppressed for opted-out contacts. Tied to the
+  // inbound wamid per Graph's model. Best-effort; cleared right before we send.
+  const canType = !!wamid && !optedOut;
+  if (canType) await waMarkTyping(wamid, true);
 
   if (type === "image") {
     intent = "bill";
@@ -703,18 +914,59 @@ async function handleMessage(m: Row, profileName: string | undefined, aiKeys: Ai
       }
     }
   } else if (buttonId) {
-    // Inbound quick-reply tap → route by the button id.
-    if (buttonId === BTN_HUMAN) {
+    // Inbound tap (quick-reply button OR list selection) → route by the id.
+    // A category/budget picker tap is detected first (parsePickerTapId), then the
+    // fixed menu ids, so the drill-down rows can't collide with the menu actions.
+    const pick = parsePickerTapId(buttonId);
+    if (pick) {
+      // Picker drill-down. A category tap seeds the category and offers budget
+      // buttons; a budget tap seeds the budget and runs the grounded recommend
+      // flow now (reusing the SAME agent path a typed "סלולר עד 50" would take).
+      mergedCtx = mergeContext(mergedCtx, { topic: "compare" });
+      if (pick.category) mergedCtx.category = pick.category;
+      if (pick.budget !== undefined && pick.budget !== null) mergedCtx.budget = pick.budget;
+      intent = "recommend";
+      if (pick.category && pick.budget === undefined) {
+        // Category chosen → ask budget via the dynamic buttons (reactive).
+        const heCat = CATEGORY_HE[pick.category] ?? pick.category;
+        reply = `מעולה — ${heCat} 👍 מה התקציב החודשי? אפשר לבחור למטה, או פשוט לכתוב לי סכום.`;
+        withBudgetButtons = true;
+      } else {
+        // Budget chosen (or a budget-only tap) → run the grounded recommend flow.
+        const plans = await getPlans();
+        const templateFallback = (): string =>
+          buildChatFallback(plans, true, mergedCtx);
+        const r = await runWhatsappAgent({
+          sessionKey: convo ? String(convo.id) : "",
+          message: text ||
+            `ממליץ לי על ${mergedCtx.category ? (CATEGORY_HE[mergedCtx.category] ?? mergedCtx.category) : "מסלול"}${
+              mergedCtx.budget ? ` עד ₪${mergedCtx.budget}` : ""
+            }`,
+          plans,
+          keys: aiKeys,
+          deps: agentDeps,
+          templateFallback,
+          slotPatch: {
+            ...(mergedCtx.category ? { category: mergedCtx.category } : {}),
+            ...(mergedCtx.budget ? { budget: mergedCtx.budget } : {}),
+            topic: "compare",
+          },
+        });
+        reply = r.reply || templateFallback();
+        if (convo) agentSaved = true;
+      }
+    } else if (buttonId === BTN_HUMAN) {
       intent = "human";
       reply = contact ? await handleHandoff(contact, text || "נציג אנושי", history) : FALLBACK_REPLY;
     } else if (buttonId === BTN_BILL) {
       intent = "bill";
       reply = BILL_PROMPT_REPLY;
-    } else { // BTN_COMPARE (or any unknown id) → the comparison/recommend prompt.
+    } else { // BTN_COMPARE (or any unknown id) → offer the category picker.
       intent = "recommend";
       reply = COMPARE_PROMPT_REPLY;
-      // Remember that we're in a compare flow so the next (likely terse) reply
-      // — "סלולר עד 50" — is routed straight to the grounded compare template.
+      withCategoryPicker = true;
+      // Remember that we're in a compare flow so a terse follow-up — "סלולר עד 50"
+      // — is routed straight to the grounded compare template.
       mergedCtx = mergeContext(mergedCtx, { topic: "compare" });
     }
   } else if (firstContact) {
@@ -788,21 +1040,39 @@ async function handleMessage(m: Row, profileName: string | undefined, aiKeys: Ai
   //    no-op on every later message.
   reply = withFirstContactNotice(reply, firstContact);
 
-  // 6) Reply + store outbound + update CRM timestamps. The welcome (and any
-  // menu-flagged reply) goes out as interactive buttons; everything else stays
-  // plain text. Both paths return a wamid, so outbound storage is unchanged.
-  // Outbound guard: never send the proactive/marketing quick-reply menu to an
-  // opted-out contact — degrade to a plain-text service reply instead.
-  const optedOut = contact ? isOptedOut(contact.status) : false;
+  // 6) Reply + store outbound + update CRM timestamps. Clear the typing indicator
+  // first (we're about to send). The welcome menu, the category picker, and the
+  // budget buttons are all INTERACTIVE; everything else is plain text — and a long
+  // plain-text reply is split into ordered bubbles by sendChunkedText. Every path
+  // returns a wamid (the first bubble's, for the canonical outbound row), so
+  // outbound storage is unchanged.
+  // Outbound guard: never send the proactive/marketing quick-reply menu OR the
+  // reactive interactive pickers to an opted-out contact — degrade to plain text.
+  if (canType) await waMarkTyping(wamid, false);
   const useMenu = withMenu && !optedOut;
-  const sentId = useMenu ? await sendButtons(from, reply) : await sendText(from, reply);
+  const usePicker = withCategoryPicker && !optedOut;
+  const useBudget = withBudgetButtons && !optedOut;
+  const interactive = useMenu || usePicker || useBudget;
+  let sentId: string | null;
+  if (useMenu) {
+    sentId = await sendButtons(from, reply); // the 3-action main menu
+  } else if (useBudget) {
+    sentId = await sendButtons(from, reply, buildBudgetButtons()); // ≤3 → buttons
+  } else if (usePicker) {
+    // 5 categories > the 3-button cap → an interactive LIST. Degrade to the buttons
+    // menu (then plain text) if Graph rejects the list, so the user is never stuck.
+    sentId = await waSendList(from, reply, buildCategoryPickerSections()) ??
+      await sendButtons(from, reply);
+  } else {
+    sentId = await sendChunkedText(from, reply); // plain text, chunked if long
+  }
   if (convo) {
     await pgInsert("whatsapp_messages", {
       conversation_id: convo.id,
       contact_id: contact!.id,
       direction: "out",
       actor: "bot",
-      msg_type: useMenu ? "interactive" : "text",
+      msg_type: interactive ? "interactive" : "text",
       body: reply.slice(0, 4000),
       wa_message_id: sentId,
       status: sentId ? "sent" : "failed",

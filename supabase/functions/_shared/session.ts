@@ -50,9 +50,26 @@ export type SessionSlots = {
   phone?: string;
   consent?: boolean; // mandatory terms+privacy — true only if the user confirmed
   leadCaptured?: boolean;
+  // Conversation-shaping memory (all OPTIONAL, additive — never fabricated; just
+  // remembers what the user actually signalled so the agent can refine, not repeat):
+  //   • rejectedPlanIds — plans the user explicitly dismissed, so refine_recommendation
+  //     / the ranker can exclude them and not re-pitch the same thing.
+  //   • objections      — short free-text objections the user raised (price/lock-in/…)
+  //     so the agent answers them honestly instead of re-asking.
+  //   • turnCount       — how many turns this session has run (bumped on recordToolCall);
+  //     lets the agent pace itself (e.g. don't push a lead on turn 1).
+  //   • lastToolName    — the most recent tool the agent ran, for cheap "what just
+  //     happened" context without scanning the whole toolCalls audit.
+  rejectedPlanIds?: string[];
+  objections?: string[];
+  turnCount?: number;
+  lastToolName?: string;
   // Free-form scratch for channel-specific bits (kept small).
   [k: string]: unknown;
 };
+
+const MAX_REJECTED = 24;
+const MAX_OBJECTIONS = 12;
 
 export type ChatSession = {
   channel: Channel;
@@ -111,6 +128,29 @@ function clipSlots(raw: unknown): SessionSlots {
   if (typeof o.phone === "string") out.phone = o.phone.slice(0, 20);
   if (typeof o.consent === "boolean") out.consent = o.consent;
   if (typeof o.leadCaptured === "boolean") out.leadCaptured = o.leadCaptured;
+  // New conversation-shaping slots (all optional, defensively clipped). String
+  // arrays are de-duped, item-length-bounded, and capped so a poisoned jsonb
+  // can't grow unbounded.
+  if (Array.isArray(o.rejectedPlanIds)) {
+    const ids = o.rejectedPlanIds
+      .filter((x) => typeof x === "string")
+      .map((x) => (x as string).slice(0, 64))
+      .filter((x) => x);
+    if (ids.length) out.rejectedPlanIds = [...new Set(ids)].slice(-MAX_REJECTED);
+  }
+  if (Array.isArray(o.objections)) {
+    const objs = o.objections
+      .filter((x) => typeof x === "string")
+      .map((x) => (x as string).slice(0, 120))
+      .filter((x) => x);
+    if (objs.length) out.objections = [...new Set(objs)].slice(-MAX_OBJECTIONS);
+  }
+  if (Number.isFinite(Number(o.turnCount))) {
+    out.turnCount = Math.max(0, Math.floor(Number(o.turnCount)));
+  }
+  if (typeof o.lastToolName === "string" && o.lastToolName) {
+    out.lastToolName = o.lastToolName.slice(0, 40);
+  }
   return out;
 }
 
@@ -254,8 +294,9 @@ export function appendTurn(session: ChatSession, role: "user" | "bot", text: str
 }
 
 export function recordToolCall(session: ChatSession, name: string, ok: boolean, preview?: string): void {
+  const clean = String(name).slice(0, 40);
   session.toolCalls.push({
-    name: String(name).slice(0, 40),
+    name: clean,
     ok,
     at: new Date().toISOString(),
     preview: preview ? String(preview).slice(0, 80) : undefined,
@@ -263,12 +304,30 @@ export function recordToolCall(session: ChatSession, name: string, ok: boolean, 
   if (session.toolCalls.length > MAX_TOOLCALLS) {
     session.toolCalls = session.toolCalls.slice(-MAX_TOOLCALLS);
   }
+  // Keep the cheap "what just happened" slots in sync with the audit. turnCount
+  // counts recorded tool calls across the session's lifetime (bounded by the DB
+  // jsonb, not by MAX_TOOLCALLS which only caps the audit tail).
+  if (clean) {
+    session.slots.lastToolName = clean;
+    session.slots.turnCount = (typeof session.slots.turnCount === "number" ? session.slots.turnCount : 0) + 1;
+  }
 }
 
 // Merge newly-learned slots; new non-empty values win, old ones fill gaps.
+// The two string-array slots (rejectedPlanIds/objections) UNION rather than
+// overwrite, so the agent can append the one plan/objection it just learned
+// without first re-reading and re-sending the whole list. De-duped + capped.
 export function mergeSlots(session: ChatSession, patch: Partial<SessionSlots>): void {
   for (const [k, v] of Object.entries(patch)) {
     if (v === undefined || v === null || v === "") continue;
+    if ((k === "rejectedPlanIds" || k === "objections") && Array.isArray(v)) {
+      const incoming = v.filter((x): x is string => typeof x === "string" && !!x);
+      if (!incoming.length) continue;
+      const prev = Array.isArray(session.slots[k]) ? (session.slots[k] as string[]) : [];
+      const cap = k === "rejectedPlanIds" ? MAX_REJECTED : MAX_OBJECTIONS;
+      session.slots[k] = [...new Set([...prev, ...incoming])].slice(-cap);
+      continue;
+    }
     session.slots[k] = v;
   }
 }

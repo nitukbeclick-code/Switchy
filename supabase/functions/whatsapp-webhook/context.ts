@@ -16,6 +16,7 @@
 import { normalizeCategory } from "../_shared/catalogue.ts";
 import type { Topic } from "./flows.ts";
 import { detectTopic } from "./flows.ts";
+import { detectObjection } from "./intents.ts";
 
 // The structured memory we keep per conversation. Persisted as JSON in
 // whatsapp_conversations.ai_state; every field optional so a fresh/older row
@@ -27,6 +28,11 @@ export type ConvContext = {
   provider?: string; // current provider the user named (raw, lowercased token)
   topic?: Topic; // last telecom topic discussed (switch/roaming/compare/price…)
   turns?: number; // how many inbound turns we've handled (for light pacing)
+  // ADDITIVE: the last objection the user raised ("יקר"/"התחייבות"/…), so a
+  // follow-up turn still knows they pushed back and the agent can keep answering
+  // the concern instead of re-pitching. Sticky-last (the most recent push-back).
+  // Optional + tolerated-on-load, so older ai_state rows parse unchanged.
+  objection?: boolean;
 };
 
 // Slots a single inbound message reveals, before merging with prior context.
@@ -35,6 +41,9 @@ export type Slots = {
   budget?: number;
   abroad?: boolean;
   topic?: Topic;
+  // ADDITIVE: true when THIS message reads like an objection/push-back. Drives
+  // the agent's objection handling; never changes category/budget routing.
+  objection?: boolean;
 };
 
 // Parse the stored ai_state jsonb into a ConvContext. Tolerant of anything:
@@ -50,6 +59,7 @@ export function parseContext(raw: unknown): ConvContext {
   if (typeof o.provider === "string" && o.provider) ctx.provider = o.provider;
   if (typeof o.topic === "string" && o.topic) ctx.topic = o.topic as Topic;
   if (typeof o.turns === "number" && Number.isFinite(o.turns) && o.turns >= 0) ctx.turns = o.turns;
+  if (typeof o.objection === "boolean") ctx.objection = o.objection;
   return ctx;
 }
 
@@ -94,6 +104,10 @@ export function extractSlots(text: string): Slots {
   if (mentionsAbroad(t)) slots.abroad = true;
   const topic = detectTopic(t);
   if (topic) slots.topic = topic;
+  // Additive: flag a push-back so the agent can answer the concern. Only set when
+  // true (an absent field means "this message wasn't an objection"), so the merge
+  // doesn't clear a prior objection just because a later turn is neutral.
+  if (detectObjection(t)) slots.objection = true;
   return slots;
 }
 

@@ -10,6 +10,40 @@ export const GEMINI_MODELS = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.
 const GROQ_MODEL = "llama-3.3-70b-versatile";
 const OPENROUTER_MODEL = "meta-llama/llama-3.3-70b-instruct:free";
 
+// ── Model ROUTING (the "tier" opt) ───────────────────────────────────────────
+// Two answer profiles, both BEHAVIOR-ADDITIVE: same grounded brain, same full
+// degradation chain (Gemini → Groq → OpenRouter), same Vision/clean/timeouts.
+//   "smart" (DEFAULT = today): leads with gemini-2.5-flash → better copy/flow.
+//   "fast":                    leads with gemini-2.0-flash (cheaper/lower-latency),
+//                              i.e. same answer, sooner — never fabricated.
+// The ROUTE is just a re-ORDERING of the existing model candidates: the model the
+// tier prefers is tried first, then the rest of GEMINI_MODELS as the usual
+// 404-fallthrough. Every model stays reachable, so a tier never narrows the chain.
+export type ModelTier = "fast" | "smart";
+export type AiTierOpts = { tier?: ModelTier };
+export const DEFAULT_TIER: ModelTier = "smart";
+
+// The Gemini model each tier leads with. "smart" keeps today's GEMINI_MODELS[0].
+export const TIER_GEMINI_MODEL: Record<ModelTier, string> = {
+  smart: "gemini-2.5-flash",
+  fast: "gemini-2.0-flash",
+};
+
+// Resolve the tier from the optional opts (safe default = "smart" = today).
+export function resolveTier(opts?: AiTierOpts): ModelTier {
+  return opts?.tier === "fast" ? "fast" : DEFAULT_TIER;
+}
+
+// The Gemini candidate list for a tier: the tier's preferred model first, then the
+// remaining GEMINI_MODELS in their canonical order (de-duped). "smart" returns the
+// canonical list unchanged; "fast" floats gemini-2.0-flash to the front. The full
+// set is always present — routing only reorders, never drops a fallback.
+export function modelsForTier(tier: ModelTier): string[] {
+  const lead = TIER_GEMINI_MODEL[tier];
+  const rest = GEMINI_MODELS.filter((m) => m !== lead);
+  return GEMINI_MODELS.includes(lead) ? [lead, ...rest] : [...GEMINI_MODELS];
+}
+
 const MAX_HISTORY_TURNS = 6;
 const MAX_MESSAGE_LEN = 800;
 
@@ -128,9 +162,10 @@ export async function callGemini(
   history: ChatTurn[],
   message: string,
   maxTokens = 400,
+  models: string[] = GEMINI_MODELS,
 ): Promise<string> {
   let lastStatus = 0;
-  for (const model of GEMINI_MODELS) {
+  for (const model of models) {
     const r = await callGeminiModel(model, apiKey, systemContext, history, message, maxTokens);
     if (r.ok) {
       const j = await r.json();
@@ -244,10 +279,15 @@ export async function generateReply(
   message: string,
   maxTokens = 400,
   meta?: ReplyMeta,
+  opts?: AiTierOpts,
 ): Promise<string> {
+  // Route the Gemini model order by tier (default "smart" = today's order). The
+  // full degradation chain (Gemini → Groq → OpenRouter) below is UNCHANGED — only
+  // which Gemini model is tried first differs.
+  const models = modelsForTier(resolveTier(opts));
   if (keys.gemini) {
     try {
-      const t = cleanReply(await callGemini(keys.gemini, systemContext, history, message, maxTokens));
+      const t = cleanReply(await callGemini(keys.gemini, systemContext, history, message, maxTokens, models));
       if (t) return t;
     } catch (e) {
       if (e instanceof AiTimeoutError && meta) meta.timedOut = true;
@@ -433,9 +473,13 @@ export async function generateWithToolsStep(
   contents: ToolContent[],
   tools: GeminiFunctionDeclaration[],
   maxTokens = 500,
+  opts?: AiTierOpts,
 ): Promise<GeminiToolStep> {
+  // Tier routing: lead with the tier's preferred Gemini model, then fall through
+  // the rest on 404 exactly as before (default "smart" = today's order).
+  const models = modelsForTier(resolveTier(opts));
   let lastStatus = 0;
-  for (const model of GEMINI_MODELS) {
+  for (const model of models) {
     const r = await callGeminiToolsModel(model, apiKey, systemContext, contents, tools, maxTokens);
     if (r.ok) {
       const j = await r.json();

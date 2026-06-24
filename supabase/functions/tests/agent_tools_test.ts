@@ -19,9 +19,13 @@ import {
   escalateToHuman,
   generateReferralCode,
   getProvider,
+  parseObjection,
   recommendPlans,
+  refineRecommendation,
   searchPlans,
   suggestRetentionOffer,
+  TOOL_DECLARATIONS,
+  TOOL_EXECUTORS,
   type ToolContext,
 } from "../_shared/tools.ts";
 import { detectLang, runAgent } from "../_shared/agent.ts";
@@ -380,4 +384,180 @@ Deno.test("generate_referral_code localizes the share note (English here)", asyn
   const r = await generateReferralCode(ctx, {});
   assert(r.note!.includes("Your referral code"));
   assert(r.note!.includes("no cash reward"));
+});
+
+// ── recommend_plans: enriched, grounded reasoning (additive, no fabrication) ───
+
+Deno.test("recommend_plans surfaces a grounded whyTop lead-in + rank + comparedToTop", async () => {
+  const ctx = fakeCtx();
+  const r = await recommendPlans(ctx, { category: "cellular", priority: "price" });
+  assert(r.ok);
+  // A plain-language, grounded lead-in citing the top pick's real provider/price.
+  const whyTop = r.data!.whyTop as string;
+  assert(typeof whyTop === "string" && whyTop.length > 0);
+  assert(whyTop.includes("₪"), "whyTop quotes a real price");
+  assertEquals(r.note, whyTop, "note mirrors the lead-in");
+
+  const recs = r.data!.recommendations as Array<Record<string, unknown>>;
+  // rank is 1-based and present on every rec.
+  assertEquals(recs[0].rank, 1);
+  // Runners-up carry an honest trade-off vs #1; the top pick does NOT.
+  assertEquals(recs[0].comparedToTop, undefined);
+  if (recs.length > 1) {
+    assert(typeof recs[1].comparedToTop === "string");
+    // The trade-off references a real ₪ delta or "same price".
+    assert(/₪|מחיר/.test(recs[1].comparedToTop as string));
+  }
+  // Reasoning never fabricates: comparedToTop is derived from real fields only.
+  for (const rec of recs) assert(["c1", "c2", "c3"].includes(rec.id as string));
+});
+
+// ── parseObjection: deterministic intent recognition from indirect language ────
+
+Deno.test("parseObjection maps indirect Hebrew objections to ranking signals", () => {
+  const cheap = parseObjection("זה יקר לי מדי");
+  assertEquals(cheap.priority, "price");
+  assertEquals(cheap.cheaper, true);
+  assert(cheap.matchedObjections.includes("price"));
+
+  const noCommit = parseObjection("אני לא רוצה להתחייב");
+  assertEquals(noCommit.priority, "flexibility");
+  assertEquals(noCommit.wantsNoCommit, true);
+
+  const fast = parseObjection("צריך משהו יותר מהיר, זה איטי");
+  assertEquals(fast.priority, "speed");
+  assertEquals(fast.wants5G, true);
+
+  const loyal = parseObjection("אני מרוצה מהספק שלי");
+  assertEquals(loyal.priority, "service");
+  assert(loyal.matchedObjections.includes("service"));
+
+  // Multilingual cue (English "expensive") still recognised.
+  assertEquals(parseObjection("too expensive").cheaper, true);
+  // Neutral text → balanced, no false objection.
+  const none = parseObjection("תודה");
+  assertEquals(none.priority, "balanced");
+  assertEquals(none.matchedObjections.length, 0);
+});
+
+// ── refine_recommendation: objection-driven re-rank, truth-only ───────────────
+
+Deno.test("refine_recommendation is registered in the executor map + declarations", () => {
+  assert(typeof TOOL_EXECUTORS.refine_recommendation === "function");
+  const decl = TOOL_DECLARATIONS.find((d) => d.name === "refine_recommendation");
+  assert(decl, "declaration present");
+  const params = decl!.parameters as { required?: string[] };
+  assertEquals(params.required, ["category", "feedback"]);
+});
+
+Deno.test("refine_recommendation re-ranks cheaper and EXCLUDES the rejected plan", async () => {
+  const ctx = fakeCtx();
+  // The user rejected the 49₪ 5G plan (c1) as too expensive → re-rank cheaper,
+  // excluding c1. Cheapest cellular is c2 (29₪).
+  const r = await refineRecommendation(ctx, {
+    category: "cellular",
+    feedback: "יקר לי",
+    prevPlanIds: ["c1"],
+  });
+  assert(r.ok);
+  const recs = r.data!.recommendations as Array<Record<string, unknown>>;
+  assert(recs.length > 0 && recs.length <= 3);
+  // c1 is excluded; nothing pricier than the rejected 49₪ leads (honest cheaper).
+  for (const rec of recs) assertEquals(rec.id === "c1", false, "rejected plan excluded");
+  assertEquals(recs[0].id, "c2", "cheapest real row leads the cheaper re-rank");
+  // The objection is echoed for the session slots; rejected ids echoed back.
+  assertEquals(r.data!.objections, ["price"]);
+  assertEquals(r.data!.rejectedPlanIds, ["c1"]);
+  assert(ctx.crm.some((e) => e.startsWith("tool:refine_recommendation")));
+});
+
+Deno.test("refine_recommendation honours an explicit budget over the parsed feedback", async () => {
+  const ctx = fakeCtx();
+  const r = await refineRecommendation(ctx, {
+    category: "cellular",
+    feedback: "משהו אחר",
+    budget: 30,
+  });
+  assert(r.ok);
+  const recs = r.data!.recommendations as Array<Record<string, unknown>>;
+  // Only c2 (29₪) is at/under 30 — it must lead; the over-budget rows are penalised.
+  assertEquals(recs[0].id, "c2");
+});
+
+Deno.test("refine_recommendation excludes a rejected plan even by derived ceiling", async () => {
+  const ctx = fakeCtx();
+  // Reject c3 (99₪) as expensive with no explicit budget → derive a ceiling just
+  // under 99, and exclude c3. The fresh set is genuinely cheaper real rows.
+  const r = await refineRecommendation(ctx, {
+    category: "cellular",
+    feedback: "יקר מדי",
+    prevPlanIds: ["c3"],
+  });
+  const recs = r.data!.recommendations as Array<Record<string, unknown>>;
+  for (const rec of recs) {
+    assert(rec.id !== "c3");
+    assert((rec.price as number) < 99, "derived cheaper ceiling honoured");
+  }
+});
+
+Deno.test("refine_recommendation surfaces a saving only with a real bill (truth-only)", async () => {
+  const noBill = await refineRecommendation(fakeCtx(), { category: "cellular", feedback: "יקר", prevPlanIds: ["c1"] });
+  assertEquals(noBill.data!.hasBaseline, false);
+  for (const rec of noBill.data!.recommendations as Array<Record<string, unknown>>) {
+    assertEquals(rec.annualSaving, undefined);
+  }
+  const withBill = await refineRecommendation(fakeCtx(), {
+    category: "cellular",
+    feedback: "יקר",
+    currentBill: 90,
+    prevPlanIds: ["c1"],
+  });
+  assertEquals(withBill.data!.hasBaseline, true);
+  const cheap = (withBill.data!.recommendations as Array<Record<string, unknown>>).find((x) => x.id === "c2")!;
+  assertEquals(cheap.annualSaving, (90 - 29) * 12);
+});
+
+Deno.test("refine_recommendation is honest when the catalogue can't satisfy the objection", async () => {
+  // Single cellular plan; the user rejects it → nothing left to offer. We say so,
+  // we DON'T fabricate an alternative.
+  const onePlan: ScorablePlan[] = [{ id: "only", cat: "cellular", provider: "X", plan: "p", price: 50 }];
+  const ctx = fakeCtx({ plans: onePlan });
+  const r = await refineRecommendation(ctx, { category: "cellular", feedback: "יקר", prevPlanIds: ["only"] });
+  assert(r.ok);
+  assertEquals((r.data!.recommendations as unknown[]).length, 0);
+  assert(typeof r.note === "string" && r.note!.length > 0, "honest 'nothing real to offer' note");
+});
+
+Deno.test("refine_recommendation localizes its note (English) and stays grounded", async () => {
+  const ctx = fakeCtx({ lang: "en" });
+  const r = await refineRecommendation(ctx, { category: "cellular", feedback: "too expensive", prevPlanIds: ["c1"] });
+  assert(r.ok);
+  assert(/cheaper|catalogue/i.test(r.note!), "note rendered in English");
+  // Grounding unchanged: the leading pick is still a real catalogue id.
+  assertEquals((r.data!.recommendations as Array<Record<string, unknown>>)[0].id, "c2");
+});
+
+// ── diagnostic descriptions: the new guidance is present + tools intact ────────
+
+Deno.test("every executor has a matching declaration and vice-versa (registry parity)", () => {
+  const execNames = Object.keys(TOOL_EXECUTORS).sort();
+  const declNames = TOOL_DECLARATIONS.map((d) => d.name).sort();
+  assertEquals(execNames, declNames, "TOOL_EXECUTORS and TOOL_DECLARATIONS stay in lockstep");
+  // All the pre-existing tools survived the rewrite.
+  for (
+    const name of [
+      "search_plans",
+      "recommend_plans",
+      "get_provider",
+      "analyze_bill",
+      "suggest_retention_offer",
+      "generate_referral_code",
+      "generate_switch_kit",
+      "create_lead",
+      "book_callback",
+      "escalate_to_human",
+    ]
+  ) {
+    assert(execNames.includes(name), `existing tool kept: ${name}`);
+  }
 });

@@ -85,7 +85,7 @@ function cfg(over: Partial<Cfg> = {}): Cfg {
     openai: "", anthropic: "", gemini: "",
     webhookSecret: "",
     zoomAccountId: "", zoomClientId: "", zoomClientSecret: "", zoomHostEmail: "",
-    googleServiceAccount: "", googleCalendarId: "",
+    googleServiceAccount: "", googleCalendarId: "", googleSpreadsheetId: "",
     allowedUserIds: [42, 987654],
     src: {},
     ...over,
@@ -148,9 +148,9 @@ Deno.test("isRelayActive requires BOTH bot_enabled=false AND a non-empty relay t
   assertFalse(cb.isRelayActive(null));
 });
 
-// ── 1) TAKE-OVER flips bot_enabled=false + relay_tg_chat_id = rep chat id ───────
+// ── 1) TAKE-OVER flips bot_enabled=false + relay_tg_chat_id = TEAM GROUP chat ───
 
-Deno.test("take-over flips bot_enabled=false + relay_tg_chat_id to the pressing rep's chat", async () => {
+Deno.test("take-over flips bot_enabled=false + relay_tg_chat_id to the team group chat (not the rep's personal id, which a bot cannot DM)", async () => {
   const REP_CHAT = 987654;
   const convoPatch: Capture[] = [];
   const routes: Route[] = [
@@ -178,7 +178,9 @@ Deno.test("take-over flips bot_enabled=false + relay_tg_chat_id to the pressing 
     assertEquals(res.ok, true);
     assertEquals(convoPatch.length, 1, "exactly one conversation PATCH");
     assertEquals(convoPatch[0].body.bot_enabled, false);
-    assertEquals(convoPatch[0].body.relay_tg_chat_id, String(REP_CHAT));
+    // Relay target is the TEAM GROUP (cfg.tgChat="-1001"), NOT the rep's personal
+    // id (REP_CHAT) — a bot cannot message a user who never opened a chat with it.
+    assertEquals(convoPatch[0].body.relay_tg_chat_id, "-1001");
   } finally {
     s.restore();
   }

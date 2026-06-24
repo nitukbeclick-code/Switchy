@@ -230,7 +230,7 @@ function cfg(over: Partial<Cfg> = {}): Cfg {
     openai: "", anthropic: "", gemini: "",
     webhookSecret: "",
     zoomAccountId: "", zoomClientId: "", zoomClientSecret: "", zoomHostEmail: "",
-    googleServiceAccount: "", googleCalendarId: "",
+    googleServiceAccount: "", googleCalendarId: "", googleSpreadsheetId: "",
     allowedUserIds: [], src: {},
     ...over,
   };

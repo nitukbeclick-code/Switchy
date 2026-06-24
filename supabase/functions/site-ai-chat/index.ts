@@ -48,7 +48,7 @@ import { fetchRows, insertRow } from "../_shared/db.ts";
 import { jlog } from "../_shared/log.ts";
 import { type AiKeys } from "../_shared/ai.ts";
 import { corsHeaders, preflight } from "../_shared/cors.ts";
-import { type Plan, plansFromSnapshot } from "../_shared/catalogue.ts";
+import { type Plan, plansFromRows, plansFromSnapshot } from "../_shared/catalogue.ts";
 import { type AiLeadInput, captureAiLead, detectSwitchIntent } from "../_shared/leads.ts";
 import { runAgent } from "../_shared/agent.ts";
 import {
@@ -81,10 +81,33 @@ function json(req: Request, body: unknown, status = 200): Response {
 
 type ChatTurn = { role: string; text: string };
 
-// Bundled at deploy time (the production site isn't fetched at runtime) — refresh
-// plans-snapshot.json from site/data/plans.json and redeploy when prices change.
-function loadPlans(): Plan[] {
-  return plansFromSnapshot(plansSnapshot);
+// Grounding catalogue — read LIVE from public.plans (the SAME service-role read
+// the WhatsApp/Telegram webhooks use) so the site agent never drifts from the
+// catalogue the other channels answer from. Cached in-memory for the instance
+// lifetime with a short TTL so a price change is picked up within a minute
+// without hammering PostgREST on every chat turn.
+//
+// FALLBACK: if the live read fails (fetchRows → null) OR returns no usable rows,
+// we fall back to the bundled plans-snapshot.json so an outage degrades to a
+// (possibly stale) grounded answer rather than an empty catalogue / hard fail.
+// The snapshot is the floor, never the default.
+const PLANS_TTL_MS = 60_000;
+let _plans: Plan[] | null = null;
+let _plansAt = 0;
+async function loadPlans(): Promise<Plan[]> {
+  const now = Date.now();
+  if (_plans && now - _plansAt < PLANS_TTL_MS) return _plans;
+  const rows = await fetchRows<Record<string, unknown>>(
+    "/rest/v1/plans?select=id,provider,category,price,price_unit,specs,subtitle,kind,title&limit=1000",
+  );
+  const live = rows ? plansFromRows(rows) : [];
+  // Snapshot fallback on a failed read or an empty live catalogue — never serve
+  // the agent an empty grounding when we have a bundled snapshot to fall back to.
+  const plans = live.length ? live : plansFromSnapshot(plansSnapshot);
+  if (!live.length) jlog({ at: "ai-chat.plans", live: live.length, fallback: "snapshot" });
+  _plans = plans;
+  _plansAt = now;
+  return plans;
 }
 
 function clientIp(req: Request): string {
@@ -238,7 +261,7 @@ Deno.serve(async (req: Request) => {
       message,
       history,
       keys,
-      plans: loadPlans(),
+      plans: await loadPlans(),
       toolContext: {
         conversationId: sessionId || null,
         contactId: null,

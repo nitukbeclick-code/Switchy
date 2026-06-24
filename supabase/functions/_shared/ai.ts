@@ -402,6 +402,64 @@ export async function callGeminiVision(
   throw new Error("gemini vision request failed: " + lastStatus);
 }
 
+// ── Groq Whisper (WhatsApp VOICE-NOTE → text) ────────────────────────────────
+// Transcribe an inbound voice note to text via Groq's OpenAI-compatible audio
+// endpoint (whisper-large-v3), so a spoken message reaches the SAME grounded
+// agent path as a typed one. Hebrew-pinned (language="he") and asks for the raw
+// transcript (response_format="text"). FAIL-SOFT by contract: any failure — no
+// key, non-2xx, network/timeout, or an empty body — returns "" + jlog, never
+// throws to the caller (the webhook then sends a friendly "write me instead"
+// nudge). The multipart upload is bounded by VISION_TIMEOUT_MS via the same
+// AbortController wrapper the rest of this module uses, so a hung STT call can't
+// pin the function.
+export async function transcribeAudio(
+  groqKey: string,
+  audio: { mimeType: string; bytes: Uint8Array },
+): Promise<string> {
+  if (!groqKey || !audio?.bytes?.length) return "";
+  try {
+    const form = new FormData();
+    // Name the blob with an extension Groq accepts; the mime type carries the
+    // real codec (audio/ogg for a WhatsApp voice note).
+    const ext = audio.mimeType.includes("mp4") || audio.mimeType.includes("m4a")
+      ? "m4a"
+      : audio.mimeType.includes("mpeg") || audio.mimeType.includes("mp3")
+      ? "mp3"
+      : audio.mimeType.includes("wav")
+      ? "wav"
+      : "ogg";
+    form.append(
+      "file",
+      new Blob([audio.bytes as BlobPart], { type: audio.mimeType || "audio/ogg" }),
+      `voice.${ext}`,
+    );
+    form.append("model", "whisper-large-v3");
+    form.append("language", "he");
+    form.append("response_format", "text");
+    const r = await fetchWithTimeout(
+      "https://api.groq.com/openai/v1/audio/transcriptions",
+      {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${groqKey}` },
+        body: form,
+      },
+      VISION_TIMEOUT_MS,
+      "groq-whisper",
+    );
+    if (!r.ok) {
+      jlog({ at: "ai.transcribeAudio", ok: false, status: r.status });
+      return "";
+    }
+    // response_format="text" returns the bare transcript (not JSON).
+    const text = (await r.text()).trim();
+    jlog({ at: "ai.transcribeAudio", ok: !!text, chars: text.length });
+    return text;
+  } catch (e) {
+    jlog({ at: "ai.transcribeAudio", ok: false, error: String(e) });
+    return "";
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Gemini FUNCTION CALLING (the tool-using agent path) — added alongside the text
 // path above WITHOUT touching it. callGemini/generateReply/callGeminiVision keep

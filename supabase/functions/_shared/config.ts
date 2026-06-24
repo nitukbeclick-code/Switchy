@@ -66,17 +66,20 @@ async function resolveCfg(): Promise<Cfg> {
   // calendar event creation (the confirm path stays fail-soft).
   const [googleServiceAccount, n] = pick("google_service_account_key", firstEnv(["GOOGLE_SERVICE_ACCOUNT_KEY"]));
   const [googleCalendarId, o] = pick("google_calendar_id", firstEnv(["GOOGLE_CALENDAR_ID"]));
+  // Google Sheets lead-log spreadsheet (optional — same service-account as the
+  // calendar). '' disables row-logging (the fan-out stays fail-soft).
+  const [googleSpreadsheetId, p] = pick("google_spreadsheet_id", firstEnv(["GOOGLE_SPREADSHEET_ID"]));
   return {
     tgToken, tgChat, resend, resendFrom, notifyEmail, openai, anthropic, gemini, webhookSecret,
     zoomAccountId, zoomClientId, zoomClientSecret, zoomHostEmail,
-    googleServiceAccount, googleCalendarId,
+    googleServiceAccount, googleCalendarId, googleSpreadsheetId,
     allowedUserIds: parseUserIds(allowedCsv),
     src: {
       telegram_bot_token: a, telegram_chat_id: b, resend_api_key: c, resend_from: d,
       leads_notify_email: e, openai_api_key: f, anthropic_api_key: g, gemini_api_key: gg,
       lead_webhook_secret: h, telegram_allowed_user_ids: i,
       zoom_account_id: j, zoom_client_id: k, zoom_client_secret: l, zoom_host_email: m,
-      google_service_account_key: n, google_calendar_id: o,
+      google_service_account_key: n, google_calendar_id: o, google_spreadsheet_id: p,
     },
   };
 }

@@ -201,7 +201,7 @@ const cfgWith = (over: Partial<Cfg>): Cfg => ({
   tgToken: "t", tgChat: "-100123", resend: "", resendFrom: "", notifyEmail: "",
   openai: "", anthropic: "", gemini: "", webhookSecret: "s",
   zoomAccountId: "", zoomClientId: "", zoomClientSecret: "", zoomHostEmail: "",
-  googleServiceAccount: "", googleCalendarId: "",
+  googleServiceAccount: "", googleCalendarId: "", googleSpreadsheetId: "",
   allowedUserIds: [42], src: {},
   ...over,
 });

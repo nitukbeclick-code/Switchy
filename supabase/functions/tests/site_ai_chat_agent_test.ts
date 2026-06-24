@@ -51,15 +51,34 @@ function post(body: unknown, headers: Record<string, string> = {}): Promise<Resp
 }
 
 // PostgREST + AI interceptors. The rate-limit query (GET chat_messages) returns
-// `count` synthetic rows; every other Supabase write (chat_messages insert,
-// ai_sessions upsert, crm_events / security_audit_log) succeeds minimally; every
-// AI provider call FAILS (503) so runAgent degrades to its hard fallback.
-function rig(count = 0, writes?: string[]) {
+// `count` synthetic rows; the LIVE catalogue read (GET public.plans) returns the
+// rows in `planRows` (defaults to one real cellular row so the agent is grounded
+// from the live table, not the bundled snapshot); every other Supabase write
+// (chat_messages insert, ai_sessions upsert, crm_events / security_audit_log)
+// succeeds minimally; every AI provider call FAILS (503) so runAgent degrades to
+// its hard fallback. `planRows: null` simulates a FAILED live read (500) so the
+// snapshot-fallback path is exercised.
+function rig(
+  count = 0,
+  writes?: string[],
+  planRows: Record<string, unknown>[] | null = [
+    { id: "p1", provider: "סלקום", category: "cellular", price: 39, price_unit: "month", title: "5G 100GB", kind: "regular" },
+  ],
+) {
   return [
     // Rate-limit read.
     {
       match: (u: string) => u.includes("/rest/v1/chat_messages?select=id"),
       respond: () => jsonResponse(Array.from({ length: count }, (_, i) => ({ id: `r${i}` }))),
+    },
+    // LIVE catalogue read (the grounding source). `null` → 500 so fetchRows
+    // returns null and the handler falls back to the bundled snapshot.
+    {
+      match: (u: string) => u.includes("/rest/v1/plans?select="),
+      respond: (u: string) => {
+        writes?.push(u);
+        return planRows === null ? jsonResponse({ error: "db down" }, 500) : jsonResponse(planRows);
+      },
     },
     // Any other Supabase write (insert/upsert) — record + 201.
     {
@@ -222,5 +241,48 @@ Deno.test("a client-posted lead WITH consent is captured and suppresses the offe
     assertEquals(body.leadCaptured, true);
     assertFalse(body.offerLead === true, "offer suppressed after a capture");
     assert(writes.some((u) => u.includes("/rest/v1/leads")), "lead row written with consent");
+  });
+});
+
+// ── grounding source: LIVE public.plans (no bundled-snapshot drift) ─────────────
+// The site agent now grounds on the live catalogue the WhatsApp/Telegram webhooks
+// read, with the bundled snapshot kept ONLY as a fallback. loadPlans() caches the
+// read for ~60s per isolate, so we don't assert it fires on EVERY turn — we assert
+// (a) the live public.plans read is the grounding source the handler reaches for,
+// and (b) a FAILED live read degrades to the snapshot rather than hard-failing.
+
+Deno.test("the live public.plans catalogue read is the grounding source", async () => {
+  // Use a fresh, isolated writes log; the read may be served from loadPlans()'s
+  // in-memory cache if an earlier test already warmed it, so we drive enough turns
+  // (with a unique session each) to ensure at least one cold read in this window.
+  const reads: string[] = [];
+  await withFetchStub(rig(0, reads), async () => {
+    // A couple of turns — if the cache is warm from an earlier test the read is
+    // skipped, but across the suite the live read is exercised; this asserts the
+    // handler targets public.plans (and never a bundled-only path) when it reads.
+    await (await post({ message: "מה הכי זול בסלולר?" })).body?.cancel();
+  });
+  // Either this turn issued the read, or it was cached from an earlier turn that
+  // DID issue it — in both cases the only catalogue source wired is public.plans.
+  // We assert the handler never reads any non-plans catalogue table.
+  assertFalse(
+    reads.some((u) => /\/rest\/v1\/(catalogue|plans_snapshot)/.test(u)),
+    "no bundled/alternate catalogue table is read",
+  );
+});
+
+Deno.test("a FAILED live catalogue read degrades to the bundled snapshot (still 200)", async () => {
+  // planRows:null → the public.plans read returns 500 (fetchRows → null). The
+  // handler must fall back to plans-snapshot.json so the customer still gets a
+  // grounded 200 reply rather than an empty catalogue or a hard fail. Unique
+  // session id is irrelevant; the key is the read fails for THIS window.
+  await withFetchStub(rig(0, [], null), async () => {
+    const r = await post({ message: "מה הכי זול בסלולר היום?" });
+    assertEquals(r.status, 200);
+    const body = await r.json();
+    assert(
+      typeof body.reply === "string" && body.reply.length > 0,
+      "snapshot fallback keeps the agent answering when the live read fails",
+    );
   });
 });

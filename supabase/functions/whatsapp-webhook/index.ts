@@ -36,6 +36,7 @@ import {
   callGeminiVision,
   type ChatTurn,
   extractJson,
+  transcribeAudio,
   VISION_PROMPT,
 } from "../_shared/ai.ts";
 // Shared Cloud API toolkit (fail-soft): markRead/markTyping make the bot feel
@@ -384,8 +385,15 @@ async function sendChunkedText(to: string, body: string): Promise<string | null>
   return firstId;
 }
 
-// Inbound bill image → bytes → base64 (two bearer-gated, short-lived Graph hops).
-async function downloadMedia(mediaId: string): Promise<{ mimeType: string; data: string } | null> {
+// Inbound media → raw bytes (two bearer-gated, short-lived Graph hops). The
+// shared download core: a bill image and a voice note both fetch the same way,
+// they only differ in how the bytes are consumed (base64 for Vision, raw bytes
+// for Whisper). Returns the codec mime + the bytes, or null on any failure /
+// over-size (fail-soft). `fallbackMime` is used when Graph omits content-type.
+async function downloadMediaBytes(
+  mediaId: string,
+  fallbackMime: string,
+): Promise<{ mimeType: string; bytes: Uint8Array } | null> {
   if (!TOKEN) return null;
   try {
     const meta = await fetch(`https://graph.facebook.com/${GRAPH_VER}/${mediaId}`, {
@@ -398,14 +406,33 @@ async function downloadMedia(mediaId: string): Promise<{ mimeType: string; data:
     if (!bin.ok) { jlog({ at: "wa.media", ok: false, step: "fetch", status: bin.status }); return null; }
     const bytes = new Uint8Array(await bin.arrayBuffer());
     if (bytes.length > MAX_MEDIA_BYTES) { jlog({ at: "wa.media", ok: false, step: "size", bytes: bytes.length }); return null; }
-    let s = "";
-    const chunk = 0x8000;
-    for (let i = 0; i < bytes.length; i += chunk) s += String.fromCharCode(...bytes.subarray(i, i + chunk));
-    return { mimeType: bin.headers.get("content-type") || "image/jpeg", data: btoa(s) };
+    return { mimeType: bin.headers.get("content-type") || fallbackMime, bytes };
   } catch (e) {
     jlog({ at: "wa.media", ok: false, error: String(e) });
     return null;
   }
+}
+
+// Inbound bill image → bytes → base64 (for Gemini Vision's inlineData).
+async function downloadMedia(mediaId: string): Promise<{ mimeType: string; data: string } | null> {
+  const got = await downloadMediaBytes(mediaId, "image/jpeg");
+  if (!got) return null;
+  let s = "";
+  const chunk = 0x8000;
+  for (let i = 0; i < got.bytes.length; i += chunk) s += String.fromCharCode(...got.bytes.subarray(i, i + chunk));
+  return { mimeType: got.mimeType, data: btoa(s) };
+}
+
+// Inbound voice note → transcript (Groq Whisper). Downloads the audio bytes then
+// transcribes them in Hebrew. Returns "" on any failure (no token, unreadable
+// media, no Groq key, STT failure) so the caller sends a friendly "write to me
+// instead" nudge — never throws. The transcript, when non-empty, is fed to the
+// SAME agent path as a typed message.
+async function transcribeVoiceNote(mediaId: string, aiKeys: AiKeys): Promise<string> {
+  if (!aiKeys.groq) return "";
+  const audio = await downloadMediaBytes(mediaId, "audio/ogg");
+  if (!audio) return "";
+  return await transcribeAudio(aiKeys.groq, audio);
 }
 
 // ── persistence (service-role PostgREST) ─────────────────────────────────────
@@ -935,7 +962,44 @@ async function handleMessage(m: Row, profileName: string | undefined, aiKeys: Ai
   const canType = !!wamid && !optedOut;
   if (canType) await waMarkTyping(wamid, true);
 
-  if (type === "image") {
+  // VOICE NOTE → transcript. A WhatsApp voice note (type "audio", with voice:true)
+  // or any inbound audio is transcribed to Hebrew text via Groq Whisper, then
+  // routed through the SAME free-text agent path as if the customer had typed it.
+  // The guard chain above (HMAC / §30A opt-out / human-takeover / rate-limit) is
+  // UNTOUCHED — this runs only after all of it. If we can't hear the message (no
+  // Groq key, unreadable media, empty transcript), we reply with a friendly ask to
+  // write instead. `routeType`/`routeText` let the existing dispatch below treat a
+  // successful transcript exactly like a typed message (no duplicated agent block).
+  let routeType = type;
+  let routeText = text;
+  // True once an inbound voice note was successfully transcribed — used to skip
+  // the first-contact WELCOME branch so a spoken first message reaches the agent
+  // directly (the customer asked something out loud; answer it).
+  let transcribed = false;
+  if (type === "audio" || type === "voice") {
+    intent = "qa";
+    const mediaId = (m as Row & { audio?: { id?: string }; voice?: { id?: string } }).audio?.id ??
+      (m as Row & { voice?: { id?: string } }).voice?.id;
+    const transcript = mediaId ? await transcribeVoiceNote(String(mediaId), aiKeys) : "";
+    if (transcript) {
+      // Treat the transcript as a typed free-text message: fall through to the
+      // text path below by rebranding the routing type + text.
+      routeType = "text";
+      routeText = transcript;
+      transcribed = true;
+      jlog({ at: "wa.voice", ok: true, chars: transcript.length });
+    } else {
+      // Couldn't hear it → friendly Hebrew nudge to write instead. We DON'T fall
+      // through (routeType stays "audio"), so no agent/text branch runs below.
+      reply = "לא הצלחתי לשמוע את ההודעה הקולית — אפשר לכתוב לי בכתב? 🙏";
+      jlog({ at: "wa.voice", ok: false });
+    }
+  }
+
+  if (routeType === "audio" || routeType === "voice") {
+    // Voice note we couldn't transcribe — `reply` is already the friendly nudge
+    // set above; skip every routing branch and go straight to send (step 5/6).
+  } else if (routeType === "image") {
     intent = "bill";
     const mediaId = (m as Row & { image?: { id?: string } }).image?.id;
     if (!mediaId) {
@@ -1020,13 +1084,15 @@ async function handleMessage(m: Row, profileName: string | undefined, aiKeys: Ai
       // — is routed straight to the grounded compare template.
       mergedCtx = mergeContext(mergedCtx, { topic: "compare" });
     }
-  } else if (firstContact) {
-    // First message from this contact → greet, explain, offer the menu.
+  } else if (firstContact && !transcribed) {
+    // First message from this contact → greet, explain, offer the menu. A
+    // transcribed voice note skips this (transcribed === true) and routes to the
+    // agent below, so a spoken first question gets a real answer, not the menu.
     intent = "greeting";
     reply = WELCOME_REPLY;
     withMenu = true;
   } else {
-    const t = text.trim();
+    const t = routeText.trim();
     // Update the structured memory with anything this message reveals
     // (category/budget/abroad/topic), merged onto what we already knew.
     const slots = extractSlots(t);

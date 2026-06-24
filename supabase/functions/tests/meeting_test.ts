@@ -209,7 +209,7 @@ Deno.test("zoomConfigured requires all three S2S credentials", () => {
     tgToken: "t", tgChat: "-100123", resend: "", resendFrom: "", notifyEmail: "",
     openai: "", anthropic: "", gemini: "", webhookSecret: "s",
     zoomAccountId: "acc", zoomClientId: "cid", zoomClientSecret: "sec", zoomHostEmail: "",
-    googleServiceAccount: "", googleCalendarId: "",
+    googleServiceAccount: "", googleCalendarId: "", googleSpreadsheetId: "",
     allowedUserIds: [42], src: {},
     ...over,
   });

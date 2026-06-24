@@ -298,7 +298,10 @@ as $$
      'openai_api_key', 'anthropic_api_key', 'lead_webhook_secret',
      -- Zoom Server-to-Server OAuth (optional — the bot falls back to the
      -- reply-with-link flow when these are absent)
-     'zoom_account_id', 'zoom_client_id', 'zoom_client_secret', 'zoom_host_email'
+     'zoom_account_id', 'zoom_client_id', 'zoom_client_secret', 'zoom_host_email',
+     -- Google integration (Calendar event sync + Sheets lead logging) — see
+     -- google-logging-2026-06.sql; config.ts reads these three.
+     'google_service_account_key', 'google_calendar_id', 'google_spreadsheet_id'
    );
 $$;
 revoke execute on function public.get_lead_notify_config() from public, anon, authenticated;

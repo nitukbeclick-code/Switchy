@@ -196,9 +196,16 @@ async function handleRelayTakeover(
   // Flip the gate OFF + point the relay at THIS rep's Telegram chat. patchCount on
   // the conversation id confirms the write landed (0 rows = the conv vanished or a
   // DB error) — the atomic-claim style: act on a filtered id, trust the row count.
+  // Relay the customer's inbound to the TEAM GROUP chat (cfg.tgChat) — where the
+  // lead card + this takeover button live and where the owner already is — NOT
+  // the pressing rep's personal user id. A bot CANNOT message a user who never
+  // opened a chat with it, so relaying to cb.from.id silently 403'd (fail-soft)
+  // and the owner saw nothing. The group is the one chat the bot can always post
+  // to. repChat is still recorded as the takeover ACTOR in the audit below.
+  const relayChat = String(cfg.tgChat);
   const n = await patchCount(`/rest/v1/whatsapp_conversations?id=eq.${encodeURIComponent(convo.id)}`, {
     bot_enabled: false,
-    relay_tg_chat_id: String(repChat),
+    relay_tg_chat_id: relayChat,
   });
   if (n === 0) {
     await answer("ההשתלטות נכשלה — נסו שוב בעוד רגע");
@@ -208,7 +215,7 @@ async function handleRelayTakeover(
     lead_id: leadId,
     conversation_id: convo.id,
     contact_id: convo.contact_id ?? null,
-    relay_tg_chat_id: String(repChat),
+    relay_tg_chat_id: relayChat,
   });
   await answer("השתלטת על השיחה 🤝 — הודעות הלקוח יגיעו לכאן");
   await sendTelegram(

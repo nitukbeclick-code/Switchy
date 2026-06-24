@@ -33,6 +33,7 @@ function blankCfg(over: Partial<Cfg> = {}): Cfg {
     zoomHostEmail: "",
     googleServiceAccount: "",
     googleCalendarId: "",
+    googleSpreadsheetId: "",
     allowedUserIds: [],
     src: {},
     ...over,
@@ -45,6 +46,7 @@ Deno.test("integrationsStatus reports all-off for a blank config", () => {
   assertEquals(integrationsStatus(blankCfg()), {
     zoom: false,
     calendar: false,
+    sheets: false,
     email: false,
     telegram: false,
   });

@@ -34,6 +34,7 @@ import { buildMeetingText, meetingKeyboard } from "../_shared/meetings.ts";
 import { buildReturningLine, type PriorLead, type PriorMeeting } from "../_shared/agenda.ts";
 import { zoomConfigured } from "../_shared/zoom.ts";
 import { gcalConfigured } from "../_shared/google_calendar.ts";
+import { appendRow, buildLeadSheetRow, sheetsConfigured } from "../_shared/google_sheets.ts";
 import { aiTriage } from "./triage.ts";
 import { BOT_COMMANDS } from "./commands.ts";
 import { handleCallback, handleTeamMessage } from "./callbacks.ts";
@@ -97,10 +98,11 @@ async function rateLimited(route: string, secret: string): Promise<Response | nu
 // One compact "are the integrations wired?" object, surfaced both in ?action=health
 // and in the console-data payload (the console health strip renders it). Booleans
 // only — never the secret values themselves.
-export function integrationsStatus(cfg: Cfg): { zoom: boolean; calendar: boolean; email: boolean; telegram: boolean } {
+export function integrationsStatus(cfg: Cfg): { zoom: boolean; calendar: boolean; sheets: boolean; email: boolean; telegram: boolean } {
   return {
     zoom: zoomConfigured(cfg),
     calendar: gcalConfigured(cfg),
+    sheets: sheetsConfigured(cfg),
     email: !!cfg.resend,
     telegram: !!cfg.tgToken,
   };
@@ -316,14 +318,18 @@ Deno.serve(async (req: Request) => {
   const returningLine = lead.id ? await returningLineFor(lead.phone, "leads", lead.id) : "";
 
   const triage = await aiTriage(cfg, lead);
-  const [tg, email] = await Promise.all([
+  // Sheets row-logging runs alongside the Telegram/email sends — it is fully
+  // fail-soft (appendRow returns { ok:false }, never throws), so a logging miss
+  // can NEVER change the tg/email outcome below. Best-effort, off when unconfigured.
+  const [tg, email, sheet] = await Promise.all([
     sendTelegram(cfg, returningLine + buildText(lead, triage), leadKeyboard(lead, triage.draft)),
     sendEmail(cfg, "🔔 פנייה חדשה — Switchy AI", buildHtml(lead, triage)),
+    appendRow(cfg, "Leads!A:K", buildLeadSheetRow(lead)),
   ]);
   // stamp only on Telegram success: an email-only delivery has no interactive
   // card, so the sweep should keep retrying the chat path
   if (tg.ok) await markNotified("leads", lead.id);
-  jlog({ at: "notify", lead: lead.id, telegram: tg.ok, email: email.ok, hot: triage.score >= 4 });
+  jlog({ at: "notify", lead: lead.id, telegram: tg.ok, email: email.ok, sheet: sheet.ok, hot: triage.score >= 4 });
 
   return json({ ok: tg.ok || email.ok, telegram: { ok: tg.ok, error: tg.error }, email });
 });

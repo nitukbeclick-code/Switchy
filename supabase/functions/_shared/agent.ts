@@ -47,6 +47,69 @@ import { TOOL_DECLARATIONS, TOOL_EXECUTORS, type ToolContext, type ToolResult } 
 
 export type AgentChannel = "whatsapp" | "site" | "app";
 
+// ── Multilingual support ─────────────────────────────────────────────────────
+// The agent serves Israel's mixed population: Hebrew is the default, but a real
+// share of users write in Arabic, Russian, or English. We DETECT the user's
+// message language and instruct the model to REPLY IN THAT LANGUAGE — while the
+// catalogue grounding, the cited [Sn] rows, and every compliance rule stay
+// IDENTICAL (same real data, same §30A/§7b/consent gates). Only the reply
+// language and the one-line "answer in X" persona directive change. Hebrew stays
+// the safe fallback for anything we can't classify.
+export type AgentLang = "he" | "ar" | "ru" | "en";
+
+const SUPPORTED_LANGS: readonly AgentLang[] = ["he", "ar", "ru", "en"];
+
+function isSupportedLang(v: unknown): v is AgentLang {
+  return typeof v === "string" && (SUPPORTED_LANGS as readonly string[]).includes(v);
+}
+
+// Lightweight script-based language detection — no network, no model call. We
+// classify by the dominant alphabet of the message's letters:
+//   • Hebrew block (U+0590–U+05FF) → he
+//   • Arabic block (U+0600–U+06FF) → ar
+//   • Cyrillic block (U+0400–U+04FF) → ru
+//   • Latin letters → en
+// Whichever script supplies the most letters wins; ties and empty/neutral input
+// (digits, emoji, punctuation only) fall back to Hebrew (the default audience).
+// This is intentionally simple and deterministic so it's unit-testable and can't
+// drift; it errs toward Hebrew, which is always a safe reply language here.
+export function detectLang(message: string): AgentLang {
+  const s = String(message ?? "");
+  let he = 0, ar = 0, ru = 0, en = 0;
+  for (const ch of s) {
+    const c = ch.codePointAt(0)!;
+    if (c >= 0x0590 && c <= 0x05ff) he++;
+    else if (c >= 0x0600 && c <= 0x06ff) ar++;
+    else if (c >= 0x0400 && c <= 0x04ff) ru++;
+    else if ((c >= 0x41 && c <= 0x5a) || (c >= 0x61 && c <= 0x7a)) en++;
+  }
+  const max = Math.max(he, ar, ru, en);
+  if (max === 0) return "he"; // no script signal → default Hebrew
+  // Hebrew wins ties (its block also covers some shared punctuation usage here).
+  if (he === max) return "he";
+  if (ar === max) return "ar";
+  if (ru === max) return "ru";
+  return "en";
+}
+
+// The per-language reply directive folded into the persona. Each says, IN that
+// language: "the user wrote in X — reply only in X, naturally and fluently".
+// Hebrew's directive is empty because the base persona is already Hebrew-first.
+const LANG_DIRECTIVE: Record<AgentLang, string> = {
+  he: "",
+  ar: "\n- المستخدم يكتب بالعربية. أجب بالعربية فقط، بشكل طبيعي وواضح. حافظ على نفس الدقة والمصادر [Sn] ونفس قواعد الامتثال.",
+  ru: "\n- Пользователь пишет по-русски. Отвечай только на русском, естественно и понятно. Сохраняй те же данные, источники [Sn] и те же правила соответствия.",
+  en: "\n- The user is writing in English. Reply ONLY in English, naturally and clearly. Keep the same facts, the same [Sn] citations, and the same compliance rules.",
+};
+
+// The base persona is written assuming a Hebrew reply ("ענה/י בעברית בלבד").
+// When the detected language is NOT Hebrew, that single line would contradict
+// the per-language directive, so we neutralize it into a language-agnostic
+// "reply in the user's language" instruction. Hebrew keeps the original line.
+const HEBREW_ONLY_LINE = "- ענה/י בעברית בלבד.";
+const REPLY_IN_USER_LANG_LINE =
+  "- ענה/י בשפת המשתמש (ראה/י ההנחיה בהמשך). שמור/י על אותם נתונים, מקורות [Sn] וכללי ציות.";
+
 // Per-channel persona tuning. WhatsApp = very short, 1-2 emoji ok; site/app =
 // slightly fuller, cite [Sn]. The SHARED rules (grounding + compliance) are
 // identical across channels — only length/tone differ.
@@ -98,6 +161,10 @@ export type RunAgentInput = {
   // Optional pre-extracted bill facts (from a Vision call the caller already did)
   // so the model can analyze_bill without re-reading the image.
   billHint?: { provider?: string; monthly?: number; category?: string; imageId?: string };
+  // Optional reply-language override. When omitted (every existing caller), the
+  // language is auto-detected from `message` (Hebrew default). Pass one of
+  // he/ar/ru/en to force it (e.g. the caller already knows the user's locale).
+  lang?: AgentLang;
 };
 
 export type RunAgentResult = {
@@ -111,10 +178,21 @@ export type RunAgentResult = {
   timedOut: boolean;
 };
 
-function buildSystemPrompt(channel: AgentChannel, plans: ScorablePlan[], billHint?: RunAgentInput["billHint"]): string {
+function buildSystemPrompt(
+  channel: AgentChannel,
+  plans: ScorablePlan[],
+  lang: AgentLang,
+  billHint?: RunAgentInput["billHint"],
+): string {
   const cited = buildCitedCatalogueContext(plans as CataloguePlan[]);
   const styleLine = CHANNEL_STYLE[channel];
-  let prompt = PERSONA_HEADER + styleLine + "\n\nנתוני מסלולים אמיתיים (מקור | קטגוריה | ספק | מסלול | מחיר | תכונות):\n" + cited;
+  // For non-Hebrew replies, neutralize the "answer in Hebrew only" rule and add
+  // the per-language directive. Hebrew keeps the original (the directive is "").
+  const header = lang === "he"
+    ? PERSONA_HEADER
+    : PERSONA_HEADER.replace(HEBREW_ONLY_LINE, REPLY_IN_USER_LANG_LINE);
+  let prompt = header + LANG_DIRECTIVE[lang] + "\n" + styleLine +
+    "\n\nנתוני מסלולים אמיתיים (מקור | קטגוריה | ספק | מסלול | מחיר | תכונות):\n" + cited;
   if (billHint && Number(billHint.monthly) > 0) {
     prompt += `\n\nנתוני חשבון שחולצו מהתמונה (לשימוש עם analyze_bill): ` +
       `ספק=${billHint.provider ?? "?"}, סכום חודשי=₪${Math.round(Number(billHint.monthly))}` +
@@ -144,9 +222,14 @@ async function runTool(
 export async function runAgent(input: RunAgentInput): Promise<RunAgentResult> {
   const { channel, message, keys, plans } = input;
   const history = input.history ?? [];
-  const system = buildSystemPrompt(channel, plans, input.billHint);
+  // Reply language: explicit override wins; otherwise auto-detect from the
+  // message (Hebrew default). Backward-compatible — existing callers pass none.
+  const lang: AgentLang = isSupportedLang(input.lang) ? input.lang : detectLang(message);
+  const system = buildSystemPrompt(channel, plans, lang, input.billHint);
   const toolCalls: { name: string; ok: boolean; preview?: string }[] = [];
-  const ctx: ToolContext = { ...input.toolContext, plans, channel };
+  // Pass the resolved language to the tools so their surfaced notes (retention
+  // script, referral line) are localized to the same language as the reply.
+  const ctx: ToolContext = { ...input.toolContext, plans, channel, lang };
 
   // ── 1) Gemini tool loop (the rich path) ──────────────────────────────────
   if (keys.gemini) {

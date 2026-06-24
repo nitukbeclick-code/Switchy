@@ -41,6 +41,12 @@ import {
   type Plan as CataloguePlan,
 } from "./catalogue.ts";
 import { buildAiLeadRow } from "./leads.ts";
+import { makeReferralCode } from "./referrals.ts";
+
+// Reply languages the agent supports (mirrors AgentLang in agent.ts; kept as a
+// local string-union so tools.ts has no import cycle with agent.ts). Tool-surfaced
+// notes are localized to this so they match the language the model replies in.
+export type ToolLang = "he" | "ar" | "ru" | "en";
 
 // §7b: the commission disclosure the agent MUST state before any lead hand-off.
 export const COMMISSION_DISCLOSURE =
@@ -54,6 +60,9 @@ export type ToolContext = {
   channel: "whatsapp" | "site" | "app";
   conversationId?: string | null;
   contactId?: string | null;
+  // Reply language for tool-surfaced notes (set by runAgent from the detected /
+  // forced language). Defaults to Hebrew when absent (backward-compatible).
+  lang?: ToolLang;
   // Best-effort audit sinks (no-op in tests). preview is PII-light + clipped.
   logCrmEvent?: (ev: { actor: string; event: string; preview?: string }) => Promise<void> | void;
   logSecurityEvent?: (event: string, detail: Record<string, unknown>) => Promise<void> | void;
@@ -62,6 +71,11 @@ export type ToolContext = {
   captureLead?: (input: Record<string, unknown>) => Promise<"captured" | "incomplete" | "error">;
   // Optional human-escalation sink (e.g. flip whatsapp bot_enabled / create lead).
   escalate?: (reason: string) => Promise<boolean> | boolean;
+  // Optional referral-code issuer. In production this is _shared/referrals.ts
+  // issueReferralCode (service-role insert); returns the issued code or null on a
+  // write failure. Tests inject a fake. When absent, generate_referral_code still
+  // returns a real locally-minted code (not persisted) so the tool never hard-fails.
+  issueReferral?: (input: { channel: string; contact?: string | null; conversationId?: string | null; name?: string | null }) => Promise<string | null> | string | null;
 };
 
 // Uniform tool result. `ok` drives whether the agent treats it as success; the
@@ -84,6 +98,17 @@ function asBudget(v: unknown): number | undefined {
   const n = Number(v);
   if (!Number.isFinite(n) || n <= 0) return undefined;
   return Math.min(Math.round(n), 5000);
+}
+
+// Resolve the context language to a supported tool language (Hebrew default).
+function ctxLang(ctx: ToolContext): ToolLang {
+  const l = ctx.lang;
+  return l === "ar" || l === "ru" || l === "en" ? l : "he";
+}
+
+// Pick a localized string from a per-language map (Hebrew is the guaranteed key).
+function tr(lang: ToolLang, m: Record<ToolLang, string>): string {
+  return m[lang] ?? m.he;
 }
 
 // A compact, grounded plan row the model can cite back. Only real fields; the
@@ -398,6 +423,183 @@ export async function escalateToHuman(
   };
 }
 
+// ── suggest_retention_offer ───────────────────────────────────────────────────
+// A GROUNDED negotiation script for a user who wants to stay with their current
+// provider but pay less. It quotes the REAL catalogue market rate — the cheapest
+// comparable plan (any provider) AND the cheapest SAME-provider option — so the
+// user can walk into a retention call with honest leverage ("competitor X offers
+// ₪Y; can you match it?"). It NEVER fabricates a promise: the script is "ask for
+// this, here's the market evidence", not "you will get ₪Z". Language-aware: the
+// human-readable script + note are rendered in the user's reply language; the
+// numbers/providers/plan names are the same real catalogue data in every language.
+export async function suggestRetentionOffer(
+  ctx: ToolContext,
+  args: { provider?: unknown; category?: unknown; currentBill?: unknown; abroad?: unknown },
+): Promise<ToolResult> {
+  const lang = ctxLang(ctx);
+  const providers = catalogueProviders(ctx.plans as CataloguePlan[]);
+  const provider = normalizeProvider(clipStr(args.provider, 60), providers);
+  const category = normalizeCategory(clipStr(args.category, 40));
+  const currentBill = asBudget(args.currentBill);
+  const abroad = args.abroad === true || args.abroad === "true" || category === "abroad";
+
+  if (!category) {
+    await audit(ctx, "suggest_retention_offer", false, "no_category");
+    return {
+      ok: false,
+      reason: "invalid",
+      note: tr(lang, {
+        he: "כדי לבנות תסריט מיקוח אמיתי צריך לדעת איזה שירות (סלולר/אינטרנט/טלוויזיה/משולב/חו\"ל).",
+        ar: "لبناء نص تفاوض حقيقي أحتاج لمعرفة الخدمة (خلوي/إنترنت/تلفزيون/حزمة/خارج البلاد).",
+        ru: "Чтобы составить реальный сценарий, нужно знать услугу (мобильная/интернет/ТВ/пакет/за границей).",
+        en: "To build a real negotiation script I need the service (cellular/internet/tv/triple/abroad).",
+      }),
+    };
+  }
+
+  // Real comparable rows in the SAME category (regular plans only), cheapest-first.
+  let rows = ctx.plans.filter((p) =>
+    p.cat === category && typeof p.price === "number" && ((p as { kind?: string }).kind ?? "regular") === "regular"
+  );
+  if (abroad) rows = rows.filter((p) => p.hasAbroad);
+  rows = [...rows].sort((a, b) => (a.price ?? 0) - (b.price ?? 0));
+
+  if (!rows.length) {
+    await audit(ctx, "suggest_retention_offer", false, `${category}/empty`);
+    return {
+      ok: false,
+      reason: "not_found",
+      note: tr(lang, {
+        he: "אין לי כרגע מסלולים אמיתיים בקטגוריה הזו לבסס עליהם תסריט מיקוח.",
+        ar: "لا توجد لدي حاليًا باقات حقيقية في هذه الفئة لبناء نص التفاوض عليها.",
+        ru: "Сейчас у меня нет реальных тарифов в этой категории для сценария.",
+        en: "I don't have real plans in this category right now to base a script on.",
+      }),
+    };
+  }
+
+  // The cheapest comparable plan overall (the market floor) + the cheapest plan
+  // from the user's OWN provider (so they can ask their provider to match it).
+  const marketBest = rows[0];
+  const sameProvider = provider ? rows.find((p) => p.provider === provider) ?? null : null;
+
+  // Honest annual saving — ONLY if the user gave a real current bill, and only
+  // for a real monthly plan (reuse scoring.ts annualSaving so we never drift).
+  const marketSaving = currentBill ? planAnnualSaving(marketBest, currentBill) : 0;
+  const sameSaving = currentBill && sameProvider ? planAnnualSaving(sameProvider, currentBill) : 0;
+
+  // Build the localized, honest negotiation script. We tell the user exactly what
+  // to say, grounded in the real numbers — never a guaranteed outcome.
+  const marketLine = `${marketBest.provider} — ${marketBest.plan} (₪${marketBest.price})`;
+  const sameLine = sameProvider ? `${sameProvider.provider} — ${sameProvider.plan} (₪${sameProvider.price})` : "";
+  const billPart = currentBill
+    ? tr(lang, {
+      he: `אתם משלמים היום ₪${currentBill}. `,
+      ar: `تدفعون اليوم ₪${currentBill}. `,
+      ru: `Сейчас вы платите ₪${currentBill}. `,
+      en: `You currently pay ₪${currentBill}. `,
+    })
+    : "";
+
+  const script = tr(lang, {
+    he:
+      `${billPart}המחיר הזול בשוק היום בקטגוריה הזו: ${marketLine}. ` +
+      (provider
+        ? (sameProvider
+          ? `אצל ${provider} עצמם המסלול הזול הוא ${sameLine}. תוכלו להתקשר לשימור ולומר: "ראיתי ש${marketBest.provider} מציעים ${marketBest.plan} ב-₪${marketBest.price} — אתם יכולים להשוות או להתקרב? אחרת אני שוקל/ת לעבור." `
+          : `לא מצאתי מסלול פעיל של ${provider} בקטגוריה הזו, אז ה-${marketLine} הוא נקודת ההשוואה למיקוח. `)
+        : `תוכלו להשתמש ב-${marketLine} כנקודת ייחוס למול הספק הנוכחי שלכם. `) +
+      `זו נקודת פתיחה אמיתית למשא ומתן — לא הבטחה; ההחלטה בידי הספק.`,
+    ar:
+      `${billPart}أرخص سعر في السوق حاليًا في هذه الفئة: ${marketLine}. ` +
+      (provider
+        ? (sameProvider
+          ? `لدى ${provider} نفسها أرخص باقة هي ${sameLine}. اتصلوا بقسم الاحتفاظ وقولوا: "رأيت أن ${marketBest.provider} يعرض ${marketBest.plan} بـ ₪${marketBest.price} — هل يمكنكم المطابقة أو الاقتراب؟ وإلا فأنا أفكر في الانتقال." `
+          : `لم أجد باقة فعّالة لـ ${provider} في هذه الفئة، لذا ${marketLine} هي نقطة المقارنة للتفاوض. `)
+        : `يمكنكم استخدام ${marketLine} كنقطة مرجعية أمام مزوّدكم الحالي. `) +
+      `هذه نقطة انطلاق حقيقية للتفاوض — وليست وعدًا؛ القرار بيد المزوّد.`,
+    ru:
+      `${billPart}Самая низкая цена на рынке в этой категории: ${marketLine}. ` +
+      (provider
+        ? (sameProvider
+          ? `У самого ${provider} самый дешёвый тариф — ${sameLine}. Позвоните в отдел удержания и скажите: «Я видел(а), что ${marketBest.provider} предлагает ${marketBest.plan} за ₪${marketBest.price} — можете предложить столько же или ближе? Иначе я думаю перейти». `
+          : `Я не нашёл активного тарифа ${provider} в этой категории, поэтому ${marketLine} — точка сравнения для торга. `)
+        : `Используйте ${marketLine} как ориентир в разговоре с вашим текущим оператором. `) +
+      `Это реальная отправная точка для переговоров — не обещание; решение за оператором.`,
+    en:
+      `${billPart}The cheapest market price in this category today: ${marketLine}. ` +
+      (provider
+        ? (sameProvider
+          ? `${provider}'s own cheapest plan is ${sameLine}. Call retention and say: "I saw ${marketBest.provider} offers ${marketBest.plan} for ₪${marketBest.price} — can you match or get close? Otherwise I'm considering switching." `
+          : `I couldn't find an active ${provider} plan in this category, so ${marketLine} is the benchmark to negotiate against. `)
+        : `Use ${marketLine} as a reference point with your current provider. `) +
+      `This is a real starting point to negotiate — not a promise; the decision is the provider's.`,
+  });
+
+  await audit(ctx, "suggest_retention_offer", true, `${provider || "?"}/${category}`);
+  return {
+    ok: true,
+    data: {
+      category,
+      categoryHe: CATEGORY_HE[category] ?? category,
+      provider: provider || null,
+      currentBill: currentBill ?? null,
+      hasBaseline: !!currentBill,
+      // The real market evidence the script is built on (grounded rows only).
+      marketRate: { ...planView(marketBest), annualSavingUpTo: marketSaving > 0 ? marketSaving : undefined },
+      sameProviderOption: sameProvider
+        ? { ...planView(sameProvider), annualSavingUpTo: sameSaving > 0 ? sameSaving : undefined }
+        : null,
+    },
+    note: script,
+  };
+}
+
+// ── generate_referral_code ────────────────────────────────────────────────────
+// Issues a REAL referral code (via _shared/referrals.ts → service-role insert) so
+// the user can invite a friend to חוסך. Attribution-only: the row records who
+// shared it for later crediting. NO advertised monetary reward — the framing is
+// share-the-tool ("help a friend save"), value-based, since the owner hasn't
+// defined a cash reward. If the persistence sink is absent (e.g. tests), we still
+// mint a real, well-formed code locally so the tool never hard-fails the user.
+export async function generateReferralCode(
+  ctx: ToolContext,
+  args: { name?: unknown },
+): Promise<ToolResult> {
+  const lang = ctxLang(ctx);
+  const name = clipStr(args.name, 80) || undefined;
+
+  let code: string | null = null;
+  if (ctx.issueReferral) {
+    try {
+      code = await ctx.issueReferral({
+        channel: ctx.channel,
+        contact: ctx.contactId ?? null,
+        conversationId: ctx.conversationId ?? null,
+        name: name ?? null,
+      });
+    } catch (e) {
+      await ctx.logSecurityEvent?.("agent_referral_error", { channel: ctx.channel, error: String(e) });
+      code = null;
+    }
+  }
+  // Fail-soft: if no sink or the write failed, mint a real code locally (still a
+  // valid, shareable token — just not persisted for attribution this turn).
+  const persisted = !!code;
+  if (!code) code = makeReferralCode();
+
+  await audit(ctx, "generate_referral_code", persisted, persisted ? "issued" : "minted_unpersisted");
+
+  const note = tr(lang, {
+    he: `הקוד שלך לשיתוף: ${code} — שתפו אותו עם חבר/ה כדי שגם הוא/היא יחסכו בחשבונות התקשורת עם חוסך. (שיתוף הכלי, ללא תמורה כספית.)`,
+    ar: `رمز المشاركة الخاص بك: ${code} — شاركه مع صديق ليوفّر هو أيضًا في فواتير الاتصالات مع חוסך. (مشاركة الأداة، دون مقابل مالي.)`,
+    ru: `Ваш код для приглашения: ${code} — поделитесь им с другом, чтобы он тоже экономил на счетах за связь с חוסך. (Это приглашение в сервис, без денежного вознаграждения.)`,
+    en: `Your referral code: ${code} — share it with a friend so they can save on their telecom bills with חוסך too. (Sharing the tool, no cash reward.)`,
+  });
+
+  return { ok: true, data: { code, persisted, reward: null }, note };
+}
+
 // ── Registry ──────────────────────────────────────────────────────────────────
 // name → executor. agent.ts looks the tool up here when it sees a functionCall.
 export type ToolExecutor = (ctx: ToolContext, args: Record<string, unknown>) => Promise<ToolResult>;
@@ -407,6 +609,8 @@ export const TOOL_EXECUTORS: Record<string, ToolExecutor> = {
   recommend_plans: (c, a) => recommendPlans(c, a),
   get_provider: (c, a) => getProvider(c, a),
   analyze_bill: (c, a) => analyzeBill(c, a),
+  suggest_retention_offer: (c, a) => suggestRetentionOffer(c, a),
+  generate_referral_code: (c, a) => generateReferralCode(c, a),
   create_lead: (c, a) => createLead(c, a),
   book_callback: (c, a) => bookCallback(c, a),
   escalate_to_human: (c, a) => escalateToHuman(c, a),
@@ -475,6 +679,33 @@ export const TOOL_DECLARATIONS: GeminiFunctionDeclaration[] = [
         imageId: { type: "string", description: "מזהה התמונה (לתיעוד בלבד)" },
       },
       required: ["monthly"],
+    },
+  },
+  {
+    name: "suggest_retention_offer",
+    description:
+      "תסריט מיקוח אמיתי לשימור: כשהמשתמש רוצה להישאר אצל הספק הנוכחי אבל לשלם פחות. מחזיר את מחיר השוק האמיתי (המסלול הזול בקטגוריה + המסלול הזול של אותו ספק) ומשפט לומר לנציג השימור. אף פעם לא הבטחה — נקודת פתיחה למשא ומתן בלבד. החיסכון מחושב רק אם נמסר חשבון נוכחי אמיתי.",
+    parameters: {
+      type: "object",
+      properties: {
+        provider: { type: "string", description: "הספק הנוכחי של המשתמש" },
+        category: { type: "string", enum: ["cellular", "internet", "tv", "triple", "abroad"], description: "קטגוריית השירות" },
+        currentBill: { type: "number", description: "החשבון החודשי הנוכחי (לחישוב חיסכון אמיתי, אופציונלי)" },
+        abroad: { type: "boolean", description: "לדרוש מסלולים שכוללים חו\"ל" },
+      },
+      required: ["category"],
+    },
+  },
+  {
+    name: "generate_referral_code",
+    description:
+      "יצירת קוד הפניה אמיתי לשיתוף עם חבר/ה. השתמש כשהמשתמש מבקש קוד/לינק להזמין חבר. הקוד אמיתי ונשמר לשיוך. אין תמורה כספית מפורסמת — המסגור הוא שיתוף הכלי (עזרה לחבר לחסוך). לא דורש הסכמת שיווק (המשתמש בוחר לשתף).",
+    parameters: {
+      type: "object",
+      properties: {
+        name: { type: "string", description: "שם המשתמש שמשתף (אופציונלי, לשיוך)" },
+      },
+      required: [],
     },
   },
   {

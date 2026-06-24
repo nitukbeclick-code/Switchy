@@ -17,12 +17,15 @@ import {
   COMMISSION_DISCLOSURE,
   createLead,
   escalateToHuman,
+  generateReferralCode,
   getProvider,
   recommendPlans,
   searchPlans,
+  suggestRetentionOffer,
   type ToolContext,
 } from "../_shared/tools.ts";
-import { runAgent } from "../_shared/agent.ts";
+import { detectLang, runAgent } from "../_shared/agent.ts";
+import { buildReferralRow, makeReferralCode, normalizeReferralCode } from "../_shared/referrals.ts";
 import type { ScorablePlan } from "../_shared/scoring.ts";
 
 const PLANS: ScorablePlan[] = [
@@ -245,4 +248,136 @@ Deno.test("runAgent never hard-fails: hard fallback when even the template throw
   });
   assertEquals(res.via, "hard_fallback");
   assert(res.reply.length > 0, "customer always gets a reply");
+});
+
+// ── detectLang: script-based language detection (multilingual support) ─────────
+
+Deno.test("detectLang classifies by dominant script, defaults to Hebrew", () => {
+  assertEquals(detectLang("מה הכי זול בסלולר?"), "he");
+  assertEquals(detectLang("ما هي أرخص باقة خلوية؟"), "ar");
+  assertEquals(detectLang("Какой самый дешёвый тариф?"), "ru");
+  assertEquals(detectLang("What is the cheapest cellular plan?"), "en");
+  // Neutral input (digits / emoji / punctuation only) → Hebrew default.
+  assertEquals(detectLang("123 ₪ 😀 ?!"), "he");
+  assertEquals(detectLang(""), "he");
+  // Dominant script wins over a few stray Latin chars (provider name "5G").
+  assertEquals(detectLang("אני רוצה מסלול 5G זול"), "he");
+  assertEquals(detectLang("I pay too much for סלקום"), "en");
+});
+
+Deno.test("runAgent honours an explicit lang override and stays backward-compatible", async () => {
+  // Explicit lang + no providers → still degrades to the template (the override
+  // only changes the reply language of the AI paths, never the fallback contract).
+  const res = await runAgent({
+    channel: "site",
+    message: "hello",
+    lang: "en",
+    keys: {},
+    plans: PLANS,
+    toolContext: {},
+    templateFallback: () => "fallback",
+  });
+  assertEquals(res.via, "template");
+  assertEquals(res.reply, "fallback");
+});
+
+// ── suggest_retention_offer: grounded market-rate negotiation script ──────────
+
+Deno.test("suggest_retention_offer quotes the REAL cheapest comparable + same-provider rows", async () => {
+  const ctx = fakeCtx();
+  const r = await suggestRetentionOffer(ctx, { provider: "פלאפון", category: "cellular" });
+  assert(r.ok);
+  // Market floor in cellular is the 29₪ row (c2 / פרטנר), grounded — not invented.
+  const market = r.data!.marketRate as Record<string, unknown>;
+  assertEquals(market.id, "c2");
+  assertEquals(market.price, 29);
+  // Same-provider option is פלאפון's own cheapest cellular row (c3 / 99₪).
+  const same = r.data!.sameProviderOption as Record<string, unknown>;
+  assertEquals(same.id, "c3");
+  // The script is a real note and references the market provider.
+  assert(typeof r.note === "string" && r.note!.includes("פרטנר"));
+  assert(ctx.crm.some((e) => e.startsWith("tool:suggest_retention_offer")));
+});
+
+Deno.test("suggest_retention_offer omits a saving without a bill, computes it WITH one", async () => {
+  const noBill = await suggestRetentionOffer(fakeCtx(), { provider: "פלאפון", category: "cellular" });
+  assertEquals(noBill.data!.hasBaseline, false);
+  assertEquals((noBill.data!.marketRate as Record<string, unknown>).annualSavingUpTo, undefined);
+
+  const withBill = await suggestRetentionOffer(fakeCtx(), { provider: "פלאפון", category: "cellular", currentBill: 90 });
+  assertEquals(withBill.data!.hasBaseline, true);
+  // 29₪ market floor vs a 90₪ bill ⇒ (90-29)*12 = 732 (reuses scoring.ts annualSaving).
+  assertEquals((withBill.data!.marketRate as Record<string, unknown>).annualSavingUpTo, (90 - 29) * 12);
+});
+
+Deno.test("suggest_retention_offer never promises — the script frames it as negotiation only", async () => {
+  const r = await suggestRetentionOffer(fakeCtx(), { provider: "פלאפון", category: "cellular", currentBill: 90 });
+  // Honest framing: a starting point, the decision is the provider's.
+  assert(r.note!.includes("לא הבטחה") || r.note!.includes("נקודת פתיחה"));
+});
+
+Deno.test("suggest_retention_offer replies in the user's language (Russian here)", async () => {
+  const ctx = fakeCtx({ lang: "ru" });
+  const r = await suggestRetentionOffer(ctx, { provider: "פלאפון", category: "cellular", currentBill: 90 });
+  assert(r.ok);
+  // The note is Russian; the grounded numbers/providers are the SAME real data.
+  assert(/[Ѐ-ӿ]/.test(r.note!), "script rendered in Russian");
+  assertEquals((r.data!.marketRate as Record<string, unknown>).id, "c2");
+});
+
+Deno.test("suggest_retention_offer refuses without a category (can't ground a script)", async () => {
+  const r = await suggestRetentionOffer(fakeCtx(), { provider: "פלאפון" });
+  assert(!r.ok);
+  assertEquals(r.reason, "invalid");
+});
+
+// ── generate_referral_code: a REAL code, attribution, no cash reward ──────────
+
+Deno.test("makeReferralCode mints a well-formed, unambiguous token", () => {
+  const code = makeReferralCode(() => new Uint8Array([0, 1, 2, 3, 4, 5]));
+  assert(/^SW-[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{6}$/.test(code), code);
+  // Deterministic given the rng seam.
+  assertEquals(makeReferralCode(() => new Uint8Array([0, 0, 0, 0, 0, 0])), "SW-AAAAAA");
+  // No ambiguous characters (0/O/1/I/L) ever appear in the alphabet.
+  for (const c of "01OIL") assert(!"ABCDEFGHJKMNPQRSTUVWXYZ23456789".includes(c));
+});
+
+Deno.test("normalizeReferralCode + buildReferralRow are honest and attribution-only", () => {
+  assertEquals(normalizeReferralCode(" sw-7kq4m9 "), "SW-7KQ4M9");
+  const row = buildReferralRow({ channel: "whatsapp", contact: "0501234567", conversationId: "conv-1", name: "דנה" }, "sw-abc234");
+  assertEquals(row.code, "SW-ABC234");
+  assertEquals(row.channel, "whatsapp");
+  assertEquals(row.referrer_contact, "0501234567");
+  assertEquals(row.source, "agent");
+  // No reward field is ever set by the builder (no cash promise).
+  assert(!("reward" in row));
+});
+
+Deno.test("generate_referral_code persists via the sink and returns that code", async () => {
+  let captured: Record<string, unknown> | null = null;
+  const ctx = fakeCtx({
+    issueReferral: (i) => { captured = i; return "SW-ISSUED"; },
+  });
+  const r = await generateReferralCode(ctx, { name: "דנה" });
+  assert(r.ok);
+  assertEquals(r.data!.code, "SW-ISSUED");
+  assertEquals(r.data!.persisted, true);
+  assertEquals(r.data!.reward, null, "no monetary reward advertised");
+  assert(captured !== null && (captured as { channel?: string }).channel === "whatsapp");
+  assert(r.note!.includes("SW-ISSUED"));
+});
+
+Deno.test("generate_referral_code fail-soft: still returns a real code when no sink", async () => {
+  const ctx = fakeCtx(); // no issueReferral sink
+  const r = await generateReferralCode(ctx, {});
+  assert(r.ok);
+  assert(/^SW-[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{6}$/.test(r.data!.code as string));
+  assertEquals(r.data!.persisted, false);
+});
+
+Deno.test("generate_referral_code localizes the share note (English here)", async () => {
+  const ctx = fakeCtx({ lang: "en", issueReferral: () => "SW-ENXY23" });
+  const r = await generateReferralCode(ctx, {});
+  assert(r.note!.includes("Your referral code"));
+  assert(r.note!.includes("no cash reward"));
 });

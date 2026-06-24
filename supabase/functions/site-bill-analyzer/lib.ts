@@ -2,6 +2,8 @@
 // they can be unit-tested without booting the Deno.serve entrypoint (mirrors the
 // whatsapp-webhook/intents.ts convention). No network, no env, no I/O.
 
+import { type BillLine, type ParsedBill } from "../_shared/bill-forensics.ts";
+
 export type Extracted = {
   provider: string;
   monthly: number;
@@ -11,6 +13,12 @@ export type Extracted = {
   // מטושטשת", "הסכום החודשי לא ברור"). Always an array (possibly empty); each
   // entry is trimmed + clipped so a misbehaving model can't bloat the response.
   warnings: string[];
+  // OPTIONAL itemized lines for the forensic auditor (bill-forensics.auditBill).
+  // The vision model surfaces them only when the bill is itemized AND legible;
+  // an empty array (the default) means "no itemization read" and the forensics
+  // pass degrades to a conservative total-level audit. NEVER fabricated — a line
+  // exists here only because the model read it off the bill.
+  lines: BillLine[];
 };
 
 // Coerce the model's `warnings` into a clean string[]: accept an array of
@@ -22,6 +30,53 @@ function parseWarnings(raw: unknown): string[] {
     const s = String(w ?? "").trim().slice(0, 120);
     if (s) out.push(s);
     if (out.length >= 5) break;
+  }
+  return out;
+}
+
+// Max itemized lines we accept from the model — a real telecom bill has a
+// handful of charge lines; anything past this is almost certainly OCR noise, so
+// we cap it to keep the forensic pass (and the response) bounded.
+const MAX_LINES = 30;
+
+function finiteOrNull(v: unknown): number | null {
+  if (v == null) return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
+// Coerce the model's `lines` into a clean BillLine[]. Each entry must have a
+// description AND a finite positive amount to count (a line with neither is
+// dropped — we never invent a charge). Optional forensic hints (prevAmount,
+// promoEnd, category, isAddon) are passed through only when present + sane.
+// Truth-only: this only RESHAPES what the model read; it adds nothing.
+export function parseLines(raw: unknown): BillLine[] {
+  if (!Array.isArray(raw)) return [];
+  const out: BillLine[] = [];
+  for (const r of raw) {
+    if (!r || typeof r !== "object") continue;
+    const o = r as Record<string, unknown>;
+    const desc = String(o.desc ?? o.description ?? o.name ?? "").trim().slice(0, 80);
+    const amount = finiteOrNull(o.amount ?? o.price ?? o.sum) ?? 0;
+    // Drop a line that carries no usable signal (no desc and no positive amount).
+    if (!desc && !(amount > 0)) continue;
+    const prevAmount = finiteOrNull(o.prevAmount ?? o.prev ?? o.previous);
+    const promoEndRaw = String(o.promoEnd ?? o.promo_end ?? o.until ?? "").trim().slice(0, 40);
+    const categoryRaw = String(o.category ?? o.cat ?? "").trim().slice(0, 40);
+    const isAddon = typeof o.isAddon === "boolean"
+      ? o.isAddon
+      : typeof o.is_addon === "boolean"
+      ? o.is_addon
+      : null;
+    out.push({
+      desc,
+      amount: amount > 0 ? amount : 0,
+      prevAmount: prevAmount != null && prevAmount > 0 ? prevAmount : null,
+      promoEnd: promoEndRaw || null,
+      category: categoryRaw || null,
+      isAddon,
+    });
+    if (out.length >= MAX_LINES) break;
   }
   return out;
 }
@@ -69,8 +124,28 @@ export function parseExtraction(raw: string): Extracted | null {
       category: String(o.category ?? "").slice(0, 40),
       confidence,
       warnings: parseWarnings(o.warnings),
+      lines: parseLines(o.lines),
     };
   } catch (_) {
     return null;
   }
+}
+
+// Assemble a ParsedBill for the forensic auditor from the (already
+// confidence-gated, normalized) extraction + the bill-level provider/category
+// the caller resolved against the catalogue. Kept here (pure) so index.ts stays
+// thin and this can be unit-tested. `provider`/`category` are passed in because
+// the caller normalizes them via the shared catalogue aliases BEFORE calling.
+export function buildParsedBill(
+  extracted: Extracted,
+  provider: string,
+  category: string,
+  monthly: number,
+): ParsedBill {
+  return {
+    provider: String(provider ?? "").slice(0, 80),
+    category: String(category ?? "").slice(0, 40),
+    monthly: Number.isFinite(monthly) ? monthly : 0,
+    lines: Array.isArray(extracted?.lines) ? extracted.lines : [],
+  };
 }

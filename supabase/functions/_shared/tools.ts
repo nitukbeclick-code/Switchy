@@ -42,6 +42,7 @@ import {
 } from "./catalogue.ts";
 import { buildAiLeadRow } from "./leads.ts";
 import { makeReferralCode } from "./referrals.ts";
+import { buildSwitchKit, type SwitchProfile } from "./switch.ts";
 
 // Reply languages the agent supports (mirrors AgentLang in agent.ts; kept as a
 // local string-union so tools.ts has no import cycle with agent.ts). Tool-surfaced
@@ -600,6 +601,147 @@ export async function generateReferralCode(
   return { ok: true, data: { code, persisted, reward: null }, note };
 }
 
+// ── generate_switch_kit ───────────────────────────────────────────────────────
+// The SWITCH AUTOPILOT tool: builds a complete, honest switch package for a user
+// moving FROM their current provider TO a REAL catalogue plan. Delegates to the
+// pure _shared/switch.ts buildSwitchKit (the single source of truth) so the
+// cancellation letter / portability checklist / steps / key-dates are identical to
+// the app/site surface and to the live AEO /switch guide's honest framing.
+//
+// GROUNDING (truth-only): the target plan MUST resolve to a REAL row in the live
+// catalogue — by exact id, else by provider+plan-name match. If it doesn't resolve,
+// we REFUSE (not_found) rather than fabricate a plan/price. We invent no phone
+// numbers, no exact in-app steps, no provider SLAs (switch.ts enforces this).
+//
+// SAFETY: this only DRAFTS the cancellation letter — it never sends anything. The
+// note explicitly tells the user THEY review + send it via the provider's official
+// channels. No consent gate needed (no contactable lead is captured here; nothing
+// is written to a marketing surface — it's the user's own switch material).
+//
+// `officialUrl` is OPTIONAL and pass-through only: the caller (webhook/site) may
+// supply the provider's VERIFIED official site for the binding procedure; the tool
+// never guesses a URL.
+export async function generateSwitchKit(
+  ctx: ToolContext,
+  args: {
+    fromProvider?: unknown;
+    toPlanId?: unknown;
+    toPlan?: unknown;
+    toProvider?: unknown;
+    category?: unknown;
+    currentBill?: unknown;
+    fullName?: unknown;
+    accountNumber?: unknown;
+    phone?: unknown;
+    hasCommitment?: unknown;
+    officialUrl?: unknown;
+  },
+): Promise<ToolResult> {
+  const lang = ctxLang(ctx);
+  const providers = catalogueProviders(ctx.plans as CataloguePlan[]);
+  const fromProvider = normalizeProvider(clipStr(args.fromProvider, 60), providers);
+
+  // Resolve the TARGET plan to a REAL catalogue row — by exact id first, else by
+  // provider(+optional plan-name) match within an optional category. Never invent.
+  const wantId = clipStr(args.toPlanId, 80);
+  const wantProvider = normalizeProvider(clipStr(args.toProvider, 60), providers);
+  const wantPlanName = clipStr(args.toPlan, 120).toLowerCase();
+  const wantCategory = normalizeCategory(clipStr(args.category, 40));
+
+  let target: ScorablePlan | undefined;
+  if (wantId) {
+    target = ctx.plans.find((p) => p.id === wantId);
+  }
+  if (!target && wantProvider) {
+    let rows = ctx.plans.filter((p) =>
+      p.provider === wantProvider && typeof p.price === "number"
+    );
+    if (wantCategory) rows = rows.filter((p) => p.cat === wantCategory);
+    if (wantPlanName) {
+      const named = rows.filter((p) => String(p.plan ?? "").toLowerCase().includes(wantPlanName));
+      if (named.length) rows = named;
+    }
+    // Deterministic pick: cheapest matching real row (no brand bias, reproducible).
+    rows = [...rows].sort((a, b) => (a.price ?? 0) - (b.price ?? 0));
+    target = rows[0];
+  }
+
+  if (!target) {
+    await audit(ctx, "generate_switch_kit", false, "plan_not_found");
+    return {
+      ok: false,
+      reason: "not_found",
+      note: tr(lang, {
+        he: "כדי לבנות ערכת מעבר צריך מסלול יעד אמיתי מהקטלוג — אפשר לציין ספק ומסלול (או id) שקיימים אצלי?",
+        ar: "لبناء حزمة انتقال أحتاج لباقة هدف حقيقية من الكتالوج — هل يمكنك تحديد مزوّد وباقة (أو id) موجودة لدي؟",
+        ru: "Чтобы собрать набор для перехода, нужен реальный целевой тариф из каталога — укажите провайдера и тариф (или id), которые у меня есть?",
+        en: "To build a switch kit I need a real target plan from the catalogue — can you name a provider and plan (or id) I actually have?",
+      }),
+    };
+  }
+  if (!fromProvider) {
+    await audit(ctx, "generate_switch_kit", false, "from_not_found");
+    return {
+      ok: false,
+      reason: "invalid",
+      note: tr(lang, {
+        he: "מאיזה ספק אתם רוצים לעבור? צריך את שם הספק הנוכחי כדי לבנות את מכתב הניתוק וצ'ק-ליסט הניוד.",
+        ar: "من أي مزوّد تريدون الانتقال؟ أحتاج اسم المزوّد الحالي لبناء خطاب الفصل وقائمة النقل.",
+        ru: "От какого оператора вы хотите уйти? Нужно название текущего оператора для письма об отключении и чек-листа.",
+        en: "Which provider are you switching from? I need the current provider name to build the cancellation letter and checklist.",
+      }),
+    };
+  }
+
+  const profile: SwitchProfile = {
+    fullName: clipStr(args.fullName, 80) || null,
+    accountNumber: clipStr(args.accountNumber, 40) || null,
+    phone: clipStr(args.phone, 20) || null,
+    currentBill: asBudget(args.currentBill) ?? null,
+    hasCommitment: args.hasCommitment === true || args.hasCommitment === "true"
+      ? true
+      : (args.hasCommitment === false || args.hasCommitment === "false" ? false : null),
+    // Pass-through only — the tool never guesses an official URL.
+    officialUrl: clipStr(args.officialUrl, 300) || null,
+  };
+
+  const kit = buildSwitchKit(fromProvider, target, profile);
+
+  await audit(ctx, "generate_switch_kit", true, `${fromProvider}→${kit.toProvider}/${kit.category}`);
+
+  // The user reviews + sends the letter themselves — make that explicit, localized.
+  const note = tr(lang, {
+    he: "בניתי לך ערכת מעבר: מכתב ניתוק לעריכה, צ'ק-ליסט ניוד ושלבים. חשוב — את/ה בודק/ת ושולח/ת את המכתב בעצמך בערוצים הרשמיים של הספק; אנחנו לא שולחים אותו. זו הנחיה כללית, לא ייעוץ משפטי.",
+    ar: "أعددت لك حزمة انتقال: خطاب فصل للمراجعة، قائمة نقل وخطوات. مهم — أنت تراجع وترسل الخطاب بنفسك عبر القنوات الرسمية للمزوّد؛ نحن لا نرسله. هذه إرشادات عامة وليست استشارة قانونية.",
+    ru: "Я собрал набор для перехода: письмо об отключении для проверки, чек-лист переноса и шаги. Важно — вы сами проверяете и отправляете письмо через официальные каналы оператора; мы его не отправляем. Это общее руководство, а не юридическая консультация.",
+    en: "I built your switch kit: a cancellation letter to review, a porting checklist and steps. Important — YOU review and send the letter yourself via the provider's official channels; we don't send it. This is general guidance, not legal advice.",
+  });
+
+  return {
+    ok: true,
+    data: {
+      fromProvider: kit.fromProvider,
+      toProvider: kit.toProvider,
+      toPlan: kit.toPlan,
+      toPlanId: kit.toPlanId ?? null,
+      category: kit.category,
+      categoryHe: kit.categoryHe,
+      price: kit.price,
+      priceUnit: kit.priceUnit,
+      annualSavingUpTo: kit.annualSavingUpTo,
+      cancellationLetterHe: kit.cancellationLetterHe,
+      portabilityChecklist: kit.portabilityChecklist,
+      switchSteps: kit.switchSteps,
+      keyDates: kit.keyDates,
+      officialUrl: kit.officialUrl,
+      disclaimer: kit.disclaimer,
+      // Hard flag so the model never claims it sent anything.
+      autoSent: false,
+    },
+    note,
+  };
+}
+
 // ── Registry ──────────────────────────────────────────────────────────────────
 // name → executor. agent.ts looks the tool up here when it sees a functionCall.
 export type ToolExecutor = (ctx: ToolContext, args: Record<string, unknown>) => Promise<ToolResult>;
@@ -611,6 +753,7 @@ export const TOOL_EXECUTORS: Record<string, ToolExecutor> = {
   analyze_bill: (c, a) => analyzeBill(c, a),
   suggest_retention_offer: (c, a) => suggestRetentionOffer(c, a),
   generate_referral_code: (c, a) => generateReferralCode(c, a),
+  generate_switch_kit: (c, a) => generateSwitchKit(c, a),
   create_lead: (c, a) => createLead(c, a),
   book_callback: (c, a) => bookCallback(c, a),
   escalate_to_human: (c, a) => escalateToHuman(c, a),
@@ -706,6 +849,28 @@ export const TOOL_DECLARATIONS: GeminiFunctionDeclaration[] = [
         name: { type: "string", description: "שם המשתמש שמשתף (אופציונלי, לשיוך)" },
       },
       required: [],
+    },
+  },
+  {
+    name: "generate_switch_kit",
+    description:
+      "בניית ערכת מעבר (Switch Autopilot): מכתב ניתוק לעריכה, צ'ק-ליסט ניוד, שלבי מעבר ותאריכי מפתח — למעבר מהספק הנוכחי למסלול יעד אמיתי מהקטלוג. השתמש כשהמשתמש החליט לעבור ורוצה לדעת איך לעזוב/לנתק/לנייד. מסלול היעד חייב להיות אמיתי מהקטלוג (id או ספק+שם מסלול). חשוב: המכתב הוא טיוטה בלבד — המשתמש בודק ושולח אותו בעצמו בערוצים הרשמיים של הספק; אנחנו לא שולחים. הנחיה כללית, לא ייעוץ משפטי. לא ממציאים מספרי טלפון/שלבים/לוחות זמנים.",
+    parameters: {
+      type: "object",
+      properties: {
+        fromProvider: { type: "string", description: "הספק הנוכחי שעוזבים (חובה)" },
+        toPlanId: { type: "string", description: "מזהה מסלול היעד בקטלוג (אם ידוע)" },
+        toProvider: { type: "string", description: "ספק היעד (אם אין id)" },
+        toPlan: { type: "string", description: "שם מסלול היעד (אם אין id)" },
+        category: { type: "string", enum: ["cellular", "internet", "tv", "triple", "abroad"], description: "קטגוריית השירות (לצמצום ההתאמה)" },
+        currentBill: { type: "number", description: "החשבון החודשי הנוכחי (לחישוב חיסכון אמיתי, אופציונלי)" },
+        fullName: { type: "string", description: "שם מלא למכתב (אופציונלי — אחרת נשאר מקום למילוי)" },
+        accountNumber: { type: "string", description: "מספר לקוח/מנוי אצל הספק הנוכחי (אופציונלי)" },
+        phone: { type: "string", description: "מספר הטלפון לניוד (סלולר, אופציונלי)" },
+        hasCommitment: { type: "boolean", description: "האם המסלול הנוכחי בהתחייבות (אופציונלי)" },
+        officialUrl: { type: "string", description: "כתובת האתר הרשמי של הספק הנוכחי (pass-through בלבד; לא לנחש)" },
+      },
+      required: ["fromProvider"],
     },
   },
   {

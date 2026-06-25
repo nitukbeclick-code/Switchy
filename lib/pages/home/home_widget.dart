@@ -13,6 +13,8 @@ import '../../services/backend/backend.dart' show MeetingStatus;
 import '../../services/meeting_slots.dart' show meetingLocalStart;
 import '../meeting/meeting_status_card.dart';
 import '../../widgets/pressable.dart';
+import '../../widgets/refreshable_scroll.dart';
+import '../../widgets/app_sliver_header.dart';
 import '../../services/recommendation_engine.dart';
 import '../../services/notifications.dart';
 import '../../services/savings_summary.dart';
@@ -50,6 +52,18 @@ class _HomeWidgetState extends State<HomeWidget> {
       _savingsKey = key;
     }
     return _savingsMemo!;
+  }
+
+  /// Pull-to-refresh: drop the memoised derivations so the next build recomputes
+  /// the savings summary (and the per-category cheapest scan) from the current
+  /// AppState, then re-render. Notifications are derived inline from AppState in
+  /// the header builder, so clearing the savings memo + a [setState] is enough to
+  /// re-derive every home figure honestly.
+  Future<void> _onRefresh() async {
+    _savingsKey = null;
+    _savingsMemo = null;
+    _cheapestCache.clear();
+    if (mounted) setState(() {});
   }
 
   @override
@@ -102,11 +116,14 @@ class _HomeWidgetState extends State<HomeWidget> {
       body: Stack(
         children: [
           // ── Main scrollable content ────────────────────────────────────────
-          CustomScrollView(
+          // Pull-to-refresh (bouncing physics) over the whole home feed; the
+          // gesture clears the memoised savings/cheapest derivations and re-builds.
+          RefreshableScroll(
             controller: _scrollController,
+            onRefresh: _onRefresh,
             slivers: [
-              // ── 1. Brand header ────────────────────────────────────────────
-              SliverToBoxAdapter(child: _buildHeader(context, ffTheme, appState)),
+              // ── 1. Collapsing brand header ─────────────────────────────────
+              _buildHeader(context, ffTheme, appState),
 
               // ── 2. Renewal Radar alert ─────────────────────────────────────
               _buildRenewalAlert(context, ffTheme, appState),
@@ -346,105 +363,104 @@ class _HomeWidgetState extends State<HomeWidget> {
     );
   }
 
+  /// Collapsing brand header (the shared [AppSliverHeader]) — the greeting is the
+  /// large title that shrinks on scroll, the notification bell rides in the
+  /// trailing actions, and the search affordance lives in the expanded
+  /// [flexibleChild] as a clearly-a-button pill. Home is a root tab, so there's
+  /// nothing to pop: [showBack] is false.
   Widget _buildHeader(BuildContext context, AppTheme ffTheme, AppState appState) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: ffTheme.freshGradient,
+    return AppSliverHeader(
+      title: '${_greeting()} ${appState.firstName}',
+      showBack: false,
+      expandedHeight: 176,
+      actions: [_buildNotificationBell(context, ffTheme, appState)],
+      flexibleChild: _buildHeaderSearch(context, ffTheme),
+    );
+  }
+
+  /// The notification bell action: an icon-only [IconButton] (keeps its
+  /// `התראות` tooltip / semantics label) with the amber unread badge stacked on
+  /// the corner. Tapping it pushes the Notifications route.
+  Widget _buildNotificationBell(BuildContext context, AppTheme ffTheme, AppState appState) {
+    return Padding(
+      padding: const EdgeInsetsDirectional.only(end: 6),
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.center,
+        children: [
+          IconButton(
+            icon: const Icon(Icons.notifications_outlined, color: Colors.white, size: 22),
+            tooltip: 'התראות',
+            onPressed: () {
+              HapticFeedback.lightImpact();
+              context.pushNamed('Notifications');
+            },
+          ),
+          Builder(builder: (context) {
+            final count = notificationCount(appState);
+            if (count == 0) return const SizedBox.shrink();
+            return PositionedDirectional(
+              top: 6,
+              end: 6,
+              child: Container(
+                width: 16,
+                height: 16,
+                // Amber VALUE dot — the unread badge pops against the green
+                // header and reads as "needs attention" in both themes.
+                decoration: BoxDecoration(color: ffTheme.saving, shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 1.5)),
+                child: Center(child: Text(count > 9 ? '9+' : '$count', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: ffTheme.onSaving))),
+              ),
+            );
+          }),
+        ],
       ),
-      child: SafeArea(
-        bottom: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 14, 20, 28),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              // Left: greeting
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '${_greeting()} ${appState.firstName}',
-                      style: AppTheme.of(context).headlineSmall.copyWith(
-                        color: Colors.white,
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Semantics(
-                      button: true,
-                      label: 'חיפוש ספק או מסלול',
-                      child: GestureDetector(
-                        onTap: () {
-                          HapticFeedback.lightImpact();
-                          context.pushNamed('Search');
-                        },
-                        child: Container(
-                          margin: const EdgeInsets.only(top: 8),
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(ffTheme.radiusPill),
-                            border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(Icons.search_rounded, color: Colors.white.withValues(alpha: 0.7), size: 16),
-                              const SizedBox(width: 8),
-                              Text('חפש ספק או מסלול...', style: AppTheme.of(context).bodySmall.copyWith(color: Colors.white.withValues(alpha: 0.65))),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              // Right: notification bell
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.10),
-                      shape: BoxShape.circle,
-                    ),
-                    child: IconButton(
-                      icon: const Icon(Icons.notifications_outlined, color: Colors.white, size: 22),
-                      tooltip: 'התראות',
-                      onPressed: () {
-                        HapticFeedback.lightImpact();
-                        context.pushNamed('Notifications');
-                      },
-                      padding: EdgeInsets.zero,
-                    ),
+    );
+  }
+
+  /// A real search affordance — a full-width pill that reads unmistakably as a
+  /// button: a leading search icon, the prompt text, and a trailing chevron
+  /// (RTL-correct `chevron_left`) pointing into the search screen. Wrapped in a
+  /// labelled [Semantics] button; tapping pushes the Search route. Enforces the
+  /// minimum 48px tap target.
+  Widget _buildHeaderSearch(BuildContext context, AppTheme ffTheme) {
+    return Semantics(
+      button: true,
+      label: 'חיפוש ספק או מסלול',
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            HapticFeedback.lightImpact();
+            context.pushNamed('Search');
+          },
+          borderRadius: BorderRadius.circular(ffTheme.radiusPill),
+          child: Container(
+            constraints: const BoxConstraints(minHeight: kMinTapTarget),
+            padding: const EdgeInsetsDirectional.fromSTEB(16, 12, 12, 12),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.18),
+              borderRadius: BorderRadius.circular(ffTheme.radiusPill),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.30)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.search_rounded, color: Colors.white, size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'חפש ספק או מסלול...',
+                    style: AppTheme.of(context).bodySmall.copyWith(color: Colors.white.withValues(alpha: 0.85)),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  Builder(builder: (context) {
-                    final count = notificationCount(appState);
-                    if (count == 0) return const SizedBox.shrink();
-                    return Positioned(
-                      top: -2,
-                      right: -2,
-                      child: Container(
-                        width: 16,
-                        height: 16,
-                        // Amber VALUE dot — the unread badge pops against the ink
-                        // header and reads as "needs attention" in both themes.
-                        decoration: BoxDecoration(color: ffTheme.saving, shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 1.5)),
-                        child: Center(child: Text(count > 9 ? '9+' : '$count', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: ffTheme.onSaving))),
-                      ),
-                    );
-                  }),
-                ],
-              ),
-            ],
+                ),
+                Icon(Icons.chevron_left_rounded, color: Colors.white.withValues(alpha: 0.85), size: 20),
+              ],
+            ),
           ),
         ),
       ),
-    ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.06, end: 0, curve: Curves.easeOutCubic);
+    );
   }
 
   Widget _buildSavingsHero(BuildContext context, AppTheme ffTheme, SavingsSummary savings) {
@@ -516,7 +532,8 @@ class _HomeWidgetState extends State<HomeWidget> {
             child: GestureDetector(
               onTap: () {
                 HapticFeedback.lightImpact();
-                appState.billsPersonalized ? context.goNamed('Results') : context.goNamed('Quiz');
+                // Push (not go) so the hardware/gesture back returns to home.
+                appState.billsPersonalized ? context.pushNamed('Results') : context.pushNamed('Quiz');
               },
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 13),
@@ -734,7 +751,8 @@ class _HomeWidgetState extends State<HomeWidget> {
                   if (cat.id == 'electricity') {
                     context.pushNamed('Electricity');
                   } else {
-                    context.goNamed('Results');
+                    // Push (not go) so back returns to home.
+                    context.pushNamed('Results');
                   }
                 },
                 child: Container(
@@ -1033,6 +1051,7 @@ class _HomeWidgetState extends State<HomeWidget> {
             height: 96,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
               itemCount: tools.length,
               separatorBuilder: (_, __) => const SizedBox(width: 12),
               itemBuilder: (context, i) {
@@ -1103,6 +1122,7 @@ class _HomeWidgetState extends State<HomeWidget> {
             height: 90,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
               itemCount: appState.watchedPlans.length,
               separatorBuilder: (_, __) => const SizedBox(width: 10),
               itemBuilder: (_, i) {
@@ -1196,6 +1216,7 @@ class _HomeWidgetState extends State<HomeWidget> {
             height: 90,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
               itemCount: appState.recentlyViewed.length,
               separatorBuilder: (_, __) => const SizedBox(width: 10),
               itemBuilder: (_, i) {
@@ -1268,6 +1289,7 @@ class _HomeWidgetState extends State<HomeWidget> {
             height: 44,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
               itemCount: providers.length,
               separatorBuilder: (_, __) => const SizedBox(width: 8),
               itemBuilder: (context, i) {

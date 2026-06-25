@@ -7,6 +7,7 @@ import '../../theme/app_theme.dart';
 import '../../core/nav.dart';
 import '../../widgets/app_button.dart';
 import '../../widgets/app_snackbar.dart';
+import '../../widgets/sticky_cta_scaffold.dart';
 import '../../services/referral_code.dart';
 
 /// "הזמינו חבר" (Refer a friend) — share Switchy AI with a REAL, shareable code in the
@@ -50,8 +51,7 @@ class _ReferralWidgetState extends State<ReferralWidget> {
   Widget build(BuildContext context) {
     final ffTheme = AppTheme.of(context);
 
-    return Scaffold(
-      backgroundColor: ffTheme.background,
+    return StickyCtaScaffold(
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -63,6 +63,18 @@ class _ReferralWidgetState extends State<ReferralWidget> {
           tooltip: 'חזרה',
           onPressed: () => context.safePop(),
         ),
+      ),
+      // The single primary action — share the code — is pinned to the bottom so
+      // it stays one tap away while the "how it works" steps scroll.
+      cta: AppButton(
+        text: 'שתפו את הקוד',
+        icon: const Icon(Icons.share_rounded, color: Colors.white, size: 18),
+        color: ffTheme.primary,
+        height: 52,
+        width: double.infinity,
+        textStyle: GoogleFonts.rubik(
+            fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white),
+        onPressed: () async => _share(),
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
@@ -149,19 +161,11 @@ class _ReferralWidgetState extends State<ReferralWidget> {
             ),
           ).animate().fadeIn(delay: 140.ms).slideY(begin: 0.05),
 
-          const SizedBox(height: 20),
-
-          // Share CTA
-          AppButton(
-            text: 'שתפו את הקוד',
-            icon: const Icon(Icons.share_rounded, color: Colors.white, size: 18),
-            color: ffTheme.primary,
-            textStyle: GoogleFonts.rubik(
-                fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white),
-            onPressed: () async => _share(),
-          ).animate().fadeIn(delay: 200.ms),
-
           const SizedBox(height: 24),
+
+          // The primary "share the code" action is pinned as the sticky bottom
+          // CTA (see StickyCtaScaffold above), so it stays reachable while the
+          // steps below scroll.
 
           // How it works
           Text('איך זה עובד', style: ffTheme.titleLarge)

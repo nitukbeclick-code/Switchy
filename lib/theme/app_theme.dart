@@ -3,6 +3,9 @@ import 'package:flutter/foundation.dart'
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+/// Minimum interactive touch-target size (dp), enforced on small controls app-wide.
+const double kMinTapTarget = 48.0;
+
 /// Central design tokens for the Switchy AI app.
 ///
 /// This is hand-authored, idiomatic Flutter — no FlutterFlow runtime,

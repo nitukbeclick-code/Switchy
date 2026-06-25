@@ -5,6 +5,8 @@ import '../../core/nav.dart';
 import '../../models.dart';
 import '../../data.dart';
 import '../../components/logo_widget/logo_widget.dart';
+import '../../widgets/app_sliver_header.dart';
+import '../../widgets/refreshable_scroll.dart';
 
 /// חשמל — the private-electricity-supplier comparison screen.
 ///
@@ -38,15 +40,35 @@ class ElectricityWidget extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: ffTheme.background,
-      body: CustomScrollView(
+      body: RefreshableScroll(
+        // Pull-to-refresh re-derives the electricity catalogue (the pure
+        // filteredPlans seed) on rebuild.
+        onRefresh: () async {
+          await Future<void>.delayed(const Duration(milliseconds: 200));
+        },
         slivers: [
-          SliverToBoxAdapter(
-            child: _Header(
+          AppSliverHeader(
+            title: 'חשמל',
+            subtitle: cat?.description ?? 'ספקי חשמל פרטיים',
+            expandedHeight: 192,
+            // The big premium hero stays ink (never coloured) per the brand rule.
+            gradient: false,
+            // Keep the app's own "חזרה" back affordance (the framework default
+            // localizes to "הקודם"); under RTL the action sits on the trailing
+            // edge where a back control belongs.
+            showBack: false,
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white, size: 20),
+                tooltip: 'חזרה',
+                onPressed: () => context.safePop(),
+              ),
+            ],
+            // Supplier / plan count is the screen's hero figure.
+            flexibleChild: _HeaderFigure(
               ffTheme: ffTheme,
               supplierCount: plans.map((p) => p.provider).toSet().length,
               planCount: plans.length,
-              description: cat?.description ?? 'ספקי חשמל פרטיים',
-              onBack: () => context.safePop(),
             ),
           ),
           SliverToBoxAdapter(
@@ -97,91 +119,46 @@ class ElectricityWidget extends StatelessWidget {
   }
 }
 
-// ── Header ──────────────────────────────────────────────────────────────────
+// ── Header figure ───────────────────────────────────────────────────────────
 
-class _Header extends StatelessWidget {
-  const _Header({
+/// The electricity hero figure that rides inside the collapsing [AppSliverHeader]
+/// expanded state: the bolt badge plus the supplier / plan count stat. The screen
+/// title + description are owned by the header itself.
+class _HeaderFigure extends StatelessWidget {
+  const _HeaderFigure({
     required this.ffTheme,
     required this.supplierCount,
     required this.planCount,
-    required this.description,
-    required this.onBack,
   });
 
   final AppTheme ffTheme;
   final int supplierCount;
   final int planCount;
-  final String description;
-  final VoidCallback onBack;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      // The big premium hero stays ink (never coloured) per the brand rule.
-      decoration: BoxDecoration(gradient: ffTheme.freshGradient),
-      child: SafeArea(
-        bottom: false,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.arrow_back_ios_rounded, color: Colors.white),
-                  tooltip: 'חזרה',
-                  onPressed: onBack,
-                ),
-              ],
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 4, 20, 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        width: 46,
-                        height: 46,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(ffTheme.radiusMd),
-                        ),
-                        child: const ExcludeSemantics(
-                          child: Icon(Icons.bolt_rounded, color: Colors.white, size: 26),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(
-                          'חשמל',
-                          style: ffTheme.headlineMedium.copyWith(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    description,
-                    style: ffTheme.bodyMedium
-                        .copyWith(color: Colors.white.withValues(alpha: 0.85)),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    '$supplierCount ספקים · $planCount מסלולים',
-                    style: ffTheme.labelMedium
-                        .copyWith(color: Colors.white.withValues(alpha: 0.70)),
-                  ),
-                ],
-              ),
-            ),
-          ],
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 46,
+          height: 46,
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(ffTheme.radiusMd),
+          ),
+          child: const ExcludeSemantics(
+            child: Icon(Icons.bolt_rounded, color: Colors.white, size: 26),
+          ),
         ),
-      ),
-    ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.06, end: 0, curve: Curves.easeOutCubic);
+        const SizedBox(width: 12),
+        Text(
+          '$supplierCount ספקים · $planCount מסלולים',
+          style: ffTheme.labelLarge
+              .copyWith(color: Colors.white.withValues(alpha: 0.85), fontWeight: FontWeight.w700),
+        ),
+      ],
+    );
   }
 }
 

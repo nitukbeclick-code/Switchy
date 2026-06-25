@@ -7,6 +7,9 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../theme/app_theme.dart';
 import '../../core/nav.dart';
 import '../../widgets/app_button.dart';
+import '../../widgets/app_sheet.dart';
+import '../../widgets/app_sliver_header.dart';
+import '../../widgets/refreshable_scroll.dart';
 import '../../app_state.dart';
 import '../../models.dart';
 import '../../data.dart';
@@ -36,9 +39,9 @@ class CompareWidget extends StatelessWidget {
     };
 
     // Winner = highest score; tie-break: higher annualSaving, then lower price.
-    String? winnerId;
+    Plan? winner;
     if (plans.length >= 2) {
-      final winner = plans.reduce((a, b) {
+      winner = plans.reduce((a, b) {
         final ma = matchMap[a.id]!;
         final mb = matchMap[b.id]!;
         final byScore = mb.score.compareTo(ma.score);
@@ -47,50 +50,206 @@ class CompareWidget extends StatelessWidget {
         if (bySave != 0) return bySave < 0 ? a : b;
         return a.price <= b.price ? a : b;
       });
-      winnerId = winner.id;
     }
+    final winnerId = winner?.id;
+
+    // ── Single / empty state: keep the classic ink AppBar + empty card. The
+    // collapsing hero is reserved for a real 2+ comparison (it carries the
+    // winner's saving figure, which has no meaning with fewer than two plans).
+    if (plans.length < 2) {
+      return Scaffold(
+        backgroundColor: ffTheme.background,
+        appBar: AppBar(
+          backgroundColor: ffTheme.primary,
+          foregroundColor: Colors.white,
+          title: Text('השוואת מסלולים',
+              style: ffTheme.titleLarge.copyWith(color: Colors.white)),
+          actions: [
+            if (plans.isNotEmpty)
+              IconButton(
+                icon: const Icon(Icons.ios_share_rounded, color: Colors.white),
+                tooltip: 'שתף',
+                onPressed: () => Share.share(_quickShareText(plans)),
+              ),
+            if (ids.isNotEmpty)
+              TextButton(
+                onPressed: appState.clearCompare,
+                child: Text('נקה הכל',
+                    style: ffTheme.labelMedium.copyWith(
+                        color: Colors.white.withValues(alpha: 0.85))),
+              ),
+          ],
+        ),
+        body: _EmptyState(
+            ffTheme: ffTheme,
+            hasPlan: plans.length == 1,
+            firstPlan: plans.isEmpty ? null : plans.first),
+      );
+    }
+
+    // ── Full comparison (2+ plans) ──────────────────────────────────────────
+    // The hero saving figure shown in the collapsing header = the winner's
+    // annual saving vs the user's own bill (the engine's number, not re-derived).
+    final winnerBill = appState.currentBill(winner!.cat);
+    final heroSave = winnerBill > 0 ? planSaveYear(winner, winnerBill) : 0;
 
     return Scaffold(
       backgroundColor: ffTheme.background,
-      appBar: AppBar(
-        backgroundColor: ffTheme.primary,
-        foregroundColor: Colors.white,
-        title: Text('השוואת מסלולים',
-            style: ffTheme.titleLarge.copyWith(color: Colors.white)),
-        actions: [
-          if (plans.length >= 2)
-            _ShareMenu(plans: plans, appState: appState)
-          else if (plans.isNotEmpty)
-            IconButton(
-              icon: const Icon(Icons.ios_share_rounded, color: Colors.white),
-              tooltip: 'שתף',
-              onPressed: () => Share.share(_quickShareText(plans)),
-            ),
-          if (ids.isNotEmpty)
-            TextButton(
-              onPressed: appState.clearCompare,
-              child: Text('נקה הכל',
-                  style: ffTheme.labelMedium.copyWith(
-                      color: Colors.white.withValues(alpha: 0.85))),
-            ),
-        ],
-      ),
-      body: plans.length < 2
-          ? _EmptyState(ffTheme: ffTheme, hasPlan: plans.length == 1, firstPlan: plans.isEmpty ? null : plans.first)
-          : Stack(
-              children: [
-                _CompareTable(
+      body: Stack(
+        children: [
+          RefreshableScroll(
+            // Re-derives the comparison from the live AppState/catalogue; the
+            // spinner stays until the rebuilt frame settles.
+            onRefresh: () async {
+              HapticFeedback.selectionClick();
+              await Future<void>.delayed(const Duration(milliseconds: 350));
+            },
+            slivers: [
+              AppSliverHeader(
+                title: 'השוואת מסלולים',
+                subtitle: heroSave > 0 ? 'הזוכה: ${winner.provider}' : null,
+                expandedHeight: heroSave > 0 ? 196 : 150,
+                actions: [
+                  _ShareMenu(plans: plans, appState: appState),
+                  if (ids.isNotEmpty)
+                    TextButton(
+                      onPressed: appState.clearCompare,
+                      child: Text('נקה הכל',
+                          style: ffTheme.labelMedium.copyWith(
+                              color: Colors.white.withValues(alpha: 0.9))),
+                    ),
+                ],
+                flexibleChild: heroSave > 0
+                    ? _HeroSaving(saving: heroSave, ffTheme: ffTheme)
+                    : null,
+              ),
+              SliverToBoxAdapter(
+                child: _CompareTable(
                   plans: plans,
                   appState: appState,
                   ffTheme: ffTheme,
                   winnerId: winnerId,
                   matchMap: matchMap,
-                ),
-                // Track both compared plans once on mount.
-                for (final p in plans)
-                  _PlanViewTracker(planId: p.id, provider: p.provider, category: p.cat),
-              ],
+                ).animate().fadeIn(duration: 350.ms).slideY(
+                    begin: 0.04, end: 0, curve: Curves.easeOutCubic),
+              ),
+              // Clear the pinned bottom CTA bar so the last rows aren't hidden.
+              const SliverToBoxAdapter(child: SizedBox(height: 96)),
+            ],
+          ),
+          // Sticky bottom primary CTA for the winner — mirrors the PlanDetail
+          // bottom-bar pattern so the strongest action is always one tap away.
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: _WinnerCtaBar(winner: winner, ffTheme: ffTheme),
+          ),
+          // Track both compared plans once on mount.
+          for (final p in plans)
+            _PlanViewTracker(
+                planId: p.id, provider: p.provider, category: p.cat),
+        ],
+      ),
+    );
+  }
+}
+
+// ── Hero saving figure (header flexibleChild) ──────────────────────────────────
+
+/// The big "₪X/שנה" the collapsing [AppSliverHeader] carries for a 2+ compare —
+/// the winner's annual saving vs the user's bill, set on the green ACTION wash.
+class _HeroSaving extends StatelessWidget {
+  const _HeroSaving({required this.saving, required this.ffTheme});
+  final int saving;
+  final AppTheme ffTheme;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          '₪$saving',
+          style: GoogleFonts.rubik(
+            fontSize: 34,
+            fontWeight: FontWeight.w800,
+            color: Colors.white,
+            letterSpacing: -1,
+            height: 1.0,
+            fontFeatures: const [FontFeature.tabularFigures()],
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          'חיסכון שנתי עם ההמלצה',
+          style: GoogleFonts.assistant(
+            fontSize: 12,
+            fontWeight: FontWeight.w600,
+            color: Colors.white.withValues(alpha: 0.85),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ── Sticky winner CTA bar ──────────────────────────────────────────────────────
+
+/// The pinned bottom action bar for the focused/winner plan, mirroring the
+/// PlanDetail sticky-bar pattern (card surface, top hairline, soft glass shadow,
+/// SafeArea-guarded). Tapping routes to the Lead flow for the winner.
+class _WinnerCtaBar extends StatelessWidget {
+  const _WinnerCtaBar({required this.winner, required this.ffTheme});
+  final Plan winner;
+  final AppTheme ffTheme;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      top: false,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+        decoration: BoxDecoration(
+          color: ffTheme.cardSurface,
+          borderRadius:
+              BorderRadius.vertical(top: Radius.circular(ffTheme.radiusXl)),
+          border: Border(
+              top: BorderSide(
+                  color: ffTheme.primary.withValues(alpha: 0.06), width: 1)),
+          boxShadow: ffTheme.shadowLifted,
+        ),
+        child: Row(
+          children: [
+            Padding(
+              padding: const EdgeInsetsDirectional.only(end: 12),
+              child: LogoWidget(provider: winner.provider, size: 36),
             ),
+            Expanded(
+              child: Semantics(
+                button: true,
+                label:
+                    'בחר את המסלול ${winner.plan} של ${winner.provider} — הזוכה',
+                child: AppButton(
+                  text: 'בחרו ב-${winner.provider} ←',
+                  onPressed: () async {
+                    HapticFeedback.lightImpact();
+                    context.pushNamed('Lead',
+                        pathParameters: {'planId': winner.id},
+                        queryParameters: {'source': 'compare'});
+                  },
+                  height: 56,
+                  // Const brand ink → AppButton lifts this into the green ACTION
+                  // gradient + glow in BOTH themes (white-on-green).
+                  color: AppColors.primary,
+                  textStyle: ffTheme.titleSmall.copyWith(color: Colors.white),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -163,61 +322,56 @@ class _ShareMenuState extends State<_ShareMenu> {
     Share.share(export?.toShareText() ?? _quickShareText(widget.plans));
   }
 
+  /// The three real share actions, opened as a bottom sheet. Each row preserves
+  /// its exact behaviour (PDF export, print, plain-text), including the
+  /// PDF-fail-to-text fallback inside [_sharePdf].
+  void _openShareSheet() {
+    HapticFeedback.lightImpact();
+    AppSheet.actions(
+      context,
+      title: 'שיתוף ההשוואה',
+      actions: [
+        AppSheetAction(
+          icon: Icons.picture_as_pdf_rounded,
+          label: 'שתף כ-PDF',
+          onTap: _sharePdf,
+        ),
+        AppSheetAction(
+          icon: Icons.print_rounded,
+          label: 'הדפס',
+          onTap: _printPdf,
+        ),
+        AppSheetAction(
+          icon: Icons.short_text_rounded,
+          label: 'שתף כטקסט',
+          onTap: _shareText,
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Busy: the in-flight PDF/print spinner sits where the share button was so
+    // the header doesn't reflow (>=48dp tap-target footprint preserved).
     if (_busy) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(horizontal: 16),
-        child: SizedBox(
-          width: 18,
-          height: 18,
-          child: CircularProgressIndicator(
-              strokeWidth: 2, color: Colors.white),
+      return const SizedBox(
+        width: kMinTapTarget,
+        height: kMinTapTarget,
+        child: Center(
+          child: SizedBox(
+            width: 18,
+            height: 18,
+            child: CircularProgressIndicator(
+                strokeWidth: 2, color: Colors.white),
+          ),
         ),
       );
     }
-    return PopupMenuButton<String>(
+    return IconButton(
       icon: const Icon(Icons.ios_share_rounded, color: Colors.white),
       tooltip: 'שתף',
-      onSelected: (v) {
-        switch (v) {
-          case 'pdf':
-            _sharePdf();
-          case 'print':
-            _printPdf();
-          case 'text':
-            _shareText();
-        }
-      },
-      itemBuilder: (context) => const [
-        PopupMenuItem(
-          value: 'pdf',
-          child: ListTile(
-            dense: true,
-            contentPadding: EdgeInsets.zero,
-            leading: Icon(Icons.picture_as_pdf_rounded),
-            title: Text('שתף כ-PDF'),
-          ),
-        ),
-        PopupMenuItem(
-          value: 'print',
-          child: ListTile(
-            dense: true,
-            contentPadding: EdgeInsets.zero,
-            leading: Icon(Icons.print_rounded),
-            title: Text('הדפס'),
-          ),
-        ),
-        PopupMenuItem(
-          value: 'text',
-          child: ListTile(
-            dense: true,
-            contentPadding: EdgeInsets.zero,
-            leading: Icon(Icons.short_text_rounded),
-            title: Text('שתף כטקסט'),
-          ),
-        ),
-      ],
+      onPressed: _openShareSheet,
     );
   }
 }
@@ -382,18 +536,21 @@ class _CompareTable extends StatelessWidget {
       _Row('חו"ל', plans.map((p) => p.hasAbroad ? '✓' : '—').toList()),
     ];
 
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // ── Winner summary card ───────────────────────────────────────────
-          _WinnerSummaryCard(
-            plans: plans,
-            winnerId: winnerId,
-            appState: appState,
-            ffTheme: ffTheme,
-            matchMap: matchMap,
-          ),
+    // Root is a plain Column now — the page's vertical scroll is owned by the
+    // outer RefreshableScroll (this widget lives in a SliverToBoxAdapter). The
+    // inner horizontal SingleChildScrollViews still drive the side-by-side
+    // spec/price matrix across all plans, which stays the screen's core.
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // ── Winner summary card ───────────────────────────────────────────
+        _WinnerSummaryCard(
+          plans: plans,
+          winnerId: winnerId,
+          appState: appState,
+          ffTheme: ffTheme,
+          matchMap: matchMap,
+        ),
 
           // Header row
           SingleChildScrollView(
@@ -617,7 +774,6 @@ class _CompareTable extends StatelessWidget {
           ] else
             const SizedBox(height: 32),
         ],
-      ),
     );
   }
 }
@@ -964,17 +1120,24 @@ class _PlanHeader extends StatelessWidget {
               ),
             ),
           ],
-          const SizedBox(height: 4),
+          const SizedBox(height: 2),
+          // Remove-from-compare: the glyph stays 18dp but the hit area is raised
+          // to the min tap target so the small "×" is comfortably tappable.
           Semantics(
             button: true,
             label: 'הסר מהשוואה',
             child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
               onTap: () {
                 HapticFeedback.selectionClick();
                 appState.toggleCompare(plan.id);
               },
-              child: Icon(Icons.close_rounded,
-                  size: 18, color: ffTheme.secondaryText),
+              child: SizedBox(
+                width: kMinTapTarget,
+                height: kMinTapTarget,
+                child: Icon(Icons.close_rounded,
+                    size: 18, color: ffTheme.secondaryText),
+              ),
             ),
           ),
         ],

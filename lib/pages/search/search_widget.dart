@@ -15,6 +15,7 @@ import '../../services/search.dart';
 import '../../services/analytics_service.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/pressable.dart';
+import '../../widgets/refreshable_scroll.dart';
 
 /// Global search across every provider and plan in the catalogue.
 ///
@@ -81,6 +82,14 @@ class _SearchWidgetState extends State<SearchWidget> {
     _focus.requestFocus();
   }
 
+  /// Pull-to-refresh: searchEverything / the suggestions surface are pure over
+  /// the catalogue + AppState, so re-running build on a fresh frame re-derives
+  /// them. A microtask defers the setState off the gesture's notification frame.
+  Future<void> _refresh() async {
+    await Future<void>.delayed(Duration.zero);
+    if (mounted) setState(() {});
+  }
+
   void _setFacets(SearchFacets f) => setState(() => _facets = f);
 
   void _clearFacets() => setState(() => _facets = const SearchFacets());
@@ -111,8 +120,10 @@ class _SearchWidgetState extends State<SearchWidget> {
     final hasQuery = _q.trim().isNotEmpty;
     // The set of plans the active facets *could* have hidden — used to keep the
     // chip bar honest ("0 results" still shows the bar so the user can relax it).
-    final filteredEmpty =
-        hasQuery && _facets.isNotEmpty && raw.plans.isNotEmpty && results.plans.isEmpty;
+    final filteredEmpty = hasQuery &&
+        _facets.isNotEmpty &&
+        raw.plans.isNotEmpty &&
+        results.plans.isEmpty;
 
     return Scaffold(
       backgroundColor: ffTheme.background,
@@ -120,9 +131,10 @@ class _SearchWidgetState extends State<SearchWidget> {
         backgroundColor: ffTheme.secondaryBackground,
         elevation: 0,
         titleSpacing: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_forward_ios_rounded, color: ffTheme.primaryText, size: 20),
-          tooltip: 'חזרה',
+        // Platform-default back affordance — RTL-mirrored automatically (replaces
+        // the previously wrong-direction forward chevron).
+        leading: BackButton(
+          color: ffTheme.primaryText,
           onPressed: () => context.safePop(),
         ),
         title: Container(
@@ -159,7 +171,8 @@ class _SearchWidgetState extends State<SearchWidget> {
                     isDense: true,
                     border: InputBorder.none,
                     hintText: 'ספק, מסלול, או תכונה…',
-                    hintStyle: ffTheme.bodyMedium.copyWith(color: ffTheme.secondaryText),
+                    hintStyle: ffTheme.bodyMedium
+                        .copyWith(color: ffTheme.secondaryText),
                   ),
                 ),
               ),
@@ -175,7 +188,8 @@ class _SearchWidgetState extends State<SearchWidget> {
                     },
                     child: Padding(
                       padding: const EdgeInsets.only(right: 2, left: 2),
-                      child: Icon(Icons.close_rounded, size: 18, color: ffTheme.secondaryText),
+                      child: Icon(Icons.close_rounded,
+                          size: 18, color: ffTheme.secondaryText),
                     ),
                   ),
                 ),
@@ -193,6 +207,7 @@ class _SearchWidgetState extends State<SearchWidget> {
               onPick: _useSuggestion,
               recent: appState.recentSearches,
               onClearRecent: appState.clearRecentSearches,
+              onRefresh: _refresh,
             )
           : Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -233,6 +248,7 @@ class _SearchWidgetState extends State<SearchWidget> {
                               ffTheme: ffTheme,
                               appState: appState,
                               onBeforeNavigate: _remember,
+                              onRefresh: _refresh,
                             ),
                 ),
               ],
@@ -268,7 +284,8 @@ class _FacetBar extends StatelessWidget {
       context: context,
       backgroundColor: ffTheme.secondaryBackground,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(ffTheme.radiusLg)),
+        borderRadius:
+            BorderRadius.vertical(top: Radius.circular(ffTheme.radiusLg)),
       ),
       builder: (sheetCtx) {
         return SafeArea(
@@ -279,10 +296,12 @@ class _FacetBar extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text('עד כמה התקציב?',
-                    style: ffTheme.titleMedium.copyWith(fontWeight: FontWeight.w800)),
+                    style: ffTheme.titleMedium
+                        .copyWith(fontWeight: FontWeight.w800)),
                 const SizedBox(height: 4),
                 Text('הצגת מסלולים במחיר שלא עולה על הסכום שתבחרו',
-                    style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText)),
+                    style: ffTheme.bodySmall
+                        .copyWith(color: ffTheme.secondaryText)),
                 const SizedBox(height: 16),
                 Wrap(
                   spacing: 10,
@@ -346,7 +365,8 @@ class _FacetBar extends StatelessWidget {
               icon: Icons.lock_open_rounded,
               selected: facets.noCommit,
               ffTheme: ffTheme,
-              onTap: () => onChanged(facets.copyWith(noCommit: !facets.noCommit)),
+              onTap: () =>
+                  onChanged(facets.copyWith(noCommit: !facets.noCommit)),
             ),
             const SizedBox(width: 8),
             _FacetChip(
@@ -354,7 +374,8 @@ class _FacetBar extends StatelessWidget {
               icon: Icons.data_usage_rounded,
               selected: facets.withData,
               ffTheme: ffTheme,
-              onTap: () => onChanged(facets.copyWith(withData: !facets.withData)),
+              onTap: () =>
+                  onChanged(facets.copyWith(withData: !facets.withData)),
             ),
             const SizedBox(width: 8),
             _FacetChip(
@@ -373,7 +394,8 @@ class _FacetBar extends StatelessWidget {
                 child: Pressable(
                   onTap: onClear,
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
                     decoration: BoxDecoration(
                       color: ffTheme.accent2,
                       borderRadius: BorderRadius.circular(ffTheme.radiusPill),
@@ -382,11 +404,13 @@ class _FacetBar extends StatelessWidget {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.close_rounded, size: 15, color: ffTheme.secondaryText),
+                        Icon(Icons.close_rounded,
+                            size: 15, color: ffTheme.secondaryText),
                         const SizedBox(width: 5),
                         Text('נקה',
                             style: ffTheme.labelMedium.copyWith(
-                                color: ffTheme.secondaryText, fontWeight: FontWeight.w700)),
+                                color: ffTheme.secondaryText,
+                                fontWeight: FontWeight.w700)),
                       ],
                     ),
                   ),
@@ -433,7 +457,9 @@ class _FacetChip extends StatelessWidget {
           duration: 160.ms,
           padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
           decoration: BoxDecoration(
-            color: selected ? ffTheme.brandAccentTint : ffTheme.secondaryBackground,
+            color: selected
+                ? ffTheme.brandAccentTint
+                : ffTheme.secondaryBackground,
             borderRadius: BorderRadius.circular(ffTheme.radiusPill),
             border: Border.all(
               color: selected
@@ -445,14 +471,20 @@ class _FacetChip extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: 15, color: selected ? ffTheme.brandAccent : ffTheme.secondaryText),
+              Icon(icon,
+                  size: 15,
+                  color:
+                      selected ? ffTheme.brandAccent : ffTheme.secondaryText),
               const SizedBox(width: 6),
               Text(label,
                   style: ffTheme.labelMedium
                       .copyWith(color: fg, fontWeight: FontWeight.w700)),
               if (trailing != null) ...[
                 const SizedBox(width: 2),
-                Icon(trailing, size: 16, color: selected ? ffTheme.brandAccent : ffTheme.secondaryText),
+                Icon(trailing,
+                    size: 16,
+                    color:
+                        selected ? ffTheme.brandAccent : ffTheme.secondaryText),
               ],
             ],
           ),
@@ -489,13 +521,16 @@ class _SheetChoice extends StatelessWidget {
             color: selected ? ffTheme.brandAccentTint : ffTheme.accent2,
             borderRadius: BorderRadius.circular(ffTheme.radiusPill),
             border: Border.all(
-              color: selected ? ffTheme.brandAccent.withValues(alpha: 0.45) : ffTheme.alternate,
+              color: selected
+                  ? ffTheme.brandAccent.withValues(alpha: 0.45)
+                  : ffTheme.alternate,
               width: selected ? 1.5 : 1,
             ),
           ),
           child: Text(label,
               style: ffTheme.labelMedium.copyWith(
-                  color: selected ? ffTheme.brandAccentText : ffTheme.primaryText,
+                  color:
+                      selected ? ffTheme.brandAccentText : ffTheme.primaryText,
                   fontWeight: FontWeight.w700)),
         ),
       ),
@@ -512,6 +547,7 @@ class _ResultsList extends StatelessWidget {
     required this.ffTheme,
     required this.appState,
     required this.onBeforeNavigate,
+    required this.onRefresh,
   });
 
   final SearchResults results;
@@ -519,6 +555,7 @@ class _ResultsList extends StatelessWidget {
   final AppTheme ffTheme;
   final AppState appState;
   final VoidCallback onBeforeNavigate;
+  final Future<void> Function() onRefresh;
 
   @override
   Widget build(BuildContext context) {
@@ -530,90 +567,116 @@ class _ResultsList extends StatelessWidget {
         results.providers.length +
         results.plans.length;
 
-    return ListView(
+    return RefreshableScroll(
+      onRefresh: onRefresh,
       padding: const EdgeInsets.fromLTRB(16, 14, 16, 32),
-      children: [
-        // Result summary line.
-        Padding(
-          padding: const EdgeInsets.only(bottom: 12),
-          child: Text(
-            total == 1 ? 'תוצאה אחת עבור "$query"' : '$total תוצאות עבור "$query"',
-            style: ffTheme.bodySmall.copyWith(
-                color: ffTheme.secondaryText, fontWeight: FontWeight.w600),
-          ),
-        ),
+      slivers: [
+        SliverList(
+          delegate: SliverChildListDelegate([
+            // Result summary line.
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Text(
+                total == 1
+                    ? 'תוצאה אחת עבור "$query"'
+                    : '$total תוצאות עבור "$query"',
+                style: ffTheme.bodySmall.copyWith(
+                    color: ffTheme.secondaryText, fontWeight: FontWeight.w600),
+              ),
+            ),
 
-        // Categories — quick jump into a whole catalogue section.
-        if (results.categories.isNotEmpty) ...[
-          _SectionLabel(text: 'קטגוריות', count: results.categories.length, ffTheme: ffTheme),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: results.categories.map((c) {
-              final widget = _CategoryResultChip(
-                hit: c,
-                query: query,
-                ffTheme: ffTheme,
-                onTap: () {
-                  onBeforeNavigate();
-                  final app = Provider.of<AppState>(context, listen: false);
-                  app.setCategory(c.id);
-                  context.pushNamed('Results');
-                },
-              ).animate(delay: (i.clamp(0, 5) * 40).ms).fadeIn(duration: 240.ms).slideY(begin: 0.06, end: 0, curve: ffTheme.easeOut);
-              i++;
-              return widget;
-            }).toList(),
-          ),
-          const SizedBox(height: 20),
-        ],
+            // Categories — quick jump into a whole catalogue section.
+            if (results.categories.isNotEmpty) ...[
+              _SectionLabel(
+                  text: 'קטגוריות',
+                  count: results.categories.length,
+                  ffTheme: ffTheme),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: results.categories.map((c) {
+                  final widget = _CategoryResultChip(
+                    hit: c,
+                    query: query,
+                    ffTheme: ffTheme,
+                    onTap: () {
+                      onBeforeNavigate();
+                      final app = Provider.of<AppState>(context, listen: false);
+                      app.setCategory(c.id);
+                      context.pushNamed('Results');
+                    },
+                  )
+                      .animate(delay: (i.clamp(0, 5) * 40).ms)
+                      .fadeIn(duration: 240.ms)
+                      .slideY(begin: 0.06, end: 0, curve: ffTheme.easeOut);
+                  i++;
+                  return widget;
+                }).toList(),
+              ),
+              const SizedBox(height: 20),
+            ],
 
-        // Providers — horizontal glass chips.
-        if (results.providers.isNotEmpty) ...[
-          _SectionLabel(text: 'ספקים', count: results.providers.length, ffTheme: ffTheme),
-          const SizedBox(height: 10),
-          SizedBox(
-            height: 102,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: results.providers.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 10),
-              itemBuilder: (context, idx) {
-                final name = results.providers[idx];
-                final widget = _ProviderChip(
-                  name: name,
-                  query: query,
-                  planCount: plansByProvider(name).length,
-                  ffTheme: ffTheme,
-                  onTap: () {
-                    onBeforeNavigate();
-                    context.pushNamed('Provider', pathParameters: {'name': name});
+            // Providers — horizontal glass chips.
+            if (results.providers.isNotEmpty) ...[
+              _SectionLabel(
+                  text: 'ספקים',
+                  count: results.providers.length,
+                  ffTheme: ffTheme),
+              const SizedBox(height: 10),
+              SizedBox(
+                height: 102,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: results.providers.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 10),
+                  itemBuilder: (context, idx) {
+                    final name = results.providers[idx];
+                    final widget = _ProviderChip(
+                      name: name,
+                      query: query,
+                      planCount: plansByProvider(name).length,
+                      ffTheme: ffTheme,
+                      onTap: () {
+                        onBeforeNavigate();
+                        context.pushNamed('Provider',
+                            pathParameters: {'name': name});
+                      },
+                    )
+                        .animate(delay: (i.clamp(0, 5) * 40).ms)
+                        .fadeIn(duration: 240.ms)
+                        .slideY(begin: 0.06, end: 0, curve: ffTheme.easeOut);
+                    i++;
+                    return widget;
                   },
-                ).animate(delay: (i.clamp(0, 5) * 40).ms).fadeIn(duration: 240.ms).slideY(begin: 0.06, end: 0, curve: ffTheme.easeOut);
+                ),
+              ),
+              const SizedBox(height: 20),
+            ],
+
+            // Plans — the full ranked list, with the matched term highlighted.
+            if (results.plans.isNotEmpty) ...[
+              _SectionLabel(
+                  text: 'מסלולים',
+                  count: results.plans.length,
+                  ffTheme: ffTheme),
+              const SizedBox(height: 10),
+              ...results.plans.map((p) {
+                final widget = _HighlightedPlanCard(
+                  plan: p,
+                  query: query,
+                  currentBill: appState.currentBill(p.cat),
+                  ffTheme: ffTheme,
+                )
+                    .animate(delay: (i.clamp(0, 6) * 35).ms)
+                    .fadeIn(duration: 240.ms)
+                    .slideY(begin: 0.06, end: 0, curve: ffTheme.easeOut);
                 i++;
                 return widget;
-              },
-            ),
-          ),
-          const SizedBox(height: 20),
-        ],
-
-        // Plans — the full ranked list, with the matched term highlighted.
-        if (results.plans.isNotEmpty) ...[
-          _SectionLabel(text: 'מסלולים', count: results.plans.length, ffTheme: ffTheme),
-          const SizedBox(height: 10),
-          ...results.plans.map((p) {
-            final widget = _HighlightedPlanCard(
-              plan: p,
-              query: query,
-              currentBill: appState.currentBill(p.cat),
-              ffTheme: ffTheme,
-            ).animate(delay: (i.clamp(0, 6) * 35).ms).fadeIn(duration: 240.ms).slideY(begin: 0.06, end: 0, curve: ffTheme.easeOut);
-            i++;
-            return widget;
-          }),
-        ],
+              }),
+            ],
+          ]),
+        ),
       ],
     );
   }
@@ -622,7 +685,8 @@ class _ResultsList extends StatelessWidget {
 // ── Section label ───────────────────────────────────────────────────────────
 
 class _SectionLabel extends StatelessWidget {
-  const _SectionLabel({required this.text, required this.count, required this.ffTheme});
+  const _SectionLabel(
+      {required this.text, required this.count, required this.ffTheme});
   final String text;
   final int count;
   final AppTheme ffTheme;
@@ -631,7 +695,8 @@ class _SectionLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Text(text, style: ffTheme.titleMedium.copyWith(fontWeight: FontWeight.w800)),
+        Text(text,
+            style: ffTheme.titleMedium.copyWith(fontWeight: FontWeight.w800)),
         const SizedBox(width: 8),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -640,7 +705,8 @@ class _SectionLabel extends StatelessWidget {
             borderRadius: BorderRadius.circular(ffTheme.radiusPill),
           ),
           child: Text('$count',
-              style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w800)),
+              style: ffTheme.labelSmall.copyWith(
+                  color: ffTheme.brandAccentText, fontWeight: FontWeight.w800)),
         ),
       ],
     );
@@ -705,7 +771,8 @@ class _Highlighted extends StatelessWidget {
           spans.add(TextSpan(text: buf.toString(), style: base));
           buf.clear();
         }
-        spans.add(TextSpan(text: text.substring(i, i + hit.length), style: hlStyle));
+        spans.add(
+            TextSpan(text: text.substring(i, i + hit.length), style: hlStyle));
         i += hit.length;
       } else {
         buf.write(text[i]);
@@ -744,14 +811,16 @@ class _HighlightedPlanCard extends StatelessWidget {
   String? get _matchedFeature {
     final q = query.trim().toLowerCase();
     if (q.isEmpty) return null;
-    if (plan.provider.toLowerCase().contains(q) || plan.plan.toLowerCase().contains(q)) {
+    if (plan.provider.toLowerCase().contains(q) ||
+        plan.plan.toLowerCase().contains(q)) {
       return null; // the name already shows the match
     }
     for (final f in plan.feats) {
       if (f.toLowerCase().contains(q)) return f;
     }
     for (final e in plan.specs.entries) {
-      if (e.value.toLowerCase().contains(q) || e.key.toLowerCase().contains(q)) {
+      if (e.value.toLowerCase().contains(q) ||
+          e.key.toLowerCase().contains(q)) {
         return '${e.key}: ${e.value}';
       }
     }
@@ -774,13 +843,15 @@ class _HighlightedPlanCard extends StatelessWidget {
             padding: const EdgeInsets.only(bottom: 12, right: 4, left: 4),
             child: Row(
               children: [
-                Icon(Icons.check_circle_outline_rounded, size: 14, color: ffTheme.brandAccent),
+                Icon(Icons.check_circle_outline_rounded,
+                    size: 14, color: ffTheme.brandAccent),
                 const SizedBox(width: 6),
                 Expanded(
                   child: _Highlighted(
                     text: feature,
                     query: query,
-                    base: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText),
+                    base: ffTheme.labelSmall
+                        .copyWith(color: ffTheme.secondaryText),
                     highlight: ffTheme.brandAccent.withValues(alpha: 0.16),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -820,7 +891,8 @@ class _CategoryResultChip extends StatelessWidget {
           decoration: BoxDecoration(
             color: ffTheme.brandAccentTint,
             borderRadius: BorderRadius.circular(ffTheme.radiusPill),
-            border: Border.all(color: ffTheme.brandAccent.withValues(alpha: 0.22)),
+            border:
+                Border.all(color: ffTheme.brandAccent.withValues(alpha: 0.22)),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -831,11 +903,14 @@ class _CategoryResultChip extends StatelessWidget {
                 text: hit.name,
                 query: query,
                 base: GoogleFonts.assistant(
-                    fontSize: 14, fontWeight: FontWeight.w700, color: ffTheme.brandAccent),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: ffTheme.brandAccent),
                 highlight: ffTheme.brandAccent.withValues(alpha: 0.16),
               ),
               const SizedBox(width: 6),
-              Icon(Icons.chevron_left_rounded, size: 18, color: ffTheme.brandAccent),
+              Icon(Icons.chevron_left_rounded,
+                  size: 18, color: ffTheme.brandAccent),
             ],
           ),
         ),
@@ -885,7 +960,8 @@ class _ProviderChip extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
               ),
               Text('$planCount מסלולים',
-                  style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText, fontSize: 10)),
+                  style: ffTheme.labelSmall
+                      .copyWith(color: ffTheme.secondaryText, fontSize: 10)),
             ],
           ),
         ),
@@ -902,11 +978,13 @@ class _Suggestions extends StatelessWidget {
     required this.onPick,
     required this.recent,
     required this.onClearRecent,
+    required this.onRefresh,
   });
   final AppTheme ffTheme;
   final void Function(String) onPick;
   final List<String> recent;
   final VoidCallback onClearRecent;
+  final Future<void> Function() onRefresh;
 
   @override
   Widget build(BuildContext context) {
@@ -914,115 +992,140 @@ class _Suggestions extends StatelessWidget {
     // No invented popularity; just honest lowest prices.
     final cheapest = cheapestPerCategory();
 
-    return ListView(
+    return RefreshableScroll(
+      onRefresh: onRefresh,
       padding: const EdgeInsets.fromLTRB(16, 18, 16, 32),
-      children: [
-        if (recent.isNotEmpty) ...[
-          Row(
-            children: [
-              Text('חיפושים אחרונים',
-                  style: ffTheme.titleMedium.copyWith(fontWeight: FontWeight.w800)),
-              const Spacer(),
-              Semantics(
-                button: true,
-                label: 'נקה חיפושים אחרונים',
-                child: GestureDetector(
-                  onTap: onClearRecent,
-                  child: Text('נקה',
-                      style: ffTheme.labelMedium.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w700)),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: recent
-                .map((q) => _PillChip(
-                      label: q,
-                      icon: Icons.history_rounded,
-                      ffTheme: ffTheme,
-                      onTap: () => onPick(q),
-                    ))
-                .toList(),
-          ),
-          const SizedBox(height: 24),
-        ],
-
-        // Browse by category — real categories.
-        Text('עיון לפי קטגוריה',
-            style: ffTheme.titleMedium.copyWith(fontWeight: FontWeight.w800)),
-        const SizedBox(height: 12),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: categories
-              .map((c) => Semantics(
+      slivers: [
+        SliverList(
+          delegate: SliverChildListDelegate([
+            if (recent.isNotEmpty) ...[
+              Row(
+                children: [
+                  Text('חיפושים אחרונים',
+                      style: ffTheme.titleMedium
+                          .copyWith(fontWeight: FontWeight.w800)),
+                  const Spacer(),
+                  Semantics(
                     button: true,
-                    label: 'חיפוש ${c.name}',
-                    child: Pressable(
-                      onTap: () => onPick(c.name),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: ffTheme.brandAccentTint,
-                          borderRadius: BorderRadius.circular(ffTheme.radiusPill),
-                          border: Border.all(color: ffTheme.brandAccent.withValues(alpha: 0.22)),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(categoryIconData(c.id), size: 15, color: ffTheme.brandAccent),
-                            const SizedBox(width: 6),
-                            Text(c.name,
-                                style: GoogleFonts.assistant(
-                                    fontSize: 13, fontWeight: FontWeight.w700, color: ffTheme.brandAccent)),
-                          ],
-                        ),
-                      ),
+                    label: 'נקה חיפושים אחרונים',
+                    child: GestureDetector(
+                      onTap: onClearRecent,
+                      child: Text('נקה',
+                          style: ffTheme.labelMedium.copyWith(
+                              color: ffTheme.brandAccentText,
+                              fontWeight: FontWeight.w700)),
                     ),
-                  ))
-              .toList(),
-        ),
-        const SizedBox(height: 24),
-
-        // The cheapest real plan in each category — a useful, honest jump-off.
-        if (cheapest.isNotEmpty) ...[
-          Text('המסלולים הזולים ביותר',
-              style: ffTheme.titleMedium.copyWith(fontWeight: FontWeight.w800)),
-          const SizedBox(height: 4),
-          Text('המחיר הנמוך ביותר בכל קטגוריה, מתוך הקטלוג',
-              style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText)),
-          const SizedBox(height: 12),
-          ...cheapest.asMap().entries.map((e) => _CheapestRow(
-                plan: e.value,
-                ffTheme: ffTheme,
-              ).animate(delay: (e.key.clamp(0, 5) * 30).ms).fadeIn(duration: 240.ms).slideY(begin: 0.1)),
-          const SizedBox(height: 24),
-        ],
-
-        // Help card.
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: ffTheme.brandAccentTint,
-            borderRadius: BorderRadius.circular(ffTheme.radiusLg),
-            border: Border.all(color: ffTheme.brandAccent.withValues(alpha: 0.15)),
-            boxShadow: ffTheme.shadowXs,
-          ),
-          child: Row(
-            children: [
-              Icon(Icons.lightbulb_outline_rounded, size: 22, color: ffTheme.brandAccent),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  'אפשר לחפש לפי שם ספק, שם מסלול, תכונה כמו "5G" או "סיב", או אפילו תקציב כמו "50"',
-                  style: ffTheme.bodySmall.copyWith(color: ffTheme.primaryText, fontWeight: FontWeight.w600),
-                ),
+                  ),
+                ],
               ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: recent
+                    .map((q) => _PillChip(
+                          label: q,
+                          icon: Icons.history_rounded,
+                          ffTheme: ffTheme,
+                          onTap: () => onPick(q),
+                        ))
+                    .toList(),
+              ),
+              const SizedBox(height: 24),
             ],
-          ),
+
+            // Browse by category — real categories.
+            Text('עיון לפי קטגוריה',
+                style:
+                    ffTheme.titleMedium.copyWith(fontWeight: FontWeight.w800)),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: categories
+                  .map((c) => Semantics(
+                        button: true,
+                        label: 'חיפוש ${c.name}',
+                        child: Pressable(
+                          onTap: () => onPick(c.name),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: ffTheme.brandAccentTint,
+                              borderRadius:
+                                  BorderRadius.circular(ffTheme.radiusPill),
+                              border: Border.all(
+                                  color: ffTheme.brandAccent
+                                      .withValues(alpha: 0.22)),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(categoryIconData(c.id),
+                                    size: 15, color: ffTheme.brandAccent),
+                                const SizedBox(width: 6),
+                                Text(c.name,
+                                    style: GoogleFonts.assistant(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w700,
+                                        color: ffTheme.brandAccent)),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ))
+                  .toList(),
+            ),
+            const SizedBox(height: 24),
+
+            // The cheapest real plan in each category — a useful, honest jump-off.
+            if (cheapest.isNotEmpty) ...[
+              Text('המסלולים הזולים ביותר',
+                  style: ffTheme.titleMedium
+                      .copyWith(fontWeight: FontWeight.w800)),
+              const SizedBox(height: 4),
+              Text('המחיר הנמוך ביותר בכל קטגוריה, מתוך הקטלוג',
+                  style:
+                      ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText)),
+              const SizedBox(height: 12),
+              ...cheapest.asMap().entries.map((e) => _CheapestRow(
+                    plan: e.value,
+                    ffTheme: ffTheme,
+                  )
+                      .animate(delay: (e.key.clamp(0, 5) * 30).ms)
+                      .fadeIn(duration: 240.ms)
+                      .slideY(begin: 0.1)),
+              const SizedBox(height: 24),
+            ],
+
+            // Help card.
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: ffTheme.brandAccentTint,
+                borderRadius: BorderRadius.circular(ffTheme.radiusLg),
+                border: Border.all(
+                    color: ffTheme.brandAccent.withValues(alpha: 0.15)),
+                boxShadow: ffTheme.shadowXs,
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.lightbulb_outline_rounded,
+                      size: 22, color: ffTheme.brandAccent),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'אפשר לחפש לפי שם ספק, שם מסלול, תכונה כמו "5G" או "סיב", או אפילו תקציב כמו "50"',
+                      style: ffTheme.bodySmall.copyWith(
+                          color: ffTheme.primaryText,
+                          fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ]),
         ),
       ],
     );
@@ -1064,7 +1167,9 @@ class _PillChip extends StatelessWidget {
               const SizedBox(width: 6),
               Text(label,
                   style: GoogleFonts.assistant(
-                      fontSize: 13, fontWeight: FontWeight.w600, color: ffTheme.primaryText)),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: ffTheme.primaryText)),
             ],
           ),
         ),
@@ -1085,7 +1190,8 @@ class _CheapestRow extends StatelessWidget {
     final catName = categoryById(plan.cat)?.name ?? '';
     return Semantics(
       button: true,
-      label: '$catName: ${plan.provider}, ${plan.plan}, ₪${plan.priceText} ${priceUnitShort(plan)}',
+      label:
+          '$catName: ${plan.provider}, ${plan.plan}, ₪${plan.priceText} ${priceUnitShort(plan)}',
       child: Pressable(
         onTap: () {
           Provider.of<AppState>(context, listen: false).viewPlan(plan.id);
@@ -1097,7 +1203,8 @@ class _CheapestRow extends StatelessWidget {
           decoration: ffTheme.glassDecoration(radius: ffTheme.radiusMd),
           child: Row(
             children: [
-              ExcludeSemantics(child: LogoWidget(provider: plan.provider, size: 40)),
+              ExcludeSemantics(
+                  child: LogoWidget(provider: plan.provider, size: 40)),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -1106,27 +1213,34 @@ class _CheapestRow extends StatelessWidget {
                     Row(
                       children: [
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 7, vertical: 2),
                           decoration: BoxDecoration(
                             color: ffTheme.brandAccentTint,
-                            borderRadius: BorderRadius.circular(ffTheme.radiusXs),
+                            borderRadius:
+                                BorderRadius.circular(ffTheme.radiusXs),
                           ),
                           child: Text(catName,
-                              style: ffTheme.labelSmall
-                                  .copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w800)),
+                              style: ffTheme.labelSmall.copyWith(
+                                  color: ffTheme.brandAccentText,
+                                  fontWeight: FontWeight.w800)),
                         ),
                         const SizedBox(width: 6),
                         Flexible(
                           child: Text(plan.provider,
-                              style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText),
-                              maxLines: 1, overflow: TextOverflow.ellipsis),
+                              style: ffTheme.labelSmall
+                                  .copyWith(color: ffTheme.secondaryText),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis),
                         ),
                       ],
                     ),
                     const SizedBox(height: 4),
                     Text(plan.plan,
-                        style: ffTheme.titleSmall.copyWith(fontWeight: FontWeight.w700),
-                        maxLines: 1, overflow: TextOverflow.ellipsis),
+                        style: ffTheme.titleSmall
+                            .copyWith(fontWeight: FontWeight.w700),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis),
                   ],
                 ),
               ),
@@ -1135,10 +1249,12 @@ class _CheapestRow extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text('₪${plan.priceText}',
-                      style: ffTheme.titleMedium
-                          .copyWith(color: ffTheme.brandAccent, fontWeight: FontWeight.w800)),
+                      style: ffTheme.titleMedium.copyWith(
+                          color: ffTheme.brandAccent,
+                          fontWeight: FontWeight.w800)),
                   Text(priceUnitShort(plan),
-                      style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText, fontSize: 10)),
+                      style: ffTheme.labelSmall.copyWith(
+                          color: ffTheme.secondaryText, fontSize: 10)),
                 ],
               ),
             ],

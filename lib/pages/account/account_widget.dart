@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -7,6 +8,8 @@ import '../../core/nav.dart';
 import '../../app_state.dart';
 import '../../data.dart';
 import '../../widgets/pressable.dart';
+import '../../widgets/app_sliver_header.dart';
+import '../../widgets/refreshable_scroll.dart';
 import '../../components/logo_widget/logo_widget.dart';
 import '../../components/plan_card/mini_plan_card.dart';
 
@@ -21,77 +24,66 @@ class AccountWidget extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: ffTheme.background,
-      body: CustomScrollView(
+      // Pull-to-refresh recomputes the live AppState-derived figures (savings,
+      // tracker, watchlist) — a notify is enough to rebuild this StatelessWidget.
+      body: RefreshableScroll(
+        onRefresh: () async {
+          HapticFeedback.lightImpact();
+          AppState().update(() {});
+        },
         slivers: [
-          SliverToBoxAdapter(
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topRight,
-                  end: Alignment.bottomLeft,
-                  colors: [ffTheme.primary, ffTheme.tertiary],
-                ),
-              ),
-              child: SafeArea(
-                bottom: false,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 56,
-                        height: 56,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.2),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Center(
-                          child: ExcludeSemantics(
-                            child: appState.isLoggedIn && appState.firstName.isNotEmpty
-                                ? Text(
-                                    appState.firstName[0],
-                                    style: GoogleFonts.rubik(fontSize: 26, fontWeight: FontWeight.w700, color: Colors.white),
-                                  )
-                                : const Icon(Icons.person_rounded, size: 28, color: Colors.white),
-                          ),
-                        ),
+          // Collapsing ink hero — mirrors the Profile header. The avatar rides
+          // as the flexibleChild and the settings / login action sits trailing.
+          AppSliverHeader(
+            title: appState.isLoggedIn ? appState.userName : 'אורח',
+            subtitle: appState.isLoggedIn ? appState.userPhone : 'לא מחובר',
+            expandedHeight: 188,
+            gradient: false,
+            showBack: false,
+            actions: [
+              if (appState.isLoggedIn)
+                IconButton(
+                  icon: const Icon(Icons.settings_rounded, color: Colors.white),
+                  tooltip: 'הגדרות פרופיל',
+                  onPressed: () => context.pushNamed('Settings'),
+                )
+              else
+                Padding(
+                  padding: const EdgeInsetsDirectional.only(end: 8),
+                  child: TextButton(
+                    onPressed: () => context.pushNamed('Auth'),
+                    // Solid white chip with ink text — reads as a clear CTA on
+                    // the ink header in both themes (the old `secondary` fill
+                    // went dark slate on dark, hiding the black label).
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(10),
                       ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(appState.isLoggedIn ? appState.userName : 'אורח', style: GoogleFonts.rubik(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white)),
-                            Text(appState.isLoggedIn ? appState.userPhone : 'לא מחובר', style: GoogleFonts.assistant(fontSize: 13, color: Colors.white70)),
-                          ],
-                        ),
-                      ),
-                      if (appState.isLoggedIn)
-                        IconButton(
-                          icon: const Icon(Icons.settings_rounded, color: Colors.white),
-                          tooltip: 'הגדרות פרופיל',
-                          onPressed: () => context.pushNamed('Settings'),
-                        )
-                      else
-                        TextButton(
-                          onPressed: () => context.pushNamed('Auth'),
-                          // Solid white chip with ink text — reads as a clear CTA on
-                          // the ink header in both themes (the old `secondary` fill
-                          // went dark slate on dark, hiding the black label).
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Text('כניסה', style: GoogleFonts.rubik(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.primary)),
-                          ),
-                        ),
-                    ],
+                      child: Text('כניסה', style: GoogleFonts.rubik(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.primary)),
+                    ),
                   ),
                 ),
+            ],
+            flexibleChild: Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                shape: BoxShape.circle,
               ),
-            ).animate().fadeIn(duration: 400.ms),
+              child: Center(
+                child: ExcludeSemantics(
+                  child: appState.isLoggedIn && appState.firstName.isNotEmpty
+                      ? Text(
+                          appState.firstName[0],
+                          style: GoogleFonts.rubik(fontSize: 28, fontWeight: FontWeight.w700, color: Colors.white),
+                        )
+                      : const Icon(Icons.person_rounded, size: 30, color: Colors.white),
+                ),
+              ),
+            ),
           ),
 
           // Login CTA banner for guests
@@ -581,7 +573,12 @@ class _ActionTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Pressable(
-      onTap: onTap,
+      // Light haptic confirms the tap before the route push, matching the
+      // tactile feedback the rest of the app gives on primary actions.
+      onTap: () {
+        HapticFeedback.lightImpact();
+        onTap();
+      },
       child: Container(
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.all(16),

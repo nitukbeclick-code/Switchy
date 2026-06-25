@@ -7,6 +7,7 @@ import '../../core/nav.dart';
 import '../../data.dart';
 import '../../widgets/app_button.dart';
 import '../../widgets/app_snackbar.dart';
+import '../../widgets/sticky_cta_scaffold.dart';
 import '../../services/negotiation_script.dart';
 
 /// "תסריט מיקוח" (Negotiation/Retention Script) — helps a user who wants to STAY
@@ -65,21 +66,20 @@ class _NegotiateWidgetState extends State<NegotiateWidget> {
     final ffTheme = AppTheme.of(context);
     final script = buildNegotiationScript(_category, provider: _providerCtrl.text);
 
-    return Scaffold(
-      backgroundColor: ffTheme.background,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        foregroundColor: ffTheme.primaryText,
-        title: Text('תסריט מיקוח',
-            style: GoogleFonts.rubik(fontSize: 18, fontWeight: FontWeight.w700)),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_forward_ios_rounded),
-          tooltip: 'חזרה',
-          onPressed: () => context.safePop(),
-        ),
+    final appBar = AppBar(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      foregroundColor: ffTheme.primaryText,
+      title: Text('תסריט מיקוח',
+          style: GoogleFonts.rubik(fontSize: 18, fontWeight: FontWeight.w700)),
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_forward_ios_rounded),
+        tooltip: 'חזרה',
+        onPressed: () => context.safePop(),
       ),
-      body: ListView(
+    );
+
+    final body = ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
         children: [
           // Intro
@@ -250,16 +250,9 @@ class _NegotiateWidgetState extends State<NegotiateWidget> {
               ],
             ).animate().fadeIn(delay: 300.ms),
             const SizedBox(height: 20),
-            AppButton(
-              text: 'העתק את התסריט',
-              icon: const Icon(Icons.copy_rounded, color: Colors.white, size: 18),
-              color: ffTheme.primary,
-              textStyle: GoogleFonts.rubik(
-                  fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white),
-              onPressed: () async => _copyScript(script),
-            ).animate().fadeIn(delay: 340.ms),
-            const SizedBox(height: 10),
             // Onward link — if the call fails, switching is the real fallback.
+            // (The primary "copy the script" action is pinned as the sticky
+            // bottom CTA — see the StickyCtaScaffold below.)
             AppButton.secondary(
               text: 'לא הסכימו? מצאו מסלול זול יותר',
               icon: Icon(Icons.search_rounded,
@@ -268,6 +261,30 @@ class _NegotiateWidgetState extends State<NegotiateWidget> {
             ).animate().fadeIn(delay: 380.ms),
           ],
         ],
+      );
+
+    // When the script is grounded, pin "copy the script" as a sticky bottom CTA
+    // so it stays one tap away while the talking points scroll. With no leverage
+    // there's nothing to copy, so we fall back to a plain Scaffold.
+    if (!script.hasLeverage) {
+      return Scaffold(
+        backgroundColor: ffTheme.background,
+        appBar: appBar,
+        body: body,
+      );
+    }
+    return StickyCtaScaffold(
+      appBar: appBar,
+      body: body,
+      cta: AppButton(
+        text: 'העתק את התסריט',
+        icon: const Icon(Icons.copy_rounded, color: Colors.white, size: 18),
+        color: ffTheme.primary,
+        height: 52,
+        width: double.infinity,
+        textStyle: GoogleFonts.rubik(
+            fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white),
+        onPressed: () async => _copyScript(script),
       ),
     );
   }

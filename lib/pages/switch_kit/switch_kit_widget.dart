@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show Clipboard, ClipboardData;
+import 'package:flutter/services.dart'
+    show Clipboard, ClipboardData, HapticFeedback;
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -9,6 +10,8 @@ import '../../core/nav.dart';
 import '../../app_state.dart';
 import '../../widgets/app_button.dart';
 import '../../widgets/app_snackbar.dart';
+import '../../widgets/skeleton.dart';
+import '../../widgets/sticky_cta_scaffold.dart';
 import '../../services/switch_kit.dart';
 import 'switch_kit_progress_store.dart';
 
@@ -184,60 +187,82 @@ class _SwitchKitWidgetState extends State<SwitchKitWidget> {
     Provider.of<AppState>(context);
     final kit = _kit;
 
-    return Scaffold(
-      backgroundColor: t.background,
-      appBar: AppBar(
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_rounded),
-          tooltip: 'חזרה',
-          onPressed: () => context.safePop(),
-        ),
-        title: const Text('ערכת מעבר'),
+    final appBar = AppBar(
+      elevation: 0,
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back_ios_rounded),
+        tooltip: 'חזרה',
+        onPressed: () => context.safePop(),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _IntroCard(t: t).animate().fadeIn(duration: 300.ms),
-            const SizedBox(height: 22),
-            _SectionLabel('מאיזה ספק אתם עוזבים?', t: t),
-            const SizedBox(height: 10),
-            _providerChips(t).animate(delay: 60.ms).fadeIn(duration: 280.ms),
-            const SizedBox(height: 22),
-            _SectionLabel('איזה שירות?', t: t),
-            const SizedBox(height: 10),
-            _categoryChips(t).animate(delay: 120.ms).fadeIn(duration: 280.ms),
-            const SizedBox(height: 22),
-            _SectionLabel('המסלול בהתחייבות?', t: t),
-            const SizedBox(height: 10),
-            _commitmentChips(t).animate(delay: 180.ms).fadeIn(duration: 280.ms),
-            const SizedBox(height: 28),
-            if (kit == null)
-              _EmptyHint(t: t).animate().fadeIn(duration: 280.ms)
-            else ...[
-              _SummaryCard(kit: kit, t: t)
-                  .animate()
-                  .fadeIn(duration: 300.ms)
-                  .slideY(begin: 0.05),
+      title: const Text('ערכת מעבר'),
+    );
+
+    final body = SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 40),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _IntroCard(t: t).animate().fadeIn(duration: 300.ms),
+          const SizedBox(height: 22),
+          _SectionLabel('מאיזה ספק אתם עוזבים?', t: t),
+          const SizedBox(height: 10),
+          _providerChips(t).animate(delay: 60.ms).fadeIn(duration: 280.ms),
+          const SizedBox(height: 22),
+          _SectionLabel('איזה שירות?', t: t),
+          const SizedBox(height: 10),
+          _categoryChips(t).animate(delay: 120.ms).fadeIn(duration: 280.ms),
+          const SizedBox(height: 22),
+          _SectionLabel('המסלול בהתחייבות?', t: t),
+          const SizedBox(height: 10),
+          _commitmentChips(t).animate(delay: 180.ms).fadeIn(duration: 280.ms),
+          const SizedBox(height: 28),
+          if (kit == null)
+            _EmptyHint(t: t).animate().fadeIn(duration: 280.ms)
+          else ...[
+            _SummaryCard(kit: kit, t: t)
+                .animate()
+                .fadeIn(duration: 300.ms)
+                .slideY(begin: 0.05),
+            const SizedBox(height: 20),
+            _trackerCard(kit, t),
+            const SizedBox(height: 20),
+            _rightsCard(kit, t),
+            const SizedBox(height: 20),
+            _letterCard(kit, t),
+            if (kit.officialUrl != null) ...[
               const SizedBox(height: 20),
-              _trackerCard(kit, t),
-              const SizedBox(height: 20),
-              _rightsCard(kit, t),
-              const SizedBox(height: 20),
-              _letterCard(kit, t),
-              if (kit.officialUrl != null) ...[
-                const SizedBox(height: 20),
-                _officialCard(kit, t),
-              ],
-              const SizedBox(height: 20),
-              _disclaimerCard(kit, t),
+              _officialCard(kit, t),
             ],
-            const SizedBox(height: 24),
-            _streetPriceTile(t),
+            const SizedBox(height: 20),
+            _disclaimerCard(kit, t),
           ],
-        ),
+          const SizedBox(height: 24),
+          _streetPriceTile(t),
+        ],
+      ),
+    );
+
+    // The single primary action — copy the review-and-send letter — is pinned
+    // as a sticky bottom CTA, but only once a kit exists (a provider is picked).
+    // Until then there's nothing to copy, so we fall back to a plain Scaffold to
+    // avoid a floating bar over the empty selection state.
+    if (kit == null) {
+      return Scaffold(
+        backgroundColor: t.background,
+        appBar: appBar,
+        body: body,
+      );
+    }
+    return StickyCtaScaffold(
+      appBar: appBar,
+      body: body,
+      cta: AppButton(
+        text: 'העתק את המכתב',
+        icon: const Icon(Icons.copy_rounded, size: 18, color: Colors.white),
+        onPressed: () async => _copyLetter(kit),
+        color: AppColors.primary,
+        height: 52,
+        width: double.infinity,
       ),
     );
   }
@@ -255,6 +280,7 @@ class _SwitchKitWidgetState extends State<SwitchKitWidget> {
           selected: selected,
           t: t,
           onTap: () {
+            HapticFeedback.selectionClick();
             setState(() => _provider = p);
             _onSelectionChanged();
           },
@@ -274,6 +300,7 @@ class _SwitchKitWidgetState extends State<SwitchKitWidget> {
           selected: selected,
           t: t,
           onTap: () {
+            HapticFeedback.selectionClick();
             setState(() => _category = c.$1);
             _onSelectionChanged();
           },
@@ -297,7 +324,10 @@ class _SwitchKitWidgetState extends State<SwitchKitWidget> {
           label: o.$2,
           selected: selected,
           t: t,
-          onTap: () => setState(() => _commitment = o.$1),
+          onTap: () {
+            HapticFeedback.selectionClick();
+            setState(() => _commitment = o.$1);
+          },
         );
       }).toList(),
     );
@@ -339,16 +369,36 @@ class _SwitchKitWidgetState extends State<SwitchKitWidget> {
           ),
           const SizedBox(height: 12),
           if (_loadingProgress || progress == null)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              child: Center(
-                child: SizedBox(
-                  width: 22,
-                  height: 22,
-                  child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation(t.brandAccent)),
-                ),
+            // First-load placeholder — a calm shimmer wash (progress bar + a few
+            // step rows) instead of a blocking spinner while the saved tracker
+            // state hydrates from local storage.
+            SkeletonShimmer(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SkeletonBox(width: double.infinity, height: 8, radius: 4),
+                  const SizedBox(height: 16),
+                  for (var i = 0; i < 3; i++)
+                    const Padding(
+                      padding: EdgeInsets.only(bottom: 12),
+                      child: Row(
+                        children: [
+                          SkeletonBox(width: 26, height: 26, radius: 13),
+                          SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                SkeletonBox(width: 160, height: 13),
+                                SizedBox(height: 6),
+                                SkeletonBox(width: double.infinity, height: 11),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
               ),
             )
           else ...[
@@ -564,15 +614,8 @@ class _SwitchKitWidgetState extends State<SwitchKitWidget> {
               style: t.bodySmall.copyWith(height: 1.6, color: t.primaryText),
             ),
           ),
-          const SizedBox(height: 14),
-          AppButton(
-            text: 'העתק את המכתב',
-            icon: const Icon(Icons.copy_rounded, size: 18, color: Colors.white),
-            onPressed: () async => _copyLetter(kit),
-            color: AppColors.primary,
-            height: 50,
-            width: double.infinity,
-          ),
+          // The "copy the letter" action now lives in the sticky bottom CTA
+          // (see build) so it stays reachable while the kit scrolls.
         ],
       ),
     );

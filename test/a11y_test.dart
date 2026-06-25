@@ -58,10 +58,15 @@ void main() {
       _go(tester, '/ratings');
       await _settle(tester);
 
-      // The review form sits below the leaderboard; bring it on-screen so
-      // its semantics are compiled (the free-text field sits right under
-      // the star rows, so this scrolls the whole form into view).
-      await tester.ensureVisible(find.byType(TextField).first);
+      // The review form sits below the (now lazy-built) leaderboard slivers;
+      // scroll it into view so the composer's slivers build + their semantics
+      // compile. scrollUntilVisible walks the lazy CustomScrollView until the
+      // first star row exists (ensureVisible can't target an unbuilt widget).
+      await tester.scrollUntilVisible(
+        find.bySemanticsLabel('דרג 1 מתוך 5 — מחיר'),
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
       await _settle(tester);
 
       // Every rating dimension exposes 5 labelled star buttons

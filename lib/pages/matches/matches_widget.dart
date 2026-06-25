@@ -12,6 +12,8 @@ import '../../widgets/app_card.dart';
 import '../../widgets/stat_pill.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/whatsapp_button.dart';
+import '../../widgets/app_sliver_header.dart';
+import '../../widgets/refreshable_scroll.dart';
 
 class MatchesWidget extends StatelessWidget {
   const MatchesWidget({super.key});
@@ -19,10 +21,6 @@ class MatchesWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ffTheme = AppTheme.of(context);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    // The header stays a dark ink band in both modes (ffTheme.primary resolves
-    // to off-white ink on dark, so it can't be used as the bar fill).
-    final headerColor = isDark ? AppColors.darkSurface : ffTheme.primary;
     final appState = Provider.of<AppState>(context);
 
     // One source of truth: the same engine figures as the home hero, the
@@ -45,44 +43,55 @@ class MatchesWidget extends StatelessWidget {
     final analyzedCount = summary.categories.where((c) => c.hasBill).length;
     final personalized = appState.billsPersonalized;
 
+    if (catMatches.isEmpty) {
+      return Scaffold(
+        backgroundColor: ffTheme.background,
+        appBar: AppBar(
+          backgroundColor: AppColors.brandAccentDark,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          // Framework-default leading back affordance — RTL-mirrored automatically.
+          title: Text(
+            'ההתאמות שלי',
+            style: ffTheme.titleLarge.copyWith(color: Colors.white),
+          ),
+          centerTitle: true,
+        ),
+        body: EmptyState(
+          icon: Icons.auto_awesome_rounded,
+          headline: 'עדיין אין התאמות',
+          subtitle: 'ענה על השאלון ונמצא לך את המסלולים הכי מתאימים',
+          ctaLabel: 'התחל שאלון',
+          onCtaTap: () async => context.pushNamed('Quiz'),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: ffTheme.background,
-      appBar: AppBar(
-        backgroundColor: headerColor,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
-          tooltip: 'חזרה',
-          onPressed: () => context.safePop(),
-        ),
-        title: Text(
-          'ההתאמות שלי',
-          style: ffTheme.titleLarge.copyWith(color: Colors.white),
-        ),
-        centerTitle: true,
-      ),
-      body: catMatches.isEmpty
-          ? EmptyState(
-              icon: Icons.auto_awesome_rounded,
-              headline: 'עדיין אין התאמות',
-              subtitle: 'ענה על השאלון ונמצא לך את המסלולים הכי מתאימים',
-              ctaLabel: 'התחל שאלון',
-              onCtaTap: () async => context.pushNamed('Quiz'),
-            )
-          : Stack(
-              children: [
-                ListView(
-                  padding: EdgeInsets.fromLTRB(
-                      16, 20, 16, appState.comparePlans.isEmpty ? 100 : 160),
-                  children: [
-                    // ── Hero summary card ──────────────────────────────────────
-                    _buildHeroCard(context, ffTheme, totalAnnualSaving,
-                            analyzedCount, personalized)
-                        .animate()
-                        .fadeIn(duration: 500.ms),
-                    const SizedBox(height: 24),
-
+      body: Stack(
+        children: [
+          // ── Collapsing header carries the hero saving figure; the rest of the
+          // page scrolls beneath it with pull-to-refresh + bouncing physics. ──
+          RefreshableScroll(
+            onRefresh: () async {
+              HapticFeedback.lightImpact();
+              // Re-rank against the latest bills/profile: computeSavings reads
+              // live AppState, so a notify is enough to recompute on rebuild.
+              AppState().update(() {});
+            },
+            slivers: [
+              AppSliverHeader(
+                title: 'ההתאמות שלי',
+                expandedHeight: 220,
+                flexibleChild: _buildHeroFigure(context, ffTheme,
+                    totalAnnualSaving, analyzedCount, personalized),
+              ),
+              SliverPadding(
+                padding: EdgeInsets.fromLTRB(
+                    16, 20, 16, appState.comparePlans.isEmpty ? 100 : 160),
+                sliver: SliverList(
+                  delegate: SliverChildListDelegate([
                     // ── Per-category match cards ───────────────────────────────
                     ...catMatches.asMap().entries.map((entry) {
                       final i = entry.key;
@@ -110,66 +119,72 @@ class MatchesWidget extends StatelessWidget {
                                 fontWeight: FontWeight.w700)),
                       ),
                     ).animate(delay: 360.ms).fadeIn(duration: 300.ms),
+                  ]),
+                ),
+              ),
+            ],
+          ),
+
+          // ── Compare sticky bar — mirrors Results so the "השוואה" CTA on
+          // each card leads somewhere instead of silently filling a list. ──
+          PositionedDirectional(
+            bottom: 16,
+            start: 16,
+            end: 16,
+            child: AnimatedSlide(
+              offset: appState.comparePlans.isEmpty
+                  ? const Offset(0, 2)
+                  : Offset.zero,
+              duration: ffTheme.motionMedium,
+              curve: ffTheme.emphasized,
+              child: Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  gradient: ffTheme.accentGradient,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: ffTheme.shadowAccent,
+                ),
+                child: Row(
+                  children: [
+                    Text(
+                      'השווה ${appState.comparePlans.length} מסלולים',
+                      style: ffTheme.titleSmall.copyWith(color: Colors.white),
+                    ),
+                    const Spacer(),
+                    ElevatedButton(
+                      onPressed: () {
+                        HapticFeedback.lightImpact();
+                        context.goNamed('Compare');
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: AppColors.brandAccentDark,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10)),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 8),
+                      ),
+                      child: Text('השוואה ←',
+                          style: ffTheme.labelMedium.copyWith(
+                              color: AppColors.brandAccentDark,
+                              fontWeight: FontWeight.w700)),
+                    ),
                   ],
                 ),
-
-                // ── Compare sticky bar — mirrors Results so the "השוואה" CTA on
-                // each card leads somewhere instead of silently filling a list. ──
-                Positioned(
-                  bottom: 16,
-                  left: 16,
-                  right: 16,
-                  child: AnimatedSlide(
-                    offset: appState.comparePlans.isEmpty
-                        ? const Offset(0, 2)
-                        : Offset.zero,
-                    duration: ffTheme.motionMedium,
-                    curve: ffTheme.emphasized,
-                    child: Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        gradient: ffTheme.accentGradient,
-                        borderRadius: BorderRadius.circular(16),
-                        boxShadow: ffTheme.shadowAccent,
-                      ),
-                      child: Row(
-                        children: [
-                          Text(
-                            'השווה ${appState.comparePlans.length} מסלולים',
-                            style:
-                                ffTheme.titleSmall.copyWith(color: Colors.white),
-                          ),
-                          const Spacer(),
-                          ElevatedButton(
-                            onPressed: () {
-                              HapticFeedback.lightImpact();
-                              context.goNamed('Compare');
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.white,
-                              foregroundColor: AppColors.brandAccentDark,
-                              elevation: 0,
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10)),
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 8),
-                            ),
-                            child: Text('השוואה ←',
-                                style: ffTheme.labelMedium.copyWith(
-                                    color: AppColors.brandAccentDark,
-                                    fontWeight: FontWeight.w700)),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+              ),
             ),
+          ),
+        ],
+      ),
     );
   }
 
-  Widget _buildHeroCard(
+  /// The expanded-header hero: the headline saving figure, layered above the
+  /// header's green ACTION wash via [AppSliverHeader.flexibleChild]. Same single
+  /// source of truth as the home hero / /savings dashboard (computeSavings), with
+  /// the count-up, the personalized prefix and the honest "הערכה" badge intact.
+  Widget _buildHeroFigure(
     BuildContext context,
     AppTheme ffTheme,
     int totalSaving,
@@ -180,107 +195,85 @@ class MatchesWidget extends StatelessWidget {
         ? '₪${(totalSaving / 1000).toStringAsFixed(1)}K'
         : '₪$totalSaving';
 
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        gradient: ffTheme.brandGradient,
-        borderRadius: BorderRadius.circular(ffTheme.radiusXl),
-        boxShadow: ffTheme.shadowLifted,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.14),
-              borderRadius: BorderRadius.circular(ffTheme.radiusXs),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.22)),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.auto_awesome_rounded, size: 12, color: ffTheme.saving),
-                const SizedBox(width: 5),
-                Text(
-                  'דאשבורד חכם',
-                  style: ffTheme.labelSmall.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 14),
-          Text(
-            totalSaving > 0 ? 'חיסכון פוטנציאלי שנתי' : 'התאמות לפי הפרופיל שלך',
-            style: ffTheme.bodySmall.copyWith(color: Colors.white.withValues(alpha: 0.65)),
-          ),
-          const SizedBox(height: 6),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              if (totalSaving > 0)
-                TweenAnimationBuilder<int>(
-                  tween: IntTween(begin: 0, end: totalSaving),
-                  duration: const Duration(milliseconds: 1400),
-                  curve: Curves.easeOutCubic,
-                  builder: (_, value, __) {
-                    final disp = value > 1000
-                        ? '₪${(value / 1000).toStringAsFixed(1)}K'
-                        : '₪$value';
-                    return Text(
-                      personalized ? disp : '~$disp',
-                      style: ffTheme.displaySmall.copyWith(
-                        color: ffTheme.saving,
-                        fontWeight: FontWeight.bold,
-                        fontFeatures: const [FontFeature.tabularFigures()],
-                      ),
-                    );
-                  },
-                )
-              else
-                Text(
-                  savingDisplay,
-                  style: ffTheme.displaySmall.copyWith(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              if (!personalized && totalSaving > 0) ...[
-                const SizedBox(width: 8),
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 6),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.18),
-                      borderRadius: BorderRadius.circular(8),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Text(
+          totalSaving > 0 ? 'חיסכון פוטנציאלי שנתי' : 'התאמות לפי הפרופיל שלך',
+          textAlign: TextAlign.center,
+          style: ffTheme.bodySmall
+              .copyWith(color: Colors.white.withValues(alpha: 0.78)),
+        ),
+        const SizedBox(height: 4),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            if (totalSaving > 0)
+              TweenAnimationBuilder<int>(
+                tween: IntTween(begin: 0, end: totalSaving),
+                duration: const Duration(milliseconds: 1400),
+                curve: Curves.easeOutCubic,
+                builder: (_, value, __) {
+                  final disp = value > 1000
+                      ? '₪${(value / 1000).toStringAsFixed(1)}K'
+                      : '₪$value';
+                  return Text(
+                    personalized ? disp : '~$disp',
+                    style: ffTheme.displaySmall.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontFeatures: const [FontFeature.tabularFigures()],
                     ),
-                    child: Text(
-                      'הערכה',
-                      style: ffTheme.labelSmall.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                      ),
+                  );
+                },
+              )
+            else
+              Text(
+                savingDisplay,
+                style: ffTheme.displaySmall.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            if (!personalized && totalSaving > 0) ...[
+              const SizedBox(width: 8),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.20),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    'הערכה',
+                    style: ffTheme.labelSmall.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),
-              ],
+              ),
             ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            !personalized && totalSaving > 0
-                ? 'הערכה — עדכנו את החשבונות שלכם לחישוב מדויק'
-                : analyzedCount > 0
-                    ? 'ניתחנו $analyzedCount קטגוריות עבורך'
-                    : 'ניתחנו את כל הקטגוריות עבורך',
-            style: ffTheme.bodySmall.copyWith(color: Colors.white.withValues(alpha: 0.55)),
-          ),
-        ],
-      ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          !personalized && totalSaving > 0
+              ? 'הערכה — עדכנו את החשבונות שלכם לחישוב מדויק'
+              : analyzedCount > 0
+                  ? 'ניתחנו $analyzedCount קטגוריות עבורך'
+                  : 'ניתחנו את כל הקטגוריות עבורך',
+          textAlign: TextAlign.center,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: ffTheme.bodySmall
+              .copyWith(color: Colors.white.withValues(alpha: 0.65)),
+        ),
+      ],
     );
   }
 
@@ -303,14 +296,16 @@ class MatchesWidget extends StatelessWidget {
 
     return AppCard(
       margin: const EdgeInsets.only(bottom: 14),
-      onTap: () => context.pushNamed('PlanDetail', pathParameters: {'planId': plan.id}),
+      onTap: () =>
+          context.pushNamed('PlanDetail', pathParameters: {'planId': plan.id}),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Category header
           Row(
             children: [
-              Icon(categoryIconData(catId), size: 20, color: ffTheme.secondaryText),
+              Icon(categoryIconData(catId),
+                  size: 20, color: ffTheme.secondaryText),
               const SizedBox(width: 8),
               Text(
                 catName,
@@ -355,12 +350,14 @@ class MatchesWidget extends StatelessWidget {
                   children: [
                     Text(
                       plan.provider,
-                      style: ffTheme.titleSmall.copyWith(fontWeight: FontWeight.w700),
+                      style: ffTheme.titleSmall
+                          .copyWith(fontWeight: FontWeight.w700),
                     ),
                     const SizedBox(height: 2),
                     Text(
                       plan.plan,
-                      style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText),
+                      style: ffTheme.bodySmall
+                          .copyWith(color: ffTheme.secondaryText),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -451,7 +448,8 @@ class MatchesWidget extends StatelessWidget {
                   ),
                   Text(
                     priceLabel,
-                    style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText),
+                    style: ffTheme.labelSmall
+                        .copyWith(color: ffTheme.secondaryText),
                   ),
                 ],
               ),
@@ -547,22 +545,31 @@ class _MatchAction extends StatelessWidget {
         child: InkWell(
           borderRadius: BorderRadius.circular(ffTheme.radiusSm),
           onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 10),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(icon, size: 16, color: active ? Colors.white : ffTheme.brandAccent),
-                const SizedBox(width: 6),
-                Text(
-                  label,
-                  style: ffTheme.labelMedium.copyWith(
-                    color: fg,
-                    fontWeight: FontWeight.w700,
-                  ),
+          // Guarantee a comfortable, accessible touch target (>= kMinTapTarget).
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: kMinTapTarget),
+            child: Center(
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(icon,
+                        size: 16,
+                        color: active ? Colors.white : ffTheme.brandAccent),
+                    const SizedBox(width: 6),
+                    Text(
+                      label,
+                      style: ffTheme.labelMedium.copyWith(
+                        color: fg,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
         ),

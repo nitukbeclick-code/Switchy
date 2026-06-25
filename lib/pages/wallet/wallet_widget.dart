@@ -7,6 +7,8 @@ import '../../core/nav.dart';
 import '../../app_state.dart';
 import '../../services/wallet_summary.dart';
 import '../../services/savings_summary.dart';
+import '../../widgets/app_sliver_header.dart';
+import '../../widgets/refreshable_scroll.dart';
 
 /// "ארנק התקשורת" (Telecom Wallet) — a PERSONAL realized-savings view plus an
 /// HONEST aggregate social-proof block.
@@ -35,150 +37,141 @@ class WalletWidget extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: ffTheme.background,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        foregroundColor: ffTheme.primaryText,
-        title: Text('ארנק התקשורת',
-            style: GoogleFonts.rubik(
-                fontSize: 18, fontWeight: FontWeight.w700)),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_forward_ios_rounded),
-          tooltip: 'חזרה',
-          onPressed: () => context.safePop(),
-        ),
-      ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
-        children: [
-          _RealizedHero(wallet: wallet, ffTheme: ffTheme)
-              .animate()
-              .fadeIn(duration: 350.ms)
-              .slideY(begin: 0.06),
-          const SizedBox(height: 16),
+      body: RefreshableScroll(
+        // Pull-to-refresh re-derives the wallet view (realized total, social-proof
+        // gate, onward potential) from AppState on rebuild.
+        onRefresh: () async {
+          await Future<void>.delayed(const Duration(milliseconds: 200));
+        },
+        slivers: [
+          AppSliverHeader(
+            title: 'ארנק התקשורת',
+            subtitle: wallet.hasRealizedSaving ? 'כבר חסכת' : 'הארנק שלך',
+            expandedHeight: 208,
+            // Keep the app's own "חזרה" back affordance (the framework default
+            // localizes to "הקודם").
+            showBack: false,
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white, size: 20),
+                tooltip: 'חזרה',
+                onPressed: () => context.safePop(),
+              ),
+            ],
+            // The realized-savings figure is the screen's hero.
+            flexibleChild: _RealizedHeroFigure(wallet: wallet, ffTheme: ffTheme),
+          ),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+              child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Honest aggregate social proof — gated above the threshold;
+                // neutral, claim-free fallback otherwise.
+                _SocialProof(wallet: wallet, ffTheme: ffTheme)
+                    .animate()
+                    .fadeIn(delay: 120.ms, duration: 350.ms),
+                const SizedBox(height: 16),
 
-          // Honest aggregate social proof — gated above the threshold; neutral,
-          // claim-free fallback otherwise.
-          _SocialProof(wallet: wallet, ffTheme: ffTheme)
-              .animate()
-              .fadeIn(delay: 120.ms, duration: 350.ms),
-          const SizedBox(height: 16),
+                // Onward nudge: still-available potential → savings dashboard.
+                if (potential.totalAnnualPotential > 0)
+                  _PotentialNudge(
+                    potential: potential.totalAnnualPotential,
+                    ffTheme: ffTheme,
+                    onTap: () => context.pushNamed('Savings'),
+                  ).animate().fadeIn(delay: 200.ms, duration: 350.ms),
 
-          // Onward nudge: still-available potential → the savings dashboard.
-          if (potential.totalAnnualPotential > 0)
-            _PotentialNudge(
-              potential: potential.totalAnnualPotential,
-              ffTheme: ffTheme,
-              onTap: () => context.pushNamed('Savings'),
-            ).animate().fadeIn(delay: 200.ms, duration: 350.ms),
+                const SizedBox(height: 20),
 
-          const SizedBox(height: 20),
-
-          // Honesty footnote — the realized figure is an estimate, not a promise.
-          Text(
-            'הסכום מבוסס על המסלולים שבחרת דרכנו והחשבון שהזנת — הערכה, לא הבטחה. '
-            'המחירים בקטלוג עשויים להשתנות.',
-            style: ffTheme.labelSmall.copyWith(
-                color: ffTheme.secondaryText, height: 1.45),
-          ).animate().fadeIn(delay: 260.ms),
+                // Honesty footnote — the realized figure is an estimate, not a
+                // promise.
+                Text(
+                  'הסכום מבוסס על המסלולים שבחרת דרכנו והחשבון שהזנת — הערכה, לא הבטחה. '
+                  'המחירים בקטלוג עשויים להשתנות.',
+                  style: ffTheme.labelSmall.copyWith(
+                      color: ffTheme.secondaryText, height: 1.45),
+                ).animate().fadeIn(delay: 260.ms),
+              ],
+              ),
+            ),
+          ),
         ],
       ),
     );
   }
 }
 
-// ── Realized savings hero ──────────────────────────────────────────────────────
+// ── Realized savings hero figure ───────────────────────────────────────────────
 
-class _RealizedHero extends StatelessWidget {
-  const _RealizedHero({required this.wallet, required this.ffTheme});
+/// The realized-savings figure that rides inside the collapsing [AppSliverHeader]
+/// expanded state: the user's own running ₪/year total (amber VALUE) with its
+/// monthly-equivalent caption, or the honest "not yet saved" framing.
+class _RealizedHeroFigure extends StatelessWidget {
+  const _RealizedHeroFigure({required this.wallet, required this.ffTheme});
   final WalletSummary wallet;
   final AppTheme ffTheme;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(22),
-      decoration: BoxDecoration(
-        // Premium ink hero — the wallet is a flagship surface.
-        gradient: ffTheme.brandGradient,
-        borderRadius: BorderRadius.circular(ffTheme.radiusCard),
-        boxShadow: ffTheme.shadowLifted,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    if (wallet.hasRealizedSaving) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Row(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(ffTheme.radiusMd),
-                ),
-                child: const Icon(Icons.account_balance_wallet_rounded,
-                    color: Colors.white, size: 22),
-              ),
-              const SizedBox(width: 12),
+              // The realized figure is the VALUE headline → amber.
               Text(
-                wallet.hasRealizedSaving ? 'כבר חסכת' : 'הארנק שלך',
-                style: GoogleFonts.assistant(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white.withValues(alpha: 0.85)),
+                '₪${wallet.realizedSaving}',
+                style: GoogleFonts.rubik(
+                  fontSize: 40,
+                  fontWeight: FontWeight.w800,
+                  color: ffTheme.savingText,
+                  height: 1,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Text('לשנה',
+                    style: GoogleFonts.assistant(
+                        fontSize: 15,
+                        color: Colors.white.withValues(alpha: 0.8))),
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          if (wallet.hasRealizedSaving) ...[
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                // The realized figure is the VALUE headline → amber.
-                Text(
-                  '₪${wallet.realizedSaving}',
-                  style: GoogleFonts.rubik(
-                    fontSize: 40,
-                    fontWeight: FontWeight.w800,
-                    color: ffTheme.savingText,
-                    height: 1,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 6),
-                  child: Text('לשנה',
-                      style: GoogleFonts.assistant(
-                          fontSize: 15,
-                          color: Colors.white.withValues(alpha: 0.8))),
-                ),
-              ],
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'כ-₪${wallet.monthlyEquivalent} בחודש שנשארים אצלך',
-              style: GoogleFonts.assistant(
-                  fontSize: 13,
-                  color: Colors.white.withValues(alpha: 0.8)),
-            ),
-          ] else ...[
-            Text(
-              'עוד לא חסכת דרכנו',
-              style: GoogleFonts.rubik(
-                  fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'כשתעברו למסלול משתלם דרך Switchy AI, החיסכון השנתי יופיע כאן.',
-              style: GoogleFonts.assistant(
-                  fontSize: 13,
-                  height: 1.4,
-                  color: Colors.white.withValues(alpha: 0.8)),
-            ),
-          ],
+          const SizedBox(height: 6),
+          Text(
+            'כ-₪${wallet.monthlyEquivalent} בחודש שנשארים אצלך',
+            style: GoogleFonts.assistant(
+                fontSize: 13,
+                color: Colors.white.withValues(alpha: 0.8)),
+            textAlign: TextAlign.center,
+          ),
         ],
-      ),
+      );
+    }
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          'עוד לא חסכת דרכנו',
+          style: GoogleFonts.rubik(
+              fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white),
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 6),
+        Text(
+          'כשתעברו למסלול משתלם דרך Switchy AI, החיסכון השנתי יופיע כאן.',
+          style: GoogleFonts.assistant(
+              fontSize: 13,
+              height: 1.4,
+              color: Colors.white.withValues(alpha: 0.8)),
+          textAlign: TextAlign.center,
+        ),
+      ],
     );
   }
 }

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -14,6 +15,8 @@ import '../../services/edge_advisor.dart';
 import '../../services/savings_summary.dart';
 import '../../services/provider_ratings.dart';
 import '../../services/backend/local_backend.dart';
+import '../../widgets/app_button.dart';
+import '../../widgets/app_sheet.dart';
 import '../../widgets/pressable.dart';
 
 class AIAdvisorWidget extends StatefulWidget {
@@ -80,6 +83,7 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
 
   Future<void> _send(String text) async {
     if (text.trim().isEmpty || _isTyping) return;
+    HapticFeedback.lightImpact();
     _inputCtrl.clear();
     final appState = Provider.of<AppState>(context, listen: false);
     // Snapshot the prior transcript BEFORE adding this turn, so the edge agent
@@ -270,14 +274,27 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
             icon: const Icon(Icons.delete_sweep_rounded),
             tooltip: 'נקה שיחה',
             onPressed: () async {
-              final confirmed = await showDialog<bool>(
-                context: context,
-                builder: (ctx) => AlertDialog(
-                  title: Text('נקה שיחה', style: AppTheme.of(context).titleMedium),
-                  content: Text('לנקות את השיחה?', style: AppTheme.of(context).bodyMedium),
-                  actions: [
-                    TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('ביטול')),
-                    TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('נקה')),
+              final confirmed = await AppSheet.show<bool>(
+                context,
+                title: 'נקה שיחה',
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text('לנקות את השיחה?', style: ffTheme.bodyMedium),
+                    const SizedBox(height: 16),
+                    AppButton(
+                      text: 'נקה',
+                      color: ffTheme.error,
+                      width: double.infinity,
+                      onPressed: () async => Navigator.pop(context, true),
+                    ),
+                    const SizedBox(height: 8),
+                    AppButton.secondary(
+                      text: 'ביטול',
+                      width: double.infinity,
+                      onPressed: () async => Navigator.pop(context, false),
+                    ),
                   ],
                 ),
               );

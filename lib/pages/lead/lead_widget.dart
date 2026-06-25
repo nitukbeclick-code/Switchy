@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../theme/app_theme.dart';
 import '../../core/nav.dart';
 import '../../widgets/app_button.dart';
+import '../../widgets/sticky_cta_scaffold.dart';
 import '../../widgets/app_snackbar.dart';
 import '../../widgets/consent_panel.dart';
 import '../../app_state.dart';
@@ -163,8 +164,7 @@ class _LeadWidgetState extends State<LeadWidget> {
       _phoneCtrl.text = appState.userPhone;
     }
 
-    return Scaffold(
-      backgroundColor: ffTheme.background,
+    return StickyCtaScaffold(
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -177,6 +177,9 @@ class _LeadWidgetState extends State<LeadWidget> {
         title: Text('השאירו פרטים', style: ffTheme.titleMedium),
         centerTitle: true,
       ),
+      // The submit CTA + "ללא התחייבות" microcopy is pinned above the keyboard
+      // by the scaffold; the form itself scrolls independently below the app bar.
+      cta: _buildSubmitCta(ffTheme, plan),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Form(
@@ -290,41 +293,12 @@ class _LeadWidgetState extends State<LeadWidget> {
 
               // Persistent recovery panel — only after a failed submit. Gives
               // the user an explicit retry plus alternative channels (WhatsApp /
-              // phone support) so a flaky network never becomes a dead-end.
+              // phone support) so a flaky network never becomes a dead-end. The
+              // primary retry lives on the pinned submit CTA below.
               if (_submitFailed) ...[
                 _buildRecoveryPanel(ffTheme, plan),
                 const SizedBox(height: 16),
               ],
-
-              // Submit button — the green ACTION gradient (AppColors.primary is
-              // the const-ink sentinel AppButton maps to the theme-aware accent
-              // gradient, so the CTA stays vivid in dark too).
-              AppButton(
-                text: _isSubmitting
-                    ? 'שולח...'
-                    : _submitFailed
-                        ? 'נסו שוב ←'
-                        : 'קבלו המלצה אישית — נציג יחזור אליכם היום ←',
-                onPressed: _isSubmitting ? () async {} : () async => _submitLead(plan),
-
-                  width: double.infinity,
-                  height: 56,
-                  color: AppColors.primary,
-                  textStyle: ffTheme.titleMedium.copyWith(color: Colors.white),
-                  borderRadius: BorderRadius.circular(18),
-                
-              ).animate().fadeIn(delay: 300.ms),
-
-              const SizedBox(height: 8),
-
-              Center(
-                child: Text(
-                  'ללא התחייבות • שירות חינמי לחלוטין',
-                  style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText),
-                ),
-              ),
-
-              const SizedBox(height: 16),
 
               // Prefer to talk now? A direct WhatsApp channel as an alternative
               // to leaving details — same green ACTION CTA.
@@ -340,6 +314,37 @@ class _LeadWidgetState extends State<LeadWidget> {
           ),
         ),
       ),
+    );
+  }
+
+  // The pinned bottom CTA: the primary submit button + the "ללא התחייבות"
+  // reassurance, hosted by [StickyCtaScaffold] so it stays reachable above the
+  // keyboard while the form scrolls. The button uses [AppButton]'s built-in
+  // async loading (spinner + tap-ignore while [_submitLead] awaits) — no faked
+  // "שולח..." label and no no-op onPressed swap. The label only flips to a retry
+  // affordance after a failed submit (_submitFailed).
+  Widget _buildSubmitCta(AppTheme ffTheme, Plan? plan) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        AppButton(
+          text: _submitFailed
+              ? 'נסו שוב ←'
+              : 'קבלו המלצה אישית — נציג יחזור אליכם היום ←',
+          onPressed: () async => _submitLead(plan),
+          width: double.infinity,
+          height: 56,
+          color: AppColors.primary,
+          textStyle: ffTheme.titleMedium.copyWith(color: Colors.white),
+          borderRadius: BorderRadius.circular(18),
+        ).animate().fadeIn(delay: 300.ms),
+        const SizedBox(height: 8),
+        Text(
+          'ללא התחייבות • שירות חינמי לחלוטין',
+          style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText),
+          textAlign: TextAlign.center,
+        ),
+      ],
     );
   }
 
@@ -558,45 +563,54 @@ class _LeadWidgetState extends State<LeadWidget> {
       ('evening', 'בערב', Icons.nights_stay_outlined),
       ('tomorrow', 'מחר', Icons.calendar_today_outlined),
     ];
-    return Row(
-      children: options.map((opt) {
-        final selected = _callbackTime == opt.$1;
-        return Expanded(
-          child: Semantics(
-            button: true,
-            selected: selected,
-            label: opt.$2,
-            child: GestureDetector(
-            onTap: () {
-              HapticFeedback.selectionClick();
-              setState(() => _callbackTime = opt.$1);
-            },
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              margin: EdgeInsets.only(right: opt.$1 != 'tomorrow' ? 8 : 0),
-              padding: const EdgeInsets.symmetric(vertical: 10),
-              decoration: BoxDecoration(
-                color: selected ? ffTheme.brandAccent : ffTheme.cardSurface,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: selected ? ffTheme.brandAccent : ffTheme.alternate, width: selected ? 1.5 : 1),
-                boxShadow: selected ? [BoxShadow(color: ffTheme.brandAccent.withValues(alpha: 0.28), blurRadius: 10, offset: const Offset(0, 3))] : [],
-              ),
-              child: Column(
-                children: [
-                  Icon(opt.$3, size: 18, color: selected ? Colors.white : ffTheme.secondaryText),
-                  const SizedBox(height: 4),
-                  Text(opt.$2, style: ffTheme.labelSmall.copyWith(
-                    color: selected ? Colors.white : ffTheme.primaryText,
-                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                    fontSize: 11,
-                  )),
-                ],
-              ),
+    // A single-select [SegmentedButton] replaces the old hand-rolled 4-up Row of
+    // 11px chips: every segment is a real >=kMinTapTarget control, the selected
+    // one fills with the green ACTION accent, and the per-option icon + Hebrew
+    // label stay visible inline (no extra tap / no hidden sheet). The label text
+    // is preserved verbatim so existing find.bySemanticsLabel(...) targets and
+    // the readable copy both hold.
+    return SegmentedButton<String>(
+      showSelectedIcon: false,
+      segments: [
+        for (final opt in options)
+          ButtonSegment<String>(
+            value: opt.$1,
+            icon: Icon(opt.$3, size: 18),
+            label: Text(
+              opt.$2,
+              style: ffTheme.labelSmall.copyWith(fontWeight: FontWeight.w600),
             ),
           ),
-          ),
-        );
-      }).toList(),
+      ],
+      selected: {_callbackTime},
+      onSelectionChanged: (sel) {
+        HapticFeedback.selectionClick();
+        setState(() => _callbackTime = sel.first);
+      },
+      style: ButtonStyle(
+        // Guarantee a comfortable touch target on every segment.
+        minimumSize: const WidgetStatePropertyAll(Size(0, kMinTapTarget)),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        padding: const WidgetStatePropertyAll(
+          EdgeInsetsDirectional.symmetric(horizontal: 8, vertical: 8),
+        ),
+        side: WidgetStatePropertyAll(BorderSide(color: ffTheme.alternate)),
+        shape: WidgetStatePropertyAll(
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+        backgroundColor: WidgetStateProperty.resolveWith((states) =>
+            states.contains(WidgetState.selected)
+                ? ffTheme.brandAccent
+                : ffTheme.cardSurface),
+        foregroundColor: WidgetStateProperty.resolveWith((states) =>
+            states.contains(WidgetState.selected)
+                ? Colors.white
+                : ffTheme.primaryText),
+        iconColor: WidgetStateProperty.resolveWith((states) =>
+            states.contains(WidgetState.selected)
+                ? Colors.white
+                : ffTheme.secondaryText),
+      ),
     ).animate(delay: 200.ms).fadeIn().slideY(begin: 0.05);
   }
 

@@ -11,6 +11,8 @@ import '../../data.dart';
 import '../../services/savings_summary.dart';
 import '../../services/renewal_report.dart';
 import '../../services/analytics_service.dart';
+import '../../widgets/app_sliver_header.dart';
+import '../../widgets/refreshable_scroll.dart';
 
 /// A whole-app savings dashboard: total potential, the biggest opportunity, a
 /// per-category breakdown, near renewals, and what the user has already saved.
@@ -45,18 +47,43 @@ class _SavingsWidgetState extends State<SavingsWidget> {
 
     return Scaffold(
       backgroundColor: ffTheme.background,
-      body: CustomScrollView(
+      body: RefreshableScroll(
+        // Pull-to-refresh recomputes the whole savings dashboard (summary,
+        // renewals, realized total) — a rebuild re-derives every figure from
+        // AppState, so a frame-bounded setState is the recompute.
+        onRefresh: () async {
+          if (mounted) setState(() {});
+        },
         slivers: [
-          SliverToBoxAdapter(
-            child: _Hero(
+          AppSliverHeader(
+            title: 'החיסכון שלי',
+            subtitle: summary.hasAnyBill
+                ? 'חיסכון פוטנציאלי שנתי'
+                : 'גלו כמה אפשר לחסוך',
+            expandedHeight: 196,
+            // Keep the app's own "חזרה" back affordance (the framework default
+            // localizes to "הקודם").
+            showBack: false,
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white, size: 20),
+                tooltip: 'חזרה',
+                onPressed: () => context.safePop(),
+              ),
+              if (personalized && summary.totalAnnualPotential > 0)
+                IconButton(
+                  icon: const Icon(Icons.ios_share_rounded, color: Colors.white, size: 22),
+                  tooltip: 'שתף את החיסכון',
+                  onPressed: () => Share.share(
+                    'גיליתי שאפשר לחסוך עד ₪${summary.totalAnnualPotential} בשנה על חשבונות התקשורת — בדקו גם אתם עם Switchy AI',
+                  ),
+                ),
+            ],
+            // The savings count-up is the screen's hero figure.
+            flexibleChild: _HeroFigure(
               total: summary.totalAnnualPotential,
               hasBill: summary.hasAnyBill,
-              personalized: appState.billsPersonalized,
               ffTheme: ffTheme,
-              onBack: () => context.safePop(),
-              // Not-yet-personalized → a green ACTION cue straight into the bills
-              // flow so the estimate hero converts instead of dead-ending.
-              onStart: appState.billsPersonalized ? null : () => context.pushNamed('Bills'),
             ),
           ),
           SliverToBoxAdapter(
@@ -65,6 +92,17 @@ class _SavingsWidgetState extends State<SavingsWidget> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  // Not-yet-personalized → a green ACTION cue straight into the
+                  // bills flow so the estimate never dead-ends (moved out of the
+                  // hero, which is now the shared collapsing header).
+                  if (!personalized) ...[
+                    _PersonalizeCard(
+                      ffTheme: ffTheme,
+                      onStart: () => context.pushNamed('Bills'),
+                    ).animate().fadeIn(duration: 300.ms),
+                    const SizedBox(height: 16),
+                  ],
+
                   // Already saved with us
                   if (appState.totalSavings > 0) ...[
                     _RealizedCard(amount: appState.totalSavings, ffTheme: ffTheme)
@@ -164,112 +202,96 @@ class _SavingsWidgetState extends State<SavingsWidget> {
   }
 }
 
-// ── Hero ────────────────────────────────────────────────────────────────────
+// ── Hero figure ─────────────────────────────────────────────────────────────
 
-class _Hero extends StatelessWidget {
-  const _Hero({required this.total, required this.hasBill, required this.personalized, required this.ffTheme, required this.onBack, this.onStart});
+/// The savings count-up figure that rides inside the collapsing
+/// [AppSliverHeader] expanded state. Carries the screen's hero number plus the
+/// "saves" framing caption.
+class _HeroFigure extends StatelessWidget {
+  const _HeroFigure({required this.total, required this.hasBill, required this.ffTheme});
   final int total;
   final bool hasBill;
-  final bool personalized;
   final AppTheme ffTheme;
-  final VoidCallback onBack;
-  final VoidCallback? onStart; // shown only in the not-personalized estimate state
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        // The premium ink hero: a soft top-right→bottom-left wash with a lifted
-        // shadow so it reads as the page's "premium" surface, not a flat block.
-        gradient: ffTheme.brandGradient,
-        boxShadow: ffTheme.shadowSoft,
-      ),
-      child: SafeArea(
-        bottom: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(8, 4, 16, 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white, size: 20),
-                    tooltip: 'חזרה',
-                    onPressed: onBack,
+    final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        TweenAnimationBuilder<int>(
+          tween: IntTween(begin: reduceMotion ? total : 0, end: total),
+          duration: const Duration(milliseconds: 1400),
+          curve: Curves.easeOutCubic,
+          builder: (_, value, __) => Text(
+            hasBill ? '₪$value' : '₪—',
+            style: ffTheme.displaySmall.copyWith(
+                // Amber VALUE for a real figure; a legible white-alpha dash for
+                // the placeholder (the old `secondary` token went dark slate on
+                // dark, vanishing on the ink hero).
+                color: hasBill ? ffTheme.saving : Colors.white.withValues(alpha: 0.55),
+                fontWeight: FontWeight.bold,
+                // Fixed-width digits — the count-up doesn't jitter sideways.
+                fontFeatures: const [FontFeature.tabularFigures()]),
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          hasBill
+              ? 'לפי המסלולים שאנחנו ממליצים'
+              : 'הערכה — עדכנו את החשבונות שלכם לחישוב מדויק',
+          style: ffTheme.bodySmall.copyWith(color: Colors.white.withValues(alpha: 0.78)),
+          textAlign: TextAlign.center,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ],
+    );
+  }
+}
+
+// ── Personalize CTA ─────────────────────────────────────────────────────────
+
+/// The estimate-state conversion cue — a green ACTION pill into the bills flow.
+/// Moved out of the old hand-rolled hero (now the shared collapsing header) into
+/// the body so the not-personalized state never dead-ends.
+class _PersonalizeCard extends StatelessWidget {
+  const _PersonalizeCard({required this.ffTheme, required this.onStart});
+  final AppTheme ffTheme;
+  final VoidCallback onStart;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: 'עדכנו חשבונות לחישוב מדויק',
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onStart,
+          borderRadius: BorderRadius.circular(ffTheme.radiusMd),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              // Green ACTION wash — the one conversion cue on the estimate state.
+              gradient: ffTheme.accentGradient,
+              borderRadius: BorderRadius.circular(ffTheme.radiusMd),
+              boxShadow: ffTheme.shadowAccent,
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.receipt_long_rounded, color: Colors.white, size: 22),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'עדכנו את החשבונות שלכם לחישוב מדויק',
+                    style: ffTheme.titleSmall.copyWith(
+                        color: Colors.white, fontWeight: FontWeight.w700),
                   ),
-                  Text('החיסכון שלי',
-                      style: GoogleFonts.rubik(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white)),
-                  const Spacer(),
-                  if (personalized && total > 0)
-                    IconButton(
-                      icon: const Icon(Icons.ios_share_rounded, color: Colors.white, size: 22),
-                      tooltip: 'שתף את החיסכון',
-                      onPressed: () => Share.share(
-                        'גיליתי שאפשר לחסוך עד ₪$total בשנה על חשבונות התקשורת — בדקו גם אתם עם Switchy AI',
-                      ),
-                    ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Center(
-                child: Column(
-                  children: [
-                    Text(
-                      hasBill ? 'חיסכון פוטנציאלי שנתי' : 'גלו כמה אפשר לחסוך',
-                      style: ffTheme.labelMedium.copyWith(color: Colors.white.withValues(alpha: 0.6)),
-                    ),
-                    const SizedBox(height: 6),
-                    TweenAnimationBuilder<int>(
-                      tween: IntTween(begin: 0, end: total),
-                      duration: const Duration(milliseconds: 1400),
-                      curve: Curves.easeOutCubic,
-                      builder: (_, value, __) => Text(
-                        hasBill ? '₪$value' : '₪—',
-                        style: ffTheme.displaySmall.copyWith(
-                            // Amber VALUE for a real figure; a legible white-alpha
-                            // dash for the placeholder (the old `secondary` token
-                            // went dark slate on dark, vanishing on the ink hero).
-                            color: hasBill ? ffTheme.saving : Colors.white.withValues(alpha: 0.45),
-                            fontWeight: FontWeight.bold,
-                            // Fixed-width digits — the count-up doesn't jitter sideways.
-                            fontFeatures: const [FontFeature.tabularFigures()]),
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      personalized
-                          ? 'לפי המסלולים שאנחנו ממליצים'
-                          : 'הערכה — עדכנו את החשבונות שלכם לחישוב מדויק',
-                      style: ffTheme.bodySmall.copyWith(color: Colors.white.withValues(alpha: 0.55)),
-                      textAlign: TextAlign.center,
-                    ),
-                    if (onStart != null) ...[
-                      const SizedBox(height: 16),
-                      Semantics(
-                        button: true,
-                        label: 'עדכנו חשבונות לחישוב מדויק',
-                        child: GestureDetector(
-                          onTap: onStart,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 11),
-                            decoration: BoxDecoration(
-                              // Green ACTION pill — the one conversion cue on the
-                              // estimate hero, with its accent glow.
-                              gradient: ffTheme.accentGradient,
-                              borderRadius: BorderRadius.circular(ffTheme.radiusPill),
-                              boxShadow: ffTheme.shadowAccent,
-                            ),
-                            child: Text('עדכנו חשבונות לחישוב מדויק ←',
-                                style: ffTheme.titleSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
                 ),
-              ),
-            ],
+                const Icon(Icons.arrow_back_ios_rounded, color: Colors.white, size: 14),
+              ],
+            ),
           ),
         ),
       ),

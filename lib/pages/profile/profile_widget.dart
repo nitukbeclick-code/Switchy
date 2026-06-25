@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -10,6 +11,7 @@ import '../../app_state.dart';
 import '../../data.dart';
 import '../../models.dart';
 import '../../widgets/pressable.dart';
+import '../../widgets/refreshable_scroll.dart';
 import '../../components/logo_widget/logo_widget.dart';
 import '../../components/plan_card/mini_plan_card.dart';
 import '../../services/backend/local_backend.dart';
@@ -23,8 +25,6 @@ class ProfileWidget extends StatefulWidget {
 }
 
 class _ProfileWidgetState extends State<ProfileWidget> {
-  String _lang = 'עברית';
-
   /// Whole-app saving potential from the user's bills + the recommendation
   /// engine. Recomputed each build (pure, cheap) so it tracks bill edits.
   late SavingsSummary _savings;
@@ -47,7 +47,13 @@ class _ProfileWidgetState extends State<ProfileWidget> {
 
     return Scaffold(
       backgroundColor: ffTheme.background,
-      body: CustomScrollView(
+      // Pull-to-refresh recomputes the live AppState-derived figures (savings
+      // potential, renewals, watchlist) — a notify is enough to rebuild.
+      body: RefreshableScroll(
+        onRefresh: () async {
+          HapticFeedback.lightImpact();
+          AppState().update(() {});
+        },
         slivers: [
           _buildHeroHeader(context, ffTheme, appState),
           SliverToBoxAdapter(
@@ -184,32 +190,46 @@ class _ProfileWidgetState extends State<ProfileWidget> {
 
                   const SizedBox(height: 20),
 
-                  // Language
+                  // Language — informational only. The app ships Hebrew-first
+                  // (RTL) and there is no live locale switch yet, so this is a
+                  // static status row, not a fake toggle: the previous tappable
+                  // chips set a `_lang` field that changed nothing visible. We
+                  // surface the active language honestly and mark the rest as
+                  // upcoming rather than pretending they're selectable.
                   _buildSectionHeader('שפה', ffTheme),
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: ffTheme.cardDecoration(radius: ffTheme.radiusLg),
                     child: Row(
-                      children: ['עברית', 'English', 'العربية'].map((lang) {
-                        final active = _lang == lang;
-                        return Expanded(
-                          child: GestureDetector(
-                            onTap: () => setState(() => _lang = lang),
-                            child: AnimatedContainer(
-                              duration: ffTheme.motionFast,
-                              margin: const EdgeInsets.symmetric(horizontal: 3),
-                              padding: const EdgeInsets.symmetric(vertical: 8),
-                              decoration: BoxDecoration(
-                                gradient: active ? ffTheme.accentGradient : null,
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Center(
-                                child: Text(lang, style: ffTheme.labelSmall.copyWith(color: active ? Colors.white : ffTheme.secondaryText)),
-                              ),
-                            ),
+                      children: [
+                        Container(
+                          width: 38,
+                          height: 38,
+                          decoration: BoxDecoration(
+                            color: ffTheme.brandAccentTint,
+                            borderRadius: BorderRadius.circular(ffTheme.radiusSm),
                           ),
-                        );
-                      }).toList(),
+                          child: Icon(Icons.translate_rounded, color: ffTheme.brandAccent, size: 20),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('עברית', style: ffTheme.titleSmall),
+                              Text('English · العربية בקרוב', style: ffTheme.bodySmall),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: ffTheme.brandAccentTint,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text('פעיל', style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w700)),
+                        ),
+                      ],
                     ),
                   ),
 

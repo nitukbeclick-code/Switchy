@@ -77,8 +77,22 @@ class ProviderWidget extends StatelessWidget {
       backgroundColor: ffTheme.background,
       body: plans.isEmpty
           ? _EmptyState(providerName: providerName, ffTheme: ffTheme)
-          : CustomScrollView(
-              slivers: [
+          : RefreshIndicator(
+              color: ffTheme.primary,
+              backgroundColor: ffTheme.cardSurface,
+              // Pull-to-refresh: re-reads the provider catalogue, ratings and
+              // street-price aggregates (all in-memory, synchronous). A short
+              // awaited tick gives the spinner an honest beat; AppState is a
+              // listenable so the page already rebuilds on its changes.
+              onRefresh: () async {
+                HapticFeedback.selectionClick();
+                await Future<void>.delayed(const Duration(milliseconds: 350));
+              },
+              child: CustomScrollView(
+                physics: const AlwaysScrollableScrollPhysics(
+                  parent: BouncingScrollPhysics(),
+                ),
+                slivers: [
                 // Track the best-matching plan once per page view.
                 if (bestMatch != null)
                   SliverToBoxAdapter(
@@ -234,6 +248,7 @@ class ProviderWidget extends StatelessWidget {
                   ),
                 ),
               ],
+              ),
             ),
     );
   }
@@ -630,7 +645,7 @@ class _ProviderActions extends StatelessWidget {
             label: 'השוואה',
             ffTheme: ffTheme,
             onTap: () {
-              HapticFeedback.selectionClick();
+              // Haptic fires centrally in _ActionButton's InkWell.
               final app = Provider.of<AppState>(context, listen: false);
               if (!app.isInCompare(bestPlanId)) app.toggleCompare(bestPlanId);
               context.pushNamed('Compare');
@@ -644,7 +659,7 @@ class _ProviderActions extends StatelessWidget {
             label: 'מעקב חידוש',
             ffTheme: ffTheme,
             onTap: () {
-              HapticFeedback.selectionClick();
+              // Haptic fires centrally in _ActionButton's InkWell.
               context.pushNamed('Renewal');
             },
           ),
@@ -658,7 +673,7 @@ class _ProviderActions extends StatelessWidget {
             primary: true,
             ffTheme: ffTheme,
             onTap: () {
-              HapticFeedback.selectionClick();
+              // Haptic fires centrally in _ActionButton's InkWell.
               _openWhatsApp();
             },
           ),
@@ -693,10 +708,17 @@ class _ActionButton extends StatelessWidget {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: onTap,
+          // Centralised selection haptic on every quick-action tap; the
+          // callbacks keep their own intent-specific feedback intact.
+          onTap: () {
+            HapticFeedback.selectionClick();
+            onTap();
+          },
           borderRadius: BorderRadius.circular(ffTheme.radiusMd),
           child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 12),
+            // Comfortable tap target — never below the 48px minimum.
+            constraints: const BoxConstraints(minHeight: kMinTapTarget),
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
             decoration: BoxDecoration(
               gradient: primary ? ffTheme.accentGradient : null,
               color: primary ? null : ffTheme.cardSurface,
@@ -707,6 +729,7 @@ class _ActionButton extends StatelessWidget {
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(icon, size: 20, color: fg),
                 const SizedBox(height: 5),

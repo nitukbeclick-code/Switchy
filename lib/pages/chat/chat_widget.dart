@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -9,6 +10,8 @@ import '../../app_state.dart';
 import '../../data.dart';
 import '../../models.dart';
 import '../../components/logo_widget/logo_widget.dart';
+import '../../widgets/app_button.dart';
+import '../../widgets/app_sheet.dart';
 import '../../widgets/pressable.dart';
 
 class ChatWidget extends StatefulWidget {
@@ -109,6 +112,7 @@ class _ChatWidgetState extends State<ChatWidget> {
 
   Future<void> _send(String text) async {
     if (text.trim().isEmpty || _isTyping) return;
+    HapticFeedback.lightImpact();
     _inputCtrl.clear();
     AppState().addChatMessage(text: text, isUser: true, isRead: false);
     setState(() {
@@ -210,18 +214,31 @@ class _ChatWidgetState extends State<ChatWidget> {
     context.pushNamed('Callback');
   }
 
-  /// End the chat: confirm, then leave the screen (the transcript is kept in
-  /// AppState so the user can return to it).
+  /// End the chat: confirm via an AppSheet bottom-sheet, then leave the screen
+  /// (the transcript is kept in AppState so the user can return to it).
   Future<void> _endChat() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('סיום שיחה', textDirection: TextDirection.rtl),
-        content: const Text('לסיים את השיחה? תוכלו לחזור אליה בכל עת.',
-            textDirection: TextDirection.rtl),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('המשך שיחה')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('סיים')),
+    final ffTheme = AppTheme.of(context);
+    final confirmed = await AppSheet.show<bool>(
+      context,
+      title: 'סיום שיחה',
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('לסיים את השיחה? תוכלו לחזור אליה בכל עת.', style: ffTheme.bodyMedium),
+          const SizedBox(height: 16),
+          AppButton(
+            text: 'סיים',
+            color: ffTheme.error,
+            width: double.infinity,
+            onPressed: () async => Navigator.pop(context, true),
+          ),
+          const SizedBox(height: 8),
+          AppButton.secondary(
+            text: 'המשך שיחה',
+            width: double.infinity,
+            onPressed: () async => Navigator.pop(context, false),
+          ),
         ],
       ),
     );
@@ -361,14 +378,27 @@ class _ChatWidgetState extends State<ChatWidget> {
               case 'track':
                 context.pushNamed('Tracker');
               case 'clear':
-                final confirmed = await showDialog<bool>(
-                  context: context,
-                  builder: (ctx) => AlertDialog(
-                    title: const Text('נקה שיחה', textDirection: TextDirection.rtl),
-                    content: const Text('לנקות את השיחה?', textDirection: TextDirection.rtl),
-                    actions: [
-                      TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('ביטול')),
-                      TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('נקה')),
+                final confirmed = await AppSheet.show<bool>(
+                  context,
+                  title: 'נקה שיחה',
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text('לנקות את השיחה?', style: ffTheme.bodyMedium),
+                      const SizedBox(height: 16),
+                      AppButton(
+                        text: 'נקה',
+                        color: ffTheme.error,
+                        width: double.infinity,
+                        onPressed: () async => Navigator.pop(context, true),
+                      ),
+                      const SizedBox(height: 8),
+                      AppButton.secondary(
+                        text: 'ביטול',
+                        width: double.infinity,
+                        onPressed: () async => Navigator.pop(context, false),
+                      ),
                     ],
                   ),
                 );

@@ -7,6 +7,7 @@ import '../../core/nav.dart';
 import '../../data.dart' show categoryById;
 import '../../widgets/app_button.dart';
 import '../../widgets/app_snackbar.dart';
+import '../../widgets/sticky_cta_scaffold.dart';
 import '../../services/street_price.dart';
 
 /// מחיר רחוב — a standalone browser for crowd-reported real-world prices.
@@ -98,6 +99,7 @@ class _StreetPriceWidgetState extends State<StreetPriceWidget> {
   }
 
   void _selectProvider(String p) {
+    HapticFeedback.selectionClick();
     setState(() {
       _provider = p;
       final cats = providerCategoryIds(p);
@@ -142,8 +144,7 @@ class _StreetPriceWidgetState extends State<StreetPriceWidget> {
   @override
   Widget build(BuildContext context) {
     final t = AppTheme.of(context);
-    return Scaffold(
-      backgroundColor: t.background,
+    return StickyCtaScaffold(
       appBar: AppBar(
         elevation: 0,
         leading: IconButton(
@@ -176,6 +177,15 @@ class _StreetPriceWidgetState extends State<StreetPriceWidget> {
             _reportCard(t).animate(delay: 200.ms).fadeIn(duration: 300.ms),
           ],
         ),
+      ),
+      // The single primary action — submit your real ₪/month — is pinned to the
+      // bottom so it stays above the keyboard while the price field is focused.
+      cta: AppButton(
+        text: 'שליחת דיווח',
+        onPressed: () async => _submit(),
+        color: AppColors.primary,
+        height: 52,
+        width: double.infinity,
       ),
     );
   }
@@ -232,7 +242,10 @@ class _StreetPriceWidgetState extends State<StreetPriceWidget> {
         return _chip(t,
             label: name,
             selected: selected,
-            onTap: () => setState(() => _category = id));
+            onTap: () {
+              HapticFeedback.selectionClick();
+              setState(() => _category = id);
+            });
       }).toList(),
     );
   }
@@ -444,14 +457,8 @@ class _StreetPriceWidgetState extends State<StreetPriceWidget> {
                   const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             ),
           ),
-          const SizedBox(height: 14),
-          AppButton(
-            text: 'שליחת דיווח',
-            onPressed: () async => _submit(),
-            color: AppColors.primary,
-            height: 50,
-            width: double.infinity,
-          ),
+          // The "send report" action now lives in the sticky bottom CTA (see
+          // build) so it stays reachable above the keyboard while typing.
         ],
       ),
     );

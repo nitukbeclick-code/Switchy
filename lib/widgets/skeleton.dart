@@ -77,11 +77,10 @@ class SkeletonPostCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: t.cardSurface,
-        borderRadius: BorderRadius.circular(t.radiusLg),
-        border: Border.all(color: t.alternate.withValues(alpha: 0.4)),
-      ),
+      // Soft card surface so the loading ghost sits on the same two-layer
+      // shadow + glass-glint as the real post cards it stands in for, instead
+      // of a hard 1px border. Shimmer contents below are unchanged.
+      decoration: t.cardDecoration(),
       child: const SkeletonShimmer(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

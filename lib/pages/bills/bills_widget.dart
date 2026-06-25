@@ -7,6 +7,7 @@ import '../../theme/app_theme.dart';
 import '../../core/nav.dart';
 import '../../widgets/app_button.dart';
 import '../../widgets/app_snackbar.dart';
+import '../../widgets/sticky_cta_scaffold.dart';
 import '../../app_state.dart';
 import '../../data.dart';
 import '../../models.dart';
@@ -339,8 +340,7 @@ class _BillsWidgetState extends State<BillsWidget> {
     // Until the user personalises their bills, every saving is an estimate.
     final estimate = !appState.billsPersonalized;
 
-    return Scaffold(
-      backgroundColor: ffTheme.background,
+    return StickyCtaScaffold(
       appBar: AppBar(
         title: const Text('החשבונות שלי'),
         backgroundColor: Colors.transparent,
@@ -372,11 +372,17 @@ class _BillsWidgetState extends State<BillsWidget> {
                 );
               },
             ),
-          TextButton(
-            onPressed: () => context.pushNamed('Results'),
-            child: Text('השווה עכשיו', style: ffTheme.labelMedium.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
-          ),
         ],
+      ),
+      // Promote "compare now" from a tiny app-bar text link to the screen's
+      // single primary action, pinned to the bottom so it reads as the CTA.
+      cta: AppButton(
+        text: 'השווה עכשיו',
+        icon: const Icon(Icons.search_rounded, color: Colors.white, size: 18),
+        color: AppColors.primary,
+        height: 52,
+        width: double.infinity,
+        onPressed: () async => context.pushNamed('Results'),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 20),

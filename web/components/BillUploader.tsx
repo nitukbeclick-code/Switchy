@@ -34,6 +34,7 @@ import { analyzeBill, type ForensicsPlan } from "@/lib/bill-forensics";
 import LeadForm from "@/components/LeadForm";
 import PriceCaveat from "@/components/PriceCaveat";
 import BillForensics from "@/components/BillForensics";
+import Icon from "@/components/Icon";
 
 // Compression budget: cap the longest edge and re-encode as JPEG. A bill is text-
 // heavy, so 1600px / q0.72 stays crisp for OCR while keeping the base64 payload
@@ -262,7 +263,7 @@ export default function BillUploader({ promoPlans = [] }: BillUploaderProps) {
 
         {/* Privacy note — plain, prominent, never buried. */}
         <p className="mt-4 flex items-start gap-2 text-xs leading-relaxed text-muted">
-          <span aria-hidden="true">🔒</span>
+          <Icon name="lock" size={16} className="mt-0.5 shrink-0" />
           <span>
             הפרטיות שלכם: התמונה נשלחת לקריאה אוטומטית בשירות של Google ‏(Gemini)
             ‏<strong>ואינה נשמרת</strong> אצלנו — לא התמונה ולא תוכנה. נשמר רק
@@ -494,7 +495,11 @@ function ConfidenceNote({
   return (
     <div className="mt-4 rounded-lg bg-background/60 p-3">
       <p className="flex items-center gap-2 text-xs">
-        <span aria-hidden="true">{tone === "ok" ? "✓" : "⚠️"}</span>
+        <Icon
+          name={tone === "ok" ? "check" : "alert"}
+          size={14}
+          className={`shrink-0 ${tone === "ok" ? "text-muted" : "text-value-text"}`}
+        />
         <span className={tone === "ok" ? "text-muted" : "text-value-text"}>
           רמת ודאות בקריאה: {label}
         </span>

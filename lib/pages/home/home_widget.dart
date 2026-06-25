@@ -125,33 +125,39 @@ class _HomeWidgetState extends State<HomeWidget> {
               // ── 1. Collapsing brand header ─────────────────────────────────
               _buildHeader(context, ffTheme, appState),
 
-              // ── 2. Renewal Radar alert ─────────────────────────────────────
+              // ════════════════════════════════════════════════════════════════
+              // ABOVE THE FOLD — the user's personal, high-value content first:
+              // what's about to renew, how much they can save, their top pick,
+              // and the plans they're already tracking / just viewed. This is the
+              // "your money right now" band — it earns the first scroll.
+              // ════════════════════════════════════════════════════════════════
+
+              // ── 2. Renewal Radar alert (personal, time-critical) ───────────
               _buildRenewalAlert(context, ffTheme, appState),
 
-              // ── 3. Savings hero card ───────────────────────────────────────
+              // ── 3. Savings hero card (personal headline figure) ────────────
               SliverToBoxAdapter(child: _buildSavingsHero(context, ffTheme, savings)),
 
-              // ── 4. Hot deal card ───────────────────────────────────────────
-              if (deal != null)
-                SliverToBoxAdapter(child: _buildHotDeal(context, ffTheme, deal, appState)),
+              // ── 4. Top pick for you (personal recommendation) ──────────────
+              SliverToBoxAdapter(child: _buildTopPick(context, ffTheme, appState)),
 
-              // ── 4b. Quiz match (when quiz completed) ──────────────────────
+              // ── 5. Quiz match (personal, when quiz completed) ──────────────
               if (appState.quizCompleted)
                 SliverToBoxAdapter(child: _buildQuizMatch(context, ffTheme, appState)),
 
-              // ── 4c. Top pick for you ──────────────────────────────────────
-              SliverToBoxAdapter(child: _buildTopPick(context, ffTheme, appState)),
+              // ── 6. Hot deal card (a real saving on the active category) ────
+              if (deal != null)
+                SliverToBoxAdapter(child: _buildHotDeal(context, ffTheme, deal, appState)),
 
-              // ── 5. Category grid ───────────────────────────────────────────
-              SliverToBoxAdapter(child: _buildCategoryGrid(context, ffTheme, appState, savings)),
+              // ── 7. Watchlist quick view (plans the user tracks) ────────────
+              if (appState.watchedPlans.isNotEmpty)
+                SliverToBoxAdapter(child: _buildWatchlist(context, ffTheme, appState)),
 
-              // ── 6. AI advisor card ─────────────────────────────────────────
-              SliverToBoxAdapter(child: _buildAIAdvisor(context, ffTheme)),
+              // ── 8. Recently viewed (the user's own trail) ──────────────────
+              if (appState.recentlyViewed.isNotEmpty)
+                SliverToBoxAdapter(child: _buildRecentlyViewed(context, ffTheme, appState)),
 
-              // ── 6b. Community highlights ──────────────────────────────────
-              SliverToBoxAdapter(child: _buildCommunityHighlights(context, ffTheme)),
-
-              // ── 6c. Booked video meeting status ───────────────────────────
+              // ── 9. Booked video meeting status (actionable, personal) ──────
               if (_showMeetingCard(appState))
                 SliverToBoxAdapter(
                   child: Padding(
@@ -163,21 +169,29 @@ class _HomeWidgetState extends State<HomeWidget> {
                   ),
                 ),
 
-              // ── 7. Tools quick-action row ──────────────────────────────────
+              // ════════════════════════════════════════════════════════════════
+              // BELOW THE FOLD — secondary / browse content, de-emphasised so it
+              // doesn't dominate the scroll: category browse, a compact tools
+              // row, the AI-advisor promo, community, and the provider strip.
+              // Everything stays present + navigable (de-emphasise, not remove).
+              // ════════════════════════════════════════════════════════════════
+
+              // ── 10. Category grid (browse) ─────────────────────────────────
+              SliverToBoxAdapter(child: _buildCategoryGrid(context, ffTheme, appState, savings)),
+
+              // ── 11. Tools quick-action row (compact) ───────────────────────
               SliverToBoxAdapter(child: _buildToolsRow(context, ffTheme)),
 
-              // ── 8. Watchlist quick view ────────────────────────────────────
-              if (appState.watchedPlans.isNotEmpty)
-                SliverToBoxAdapter(child: _buildWatchlist(context, ffTheme, appState)),
+              // ── 12. AI advisor promo (compact) ─────────────────────────────
+              SliverToBoxAdapter(child: _buildAIAdvisor(context, ffTheme)),
 
-              // ── 8b. Recently viewed ───────────────────────────────────────
-              if (appState.recentlyViewed.isNotEmpty)
-                SliverToBoxAdapter(child: _buildRecentlyViewed(context, ffTheme, appState)),
+              // ── 13. Community highlights (compact) ─────────────────────────
+              SliverToBoxAdapter(child: _buildCommunityHighlights(context, ffTheme)),
 
-              // ── 9. Brand trust strip ───────────────────────────────────────
+              // ── 14. Brand trust strip ──────────────────────────────────────
               SliverToBoxAdapter(child: _buildBrandStrip(context, ffTheme)),
 
-              // ── 10. Bottom padding for nav + FAB ──────────────────────────
+              // ── 15. Bottom padding for nav + FAB ──────────────────────────
               const SliverToBoxAdapter(child: SizedBox(height: 100)),
             ],
           ),
@@ -811,6 +825,9 @@ class _HomeWidgetState extends State<HomeWidget> {
     );
   }
 
+  /// Secondary promo — condensed into a single compact band (tighter padding, a
+  /// one-line headline and a smaller glyph) so it reads as an entry point, not a
+  /// hero. Route + brand tokens + tap target unchanged.
   Widget _buildAIAdvisor(BuildContext context, AppTheme ffTheme) {
     return Pressable(
       onTap: () {
@@ -818,45 +835,52 @@ class _HomeWidgetState extends State<HomeWidget> {
         context.pushNamed('AIAdvisor');
       },
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        padding: const EdgeInsets.all(22),
+        margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           gradient: ffTheme.freshGradient,
           borderRadius: BorderRadius.circular(ffTheme.radiusCard),
-          boxShadow: ffTheme.shadowLifted,
+          boxShadow: ffTheme.shadowSoft,
         ),
         child: Row(
           children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                // Green chip glyph — the brand "AI" mark, decorative.
+                color: ffTheme.brandAccent,
+                borderRadius: BorderRadius.circular(ffTheme.radiusSm),
+              ),
+              child: const Center(
+                child: ExcludeSemantics(
+                  child: Icon(Icons.chat_bubble_rounded, color: Colors.white, size: 20),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      // Green chip on the ink advisor band — the brand "AI" tag.
-                      color: ffTheme.brandAccent,
-                      borderRadius: BorderRadius.circular(ffTheme.radiusSm),
-                    ),
-                    child: Text(
-                      '✦ Switchy AI',
-                      style: ffTheme.labelSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w800),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
                   Text(
-                    'שאלו אותנו הכל\nעל מסלולי תקשורת',
-                    style: ffTheme.titleMedium.copyWith(color: Colors.white),
+                    '✦ Switchy AI · שאלו אותנו הכל',
+                    style: ffTheme.titleSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w800),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 2),
                   Text(
                     'זמין 24/7 · עונה תוך שניות',
                     style: ffTheme.bodySmall.copyWith(color: Colors.white.withValues(alpha: 0.60)),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
             ),
-            Icon(Icons.chat_bubble_rounded, color: ffTheme.brandAccent, size: 40),
+            const SizedBox(width: 8),
+            Icon(Icons.chevron_left_rounded, color: ffTheme.brandAccent, size: 22),
           ],
         ),
       ),
@@ -869,6 +893,8 @@ class _HomeWidgetState extends State<HomeWidget> {
     // invented like/reply counts. Consistent with the honestly-empty Community
     // page: until someone actually posts, we show a single "join the discussion"
     // CTA instead of pretending there's a buzzing feed.
+    // Secondary section — cap the preview at 2 posts (was 3) so the browse band
+    // stays compact; the "all ←" link carries the user into the full feed.
     final realPosts = appState.communityPosts
         .map((p) => _CommunityPreview(
               user: (p['author'] as String? ?? 'א')[0],
@@ -876,11 +902,11 @@ class _HomeWidgetState extends State<HomeWidget> {
               text: p['text'] as String? ?? '',
             ))
         .where((p) => p.text.isNotEmpty)
-        .take(3)
+        .take(2)
         .toList();
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -917,7 +943,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                 onTap: () => context.goNamed('Community'),
                 child: Container(
                   margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.all(14),
+                  padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     color: ffTheme.accent1,
                     borderRadius: BorderRadius.circular(ffTheme.radiusLg),
@@ -927,8 +953,8 @@ class _HomeWidgetState extends State<HomeWidget> {
                   child: Row(
                     children: [
                       Container(
-                        width: 38,
-                        height: 38,
+                        width: 32,
+                        height: 32,
                         decoration: BoxDecoration(
                           // Green avatar — the community identity accent.
                           gradient: ffTheme.accentGradient,
@@ -937,11 +963,11 @@ class _HomeWidgetState extends State<HomeWidget> {
                         child: Center(
                           child: Text(
                             post.user,
-                            style: ffTheme.labelLarge.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
+                            style: ffTheme.labelMedium.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
                           ),
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 10),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1038,22 +1064,25 @@ class _HomeWidgetState extends State<HomeWidget> {
       const _Tool(icon: Icons.smart_toy_rounded, label: 'יועץ AI', route: 'AIAdvisor'),
     ];
 
+    // Secondary browse — a compact horizontal rail (tighter cards + smaller
+    // glyphs than the personal cards above) so the full toolbox is one swipe
+    // away without dominating the scroll. Every route stays reachable.
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 0, 4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.only(right: 0, bottom: 12),
+            padding: const EdgeInsets.only(right: 0, bottom: 10),
             child: Text('כלים שימושיים', style: ffTheme.titleLarge),
           ),
           SizedBox(
-            height: 96,
+            height: 84,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
               physics: const BouncingScrollPhysics(),
               itemCount: tools.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 12),
+              separatorBuilder: (_, __) => const SizedBox(width: 10),
               itemBuilder: (context, i) {
                 final tool = tools[i];
                 return Pressable(
@@ -1062,13 +1091,13 @@ class _HomeWidgetState extends State<HomeWidget> {
                     context.pushNamed(tool.route);
                   },
                   child: Container(
-                    width: 110,
-                    padding: const EdgeInsets.all(14),
+                    width: 100,
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
                     decoration: ffTheme.cardDecoration(),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(tool.icon, size: 26, color: ffTheme.primaryText),
+                        Icon(tool.icon, size: 22, color: ffTheme.primaryText),
                         const SizedBox(height: 6),
                         Text(
                           tool.label,

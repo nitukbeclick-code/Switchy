@@ -313,7 +313,21 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
                           rated.take(3).map((p) => MapEntry(p, _avgStars(p, appState))).toList(), t),
                       const SizedBox(height: 20),
                     ],
-                    Text('לוח מנצחים', style: t.titleLarge),
+                    // Hero heading — this leaderboard is the page's primary focus.
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Icon(Icons.leaderboard_rounded, color: t.brandAccent, size: 24),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text('לוח מנצחים',
+                              style: t.headlineSmall.copyWith(fontWeight: FontWeight.w800)),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text('הספקים המדורגים ביותר — לפי ביקורות אמיתיות מהקהילה',
+                        style: t.bodySmall.copyWith(color: t.secondaryText)),
                     const SizedBox(height: 12),
                     // Sort control on its own line — a SegmentedButton with >=44dp
                     // segments, replacing the cramped inline chip row.
@@ -419,30 +433,53 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
               ),
             ],
 
-            // Write-review composer — the inline bento tile, now a sliver. Its
-            // provider picker opens an AppSheet; the FAB / edit actions scroll it
-            // into view via [_formKey].
+            // Secondary-section divider — frames the composer below as a quieter
+            // "contribute" area so it reads as clearly subordinate to the
+            // leaderboard hero above, not a co-equal focal point.
             SliverPadding(
-              padding: const EdgeInsets.fromLTRB(16, 24, 16, 0),
+              padding: const EdgeInsets.fromLTRB(16, 28, 16, 0),
+              sliver: SliverToBoxAdapter(
+                child: Row(
+                  children: [
+                    Expanded(child: Divider(color: t.alternate, height: 1)),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: Text('רוצים לתרום ללוח?',
+                          style: t.labelSmall.copyWith(
+                              color: t.secondaryText, fontWeight: FontWeight.w700)),
+                    ),
+                    Expanded(child: Divider(color: t.alternate, height: 1)),
+                  ],
+                ),
+              ),
+            ),
+
+            // Write-review composer — DEMOTED to a clearly-secondary card (quieter
+            // than the hero leaderboard above): a soft surface instead of the loud
+            // bento, a compact header, and a tinted accent chip rather than the big
+            // gradient block. Still fully built + scroll-reachable (the FAB / edit
+            // actions scroll it into view via [_formKey]); its provider picker
+            // opens an AppSheet.
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
               sliver: SliverToBoxAdapter(
                 child: Container(
                   key: _formKey,
-                  padding: const EdgeInsets.all(20),
-                  decoration: t.bentoDecoration(),
+                  padding: const EdgeInsets.all(16),
+                  decoration: t.glassDecoration(radius: t.radiusCard),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
                         children: [
                           Container(
-                            width: 40,
-                            height: 40,
+                            width: 32,
+                            height: 32,
                             decoration: BoxDecoration(
-                              gradient: t.accentGradient,
+                              color: t.brandAccent.withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(t.radiusSm),
-                              boxShadow: t.shadowAccent,
                             ),
-                            child: const Icon(Icons.rate_review_rounded, color: Colors.white, size: 20),
+                            child: Icon(Icons.rate_review_rounded, color: t.brandAccent, size: 18),
                           ),
                           const SizedBox(width: 10),
                           Expanded(
@@ -450,12 +487,12 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
                               _selectedProvider != null && appState.hasReviewedProvider(_selectedProvider!)
                                   ? 'עריכת הביקורת על $_selectedProvider'
                                   : 'כתיבת ביקורת',
-                              style: t.titleLarge,
+                              style: t.titleSmall.copyWith(fontWeight: FontWeight.w700),
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 14),
 
                       Text('בחרו ספק', style: t.labelLarge),
                       const SizedBox(height: 8),

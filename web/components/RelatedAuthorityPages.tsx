@@ -104,7 +104,7 @@ export default function RelatedAuthorityPages({
 
           const itemClass =
             "group interactive press block rounded-xl border border-border/60 bg-background px-4 py-3.5 ease-[var(--ease-out)] " +
-            "hover:border-accent/40 hover:bg-accent/[0.04] hover:shadow-card [@media(hover:hover)and(pointer:fine)]:motion-safe:hover:-translate-y-0.5 " +
+            "hover:border-accent/40 hover:bg-accent/[0.04] hover:shadow-card [@media(hover:hover)_and_(pointer:fine)]:motion-safe:hover:-translate-y-0.5 " +
             "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent";
 
           return (

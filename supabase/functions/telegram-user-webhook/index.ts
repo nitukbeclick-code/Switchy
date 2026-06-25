@@ -47,7 +47,14 @@ import {
   tgWebhookToken,
 } from "../_shared/config.ts";
 import { fetchRows, insertRow, serviceFetch } from "../_shared/db.ts";
+import {
+  isDataAccessRequest,
+  isErasureRequest,
+  recordErasureRequest,
+  summarizeDataFor,
+} from "../_shared/compliance.ts";
 import { jlog } from "../_shared/log.ts";
+import { captureError } from "../_shared/observability.ts";
 import { rateLimit } from "../_shared/ratelimit.ts";
 import { type AiKeys, type ChatTurn } from "../_shared/ai.ts";
 import { type Plan, plansFromRows } from "../_shared/catalogue.ts";
@@ -64,6 +71,7 @@ import {
   saveSession,
 } from "../_shared/session.ts";
 import {
+  chunkTelegram,
   HANDOFF_ACK_REPLY,
   HANDOFF_RELAY_FAIL_REPLY,
   HELP_REPLY,
@@ -72,9 +80,11 @@ import {
   OPTOUT_CONFIRM_REPLY,
   parseInbound,
   telegramSessionId,
+  telegramUpdateDedupKey,
   type TgUserUpdate,
   wantsHuman,
   WELCOME_REPLY,
+  welcomeCategoryKeyboard,
   withFirstContactNote,
 } from "./lib.ts";
 
@@ -115,7 +125,12 @@ async function aiKeys(): Promise<AiKeys> {
 // ── Telegram send (user bot token; single retry on 429 / transient error) ─────
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-async function sendMessage(chatId: number, text: string, attempt = 0): Promise<boolean> {
+async function sendMessage(
+  chatId: number,
+  text: string,
+  replyMarkup?: Record<string, unknown>,
+  attempt = 0,
+): Promise<boolean> {
   if (!USER_BOT_TOKEN) return false;
   try {
     const r = await fetch(`https://api.telegram.org/bot${USER_BOT_TOKEN}/sendMessage`, {
@@ -126,13 +141,14 @@ async function sendMessage(chatId: number, text: string, attempt = 0): Promise<b
         text,
         parse_mode: "HTML",
         disable_web_page_preview: true,
+        ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
       }),
     });
     if (r.status === 429 && attempt === 0) {
       const j = await r.json().catch(() => ({} as Record<string, unknown>));
       const retryAfter = Number((j.parameters as { retry_after?: number } | undefined)?.retry_after ?? 1);
       await sleep(Math.min(Math.max(retryAfter, 1), 5) * 1000);
-      return await sendMessage(chatId, text, 1);
+      return await sendMessage(chatId, text, replyMarkup, 1);
     }
     if (!r.ok) {
       // A permanently-rejected HTML payload (broken entities / too long) would
@@ -148,9 +164,90 @@ async function sendMessage(chatId: number, text: string, attempt = 0): Promise<b
   } catch (e) {
     if (attempt === 0) {
       await sleep(800);
-      return await sendMessage(chatId, text, 1);
+      return await sendMessage(chatId, text, replyMarkup, 1);
     }
     jlog({ at: "tgu.send", ok: false, error: String(e) });
+    return false;
+  }
+}
+
+// Send a (possibly long) reply as one or more ordered messages, respecting
+// Telegram's 4096-char sendMessage limit (chunkTelegram splits on natural
+// boundaries, never mid-word). Awaits each chunk in sequence so the user sees them
+// in order; fail-soft PER chunk (a failed piece is logged, never thrown, and never
+// aborts the remaining pieces). An optional reply_markup rides ONLY on the FIRST
+// chunk (Telegram attaches a keyboard to a single message). A short reply is a
+// single send — the common case is unchanged. Returns whether the first chunk sent.
+async function sendChunked(
+  chatId: number,
+  text: string,
+  replyMarkup?: Record<string, unknown>,
+): Promise<boolean> {
+  const parts = chunkTelegram(text);
+  if (parts.length === 0) return false;
+  if (parts.length === 1) return await sendMessage(chatId, parts[0], replyMarkup);
+  let firstOk = false;
+  for (let i = 0; i < parts.length; i++) {
+    const ok = await sendMessage(chatId, parts[i], i === 0 ? replyMarkup : undefined);
+    if (i === 0) firstOk = ok;
+    else if (!ok) jlog({ at: "tgu.chunk", ok: false, idx: i, total: parts.length });
+    if (i < parts.length - 1) await sleep(350); // brief gap so ordering holds
+  }
+  return firstOk;
+}
+
+// Show the "Switchy is typing…" chat action so the user knows we're working on a
+// reply during the (paid, sometimes slow) agent round-trip. Telegram clears it
+// automatically after ~5s or when the next message lands, so there's nothing to
+// turn off. Best-effort + fail-soft: never blocks (the caller does not await its
+// result before running the agent) and swallows every error — a missing token /
+// network blip must never affect the reply path.
+function sendTyping(chatId: number): void {
+  if (!USER_BOT_TOKEN) return;
+  fetch(`https://api.telegram.org/bot${USER_BOT_TOKEN}/sendChatAction`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ chat_id: chatId, action: "typing" }),
+  }).catch((e) => jlog({ at: "tgu.typing", ok: false, error: String(e) }));
+}
+
+// ── update_id idempotency ledger (reliability) ────────────────────────────────
+// Telegram RE-DELIVERS an update if our webhook doesn't 200 quickly enough (a slow
+// agent run), which would otherwise double-run the agent and double-reply. We
+// record each update_id ONCE in a tiny ledger and treat a re-delivery as a no-op.
+//
+// REUSE (no new table): the ledger row lives in public.ai_sessions under a
+// synthetic key ("tgu-upd-<update_id>", DISTINCT from a real chat key "tg-u-…"),
+// inserted with on_conflict=session_id + resolution=ignore-duplicates +
+// return=representation. PostgREST returns the inserted row on a FIRST insert and
+// an EMPTY array when the row already existed — exactly the wamid-dedup pattern the
+// WhatsApp webhook uses. We expire these rows the same way ai_sessions are pruned.
+//
+// FAIL-SOFT: any store error (no service key, network, PostgREST error) returns
+// false ("not seen") so we PROCESS the update rather than drop the user's message.
+// Returns true ONLY when we are certain this update_id was already recorded.
+async function alreadyProcessed(updateId: number | undefined | null): Promise<boolean> {
+  const key = telegramUpdateDedupKey(updateId);
+  if (!key) return false; // no/!finite update_id ⇒ can't dedup → process anyway
+  try {
+    const r = await serviceFetch(`/rest/v1/ai_sessions?on_conflict=session_id`, {
+      method: "POST",
+      headers: { Prefer: "resolution=ignore-duplicates,return=representation" },
+      body: JSON.stringify({ session_id: key, updated_at: new Date().toISOString() }),
+    });
+    if (!r || !r.ok) {
+      jlog({ at: "tgu.dedup", ok: false, status: r?.status });
+      return false; // store unavailable → fail-soft to processing
+    }
+    const rows = await r.json().catch(() => []);
+    // [] ⇒ the row already existed ⇒ this is a Telegram re-delivery → no-op.
+    if (Array.isArray(rows) && rows.length === 0) {
+      jlog({ at: "tgu.dup", updateId });
+      return true;
+    }
+    return false;
+  } catch (e) {
+    jlog({ at: "tgu.dedup", ok: false, error: String(e) });
     return false;
   }
 }
@@ -383,11 +480,40 @@ async function handleUpdate(update: TgUserUpdate): Promise<void> {
   if (!parsed) return; // nothing actionable (no text / from a bot / malformed)
   const { chatId, userId, firstName, languageCode, text, isCommand, command } = parsed;
 
+  // (2-) UPDATE_ID IDEMPOTENCY — Telegram re-delivers an update when our webhook
+  //      doesn't 200 fast enough (a slow agent run), which would double-run the
+  //      agent + double-reply. Record the update_id ONCE; a re-delivery is a no-op.
+  //      Placed AFTER auth/503-dark (the HTTP handler) and AFTER confirming an
+  //      actionable message, but BEFORE every message handler (opt-out / rate-limit
+  //      / takeover / commands / agent) so NOTHING runs twice. Fail-soft: a store
+  //      error returns false ("not seen") so we process rather than drop the turn.
+  if (await alreadyProcessed(update?.update_id)) return;
+
   // (3) §30A STOP — checked FIRST among message handling. A bare STOP token (as a
   //     /stop command or plain text) suppresses + confirms + RETURNS before any
   //     AI fan-out. Honouring the opt-out is the mandatory act.
   if (isOptOut(text)) {
     await handleOptOut(chatId, userId);
+    return;
+  }
+
+  // (3b) AMENDMENT-13 data-subject requests — DETERMINISTIC (no LLM), right after
+  //      the §30A opt-out gate. A person may ask to DELETE their data ("erasure")
+  //      or what data we hold ("access"). Erasure wins over access (it's the
+  //      stronger, more specific intent — isDataAccessRequest already defers to it).
+  //      Both honour the request before any AI fan-out and RETURN. Telegram has no
+  //      phone/email — the chat id is the contact key (mirrors handleOptOut).
+  const dsContact = `tg:${chatId}`;
+  if (isErasureRequest(text)) {
+    const reply = await recordErasureRequest("telegram", dsContact);
+    await sendMessage(chatId, reply);
+    jlog({ at: "tgu.erasure", chatId, ok: true });
+    return;
+  }
+  if (isDataAccessRequest(text)) {
+    const reply = await summarizeDataFor("telegram", dsContact);
+    await sendMessage(chatId, reply);
+    jlog({ at: "tgu.access", chatId, ok: true });
     return;
   }
 
@@ -453,7 +579,19 @@ async function handleUpdate(update: TgUserUpdate): Promise<void> {
   // help copy. Everything else goes to the shared agent.
   if (isCommand && command === "start") {
     const welcome = withFirstContactNote(WELCOME_REPLY, firstContact);
-    await sendMessage(chatId, welcome);
+    // UX: offer the catalogue's REAL categories as one-tap quick replies on /start
+    // ONLY. Truth-only — welcomeCategoryKeyboard returns null for an empty/failed
+    // catalogue, so we never show a fabricated option (and a getPlans() miss just
+    // means no keyboard). Tapping a button SENDS its Hebrew label as the next
+    // message → flows through this same guard chain + agent (no callback path,
+    // no guard-chain change). Best-effort: a plans error → plain welcome.
+    let kb: Record<string, unknown> | null = null;
+    try {
+      kb = welcomeCategoryKeyboard(await getPlans());
+    } catch (e) {
+      jlog({ at: "tgu.welcome.kb", ok: false, error: String(e) });
+    }
+    await sendMessage(chatId, welcome, kb ?? undefined);
     // Persist the turn so the next message has memory + first-contact is consumed.
     await persistTurn(session, sessionKey, text, WELCOME_REPLY, []);
     return;
@@ -470,6 +608,13 @@ async function handleUpdate(update: TgUserUpdate): Promise<void> {
   //     truth with WhatsApp + site + app. We pass channel "app" (the conversational
   //     persona that also cites sources) and Telegram's locale as a soft language
   //     hint (runAgent still auto-detects from the message text).
+  // UX: show "Switchy is typing…" while the (paid, sometimes slow) agent works.
+  // We're past the opt-out gate (returned above) and the human-takeover relay
+  // (returned above), so reaching here means a NORMAL agent turn — exactly when the
+  // indicator is appropriate. Fire-and-forget (not awaited) so it never delays the
+  // agent; fail-soft inside sendTyping.
+  sendTyping(chatId);
+
   const keys = await aiKeys();
   const plans = await getPlans();
   const history: ChatTurn[] = asChatTurns(session);
@@ -521,7 +666,11 @@ async function handleUpdate(update: TgUserUpdate): Promise<void> {
 
   // (4) §11 first-contact note — appended once, below the real answer.
   const outbound = withFirstContactNote(reply, firstContact);
-  await sendMessage(chatId, outbound);
+  // Send via sendChunked: a long agent reply can exceed Telegram's 4096-char
+  // sendMessage limit (and would otherwise fail to send). chunkTelegram splits on
+  // natural boundaries into ordered pieces (≤4000 each); a short reply is a single
+  // send (the common case is unchanged). Fail-soft per chunk.
+  await sendChunked(chatId, outbound);
 
   // Persist memory (the reply WITHOUT the appended §11 note — that's a one-time
   // wrapper, not part of the conversation transcript).
@@ -662,6 +811,9 @@ Deno.serve(async (req: Request) => {
     await handleUpdate(update);
   } catch (e) {
     jlog({ at: "tgu.post", ok: false, error: String(e) });
+    // Surface the unexpected throw to Sentry (fire-and-forget; dark until a DSN is
+    // configured; never throws or blocks) — parity with the other customer handlers.
+    captureError(e, { fn: "telegram-user-webhook", method: req.method });
   }
   return json({ ok: true }, 200);
 });

@@ -3,6 +3,7 @@
 
 import type { MeetingRow, TgInlineKeyboard } from "./types.ts";
 import { esc, NL, waLink } from "./telegram.ts";
+import { escHtml, renderEmail } from "./email.ts";
 
 export const MEETING_STATUS_HE: Record<string, string> = {
   pending: "ממתין לאישור", confirmed: "מאושרת", no_rep: "אין נציג פנוי",
@@ -227,4 +228,33 @@ export function buildMeetingCustomerEmailHtml(m: MeetingRow): string {
     + `<p>מומלץ להצטרף דקה-שתיים לפני המועד. אם המועד אינו מתאים, השיבו למייל זה ונתאם מועד חדש.</p>`
     + `<p>בברכה,<br>צוות Switchy AI</p>`
     + `</div>`;
+}
+
+// One-time verification code email for the self-serve Zoom booking flow. Built
+// on the premium renderEmail shell (mirrors buildMeetingCustomerEmailHtml's RTL
+// Hebrew, transactional style). TRANSACTIONAL — the visitor just asked for the
+// code — so NO unsubscribe link. The code is shown large + monospaced so it's
+// easy to copy. We never include a CTA/link that could turn this into a phish
+// vector; the code alone is the payload.
+export function buildOtpEmailHtml(opts: { code: string; name?: string | null }): string {
+  const code = String(opts.code ?? "");
+  const hello = opts.name ? `שלום ${escHtml(opts.name)},` : "שלום,";
+  // Big, letter-spaced, monospaced code block (already-escaped HTML fragment).
+  const codeBlock =
+    `<span style="display:inline-block;font-family:'Courier New',Courier,monospace;` +
+    `font-size:34px;font-weight:bold;letter-spacing:10px;color:#111827;` +
+    `background:#F5F7F8;border:1px solid #E5E7EB;border-radius:12px;` +
+    `padding:14px 26px;direction:ltr;">${escHtml(code)}</span>`;
+  return renderEmail({
+    preheader: "קוד האימות שלכם לקביעת שיחת ייעוץ ב-Switchy AI (תקף ל-15 דקות).",
+    heading: "קוד אימות לקביעת שיחת ייעוץ",
+    bodyHtml: [
+      hello,
+      "הזינו את הקוד הבא כדי לאמת את כתובת המייל ולהשלים את קביעת שיחת הייעוץ:",
+      codeBlock,
+      "הקוד תקף ל-15 דקות. אם לא ביקשתם קוד זה — אפשר להתעלם מהמייל; לא בוצעה כל פעולה בשמכם.",
+      "בברכה,<br>צוות Switchy AI",
+    ],
+    footerReason: "קיבלתם את המייל הזה כי כתובת זו הוזנה בטופס קביעת שיחת ייעוץ באתר Switchy AI.",
+  });
 }

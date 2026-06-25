@@ -145,7 +145,7 @@ export default function Home() {
               להשוואת מסלולים
             </TrackedCtaLink>
             <TrackedCtaLink
-              href="#lead"
+              href="/book"
               location="hero"
               label="consult"
               className="interactive press sw-lift rounded-xl border border-border/60 px-6 py-3 font-medium text-ink hover:border-accent/40 hover:bg-surface hover:shadow-soft"

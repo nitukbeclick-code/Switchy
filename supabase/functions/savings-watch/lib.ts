@@ -218,6 +218,29 @@ export function eligibleChannels(contact: WatchContact): ChannelPlan {
   return { whatsapp, push };
 }
 
+// ── §30A send-time suppression gate (the real fix) ────────────────────────────
+// The eligibleChannels() pre-filter uses a suppressed-set snapshotted at the
+// start of the pass; this is the LAST gate, re-checking the durable
+// marketing_suppression registry against THIS phone immediately before the send
+// — so a contact who sent STOP on WhatsApp can never receive a savings-watch
+// alert even if they opted out after the snapshot was taken. Dependency-injected
+// (lookup + send) so it's pure-testable with no network. Fail-soft posture lives
+// in the injected `isSuppressed` (returns false on error → we treat the contact
+// as NOT suppressed and still send, rather than silently dropping every alert on
+// a transient DB blip), matching the rest of this function.
+export type WhatsappSendOutcome = "suppressed" | "sent" | "failed";
+
+export async function sendWatchWhatsapp(
+  phone: string,
+  text: string,
+  isSuppressed: (channel: "whatsapp", contact: string) => Promise<boolean>,
+  send: (to: string, body: string) => Promise<string | null>,
+): Promise<WhatsappSendOutcome> {
+  if (await isSuppressed("whatsapp", phone)) return "suppressed";
+  const wamid = await send(phone, text);
+  return wamid ? "sent" : "failed";
+}
+
 // ── alert copy (Hebrew, RTL) ──────────────────────────────────────────────────
 export interface WatchAlert {
   title: string; // push title / WhatsApp first line

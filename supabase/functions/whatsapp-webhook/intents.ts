@@ -3,14 +3,11 @@
 // notify-lead/*.ts pattern). These decide how an inbound WhatsApp text is routed:
 // human handoff, recommendation, greeting, or plain catalogue Q&A.
 
-// Marketing opt-out / STOP — Spam Law (Communications Law §30A) compliance. A
-// match short-circuits the WHOLE inbound flow: we flip the contact to opted_out,
-// send ONE confirmation, log it, and never run the normal AI reply. Checked
-// FIRST, before any other intent (and before any AI fan-out), so a person can
-// always get out. Covers the common Hebrew unsubscribe verbs + the universal
-// "stop"/"unsubscribe" carriers expect.
-export const RE_OPTOUT =
-  /(הסר|הסירו|להסיר|תסיר|תסירו|עצור|עצרו|הפסיק|הפסיקו|תפסיק|תפסיקו|ביטול|בטל|בטלו|אל תשלח|לא לשלוח|הפסק לשלוח|\bstop\b|\bunsubscribe\b|\bcancel\b)/i;
+// Marketing opt-out / STOP — Spam Law (Communications Law §30A) compliance is now
+// owned by _shared/compliance.ts (isOptOut), the UNIFIED contains-match detector
+// (he/en/ar/ru + multi-word + slash) shared across every channel so the rule can
+// never drift. The webhook imports it from there; the old narrow RE_OPTOUT/isOptOut
+// that lived here were removed so there is exactly one source of truth.
 
 // A request to reach a human agent — short-circuits to lead creation + Telegram.
 export const RE_HANDOFF =
@@ -48,16 +45,6 @@ export const RE_LOYALTY =
 export type RefineIntent = "objection" | "loyalty" | "none";
 
 export type Intent = "human" | "recommend" | "greeting" | "qa";
-
-/**
- * True if the inbound text is a marketing opt-out / STOP request. Checked BEFORE
- * classifyTextIntent (and before any AI call) in handleMessage so an unsubscribe
- * always wins, regardless of other cues in the same message. Pure so the regex
- * coverage can be pinned in tests. Empty/whitespace → false.
- */
-export function isOptOut(text: string): boolean {
-  return RE_OPTOUT.test((text ?? "").trim());
-}
 
 // Contact statuses that mean "this person opted out of marketing". The outbound
 // path must never send a PROACTIVE/marketing message (e.g. the welcome menu) to

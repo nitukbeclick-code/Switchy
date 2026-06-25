@@ -26,6 +26,7 @@ import {
   opportunityDedupeKey,
   opportunityForTracked,
   type PriceSnapshot,
+  sendWatchWhatsapp,
   type TrackedPlan,
   type WatchContact,
 } from "../savings-watch/lib.ts";
@@ -238,6 +239,52 @@ Deno.test("eligibleChannels: a muted push blocks ONLY push; no phone blocks What
 
 Deno.test("eligibleChannels: an unreachable, unsubscribed contact is eligible on neither", () => {
   assertEquals(eligibleChannels({ userId: "u1", phone: null, push: null }), { whatsapp: false, push: false });
+});
+
+// ════════════════════════════════════════════════════════════════════════════
+// sendWatchWhatsapp — the §30A send-time suppression gate (THE GAP FIX)
+// A phone on marketing_suppression(whatsapp) MUST be skipped before the send,
+// even though it passed the start-of-pass eligibility snapshot; a non-suppressed
+// phone is still sent. The suppression lookup + send are stubbed (no network).
+// ════════════════════════════════════════════════════════════════════════════
+
+Deno.test("sendWatchWhatsapp: a suppressed phone is SKIPPED, a non-suppressed one is SENT", async () => {
+  const sent: string[] = [];
+  const SUPPRESSED = "+972500000001";
+  // Stubbed registry: only SUPPRESSED is on marketing_suppression(whatsapp).
+  const isSuppressed = (_channel: "whatsapp", contact: string) =>
+    Promise.resolve(contact === SUPPRESSED);
+  const send = (to: string, _body: string) => {
+    sent.push(to);
+    return Promise.resolve("wamid.OK");
+  };
+
+  // Suppressed → skipped, never reaches the sender.
+  assertEquals(await sendWatchWhatsapp(SUPPRESSED, "hi", isSuppressed, send), "suppressed");
+  // Non-suppressed → sent.
+  assertEquals(await sendWatchWhatsapp("+972500000002", "hi", isSuppressed, send), "sent");
+
+  assertEquals(sent, ["+972500000002"]); // exactly one send, never the suppressed phone
+});
+
+Deno.test("sendWatchWhatsapp: a failed send (null wamid) is reported as 'failed'", async () => {
+  const isSuppressed = (_c: "whatsapp", _p: string) => Promise.resolve(false);
+  const send = (_to: string, _body: string) => Promise.resolve(null); // transient send failure
+  assertEquals(await sendWatchWhatsapp("+972500000003", "hi", isSuppressed, send), "failed");
+});
+
+Deno.test("sendWatchWhatsapp: a suppression-check error is fail-soft → still SENT (never silently dropped)", async () => {
+  // isSuppressed is itself fail-soft (returns false on error). Here we model that
+  // posture: a lookup that resolves false (its error path) must NOT block the send
+  // — a transient DB blip must not silently drop every alert.
+  const sent: string[] = [];
+  const isSuppressed = (_c: "whatsapp", _p: string) => Promise.resolve(false);
+  const send = (to: string, _body: string) => {
+    sent.push(to);
+    return Promise.resolve("wamid.OK");
+  };
+  assertEquals(await sendWatchWhatsapp("+972500000004", "hi", isSuppressed, send), "sent");
+  assertEquals(sent, ["+972500000004"]);
 });
 
 // ════════════════════════════════════════════════════════════════════════════

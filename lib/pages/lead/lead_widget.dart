@@ -213,7 +213,7 @@ class _LeadWidgetState extends State<LeadWidget> {
                 autofillHints: const [AutofillHints.name],
                 decoration: _inputDecoration(hint: 'ישראל ישראלי', icon: Icons.person_outline_rounded, ffTheme: ffTheme),
                 validator: (v) => (v == null || v.trim().isEmpty) ? 'שדה חובה' : null,
-              ).animate(delay: 80.ms).fadeIn().slideY(begin: 0.05),
+              ).animate(delay: 80.ms).fadeIn(duration: 280.ms, curve: ffTheme.easeOut).slideY(begin: 0.05, end: 0, duration: 280.ms, curve: ffTheme.easeOut),
 
               const SizedBox(height: 14),
 
@@ -231,7 +231,7 @@ class _LeadWidgetState extends State<LeadWidget> {
                   final digits = (v ?? '').replaceAll(RegExp(r'\D'), '');
                   return (digits.length < 9 || digits.length > 15) ? 'מספר טלפון לא תקין' : null;
                 },
-              ).animate(delay: 120.ms).fadeIn().slideY(begin: 0.05),
+              ).animate(delay: 120.ms).fadeIn(duration: 280.ms, curve: ffTheme.easeOut).slideY(begin: 0.05, end: 0, duration: 280.ms, curve: ffTheme.easeOut),
 
               const SizedBox(height: 8),
 
@@ -259,7 +259,7 @@ class _LeadWidgetState extends State<LeadWidget> {
                   if (s.isEmpty) return null;
                   return RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(s) ? null : 'כתובת אימייל לא תקינה';
                 },
-              ).animate(delay: 160.ms).fadeIn().slideY(begin: 0.05),
+              ).animate(delay: 160.ms).fadeIn(duration: 280.ms, curve: ffTheme.easeOut).slideY(begin: 0.05, end: 0, duration: 280.ms, curve: ffTheme.easeOut),
 
               const SizedBox(height: 20),
 
@@ -328,9 +328,10 @@ class _LeadWidgetState extends State<LeadWidget> {
       mainAxisSize: MainAxisSize.min,
       children: [
         AppButton(
-          text: _submitFailed
-              ? 'נסו שוב ←'
-              : 'קבלו המלצה אישית — נציג יחזור אליכם היום ←',
+          // Punchy single-line action on the button; the "נציג יחזור אליכם
+          // היום" reassurance lives in the subtext below so the CTA stays
+          // legible on narrow screens (AppButton's label is single-line).
+          text: _submitFailed ? 'נסו שוב ←' : 'קבלו המלצה אישית ←',
           onPressed: () async => _submitLead(plan),
           width: double.infinity,
           height: 56,
@@ -339,10 +340,21 @@ class _LeadWidgetState extends State<LeadWidget> {
           borderRadius: BorderRadius.circular(18),
         ).animate().fadeIn(delay: 300.ms),
         const SizedBox(height: 8),
-        Text(
-          'ללא התחייבות • שירות חינמי לחלוטין',
-          style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText),
-          textAlign: TextAlign.center,
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            ExcludeSemantics(
+              child: Icon(Icons.schedule_rounded, size: 13, color: ffTheme.secondaryText),
+            ),
+            const SizedBox(width: 5),
+            Flexible(
+              child: Text(
+                'נציג יחזור אליכם היום • ללא התחייבות • חינם',
+                style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ],
         ),
       ],
     );
@@ -611,7 +623,7 @@ class _LeadWidgetState extends State<LeadWidget> {
                 ? Colors.white
                 : ffTheme.secondaryText),
       ),
-    ).animate(delay: 200.ms).fadeIn().slideY(begin: 0.05);
+    ).animate(delay: 200.ms).fadeIn(duration: 280.ms, curve: ffTheme.easeOut).slideY(begin: 0.05, end: 0, duration: 280.ms, curve: ffTheme.easeOut);
   }
 
   Widget _buildNextStepsCard(AppTheme ffTheme) {

@@ -64,10 +64,16 @@ class _PressableState extends State<Pressable> {
       onTapDown: (_) => _set(true),
       onTapUp: (_) => _set(false),
       onTapCancel: () => _set(false),
+      // Press is a HIGH-FREQUENCY action (every list row, every tap), so the
+      // feedback stays calm and fast: a subtle scale-down in the 100-160ms press
+      // band on the way down, and a slightly longer ease-out settle on release —
+      // no bouncy overshoot (that delight belongs to rare/first-time surfaces,
+      // not something seen on every row). Both legs use ease-out: pressing in and
+      // releasing back are each "entering/settling" motion, never ease-in.
       child: AnimatedScale(
         scale: _down ? pressedScale : 1.0,
-        duration: _down ? t.motionFast : t.motionMedium,
-        curve: _down ? t.easeOut : t.spring,
+        duration: _down ? t.motionPress : t.motionMedium,
+        curve: t.easeOut,
         child: widget.child,
       ),
     );

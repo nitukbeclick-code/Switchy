@@ -26,6 +26,7 @@ import type { Metadata } from "next";
 import JsonLd from "@/components/JsonLd";
 import SgeSummary from "@/components/SgeSummary";
 import TrustSignals from "@/components/TrustSignals";
+import Icon from "@/components/Icon";
 import RelatedAuthorityPages from "@/components/RelatedAuthorityPages";
 import { getPlans, getProviders, getCategories } from "@/lib/data";
 import { priceUnitLabel } from "@/lib/format";
@@ -169,15 +170,25 @@ export default function SwitchKitPage() {
         <span className="text-foreground">ערכת מעבר</span>
       </nav>
 
-      {/* ── Heading ───────────────────────────────────────────────────────── */}
+      {/* ── Hero ──────────────────────────────────────────────────────────────
+          Intent eyebrow → H1 focal point → factual promise → an honest amber
+          VALUE rail (qualitative — the move is free; no fabricated figure). ──── */}
       <header className="mt-3">
-        <h1 className="font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
+        <p className="inline-flex items-center gap-2 rounded-full border border-accent/25 bg-accent/10 px-3.5 py-1.5 text-sm font-semibold text-accent-text">
+          <Icon name="spark" size={16} />
+          ערכת מעבר אישית
+        </p>
+        <h1 className="mt-4 font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
           ערכת מעבר — מוכנה לשליחה על ידיכם
         </h1>
         <p className="mt-4 text-lg leading-relaxed text-foreground">
           בחרו את הספק הנוכחי ומסלול יעד אמיתי מהקטלוג, וקבלו מכתב ניתוק לבדיקה,
           צ׳קליסט ניוד מספר, מועדים חשובים וטראקר התקדמות. מבוסס על זכויות הצרכן
           בישראל — בלי מספרי טלפון מומצאים, ואנחנו אף פעם לא שולחים את המכתב במקומכם.
+        </p>
+        <p className="mt-5 inline-flex items-center gap-2 rounded-full border border-value/30 bg-value/10 px-3.5 py-1.5 text-sm font-semibold text-value-text">
+          <span aria-hidden="true" className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-value" />
+          ניוד המספר חינמי — והערכה מבוססת על מחירים אמיתיים מהקטלוג
         </p>
       </header>
 

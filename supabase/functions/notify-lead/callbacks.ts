@@ -22,6 +22,17 @@ import {
 
 type HandlerResult = Record<string, unknown>;
 
+// A lead in 'won' or 'lost' is in a TERMINAL (closed) state. The status-change
+// branch mirrors applyLostReason's guard: a closed lead must not be re-PATCHed,
+// regressed back to contacted, resurrected, nor re-fire its side effects (the won
+// savings-ask). The only sanctioned way out of a terminal state is the explicit
+// "undo" path (which replays the recorded transition). Pure + exported so the
+// idempotency guard is unit-testable without the DB.
+export function isClosedLeadStatus(status: unknown): boolean {
+  const s = String(status ?? "new");
+  return s === "won" || s === "lost";
+}
+
 // Outbound rep relay body cap — matches the CRM's MAX_REPLY_LEN intent and stays
 // well under Graph's 4096-char text limit. A rep paste longer than this is clipped.
 const MAX_RELAY_LEN = 3000;
@@ -800,7 +811,19 @@ async function applyLostReason(
 
 // Outbound cap for a relayed rep message to the customer's Telegram (HTML text;
 // Telegram's hard limit is 4096 — stay well under, matching MAX_RELAY_LEN intent).
+// This caps the ESCAPED output, so the value is the real on-the-wire length.
 const MAX_TG_RELAY_LEN = 3500;
+
+// HTML-escape FIRST, then clip the escaped string — never the other way round.
+// esc() expands entities (& → &amp; is 5×, < / > → 4×), so clipping the raw text
+// and escaping after can blow past Telegram's 4096-char hard limit (a body of
+// all '&' would 5× on escape). Clipping the escaped string guarantees the wire
+// length stays ≤ max. Pure + exported so the length invariant is unit-testable.
+// (We clip on the escaped string's char boundary; a trailing entity may be cut,
+// which Telegram tolerates far more gracefully than a 4096 overflow rejection.)
+export function escClip(text: unknown, max: number = MAX_TG_RELAY_LEN): string {
+  return esc(text).slice(0, max);
+}
 
 // The customer-facing USER bot token. Read from env (the user bot ships with its
 // own TELEGRAM_USER_BOT_TOKEN — distinct from the team bot's cfg.tgToken). Empty
@@ -900,10 +923,17 @@ async function handleTgHandback(
     session_id: sessionKey,
   });
   // Best-effort customer notice that the human chat ended + the bot is back.
-  await sendUserBot(
-    chatId,
-    "השיחה עם הנציג הסתיימה ✅ חזרתי לענות אוטומטית — אפשר להמשיך לשאול אותי כל דבר על המסלולים והמחירים.",
-  );
+  // §30A STOP gate guards ONLY this customer-facing send — a suppressed customer
+  // (marketing_suppression telegram/tg:<chatId>) gets NO message, even this benign
+  // "bot is back" notice. The session flip, the audit row, and the team confirmation
+  // below stay UNCONDITIONAL: handing the conversation back to the bot is an
+  // internal state change the rep must always be able to complete.
+  if (!(await isTelegramSuppressed(chatId))) {
+    await sendUserBot(
+      chatId,
+      "השיחה עם הנציג הסתיימה ✅ חזרתי לענות אוטומטית — אפשר להמשיך לשאול אותי כל דבר על המסלולים והמחירים.",
+    );
+  }
   await answer("הוחזר לבוט 🤖");
   await sendTelegram(cfg, `🤖 <b>שיחת הטלגרם הוחזרה לבוט</b> (<code>tg:${esc(chatId)}</code>) — העוזר האוטומטי חזר לענות ללקוח.`);
   return { ok: true, channel: "telegram", chat_id: chatId };
@@ -935,18 +965,21 @@ async function relayTeamReplyToTelegram(
     await sendTelegram(cfg, "⛔ הלקוח ביקש להפסיק לקבל הודעות (STOP) — ההודעה לא נשלחה.");
     return { ok: false, skipped: "customer suppressed" };
   }
-  const body = text.slice(0, MAX_TG_RELAY_LEN);
-  const delivered = await sendUserBot(chatId, esc(body));
+  // Escape FIRST, then clip the escaped string — so the on-the-wire HTML can never
+  // exceed Telegram's 4096 limit even when esc() expands entities (a raw-then-escape
+  // clip on an all-'&' body would 5× past the cap). escClip caps the ESCAPED length.
+  const safe = escClip(text, MAX_TG_RELAY_LEN);
+  const delivered = await sendUserBot(chatId, safe);
   // Reg.13 audit (who/when, PII-light preview) — like the WhatsApp relay reply.
   await logRelayAudit(actorTgId, "tg_relay_reply", {
     channel: "telegram",
     chat_id: chatId,
     delivered,
-    preview: body.slice(0, 120),
+    preview: text.slice(0, 120),
   });
   // Lightweight delivery feedback: a ✓ when the user bot accepted the relay, with
   // a short echo of what was sent. Fail-soft on a send miss — tell the rep to retry.
-  const echo = esc(body.slice(0, 140)) + (body.length > 140 ? "…" : "");
+  const echo = escClip(text, 140) + (esc(text).length > 140 ? "…" : "");
   await sendTelegram(
     cfg,
     delivered
@@ -1188,7 +1221,18 @@ export async function handleCallback(cfg: Cfg, cb: TgCallbackQuery): Promise<Han
     await answer("הליד לא נמצא");
     return { ok: false };
   }
-  if (String(before.status ?? "new") === action) {
+  // Terminal-state guard (mirrors applyLostReason): a lead already won/lost is
+  // CLOSED. A late/stale press — double-won, double-lost, or a regress back to
+  // "contacted" — must NOT re-PATCH the row, resurrect a closed lead, nor re-fire
+  // the won savings-ask. Short-circuit with an idempotent toast; the only
+  // sanctioned route out of a terminal state is the explicit "undo" button.
+  const prevStatus = String(before.status ?? "new");
+  if (isClosedLeadStatus(prevStatus)) {
+    await answer(`הליד כבר במצב "${STATUS_HE[prevStatus] ?? prevStatus}"`);
+    await refreshKeyboard(cfg, msg, leadId);
+    return { ok: true, skipped: "lead already closed" };
+  }
+  if (prevStatus === action) {
     // double-tap or stale card — don't log a self-transition (it would make
     // undo a no-op) and don't regress anything
     await answer(`כבר במצב "${STATUS_HE[action]}"`);

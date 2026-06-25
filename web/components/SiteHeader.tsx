@@ -61,7 +61,7 @@ export default function SiteHeader({ className }: SiteHeaderProps) {
         >
           <span
             aria-hidden="true"
-            className="inline-block h-5 w-1.5 rounded-full bg-accent transition-transform duration-200 ease-[var(--ease-out)] motion-safe:group-hover:scale-y-110"
+            className="inline-block h-5 w-1.5 rounded-full bg-accent transition-transform duration-200 ease-[var(--ease-out)] [@media(hover:hover)_and_(pointer:fine)]:motion-safe:group-hover:scale-y-110"
           />
           Switchy
           <span className="text-sm font-semibold text-muted">AI</span>

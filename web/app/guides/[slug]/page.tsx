@@ -18,6 +18,7 @@ import JsonLd from "@/components/JsonLd";
 import RelatedAuthorityPages from "@/components/RelatedAuthorityPages";
 import AeoAnswerBlock from "@/components/AeoAnswerBlock";
 import DataMethodology from "@/components/DataMethodology";
+import Icon from "@/components/Icon";
 import {
   getGuide,
   getGuides,
@@ -167,7 +168,7 @@ export default async function GuidePage({ params }: Params) {
   });
 
   return (
-    <main id="main" className="mx-auto w-full max-w-3xl flex-1 px-4 py-10 sm:px-6">
+    <main id="main" className="mx-auto w-full max-w-6xl flex-1 px-4 py-10 sm:px-6">
       {/* Structured data: Article + Breadcrumb (always); FAQPage + HowTo (real). */}
       <JsonLd
         data={articleSchema({
@@ -188,20 +189,64 @@ export default async function GuidePage({ params }: Params) {
       ) : null}
       {howTo ? <JsonLd data={howTo} /> : null}
 
-      {/* ── Breadcrumb (visible) ──────────────────────────────────────────── */}
-      <nav aria-label="פירורי לחם" className="text-sm text-muted">
-        <Link href="/" className="interactive hover:text-accent">
-          בית
-        </Link>
-        <span className="px-1.5">/</span>
-        <Link href="/guides" className="interactive hover:text-accent">
-          מדריכים
-        </Link>
-        <span className="px-1.5">/</span>
-        <span className="text-foreground">{guide.cat}</span>
-      </nav>
+      {/* The article keeps a comfortable long-form measure; on lg+ a sticky TOC
+          rail sits alongside it without stretching the prose. */}
+      <div className="mx-auto max-w-3xl lg:mx-0 lg:grid lg:max-w-none lg:grid-cols-[16rem_minmax(0,1fr)] lg:gap-12">
+        {/* ── Breadcrumb (visible) — spans both columns ─────────────────────── */}
+        <nav
+          aria-label="פירורי לחם"
+          className="text-sm text-muted lg:col-span-2"
+        >
+          <Link href="/" className="interactive hover:text-accent">
+            בית
+          </Link>
+          <span className="px-1.5">/</span>
+          <Link href="/guides" className="interactive hover:text-accent">
+            מדריכים
+          </Link>
+          <span className="px-1.5">/</span>
+          <span className="text-foreground">{guide.cat}</span>
+        </nav>
 
-      <article className="mt-4">
+        {/* ── Sticky table of contents (lg+ rail) ─────────────────────────────
+            On lg+ the TOC lives in the inline-start rail and stays in view while
+            reading; on smaller screens it renders inline above the body instead
+            (see the collapsible TOC inside <article>). */}
+        {showToc ? (
+          <aside
+            aria-labelledby="toc-heading"
+            className="hidden lg:col-start-1 lg:row-start-2 lg:block"
+          >
+            <nav
+              aria-label="תוכן עניינים"
+              className="sticky top-20 card p-5"
+            >
+              <p
+                id="toc-heading"
+                className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted"
+              >
+                בעמוד הזה
+              </p>
+              <ol className="space-y-2">
+                {guide.sections.map((s, i) => (
+                  <li key={sectionId(i)} className="flex gap-2 text-sm leading-snug">
+                    <span aria-hidden="true" className="font-semibold text-accent-text tabular-nums">
+                      {i + 1}.
+                    </span>
+                    <a
+                      href={`#${sectionId(i)}`}
+                      className="interactive text-foreground hover:text-accent"
+                    >
+                      {s.h2}
+                    </a>
+                  </li>
+                ))}
+              </ol>
+            </nav>
+          </aside>
+        ) : null}
+
+      <article className="mt-4 lg:col-start-2 lg:row-start-2 lg:mt-0">
         {/* ── Article header ──────────────────────────────────────────────── */}
         <header>
           <h1 className="font-display text-3xl font-bold leading-tight tracking-tight text-ink sm:text-4xl">
@@ -240,35 +285,45 @@ export default async function GuidePage({ params }: Params) {
           </div>
         ) : null}
 
-        {/* ── Table of contents ───────────────────────────────────────────── */}
+        {/* ── Table of contents (inline, < lg) ──────────────────────────────
+            Collapsible so it doesn't push the article down on small screens; on
+            lg+ the sticky rail above replaces it (this copy is lg:hidden). */}
         {showToc ? (
-          <nav
-            aria-label="תוכן עניינים"
-            className="card mt-6 p-5 sm:p-6"
-          >
-            <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted">
+          <details className="card group mt-6 p-5 sm:p-6 lg:hidden [&_summary]:cursor-pointer">
+            <summary className="flex items-center justify-between gap-3 text-xs font-semibold uppercase tracking-wide text-muted marker:content-none">
               בעמוד הזה
-            </p>
-            <ol className="space-y-2">
-              {guide.sections.map((s, i) => (
-                <li key={sectionId(i)} className="flex gap-2 text-sm">
-                  <span aria-hidden="true" className="text-accent">
-                    {i + 1}.
-                  </span>
-                  <a
-                    href={`#${sectionId(i)}`}
-                    className="interactive text-foreground hover:text-accent"
-                  >
-                    {s.h2}
-                  </a>
-                </li>
-              ))}
-            </ol>
-          </nav>
+              <Icon
+                name="chevron"
+                size={16}
+                aria-hidden="true"
+                className="text-accent transition-transform duration-200 ease-[var(--ease-out)] group-open:rotate-90"
+              />
+            </summary>
+            <nav aria-label="תוכן עניינים">
+              <ol className="mt-3 space-y-2">
+                {guide.sections.map((s, i) => (
+                  <li key={sectionId(i)} className="flex gap-2 text-sm leading-snug">
+                    <span aria-hidden="true" className="font-semibold text-accent-text tabular-nums">
+                      {i + 1}.
+                    </span>
+                    <a
+                      href={`#${sectionId(i)}`}
+                      className="interactive text-foreground hover:text-accent"
+                    >
+                      {s.h2}
+                    </a>
+                  </li>
+                ))}
+              </ol>
+            </nav>
+          </details>
         ) : null}
 
-        {/* ── Body sections ───────────────────────────────────────────────── */}
-        <div className="mt-10 space-y-10">
+        {/* ── Body sections ───────────────────────────────────────────────────
+            Capped to ~68ch so the reading measure stays comfortable on wide
+            screens (long-form Hebrew readability), with generous paragraph
+            leading and clear heading rhythm. */}
+        <div className="mt-10 max-w-[68ch] space-y-10">
           {guide.sections.map((s, i) => (
             <section
               key={sectionId(i)}
@@ -281,7 +336,7 @@ export default async function GuidePage({ params }: Params) {
               {s.p?.map((p, pi) => (
                 <p
                   key={pi}
-                  className="mt-4 text-base leading-relaxed text-foreground"
+                  className="mt-4 text-base leading-[1.85] text-foreground"
                 >
                   {p}
                 </p>
@@ -291,11 +346,11 @@ export default async function GuidePage({ params }: Params) {
                   {s.ul.map((li, li2) => (
                     <li
                       key={li2}
-                      className="flex gap-2.5 text-base leading-relaxed text-foreground"
+                      className="flex gap-2.5 text-base leading-[1.8] text-foreground"
                     >
                       <span
                         aria-hidden="true"
-                        className="mt-2 inline-block h-1.5 w-1.5 flex-none rounded-full bg-accent"
+                        className="mt-2.5 inline-block h-1.5 w-1.5 flex-none rounded-full bg-accent"
                       />
                       <span>{li}</span>
                     </li>
@@ -346,10 +401,15 @@ export default async function GuidePage({ params }: Params) {
           </p>
           <Link
             href={internalLinks[0].href}
-            className="press mt-5 inline-flex items-center gap-1.5 rounded-xl bg-accent px-6 py-3 font-display font-semibold text-accent-contrast transition-colors hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            className="press group mt-5 inline-flex items-center gap-1.5 rounded-xl bg-accent px-6 py-3 font-display font-semibold text-accent-contrast transition-colors hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           >
             {internalLinks[0].label}
-            <span aria-hidden="true">←</span>
+            <Icon
+              name="arrow"
+              size={18}
+              aria-hidden="true"
+              className="transition-transform duration-200 ease-[var(--ease-out)] motion-safe:group-hover:-translate-x-0.5"
+            />
           </Link>
         </div>
 
@@ -373,12 +433,12 @@ export default async function GuidePage({ params }: Params) {
                 >
                   <summary className="flex items-center justify-between gap-3 font-display font-semibold text-ink marker:content-none">
                     {f.q}
-                    <span
+                    <Icon
+                      name="chevron"
+                      size={18}
                       aria-hidden="true"
-                      className="text-accent transition-transform duration-200 group-open:rotate-180"
-                    >
-                      ▾
-                    </span>
+                      className="flex-none text-accent transition-transform duration-200 ease-[var(--ease-out)] group-open:rotate-90"
+                    />
                   </summary>
                   <p className="mt-3 text-base leading-relaxed text-foreground">
                     {f.a}
@@ -400,11 +460,12 @@ export default async function GuidePage({ params }: Params) {
           planCount={aeoCategory ? plans.length : undefined}
         />
       </article>
+      </div>
 
       {/* ── Internal links → real compare/providers pages ───────────────────── */}
       <RelatedAuthorityPages
         heading="קישורים שימושיים"
-        className="mt-14"
+        className="mx-auto mt-14 max-w-3xl"
         links={internalLinks.map((l) => ({ href: l.href, label: l.label }))}
       />
 
@@ -412,7 +473,7 @@ export default async function GuidePage({ params }: Params) {
       {related.length ? (
         <section
           aria-labelledby="more-guides"
-          className="mt-14 border-t border-border/40 pt-10"
+          className="mx-auto mt-14 max-w-3xl border-t border-border/40 pt-10"
         >
           <h2
             id="more-guides"

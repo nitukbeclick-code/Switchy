@@ -24,7 +24,7 @@
 // lead bar.
 // ────────────────────────────────────────────────────────────────────────────
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   isPushSupported,
   registerServiceWorker,
@@ -112,6 +112,15 @@ function maySurface(record: PromptRecord | null): boolean {
 
 export default function PwaInstaller() {
   const [showPrompt, setShowPrompt] = useState(false);
+  // One-frame `mounted` flip drives the INTERRUPTIBLE enter transition (Emil rule
+  // 9). Reset whenever the prompt is (re)shown so the slide-up replays cleanly.
+  const [mounted, setMounted] = useState(false);
+  // Graceful EXIT: enable()/dismiss() set `showPrompt=false`, but we keep the
+  // toast mounted via `closing` and reverse the SAME interruptible transition
+  // (slide back DOWN + fade), then unmount on transitionend (timeout fallback).
+  // A re-surface mid-exit cancels `closing` and the enter transition replays.
+  const [closing, setClosing] = useState(false);
+  const exitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [busy, setBusy] = useState(false);
   // The prior dismissal count, captured when we decide to surface, so enable()/
   // dismiss() can persist the next record with the right escalating cool-off.
@@ -182,12 +191,25 @@ export default function PwaInstaller() {
     };
   }, []);
 
+  // Begin the graceful exit: flip the prompt closed but keep it MOUNTED via
+  // `closing` so the reverse transition (slide back down + fade) can play; finalize
+  // on transitionend, with a timeout fallback for reduced-motion / no-layout.
+  const beginExit = useCallback(() => {
+    setShowPrompt(false);
+    setClosing(true);
+    if (exitTimer.current) clearTimeout(exitTimer.current);
+    exitTimer.current = setTimeout(() => {
+      setClosing(false);
+      exitTimer.current = null;
+    }, 320);
+  }, []);
+
   const enable = useCallback(async () => {
     setBusy(true);
     trackEvent("push_optin_click", { source: "installer" });
     const sub = await subscribeToPush();
     setBusy(false);
-    setShowPrompt(false);
+    beginExit();
     if (sub) {
       persistSubscribed();
       trackEvent("push_subscribed", { source: "installer" });
@@ -196,27 +218,84 @@ export default function PwaInstaller() {
       persistDismissed(priorDismissals);
       trackEvent("push_optin_failed", { source: "installer" });
     }
-  }, [priorDismissals]);
+  }, [priorDismissals, beginExit]);
 
   const dismiss = useCallback(() => {
     persistDismissed(priorDismissals);
-    setShowPrompt(false);
+    beginExit();
     trackEvent("push_optin_dismiss", {
       source: "installer",
       dismissals: priorDismissals + 1,
     });
-  }, [priorDismissals]);
+  }, [priorDismissals, beginExit]);
 
-  if (!showPrompt) return null;
+  // Flip `mounted` one frame after the prompt mounts so the resting
+  // translateY(.75rem)/opacity:0 transitions UP into place (interruptible). All
+  // state writes happen INSIDE the rAF callback (not synchronously in the effect
+  // body) so the enter/exit reset is a single clean external sync. When the prompt
+  // is hidden the visible state is already governed by `mounted && !isExiting` in
+  // the className, so we reset `mounted` for the next surface from here too; a
+  // re-surface cancels any in-flight exit and replays the enter from rest.
+  useEffect(() => {
+    const id = requestAnimationFrame(() => {
+      if (!showPrompt) {
+        setMounted(false);
+        return;
+      }
+      if (exitTimer.current) {
+        clearTimeout(exitTimer.current);
+        exitTimer.current = null;
+      }
+      setClosing(false);
+      setMounted(true);
+    });
+    return () => cancelAnimationFrame(id);
+  }, [showPrompt]);
+
+  // Clear any pending exit timer on unmount.
+  useEffect(
+    () => () => {
+      if (exitTimer.current) clearTimeout(exitTimer.current);
+    },
+    [],
+  );
+
+  // Render while the prompt is open OR while it's exiting (kept mounted for the
+  // slide-down). Once both are false the toast leaves the DOM.
+  if (!showPrompt && !closing) return null;
+
+  // Exiting → strip the dialog role / label and make it inert so a closing toast
+  // is never an active dialog and never blocks pointer input.
+  const isExiting = !showPrompt;
 
   return (
     <div
-      role="dialog"
-      aria-labelledby="push-prompt-title"
+      {...(isExiting
+        ? { "aria-hidden": true }
+        : { role: "dialog", "aria-labelledby": "push-prompt-title" })}
+      onTransitionEnd={() => {
+        if (!showPrompt) {
+          if (exitTimer.current) {
+            clearTimeout(exitTimer.current);
+            exitTimer.current = null;
+          }
+          setClosing(false);
+        }
+      }}
       className={[
         "fixed bottom-4 end-4 z-30 w-[min(20rem,calc(100vw-2rem))]",
         "rounded-2xl border border-border bg-surface p-4 shadow-float",
-        "motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-3 motion-safe:duration-[250ms] motion-safe:ease-[var(--ease-drawer)]",
+        // Toast-style slide: GPU-only (transform+opacity), drawer easing. Interruptible
+        // CSS transition off `mounted` — not a keyframe — so the SAME curve reverses on
+        // exit and a quick re-surface reverses cleanly. Enter 250ms; exit a touch
+        // faster (200ms) per Emil. Reduced-motion keeps only the fade.
+        "transition-[transform,opacity] ease-[var(--ease-drawer)]",
+        isExiting ? "duration-200" : "duration-[250ms]",
+        "motion-reduce:transition-opacity",
+        isExiting ? "pointer-events-none" : "",
+        mounted && !isExiting
+          ? "translate-y-0 opacity-100"
+          : "translate-y-3 opacity-0",
         "mb-[env(safe-area-inset-bottom)]",
       ].join(" ")}
     >

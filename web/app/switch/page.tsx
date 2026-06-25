@@ -12,6 +12,8 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import JsonLd from "@/components/JsonLd";
 import SgeSummary from "@/components/SgeSummary";
+import EmptyState from "@/components/EmptyState";
+import Icon from "@/components/Icon";
 import RelatedAuthorityPages from "@/components/RelatedAuthorityPages";
 import { getProviders, CATEGORY_HE } from "@/lib/data";
 import {
@@ -135,15 +137,25 @@ export default function SwitchIndexPage() {
         <span className="text-foreground">מדריכי מעבר וניתוק</span>
       </nav>
 
-      {/* ── Heading ───────────────────────────────────────────────────────── */}
-      <header className="mt-4">
-        <h1 className="font-display text-4xl font-bold tracking-tight text-ink sm:text-5xl">
-          מדריכי מעבר וניתוק ספק
+      {/* ── Hero ──────────────────────────────────────────────────────────────
+          One confident intent header: an eyebrow that frames the page, the H1
+          focal point, the supporting promise, and an honest amber VALUE rail
+          (qualitative — no fabricated figure). ──────────────────────────────── */}
+      <header className="mt-5">
+        <p className="inline-flex items-center gap-2 rounded-full border border-accent/25 bg-accent/10 px-3.5 py-1.5 text-sm font-semibold text-accent-text">
+          <Icon name="info" size={16} />
+          מדריך מעבר וניתוק
+        </p>
+        <h1 className="mt-4 font-display text-4xl font-bold tracking-tight text-ink sm:text-5xl">
+          לעזוב כל ספק תקשורת — בלי להסתבך
         </h1>
         <p className="mt-4 max-w-2xl text-lg leading-relaxed text-foreground">
-          איך לעזוב כל ספק תקשורת בישראל — בלי להסתבך. כל מדריך מסביר באופן עובדתי
-          את זכות הניתוק, ניוד המספר דרך מסלקת הניוד והודעת הניתוק בכתב, ומפנה
-          להשוואת חלופות לפני שמחליטים.
+          כל מדריך מסביר באופן עובדתי את זכות הניתוק, ניוד המספר דרך מסלקת הניוד
+          והודעת הניתוק בכתב, ומפנה להשוואת חלופות לפני שמחליטים.
+        </p>
+        <p className="mt-5 inline-flex items-center gap-2 rounded-full border border-value/30 bg-value/10 px-3.5 py-1.5 text-sm font-semibold text-value-text">
+          <span aria-hidden="true" className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-value" />
+          מסלול מתאים יכול לחסוך מאות ₪ בשנה — והמעבר חינמי
         </p>
       </header>
 
@@ -152,31 +164,97 @@ export default function SwitchIndexPage() {
         <SgeSummary heading="השורה התחתונה: מעבר וניתוק">{summary}</SgeSummary>
       </div>
 
+      {/* ── How it works — a three-step rail that establishes the mental model
+          before the user dives into a provider guide. Each step is the same
+          numbered-badge contract used on the per-provider page. ────────────── */}
+      <section aria-labelledby="how-h" className="mt-12">
+        <h2 id="how-h" className="font-display text-lg font-bold tracking-tight text-ink">
+          איך זה עובד
+        </h2>
+        <ol className="mt-4 grid gap-3 sm:grid-cols-3">
+          {[
+            {
+              t: "השוו חלופה",
+              d: "בדקו מסלול יעד משתלם לפני שעוזבים — המחיר היום והמחיר אחרי המבצע.",
+            },
+            {
+              t: "הספק החדש מנייד",
+              d: "ניוד המספר חינמי ומתבצע מול הספק החדש דרך מסלקת הניוד — אין צורך לנתק מראש.",
+            },
+            {
+              t: "תיעוד וסגירה",
+              d: "מסרו הודעת ניתוק בכתב היכן שצריך, ובדקו שהחשבון הסופי תקין.",
+            },
+          ].map((step, i) => (
+            <li key={step.t} className="card flex gap-3 p-4">
+              <span
+                aria-hidden="true"
+                className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-accent/10 font-display text-sm font-bold text-accent-text"
+              >
+                {i + 1}
+              </span>
+              <div>
+                <h3 className="font-display text-sm font-semibold tracking-tight text-ink">
+                  {step.t}
+                </h3>
+                <p className="mt-1 text-sm leading-relaxed text-muted">{step.d}</p>
+              </div>
+            </li>
+          ))}
+        </ol>
+      </section>
+
       {/* ── Provider guide cards ──────────────────────────────────────────── */}
       <section aria-labelledby="guides-h" className="mt-14">
         <h2 id="guides-h" className="font-display text-2xl font-bold tracking-tight text-ink">
           בחרו את הספק שאתם רוצים לעזוב
         </h2>
-        <ul className="mt-6 bento-grid">
-          {providers.map((p) => (
-            <li key={p.slug}>
-              <Link
-                href={`/switch/${p.slug}`}
-                className="group bento card-interactive flex h-full flex-col p-6 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
-              >
-                <span className="font-display text-lg font-semibold tracking-tight text-ink transition-colors group-hover:text-accent">
-                  מעבר וניתוק מ{p.name}
-                </span>
-                <span className="mt-1.5 block text-sm text-muted">
-                  {p.categories.map((c) => CATEGORY_HE[c] ?? c).join(", ")}
-                </span>
-                <span className="mt-auto pt-4 inline-flex items-center gap-1 text-sm font-medium text-accent-text transition-transform group-hover:-translate-x-0.5">
-                  למדריך המלא ←
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
+        <p className="mt-2 text-sm text-muted">
+          {providers.length} מדריכים עובדתיים — מדריך אחד לכל ספק.
+        </p>
+        {providers.length === 0 ? (
+          <EmptyState
+            className="card mt-6"
+            icon={<Icon name="search" size={32} />}
+            title="אין כרגע מדריכי ספקים"
+            description="המדריכים מתעדכנים מהקטלוג. בינתיים אפשר להשוות מסלולים ולמצוא חלופה משתלמת."
+            cta={{ label: "להשוואת כל המסלולים", href: "/compare" }}
+          />
+        ) : (
+          <ul className="mt-6 bento-grid">
+            {providers.map((p) => (
+              <li key={p.slug}>
+                <Link
+                  href={`/switch/${p.slug}`}
+                  className="group bento card-interactive flex h-full flex-col p-6 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                >
+                  <span className="font-display text-lg font-semibold tracking-tight text-ink transition-colors group-hover:text-accent-text">
+                    מעבר וניתוק מ{p.name}
+                  </span>
+                  <ul className="mt-2.5 flex flex-wrap gap-1.5">
+                    {p.categories.map((c) => (
+                      <li
+                        key={c}
+                        className="rounded-full border border-border/60 bg-background/60 px-2.5 py-0.5 text-xs font-medium text-muted"
+                      >
+                        {CATEGORY_HE[c] ?? c}
+                      </li>
+                    ))}
+                  </ul>
+                  <span className="mt-auto inline-flex items-center gap-1 pt-5 text-sm font-semibold text-accent-text">
+                    למדריך המלא
+                    <Icon
+                      name="arrow"
+                      size={16}
+                      aria-hidden
+                      className="transition-transform group-hover:translate-x-0.5"
+                    />
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
 
       {/* ── Rights FAQ ────────────────────────────────────────────────────── */}
@@ -190,12 +268,11 @@ export default function SwitchIndexPage() {
             <details key={qa.question} className="group p-5">
               <summary className="flex cursor-pointer list-none items-center gap-2 font-display font-semibold text-ink marker:hidden">
                 <span>{qa.question}</span>
-                <span
-                  aria-hidden="true"
-                  className="ms-auto shrink-0 text-muted transition-transform group-open:rotate-180"
-                >
-                  ▾
-                </span>
+                <Icon
+                  name="chevron"
+                  size={18}
+                  className="ms-auto shrink-0 rotate-90 text-muted transition-transform group-open:-rotate-90"
+                />
               </summary>
               <p className="mt-2 leading-relaxed text-foreground">{qa.answer}</p>
             </details>

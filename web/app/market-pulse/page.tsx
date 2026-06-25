@@ -171,9 +171,9 @@ export default function MarketPulsePage() {
       <style
         dangerouslySetInnerHTML={{
           __html: `
-        .sw-reveal { animation: swReveal 420ms var(--ease-out) both; }
+        .sw-reveal { animation: swReveal 400ms var(--ease-out) both; }
         @keyframes swReveal {
-          from { opacity: 0; transform: translateY(10px); }
+          from { opacity: 0; transform: translateY(8px); }
           to { opacity: 1; transform: none; }
         }
         @media (prefers-reduced-motion: reduce) {
@@ -219,12 +219,12 @@ export default function MarketPulsePage() {
       </header>
 
       {/* ── SGE summary ───────────────────────────────────────────────────── */}
-      <div className="mt-8">
+      <div className="sw-reveal mt-8" style={{ animationDelay: "120ms" }}>
         <SgeSummary heading="תקציר מצב השוק">{summary}</SgeSummary>
       </div>
 
       {/* ── Authority block: direct answer + truth table + verification stamp ─ */}
-      <div className="mt-8">
+      <div className="sw-reveal mt-8" style={{ animationDelay: "180ms" }}>
         <AuthorityBlock
           heading="השורה התחתונה: היכן הכי משתלם כרגע"
           answer={authority.answer}

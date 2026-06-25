@@ -12,6 +12,7 @@ import '../../components/logo_widget/logo_widget.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/app_snackbar.dart';
 import '../../widgets/app_sheet.dart';
+import '../../widgets/pressable.dart';
 import '../../widgets/refreshable_scroll.dart';
 import '../../widgets/skeleton.dart';
 import '../../services/provider_ratings.dart';
@@ -394,7 +395,7 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
                     return Semantics(
                       button: true,
                       label: 'פתח את עמוד הספק $provider — אין עדיין דירוגים',
-                      child: GestureDetector(
+                      child: Pressable(
                         onTap: () => context.pushNamed('Provider', pathParameters: {'name': provider}),
                         child: Container(
                           margin: const EdgeInsets.only(bottom: 10),
@@ -1030,7 +1031,9 @@ class _LeaderboardCard extends StatelessWidget {
     return Semantics(
       button: true,
       label: 'מקום ${rank + 1}: $provider, דירוג ${avg.toStringAsFixed(1)} מתוך 5, $totalReviews ביקורות',
-      child: GestureDetector(
+      // Pressable adds the subtle scale-down tactile press on a list row that
+      // navigates — cheap (one AnimatedScale) and reduced-motion-aware.
+      child: Pressable(
         onTap: onTap,
         child: Container(
           margin: const EdgeInsets.only(bottom: 12),
@@ -1216,7 +1219,7 @@ class _PodiumItem extends StatelessWidget {
     return Semantics(
       button: true,
       label: '$rankLabel — $provider, דירוג ${avg.toStringAsFixed(1)}',
-      child: GestureDetector(
+      child: Pressable(
         onTap: () => context.pushNamed('Provider', pathParameters: {'name': provider}),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.end,

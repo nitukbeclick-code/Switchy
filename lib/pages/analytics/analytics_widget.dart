@@ -10,6 +10,7 @@ import '../../services/backend/backend.dart';
 import '../../services/backend/local_backend.dart' show appBackend;
 import '../../theme/app_theme.dart';
 import '../../widgets/empty_state.dart';
+import '../../widgets/skeleton.dart';
 import '../crm/crm_widget.dart' show leadStatusLabel, leadStatusColor;
 
 /// Owner analytics — a real, admin-only dashboard with two tabs.
@@ -136,7 +137,7 @@ class _FunnelTabState extends State<_FunnelTab>
 
   Widget _body(AppTheme t) {
     if (_loading) {
-      return const Center(child: CircularProgressIndicator());
+      return const _DashboardSkeleton();
     }
     if (_error != null && _data == null) {
       return EmptyState(
@@ -324,7 +325,7 @@ class _EventsAuditTabState extends State<_EventsAuditTab>
     super.build(context); // keep-alive
     final t = AppTheme.of(context);
     if (_loading) {
-      return const Center(child: CircularProgressIndicator());
+      return const _DashboardSkeleton();
     }
     if (_error != null && _data == null) {
       return EmptyState(
@@ -1764,6 +1765,152 @@ class _InlineEmpty extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Designed loading state — a dashboard ghost that hints the final layout
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// The shared loading skeleton for BOTH analytics tabs — a methodology-note
+/// strip, a 2×2 KPI grid and a couple of section-title + chart/card ghosts,
+/// laid out to match the real dashboard so the surface reads as its final shape
+/// before the numbers land. Static (non-scrolling) and announced once as "טוען".
+class _DashboardSkeleton extends StatelessWidget {
+  const _DashboardSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppTheme.of(context);
+    return Semantics(
+      label: 'טוען',
+      container: true,
+      child: ExcludeSemantics(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 36),
+          physics: const NeverScrollableScrollPhysics(),
+          children: [
+            // Methodology / observability note strip.
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: t.cardSurface,
+                borderRadius: BorderRadius.circular(t.radiusMd),
+                border: Border.all(
+                    color: t.alternate.withValues(alpha: 0.08)),
+              ),
+              child: const SkeletonShimmer(
+                child: Row(
+                  children: [
+                    SkeletonBox(width: 18, height: 18, radius: 4),
+                    SizedBox(width: 10),
+                    Expanded(child: SkeletonBox(height: 12)),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            // KPI grid ghost.
+            GridView.count(
+              crossAxisCount: 2,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              mainAxisSpacing: 12,
+              crossAxisSpacing: 12,
+              childAspectRatio: 1.6,
+              children: [
+                for (var i = 0; i < 4; i++)
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: t.bentoDecoration(),
+                    child: SkeletonShimmer(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              SkeletonBox(
+                                  width: 36, height: 36, radius: t.radiusSm),
+                              const Spacer(),
+                              const SkeletonBox(width: 40, height: 24),
+                            ],
+                          ),
+                          const SkeletonBox(width: 70, height: 12),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            // Section title + chart card ghost.
+            const _SkeletonSectionTitle(),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: t.bentoDecoration(),
+              child: const SkeletonShimmer(
+                child: SkeletonBox(width: double.infinity, height: 160),
+              ),
+            ),
+            const SizedBox(height: 24),
+            // Section title + breakdown card ghost.
+            const _SkeletonSectionTitle(),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: t.bentoDecoration(),
+              child: SkeletonShimmer(
+                child: Column(
+                  children: [
+                    for (var i = 0; i < 4; i++) ...[
+                      const Row(
+                        children: [
+                          Expanded(child: SkeletonBox(height: 12)),
+                          SizedBox(width: 8),
+                          SkeletonBox(width: 32, height: 14),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      SkeletonBox(
+                          width: double.infinity,
+                          height: 8,
+                          radius: t.radiusPill),
+                      if (i != 3) const SizedBox(height: 14),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A ghost of a `_SectionTitle`: the green ACTION rule + a short label bar.
+class _SkeletonSectionTitle extends StatelessWidget {
+  const _SkeletonSectionTitle();
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppTheme.of(context);
+    return Row(
+      children: [
+        Container(
+          width: 4,
+          height: 18,
+          decoration: BoxDecoration(
+            color: t.brandAccent.withValues(alpha: 0.4),
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+        const SizedBox(width: 8),
+        const SkeletonShimmer(child: SkeletonBox(width: 140, height: 15)),
+      ],
     );
   }
 }

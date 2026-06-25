@@ -19,6 +19,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import JsonLd from "@/components/JsonLd";
 import SgeSummary from "@/components/SgeSummary";
+import Icon from "@/components/Icon";
 import AuthorityReasoning from "@/components/AuthorityReasoning";
 import RelatedAuthorityPages from "@/components/RelatedAuthorityPages";
 import TrackedOutboundLink from "@/components/TrackedOutboundLink";
@@ -278,9 +279,15 @@ export default async function SwitchProviderPage({ params }: Params) {
         <span className="text-foreground">{provider.name}</span>
       </nav>
 
-      {/* ── Heading ───────────────────────────────────────────────────────── */}
+      {/* ── Hero ──────────────────────────────────────────────────────────────
+          Intent eyebrow → H1 focal point → factual promise → the provider's real
+          service categories as quiet chips (no fabricated claims). ───────────── */}
       <header className="mt-4">
-        <h1 className="font-display text-4xl font-bold tracking-tight text-ink sm:text-5xl">
+        <p className="inline-flex items-center gap-2 rounded-full border border-accent/25 bg-accent/10 px-3.5 py-1.5 text-sm font-semibold text-accent-text">
+          <Icon name="info" size={16} />
+          מדריך ניתוק וניוד מספר
+        </p>
+        <h1 className="mt-4 font-display text-4xl font-bold tracking-tight text-ink sm:text-5xl">
           איך לעזוב את {provider.name}
         </h1>
         <p className="mt-4 text-lg leading-relaxed text-foreground">
@@ -288,6 +295,16 @@ export default async function SwitchProviderPage({ params }: Params) {
           בישראל. בלי מספרי טלפון מומצאים ובלי הבטחות: רק מה שמותר לכם לפי הדין,
           ולאן לפנות באופן הרשמי.
         </p>
+        <ul className="mt-5 flex flex-wrap gap-1.5">
+          {provider.categories.map((c) => (
+            <li
+              key={c}
+              className="rounded-full border border-border/60 bg-surface px-2.5 py-0.5 text-xs font-medium text-muted"
+            >
+              {CATEGORY_HE[c] ?? c}
+            </li>
+          ))}
+        </ul>
       </header>
 
       {/* ── SGE summary ───────────────────────────────────────────────────── */}
@@ -311,7 +328,7 @@ export default async function SwitchProviderPage({ params }: Params) {
             >
               <span
                 aria-hidden="true"
-                className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-accent/10 font-display font-bold text-accent"
+                className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-accent/10 font-display font-bold text-accent-text"
               >
                 {i + 1}
               </span>
@@ -324,15 +341,19 @@ export default async function SwitchProviderPage({ params }: Params) {
         </ol>
       </section>
 
-      {/* ── Official cancellation link (real only) ────────────────────────── */}
+      {/* ── Official cancellation link (real only) ──────────────────────────
+          The single primary action on this page → glow + dominant green CTA when
+          a verified official URL exists. Without one, a calm info panel (no fake
+          link), so we never dead-end into a fabricated step. ─────────────────── */}
       <section
         aria-labelledby="official-h"
-        className="bento mt-14 p-6 sm:p-8"
+        className={`bento mt-14 p-6 sm:p-8 ${official ? "glow-accent" : ""}`}
       >
         <h2
           id="official-h"
-          className="font-display text-xl font-bold tracking-tight text-ink"
+          className="flex items-center gap-2 font-display text-xl font-bold tracking-tight text-ink"
         >
+          <Icon name="lock" size={20} className="text-accent-text" />
           הדף הרשמי של {provider.name}
         </h2>
         {official ? (
@@ -348,9 +369,10 @@ export default async function SwitchProviderPage({ params }: Params) {
               rel="noopener noreferrer"
               provider={slug}
               dest="official"
-              className="interactive press mt-5 inline-flex items-center gap-1 rounded-xl bg-accent px-5 py-2.5 font-medium text-accent-contrast shadow-soft hover:bg-accent-hover hover:-translate-y-0.5 hover:shadow-card focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+              className="interactive press mt-5 inline-flex items-center gap-1.5 rounded-xl bg-accent px-5 py-3 font-semibold text-accent-contrast shadow-[var(--glow-accent)] hover:bg-accent-hover hover:-translate-y-0.5 hover:shadow-float focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             >
-              לאתר הרשמי של {provider.name} ←
+              לאתר הרשמי של {provider.name}
+              <Icon name="arrow" size={18} aria-hidden />
             </TrackedOutboundLink>
           </>
         ) : (
@@ -382,12 +404,11 @@ export default async function SwitchProviderPage({ params }: Params) {
             <details key={qa.question} className="group p-5">
               <summary className="flex cursor-pointer list-none items-center gap-2 font-display font-semibold text-ink marker:hidden">
                 <span>{qa.question}</span>
-                <span
-                  aria-hidden="true"
-                  className="ms-auto shrink-0 text-muted transition-transform group-open:rotate-180"
-                >
-                  ▾
-                </span>
+                <Icon
+                  name="chevron"
+                  size={18}
+                  className="ms-auto shrink-0 rotate-90 text-muted transition-transform group-open:-rotate-90"
+                />
               </summary>
               <p className="mt-2 leading-relaxed text-foreground">{qa.answer}</p>
             </details>

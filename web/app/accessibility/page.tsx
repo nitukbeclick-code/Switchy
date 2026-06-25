@@ -21,6 +21,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import JsonLd from "@/components/JsonLd";
+import Icon from "@/components/Icon";
 import { breadcrumbSchema, webPageSchema } from "@/lib/schema";
 import { pageMetadata } from "@/lib/seo";
 
@@ -40,6 +41,9 @@ interface Section {
   paras?: string[];
   items?: string[];
 }
+
+// Stable ASCII anchor per section (clean #sec-N URLs, language-independent).
+const sectionId = (i: number) => `sec-${i + 1}`;
 
 export default function AccessibilityPage() {
   const crumbs = [
@@ -144,8 +148,13 @@ export default function AccessibilityPage() {
           from { opacity: 0; transform: translateY(10px); }
           to { opacity: 1; transform: none; }
         }
+        /* Heading anchor — faint "#" on hover/focus for deep-linking a section. */
+        .sw-anchor { opacity: 0; transition: opacity 160ms var(--ease-out); }
+        .sw-head:hover .sw-anchor,
+        .sw-head:focus-within .sw-anchor { opacity: 1; }
         @media (prefers-reduced-motion: reduce) {
           .sw-reveal { animation: none; }
+          .sw-anchor { transition: none; }
         }
       `,
         }}
@@ -178,57 +187,135 @@ export default function AccessibilityPage() {
           הצהרת נגישות
         </h1>
         <p
-          className="sw-reveal mt-4 max-w-2xl text-lg leading-relaxed text-foreground"
+          className="sw-reveal mt-4 max-w-prose text-lg leading-relaxed text-foreground"
           style={{ animationDelay: "60ms" }}
         >
           אנו מחויבים להנגיש את האתר לכלל המשתמשים. כאן מפורטים מצב הנגישות
           הנוכחי, ההתאמות שבוצעו, מגבלות ידועות, וכיצד לפנות אלינו לקבלת סיוע.
         </p>
-        <p
-          className="sw-reveal mt-5 inline-flex items-center gap-2 rounded-full border border-border/60 bg-surface/70 px-3 py-1 text-sm text-muted backdrop-blur supports-[backdrop-filter]:bg-surface/60"
+        <div
+          className="sw-reveal mt-5 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-muted"
           style={{ animationDelay: "120ms" }}
         >
-          <span
-            aria-hidden="true"
-            className="inline-block h-1.5 w-1.5 rounded-full bg-accent"
-          />
-          ההצהרה עודכנה לאחרונה:{" "}
-          <time dateTime={LAST_REVIEWED}>{LAST_REVIEWED}</time>
-        </p>
+          <span className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-surface/70 px-3 py-1 backdrop-blur supports-[backdrop-filter]:bg-surface/60">
+            <span
+              aria-hidden="true"
+              className="inline-block h-1.5 w-1.5 rounded-full bg-accent"
+            />
+            ההצהרה עודכנה לאחרונה:{" "}
+            <time dateTime={LAST_REVIEWED}>{LAST_REVIEWED}</time>
+          </span>
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-surface/70 px-3 py-1 backdrop-blur supports-[backdrop-filter]:bg-surface/60">
+            <Icon name="info" size={14} className="text-muted" />
+            תקן ישראלי 5568 (WCAG 2.0 AA)
+          </span>
+        </div>
       </header>
 
-      <div className="mt-12 space-y-5 sm:space-y-6">
-        {sections.map((s, i) => (
-          <section
-            key={s.h}
-            aria-labelledby={`s-${s.h}`}
-            className="sw-reveal bento p-6 sm:p-8"
-            style={{ animationDelay: `${Math.min(i * 50, 250)}ms` }}
-          >
-            <h2
-              id={`s-${s.h}`}
-              className="font-display text-2xl font-bold tracking-tight text-ink"
+      {/* ── Table of contents — quick jump to any section ──────────────────── */}
+      <nav
+        aria-label="תוכן העניינים"
+        className="sw-reveal bento mt-8 p-5 sm:p-6"
+        style={{ animationDelay: "150ms" }}
+      >
+        <h2 className="font-display text-sm font-semibold uppercase tracking-wide text-muted">
+          תוכן העניינים
+        </h2>
+        <ol className="mt-3 grid gap-x-6 gap-y-1.5 sm:grid-cols-2">
+          {sections.map((s, i) => (
+            <li key={s.h} className="flex items-baseline gap-2 leading-relaxed">
+              <span
+                aria-hidden="true"
+                className="shrink-0 tabular-nums text-xs font-semibold text-muted"
+              >
+                {i + 1}.
+              </span>
+              <Link
+                href={`#${sectionId(i)}`}
+                className="interactive text-accent-text underline-offset-4 hover:text-accent-hover hover:underline"
+              >
+                {s.h}
+              </Link>
+            </li>
+          ))}
+        </ol>
+      </nav>
+
+      <div className="mt-8 space-y-5 sm:space-y-6">
+        {sections.map((s, i) => {
+          const id = sectionId(i);
+          // The "report a problem" section is the actionable trust surface — give
+          // it a calm accent callout so users in difficulty find help fast.
+          const isReport =
+            s.h === "דיווח על בעיית נגישות ומנגנון טיפול בפנייה";
+          return (
+            <section
+              key={s.h}
+              aria-labelledby={id}
+              className={`sw-reveal scroll-mt-24 ${
+                isReport
+                  ? "bento glow-accent border-accent/30 p-6 sm:p-8"
+                  : "bento p-6 sm:p-8"
+              }`}
+              style={{ animationDelay: `${Math.min(i * 50, 250)}ms` }}
             >
-              {s.h}
-            </h2>
-            {s.paras?.map((p) => (
-              <p key={p} className="mt-3 leading-relaxed text-foreground">
-                {p}
-              </p>
-            ))}
-            {s.items && (
-              <ul className="mt-4 list-disc space-y-2 pe-5 leading-relaxed text-foreground">
-                {s.items.map((it) => (
-                  <li key={it}>{it}</li>
-                ))}
-              </ul>
-            )}
-          </section>
-        ))}
+              <div className="sw-head flex items-center gap-2">
+                {isReport && (
+                  <span
+                    aria-hidden="true"
+                    className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent/12 text-accent-text"
+                  >
+                    <Icon name="info" size={18} />
+                  </span>
+                )}
+                <h2
+                  id={id}
+                  className="font-display text-2xl font-bold tracking-tight text-ink"
+                >
+                  {s.h}
+                </h2>
+                <a
+                  href={`#${id}`}
+                  aria-hidden="true"
+                  tabIndex={-1}
+                  className="sw-anchor interactive ms-1 text-muted hover:text-accent-text"
+                >
+                  #
+                </a>
+              </div>
+              {s.paras?.map((p) => (
+                <p
+                  key={p}
+                  className="mt-3 max-w-prose leading-relaxed text-foreground"
+                >
+                  {p}
+                </p>
+              ))}
+              {s.items && (
+                <ul className="mt-4 max-w-prose list-disc space-y-2 pe-5 leading-relaxed text-foreground marker:text-accent">
+                  {s.items.map((it) => (
+                    <li key={it}>{it}</li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          );
+        })}
       </div>
 
       <aside className="mt-12 border-t border-border/40 pt-8 text-sm text-muted">
-        <p>
+        <p className="font-medium text-foreground">נתקלתם בבעיית נגישות?</p>
+        <p className="mt-1.5 leading-relaxed">
+          נשמח שתדווחו לנו בכתובת{" "}
+          <a
+            href="mailto:hello@chosech.co.il"
+            className="interactive text-accent-text hover:text-accent-hover"
+          >
+            hello@chosech.co.il
+          </a>{" "}
+          או בוואטסאפ 050-503-7537, ונפעל לתקן.
+        </p>
+        <p className="mt-4 leading-relaxed">
           ראו גם את{" "}
           <Link
             href="/privacy"

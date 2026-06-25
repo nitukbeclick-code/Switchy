@@ -15,6 +15,7 @@ import '../../theme/app_theme.dart';
 import '../../widgets/app_button.dart';
 import '../../widgets/app_snackbar.dart';
 import '../../widgets/consent_panel.dart';
+import '../../widgets/pressable.dart';
 import 'meeting_status_card.dart';
 
 /// "פגישת וידאו עם נציג" — books a 30-minute Zoom sales meeting, one day or
@@ -46,7 +47,6 @@ class _MeetingWidgetState extends State<MeetingWidget> {
   bool _acceptTerms = false;
   bool _acceptPrivacy = false;
   bool _acceptMarketing = false;
-  bool _submitting = false;
   bool _justBooked = false;
 
   /// The bookable dates are recomputed every build (cheap + pure) so the grid
@@ -110,7 +110,6 @@ class _MeetingWidgetState extends State<MeetingWidget> {
       return;
     }
     HapticFeedback.lightImpact();
-    setState(() => _submitting = true);
 
     final name = _nameCtrl.text.trim();
     final phone = _phoneCtrl.text.replaceAll(RegExp(r'[^\d+]'), '');
@@ -140,7 +139,6 @@ class _MeetingWidgetState extends State<MeetingWidget> {
       // The request never reached the team — keep the form so the user can
       // retry. The guard trigger's rejections get specific, honest copy.
       if (!mounted) return;
-      setState(() => _submitting = false);
       final msg = e.toString();
       if (msg.contains('meeting already pending')) {
         // There IS an open booking server-side (e.g. cleared local state) —
@@ -182,10 +180,7 @@ class _MeetingWidgetState extends State<MeetingWidget> {
         ));
     HapticFeedback.mediumImpact();
     if (!mounted) return;
-    setState(() {
-      _submitting = false;
-      _justBooked = true;
-    });
+    setState(() => _justBooked = true);
   }
 
   @override
@@ -269,16 +264,20 @@ class _MeetingWidgetState extends State<MeetingWidget> {
             const SizedBox(height: 16),
           ],
 
+          // The four wizard sections reveal in a short stagger (Emil: card
+          // reveals stagger ~30-80ms apart, fadeIn + a small translateY). Each
+          // leg stays in the snappy UI band (<300ms) under ease-out so a step
+          // appearing never feels sluggish.
           _SectionLabel(t: t, step: 1, label: 'לאיזה ספק תרצו הצעת מחיר?'),
           const SizedBox(height: 10),
-          _buildProviderChips(t).animate(delay: 60.ms).fadeIn().slideY(begin: 0.04),
+          _buildProviderChips(t).animate(delay: 40.ms).fadeIn(duration: 260.ms, curve: t.easeOut).slideY(begin: 0.04, end: 0, duration: 260.ms, curve: t.easeOut),
 
           const SizedBox(height: 22),
           _SectionLabel(t: t, step: 2, label: 'באיזה יום נוח לכם?'),
           const SizedBox(height: 4),
           Text('ניתן לקבוע פגישה החל ממחר, בימים א׳–ה׳ ובשישי בבוקר.', style: t.bodySmall),
           const SizedBox(height: 10),
-          _buildDateChips(t).animate(delay: 100.ms).fadeIn().slideY(begin: 0.04),
+          _buildDateChips(t).animate(delay: 100.ms).fadeIn(duration: 260.ms, curve: t.easeOut).slideY(begin: 0.04, end: 0, duration: 260.ms, curve: t.easeOut),
 
           const SizedBox(height: 22),
           _SectionLabel(t: t, step: 3, label: 'באיזו שעה?'),
@@ -290,7 +289,7 @@ class _MeetingWidgetState extends State<MeetingWidget> {
             style: t.bodySmall,
           ),
           const SizedBox(height: 10),
-          _buildSlotChips(t).animate(delay: 140.ms).fadeIn().slideY(begin: 0.04),
+          _buildSlotChips(t).animate(delay: 160.ms).fadeIn(duration: 260.ms, curve: t.easeOut).slideY(begin: 0.04, end: 0, duration: 260.ms, curve: t.easeOut),
 
           const SizedBox(height: 22),
           _SectionLabel(t: t, step: 4, label: 'פרטים לאישור הפגישה'),
@@ -353,8 +352,10 @@ class _MeetingWidgetState extends State<MeetingWidget> {
           const SizedBox(height: 16),
 
           AppButton(
-            text: _submitting ? 'שולח...' : 'בקשו פגישת וידאו',
-            onPressed: _submitting ? () async {} : () async => _submit(),
+            // AppButton drives the spinner + tap-ignore while [_submit] awaits,
+            // so the label stays the honest CTA text (no faked "שולח...").
+            text: 'בקשו פגישת וידאו',
+            onPressed: () async => _submit(),
             width: double.infinity,
             height: 56,
             color: AppColors.primary,
@@ -428,32 +429,32 @@ class _MeetingWidgetState extends State<MeetingWidget> {
           button: true,
           selected: active,
           label: 'ספק $p',
-          child: Material(
-            color: active ? t.brandAccent : t.cardSurface,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(t.radiusPill),
-              side: BorderSide(color: active ? t.brandAccent : t.alternate),
-            ),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(t.radiusPill),
-              onTap: () {
-                HapticFeedback.selectionClick();
-                setState(() => _provider = p);
-              },
-              child: Padding(
-                padding: const EdgeInsetsDirectional.fromSTEB(6, 5, 12, 5),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    ExcludeSemantics(child: LogoWidget(provider: p, size: 26)),
-                    const SizedBox(width: 7),
-                    Text(p,
-                        style: t.labelMedium.copyWith(
-                          color: active ? Colors.white : t.primaryText,
-                          fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-                        )),
-                  ],
-                ),
+          child: Pressable(
+            onTap: () {
+              HapticFeedback.selectionClick();
+              setState(() => _provider = p);
+            },
+            haptic: false,
+            child: AnimatedContainer(
+              duration: t.motionTooltip,
+              curve: t.easeOut,
+              decoration: BoxDecoration(
+                color: active ? t.brandAccent : t.cardSurface,
+                borderRadius: BorderRadius.circular(t.radiusPill),
+                border: Border.all(color: active ? t.brandAccent : t.alternate),
+              ),
+              padding: const EdgeInsetsDirectional.fromSTEB(6, 5, 12, 5),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ExcludeSemantics(child: LogoWidget(provider: p, size: 26)),
+                  const SizedBox(width: 7),
+                  Text(p,
+                      style: t.labelMedium.copyWith(
+                        color: active ? Colors.white : t.primaryText,
+                        fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                      )),
+                ],
               ),
             ),
           ),
@@ -479,40 +480,40 @@ class _MeetingWidgetState extends State<MeetingWidget> {
             button: true,
             selected: active,
             label: label,
-            child: Material(
-              color: active ? t.brandAccent : t.cardSurface,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(t.radiusMd),
-                side: BorderSide(color: active ? t.brandAccent : t.alternate),
-              ),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(t.radiusMd),
-                onTap: () {
-                  HapticFeedback.selectionClick();
-                  setState(() {
-                    _pickedDate = d;
-                    // A slot from Sun–Thu may not exist on Friday — revalidate.
-                    if (_slot != null && !meetingSlotsFor(d).contains(_slot)) _slot = null;
-                  });
-                },
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text('יום ${label.split(' ')[1]}',
-                          style: t.labelMedium.copyWith(
-                            color: active ? Colors.white : t.primaryText,
-                            fontWeight: FontWeight.w700,
-                          )),
-                      const SizedBox(height: 2),
-                      Text('${d.day}.${d.month}',
-                          style: t.labelSmall.copyWith(
-                            color: active ? Colors.white.withValues(alpha: 0.85) : t.secondaryText,
-                            fontFeatures: const [FontFeature.tabularFigures()],
-                          )),
-                    ],
-                  ),
+            child: Pressable(
+              onTap: () {
+                HapticFeedback.selectionClick();
+                setState(() {
+                  _pickedDate = d;
+                  // A slot from Sun–Thu may not exist on Friday — revalidate.
+                  if (_slot != null && !meetingSlotsFor(d).contains(_slot)) _slot = null;
+                });
+              },
+              haptic: false,
+              child: AnimatedContainer(
+                duration: t.motionTooltip,
+                curve: t.easeOut,
+                decoration: BoxDecoration(
+                  color: active ? t.brandAccent : t.cardSurface,
+                  borderRadius: BorderRadius.circular(t.radiusMd),
+                  border: Border.all(color: active ? t.brandAccent : t.alternate),
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text('יום ${label.split(' ')[1]}',
+                        style: t.labelMedium.copyWith(
+                          color: active ? Colors.white : t.primaryText,
+                          fontWeight: FontWeight.w700,
+                        )),
+                    const SizedBox(height: 2),
+                    Text('${d.day}.${d.month}',
+                        style: t.labelSmall.copyWith(
+                          color: active ? Colors.white.withValues(alpha: 0.85) : t.secondaryText,
+                          fontFeatures: const [FontFeature.tabularFigures()],
+                        )),
+                  ],
                 ),
               ),
             ),
@@ -533,31 +534,36 @@ class _MeetingWidgetState extends State<MeetingWidget> {
       runSpacing: 8,
       children: slots.map((s) {
         final active = _slot == s;
+        // Pressable owns the tap + scale-0.97 press tell (Emil: slot chips get
+        // tactile press feedback — the same primitive the rest of the app's
+        // chips use); the AnimatedContainer crisply morphs the selected color/
+        // border under ease-out. Carries no semantics, so the labelled node is
+        // unchanged.
         return Semantics(
           button: true,
           selected: active,
           label: 'שעה $s',
-          child: Material(
-            color: active ? t.brandAccent : t.cardSurface,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(t.radiusSm),
-              side: BorderSide(color: active ? t.brandAccent : t.alternate),
-            ),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(t.radiusSm),
-              onTap: () {
-                HapticFeedback.selectionClick();
-                setState(() => _slot = s);
-              },
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-                child: Text(s,
-                    style: t.labelMedium.copyWith(
-                      color: active ? Colors.white : t.primaryText,
-                      fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-                      fontFeatures: const [FontFeature.tabularFigures()],
-                    )),
+          child: Pressable(
+            onTap: () {
+              HapticFeedback.selectionClick();
+              setState(() => _slot = s);
+            },
+            haptic: false,
+            child: AnimatedContainer(
+              duration: t.motionTooltip,
+              curve: t.easeOut,
+              decoration: BoxDecoration(
+                color: active ? t.brandAccent : t.cardSurface,
+                borderRadius: BorderRadius.circular(t.radiusSm),
+                border: Border.all(color: active ? t.brandAccent : t.alternate),
               ),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+              child: Text(s,
+                  style: t.labelMedium.copyWith(
+                    color: active ? Colors.white : t.primaryText,
+                    fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  )),
             ),
           ),
         );

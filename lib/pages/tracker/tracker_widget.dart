@@ -359,14 +359,34 @@ class _TrackerWidgetState extends State<TrackerWidget> {
             ],
 
             // Timeline
-            Text('שלבי המעבר', style: ffTheme.titleLarge),
+            Row(
+              children: [
+                // Brand-green eyebrow tick — a small ACTION-colour structural cue
+                // that marks the section start (matches the account tab rhythm).
+                ExcludeSemantics(
+                  child: Container(
+                    width: 3,
+                    height: 16,
+                    margin: const EdgeInsetsDirectional.only(end: 8),
+                    decoration: BoxDecoration(
+                      color: ffTheme.brandAccent,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                Text('שלבי המעבר', style: ffTheme.titleLarge),
+                const Spacer(),
+                Text('שלב ${step.clamp(1, 4)} מתוך 4',
+                    style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText, fontWeight: FontWeight.w600)),
+              ],
+            ),
             const SizedBox(height: 16),
 
             ...steps.asMap().entries.map((entry) {
               final i = entry.key;
               final s = entry.value;
               final isLast = i == steps.length - 1;
-              return Row(
+              final row = Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Column(
@@ -452,6 +472,14 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                   ),
                 ],
               );
+              // Emil: the timeline steps reveal in a short top-down stagger
+              // (fade + 8px rise, ease-out) so the journey reads as a sequence
+              // rather than appearing all at once. flutter_animate honours
+              // reduced motion (disableAnimations short-circuits the effect).
+              return row
+                  .animate(delay: (i * 60).ms)
+                  .fadeIn(duration: 280.ms, curve: ffTheme.easeOut)
+                  .slideY(begin: 0.08, end: 0, curve: ffTheme.easeOut);
             }),
 
             const SizedBox(height: 24),

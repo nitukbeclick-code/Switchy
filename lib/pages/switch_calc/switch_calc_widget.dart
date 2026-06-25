@@ -97,6 +97,11 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
   Widget build(BuildContext context) {
     final ffTheme = AppTheme.of(context);
     final appState = Provider.of<AppState>(context);
+    // The result figures are SLIDER-DRIVEN (high-frequency), so they must NEVER
+    // animate per recompute — the verdict card's one-shot entrance reveal is the
+    // only motion the value gets (it settles in once, then tracks the sliders
+    // instantly). Reduced-motion keeps that fade and drops its rise.
+    final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
     final econ = _econ;
     final cat = _selectedCat;
     final profile = MatchProfile(
@@ -271,11 +276,14 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
                 children: [
                   Text(_resultText(), style: GoogleFonts.rubik(fontSize: 18, fontWeight: FontWeight.w800, color: _resultColor(ffTheme))),
                   const SizedBox(height: 20),
+                  // The ₪ figures are the VALUE the calculator exists to surface —
+                  // amber (VALUE), not the verdict's status hue. A zero saving
+                  // reads as neutral ink so we never paint "₪0" as a win.
                   Row(
                     children: [
-                      Expanded(child: _ResultStat(label: _selectedCat == 'abroad' ? 'חיסכון לחבילה' : 'חיסכון חודשי', value: '₪${econ.monthlySaving}', color: _resultColor(ffTheme), ffTheme: ffTheme)),
+                      Expanded(child: _ResultStat(label: _selectedCat == 'abroad' ? 'חיסכון לחבילה' : 'חיסכון חודשי', value: '₪${econ.monthlySaving}', color: econ.monthlySaving > 0 ? ffTheme.savingText : ffTheme.secondaryText, ffTheme: ffTheme)),
                       if (_selectedCat != 'abroad')
-                        Expanded(child: _ResultStat(label: 'חיסכון שנתי', value: '₪${econ.annualSaving}', color: _resultColor(ffTheme), ffTheme: ffTheme)),
+                        Expanded(child: _ResultStat(label: 'חיסכון שנתי', value: '₪${econ.annualSaving}', color: econ.annualSaving > 0 ? ffTheme.savingText : ffTheme.secondaryText, ffTheme: ffTheme)),
                     ],
                   ),
                   if (econ.hasBreakEven && _exitFee > 0 && _selectedCat != 'abroad') ...[
@@ -287,7 +295,13 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
                   ],
                 ],
               ),
-            ).animate().fadeIn(delay: 300.ms),
+            )
+                // The verdict + its ₪ figures settle in once: a fade, plus a
+                // gentle 5% rise (dropped under reduced-motion) so the result
+                // reads as arriving rather than blinking into place.
+                .animate()
+                .fadeIn(delay: 300.ms)
+                .slideY(begin: reduceMotion ? 0 : 0.05, end: 0, curve: ffTheme.easeOut),
 
             const SizedBox(height: 24),
 
@@ -587,10 +601,10 @@ class _SavingsBarChart extends StatelessWidget {
                     curve: Curves.easeOutCubic,
                     builder: (_, v, __) => LinearProgressIndicator(
                       value: v,
-                      backgroundColor: ffTheme.alternate,
-                      valueColor: AlwaysStoppedAnimation(
-                        fraction > 0.5 ? ffTheme.brandAccent : (fraction > 0.2 ? ffTheme.primary : ffTheme.warning),
-                      ),
+                      backgroundColor: ffTheme.saving.withValues(alpha: 0.16),
+                      // Accumulated savings = VALUE → one confident amber fill,
+                      // not a tri-colour gradient that reads as a status signal.
+                      valueColor: AlwaysStoppedAnimation(ffTheme.saving),
                       minHeight: 12,
                     ),
                   ),
@@ -601,7 +615,7 @@ class _SavingsBarChart extends StatelessWidget {
                 width: 52,
                 child: Text(
                   '₪$amount',
-                  style: ffTheme.labelSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700, fontSize: 11),
+                  style: ffTheme.labelSmall.copyWith(color: ffTheme.savingText, fontWeight: FontWeight.w800, fontSize: 11),
                   textAlign: TextAlign.end,
                 ),
               ),
@@ -768,7 +782,8 @@ class _TimelineStat extends StatelessWidget {
       children: [
         Text(
           '₪$amount',
-          style: ffTheme.titleMedium.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w800),
+          // Cumulative saving milestone = VALUE → amber, consistent with the bar.
+          style: ffTheme.titleMedium.copyWith(color: ffTheme.savingText, fontWeight: FontWeight.w800),
         ),
         const SizedBox(height: 4),
         Text('$months חודשים', style: ffTheme.labelSmall),

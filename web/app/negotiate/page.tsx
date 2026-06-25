@@ -18,6 +18,7 @@
 
 import Link from "next/link";
 import type { Metadata } from "next";
+import Icon from "@/components/Icon";
 import JsonLd from "@/components/JsonLd";
 import SgeSummary from "@/components/SgeSummary";
 import TrustSignals from "@/components/TrustSignals";
@@ -138,12 +139,16 @@ export default function NegotiatePage() {
         <span className="text-foreground">מיקוח על המחיר</span>
       </nav>
 
-      {/* ── Heading ───────────────────────────────────────────────────────── */}
-      <header className="mt-3">
-        <h1 className="font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
+      {/* ── Heading — single focal point: the H1, lifted by an ACTION eyebrow ── */}
+      <header className="mt-5">
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-accent/40 bg-accent/10 px-3 py-1 text-xs font-semibold text-accent-text">
+          <Icon name="spark" size={14} aria-hidden />
+          תסריט שימור מבוסס נתונים
+        </span>
+        <h1 className="mt-4 font-display text-3xl font-bold leading-tight tracking-tight text-ink sm:text-[2.65rem]">
           לפני שעוזבים: כך משיגים מהספק את המחיר
         </h1>
-        <p className="mt-4 text-lg leading-relaxed text-foreground">
+        <p className="mt-4 max-w-2xl text-lg leading-relaxed text-foreground">
           רוצים להישאר אצל הספק אבל לשלם פחות? בחרו שירות וקבלו תסריט מיקוח אמיתי
           למחלקת השימור — מבוסס על המחיר הזול ביותר בשוק מתוך הקטלוג שלנו. זו נקודת
           פתיחה למשא ומתן, לא הבטחה.

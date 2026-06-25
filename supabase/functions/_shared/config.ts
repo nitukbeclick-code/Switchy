@@ -95,6 +95,13 @@ async function resolveCfg(): Promise<Cfg> {
 
 // Vault lookups hit PostgREST with the service-role key; memoize briefly so
 // anonymous traffic (health probes, 401s) can't amplify into DB load.
+//
+// ROTATION TRADE-OFF (60s TTL): this cache is per-warm-isolate and lasts up to 60s,
+// so a Vault secret ROTATION can take up to a minute to be picked up by a given warm
+// instance (and only after the cached entry expires). A FORCED immediate refresh
+// requires a COLD START of the function (redeploy / new isolate) — there is no
+// in-process invalidation hook. 60s is the deliberate balance: short enough that a
+// rotation propagates quickly, long enough to shield the DB from probe amplification.
 let cfgCache: { cfg: Cfg; at: number } | null = null;
 export async function resolveCfgCached(): Promise<Cfg> {
   if (cfgCache && Date.now() - cfgCache.at < 60_000) return cfgCache.cfg;

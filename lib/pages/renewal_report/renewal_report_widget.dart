@@ -110,18 +110,39 @@ class _RenewalReportWidgetState extends State<RenewalReportWidget> {
                   ...matches.asMap().entries.map((e) {
                     final i = e.key;
                     final m = e.value;
+                    final row = _AlternativeRow(
+                      rank: i + 1,
+                      match: m,
+                      currentPrice: tp.monthlyPrice,
+                      isAbroad: isAbroad,
+                      isTop: i == 0,
+                      ffTheme: ffTheme,
+                      onTap: () => context.pushNamed('PlanDetail',
+                          pathParameters: {'planId': m.plan.id}),
+                    );
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 10),
-                      child: _AlternativeRow(
-                        rank: i + 1,
-                        match: m,
-                        currentPrice: tp.monthlyPrice,
-                        isAbroad: isAbroad,
-                        isTop: i == 0,
-                        ffTheme: ffTheme,
-                        onTap: () => context.pushNamed('PlanDetail',
-                            pathParameters: {'planId': m.plan.id}),
-                      ).animate(delay: (i * 45 + 80).ms).fadeIn(duration: 260.ms).slideY(begin: 0.06),
+                      // "הבחירה שלנו" (rank 0) is the focal alternative — it also
+                      // wears the strong ink border + lift. Give it a confident-
+                      // but-restrained reveal: settle from a hair larger
+                      // (1.02→1.0) on the gentle spring so the eye lands on the
+                      // top pick first; the rest keep the calm fade+slide.
+                      // Fires once on reveal (no loop); flutter_animate drops the
+                      // transform under reduced-motion.
+                      child: i == 0
+                          ? row
+                              .animate()
+                              .fadeIn(duration: 300.ms)
+                              .scale(
+                                begin: const Offset(1.02, 1.02),
+                                end: const Offset(1, 1),
+                                duration: 380.ms,
+                                curve: ffTheme.spring,
+                              )
+                          : row
+                              .animate(delay: (i * 45 + 80).ms)
+                              .fadeIn(duration: 260.ms)
+                              .slideY(begin: 0.06),
                     );
                   }),
 

@@ -15,6 +15,7 @@ import {
   getProviders,
   getProvider,
   plansByProvider,
+  providerOfficialUrl,
   CATEGORY_HE,
 } from "@/lib/data";
 import { getLivePlans } from "@/lib/live-catalogue";
@@ -33,8 +34,30 @@ import {
 } from "@/lib/schema";
 import { pageMetadata } from "@/lib/seo";
 import { GENERAL_FAQ } from "@/lib/faq";
-import { ils, leadCategory } from "@/lib/format";
+import {
+  ils,
+  leadCategory,
+  providerBrandColor,
+  providerInitials,
+} from "@/lib/format";
 import type { Plan } from "@/lib/types";
+
+// ── Provider avatar ──────────────────────────────────────────────────────────
+// A rounded monogram filled with the carrier's OWN brand color (from
+// {@link providerBrandColor}) — the real per-carrier hue, NOT the app accent, and
+// never recolored to the theme. White glyph for contrast on the saturated fill.
+// Decorative: the <h1> beside it carries the meaning → hidden from AT.
+function ProviderAvatar({ provider }: { provider: string }) {
+  return (
+    <span
+      aria-hidden="true"
+      className="inline-flex h-14 w-14 shrink-0 select-none items-center justify-center rounded-2xl text-xl font-bold leading-none text-white shadow-sm ring-1 ring-inset ring-black/10 sm:h-16 sm:w-16 sm:text-2xl"
+      style={{ backgroundColor: providerBrandColor(provider) }}
+    >
+      {providerInitials(provider)}
+    </span>
+  );
+}
 
 // ISR: regenerate hourly so the live plan read (cheapest-plan answer, table,
 // AggregateOffer) reflects current DB prices, while serving instantly from the
@@ -241,6 +264,9 @@ export default async function ProviderPage({ params }: Params) {
   // Head-to-head match-ups this provider appears in (curated, catalogue-gated).
   const vsPairs = vsPairsForProvider(slug);
   const relatedGroups = buildRelatedGroups(slug, provider.categories, vsPairs);
+  // The provider's REAL official site (the same verified URL used for sameAs).
+  // Undefined when none is verified — we then omit the link rather than invent one.
+  const officialUrl = providerOfficialUrl(provider.name);
 
   const crumbs = [
     { name: "בית", url: "/" },
@@ -328,9 +354,28 @@ export default async function ProviderPage({ params }: Params) {
 
       {/* ── Heading ───────────────────────────────────────────────────────── */}
       <header className="mt-4">
-        <h1 className="font-display text-4xl font-bold tracking-tight text-ink sm:text-5xl">
-          {provider.name}
-        </h1>
+        {/* Identity row: brand-colored avatar anchors the title (the carrier's
+            own hue, never the app theme), with an honest outbound link to the
+            provider's REAL official site when one is verified. */}
+        <div className="flex items-start gap-4">
+          <ProviderAvatar provider={provider.name} />
+          <div className="min-w-0">
+            <h1 className="font-display text-4xl font-bold tracking-tight text-ink sm:text-5xl">
+              {provider.name}
+            </h1>
+            {officialUrl && (
+              <a
+                href={officialUrl}
+                target="_blank"
+                rel="noopener noreferrer nofollow"
+                className="interactive mt-2 inline-flex items-center gap-1 text-sm font-medium text-accent-text hover:text-accent-hover"
+              >
+                האתר הרשמי של {provider.name}
+                <span aria-hidden="true">↗</span>
+              </a>
+            )}
+          </div>
+        </div>
         <p className="mt-4 max-w-2xl text-lg leading-relaxed text-foreground">{provider.summary}</p>
         <dl className="mt-6 flex flex-wrap items-stretch gap-3 text-sm">
           <div className="bento px-5 py-4">

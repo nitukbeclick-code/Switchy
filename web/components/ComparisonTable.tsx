@@ -231,7 +231,7 @@ export default function ComparisonTable({
                   </p>
                   <Link
                     href="/"
-                    className="interactive press mt-5 inline-flex items-center justify-center rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-accent-contrast ease-[var(--ease-out)] hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                    className="interactive press mt-5 inline-flex items-center justify-center rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-accent-contrast ease-[var(--ease-out)] hover:bg-accent-hover [@media(hover:hover)_and_(pointer:fine)]:motion-safe:hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                   >
                     חזרה לדף הבית
                   </Link>
@@ -246,13 +246,16 @@ export default function ComparisonTable({
               <tr
                 key={plan.id}
                 className={[
-                  "border-b border-border/70 last:border-b-0 align-top transition-colors",
+                  // Row hover is a low-stakes, frequently-scanned affordance →
+                  // a color tint only (no transform), eased, and gated behind a
+                  // real hover-capable+fine pointer so it never latches on touch.
+                  "border-b border-border/70 last:border-b-0 align-top transition-colors duration-150 ease-[var(--ease-out)]",
                   // Editor's-pick / promoted row: a firmer accent tint PLUS an
                   // inset start-border (logical, RTL-correct) so the labeled row
                   // scans instantly without overwhelming the table.
                   label
                     ? "bg-accent/[0.12] ring-1 ring-inset ring-accent/25 border-s-2 border-s-accent"
-                    : "hover:bg-accent/[0.03]",
+                    : "[@media(hover:hover)_and_(pointer:fine)]:hover:bg-accent/[0.03]",
                 ]
                   .join(" ")
                   .trim()}

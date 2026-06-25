@@ -197,7 +197,9 @@ void main() {
       // Move to the conversations tab.
       await tester.tap(find.text('שיחות'));
       await tester.pump();
-      await tester.pump(const Duration(milliseconds: 400));
+      // Settle the tab transition + the rows' staggered reveal (the Emil motion
+      // pass added a fadeIn+slideY) so the row is a stable hit target.
+      await tester.pump(const Duration(milliseconds: 800));
 
       // Open Dana's conversation.
       await tester.tap(danaRow().first);
@@ -209,6 +211,9 @@ void main() {
       expect(find.textContaining('מצאתי לך חבילה'), findsWidgets);
       // …and a reply composer.
       expect(find.text('שליחה'), findsOneWidget);
+      // Flush the flutter_animate entrance timers (message-bubble reveal) before
+      // disposing, so no pending Timer trips the binding.
+      await tester.pump(const Duration(seconds: 1));
       handle.dispose();
     });
 
@@ -220,7 +225,8 @@ void main() {
 
       await tester.tap(find.text('שיחות'));
       await tester.pump();
-      await tester.pump(const Duration(milliseconds: 400));
+      // Settle the tab transition + the rows' staggered reveal before tapping.
+      await tester.pump(const Duration(milliseconds: 800));
 
       await tester.tap(danaRow().first);
       await tester.pump();

@@ -110,7 +110,10 @@ class _AuthWidgetState extends State<AuthWidget> {
     final t = AppTheme.of(context);
     return Scaffold(
       backgroundColor: t.background,
-      body: SafeArea(
+      body: DecoratedBox(
+        // Faint glass wash so the sign-in surface reads with depth, not flat.
+        decoration: BoxDecoration(gradient: t.surfaceWash),
+        child: SafeArea(
         top: false,
         child: SingleChildScrollView(
           child: Column(
@@ -132,6 +135,7 @@ class _AuthWidgetState extends State<AuthWidget> {
             ],
           ),
         ),
+      ),
       ),
     );
   }
@@ -201,7 +205,10 @@ class _AuthWidgetState extends State<AuthWidget> {
               ],
             ),
             const SizedBox(height: 14),
-            Text(title, style: t.headlineMedium.copyWith(color: Colors.white)),
+            Semantics(
+              header: true,
+              child: Text(title, style: t.headlineMedium.copyWith(color: Colors.white)),
+            ),
             const SizedBox(height: 6),
             Text(sub, style: t.bodyMedium.copyWith(color: Colors.white.withValues(alpha: 0.85))),
           ],
@@ -559,7 +566,7 @@ class _AuthWidgetState extends State<AuthWidget> {
   }
 }
 
-class _SocialButton extends StatelessWidget {
+class _SocialButton extends StatefulWidget {
   const _SocialButton({
     required this.label,
     required this.bg,
@@ -585,48 +592,73 @@ class _SocialButton extends StatelessWidget {
   final List<BoxShadow>? shadow;
 
   @override
+  State<_SocialButton> createState() => _SocialButtonState();
+}
+
+class _SocialButtonState extends State<_SocialButton> {
+  bool _pressed = false;
+
+  void _setPressed(bool v) {
+    if (_pressed == v) return;
+    setState(() => _pressed = v);
+  }
+
+  @override
   Widget build(BuildContext context) {
     final t = AppTheme.of(context);
-    final disabled = onTap == null;
-    return Semantics(
+    final disabled = widget.onTap == null;
+    final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    final inner = Semantics(
       button: true,
       enabled: !disabled,
-      label: label,
+      label: widget.label,
       child: Container(
-        decoration: gradient != null
+        decoration: widget.gradient != null
             ? BoxDecoration(
                 borderRadius: BorderRadius.circular(t.radiusMd),
-                boxShadow: disabled ? null : shadow,
+                boxShadow: disabled ? null : widget.shadow,
               )
             : null,
         child: Material(
-          color: gradient != null ? Colors.transparent : bg,
+          color: widget.gradient != null ? Colors.transparent : widget.bg,
           borderRadius: BorderRadius.circular(t.radiusMd),
           child: InkWell(
-            onTap: onTap,
+            onTap: widget.onTap,
+            onTapDown: disabled ? null : (_) => _setPressed(true),
+            onTapUp: disabled ? null : (_) => _setPressed(false),
+            onTapCancel: disabled ? null : () => _setPressed(false),
             borderRadius: BorderRadius.circular(t.radiusMd),
             child: Container(
               height: 52,
               decoration: BoxDecoration(
-                gradient: gradient,
+                gradient: widget.gradient,
                 borderRadius: BorderRadius.circular(t.radiusMd),
-                border: bordered ? Border.all(color: t.alternate) : null,
+                border: widget.bordered ? Border.all(color: t.alternate) : null,
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  if (icon != null)
-                    Icon(icon, color: fg, size: 22)
-                  else if (glyph != null)
-                    Text(glyph!, style: t.titleMedium.copyWith(color: glyphColor ?? fg, fontWeight: FontWeight.w800)),
+                  if (widget.icon != null)
+                    Icon(widget.icon, color: widget.fg, size: 22)
+                  else if (widget.glyph != null)
+                    Text(widget.glyph!, style: t.titleMedium.copyWith(color: widget.glyphColor ?? widget.fg, fontWeight: FontWeight.w800)),
                   const SizedBox(width: 10),
-                  Text(label, style: t.titleSmall.copyWith(color: fg)),
+                  Text(widget.label, style: t.titleSmall.copyWith(color: widget.fg)),
                 ],
               ),
             ),
           ),
         ),
       ),
+    );
+    if (reduceMotion) return inner;
+    // A restrained tactile press — the same gentle scale-down the primary CTA
+    // uses, so every actionable surface on this screen reacts to touch.
+    return AnimatedScale(
+      scale: _pressed ? t.pressScale : 1.0,
+      duration: t.motionFast,
+      curve: t.easeOut,
+      child: inner,
     );
   }
 }

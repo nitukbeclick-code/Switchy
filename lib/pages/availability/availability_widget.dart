@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -6,6 +7,7 @@ import '../../theme/app_theme.dart';
 import '../../core/nav.dart';
 import '../../widgets/app_button.dart';
 import '../../widgets/app_snackbar.dart';
+import '../../widgets/pressable.dart';
 import '../../app_state.dart';
 import '../../data.dart';
 import '../../components/logo_widget/logo_widget.dart';
@@ -108,17 +110,18 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
             _buildTechFilters(ffTheme),
             const SizedBox(height: 20),
 
-            // Check button
+            // Check button — AppButton awaits [_check] and shows its own spinner
+            // while the richer page-level loading state renders below, so the
+            // label stays the honest CTA (no faked "בודק כיסוי...").
             AppButton(
-              text: _loading ? 'בודק כיסוי...' : 'בדוק זמינות',
+              text: 'בדוק זמינות',
               onPressed: () async => _check(),
-              
-                width: double.infinity,
-                height: 52,
-                color: AppColors.primary,
-                textStyle: ffTheme.titleSmall.copyWith(color: Colors.white),
-                borderRadius: BorderRadius.circular(14),
-              
+              icon: const Icon(Icons.search_rounded, size: 20, color: Colors.white),
+              width: double.infinity,
+              height: 52,
+              color: AppColors.primary,
+              textStyle: ffTheme.titleSmall.copyWith(color: Colors.white),
+              borderRadius: BorderRadius.circular(14),
             ),
 
             // Loading state
@@ -282,25 +285,40 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
         const SizedBox(height: 8),
         Wrap(
           spacing: 8,
+          runSpacing: 8,
           children: filters.map((f) {
             final selected = _techFilter == f;
-            return GestureDetector(
-              onTap: () {
-                setState(() { _techFilter = f; _revealedCount = 0; });
-                if (_checked) _restaggerReveal();
-              },
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                decoration: BoxDecoration(
-                  color: selected ? ffTheme.brandAccent : ffTheme.cardSurface,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: selected ? ffTheme.brandAccent : ffTheme.alternate, width: selected ? 1.5 : 1),
+            return Semantics(
+              button: true,
+              selected: selected,
+              // Pressable adds the scale-0.97 press tell (Emil: occasional
+              // controls get a press feedback); it carries no semantics so the
+              // labelled toggle node is unchanged. AnimatedContainer keeps the
+              // crisp selected color/border morph under ease-out.
+              child: Pressable(
+                onTap: () {
+                  HapticFeedback.selectionClick();
+                  setState(() { _techFilter = f; _revealedCount = 0; });
+                  if (_checked) _restaggerReveal();
+                },
+                haptic: false,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  curve: ffTheme.easeOut,
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: selected ? ffTheme.brandAccent : ffTheme.cardSurface,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: selected ? ffTheme.brandAccent : ffTheme.alternate, width: selected ? 1.5 : 1),
+                    boxShadow: selected
+                        ? [BoxShadow(color: ffTheme.brandAccent.withValues(alpha: 0.24), blurRadius: 9, offset: const Offset(0, 3))]
+                        : null,
+                  ),
+                  child: Text(f, style: ffTheme.labelMedium.copyWith(
+                    color: selected ? Colors.white : ffTheme.primaryText,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  )),
                 ),
-                child: Text(f, style: ffTheme.labelSmall.copyWith(
-                  color: selected ? Colors.white : ffTheme.primaryText,
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                )),
               ),
             );
           }).toList(),
@@ -329,8 +347,11 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
             ],
           ),
           const SizedBox(height: 14),
+          // The rotating ring above is the genuine loader; the label just fades
+          // in once. (Emil: no idle/infinite loops on content — the old
+          // repeat(reverse) pulse on this text was an idle loop with no purpose.)
           Text('בודק זמינות ספקים ב${_cityCtrl.text}...', style: ffTheme.bodyMedium.copyWith(color: ffTheme.secondaryText))
-              .animate(onPlay: (c) => c.repeat(reverse: true)).fadeIn(duration: 600.ms),
+              .animate().fadeIn(duration: 260.ms, curve: ffTheme.easeOut),
         ],
       ),
     );
@@ -498,7 +519,7 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
           ),
         ],
       ),
-    ).animate().fadeIn(duration: 280.ms).slideX(begin: 0.04, end: 0);
+    ).animate().fadeIn(duration: 260.ms, curve: ffTheme.easeOut).slideX(begin: 0.04, end: 0, duration: 260.ms, curve: ffTheme.easeOut);
   }
 
   Widget _buildSummaryCard(AppTheme ffTheme, BuildContext context) {

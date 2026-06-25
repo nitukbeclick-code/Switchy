@@ -21,7 +21,7 @@
 // RTL Hebrew, design-system tokens (glass surface, ink text, green action CTA).
 // ────────────────────────────────────────────────────────────────────────────
 
-import { useEffect, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 
 const STORAGE_KEY = "cookieConsent";
@@ -86,6 +86,39 @@ function updateConsent(choice: Choice): void {
 export default function ConsentBanner() {
   const stored = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
+  // Drawer enter: a one-frame `mounted` flip drives an INTERRUPTIBLE CSS transition
+  // (Emil rule 9 — transitions, not keyframes, so a dismiss mid-enter doesn't jump).
+  // Resting OFF-screen at translateY(100%); flips to 0 on the next frame.
+  const [mounted, setMounted] = useState(false);
+  // Graceful EXIT: when the user chooses, we don't unmount instantly — we keep the
+  // element in the DOM and reverse the SAME interruptible transition (slide back
+  // DOWN + fade), then unmount on transitionend (timeout fallback for browsers /
+  // reduced-motion that don't fire it). `closing` is the exit driver; a re-render
+  // that re-shows the banner (mid-exit re-open) cancels it cleanly. The persisted
+  // choice still hides the banner from the store — `closing` only keeps the
+  // *visual* element alive a beat longer, and we DROP the dialog role + a11y
+  // presence the instant we start closing (the choice has been made, so it is no
+  // longer an active dialog) — preserving the "hidden after grant/deny" contract.
+  const [closing, setClosing] = useState(false);
+  const exitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const shouldShow = stored === "";
+
+  useEffect(() => {
+    if (!shouldShow) return;
+    // Re-opening (store cleared back to "") cancels any in-flight exit. We do this
+    // inside the rAF callback (not synchronously in the effect body) so the enter
+    // flip stays a single, clean external sync.
+    const id = requestAnimationFrame(() => {
+      if (exitTimer.current) {
+        clearTimeout(exitTimer.current);
+        exitTimer.current = null;
+      }
+      setClosing(false);
+      setMounted(true);
+    });
+    return () => cancelAnimationFrame(id);
+  }, [shouldShow]);
+
   // Replay an existing grant so GA4 gets the green light on every load. This is a
   // sync-to-external-system effect (pushing React state into gtag), not a render
   // driver — it sets no React state.
@@ -93,20 +126,74 @@ export default function ConsentBanner() {
     if (stored === "granted") updateConsent("granted");
   }, [stored]);
 
+  // Clear any pending exit timer on unmount.
+  useEffect(
+    () => () => {
+      if (exitTimer.current) clearTimeout(exitTimer.current);
+    },
+    [],
+  );
+
   function choose(choice: Choice) {
     updateConsent(choice);
+    // Begin the EXIT: flip to the closing state (reverses the slide/fade) and
+    // persist immediately so the store-driven `shouldShow` goes false. We keep the
+    // element mounted via `closing` until the transition settles.
+    setClosing(true);
+    setMounted(false);
     persistChoice(choice);
+    if (exitTimer.current) clearTimeout(exitTimer.current);
+    // Fallback in case transitionend never fires (reduced-motion, no layout, etc.).
+    exitTimer.current = setTimeout(() => {
+      setClosing(false);
+      exitTimer.current = null;
+    }, 360);
   }
 
-  // A stored choice (granted/denied) hides the banner; only "" (no choice) shows.
-  if (stored !== "") return null;
+  function onExited() {
+    // Only finalize when we're actually closing (ignore the enter transition end).
+    if (!shouldShow) {
+      if (exitTimer.current) {
+        clearTimeout(exitTimer.current);
+        exitTimer.current = null;
+      }
+      setClosing(false);
+    }
+  }
+
+  // Render while a choice is pending (enter) OR while exiting (closing). A stored
+  // choice with no in-flight exit hides the banner entirely.
+  if (!shouldShow && !closing) return null;
+
+  // During the exit the choice has been made: the surface is no longer an active
+  // dialog, so we strip the dialog role / label / live region and hide it from a11y
+  // + pointer input. queryByRole("dialog") therefore finds nothing the moment a
+  // choice is made — the tested "hidden after grant/deny" contract holds — while
+  // the element lingers purely to play its slide-down exit.
+  const isExiting = !shouldShow;
 
   return (
     <div
-      role="dialog"
-      aria-label="הסכמה לעוגיות"
-      aria-live="polite"
-      className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-surface/95 shadow-[0_-4px_24px_rgba(2,6,23,0.10)] backdrop-blur-sm motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-4 motion-safe:duration-300 motion-safe:ease-[var(--ease-drawer)]"
+      {...(isExiting
+        ? { "aria-hidden": true }
+        : { role: "dialog", "aria-label": "הסכמה לעוגיות", "aria-live": "polite" })}
+      onTransitionEnd={onExited}
+      className={[
+        "fixed inset-x-0 bottom-0 z-50 border-t border-border bg-surface/95 backdrop-blur-sm",
+        "shadow-[0_-4px_24px_rgba(2,6,23,0.10)]",
+        // Drawer slide: GPU-only (transform+opacity), drawer easing. Interruptible
+        // transition off the `mounted`/`closing` flips — not a keyframe — so the
+        // SAME curve runs in reverse on exit and a mid-exit re-open reverses cleanly.
+        // Enter ease settles over 300ms; exit is a touch faster (250ms) per Emil.
+        "transition-[transform,opacity] ease-[var(--ease-drawer)]",
+        isExiting ? "duration-[250ms]" : "duration-300",
+        "motion-reduce:transition-opacity",
+        // Closing/exiting → off-screen down + transparent (and inert); never blocks.
+        isExiting ? "pointer-events-none" : "",
+        mounted && !isExiting
+          ? "translate-y-0 opacity-100"
+          : "translate-y-full opacity-0",
+      ].join(" ")}
     >
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
         <p className="text-sm leading-relaxed text-foreground">

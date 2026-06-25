@@ -539,9 +539,12 @@ class _BestMatchCard extends StatelessWidget {
                   children: [
                     Text(
                       '₪${plan.priceText}',
+                      // Focal price of the recommendation — tabular figures keep
+                      // it crisp and aligned with the app's ₪ figure treatment.
                       style: ffTheme.titleLarge.copyWith(
                           color: ffTheme.primary,
-                          fontWeight: FontWeight.w800),
+                          fontWeight: FontWeight.w800,
+                          fontFeatures: const [FontFeature.tabularFigures()]),
                     ),
                     Text(
                       unit,

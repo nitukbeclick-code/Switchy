@@ -98,26 +98,43 @@ class _BiometricGateWidgetState extends State<BiometricGateWidget> {
                     color: Colors.white.withValues(alpha: 0.14),
                     shape: BoxShape.circle,
                     border: Border.all(color: Colors.white.withValues(alpha: 0.35), width: 1.5),
+                    // A soft white halo so the lock mark reads as the calm focal
+                    // point of the gate (a steady glow, not an idle pulse).
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.white.withValues(alpha: 0.18),
+                        blurRadius: 28,
+                        spreadRadius: 1,
+                      ),
+                    ],
                   ),
-                  child: const Icon(Icons.fingerprint_rounded, color: Colors.white, size: 52),
+                  child: const ExcludeSemantics(
+                    child: Icon(Icons.fingerprint_rounded, color: Colors.white, size: 52),
+                  ),
                 ).animate().scale(
                       duration: 400.ms,
                       begin: const Offset(0.9, 0.9),
                       end: const Offset(1, 1),
-                      curve: Curves.easeOut,
+                      curve: t.easeOut,
                     ),
                 const SizedBox(height: 28),
-                Text('שלום $name',
-                    style: t.headlineMedium.copyWith(color: Colors.white), textAlign: TextAlign.center),
+                Semantics(
+                  header: true,
+                  child: Text('שלום $name',
+                      style: t.headlineMedium.copyWith(color: Colors.white), textAlign: TextAlign.center),
+                ),
                 const SizedBox(height: 8),
-                Text(
-                  _exhausted
-                      ? 'לא הצלחנו לזהות אתכם — היכנסו עם סיסמה'
-                      : _failed
-                          ? 'הכניסה המהירה לא הושלמה — נסו שוב'
-                          : 'כניסה מהירה כדי להמשיך',
-                  style: t.bodyLarge.copyWith(color: Colors.white.withValues(alpha: 0.85)),
-                  textAlign: TextAlign.center,
+                Semantics(
+                  liveRegion: true,
+                  child: Text(
+                    _exhausted
+                        ? 'לא הצלחנו לזהות אתכם — היכנסו עם סיסמה'
+                        : _failed
+                            ? 'הכניסה המהירה לא הושלמה — נסו שוב'
+                            : 'כניסה מהירה כדי להמשיך',
+                    style: t.bodyLarge.copyWith(color: Colors.white.withValues(alpha: 0.85)),
+                    textAlign: TextAlign.center,
+                  ),
                 ),
                 const Spacer(),
                 if (_exhausted)

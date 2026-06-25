@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -6,6 +7,7 @@ import '../../theme/app_theme.dart';
 import '../../core/nav.dart';
 import '../../widgets/app_button.dart';
 import '../../widgets/app_snackbar.dart';
+import '../../widgets/pressable.dart';
 import '../../app_state.dart';
 import '../../services/backend/backend.dart';
 import '../../services/backend/local_backend.dart';
@@ -23,7 +25,6 @@ class _CallbackWidgetState extends State<CallbackWidget> {
   String _timing = 'בהקדם';
   String _topic = 'סלולר';
   bool _submitted = false;
-  bool _isLoading = false;
 
   static const _timings = ['בהקדם', 'בוקר', 'אחה"צ', 'ערב'];
   static const _topics = ['סלולר', 'אינטרנט', 'טלוויזיה', 'חבילה משולבת', 'ניתוק', 'אחר'];
@@ -166,8 +167,10 @@ class _CallbackWidgetState extends State<CallbackWidget> {
             const SizedBox(height: 24),
 
             AppButton(
-              text: _isLoading ? 'שולח...' : 'בקש שיחה חוזרת',
-              onPressed: _isLoading ? () async {} : () async {
+              // AppButton owns the async spinner + tap-ignore while [onPressed]
+              // awaits, so we keep one honest label instead of a faked "שולח...".
+              text: 'בקש שיחה חוזרת',
+              onPressed: () async {
                 if (_nameCtrl.text.trim().isEmpty || _phoneCtrl.text.trim().isEmpty) {
                   AppSnackBar.error(context, 'נא למלא שם ומספר טלפון',
                       duration: const Duration(seconds: 2));
@@ -179,7 +182,6 @@ class _CallbackWidgetState extends State<CallbackWidget> {
                       duration: const Duration(seconds: 2));
                   return;
                 }
-                setState(() => _isLoading = true);
                 final name = _nameCtrl.text.trim();
                 final phone = _phoneCtrl.text.replaceAll(RegExp(r'[\s\-]'), '');
                 // Map timing chips to callback_time keys used in leads table.
@@ -207,7 +209,6 @@ class _CallbackWidgetState extends State<CallbackWidget> {
                   // The request never reached the team — let the user retry
                   // instead of waiting for a call that won't come.
                   if (!context.mounted) return;
-                  setState(() => _isLoading = false);
                   AppSnackBar.error(context, 'שליחת הבקשה נכשלה — בדקו את החיבור ונסו שוב');
                   return;
                 }
@@ -216,7 +217,7 @@ class _CallbackWidgetState extends State<CallbackWidget> {
                 Provider.of<AppState>(context, listen: false).login(name: name, phone: phone);
                 await Future.delayed(const Duration(milliseconds: 300));
                 if (!mounted) return;
-                setState(() { _isLoading = false; _submitted = true; });
+                setState(() => _submitted = true);
               },
               
                 width: double.infinity,
@@ -374,13 +375,22 @@ class _CallbackWidgetState extends State<CallbackWidget> {
   Widget _buildTopicChips(AppTheme ffTheme) {
     Widget chip(String t) {
       final active = _topic == t;
+      // Pressable adds the tactile scale-0.97 press feedback (Emil: every
+      // occasional control gets a press tell) without any semantics of its own,
+      // so it nests safely inside the labelled Semantics. The AnimatedContainer
+      // keeps the crisp selected-state color/border morph (dropdown band, 200ms).
       return Semantics(
         button: true,
         selected: active,
-        child: GestureDetector(
-          onTap: () => setState(() => _topic = t),
+        child: Pressable(
+          onTap: () {
+            HapticFeedback.selectionClick();
+            setState(() => _topic = t);
+          },
+          haptic: false,
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 200),
+            curve: ffTheme.easeOut,
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             decoration: BoxDecoration(
               color: active ? ffTheme.brandAccent : ffTheme.cardSurface,
@@ -406,7 +416,7 @@ class _CallbackWidgetState extends State<CallbackWidget> {
         crossAxisAlignment: WrapCrossAlignment.center,
         children: [
           chip(_topic),
-          GestureDetector(
+          Pressable(
             onTap: () => setState(() => _showAllTopics = true),
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
@@ -444,10 +454,18 @@ class _CallbackWidgetState extends State<CallbackWidget> {
             container: true,
             excludeSemantics: true,
             label: 'זמן מועדף: $t',
-            child: GestureDetector(
-              onTap: () => setState(() => _timing = t),
+            // Pressable supplies the scale-0.97 press tell; the parent Semantics
+            // already excludes child semantics, so the labelled node is
+            // untouched. The AnimatedContainer keeps the crisp selected morph.
+            child: Pressable(
+              onTap: () {
+                HapticFeedback.selectionClick();
+                setState(() => _timing = t);
+              },
+              haptic: false,
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
+                curve: ffTheme.easeOut,
                 margin: EdgeInsetsDirectional.only(end: i < _timings.length - 1 ? 8 : 0),
                 padding: const EdgeInsets.symmetric(vertical: 10),
                 decoration: BoxDecoration(
@@ -458,9 +476,17 @@ class _CallbackWidgetState extends State<CallbackWidget> {
                 ),
                 child: Column(
                   children: [
-                    ExcludeSemantics(child: Icon(icons[i], size: 18, color: active ? Colors.white : ffTheme.secondaryText)),
-                    const SizedBox(height: 4),
-                    Text(t, style: ffTheme.labelSmall.copyWith(color: active ? Colors.white : ffTheme.primaryText, fontWeight: active ? FontWeight.w700 : FontWeight.w500, fontSize: 11)),
+                    ExcludeSemantics(child: Icon(icons[i], size: 20, color: active ? Colors.white : ffTheme.secondaryText)),
+                    const SizedBox(height: 5),
+                    Text(t,
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: ffTheme.labelSmall.copyWith(
+                          color: active ? Colors.white : ffTheme.primaryText,
+                          fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                          fontSize: 12,
+                        )),
                   ],
                 ),
               ),

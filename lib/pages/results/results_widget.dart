@@ -766,12 +766,31 @@ class _ResultsWidgetState extends State<ResultsWidget> {
                         // treatment; the match score renders inside the card —
                         // overlaying badges collided with the header controls.
                         final isTopMatch = _smartSort && index == 0 && match != null && match.scorePct >= 70;
-                        return PlanCardWidget(
+                        final card = PlanCardWidget(
                           plan: plan,
                           currentBill: bill,
                           matchPct: match?.scorePct,
                           bestMatch: isTopMatch || plan.highlight,
-                        )
+                        );
+                        // The smart-sort winner gets a confident-but-restrained
+                        // reveal: it settles from a hair larger (scale 1.03→1.0)
+                        // with the gentle overshoot spring, so the eye lands on
+                        // the top pick first. PURPOSE = focal hierarchy, fired
+                        // once on reveal (no loop). Every other row keeps the
+                        // calm fade+slide. flutter_animate already drops the
+                        // transform under reduced-motion.
+                        if (isTopMatch) {
+                          return card
+                              .animate()
+                              .fadeIn(duration: 320.ms)
+                              .scale(
+                                begin: const Offset(1.03, 1.03),
+                                end: const Offset(1, 1),
+                                duration: 360.ms,
+                                curve: ffTheme.spring,
+                              );
+                        }
+                        return card
                             // Cap the stagger so long result lists settle
                             // quickly — the reveal reads premium for the first
                             // few cards, slow past that.

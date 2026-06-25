@@ -445,7 +445,8 @@ a:hover {
 /* Hover-lift is a pointer affordance — only on hover-capable, fine pointers so
    it doesn't latch on touch devices. */
 @media (hover: hover) and (pointer: fine) {
-  .hover-lift:hover {
+  .hover-lift:hover,
+  .sw-lift:hover {
     transform: translateY(-2px);
     box-shadow: var(--shadow-card);
   }
@@ -458,6 +459,107 @@ a:hover {
 }
 .press:active {
   transform: scale(0.97);
+}
+
+/* ── Origin-aware popover / dropdown enter ────────────────────────────────────
+   Per Emil's rule (7): popovers and dropdowns scale UP FROM the trigger, not from
+   their own center — a center-scaled menu reads as a generic "thing appearing",
+   while a corner-anchored one reads as "this opened from the button I clicked".
+   The component sets `--popover-origin` to the logical corner nearest its trigger
+   (e.g. `top right`, `bottom left`); it defaults to `top center` for menus that
+   drop straight down. Enter is ease-out within the dropdown band (150–250ms).
+   NEVER scale(0) — we start at scale(0.96) + opacity:0 so there is no infinitesimal
+   flash (rule 6). @starting-style drives the enter for browsers that support it
+   (no JS, no mount class needed); the `transition` is the interruptible fallback
+   path and also covers the exit if the element is kept in the DOM. */
+.popover {
+  transform-origin: var(--popover-origin, top center);
+  transition:
+    opacity var(--duration-dropdown) var(--ease-out),
+    transform var(--duration-dropdown) var(--ease-out);
+}
+@starting-style {
+  .popover {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+}
+
+/* ── Reveal / stagger entrance ────────────────────────────────────────────────
+   Per Emil's rule (11): list/card reveals fade in + translateY(8px), staggered
+   30–80ms per item. This is the CANONICAL reusable utility — compose `.reveal` on
+   each item and set its delay inline (`style={{ animationDelay: '${i*60}ms' }}`)
+   so a parent doesn't have to re-declare the keyframe per page. The committed
+   resting state is fully visible (opacity:1, no transform) — `both` holds the FROM
+   frame for the sub-frame gap before start (no flash) and settles cleanly at TO,
+   so server-rendered / no-JS content is never hidden. Compositor-only props. */
+@keyframes swRevealUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+/* `.sw-reveal` / `.sw-lift` are aliases the page components reference (the names
+   drifted from `.reveal` / `.hover-lift`); defining them here makes those
+   entrances/hovers fire instead of silently being inert no-op classes. */
+.reveal,
+.sw-reveal {
+  animation: swRevealUp 420ms var(--ease-out) both;
+}
+/* Convenience: a container that wants to stagger its DIRECT children without
+   per-item inline delays. Steps sit inside Emil's 30–80ms band (60ms here),
+   capped at 8 so long lists don't drift into a sluggish cascade — beyond the cap
+   items share the last step and reveal together. */
+.stagger > * {
+  animation: swRevealUp 420ms var(--ease-out) both;
+}
+.stagger > *:nth-child(1) {
+  animation-delay: 0ms;
+}
+.stagger > *:nth-child(2) {
+  animation-delay: 60ms;
+}
+.stagger > *:nth-child(3) {
+  animation-delay: 120ms;
+}
+.stagger > *:nth-child(4) {
+  animation-delay: 180ms;
+}
+.stagger > *:nth-child(5) {
+  animation-delay: 240ms;
+}
+.stagger > *:nth-child(6) {
+  animation-delay: 300ms;
+}
+.stagger > *:nth-child(7) {
+  animation-delay: 360ms;
+}
+.stagger > *:nth-child(n + 8) {
+  animation-delay: 420ms;
+}
+
+/* ── Blur-mask crossfade (skeleton → content) ─────────────────────────────────
+   Per Emil's rule (16): an imperfect crossfade (e.g. a shimmer skeleton swapping
+   to real content of a different shape) reads cleaner with a brief blur(2px) on
+   the incoming layer — the eye forgives the dimensional mismatch through the soft
+   mask. Compose `.blur-mask` on the entering content; it fades + de-blurs in over
+   the dropdown band. Only opacity + filter animate (no layout). */
+@keyframes swBlurIn {
+  from {
+    opacity: 0;
+    filter: blur(2px);
+  }
+  to {
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+.blur-mask {
+  animation: swBlurIn var(--duration-dropdown) var(--ease-out) both;
 }
 
 /* ── Layout helpers ───────────────────────────────────────────────────────────
@@ -524,7 +626,26 @@ a:hover {
   .card-interactive:hover,
   .card-interactive:active,
   .hover-lift:hover,
+  .sw-lift:hover,
   .press:active {
     transform: none !important;
+  }
+  /* Reveal/stagger/blur-mask: drop the keyframe entirely so items appear at their
+     resting state (opacity:1, no transform/blur) with no travel — KEEPING content
+     visible, never hiding it. The popover loses its scale enter (transform) but
+     keeps the opacity fade for legible state feedback. */
+  .reveal,
+  .sw-reveal,
+  .stagger > *,
+  .blur-mask {
+    animation: none !important;
+  }
+  .popover {
+    transition-property: opacity !important;
+  }
+  @starting-style {
+    .popover {
+      transform: none;
+    }
   }
 }

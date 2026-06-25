@@ -179,7 +179,7 @@ class AccountWidget extends StatelessWidget {
                   const SizedBox(height: 20),
 
                   // Active request — header only shown when a plan is active
-                  if (plan != null) Text('בקשה פעילה', style: ffTheme.titleLarge),
+                  if (plan != null) _SectionHeader('בקשה פעילה', ffTheme: ffTheme),
                   if (plan != null) const SizedBox(height: 12),
                   if (plan != null)
                     Container(
@@ -276,9 +276,15 @@ class AccountWidget extends StatelessWidget {
 
                   // Watchlist
                   if (appState.watchedPlans.isNotEmpty) ...[
-                    Text('מסלולים במעקב', style: ffTheme.titleLarge),
+                    _SectionHeader('מסלולים במעקב', ffTheme: ffTheme, count: appState.watchedPlans.length),
                     const SizedBox(height: 10),
-                    ...appState.watchedPlans.map((id) {
+                    // Emil: watched plans reveal in a short stagger (fade + 6px
+                    // rise, ease-out), matching the quick-actions rhythm below so
+                    // the long account scroll resolves group-by-group. Capped
+                    // delay keeps a long watchlist snappy; reduced motion is
+                    // honoured by flutter_animate.
+                    ...appState.watchedPlans.asMap().entries.map((e) {
+                      final id = e.value;
                       final p = planById(id);
                       if (p == null) return const SizedBox();
                       final save = planSaveYear(p, appState.currentBill(p.cat));
@@ -303,7 +309,9 @@ class AccountWidget extends StatelessWidget {
                             ),
                           ],
                         ),
-                      );
+                      ).animate(delay: (e.key.clamp(0, 6) * 50).ms)
+                          .fadeIn(duration: 260.ms, curve: ffTheme.easeOut)
+                          .slideY(begin: 0.06, end: 0, curve: ffTheme.easeOut);
                     }),
                     const SizedBox(height: 10),
                   ],
@@ -396,15 +404,11 @@ class AccountWidget extends StatelessWidget {
                   // Recently viewed
                   if (appState.recentlyViewed.isNotEmpty) ...[
                     const SizedBox(height: 20),
-                    Row(
-                      children: [
-                        Text('צפיות אחרונות', style: ffTheme.titleLarge),
-                        const Spacer(),
-                        GestureDetector(
-                          onTap: () => context.goNamed('Results'),
-                          child: Text('כל המסלולים', style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w700)),
-                        ),
-                      ],
+                    _SectionHeader(
+                      'צפיות אחרונות',
+                      ffTheme: ffTheme,
+                      trailingLabel: 'כל המסלולים',
+                      onTrailingTap: () => context.goNamed('Results'),
                     ),
                     const SizedBox(height: 10),
                     SizedBox(
@@ -445,15 +449,11 @@ class AccountWidget extends StatelessWidget {
 
                   if (appState.userReviews.isNotEmpty) ...[
                     const SizedBox(height: 20),
-                    Row(
-                      children: [
-                        Text('הביקורות שלי', style: ffTheme.titleLarge),
-                        const Spacer(),
-                        GestureDetector(
-                          onTap: () => context.pushNamed('Ratings'),
-                          child: Text('כל הדירוגים', style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w700)),
-                        ),
-                      ],
+                    _SectionHeader(
+                      'הביקורות שלי',
+                      ffTheme: ffTheme,
+                      trailingLabel: 'כל הדירוגים',
+                      onTrailingTap: () => context.pushNamed('Ratings'),
                     ),
                     const SizedBox(height: 10),
                     ...appState.userReviews.take(3).map((r) {
@@ -499,7 +499,7 @@ class AccountWidget extends StatelessWidget {
                   const SizedBox(height: 20),
 
                   // Quick actions
-                  Text('פעולות מהירות', style: ffTheme.titleLarge),
+                  _SectionHeader('פעולות מהירות', ffTheme: ffTheme),
                   const SizedBox(height: 12),
                   ...[
                     if (appState.isAdmin) ...[
@@ -522,6 +522,65 @@ class AccountWidget extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// A consistent section heading: a short green "eyebrow" tick + the title, with
+/// an optional muted count badge and an optional trailing link. Gives the long
+/// account scroll a designed group rhythm instead of a flat stack of titles.
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader(
+    this.title, {
+    required this.ffTheme,
+    this.count,
+    this.trailingLabel,
+    this.onTrailingTap,
+  });
+  final String title;
+  final AppTheme ffTheme;
+  final int? count;
+  final String? trailingLabel;
+  final VoidCallback? onTrailingTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        // Brand-green eyebrow tick — a small ACTION-colour structural cue.
+        ExcludeSemantics(
+          child: Container(
+            width: 3,
+            height: 16,
+            margin: const EdgeInsetsDirectional.only(end: 8),
+            decoration: BoxDecoration(
+              color: ffTheme.brandAccent,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+        ),
+        Text(title, style: ffTheme.titleLarge),
+        if (count != null) ...[
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 1),
+            decoration: BoxDecoration(
+              color: ffTheme.brandAccentTint,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text('$count',
+                style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w700)),
+          ),
+        ],
+        if (trailingLabel != null) ...[
+          const Spacer(),
+          GestureDetector(
+            onTap: onTrailingTap,
+            child: Text(trailingLabel!,
+                style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ],
     );
   }
 }

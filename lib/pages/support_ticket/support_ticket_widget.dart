@@ -593,7 +593,15 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
                     if (index == _messages.length) {
                       return _buildTypingIndicator(theme);
                     }
-                    return _buildMessageBubble(_messages[index], theme);
+                    // Emil: only the newest bubble plays the entrance, so the
+                    // thread doesn't re-animate the whole history on each rebuild
+                    // (a new message should land crisply, not the past redraw).
+                    final isNewest = index == _messages.length - 1;
+                    return _buildMessageBubble(
+                      _messages[index],
+                      theme,
+                      animateIn: isNewest,
+                    );
                   },
                 ),
         ),
@@ -684,7 +692,8 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
     );
   }
 
-  Widget _buildMessageBubble(SupportMessage msg, AppTheme theme) {
+  Widget _buildMessageBubble(SupportMessage msg, AppTheme theme,
+      {bool animateIn = false}) {
     final isUser = msg.role == 'user';
     final isHuman = msg.role == 'human';
 
@@ -709,7 +718,11 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
             bottomRight: Radius.circular(theme.radiusLg),
           );
 
-    return Align(
+    // Emil: a new message enters crisp — ease-out, opacity + a small
+    // direction-aware slide (user from the trailing edge, agent from the
+    // leading edge). Reduced motion keeps the fade and drops the transform.
+    final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    final bubble = Align(
       alignment: alignment,
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 6),
@@ -767,6 +780,21 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
         ),
       ),
     );
+
+    if (!animateIn) return bubble;
+    final entrance = bubble.animate().fadeIn(
+          duration: theme.motionFast,
+          curve: theme.easeOut,
+        );
+    // Reduced motion: keep the fade, drop the directional slide.
+    return reduceMotion
+        ? entrance
+        : entrance.slideX(
+            begin: isUser ? 0.06 : -0.06,
+            end: 0,
+            duration: theme.motionFast,
+            curve: theme.easeOut,
+          );
   }
 
   Widget _buildTypingIndicator(AppTheme theme) {

@@ -42,7 +42,11 @@ class _OnboardingWidgetState extends State<OnboardingWidget> {
 
     return Scaffold(
       backgroundColor: ffTheme.background,
-      body: Stack(
+      body: DecoratedBox(
+        // A faint top-to-bottom glass wash lifts the carousel off flat white
+        // (or flat slate on dark) for premium depth, without adding colour.
+        decoration: BoxDecoration(gradient: ffTheme.surfaceWash),
+        child: Stack(
         children: [
           Column(
             children: [
@@ -130,23 +134,39 @@ class _OnboardingWidgetState extends State<OnboardingWidget> {
                 ),
               ),
 
-              // Dots + button
+              // Progress dots — the active dot stretches into a green ACTION
+              // pill so the eye reads "where am I" at a glance. Announced as a
+              // single progress label for screen readers (the marks themselves
+              // are decorative).
               Padding(
                 padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: List.generate(3, (i) => AnimatedContainer(
-                    duration: ffTheme.motionMedium,
-                    curve: Curves.easeOut,
-                    margin: const EdgeInsets.symmetric(horizontal: 4),
-                    width: i == _page ? 28 : 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      gradient: i == _page ? ffTheme.accentGradient : null,
-                      color: i == _page ? null : ffTheme.alternate,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                  )),
+                child: Semantics(
+                  label: 'שלב ${_page + 1} מתוך 3',
+                  liveRegion: true,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(3, (i) => ExcludeSemantics(
+                      // Page-dot spring: the active dot stretches into the green
+                      // ACTION pill with a hair of overshoot — a premium
+                      // first-impression flourish on a RARE, spatial indicator
+                      // (where am I in 3 steps). The width morph is the deliberate
+                      // shape of this control, so [spring] gives it life without
+                      // the gaudiness that an everyday control would forbid.
+                      child: AnimatedContainer(
+                        duration: ffTheme.motionMedium,
+                        curve: ffTheme.spring,
+                        margin: const EdgeInsets.symmetric(horizontal: 4),
+                        width: i == _page ? 28 : 8,
+                        height: 8,
+                        decoration: BoxDecoration(
+                          gradient: i == _page ? ffTheme.accentGradient : null,
+                          color: i == _page ? null : ffTheme.alternate.withValues(alpha: 0.35),
+                          borderRadius: BorderRadius.circular(4),
+                          boxShadow: i == _page ? ffTheme.shadowAccent : null,
+                        ),
+                      ),
+                    )),
+                  ),
                 ),
               ),
               const SizedBox(height: 20),
@@ -170,6 +190,7 @@ class _OnboardingWidgetState extends State<OnboardingWidget> {
           ),
         ],
       ),
+      ),
     );
   }
 }
@@ -186,20 +207,15 @@ class _Page1 extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(24, 32, 24, 16),
       child: Column(
         children: [
-          Container(
-            width: 104,
-            height: 104,
-            decoration: BoxDecoration(
-              color: ffTheme.brandAccentTint,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(Icons.savings_outlined, size: 52, color: ffTheme.brandAccent),
-          ).animate().scale(duration: 500.ms, curve: Curves.elasticOut),
+          _HeroBadge(icon: Icons.savings_outlined, ffTheme: ffTheme),
           const SizedBox(height: 20),
-          Text(
-            'כל המחירים\nבמקום אחד',
-            style: GoogleFonts.rubik(fontSize: 36, fontWeight: FontWeight.w800, color: ffTheme.primaryText, height: 1.15),
-            textAlign: TextAlign.center,
+          Semantics(
+            header: true,
+            child: Text(
+              'כל המחירים\nבמקום אחד',
+              style: GoogleFonts.rubik(fontSize: 36, fontWeight: FontWeight.w800, color: ffTheme.primaryText, height: 1.15),
+              textAlign: TextAlign.center,
+            ),
           ).animate().fadeIn(delay: 150.ms).slideY(begin: 0.2, end: 0),
           const SizedBox(height: 12),
           Text(
@@ -272,20 +288,15 @@ class _Page2 extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(24, 32, 24, 16),
       child: Column(
         children: [
-          Container(
-            width: 104,
-            height: 104,
-            decoration: BoxDecoration(
-              color: ffTheme.brandAccentTint,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(Icons.search_rounded, size: 52, color: ffTheme.brandAccent),
-          ).animate().scale(duration: 500.ms, curve: Curves.elasticOut),
+          _HeroBadge(icon: Icons.search_rounded, ffTheme: ffTheme),
           const SizedBox(height: 20),
-          Text(
-            'כל הספקים\nבמקום אחד',
-            style: GoogleFonts.rubik(fontSize: 36, fontWeight: FontWeight.w800, color: ffTheme.primaryText, height: 1.15),
-            textAlign: TextAlign.center,
+          Semantics(
+            header: true,
+            child: Text(
+              'כל הספקים\nבמקום אחד',
+              style: GoogleFonts.rubik(fontSize: 36, fontWeight: FontWeight.w800, color: ffTheme.primaryText, height: 1.15),
+              textAlign: TextAlign.center,
+            ),
           ).animate().fadeIn(delay: 150.ms).slideY(begin: 0.2, end: 0),
           const SizedBox(height: 12),
           Text(
@@ -339,20 +350,15 @@ class _Page3 extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(24, 32, 24, 16),
       child: Column(
         children: [
-          Container(
-            width: 104,
-            height: 104,
-            decoration: BoxDecoration(
-              color: ffTheme.brandAccentTint,
-              shape: BoxShape.circle,
-            ),
-            child: Icon(Icons.handshake_outlined, size: 52, color: ffTheme.brandAccent),
-          ).animate().scale(duration: 500.ms, curve: Curves.elasticOut),
+          _HeroBadge(icon: Icons.handshake_outlined, ffTheme: ffTheme),
           const SizedBox(height: 20),
-          Text(
-            'מעבר קל\nוחלק',
-            style: GoogleFonts.rubik(fontSize: 36, fontWeight: FontWeight.w800, color: ffTheme.primaryText, height: 1.15),
-            textAlign: TextAlign.center,
+          Semantics(
+            header: true,
+            child: Text(
+              'מעבר קל\nוחלק',
+              style: GoogleFonts.rubik(fontSize: 36, fontWeight: FontWeight.w800, color: ffTheme.primaryText, height: 1.15),
+              textAlign: TextAlign.center,
+            ),
           ).animate().fadeIn(delay: 150.ms).slideY(begin: 0.2, end: 0),
           const SizedBox(height: 12),
           Text(
@@ -395,6 +401,30 @@ class _Page3 extends StatelessWidget {
 }
 
 // ── Helper widgets ────────────────────────────────────────────────────────────
+
+/// The slide's focal mark — a tinted disc with a hairline accent ring and a
+/// soft green glow, so each illustration reads as the page's single hero point
+/// rather than a flat icon. Decorative: the headline below carries the meaning.
+class _HeroBadge extends StatelessWidget {
+  const _HeroBadge({required this.icon, required this.ffTheme});
+  final IconData icon;
+  final AppTheme ffTheme;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 104,
+      height: 104,
+      decoration: BoxDecoration(
+        color: ffTheme.brandAccentTint,
+        shape: BoxShape.circle,
+        border: Border.all(color: ffTheme.brandAccent.withValues(alpha: 0.22), width: 1.5),
+        boxShadow: ffTheme.glowAccent,
+      ),
+      child: ExcludeSemantics(child: Icon(icon, size: 52, color: ffTheme.brandAccent)),
+    ).animate().scale(begin: const Offset(0.9, 0.9), duration: 500.ms, curve: ffTheme.spring);
+  }
+}
 
 class _StatChip extends StatelessWidget {
   const _StatChip({required this.value, required this.label, required this.ffTheme});

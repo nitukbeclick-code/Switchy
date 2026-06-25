@@ -14,6 +14,7 @@
 // ────────────────────────────────────────────────────────────────────────────
 
 import Link from "next/link";
+import SwitchyMascot from "./SwitchyMascot";
 
 export interface EmptyStateCta {
   /** Visible button label. */
@@ -26,8 +27,11 @@ export interface EmptyStateProps {
   /**
    * The badge glyph. A short emoji/string (e.g. "📷", "🔍") OR any React node
    * (e.g. an inline SVG icon). Rendered decoratively inside the circular badge.
+   * Optional when `mascot` is set.
    */
-  icon: React.ReactNode;
+  icon?: React.ReactNode;
+  /** Show the Switchy brand mascot in the badge instead of an icon/emoji. */
+  mascot?: boolean;
   /** Display-type headline below the badge. */
   title: string;
   /** Muted description below the headline. */
@@ -45,6 +49,7 @@ function isInternal(href: string): boolean {
 
 export default function EmptyState({
   icon,
+  mascot,
   title,
   description,
   cta,
@@ -66,7 +71,7 @@ export default function EmptyState({
         aria-hidden="true"
         className="elevate-soft flex h-24 w-24 items-center justify-center rounded-full border border-accent/20 bg-accent/10 text-4xl text-accent-text"
       >
-        {icon}
+        {mascot ? <SwitchyMascot size={56} /> : icon}
       </span>
 
       <h2 className="mt-6 font-display text-xl font-bold tracking-tight text-ink sm:text-2xl">
@@ -80,14 +85,14 @@ export default function EmptyState({
         (isInternal(cta.href) ? (
           <Link
             href={cta.href}
-            className="interactive press mt-8 inline-flex items-center justify-center rounded-xl bg-accent px-6 py-3 text-sm font-semibold text-accent-contrast ease-[var(--ease-out)] hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            className="interactive press mt-8 inline-flex items-center justify-center rounded-xl bg-accent px-6 py-3 text-sm font-semibold text-accent-contrast ease-[var(--ease-out)] hover:bg-accent-hover [@media(hover:hover)_and_(pointer:fine)]:motion-safe:hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           >
             {cta.label}
           </Link>
         ) : (
           <a
             href={cta.href}
-            className="interactive press mt-8 inline-flex items-center justify-center rounded-xl bg-accent px-6 py-3 text-sm font-semibold text-accent-contrast ease-[var(--ease-out)] hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            className="interactive press mt-8 inline-flex items-center justify-center rounded-xl bg-accent px-6 py-3 text-sm font-semibold text-accent-contrast ease-[var(--ease-out)] hover:bg-accent-hover [@media(hover:hover)_and_(pointer:fine)]:motion-safe:hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           >
             {cta.label}
           </a>

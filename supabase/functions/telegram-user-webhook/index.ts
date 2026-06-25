@@ -235,7 +235,15 @@ type RelayState = { active: boolean; teamChatId: string | null };
 // OR a row written before the migration (no columns) → not-active. The columns
 // default bot_enabled=true / relay_team_chat_id=NULL, so a normal chat reads as
 // not-active and the agent runs exactly as before.
-async function relayStateFor(sessionKey: string): Promise<RelayState> {
+//
+// `transcriptLen` is OBSERVABILITY-ONLY (the loaded session's turn count): when a
+// chat is paused (bot_enabled=false) but has NO usable relay target, a customer
+// message would route to the AGENT instead of the team — a half-written / lost
+// takeover row. For a brand-new chat (empty transcript) that's just the default
+// not-active state and we stay silent; but for an in-flight chat (non-empty
+// transcript) it's a real anomaly worth a WARN. Routing is UNCHANGED either way —
+// we still fail soft to the agent so the bot keeps working.
+async function relayStateFor(sessionKey: string, transcriptLen = 0): Promise<RelayState> {
   if (!sessionKey) return { active: false, teamChatId: null };
   const rows = await fetchRows<{ bot_enabled?: boolean | null; relay_team_chat_id?: string | null }>(
     `/rest/v1/ai_sessions?session_id=eq.${encodeURIComponent(sessionKey)}&select=bot_enabled,relay_team_chat_id&limit=1`,
@@ -246,6 +254,12 @@ async function relayStateFor(sessionKey: string): Promise<RelayState> {
   // Mirror whatsapp botEnabled(): an explicit false pauses; absent/undefined/true
   // keeps the agent on. Active only when paused AND a relay target is set.
   const paused = r.bot_enabled === false;
+  // Observability: a PAUSED chat with no relay target + an existing transcript is a
+  // takeover whose relay row was lost/half-written — the customer's in-flight message
+  // is about to route to the agent rather than the team. WARN (no PII), keep routing.
+  if (paused && !teamChatId && transcriptLen > 0) {
+    jlog({ at: "tgu.relay.state_lost", ok: false, paused: true, hasTarget: false, transcriptLen });
+  }
   return { active: paused && !!teamChatId, teamChatId: paused ? teamChatId : null };
 }
 
@@ -414,7 +428,7 @@ async function handleUpdate(update: TgUserUpdate): Promise<void> {
   //     customer the single connecting ack, and RETURN (the agent does not run).
   //     If the team chat isn't configured we can't relay anywhere → fall through
   //     to the agent (which can still offer a callback lead) rather than dead-end.
-  const relay = await relayStateFor(sessionKey);
+  const relay = await relayStateFor(sessionKey, session.transcript?.length ?? 0);
   if (relay.active && relay.teamChatId) {
     const delivered = await relayCustomerToTeam(relay.teamChatId, chatId, firstName, text);
     if (!delivered) await sendMessage(chatId, HANDOFF_RELAY_FAIL_REPLY);

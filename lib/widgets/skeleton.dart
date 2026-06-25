@@ -1,6 +1,94 @@
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
 import '../theme/app_theme.dart';
+
+/// Crossfades a loading [skeleton] into [child] once [loading] flips false,
+/// instead of the content popping in.
+///
+/// Emil's rule for the skeleton→content swap: a genuine loader (the shimmer) is
+/// fine, but the moment data lands the placeholder should *dissolve* into the
+/// real thing — never a hard cut. This is the shared primitive for that handoff:
+/// a single [AnimatedSwitcher] that fades+lifts the incoming content (ease-out
+/// entering motion) while the skeleton fades out, with a faint `blur(2px)` mask
+/// on the outgoing frame so the crossfade reads clean even when the two trees
+/// don't line up pixel-for-pixel (rule 16).
+///
+/// Reduced-motion-safe: when `MediaQuery.disableAnimations` is set the swap is a
+/// plain opacity crossfade with no transform or blur (keep opacity, drop motion).
+class SkeletonSwitcher extends StatelessWidget {
+  const SkeletonSwitcher({
+    super.key,
+    required this.loading,
+    required this.skeleton,
+    required this.child,
+  });
+
+  /// While true the [skeleton] shows; flipping to false crossfades in [child].
+  final bool loading;
+
+  /// The placeholder shown while [loading] (typically a `Skeleton*` ghost).
+  final Widget skeleton;
+
+  /// The real content, revealed once [loading] is false.
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppTheme.of(context);
+    final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    // Keyed so AnimatedSwitcher treats skeleton↔content as a real swap.
+    final current = loading
+        ? KeyedSubtree(key: const ValueKey('skeleton'), child: skeleton)
+        : KeyedSubtree(key: const ValueKey('content'), child: child);
+
+    return AnimatedSwitcher(
+      duration: t.motionMedium,
+      // Entering content settles with ease-out; the outgoing skeleton leaves a
+      // touch quicker so the new frame is never occluded mid-fade.
+      switchInCurve: t.easeOut,
+      switchOutCurve: t.easeOut,
+      layoutBuilder: (currentChild, previousChildren) => Stack(
+        alignment: Alignment.topCenter,
+        children: [
+          ...previousChildren,
+          if (currentChild != null) currentChild,
+        ],
+      ),
+      transitionBuilder: (widget, animation) {
+        if (reduceMotion) {
+          // Reduced motion: opacity only — no slide, no blur.
+          return FadeTransition(opacity: animation, child: widget);
+        }
+        // A small rise + a blur(2px) mask that resolves to crisp as it lands,
+        // so an imperfect skeleton↔content overlap still crossfades cleanly.
+        final blur = Tween<double>(begin: 2, end: 0).animate(animation);
+        return FadeTransition(
+          opacity: animation,
+          child: SlideTransition(
+            position: Tween<Offset>(
+              begin: const Offset(0, 0.04),
+              end: Offset.zero,
+            ).animate(CurvedAnimation(parent: animation, curve: t.easeOut)),
+            child: AnimatedBuilder(
+              animation: blur,
+              builder: (context, c) => ImageFiltered(
+                imageFilter: ui.ImageFilter.blur(
+                  sigmaX: blur.value,
+                  sigmaY: blur.value,
+                  tileMode: TileMode.decal,
+                ),
+                child: c,
+              ),
+              child: widget,
+            ),
+          ),
+        );
+      },
+      child: current,
+    );
+  }
+}
 
 /// Shimmering placeholder primitives for content that is still loading from
 /// the network — a calm wash on the brand's glass surfaces (never a blocking

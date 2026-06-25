@@ -23,8 +23,10 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { createClient } from "@supabase/supabase-js";
 import JsonLd from "@/components/JsonLd";
+import Icon from "@/components/Icon";
 import SgeSummary from "@/components/SgeSummary";
 import TrustSignals from "@/components/TrustSignals";
+import ScrollReveal from "@/components/ScrollReveal";
 import RelatedAuthorityPages from "@/components/RelatedAuthorityPages";
 import { getPlans, getProviders, getCategories } from "@/lib/data";
 import {
@@ -221,29 +223,37 @@ export default async function StreetPricesPage() {
           המחיר שמופיע במחירון הוא לא תמיד המחיר שמשלמים בפועל. כאן רואים מה אנשים
           באמת משלמים — לפי דיווחים אנונימיים מהקהילה — וגם אפשר לדווח בעצמכם.
         </p>
+        {/* Provenance pill — the page's central honesty signal, surfaced at the
+            top of the fold: this is reported reality, NOT an official tariff.
+            Neutral info-toned (not the amber VALUE accent, which is reserved for
+            the price figures themselves). */}
+        <p className="mt-5 inline-flex items-start gap-2 rounded-full border border-border bg-surface px-4 py-2 text-sm text-muted">
+          <Icon name="info" size={16} className="mt-0.5 shrink-0 text-muted" />
+          <span>{STREET_PRICE_DISCLAIMER}</span>
+        </p>
       </header>
 
       {/* ── SGE summary ───────────────────────────────────────────────────── */}
-      <div className="mt-8">
+      <ScrollReveal className="mt-8 block">
         <SgeSummary heading="השורה התחתונה: מחיר הרחוב">{summary}</SgeSummary>
-      </div>
+      </ScrollReveal>
 
       {/* ── Trust signals — real catalogue counts + §7b + §17 caveat ──────── */}
-      <div className="mt-8">
+      <ScrollReveal className="mt-8 block">
         <TrustSignals
           planCount={planCount}
           providerCount={providerCount}
           categoryCount={categoryCount}
         />
-      </div>
+      </ScrollReveal>
 
       {/* ── The chart + report form (interactive) ─────────────────────────── */}
-      <div className="mt-10">
+      <ScrollReveal className="mt-10 block">
         <StreetPricesClient
           providers={providerNames}
           initialAggregates={initialAggregates}
         />
-      </div>
+      </ScrollReveal>
 
       {/* ── Related — no dead-ends ────────────────────────────────────────── */}
       <RelatedAuthorityPages

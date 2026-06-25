@@ -115,9 +115,36 @@ class _RealizedHeroFigure extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (wallet.hasRealizedSaving) {
+      // The hero figure rides on the brand GREEN sliver header. The big numeral
+      // is the lifted amber [saving] (amber 500/400) — a strong VALUE read that
+      // holds ≥3:1 at display size on green. Small chrome around it stays white
+      // so it clears AA (amber-on-green fails 4.5:1 as small text), keeping the
+      // amber reserved for the single focal figure.
+      final valueAmber = ffTheme.saving;
       return Column(
         mainAxisSize: MainAxisSize.min,
         children: [
+          // A small eyebrow so the figure reads as a realized win, not a
+          // forecast — white for AA on the green header; the icon carries the
+          // warm VALUE tint at icon size. NB: the header subtitle already prints
+          // "כבר חסכת", so this uses a distinct phrase to avoid duplicating it.
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.savings_rounded, size: 14,
+                  color: Colors.white.withValues(alpha: 0.9)),
+              const SizedBox(width: 6),
+              Text(
+                'החיסכון שלך עד היום',
+                style: GoogleFonts.assistant(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.2,
+                    color: Colors.white.withValues(alpha: 0.9)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
           Row(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.end,
@@ -126,15 +153,16 @@ class _RealizedHeroFigure extends StatelessWidget {
               Text(
                 '₪${wallet.realizedSaving}',
                 style: GoogleFonts.rubik(
-                  fontSize: 40,
+                  fontSize: 44,
                   fontWeight: FontWeight.w800,
-                  color: ffTheme.savingText,
+                  color: valueAmber,
+                  letterSpacing: -1,
                   height: 1,
                 ),
               ),
               const SizedBox(width: 8),
               Padding(
-                padding: const EdgeInsets.only(bottom: 6),
+                padding: const EdgeInsets.only(bottom: 7),
                 child: Text('לשנה',
                     style: GoogleFonts.assistant(
                         fontSize: 15,

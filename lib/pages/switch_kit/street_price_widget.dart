@@ -310,31 +310,48 @@ class _StreetPriceWidgetState extends State<StreetPriceWidget> {
   }
 
   Widget _figureView(AppTheme t, StreetPriceAggregate agg) {
+    // The figure is the page's RESULT — settle its rows in a quick stagger
+    // (Emil: a result reveals, it doesn't pop) rather than landing the whole
+    // block at once. Fade-only (opacity), so it's vestibular-safe by default —
+    // no transform to drop under reduced-motion, and no shift to the text the
+    // page-test asserts on. Keyed to the aggregate so a new figure re-reveals.
+    final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    var step = 0;
+    Widget row(Widget child) {
+      if (reduceMotion) return child;
+      // 50ms steps land the last row well within ~350ms — quick, never draggy.
+      return child.animate(delay: (step++ * 50).ms).fadeIn(duration: 220.ms);
+    }
+
     return Column(
+      key: ValueKey('street-figure-${agg.typicalText}-${agg.reportCount}'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('מחיר רחוב טיפוסי',
-            style: t.labelMedium.copyWith(color: t.secondaryText)),
+        row(Text('מחיר רחוב טיפוסי',
+            style: t.labelMedium.copyWith(color: t.secondaryText))),
         const SizedBox(height: 6),
-        Row(
+        row(Row(
           crossAxisAlignment: CrossAxisAlignment.baseline,
           textBaseline: TextBaseline.alphabetic,
           children: [
+            // The typical street price is the page's VALUE moment (real money
+            // people pay) → amber, not the green ACTION accent. A large bold
+            // numeral clears AA at [saving]; small text would need [savingText].
             Text('₪${agg.typicalText}',
                 style: t.displaySmall
-                    .copyWith(color: t.brandAccent, fontWeight: FontWeight.w800)),
+                    .copyWith(color: t.savingText, fontWeight: FontWeight.w800)),
             const SizedBox(width: 6),
             Text('לחודש', style: t.bodySmall),
           ],
-        ),
+        )),
         const SizedBox(height: 10),
         if (agg.hasSpread)
-          Text('טווח דיווחים: ₪${agg.lowText}–₪${agg.highText}', style: t.bodySmall),
+          row(Text('טווח דיווחים: ₪${agg.lowText}–₪${agg.highText}', style: t.bodySmall)),
         const SizedBox(height: 6),
-        Text('מבוסס על ${agg.reportCount} דיווחים אמיתיים שאומתו', style: t.labelSmall),
+        row(Text('מבוסס על ${agg.reportCount} דיווחים אמיתיים שאומתו', style: t.labelSmall)),
         if (agg.beatsCatalogue && agg.savingVsCatalogueText != null) ...[
           const SizedBox(height: 12),
-          Container(
+          row(Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
               color: t.saving.withValues(alpha: 0.14),
@@ -353,7 +370,7 @@ class _StreetPriceWidgetState extends State<StreetPriceWidget> {
                 ),
               ],
             ),
-          ),
+          )),
         ],
       ],
     );

@@ -132,11 +132,27 @@ class AppSheet {
     bool scrollable = true,
   }) {
     final t = AppTheme.of(context);
+    // Drawer-personality entrance: the sheet translates up under the site's
+    // `--ease-drawer` decel curve in the 200-500ms modal/drawer band, then
+    // leaves a touch quicker (exit is shorter than entrance so dismissal feels
+    // responsive). Reduced-motion is honoured by the framework — when
+    // animations are disabled the route skips the slide and the sheet just
+    // appears. This is the only motion change; the surface, shape and behaviour
+    // are untouched.
+    final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
     return showModalBottomSheet<T>(
       context: context,
       isScrollControlled: scrollable,
       useSafeArea: true,
       backgroundColor: t.cardSurface,
+      sheetAnimationStyle: reduceMotion
+          ? AnimationStyle.noAnimation
+          : AnimationStyle(
+              curve: t.easeDrawer,
+              reverseCurve: t.easeOut,
+              duration: t.motionDrawer,
+              reverseDuration: t.motionFast,
+            ),
       // Rounded top corners come from the app's BottomSheetThemeData; we name
       // it explicitly so the shape is right even when this is shown from a
       // context whose Theme doesn't carry our bottomSheetTheme.

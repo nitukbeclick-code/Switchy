@@ -10,6 +10,7 @@ import '../../widgets/app_button.dart';
 import '../../widgets/app_sheet.dart';
 import '../../widgets/app_sliver_header.dart';
 import '../../widgets/refreshable_scroll.dart';
+import '../../widgets/pressable.dart';
 import '../../app_state.dart';
 import '../../models.dart';
 import '../../data.dart';
@@ -1423,7 +1424,10 @@ class _PlanHeader extends StatelessWidget {
     return Semantics(
       button: true,
       label: 'פתח את פרטי המסלול ${plan.plan} של ${plan.provider}',
-      child: GestureDetector(
+      child: Pressable(
+      // Callback fires its own lightImpact; keep the press silent to avoid a
+      // double-buzz. Adds the tactile scale-on-press the bare GestureDetector lacked.
+      haptic: false,
       onTap: () {
         HapticFeedback.lightImpact();
         context.pushNamed('PlanDetail', pathParameters: {'planId': plan.id});

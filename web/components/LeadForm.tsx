@@ -209,10 +209,14 @@ export default function LeadForm({
       >
         <div
           aria-hidden="true"
-          className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-accent/15 text-2xl text-accent"
+          className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-accent/15 text-2xl text-accent motion-safe:animate-[lead-success-pop_360ms_var(--ease-out)_both]"
         >
           ✓
         </div>
+        {/* Rare, first-time SUCCESS delight (rule 11): a one-shot settle of the
+            confirmation glyph — transform+opacity only, ease-out, motion-safe.
+            Not a loop; fires once when the form completes. */}
+        <style>{`@keyframes lead-success-pop{from{opacity:0;transform:scale(0.8)}to{opacity:1;transform:scale(1)}}`}</style>
         <h3 className="font-display text-lg font-bold tracking-tight text-ink">
           הפרטים התקבלו, תודה!
         </h3>
@@ -625,7 +629,7 @@ export default function LeadForm({
             type="button"
             onClick={back}
             disabled={isSubmitting}
-            className="interactive press rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-foreground hover:border-border-strong/30 hover:bg-border/60 disabled:opacity-50"
+            className="interactive press rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-foreground ease-[var(--ease-out)] [@media(hover:hover)_and_(pointer:fine)]:hover:border-border-strong/30 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-border/60 disabled:opacity-50"
           >
             חזרה
           </button>
@@ -635,7 +639,7 @@ export default function LeadForm({
           <button
             type="button"
             onClick={next}
-            className="interactive press flex-1 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-accent-contrast shadow-soft hover:-translate-y-0.5 hover:bg-accent-hover hover:shadow-card"
+            className="interactive press flex-1 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-accent-contrast shadow-soft ease-[var(--ease-out)] [@media(hover:hover)_and_(pointer:fine)]:hover:bg-accent-hover [@media(hover:hover)_and_(pointer:fine)]:hover:shadow-card [@media(hover:hover)_and_(pointer:fine)]:motion-safe:hover:-translate-y-0.5"
           >
             המשך
           </button>
@@ -644,7 +648,7 @@ export default function LeadForm({
             type="submit"
             disabled={isSubmitting || !consentChecked}
             aria-disabled={isSubmitting || !consentChecked}
-            className="interactive press flex-1 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-accent-contrast shadow-soft hover:-translate-y-0.5 hover:bg-accent-hover hover:shadow-card disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none"
+            className="interactive press flex-1 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-accent-contrast shadow-soft ease-[var(--ease-out)] [@media(hover:hover)_and_(pointer:fine)]:hover:bg-accent-hover [@media(hover:hover)_and_(pointer:fine)]:hover:shadow-card [@media(hover:hover)_and_(pointer:fine)]:motion-safe:hover:-translate-y-0.5 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none"
           >
             {isSubmitting ? "שולח…" : "קבלת הצעה חינם"}
           </button>

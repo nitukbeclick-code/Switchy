@@ -140,7 +140,14 @@ class _QuizWidgetState extends State<QuizWidget> {
             children: [
               Expanded(
                 child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 350),
+                  // Snappy step transition: an entering step is "entering" motion,
+                  // so it rides [easeOut] under 300ms (never the symmetric
+                  // ease-in-out a moving/morphing element would use). Fade +
+                  // a short slide from the leading edge so each step reads as the
+                  // next card sliding into place, not a hard swap.
+                  duration: const Duration(milliseconds: 260),
+                  switchInCurve: ffTheme.easeOut,
+                  switchOutCurve: ffTheme.easeOut,
                   transitionBuilder: (child, animation) => FadeTransition(
                     opacity: animation,
                     child: SlideTransition(
@@ -339,8 +346,18 @@ class _QuizWidgetState extends State<QuizWidget> {
               const SizedBox(width: 16),
               AnimatedSwitcher(
                 duration: ffTheme.motionFast,
-                transitionBuilder: (child, anim) =>
-                    ScaleTransition(scale: anim, child: child),
+                switchInCurve: ffTheme.easeOut,
+                switchOutCurve: ffTheme.easeOut,
+                // The new digit enters with a fade + a slight scale-up from 0.85
+                // (never from scale(0), which would pop) — a calm count change,
+                // not a bounce, since the +/- stepper is a repeatable control.
+                transitionBuilder: (child, anim) => FadeTransition(
+                  opacity: anim,
+                  child: ScaleTransition(
+                    scale: Tween<double>(begin: 0.85, end: 1).animate(anim),
+                    child: child,
+                  ),
+                ),
                 child: Text('$_lines',
                     key: ValueKey(_lines),
                     style: ffTheme.displaySmall.copyWith(color: ffTheme.brandAccent)),
@@ -958,9 +975,31 @@ class _QuizWidgetState extends State<QuizWidget> {
                     ),
                   ],
                   const SizedBox(height: 12),
-                  // Badge row
-                  Row(
+                  // Badge row — the winner moment leads with an amber VALUE
+                  // "המלצה ראשית" trophy badge, then the green ACTION match-score
+                  // and the engine's label. Wraps so RTL long labels don't clip.
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
                     children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: ffTheme.saving.withValues(alpha: 0.16),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: ffTheme.saving.withValues(alpha: 0.40)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.emoji_events_rounded, size: 13, color: ffTheme.savingDark),
+                            const SizedBox(width: 4),
+                            Text('המלצה ראשית',
+                                style: ffTheme.labelSmall
+                                    .copyWith(color: ffTheme.savingText, fontWeight: FontWeight.w800)),
+                          ],
+                        ),
+                      ),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
@@ -978,7 +1017,6 @@ class _QuizWidgetState extends State<QuizWidget> {
                           ],
                         ),
                       ),
-                      const SizedBox(width: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
@@ -1114,8 +1152,24 @@ class _StepCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('שלב $step מתוך 5', style: ffTheme.labelMedium),
-            const SizedBox(height: 8),
+            // Designed step eyebrow — a quiet green ACTION pill that anchors the
+            // step in the 5-step flow (the same text the resume test asserts on,
+            // kept verbatim inside the pill via ExcludeSemantics so the parent
+            // container Semantics stays the single announced label).
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: ffTheme.brandAccentTint,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: ExcludeSemantics(
+                child: Text('שלב $step מתוך 5',
+                    style: ffTheme.labelSmall.copyWith(
+                        color: ffTheme.brandAccentText,
+                        fontWeight: FontWeight.w700)),
+              ),
+            ),
+            const SizedBox(height: 12),
             Text(title, style: ffTheme.headlineMedium),
             const SizedBox(height: 4),
             Text(subtitle, style: ffTheme.bodyMedium.copyWith(color: ffTheme.secondaryText)),
@@ -1138,13 +1192,16 @@ class _ChoiceChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        HapticFeedback.selectionClick();
-        onTap();
-      },
+    // Press feedback via the shared Pressable (subtle scale-down on :active,
+    // reduced-motion-aware). The select↔deselect fill/border is a MORPH between
+    // two states, so the AnimatedContainer rides [easeInOut] rather than a bare
+    // linear tween. Pressable carries the selection haptic, so the inner tap
+    // stays silent to avoid a double-buzz.
+    return Pressable(
+      onTap: onTap,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
+        duration: ffTheme.motionFast,
+        curve: ffTheme.easeInOut,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
           color: selected ? ffTheme.brandAccent : ffTheme.secondaryBackground,
@@ -1175,13 +1232,14 @@ class _RadioTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () {
-        HapticFeedback.selectionClick();
-        onTap();
-      },
+    // Press feedback + state-morph easing, matching _ChoiceChip: Pressable owns
+    // the scale-down and the selection haptic; the fill/border crossfade between
+    // selected and unselected is a morph, so it rides [easeInOut].
+    return Pressable(
+      onTap: onTap,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
+        duration: ffTheme.motionFast,
+        curve: ffTheme.easeInOut,
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
@@ -1225,16 +1283,20 @@ class _PresetChip extends StatelessWidget {
       button: true,
       selected: active,
       label: label,
-      child: GestureDetector(
+      // Pressable adds the subtle scale-down on press (the caller already fires
+      // its own selectionClick haptic, so Pressable stays silent). Transparent
+      // fill keeps the full >=44dp hit area; the active fill is a state morph,
+      // so the AnimatedContainer rides [easeInOut].
+      child: Pressable(
         onTap: onTap,
-        // Transparent fill so the (smaller) visible pill still gets the full
-        // >=44dp hit area without painting a larger background.
+        haptic: false,
         behavior: HitTestBehavior.opaque,
         child: ConstrainedBox(
           constraints: const BoxConstraints(minHeight: kMinTapTarget),
           child: Center(
             child: AnimatedContainer(
-              duration: const Duration(milliseconds: 180),
+              duration: ffTheme.motionFast,
+              curve: ffTheme.easeInOut,
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
                 color: active ? ffTheme.brandAccent : ffTheme.secondaryBackground,

@@ -226,7 +226,8 @@ class _HomeWidgetState extends State<HomeWidget> {
               bottom: 24,
               right: 16,
               left: 76,
-              child: GestureDetector(
+              child: Pressable(
+                haptic: false,
                 onTap: () {
                   HapticFeedback.lightImpact();
                   context.goNamed('Compare');
@@ -294,7 +295,10 @@ class _HomeWidgetState extends State<HomeWidget> {
     final borderColor = accent.withValues(alpha: isUrgent ? 0.35 : 0.45);
 
     return SliverToBoxAdapter(
-      child: GestureDetector(
+      child: Pressable(
+        // Callback fires its own (stronger) lightImpact, so silence the
+        // Pressable's default selection haptic to avoid a double-buzz.
+        haptic: false,
         onTap: () {
           HapticFeedback.lightImpact();
           context.pushNamed('RenewalReport', pathParameters: {'trackedId': r.id});
@@ -483,7 +487,9 @@ class _HomeWidgetState extends State<HomeWidget> {
     // hero never lands on a screen showing a different number.
     final totalSave = savings.totalAnnualPotential;
 
-    return GestureDetector(
+    return Pressable(
+      // The CTA below fires its own lightImpact; keep the card-level press silent.
+      haptic: false,
       onTap: () {
         HapticFeedback.lightImpact();
         context.pushNamed('Savings');
@@ -543,7 +549,8 @@ class _HomeWidgetState extends State<HomeWidget> {
           Semantics(
             button: true,
             label: appState.billsPersonalized ? 'חפש חבילות' : 'בדקו כמה תחסכו',
-            child: GestureDetector(
+            child: Pressable(
+              haptic: false,
               onTap: () {
                 HapticFeedback.lightImpact();
                 // Push (not go) so the hardware/gesture back returns to home.
@@ -755,7 +762,8 @@ class _HomeWidgetState extends State<HomeWidget> {
               // Amber = VALUE (personalised saving); neutral ink otherwise.
               final savingsColor = isPersonalized && save > 0 ? ffTheme.savingDark : ffTheme.secondaryText;
 
-              return GestureDetector(
+              return Pressable(
+                haptic: false,
                 onTap: () {
                   HapticFeedback.selectionClick();
                   appState.setCategory(cat.id);
@@ -939,7 +947,7 @@ class _HomeWidgetState extends State<HomeWidget> {
             ...realPosts.asMap().entries.map((e) {
               final i = e.key;
               final post = e.value;
-              return GestureDetector(
+              return Pressable(
                 onTap: () => context.goNamed('Community'),
                 child: Container(
                   margin: const EdgeInsets.only(bottom: 8),
@@ -1158,7 +1166,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                 final plan = planById(appState.watchedPlans[i]);
                 if (plan == null) return const SizedBox();
                 final better = _betterDealFor(plan, appState);
-                return GestureDetector(
+                return Pressable(
                   onTap: () => context.pushNamed('PlanDetail', pathParameters: {'planId': plan.id}),
                   child: Stack(
                     clipBehavior: Clip.none,

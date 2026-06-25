@@ -369,7 +369,7 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
                         ),
                       ),
                     ),
-                  ).animate(delay: (i.clamp(0, 6) * 30).ms).fadeIn(duration: 240.ms).slideY(begin: 0.1, end: 0);
+                  ).animate(delay: (i.clamp(0, 6) * 30).ms).fadeIn(duration: 240.ms, curve: ffTheme.easeOut).slideY(begin: 0.1, end: 0, duration: 240.ms, curve: ffTheme.easeOut);
                 },
               ),
             ).animate().fadeIn(duration: 500.ms),
@@ -390,8 +390,13 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
                     child: TextField(
                       controller: _inputCtrl,
                       textDirection: TextDirection.rtl,
+                      minLines: 1,
+                      maxLines: 4,
+                      textInputAction: TextInputAction.send,
                       decoration: InputDecoration(
                         hintText: 'שאל על מסלולי תקשורת...',
+                        hintTextDirection: TextDirection.rtl,
+                        isDense: true,
                         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide(color: ffTheme.alternate)),
                         enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide(color: ffTheme.alternate)),
@@ -400,7 +405,6 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
                         fillColor: ffTheme.background,
                       ),
                       onSubmitted: _send,
-                      textInputAction: TextInputAction.send,
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -472,7 +476,11 @@ class _MessageBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final plans = msg.planIds.map((id) => planById(id)).whereType<Plan>().toList();
-    return Padding(
+    // Emil: an advisor reply is a HIGH-FREQUENCY append, so it gets ONE crisp
+    // single-bubble entrance (ease-out settle) — never a staggered cascade.
+    // Reduced-motion keeps the fade and drops the 8px slide.
+    final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    final bubble = Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Column(
         crossAxisAlignment: msg.isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
@@ -491,23 +499,44 @@ class _MessageBubble extends StatelessWidget {
           ],
           Row(
             mainAxisAlignment: msg.isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               if (!msg.isUser) ...[
-                Container(
-                  constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: ffTheme.secondaryBackground,
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(18),
-                      topRight: Radius.circular(18),
-                      bottomLeft: Radius.circular(4),
-                      bottomRight: Radius.circular(18),
+                // The Switchy mascot avatar beside every agent bubble — anchors
+                // the "theirs" side and reinforces the AI identity (decorative;
+                // the agent is named in the app bar, so hidden from a11y).
+                ExcludeSemantics(
+                  child: Container(
+                    width: 30,
+                    height: 30,
+                    margin: const EdgeInsetsDirectional.only(end: 8, bottom: 2),
+                    decoration: BoxDecoration(
+                      gradient: ffTheme.accentGradient,
+                      shape: BoxShape.circle,
+                      boxShadow: ffTheme.shadowAccent,
                     ),
-                    border: Border.all(color: ffTheme.alternate.withValues(alpha: 0.10)),
-                    boxShadow: ffTheme.shadowSoft,
+                    child: const Center(
+                      child: Icon(Icons.auto_awesome_rounded, size: 16, color: Colors.white),
+                    ),
                   ),
-                  child: Text(msg.text, style: ffTheme.bodyMedium.copyWith(height: 1.5), textDirection: TextDirection.rtl),
+                ),
+                Flexible(
+                  child: Container(
+                    constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.72),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: ffTheme.secondaryBackground,
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(18),
+                        topRight: Radius.circular(18),
+                        bottomLeft: Radius.circular(4),
+                        bottomRight: Radius.circular(18),
+                      ),
+                      border: Border.all(color: ffTheme.alternate.withValues(alpha: 0.10)),
+                      boxShadow: ffTheme.shadowSoft,
+                    ),
+                    child: Text(msg.text, style: ffTheme.bodyMedium.copyWith(height: 1.5), textDirection: TextDirection.rtl),
+                  ),
                 ),
               ] else ...[
                 Container(
@@ -632,9 +661,15 @@ class _MessageBubble extends StatelessWidget {
           ],
         ],
       ),
-    ).animate().fadeIn(duration: 260.ms).slideY(
+    );
+
+    if (reduceMotion) {
+      return bubble.animate().fadeIn(duration: 260.ms);
+    }
+    return bubble.animate().fadeIn(duration: 260.ms, curve: ffTheme.easeOut).slideY(
           begin: 0.08,
           end: 0,
+          duration: 260.ms,
           curve: ffTheme.easeOut,
         );
   }
@@ -646,11 +681,48 @@ class _TypingBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Emil: the typing indicator is the sanctioned GENUINE loader — its three
+    // dots may pulse on repeat to signal work in flight. Reduced-motion drops
+    // the loop (no infinite animation): static dots still read as "typing".
+    final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    Widget dot(int i) {
+      final d = Container(
+        width: 8,
+        height: 8,
+        margin: EdgeInsets.only(left: i > 0 ? 4 : 0),
+        decoration: BoxDecoration(color: ffTheme.brandAccent, shape: BoxShape.circle),
+      );
+      if (reduceMotion) return d;
+      return d
+          .animate(onPlay: (c) => c.repeat())
+          .fadeIn(delay: (i * 200).ms, duration: 300.ms)
+          .then()
+          .fadeOut(duration: 300.ms);
+    }
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
+          // Mascot avatar matches the agent bubbles so "Switchy is typing" reads
+          // as the same speaker (decorative — hidden from screen readers).
+          ExcludeSemantics(
+            child: Container(
+              width: 30,
+              height: 30,
+              margin: const EdgeInsetsDirectional.only(end: 8, bottom: 2),
+              decoration: BoxDecoration(
+                gradient: ffTheme.accentGradient,
+                shape: BoxShape.circle,
+                boxShadow: ffTheme.shadowAccent,
+              ),
+              child: const Center(
+                child: Icon(Icons.auto_awesome_rounded, size: 16, color: Colors.white),
+              ),
+            ),
+          ),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
@@ -665,19 +737,11 @@ class _TypingBubble extends StatelessWidget {
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
-              children: List.generate(3, (i) => Container(
-                width: 8,
-                height: 8,
-                margin: EdgeInsets.only(left: i > 0 ? 4 : 0),
-                decoration: BoxDecoration(color: ffTheme.brandAccent, shape: BoxShape.circle),
-              ).animate(onPlay: (c) => c.repeat())
-                .fadeIn(delay: (i * 200).ms, duration: 300.ms)
-                .then()
-                .fadeOut(duration: 300.ms)),
+              children: List.generate(3, dot),
             ),
           ),
         ],
       ),
-    );
+    ).animate().fadeIn(duration: 200.ms, curve: ffTheme.easeOut);
   }
 }

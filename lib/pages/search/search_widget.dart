@@ -538,6 +538,30 @@ class _SheetChoice extends StatelessWidget {
   }
 }
 
+// ── Staggered reveal helper ──────────────────────────────────────────────────
+
+/// Emil staggered reveal for a result/suggestion entry: fade-in + an 8px settle
+/// under ease-out, delayed by [index] within the 30–80ms band. Reduced-motion
+/// KEEPS the fade and DROPS the transform (per `MediaQuery.disableAnimations`),
+/// so the list still appears cleanly for users who asked for less movement.
+Widget _revealEntry(
+  BuildContext context,
+  Widget child, {
+  required int index,
+  int step = 40,
+  int maxIndex = 6,
+}) {
+  final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+  final delay = (index.clamp(0, maxIndex) * step).ms;
+  if (reduceMotion) {
+    return child.animate().fadeIn(delay: delay, duration: 240.ms);
+  }
+  return child
+      .animate(delay: delay)
+      .fadeIn(duration: 240.ms, curve: const Cubic(0.22, 1, 0.36, 1))
+      .slideY(begin: 0.06, end: 0, duration: 240.ms, curve: const Cubic(0.22, 1, 0.36, 1));
+}
+
 // ── Results list ─────────────────────────────────────────────────────────────
 
 class _ResultsList extends StatelessWidget {
@@ -596,20 +620,22 @@ class _ResultsList extends StatelessWidget {
                 spacing: 8,
                 runSpacing: 8,
                 children: results.categories.map((c) {
-                  final widget = _CategoryResultChip(
-                    hit: c,
-                    query: query,
-                    ffTheme: ffTheme,
-                    onTap: () {
-                      onBeforeNavigate();
-                      final app = Provider.of<AppState>(context, listen: false);
-                      app.setCategory(c.id);
-                      context.pushNamed('Results');
-                    },
-                  )
-                      .animate(delay: (i.clamp(0, 5) * 40).ms)
-                      .fadeIn(duration: 240.ms)
-                      .slideY(begin: 0.06, end: 0, curve: ffTheme.easeOut);
+                  final widget = _revealEntry(
+                    context,
+                    _CategoryResultChip(
+                      hit: c,
+                      query: query,
+                      ffTheme: ffTheme,
+                      onTap: () {
+                        onBeforeNavigate();
+                        final app = Provider.of<AppState>(context, listen: false);
+                        app.setCategory(c.id);
+                        context.pushNamed('Results');
+                      },
+                    ),
+                    index: i,
+                    maxIndex: 5,
+                  );
                   i++;
                   return widget;
                 }).toList(),
@@ -632,20 +658,22 @@ class _ResultsList extends StatelessWidget {
                   separatorBuilder: (_, __) => const SizedBox(width: 10),
                   itemBuilder: (context, idx) {
                     final name = results.providers[idx];
-                    final widget = _ProviderChip(
-                      name: name,
-                      query: query,
-                      planCount: plansByProvider(name).length,
-                      ffTheme: ffTheme,
-                      onTap: () {
-                        onBeforeNavigate();
-                        context.pushNamed('Provider',
-                            pathParameters: {'name': name});
-                      },
-                    )
-                        .animate(delay: (i.clamp(0, 5) * 40).ms)
-                        .fadeIn(duration: 240.ms)
-                        .slideY(begin: 0.06, end: 0, curve: ffTheme.easeOut);
+                    final widget = _revealEntry(
+                      context,
+                      _ProviderChip(
+                        name: name,
+                        query: query,
+                        planCount: plansByProvider(name).length,
+                        ffTheme: ffTheme,
+                        onTap: () {
+                          onBeforeNavigate();
+                          context.pushNamed('Provider',
+                              pathParameters: {'name': name});
+                        },
+                      ),
+                      index: i,
+                      maxIndex: 5,
+                    );
                     i++;
                     return widget;
                   },
@@ -662,15 +690,18 @@ class _ResultsList extends StatelessWidget {
                   ffTheme: ffTheme),
               const SizedBox(height: 10),
               ...results.plans.map((p) {
-                final widget = _HighlightedPlanCard(
-                  plan: p,
-                  query: query,
-                  currentBill: appState.currentBill(p.cat),
-                  ffTheme: ffTheme,
-                )
-                    .animate(delay: (i.clamp(0, 6) * 35).ms)
-                    .fadeIn(duration: 240.ms)
-                    .slideY(begin: 0.06, end: 0, curve: ffTheme.easeOut);
+                final widget = _revealEntry(
+                  context,
+                  _HighlightedPlanCard(
+                    plan: p,
+                    query: query,
+                    currentBill: appState.currentBill(p.cat),
+                    ffTheme: ffTheme,
+                  ),
+                  index: i,
+                  step: 35,
+                  maxIndex: 6,
+                );
                 i++;
                 return widget;
               }),
@@ -1089,13 +1120,16 @@ class _Suggestions extends StatelessWidget {
                   style:
                       ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText)),
               const SizedBox(height: 12),
-              ...cheapest.asMap().entries.map((e) => _CheapestRow(
-                    plan: e.value,
-                    ffTheme: ffTheme,
-                  )
-                      .animate(delay: (e.key.clamp(0, 5) * 30).ms)
-                      .fadeIn(duration: 240.ms)
-                      .slideY(begin: 0.1)),
+              ...cheapest.asMap().entries.map((e) => _revealEntry(
+                    context,
+                    _CheapestRow(
+                      plan: e.value,
+                      ffTheme: ffTheme,
+                    ),
+                    index: e.key,
+                    step: 30,
+                    maxIndex: 5,
+                  )),
               const SizedBox(height: 24),
             ],
 

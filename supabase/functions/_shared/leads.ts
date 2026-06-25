@@ -141,12 +141,25 @@ export async function captureAiLead(
   // entirely so a project where the column hasn't been migrated yet still accepts
   // the insert — the absence of the column then simply means "not sellable", which
   // is the safe default. (Truth-only: we never send a sellable signal we didn't get.)
+  //
+  // DEPLOY DEPENDENCY (HARD): the consent_share_at column is the ONE signal that
+  // marks a lead sellable=yes (see buildLeadSheetRow). Its migration MUST be applied
+  // in prod for the sellable flag to work — it IS applied today; the guards below are
+  // belt-and-braces consistency, not a schema change. insertRow itself is already
+  // fail-soft (a PostgREST error → false, never a throw), so a missing column can
+  // NEVER throw to the caller; the only question is whether the lead still lands.
   const { consent_share_at, ...rest } = row;
-  const payload: Record<string, unknown> = consent_share_at
-    ? { ...rest, consent_share_at }
-    : rest;
-  const ok = await insertRow("leads", payload);
-  return ok ? "captured" : "error";
+  if (!consent_share_at) {
+    // No sellable signal → never reference the column at all (safe on any schema).
+    return (await insertRow("leads", rest)) ? "captured" : "error";
+  }
+  // Sellable lead: try WITH the share stamp first. If that insert fails (e.g. the
+  // column is missing on a not-yet-migrated project — PostgREST 4xx, caught + false),
+  // RETRY without it so the lead itself is never lost to schema drift. The lead then
+  // lands as not-sellable rather than vanishing — losing the (recoverable) sellable
+  // flag is strictly safer than dropping a consented customer's details.
+  if (await insertRow("leads", { ...rest, consent_share_at })) return "captured";
+  return (await insertRow("leads", rest)) ? "captured" : "error";
 }
 
 // ── Intent detection (deterministic, no extra paid AI call) ──────────────────

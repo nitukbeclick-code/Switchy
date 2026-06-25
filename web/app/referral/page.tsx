@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import Icon from "@/components/Icon";
 import JsonLd from "@/components/JsonLd";
 import ReferralCard from "@/components/ReferralCard";
 import CommissionDisclosure from "@/components/CommissionDisclosure";
@@ -70,9 +71,13 @@ export default function ReferralPage() {
         <span className="text-foreground">הזמינו חבר</span>
       </nav>
 
-      {/* ── Heading ───────────────────────────────────────────────────────── */}
-      <header className="mt-4">
-        <h1 className="font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
+      {/* ── Heading — ACTION eyebrow (sharing is the user's action) ───────── */}
+      <header className="mt-5">
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-accent/40 bg-accent/10 px-3 py-1 text-xs font-semibold text-accent-text">
+          <Icon name="spark" size={14} aria-hidden />
+          שיתוף הכלי · חינם
+        </span>
+        <h1 className="mt-4 font-display text-3xl font-bold leading-tight tracking-tight text-ink sm:text-[2.65rem]">
           שתפו את Switchy AI עם חברים
         </h1>
         <p className="mt-4 max-w-2xl text-lg leading-relaxed text-foreground">
@@ -98,27 +103,38 @@ export default function ReferralPage() {
           {[
             {
               n: "1",
+              icon: "spark" as const,
               t: "קבלו קוד",
               d: "לחצו על הכפתור וקבלו קוד הזמנה אישי וקישור לשיתוף.",
             },
             {
               n: "2",
+              icon: "arrow" as const,
               t: "שתפו עם חבר",
               d: "שלחו את הקוד או הקישור למי שעשוי להרוויח מהשוואה.",
             },
             {
               n: "3",
+              icon: "check" as const,
               t: "הם בודקים וחוסכים",
               d: "החבר בודק את החשבון שלו בכלי החינמי — בדיוק כמוכם.",
             },
           ].map((s) => (
             <li key={s.n} className="card p-5">
-              <span
-                aria-hidden="true"
-                className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-accent/10 font-display text-sm font-bold text-accent-text"
-              >
-                {s.n}
-              </span>
+              <div className="flex items-center gap-2.5">
+                <span
+                  aria-hidden="true"
+                  className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent/10 text-accent-text"
+                >
+                  <Icon name={s.icon} size={18} aria-hidden />
+                </span>
+                <span
+                  aria-hidden="true"
+                  className="font-display text-xs font-bold uppercase tracking-wider text-muted"
+                >
+                  שלב {s.n}
+                </span>
+              </div>
               <h3 className="mt-3 font-display text-base font-semibold tracking-tight text-ink">
                 {s.t}
               </h3>
@@ -159,7 +175,12 @@ export default function ReferralPage() {
                   </span>
                   <span className="mt-0.5 block text-xs text-muted">{l.sub}</span>
                 </span>
-                <span aria-hidden="true" className="text-muted">←</span>
+                <Icon
+                  name="arrow"
+                  size={18}
+                  aria-hidden
+                  className="shrink-0 text-muted transition-colors group-hover:text-accent"
+                />
               </Link>
             </li>
           ))}

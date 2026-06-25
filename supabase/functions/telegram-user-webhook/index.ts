@@ -53,6 +53,7 @@ import { type AiKeys, type ChatTurn } from "../_shared/ai.ts";
 import { type Plan, plansFromRows } from "../_shared/catalogue.ts";
 import { captureAiLead, type AiLeadInput } from "../_shared/leads.ts";
 import { runAgent } from "../_shared/agent.ts";
+import { esc, NL, sendTelegram } from "../_shared/telegram.ts";
 import {
   appendTurn,
   asChatTurns,
@@ -63,6 +64,8 @@ import {
   saveSession,
 } from "../_shared/session.ts";
 import {
+  HANDOFF_ACK_REPLY,
+  HANDOFF_RELAY_FAIL_REPLY,
   HELP_REPLY,
   isOptOut,
   langFromTelegramLocale,
@@ -70,6 +73,7 @@ import {
   parseInbound,
   telegramSessionId,
   type TgUserUpdate,
+  wantsHuman,
   WELCOME_REPLY,
   withFirstContactNote,
 } from "./lib.ts";
@@ -208,6 +212,157 @@ function isFirstContact(session: ChatSession): boolean {
   return (session.transcript?.length ?? 0) === 0;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// HUMAN-TAKEOVER LIVE RELAY (customer→team half) — the Telegram mirror of the
+// WhatsApp human takeover. State lives on THIS chat's public.ai_sessions row in
+// two dedicated columns (see supabase/telegram-handoff-2026-06.sql):
+//   • bot_enabled         — true (default) = the agent answers; a takeover sets
+//                           it FALSE (the agent is PAUSED for this chat).
+//   • relay_team_chat_id  — the TEAM chat id the customer's live messages forward
+//                           to while paused. Set on take-over, NULL on hand-back.
+// RELAY-ACTIVE = (bot_enabled === false AND relay_team_chat_id is set).
+//
+// We read/write these columns DIRECTLY via PostgREST (not through the unified
+// session's slots, whose loader whitelists keys) so the relay state is robust to
+// every session save and independent of the transcript envelope. Everything is
+// FAIL-SOFT: a missing column / DB error → "no takeover" so the agent keeps
+// answering (the bot still works; it just never pauses) — never an error path.
+// ─────────────────────────────────────────────────────────────────────────────
+
+type RelayState = { active: boolean; teamChatId: string | null };
+
+// Read the takeover state for a chat's session row. Fail-soft: a null/error query
+// OR a row written before the migration (no columns) → not-active. The columns
+// default bot_enabled=true / relay_team_chat_id=NULL, so a normal chat reads as
+// not-active and the agent runs exactly as before.
+async function relayStateFor(sessionKey: string): Promise<RelayState> {
+  if (!sessionKey) return { active: false, teamChatId: null };
+  const rows = await fetchRows<{ bot_enabled?: boolean | null; relay_team_chat_id?: string | null }>(
+    `/rest/v1/ai_sessions?session_id=eq.${encodeURIComponent(sessionKey)}&select=bot_enabled,relay_team_chat_id&limit=1`,
+  );
+  if (!rows || rows.length === 0) return { active: false, teamChatId: null };
+  const r = rows[0];
+  const teamChatId = String(r.relay_team_chat_id ?? "").trim() || null;
+  // Mirror whatsapp botEnabled(): an explicit false pauses; absent/undefined/true
+  // keeps the agent on. Active only when paused AND a relay target is set.
+  const paused = r.bot_enabled === false;
+  return { active: paused && !!teamChatId, teamChatId: paused ? teamChatId : null };
+}
+
+// The reply-marker keyboard the team card / each forwarded customer line carries.
+// A rep REPLY (reply-to) to any message bearing this marker relays back to the
+// customer's Telegram chat (the chat id is encoded in callback_data). Mirrors the
+// WhatsApp lead-card relay, but keyed by the customer's TG chat id. The hand-back
+// button ends the takeover. Contract (shared verbatim with notify-lead/callbacks.ts):
+//   reply marker  = "tgu:<chatId>:relay"
+//   hand-back     = "tgu:<chatId>:handback"
+function teamRelayKeyboard(chatId: number): Record<string, unknown> {
+  return {
+    inline_keyboard: [[
+      { text: "💬 השיבו (reply) לכאן ללקוח", callback_data: `tgu:${chatId}:relay` },
+      { text: "🤖 סיום והחזרה לבוט", callback_data: `tgu:${chatId}:handback` },
+    ]],
+  };
+}
+
+// Build the team takeover card: who the customer is + what they just asked, with
+// the reply/hand-back keyboard. Mirrors the spirit of buildTakeoverContextHeader
+// (the WhatsApp version) — the customer-controlled bits are HTML-escaped because
+// sendTelegram posts parse_mode HTML, and the request text is clipped.
+function buildHandoffCard(firstName: string, chatId: number, request: string): string {
+  const ask = String(request ?? "").trim().slice(0, 400);
+  return [
+    `🤝 <b>בקשה לנציג אנושי בטלגרם</b>${firstName ? ` — ${esc(firstName)}` : ""}`,
+    `👤 <b>לקוח:</b> ${esc(firstName || "—")} · <code>tg:${chatId}</code>`,
+    ask ? `🧵 <b>מה הלקוח כתב:</b> ${esc(ask)}` : null,
+    "",
+    "העוזר האוטומטי הושהה. כל הודעה שתשיבו (reply) לכרטיס הזה תישלח ללקוח בטלגרם; לסיום הקישו «סיום והחזרה לבוט».",
+  ].filter((x) => x !== null).join(NL);
+}
+
+// Forward ONE live customer message to the team relay chat during an active
+// takeover (customer→team half). Prefixed with the 📩 marker + the customer's
+// name, carries the reply/hand-back keyboard so a rep can reply to it. Best-effort
+// + fail-soft: a Telegram error never blocks (the message is already persisted to
+// the transcript). Uses the TEAM bot (sendTelegram → cfg.tgChat override).
+async function relayCustomerToTeam(
+  teamChatId: string,
+  chatId: number,
+  firstName: string,
+  text: string,
+): Promise<boolean> {
+  try {
+    const cfg = await resolveCfgCached();
+    const who = esc(firstName || `tg:${chatId}`);
+    const body = esc(String(text ?? "").slice(0, 3500));
+    const r = await sendTelegram(
+      { ...cfg, tgChat: teamChatId },
+      `📩 <b>${who}</b>: ${body}`,
+      teamRelayKeyboard(chatId),
+    );
+    return !!r.ok;
+  } catch (e) {
+    jlog({ at: "tgu.relay.toteam", ok: false, error: String(e) });
+    return false;
+  }
+}
+
+// START a takeover: pause the agent + point the relay at the team chat (a direct
+// PATCH on the ai_sessions row, upserted first so a brand-new chat has a row to
+// flip), then notify the team with the takeover card. Returns whether the team was
+// notified. Fail-soft throughout — a DB/Telegram miss is logged, never thrown.
+async function startHandoff(
+  sessionKey: string,
+  chatId: number,
+  firstName: string,
+  request: string,
+): Promise<boolean> {
+  const cfg = await resolveCfgCached();
+  const teamChatId = String(cfg.tgChat ?? "").trim();
+  if (!teamChatId) {
+    // No team chat configured — we cannot relay anywhere. Leave the agent ON
+    // (don't pause into a dead end) and report "not notified" so the caller falls
+    // back to the agent (which can still offer a callback lead).
+    jlog({ at: "tgu.handoff.start", ok: false, reason: "no team chat" });
+    return false;
+  }
+  // Ensure a row exists, then flip it paused + pointed at the team. Upsert keeps a
+  // brand-new chat's transcript intact (merge-duplicates) while setting the flags.
+  try {
+    await serviceFetch(`/rest/v1/ai_sessions?on_conflict=session_id`, {
+      method: "POST",
+      headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+      body: JSON.stringify({
+        session_id: sessionKey,
+        bot_enabled: false,
+        relay_team_chat_id: teamChatId,
+        updated_at: new Date().toISOString(),
+      }),
+    });
+  } catch (e) {
+    jlog({ at: "tgu.handoff.flip", ok: false, error: String(e) });
+  }
+  // Reg.13 audit (best-effort) — proves WHEN a human takeover started + for whom.
+  try {
+    await insertRow("security_audit_log", {
+      event: "telegram_user_handoff_start",
+      detail: { channel: "telegram", chat_id: chatId, team_chat_id: teamChatId },
+    });
+  } catch (_) { /* the takeover still works without the audit row */ }
+  // Notify the team with the context card + reply/hand-back keyboard. The takeover
+  // is COMMITTED above (the relay target is set), so we return true even if this
+  // single card send fails — the next customer message still forwards to the team
+  // (relayCustomerToTeam), and we don't strand the customer by reverting to the
+  // agent after pausing it. The card send is best-effort.
+  const r = await sendTelegram(
+    { ...cfg, tgChat: teamChatId },
+    buildHandoffCard(firstName, chatId, request),
+    teamRelayKeyboard(chatId),
+  );
+  jlog({ at: "tgu.handoff.start", chatId, card: !!r.ok });
+  return true;
+}
+
 // ── Per-message orchestration (the guard chain ABOVE the agent) ───────────────
 async function handleUpdate(update: TgUserUpdate): Promise<void> {
   const parsed = parseInbound(update);
@@ -241,6 +396,43 @@ async function handleUpdate(update: TgUserUpdate): Promise<void> {
     session = emptySession("app", sessionKey || "");
   }
   const firstContact = isFirstContact(session);
+
+  // (2b) HUMAN-TAKEOVER LIVE RELAY — the Telegram mirror of the WhatsApp takeover
+  //      gate. Runs AFTER the §30A STOP gate (opt-out always wins, above) and the
+  //      rate limit, BEFORE the deterministic commands and the agent. Two cases:
+  //
+  //   • ALREADY relaying (this chat's session is bot_enabled=false + a team relay
+  //     target set): the agent is PAUSED — forward the customer's message straight
+  //     to the team and RETURN, never running the agent. The customer is in a live
+  //     human conversation; the bot does not answer. Fail-soft: if the relay send
+  //     fails we tell the customer their message was saved (honest), and we still
+  //     persist the turn to the transcript so the rep's context is intact.
+  //
+  //   • NOT yet relaying but the customer just ASKED for a human (a /human-style
+  //     command or a clear request): START a takeover — pause the agent, point the
+  //     relay at the team chat, notify the team with a context card, send the
+  //     customer the single connecting ack, and RETURN (the agent does not run).
+  //     If the team chat isn't configured we can't relay anywhere → fall through
+  //     to the agent (which can still offer a callback lead) rather than dead-end.
+  const relay = await relayStateFor(sessionKey);
+  if (relay.active && relay.teamChatId) {
+    const delivered = await relayCustomerToTeam(relay.teamChatId, chatId, firstName, text);
+    if (!delivered) await sendMessage(chatId, HANDOFF_RELAY_FAIL_REPLY);
+    // Persist the customer turn so the team's running context (and any later
+    // hand-back to the agent) sees the full thread. No bot reply is stored.
+    await persistTurn(session, sessionKey, text, "", []);
+    return;
+  }
+  if (wantsHuman(text, isCommand, command)) {
+    const notified = await startHandoff(sessionKey, chatId, firstName, text);
+    if (notified) {
+      await sendMessage(chatId, HANDOFF_ACK_REPLY);
+      await persistTurn(session, sessionKey, text, HANDOFF_ACK_REPLY, []);
+      return;
+    }
+    // No team chat / notify failed → don't strand the customer in a paused state;
+    // fall through to the agent, which can capture a consent-gated callback lead.
+  }
 
   // Plain /start and /help are deterministic — no LLM round-trip needed. The §11
   // note is appended to /start (the canonical first contact). /help is always the

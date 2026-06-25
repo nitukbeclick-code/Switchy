@@ -52,6 +52,7 @@ import { fetchRows } from "../_shared/db.ts";
 import { rateLimit, secretFingerprint } from "../_shared/ratelimit.ts";
 import { appendRow, getSheetsToken } from "../_shared/google_sheets.ts";
 import { jlog } from "../_shared/log.ts";
+import { captureError } from "../_shared/observability.ts";
 import {
   buildExportRow,
   buyerSheetCells,
@@ -133,7 +134,7 @@ async function appendToBuyerSheet(cfg: Cfg, spreadsheetId: string, rows: ExportR
   return { appended, configured: true };
 }
 
-Deno.serve(async (req: Request) => {
+async function handle(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") {
     return new Response("ok", {
       headers: {
@@ -217,4 +218,19 @@ Deno.serve(async (req: Request) => {
       ? { configured: true, sheet: query.dryRun ? "skipped (dryRun)" : appended.appended }
       : { configured: false },
   });
+}
+
+// Observability wrapper (fire-and-forget; dark until a Sentry DSN is configured).
+// An UNEXPECTED throw outside handle's own fail-soft paths is surfaced to
+// captureError and degraded to the function's existing 503 { ok:false, error }
+// shape (the same "temporarily unavailable" it returns on a failed query) — never
+// a new status/body. captureError is NOT awaited and never throws/blocks.
+Deno.serve(async (req: Request) => {
+  try {
+    return await handle(req);
+  } catch (e) {
+    captureError(e, { fn: "lead-export", method: req.method });
+    jlog({ at: "lead-export", ok: false, error: String(e) });
+    return json({ ok: false, error: "temporarily unavailable" }, 503);
+  }
 });

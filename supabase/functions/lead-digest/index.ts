@@ -40,6 +40,7 @@ import { fetchRows } from "../_shared/db.ts";
 import { sendTelegram } from "../_shared/telegram.ts";
 import { type AgendaInput, buildDailyDigest } from "../_shared/agenda.ts";
 import { jlog } from "../_shared/log.ts";
+import { captureError } from "../_shared/observability.ts";
 
 // Pure SLA helpers live in ./lib.ts so tests can import them WITHOUT loading this
 // module — its top-level Deno.serve would otherwise be cached before the capture
@@ -83,7 +84,7 @@ async function fetchStaleLeads(nowMs: number): Promise<StaleLead[] | null> {
   );
 }
 
-Deno.serve(async (req: Request) => {
+async function handle(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") {
     return new Response("ok", {
       headers: { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*", "Access-Control-Allow-Methods": "POST, OPTIONS" },
@@ -149,4 +150,18 @@ Deno.serve(async (req: Request) => {
     digest: { sent: digestOk, queryOk: !!agenda },
     nudge: { sent: nudgeOk, stale: staleSelected.length, queryOk: stale !== null },
   });
+}
+
+// Observability wrapper (fire-and-forget; dark until a Sentry DSN is configured).
+// An UNEXPECTED throw outside handle's own fail-soft paths is surfaced to
+// captureError and degraded to a 503 in the function's existing { ok:false, error }
+// shape — never a new body shape. captureError is NOT awaited and never throws/blocks.
+Deno.serve(async (req: Request) => {
+  try {
+    return await handle(req);
+  } catch (e) {
+    captureError(e, { fn: "lead-digest", method: req.method });
+    jlog({ at: "lead-digest", ok: false, error: String(e) });
+    return json({ ok: false, error: "temporarily unavailable" }, 503);
+  }
 });

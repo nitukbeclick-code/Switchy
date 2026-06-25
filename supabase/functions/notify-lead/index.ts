@@ -39,6 +39,7 @@ import { aiTriage } from "./triage.ts";
 import { BOT_COMMANDS } from "./commands.ts";
 import { handleCallback, handleTeamMessage } from "./callbacks.ts";
 import { handleConsoleAct, handleConsoleData, renderConsoleHtml } from "./console.ts";
+import { captureError } from "../_shared/observability.ts";
 
 // Stamp the row as notified so the sweep doesn't re-send it. Fail-soft: a
 // missed stamp costs at most one duplicate message.
@@ -123,7 +124,7 @@ async function leadsGrantProbe(): Promise<"ok" | "forbidden" | "error"> {
   }
 }
 
-Deno.serve(async (req: Request) => {
+async function handle(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*", "Access-Control-Allow-Methods": "GET, POST, OPTIONS" } });
   }
@@ -332,4 +333,19 @@ Deno.serve(async (req: Request) => {
   jlog({ at: "notify", lead: lead.id, telegram: tg.ok, email: email.ok, sheet: sheet.ok, hot: triage.score >= 4 });
 
   return json({ ok: tg.ok || email.ok, telegram: { ok: tg.ok, error: tg.error }, email });
+}
+
+// Observability wrapper (fire-and-forget; dark until a Sentry DSN is configured).
+// An UNEXPECTED throw outside handle's own fail-soft paths (config resolve, a
+// trigger fan-out, a Telegram-update dispatch) is surfaced to captureError and
+// degraded to a 503 in the function's existing { ok:false, error } shape — never a
+// new status/body. captureError is NOT awaited and never throws/blocks.
+Deno.serve(async (req: Request) => {
+  try {
+    return await handle(req);
+  } catch (e) {
+    captureError(e, { fn: "notify-lead", method: req.method });
+    jlog({ at: "notify-lead", ok: false, error: String(e) });
+    return json({ ok: false, error: "temporarily unavailable" }, 503);
+  }
 });

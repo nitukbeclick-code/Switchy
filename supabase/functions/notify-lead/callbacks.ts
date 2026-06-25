@@ -4,6 +4,7 @@
 import type { Cfg, Lead, RenewalRow, TgCallbackQuery, TgInlineKeyboard, TgMessage } from "../_shared/types.ts";
 import { esc, NL, sendTelegram, tgApi } from "../_shared/telegram.ts";
 import { fetchRows, insertRow, logEvent, patchCount, rpcRows, serviceFetch } from "../_shared/db.ts";
+import { jlog } from "../_shared/log.ts";
 import { desiredCategory, formatTimeline, frozenKeyboard, isWonAskMarkup, keyboardFor, leadIdFromMarkup, type LeadEvent, STATUS_HE, tgDisplayName } from "../_shared/leads.ts";
 import { isLinkAskMarkup, isRescheduleAskMarkup } from "../_shared/meetings.ts";
 import { sendText as waSendText } from "../_shared/whatsapp.ts";
@@ -774,6 +775,187 @@ async function applyLostReason(
   return { ok: true, lead: leadId, status: "lost", reason: reasonKey };
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// TELEGRAM customer-channel live-relay (human takeover) — team→customer half.
+//
+// The PUBLIC Telegram bot (telegram-user-webhook) pauses its agent when a customer
+// asks for a human and forwards the live conversation here, to the team chat, with
+// a takeover card carrying the reply/hand-back keyboard. This is the mirror of the
+// WhatsApp rep→customer relay above, but for the Telegram customer channel:
+//
+// RELAY CONTRACT (shared verbatim with telegram-user-webhook):
+//   ai_sessions row "tg-u-<chatId>" carries bot_enabled + relay_team_chat_id.
+//   TAKE-OVER (by the customer's request) : bot_enabled=false + relay_team_chat_id=<team chat>.
+//   HAND-BACK (rep ends it here)          : bot_enabled=true  + relay_team_chat_id=NULL.
+//   Callback-data on the team card / each forwarded line:
+//     reply marker = "tgu:<chatId>:relay"     (a rep REPLY to it relays to the customer)
+//     hand-back    = "tgu:<chatId>:handback"  (ends the takeover, returns to the bot)
+//
+// Team→customer sends use the CUSTOMER-FACING USER bot token (TELEGRAM_USER_BOT_
+// TOKEN) — NOT cfg.tgToken (the team/rep bot). A bot can only message a chat that
+// opened a conversation with IT, and the customer talked to the USER bot, so the
+// reply must go out over that bot. The §30A STOP gate (marketing_suppression
+// channel='telegram', contact='tg:<chatId>') still WINS before any send.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Outbound cap for a relayed rep message to the customer's Telegram (HTML text;
+// Telegram's hard limit is 4096 — stay well under, matching MAX_RELAY_LEN intent).
+const MAX_TG_RELAY_LEN = 3500;
+
+// The customer-facing USER bot token. Read from env (the user bot ships with its
+// own TELEGRAM_USER_BOT_TOKEN — distinct from the team bot's cfg.tgToken). Empty
+// ⇒ the relay-back can't send (the user bot is dark); we report it honestly.
+function userBotToken(): string {
+  const v = Deno.env.get("TELEGRAM_USER_BOT_TOKEN");
+  return v && v.trim() ? v.trim() : "";
+}
+
+// Parse a customer Telegram chat id out of a tgu:<chatId>:<action> callback_data
+// in a message's inline keyboard. Telegram chat ids are integers (optionally
+// negative for groups). Returns null when no tgu: button is present.
+export function tguChatIdFromMarkup(markup?: { inline_keyboard?: { callback_data?: string }[][] }): string | null {
+  for (const row of markup?.inline_keyboard ?? []) {
+    for (const btn of row) {
+      const m = String(btn.callback_data ?? "").match(/^tgu:(-?\d{1,20}):(?:relay|handback)$/);
+      if (m) return m[1];
+    }
+  }
+  return null;
+}
+
+// The "tg-u-<chatId>" session key the telegram-user-webhook stores relay state on.
+// Kept in sync with telegram-user-webhook/lib.ts telegramSessionId (the customer
+// bot's safe per-chat id). chatId is the numeric Telegram chat id as a string.
+function tguSessionKey(chatId: string): string {
+  return `tg-u-${chatId}`;
+}
+
+// Send ONE message to the customer's Telegram chat via the USER bot. Plain HTML,
+// single attempt (the caller treats a failure as "not delivered" and tells the
+// rep to retry — same fail-soft contract as the WhatsApp relay). Returns whether
+// Telegram accepted it. Never throws.
+async function sendUserBot(chatId: string, text: string): Promise<boolean> {
+  const token = userBotToken();
+  if (!token) return false;
+  try {
+    const r = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text,
+        parse_mode: "HTML",
+        disable_web_page_preview: true,
+      }),
+    });
+    return r.ok;
+  } catch (e) {
+    jlog({ at: "tgu.relay.send", ok: false, error: String(e) });
+    return false;
+  }
+}
+
+// §30A STOP gate for the Telegram customer channel: a durable marketing_suppression
+// row (channel='telegram', contact='tg:<chatId>') means the customer asked us to
+// stop — we never message them, even inside an active human takeover. Mirrors the
+// WhatsApp relay's opted_out/suppression check. Fail-soft: a query error returns
+// false (we don't BLOCK a live human reply on a transient read failure — the
+// suppression write itself is the authoritative opt-out act; this is a courtesy
+// double-check), matching how the WhatsApp side treats its checks as best-effort.
+async function isTelegramSuppressed(chatId: string): Promise<boolean> {
+  const contact = `tg:${chatId}`;
+  const rows = await fetchRows<{ id?: string }>(
+    `/rest/v1/marketing_suppression?channel=eq.telegram&contact=eq.${encodeURIComponent(contact)}&select=id&limit=1`,
+  );
+  return !!(rows && rows.length > 0);
+}
+
+// END a Telegram customer takeover: flip the session row back to bot_enabled=true
+// + relay_team_chat_id=NULL (the hand-back half of the contract), tell the customer
+// (via the user bot) the human chat ended, confirm to the team. Idempotent — handing
+// back a not-relaying session is a harmless no-op flip. Audited (Reg.13). The
+// pressing rep's tg id (cb.from?.id) is the actor; the customer chat id comes from
+// the button's callback_data (already extracted by the caller).
+async function handleTgHandback(
+  cfg: Cfg,
+  answer: (text?: string) => Promise<unknown>,
+  chatId: string,
+  cb: TgCallbackQuery,
+): Promise<HandlerResult> {
+  const sessionKey = tguSessionKey(chatId);
+  const n = await patchCount(`/rest/v1/ai_sessions?session_id=eq.${encodeURIComponent(sessionKey)}`, {
+    bot_enabled: true,
+    relay_team_chat_id: null,
+    updated_at: new Date().toISOString(),
+  });
+  if (n === 0) {
+    // No row matched — the session vanished or the columns aren't migrated yet.
+    // Tell the rep honestly; nothing was changed.
+    await answer("לא נמצאה שיחת טלגרם פעילה להחזרה");
+    return { ok: false, skipped: "no telegram relay session" };
+  }
+  await logRelayAudit(cb.from?.id ?? null, "tg_relay_handback", {
+    channel: "telegram",
+    chat_id: chatId,
+    session_id: sessionKey,
+  });
+  // Best-effort customer notice that the human chat ended + the bot is back.
+  await sendUserBot(
+    chatId,
+    "השיחה עם הנציג הסתיימה ✅ חזרתי לענות אוטומטית — אפשר להמשיך לשאול אותי כל דבר על המסלולים והמחירים.",
+  );
+  await answer("הוחזר לבוט 🤖");
+  await sendTelegram(cfg, `🤖 <b>שיחת הטלגרם הוחזרה לבוט</b> (<code>tg:${esc(chatId)}</code>) — העוזר האוטומטי חזר לענות ללקוח.`);
+  return { ok: true, channel: "telegram", chat_id: chatId };
+}
+
+// Relay a rep's Telegram reply to the customer over the USER bot — the team→customer
+// half. Preconditions (checked by the caller): the reply is to a message bearing
+// the tgu:<chatId>:relay marker. Here we:
+//   §30A FIRST — refuse if the customer is on the telegram suppression list (STOP).
+//   1) sendUserBot(customer chat, text) via the customer-facing USER bot token.
+//   2) Reg.13 audit (who/when, PII-light preview).
+//   3) Leave the takeover ACTIVE (the human stays in the loop; only hand-back ends it).
+// Fail-soft: a send failure is reported to the rep with a retry nudge (we never
+// silently drop the reply). Never throws.
+async function relayTeamReplyToTelegram(
+  cfg: Cfg,
+  chatId: string,
+  text: string,
+  who: string,
+  actorTgId: number | null,
+): Promise<HandlerResult> {
+  if (!userBotToken()) {
+    await sendTelegram(cfg, "⚠️ בוט המשתמש (Telegram) אינו מוגדר — לא ניתן להשיב ללקוח כאן.");
+    return { ok: false, skipped: "user bot token not set" };
+  }
+  // §30A STOP gate — runs FIRST and WINS. A telegram-suppression row blocks the
+  // relay outright (we never message someone who asked to stop, even mid-takeover).
+  if (await isTelegramSuppressed(chatId)) {
+    await sendTelegram(cfg, "⛔ הלקוח ביקש להפסיק לקבל הודעות (STOP) — ההודעה לא נשלחה.");
+    return { ok: false, skipped: "customer suppressed" };
+  }
+  const body = text.slice(0, MAX_TG_RELAY_LEN);
+  const delivered = await sendUserBot(chatId, esc(body));
+  // Reg.13 audit (who/when, PII-light preview) — like the WhatsApp relay reply.
+  await logRelayAudit(actorTgId, "tg_relay_reply", {
+    channel: "telegram",
+    chat_id: chatId,
+    delivered,
+    preview: body.slice(0, 120),
+  });
+  // Lightweight delivery feedback: a ✓ when the user bot accepted the relay, with
+  // a short echo of what was sent. Fail-soft on a send miss — tell the rep to retry.
+  const echo = esc(body.slice(0, 140)) + (body.length > 140 ? "…" : "");
+  await sendTelegram(
+    cfg,
+    delivered
+      ? `✓ <b>נמסר ללקוח</b> בטלגרם (${esc(who || "נציג")})${NL}💬 <i>${echo}</i>`
+      : "⚠️ שליחת ההודעה ללקוח בטלגרם נכשלה — נסו שוב.",
+  );
+  return { ok: true, relayed: true, channel: "telegram", delivered };
+}
+
 export async function handleCallback(cfg: Cfg, cb: TgCallbackQuery): Promise<HandlerResult> {
   // Meeting cards live in their own namespace and carry the same gates inside.
   if (String(cb.data ?? "").startsWith("meet:")) return await handleMeetingCallback(cfg, cb);
@@ -831,6 +1013,20 @@ export async function handleCallback(cfg: Cfg, cb: TgCallbackQuery): Promise<Han
     return relayAction === "takeover"
       ? await handleRelayTakeover(cfg, answer, relayLeadId, cb)
       : await handleRelayHandback(cfg, answer, relayLeadId, cb);
+  }
+
+  // TELEGRAM customer-channel live-relay controls (its own namespace, keyed by the
+  // customer's Telegram chat id). "tgu:<chatId>:relay" is the reply marker — a tap
+  // just toasts the rep to REPLY (the actual relay happens on the reply-to in
+  // handleTeamMessage). "tgu:<chatId>:handback" ends the takeover. Auth + team-chat
+  // gates above already enforced.
+  const tguM = data.match(/^tgu:(-?\d{1,20}):(relay|handback)$/);
+  if (tguM) {
+    const [, tguChatId, tguAction] = tguM;
+    if (tguAction === "handback") return await handleTgHandback(cfg, answer, tguChatId, cb);
+    // "relay" tap → nudge the rep to use Reply; the relay fires on the reply text.
+    await answer("השיבו (reply) להודעה זו כדי לשלוח ללקוח בטלגרם");
+    return { ok: true, channel: "telegram", prompt: "reply" };
   }
 
   // Lost-reason disposition: the rep picked a grounded reason (or cancelled) from
@@ -1182,6 +1378,19 @@ export async function handleTeamMessage(cfg: Cfg, msg: TgMessage): Promise<Handl
     if (boardZoomId) return await handleBoardMeetingReply(cfg, msg, boardZoomId, "sendlink", text);
     const boardReschedId = isBoardRescheduleAskMarkup(reply.reply_markup);
     if (boardReschedId) return await handleBoardMeetingReply(cfg, msg, boardReschedId, "reschedule", text);
+
+    // TELEGRAM customer-relay reply-capture: a reply to the takeover card / a
+    // forwarded customer line (both carry the tgu:<chatId>:relay|handback marker)
+    // is a message to the CUSTOMER, relayed over the user bot. Resolved by the chat
+    // id in the marker — checked BEFORE leadIdFromMarkup (a tgu card has no lead id,
+    // so it would otherwise fall through to "reply without lead context"). An empty
+    // reply (e.g. a sticker) is ignored honestly.
+    const tguChatId = tguChatIdFromMarkup(reply.reply_markup);
+    if (tguChatId) {
+      if (!text) return { ok: true, skipped: "empty telegram relay reply" };
+      const tguWho = tgDisplayName(msg.from);
+      return await relayTeamReplyToTelegram(cfg, tguChatId, text, tguWho, msg.from?.id ?? null);
+    }
 
     const leadId = leadIdFromMarkup(reply.reply_markup);
     if (!leadId || !text) return { ok: true, skipped: "reply without lead context" };

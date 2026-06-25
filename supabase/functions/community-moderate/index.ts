@@ -40,6 +40,7 @@ import { firstEnv, resolveCfgCached, safeEqual } from "../_shared/config.ts";
 import { fetchRows, insertRow, patchCount } from "../_shared/db.ts";
 import { esc, NL, sendTelegram } from "../_shared/telegram.ts";
 import { jlog } from "../_shared/log.ts";
+import { captureError } from "../_shared/observability.ts";
 
 type WebhookBody = {
   type?: string; // INSERT | UPDATE | DELETE
@@ -348,7 +349,7 @@ async function auditModeration(
   }
 }
 
-Deno.serve(async (req: Request) => {
+async function handle(req: Request): Promise<Response> {
   if (req.method !== "POST") return json({ error: "method not allowed" }, 405);
 
   const cfg = await resolveCfgCached();
@@ -436,4 +437,19 @@ Deno.serve(async (req: Request) => {
   }
 
   return json({ ok: true, flagged: true, severity: verdict.severity });
+}
+
+// Observability wrapper (fire-and-forget; dark until a Sentry DSN is configured).
+// An UNEXPECTED throw outside handle's own fail-soft paths (e.g. config resolve)
+// is surfaced to captureError and degraded to the function's existing 500-shaped
+// error response — never a new status/body. captureError is NOT awaited and never
+// throws/blocks.
+Deno.serve(async (req: Request) => {
+  try {
+    return await handle(req);
+  } catch (e) {
+    captureError(e, { fn: "community-moderate", method: req.method });
+    jlog({ at: "community-moderate", ok: false, error: String(e) });
+    return json({ error: "internal error" }, 500);
+  }
 });

@@ -297,6 +297,30 @@ Deno.test("community-notify does not fan out @mentions for provider reviews", as
   assertEquals(captured.length, 0);
 });
 
+// ── observability wrapper: never changes the error response ─────────────────────
+// The top-level Deno.serve wrapper feeds an UNEXPECTED throw to captureError
+// (fire-and-forget, dark without a DSN) and must STILL return the function's own
+// fail-soft error response — same status, same { error } shape — never crash or
+// invent a new contract. We force a throw at the very first un-guarded line
+// (req.headers.get for the secret gate) by handing the handler a Request whose
+// headers.get throws, then assert the degraded 500 { error } response.
+Deno.test("community-notify obs wrapper degrades an unexpected throw to the existing error shape", async () => {
+  const throwingReq = {
+    method: "POST",
+    headers: { get() { throw new Error("boom: headers exploded"); } },
+    json: () => Promise.resolve({}),
+  } as unknown as Request;
+  // Must not reject — the wrapper swallows the throw (captureError is dark/no-op
+  // without a DSN) and returns the function's existing fail-soft error response.
+  const r = await Promise.resolve(handler(throwingReq));
+  assertEquals(r.status, 500);
+  const body = await r.json();
+  // Same { error } shape the function already uses for its error responses — the
+  // wrapper introduces no new field/contract, and never an { ok:true } success.
+  assertEquals(typeof body.error, "string");
+  assertEquals(body.ok, undefined);
+});
+
 Deno.test("community-notify still sends the team ping when the mention RPC fails", async () => {
   // The resolve RPC erroring (here: 500) must not drop the team Telegram ping —
   // the two are independent. mentioned falls back to 0, the ping still goes out.

@@ -41,6 +41,7 @@ import { planMeetingFollowUps } from "../_shared/meeting_followup.ts";
 import { type CronJobRow, evalCronHealth } from "../_shared/cron_health.ts";
 import { sendCustomerEmail } from "../_shared/email.ts";
 import { buildRenewalReminderEmail, RENEWAL_EMAIL_SUBJECT } from "./email.ts";
+import { captureError } from "../_shared/observability.ts";
 
 const enc = encodeURIComponent;
 
@@ -387,7 +388,7 @@ async function rateLimited(secret: string): Promise<Response | null> {
   return json({ ok: false, error: "rate_limited" }, 429, { "Retry-After": String(res.retryAfterSec) });
 }
 
-Deno.serve(async (req: Request) => {
+async function handle(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*", "Access-Control-Allow-Methods": "GET, POST, OPTIONS" } });
   }
@@ -472,5 +473,19 @@ Deno.serve(async (req: Request) => {
       const leadSweep = await runSweep(cfg);
       return json({ ...result, lead_sweep: leadSweep });
     }
+  }
+}
+
+// Observability wrapper (fire-and-forget; dark until a Sentry DSN is configured).
+// An UNEXPECTED throw outside handle's own fail-soft paths is surfaced to
+// captureError and degraded to a 503 in the function's existing { ok:false, error }
+// shape — never a new body shape. captureError is NOT awaited and never throws/blocks.
+Deno.serve(async (req: Request) => {
+  try {
+    return await handle(req);
+  } catch (e) {
+    captureError(e, { fn: "renewal-reminders", method: req.method });
+    jlog({ at: "renewal-reminders", ok: false, error: String(e) });
+    return json({ ok: false, error: "temporarily unavailable" }, 503);
   }
 });

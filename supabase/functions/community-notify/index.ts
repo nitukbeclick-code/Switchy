@@ -36,6 +36,7 @@ import { resolveCfgCached, safeEqual } from "../_shared/config.ts";
 import { rpcRows } from "../_shared/db.ts";
 import { esc, NL, sendTelegram } from "../_shared/telegram.ts";
 import { jlog } from "../_shared/log.ts";
+import { captureError } from "../_shared/observability.ts";
 
 type WebhookBody = {
   type?: string; // INSERT | UPDATE | DELETE
@@ -136,7 +137,7 @@ async function fanOutMentions(table: string, r: Record<string, unknown>): Promis
   return written;
 }
 
-Deno.serve(async (req: Request) => {
+async function handle(req: Request): Promise<Response> {
   if (req.method !== "POST") return json({ error: "method not allowed" }, 405);
 
   const cfg = await resolveCfgCached();
@@ -179,4 +180,19 @@ Deno.serve(async (req: Request) => {
     return json({ error: "telegram send failed", mentioned }, 502);
   }
   return json({ ok: true, mentioned });
+}
+
+// Observability wrapper (fire-and-forget; dark until a Sentry DSN is configured).
+// An UNEXPECTED throw outside handle's own fail-soft paths (e.g. config resolve,
+// an outbound send) is surfaced to captureError and degraded to the function's
+// existing 500-shaped error response — never a new status/body. captureError is
+// NOT awaited and never throws/blocks.
+Deno.serve(async (req: Request) => {
+  try {
+    return await handle(req);
+  } catch (e) {
+    captureError(e, { fn: "community-notify", method: req.method });
+    jlog({ at: "community-notify", ok: false, error: String(e) });
+    return json({ error: "internal error" }, 500);
+  }
 });

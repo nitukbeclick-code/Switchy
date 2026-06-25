@@ -176,3 +176,76 @@ export const WELCOME_REPLY =
   `היי! אני העוזר החכם של <b>Switchy AI</b> 🤖\n` +
   `אני משווה בשבילכם מסלולי סלולר, אינטרנט, טלוויזיה וחבילות חו"ל ועוזר לחסוך בחשבון.\n` +
   `אפשר לשאול אותי כל דבר על המסלולים והמחירים, ואם תרצו — אחבר אתכם לנציג אנושי.`;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// HUMAN HANDOFF — "connect me to a human" intent (the customer→team takeover).
+//
+// A customer can ask to speak with a real rep at any time. When they do (an
+// explicit /human (or /agent / /rep) command, OR plain text that clearly asks
+// for a person), we PAUSE the agent for this chat and relay the live conversation
+// to the team — the mirror of the WhatsApp human takeover. Detection is pure +
+// testable here so the handler just routes on it.
+//
+// Conservative, like isOptOut: only clear human-request phrasings trip it, so an
+// ordinary question that merely MENTIONS a rep ("כמה זמן לוקח לנציג לחזור?") does
+// NOT force a handoff — it still goes to the agent, which can offer one itself.
+// Substring/anchored matching only (JS \b is ASCII-only and never matches around
+// Hebrew/Arabic/Cyrillic letters), so the patterns are whole-message anchored.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Commands that explicitly request a human. Bare /human, /agent, /rep, /support.
+const HUMAN_COMMANDS = new Set(["human", "agent", "rep", "support", "representative"]);
+
+// Whole-message phrasings that clearly ask for a person (HE/AR/RU/EN). Each
+// pattern requires BOTH an explicit ACTION verb (want / talk to / connect me /
+// transfer me) AND a HUMAN noun (rep / human / live person / customer service), so
+// an ordinary question that merely MENTIONS a rep ("כמה זמן לוקח לנציג לחזור?") or
+// even uses a soft verb does NOT trip it — only a real request does. The whole
+// message is checked, but the short-length guard in wantsHuman keeps it to a bare
+// ask. Substring matching (no ASCII \b around non-Latin scripts).
+//
+// HE_HUMAN / etc. are the human-noun alternations; HE_WANT / etc. the action verbs.
+const HE_WANT = "רוצה|רוצָה|מבקש|מבקשת|צריך|צריכה|מעוניין|מעוניינת|תחברו|חברו|תעבירו|העבירו|לדבר|לשוחח|לעבור|חבר אותי|תחבר אותי|העבר אותי";
+const HE_HUMAN = "נציג|נציגה|נציגים|בנאדם|בן.?אדם|אדם אמיתי|איש אמיתי|אנושי|מוקד|שירות לקוחות|מישהו אמיתי|מוקדן|מוקדנית";
+const AR_WANT = "أريد|اريد|عايز|عاوز|ممكن|اطلب|بدي|حوّلني|حولني|كلموني";
+const AR_HUMAN = "ممثل|موظف|شخص|إنسان|انسان|بشري|مندوب|خدمة العملاء|موظف حقيقي|شخص حقيقي";
+const RU_WANT = "хочу|можно|соедините|переключите|дайте|свяжите|нужен|нужна|перевед";
+const RU_HUMAN = "оператор|человек|живой человек|менеджер|поддержк|представител|сотрудник";
+const EN_WANT = "want|need|can i|let me|talk|speak|connect|chat|transfer|put me through";
+const EN_HUMAN = "human|agent|representative|rep|real person|live (?:person|agent)|customer (?:service|support)|support agent|someone real|a person";
+
+const HUMAN_PATTERNS: RegExp[] = [
+  new RegExp(`(?:${HE_WANT}).*(?:${HE_HUMAN})`, "u"),
+  new RegExp(`(?:${HE_HUMAN}).*(?:${HE_WANT})`, "u"), // word order can flip in Hebrew
+  new RegExp(`(?:${AR_WANT}).*(?:${AR_HUMAN})`, "u"),
+  new RegExp(`(?:${RU_WANT}).*(?:${RU_HUMAN})`, "iu"),
+  new RegExp(`(?:${EN_WANT}).*(?:${EN_HUMAN})`, "iu"),
+];
+
+// True when the message (command OR text) is a clear request for a human rep.
+// `isCommand`/`command` come from parseInbound (already lowercased, @-stripped).
+export function wantsHuman(text: string, isCommand: boolean, command: string): boolean {
+  if (isCommand && HUMAN_COMMANDS.has(String(command ?? "").toLowerCase())) return true;
+  const s = String(text ?? "").trim();
+  if (!s || s.length > 120) return false; // a long paragraph isn't a bare handoff ask
+  return HUMAN_PATTERNS.some((re) => re.test(s));
+}
+
+// ── Handoff customer-facing copy (Hebrew, the default audience) ────────────────
+// The single ack the customer gets the moment a takeover starts — honest, sets
+// the expectation (a human is being connected; the auto-bot is paused), and tells
+// them they can still type STOP. No promise about timing we can't keep.
+export const HANDOFF_ACK_REPLY =
+  "מחבר/ת אתכם לנציג אנושי 🤝 מרגע זה ההודעות שלכם מגיעות ישירות לצוות והעוזר האוטומטי מושהה. " +
+  "כתבו כאן כרגיל — נציג יענה בהקדם. (לעצירת הודעות: «STOP».)";
+
+// Shown once when the customer pings during an ACTIVE takeover but we couldn't
+// reach the team relay (fail-soft) — honest, never silently swallows the message.
+export const HANDOFF_RELAY_FAIL_REPLY =
+  "ההודעה נשמרה ותועבר לנציג. אם זה דחוף אפשר גם להשוות הכול ב-https://switchy-ai.com 🙏";
+
+// The notice the customer gets when a rep ENDS the takeover (hand-back to the
+// bot). Sent by the team side via the user bot, but defined here so the copy
+// lives with the rest of the bot's voice.
+export const HANDOFF_ENDED_REPLY =
+  "השיחה עם הנציג הסתיימה ✅ חזרתי לענות אוטומטית — אפשר להמשיך לשאול אותי כל דבר על המסלולים והמחירים.";

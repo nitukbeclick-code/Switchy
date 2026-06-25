@@ -11,6 +11,7 @@ import '../../app_state.dart';
 import '../../services/auth_service.dart';
 import '../../services/telegram_service.dart';
 import '../../widgets/app_button.dart';
+import '../../widgets/pressable.dart';
 import '../../widgets/sticky_cta_scaffold.dart';
 
 class SettingsWidget extends StatelessWidget {
@@ -46,46 +47,56 @@ class SettingsWidget extends StatelessWidget {
               ffTheme: ffTheme,
               child: Column(
                 children: [
-                  _ToggleRow(
-                    icon: Icons.price_change_rounded,
-                    title: 'התראות מחיר',
-                    subtitle: 'קבל עדכון כשמחיר חבילה משתנה',
-                    value: appState.prefPriceAlerts,
-                    onChanged: (v) {
-                      HapticFeedback.selectionClick();
-                      Provider.of<AppState>(context, listen: false).setPrefPriceAlerts(v);
-                    },
-                    ffTheme: ffTheme,
+                  // Emil: settings rows cascade in (stagger 40ms, fade + 8px
+                  // settle, ease-out) so the list reads as a sequence, not a
+                  // single block popping in — reduced-motion keeps the fade,
+                  // drops the transform (see [_RowReveal]).
+                  _RowReveal(index: 0, child:
+                    _ToggleRow(
+                      icon: Icons.price_change_rounded,
+                      title: 'התראות מחיר',
+                      subtitle: 'קבל עדכון כשמחיר חבילה משתנה',
+                      value: appState.prefPriceAlerts,
+                      onChanged: (v) {
+                        HapticFeedback.selectionClick();
+                        Provider.of<AppState>(context, listen: false).setPrefPriceAlerts(v);
+                      },
+                      ffTheme: ffTheme,
+                    ),
                   ),
                   _Divider(ffTheme: ffTheme),
-                  _ToggleRow(
-                    icon: Icons.update_rounded,
-                    title: 'עדכוני בקשות',
-                    subtitle: 'קבל התראה על סטטוס הבקשה שלך',
-                    value: appState.prefRequestUpdates,
-                    onChanged: (v) {
-                      HapticFeedback.selectionClick();
-                      Provider.of<AppState>(context, listen: false).setPrefRequestUpdates(v);
-                    },
-                    ffTheme: ffTheme,
+                  _RowReveal(index: 1, child:
+                    _ToggleRow(
+                      icon: Icons.update_rounded,
+                      title: 'עדכוני בקשות',
+                      subtitle: 'קבל התראה על סטטוס הבקשה שלך',
+                      value: appState.prefRequestUpdates,
+                      onChanged: (v) {
+                        HapticFeedback.selectionClick();
+                        Provider.of<AppState>(context, listen: false).setPrefRequestUpdates(v);
+                      },
+                      ffTheme: ffTheme,
+                    ),
                   ),
                   _Divider(ffTheme: ffTheme),
-                  _ToggleRow(
-                    icon: Icons.people_rounded,
-                    title: 'פעילות קהילה',
-                    subtitle: 'קבל עדכונים על פוסטים ותגובות',
-                    value: appState.prefCommunityNotifs,
-                    onChanged: (v) {
-                      HapticFeedback.selectionClick();
-                      Provider.of<AppState>(context, listen: false).setPrefCommunityNotifs(v);
-                    },
-                    ffTheme: ffTheme,
+                  _RowReveal(index: 2, child:
+                    _ToggleRow(
+                      icon: Icons.people_rounded,
+                      title: 'פעילות קהילה',
+                      subtitle: 'קבל עדכונים על פוסטים ותגובות',
+                      value: appState.prefCommunityNotifs,
+                      onChanged: (v) {
+                        HapticFeedback.selectionClick();
+                        Provider.of<AppState>(context, listen: false).setPrefCommunityNotifs(v);
+                      },
+                      ffTheme: ffTheme,
+                    ),
                   ),
                   _Divider(ffTheme: ffTheme),
-                  _TelegramRow(ffTheme: ffTheme),
+                  _RowReveal(index: 3, child: _TelegramRow(ffTheme: ffTheme)),
                 ],
               ),
-            ).animate().fadeIn(duration: 350.ms).slideY(begin: 0.06, end: 0),
+            ).animate().fadeIn(duration: 350.ms),
 
             const SizedBox(height: 24),
 
@@ -95,64 +106,70 @@ class SettingsWidget extends StatelessWidget {
               ffTheme: ffTheme,
               child: Column(
                 children: [
-                  _ActionRow(
-                    icon: Icons.receipt_long_rounded,
-                    title: 'אפס חשבונות חודשיים',
-                    subtitle: 'מחק את כל סכומי החשבונות',
-                    iconColor: ffTheme.warning,
-                    onTap: () => _confirmAction(
-                      context: context,
+                  _RowReveal(index: 0, child:
+                    _ActionRow(
+                      icon: Icons.receipt_long_rounded,
+                      title: 'אפס חשבונות חודשיים',
+                      subtitle: 'מחק את כל סכומי החשבונות',
+                      iconColor: ffTheme.warning,
+                      onTap: () => _confirmAction(
+                        context: context,
+                        ffTheme: ffTheme,
+                        title: 'אפס חשבונות',
+                        message: 'לאפס את כל החשבונות החודשיים לאפס?',
+                        confirmLabel: 'אפס',
+                        confirmColor: ffTheme.warning,
+                        onConfirm: () {
+                          Provider.of<AppState>(context, listen: false).resetAllBills();
+                          _showSnack(context, 'החשבונות אופסו בהצלחה');
+                        },
+                      ),
                       ffTheme: ffTheme,
-                      title: 'אפס חשבונות',
-                      message: 'לאפס את כל החשבונות החודשיים לאפס?',
-                      confirmLabel: 'אפס',
-                      confirmColor: ffTheme.warning,
-                      onConfirm: () {
-                        Provider.of<AppState>(context, listen: false).resetAllBills();
-                        _showSnack(context, 'החשבונות אופסו בהצלחה');
-                      },
                     ),
-                    ffTheme: ffTheme,
                   ),
                   _Divider(ffTheme: ffTheme),
-                  _ActionRow(
-                    icon: Icons.chat_bubble_outline_rounded,
-                    title: 'נקה שיחת תמיכה',
-                    subtitle: 'מחק את היסטוריית הצ\'אט',
-                    iconColor: ffTheme.secondaryText,
-                    onTap: () => _confirmAction(
-                      context: context,
-                      ffTheme: ffTheme,
+                  _RowReveal(index: 1, child:
+                    _ActionRow(
+                      icon: Icons.chat_bubble_outline_rounded,
                       title: 'נקה שיחת תמיכה',
-                      message: 'למחוק את היסטוריית שיחת התמיכה?',
-                      confirmLabel: 'מחק',
-                      confirmColor: ffTheme.error,
-                      onConfirm: () {
-                        Provider.of<AppState>(context, listen: false).clearChatHistory();
-                        _showSnack(context, 'שיחת התמיכה נוקתה');
-                      },
+                      subtitle: 'מחק את היסטוריית הצ\'אט',
+                      iconColor: ffTheme.secondaryText,
+                      onTap: () => _confirmAction(
+                        context: context,
+                        ffTheme: ffTheme,
+                        title: 'נקה שיחת תמיכה',
+                        message: 'למחוק את היסטוריית שיחת התמיכה?',
+                        confirmLabel: 'מחק',
+                        confirmColor: ffTheme.error,
+                        onConfirm: () {
+                          Provider.of<AppState>(context, listen: false).clearChatHistory();
+                          _showSnack(context, 'שיחת התמיכה נוקתה');
+                        },
+                      ),
+                      ffTheme: ffTheme,
                     ),
-                    ffTheme: ffTheme,
                   ),
                   _Divider(ffTheme: ffTheme),
-                  _ActionRow(
-                    icon: Icons.psychology_rounded,
-                    title: 'נקה שיחת יועץ',
-                    subtitle: 'מחק את היסטוריית שיחת ה-AI',
-                    iconColor: ffTheme.secondaryText,
-                    onTap: () => _confirmAction(
-                      context: context,
-                      ffTheme: ffTheme,
+                  _RowReveal(index: 2, child:
+                    _ActionRow(
+                      icon: Icons.psychology_rounded,
                       title: 'נקה שיחת יועץ',
-                      message: 'למחוק את היסטוריית שיחת היועץ?',
-                      confirmLabel: 'מחק',
-                      confirmColor: ffTheme.error,
-                      onConfirm: () {
-                        Provider.of<AppState>(context, listen: false).clearAdvisorHistory();
-                        _showSnack(context, 'שיחת היועץ נוקתה');
-                      },
+                      subtitle: 'מחק את היסטוריית שיחת ה-AI',
+                      iconColor: ffTheme.secondaryText,
+                      onTap: () => _confirmAction(
+                        context: context,
+                        ffTheme: ffTheme,
+                        title: 'נקה שיחת יועץ',
+                        message: 'למחוק את היסטוריית שיחת היועץ?',
+                        confirmLabel: 'מחק',
+                        confirmColor: ffTheme.error,
+                        onConfirm: () {
+                          Provider.of<AppState>(context, listen: false).clearAdvisorHistory();
+                          _showSnack(context, 'שיחת היועץ נוקתה');
+                        },
+                      ),
+                      ffTheme: ffTheme,
                     ),
-                    ffTheme: ffTheme,
                   ),
                 ],
               ),
@@ -468,6 +485,31 @@ class _BiometricSectionState extends State<_BiometricSection> {
 
 // ── Shared helpers ─────────────────────────────────────────────────────────────
 
+/// Emil staggered list-row reveal. Each settings row cascades in by [index] *
+/// 40ms (within the 30–80ms band), fading + settling up 8px under the app's
+/// signature ease-out — so a section reads as a sequence rather than a single
+/// block popping in. Reduced-motion KEEPS the fade but DROPS the transform
+/// (per `MediaQuery.disableAnimations`), so the cascade never lurches for users
+/// who asked for less movement.
+class _RowReveal extends StatelessWidget {
+  const _RowReveal({required this.index, required this.child});
+  final int index;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    final delay = (index.clamp(0, 8) * 40).ms;
+    if (reduceMotion) {
+      return child.animate().fadeIn(delay: delay, duration: 280.ms);
+    }
+    return child
+        .animate()
+        .fadeIn(delay: delay, duration: 280.ms, curve: Curves.easeOut)
+        .slideY(begin: 0.06, end: 0, delay: delay, duration: 280.ms, curve: const Cubic(0.22, 1, 0.36, 1));
+  }
+}
+
 class _SectionHeader extends StatelessWidget {
   const _SectionHeader({required this.title, required this.ffTheme, this.subtitle});
   final String title;
@@ -658,9 +700,12 @@ class _ActionRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
+    // Emil: a destructive/navigational row is an OCCASIONAL tap, so it earns the
+    // tactile press-scale (scale 0.97, ease-out settle) + light haptic via the
+    // shared [Pressable] — the same press language as every other tappable row
+    // in the app. Reduced-motion skips the scale (handled inside Pressable).
+    return Pressable(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         child: Row(

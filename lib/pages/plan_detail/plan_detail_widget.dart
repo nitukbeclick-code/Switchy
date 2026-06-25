@@ -211,7 +211,10 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      // Price hero card
+                      // Price hero card — the page's focal element gets the
+                      // calm ease-out settle (Emil) instead of a bare fade.
+                      _settleCard(
+                      context,
                       _Card(
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -286,7 +289,10 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                               ),
                           ],
                         ),
-                      ).animate().fadeIn(duration: 350.ms).slideY(begin: 0.1),
+                      ),
+                      delayMs: 0,
+                      durationMs: 350,
+                    ),
 
                       // ── Post-promo price badge ───────────────────────────
                       // A clear "מחיר עכשיו → מחיר אחרי המבצע" badge built only
@@ -294,10 +300,7 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                       // only when there is a genuine promo jump; never invented.
                       if (plan.hasPromo) ...[
                         const SizedBox(height: 14),
-                        _PostPromoBadge(plan: plan)
-                            .animate(delay: 40.ms)
-                            .fadeIn(duration: 320.ms)
-                            .slideY(begin: 0.08),
+                        _settleCard(context, _PostPromoBadge(plan: plan), delayMs: 40),
                       ],
 
                       // ── Above-the-fold VALUE anchor — the ₪ saving the user
@@ -305,16 +308,17 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                       // bullets derived from the real spec + engine reasons.
                       // Specs/fine-print follow below.
                       const SizedBox(height: 14),
-                      _ValueAnchor(
-                        plan: plan,
-                        saveYear: saveYear,
-                        bill: bill,
-                        match: planMatch,
-                        billsPersonalized: appState.billsPersonalized,
-                      )
-                          .animate(delay: 60.ms)
-                          .fadeIn(duration: 320.ms)
-                          .slideY(begin: 0.08),
+                      _settleCard(
+                        context,
+                        _ValueAnchor(
+                          plan: plan,
+                          saveYear: saveYear,
+                          bill: bill,
+                          match: planMatch,
+                          billsPersonalized: appState.billsPersonalized,
+                        ),
+                        delayMs: 60,
+                      ),
 
                       const SizedBox(height: 14),
 
@@ -769,6 +773,24 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
       ),
     );
   }
+}
+
+/// Emil settle for a plan-detail card: fade-in + an 8px upward settle under the
+/// app's ease-out, optionally delayed so the stack cascades. Reduced-motion
+/// KEEPS the fade but DROPS the transform (per `MediaQuery.disableAnimations`),
+/// so the page still resolves cleanly with no translation for users who asked
+/// for less movement. Used for the focal hero/price/value stack so each card
+/// arrives with the same calm, decelerating settle rather than a bare fade.
+Widget _settleCard(BuildContext context, Widget child, {int delayMs = 0, int durationMs = 320}) {
+  final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+  final delay = delayMs.ms;
+  if (reduceMotion) {
+    return child.animate().fadeIn(delay: delay, duration: durationMs.ms);
+  }
+  return child
+      .animate(delay: delay)
+      .fadeIn(duration: durationMs.ms, curve: const Cubic(0.22, 1, 0.36, 1))
+      .slideY(begin: 0.08, end: 0, duration: durationMs.ms, curve: const Cubic(0.22, 1, 0.36, 1));
 }
 
 // ── "למה המסלול הזה מתאים לך" — fit panel ────────────────────────────────────

@@ -278,7 +278,13 @@ class AccountWidget extends StatelessWidget {
                   if (appState.watchedPlans.isNotEmpty) ...[
                     _SectionHeader('מסלולים במעקב', ffTheme: ffTheme, count: appState.watchedPlans.length),
                     const SizedBox(height: 10),
-                    ...appState.watchedPlans.map((id) {
+                    // Emil: watched plans reveal in a short stagger (fade + 6px
+                    // rise, ease-out), matching the quick-actions rhythm below so
+                    // the long account scroll resolves group-by-group. Capped
+                    // delay keeps a long watchlist snappy; reduced motion is
+                    // honoured by flutter_animate.
+                    ...appState.watchedPlans.asMap().entries.map((e) {
+                      final id = e.value;
                       final p = planById(id);
                       if (p == null) return const SizedBox();
                       final save = planSaveYear(p, appState.currentBill(p.cat));
@@ -303,7 +309,9 @@ class AccountWidget extends StatelessWidget {
                             ),
                           ],
                         ),
-                      );
+                      ).animate(delay: (e.key.clamp(0, 6) * 50).ms)
+                          .fadeIn(duration: 260.ms, curve: ffTheme.easeOut)
+                          .slideY(begin: 0.06, end: 0, curve: ffTheme.easeOut);
                     }),
                     const SizedBox(height: 10),
                   ],

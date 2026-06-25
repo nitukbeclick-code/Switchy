@@ -325,6 +325,10 @@ class _BillsWidgetState extends State<BillsWidget> {
   Widget build(BuildContext context) {
     final ffTheme = AppTheme.of(context);
     final appState = Provider.of<AppState>(context);
+    // Reduced-motion KEEPS every entrance fade (opacity) but DROPS the
+    // translate (Emil — reveals stay vestibular-safe). The reveals below branch
+    // their slide offset on this; the fade always plays.
+    final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
 
     final activeCats = categories.where((c) => appState.currentBill(c.id) > 0).toList();
     final total = categories.fold<int>(0, (sum, c) => sum + appState.currentBill(c.id));
@@ -460,7 +464,7 @@ class _BillsWidgetState extends State<BillsWidget> {
                     Icon(Icons.keyboard_double_arrow_down_rounded, size: 20, color: ffTheme.secondaryText),
                   ],
                 ),
-              ).animate().fadeIn(delay: 120.ms).slideY(begin: 0.05, end: 0),
+              ).animate().fadeIn(delay: 120.ms).slideY(begin: reduceMotion ? 0 : 0.05, end: 0),
 
             // Savings ring
             if (total > 0 && totalSavings > 0)
@@ -627,7 +631,7 @@ class _BillsWidgetState extends State<BillsWidget> {
                     appState.setCategory(o.category.id);
                     context.pushNamed('Results');
                   },
-                ).animate(delay: (i * 80).ms).fadeIn(duration: 350.ms).slideY(begin: 0.06, end: 0);
+                ).animate(delay: (i * 80).ms).fadeIn(duration: 350.ms).slideY(begin: reduceMotion ? 0 : 0.06, end: 0);
               }),
 
               // Single strong CTA — fix the worst category.
@@ -641,7 +645,7 @@ class _BillsWidgetState extends State<BillsWidget> {
                     appState.setCategory(worst.category.id);
                     context.pushNamed('Results');
                   },
-                ).animate().fadeIn(delay: 250.ms).slideY(begin: 0.08, end: 0),
+                ).animate().fadeIn(delay: 250.ms).slideY(begin: reduceMotion ? 0 : 0.08, end: 0),
               ],
 
               const SizedBox(height: 24),
@@ -681,12 +685,25 @@ class _BillsWidgetState extends State<BillsWidget> {
                             color: ffTheme.brandAccent.withValues(alpha: 0.16),
                             borderRadius: BorderRadius.circular(12),
                           ),
-                          child: _busyPhoto
-                              ? Padding(
-                                  padding: const EdgeInsets.all(10),
-                                  child: CircularProgressIndicator(strokeWidth: 2, color: ffTheme.brandAccent),
-                                )
-                              : Icon(Icons.document_scanner_rounded, size: 20, color: ffTheme.brandAccent),
+                          // Upload → analysis is a STATE change, not a pop:
+                          // crossfade the scanner glyph into the working spinner
+                          // (Emil — transition between states, never snap). Both
+                          // legs ease-out via the switcher's FadeTransition; the
+                          // 130ms band keeps the swap quick, and a keyed child
+                          // tells AnimatedSwitcher the two glyphs are distinct.
+                          child: AnimatedSwitcher(
+                            duration: ffTheme.motionPress,
+                            switchInCurve: ffTheme.easeOut,
+                            switchOutCurve: ffTheme.easeOut,
+                            child: _busyPhoto
+                                ? Padding(
+                                    key: const ValueKey('busy'),
+                                    padding: const EdgeInsets.all(10),
+                                    child: CircularProgressIndicator(strokeWidth: 2, color: ffTheme.brandAccent),
+                                  )
+                                : Icon(Icons.document_scanner_rounded,
+                                    key: const ValueKey('idle'), size: 20, color: ffTheme.brandAccent),
+                          ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
@@ -706,7 +723,7 @@ class _BillsWidgetState extends State<BillsWidget> {
                   ),
                 ),
               ),
-            ).animate().fadeIn(delay: 60.ms).slideY(begin: 0.05, end: 0),
+            ).animate().fadeIn(delay: 60.ms).slideY(begin: reduceMotion ? 0 : 0.05, end: 0),
             const SizedBox(height: 14),
 
             ...categories.asMap().entries.map((entry) {
@@ -727,7 +744,7 @@ class _BillsWidgetState extends State<BillsWidget> {
                   context.pushNamed('Results');
                 },
                 ffTheme: ffTheme,
-              ).animate(delay: (i * 70).ms).fadeIn(duration: 350.ms).slideX(begin: 0.05, end: 0);
+              ).animate(delay: (i * 70).ms).fadeIn(duration: 350.ms).slideX(begin: reduceMotion ? 0 : 0.05, end: 0);
             }),
 
             const SizedBox(height: 32),

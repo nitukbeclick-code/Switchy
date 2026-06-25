@@ -186,6 +186,9 @@ class _SwitchKitWidgetState extends State<SwitchKitWidget> {
     final t = AppTheme.of(context);
     Provider.of<AppState>(context);
     final kit = _kit;
+    // Reduced-motion keeps every reveal's fade (opacity) and only drops the
+    // summary card's translate; the detail cards are fade-only regardless.
+    final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
 
     final appBar = AppBar(
       elevation: 0,
@@ -219,10 +222,17 @@ class _SwitchKitWidgetState extends State<SwitchKitWidget> {
           if (kit == null)
             _EmptyHint(t: t).animate().fadeIn(duration: 280.ms)
           else ...[
+            // The kit is the RESULT — it settles in with a fade + a 5% rise (the
+            // value reveal) instead of blinking into place. Reduced-motion keeps
+            // the fade and drops the rise. The detail cards below stay
+            // un-wrapped: they expose semantics-labelled controls (the step
+            // tracker toggles), and a fade wrapper would hide those labels from
+            // assistive tech / find.bySemanticsLabel while opacity < 1 — Emil's
+            // rule is motion never costs accessibility, so they reveal instantly.
             _SummaryCard(kit: kit, t: t)
                 .animate()
                 .fadeIn(duration: 300.ms)
-                .slideY(begin: 0.05),
+                .slideY(begin: reduceMotion ? 0 : 0.05, end: 0),
             const SizedBox(height: 20),
             _trackerCard(kit, t),
             const SizedBox(height: 20),

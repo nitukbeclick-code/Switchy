@@ -27,6 +27,10 @@ class ElectricityWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     final ffTheme = AppTheme.of(context);
     final cat = categoryById('electricity');
+    // Reduced-motion KEEPS each reveal's fade (opacity) but DROPS the translate
+    // (Emil — reveals stay vestibular-safe). The notice + card reveals branch
+    // their slide offset on this; the fade always plays.
+    final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
 
     // Real catalogue, ascending by the indicative monthly figure (uses the
     // shared filteredPlans sort — no re-derived formula).
@@ -77,7 +81,7 @@ class ElectricityWidget extends StatelessWidget {
               child: _IndicativeNotice(ffTheme: ffTheme)
                   .animate()
                   .fadeIn(duration: 350.ms)
-                  .slideY(begin: -0.06, end: 0),
+                  .slideY(begin: reduceMotion ? 0 : -0.06, end: 0),
             ),
           ),
           if (plans.isEmpty)
@@ -106,7 +110,7 @@ class ElectricityWidget extends StatelessWidget {
                           // a bounded window (and the widget-test pumps).
                           .animate(delay: ((i * 70).clamp(0, 500)).ms)
                           .fadeIn(duration: 300.ms)
-                          .slideY(begin: 0.08, end: 0),
+                          .slideY(begin: reduceMotion ? 0 : 0.08, end: 0),
                     );
                   },
                   childCount: plans.length,
@@ -412,23 +416,32 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    final bolt = Container(
+      width: 96,
+      height: 96,
+      decoration: BoxDecoration(
+        color: ffTheme.accent1,
+        shape: BoxShape.circle,
+      ),
+      child: const ExcludeSemantics(
+        child: Icon(Icons.bolt_rounded, size: 48),
+      ),
+    );
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(32),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              width: 96,
-              height: 96,
-              decoration: BoxDecoration(
-                color: ffTheme.accent1,
-                shape: BoxShape.circle,
-              ),
-              child: const ExcludeSemantics(
-                child: Icon(Icons.bolt_rounded, size: 48),
-              ),
-            ).animate().fadeIn(duration: 400.ms).scale(begin: const Offset(0.7, 0.7)),
+            // Reduced-motion: a plain fade; otherwise the bolt settles in from
+            // 0.7 (never from 0 — Emil's "never scale(0)").
+            reduceMotion
+                ? bolt.animate().fadeIn(duration: 400.ms)
+                : bolt
+                    .animate()
+                    .fadeIn(duration: 400.ms)
+                    .scale(begin: const Offset(0.7, 0.7), end: const Offset(1, 1)),
             const SizedBox(height: 20),
             Text('אין מסלולי חשמל זמינים', style: ffTheme.titleMedium)
                 .animate()

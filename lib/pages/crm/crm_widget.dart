@@ -583,13 +583,20 @@ class _ConversationsTab extends StatelessWidget {
           : ListView.builder(
               padding: const EdgeInsets.fromLTRB(16, 6, 16, 32),
               itemCount: conversations.length,
-              itemBuilder: (_, i) => Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: _ConversationRow(
-                  c: conversations[i],
-                  onTap: () => onOpen(conversations[i]),
-                ),
-              ),
+              itemBuilder: (_, i) {
+                // Emil FREQUENCY rule: conversation rows are a high-frequency
+                // operator tap target, so they render statically — minimal motion
+                // is the right call. (A fadeIn Opacity would also drop the row's
+                // "שיחה עם …" a11y label while <1 opacity.) The press tell lives
+                // on the row itself.
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: _ConversationRow(
+                    c: conversations[i],
+                    onTap: () => onOpen(conversations[i]),
+                  ),
+                );
+              },
             ),
     );
   }
@@ -910,6 +917,9 @@ class _ThreadViewState extends State<_ThreadView> {
         return _MessageBubble(
           message: m,
           pending: m.id.startsWith('pending-'),
+          // Emil: only the newest bubble plays the entrance, so sending /
+          // receiving a reply lands crisply without re-animating the history.
+          animateIn: i == messages.length - 1,
         );
       },
     );
@@ -968,9 +978,14 @@ class _ContactStatusBar extends StatelessWidget {
 }
 
 class _MessageBubble extends StatelessWidget {
-  const _MessageBubble({required this.message, required this.pending});
+  const _MessageBubble({
+    required this.message,
+    required this.pending,
+    this.animateIn = false,
+  });
   final CrmMessage message;
   final bool pending;
+  final bool animateIn;
 
   @override
   Widget build(BuildContext context) {
@@ -984,8 +999,10 @@ class _MessageBubble extends StatelessWidget {
         ? (isBot ? t.accent1 : t.brandAccent)
         : t.cardSurface;
     final fg = outbound && !isBot ? Colors.white : t.primaryText;
+    final reduceMotion =
+        MediaQuery.maybeOf(context)?.disableAnimations ?? false;
 
-    return Align(
+    final bubble = Align(
       alignment: outbound ? AlignmentDirectional.centerStart : AlignmentDirectional.centerEnd,
       child: Container(
         margin: const EdgeInsets.only(bottom: 10),
@@ -1038,6 +1055,23 @@ class _MessageBubble extends StatelessWidget {
         ),
       ),
     );
+
+    if (!animateIn) return bubble;
+    // Emil: a new bubble enters crisp — ease-out fade + a small slide from the
+    // bubble's own edge (outbound from the leading edge, inbound from the
+    // trailing edge). Reduced motion keeps the fade and drops the slide.
+    final entrance = bubble.animate().fadeIn(
+          duration: t.motionFast,
+          curve: t.easeOut,
+        );
+    return reduceMotion
+        ? entrance
+        : entrance.slideX(
+            begin: outbound ? -0.06 : 0.06,
+            end: 0,
+            duration: t.motionFast,
+            curve: t.easeOut,
+          );
   }
 }
 
@@ -1177,9 +1211,15 @@ class _LeadsTab extends StatelessWidget {
                       ],
                     ),
                     const SizedBox(height: 10),
-                    ...grouped[status]!.map((l) => Padding(
+                    // Emil: lead rows in a column reveal in a short stagger
+                    // (fade + 8px rise, ease-out) so a status group resolves
+                    // top-down. Capped delay keeps a long column snappy.
+                    ...grouped[status]!.asMap().entries.map((e) => Padding(
                           padding: const EdgeInsets.only(bottom: 10),
-                          child: _LeadRow(lead: l, onMove: onMove),
+                          child: _LeadRow(lead: e.value, onMove: onMove)
+                              .animate(delay: (e.key.clamp(0, 8) * 40).ms)
+                              .fadeIn(duration: 240.ms, curve: t.easeOut)
+                              .slideY(begin: 0.08, end: 0, curve: t.easeOut),
                         )),
                     const SizedBox(height: 18),
                   ],

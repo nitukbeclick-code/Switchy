@@ -69,6 +69,10 @@ class _PortingWidgetState extends State<PortingWidget> {
   Widget build(BuildContext context) {
     final ffTheme = AppTheme.of(context);
     Provider.of<AppState>(context);
+    // Reduced-motion KEEPS each section's fade-in (opacity) but DROPS the
+    // translate (Emil: reveals stay vestibular-safe — opacity only). The form
+    // fields are the only reveals here that translate, so they branch on this.
+    final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
 
     if (_submitted) {
       return _SuccessState(ffTheme: ffTheme);
@@ -174,7 +178,10 @@ class _PortingWidgetState extends State<PortingWidget> {
               ],
               ffTheme: ffTheme,
               prefixIcon: Icons.phone_android_rounded,
-            ).animate(delay: 60.ms).fadeIn(duration: 280.ms).slideY(begin: 0.06),
+            )
+                .animate(delay: 60.ms)
+                .fadeIn(duration: 280.ms)
+                .slideY(begin: reduceMotion ? 0 : 0.06),
 
             const SizedBox(height: 16),
 
@@ -191,7 +198,10 @@ class _PortingWidgetState extends State<PortingWidget> {
               ],
               ffTheme: ffTheme,
               prefixIcon: Icons.badge_outlined,
-            ).animate(delay: 120.ms).fadeIn(duration: 280.ms).slideY(begin: 0.06),
+            )
+                .animate(delay: 120.ms)
+                .fadeIn(duration: 280.ms)
+                .slideY(begin: reduceMotion ? 0 : 0.06),
 
             const SizedBox(height: 20),
 
@@ -412,6 +422,10 @@ class _SuccessState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Submitting is RARE, so a touch of celebratory delight is earned — but it
+    // still respects reduced-motion: KEEP the fades (opacity), DROP every
+    // transform (the badge spring, the headline rise).
+    final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
     return Scaffold(
       // Celebration hero stays a premium INK surface in both themes (the const
       // ink token, not the theme-aware `ffTheme.primary` which flips to off-white
@@ -423,29 +437,41 @@ class _SuccessState extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Container(
-                width: 100,
-                height: 100,
-                decoration: BoxDecoration(
-                  color: ffTheme.brandAccent,
-                  shape: BoxShape.circle,
-                  boxShadow: [BoxShadow(color: ffTheme.brandAccent.withValues(alpha: 0.45), blurRadius: 26, spreadRadius: 2)],
-                ),
-                child: const Icon(Icons.check_rounded,
-                    size: 60, color: Colors.white),
-              )
-                  .animate()
-                  .scale(
-                      duration: 400.ms,
-                      curve: Curves.elasticOut),
+              () {
+                final badge = Container(
+                  width: 100,
+                  height: 100,
+                  decoration: BoxDecoration(
+                    color: ffTheme.brandAccent,
+                    shape: BoxShape.circle,
+                    boxShadow: [BoxShadow(color: ffTheme.brandAccent.withValues(alpha: 0.45), blurRadius: 26, spreadRadius: 2)],
+                  ),
+                  child: const Icon(Icons.check_rounded,
+                      size: 60, color: Colors.white),
+                );
+                // Reduced-motion: a plain fade, no scale. Otherwise the badge
+                // springs in from 0.6 (never from 0 — Emil's "never scale(0)").
+                if (reduceMotion) return badge.animate().fadeIn(duration: 200.ms);
+                return badge
+                    .animate()
+                    .scale(
+                        begin: const Offset(0.6, 0.6),
+                        end: const Offset(1, 1),
+                        duration: 460.ms,
+                        curve: ffTheme.spring);
+              }(),
 
               const SizedBox(height: 32),
 
-              Text(
-                'הבקשה נשלחה בהצלחה!',
-                style: ffTheme.headlineMedium.copyWith(color: Colors.white),
-                textAlign: TextAlign.center,
-              ).animate().fadeIn(delay: 300.ms).slideY(begin: 0.2),
+              () {
+                final headline = Text(
+                  'הבקשה נשלחה בהצלחה!',
+                  style: ffTheme.headlineMedium.copyWith(color: Colors.white),
+                  textAlign: TextAlign.center,
+                );
+                final a = headline.animate().fadeIn(delay: 300.ms);
+                return reduceMotion ? a : a.slideY(begin: 0.2, end: 0);
+              }(),
 
               const SizedBox(height: 12),
 

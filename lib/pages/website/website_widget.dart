@@ -432,7 +432,7 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
                   ),
                 ],
               ),
-            ),
+            ).animate().fadeIn(delay: 380.ms),
           ),
 
           // FAQ section
@@ -489,7 +489,7 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
                   ),
                 ],
               ),
-            ),
+            ).animate().fadeIn(delay: 420.ms).slideY(begin: 0.1, end: 0),
           ),
 
           // Footer

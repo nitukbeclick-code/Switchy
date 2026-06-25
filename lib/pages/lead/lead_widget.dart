@@ -213,7 +213,7 @@ class _LeadWidgetState extends State<LeadWidget> {
                 autofillHints: const [AutofillHints.name],
                 decoration: _inputDecoration(hint: 'ישראל ישראלי', icon: Icons.person_outline_rounded, ffTheme: ffTheme),
                 validator: (v) => (v == null || v.trim().isEmpty) ? 'שדה חובה' : null,
-              ).animate(delay: 80.ms).fadeIn().slideY(begin: 0.05),
+              ).animate(delay: 80.ms).fadeIn(duration: 280.ms, curve: ffTheme.easeOut).slideY(begin: 0.05, end: 0, duration: 280.ms, curve: ffTheme.easeOut),
 
               const SizedBox(height: 14),
 
@@ -231,7 +231,7 @@ class _LeadWidgetState extends State<LeadWidget> {
                   final digits = (v ?? '').replaceAll(RegExp(r'\D'), '');
                   return (digits.length < 9 || digits.length > 15) ? 'מספר טלפון לא תקין' : null;
                 },
-              ).animate(delay: 120.ms).fadeIn().slideY(begin: 0.05),
+              ).animate(delay: 120.ms).fadeIn(duration: 280.ms, curve: ffTheme.easeOut).slideY(begin: 0.05, end: 0, duration: 280.ms, curve: ffTheme.easeOut),
 
               const SizedBox(height: 8),
 
@@ -259,7 +259,7 @@ class _LeadWidgetState extends State<LeadWidget> {
                   if (s.isEmpty) return null;
                   return RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(s) ? null : 'כתובת אימייל לא תקינה';
                 },
-              ).animate(delay: 160.ms).fadeIn().slideY(begin: 0.05),
+              ).animate(delay: 160.ms).fadeIn(duration: 280.ms, curve: ffTheme.easeOut).slideY(begin: 0.05, end: 0, duration: 280.ms, curve: ffTheme.easeOut),
 
               const SizedBox(height: 20),
 
@@ -623,7 +623,7 @@ class _LeadWidgetState extends State<LeadWidget> {
                 ? Colors.white
                 : ffTheme.secondaryText),
       ),
-    ).animate(delay: 200.ms).fadeIn().slideY(begin: 0.05);
+    ).animate(delay: 200.ms).fadeIn(duration: 280.ms, curve: ffTheme.easeOut).slideY(begin: 0.05, end: 0, duration: 280.ms, curve: ffTheme.easeOut);
   }
 
   Widget _buildNextStepsCard(AppTheme ffTheme) {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -6,6 +7,7 @@ import '../../theme/app_theme.dart';
 import '../../core/nav.dart';
 import '../../widgets/app_button.dart';
 import '../../widgets/app_snackbar.dart';
+import '../../widgets/pressable.dart';
 import '../../app_state.dart';
 import '../../data.dart';
 import '../../components/logo_widget/logo_widget.dart';
@@ -289,13 +291,20 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
             return Semantics(
               button: true,
               selected: selected,
-              child: GestureDetector(
+              // Pressable adds the scale-0.97 press tell (Emil: occasional
+              // controls get a press feedback); it carries no semantics so the
+              // labelled toggle node is unchanged. AnimatedContainer keeps the
+              // crisp selected color/border morph under ease-out.
+              child: Pressable(
                 onTap: () {
+                  HapticFeedback.selectionClick();
                   setState(() { _techFilter = f; _revealedCount = 0; });
                   if (_checked) _restaggerReveal();
                 },
+                haptic: false,
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
+                  curve: ffTheme.easeOut,
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   decoration: BoxDecoration(
                     color: selected ? ffTheme.brandAccent : ffTheme.cardSurface,
@@ -338,8 +347,11 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
             ],
           ),
           const SizedBox(height: 14),
+          // The rotating ring above is the genuine loader; the label just fades
+          // in once. (Emil: no idle/infinite loops on content — the old
+          // repeat(reverse) pulse on this text was an idle loop with no purpose.)
           Text('בודק זמינות ספקים ב${_cityCtrl.text}...', style: ffTheme.bodyMedium.copyWith(color: ffTheme.secondaryText))
-              .animate(onPlay: (c) => c.repeat(reverse: true)).fadeIn(duration: 600.ms),
+              .animate().fadeIn(duration: 260.ms, curve: ffTheme.easeOut),
         ],
       ),
     );
@@ -507,7 +519,7 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
           ),
         ],
       ),
-    ).animate().fadeIn(duration: 280.ms).slideX(begin: 0.04, end: 0);
+    ).animate().fadeIn(duration: 260.ms, curve: ffTheme.easeOut).slideX(begin: 0.04, end: 0, duration: 260.ms, curve: ffTheme.easeOut);
   }
 
   Widget _buildSummaryCard(AppTheme ffTheme, BuildContext context) {

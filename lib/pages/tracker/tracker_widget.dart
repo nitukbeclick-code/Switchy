@@ -386,7 +386,7 @@ class _TrackerWidgetState extends State<TrackerWidget> {
               final i = entry.key;
               final s = entry.value;
               final isLast = i == steps.length - 1;
-              return Row(
+              final row = Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Column(
@@ -472,6 +472,14 @@ class _TrackerWidgetState extends State<TrackerWidget> {
                   ),
                 ],
               );
+              // Emil: the timeline steps reveal in a short top-down stagger
+              // (fade + 8px rise, ease-out) so the journey reads as a sequence
+              // rather than appearing all at once. flutter_animate honours
+              // reduced motion (disableAnimations short-circuits the effect).
+              return row
+                  .animate(delay: (i * 60).ms)
+                  .fadeIn(duration: 280.ms, curve: ffTheme.easeOut)
+                  .slideY(begin: 0.08, end: 0, curve: ffTheme.easeOut);
             }),
 
             const SizedBox(height: 24),

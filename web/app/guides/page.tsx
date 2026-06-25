@@ -13,6 +13,7 @@ import type { Metadata } from "next";
 import JsonLd from "@/components/JsonLd";
 import RelatedAuthorityPages from "@/components/RelatedAuthorityPages";
 import EmptyState from "@/components/EmptyState";
+import ScrollReveal from "@/components/ScrollReveal";
 import Icon from "@/components/Icon";
 import { getGuides, guideCategories, guidesInCategory } from "@/lib/guides";
 import { breadcrumbSchema, collectionPageSchema, SITE_URL } from "@/lib/schema";
@@ -147,11 +148,11 @@ export default function GuidesHubPage() {
               </div>
 
               <div className="bento-grid mt-6">
-                {inCat.map((g) => (
+                {inCat.map((g, gi) => (
+                  <ScrollReveal key={g.slug} index={gi} className="flex">
                   <Link
-                    key={g.slug}
                     href={`/guides/${g.slug}`}
-                    className="card card-interactive group flex flex-col p-5 sm:p-6"
+                    className="card card-interactive group flex w-full flex-col p-5 sm:p-6"
                   >
                     <span className="self-start rounded-full bg-accent/[0.08] px-2.5 py-0.5 text-xs font-semibold text-accent-text">
                       {g.cat}
@@ -175,6 +176,7 @@ export default function GuidesHubPage() {
                       </span>
                     </span>
                   </Link>
+                  </ScrollReveal>
                 ))}
               </div>
             </section>

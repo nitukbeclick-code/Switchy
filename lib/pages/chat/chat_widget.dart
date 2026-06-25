@@ -629,7 +629,13 @@ class _ChatWidgetState extends State<ChatWidget> {
 
   Widget _buildBubble(_Msg msg, AppTheme ffTheme, {required bool showAvatar}) {
     final isUser = msg.isUser;
-    return Padding(
+    // Emil: chat messages are a HIGH-FREQUENCY append, so they get ONE crisp
+    // single-bubble entrance — never a staggered cascade (that delight belongs
+    // to occasional list reveals, not every keystroke-driven message). Enter is
+    // ease-out (settling motion). Reduced-motion keeps the fade, drops the 8px
+    // slide so the transcript never lurches for users who asked for less.
+    final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    final bubble = Padding(
       padding: EdgeInsetsDirectional.only(
         bottom: 4,
         start: isUser ? 0 : 48,
@@ -701,10 +707,39 @@ class _ChatWidgetState extends State<ChatWidget> {
           ),
         ],
       ),
-    ).animate().fadeIn(duration: 250.ms).slideY(begin: 0.08, end: 0);
+    );
+
+    if (reduceMotion) {
+      return bubble.animate().fadeIn(duration: 250.ms);
+    }
+    return bubble
+        .animate()
+        .fadeIn(duration: 250.ms, curve: const Cubic(0.22, 1, 0.36, 1))
+        .slideY(begin: 0.08, end: 0, duration: 250.ms, curve: const Cubic(0.22, 1, 0.36, 1));
   }
 
   Widget _buildTyping(AppTheme ffTheme) {
+    // Emil: a typing indicator is the ONE sanctioned exception to "no idle
+    // loops" — it's a GENUINE loader that says work is in flight, so the three
+    // dots may pulse on repeat. Under reduced-motion the loop is dropped (no
+    // infinite animation): the dots render static so the bubble still reads as
+    // "typing" without movement. The whole bubble fades in once (ease-out).
+    final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    Widget dot(int i) {
+      final d = Container(
+        width: 7,
+        height: 7,
+        margin: EdgeInsetsDirectional.only(start: i > 0 ? 4 : 0),
+        decoration: BoxDecoration(color: ffTheme.brandAccent, shape: BoxShape.circle),
+      );
+      if (reduceMotion) return d;
+      return d
+          .animate(onPlay: (c) => c.repeat())
+          .fadeIn(delay: (i * 200).ms, duration: 300.ms)
+          .then()
+          .fadeOut(duration: 300.ms);
+    }
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
@@ -734,18 +769,12 @@ class _ChatWidgetState extends State<ChatWidget> {
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
-              children: List.generate(3, (i) => Container(
-                width: 7, height: 7,
-                margin: EdgeInsetsDirectional.only(start: i > 0 ? 4 : 0),
-                decoration: BoxDecoration(color: ffTheme.brandAccent, shape: BoxShape.circle),
-              ).animate(onPlay: (c) => c.repeat())
-                .fadeIn(delay: (i * 200).ms, duration: 300.ms)
-                .then().fadeOut(duration: 300.ms)),
+              children: List.generate(3, dot),
             ),
           ),
         ],
       ),
-    );
+    ).animate().fadeIn(duration: 200.ms, curve: const Cubic(0.22, 1, 0.36, 1));
   }
 }
 

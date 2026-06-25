@@ -188,21 +188,26 @@ class _DealsWidgetState extends State<DealsWidget> {
     }
 
     final appState = Provider.of<AppState>(context);
+    // Reduced-motion KEEPS the fade (opacity) but DROPS the translate (Emil:
+    // a vestibular-safe reveal is opacity-only). Read once per build.
+    final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
     return ListView.builder(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
       itemCount: _drops.length + 1,
       itemBuilder: (ctx, i) {
         if (i == 0) return _buildHeader(ffTheme);
         final drop = _drops[i - 1];
-        return _DealCard(
+        // Cards reveal in a calm 40ms-step stagger (Emil's 30-80ms band),
+        // capped at 8 so the tail never drags. Each row fades up 6% with the
+        // shared ease-out (entering motion is always ease-out, never ease-in).
+        final card = _DealCard(
           drop: drop,
           ffTheme: ffTheme,
           bill: appState.currentBill(drop.category),
-        ).animate(delay: ((i - 1).clamp(0, 8) * 40).ms).fadeIn(duration: 280.ms).slideY(
-              begin: 0.06,
-              end: 0,
-              curve: ffTheme.easeOut,
-            );
+        ).animate(delay: ((i - 1).clamp(0, 8) * 40).ms).fadeIn(duration: 280.ms);
+        return reduceMotion
+            ? card
+            : card.slideY(begin: 0.06, end: 0, curve: ffTheme.easeOut);
       },
     );
   }

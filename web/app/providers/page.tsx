@@ -15,6 +15,7 @@ import type { Metadata } from "next";
 import JsonLd from "@/components/JsonLd";
 import SgeSummary from "@/components/SgeSummary";
 import EmptyState from "@/components/EmptyState";
+import ScrollReveal from "@/components/ScrollReveal";
 import RelatedAuthorityPages from "@/components/RelatedAuthorityPages";
 import {
   getCategories,
@@ -195,7 +196,7 @@ export default function ProvidersIndexPage() {
         ) : (
           <ul className="bento-grid">
             {providers.map((p, i) => (
-              <li key={p.slug}>
+              <ScrollReveal as="li" key={p.slug} index={i} className="h-full">
                 <Link
                   href={`/providers/${p.slug}`}
                   className="group bento card-interactive flex h-full flex-col p-6 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
@@ -233,7 +234,7 @@ export default function ProvidersIndexPage() {
                     לכל המסלולים של {p.name} ←
                   </span>
                 </Link>
-              </li>
+              </ScrollReveal>
             ))}
           </ul>
         )}

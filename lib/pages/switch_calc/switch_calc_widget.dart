@@ -97,6 +97,11 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
   Widget build(BuildContext context) {
     final ffTheme = AppTheme.of(context);
     final appState = Provider.of<AppState>(context);
+    // The result figures are SLIDER-DRIVEN (high-frequency), so they must NEVER
+    // animate per recompute — the verdict card's one-shot entrance reveal is the
+    // only motion the value gets (it settles in once, then tracks the sliders
+    // instantly). Reduced-motion keeps that fade and drops its rise.
+    final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
     final econ = _econ;
     final cat = _selectedCat;
     final profile = MatchProfile(
@@ -290,7 +295,13 @@ class _SwitchCalcWidgetState extends State<SwitchCalcWidget> {
                   ],
                 ],
               ),
-            ).animate().fadeIn(delay: 300.ms),
+            )
+                // The verdict + its ₪ figures settle in once: a fade, plus a
+                // gentle 5% rise (dropped under reduced-motion) so the result
+                // reads as arriving rather than blinking into place.
+                .animate()
+                .fadeIn(delay: 300.ms)
+                .slideY(begin: reduceMotion ? 0 : 0.05, end: 0, curve: ffTheme.easeOut),
 
             const SizedBox(height: 24),
 

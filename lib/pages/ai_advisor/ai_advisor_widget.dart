@@ -369,7 +369,7 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
                         ),
                       ),
                     ),
-                  ).animate(delay: (i.clamp(0, 6) * 30).ms).fadeIn(duration: 240.ms).slideY(begin: 0.1, end: 0);
+                  ).animate(delay: (i.clamp(0, 6) * 30).ms).fadeIn(duration: 240.ms, curve: ffTheme.easeOut).slideY(begin: 0.1, end: 0, duration: 240.ms, curve: ffTheme.easeOut);
                 },
               ),
             ).animate().fadeIn(duration: 500.ms),
@@ -476,7 +476,11 @@ class _MessageBubble extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final plans = msg.planIds.map((id) => planById(id)).whereType<Plan>().toList();
-    return Padding(
+    // Emil: an advisor reply is a HIGH-FREQUENCY append, so it gets ONE crisp
+    // single-bubble entrance (ease-out settle) — never a staggered cascade.
+    // Reduced-motion keeps the fade and drops the 8px slide.
+    final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    final bubble = Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Column(
         crossAxisAlignment: msg.isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
@@ -657,9 +661,15 @@ class _MessageBubble extends StatelessWidget {
           ],
         ],
       ),
-    ).animate().fadeIn(duration: 260.ms).slideY(
+    );
+
+    if (reduceMotion) {
+      return bubble.animate().fadeIn(duration: 260.ms);
+    }
+    return bubble.animate().fadeIn(duration: 260.ms, curve: ffTheme.easeOut).slideY(
           begin: 0.08,
           end: 0,
+          duration: 260.ms,
           curve: ffTheme.easeOut,
         );
   }
@@ -671,6 +681,25 @@ class _TypingBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Emil: the typing indicator is the sanctioned GENUINE loader — its three
+    // dots may pulse on repeat to signal work in flight. Reduced-motion drops
+    // the loop (no infinite animation): static dots still read as "typing".
+    final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    Widget dot(int i) {
+      final d = Container(
+        width: 8,
+        height: 8,
+        margin: EdgeInsets.only(left: i > 0 ? 4 : 0),
+        decoration: BoxDecoration(color: ffTheme.brandAccent, shape: BoxShape.circle),
+      );
+      if (reduceMotion) return d;
+      return d
+          .animate(onPlay: (c) => c.repeat())
+          .fadeIn(delay: (i * 200).ms, duration: 300.ms)
+          .then()
+          .fadeOut(duration: 300.ms);
+    }
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
@@ -708,19 +737,11 @@ class _TypingBubble extends StatelessWidget {
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
-              children: List.generate(3, (i) => Container(
-                width: 8,
-                height: 8,
-                margin: EdgeInsets.only(left: i > 0 ? 4 : 0),
-                decoration: BoxDecoration(color: ffTheme.brandAccent, shape: BoxShape.circle),
-              ).animate(onPlay: (c) => c.repeat())
-                .fadeIn(delay: (i * 200).ms, duration: 300.ms)
-                .then()
-                .fadeOut(duration: 300.ms)),
+              children: List.generate(3, dot),
             ),
           ),
         ],
       ),
-    );
+    ).animate().fadeIn(duration: 200.ms, curve: ffTheme.easeOut);
   }
 }

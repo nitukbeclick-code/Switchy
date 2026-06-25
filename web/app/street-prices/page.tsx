@@ -26,6 +26,7 @@ import JsonLd from "@/components/JsonLd";
 import Icon from "@/components/Icon";
 import SgeSummary from "@/components/SgeSummary";
 import TrustSignals from "@/components/TrustSignals";
+import ScrollReveal from "@/components/ScrollReveal";
 import RelatedAuthorityPages from "@/components/RelatedAuthorityPages";
 import { getPlans, getProviders, getCategories } from "@/lib/data";
 import {
@@ -233,26 +234,26 @@ export default async function StreetPricesPage() {
       </header>
 
       {/* ── SGE summary ───────────────────────────────────────────────────── */}
-      <div className="mt-8">
+      <ScrollReveal className="mt-8 block">
         <SgeSummary heading="השורה התחתונה: מחיר הרחוב">{summary}</SgeSummary>
-      </div>
+      </ScrollReveal>
 
       {/* ── Trust signals — real catalogue counts + §7b + §17 caveat ──────── */}
-      <div className="mt-8">
+      <ScrollReveal className="mt-8 block">
         <TrustSignals
           planCount={planCount}
           providerCount={providerCount}
           categoryCount={categoryCount}
         />
-      </div>
+      </ScrollReveal>
 
       {/* ── The chart + report form (interactive) ─────────────────────────── */}
-      <div className="mt-10">
+      <ScrollReveal className="mt-10 block">
         <StreetPricesClient
           providers={providerNames}
           initialAggregates={initialAggregates}
         />
-      </div>
+      </ScrollReveal>
 
       {/* ── Related — no dead-ends ────────────────────────────────────────── */}
       <RelatedAuthorityPages

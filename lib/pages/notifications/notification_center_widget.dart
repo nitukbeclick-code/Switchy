@@ -268,7 +268,10 @@ class _NotificationCenterWidgetState extends State<NotificationCenterWidget> {
                       timeLabel: n.createdAt == null ? null : _timeAgo(n.createdAt!),
                       onTap: () => _onTap(context, appState, n),
                       onDismiss: () => _dismiss(appState, n),
-                      delay: (i * 60).ms,
+                      // Emil: list reveals stagger in the 30–80ms band. 40ms per
+                      // row reads as a brisk cascade without the inbox feeling
+                      // slow to settle.
+                      delay: (i.clamp(0, 8) * 40).ms,
                     );
                   },
                 ),
@@ -302,7 +305,11 @@ class _NotifCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
+    // Emil: reduced-motion KEEPS the fade-in but DROPS the 8px slide transform,
+    // so users who asked for less movement still get a clean entrance with no
+    // translation. Captured once here and branched at the end of build.
+    final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    final card = Padding(
       padding: const EdgeInsets.only(bottom: 12),
       // Swipe end→start (RTL: left) to dismiss. The dismissal is staged locally
       // with an undo SnackBar (see [_dismiss]) — it never irrecoverably deletes
@@ -414,7 +421,12 @@ class _NotifCard extends StatelessWidget {
           ),
         ),
       ),
-    )
+    );
+
+    if (reduceMotion) {
+      return card.animate(delay: delay).fadeIn(duration: 280.ms);
+    }
+    return card
         .animate(delay: delay)
         .fadeIn(duration: 280.ms, curve: Curves.easeOut)
         .slideY(begin: 0.05, end: 0, duration: 280.ms, curve: Curves.easeOut);

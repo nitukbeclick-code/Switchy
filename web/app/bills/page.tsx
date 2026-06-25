@@ -14,6 +14,7 @@
 // ────────────────────────────────────────────────────────────────────────────
 
 import Link from "next/link";
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import JsonLd from "@/components/JsonLd";
 import SgeSummary from "@/components/SgeSummary";
@@ -21,6 +22,8 @@ import TrustSignals from "@/components/TrustSignals";
 import CommissionDisclosure from "@/components/CommissionDisclosure";
 import RelatedAuthorityPages from "@/components/RelatedAuthorityPages";
 import BillUploader from "@/components/BillUploader";
+import EmptyState from "@/components/EmptyState";
+import SkeletonCard from "@/components/SkeletonCard";
 import type { ForensicsPlan } from "@/lib/bill-forensics";
 import { getPlans, getProviders, getCategories } from "@/lib/data";
 import { breadcrumbSchema, webPageSchema } from "@/lib/schema";
@@ -127,11 +130,31 @@ export default function BillsPage() {
       {/* ── §7b commission disclosure — prominent, never buried. ──────────── */}
       <CommissionDisclosure variant="banner" className="mt-8" />
 
+      {/* ── Zero-state intro ──────────────────────────────────────────────── */}
+      {/* Before any photo is picked there is no bill / result yet — surface a
+          branded EmptyState (soft green badge + headline + description + a CTA to
+          the manual comparison) instead of an ad-hoc grey lead-in. The uploader
+          itself sits directly below; this sets the expectation honestly. */}
+      <div className="mt-8 bento">
+        <EmptyState
+          icon="📷"
+          title="עדיין לא העליתם חשבון"
+          description="צלמו או העלו תמונה ברורה של החשבון החודשי — נקרא ממנה את הספק, הסכום וסוג השירות, ונציג מסלולים זולים יותר מהקטלוג. אין לכם חשבון ביד? אפשר גם להשוות ידנית."
+          cta={{ label: "להשוואה ידנית", href: "/compare" }}
+        />
+      </div>
+
       {/* ── The interactive uploader (client) ─────────────────────────────── */}
       {/* promoPlans: REAL catalogue rows with a post-promo `after` price, projected
           to a slim serializable shape, so the in-result forensics can spot a likely
-          expired promo. */}
-      <BillUploader promoPlans={promoPlans} />
+          expired promo.
+
+          Suspense + SkeletonCard: while the client analyzer boundary streams in /
+          hydrates, a branded pulsing card placeholder (matching the .card shape)
+          holds the space — no blank gap, no layout-shifting grey text. */}
+      <Suspense fallback={<SkeletonCard className="mt-8" lines={4} />}>
+        <BillUploader promoPlans={promoPlans} />
+      </Suspense>
 
       {/* ── Trust signals — real catalogue counts + §7b + §17 caveat. ─────── */}
       <div className="mt-12">

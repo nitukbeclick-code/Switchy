@@ -136,7 +136,7 @@ describe("ComparisonTable — always a clean semantic table (pillar-3)", () => {
     expect(html).toMatch(/colspan="5"/i);
   });
 
-  it("shows an empty-state body row that spans all five columns when there are no plans", () => {
+  it("shows a branded empty-state row that spans all five columns when there are no plans", () => {
     render(<ComparisonTable plans={[]} caption="cap" />);
 
     // Five column headers are still present (the header is the schema for LLMs).
@@ -146,10 +146,17 @@ describe("ComparisonTable — always a clean semantic table (pillar-3)", () => {
       ).toBeInTheDocument();
     }
 
-    // A single spanning body cell explains the empty state semantically.
-    const emptyCell = screen.getByText("אין מסלולים להשוואה כרגע");
-    expect(emptyCell.tagName).toBe("TD");
-    expect(emptyCell).toHaveAttribute("colspan", "5");
+    // The branded empty state (headline + broaden link) lives inside a single
+    // spanning body cell, so the table stays well-formed for crawlers/LLMs.
+    const headline = screen.getByText("אין התאמות כרגע");
+    expect(headline).toBeInTheDocument();
+    const cell = headline.closest("td");
+    expect(cell).not.toBeNull();
+    expect(cell).toHaveAttribute("colspan", "5");
+    // A useful escape hatch (broaden / back-home link) is offered.
+    expect(
+      screen.getByRole("link", { name: "חזרה לדף הבית" }),
+    ).toHaveAttribute("href", "/");
   });
 
   it("emits exactly one tbody row per plan (no empty-state row when populated)", () => {
@@ -161,8 +168,39 @@ describe("ComparisonTable — always a clean semantic table (pillar-3)", () => {
     );
     // Two data rows in the body + one header row in the thead = 3 total rows.
     expect(screen.getAllByRole("row")).toHaveLength(3);
+    expect(screen.queryByText("אין התאמות כרגע")).not.toBeInTheDocument();
+  });
+
+  it("renders a pulsing skeleton row grid (not an empty state) while loading", () => {
+    const { container } = render(
+      <ComparisonTable plans={[]} caption="cap" loading loadingRows={3} />,
+    );
+
+    // The five column headers stay (the table shape is stable, zero CLS).
+    for (const col of ["ספק", "מסלול", "מחיר", "מחיר אחרי מבצע", "מאפיינים"]) {
+      expect(
+        screen.getByRole("columnheader", { name: col }),
+      ).toBeInTheDocument();
+    }
+    // The empty state is suppressed while loading (no premature "no matches").
+    expect(screen.queryByText("אין התאמות כרגע")).not.toBeInTheDocument();
+    // Exactly `loadingRows` decorative skeleton rows in the body (aria-hidden so
+    // screen-readers don't read placeholder noise; the host announces "loading").
+    const skeletonRows = container.querySelectorAll(
+      'tbody tr[aria-hidden="true"]',
+    );
+    expect(skeletonRows).toHaveLength(3);
+    // Each skeleton mirrors the real layout: 5 body cells per row.
+    expect(skeletonRows[0].querySelectorAll("td")).toHaveLength(5);
+  });
+
+  it("ignores `loading` once real plans have arrived", () => {
+    render(
+      <ComparisonTable plans={[plan({ id: "a" })]} caption="cap" loading />,
+    );
     expect(
-      screen.queryByText("אין מסלולים להשוואה כרגע"),
-    ).not.toBeInTheDocument();
+      screen.getByRole("rowheader", { name: /סלקום/ }),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("אין התאמות כרגע")).not.toBeInTheDocument();
   });
 });

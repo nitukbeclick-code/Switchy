@@ -113,3 +113,141 @@ class SkeletonPostCard extends StatelessWidget {
     );
   }
 }
+
+/// A ghost of a `MiniPlanCard` — a logo square, the provider + plan name lines,
+/// an amber-shaped savings badge, and the price/CTA column on the trailing edge.
+/// Laid out to match the real plan row so the loading state already signals the
+/// FINAL shape (logo / two text lines + badge / price + CTA) before data lands.
+///
+/// RTL-aware (the [Row] follows the ambient [Directionality], so the price
+/// column sits on the logical trailing edge), dark-aware (via [SkeletonBox] and
+/// [AppTheme.cardDecoration]), reduced-motion-safe (the [SkeletonShimmer]
+/// ancestor drops its sweep when `MediaQuery.disableAnimations` is set), and
+/// announced to screen readers as a single "טוען" rather than a pile of boxes.
+class SkeletonPlanCard extends StatelessWidget {
+  const SkeletonPlanCard({super.key, this.showBadge = true});
+
+  /// Whether to reserve space for the amber savings badge line, matching a
+  /// `MiniPlanCard` that shows a `savingsPerYear` badge.
+  final bool showBadge;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppTheme.of(context);
+    return Semantics(
+      label: 'טוען',
+      container: true,
+      child: ExcludeSemantics(
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.all(16),
+          decoration: t.cardDecoration(),
+          child: SkeletonShimmer(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Provider logo square — same 52px footprint as LogoWidget.
+                SkeletonBox(width: 52, height: 52, radius: t.radiusMd),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SkeletonBox(width: 96, height: 14), // provider name
+                      const SizedBox(height: 6),
+                      const SkeletonBox(width: 140, height: 11), // plan name
+                      if (showBadge) ...[
+                        const SizedBox(height: 8),
+                        // Savings badge ghost — pill-shaped like the amber VALUE
+                        // badge it stands in for.
+                        SkeletonBox(width: 88, height: 18, radius: t.radiusPill),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                // Price + CTA column on the logical trailing edge.
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    const SkeletonBox(width: 56, height: 18), // price
+                    const SizedBox(height: 10),
+                    SkeletonBox(width: 64, height: 28, radius: t.radiusMd), // CTA
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A ghost of a leading-icon list row — a small square/avatar, a title line and
+/// a shorter subtitle line, optionally a trailing chip. Stands in for simple
+/// list tiles (settings rows, notification rows, search results) while their
+/// data loads.
+///
+/// RTL-aware (the [Row] follows the ambient [Directionality]), dark-aware, and
+/// reduced-motion-safe via the [SkeletonShimmer] ancestor; announced as a single
+/// "טוען" to screen readers. The leading mark and trailing chip are optional so
+/// the tile can match a text-only or icon-led row.
+class SkeletonListTile extends StatelessWidget {
+  const SkeletonListTile({
+    super.key,
+    this.hasLeading = true,
+    this.hasTrailing = false,
+    this.hasSubtitle = true,
+  });
+
+  /// Reserve a leading square (icon/avatar) on the logical leading edge.
+  final bool hasLeading;
+
+  /// Reserve a trailing chip/value on the logical trailing edge.
+  final bool hasTrailing;
+
+  /// Reserve a second, shorter line beneath the title.
+  final bool hasSubtitle;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppTheme.of(context);
+    return Semantics(
+      label: 'טוען',
+      container: true,
+      child: ExcludeSemantics(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          child: SkeletonShimmer(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                if (hasLeading) ...[
+                  SkeletonBox(width: 40, height: 40, radius: t.radiusMd),
+                  const SizedBox(width: 12),
+                ],
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SkeletonBox(width: 160, height: 13), // title
+                      if (hasSubtitle) ...[
+                        const SizedBox(height: 7),
+                        const SkeletonBox(width: 100, height: 11), // subtitle
+                      ],
+                    ],
+                  ),
+                ),
+                if (hasTrailing) ...[
+                  const SizedBox(width: 8),
+                  SkeletonBox(width: 48, height: 16, radius: t.radiusSm),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}

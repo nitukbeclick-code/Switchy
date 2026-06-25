@@ -12,6 +12,7 @@ import '../../data.dart';
 import '../../models.dart';
 import '../../widgets/pressable.dart';
 import '../../widgets/refreshable_scroll.dart';
+import '../../widgets/app_sliver_header.dart';
 import '../../components/logo_widget/logo_widget.dart';
 import '../../components/plan_card/mini_plan_card.dart';
 import '../../services/backend/local_backend.dart';
@@ -55,6 +56,12 @@ class _ProfileWidgetState extends State<ProfileWidget> {
           AppState().update(() {});
         },
         slivers: [
+          // Collapsing savings hero — the visual anchor that opens the profile
+          // on the single highest-value stat: the user's total annual saving
+          // potential (computed by the real savings service, never invented).
+          // When there is no bill data yet it shows an honest "fill in details"
+          // state instead of a fake figure. Green ACTION wash via AppSliverHeader.
+          _buildSavingsHero(context, ffTheme),
           _buildHeroHeader(context, ffTheme, appState),
           SliverToBoxAdapter(
             child: Padding(
@@ -305,6 +312,65 @@ class _ProfileWidgetState extends State<ProfileWidget> {
   }
 
   // ── Sections ────────────────────────────────────────────────────────────────
+
+  /// The collapsing hero that anchors the profile on its single most valuable
+  /// number: the whole-app annual saving potential from [_savings] (the same
+  /// `computeSavings` service the savings card uses — no invented figure).
+  ///
+  /// Reuses the shared [AppSliverHeader] primitive in its green ACTION wash.
+  /// With a real opportunity it shows "עד ₪X בשנה"; with bills but no positive
+  /// saving it stays honest ("הפרטים שלך מעודכנים"); with no bill data at all it
+  /// invites the user to start ("התחילו למלא פרטים כדי לראות חיסכון"). [showBack]
+  /// is false here — the pinned [_buildHeroHeader] below keeps the back/edit
+  /// affordances — so this header is a pure hero anchor at the top of the page.
+  Widget _buildSavingsHero(BuildContext context, AppTheme ffTheme) {
+    final total = _savings.totalAnnualPotential;
+    final hasOpportunity = _savings.hasAnyBill && total > 0;
+
+    final String subtitle;
+    final Widget figure;
+    if (hasOpportunity) {
+      subtitle = 'פוטנציאל החיסכון השנתי שלך';
+      figure = Text(
+        'עד ₪$total בשנה',
+        textAlign: TextAlign.center,
+        style: ffTheme.displaySmall.copyWith(
+          color: Colors.white,
+          fontWeight: FontWeight.w800,
+        ),
+      );
+    } else if (_savings.hasAnyBill) {
+      // Bills entered but no positive saving — stay truthful, don't fake a number.
+      subtitle = 'פוטנציאל החיסכון השנתי שלך';
+      figure = Text(
+        'הפרטים שלך מעודכנים',
+        textAlign: TextAlign.center,
+        style: ffTheme.titleMedium.copyWith(
+          color: Colors.white,
+          fontWeight: FontWeight.w700,
+        ),
+      );
+    } else {
+      // No data at all — honest invitation rather than a hollow "₪0".
+      subtitle = 'כמה אפשר לחסוך?';
+      figure = Text(
+        'התחילו למלא פרטים כדי לראות חיסכון',
+        textAlign: TextAlign.center,
+        style: ffTheme.titleSmall.copyWith(
+          color: Colors.white.withValues(alpha: 0.92),
+          fontWeight: FontWeight.w700,
+        ),
+      );
+    }
+
+    return AppSliverHeader(
+      title: 'הפרופיל שלי',
+      subtitle: subtitle,
+      expandedHeight: 184,
+      showBack: false,
+      flexibleChild: figure,
+    );
+  }
 
   Widget _buildHeroHeader(BuildContext context, AppTheme ffTheme, AppState appState) {
     return SliverAppBar(

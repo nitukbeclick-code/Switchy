@@ -28,6 +28,10 @@ import {
   WELCOME_REPLY,
   withFirstContactNote,
 } from "../telegram-user-webhook/lib.ts";
+import {
+  isDataAccessRequest,
+  isErasureRequest,
+} from "../_shared/compliance.ts";
 
 // Build a minimal Telegram update with a text message.
 function upd(text: string, over: Record<string, unknown> = {}): TgUserUpdate {
@@ -106,13 +110,39 @@ Deno.test("isOptOut: matches universal + localized STOP tokens", () => {
   assert(isOptOut("отписаться")); // Russian: unsubscribe
 });
 
-Deno.test("isOptOut: does NOT fire on questions that merely contain a stop-ish word", () => {
-  // Anchored matching: only a BARE opt-out token counts, so a real question that
-  // happens to contain "להפסיק"/"לבטל" still routes to the agent (not an opt-out).
-  assertFalse(isOptOut("איך אפשר להפסיק את החבילה הנוכחית?"));
-  assertFalse(isOptOut("כדאי לי לבטל את המסלול?"));
-  assertFalse(isOptOut("stop sending? no, I have a question about my bill"));
+Deno.test("isOptOut: matches MULTI-WORD opt-out phrasings (broadened §30A detector)", () => {
+  // Now backed by the UNIFIED _shared/compliance.ts isOptOut — a CONTAINS match,
+  // so a real opt-out embedded in a sentence is caught (it was MISSED before when
+  // Telegram anchored to a bare token). §30A: err toward catching the opt-out.
+  assert(isOptOut("אנא הסירו אותי מהרשימה"));
+  assert(isOptOut("בבקשה תפסיקו לשלוח לי הודעות"));
+  assert(isOptOut("please unsubscribe me from this list"));
+  assert(isOptOut("I want to cancel my subscription"));
+});
+
+Deno.test("isOptOut: empty/whitespace and a plain question are not opt-outs", () => {
   assertFalse(isOptOut(""));
+  assertFalse(isOptOut("   "));
+  // A genuine pricing question with no opt-out keyword still routes to the agent.
+  assertFalse(isOptOut("מה המסלול הסלולרי הכי זול עד 50 ₪?"));
+});
+
+// ── Amendment-13 data-subject detection (deterministic, no LLM) ─────────────────
+
+Deno.test("isErasureRequest: detects HE/EN delete-my-data phrasings", () => {
+  assert(isErasureRequest("מחק את המידע שלי"));
+  assert(isErasureRequest("תמחקו אותי מהמערכת"));
+  assert(isErasureRequest("please delete my data"));
+  assert(isErasureRequest("erase my data"));
+  assertFalse(isErasureRequest("מה המסלול הכי זול?"));
+});
+
+Deno.test("isDataAccessRequest: detects access asks; erasure wins over access", () => {
+  assert(isDataAccessRequest("מה אתם יודעים עליי?"));
+  assert(isDataAccessRequest("what data do you have about me"));
+  // Erasure is the stronger intent — a delete request is NOT a read-only access ask.
+  assertFalse(isDataAccessRequest("מחק את המידע שלי"));
+  assertFalse(isDataAccessRequest("מה המסלול הכי זול?"));
 });
 
 // ── §11 first-contact note ─────────────────────────────────────────────────────

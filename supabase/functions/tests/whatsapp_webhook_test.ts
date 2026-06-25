@@ -10,15 +10,20 @@ import {
   classifyTextIntent,
   FIRST_CONTACT_NOTICE,
   isOptedOut,
-  isOptOut,
   messageText,
   OPTOUT_CONFIRM_REPLY,
   RE_GREETING,
   RE_HANDOFF,
-  RE_OPTOUT,
   RE_RECOMMEND,
   withFirstContactNotice,
 } from "../whatsapp-webhook/intents.ts";
+// §30A opt-out + Amendment-13 detectors are now unified in _shared/compliance.ts —
+// the webhook imports them from there, so the tests pin them at that source too.
+import {
+  isDataAccessRequest,
+  isErasureRequest,
+  isOptOut,
+} from "../_shared/compliance.ts";
 
 // The HMAC App-Secret must be set BEFORE the module is imported (read into
 // APP_SECRET at top level). A known value lets a test forge a VALID signature so
@@ -45,9 +50,13 @@ const { capInbound, senderBurstOk, buildHandoffReply, handleOptOut } = await imp
 // §7b disclosure constant — the single source of truth the handoff replies reuse.
 import { COMMISSION_DISCLOSURE } from "../_shared/tools.ts";
 
-// ── opt-out / STOP regex (Spam Law §30A) ──────────────────────────────────────
+// ── opt-out / STOP — the UNIFIED §30A detector (_shared/compliance.ts) ─────────
+// The webhook now routes opt-out through compliance.isOptOut, the BROAD
+// contains-match union (he/en/ar/ru + multi-word + slash). §30A errs toward
+// CATCHING an opt-out: a missed one is an illegal proactive contact, a
+// false-positive merely sends one confirmation and stops.
 
-Deno.test("RE_OPTOUT / isOptOut match Hebrew unsubscribe verbs", () => {
+Deno.test("isOptOut matches Hebrew unsubscribe verbs", () => {
   assert(isOptOut("הסר"));
   assert(isOptOut("הסירו אותי מהרשימה"));
   assert(isOptOut("אני רוצה להסיר"));
@@ -59,29 +68,29 @@ Deno.test("RE_OPTOUT / isOptOut match Hebrew unsubscribe verbs", () => {
   assert(isOptOut("לא לשלוח"));
 });
 
-Deno.test("RE_OPTOUT / isOptOut match the universal English carriers", () => {
+Deno.test("isOptOut matches a MULTI-WORD Hebrew opt-out (the §30A broad rule)", () => {
+  // The whole point of the unified contains-match: a politely-phrased multi-word
+  // request still opts out, where the old narrowly-anchored regex could miss it.
+  assert(isOptOut("אנא הסירו אותי מהרשימה"));
+});
+
+Deno.test("isOptOut matches the universal English carriers + slash forms", () => {
   assert(isOptOut("STOP"));
   assert(isOptOut("stop"));
   assert(isOptOut("please unsubscribe"));
   assert(isOptOut("CANCEL"));
+  assert(isOptOut("/stop"));
 });
 
 Deno.test("isOptOut does NOT fire on ordinary catalogue / chat messages", () => {
-  // None of these contain an opt-out verb — they must reach the normal AI flow.
+  // None of these contain an opt-out keyword — they must reach the normal AI flow.
   assertFalse(isOptOut("כמה עולה סלולר?"));
   assertFalse(isOptOut("מה המסלול הזול ביותר"));
   assertFalse(isOptOut("רוצה לדבר עם נציג"));
   assertFalse(isOptOut("תמליצו לי על מסלול"));
   assertFalse(isOptOut("שלום, מה שלומך"));
-  // "stop" must be a whole word — not a substring of an unrelated English word.
-  assertFalse(isOptOut("nonstop internet"));
   assertFalse(isOptOut(""));
   assertFalse(isOptOut("   "));
-});
-
-Deno.test("RE_OPTOUT is the same predicate isOptOut uses (trim aside)", () => {
-  assert(RE_OPTOUT.test("הסר"));
-  assertFalse(RE_OPTOUT.test("כמה עולה אינטרנט"));
 });
 
 // ── opted-out contact guard (outbound path) ───────────────────────────────────
@@ -413,4 +422,69 @@ Deno.test("PRIVACY: the wa.optout log line contains ok:true and NO phone (PII)",
   // …and must NOT leak the phone (PII) into the structured log.
   assertFalse(optoutLine!.includes(phone), "the opt-out log line must not carry the phone (PII)");
   assertFalse(/"phone"/.test(optoutLine!), "the opt-out log line has no phone field at all");
+});
+
+// ── §30A: a MULTI-WORD opt-out reaches handleOptOut ───────────────────────────
+// The webhook's opt-out guard is `isOptOut(text)` → handleOptOut. With the unified
+// contains-match detector a politely-phrased multi-word request ("אנא הסירו אותי
+// מהרשימה") is caught (the guard is true) AND drives handleOptOut to completion —
+// the exact same path a bare "הסר" takes. We prove both halves: the guard selects
+// this text, and feeding it to handleOptOut emits the opt-out breadcrumb.
+
+Deno.test("§30A: a multi-word opt-out is caught and triggers handleOptOut", async () => {
+  const multiWord = "אנא הסירו אותי מהרשימה";
+  // 1) The guard the handler uses to route into handleOptOut is true for this text.
+  assert(isOptOut(multiWord), "the multi-word opt-out must satisfy the handler's guard");
+
+  // 2) Feeding that same text to handleOptOut runs it to completion (fail-soft, no
+  //    DB — env cleared as in the PRIVACY test) and logs the opt-out breadcrumb.
+  const captured: string[] = [];
+  const origLog = console.log;
+  const savedUrl = Deno.env.get("SUPABASE_URL");
+  const savedKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  Deno.env.delete("SUPABASE_URL");
+  Deno.env.delete("SUPABASE_SERVICE_ROLE_KEY");
+  console.log = (...args: unknown[]) => {
+    captured.push(args.map((a) => String(a)).join(" "));
+  };
+  try {
+    await handleOptOut(
+      { id: "contact-mw", wa_phone: "972500000123" } as Record<string, unknown>,
+      multiWord,
+    );
+  } finally {
+    console.log = origLog;
+    if (savedUrl !== undefined) Deno.env.set("SUPABASE_URL", savedUrl);
+    if (savedKey !== undefined) Deno.env.set("SUPABASE_SERVICE_ROLE_KEY", savedKey);
+  }
+  assert(
+    captured.some((l) => l.includes('"at":"wa.optout"') && l.includes('"ok":true')),
+    "handleOptOut ran to completion for the multi-word opt-out (wa.optout breadcrumb)",
+  );
+});
+
+// ── Amendment-13: erasure / data-access detectors (he/en) ─────────────────────
+// Right after the opt-out check the webhook handles Amendment-13 requests
+// deterministically (no paid AI): erasure WINS over access so a "delete my data"
+// never resolves to a read-only summary. Pinned at the unified compliance source.
+
+Deno.test("Amendment-13: isErasureRequest detects deletion commands (he/en)", () => {
+  assert(isErasureRequest("מחק את המידע שלי"));
+  assert(isErasureRequest("תמחקו אותי"));
+  assert(isErasureRequest("delete my data"));
+  assert(isErasureRequest("please erase my data"));
+  // An ordinary catalogue question is not an erasure request.
+  assertFalse(isErasureRequest("כמה עולה סלולר?"));
+  assertFalse(isErasureRequest(""));
+});
+
+Deno.test("Amendment-13: isDataAccessRequest detects access asks; erasure wins", () => {
+  assert(isDataAccessRequest("מה אתם יודעים עליי"));
+  assert(isDataAccessRequest("what data do you have on me"));
+  // Erasure is the stronger intent — a delete request must NOT read as access.
+  assertFalse(isDataAccessRequest("מחק את המידע שלי"));
+  assertFalse(isDataAccessRequest("delete my data"));
+  // An ordinary catalogue question is neither.
+  assertFalse(isDataAccessRequest("מה המסלול הזול ביותר"));
+  assertFalse(isDataAccessRequest(""));
 });

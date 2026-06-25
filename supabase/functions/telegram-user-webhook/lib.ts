@@ -86,27 +86,14 @@ export function parseInbound(update: TgUserUpdate): ParsedInbound | null {
 // ── §30A STOP / opt-out detection ─────────────────────────────────────────────
 // A user can withdraw consent at any time. We recognise the universal STOP words
 // (EN) plus their Hebrew/Arabic/Russian equivalents, as a /stop command OR as
-// plain text, so the opt-out is honoured however it's phrased. Conservative: only
-// these explicit tokens count, so a normal sentence that happens to contain a
-// substring never trips it. Substring/anchored matching only (JS \b is ASCII-only
-// and never matches around Hebrew/Arabic/Cyrillic letters).
-const OPTOUT_PATTERNS: RegExp[] = [
-  /^\/?stop$/i,
-  /^\/?unsubscribe$/i,
-  /^\/?(הסר|הסרה|הסירו|להסיר)$/, // Hebrew: remove me
-  /^\/?(הפסק|הפסיקו|תפסיקו|תסירו)$/, // Hebrew: stop
-  /^\/?(ביטול|בטל|לבטל)$/, // Hebrew: cancel
-  /^\/?(إلغاء|توقف|الغاء|إيقاف)$/, // Arabic: stop / cancel
-  /^\/?(стоп|отписаться|отмена)$/i, // Russian: stop / unsubscribe
-];
-
-// True when the WHOLE message is an opt-out token (after trimming). Anchored so a
-// question like "איך מפסיקים את החבילה?" is NOT an opt-out — only a bare STOP.
-export function isOptOut(text: string): boolean {
-  const s = String(text ?? "").trim();
-  if (!s) return false;
-  return OPTOUT_PATTERNS.some((re) => re.test(s));
-}
+// plain text, so the opt-out is honoured however it's phrased. Detection is the
+// SHARED, UNIFIED §30A detector (_shared/compliance.ts isOptOut) — a CONTAINS
+// match across he/en/ar/ru, including multi-word phrasings ("אנא הסירו אותי
+// מהרשימה"). This BROADENS the Telegram gate so it no longer misses a real
+// opt-out that isn't a bare token, per the §30A "err toward catching it" rule:
+// a missed opt-out is an illegal proactive contact; a false-positive merely sends
+// one confirmation and stops. Re-exported so the handler imports it from here.
+export { isOptOut } from "../_shared/compliance.ts";
 
 // ── §11 first-contact identification + §30A privacy/STOP note ──────────────────
 // On the FIRST message from a chat we MUST identify who we are (Switchy AI),

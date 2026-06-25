@@ -41,6 +41,7 @@ import { rateLimit, secretFingerprint } from "../_shared/ratelimit.ts";
 import { jlog } from "../_shared/log.ts";
 import { type Plan, plansFromRows } from "../_shared/catalogue.ts";
 import { sendText as sendWhatsapp } from "../_shared/whatsapp.ts";
+import * as compliance from "../_shared/compliance.ts";
 import { importVapidKeys, sendWebPush, type VapidKeys } from "../site-push-notify/webpush.ts";
 import {
   buildWatchAlert,
@@ -51,6 +52,7 @@ import {
   opportunityForTracked,
   latestPriceByPlan,
   type PriceSnapshot,
+  sendWatchWhatsapp,
   type TrackedPlan,
   type WatchContact,
 } from "./lib.ts";
@@ -257,7 +259,8 @@ interface RunResult {
   sentWhatsapp: number;
   failed: number;
   pruned: number;
-  suppressed: number; // opportunities skipped purely by suppression
+  suppressed: number; // opportunities skipped purely by suppression (pre-filter)
+  suppressedSkipped: number; // WhatsApp sends skipped by the live send-time gate
   quietHoursSkipped: number; // opportunities held back by quiet hours
   dryRun: boolean;
 }
@@ -269,7 +272,7 @@ async function runPass(
 ): Promise<RunResult> {
   const base: RunResult = {
     ok: false, watched: 0, opportunities: 0, candidates: 0, sentPush: 0, sentWhatsapp: 0,
-    failed: 0, pruned: 0, suppressed: 0, quietHoursSkipped: 0, dryRun,
+    failed: 0, pruned: 0, suppressed: 0, suppressedSkipped: 0, quietHoursSkipped: 0, dryRun,
   };
 
   const watched = await fetchWatchedPlans();
@@ -315,6 +318,7 @@ async function runPass(
 
   let opportunities = 0, candidates = 0, sentPush = 0, sentWhatsapp = 0;
   let failed = 0, pruned = 0, suppressedCount = 0, quietHoursSkipped = 0;
+  let suppressedSkipped = 0;
 
   for (const tracked of watched) {
     const op = opportunityForTracked(tracked, latestByPlan, catalogue);
@@ -384,12 +388,25 @@ async function runPass(
       }
     }
 
-    // WhatsApp — only to a non-suppressed phone (already gated by canWhatsapp).
+    // WhatsApp — gated by canWhatsapp (snapshot suppressed-set), THEN re-checked
+    // against the live marketing_suppression registry immediately before the send
+    // (§30A: a STOP that landed after the pass-start snapshot must still block).
+    // compliance.isSuppressed is fail-soft (false on error) → a transient DB blip
+    // treats the contact as NOT suppressed and still sends, matching this fn's
+    // posture (never silently drop every alert on a read error).
     if (canWhatsapp && phone) {
-      const wamid = await sendWhatsapp(phone, `${alert.title}\n\n${alert.body}\n\n${alert.url}`);
-      if (wamid) {
+      const outcome = await sendWatchWhatsapp(
+        phone,
+        `${alert.title}\n\n${alert.body}\n\n${alert.url}`,
+        compliance.isSuppressed,
+        sendWhatsapp,
+      );
+      if (outcome === "sent") {
         sentWhatsapp++;
         channelsSent.push("whatsapp");
+      } else if (outcome === "suppressed") {
+        suppressedSkipped++;
+        jlog({ at: "watch.whatsapp", ok: true, skipped: "suppressed" });
       } else {
         failed++;
       }
@@ -413,6 +430,7 @@ async function runPass(
     failed,
     pruned,
     suppressed: suppressedCount,
+    suppressedSkipped,
     quietHoursSkipped,
     dryRun,
   };

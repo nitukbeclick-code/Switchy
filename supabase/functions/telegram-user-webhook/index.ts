@@ -47,6 +47,12 @@ import {
   tgWebhookToken,
 } from "../_shared/config.ts";
 import { fetchRows, insertRow, serviceFetch } from "../_shared/db.ts";
+import {
+  isDataAccessRequest,
+  isErasureRequest,
+  recordErasureRequest,
+  summarizeDataFor,
+} from "../_shared/compliance.ts";
 import { jlog } from "../_shared/log.ts";
 import { rateLimit } from "../_shared/ratelimit.ts";
 import { type AiKeys, type ChatTurn } from "../_shared/ai.ts";
@@ -388,6 +394,26 @@ async function handleUpdate(update: TgUserUpdate): Promise<void> {
   //     AI fan-out. Honouring the opt-out is the mandatory act.
   if (isOptOut(text)) {
     await handleOptOut(chatId, userId);
+    return;
+  }
+
+  // (3b) AMENDMENT-13 data-subject requests — DETERMINISTIC (no LLM), right after
+  //      the §30A opt-out gate. A person may ask to DELETE their data ("erasure")
+  //      or what data we hold ("access"). Erasure wins over access (it's the
+  //      stronger, more specific intent — isDataAccessRequest already defers to it).
+  //      Both honour the request before any AI fan-out and RETURN. Telegram has no
+  //      phone/email — the chat id is the contact key (mirrors handleOptOut).
+  const dsContact = `tg:${chatId}`;
+  if (isErasureRequest(text)) {
+    const reply = await recordErasureRequest("telegram", dsContact);
+    await sendMessage(chatId, reply);
+    jlog({ at: "tgu.erasure", chatId, ok: true });
+    return;
+  }
+  if (isDataAccessRequest(text)) {
+    const reply = await summarizeDataFor("telegram", dsContact);
+    await sendMessage(chatId, reply);
+    jlog({ at: "tgu.access", chatId, ok: true });
     return;
   }
 

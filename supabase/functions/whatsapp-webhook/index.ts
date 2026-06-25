@@ -52,11 +52,22 @@ import {
 import {
   classifyTextIntent,
   isOptedOut,
-  isOptOut,
   messageText,
   OPTOUT_CONFIRM_REPLY,
   withFirstContactNotice,
 } from "./intents.ts";
+// §30A opt-out + Amendment-13 (access/erasure) are unified in _shared/compliance.ts
+// so every channel shares ONE detector. isOptOut here is the BROAD contains-match
+// (he/en/ar/ru + multi-word + slash) that supersedes the old narrow intents.ts
+// RE_OPTOUT; the access/erasure helpers are deterministic + cheap and run right
+// after the opt-out check, before any agent fan-out.
+import {
+  isDataAccessRequest,
+  isErasureRequest,
+  isOptOut,
+  recordErasureRequest,
+  summarizeDataFor,
+} from "../_shared/compliance.ts";
 import {
   type ConvContext,
   effectiveTopic,
@@ -711,6 +722,29 @@ export async function handleOptOut(contact: Row, inText: string): Promise<void> 
   jlog({ at: "wa.optout", ok: true });
 }
 
+// Send ONE deterministic reply and store it as the single outbound for this
+// inbound — the same send+store shape handleOptOut uses, reused by the
+// Amendment-13 access/erasure paths so those replies land on the CRM thread too.
+// Fully fail-soft: sendText returns null without service-role/Graph env and the
+// store is best-effort, so the customer is always acknowledged.
+async function sendStoredReply(contact: Row, reply: string): Promise<void> {
+  const phone = String(contact.wa_phone ?? "");
+  const sentId = await sendText(phone, reply);
+  const convId = contact._convId ? String(contact._convId) : null;
+  if (convId) {
+    await pgInsert("whatsapp_messages", {
+      conversation_id: convId,
+      contact_id: contact.id,
+      direction: "out",
+      actor: "bot",
+      msg_type: "text",
+      body: reply.slice(0, 4000),
+      wa_message_id: sentId,
+      status: sentId ? "sent" : "failed",
+    });
+  }
+}
+
 // Create the hand-off lead (Telegram rep card via the leads trigger) and flip the
 // contact to handed_off. Returns whether the lead landed. Shared by the explicit
 // handoff intent AND the agent's escalate_to_human tool, so both paths behave
@@ -978,6 +1012,28 @@ async function handleMessageInner(m: Row, profileName: string | undefined, aiKey
   if (contact && type !== "image" && isOptOut(text)) {
     await handleOptOut(contact, text);
     return;
+  }
+
+  // 2a) Amendment-13 (Privacy Protection Law) data-subject requests — checked
+  //     RIGHT AFTER opt-out and BEFORE the human-takeover gate / agent fan-out, so
+  //     they are deterministic + cheap (no paid AI). Erasure WINS over access (a
+  //     "delete my data" must never resolve to a read-only summary). Both reply
+  //     once and RETURN; both are reactive service replies to the person's own
+  //     inbound (not marketing). Images carry neither.
+  if (contact && type !== "image") {
+    const phone = String(contact.wa_phone ?? "");
+    if (isErasureRequest(text)) {
+      const reply = await recordErasureRequest("whatsapp", phone);
+      await sendStoredReply(contact, reply);
+      jlog({ at: "wa.erasure", ok: true });
+      return;
+    }
+    if (isDataAccessRequest(text)) {
+      const reply = await summarizeDataFor("whatsapp", phone);
+      await sendStoredReply(contact, reply);
+      jlog({ at: "wa.dataaccess", ok: true });
+      return;
+    }
   }
 
   // 2b) HUMAN TAKEOVER GATE. When a rep has taken the conversation over

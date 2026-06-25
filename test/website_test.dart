@@ -78,6 +78,14 @@ void main() {
       // hero card prompts the current cellular bill and the comparison header
       // renders. (default cellular bill of ₪119 yields a positive saving.)
       expect(find.text('מה אתם משלמים היום על סלולר?'), findsOneWidget);
+
+      // "השוואת מחירים" lives in a sliver below the fold of the test viewport,
+      // so the CustomScrollView hasn't lazily built it yet — scroll it into view
+      // before asserting (same pattern as the storytelling-sections test below).
+      final scrollable = find.byType(Scrollable).first;
+      await tester.scrollUntilVisible(find.text('השוואת מחירים'), 300,
+          scrollable: scrollable);
+      await tester.pump();
       expect(find.text('השוואת מחירים'), findsWidgets);
     });
   });

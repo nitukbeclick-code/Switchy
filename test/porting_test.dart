@@ -11,7 +11,9 @@ import 'package:chosech/pages/porting/porting_widget.dart';
 /// `Provider.of<AppState>` in `build`). RTL mirrors the live app shell.
 Future<void> _pumpPorting(WidgetTester tester) async {
   await tester.pumpWidget(
-    Provider<AppState>.value(
+    // AppState is a ChangeNotifier, so it must be provided via
+    // ChangeNotifierProvider — a plain Provider rejects Listenables.
+    ChangeNotifierProvider<AppState>.value(
       value: AppState(),
       child: const MaterialApp(
         home: Directionality(
@@ -78,13 +80,21 @@ void main() {
     // Unchecked initially — the check glyph is absent.
     expect(find.byIcon(Icons.check_rounded), findsNothing);
 
+    // The POA row sits below the fold of the 800x600 test viewport, so scroll
+    // it on-screen before tapping — otherwise the tap lands on empty space.
+    final poaRow = find.text('אני מסכים/ה לייפוי כוח לביצוע הניוד בשמי');
+    await tester.ensureVisible(poaRow);
+    await tester.pumpAndSettle();
+
     // Tapping the consent row flips the checkbox on (pure setState, no backend).
-    await tester.tap(find.text('אני מסכים/ה לייפוי כוח לביצוע הניוד בשמי'));
+    await tester.tap(poaRow);
     await tester.pumpAndSettle();
     expect(find.byIcon(Icons.check_rounded), findsOneWidget);
 
     // Tapping again clears it.
-    await tester.tap(find.text('אני מסכים/ה לייפוי כוח לביצוע הניוד בשמי'));
+    await tester.ensureVisible(poaRow);
+    await tester.pumpAndSettle();
+    await tester.tap(poaRow);
     await tester.pumpAndSettle();
     expect(find.byIcon(Icons.check_rounded), findsNothing);
   });

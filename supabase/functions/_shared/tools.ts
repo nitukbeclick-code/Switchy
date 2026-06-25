@@ -33,6 +33,7 @@ import {
   type ScorablePlan,
 } from "./scoring.ts";
 import {
+  annualSaving as catalogueAnnualSaving,
   buildSuggestions,
   catalogueProviders,
   CATEGORY_HE,
@@ -517,6 +518,43 @@ export async function getProvider(
 // only "up to ~₪X" derived from a real cheaper catalogue row vs the read amount,
 // never a promise. `imageId` is accepted for the audit trail / future direct
 // path but the extraction itself is done by the caller.
+//
+// FORENSICS (grounded overpay breakdown): on top of the cheaper-options list, we
+// surface a sharp, HONEST "are you overpaying?" verdict — the user's monthly vs
+// the CHEAPEST REAL catalogue plan in the category, the monthly AND annual gap
+// (gap*12, clamped >=0 via the shared annualSaving helper so we never drift), and
+// a one-line, real-field framing of what's DIFFERENT about the cheaper plan (what
+// the extra you pay buys you / what you'd trade away). TRUTH-ONLY: every number is
+// a real catalogue price vs the read amount — nothing is invented. If the cheapest
+// real plan isn't actually cheaper (overpay <= 0), we say so honestly and promise
+// NO saving. We don't re-derive the per-row savings (buildSuggestions owns that) —
+// the forensics block just adds the explicit gap math + plain-language framing.
+
+// Build a one-line, grounded "what's different about the cheaper plan" framing
+// from REAL fields only. Used by the forensics block; never fabricates a benefit.
+function billFraming(cheapest: ScorablePlan, monthlyOverpay: number, sameProvider: boolean, spend: number): string {
+  // What the cheaper plan still gives you (real flags only).
+  const keeps = [
+    cheapest.is5G && "5G",
+    cheapest.noCommit && "ללא התחייבות",
+    cheapest.hasAbroad && 'כולל חו"ל',
+  ].filter(Boolean) as string[];
+  const keepsPart = keeps.length ? ` (${keeps.join(", ")})` : "";
+  // Honest post-promo caveat: if the cheaper row steps up after a promo, flag it.
+  const stepUp = typeof cheapest.after === "number" && cheapest.after > 0 && cheapest.after !== cheapest.price
+    ? ` שימו לב: המחיר עולה ל-₪${cheapest.after} בתום המבצע.`
+    : "";
+  const who = `${cheapest.provider} ${cheapest.plan} (₪${cheapest.price})`;
+  if (monthlyOverpay > 0) {
+    const lead = sameProvider
+      ? `אפילו אצל ${cheapest.provider} עצמם יש מסלול זול יותר — ${who}${keepsPart}.`
+      : `המסלול הזול בקטגוריה הוא ${who}${keepsPart}.`;
+    return `${lead} ההפרש ₪${monthlyOverpay} בחודש הוא מה שאתם משלמים מעבר למחיר הזול בשוק — שווה לבדוק מה אתם מקבלים תמורתו (התחייבות, הטבות, חבילה גדולה יותר) ואם זה מצדיק את הפער.${stepUp}`;
+  }
+  // No overpay: honest, no fabricated saving.
+  return `המחיר שאתם משלמים (₪${spend}) כבר בקו אחד עם המסלול הזול בקטגוריה (${who}${keepsPart}) — אין כרגע חיסכון אמיתי להציע בלי לפגוע במה שיש לכם, וזה בסדר גמור.${stepUp}`;
+}
+
 export async function analyzeBill(
   ctx: ToolContext,
   args: { provider?: unknown; monthly?: unknown; category?: unknown; imageId?: unknown },
@@ -531,7 +569,36 @@ export async function analyzeBill(
     return { ok: false, reason: "invalid", note: "לא הצלחתי לקרוא סכום חודשי תקין מהחשבון." };
   }
   const sugg = buildSuggestions(ctx.plans as CataloguePlan[], category, spend, 3);
-  await audit(ctx, "analyze_bill", true, `${provider || "?"}/${spend}`);
+
+  // ── Forensics: the cheapest REAL plan in the category (the market floor), used
+  // for the explicit overpay math. Unlike buildSuggestions (which only keeps rows
+  // STRICTLY cheaper than the bill), this looks at the whole category so we can
+  // honestly say "nothing is cheaper" when the floor is >= what they pay. Regular
+  // plans only (no promo/one-off kinds), real prices only — never invented.
+  const floorRows = (ctx.plans as ScorablePlan[]).filter((p) =>
+    p.cat === category && typeof p.price === "number" && ((p as { kind?: string }).kind ?? "regular") === "regular"
+  );
+  let forensics: Record<string, unknown> | undefined;
+  if (category && floorRows.length) {
+    const cheapest = floorRows.reduce((a, b) => ((b.price ?? Infinity) < (a.price ?? Infinity) ? b : a));
+    // Monthly overpay vs the real floor, clamped >=0. Annual = monthly*12 via the
+    // shared annualSaving helper (the single source of truth) so it never drifts.
+    const monthlyOverpay = Math.max(0, spend - (cheapest.price as number));
+    const annualOverpay = catalogueAnnualSaving(spend, cheapest.price as number); // (spend - price)*12, clamped >=0
+    const sameProvider = !!provider && cheapest.provider === provider;
+    forensics = {
+      // The real market floor this verdict is grounded in.
+      cheapestPlan: { ...planView(cheapest), sameProvider },
+      monthlyOverpay,
+      annualOverpay,
+      // Honest verdict flag the model can branch on (true ⇒ there IS a cheaper real plan).
+      overpaying: monthlyOverpay > 0,
+      // One-line, real-field framing of what's different / what the extra buys.
+      framing: billFraming(cheapest, monthlyOverpay, sameProvider, spend),
+    };
+  }
+
+  await audit(ctx, "analyze_bill", true, `${provider || "?"}/${spend}/${forensics ? (forensics.overpaying ? "over" : "fair") : "nocat"}`);
   return {
     ok: true,
     data: {
@@ -539,6 +606,9 @@ export async function analyzeBill(
       monthly: spend,
       category: category || null,
       categoryHe: category ? (CATEGORY_HE[category] ?? category) : null,
+      // Grounded overpay breakdown vs the cheapest real catalogue plan (or null if
+      // we have no category to anchor the floor — then it's cheaperOptions only).
+      forensics: forensics ?? null,
       cheaperOptions: sugg.map((s) => ({
         id: s.id,
         provider: s.provider,
@@ -548,6 +618,8 @@ export async function analyzeBill(
         annualSavingUpTo: s.annualSaving > 0 ? s.annualSaving : undefined,
       })),
     },
+    // A grounded one-liner the agent can open with (honest whether or not there's a gap).
+    note: forensics?.framing as string | undefined,
   };
 }
 

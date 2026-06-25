@@ -1,5 +1,5 @@
-// Team chat commands: /today, /agenda, /week, /leads, /meetings, /stats,
-// /search, /customer, /hot, /weekly, /help.
+// Team chat commands: /today, /agenda, /week, /leads, /myleads, /meetings,
+// /stats, /search, /customer, /hot, /weekly, /help.
 
 import type { Cfg, Lead, MeetingRow } from "../_shared/types.ts";
 import { esc, NL, sendTelegram, waLink } from "../_shared/telegram.ts";
@@ -99,6 +99,31 @@ async function reportQueryFailure(cfg: Cfg, cmd: string): Promise<CmdResult> {
   return { ok: false, command: cmd };
 }
 
+// Render a leads pipeline: the counts header (renderLeadsPipeline, optionally
+// with a custom title line prepended) + one live lead card per lead (each via
+// renderLeadCard, reusing the EXISTING lead:<id>:… keyboard). Shared by /leads
+// (the whole open funnel) and /myleads (the rep's claimed slice) so the two can
+// never drift on layout or card behaviour. Pure rendering over a vetted list.
+async function sendLeadsPipeline(cfg: Cfg, cmd: string, leads: Lead[], title?: string): Promise<CmdResult> {
+  const pipeline = { counts: pipelineCounts(leads), recent: leads };
+  const head = renderLeadsPipeline(pipeline);
+  // Optional title line (e.g. "🙋 הלידים שלי") above the shared counts header.
+  const headText = title ? `${title}${NL}${NL}${head.text}` : head.text;
+  await sendTelegram(cfg, headText, head.reply_markup);
+  if (leads.length === 0) return { ok: true, command: cmd };
+  // oldest of the batch first so the newest card lands closest to the input box
+  let failures = 0;
+  for (const lead of [...leads].reverse()) {
+    const card = renderLeadCard(lead);
+    const r = await sendTelegram(cfg, card.text, card.reply_markup);
+    if (!r.ok) failures++;
+  }
+  if (failures > 0) {
+    await sendTelegram(cfg, `⚠️ ${failures} כרטיסים לא נשלחו (תקלת טלגרם) — נסו שוב עוד רגע.`);
+  }
+  return { ok: true, command: cmd, failures };
+}
+
 const enc = encodeURIComponent;
 
 // A bare phone token in the team chat (e.g. "0501234567" or "+972501234567").
@@ -166,7 +191,11 @@ async function sendDossier(cfg: Cfg, phoneDigits: string): Promise<CmdResult> {
   return { ok: true, command: "/customer" };
 }
 
-export async function handleCommand(cfg: Cfg, cmd: string, args: string): Promise<CmdResult> {
+// `fromId` is the pressing rep's Telegram user id — threaded from the team
+// message so /myleads can filter to the leads THIS rep owns (claimed). It's
+// optional so the bare-phone /customer shortcut (and any other caller) stays
+// compatible; only /myleads reads it, and it fails soft when it's absent.
+export async function handleCommand(cfg: Cfg, cmd: string, args: string, fromId?: number): Promise<CmdResult> {
   if (cmd === "/today" || cmd === "/agenda") {
     const data = await fetchAgenda();
     if (data === null) return await reportQueryFailure(cfg, cmd);
@@ -208,21 +237,28 @@ export async function handleCommand(cfg: Cfg, cmd: string, args: string): Promis
     // per recent lead (renderLeadCard reuses the EXISTING lead:<id>:… keyboard).
     const open = await fetchRows<Lead>("/rest/v1/leads?status=in.(new,contacted)&order=created_at.desc&limit=5&select=*");
     if (open === null) return await reportQueryFailure(cfg, cmd);
-    const pipeline = { counts: pipelineCounts(open), recent: open };
-    const head = renderLeadsPipeline(pipeline);
-    await sendTelegram(cfg, head.text, head.reply_markup);
-    if (open.length === 0) return { ok: true, command: cmd };
-    // oldest of the batch first so the newest card lands closest to the input box
-    let failures = 0;
-    for (const lead of [...open].reverse()) {
-      const card = renderLeadCard(lead);
-      const r = await sendTelegram(cfg, card.text, card.reply_markup);
-      if (!r.ok) failures++;
+    return await sendLeadsPipeline(cfg, cmd, open);
+  }
+
+  if (cmd === "/myleads") {
+    // The per-rep view: ONLY the active leads THIS rep owns (claimed via 🙋).
+    // Ownership is the claimed_by_tg_id the claim callback already stamps, so
+    // we reuse it — no new field. Without a known rep id (e.g. a caller that
+    // can't supply one) we can't honestly scope "mine", so say so rather than
+    // leaking the whole funnel. Same pipeline renderer as /leads.
+    if (!fromId) {
+      await sendTelegram(cfg, "🙋 לא זוהה נציג — נסו שוב מתוך צ׳אט הצוות.");
+      return { ok: true, command: cmd };
     }
-    if (failures > 0) {
-      await sendTelegram(cfg, `⚠️ ${failures} כרטיסים לא נשלחו (תקלת טלגרם) — נסו שוב עוד רגע.`);
+    const mine = await fetchRows<Lead>(
+      `/rest/v1/leads?status=in.(new,contacted)&claimed_by_tg_id=eq.${enc(String(fromId))}&order=created_at.desc&limit=10&select=*`,
+    );
+    if (mine === null) return await reportQueryFailure(cfg, cmd);
+    if (mine.length === 0) {
+      await sendTelegram(cfg, "🙋 <b>הלידים שלי — Switchy AI</b>" + NL + NL + "אין כרגע לידים פתוחים בטיפולך 🎉 (תפסו ליד עם 🙋 כדי שיופיע כאן).");
+      return { ok: true, command: cmd };
     }
-    return { ok: true, command: cmd, failures };
+    return await sendLeadsPipeline(cfg, cmd, mine, "🙋 <b>הלידים שלי — Switchy AI</b>");
   }
 
   if (cmd === "/meetings") {
@@ -324,6 +360,7 @@ export async function handleCommand(cfg: Cfg, cmd: string, args: string): Promis
     "/digest — דייג'סט יומי קצר: המספרים של היום + מה דחוף עכשיו",
     "/week — הפגישות המאושרות ב-7 הימים הקרובים, לפי יום",
     "/leads — צינור הלידים: ספירת חדש/בטיפול/נסגר + הכרטיסים האחרונים עם כפתורי סטטוס",
+    "/myleads — הלידים שתפסתם (🙋): רק הלידים הפתוחים בטיפולכם",
     "/meetings — לוח הפגישות: היום/ממתינות/השבוע בהודעה אחת, עם כפתורי אישור/דחייה/ביטול",
     "/search <code>שם או טלפון</code> — איתור ליד ישן",
     "/customer <code>טלפון</code> — תיק לקוח מלא (אפשר גם לשלוח מספר טלפון)",
@@ -343,6 +380,7 @@ export const BOT_COMMANDS = [
   { command: "digest", description: "דייג'סט יומי — המספרים של היום ומה דחוף" },
   { command: "week", description: "פגישות מאושרות ב-7 הימים הקרובים" },
   { command: "leads", description: "לידים פתוחים עם כפתורי סטטוס" },
+  { command: "myleads", description: "הלידים שתפסתם (בטיפולכם)" },
   { command: "meetings", description: "פגישות וידאו קרובות" },
   { command: "search", description: "חיפוש ליד לפי שם או טלפון" },
   { command: "customer", description: "תיק לקוח מלא לפי טלפון" },

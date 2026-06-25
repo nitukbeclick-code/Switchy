@@ -44,13 +44,19 @@ void main() {
 
     testWidgets('uses a white base on light and a slate base on dark',
         (tester) async {
+      // MaterialApp wraps its theme in an AnimatedTheme: re-pumping with a new
+      // brightness starts a ~200ms lerp, so a single frame still reads the OLD
+      // (light) theme. Settle the transition before reading the resolved color —
+      // SkeletonBox has no animation of its own, so pumpAndSettle terminates.
       await _pump(tester, const SkeletonBox(), brightness: Brightness.light);
+      await tester.pumpAndSettle();
       var decoration =
           tester.widget<Container>(find.byType(Container)).decoration
               as BoxDecoration;
       expect(decoration.color, Colors.white);
 
       await _pump(tester, const SkeletonBox(), brightness: Brightness.dark);
+      await tester.pumpAndSettle();
       decoration = tester.widget<Container>(find.byType(Container)).decoration
           as BoxDecoration;
       expect(decoration.color, const Color(0xFF222A38)); // dark slate, not white

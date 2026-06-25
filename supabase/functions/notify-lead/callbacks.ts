@@ -506,6 +506,123 @@ async function handleBoardCallback(
   return null;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// LOST-REASON disposition — when a rep marks a lead "לא רלוונטי" (lost) we don't
+// just flip the status: we ask WHY with a small inline keyboard of GROUNDED
+// reasons (no free-text fabrication), persist the chosen reason as a lost_reason
+// note on the lead (via the existing notes PATCH path + a lead_events audit row),
+// and confirm. This turns a dead lead into a measurable disposition the team can
+// learn from. The reasons are a fixed, real vocabulary — never invented.
+//
+// CALLBACK-DATA CONTRACT (kept distinct from the lead:<id>:… status namespace so
+// the generic status regex never swallows it):
+//   reason picker rows = "lostreason:<id>:<key>"   (key ∈ LOST_REASONS keys)
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Grounded lost-reason vocabulary: key → Hebrew label. Closed set only.
+const LOST_REASONS: Record<string, string> = {
+  price: "מחיר גבוה",
+  switched: "כבר עבר ספק",
+  noanswer: "לא ענה",
+  irrelevant: "לא רלוונטי",
+  other: "אחר",
+};
+const LOST_REASON_ORDER = ["price", "switched", "noanswer", "irrelevant", "other"];
+
+// The reason picker keyboard for a lead about to be marked lost. Two reasons per
+// row + a cancel row that re-renders the live keyboard (no status change).
+function lostReasonKeyboard(leadId: string): TgInlineKeyboard {
+  const rows: TgInlineKeyboard["inline_keyboard"] = [];
+  for (let i = 0; i < LOST_REASON_ORDER.length; i += 2) {
+    const pair = LOST_REASON_ORDER.slice(i, i + 2).map((k) => ({
+      text: LOST_REASONS[k],
+      callback_data: `lostreason:${leadId}:${k}`,
+    }));
+    rows.push(pair);
+  }
+  // Cancel = "noop"-style: just re-assert the live card (handled below).
+  rows.push([{ text: "↩️ ביטול", callback_data: `lostreason:${leadId}:cancel` }]);
+  return { inline_keyboard: rows };
+}
+
+// Mark a lead lost with a grounded reason. Reuses the EXISTING status PATCH path
+// (patchCount on leads) — the only addition is a lost_reason note appended to the
+// notes column in the same PATCH, plus a lead_events audit row. Status-aware: a
+// lead already won/lost by a concurrent press is left alone (no resurrection,
+// no double-disposition). Fail-soft: a DB miss toasts and changes nothing.
+async function applyLostReason(
+  cfg: Cfg,
+  answer: (text?: string) => Promise<unknown>,
+  leadId: string,
+  reasonKey: string,
+  cb: TgCallbackQuery,
+): Promise<HandlerResult> {
+  const who = tgDisplayName(cb.from);
+  const msg = cb.message;
+  // Cancel → re-render the live keyboard, no write. The lead stays as it was.
+  if (reasonKey === "cancel") {
+    await answer("בוטל");
+    await refreshKeyboard(cfg, msg, leadId);
+    return { ok: true, skipped: "lost reason cancelled" };
+  }
+  const label = LOST_REASONS[reasonKey];
+  if (!label) {
+    await answer();
+    return { ok: true, skipped: "unknown lost reason" };
+  }
+  const rows = await fetchRows<Lead>(`/rest/v1/leads?id=eq.${leadId}&select=*`);
+  if (rows === null) {
+    await answer("שגיאת מסד נתונים — נסו שוב בעוד רגע");
+    return { ok: false };
+  }
+  const before = rows[0];
+  if (!before) {
+    await answer("הליד לא נמצא");
+    return { ok: false };
+  }
+  const prev = String(before.status ?? "new");
+  if (prev === "lost" || prev === "won") {
+    // already closed — don't overwrite a disposition / resurrect-then-reclose.
+    await answer(`הליד כבר במצב "${STATUS_HE[prev] ?? prev}"`);
+    await refreshKeyboard(cfg, msg, leadId);
+    return { ok: true, skipped: "lead already closed" };
+  }
+  // Append the lost_reason to notes (the existing notes column / PATCH path).
+  // Keep the prior context; clip to the same 1900 ceiling the AI-capture uses so
+  // we stay under the DB's notes cap.
+  const stamp = `סיבת סגירה: ${label}`;
+  const existing = String(before.notes ?? "").trim();
+  const notes = (existing ? `${existing} | ${stamp}` : stamp).slice(0, 1900);
+  const n = await patchCount(`/rest/v1/leads?id=eq.${leadId}`, { status: "lost", notes });
+  if (n === 0) {
+    // the row existed a moment ago and wasn't already lost/won, so a zero-row
+    // patch is a DB failure, not a no-match.
+    await answer("שגיאת מסד נתונים — נסו שוב בעוד רגע");
+    return { ok: false };
+  }
+  // Audit: a status_change to lost + a note carrying the structured reason, so the
+  // 📜 timeline and the lead_events stats both see the disposition.
+  await logEvent({
+    lead_id: leadId,
+    event: "status_change",
+    old_status: prev,
+    new_status: "lost",
+    actor_tg_id: cb.from?.id ?? null,
+    actor_name: who,
+  });
+  await logEvent({ lead_id: leadId, event: "note", note: stamp, actor_tg_id: cb.from?.id ?? null, actor_name: who });
+  await answer(`נסגר: ${label}`);
+  // Freeze the card with the lost stamp (same frozen view a direct lost gives).
+  if (msg && msg.chat?.id != null) {
+    await tgApi(cfg, "editMessageReplyMarkup", {
+      chat_id: msg.chat.id,
+      message_id: msg.message_id,
+      reply_markup: frozenKeyboard(before, "lost", who),
+    });
+  }
+  return { ok: true, lead: leadId, status: "lost", reason: reasonKey };
+}
+
 export async function handleCallback(cfg: Cfg, cb: TgCallbackQuery): Promise<HandlerResult> {
   // Meeting cards live in their own namespace and carry the same gates inside.
   if (String(cb.data ?? "").startsWith("meet:")) return await handleMeetingCallback(cfg, cb);
@@ -550,6 +667,12 @@ export async function handleCallback(cfg: Cfg, cb: TgCallbackQuery): Promise<Han
       ? await handleRelayTakeover(cfg, answer, relayLeadId, cb)
       : await handleRelayHandback(cfg, answer, relayLeadId, cb);
   }
+
+  // Lost-reason disposition: the rep picked a grounded reason (or cancelled) from
+  // the picker that the lead:<id>:lost tap raised. Its own namespace so the lead
+  // status regex below never swallows it. Auth + team-chat gate already enforced.
+  const lostM = data.match(/^lostreason:([0-9a-fA-F-]{36}):([a-z]+)$/);
+  if (lostM) return await applyLostReason(cfg, answer, lostM[1], lostM[2], cb);
 
   const m = data.match(/^lead:([0-9a-fA-F-]{36}):(contacted|won|lost|claim|claimed|undo|snooze|wonask|noop|history)$/);
   if (!m) {
@@ -675,7 +798,24 @@ export async function handleCallback(cfg: Cfg, cb: TgCallbackQuery): Promise<Han
     return { ok: true };
   }
 
-  // status change: contacted | won | lost
+  // "lost" no longer flips straight to closed: raise the grounded reason picker
+  // first (the lostreason:<id>:<key> tap then persists status=lost + the reason).
+  // We swap the card's keyboard in place for the reason buttons so the rep can
+  // pick (or cancel back). The actual status write happens in applyLostReason —
+  // this branch records nothing, so a mis-tap costs only a keyboard swap.
+  if (action === "lost") {
+    if (msg && msg.chat?.id != null) {
+      await tgApi(cfg, "editMessageReplyMarkup", {
+        chat_id: msg.chat.id,
+        message_id: msg.message_id,
+        reply_markup: lostReasonKeyboard(leadId),
+      });
+    }
+    await answer("בחרו סיבת סגירה");
+    return { ok: true, lead: leadId, prompt: "lost reason" };
+  }
+
+  // status change: contacted | won
   const beforeRows = await fetchRows<Lead>(`/rest/v1/leads?id=eq.${leadId}&select=*`);
   if (beforeRows === null) {
     // fetchRows === null is a real DB error, not an empty result set.
@@ -934,10 +1074,11 @@ export async function handleTeamMessage(cfg: Cfg, msg: TgMessage): Promise<Handl
   if (!text.startsWith("/")) {
     // A bare phone number in the team chat is a shortcut for /customer <phone>.
     const digits = baresPhone(text);
-    if (digits) return await handleCommand(cfg, "/customer", digits);
+    if (digits) return await handleCommand(cfg, "/customer", digits, msg.from?.id);
     return { ok: true, skipped: "not a command" };
   }
   const [cmdTok, ...rest] = text.split(/\s+/);
   const cmd = cmdTok.split("@")[0].toLowerCase();
-  return await handleCommand(cfg, cmd, rest.join(" ").trim());
+  // Pass the pressing rep's tg id so /myleads can scope to leads THEY own.
+  return await handleCommand(cfg, cmd, rest.join(" ").trim(), msg.from?.id);
 }

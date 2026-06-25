@@ -70,6 +70,10 @@ class ConsentPanel extends StatelessWidget {
             ? Semantics(
                 button: true,
                 label: 'פתח $link',
+                // Exclude the descendant rich-text semantics so the button node
+                // announces a single clean action ("פתח תנאי השימוש") instead of
+                // concatenating the lead consent copy onto the link label.
+                excludeSemantics: true,
                 child: InkWell(onTap: () => _openLegal(context, page), child: label))
             : label,
       ),

@@ -37,70 +37,83 @@ void main() {
 
     testWidgets('uses a live BackdropFilter on real-glass platforms',
         (tester) async {
+      // The platform override must be cleared INSIDE the test body: the
+      // framework's end-of-test invariant check (_verifyInvariants) runs before
+      // addTearDown callbacks, so a try/finally is the only place that unsets it
+      // in time. Resetting only in addTearDown trips "foundation debug variable
+      // was changed by the test".
       debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
-      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+      try {
+        await _pump(tester, const GlassPanel(child: SizedBox.shrink()));
 
-      await _pump(tester, const GlassPanel(child: SizedBox.shrink()));
-
-      // iOS is a real-glass platform -> a live blur is spent.
-      expect(find.byType(BackdropFilter), findsOneWidget);
+        // iOS is a real-glass platform -> a live blur is spent.
+        expect(find.byType(BackdropFilter), findsOneWidget);
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
     });
 
     testWidgets('falls back to a solid fill (no BackdropFilter) on weak platforms',
         (tester) async {
       // Fuchsia is the one platform where realGlass is false.
       debugDefaultTargetPlatformOverride = TargetPlatform.fuchsia;
-      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+      try {
+        await _pump(tester, const GlassPanel(child: Text('סולידי')));
 
-      await _pump(tester, const GlassPanel(child: Text('סולידי')));
-
-      expect(find.text('סולידי'), findsOneWidget);
-      // The solid fallback must NOT pay the GPU cost of a live blur.
-      expect(find.byType(BackdropFilter), findsNothing);
-      expect(find.byType(ClipRRect), findsOneWidget);
+        expect(find.text('סולידי'), findsOneWidget);
+        // The solid fallback must NOT pay the GPU cost of a live blur.
+        expect(find.byType(BackdropFilter), findsNothing);
+        expect(find.byType(ClipRRect), findsOneWidget);
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
     });
 
     testWidgets('omits the hairline border when border:false', (tester) async {
       // Force the solid path so the border lives on a single, findable Container.
       debugDefaultTargetPlatformOverride = TargetPlatform.fuchsia;
-      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+      try {
+        await _pump(
+          tester,
+          const GlassPanel(border: false, child: Text('ללא מסגרת')),
+        );
 
-      await _pump(
-        tester,
-        const GlassPanel(border: false, child: Text('ללא מסגרת')),
-      );
-
-      final decorated = tester.widgetList<Container>(find.byType(Container));
-      final hasBorder = decorated.any((c) {
-        final d = c.decoration;
-        return d is BoxDecoration && d.border != null;
-      });
-      expect(hasBorder, isFalse);
+        final decorated = tester.widgetList<Container>(find.byType(Container));
+        final hasBorder = decorated.any((c) {
+          final d = c.decoration;
+          return d is BoxDecoration && d.border != null;
+        });
+        expect(hasBorder, isFalse);
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
     });
 
     testWidgets('honours a custom tint on the solid fallback fill',
         (tester) async {
       debugDefaultTargetPlatformOverride = TargetPlatform.fuchsia;
-      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+      try {
+        const tint = Color(0xFF112233);
+        await _pump(
+          tester,
+          const GlassPanel(tint: tint, child: SizedBox.shrink()),
+        );
 
-      const tint = Color(0xFF112233);
-      await _pump(
-        tester,
-        const GlassPanel(tint: tint, child: SizedBox.shrink()),
-      );
-
-      final decorated = tester.widgetList<Container>(find.byType(Container));
-      final tinted = decorated.any((c) {
-        final d = c.decoration;
-        if (d is! BoxDecoration) return false;
-        final fill = d.color;
-        // The fallback fills with the tint at an alpha derived from `alpha`.
-        return fill != null &&
-            (fill.r - tint.r).abs() < 0.001 &&
-            (fill.g - tint.g).abs() < 0.001 &&
-            (fill.b - tint.b).abs() < 0.001;
-      });
-      expect(tinted, isTrue);
+        final decorated = tester.widgetList<Container>(find.byType(Container));
+        final tinted = decorated.any((c) {
+          final d = c.decoration;
+          if (d is! BoxDecoration) return false;
+          final fill = d.color;
+          // The fallback fills with the tint at an alpha derived from `alpha`.
+          return fill != null &&
+              (fill.r - tint.r).abs() < 0.001 &&
+              (fill.g - tint.g).abs() < 0.001 &&
+              (fill.b - tint.b).abs() < 0.001;
+        });
+        expect(tinted, isTrue);
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
     });
   });
 }

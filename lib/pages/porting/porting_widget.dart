@@ -80,10 +80,17 @@ class _PortingWidgetState extends State<PortingWidget> {
         // Inherit the themed app-bar (ink on light, darkSurface on dark) so the
         // header reads correctly in both modes rather than forcing white-on-ink.
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_rounded),
-          tooltip: 'חזרה',
-          onPressed: () => context.safePop(),
+        // Expose "חזרה" as the back control's accessible NAME (a semantics
+        // label), not only as a hover/long-press tooltip — a screen reader then
+        // announces the control by name. The tooltip is kept as the visual hint.
+        leading: Semantics(
+          label: 'חזרה',
+          button: true,
+          child: IconButton(
+            icon: const Icon(Icons.arrow_back_ios_rounded),
+            tooltip: 'חזרה',
+            onPressed: () => context.safePop(),
+          ),
         ),
         title: const Text('בקשת ניוד מספר'),
       ),

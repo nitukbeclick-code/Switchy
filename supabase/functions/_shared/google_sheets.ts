@@ -36,9 +36,14 @@ function bytesFromB64(b64: string): Uint8Array {
 
 // Parse the base64-encoded service-account JSON → {client_email, private_key}.
 // Returns null on any malformed input (caller fails soft).
-function parseServiceAccount(b64Json: string): { clientEmail: string; privateKeyPem: string } | null {
+function parseServiceAccount(raw: string): { clientEmail: string; privateKeyPem: string } | null {
   try {
-    const json = new TextDecoder().decode(bytesFromB64(b64Json));
+    // Accept EITHER the raw service-account JSON ({"type":"service_account",...})
+    // OR a base64 envelope of it — owners paste whichever form they have.
+    const trimmed = raw.trim();
+    const json = trimmed.startsWith("{")
+      ? trimmed
+      : new TextDecoder().decode(bytesFromB64(trimmed));
     const j = JSON.parse(json) as Record<string, unknown>;
     const clientEmail = String(j.client_email ?? "");
     const privateKeyPem = String(j.private_key ?? "");

@@ -64,11 +64,14 @@ async function resolveCfg(): Promise<Cfg> {
   // Google Calendar service-account (optional — mirrors the zoom_* pattern). The
   // SQL side adds these keys to get_lead_notify_config; '' on either disables
   // calendar event creation (the confirm path stays fail-soft).
-  const [googleServiceAccount, n] = pick("google_service_account_key", firstEnv(["GOOGLE_SERVICE_ACCOUNT_KEY"]));
-  const [googleCalendarId, o] = pick("google_calendar_id", firstEnv(["GOOGLE_CALENDAR_ID"]));
+  // Owner-set Vault secret NAMES (these are the names the owner actually stored
+  // in Vault — they MUST match what get_lead_notify_config() whitelists):
+  // google_service_account (full SA JSON), switchy_calendar_id, leads_spreadsheet_id.
+  const [googleServiceAccount, n] = pick("google_service_account", firstEnv(["GOOGLE_SERVICE_ACCOUNT_KEY", "GOOGLE_SERVICE_ACCOUNT"]));
+  const [googleCalendarId, o] = pick("switchy_calendar_id", firstEnv(["GOOGLE_CALENDAR_ID"]));
   // Google Sheets lead-log spreadsheet (optional — same service-account as the
   // calendar). '' disables row-logging (the fan-out stays fail-soft).
-  const [googleSpreadsheetId, p] = pick("google_spreadsheet_id", firstEnv(["GOOGLE_SPREADSHEET_ID"]));
+  const [googleSpreadsheetId, p] = pick("leads_spreadsheet_id", firstEnv(["GOOGLE_SPREADSHEET_ID"]));
   return {
     tgToken, tgChat, resend, resendFrom, notifyEmail, openai, anthropic, gemini, webhookSecret,
     zoomAccountId, zoomClientId, zoomClientSecret, zoomHostEmail,
@@ -79,7 +82,7 @@ async function resolveCfg(): Promise<Cfg> {
       leads_notify_email: e, openai_api_key: f, anthropic_api_key: g, gemini_api_key: gg,
       lead_webhook_secret: h, telegram_allowed_user_ids: i,
       zoom_account_id: j, zoom_client_id: k, zoom_client_secret: l, zoom_host_email: m,
-      google_service_account_key: n, google_calendar_id: o, google_spreadsheet_id: p,
+      google_service_account: n, switchy_calendar_id: o, leads_spreadsheet_id: p,
     },
   };
 }

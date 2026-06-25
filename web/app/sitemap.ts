@@ -46,6 +46,14 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "weekly",
       priority: 0.9,
     },
+    // /book — email-verified self-serve Zoom consultation booking (high-intent
+    // action entry point: pick a slot → verify email → book).
+    {
+      url: `${SITE_URL}/book`,
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.8,
+    },
     // /referral — the share-the-tool invite page (mints a real referral code).
     {
       url: `${SITE_URL}/referral`,

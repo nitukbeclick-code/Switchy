@@ -106,14 +106,14 @@ export default function ConsentBanner() {
       role="dialog"
       aria-label="הסכמה לעוגיות"
       aria-live="polite"
-      className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-surface/95 shadow-[0_-4px_24px_rgba(2,6,23,0.10)] backdrop-blur-sm"
+      className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-surface/95 shadow-[0_-4px_24px_rgba(2,6,23,0.10)] backdrop-blur-sm motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-4 motion-safe:duration-300 motion-safe:ease-[var(--ease-drawer)]"
     >
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
         <p className="text-sm leading-relaxed text-foreground">
           אנחנו משתמשים ב-cookies כדי לנתח שימוש ולשפר את האתר.{" "}
           <Link
             href="/privacy"
-            className="text-accent-text underline hover:text-accent-hover"
+            className="rounded text-accent-text underline transition-colors duration-150 ease-[var(--ease-out)] hover:text-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           >
             מדיניות הפרטיות
           </Link>
@@ -122,14 +122,14 @@ export default function ConsentBanner() {
           <button
             type="button"
             onClick={() => choose("denied")}
-            className="rounded-lg border border-border-strong px-4 py-2 text-sm font-medium text-ink transition-colors hover:bg-background focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            className="rounded-lg border border-border-strong px-4 py-2 text-sm font-medium text-ink transition-[color,background-color,transform] duration-150 ease-[var(--ease-out)] hover:bg-background active:scale-[0.97] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           >
             רק חיוני
           </button>
           <button
             type="button"
             onClick={() => choose("granted")}
-            className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-contrast transition-colors hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            className="rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-contrast transition-[color,background-color,transform] duration-150 ease-[var(--ease-out)] hover:bg-accent-hover active:scale-[0.97] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           >
             אישור
           </button>

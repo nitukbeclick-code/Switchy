@@ -362,6 +362,26 @@ export default async function ServiceHubPage({ params }: Params) {
 
   return (
     <main id="main" className="mx-auto w-full max-w-5xl flex-1 px-4 py-10 sm:px-6">
+      {/* Page-scoped entrance reveal (Emil Kowalski rules): fade + lift list items
+          in, staggered 30–80ms via inline animationDelay (capped so long lists do
+          not over-delay). Server CSS only (no JS), references the shared --ease-out
+          token, animates ONLY transform + opacity. Reduced-motion removes the
+          animation so items render statically at their resting (visible) state. */}
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
+        .sw-reveal { animation: swReveal 420ms var(--ease-out) both; }
+        @keyframes swReveal {
+          from { opacity: 0; transform: translateY(10px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .sw-reveal { animation: none; }
+        }
+      `,
+        }}
+      />
+
       {/* GEO structured data: CollectionPage + ItemList + FAQ + Breadcrumb + KnowledgeGraph.
           Each plan's Product data is serialized ONCE in the standalone ItemList
           (Google reads ItemList→Product) and once more, entity-linked, inside the
@@ -435,10 +455,13 @@ export default async function ServiceHubPage({ params }: Params) {
           cheapest <service> in Israel?") — the question the AEO answer below
           answers directly. */}
       <header className="mt-3">
-        <h1 className="font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
+        <h1 className="sw-reveal font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
           מהו מסלול ה{svc.label} הזול ביותר בישראל?
         </h1>
-        <p className="mt-4 max-w-2xl text-lg leading-relaxed text-foreground">
+        <p
+          className="sw-reveal mt-4 max-w-2xl text-lg leading-relaxed text-foreground"
+          style={{ animationDelay: "60ms" }}
+        >
           {plans.length} מסלולי {svc.label} מכל הספקים בישראל, ממוינים מהזול ליקר.
           הזמינות ארצית — אותם ספקים בכל עיר. המחירים בשקלים וכוללים את המחיר אחרי
           המבצע.
@@ -517,7 +540,8 @@ export default async function ServiceHubPage({ params }: Params) {
               <li key={pr.slug}>
                 <Link
                   href={`/providers/${pr.slug}`}
-                  className="group card card-interactive flex items-center justify-between px-4 py-3.5"
+                  className="group sw-reveal card card-interactive flex items-center justify-between px-4 py-3.5"
+                  style={{ animationDelay: `${Math.min(i * 50, 250)}ms` }}
                 >
                   <span className="flex items-center gap-3">
                     <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent/10 font-display text-sm font-bold text-accent">
@@ -563,11 +587,12 @@ export default async function ServiceHubPage({ params }: Params) {
           השוואה ממוקדת מקומית.
         </p>
         <ul className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-          {cities.map((c) => (
+          {cities.map((c, i) => (
             <li key={c.slug}>
               <Link
                 href={`/compare/${service}/${c.slug}`}
-                className="group card card-interactive block px-4 py-3 text-sm"
+                className="group sw-reveal card card-interactive block px-4 py-3 text-sm"
+                style={{ animationDelay: `${Math.min(i * 30, 240)}ms` }}
               >
                 <span className="font-medium text-foreground transition-colors group-hover:text-accent">
                   {svc.label} ב{c.name}

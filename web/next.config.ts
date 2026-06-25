@@ -29,6 +29,16 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: projectRoot,
   },
+  // Image optimization: prefer AVIF (≈20% smaller than WebP), fall back to WebP,
+  // then the original format. Next negotiates per-request via the Accept header,
+  // so unsupported browsers transparently get WebP/original — purely a payload win,
+  // no behaviour change for any <Image> usage.
+  images: {
+    formats: ["image/avif", "image/webp"],
+  },
+  // Drop the `x-powered-by: Next.js` response header — a small footprint/security
+  // hygiene win; it advertises the framework and adds bytes to every response.
+  poweredByHeader: false,
   // Allow redirecting the build output off OneDrive-synced storage (which can
   // lock/`.map` files mid-build → "cloud operation was unsuccessful" os error
   // 389). Defaults to ".next"; set NEXT_DIST_DIR to a local path to opt out.

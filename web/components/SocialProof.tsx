@@ -82,7 +82,7 @@ function NeutralFallback({ className }: { className?: string }) {
       </p>
       <Link
         href="/transparency"
-        className="interactive mt-3 inline-block font-medium text-accent-text underline hover:text-accent-hover"
+        className="interactive mt-3 inline-block rounded font-medium text-accent-text underline ease-[var(--ease-out)] hover:text-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
       >
         איך אנחנו מודדים חיסכון? ←
       </Link>
@@ -162,7 +162,7 @@ export default function SocialProof({
         חיסכון אישי משתנה ואינו מובטח.{" "}
         <Link
           href="/transparency"
-          className="interactive font-medium text-accent-text underline hover:text-accent-hover"
+          className="interactive rounded font-medium text-accent-text underline ease-[var(--ease-out)] hover:text-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
           איך אנחנו מודדים?
         </Link>

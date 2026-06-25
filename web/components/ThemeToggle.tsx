@@ -120,7 +120,7 @@ export default function ThemeToggle({ className }: ThemeToggleProps) {
       className={[
         // A square icon control that sits on the glass masthead. Tokens only, so
         // it re-skins in dark mode automatically. ≥44px target via padding.
-        "inline-flex h-9 w-9 items-center justify-center rounded-xl border border-border/60 text-foreground transition-all duration-200 hover:-translate-y-0.5 hover:border-accent/40 hover:bg-accent/[0.06] hover:text-accent active:translate-y-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
+        "inline-flex h-9 w-9 items-center justify-center rounded-xl border border-border/60 text-foreground transition-[color,background-color,border-color,transform] duration-150 ease-[var(--ease-out)] hover:border-accent/40 hover:bg-accent/[0.06] hover:text-accent active:scale-[0.97] [@media(hover:hover)and(pointer:fine)]:motion-safe:hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
         className ?? "",
       ]
         .join(" ")

@@ -311,7 +311,10 @@ export default function AiConcierge() {
             "fixed bottom-20 start-4 z-40 flex w-[min(22rem,calc(100vw-2rem))] flex-col",
             "max-h-[min(34rem,calc(100vh-7rem))] overflow-hidden rounded-2xl",
             "border border-border bg-surface shadow-float",
-            "motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2",
+            // Drawer-style entry from the bottom-corner launcher: slide-up + fade,
+            // GPU-only (transform/opacity), drawer easing, ~250ms. motion-safe so
+            // reduced-motion users get the panel with no positional motion.
+            "origin-bottom motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-95 motion-safe:slide-in-from-bottom-3 motion-safe:duration-[250ms] motion-safe:ease-[var(--ease-drawer)]",
           ].join(" ")}
         >
           {/* Header */}
@@ -482,14 +485,14 @@ export default function AiConcierge() {
                     type="submit"
                     disabled={leadSending || !leadConsent}
                     aria-disabled={leadSending || !leadConsent}
-                    className="interactive press flex-1 rounded-lg bg-accent px-3 py-2 text-sm font-semibold text-accent-contrast shadow-soft hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none"
+                    className="interactive press flex-1 rounded-lg bg-accent px-3 py-2 text-sm font-semibold text-accent-contrast shadow-soft hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                   >
                     {leadSending ? "שולח…" : "שלחו פרטים"}
                   </button>
                   <button
                     type="button"
                     onClick={() => setOfferLead(false)}
-                    className="interactive press rounded-lg border border-border px-3 py-2 text-sm font-medium text-foreground hover:bg-background"
+                    className="interactive press rounded-lg border border-border px-3 py-2 text-sm font-medium text-foreground hover:bg-background focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                   >
                     לא עכשיו
                   </button>

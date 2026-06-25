@@ -104,14 +104,14 @@ export default function RelatedLinks({
                       href={link.href}
                       className={
                         "group card card-interactive interactive press block px-4 py-3.5 " +
-                        "focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                        "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                       }
                     >
                       <span className="flex items-center gap-1.5 font-medium text-foreground transition-colors group-hover:text-accent">
                         {link.label}
                         <span
                           aria-hidden="true"
-                          className="text-accent transition-transform duration-200 group-hover:-translate-x-0.5"
+                          className="text-accent transition-transform duration-200 ease-[var(--ease-out)] motion-safe:group-hover:-translate-x-0.5"
                         >
                           ←
                         </span>

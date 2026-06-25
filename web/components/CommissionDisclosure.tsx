@@ -50,7 +50,7 @@ function DisclosureText({ className }: { className?: string }) {
       {bodyBeforeLink}
       <Link
         href="/transparency"
-        className="text-accent-text underline hover:text-accent-hover"
+        className="rounded text-accent-text underline transition-colors duration-150 ease-[var(--ease-out)] hover:text-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
       >
         {LINK_ANCHOR}
       </Link>

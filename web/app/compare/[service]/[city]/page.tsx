@@ -375,6 +375,26 @@ export default async function ServiceCityPage({ params }: Params) {
 
   return (
     <main id="main" className="mx-auto w-full max-w-5xl flex-1 px-4 py-10 sm:px-6">
+      {/* Page-scoped entrance reveal (Emil Kowalski rules): a single fade + lift on
+          the header so the page settles in crisply. Server CSS only (no JS),
+          references the shared --ease-out token, animates ONLY transform + opacity.
+          Reduced-motion removes the animation so the header renders statically at
+          its resting (fully visible) state. */}
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
+        .sw-reveal { animation: swReveal 420ms var(--ease-out) both; }
+        @keyframes swReveal {
+          from { opacity: 0; transform: translateY(10px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .sw-reveal { animation: none; }
+        }
+      `,
+        }}
+      />
+
       {/* GEO structured data: CollectionPage + Place/GeoCoordinates/AdminArea +
           ItemList + FAQ + Breadcrumb + KnowledgeGraph. Each plan's Product data is
           serialized ONCE in the standalone ItemList and once more (entity-linked)
@@ -446,10 +466,13 @@ export default async function ServiceCityPage({ params }: Params) {
       {/* Conversational, intent-matching H1 (the real local query "what's the
           cheapest <service> in <city>?") — answered directly by the AEO block. */}
       <header className="mt-3">
-        <h1 className="font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
+        <h1 className="sw-reveal font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
           מהו מסלול ה{svc.label} הזול ביותר ב{c.name}?
         </h1>
-        <p className="mt-4 max-w-2xl text-lg leading-relaxed text-foreground">
+        <p
+          className="sw-reveal mt-4 max-w-2xl text-lg leading-relaxed text-foreground"
+          style={{ animationDelay: "60ms" }}
+        >
           הזמינות ארצית — אותם ספקים ומסלולי {svc.label} זמינים ב{c.name}
           {" "}({c.district}) כמו בכל הארץ, ובאותם מחירים. {plans.length} מסלולים,
           ממוינים מהזול ליקר.

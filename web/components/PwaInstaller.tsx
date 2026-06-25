@@ -216,7 +216,7 @@ export default function PwaInstaller() {
       className={[
         "fixed bottom-4 end-4 z-30 w-[min(20rem,calc(100vw-2rem))]",
         "rounded-2xl border border-border bg-surface p-4 shadow-float",
-        "motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-2",
+        "motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-3 motion-safe:duration-[250ms] motion-safe:ease-[var(--ease-drawer)]",
         "mb-[env(safe-area-inset-bottom)]",
       ].join(" ")}
     >

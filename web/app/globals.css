@@ -66,6 +66,21 @@
     0 8px 28px rgba(22, 163, 74, 0.16);
   --glow-value: 0 0 0 1px rgba(245, 158, 11, 0.14),
     0 8px 28px rgba(245, 158, 11, 0.18);
+
+  /* ── Motion system (Emil Kowalski's rules) ────────────────────────────────
+     Define easing + duration ONCE here and reference everywhere, so every
+     transition speaks the same crisp telecom-grade vocabulary. These are
+     theme-independent (timing, not color) — they live in :root and apply in
+     dark mode too. NEVER use the built-in `ease-in` (sluggish); use these. */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1); /* enter / settle — most UI */
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1); /* symmetric move */
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1); /* drawers / sheets */
+
+  /* Durations — keep most UI < 300ms (faster feels more responsive). */
+  --duration-press: 140ms; /* button / press feedback (100–160ms) */
+  --duration-tooltip: 160ms; /* tooltips / small popovers (125–200ms) */
+  --duration-dropdown: 200ms; /* dropdowns / selects (150–250ms) */
+  --duration-modal: 280ms; /* modals / drawers (200–500ms) */
 }
 
 /* ════════════════════════════════════════════════════════════════════════════
@@ -165,6 +180,13 @@
   --shadow-soft: var(--shadow-soft);
   --shadow-card: var(--shadow-card);
   --shadow-float: var(--shadow-float);
+
+  /* Motion easing → ease-out / ease-in-out / ease-drawer transition-timing
+     utilities resolve to the brand curves (Tailwind v4 `--ease-*` namespace),
+     so component agents get the disciplined easing without re-typing béziers. */
+  --ease-out: var(--ease-out);
+  --ease-in-out: var(--ease-in-out);
+  --ease-drawer: var(--ease-drawer);
 }
 
 /* ── Base RTL / Hebrew-first styles ──────────────────────────────────────── */
@@ -312,14 +334,18 @@ a:hover {
 }
 .card-interactive {
   transition:
-    transform 200ms ease,
-    box-shadow 200ms ease,
-    border-color 200ms ease;
+    transform 200ms var(--ease-out),
+    box-shadow 200ms var(--ease-out),
+    border-color 200ms var(--ease-out);
 }
-.card-interactive:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-float);
-  border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+/* Gate hover-lift behind real hover-capable, fine pointers so it never sticks
+   on touch (where :hover latches until the next tap). */
+@media (hover: hover) and (pointer: fine) {
+  .card-interactive:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-float);
+    border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+  }
 }
 .card-interactive:active {
   transform: translateY(-1px) scale(0.995);
@@ -351,18 +377,28 @@ a:hover {
    .press       — tactile press feedback (compose with .interactive). */
 .interactive {
   transition:
-    color 180ms ease,
-    background-color 180ms ease,
-    border-color 180ms ease,
-    box-shadow 180ms ease,
-    transform 180ms ease;
+    color 180ms var(--ease-out),
+    background-color 180ms var(--ease-out),
+    border-color 180ms var(--ease-out),
+    box-shadow 180ms var(--ease-out),
+    transform 180ms var(--ease-out);
 }
-.hover-lift:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-card);
+/* Hover-lift is a pointer affordance — only on hover-capable, fine pointers so
+   it doesn't latch on touch devices. */
+@media (hover: hover) and (pointer: fine) {
+  .hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-card);
+  }
+}
+/* Tactile press feedback — scale(0.97) on :active for ~140ms, ease-out. Press
+   feedback fires on every pointer (it's the touch/click response itself), so it
+   is intentionally NOT gated behind hover. */
+.press {
+  transition: transform var(--duration-press) var(--ease-out);
 }
 .press:active {
-  transform: scale(0.98);
+  transform: scale(0.97);
 }
 
 /* ── Layout helpers ───────────────────────────────────────────────────────────
@@ -394,7 +430,18 @@ a:hover {
   }
 }
 
-/* Respect reduced-motion: disable smooth scroll + animations/transitions. */
+/* Respect reduced-motion. The accessible behaviour is NOT "kill everything":
+   keep opacity/color transitions (they convey state without vestibular motion)
+   but REMOVE transform/position motion and looping animations.
+
+   • Smooth scroll → instant.
+   • Looping/keyframe animations → collapsed (the `animation` shorthand also
+     resets transition, so transitions are re-declared below to survive it).
+   • Transitions → strip the `transform` channel so hover-lifts / presses /
+     card travel settle instantly, while color/background/opacity/box-shadow
+     still ease for legible state feedback.
+   • Neutralize the transform on the motion utilities so their hover/active
+     end-states snap rather than slide. */
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
@@ -404,7 +451,16 @@ a:hover {
   *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+    /* Keep color/opacity/shadow easing; drop only transform motion. */
+    transition-property:
+      color, background-color, border-color, fill, stroke, opacity, box-shadow !important;
+  }
+  /* Hold the affected utilities at their resting transform so no travel occurs. */
+  .card-interactive:hover,
+  .card-interactive:active,
+  .hover-lift:hover,
+  .press:active {
+    transform: none !important;
   }
 }

@@ -76,7 +76,7 @@ export default function StickyLeadCta({
         "fixed inset-x-0 bottom-0 z-40 sm:hidden",
         "border-t border-border bg-surface/95 backdrop-blur",
         "px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]",
-        "transition-transform duration-300 motion-reduce:transition-none",
+        "transition-transform duration-300 ease-[var(--ease-drawer)] motion-reduce:transition-none",
         visible ? "translate-y-0" : "translate-y-full",
       ].join(" ")}
       // Keep it out of the a11y tree + tab order while hidden off-screen.
@@ -86,7 +86,7 @@ export default function StickyLeadCta({
         type="button"
         onClick={handleClick}
         tabIndex={visible ? 0 : -1}
-        className="interactive press flex w-full items-center justify-center gap-2 rounded-xl bg-accent px-5 py-3 font-semibold text-accent-contrast shadow-float hover:bg-accent-hover"
+        className="interactive press flex w-full items-center justify-center gap-2 rounded-xl bg-accent px-5 py-3 font-semibold text-accent-contrast shadow-float hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
       >
         {label}
         <span aria-hidden="true">←</span>

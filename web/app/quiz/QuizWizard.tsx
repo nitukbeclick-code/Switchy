@@ -269,8 +269,11 @@ export default function QuizWizard() {
           aria-label="התקדמות השאלון"
         >
           <div
-            className="h-full rounded-full bg-accent transition-all duration-300"
-            style={{ width: `${progress}%` }}
+            className="h-full rounded-full bg-accent"
+            style={{
+              width: `${progress}%`,
+              transition: "width var(--duration-modal) var(--ease-out)",
+            }}
           />
         </div>
       </div>

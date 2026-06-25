@@ -138,7 +138,7 @@ export default function ReferralCard({ className }: { className?: string }) {
             type="button"
             onClick={issue}
             disabled={status === "loading"}
-            className="interactive inline-flex items-center justify-center rounded-xl bg-accent px-5 py-3 font-semibold text-accent-contrast shadow-sm transition-colors hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-60"
+            className="press interactive inline-flex items-center justify-center rounded-xl bg-accent px-5 py-3 font-semibold text-accent-contrast shadow-sm ease-[var(--ease-out)] hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-60"
             aria-busy={status === "loading"}
           >
             {status === "loading" ? "יוצרים קוד…" : "קבלו קוד הזמנה אישי"}
@@ -157,7 +157,7 @@ export default function ReferralCard({ className }: { className?: string }) {
                 <button
                   type="button"
                   onClick={() => copy(code, "הקוד")}
-                  className="interactive rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:border-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                  className="press interactive rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-foreground ease-[var(--ease-out)] hover:border-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                 >
                   העתקת הקוד
                 </button>
@@ -167,14 +167,14 @@ export default function ReferralCard({ className }: { className?: string }) {
                 <button
                   type="button"
                   onClick={share}
-                  className="interactive inline-flex items-center justify-center rounded-xl bg-accent px-5 py-3 font-semibold text-accent-contrast shadow-sm transition-colors hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                  className="press interactive inline-flex items-center justify-center rounded-xl bg-accent px-5 py-3 font-semibold text-accent-contrast shadow-sm ease-[var(--ease-out)] hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                 >
                   שיתוף ההזמנה
                 </button>
                 <button
                   type="button"
                   onClick={() => copy(link, "הקישור")}
-                  className="interactive inline-flex items-center justify-center rounded-xl border border-border px-5 py-3 font-semibold text-foreground transition-colors hover:border-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                  className="press interactive inline-flex items-center justify-center rounded-xl border border-border px-5 py-3 font-semibold text-foreground ease-[var(--ease-out)] hover:border-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                 >
                   העתקת הקישור
                 </button>

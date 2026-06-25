@@ -99,6 +99,26 @@ export default function CompareIndexPage() {
       id="main"
       className="mx-auto w-full max-w-5xl flex-1 px-4 py-10 sm:px-6"
     >
+      {/* Page-scoped entrance reveal (Emil Kowalski rules): fade + lift each
+          service card in, staggered 30–80ms via inline animationDelay. Server CSS
+          only (no JS), references the shared --ease-out token, animates ONLY
+          transform + opacity. Reduced-motion removes the animation so cards render
+          statically at their resting (fully visible) state. */}
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
+        .sw-reveal { animation: swReveal 420ms var(--ease-out) both; }
+        @keyframes swReveal {
+          from { opacity: 0; transform: translateY(10px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .sw-reveal { animation: none; }
+        }
+      `,
+        }}
+      />
+
       {/* Structured data: CollectionPage + ItemList + Breadcrumb. */}
       <JsonLd
         data={collectionPageSchema({
@@ -122,10 +142,13 @@ export default function CompareIndexPage() {
 
       {/* ── Heading ───────────────────────────────────────────────────────── */}
       <header className="mt-3">
-        <h1 className="font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
+        <h1 className="sw-reveal font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
           השוואת מסלולי תקשורת בישראל
         </h1>
-        <p className="mt-4 max-w-2xl text-lg leading-relaxed text-foreground">
+        <p
+          className="sw-reveal mt-4 max-w-2xl text-lg leading-relaxed text-foreground"
+          style={{ animationDelay: "60ms" }}
+        >
           בחרו שירות להשוואת מסלולים מכל הספקים בישראל — מחירים בשקלים, כולל המחיר
           אחרי המבצע. הזמינות ארצית, אותם ספקים בכל הארץ.
         </p>
@@ -153,14 +176,15 @@ export default function CompareIndexPage() {
           שירותים להשוואה
         </h2>
         <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {services.map((s) => {
+          {services.map((s, i) => {
             const plans = plansForService(s.slug);
             const min = minPriceOf(plans);
             return (
               <li key={s.slug}>
                 <Link
                   href={`/compare/${s.slug}`}
-                  className="group bento card-interactive flex h-full flex-col p-6"
+                  className="group sw-reveal bento card-interactive flex h-full flex-col p-6"
+                  style={{ animationDelay: `${Math.min(i * 60, 300)}ms` }}
                 >
                   <span className="font-display text-lg font-semibold tracking-tight text-ink transition-colors group-hover:text-accent">
                     השוואת {s.label}

@@ -16,6 +16,7 @@
 // Per-provider brand colours are NOT used — the page is in the app theme only.
 // ────────────────────────────────────────────────────────────────────────────
 
+import type { CSSProperties } from "react";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
@@ -211,9 +212,19 @@ function buildAuthorityRows(
 }
 
 // One compact stat card per side (entry price + plan count + cheapest plan name).
-function SideCard({ side, label }: { side: VsSide; label: string }) {
+// `style` is an optional pass-through so the caller can stagger the entrance
+// reveal (animationDelay) without changing the card's layout or content.
+function SideCard({
+  side,
+  label,
+  style,
+}: {
+  side: VsSide;
+  label: string;
+  style?: CSSProperties;
+}) {
   return (
-    <div className="bento card-interactive p-6">
+    <div className="sw-reveal bento card-interactive p-6" style={style}>
       <span className="text-xs font-medium text-muted">{label}</span>
       <h3 className="mt-1 font-display text-xl font-bold tracking-tight text-ink">
         <Link
@@ -405,6 +416,26 @@ export default async function VsPage({ params }: Params) {
 
   return (
     <main id="main" className="mx-auto w-full max-w-5xl flex-1 px-4 py-10 sm:px-6">
+      {/* Page-scoped entrance motion (Emil Kowalski rules): a one-time fade + 10px
+          lift, staggered 30–80ms via inline animationDelay. Server-rendered CSS
+          only (no JS) — references the shared --ease-out token and animates ONLY
+          transform + opacity (GPU). Reduced-motion: the animation is removed so
+          blocks render statically at their already-visible resting state. */}
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
+        .sw-reveal { animation: swReveal 420ms var(--ease-out) both; }
+        @keyframes swReveal {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: none; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .sw-reveal { animation: none; }
+        }
+      `,
+        }}
+      />
+
       {/* GEO structured data: comparison ItemList + FAQ + Breadcrumb + KnowledgeGraph + KnowledgeWeb. */}
       <JsonLd
         data={comparisonSchema({
@@ -480,10 +511,13 @@ export default async function VsPage({ params }: Params) {
 
       {/* ── Heading (conversational, query-shaped) ────────────────────────── */}
       <header className="mt-4">
-        <h1 className="font-display text-4xl font-bold tracking-tight text-ink sm:text-5xl">
+        <h1 className="sw-reveal font-display text-4xl font-bold tracking-tight text-ink sm:text-5xl">
           {aN} מול {bN} — מי זול יותר ב{categoryLabel}?
         </h1>
-        <p className="mt-4 max-w-2xl text-lg leading-relaxed text-foreground">
+        <p
+          className="sw-reveal mt-4 max-w-2xl text-lg leading-relaxed text-foreground"
+          style={{ animationDelay: "60ms" }}
+        >
           השוואה ישירה של מסלולי {categoryLabel} בין {aN} ל{bN} — מחיר התחלתי,
           מספר מסלולים ומאפיינים, הכל מתוך הקטלוג ובשקלים.
         </p>
@@ -505,7 +539,11 @@ export default async function VsPage({ params }: Params) {
         </h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <SideCard side={a} label={`צד א׳ — ${categoryLabel}`} />
-          <SideCard side={b} label={`צד ב׳ — ${categoryLabel}`} />
+          <SideCard
+            side={b}
+            label={`צד ב׳ — ${categoryLabel}`}
+            style={{ animationDelay: "60ms" }}
+          />
         </div>
       </section>
 
@@ -552,7 +590,7 @@ export default async function VsPage({ params }: Params) {
         <div className="card mt-6 divide-y divide-border/60 overflow-hidden">
           {faqs.map((qa) => (
             <details key={qa.question} className="group p-5">
-              <summary className="flex cursor-pointer list-none items-center gap-2 font-display font-semibold text-ink marker:hidden">
+              <summary className="interactive flex cursor-pointer list-none items-center gap-2 rounded-md font-display font-semibold text-ink marker:hidden hover:text-accent">
                 <span>{qa.question}</span>
                 <span
                   aria-hidden="true"

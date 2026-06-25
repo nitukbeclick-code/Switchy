@@ -295,7 +295,8 @@ export default function SwitchKitClient({ providers, plans }: SwitchKitClientPro
         <button
           type="submit"
           disabled={status === "loading"}
-          className="interactive mt-6 inline-flex items-center justify-center rounded-xl bg-accent px-6 py-3 font-semibold text-accent-contrast shadow-sm transition-colors hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-60"
+          aria-busy={status === "loading"}
+          className="interactive press mt-6 inline-flex items-center justify-center rounded-xl bg-accent px-6 py-3 font-semibold text-accent-contrast shadow-sm transition-colors hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-60"
         >
           {status === "loading" ? "בונה ערכה…" : "בנו לי ערכת מעבר ←"}
         </button>
@@ -361,7 +362,7 @@ function KitResult({ kit }: { kit: SwitchKit }) {
           <button
             type="button"
             onClick={onPrint}
-            className="interactive inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:border-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+            className="interactive press inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:border-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           >
             הדפסה / שמירה כ-PDF
           </button>
@@ -415,8 +416,11 @@ function KitResult({ kit }: { kit: SwitchKit }) {
             aria-label="התקדמות המעבר"
           >
             <div
-              className="h-full rounded-full bg-accent transition-[width]"
-              style={{ width: `${total ? (done / total) * 100 : 0}%` }}
+              className="h-full rounded-full bg-accent"
+              style={{
+                width: `${total ? (done / total) * 100 : 0}%`,
+                transition: "width var(--duration-modal) var(--ease-out)",
+              }}
             />
           </div>
           {done > 0 && (
@@ -449,7 +453,7 @@ function KitResult({ kit }: { kit: SwitchKit }) {
                   onClick={() => toggleDone(key, s.key)}
                   aria-pressed={state === "done"}
                   aria-label={`סמנו "${s.name}" כ${state === "done" ? "לא הושלם" : "הושלם"}`}
-                  className={`switchkit-screen-only mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border text-sm transition-colors ${
+                  className={`switchkit-screen-only press mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border text-sm transition-colors ${
                     state === "done"
                       ? "border-accent bg-accent text-accent-contrast"
                       : "border-border bg-surface text-muted hover:border-accent"
@@ -471,7 +475,7 @@ function KitResult({ kit }: { kit: SwitchKit }) {
                     <button
                       type="button"
                       onClick={() => cycleStep(key, s.key)}
-                      className={`switchkit-screen-only rounded-full px-2 py-0.5 text-[11px] font-semibold transition-colors ${
+                      className={`switchkit-screen-only press rounded-full px-2 py-0.5 text-[11px] font-semibold transition-colors ${
                         state === "done"
                           ? "bg-accent/15 text-accent-text"
                           : state === "in_progress"
@@ -556,13 +560,13 @@ function KitResult({ kit }: { kit: SwitchKit }) {
       <div className="switchkit-screen-only mt-6 flex flex-wrap items-center gap-3">
         <Link
           href={`/compare/${kit.category}`}
-          className="interactive inline-flex items-center justify-center rounded-xl bg-accent px-5 py-3 font-semibold text-accent-contrast shadow-sm transition-colors hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          className="interactive press inline-flex items-center justify-center rounded-xl bg-accent px-5 py-3 font-semibold text-accent-contrast shadow-sm transition-colors hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
           להשוואת כל מסלולי {kit.categoryHe} ←
         </Link>
         <Link
           href={switchGuideHref(kit.fromProvider)}
-          className="interactive inline-flex items-center justify-center rounded-xl border border-border px-5 py-3 font-semibold text-foreground transition-colors hover:border-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          className="interactive press inline-flex items-center justify-center rounded-xl border border-border px-5 py-3 font-semibold text-foreground transition-colors hover:border-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
           מדריך הניתוק המלא ←
         </Link>
@@ -592,7 +596,7 @@ function LetterBlock({ letter }: { letter: string }) {
         <button
           type="button"
           onClick={onCopy}
-          className="switchkit-screen-only interactive inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:border-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          className="switchkit-screen-only interactive press inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:border-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           aria-label="העתקת מכתב הניתוק ללוח"
         >
           {copied ? "הועתק ✓" : "העתקת המכתב"}

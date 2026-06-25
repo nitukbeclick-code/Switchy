@@ -163,6 +163,26 @@ export default function MarketPulsePage() {
 
   return (
     <main id="main" className="mx-auto w-full max-w-5xl flex-1 px-4 py-10 sm:px-6">
+      {/* Page-scoped entrance motion (Emil Kowalski rules): a one-time fade + 10px
+          lift, staggered 30–80ms via inline animationDelay. Server-rendered CSS
+          only (no JS) — references the shared --ease-out token and animates ONLY
+          transform + opacity (GPU). Reduced-motion: the animation is removed so
+          blocks render statically at their already-visible resting state. */}
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
+        .sw-reveal { animation: swReveal 420ms var(--ease-out) both; }
+        @keyframes swReveal {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: none; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .sw-reveal { animation: none; }
+        }
+      `,
+        }}
+      />
+
       {/* GEO structured data: Dataset (current snapshot) + CollectionPage + Breadcrumb. */}
       <JsonLd data={datasetSchema(rows)} />
       <JsonLd
@@ -186,10 +206,13 @@ export default function MarketPulsePage() {
 
       {/* ── Heading ───────────────────────────────────────────────────────── */}
       <header className="mt-4">
-        <h1 className="font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
+        <h1 className="sw-reveal font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
           מצב שוק התקשורת בישראל
         </h1>
-        <p className="mt-4 max-w-2xl text-lg leading-relaxed text-foreground">
+        <p
+          className="sw-reveal mt-4 max-w-2xl text-lg leading-relaxed text-foreground"
+          style={{ animationDelay: "60ms" }}
+        >
           תמונת מצב נוכחית של מחירי התקשורת — מחיר ממוצע, המחיר הזול ביותר והעסקה
           המשתלמת ביותר בכל קטגוריה. הנתונים עדכניים נכון להיום.
         </p>
@@ -256,8 +279,12 @@ export default function MarketPulsePage() {
           המשיכו להשוות
         </h2>
         <ul className="grid gap-3 sm:grid-cols-2 sm:gap-4">
-          {rows.map((r) => (
-            <li key={r.category}>
+          {rows.map((r, i) => (
+            <li
+              key={r.category}
+              className="sw-reveal"
+              style={{ animationDelay: `${Math.min(i * 50, 250)}ms` }}
+            >
               <Link
                 href={`/compare/${r.category}`}
                 className="card card-interactive group flex items-center justify-between gap-3 p-4"

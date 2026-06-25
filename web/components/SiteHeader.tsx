@@ -61,7 +61,7 @@ export default function SiteHeader({ className }: SiteHeaderProps) {
         >
           <span
             aria-hidden="true"
-            className="inline-block h-5 w-1.5 rounded-full bg-accent transition-transform duration-200 group-hover:scale-y-110"
+            className="inline-block h-5 w-1.5 rounded-full bg-accent transition-transform duration-200 ease-[var(--ease-out)] motion-safe:group-hover:scale-y-110"
           />
           Switchy
           <span className="text-sm font-semibold text-muted">AI</span>
@@ -76,7 +76,7 @@ export default function SiteHeader({ className }: SiteHeaderProps) {
             <Link
               key={link.href}
               href={link.href}
-              className="rounded-xl px-3 py-2 text-sm font-medium text-foreground transition-all duration-200 hover:-translate-y-0.5 hover:bg-accent/[0.06] hover:text-accent active:translate-y-0"
+              className="rounded-xl px-3 py-2 text-sm font-medium text-foreground transition-[color,background-color,transform] duration-150 ease-[var(--ease-out)] hover:bg-accent/[0.06] hover:text-accent active:scale-[0.97] [@media(hover:hover)and(pointer:fine)]:motion-safe:hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             >
               {link.label}
             </Link>
@@ -92,7 +92,7 @@ export default function SiteHeader({ className }: SiteHeaderProps) {
           href="/#lead"
           location="header"
           label="consult"
-          className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-accent-contrast transition-all duration-200 hover:-translate-y-0.5 hover:bg-accent-hover hover:shadow-md hover:shadow-accent/25 active:translate-y-0 active:scale-[.98]"
+          className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-accent-contrast transition-[color,background-color,box-shadow,transform] duration-150 ease-[var(--ease-out)] hover:bg-accent-hover hover:shadow-md hover:shadow-accent/25 active:scale-[0.97] [@media(hover:hover)and(pointer:fine)]:motion-safe:hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
           שיחת ייעוץ חינם
         </TrackedCtaLink>

@@ -365,8 +365,31 @@ export default function QuizWizard() {
         </div>
       ) : (
         <>
+          {/* Step transition (Emil rule #11/#3): on each step change, re-key the
+              fieldset so it re-enters with a snappy fade + small lift — ease-out,
+              ~220ms (well under 300ms so it never feels sluggish). transform +
+              opacity ONLY (GPU). The radios stay native + focusable throughout; the
+              motion never blocks interaction. Reduced-motion drops the animation
+              (the global reduce block clamps animation-duration), so the new step
+              simply appears. Step changes are deliberate, low-frequency moves, so a
+              standard-band transition is the right "purpose: spatial continuity"
+              fit rather than no motion at all. */}
+          <style
+            dangerouslySetInnerHTML={{
+              __html: `
+            .sw-step { animation: swStep 220ms var(--ease-out) both; }
+            @keyframes swStep {
+              from { opacity: 0; transform: translateY(8px); }
+              to   { opacity: 1; transform: translateY(0); }
+            }
+            @media (prefers-reduced-motion: reduce) {
+              .sw-step { animation: none; }
+            }
+          `,
+            }}
+          />
           {/* ── Step bodies — each a native radiogroup (arrow-key navigable) ── */}
-          <fieldset>
+          <fieldset key={step} className="sw-step">
             <legend className="mb-3 font-display text-lg font-bold tracking-tight text-ink">
               {STEP_TITLES[step]}
             </legend>
@@ -531,6 +554,27 @@ function Results({
 
   return (
     <div className="space-y-8">
+      {/* Results entrance (Emil rule #11): the loading→results swap is a rare,
+          first-time, high-value moment — the one place "delight" is warranted.
+          The header settles in, then the ranked cards reveal in a 60ms stagger
+          (fade + 8px lift) so the eye lands on rank #1 first. transform + opacity
+          ONLY; reduced-motion drops the animation entirely (global reduce block),
+          so results appear at rest with no travel. Single-shot (`both`) — no idle
+          loop. */}
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
+        .sw-result { animation: swResult 360ms var(--ease-out) both; }
+        @keyframes swResult {
+          from { opacity: 0; transform: translateY(8px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .sw-result { animation: none; }
+        }
+      `,
+        }}
+      />
       {/* Header + restart */}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
@@ -550,10 +594,14 @@ function Results({
         </button>
       </div>
 
-      {/* Ranked match cards */}
+      {/* Ranked match cards — staggered reveal so #1 lands first. */}
       <ol className="space-y-4">
         {matches.map((m, i) => (
-          <li key={m.id}>
+          <li
+            key={m.id}
+            className="sw-result"
+            style={{ animationDelay: `${Math.min(i * 60, 300)}ms` }}
+          >
             <MatchCard match={m} rank={i + 1} hasBill={hasBill} top={i === 0} />
           </li>
         ))}

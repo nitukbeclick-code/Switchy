@@ -87,11 +87,14 @@ void main() {
       Future<void> tapNext() async {
         final next = find.text('הבא →');
         await tester.ensureVisible(next);
-        await tester.pump(const Duration(milliseconds: 200));
+        // Let the slide's entrance animations settle (the Emil motion pass added
+        // a hero-badge spring + staggered reveals) so the CTA is a stable hit
+        // target before tapping.
+        await tester.pump(const Duration(milliseconds: 1000));
         await tester.tap(next);
-        // Page-change animation (350ms) + entrance effects.
-        await tester.pump(const Duration(milliseconds: 400));
-        await tester.pump(const Duration(milliseconds: 900));
+        // Page-change animation (350ms) + the new slide's entrance effects.
+        await tester.pump(const Duration(milliseconds: 500));
+        await tester.pump(const Duration(milliseconds: 1100));
       }
 
       await tapNext(); // slide 2

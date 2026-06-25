@@ -260,22 +260,38 @@ class _CheckItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // The opacity reveal is "entering" motion → ease-out (kept under reduced
+    // motion, since it's opacity-only). When an item ticks, the circle fills and
+    // the check pops in with a slight scale (rare, first-time delight) — an
+    // AnimatedScale from 0.6 reads as a confident "done", not a jitter. Under
+    // reduced motion we DROP the transform (rule 13) and let the tick simply
+    // fade in (opacity is retained).
+    final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
     return AnimatedOpacity(
       opacity: checked ? 1.0 : 0.4,
       duration: const Duration(milliseconds: 400),
+      curve: ffTheme.easeOut,
       child: Row(
         children: [
           AnimatedContainer(
             duration: ffTheme.motionMedium,
+            curve: ffTheme.easeOut,
             width: 24,
             height: 24,
             decoration: BoxDecoration(
               color: checked ? ffTheme.brandAccent : Colors.white.withValues(alpha: 0.15),
               shape: BoxShape.circle,
             ),
-            child: checked
-                ? const Icon(Icons.check_rounded, size: 14, color: Colors.white)
-                : null,
+            child: AnimatedScale(
+              scale: checked ? 1.0 : (reduceMotion ? 1.0 : 0.6),
+              duration: ffTheme.motionMedium,
+              curve: ffTheme.spring,
+              child: AnimatedOpacity(
+                opacity: checked ? 1.0 : 0.0,
+                duration: ffTheme.motionFast,
+                child: const Icon(Icons.check_rounded, size: 14, color: Colors.white),
+              ),
+            ),
           ),
           const SizedBox(width: 12),
           Text(text, style: GoogleFonts.rubik(fontSize: 14, fontWeight: FontWeight.w500, color: Colors.white)),

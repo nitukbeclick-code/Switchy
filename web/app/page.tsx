@@ -77,9 +77,9 @@ export default function Home() {
       <style
         dangerouslySetInnerHTML={{
           __html: `
-        .sw-reveal { animation: swReveal 420ms var(--ease-out) both; }
+        .sw-reveal { animation: swReveal 400ms var(--ease-out) both; }
         @keyframes swReveal {
-          from { opacity: 0; transform: translateY(10px); }
+          from { opacity: 0; transform: translateY(8px); }
           to   { opacity: 1; transform: translateY(0); }
         }
         @media (hover: hover) and (pointer: fine) {
@@ -152,7 +152,7 @@ export default function Home() {
             carries the amber VALUE token (the rest stays muted). */}
         <p
           className="sw-reveal mt-4 text-sm text-muted"
-          style={{ animationDelay: "180ms" }}
+          style={{ animationDelay: "150ms" }}
         >
           {planCount} מסלולים · {providers.length} ספקים · החל מ-
           <span className="font-display font-bold text-value-text">

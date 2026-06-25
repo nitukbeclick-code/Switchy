@@ -21,7 +21,7 @@
 // RTL Hebrew, design-system tokens (glass surface, ink text, green action CTA).
 // ────────────────────────────────────────────────────────────────────────────
 
-import { useEffect, useSyncExternalStore } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 
 const STORAGE_KEY = "cookieConsent";
@@ -86,6 +86,17 @@ function updateConsent(choice: Choice): void {
 export default function ConsentBanner() {
   const stored = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
+  // Drawer enter: a one-frame `mounted` flip drives an INTERRUPTIBLE CSS transition
+  // (Emil rule 9 — transitions, not keyframes, so a dismiss mid-enter doesn't jump).
+  // Resting OFF-screen at translateY(100%); flips to 0 on the next frame.
+  const [mounted, setMounted] = useState(false);
+  const shouldShow = stored === "";
+  useEffect(() => {
+    if (!shouldShow) return;
+    const id = requestAnimationFrame(() => setMounted(true));
+    return () => cancelAnimationFrame(id);
+  }, [shouldShow]);
+
   // Replay an existing grant so GA4 gets the green light on every load. This is a
   // sync-to-external-system effect (pushing React state into gtag), not a render
   // driver — it sets no React state.
@@ -99,14 +110,22 @@ export default function ConsentBanner() {
   }
 
   // A stored choice (granted/denied) hides the banner; only "" (no choice) shows.
-  if (stored !== "") return null;
+  if (!shouldShow) return null;
 
   return (
     <div
       role="dialog"
       aria-label="הסכמה לעוגיות"
       aria-live="polite"
-      className="fixed inset-x-0 bottom-0 z-50 border-t border-border bg-surface/95 shadow-[0_-4px_24px_rgba(2,6,23,0.10)] backdrop-blur-sm motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-4 motion-safe:duration-300 motion-safe:ease-[var(--ease-drawer)]"
+      className={[
+        "fixed inset-x-0 bottom-0 z-50 border-t border-border bg-surface/95 backdrop-blur-sm",
+        "shadow-[0_-4px_24px_rgba(2,6,23,0.10)]",
+        // Drawer slide-up: GPU-only (transform+opacity), drawer easing, drawer band
+        // (300ms). Interruptible transition off a `mounted` flip — not a keyframe.
+        "transition-[transform,opacity] duration-300 ease-[var(--ease-drawer)]",
+        "motion-reduce:transition-opacity",
+        mounted ? "translate-y-0 opacity-100" : "translate-y-full opacity-0",
+      ].join(" ")}
     >
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
         <p className="text-sm leading-relaxed text-foreground">

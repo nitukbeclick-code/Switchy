@@ -256,6 +256,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                       onTap: () => setSheet(() => selectedReason = r),
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 200),
+                        curve: ffTheme.easeInOut,
                         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                         decoration: BoxDecoration(
                           color: active ? AppColors.primary : ffTheme.cardSurface,
@@ -723,6 +724,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                       onTap: () => setSheet(() => selectedChannel = ch),
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 200),
+                        curve: ffTheme.easeInOut,
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
                           color: active ? AppColors.primary : ffTheme.cardSurface,
@@ -1006,7 +1008,9 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                     _visibleCount = _feedPageSize;
                   }),
                   child: AnimatedContainer(
+                    // Filter-chip select is a state MORPH → easeInOut.
                     duration: const Duration(milliseconds: 200),
+                    curve: ffTheme.easeInOut,
                     margin: const EdgeInsets.only(right: 8),
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
@@ -1046,6 +1050,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                   }),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
+                    curve: ffTheme.easeInOut,
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
                       color: _sortByPopular ? ffTheme.primary.withValues(alpha: 0.1) : ffTheme.background,
@@ -1079,6 +1084,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                       },
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 200),
+                        curve: ffTheme.easeInOut,
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                         decoration: BoxDecoration(
                           color: _showBookmarksOnly ? ffTheme.warning.withValues(alpha: 0.12) : ffTheme.background,
@@ -1392,6 +1398,7 @@ class _PostCardState extends State<_PostCard> {
                           onTap: () => widget.onBookmark(post.id),
                           child: AnimatedContainer(
                             duration: const Duration(milliseconds: 200),
+                            curve: ffTheme.easeInOut,
                             padding: const EdgeInsets.all(5),
                             decoration: BoxDecoration(
                               color: widget.bookmarked ? ffTheme.accent2 : Colors.transparent,
@@ -1535,14 +1542,19 @@ class _PostCardState extends State<_PostCard> {
                     icon: liked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
                     label: '${post.likes + (liked ? 1 : 0)}',
                     color: liked ? Colors.red : ffTheme.secondaryText,
-                    scale: _bouncing ? 1.4 : 1.0,
+                    // A restrained confirmation pop on like — the heart is a
+                    // HIGH-FREQUENCY tap, so the old scale(1.4) elasticOut bounce
+                    // was gaudy; a subtle ~1.18 spring read as a single confident
+                    // beat is the right amount of feedback for something seen on
+                    // every row.
+                    scale: _bouncing ? 1.18 : 1.0,
                     semanticLabel: liked ? 'בטל לייק' : 'אהבתי',
                     onTap: () {
                       HapticFeedback.selectionClick();
                       appBackend.setLike(post.id, !liked).catchError((_) {});
                       appState.toggleLike(post.id);
                       setState(() { _bouncing = true; });
-                      Future.delayed(const Duration(milliseconds: 400), () { if (mounted) setState(() => _bouncing = false); });
+                      Future.delayed(const Duration(milliseconds: 320), () { if (mounted) setState(() => _bouncing = false); });
                     },
                   );
                 }),
@@ -1602,8 +1614,10 @@ class _ActionBtn extends StatelessWidget {
             children: [
               AnimatedScale(
                 scale: scale,
-                duration: const Duration(milliseconds: 200),
-                curve: Curves.elasticOut,
+                duration: const Duration(milliseconds: 220),
+                // A single gentle overshoot (the shared [spring]) instead of a
+                // multi-wobble elasticOut — one confident beat, then settle.
+                curve: ffTheme.spring,
                 child: Icon(icon, size: 17, color: color),
               ),
               if (label.isNotEmpty) ...[

@@ -109,9 +109,9 @@ export default function CompareIndexPage() {
       <style
         dangerouslySetInnerHTML={{
           __html: `
-        .sw-reveal { animation: swReveal 420ms var(--ease-out) both; }
+        .sw-reveal { animation: swReveal 400ms var(--ease-out) both; }
         @keyframes swReveal {
-          from { opacity: 0; transform: translateY(10px); }
+          from { opacity: 0; transform: translateY(8px); }
           to   { opacity: 1; transform: translateY(0); }
         }
         @media (prefers-reduced-motion: reduce) {

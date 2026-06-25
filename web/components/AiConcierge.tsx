@@ -307,14 +307,19 @@ export default function AiConcierge() {
           role="dialog"
           aria-modal="false"
           aria-labelledby={titleId}
+          // ORIGIN-AWARE popover (Emil rule 7): the panel scales UP FROM the
+          // launcher's corner, not its own center, so it reads as "this opened from
+          // the button". The launcher pins to the inline-start, bottom corner — in
+          // this RTL app that is physically bottom-right. The shared `.popover`
+          // utility (globals.css) handles the rest: scale(0.96)+opacity:0 enter via
+          // @starting-style (never scale(0), rule 6), interruptible transition,
+          // dropdown band, and reduced-motion-safe opacity-only fallback.
+          style={{ ["--popover-origin" as string]: "bottom right" }}
           className={[
+            "popover",
             "fixed bottom-20 start-4 z-40 flex w-[min(22rem,calc(100vw-2rem))] flex-col",
             "max-h-[min(34rem,calc(100vh-7rem))] overflow-hidden rounded-2xl",
             "border border-border bg-surface shadow-float",
-            // Drawer-style entry from the bottom-corner launcher: slide-up + fade,
-            // GPU-only (transform/opacity), drawer easing, ~250ms. motion-safe so
-            // reduced-motion users get the panel with no positional motion.
-            "origin-bottom motion-safe:animate-in motion-safe:fade-in motion-safe:zoom-in-95 motion-safe:slide-in-from-bottom-3 motion-safe:duration-[250ms] motion-safe:ease-[var(--ease-drawer)]",
           ].join(" ")}
         >
           {/* Header */}

@@ -235,6 +235,11 @@ export default function BillUploader({ promoPlans = [] }: BillUploaderProps) {
 
   return (
     <div className="mt-8">
+      {/* Async result/error reveals settle in with a small fade + 8px rise
+          (transform+opacity only, ease-out, one-shot, motion-safe) so a result
+          arriving after the upload round-trip doesn't pop jarringly. Rule:
+          prevent-jarring; reduced-motion drops the transform automatically. */}
+      <style>{`@keyframes bill-result-in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}`}</style>
       {/* ── Uploader card ──────────────────────────────────────────────────── */}
       <div className="bento p-6 sm:p-8">
         <label htmlFor="bill-file" className="block">
@@ -315,7 +320,7 @@ export default function BillUploader({ promoPlans = [] }: BillUploaderProps) {
         {phase === "error" && error && (
           <div
             role="alert"
-            className="bento mt-4 border-l-4 border-l-value p-5"
+            className="bento mt-4 border-l-4 border-l-value p-5 motion-safe:animate-[bill-result-in_320ms_var(--ease-out)_both]"
           >
             <p className="text-sm font-medium text-ink">{error}</p>
             <button
@@ -331,7 +336,7 @@ export default function BillUploader({ promoPlans = [] }: BillUploaderProps) {
 
       {/* ── Unreadable result (200 + friendly error) ───────────────────────── */}
       {unreadable && result && (
-        <div role="status" className="bento mt-4 p-6">
+        <div role="status" className="bento mt-4 p-6 motion-safe:animate-[bill-result-in_320ms_var(--ease-out)_both]">
           <h2 className="font-display text-lg font-semibold text-ink">
             לא הצלחנו לקרוא את החשבון
           </h2>
@@ -358,7 +363,7 @@ export default function BillUploader({ promoPlans = [] }: BillUploaderProps) {
 
       {/* ── Readable result: extracted facts + cheaper plans + hand-off ───── */}
       {readable && result && (
-        <div className="mt-4 space-y-4">
+        <div className="mt-4 space-y-4 motion-safe:animate-[bill-result-in_320ms_var(--ease-out)_both]">
           {/* Extracted summary. */}
           <div role="status" className="bento p-6">
             <h2 className="font-display text-xl font-bold tracking-tight text-ink">

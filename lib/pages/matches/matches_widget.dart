@@ -112,9 +112,28 @@ class MatchesWidget extends StatelessWidget {
                     ...catMatches.asMap().entries.map((entry) {
                       final i = entry.key;
                       final item = entry.value;
-                      return _buildMatchCard(context, ffTheme, item.catId,
-                              item.catName, item.match, appState, personalized,
-                              isTopSaver: i == topSaverIndex)
+                      final card = _buildMatchCard(context, ffTheme, item.catId,
+                          item.catName, item.match, appState, personalized,
+                          isTopSaver: i == topSaverIndex);
+                      // The biggest-saving card is the list's focal point (it
+                      // also wears the amber crown + hairline). Give it a
+                      // confident-but-restrained reveal: settle from a hair
+                      // larger (1.025→1.0) on the gentle spring so the eye lands
+                      // on the top opportunity first. PURPOSE = focal hierarchy,
+                      // once on reveal, no loop; transform drops under
+                      // reduced-motion via flutter_animate.
+                      if (i == topSaverIndex && topSaverIndex >= 0) {
+                        return card
+                            .animate()
+                            .fadeIn(duration: 400.ms)
+                            .scale(
+                              begin: const Offset(1.025, 1.025),
+                              end: const Offset(1, 1),
+                              duration: 420.ms,
+                              curve: ffTheme.spring,
+                            );
+                      }
+                      return card
                           .animate(delay: (120 + i * 80).ms)
                           .fadeIn(duration: 400.ms)
                           .slideY(begin: 0.06, end: 0);

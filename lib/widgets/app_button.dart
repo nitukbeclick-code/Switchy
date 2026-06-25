@@ -295,9 +295,13 @@ class _AppButtonState extends State<AppButton> {
       onPointerDown: (_) => _setPressed(true),
       onPointerUp: (_) => _setPressed(false),
       onPointerCancel: (_) => _setPressed(false),
+      // Press-down lands in the 100-160ms press band (ease-out); the release
+      // settles a touch longer with the subtle [spring] overshoot — a primary
+      // CTA is a lower-frequency, higher-intent control than a list row, so a
+      // hint of "spring-back" reads as "action committed" rather than noise.
       child: AnimatedScale(
         scale: scale,
-        duration: _pressed ? ffTheme.motionFast : ffTheme.motionMedium,
+        duration: _pressed ? ffTheme.motionPress : ffTheme.motionMedium,
         curve: _pressed ? ffTheme.easeOut : ffTheme.spring,
         child: _withFocusRing(sized, borderRadius, ffTheme),
       ),

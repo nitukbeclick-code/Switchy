@@ -146,9 +146,15 @@ class _OnboardingWidgetState extends State<OnboardingWidget> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: List.generate(3, (i) => ExcludeSemantics(
+                      // Page-dot spring: the active dot stretches into the green
+                      // ACTION pill with a hair of overshoot — a premium
+                      // first-impression flourish on a RARE, spatial indicator
+                      // (where am I in 3 steps). The width morph is the deliberate
+                      // shape of this control, so [spring] gives it life without
+                      // the gaudiness that an everyday control would forbid.
                       child: AnimatedContainer(
                         duration: ffTheme.motionMedium,
-                        curve: ffTheme.easeOut,
+                        curve: ffTheme.spring,
                         margin: const EdgeInsets.symmetric(horizontal: 4),
                         width: i == _page ? 28 : 8,
                         height: 8,
@@ -416,7 +422,7 @@ class _HeroBadge extends StatelessWidget {
         boxShadow: ffTheme.glowAccent,
       ),
       child: ExcludeSemantics(child: Icon(icon, size: 52, color: ffTheme.brandAccent)),
-    ).animate().scale(duration: 500.ms, curve: ffTheme.spring);
+    ).animate().scale(begin: const Offset(0.9, 0.9), duration: 500.ms, curve: ffTheme.spring);
   }
 }
 

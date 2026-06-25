@@ -532,6 +532,48 @@ class AppTheme {
   /// The scale a surface shrinks to while pressed (tactile feedback).
   double get pressScale => 0.97;
 
+  // ── Emil-tier motion tokens ─────────────────────────────────────────────────
+  // The press/feedback/morph vocabulary, named by PURPOSE so each surface
+  // animates with the right curve+duration band instead of improvising:
+  //   • press feedback   100-160ms  ease-out   ([motionPress] + [easeOut])
+  //   • tooltip          125-200ms
+  //   • dropdown/popover 150-250ms  origin-aware
+  //   • modal / drawer   200-500ms  ([motionDrawer] + [easeDrawer])
+  // UI motion stays < 300ms so nothing feels sluggish. These are ADDITIVE —
+  // [motionFast]/[motionMedium]/[spring] keep their existing values so no
+  // call-site outside the shared primitives shifts.
+
+  /// Press-down feedback band (100-160ms). Tighter than [motionFast] so a tap's
+  /// scale-down lands inside Emil's high-frequency press window — pair with
+  /// [easeOut] (entering/settling motion is always ease-out, never ease-in).
+  Duration get motionPress => const Duration(milliseconds: 130);
+
+  /// Tooltip / micro-feedback band (~150ms).
+  Duration get motionTooltip => const Duration(milliseconds: 150);
+
+  /// Drawer / bottom-sheet entrance band (200-500ms). Long enough to read as a
+  /// surface sliding up under [easeDrawer], short enough to never drag.
+  Duration get motionDrawer => const Duration(milliseconds: 320);
+
+  /// The site's `--ease-in-out` — for elements that MOVE or MORPH between two
+  /// states (a thumb sliding, a card reflowing). Never use ease-in for UI.
+  Curve get easeInOut => const Cubic(0.77, 0, 0.175, 1);
+
+  /// The site's `--ease-drawer` — the signature decelerating curve for sheets
+  /// and drawers that translate in from an edge. Calmer tail than [easeOut].
+  Curve get easeDrawer => const Cubic(0.32, 0.72, 0, 1);
+
+  /// A subtle, physically-grounded spring for drawer / sheet entrances and
+  /// drag-driven surfaces (Emil's `{duration: 0.5, bounce: 0.2}`). Low bounce so
+  /// the surface settles with a hair of life, never a cartoonish wobble. Use for
+  /// [AnimatedScale]/`SpringSimulation`-style entrances where a [Curve] alone
+  /// would feel mechanical; keep [spring] for the existing overshoot call-sites.
+  SpringDescription get drawerSpring => SpringDescription.withDampingRatio(
+        mass: 1,
+        stiffness: 380,
+        ratio: 0.82, // ≈ bounce 0.18 — within Emil's 0.1-0.3 alive band
+      );
+
   /// A faint top-to-bottom glass wash for full-screen scaffolds — lifts plain
   /// backgrounds off flat white (or, on dark, off flat slate) without
   /// introducing any colour.

@@ -160,7 +160,7 @@ class _RecapBody extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
       children: [
         _HeroCard(total: total, personalized: personalized, ffTheme: ffTheme)
-            .animate().fadeIn(duration: 320.ms).slideY(begin: 0.08),
+            .animate().fadeIn(duration: 320.ms).slideY(begin: 0.08, end: 0, curve: ffTheme.easeOut),
         const SizedBox(height: 16),
 
         // At-a-glance stats: plans tracked + categories with an opportunity.

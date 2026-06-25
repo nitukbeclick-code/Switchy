@@ -112,6 +112,9 @@ function maySurface(record: PromptRecord | null): boolean {
 
 export default function PwaInstaller() {
   const [showPrompt, setShowPrompt] = useState(false);
+  // One-frame `mounted` flip drives the INTERRUPTIBLE enter transition (Emil rule
+  // 9). Reset whenever the prompt is (re)shown so the slide-up replays cleanly.
+  const [mounted, setMounted] = useState(false);
   const [busy, setBusy] = useState(false);
   // The prior dismissal count, captured when we decide to surface, so enable()/
   // dismiss() can persist the next record with the right escalating cool-off.
@@ -207,6 +210,17 @@ export default function PwaInstaller() {
     });
   }, [priorDismissals]);
 
+  // Flip `mounted` one frame after the prompt mounts so the resting
+  // translateY(.75rem)/opacity:0 transitions UP into place (interruptible).
+  useEffect(() => {
+    if (!showPrompt) {
+      setMounted(false);
+      return;
+    }
+    const id = requestAnimationFrame(() => setMounted(true));
+    return () => cancelAnimationFrame(id);
+  }, [showPrompt]);
+
   if (!showPrompt) return null;
 
   return (
@@ -216,7 +230,12 @@ export default function PwaInstaller() {
       className={[
         "fixed bottom-4 end-4 z-30 w-[min(20rem,calc(100vw-2rem))]",
         "rounded-2xl border border-border bg-surface p-4 shadow-float",
-        "motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-3 motion-safe:duration-[250ms] motion-safe:ease-[var(--ease-drawer)]",
+        // Toast-style slide-up: GPU-only (transform+opacity), drawer easing, dropdown
+        // band (250ms). Interruptible CSS transition off `mounted` — not a keyframe —
+        // so a quick dismiss reverses cleanly. Reduced-motion keeps only the fade.
+        "transition-[transform,opacity] duration-[250ms] ease-[var(--ease-drawer)]",
+        "motion-reduce:transition-opacity",
+        mounted ? "translate-y-0 opacity-100" : "translate-y-3 opacity-0",
         "mb-[env(safe-area-inset-bottom)]",
       ].join(" ")}
     >

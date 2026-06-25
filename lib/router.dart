@@ -228,6 +228,65 @@ class _ScaffoldWithNav extends StatelessWidget {
   /// (preserving each branch's stack + scroll) via [goBranch].
   final StatefulNavigationShell navigationShell;
 
+  @override
+  Widget build(BuildContext context) {
+    final ffTheme = AppTheme.of(context);
+
+    // Subscribe ONLY to the compare-count slice so the shell (and its bottom
+    // nav / compare badge) rebuilds when plans are added/removed from the
+    // compare tray — not on every unrelated AppState notify (search keystroke,
+    // bill tap, etc.). The Selector recomputes the int and only rebuilds its
+    // child when that int changes.
+    return Selector<AppState, int>(
+      selector: (_, appState) => appState.comparePlans.length,
+      builder: (context, compareCount, _) => Scaffold(
+        // Let page content scroll *under* the frosted nav bar so it reads as glass.
+        extendBody: true,
+        body: navigationShell,
+        bottomNavigationBar: GlassPanel(
+          // Flat top edge — only the top hairline frames it against scrolled content.
+          borderRadius: BorderRadius.zero,
+          border: false,
+          alpha: 0.7,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              border: Border(top: BorderSide(color: ffTheme.alternate, width: 1)),
+            ),
+            child: SafeArea(
+              top: false,
+              child: _BottomNavBar(
+                navigationShell: navigationShell,
+                compareCount: compareCount,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The bottom-nav row + the single *travelling* selection pill.
+///
+/// Motion craft (Emil): tab-switching is a HIGH-FREQUENCY action, so the content
+/// swap stays instant and the chrome stays snappy. The selection indicator is a
+/// SINGLE pill that *slides* between tab slots (spatial continuity — you read it
+/// as one object moving, the clip-path-style continuous feel) rather than a
+/// per-tab background that fades in/out in place. It travels in the fast band
+/// ([motionFast]) under [easeOut] — entering/settling motion is always ease-out,
+/// never ease-in — so the active state lands crisply without ever feeling
+/// sluggish. The icon + label colour and the label weight crossfade on the same
+/// fast cadence. Press gives a subtle [pressScale] squeeze for tactile feedback.
+/// All transform/position motion is dropped under reduced-motion; colour stays.
+class _BottomNavBar extends StatelessWidget {
+  const _BottomNavBar({
+    required this.navigationShell,
+    required this.compareCount,
+  });
+
+  final StatefulNavigationShell navigationShell;
+  final int compareCount;
+
   // Tab order MUST match the branch order in [createRouter]'s
   // StatefulShellRoute (home, compare, community, tracker, account) — the index
   // is what drives [navigationShell.goBranch] / [currentIndex].
@@ -243,45 +302,66 @@ class _ScaffoldWithNav extends StatelessWidget {
   Widget build(BuildContext context) {
     final ffTheme = AppTheme.of(context);
     final idx = navigationShell.currentIndex;
+    final reduceMotion =
+        MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    // Travelling pill: instant under reduced-motion (no transform animation),
+    // otherwise a snappy slide in the fast band. Map the active index to a
+    // [-1, 1] Alignment.x across the n equal slots; RTL is handled by the
+    // ambient Directionality so the pill tracks the visually-active tab.
+    final pillAlignX = _tabs.length == 1
+        ? 0.0
+        : (idx / (_tabs.length - 1)) * 2 - 1;
 
-    // Subscribe ONLY to the compare-count slice so the shell (and its bottom
-    // nav / compare badge) rebuilds when plans are added/removed from the
-    // compare tray — not on every unrelated AppState notify (search keystroke,
-    // bill tap, etc.). The Selector recomputes the int and only rebuilds its
-    // child when that int changes.
-    return Selector<AppState, int>(
-      selector: (_, appState) => appState.comparePlans.length,
-      builder: (context, compareCount, _) => Scaffold(
-      // Let page content scroll *under* the frosted nav bar so it reads as glass.
-      extendBody: true,
-      body: navigationShell,
-      bottomNavigationBar: GlassPanel(
-        // Flat top edge — only the top hairline frames it against scrolled content.
-        borderRadius: BorderRadius.zero,
-        border: false,
-        alpha: 0.7,
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            border: Border(top: BorderSide(color: ffTheme.alternate, width: 1)),
+    return SizedBox(
+      height: 64,
+      child: Stack(
+        children: [
+          // ── The single travelling selection pill (behind the row) ──────────
+          // It SLIDES between slots so the eye follows one continuous object
+          // instead of a fade swap. The AnimatedAlign fills the whole bar and
+          // its child is exactly one slot wide ([widthFactor] 1/n), so an
+          // Alignment.x of (idx/(n-1))*2-1 centres that slot-box precisely over
+          // the active tab for ANY bar width. The visible pill is inset within
+          // the slot-box so it reads as a soft 56px-wide pill. Directionality is
+          // resolved so RTL tracks the visually-active tab.
+          Positioned.fill(
+            child: IgnorePointer(
+              child: AnimatedAlign(
+                duration: reduceMotion ? Duration.zero : ffTheme.motionFast,
+                curve: ffTheme.easeOut,
+                alignment: AlignmentDirectional(pillAlignX, 0)
+                    .resolve(Directionality.of(context)),
+                child: FractionallySizedBox(
+                  widthFactor: 1 / _tabs.length,
+                  child: Center(
+                    child: Container(
+                      width: 56,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: ffTheme.brandAccent.withValues(alpha: 0.14),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
           ),
-          child: SafeArea(
-          top: false,
-          child: SizedBox(
-            height: 64,
-            child: Row(
-              children: List.generate(_tabs.length, (i) {
-                final tab = _tabs[i];
-                final active = i == idx;
-                final isCompare = i == 1;
-                return Expanded(
-                  child: Semantics(
-                    button: true,
-                    selected: active,
-                    label: isCompare && compareCount > 0
-                        ? '${tab.label}, $compareCount בהשוואה'
-                        : tab.label,
-                    excludeSemantics: true,
-                    child: InkWell(
+          // ── The tappable tab row (icons + labels) on top of the pill ───────
+          Row(
+            children: List.generate(_tabs.length, (i) {
+              final tab = _tabs[i];
+              final active = i == idx;
+              final isCompare = i == 1;
+              return Expanded(
+                child: Semantics(
+                  button: true,
+                  selected: active,
+                  label: isCompare && compareCount > 0
+                      ? '${tab.label}, $compareCount בהשוואה'
+                      : tab.label,
+                  excludeSemantics: true,
+                  child: _NavTabButton(
                     onTap: () {
                       // Tactile confirm on tab change — the tabs were silent,
                       // a classic webview tell; every native bar buzzes here.
@@ -291,53 +371,138 @@ class _ScaffoldWithNav extends StatelessWidget {
                       // (initialLocation: true) — standard native tab behaviour.
                       navigationShell.goBranch(i, initialLocation: i == idx);
                     },
+                    reduceMotion: reduceMotion,
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        // Animated selection indicator — a soft green pill grows
-                        // in behind the active icon (Material-3 NavigationBar
-                        // feel) instead of a flat colour flip.
-                        AnimatedContainer(
-                          duration: ffTheme.motionMedium,
-                          curve: ffTheme.easeOut,
-                          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 3),
-                          decoration: BoxDecoration(
-                            color: active
-                                ? ffTheme.brandAccent.withValues(alpha: 0.14)
-                                : Colors.transparent,
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Stack(clipBehavior: Clip.none, children: [
-                            Icon(tab.icon, size: 24, color: active ? ffTheme.brandAccent : ffTheme.secondaryText),
-                            if (isCompare && compareCount > 0)
-                              PositionedDirectional(
-                                top: -5, end: -8,
-                                child: Container(
-                                  width: 18, height: 18,
-                                  decoration: BoxDecoration(color: ffTheme.secondary, shape: BoxShape.circle),
-                                  child: Center(child: Text('$compareCount', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: ffTheme.primary))),
+                        // Icon sits OVER the travelling pill (no per-tab
+                        // background of its own now) — only its tint crossfades
+                        // on the fast cadence as the pill arrives/leaves.
+                        SizedBox(
+                          height: 32,
+                          child: Center(
+                            child: Stack(
+                              clipBehavior: Clip.none,
+                              children: [
+                                // Genuine tint crossfade as the pill arrives /
+                                // leaves — Icon colour isn't tweened by a plain
+                                // AnimatedContainer, so drive it through a colour
+                                // tween on the same fast cadence (instant under
+                                // reduced-motion, which keeps the colour change
+                                // but drops the in-between animation).
+                                TweenAnimationBuilder<Color?>(
+                                  duration: reduceMotion
+                                      ? Duration.zero
+                                      : ffTheme.motionFast,
+                                  curve: ffTheme.easeOut,
+                                  tween: ColorTween(
+                                    end: active
+                                        ? ffTheme.brandAccent
+                                        : ffTheme.secondaryText,
+                                  ),
+                                  builder: (_, color, __) => Icon(
+                                    tab.icon,
+                                    size: 24,
+                                    color: color,
+                                  ),
                                 ),
-                              ),
-                          ]),
+                                if (isCompare && compareCount > 0)
+                                  PositionedDirectional(
+                                    top: -5,
+                                    end: -8,
+                                    child: Container(
+                                      width: 18,
+                                      height: 18,
+                                      decoration: BoxDecoration(
+                                        color: ffTheme.secondary,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: Center(
+                                        child: Text(
+                                          '$compareCount',
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.w800,
+                                            color: ffTheme.primary,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
                         ),
                         const SizedBox(height: 2),
                         AnimatedDefaultTextStyle(
-                          duration: ffTheme.motionMedium,
+                          duration:
+                              reduceMotion ? Duration.zero : ffTheme.motionFast,
                           curve: ffTheme.easeOut,
-                          style: TextStyle(fontSize: 10.5, fontWeight: active ? FontWeight.w700 : FontWeight.w500, color: active ? ffTheme.brandAccent : ffTheme.secondaryText),
+                          style: TextStyle(
+                            fontSize: 10.5,
+                            fontWeight:
+                                active ? FontWeight.w700 : FontWeight.w500,
+                            color: active
+                                ? ffTheme.brandAccent
+                                : ffTheme.secondaryText,
+                          ),
                           child: Text(tab.label),
                         ),
                       ],
                     ),
                   ),
-                  ),
-                );
-              }),
-            ),
+                ),
+              );
+            }),
           ),
-        ),
-        ),
+        ],
       ),
+    );
+  }
+}
+
+/// A single tappable nav slot. Adds Emil's subtle press squeeze ([pressScale])
+/// on the way down — tactile feedback for a high-frequency control — then
+/// settles back on release. Both legs use [easeOut] (pressing in and releasing
+/// are each "settling" motion, never ease-in). The squeeze is dropped under
+/// reduced-motion. Keeps haptics at the call-site so it fires exactly once.
+class _NavTabButton extends StatefulWidget {
+  const _NavTabButton({
+    required this.child,
+    required this.onTap,
+    required this.reduceMotion,
+  });
+
+  final Widget child;
+  final VoidCallback onTap;
+  final bool reduceMotion;
+
+  @override
+  State<_NavTabButton> createState() => _NavTabButtonState();
+}
+
+class _NavTabButtonState extends State<_NavTabButton> {
+  bool _down = false;
+
+  void _set(bool v) {
+    if (_down != v) setState(() => _down = v);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppTheme.of(context);
+    final pressedScale = widget.reduceMotion ? 1.0 : t.pressScale;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: widget.onTap,
+      onTapDown: (_) => _set(true),
+      onTapUp: (_) => _set(false),
+      onTapCancel: () => _set(false),
+      child: AnimatedScale(
+        scale: _down ? pressedScale : 1.0,
+        duration: _down ? t.motionPress : t.motionMedium,
+        curve: t.easeOut,
+        child: widget.child,
       ),
     );
   }

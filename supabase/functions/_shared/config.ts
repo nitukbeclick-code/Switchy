@@ -72,10 +72,15 @@ async function resolveCfg(): Promise<Cfg> {
   // Google Sheets lead-log spreadsheet (optional — same service-account as the
   // calendar). '' disables row-logging (the fan-out stays fail-soft).
   const [googleSpreadsheetId, p] = pick("leads_spreadsheet_id", firstEnv(["GOOGLE_SPREADSHEET_ID"]));
+  // Sentry DSN (optional — observability stays dark/no-op until this is set).
+  // The SQL side adds 'sentry_dsn' to get_lead_notify_config's whitelist (see
+  // observability-sentry-2026-06.sql); '' here keeps _shared/observability.ts
+  // a no-op. Never logged.
+  const [sentryDsn, q] = pick("sentry_dsn", firstEnv(["SENTRY_DSN"]));
   return {
     tgToken, tgChat, resend, resendFrom, notifyEmail, openai, anthropic, gemini, webhookSecret,
     zoomAccountId, zoomClientId, zoomClientSecret, zoomHostEmail,
-    googleServiceAccount, googleCalendarId, googleSpreadsheetId,
+    googleServiceAccount, googleCalendarId, googleSpreadsheetId, sentryDsn,
     allowedUserIds: parseUserIds(allowedCsv),
     src: {
       telegram_bot_token: a, telegram_chat_id: b, resend_api_key: c, resend_from: d,
@@ -83,6 +88,7 @@ async function resolveCfg(): Promise<Cfg> {
       lead_webhook_secret: h, telegram_allowed_user_ids: i,
       zoom_account_id: j, zoom_client_id: k, zoom_client_secret: l, zoom_host_email: m,
       google_service_account: n, switchy_calendar_id: o, leads_spreadsheet_id: p,
+      sentry_dsn: q,
     },
   };
 }

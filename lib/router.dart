@@ -51,7 +51,15 @@ import 'pages/switch_kit/switch_kit_widget.dart';
 import 'pages/switch_kit/street_price_widget.dart';
 
 final _rootNavKey = GlobalKey<NavigatorState>(debugLabel: 'root');
-final _shellNavKey = GlobalKey<NavigatorState>(debugLabel: 'shell');
+// One Navigator per bottom-nav tab so each tab keeps its OWN back-stack and
+// scroll position (true native tab behaviour). The branch order here is the
+// tab order in [_ScaffoldWithNav._tabs]: home, compare, community, tracker,
+// account.
+final _homeNavKey = GlobalKey<NavigatorState>(debugLabel: 'home');
+final _compareNavKey = GlobalKey<NavigatorState>(debugLabel: 'compare');
+final _communityNavKey = GlobalKey<NavigatorState>(debugLabel: 'community');
+final _trackerNavKey = GlobalKey<NavigatorState>(debugLabel: 'tracker');
+final _accountNavKey = GlobalKey<NavigatorState>(debugLabel: 'account');
 
 /// The current app's router, set by [ChosechApp] at construction. Exposed so
 /// non-widget code — the auth-state listener in `main.dart` — can navigate (e.g.
@@ -95,79 +103,117 @@ GoRouter createRouter() {
     GoRoute(path: '/auth', name: 'Auth', parentNavigatorKey: _rootNavKey, builder: (_, __) => const AuthWidget()),
     GoRoute(path: '/lock', name: 'Lock', parentNavigatorKey: _rootNavKey, builder: (_, __) => const BiometricGateWidget()),
     GoRoute(path: '/website', name: 'Website', parentNavigatorKey: _rootNavKey, builder: (_, __) => const WebsiteWidget()),
-    ShellRoute(
-      navigatorKey: _shellNavKey,
-      builder: (ctx, state, child) => _ScaffoldWithNav(location: state.uri.path, child: child),
-      routes: [
-        GoRoute(path: '/home', name: 'Home', builder: (_, __) => const HomeWidget()),
-        GoRoute(path: '/quiz', name: 'Quiz', builder: (_, __) => const QuizWidget()),
-        GoRoute(path: '/results', name: 'Results', builder: (_, __) => const ResultsWidget()),
-        GoRoute(path: '/search', name: 'Search', builder: (_, __) => const SearchWidget()),
-        GoRoute(path: '/savings', name: 'Savings', builder: (_, __) => const SavingsWidget()),
-        GoRoute(path: '/electricity', name: 'Electricity', builder: (_, __) => const ElectricityWidget()),
-        GoRoute(path: '/plan/:planId', name: 'PlanDetail', builder: (_, s) => PlanDetailWidget(planId: s.pathParameters['planId']!)),
-        GoRoute(path: '/compare', name: 'Compare', builder: (_, __) => const CompareWidget()),
-        GoRoute(path: '/lead/:planId', name: 'Lead', builder: (_, s) => LeadWidget(planId: s.pathParameters['planId']!, source: s.uri.queryParameters['source'] ?? 'form')),
-        GoRoute(path: '/success', name: 'Success', builder: (_, __) => const SuccessWidget()),
-        GoRoute(path: '/tracker', name: 'Tracker', builder: (_, __) => const TrackerWidget()),
-        GoRoute(path: '/account', name: 'Account', builder: (_, __) => const AccountWidget()),
-        GoRoute(path: '/community', name: 'Community', builder: (_, __) => const CommunityWidget()),
-        GoRoute(path: '/advisor', name: 'AIAdvisor', builder: (_, __) => const AIAdvisorWidget()),
-        GoRoute(path: '/deals', name: 'Deals', builder: (_, __) => const DealsWidget()),
-        GoRoute(path: '/profile', name: 'Profile', builder: (_, __) => const ProfileWidget()),
-        GoRoute(path: '/bills', name: 'Bills', builder: (_, __) => const BillsWidget()),
-        GoRoute(path: '/ratings', name: 'Ratings', builder: (_, __) => const RatingsWidget()),
-        GoRoute(path: '/chat', name: 'Chat', builder: (_, __) => const ChatWidget()),
-        GoRoute(path: '/availability', name: 'Availability', builder: (_, __) => const AvailabilityWidget()),
-        GoRoute(path: '/switch-calc', name: 'SwitchCalc', builder: (_, __) => const SwitchCalcWidget()),
-        GoRoute(path: '/callback', name: 'Callback', builder: (_, __) => const CallbackWidget()),
-        GoRoute(
-          path: '/meeting',
-          name: 'Meeting',
-          builder: (_, s) => MeetingWidget(
-            provider: s.uri.queryParameters['provider'],
-            planId: s.uri.queryParameters['planId'],
-            source: s.uri.queryParameters['source'] ?? 'form',
-          ),
+    // Per-tab back-stacks: one navigator branch per bottom-nav tab, so switching
+    // tabs preserves each tab's own navigation stack + scroll position (native
+    // tab behaviour). [_ScaffoldWithNav] hosts the shared bottom nav and renders
+    // the active branch via the [StatefulNavigationShell]. Routes are grouped
+    // into the branch whose tab they belong to (mirroring _ScaffoldWithNav's
+    // _activeIndex), but every route stays reachable by its exact path from
+    // anywhere — `context.goNamed`/`pushNamed` and `context.go('/path')` are
+    // unchanged, and absolute-path navigation auto-switches to the owning branch.
+    StatefulShellRoute.indexedStack(
+      builder: (ctx, state, navigationShell) =>
+          _ScaffoldWithNav(navigationShell: navigationShell),
+      branches: [
+        // ── Branch 0 — Home tab ──────────────────────────────────────────────
+        StatefulShellBranch(
+          navigatorKey: _homeNavKey,
+          routes: [
+            GoRoute(path: '/home', name: 'Home', builder: (_, __) => const HomeWidget()),
+            GoRoute(path: '/quiz', name: 'Quiz', builder: (_, __) => const QuizWidget()),
+            GoRoute(path: '/results', name: 'Results', builder: (_, __) => const ResultsWidget()),
+            GoRoute(path: '/search', name: 'Search', builder: (_, __) => const SearchWidget()),
+            GoRoute(path: '/savings', name: 'Savings', builder: (_, __) => const SavingsWidget()),
+            GoRoute(path: '/electricity', name: 'Electricity', builder: (_, __) => const ElectricityWidget()),
+            GoRoute(path: '/plan/:planId', name: 'PlanDetail', builder: (_, s) => PlanDetailWidget(planId: s.pathParameters['planId']!)),
+            GoRoute(path: '/availability', name: 'Availability', builder: (_, __) => const AvailabilityWidget()),
+            GoRoute(path: '/switch-calc', name: 'SwitchCalc', builder: (_, __) => const SwitchCalcWidget()),
+            GoRoute(path: '/settings', name: 'Settings', builder: (_, __) => const SettingsWidget()),
+            GoRoute(path: '/matches', name: 'Matches', builder: (_, __) => const MatchesWidget()),
+            GoRoute(path: '/renewal', name: 'Renewal', builder: (_, __) => const RenewalWidget()),
+            GoRoute(path: '/renewal-report/:trackedId', name: 'RenewalReport', builder: (_, s) => RenewalReportWidget(trackedId: s.pathParameters['trackedId']!)),
+            GoRoute(path: '/notifications', name: 'Notifications', builder: (_, __) => const NotificationCenterWidget()),
+            GoRoute(path: '/provider/:name', name: 'Provider', builder: (_, s) => ProviderWidget(providerName: s.pathParameters['name']!)),
+            GoRoute(path: '/support-ticket/:ticketId', name: 'support-ticket', builder: (_, s) => SupportTicketWidget(ticketId: s.pathParameters['ticketId']!)),
+            GoRoute(path: '/recap', name: 'AnnualRecap', builder: (_, __) => const AnnualRecapWidget()),
+            GoRoute(path: '/wallet', name: 'Wallet', builder: (_, __) => const WalletWidget()),
+            GoRoute(path: '/referral', name: 'Referral', builder: (_, __) => const ReferralWidget()),
+            GoRoute(
+              path: '/negotiate',
+              name: 'Negotiate',
+              builder: (_, s) => NegotiateWidget(
+                initialCategory: s.uri.queryParameters['category'],
+                initialProvider: s.uri.queryParameters['provider'],
+              ),
+            ),
+            GoRoute(
+              path: '/switch-kit',
+              name: 'SwitchKit',
+              builder: (_, s) => SwitchKitWidget(
+                initialProvider: s.uri.queryParameters['provider'],
+                initialCategory: s.uri.queryParameters['category'],
+                trackedId: s.uri.queryParameters['trackedId'],
+              ),
+            ),
+            GoRoute(
+              path: '/street-price',
+              name: 'StreetPrice',
+              builder: (_, s) => StreetPriceWidget(
+                initialProvider: s.uri.queryParameters['provider'],
+                initialCategory: s.uri.queryParameters['category'],
+              ),
+            ),
+            GoRoute(path: '/crm', name: 'Crm', builder: (_, __) => const CrmWidget()),
+            GoRoute(path: '/analytics', name: 'Analytics', builder: (_, __) => const AnalyticsWidget()),
+          ],
         ),
-        GoRoute(path: '/porting', name: 'Porting', builder: (_, __) => const PortingWidget()),
-        GoRoute(path: '/settings', name: 'Settings', builder: (_, __) => const SettingsWidget()),
-        GoRoute(path: '/matches', name: 'Matches', builder: (_, __) => const MatchesWidget()),
-        GoRoute(path: '/renewal', name: 'Renewal', builder: (_, __) => const RenewalWidget()),
-        GoRoute(path: '/renewal-report/:trackedId', name: 'RenewalReport', builder: (_, s) => RenewalReportWidget(trackedId: s.pathParameters['trackedId']!)),
-        GoRoute(path: '/notifications', name: 'Notifications', builder: (_, __) => const NotificationCenterWidget()),
-        GoRoute(path: '/provider/:name', name: 'Provider', builder: (_, s) => ProviderWidget(providerName: s.pathParameters['name']!)),
-        GoRoute(path: '/support-ticket/:ticketId', name: 'support-ticket', builder: (_, s) => SupportTicketWidget(ticketId: s.pathParameters['ticketId']!)),
-        GoRoute(path: '/recap', name: 'AnnualRecap', builder: (_, __) => const AnnualRecapWidget()),
-        GoRoute(path: '/wallet', name: 'Wallet', builder: (_, __) => const WalletWidget()),
-        GoRoute(path: '/referral', name: 'Referral', builder: (_, __) => const ReferralWidget()),
-        GoRoute(
-          path: '/negotiate',
-          name: 'Negotiate',
-          builder: (_, s) => NegotiateWidget(
-            initialCategory: s.uri.queryParameters['category'],
-            initialProvider: s.uri.queryParameters['provider'],
-          ),
+        // ── Branch 1 — Compare tab ───────────────────────────────────────────
+        StatefulShellBranch(
+          navigatorKey: _compareNavKey,
+          routes: [
+            GoRoute(path: '/compare', name: 'Compare', builder: (_, __) => const CompareWidget()),
+          ],
         ),
-        GoRoute(
-          path: '/switch-kit',
-          name: 'SwitchKit',
-          builder: (_, s) => SwitchKitWidget(
-            initialProvider: s.uri.queryParameters['provider'],
-            initialCategory: s.uri.queryParameters['category'],
-            trackedId: s.uri.queryParameters['trackedId'],
-          ),
+        // ── Branch 2 — Community tab ─────────────────────────────────────────
+        StatefulShellBranch(
+          navigatorKey: _communityNavKey,
+          routes: [
+            GoRoute(path: '/community', name: 'Community', builder: (_, __) => const CommunityWidget()),
+            GoRoute(path: '/advisor', name: 'AIAdvisor', builder: (_, __) => const AIAdvisorWidget()),
+            GoRoute(path: '/deals', name: 'Deals', builder: (_, __) => const DealsWidget()),
+          ],
         ),
-        GoRoute(
-          path: '/street-price',
-          name: 'StreetPrice',
-          builder: (_, s) => StreetPriceWidget(
-            initialProvider: s.uri.queryParameters['provider'],
-            initialCategory: s.uri.queryParameters['category'],
-          ),
+        // ── Branch 3 — Tracker ("המעבר") tab ─────────────────────────────────
+        StatefulShellBranch(
+          navigatorKey: _trackerNavKey,
+          routes: [
+            GoRoute(path: '/tracker', name: 'Tracker', builder: (_, __) => const TrackerWidget()),
+            GoRoute(path: '/lead/:planId', name: 'Lead', builder: (_, s) => LeadWidget(planId: s.pathParameters['planId']!, source: s.uri.queryParameters['source'] ?? 'form')),
+            GoRoute(path: '/success', name: 'Success', builder: (_, __) => const SuccessWidget()),
+            GoRoute(path: '/chat', name: 'Chat', builder: (_, __) => const ChatWidget()),
+            GoRoute(path: '/callback', name: 'Callback', builder: (_, __) => const CallbackWidget()),
+            GoRoute(
+              path: '/meeting',
+              name: 'Meeting',
+              builder: (_, s) => MeetingWidget(
+                provider: s.uri.queryParameters['provider'],
+                planId: s.uri.queryParameters['planId'],
+                source: s.uri.queryParameters['source'] ?? 'form',
+              ),
+            ),
+            GoRoute(path: '/porting', name: 'Porting', builder: (_, __) => const PortingWidget()),
+          ],
         ),
-        GoRoute(path: '/crm', name: 'Crm', builder: (_, __) => const CrmWidget()),
-        GoRoute(path: '/analytics', name: 'Analytics', builder: (_, __) => const AnalyticsWidget()),
+        // ── Branch 4 — Account ("אישי") tab ──────────────────────────────────
+        StatefulShellBranch(
+          navigatorKey: _accountNavKey,
+          routes: [
+            GoRoute(path: '/account', name: 'Account', builder: (_, __) => const AccountWidget()),
+            GoRoute(path: '/profile', name: 'Profile', builder: (_, __) => const ProfileWidget()),
+            GoRoute(path: '/bills', name: 'Bills', builder: (_, __) => const BillsWidget()),
+            GoRoute(path: '/ratings', name: 'Ratings', builder: (_, __) => const RatingsWidget()),
+          ],
+        ),
       ],
     ),
   ],
@@ -175,30 +221,28 @@ GoRouter createRouter() {
 }
 
 class _ScaffoldWithNav extends StatelessWidget {
-  const _ScaffoldWithNav({required this.child, required this.location});
-  final Widget child;
-  final String location;
+  const _ScaffoldWithNav({required this.navigationShell});
 
+  /// Drives the per-tab back-stacks: holds one Navigator per branch in an
+  /// IndexedStack, exposes the active tab via [currentIndex] and switches tabs
+  /// (preserving each branch's stack + scroll) via [goBranch].
+  final StatefulNavigationShell navigationShell;
+
+  // Tab order MUST match the branch order in [createRouter]'s
+  // StatefulShellRoute (home, compare, community, tracker, account) — the index
+  // is what drives [navigationShell.goBranch] / [currentIndex].
   static const _tabs = [
-    _Tab(icon: Icons.home_rounded, label: 'בית', route: '/home'),
-    _Tab(icon: Icons.bar_chart_rounded, label: 'השוואה', route: '/compare'),
-    _Tab(icon: Icons.people_rounded, label: 'קהילה', route: '/community'),
-    _Tab(icon: Icons.sync_alt_rounded, label: 'המעבר', route: '/tracker'),
-    _Tab(icon: Icons.person_rounded, label: 'אישי', route: '/account'),
+    _Tab(icon: Icons.home_rounded, label: 'בית'),
+    _Tab(icon: Icons.bar_chart_rounded, label: 'השוואה'),
+    _Tab(icon: Icons.people_rounded, label: 'קהילה'),
+    _Tab(icon: Icons.sync_alt_rounded, label: 'המעבר'),
+    _Tab(icon: Icons.person_rounded, label: 'אישי'),
   ];
-
-  int get _activeIndex {
-    if (location.startsWith('/compare')) return 1;
-    if (location.startsWith('/community')) return 2;
-    if (location.startsWith('/tracker') || location.startsWith('/lead') || location.startsWith('/success') || location.startsWith('/porting') || location.startsWith('/chat') || location.startsWith('/callback') || location.startsWith('/meeting')) return 3;
-    if (location.startsWith('/account') || location.startsWith('/profile') || location.startsWith('/bills') || location.startsWith('/ratings')) return 4;
-    return 0;
-  }
 
   @override
   Widget build(BuildContext context) {
     final ffTheme = AppTheme.of(context);
-    final idx = _activeIndex;
+    final idx = navigationShell.currentIndex;
 
     // Subscribe ONLY to the compare-count slice so the shell (and its bottom
     // nav / compare badge) rebuilds when plans are added/removed from the
@@ -210,7 +254,7 @@ class _ScaffoldWithNav extends StatelessWidget {
       builder: (context, compareCount, _) => Scaffold(
       // Let page content scroll *under* the frosted nav bar so it reads as glass.
       extendBody: true,
-      body: child,
+      body: navigationShell,
       bottomNavigationBar: GlassPanel(
         // Flat top edge — only the top hairline frames it against scrolled content.
         borderRadius: BorderRadius.zero,
@@ -242,7 +286,10 @@ class _ScaffoldWithNav extends StatelessWidget {
                       // Tactile confirm on tab change — the tabs were silent,
                       // a classic webview tell; every native bar buzzes here.
                       HapticFeedback.selectionClick();
-                      context.go(tab.route);
+                      // Switch branch, preserving its stack + scroll. Re-tapping
+                      // the active tab pops it back to that branch's root route
+                      // (initialLocation: true) — standard native tab behaviour.
+                      navigationShell.goBranch(i, initialLocation: i == idx);
                     },
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -296,4 +343,4 @@ class _ScaffoldWithNav extends StatelessWidget {
   }
 }
 
-class _Tab { final IconData icon; final String label; final String route; const _Tab({required this.icon, required this.label, required this.route}); }
+class _Tab { final IconData icon; final String label; const _Tab({required this.icon, required this.label}); }

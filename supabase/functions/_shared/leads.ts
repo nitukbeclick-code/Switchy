@@ -45,6 +45,10 @@ export type AiLeadInput = {
   category?: unknown; // desired service category, folded into notes
   notes?: unknown; // short context (e.g. the user's ask), clipped
   consent?: unknown; // MANDATORY terms+privacy — must be true to capture
+  // OPTIONAL, SEPARATE third-party-sharing consent (the business SELLS leads). Never
+  // implied by `consent`: true ONLY when the user explicitly agreed to "העברת פרטים
+  // לספקים רלוונטיים". Stamps consent_share_at so the exporter can mark a row sellable.
+  consent_share?: unknown;
   consent_marketing_sms?: unknown;
   consent_marketing_email?: unknown;
   consent_marketing_whatsapp?: unknown;
@@ -63,6 +67,9 @@ export type AiLeadRow = {
   consent_marketing_sms: boolean;
   consent_marketing_email: boolean;
   consent_marketing_whatsapp: boolean;
+  // Third-party-sharing consent timestamp — present (now) ONLY on an explicit yes;
+  // null otherwise. This is the single signal that makes a lead "sellable".
+  consent_share_at: string | null;
 };
 
 function clip(v: unknown, max: number): string {
@@ -87,6 +94,9 @@ export function buildAiLeadRow(input: AiLeadInput, nowIso = new Date().toISOStri
   const marketingEmail = input.consent_marketing_email === true;
   const marketingWhatsapp = input.consent_marketing_whatsapp === true;
   const anyMarketing = marketingSms || marketingEmail || marketingWhatsapp;
+  // SEPARATE third-party-sharing consent (sellable gate). Stamp now ONLY on an
+  // explicit true — never inferred from the §30A service consent or marketing flags.
+  const shareConsented = input.consent_share === true;
 
   const category = clip(input.category, 40);
   const notesParts: string[] = ["נוצר משיחת Switchy AI באתר"];
@@ -110,6 +120,8 @@ export function buildAiLeadRow(input: AiLeadInput, nowIso = new Date().toISOStri
     consent_marketing_sms: marketingSms,
     consent_marketing_email: marketingEmail,
     consent_marketing_whatsapp: marketingWhatsapp,
+    // Sellable signal — now() only on an explicit share-consent, else null.
+    consent_share_at: shareConsented ? nowIso : null,
   };
 }
 
@@ -124,7 +136,16 @@ export async function captureAiLead(
 ): Promise<"captured" | "incomplete" | "error"> {
   const row = buildAiLeadRow(input);
   if (!row) return "incomplete";
-  const ok = await insertRow("leads", row);
+  // Persist consent_share_at DEFENSIVELY: include it only when an explicit share
+  // consent stamped it (non-null). When there's no share consent we OMIT the key
+  // entirely so a project where the column hasn't been migrated yet still accepts
+  // the insert — the absence of the column then simply means "not sellable", which
+  // is the safe default. (Truth-only: we never send a sellable signal we didn't get.)
+  const { consent_share_at, ...rest } = row;
+  const payload: Record<string, unknown> = consent_share_at
+    ? { ...rest, consent_share_at }
+    : rest;
+  const ok = await insertRow("leads", payload);
   return ok ? "captured" : "error";
 }
 

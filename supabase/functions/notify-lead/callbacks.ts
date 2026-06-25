@@ -4,7 +4,7 @@
 import type { Cfg, Lead, RenewalRow, TgCallbackQuery, TgInlineKeyboard, TgMessage } from "../_shared/types.ts";
 import { esc, NL, sendTelegram, tgApi } from "../_shared/telegram.ts";
 import { fetchRows, insertRow, logEvent, patchCount, rpcRows, serviceFetch } from "../_shared/db.ts";
-import { formatTimeline, frozenKeyboard, isWonAskMarkup, keyboardFor, leadIdFromMarkup, type LeadEvent, STATUS_HE, tgDisplayName } from "../_shared/leads.ts";
+import { desiredCategory, formatTimeline, frozenKeyboard, isWonAskMarkup, keyboardFor, leadIdFromMarkup, type LeadEvent, STATUS_HE, tgDisplayName } from "../_shared/leads.ts";
 import { isLinkAskMarkup, isRescheduleAskMarkup } from "../_shared/meetings.ts";
 import { sendText as waSendText } from "../_shared/whatsapp.ts";
 import { aiMeetingsSummary, baresPhone, handleCommand } from "./commands.ts";
@@ -161,6 +161,103 @@ async function handleRenewLead(
   return { ok };
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// TAKEOVER CONTEXT HEADER — when a rep takes a live WhatsApp conversation over, we
+// hand them the full picture in one message so they don't have to scroll: who the
+// customer is (name/category/desired need from the lead), and the last few things
+// the customer actually said — including a SHORT note when the customer sent media
+// (a bill photo / a voice note). We never re-send the bytes (they live only
+// transiently in Graph and are never stored — whatsapp_messages.body is "text/
+// caption only; NEVER base64 bytes"), so the media "reference" is an honest, PII-
+// light note of what type arrived + any caption/transcript that WAS stored. Truth-
+// only: every line is grounded in a real DB row; nothing is fabricated.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// A whatsapp_messages row, narrowed to the fields the context header reads.
+type WaMessage = {
+  direction?: string | null;
+  actor?: string | null;
+  msg_type?: string | null;
+  body?: string | null;
+  created_at?: string | null;
+};
+
+// msg_type → a short Hebrew media note (with an icon), or "" for plain text. The
+// closed set mirrors the webhook's stored msg_type vocabulary (text/image/audio/
+// voice/document/interactive/template/system). A bill photo arrives as "image",
+// a voice note as "audio"/"voice".
+export function mediaNoteFor(msgType: unknown): string {
+  switch (String(msgType ?? "").toLowerCase()) {
+    case "image":
+      return "📷 שלח/ה תמונה (ייתכן צילום חשבון)";
+    case "audio":
+    case "voice":
+      return "🎤 שלח/ה הודעה קולית";
+    case "document":
+      return "📄 שלח/ה מסמך";
+    default:
+      return "";
+  }
+}
+
+// Build the compact takeover context header (pure → unit-testable). Combines the
+// lead dossier (name + desired category + provider/plan + the notes context) with
+// the last few CUSTOMER messages, surfacing a media note for any non-text inbound.
+// `recent` is newest-first (the order PostgREST returns with created_at.desc); we
+// show the last few customer turns oldest→newest so they read naturally. Every
+// customer-controlled string is HTML-escaped (sendTelegram posts parse_mode HTML).
+export function buildTakeoverContextHeader(lead: Lead, recent: WaMessage[]): string {
+  const category = desiredCategory(lead);
+  const lines: (string | null)[] = [
+    `🤝 <b>השתלטת על שיחת הוואטסאפ</b>${lead.name ? ` עם ${esc(lead.name)}` : ""}.`,
+    "",
+    `👤 <b>שם:</b> ${esc(lead.name || "—")}`,
+    category ? `🎯 <b>צריך:</b> ${esc(category)}` : null,
+    (lead.provider || lead.plan_id)
+      ? `📦 <b>ספק / מסלול:</b> ${esc(lead.provider ?? "—")} / ${esc(lead.plan_id ?? "—")}`
+      : null,
+    // The "desired need" / last bill mention lives in the notes free text (the AI
+    // capture folds it there) — surface it when present, clipped, never invented.
+    lead.notes ? `📋 <b>הקשר:</b> ${esc(String(lead.notes).slice(0, 400))}` : null,
+  ];
+
+  // Last few CUSTOMER messages (inbound), oldest→newest, with a media note for any
+  // non-text turn. We cap at 3 so the header stays readable.
+  const inbound = (recent ?? [])
+    .filter((m) => String(m.direction ?? "") === "in")
+    .slice(0, 3)
+    .reverse();
+  if (inbound.length > 0) {
+    lines.push("", "🧵 <b>מה הלקוח כתב לאחרונה:</b>");
+    for (const m of inbound) {
+      const note = mediaNoteFor(m.msg_type);
+      const text = String(m.body ?? "").trim();
+      if (note) {
+        // Media turn: the note + any stored caption/transcript (honest, no bytes).
+        lines.push(`• ${note}${text ? `: ${esc(text.slice(0, 200))}` : ""}`);
+      } else if (text) {
+        lines.push(`• ${esc(text.slice(0, 200))}`);
+      }
+    }
+  }
+
+  lines.push(
+    "",
+    "הבוט הושתק — הודעות הלקוח יופנו לכאן, וכל הודעה שתשיבו (reply) לכרטיס תישלח אליו בוואטסאפ.",
+  );
+  return lines.filter((x) => x !== null).join(NL);
+}
+
+// Fetch the conversation's most recent messages for the takeover header. Newest
+// first, capped small. Fail-soft: a null/error query → [] so the takeover header
+// still posts (degrades to the lead dossier alone, never blocks the takeover).
+async function fetchRecentConvoMessages(convoId: string): Promise<WaMessage[]> {
+  const rows = await fetchRows<WaMessage>(
+    `/rest/v1/whatsapp_messages?conversation_id=eq.${encodeURIComponent(convoId)}&order=created_at.desc&limit=8&select=direction,actor,msg_type,body,created_at`,
+  );
+  return rows ?? [];
+}
+
 // TAKE-OVER: the pressing rep takes the live WhatsApp conversation off the bot and
 // into Telegram. Flips whatsapp_conversations: bot_enabled=false + relay_tg_chat_id
 // = the rep's Telegram chat id (cb.from?.id). After this, the webhook relays the
@@ -173,7 +270,9 @@ async function handleRelayTakeover(
   leadId: string,
   cb: TgCallbackQuery,
 ): Promise<HandlerResult> {
-  const leads = await fetchRows<Lead>(`/rest/v1/leads?id=eq.${leadId}&select=id,phone,name`);
+  // Full row (not just id/phone/name): the takeover context header reads the
+  // desired category + provider/plan + notes context to brief the rep in one shot.
+  const leads = await fetchRows<Lead>(`/rest/v1/leads?id=eq.${leadId}&select=*`);
   if (leads === null) {
     await answer("שגיאת מסד נתונים — נסו שוב בעוד רגע");
     return { ok: false };
@@ -218,11 +317,12 @@ async function handleRelayTakeover(
     relay_tg_chat_id: relayChat,
   });
   await answer("השתלטת על השיחה 🤝 — הודעות הלקוח יגיעו לכאן");
-  await sendTelegram(
-    cfg,
-    `🤝 <b>השתלטת על שיחת הוואטסאפ</b>${lead.name ? ` עם ${esc(lead.name)}` : ""}.${NL}` +
-      `הבוט הושתק — הודעות הלקוח יופנו לכאן, וכל הודעה שתשיבו (reply) לכרטיס תישלח אליו בוואטסאפ.`,
-  );
+  // Richer takeover brief: the lead dossier (name/category/provider/notes) + the
+  // last few customer messages, with a short note for any media (bill photo /
+  // voice note). The recent-messages fetch is fail-soft — on a null/error query it
+  // returns [], so the header degrades to the dossier alone and never blocks.
+  const recent = await fetchRecentConvoMessages(convo.id);
+  await sendTelegram(cfg, buildTakeoverContextHeader(lead, recent));
   return { ok: true };
 }
 
@@ -976,10 +1076,15 @@ async function relayRepReplyToCustomer(
     await sendTelegram(cfg, "⚠️ שמירת ההודעה נכשלה — בדקו אם נשלחה ללקוח.");
     return { ok: false, skipped: "message store failed", delivered: Boolean(wamid) };
   }
+  // Lightweight delivery feedback: a ✓ when Graph accepted the relay (the rep sees
+  // their reply reached the customer), with a short echo of what was sent so the
+  // two-way thread is clear. Fail-soft on a send miss — the message is still stored
+  // (the human stays in the loop), so we tell the rep to retry rather than error.
+  const echo = esc(body.slice(0, 140)) + (body.length > 140 ? "…" : "");
   await sendTelegram(
     cfg,
     wamid
-      ? `📤 נשלח ללקוח בוואטסאפ (${esc(who || "נציג")}).`
+      ? `✓ <b>נמסר ללקוח</b> בוואטסאפ (${esc(who || "נציג")})${NL}💬 <i>${echo}</i>`
       : "⚠️ ההודעה נשמרה אך השליחה לוואטסאפ נכשלה — נסו שוב.",
   );
   return { ok: true, relayed: true, delivered: Boolean(wamid) };

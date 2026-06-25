@@ -628,12 +628,21 @@ export async function analyzeBill(
 // → captureAiLead), which builds the row ONLY when consent === true and a valid
 // name+phone are present; otherwise nothing is written. §7b disclosure is returned
 // so the agent states it before treating the hand-off as done.
+//
+// THIRD-PARTY-SHARING CONSENT (Privacy Law — the business SELLS leads): `consent_share`
+// is a SECOND, SEPARATE, OPTIONAL yes/no — distinct from the mandatory §30A service
+// consent above. It is NEVER assumed and NEVER bundled with `consent`: a lead can be
+// captured (service consent given) while `consent_share` is false, in which case the
+// row is captured but NOT marked sellable. Only when the user explicitly says yes to
+// "האם תאשר/י להעביר את פרטיך לספקים רלוונטיים לקבלת הצעה?" do we stamp consent_share_at
+// = now, which is the ONLY signal the Sheets exporter uses to mark a row "sellable".
 export async function createLead(
   ctx: ToolContext,
   args: {
     name?: unknown;
     phone?: unknown;
     consent?: unknown;
+    consent_share?: unknown;
     channel?: unknown;
     notes?: unknown;
     provider?: unknown;
@@ -650,6 +659,9 @@ export async function createLead(
       note: "כדי להעביר את הפנייה לנציג צריך את אישורך לתנאי השימוש ומדיניות הפרטיות. מאשר/ת?",
     };
   }
+  // SEPARATE third-party-sharing consent — default false, never inferred from the
+  // §30A service consent above. Only an explicit true stamps the sellable signal.
+  const consentShare = args.consent_share === true || args.consent_share === "true";
   const name = clipStr(args.name, 80);
   const phone = clipStr(args.phone, 20);
   if (name.length < 2 || !phone) {
@@ -661,6 +673,7 @@ export async function createLead(
     name,
     phone,
     consent: true,
+    consent_share: consentShare,
     provider: clipStr(args.provider, 120) || undefined,
     category: clipStr(args.category, 40) || undefined,
     notes: clipStr(args.notes, 600) || undefined,
@@ -678,6 +691,7 @@ export async function createLead(
         name,
         phone,
         consent: true,
+        consent_share: consentShare,
         provider: clipStr(args.provider, 120) || undefined,
         category: clipStr(args.category, 40) || undefined,
         notes: clipStr(args.notes, 600) || undefined,
@@ -690,9 +704,11 @@ export async function createLead(
   const ok = result === "captured";
   await audit(ctx, "create_lead", ok, ok ? "captured" : result);
   // Record consent provenance for the audit trail (no PII beyond phone-as-subject).
+  // consent_share is logged distinctly so the third-party-sharing decision is auditable.
   await ctx.logSecurityEvent?.("agent_lead_consent", {
     channel: ctx.channel,
     consent: true,
+    consent_share: consentShare,
     captured: ok,
     conversation_id: ctx.conversationId ?? null,
   });
@@ -1235,13 +1251,14 @@ export const TOOL_DECLARATIONS: GeminiFunctionDeclaration[] = [
   {
     name: "create_lead",
     description:
-      "יצירת פנייה לנציג אנושי שייצור קשר. מתי: כשהמשתמש מאותת שהוא רוצה להתקדם עם אדם — \"תחזרו אליי\", \"אני רוצה להירשם\", \"חבר אותי לנציג\", \"בואו נתקדם\", \"איך נסגור?\". חובה לפני הקריאה: לקבל אישור מפורש (consent=true) לתנאי השימוש ומדיניות הפרטיות, ולציין למשתמש את גילוי העמלה (§7b). בלי consent=true — הפנייה לא נשמרת והכלי מסרב; אסוף קודם שם+טלפון+אישור. אל תזמין consent=true אם המשתמש לא אישר במפורש.",
+      "יצירת פנייה לנציג אנושי שייצור קשר. מתי: כשהמשתמש מאותת שהוא רוצה להתקדם עם אדם — \"תחזרו אליי\", \"אני רוצה להירשם\", \"חבר אותי לנציג\", \"בואו נתקדם\", \"איך נסגור?\". חובה לפני הקריאה: לקבל אישור מפורש (consent=true) לתנאי השימוש ומדיניות הפרטיות, ולציין למשתמש את גילוי העמלה (§7b). בלי consent=true — הפנייה לא נשמרת והכלי מסרב; אסוף קודם שם+טלפון+אישור. אל תזמין consent=true אם המשתמש לא אישר במפורש. בנוסף, ואך ורק בסיום, שאל/י שאלת כן/לא נפרדת וכנה: \"האם תאשר/י להעביר את פרטיך לספקים רלוונטיים לקבלת הצעה?\" — אם וכאשר המשתמש אומר כן במפורש, העבר/י consent_share=true. זו הסכמה נפרדת לחלוטין מההסכמה לתנאים (§30A): לעולם לא להניח אותה, לעולם לא לאגד אותה עם consent, ולעולם לא להעביר consent_share=true בלי אישור מפורש. אם המשתמש לא אישר או לא נשאל — השאר/י consent_share=false (ברירת המחדל), והפנייה עדיין נקלטת אך לא תסומן כניתנת-למכירה.",
     parameters: {
       type: "object",
       properties: {
         name: { type: "string", description: "שם המשתמש" },
         phone: { type: "string", description: "טלפון ישראלי" },
         consent: { type: "boolean", description: "אישור מפורש לתנאים+פרטיות — חובה true; רק אם המשתמש אישר בפועל" },
+        consent_share: { type: "boolean", description: "הסכמה נפרדת ואופציונלית להעברת הפרטים לספקים צד-שלישי (\"האם תאשר/י להעביר את פרטיך לספקים רלוונטיים לקבלת הצעה?\"). ברירת מחדל false. true רק אם המשתמש ענה כן במפורש — לעולם לא להניח ולא לאגד עם consent." },
         provider: { type: "string", description: "ספק נוכחי/מבוקש (אם נמסר)" },
         category: { type: "string", description: "השירות המבוקש" },
         notes: { type: "string", description: "הקשר קצר" },

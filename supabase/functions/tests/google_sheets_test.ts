@@ -99,7 +99,7 @@ function sheetsOk(): Response {
 
 // ── buildLeadSheetRow: PURE mapping + name split ─────────────────────────────
 
-Deno.test("buildLeadSheetRow maps the 12 columns in order: empty company, FILLED category, trailing quality", () => {
+Deno.test("buildLeadSheetRow maps the 13 columns in order: empty company, FILLED category, quality, trailing sellable", () => {
   const lead: Lead = {
     name: "דנה כהן",
     email: "dana@example.com",
@@ -112,10 +112,13 @@ Deno.test("buildLeadSheetRow maps the 12 columns in order: empty company, FILLED
     // consent timestamps present → the legal-to-act gate is satisfied (scored)
     terms_accepted_at: "2026-06-20T08:00:00.000Z",
     privacy_accepted_at: "2026-06-20T08:00:00.000Z",
-  } as Lead;
+    // explicit third-party-sharing consent → this lead is SELLABLE ("yes")
+    consent_share_at: "2026-06-20T08:00:00.000Z",
+  } as unknown as Lead;
   const row = buildLeadSheetRow(lead);
   // indices 0–10 keep their original order/contract; category (7) is now filled
-  // from the "partner-cellular-100" plan_id; a 12th column (quality) is appended.
+  // from the "partner-cellular-100" plan_id; column 11 (quality) and a NEW
+  // column 12 (sellable) are appended.
   assertEquals(row.slice(0, 11), [
     "",                              // company
     "2026-06-20T08:00:00.000Z",      // date (created_at)
@@ -129,11 +132,48 @@ Deno.test("buildLeadSheetRow maps the 12 columns in order: empty company, FILLED
     "new",                           // status
     "רוצה לעבור",                    // notes
   ]);
-  assertEquals(row.length, 12);
+  assertEquals(row.length, 13);
   // quality is a 0–100 numeric string; this rich, consented lead scores high.
   const quality = Number(row[11]);
   assert(Number.isFinite(quality) && quality >= 0 && quality <= 100);
   assert(quality >= 90, `expected a high score for a complete consented lead, got ${quality}`);
+  // sellable (col 12) is "yes" ⇔ consent_share_at is set — this lead consented.
+  assertEquals(row[12], "yes");
+});
+
+// ── buildLeadSheetRow: SELLABLE gate honesty (the business sells leads) ───────
+// "yes" iff consent_share_at is set; a missing/empty stamp is "no" — never "yes".
+Deno.test("buildLeadSheetRow: sellable is 'yes' ONLY with an explicit consent_share_at, else 'no'", () => {
+  // Explicit share consent → sellable "yes".
+  const consented = buildLeadSheetRow(
+    { name: "אורי שמש", phone: "0521112222", consent_share_at: "2026-06-21T10:00:00.000Z" } as unknown as Lead,
+  );
+  assertEquals(consented.length, 13);
+  assertEquals(consented[12], "yes");
+
+  // No share consent column at all → "no" (the safe, honest default).
+  const noShare = buildLeadSheetRow({ name: "אורי שמש", phone: "0521112222" } as Lead);
+  assertEquals(noShare.length, 13);
+  assertEquals(noShare[12], "no");
+
+  // consent_share_at present but empty/blank → still "no" (not fabricated to yes).
+  const blankShare = buildLeadSheetRow(
+    { name: "אורי שמש", phone: "0521112222", consent_share_at: "   " } as unknown as Lead,
+  );
+  assertEquals(blankShare[12], "no");
+
+  // §30A service consent WITHOUT share consent must NOT leak into sellable: a lead
+  // can be fully captured/consented to be CONTACTED yet remain non-sellable.
+  const serviceOnly = buildLeadSheetRow(
+    {
+      name: "אורי שמש",
+      phone: "0521112222",
+      terms_accepted_at: "2026-06-21T10:00:00.000Z",
+      privacy_accepted_at: "2026-06-21T10:00:00.000Z",
+      consent_share_at: null,
+    } as unknown as Lead,
+  );
+  assertEquals(serviceOnly[12], "no");
 });
 
 Deno.test("buildLeadSheetRow splits name on the FIRST space (multi-word surname folds into last)", () => {
@@ -154,10 +194,12 @@ Deno.test("buildLeadSheetRow falls back to now() when created_at is missing, and
   assertEquals(row[6], ""); // plan_id (null → '')
   assertEquals(row[7], ""); // category — nothing to recover (no plan_id/notes) → ''
   assertEquals(row[10], ""); // notes (null → '')
-  assertEquals(row.length, 12); // 11 original columns + trailing quality score
+  assertEquals(row.length, 13); // 11 original columns + quality score + sellable
   // a name-only, phoneless, unconsented lead still produces a finite 0–100 score.
   const quality = Number(row[11]);
   assert(Number.isFinite(quality) && quality >= 0 && quality <= 100);
+  // no share consent → not sellable.
+  assertEquals(row[12], "no");
 });
 
 // ── sheetsConfigured: gating ─────────────────────────────────────────────────

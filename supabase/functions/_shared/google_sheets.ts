@@ -168,25 +168,36 @@ export async function appendRow(cfg: Cfg, tab: string, values: string[]): Promis
   }
 }
 
-// PURE — flatten a Lead into the 12-column row written to the "Leads" tab:
+// PURE — flatten a Lead into the 13-column row written to the "Leads" tab:
 // [company, date, firstName, lastName, email, phone, plan_id, category, source,
-// status, notes, quality]. The leads table has no company column yet, so company
-// is "". name is split on the FIRST space into first/last (multi-word surnames
-// fold into lastName). date is the created_at instant (or now() when absent) as
-// an ISO string. The original 11-column order (indices 0–10) is preserved
-// exactly so existing sheet headers/formulas don't shift — the two enrichments
-// the business needs for sellable rows are layered on without breaking it:
-//   • column 7 (category) is now FILLED via deriveCategory — the canonical
-//     desired service recovered from plan_id/notes, or "" when truly unknown
-//     (honest, never fabricated);
-//   • a NEW trailing column 11 (quality) carries scoreLead's 0–100 completeness
-//     score, so a buyer can sort/triage rows by how workable they are.
+// status, notes, quality, sellable]. The leads table has no company column yet, so
+// company is "". name is split on the FIRST space into first/last (multi-word
+// surnames fold into lastName). date is the created_at instant (or now() when
+// absent) as an ISO string. The original 11-column order (indices 0–10) is
+// preserved exactly so existing sheet headers/formulas don't shift — the
+// enrichments the business needs for sellable rows are layered on the END:
+//   • column 7 (category) is FILLED via deriveCategory — the canonical desired
+//     service recovered from plan_id/notes, or "" when truly unknown (honest,
+//     never fabricated);
+//   • column 11 (quality) carries scoreLead's 0–100 completeness score, so a
+//     buyer can sort/triage rows by how workable they are;
+//   • NEW column 12 (sellable) is "yes" ⇔ the lead carries an explicit
+//     third-party-sharing consent (consent_share_at is set), else "no". The
+//     business SELLS leads, so this is the HONEST gate: only an explicitly-consented
+//     lead is marketable. consent_share_at isn't on the Lead type (the table doesn't
+//     surface it here), so we read it defensively off the row — mirroring how
+//     scoreLead reads terms_accepted_at/privacy_accepted_at. Truth-only: a missing
+//     or empty consent_share_at is "no", never "yes".
 export function buildLeadSheetRow(lead: Lead, nowIso = new Date().toISOString()): string[] {
   const fullName = String(lead.name ?? "").trim();
   const sp = fullName.indexOf(" ");
   const firstName = sp === -1 ? fullName : fullName.slice(0, sp);
   const lastName = sp === -1 ? "" : fullName.slice(sp + 1).trim();
   const created = String(lead.created_at ?? "").trim() || nowIso;
+  // Sellable gate: a non-empty consent_share_at is the ONLY signal that marks a
+  // lead as marketable to third-party providers. Read defensively (not on the type).
+  const shareAt = String((lead as unknown as Record<string, unknown>).consent_share_at ?? "").trim();
+  const sellable = shareAt ? "yes" : "no";
   return [
     "", // company — leads has no company column yet
     created,
@@ -199,6 +210,7 @@ export function buildLeadSheetRow(lead: Lead, nowIso = new Date().toISOString())
     String(lead.source ?? ""),
     String(lead.status ?? ""),
     String(lead.notes ?? ""),
-    String(scoreLead(lead)), // quality — 0–100 completeness score (new column)
+    String(scoreLead(lead)), // quality — 0–100 completeness score
+    sellable, // sellable — "yes" iff explicit third-party-sharing consent, else "no"
   ];
 }

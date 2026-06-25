@@ -14,6 +14,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import JsonLd from "@/components/JsonLd";
+import Icon from "@/components/Icon";
 import { breadcrumbSchema, webPageSchema } from "@/lib/schema";
 import { pageMetadata } from "@/lib/seo";
 
@@ -39,6 +40,10 @@ interface Section {
   paras?: string[];
   items?: string[];
 }
+
+// Stable ASCII anchor for each section (clean #sec-N URLs, independent of the
+// Hebrew heading text). The visible label stays the Hebrew heading.
+const sectionId = (i: number) => `sec-${i + 1}`;
 
 export default function PrivacyPage() {
   const crumbs = [
@@ -244,8 +249,14 @@ export default function PrivacyPage() {
           from { opacity: 0; transform: translateY(10px); }
           to { opacity: 1; transform: none; }
         }
+        /* Heading anchor — a faint "#" that appears on hover/focus of a section
+           heading, for deep-linking any clause. Hidden from assistive tech. */
+        .sw-anchor { opacity: 0; transition: opacity 160ms var(--ease-out); }
+        .sw-head:hover .sw-anchor,
+        .sw-head:focus-within .sw-anchor { opacity: 1; }
         @media (prefers-reduced-motion: reduce) {
           .sw-reveal { animation: none; }
+          .sw-anchor { transition: none; }
         }
       `,
         }}
@@ -278,69 +289,141 @@ export default function PrivacyPage() {
           מדיניות פרטיות
         </h1>
         <p
-          className="sw-reveal mt-4 max-w-2xl text-lg leading-relaxed text-foreground"
+          className="sw-reveal mt-4 max-w-prose text-lg leading-relaxed text-foreground"
           style={{ animationDelay: "60ms" }}
         >
           מדיניות זו מסבירה אילו פרטים אנו אוספים, כיצד אנו משתמשים בהם, ומה
           הזכויות שלכם. השוואת המסלולים באתר חינמית, ויצירת קשר נעשית רק לאחר
           אישורכם.
         </p>
-        <p
-          className="sw-reveal mt-5 inline-flex items-center gap-2 rounded-full border border-border/60 bg-surface/70 px-3 py-1 text-sm text-muted backdrop-blur supports-[backdrop-filter]:bg-surface/60"
+        <div
+          className="sw-reveal mt-5 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-muted"
           style={{ animationDelay: "120ms" }}
         >
-          <span
-            aria-hidden="true"
-            className="inline-block h-1.5 w-1.5 rounded-full bg-accent"
-          />
-          עודכן לאחרונה: <time dateTime={LAST_REVIEWED}>{LAST_REVIEWED}</time>
-        </p>
+          <span className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-surface/70 px-3 py-1 backdrop-blur supports-[backdrop-filter]:bg-surface/60">
+            <span
+              aria-hidden="true"
+              className="inline-block h-1.5 w-1.5 rounded-full bg-accent"
+            />
+            עודכן לאחרונה: <time dateTime={LAST_REVIEWED}>{LAST_REVIEWED}</time>
+          </span>
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-surface/70 px-3 py-1 backdrop-blur supports-[backdrop-filter]:bg-surface/60">
+            <Icon name="lock" size={14} className="text-muted" />
+            גרסת הסכמה {CONSENT_VERSION}
+          </span>
+        </div>
       </header>
 
-      <div className="mt-12 space-y-5 sm:space-y-6">
-        {sections.map((s, i) => (
-          <section
-            key={s.h}
-            aria-labelledby={`s-${s.h}`}
-            className="sw-reveal bento p-6 sm:p-8"
-            style={{ animationDelay: `${Math.min(i * 40, 280)}ms` }}
-          >
-            <h2
-              id={`s-${s.h}`}
-              className="font-display text-2xl font-bold tracking-tight text-ink"
+      {/* ── Table of contents — quick jump (16 sections; reader orientation) ── */}
+      <nav
+        aria-label="תוכן העניינים"
+        className="sw-reveal bento mt-8 p-5 sm:p-6"
+        style={{ animationDelay: "150ms" }}
+      >
+        <h2 className="font-display text-sm font-semibold uppercase tracking-wide text-muted">
+          תוכן העניינים
+        </h2>
+        <ol className="mt-3 grid gap-x-6 gap-y-1.5 sm:grid-cols-2">
+          {sections.map((s, i) => (
+            <li key={s.h} className="flex items-baseline gap-2 leading-relaxed">
+              <span
+                aria-hidden="true"
+                className="shrink-0 tabular-nums text-xs font-semibold text-muted"
+              >
+                {i + 1}.
+              </span>
+              <Link
+                href={`#${sectionId(i)}`}
+                className="interactive text-accent-text underline-offset-4 hover:text-accent-hover hover:underline"
+              >
+                {s.h}
+              </Link>
+            </li>
+          ))}
+        </ol>
+      </nav>
+
+      <div className="mt-8 space-y-5 sm:space-y-6">
+        {sections.map((s, i) => {
+          const id = sectionId(i);
+          return (
+            <section
+              key={s.h}
+              aria-labelledby={id}
+              className="sw-reveal bento scroll-mt-24 p-6 sm:p-8"
+              style={{ animationDelay: `${Math.min(i * 40, 280)}ms` }}
             >
-              {s.h}
-            </h2>
-            {s.paras?.map((p) => (
-              <p key={p} className="mt-3 leading-relaxed text-foreground">
-                {p}
-              </p>
-            ))}
-            {s.items && (
-              <ul className="mt-4 list-disc space-y-2 pe-5 leading-relaxed text-foreground">
-                {s.items.map((it) => (
-                  <li key={it}>{it}</li>
-                ))}
-              </ul>
-            )}
-            {/* Direct CTA to the rights-request intake, attached to the rights
-                section so it's actionable right where it's described. */}
-            {s.h === "הזכויות שלכם" && (
-              <p className="mt-5">
-                <Link
-                  href="/rights"
-                  className="interactive inline-flex items-center gap-1.5 font-medium text-accent-text underline-offset-4 hover:text-accent-hover hover:underline"
+              <div className="sw-head flex items-center gap-2">
+                <h2
+                  id={id}
+                  className="font-display text-2xl font-bold tracking-tight text-ink"
                 >
-                  למעבר לעמוד מימוש הזכויות והגשת בקשה ←
-                </Link>
-              </p>
-            )}
-          </section>
-        ))}
+                  {s.h}
+                </h2>
+                <a
+                  href={`#${id}`}
+                  aria-hidden="true"
+                  tabIndex={-1}
+                  className="sw-anchor interactive ms-1 text-muted hover:text-accent-text"
+                >
+                  #
+                </a>
+              </div>
+              {s.paras?.map((p) => (
+                <p
+                  key={p}
+                  className="mt-3 max-w-prose leading-relaxed text-foreground"
+                >
+                  {p}
+                </p>
+              ))}
+              {s.items && (
+                <ul className="mt-4 max-w-prose list-disc space-y-2 pe-5 leading-relaxed text-foreground marker:text-accent">
+                  {s.items.map((it) => (
+                    <li key={it}>{it}</li>
+                  ))}
+                </ul>
+              )}
+              {/* Direct CTA to the rights-request intake, attached to the rights
+                  section so it's actionable right where it's described. */}
+              {s.h === "הזכויות שלכם" && (
+                <p className="mt-5">
+                  <Link
+                    href="/rights"
+                    className="interactive inline-flex items-center gap-1.5 font-medium text-accent-text underline-offset-4 hover:text-accent-hover hover:underline"
+                  >
+                    למעבר לעמוד מימוש הזכויות והגשת בקשה
+                    {/* Page is always dir="rtl"; flip the end-pointing arrow so
+                        it points to the logical "forward" (left) like the prior ←. */}
+                    <Icon
+                      name="arrow"
+                      size={16}
+                      aria-hidden="true"
+                      className="-scale-x-100"
+                    />
+                  </Link>
+                </p>
+              )}
+            </section>
+          );
+        })}
       </div>
 
       <aside className="mt-12 border-t border-border/40 pt-8 text-sm text-muted">
-        <p>
+        <p className="font-medium text-foreground">
+          שאלה בנושא פרטיות, או בקשה לגבי המידע שלכם?
+        </p>
+        <p className="mt-1.5 leading-relaxed">
+          אפשר לכתוב לנו לכתובת{" "}
+          <a
+            href="mailto:hello@chosech.co.il"
+            className="interactive text-accent-text hover:text-accent-hover"
+          >
+            hello@chosech.co.il
+          </a>{" "}
+          או בוואטסאפ 050-503-7537.
+        </p>
+        <p className="mt-4 leading-relaxed">
           ראו גם את{" "}
           <Link
             href="/rights"

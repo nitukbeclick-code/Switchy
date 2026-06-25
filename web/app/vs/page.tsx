@@ -14,6 +14,8 @@ import SgeSummary from "@/components/SgeSummary";
 import RelatedAuthorityPages from "@/components/RelatedAuthorityPages";
 import DataMethodology from "@/components/DataMethodology";
 import LlmDataFeed from "@/components/LlmDataFeed";
+import EmptyState from "@/components/EmptyState";
+import Icon from "@/components/Icon";
 import { getVsPairs } from "@/lib/vs";
 import type { VsPair } from "@/lib/vs";
 import { getLivePlans } from "@/lib/live-catalogue";
@@ -158,14 +160,25 @@ export default async function VsIndexPage() {
         <span className="text-foreground">השוואות ראש בראש</span>
       </nav>
 
-      {/* ── Heading ───────────────────────────────────────────────────────── */}
+      {/* ── Heading — the page's single focal point. An honest catalogue-derived
+          count chip sits above the H1 (green=ACTION accent, never amber/value),
+          so the hub announces its real depth at a glance. ───────────────────── */}
       <header className="mt-4">
-        <h1 className="sw-reveal font-display text-4xl font-bold tracking-tight text-ink sm:text-5xl">
+        {pairs.length > 0 && (
+          <p className="sw-reveal inline-flex items-center gap-1.5 rounded-full border border-accent/25 bg-accent/10 px-3 py-1 text-sm font-semibold text-accent-text">
+            <Icon name="check" size={15} aria-hidden />
+            {pairs.length} השוואות ראש בראש
+          </p>
+        )}
+        <h1
+          className="sw-reveal mt-3 font-display text-4xl font-bold tracking-tight text-ink sm:text-5xl"
+          style={{ animationDelay: "40ms" }}
+        >
           השוואות ראש בראש — ספק מול ספק
         </h1>
         <p
           className="sw-reveal mt-4 max-w-2xl text-lg leading-relaxed text-foreground"
-          style={{ animationDelay: "60ms" }}
+          style={{ animationDelay: "80ms" }}
         >
           השוואות ישירות בין שני ספקים באותה קטגוריה — מחיר התחלתי, מספר מסלולים
           ומאפיינים זה מול זה. הנתונים מהקטלוג ובשקלים.
@@ -178,6 +191,19 @@ export default async function VsIndexPage() {
       </div>
 
       {/* ── Match-up cards, grouped by category ───────────────────────────── */}
+      {/* Designed empty state — only when the live catalogue gates every pair out
+          (never expected in practice, but the hub must never dead-end on a blank
+          page). Leads with the brand mascot + a CTA to the broad compare hub. */}
+      {groups.length === 0 && (
+        <EmptyState
+          mascot
+          title="אין כרגע השוואות ראש בראש"
+          description="הקטלוג מתעדכן — בינתיים אפשר להשוות את כל הספקים בכל קטגוריה."
+          cta={{ label: "להשוואה לפי שירות", href: "/compare" }}
+          className="mt-12"
+        />
+      )}
+
       {groups.map((group) => (
         <section
           key={group.label}
@@ -191,30 +217,93 @@ export default async function VsIndexPage() {
             {group.label}
           </h2>
           <ul className="mt-6 bento-grid">
-            {group.pairs.map((p, i) => (
-              <li
-                key={p.slug}
-                className="sw-reveal"
-                style={{ animationDelay: `${Math.min(i * 50, 250)}ms` }}
-              >
-                <Link
-                  href={`/vs/${p.slug}`}
-                  className="group bento card-interactive flex h-full flex-col p-6 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+            {group.pairs.map((p, i) => {
+              // Honest, catalogue-derived value read: which side has the lower
+              // ENTRY price (null on a tie). Surfaced as an amber VALUE pill below
+              // — amber = VALUE only here; green stays reserved for the ACTION CTA.
+              const cheaper =
+                p.a.minPrice < p.b.minPrice
+                  ? p.a
+                  : p.b.minPrice < p.a.minPrice
+                    ? p.b
+                    : null;
+              return (
+                <li
+                  key={p.slug}
+                  className="sw-reveal"
+                  style={{ animationDelay: `${Math.min(i * 50, 250)}ms` }}
                 >
-                  <span className="font-display text-lg font-semibold tracking-tight text-ink transition-colors group-hover:text-accent">
-                    {p.a.provider.name} מול {p.b.provider.name}
-                  </span>
-                  <span className="mt-2.5 flex items-baseline gap-2 text-sm text-muted">
-                    <span>{p.a.provider.name} מ-{ils(p.a.minPrice)}</span>
-                    <span aria-hidden="true">·</span>
-                    <span>{p.b.provider.name} מ-{ils(p.b.minPrice)}</span>
-                  </span>
-                  <span className="mt-auto pt-4 inline-flex items-center gap-1 text-sm font-medium text-accent-text transition-transform group-hover:-translate-x-0.5">
-                    להשוואה ←
-                  </span>
-                </Link>
-              </li>
-            ))}
+                  <Link
+                    href={`/vs/${p.slug}`}
+                    className="group bento card-interactive flex h-full flex-col p-6 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                  >
+                    {/* Head-to-head title — the two providers stacked around a
+                        small "מול" rule so the match-up reads as A-vs-B, not one
+                        run-on line. */}
+                    <span className="flex flex-col gap-1 font-display text-lg font-semibold tracking-tight text-ink">
+                      <span className="transition-colors group-hover:text-accent">
+                        {p.a.provider.name}
+                      </span>
+                      <span className="flex items-center gap-2 text-xs font-medium text-muted">
+                        <span
+                          aria-hidden="true"
+                          className="h-px flex-1 bg-border"
+                        />
+                        מול
+                        <span
+                          aria-hidden="true"
+                          className="h-px flex-1 bg-border"
+                        />
+                      </span>
+                      <span className="transition-colors group-hover:text-accent">
+                        {p.b.provider.name}
+                      </span>
+                    </span>
+
+                    {/* Entry-price read for each side, with the cheaper one marked
+                        as VALUE (amber). Real catalogue minimums, in ₪. */}
+                    <dl className="mt-4 space-y-1.5 text-sm">
+                      {[p.a, p.b].map((side) => {
+                        const isCheaper = cheaper === side;
+                        return (
+                          <div
+                            key={side.provider.slug}
+                            className="flex items-baseline justify-between gap-3"
+                          >
+                            <dt className="text-muted">{side.provider.name}</dt>
+                            <dd
+                              className={
+                                isCheaper
+                                  ? "font-display font-bold tracking-tight text-value-text"
+                                  : "font-medium text-foreground"
+                              }
+                            >
+                              מ-{ils(side.minPrice)}
+                            </dd>
+                          </div>
+                        );
+                      })}
+                    </dl>
+
+                    {cheaper && (
+                      <span className="mt-3 inline-flex w-fit items-center gap-1 rounded-full bg-value/10 px-2 py-0.5 text-[11px] font-semibold text-value-text">
+                        {cheaper.provider.name} זול יותר בכניסה
+                      </span>
+                    )}
+
+                    <span className="mt-auto inline-flex items-center gap-1 pt-5 text-sm font-medium text-accent-text">
+                      להשוואה המלאה
+                      <Icon
+                        name="arrow"
+                        size={16}
+                        className="transition-transform group-hover:-translate-x-0.5"
+                        aria-hidden
+                      />
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
         </section>
       ))}

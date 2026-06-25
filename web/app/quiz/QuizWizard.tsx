@@ -28,6 +28,8 @@ import Link from "next/link";
 import LeadForm from "@/components/LeadFormLazy";
 import CommissionDisclosure from "@/components/CommissionDisclosure";
 import PriceCaveat from "@/components/PriceCaveat";
+import SwitchyMascot from "@/components/SwitchyMascot";
+import SkeletonCard from "@/components/SkeletonCard";
 import { CATEGORY_HE } from "@/lib/categories";
 import { ils } from "@/lib/format";
 import { trackEvent } from "@/lib/tracking";
@@ -279,11 +281,19 @@ export default function QuizWizard() {
       </div>
 
       {phase === "empty" ? (
-        <div className="py-4 text-center" role="status">
-          <p className="font-display text-lg font-bold text-ink">
+        <div className="flex flex-col items-center py-6 text-center" role="status">
+          {/* Branded badge — the Switchy mascot in the soft ACTION wash, the
+              site-wide empty-state figure. Decorative; the copy carries meaning. */}
+          <span
+            aria-hidden="true"
+            className="elevate-soft flex h-20 w-20 items-center justify-center rounded-full border border-accent/20 bg-accent/10 text-accent-text"
+          >
+            <SwitchyMascot size={48} />
+          </span>
+          <p className="mt-5 font-display text-lg font-bold text-ink">
             לא מצאנו מסלול שמתאים בדיוק לבחירות שלכם
           </p>
-          <p className="mt-2 text-sm leading-relaxed text-muted">
+          <p className="mt-2 max-w-md text-sm leading-relaxed text-muted">
             אף מסלול אמיתי בקטלוג שלנו לא עונה על כל הקריטריונים שסימנתם
             {answers.category
               ? ` בקטגוריית ${CATEGORY_HE[answers.category] ?? "זו"}`
@@ -291,50 +301,67 @@ export default function QuizWizard() {
             . נסו להרחיב את התקציב או לשנות עדיפות — או עברו להשוואה המלאה ובחרו
             בעצמכם. לא נמציא לכם התאמה שלא קיימת.
           </p>
-          <div className="mt-5 flex flex-wrap justify-center gap-3">
+          <div className="mt-6 flex flex-wrap justify-center gap-3">
             <button
               type="button"
               onClick={back}
-              className="interactive press rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-accent-contrast shadow-soft hover:-translate-y-0.5 hover:bg-accent-hover"
+              className="interactive press rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-accent-contrast shadow-soft hover:-translate-y-0.5 hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             >
               שינוי הבחירות
             </button>
             <Link
               href={answers.category ? `/compare/${answers.category}` : "/compare"}
-              className="interactive press rounded-xl border border-border px-5 py-2.5 text-sm font-medium text-foreground hover:bg-border/60"
+              className="interactive press rounded-xl border border-border px-5 py-2.5 text-sm font-medium text-foreground hover:bg-border/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             >
               להשוואה המלאה
             </Link>
           </div>
         </div>
       ) : phase === "error" ? (
-        <div className="py-4 text-center" role="alert">
-          <p className="font-display text-lg font-bold text-ink">
+        <div className="flex flex-col items-center py-6 text-center" role="alert">
+          {/* Branded badge — same Switchy figure keeps a failure on-brand. */}
+          <span
+            aria-hidden="true"
+            className="elevate-soft flex h-20 w-20 items-center justify-center rounded-full border border-accent/20 bg-accent/10 text-accent-text"
+          >
+            <SwitchyMascot size={48} />
+          </span>
+          <p className="mt-5 font-display text-lg font-bold text-ink">
             לא הצלחנו להביא התאמות כרגע
           </p>
-          <p className="mt-2 text-sm text-muted">
+          <p className="mt-2 max-w-md text-sm text-muted">
             אפשר לנסות שוב בעוד רגע, או פשוט להשאיר פרטים ונחזור עם השוואה מותאמת.
           </p>
-          <div className="mt-5 flex flex-wrap justify-center gap-3">
+          <div className="mt-6 flex flex-wrap justify-center gap-3">
             <button
               type="button"
               onClick={() => void submit()}
-              className="interactive press rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-accent-contrast shadow-soft hover:-translate-y-0.5 hover:bg-accent-hover"
+              className="interactive press rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-accent-contrast shadow-soft hover:-translate-y-0.5 hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             >
               נסו שוב
             </button>
             <Link
               href="/#lead"
-              className="interactive press rounded-xl border border-border px-5 py-2.5 text-sm font-medium text-foreground hover:bg-border/60"
+              className="interactive press rounded-xl border border-border px-5 py-2.5 text-sm font-medium text-foreground hover:bg-border/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             >
               השארת פרטים
             </Link>
           </div>
         </div>
       ) : phase === "loading" ? (
-        <div className="py-10 text-center" aria-hidden="true">
-          <div className="mx-auto h-9 w-9 animate-spin rounded-full border-2 border-border border-t-accent" />
-          <p className="mt-4 text-sm text-muted">מחשבים את ההתאמות הטובות ביותר…</p>
+        // Branded "matches are coming" skeleton — mirrors the ranked-results
+        // silhouette (a few match cards) instead of a bare spinner, so the
+        // load→results swap is low-jank. Decorative + announced via the live
+        // region above; reduced-motion-safe via SkeletonCard's own guard.
+        <div aria-hidden="true">
+          <p className="mb-4 text-center text-sm text-muted">
+            מחשבים את ההתאמות הטובות ביותר…
+          </p>
+          <div className="space-y-4">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <SkeletonCard key={i} lines={2} />
+            ))}
+          </div>
         </div>
       ) : (
         <>
@@ -400,7 +427,7 @@ export default function QuizWizard() {
               <button
                 type="button"
                 onClick={back}
-                className="interactive press rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-foreground hover:bg-border/60"
+                className="interactive press rounded-xl border border-border px-4 py-2.5 text-sm font-medium text-foreground hover:bg-border/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
               >
                 חזרה
               </button>
@@ -410,7 +437,7 @@ export default function QuizWizard() {
               onClick={next}
               disabled={step === 0 && !answers.category}
               aria-disabled={step === 0 && !answers.category}
-              className="interactive press flex-1 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-accent-contrast shadow-soft hover:-translate-y-0.5 hover:bg-accent-hover hover:shadow-card disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none"
+              className="interactive press flex-1 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-accent-contrast shadow-soft hover:-translate-y-0.5 hover:bg-accent-hover hover:shadow-card focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none"
             >
               {step < lastStep ? "המשך" : "מצאו לי מסלולים"}
             </button>
@@ -457,6 +484,7 @@ function OptionGrid({
             htmlFor={id}
             className={[
               "interactive press flex cursor-pointer items-start gap-3 rounded-xl border p-4 text-right",
+              "focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-accent",
               isSel
                 ? "border-accent bg-accent/10 ring-2 ring-accent/30"
                 : "border-border bg-background hover:border-border-strong/40 hover:bg-border/40",
@@ -516,7 +544,7 @@ function Results({
         <button
           type="button"
           onClick={onRestart}
-          className="interactive press rounded-xl border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-border/60"
+          className="interactive press rounded-xl border border-border px-4 py-2 text-sm font-medium text-foreground hover:bg-border/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
           התחלה מחדש
         </button>

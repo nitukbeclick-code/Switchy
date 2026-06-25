@@ -1,6 +1,8 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import Icon from "@/components/Icon";
 import JsonLd from "@/components/JsonLd";
+import EmptyState from "@/components/EmptyState";
 import SocialProof from "@/components/SocialProof";
 import CommissionDisclosure from "@/components/CommissionDisclosure";
 import PriceCaveat from "@/components/PriceCaveat";
@@ -97,9 +99,13 @@ export default function WalletPage() {
         <span className="text-foreground">ארנק התקשורת</span>
       </nav>
 
-      {/* ── Heading ───────────────────────────────────────────────────────── */}
-      <header className="mt-4">
-        <h1 className="font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
+      {/* ── Heading — VALUE eyebrow (this page is about money saved) ──────── */}
+      <header className="mt-5">
+        <span className="inline-flex items-center gap-1.5 rounded-full border border-value/40 bg-value/10 px-3 py-1 text-xs font-semibold text-value-text">
+          <Icon name="spark" size={14} aria-hidden />
+          מחשבון חיסכון אישי
+        </span>
+        <h1 className="mt-4 font-display text-3xl font-bold leading-tight tracking-tight text-ink sm:text-[2.65rem]">
           ארנק התקשורת שלכם
         </h1>
         <p className="mt-4 max-w-2xl text-lg leading-relaxed text-foreground">
@@ -116,12 +122,14 @@ export default function WalletPage() {
         {categories.length > 0 ? (
           <WalletClient categories={categories} />
         ) : (
-          <p className="bento p-6 text-foreground">
-            אין כרגע מסלולים בקטלוג לחישוב.{" "}
-            <Link href="/compare" className="interactive font-medium text-accent-text underline hover:text-accent-hover">
-              עברו לעמוד ההשוואה ←
-            </Link>
-          </p>
+          <div className="bento p-2">
+            <EmptyState
+              icon={<Icon name="search" size={32} aria-hidden />}
+              title="אין כרגע מסלולים לחישוב"
+              description="לא נמצאו מסלולים בקטלוג לחישוב החיסכון כרגע. אפשר לעבור להשוואה המלאה ולראות את כל המסלולים לפי קטגוריה."
+              cta={{ label: "לעמוד ההשוואה", href: "/compare" }}
+            />
+          </div>
         )}
       </section>
 
@@ -170,7 +178,12 @@ export default function WalletPage() {
                   </span>
                   <span className="mt-0.5 block text-xs text-muted">{l.sub}</span>
                 </span>
-                <span aria-hidden="true" className="text-muted">←</span>
+                <Icon
+                  name="arrow"
+                  size={18}
+                  aria-hidden
+                  className="shrink-0 text-muted transition-colors group-hover:text-accent"
+                />
               </Link>
             </li>
           ))}

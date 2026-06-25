@@ -43,6 +43,22 @@ class MatchesWidget extends StatelessWidget {
     final analyzedCount = summary.categories.where((c) => c.hasBill).length;
     final personalized = appState.billsPersonalized;
 
+    // The single biggest real saving across the matched categories — its card
+    // wears a "החיסכון הגדול ביותר" crown so the list has one clear focal point
+    // (the top opportunity) instead of N equal-weight cards. Only when a genuine
+    // saving exists and there's more than one card to rank.
+    int topSaverIndex = -1;
+    if (catMatches.length > 1) {
+      var bestSave = 0;
+      for (var i = 0; i < catMatches.length; i++) {
+        final s = catMatches[i].match.annualSaving;
+        if (s > bestSave) {
+          bestSave = s;
+          topSaverIndex = i;
+        }
+      }
+    }
+
     if (catMatches.isEmpty) {
       return Scaffold(
         backgroundColor: ffTheme.background,
@@ -97,7 +113,8 @@ class MatchesWidget extends StatelessWidget {
                       final i = entry.key;
                       final item = entry.value;
                       return _buildMatchCard(context, ffTheme, item.catId,
-                              item.catName, item.match, appState, personalized)
+                              item.catName, item.match, appState, personalized,
+                              isTopSaver: i == topSaverIndex)
                           .animate(delay: (120 + i * 80).ms)
                           .fadeIn(duration: 400.ms)
                           .slideY(begin: 0.06, end: 0);
@@ -284,8 +301,9 @@ class MatchesWidget extends StatelessWidget {
     String catName,
     PlanMatch match,
     AppState appState,
-    bool personalized,
-  ) {
+    bool personalized, {
+    bool isTopSaver = false,
+  }) {
     final plan = match.plan;
     final priceLabel = priceUnitLabel(plan);
     // "Why this" — up to two affirmative reasons; the engine already orders the
@@ -296,6 +314,12 @@ class MatchesWidget extends StatelessWidget {
 
     return AppCard(
       margin: const EdgeInsets.only(bottom: 14),
+      // The top-saver card gets a quiet amber VALUE hairline so the biggest
+      // opportunity reads as the focal card at a glance (other cards keep the
+      // default ink hairline).
+      borderColor: isTopSaver && match.annualSaving > 0
+          ? ffTheme.saving.withValues(alpha: 0.45)
+          : null,
       onTap: () =>
           context.pushNamed('PlanDetail', pathParameters: {'planId': plan.id}),
       child: Column(
@@ -307,13 +331,44 @@ class MatchesWidget extends StatelessWidget {
               Icon(categoryIconData(catId),
                   size: 20, color: ffTheme.secondaryText),
               const SizedBox(width: 8),
-              Text(
-                catName,
-                style: ffTheme.labelLarge.copyWith(
-                  color: ffTheme.secondaryText,
-                  fontWeight: FontWeight.w600,
+              Flexible(
+                child: Text(
+                  catName,
+                  style: ffTheme.labelLarge.copyWith(
+                    color: ffTheme.secondaryText,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
+              // Top-saver crown — amber VALUE, the list's single focal point:
+              // the category where switching saves the most real money.
+              if (isTopSaver && match.annualSaving > 0) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: ffTheme.saving.withValues(alpha: 0.16),
+                    borderRadius: BorderRadius.circular(20),
+                    border:
+                        Border.all(color: ffTheme.saving.withValues(alpha: 0.40)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.emoji_events_rounded,
+                          size: 11, color: ffTheme.savingDark),
+                      const SizedBox(width: 3),
+                      Text('החיסכון הגדול ביותר',
+                          style: ffTheme.labelSmall.copyWith(
+                              color: ffTheme.savingText,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800)),
+                    ],
+                  ),
+                ),
+              ],
               const Spacer(),
               // Match score badge — green = ACTION/match signal, rendered as the
               // accent gradient with a soft glow so it reads as the win state on

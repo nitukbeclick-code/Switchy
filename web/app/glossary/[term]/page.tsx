@@ -90,12 +90,18 @@ export default async function GlossaryTermPage({ params }: Params) {
       </nav>
 
       <article className="mt-4">
-        <h1 className="font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
-          {entry.term}
-        </h1>
-        {/* Definition lives in a soft bento card — breathing room + soft border. */}
+        <header>
+          <p className="text-xs font-semibold uppercase tracking-wide text-accent-text">
+            מילון מונחים
+          </p>
+          <h1 className="mt-2 font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
+            {entry.term}
+          </h1>
+        </header>
+        {/* Definition lives in a soft bento card — breathing room + soft border,
+            comfortable long-form leading for the explainer copy. */}
         <div className="bento mt-6 p-6 sm:p-8">
-          <p className="text-lg leading-relaxed text-foreground">
+          <p className="text-lg leading-[1.85] text-foreground">
             {entry.definition}
           </p>
         </div>

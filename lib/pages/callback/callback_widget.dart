@@ -23,7 +23,6 @@ class _CallbackWidgetState extends State<CallbackWidget> {
   String _timing = 'בהקדם';
   String _topic = 'סלולר';
   bool _submitted = false;
-  bool _isLoading = false;
 
   static const _timings = ['בהקדם', 'בוקר', 'אחה"צ', 'ערב'];
   static const _topics = ['סלולר', 'אינטרנט', 'טלוויזיה', 'חבילה משולבת', 'ניתוק', 'אחר'];
@@ -166,8 +165,10 @@ class _CallbackWidgetState extends State<CallbackWidget> {
             const SizedBox(height: 24),
 
             AppButton(
-              text: _isLoading ? 'שולח...' : 'בקש שיחה חוזרת',
-              onPressed: _isLoading ? () async {} : () async {
+              // AppButton owns the async spinner + tap-ignore while [onPressed]
+              // awaits, so we keep one honest label instead of a faked "שולח...".
+              text: 'בקש שיחה חוזרת',
+              onPressed: () async {
                 if (_nameCtrl.text.trim().isEmpty || _phoneCtrl.text.trim().isEmpty) {
                   AppSnackBar.error(context, 'נא למלא שם ומספר טלפון',
                       duration: const Duration(seconds: 2));
@@ -179,7 +180,6 @@ class _CallbackWidgetState extends State<CallbackWidget> {
                       duration: const Duration(seconds: 2));
                   return;
                 }
-                setState(() => _isLoading = true);
                 final name = _nameCtrl.text.trim();
                 final phone = _phoneCtrl.text.replaceAll(RegExp(r'[\s\-]'), '');
                 // Map timing chips to callback_time keys used in leads table.
@@ -207,7 +207,6 @@ class _CallbackWidgetState extends State<CallbackWidget> {
                   // The request never reached the team — let the user retry
                   // instead of waiting for a call that won't come.
                   if (!context.mounted) return;
-                  setState(() => _isLoading = false);
                   AppSnackBar.error(context, 'שליחת הבקשה נכשלה — בדקו את החיבור ונסו שוב');
                   return;
                 }
@@ -216,7 +215,7 @@ class _CallbackWidgetState extends State<CallbackWidget> {
                 Provider.of<AppState>(context, listen: false).login(name: name, phone: phone);
                 await Future.delayed(const Duration(milliseconds: 300));
                 if (!mounted) return;
-                setState(() { _isLoading = false; _submitted = true; });
+                setState(() => _submitted = true);
               },
               
                 width: double.infinity,
@@ -458,9 +457,17 @@ class _CallbackWidgetState extends State<CallbackWidget> {
                 ),
                 child: Column(
                   children: [
-                    ExcludeSemantics(child: Icon(icons[i], size: 18, color: active ? Colors.white : ffTheme.secondaryText)),
-                    const SizedBox(height: 4),
-                    Text(t, style: ffTheme.labelSmall.copyWith(color: active ? Colors.white : ffTheme.primaryText, fontWeight: active ? FontWeight.w700 : FontWeight.w500, fontSize: 11)),
+                    ExcludeSemantics(child: Icon(icons[i], size: 20, color: active ? Colors.white : ffTheme.secondaryText)),
+                    const SizedBox(height: 5),
+                    Text(t,
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: ffTheme.labelSmall.copyWith(
+                          color: active ? Colors.white : ffTheme.primaryText,
+                          fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                          fontSize: 12,
+                        )),
                   ],
                 ),
               ),

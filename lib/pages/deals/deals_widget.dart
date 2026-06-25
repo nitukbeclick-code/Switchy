@@ -15,6 +15,7 @@ import '../../services/backend/local_backend.dart' show appBackend;
 import '../../services/realtime_service.dart';
 import '../../services/push_notification_service.dart';
 import '../../widgets/empty_state.dart';
+import '../../widgets/skeleton.dart';
 import 'deals_engine.dart';
 
 /// מבצעים בזמן אמת — the real-time deals feed.
@@ -142,7 +143,17 @@ class _DealsWidgetState extends State<DealsWidget> {
 
   Widget _buildBody(AppTheme ffTheme) {
     if (_loading) {
-      return const Center(child: CircularProgressIndicator());
+      // Designed loading state — ghosts of the deal rows that signal the final
+      // shape (a drop banner + a plan card) instead of a blocking spinner.
+      return ListView(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+        children: const [
+          _DealSkeleton(),
+          _DealSkeleton(),
+          _DealSkeleton(),
+          _DealSkeleton(),
+        ],
+      );
     }
     if (_error != null) {
       return ListView(
@@ -314,6 +325,52 @@ class _DealCard extends StatelessWidget {
             // Defensive — DealsEngine already drops null-plan rows, but never
             // render against a guessed plan if one slips through.
             const SizedBox.shrink(),
+        ],
+      ),
+    );
+  }
+}
+
+/// A loading ghost of a [_DealCard]: a pill-shaped amber-tinted drop-banner
+/// stand-in atop a [SkeletonPlanCard], so the feed already signals its final
+/// shape (drop headline + plan row) before the price snapshots land. RTL/dark/
+/// reduced-motion all flow through the shared [SkeletonShimmer] primitives.
+class _DealSkeleton extends StatelessWidget {
+  const _DealSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppTheme.of(context);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Drop-banner ghost — warm amber tint so the loading state already
+          // reads as a VALUE surface, matching the real banner above the card.
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+            decoration: BoxDecoration(
+              color: t.saving.withValues(alpha: 0.10),
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(16),
+                topRight: Radius.circular(16),
+              ),
+              border: Border.all(color: t.saving.withValues(alpha: 0.22)),
+            ),
+            child: const SkeletonShimmer(
+              child: Row(
+                children: [
+                  SkeletonBox(width: 26, height: 26, radius: 13),
+                  SizedBox(width: 8),
+                  SkeletonBox(width: 120, height: 13),
+                  Spacer(),
+                  SkeletonBox(width: 46, height: 20, radius: 999),
+                ],
+              ),
+            ),
+          ),
+          const SkeletonPlanCard(),
         ],
       ),
     );

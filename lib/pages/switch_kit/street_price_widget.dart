@@ -320,9 +320,12 @@ class _StreetPriceWidgetState extends State<StreetPriceWidget> {
           crossAxisAlignment: CrossAxisAlignment.baseline,
           textBaseline: TextBaseline.alphabetic,
           children: [
+            // The typical street price is the page's VALUE moment (real money
+            // people pay) → amber, not the green ACTION accent. A large bold
+            // numeral clears AA at [saving]; small text would need [savingText].
             Text('₪${agg.typicalText}',
                 style: t.displaySmall
-                    .copyWith(color: t.brandAccent, fontWeight: FontWeight.w800)),
+                    .copyWith(color: t.savingText, fontWeight: FontWeight.w800)),
             const SizedBox(width: 6),
             Text('לחודש', style: t.bodySmall),
           ],

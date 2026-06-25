@@ -108,17 +108,18 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
             _buildTechFilters(ffTheme),
             const SizedBox(height: 20),
 
-            // Check button
+            // Check button — AppButton awaits [_check] and shows its own spinner
+            // while the richer page-level loading state renders below, so the
+            // label stays the honest CTA (no faked "בודק כיסוי...").
             AppButton(
-              text: _loading ? 'בודק כיסוי...' : 'בדוק זמינות',
+              text: 'בדוק זמינות',
               onPressed: () async => _check(),
-              
-                width: double.infinity,
-                height: 52,
-                color: AppColors.primary,
-                textStyle: ffTheme.titleSmall.copyWith(color: Colors.white),
-                borderRadius: BorderRadius.circular(14),
-              
+              icon: const Icon(Icons.search_rounded, size: 20, color: Colors.white),
+              width: double.infinity,
+              height: 52,
+              color: AppColors.primary,
+              textStyle: ffTheme.titleSmall.copyWith(color: Colors.white),
+              borderRadius: BorderRadius.circular(14),
             ),
 
             // Loading state
@@ -282,25 +283,33 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
         const SizedBox(height: 8),
         Wrap(
           spacing: 8,
+          runSpacing: 8,
           children: filters.map((f) {
             final selected = _techFilter == f;
-            return GestureDetector(
-              onTap: () {
-                setState(() { _techFilter = f; _revealedCount = 0; });
-                if (_checked) _restaggerReveal();
-              },
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                decoration: BoxDecoration(
-                  color: selected ? ffTheme.brandAccent : ffTheme.cardSurface,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: selected ? ffTheme.brandAccent : ffTheme.alternate, width: selected ? 1.5 : 1),
+            return Semantics(
+              button: true,
+              selected: selected,
+              child: GestureDetector(
+                onTap: () {
+                  setState(() { _techFilter = f; _revealedCount = 0; });
+                  if (_checked) _restaggerReveal();
+                },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: selected ? ffTheme.brandAccent : ffTheme.cardSurface,
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: selected ? ffTheme.brandAccent : ffTheme.alternate, width: selected ? 1.5 : 1),
+                    boxShadow: selected
+                        ? [BoxShadow(color: ffTheme.brandAccent.withValues(alpha: 0.24), blurRadius: 9, offset: const Offset(0, 3))]
+                        : null,
+                  ),
+                  child: Text(f, style: ffTheme.labelMedium.copyWith(
+                    color: selected ? Colors.white : ffTheme.primaryText,
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  )),
                 ),
-                child: Text(f, style: ffTheme.labelSmall.copyWith(
-                  color: selected ? Colors.white : ffTheme.primaryText,
-                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                )),
               ),
             );
           }).toList(),

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../theme/app_theme.dart';
+import '../../theme/app_icons.dart';
 import '../../core/nav.dart';
 import '../../app_state.dart';
 import '../../data.dart';
@@ -49,17 +50,23 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
       bottomNavigationBar: (heroSaving > 0 || catSaving > 0) ? _buildStickyBar(context, ffTheme, catSaving > heroSaving ? catSaving : heroSaving, catSaving > heroSaving ? _activeCat : 'cellular') : null,
       body: CustomScrollView(
         slivers: [
-          // Sticky nav
+          // Sticky nav — ink bar (premium brand surface). The brand chip stays a
+          // clean white-glass mark; the nav CTA carries the green ACTION accent so
+          // the primary "check your savings" action reads instantly.
           SliverAppBar(
             pinned: true,
             backgroundColor: ffTheme.primary,
             elevation: 0,
+            scrolledUnderElevation: 0,
             title: Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(color: ffTheme.secondary, borderRadius: BorderRadius.circular(8)),
-                  child: Text('Switchy AI', style: GoogleFonts.rubik(fontSize: 16, fontWeight: FontWeight.w800, color: ffTheme.primaryDark)),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(ffTheme.radiusXs),
+                  ),
+                  child: Text('Switchy AI', style: GoogleFonts.rubik(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.primary)),
                 ),
                 const Spacer(),
                 TextButton(
@@ -71,15 +78,22 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
             actions: [
               Container(
                 margin: const EdgeInsetsDirectional.only(start: 16, top: 8, bottom: 8),
+                decoration: BoxDecoration(
+                  gradient: ffTheme.accentGradient,
+                  borderRadius: BorderRadius.circular(ffTheme.radiusXs),
+                  boxShadow: ffTheme.shadowAccent,
+                ),
                 child: ElevatedButton(
                   onPressed: () => context.goNamed('Home'),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: ffTheme.secondary,
-                    foregroundColor: ffTheme.primaryDark,
+                    backgroundColor: Colors.transparent,
+                    foregroundColor: Colors.white,
+                    shadowColor: Colors.transparent,
+                    elevation: 0,
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(ffTheme.radiusXs)),
                   ),
-                  child: Text('בדוק כמה תחסוך', style: GoogleFonts.rubik(fontSize: 12, fontWeight: FontWeight.w700)),
+                  child: Text('בדוק כמה תחסוך', style: GoogleFonts.rubik(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white)),
                 ),
               ),
             ],
@@ -139,10 +153,13 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
+                                  // The current bill is a neutral input figure (white on
+                                  // the ink hero) — NOT a VALUE number, so it stays white
+                                  // and lets the amber savings pill below own the accent.
                                   Row(
                                     crossAxisAlignment: CrossAxisAlignment.end,
                                     children: [
-                                      Text('₪${_billInput.round()}', style: GoogleFonts.rubik(fontSize: 36, fontWeight: FontWeight.w800, color: ffTheme.secondary)),
+                                      Text('₪${_billInput.round()}', style: GoogleFonts.rubik(fontSize: 36, fontWeight: FontWeight.w800, color: Colors.white)),
                                       const SizedBox(width: 6),
                                       Padding(
                                         padding: const EdgeInsets.only(bottom: 6),
@@ -150,14 +167,17 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
                                       ),
                                     ],
                                   ),
+                                  // The slider is an ACTION control → green active track.
                                   Slider(
                                     value: _billInput,
                                     min: 20,
                                     max: 500,
-                                    activeColor: ffTheme.secondary,
+                                    activeColor: ffTheme.brandAccent,
                                     inactiveColor: Colors.white24,
                                     onChanged: (v) => setState(() { _billInput = v; _catBills['cellular'] = v; }),
                                   ),
+                                  // The savings figure is VALUE → amber chip, the single
+                                  // warm accent that makes "you could save" pop on the ink.
                                   if (heroSaving > 0)
                                     AnimatedSwitcher(
                                       duration: const Duration(milliseconds: 300),
@@ -165,17 +185,18 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
                                         key: ValueKey(heroSaving),
                                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
                                         decoration: BoxDecoration(
-                                          color: ffTheme.secondary.withValues(alpha: 0.2),
-                                          borderRadius: BorderRadius.circular(8),
+                                          color: ffTheme.saving.withValues(alpha: 0.2),
+                                          borderRadius: BorderRadius.circular(ffTheme.radiusXs),
+                                          border: Border.all(color: ffTheme.saving.withValues(alpha: 0.4)),
                                         ),
                                         child: Row(
                                           mainAxisSize: MainAxisSize.min,
                                           children: [
-                                            Icon(Icons.savings_outlined, size: 12, color: ffTheme.secondary),
+                                            Icon(Icons.savings_rounded, size: 13, color: ffTheme.saving),
                                             const SizedBox(width: 4),
                                             Text(
                                               'תוכלו לחסוך עד ₪$heroSaving בשנה!',
-                                              style: GoogleFonts.rubik(fontSize: 11, fontWeight: FontWeight.w700, color: ffTheme.secondary),
+                                              style: GoogleFonts.rubik(fontSize: 11, fontWeight: FontWeight.w800, color: ffTheme.saving),
                                             ),
                                           ],
                                         ),
@@ -185,24 +206,34 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
                               ),
                             ),
                             const SizedBox(width: 12),
-                            ElevatedButton(
-                              onPressed: () {
-                                appState.setCurrentBill('cellular', _billInput.round());
-                                appState.setCategory('cellular');
-                                context.goNamed('Home');
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: ffTheme.secondary,
-                                foregroundColor: ffTheme.primaryDark,
-                                padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                                elevation: 0,
+                            // Primary ACTION → green gradient with a green glow, the
+                            // single dominant CTA in the hero.
+                            DecoratedBox(
+                              decoration: BoxDecoration(
+                                gradient: ffTheme.accentGradient,
+                                borderRadius: BorderRadius.circular(14),
+                                boxShadow: ffTheme.shadowAccent,
                               ),
-                              child: Column(
-                                children: [
-                                  Text('בדוק', style: GoogleFonts.rubik(fontSize: 16, fontWeight: FontWeight.w800)),
-                                  Text('עכשיו', style: GoogleFonts.rubik(fontSize: 10, fontWeight: FontWeight.w600)),
-                                ],
+                              child: ElevatedButton(
+                                onPressed: () {
+                                  appState.setCurrentBill('cellular', _billInput.round());
+                                  appState.setCategory('cellular');
+                                  context.goNamed('Home');
+                                },
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.transparent,
+                                  foregroundColor: Colors.white,
+                                  shadowColor: Colors.transparent,
+                                  padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 16),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                                  elevation: 0,
+                                ),
+                                child: Column(
+                                  children: [
+                                    Text('בדוק', style: GoogleFonts.rubik(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white)),
+                                    Text('עכשיו', style: GoogleFonts.rubik(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.white)),
+                                  ],
+                                ),
                               ),
                             ),
                           ],
@@ -218,7 +249,7 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
           // Stats bar — real catalogue facts only (verifiable from the data set).
           SliverToBoxAdapter(
             child: Container(
-              color: Colors.white,
+              color: ffTheme.cardSurface,
               padding: const EdgeInsets.symmetric(vertical: 20),
               child: const Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -247,23 +278,35 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
                     child: Row(
                       children: categories.map((cat) {
                         final active = _activeCat == cat.id;
-                        return GestureDetector(
-                          onTap: () => setState(() => _activeCat = cat.id),
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 200),
-                            margin: const EdgeInsetsDirectional.only(start: 8),
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
-                            decoration: BoxDecoration(
-                              color: active ? ffTheme.primary : Colors.white,
-                              borderRadius: BorderRadius.circular(24),
-                              border: Border.all(color: active ? ffTheme.primary : ffTheme.alternate),
-                            ),
-                            child: Row(
-                              children: [
-                                Icon(categoryIconData(cat.id), size: 14, color: active ? Colors.white : ffTheme.primaryText),
-                                const SizedBox(width: 6),
-                                Text(cat.name, style: ffTheme.labelMedium.copyWith(color: active ? Colors.white : ffTheme.primaryText)),
-                              ],
+                        // The selected tab is an ACTIVE state → green ACTION fill +
+                        // soft glow; resting tabs are calm glass chips with an ink
+                        // hairline. a11y: each tab is a real selectable button.
+                        return Semantics(
+                          button: true,
+                          selected: active,
+                          label: cat.name,
+                          child: GestureDetector(
+                            onTap: () => setState(() => _activeCat = cat.id),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              margin: const EdgeInsetsDirectional.only(start: 8),
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+                              constraints: const BoxConstraints(minHeight: kMinTapTarget),
+                              decoration: BoxDecoration(
+                                gradient: active ? ffTheme.accentGradient : null,
+                                color: active ? null : ffTheme.cardSurface,
+                                borderRadius: BorderRadius.circular(ffTheme.radiusPill),
+                                border: Border.all(color: active ? Colors.transparent : ffTheme.alternate),
+                                boxShadow: active ? ffTheme.shadowAccent : null,
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(categoryIconData(cat.id), size: 15, color: active ? Colors.white : ffTheme.primaryText),
+                                  const SizedBox(width: 6),
+                                  Text(cat.name, style: ffTheme.labelMedium.copyWith(color: active ? Colors.white : ffTheme.primaryText, fontWeight: FontWeight.w700)),
+                                ],
+                              ),
                             ),
                           ),
                         );
@@ -272,22 +315,27 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
                   ),
                   const SizedBox(height: 12),
                   if (_activeCat != 'abroad') _buildCatBillInput(context, ffTheme),
+                  // A live VALUE read-out for the selected category → amber chip
+                  // (the warm "this is money you could save" accent).
                   if (catSaving > 0 && _activeCat != 'abroad') ...[
                     const SizedBox(height: 10),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                       decoration: BoxDecoration(
-                        color: ffTheme.secondary,
-                        borderRadius: BorderRadius.circular(10),
+                        color: ffTheme.saving.withValues(alpha: 0.16),
+                        borderRadius: BorderRadius.circular(ffTheme.radiusXs),
+                        border: Border.all(color: ffTheme.saving.withValues(alpha: 0.4)),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.lightbulb_outline_rounded, size: 13, color: ffTheme.primaryDark),
+                          Icon(Icons.savings_rounded, size: 14, color: ffTheme.savingText),
                           const SizedBox(width: 6),
-                          Text(
-                            'לפי החשבון שלך תוכל לחסוך עד ₪$catSaving/שנה',
-                            style: GoogleFonts.rubik(fontSize: 12, fontWeight: FontWeight.w700, color: ffTheme.primaryDark),
+                          Flexible(
+                            child: Text(
+                              'לפי החשבון שלך תוכל לחסוך עד ₪$catSaving/שנה',
+                              style: GoogleFonts.rubik(fontSize: 12, fontWeight: FontWeight.w800, color: ffTheme.savingText),
+                            ),
                           ),
                         ],
                       ),
@@ -297,7 +345,9 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
                   ...plans.map((p) => PlanCardWidget(plan: p, currentBill: catBill)),
                   if (plans.length >= 6)
                     Center(
-                      child: TextButton(
+                      // A navigational link → green ACTION text (AA-safe green 700
+                      // on light), with a logical-forward chevron for RTL.
+                      child: TextButton.icon(
                         onPressed: () {
                           appState.setCategory(_activeCat);
                           final catBillVal = _catBills[_activeCat];
@@ -306,7 +356,8 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
                           }
                           context.goNamed('Home');
                         },
-                        child: Text('ראה את כל המסלולים →', style: ffTheme.titleSmall.copyWith(color: ffTheme.primary)),
+                        icon: Icon(AppIcons.chevron, size: 18, color: ffTheme.brandAccentText),
+                        label: Text('ראה את כל המסלולים', style: ffTheme.titleSmall.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w700)),
                       ),
                     ),
                 ],
@@ -335,7 +386,7 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
           SliverToBoxAdapter(
             child: Container(
               padding: const EdgeInsets.fromLTRB(20, 28, 20, 28),
-              color: Colors.white,
+              color: ffTheme.cardSurface,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -388,7 +439,7 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
           SliverToBoxAdapter(
             child: Container(
               padding: const EdgeInsets.all(20),
-              color: Colors.white,
+              color: ffTheme.cardSurface,
               child: const Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -415,15 +466,26 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
                   const SizedBox(height: 8),
                   Text('השוו את כל המסלולים ומצאו את המתאים לכם — בחינם', style: GoogleFonts.assistant(fontSize: 14, color: Colors.white70)),
                   const SizedBox(height: 20),
-                  ElevatedButton(
-                    onPressed: () => context.goNamed('Home'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: ffTheme.secondary,
-                      foregroundColor: ffTheme.primaryDark,
-                      padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  // The closing conversion CTA → green ACTION gradient + glow, the
+                  // single dominant action in the band.
+                  DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: ffTheme.accentGradient,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: ffTheme.shadowAccent,
                     ),
-                    child: Text('בדוק כמה תחסוך עכשיו', style: GoogleFonts.rubik(fontSize: 16, fontWeight: FontWeight.w800)),
+                    child: ElevatedButton(
+                      onPressed: () => context.goNamed('Home'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        foregroundColor: Colors.white,
+                        shadowColor: Colors.transparent,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 16),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      ),
+                      child: Text('בדוק כמה תחסוך עכשיו', style: GoogleFonts.rubik(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white)),
+                    ),
                   ),
                 ],
               ),
@@ -437,7 +499,7 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
               color: ffTheme.primaryDark,
               child: Column(
                 children: [
-                  Text('Switchy AI', style: GoogleFonts.rubik(fontSize: 18, fontWeight: FontWeight.w800, color: ffTheme.secondary)),
+                  Text('Switchy AI', style: GoogleFonts.rubik(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white)),
                   const SizedBox(height: 8),
                   Text('© 2026 Switchy AI. כל הזכויות שמורות.', style: GoogleFonts.assistant(fontSize: 11, color: Colors.white38)),
                   const SizedBox(height: 4),
@@ -460,27 +522,24 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: ffTheme.alternate),
-      ),
+      decoration: ffTheme.cardDecoration(radius: ffTheme.radiusMd),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Text('מה אתם משלמים $label?', style: ffTheme.labelMedium),
-              const Spacer(),
-              Text('₪${bill.round()}/חודש', style: ffTheme.titleSmall.copyWith(color: ffTheme.primary, fontWeight: FontWeight.w700)),
+              Expanded(child: Text('מה אתם משלמים $label?', style: ffTheme.labelMedium)),
+              const SizedBox(width: 8),
+              Text('₪${bill.round()}/חודש', style: ffTheme.titleSmall.copyWith(color: ffTheme.primaryText, fontWeight: FontWeight.w700)),
             ],
           ),
+          // The bill slider is an ACTION control → green active track.
           Slider(
             value: bill,
             min: 0,
             max: max,
-            activeColor: ffTheme.primary,
-            inactiveColor: ffTheme.alternate,
+            activeColor: ffTheme.brandAccent,
+            inactiveColor: ffTheme.alternate.withValues(alpha: 0.4),
             onChanged: (v) => setState(() => _catBills[_activeCat] = v),
           ),
         ],
@@ -501,10 +560,13 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
     return SafeArea(
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
-        height: 64,
+        height: 68,
         decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.08), blurRadius: 12, offset: const Offset(0, -3))],
+          // Theme-aware surface (white on light, slate on dark) with a soft
+          // top-edge lift so the bar reads as floating above the page.
+          color: ffTheme.cardSurface,
+          border: Border(top: BorderSide(color: ffTheme.lineColor)),
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: ffTheme.dark ? 0.3 : 0.08), blurRadius: 14, offset: const Offset(0, -3))],
         ),
         child: Row(
           children: [
@@ -514,36 +576,48 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('פוטנציאל החיסכון שלך', style: GoogleFonts.assistant(fontSize: 11, color: Colors.grey.shade500)),
+                  Text('פוטנציאל החיסכון שלך', style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText)),
+                  const SizedBox(height: 2),
+                  // The savings figure is the VALUE focal point → amber VALUE text
+                  // (AA-safe amber 800 on the light bar, lifted amber on dark).
                   AnimatedSwitcher(
                     duration: const Duration(milliseconds: 300),
                     child: Text(
                       key: ValueKey('$saving$cat'),
                       'עד ₪$saving/שנה $catLabel',
-                      style: GoogleFonts.rubik(fontSize: 14, fontWeight: FontWeight.w800, color: ffTheme.primary),
+                      style: GoogleFonts.rubik(fontSize: 14, fontWeight: FontWeight.w800, color: ffTheme.savingText),
                     ),
                   ),
                 ],
               ),
             ),
-            GestureDetector(
-              onTap: () {
-                final appState = Provider.of<AppState>(context, listen: false);
-                appState.setCategory(cat);
-                final catBillVal = _catBills[cat];
-                if (catBillVal != null && catBillVal > 0) {
-                  appState.setCurrentBill(cat, catBillVal.round());
-                }
-                context.goNamed('Home');
-              },
-              child: Container(
-                margin: const EdgeInsetsDirectional.only(start: 16),
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                decoration: BoxDecoration(
-                  color: ffTheme.secondary,
-                  borderRadius: BorderRadius.circular(12),
+            // The persistent conversion CTA → green ACTION gradient + glow, with a
+            // real button semantic and a ≥48px tap target for a11y.
+            Semantics(
+              button: true,
+              label: 'בדוק עכשיו — עד ₪$saving לשנה $catLabel',
+              child: GestureDetector(
+                onTap: () {
+                  final appState = Provider.of<AppState>(context, listen: false);
+                  appState.setCategory(cat);
+                  final catBillVal = _catBills[cat];
+                  if (catBillVal != null && catBillVal > 0) {
+                    appState.setCurrentBill(cat, catBillVal.round());
+                  }
+                  context.goNamed('Home');
+                },
+                child: Container(
+                  margin: const EdgeInsetsDirectional.only(start: 16),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  constraints: const BoxConstraints(minHeight: kMinTapTarget),
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    gradient: ffTheme.accentGradient,
+                    borderRadius: BorderRadius.circular(ffTheme.radiusSm),
+                    boxShadow: ffTheme.shadowAccent,
+                  ),
+                  child: Text('בדוק עכשיו', style: GoogleFonts.rubik(fontSize: 13, fontWeight: FontWeight.w800, color: Colors.white)),
                 ),
-                child: Text('בדוק עכשיו', style: GoogleFonts.rubik(fontSize: 13, fontWeight: FontWeight.w800, color: ffTheme.primaryDark)),
               ),
             ),
           ],
@@ -611,7 +685,8 @@ class _StatDivider extends StatelessWidget {
   const _StatDivider();
 
   @override
-  Widget build(BuildContext context) => Container(width: 1, height: 32, color: const Color(0xFFE5E0D5));
+  Widget build(BuildContext context) =>
+      Container(width: 1, height: 32, color: AppTheme.of(context).lineColor);
 }
 
 class _NumberedStep extends StatelessWidget {
@@ -753,12 +828,13 @@ class _FAQState extends State<_FAQ> {
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
         color: ffTheme.background,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: _open ? ffTheme.primary.withValues(alpha: 0.3) : ffTheme.alternate),
+        borderRadius: BorderRadius.circular(ffTheme.radiusSm),
+        // Open = active → a green ACTION ring tells the user which row is live.
+        border: Border.all(color: _open ? ffTheme.brandAccent.withValues(alpha: 0.5) : ffTheme.alternate),
       ),
       child: InkWell(
         onTap: () => setState(() => _open = !_open),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(ffTheme.radiusSm),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           child: Column(
@@ -767,7 +843,7 @@ class _FAQState extends State<_FAQ> {
               Row(
                 children: [
                   Expanded(child: Text(widget.q, style: ffTheme.titleSmall.copyWith(fontWeight: FontWeight.w600))),
-                  Icon(_open ? Icons.remove_rounded : Icons.add_rounded, size: 20, color: ffTheme.primary),
+                  Icon(_open ? Icons.remove_rounded : Icons.add_rounded, size: 20, color: _open ? ffTheme.brandAccent : ffTheme.secondaryText),
                 ],
               ),
               if (_open) ...[

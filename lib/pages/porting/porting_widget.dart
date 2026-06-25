@@ -150,6 +150,17 @@ class _PortingWidgetState extends State<PortingWidget> {
 
             const SizedBox(height: 24),
 
+            // Form lead-in — a confident section title so the checklist of
+            // fields reads as one task, not a loose stack of inputs.
+            Text('פרטי הניוד', style: ffTheme.titleLarge)
+                .animate(delay: 40.ms)
+                .fadeIn(duration: 260.ms),
+            const SizedBox(height: 4),
+            Text('שלושה פרטים ואישור — ואנחנו מטפלים בשאר.', style: ffTheme.bodySmall)
+                .animate(delay: 40.ms)
+                .fadeIn(duration: 260.ms),
+            const SizedBox(height: 18),
+
             // Phone field
             Text('מספר לניוד', style: ffTheme.titleSmall),
             const SizedBox(height: 8),
@@ -186,6 +197,8 @@ class _PortingWidgetState extends State<PortingWidget> {
 
             // Provider chips
             Text('ספק נוכחי', style: ffTheme.titleSmall),
+            const SizedBox(height: 4),
+            Text('הספק שממנו אתם מנייידים את המספר', style: ffTheme.labelSmall),
             const SizedBox(height: 10),
             Wrap(
               spacing: 8,
@@ -232,23 +245,25 @@ class _PortingWidgetState extends State<PortingWidget> {
 
             const SizedBox(height: 20),
 
-            // Timing info row
+            // Timing info row — a calm NEUTRAL note. This is process timing, not
+            // a warning and not a VALUE figure, so it stays on the ink/glass
+            // neutral palette (no amber leak) per the two-accent discipline.
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               decoration: BoxDecoration(
                 color: ffTheme.accent2,
                 borderRadius: BorderRadius.circular(ffTheme.radiusSm),
-                border: Border.all(color: ffTheme.warning.withValues(alpha: 0.25)),
+                border: Border.all(color: ffTheme.alternate.withValues(alpha: 0.18)),
               ),
               child: Row(
                 children: [
                   Icon(Icons.timer_outlined,
-                      color: ffTheme.warning, size: 18),
+                      color: ffTheme.secondaryText, size: 18),
                   const SizedBox(width: 10),
                   Text(
                     'זמן ניוד: עד 3 ימי עסקים',
                     style: ffTheme.bodySmall.copyWith(
-                        color: ffTheme.warning,
+                        color: ffTheme.secondaryText,
                         fontWeight: FontWeight.w600),
                   ),
                 ],

@@ -14,6 +14,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import JsonLd from "@/components/JsonLd";
+import Icon from "@/components/Icon";
 import RightsForm from "@/components/RightsForm";
 import { breadcrumbSchema, webPageSchema } from "@/lib/schema";
 import { pageMetadata } from "@/lib/seo";
@@ -82,8 +83,13 @@ export default function RightsPage() {
           from { opacity: 0; transform: translateY(10px); }
           to { opacity: 1; transform: none; }
         }
+        /* Heading anchor — faint "#" on hover/focus for deep-linking a section. */
+        .sw-anchor { opacity: 0; transition: opacity 160ms var(--ease-out); }
+        .sw-head:hover .sw-anchor,
+        .sw-head:focus-within .sw-anchor { opacity: 1; }
         @media (prefers-reduced-motion: reduce) {
           .sw-reveal { animation: none; }
+          .sw-anchor { transition: none; }
         }
       `,
         }}
@@ -116,36 +122,55 @@ export default function RightsPage() {
           מימוש הזכויות שלכם
         </h1>
         <p
-          className="sw-reveal mt-4 max-w-2xl text-lg leading-relaxed text-foreground"
+          className="sw-reveal mt-4 max-w-prose text-lg leading-relaxed text-foreground"
           style={{ animationDelay: "60ms" }}
         >
           לפי חוק הגנת הפרטיות, התשמ״א-1981 ותיקוניו (לרבות תיקון 13), עומדות
           לכם זכויות ביחס למידע האישי שלכם. כאן ניתן להגיש בקשה — נטפל בה בתוך
           פרק הזמן הקבוע בדין.
         </p>
-        <p
-          className="sw-reveal mt-5 inline-flex items-center gap-2 rounded-full border border-border/60 bg-surface/70 px-3 py-1 text-sm text-muted backdrop-blur supports-[backdrop-filter]:bg-surface/60"
+        <div
+          className="sw-reveal mt-5 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-muted"
           style={{ animationDelay: "120ms" }}
         >
-          <span
-            aria-hidden="true"
-            className="inline-block h-1.5 w-1.5 rounded-full bg-accent"
-          />
-          עודכן לאחרונה: <time dateTime={LAST_REVIEWED}>{LAST_REVIEWED}</time>
-        </p>
+          <span className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-surface/70 px-3 py-1 backdrop-blur supports-[backdrop-filter]:bg-surface/60">
+            <span
+              aria-hidden="true"
+              className="inline-block h-1.5 w-1.5 rounded-full bg-accent"
+            />
+            עודכן לאחרונה: <time dateTime={LAST_REVIEWED}>{LAST_REVIEWED}</time>
+          </span>
+          <a
+            href="#rights-form"
+            className="interactive inline-flex items-center gap-1.5 rounded-full border border-accent/30 bg-accent/10 px-3 py-1 font-medium text-accent-text hover:bg-accent/15"
+          >
+            <Icon name="arrow" size={14} className="-scale-x-100" />
+            לטופס הגשת הבקשה
+          </a>
+        </div>
       </header>
 
-      <div className="mt-12 space-y-5 sm:space-y-6">
+      <div className="mt-10 space-y-5 sm:space-y-6">
         <section
           aria-labelledby="rights-list-h"
-          className="sw-reveal bento p-6 sm:p-8"
+          className="sw-reveal bento scroll-mt-24 p-6 sm:p-8"
         >
-          <h2
-            id="rights-list-h"
-            className="font-display text-2xl font-bold tracking-tight text-ink"
-          >
-            הזכויות שלכם
-          </h2>
+          <div className="sw-head flex items-center gap-2">
+            <h2
+              id="rights-list-h"
+              className="font-display text-2xl font-bold tracking-tight text-ink"
+            >
+              הזכויות שלכם
+            </h2>
+            <a
+              href="#rights-list-h"
+              aria-hidden="true"
+              tabIndex={-1}
+              className="sw-anchor interactive ms-1 text-muted hover:text-accent-text"
+            >
+              #
+            </a>
+          </div>
           {/* Each right as a soft inner card — bento-within-bento, breathing room. */}
           <div className="mt-5 grid gap-3 sm:grid-cols-2">
             {rights.map((r) => (
@@ -164,16 +189,26 @@ export default function RightsPage() {
 
         <section
           aria-labelledby="rights-how-h"
-          className="sw-reveal bento p-6 sm:p-8"
+          className="sw-reveal bento scroll-mt-24 p-6 sm:p-8"
           style={{ animationDelay: "60ms" }}
         >
-          <h2
-            id="rights-how-h"
-            className="font-display text-2xl font-bold tracking-tight text-ink"
-          >
-            כיצד אנו מטפלים בבקשה
-          </h2>
-          <ul className="mt-4 list-disc space-y-2 pe-5 leading-relaxed text-foreground">
+          <div className="sw-head flex items-center gap-2">
+            <h2
+              id="rights-how-h"
+              className="font-display text-2xl font-bold tracking-tight text-ink"
+            >
+              כיצד אנו מטפלים בבקשה
+            </h2>
+            <a
+              href="#rights-how-h"
+              aria-hidden="true"
+              tabIndex={-1}
+              className="sw-anchor interactive ms-1 text-muted hover:text-accent-text"
+            >
+              #
+            </a>
+          </div>
+          <ul className="mt-4 max-w-prose list-disc space-y-2 pe-5 leading-relaxed text-foreground marker:text-accent">
             <li>
               אנו מתעדים כל בקשה ומטפלים בה בתוך פרק הזמן הקבוע בדין (בדרך כלל עד
               30 ימים).
@@ -190,20 +225,35 @@ export default function RightsPage() {
           </ul>
         </section>
 
-        <RightsForm />
+        {/* Anchor target for the header "jump to form" cue. Wraps the form so we
+            don't edit the shared <RightsForm> component; scroll-mt clears the
+            sticky header on jump. */}
+        <div id="rights-form" className="scroll-mt-24">
+          <RightsForm />
+        </div>
 
         <section
           aria-labelledby="rights-authority-h"
-          className="sw-reveal bento p-6 sm:p-8"
+          className="sw-reveal bento scroll-mt-24 p-6 sm:p-8"
           style={{ animationDelay: "180ms" }}
         >
-          <h2
-            id="rights-authority-h"
-            className="font-display text-2xl font-bold tracking-tight text-ink"
-          >
-            פנייה לרשות להגנת הפרטיות
-          </h2>
-          <p className="mt-3 leading-relaxed text-foreground">
+          <div className="sw-head flex items-center gap-2">
+            <h2
+              id="rights-authority-h"
+              className="font-display text-2xl font-bold tracking-tight text-ink"
+            >
+              פנייה לרשות להגנת הפרטיות
+            </h2>
+            <a
+              href="#rights-authority-h"
+              aria-hidden="true"
+              tabIndex={-1}
+              className="sw-anchor interactive ms-1 text-muted hover:text-accent-text"
+            >
+              #
+            </a>
+          </div>
+          <p className="mt-3 max-w-prose leading-relaxed text-foreground">
             אם בקשתכם לא נענתה לשביעות רצונכם, או אם אתם סבורים שזכותכם לפי חוק
             הגנת הפרטיות נפגעה, באפשרותכם להגיש תלונה לרשות להגנת הפרטיות (הרשות
             להגנת הפרטיות) במשרד המשפטים. פרטים על אופן הגשת תלונה מצויים באתר

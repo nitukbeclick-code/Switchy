@@ -328,9 +328,10 @@ class _LeadWidgetState extends State<LeadWidget> {
       mainAxisSize: MainAxisSize.min,
       children: [
         AppButton(
-          text: _submitFailed
-              ? 'נסו שוב ←'
-              : 'קבלו המלצה אישית — נציג יחזור אליכם היום ←',
+          // Punchy single-line action on the button; the "נציג יחזור אליכם
+          // היום" reassurance lives in the subtext below so the CTA stays
+          // legible on narrow screens (AppButton's label is single-line).
+          text: _submitFailed ? 'נסו שוב ←' : 'קבלו המלצה אישית ←',
           onPressed: () async => _submitLead(plan),
           width: double.infinity,
           height: 56,
@@ -339,10 +340,21 @@ class _LeadWidgetState extends State<LeadWidget> {
           borderRadius: BorderRadius.circular(18),
         ).animate().fadeIn(delay: 300.ms),
         const SizedBox(height: 8),
-        Text(
-          'ללא התחייבות • שירות חינמי לחלוטין',
-          style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText),
-          textAlign: TextAlign.center,
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            ExcludeSemantics(
+              child: Icon(Icons.schedule_rounded, size: 13, color: ffTheme.secondaryText),
+            ),
+            const SizedBox(width: 5),
+            Flexible(
+              child: Text(
+                'נציג יחזור אליכם היום • ללא התחייבות • חינם',
+                style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ],
         ),
       ],
     );

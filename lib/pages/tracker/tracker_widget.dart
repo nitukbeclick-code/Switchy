@@ -359,7 +359,27 @@ class _TrackerWidgetState extends State<TrackerWidget> {
             ],
 
             // Timeline
-            Text('שלבי המעבר', style: ffTheme.titleLarge),
+            Row(
+              children: [
+                // Brand-green eyebrow tick — a small ACTION-colour structural cue
+                // that marks the section start (matches the account tab rhythm).
+                ExcludeSemantics(
+                  child: Container(
+                    width: 3,
+                    height: 16,
+                    margin: const EdgeInsetsDirectional.only(end: 8),
+                    decoration: BoxDecoration(
+                      color: ffTheme.brandAccent,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                Text('שלבי המעבר', style: ffTheme.titleLarge),
+                const Spacer(),
+                Text('שלב ${step.clamp(1, 4)} מתוך 4',
+                    style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText, fontWeight: FontWeight.w600)),
+              ],
+            ),
             const SizedBox(height: 16),
 
             ...steps.asMap().entries.map((entry) {

@@ -1170,44 +1170,21 @@ class _CommunityWidgetState extends State<CommunityWidget> {
           Expanded(
             child: _filtered.isEmpty
                 ? (_showBookmarksOnly
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.bookmark_border_rounded, size: 56, color: ffTheme.alternate),
-                            const SizedBox(height: 16),
-                            Text('אין פוסטים שמורים',
-                                style: ffTheme.titleSmall.copyWith(color: ffTheme.secondaryText), textAlign: TextAlign.center),
-                            const SizedBox(height: 8),
-                            Text('סמנו פוסטים בסימנייה כדי לשמור אותם לכאן',
-                                style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText), textAlign: TextAlign.center),
-                            const SizedBox(height: 16),
-                            OutlinedButton(
-                              onPressed: () => setState(() {
-                                _showBookmarksOnly = false;
-                                _visibleCount = _feedPageSize;
-                              }),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: ffTheme.primary,
-                                side: BorderSide(color: ffTheme.primary),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              ),
-                              child: const Text('הצג את כל הפוסטים'),
-                            ),
-                          ],
-                        ),
+                    ? EmptyState(
+                        icon: Icons.bookmark_border_rounded,
+                        headline: 'אין פוסטים שמורים',
+                        subtitle: 'סמנו פוסטים בסימנייה כדי לשמור אותם לכאן',
+                        ctaLabel: 'הצג את כל הפוסטים',
+                        onCtaTap: () async => setState(() {
+                          _showBookmarksOnly = false;
+                          _visibleCount = _feedPageSize;
+                        }),
                       )
                     : _searchQuery.isNotEmpty
-                        ? Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.search_off_rounded, size: 56, color: ffTheme.alternate),
-                                const SizedBox(height: 16),
-                                Text('אין תוצאות עבור "$_searchQuery"',
-                                    style: ffTheme.titleSmall.copyWith(color: ffTheme.secondaryText), textAlign: TextAlign.center),
-                              ],
-                            ),
+                        ? EmptyState(
+                            icon: Icons.search_off_rounded,
+                            headline: 'אין תוצאות',
+                            subtitle: 'לא נמצאו פוסטים עבור "$_searchQuery"',
                           )
                         : !_firstLoadDone
                             // First remote page still in flight — ghost cards,

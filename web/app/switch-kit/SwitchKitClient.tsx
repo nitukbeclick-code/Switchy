@@ -30,6 +30,8 @@
 
 import { useCallback, useId, useMemo, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
+import Icon from "@/components/Icon";
+import SkeletonCard from "@/components/SkeletonCard";
 import { CATEGORY_HE } from "@/lib/categories";
 import { priceUnitLabel } from "@/lib/format";
 import type { Plan } from "@/lib/types";
@@ -159,6 +161,25 @@ export default function SwitchKitClient({ providers, plans }: SwitchKitClientPro
         onSubmit={onSubmit}
         className="bento p-6 sm:p-7 switchkit-screen-only"
       >
+        {/* Form intent header — a single focal title so the builder reads as a
+            deliberate step, not a loose field grid. */}
+        <div className="mb-6 flex items-start gap-3">
+          <span
+            aria-hidden="true"
+            className="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-accent/10 font-display text-sm font-bold text-accent-text"
+          >
+            1
+          </span>
+          <div>
+            <h3 className="font-display text-lg font-bold tracking-tight text-ink">
+              בנו את הערכה שלכם
+            </h3>
+            <p className="mt-0.5 text-sm text-muted">
+              בחרו לאן עוברים — השאר אופציונלי ומשמש רק להרכבת המכתב.
+            </p>
+          </div>
+        </div>
+
         <div className="grid gap-5 sm:grid-cols-2">
           {/* From provider (optional but recommended) */}
           <div>
@@ -225,11 +246,17 @@ export default function SwitchKitClient({ providers, plans }: SwitchKitClientPro
               ))}
             </select>
             {plansForCat.length === 0 && (
-              <p className="mt-2 text-sm text-muted">
-                אין כרגע מסלולים בקטגוריה הזו בקטלוג.{" "}
-                <Link href="/compare" className="text-accent-text underline">
-                  עברו להשוואה המלאה ←
-                </Link>
+              <p className="mt-2 flex items-start gap-1.5 text-sm text-muted">
+                <Icon name="info" size={16} className="mt-0.5 shrink-0 text-muted" />
+                <span>
+                  אין כרגע מסלולים בקטגוריה הזו בקטלוג.{" "}
+                  <Link
+                    href="/compare"
+                    className="interactive font-medium text-accent-text underline hover:text-accent-hover"
+                  >
+                    עברו להשוואה המלאה ←
+                  </Link>
+                </span>
               </p>
             )}
           </div>
@@ -296,9 +323,16 @@ export default function SwitchKitClient({ providers, plans }: SwitchKitClientPro
           type="submit"
           disabled={status === "loading"}
           aria-busy={status === "loading"}
-          className="interactive press mt-6 inline-flex items-center justify-center rounded-xl bg-accent px-6 py-3 font-semibold text-accent-contrast shadow-sm transition-colors hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-60"
+          className="interactive press mt-6 inline-flex items-center justify-center gap-1.5 rounded-xl bg-accent px-6 py-3 font-semibold text-accent-contrast shadow-[var(--glow-accent)] hover:bg-accent-hover hover:shadow-float focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-60 disabled:shadow-none"
         >
-          {status === "loading" ? "בונה ערכה…" : "בנו לי ערכת מעבר ←"}
+          {status === "loading" ? (
+            "בונה ערכה…"
+          ) : (
+            <>
+              בנו לי ערכת מעבר
+              <Icon name="arrow" size={18} aria-hidden />
+            </>
+          )}
         </button>
 
         <p className="mt-3 text-xs leading-relaxed text-muted">
@@ -309,18 +343,38 @@ export default function SwitchKitClient({ providers, plans }: SwitchKitClientPro
 
       {/* ── Error ─────────────────────────────────────────────────────────── */}
       {status === "error" && (
-        <p
+        <div
           role="alert"
-          className="bento mt-6 border border-border p-5 text-foreground switchkit-screen-only"
+          className="switchkit-screen-only mt-6 flex items-start gap-3 rounded-xl border border-danger/30 bg-danger/5 p-5 text-foreground"
         >
-          {error}{" "}
-          <Link
-            href="/compare"
-            className="interactive font-medium text-accent-text underline hover:text-accent-hover"
-          >
-            עברו להשוואה המלאה ←
-          </Link>
-        </p>
+          <Icon name="alert" size={20} className="mt-0.5 shrink-0 text-danger-text" />
+          <p className="leading-relaxed">
+            {error}{" "}
+            <Link
+              href="/compare"
+              className="interactive font-medium text-accent-text underline hover:text-accent-hover"
+            >
+              עברו להשוואה המלאה ←
+            </Link>
+          </p>
+        </div>
+      )}
+
+      {/* ── Loading — a designed skeleton so the wait reads as "your kit is being
+          built", not a frozen button. Decorative (the button's aria-busy + the
+          live region announce state). ──────────────────────────────────────── */}
+      {status === "loading" && (
+        <div className="switchkit-screen-only mt-10" aria-hidden="true">
+          <div className="flex items-center gap-2 text-sm font-medium text-muted">
+            <Icon name="spark" size={18} className="text-accent-text" />
+            בונים את ערכת המעבר שלכם…
+          </div>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+            <SkeletonCard lines={3} />
+            <SkeletonCard lines={3} />
+          </div>
+          <SkeletonCard className="mt-4" lines={4} />
+        </div>
       )}
 
       {/* ── Result ────────────────────────────────────────────────────────── */}
@@ -374,10 +428,12 @@ function KitResult({ kit }: { kit: SwitchKit }) {
         ערכת מעבר — {kit.toProvider} ({kit.categoryHe})
       </h1>
 
-      {/* Target summary (screen) */}
+      {/* Target summary (screen) — the "מסלול היעד" card is the outcome focal
+          point (accent glow); the saving is the amber VALUE inside it. */}
       <div className="switchkit-screen-only mt-4 grid gap-4 sm:grid-cols-2">
-        <div className="card p-5">
-          <p className="text-xs font-semibold uppercase tracking-wide text-accent-text">
+        <div className="card glow-accent p-5">
+          <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-accent-text">
+            <Icon name="check" size={14} />
             מסלול היעד
           </p>
           <p className="mt-3 font-display text-2xl font-bold tracking-tight text-ink">
@@ -392,9 +448,10 @@ function KitResult({ kit }: { kit: SwitchKit }) {
           </p>
           {kit.annualSavingUpTo && kit.annualSavingUpTo > 0 ? (
             <p
-              className="mt-3 inline-block rounded-full bg-value/10 px-2.5 py-0.5 text-xs font-semibold text-value-text"
+              className="mt-3 inline-flex items-center gap-1 rounded-full bg-value/15 px-2.5 py-0.5 text-xs font-semibold text-value-text"
               aria-label={`חיסכון שנתי מוערך עד ₪${kit.annualSavingUpTo} בשנה`}
             >
+              <span aria-hidden="true" className="inline-block h-1.5 w-1.5 rounded-full bg-value" />
               חיסכון מוערך עד ₪{kit.annualSavingUpTo}/שנה
             </p>
           ) : null}
@@ -459,7 +516,7 @@ function KitResult({ kit }: { kit: SwitchKit }) {
                       : "border-border bg-surface text-muted hover:border-accent"
                   }`}
                 >
-                  {state === "done" ? "✓" : ""}
+                  {state === "done" ? <Icon name="check" size={15} /> : null}
                 </button>
                 <span
                   aria-hidden="true"
@@ -531,7 +588,8 @@ function KitResult({ kit }: { kit: SwitchKit }) {
       {/* ── Official site (real only) ─────────────────────────────────────── */}
       {kit.officialUrl ? (
         <section className="switchkit-screen-only bento mt-8 p-6">
-          <h3 className="font-display text-lg font-bold tracking-tight text-ink">
+          <h3 className="flex items-center gap-2 font-display text-lg font-bold tracking-tight text-ink">
+            <Icon name="lock" size={18} className="text-accent-text" />
             ההליך המחייב — באתר הרשמי
           </h3>
           <p className="mt-2 leading-relaxed text-foreground">
@@ -542,9 +600,10 @@ function KitResult({ kit }: { kit: SwitchKit }) {
             href={kit.officialUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="interactive press mt-4 inline-flex items-center gap-1 rounded-xl bg-accent px-5 py-2.5 font-medium text-accent-contrast shadow-soft hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+            className="interactive press mt-4 inline-flex items-center gap-1.5 rounded-xl bg-accent px-5 py-2.5 font-medium text-accent-contrast shadow-soft hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           >
-            לאתר הרשמי ←
+            לאתר הרשמי
+            <Icon name="arrow" size={18} aria-hidden />
           </a>
         </section>
       ) : null}
@@ -560,15 +619,17 @@ function KitResult({ kit }: { kit: SwitchKit }) {
       <div className="switchkit-screen-only mt-6 flex flex-wrap items-center gap-3">
         <Link
           href={`/compare/${kit.category}`}
-          className="interactive press inline-flex items-center justify-center rounded-xl bg-accent px-5 py-3 font-semibold text-accent-contrast shadow-sm transition-colors hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          className="interactive press inline-flex items-center justify-center gap-1.5 rounded-xl bg-accent px-5 py-3 font-semibold text-accent-contrast shadow-[var(--glow-accent)] transition-colors hover:bg-accent-hover hover:shadow-float focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
-          להשוואת כל מסלולי {kit.categoryHe} ←
+          להשוואת כל מסלולי {kit.categoryHe}
+          <Icon name="arrow" size={18} aria-hidden />
         </Link>
         <Link
           href={switchGuideHref(kit.fromProvider)}
-          className="interactive press inline-flex items-center justify-center rounded-xl border border-border px-5 py-3 font-semibold text-foreground transition-colors hover:border-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          className="interactive press inline-flex items-center justify-center gap-1.5 rounded-xl border border-border px-5 py-3 font-semibold text-foreground transition-colors hover:border-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
-          מדריך הניתוק המלא ←
+          מדריך הניתוק המלא
+          <Icon name="arrow" size={18} aria-hidden />
         </Link>
       </div>
     </section>
@@ -599,7 +660,14 @@ function LetterBlock({ letter }: { letter: string }) {
           className="switchkit-screen-only interactive press inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:border-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           aria-label="העתקת מכתב הניתוק ללוח"
         >
-          {copied ? "הועתק ✓" : "העתקת המכתב"}
+          {copied ? (
+            <>
+              <Icon name="check" size={16} className="text-accent-text" />
+              הועתק
+            </>
+          ) : (
+            "העתקת המכתב"
+          )}
         </button>
       </div>
       <span role="status" className="sr-only">

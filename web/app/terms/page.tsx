@@ -13,6 +13,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import JsonLd from "@/components/JsonLd";
+import Icon from "@/components/Icon";
 import { breadcrumbSchema, webPageSchema } from "@/lib/schema";
 import { pageMetadata } from "@/lib/seo";
 
@@ -32,6 +33,11 @@ interface Section {
   paras?: string[];
   items?: string[];
 }
+
+// Stable ASCII anchor for each section (clean #sec-N URLs in the address bar,
+// independent of the Hebrew heading text). The visible label stays the Hebrew
+// heading; only the id/href is slugged.
+const sectionId = (i: number) => `sec-${i + 1}`;
 
 export default function TermsPage() {
   const crumbs = [
@@ -186,8 +192,15 @@ export default function TermsPage() {
           from { opacity: 0; transform: translateY(10px); }
           to { opacity: 1; transform: none; }
         }
+        /* Heading anchor — a faint "#" that appears on hover/focus of a section
+           heading, letting readers grab a deep link to any clause. Hidden from
+           assistive tech (the heading text already carries meaning). */
+        .sw-anchor { opacity: 0; transition: opacity 160ms var(--ease-out); }
+        .sw-head:hover .sw-anchor,
+        .sw-head:focus-within .sw-anchor { opacity: 1; }
         @media (prefers-reduced-motion: reduce) {
           .sw-reveal { animation: none; }
+          .sw-anchor { transition: none; }
         }
       `,
         }}
@@ -220,79 +233,114 @@ export default function TermsPage() {
           תנאי שימוש
         </h1>
         <p
-          className="sw-reveal mt-4 max-w-2xl text-lg leading-relaxed text-foreground"
+          className="sw-reveal mt-4 max-w-prose text-lg leading-relaxed text-foreground"
           style={{ animationDelay: "60ms" }}
         >
           תנאים אלה מסבירים מהו השירות, כיצד להשתמש בו, ומה גבולות האחריות.
           השוואת המסלולים חינמית, ויצירת קשר נעשית רק לאחר אישורכם.
         </p>
-        <p
-          className="sw-reveal mt-5 inline-flex items-center gap-2 rounded-full border border-border/60 bg-surface/70 px-3 py-1 text-sm text-muted backdrop-blur supports-[backdrop-filter]:bg-surface/60"
+        <div
+          className="sw-reveal mt-5 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-muted"
           style={{ animationDelay: "120ms" }}
         >
-          <span
-            aria-hidden="true"
-            className="inline-block h-1.5 w-1.5 rounded-full bg-accent"
-          />
-          עודכן לאחרונה: <time dateTime={LAST_REVIEWED}>{LAST_REVIEWED}</time>
-        </p>
+          <span className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-surface/70 px-3 py-1 backdrop-blur supports-[backdrop-filter]:bg-surface/60">
+            <span
+              aria-hidden="true"
+              className="inline-block h-1.5 w-1.5 rounded-full bg-accent"
+            />
+            עודכן לאחרונה: <time dateTime={LAST_REVIEWED}>{LAST_REVIEWED}</time>
+          </span>
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-surface/70 px-3 py-1 backdrop-blur supports-[backdrop-filter]:bg-surface/60">
+            <Icon name="info" size={14} className="text-muted" />
+            כפוף לדין הישראלי
+          </span>
+        </div>
       </header>
 
-      <div className="mt-12 space-y-5 sm:space-y-6">
-        {sections.map((s, i) => (
-          <section
-            key={s.h}
-            aria-labelledby={`s-${s.h}`}
-            className="sw-reveal bento p-6 sm:p-8"
-            style={{ animationDelay: `${Math.min(i * 40, 280)}ms` }}
-          >
-            <h2
-              id={`s-${s.h}`}
-              className="font-display text-2xl font-bold tracking-tight text-ink"
+      {/* ── Table of contents — quick jump to any clause (dense page) ───────── */}
+      <nav
+        aria-label="תוכן העניינים"
+        className="sw-reveal bento mt-8 p-5 sm:p-6"
+        style={{ animationDelay: "150ms" }}
+      >
+        <h2 className="font-display text-sm font-semibold uppercase tracking-wide text-muted">
+          תוכן העניינים
+        </h2>
+        <ol className="mt-3 grid gap-x-6 gap-y-1.5 sm:grid-cols-2">
+          {sections.map((s, i) => (
+            <li key={s.h} className="flex items-baseline gap-2 leading-relaxed">
+              <span
+                aria-hidden="true"
+                className="shrink-0 tabular-nums text-xs font-semibold text-muted"
+              >
+                {i + 1}.
+              </span>
+              <Link
+                href={`#${sectionId(i)}`}
+                className="interactive text-accent-text underline-offset-4 hover:text-accent-hover hover:underline"
+              >
+                {s.h}
+              </Link>
+            </li>
+          ))}
+        </ol>
+      </nav>
+
+      <div className="mt-8 space-y-5 sm:space-y-6">
+        {sections.map((s, i) => {
+          const id = sectionId(i);
+          // The §7b commission disclosure is the trust centerpiece — it gets a
+          // calm, prominent accent callout instead of a plain bento.
+          const isDisclosure = s.h === "גילוי בדבר דמי תיווך";
+          return (
+            <section
+              key={s.h}
+              aria-labelledby={id}
+              className={`sw-reveal scroll-mt-24 ${
+                isDisclosure
+                  ? "bento glow-accent border-accent/30 p-6 sm:p-8"
+                  : "bento p-6 sm:p-8"
+              }`}
+              style={{ animationDelay: `${Math.min(i * 40, 280)}ms` }}
             >
-              {s.h}
-            </h2>
-            {s.paras?.map((p) => (
-              <p key={p} className="mt-3 leading-relaxed text-foreground">
-                {p}
-                {s.h === "פרטיות" && p.endsWith("ל") && (
-                  <>
-                    {" "}
-                    <Link
-                      href="/privacy"
-                      className="interactive text-accent-text hover:text-accent-hover"
-                    >
-                      מדיניות הפרטיות
-                    </Link>
-                    .
-                  </>
+              <div className="sw-head flex items-center gap-2">
+                {isDisclosure && (
+                  <span
+                    aria-hidden="true"
+                    className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-accent/12 text-accent-text"
+                  >
+                    <Icon name="lock" size={18} />
+                  </span>
                 )}
-                {/* Commission-disclosure clause links to the methodology page. */}
-                {s.h === "גילוי בדבר דמי תיווך" && (
-                  <>
-                    {" "}
-                    <Link
-                      href="/transparency"
-                      className="interactive text-accent-text hover:text-accent-hover"
-                    >
-                      לעמוד השקיפות והמתודולוגיה
-                    </Link>
-                    .
-                  </>
-                )}
-                {/* Amendment-13 / consent-withdrawal clause links to the rights
-                    intake; only the closing paragraph (ending "ב") gets the link. */}
-                {s.h === "הסכמה, חזרה מהסכמה וזכויות לפי חוק הגנת הפרטיות" &&
-                  p.endsWith("ב") && (
+                <h2
+                  id={id}
+                  className="font-display text-2xl font-bold tracking-tight text-ink"
+                >
+                  {s.h}
+                </h2>
+                <a
+                  href={`#${id}`}
+                  aria-hidden="true"
+                  tabIndex={-1}
+                  className="sw-anchor interactive ms-1 text-muted hover:text-accent-text"
+                >
+                  #
+                </a>
+              </div>
+              {isDisclosure && (
+                <p className="mt-2 text-sm font-medium text-accent-text">
+                  גילוי מלא — בלי אותיות קטנות.
+                </p>
+              )}
+              {s.paras?.map((p) => (
+                <p
+                  key={p}
+                  className="mt-3 max-w-prose leading-relaxed text-foreground"
+                >
+                  {p}
+                  {s.h === "פרטיות" && p.endsWith("ל") && (
                     <>
                       {" "}
-                      <Link
-                        href="/rights"
-                        className="interactive text-accent-text hover:text-accent-hover"
-                      >
-                        עמוד מימוש הזכויות
-                      </Link>
-                      {" "}וב
                       <Link
                         href="/privacy"
                         className="interactive text-accent-text hover:text-accent-hover"
@@ -302,21 +350,68 @@ export default function TermsPage() {
                       .
                     </>
                   )}
-              </p>
-            ))}
-            {s.items && (
-              <ul className="mt-4 list-disc space-y-2 pe-5 leading-relaxed text-foreground">
-                {s.items.map((it) => (
-                  <li key={it}>{it}</li>
-                ))}
-              </ul>
-            )}
-          </section>
-        ))}
+                  {/* Commission-disclosure clause links to the methodology page. */}
+                  {s.h === "גילוי בדבר דמי תיווך" && (
+                    <>
+                      {" "}
+                      <Link
+                        href="/transparency"
+                        className="interactive text-accent-text hover:text-accent-hover"
+                      >
+                        לעמוד השקיפות והמתודולוגיה
+                      </Link>
+                      .
+                    </>
+                  )}
+                  {/* Amendment-13 / consent-withdrawal clause links to the rights
+                      intake; only the closing paragraph (ending "ב") gets the link. */}
+                  {s.h === "הסכמה, חזרה מהסכמה וזכויות לפי חוק הגנת הפרטיות" &&
+                    p.endsWith("ב") && (
+                      <>
+                        {" "}
+                        <Link
+                          href="/rights"
+                          className="interactive text-accent-text hover:text-accent-hover"
+                        >
+                          עמוד מימוש הזכויות
+                        </Link>
+                        {" "}וב
+                        <Link
+                          href="/privacy"
+                          className="interactive text-accent-text hover:text-accent-hover"
+                        >
+                          מדיניות הפרטיות
+                        </Link>
+                        .
+                      </>
+                    )}
+                </p>
+              ))}
+              {s.items && (
+                <ul className="mt-4 max-w-prose list-disc space-y-2 pe-5 leading-relaxed text-foreground marker:text-accent">
+                  {s.items.map((it) => (
+                    <li key={it}>{it}</li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          );
+        })}
       </div>
 
       <aside className="mt-12 border-t border-border/40 pt-8 text-sm text-muted">
-        <p>
+        <p className="font-medium text-foreground">שאלה על התנאים?</p>
+        <p className="mt-1.5 leading-relaxed">
+          אפשר לכתוב לנו לכתובת{" "}
+          <a
+            href="mailto:hello@chosech.co.il"
+            className="interactive text-accent-text hover:text-accent-hover"
+          >
+            hello@chosech.co.il
+          </a>{" "}
+          או בוואטסאפ 050-503-7537.
+        </p>
+        <p className="mt-4 leading-relaxed">
           ראו גם את{" "}
           <Link
             href="/privacy"

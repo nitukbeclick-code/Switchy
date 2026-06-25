@@ -25,6 +25,8 @@
 
 import { useId, useState } from "react";
 import Link from "next/link";
+import Icon from "@/components/Icon";
+import SkeletonCard from "@/components/SkeletonCard";
 import { CATEGORY_HE } from "@/lib/categories";
 import {
   NEGOTIATE_CATEGORIES,
@@ -205,30 +207,49 @@ export default function NegotiateClient({ providers }: NegotiateClientProps) {
           type="submit"
           disabled={status === "loading"}
           aria-busy={status === "loading"}
-          className="interactive press mt-6 inline-flex items-center justify-center rounded-xl bg-accent px-6 py-3 font-semibold text-accent-contrast shadow-sm transition-colors hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-60"
+          className="interactive press glow-accent mt-6 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-accent px-6 py-3.5 text-base font-bold text-accent-contrast shadow-sm ease-[var(--ease-out)] hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:opacity-60 sm:w-auto"
         >
-          {status === "loading" ? "בונה תסריט…" : "בנו לי תסריט מיקוח ←"}
+          {status === "loading" ? "בונה תסריט…" : "בנו לי תסריט מיקוח"}
+          {status === "loading" ? null : <Icon name="arrow" size={18} aria-hidden />}
         </button>
 
-        <p className="mt-3 text-xs leading-relaxed text-muted">
+        <p className="mt-3 flex items-center gap-1.5 text-xs leading-relaxed text-muted">
+          <Icon name="lock" size={14} className="shrink-0 text-accent-text" aria-hidden />
           התסריט מבוסס על מחירים אמיתיים מתוך הקטלוג שלנו. לא נשמרים פרטים — מה שאתם
           מקלידים נשאר בדפדפן שלכם.
         </p>
       </form>
 
+      {/* ── Loading — a designed skeleton, not a blank gap. ───────────────── */}
+      {status === "loading" && (
+        <div className="mt-8">
+          <span className="sr-only" role="status">
+            בונים את תסריט המיקוח שלכם…
+          </span>
+          <div className="grid gap-4 sm:grid-cols-2" aria-hidden="true">
+            <SkeletonCard lines={3} />
+            <SkeletonCard lines={3} />
+          </div>
+          <SkeletonCard lines={4} className="mt-4" />
+        </div>
+      )}
+
       {/* ── Error ─────────────────────────────────────────────────────────── */}
       {status === "error" && (
         <p
           role="alert"
-          className="bento mt-6 border border-border p-5 text-foreground"
+          className="mt-6 flex items-start gap-2.5 rounded-2xl border border-value/40 bg-value/5 p-5 text-foreground"
         >
-          {error}{" "}
-          <Link
-            href="/compare"
-            className="interactive font-medium text-accent-text underline hover:text-accent-hover"
-          >
-            עברו להשוואה המלאה ←
-          </Link>
+          <Icon name="alert" size={20} className="mt-0.5 shrink-0 text-value-text" aria-hidden />
+          <span>
+            {error}{" "}
+            <Link
+              href="/compare"
+              className="interactive font-medium text-accent-text underline hover:text-accent-hover"
+            >
+              עברו להשוואה המלאה ←
+            </Link>
+          </span>
         </p>
       )}
 
@@ -266,10 +287,11 @@ function ScriptResult({
         <button
           type="button"
           onClick={onCopy}
-          className="interactive press inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:border-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          className="interactive press inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm font-medium text-foreground ease-[var(--ease-out)] hover:border-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
           aria-label="העתקת התסריט המלא ללוח"
         >
-          {copied ? "הועתק ✓" : "העתקת התסריט"}
+          <Icon name={copied ? "check" : "info"} size={16} aria-hidden className={copied ? "text-accent-text" : "text-muted"} />
+          {copied ? "הועתק" : "העתקת התסריט"}
         </button>
       </div>
       <span role="status" className="sr-only">
@@ -308,8 +330,11 @@ function ScriptResult({
         )}
       </div>
 
-      {/* The ordered talking points. */}
-      <ol className="mt-6 grid gap-3">
+      {/* The ordered talking points — what to actually say, step by step. */}
+      <h3 className="mt-8 font-display text-base font-bold tracking-tight text-ink">
+        מה אומרים — צעד אחר צעד
+      </h3>
+      <ol className="mt-3 grid gap-3">
         {script.steps.map((step, i) => (
           <li key={i} className="card flex gap-3 p-4">
             <span
@@ -324,22 +349,26 @@ function ScriptResult({
       </ol>
 
       {/* Honesty framing — prominent, never hidden. */}
-      <p className="mt-5 rounded-xl border border-value/30 bg-value/5 p-4 text-sm leading-relaxed text-foreground">
-        <span className="font-semibold text-value-text">לתשומת לבכם: </span>
-        {script.framing}
+      <p className="mt-5 flex items-start gap-2.5 rounded-xl border border-value/30 bg-value/5 p-4 text-sm leading-relaxed text-foreground">
+        <Icon name="info" size={18} className="mt-0.5 shrink-0 text-value-text" aria-hidden />
+        <span>
+          <span className="font-semibold text-value-text">לתשומת לבכם: </span>
+          {script.framing}
+        </span>
       </p>
 
       {/* Onward — no dead-ends; the explicit consent-gated hand-offs. */}
       <div className="mt-6 flex flex-wrap items-center gap-3">
         <Link
           href={`/compare/${script.category}`}
-          className="interactive press inline-flex items-center justify-center rounded-xl bg-accent px-5 py-3 font-semibold text-accent-contrast shadow-sm transition-colors hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          className="interactive press inline-flex items-center justify-center gap-2 rounded-xl bg-accent px-5 py-3 font-semibold text-accent-contrast shadow-sm ease-[var(--ease-out)] hover:bg-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
-          להשוואת כל מסלולי {script.categoryHe} ←
+          להשוואת כל מסלולי {script.categoryHe}
+          <Icon name="arrow" size={18} aria-hidden />
         </Link>
         <Link
           href="/quiz"
-          className="interactive press inline-flex items-center justify-center rounded-xl border border-border px-5 py-3 font-semibold text-foreground transition-colors hover:border-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          className="interactive press inline-flex items-center justify-center rounded-xl border border-border px-5 py-3 font-semibold text-foreground ease-[var(--ease-out)] hover:border-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
           קבלו התאמה אישית והשאירו פרטים
         </Link>
@@ -388,9 +417,10 @@ function EvidenceCard({
       ) : null}
       {savingUpTo > 0 ? (
         <p
-          className="mt-3 inline-block rounded-full bg-value/10 px-2.5 py-0.5 text-xs font-semibold text-value-text"
+          className="mt-3 inline-flex items-center gap-1 rounded-full bg-value/10 px-2.5 py-0.5 text-xs font-semibold text-value-text"
           aria-label={`חיסכון שנתי מוערך עד ₪${savingUpTo} בשנה`}
         >
+          <Icon name="spark" size={12} aria-hidden />
           חיסכון מוערך עד ₪{savingUpTo}/שנה
         </p>
       ) : null}

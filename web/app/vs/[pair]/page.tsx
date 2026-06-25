@@ -214,18 +214,42 @@ function buildAuthorityRows(
 // One compact stat card per side (entry price + plan count + cheapest plan name).
 // `style` is an optional pass-through so the caller can stagger the entrance
 // reveal (animationDelay) without changing the card's layout or content.
+//
+// `value` marks THIS side as the lower-entry-price one (a real, derived read from
+// vsVerdict — null on a tie). When set, the entry-price figure keeps the amber
+// VALUE token and a "הזול ביותר בכניסה" VALUE pill is shown; the card also gains a
+// faint amber ring + glow so the head-to-head winner is the card's focal point.
+// The OTHER side's entry price is rendered in neutral ink so amber stays a
+// discriminating VALUE signal (not a flat color on every figure).
 function SideCard({
   side,
   label,
+  value = false,
   style,
 }: {
   side: VsSide;
   label: string;
+  value?: boolean;
   style?: CSSProperties;
 }) {
   return (
-    <div className="sw-reveal bento card-interactive p-6" style={style}>
-      <span className="text-xs font-medium text-muted">{label}</span>
+    <div
+      className={[
+        "sw-reveal bento card-interactive p-6",
+        value ? "border-value/35 glow-value" : "",
+      ]
+        .join(" ")
+        .trim()}
+      style={style}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs font-medium text-muted">{label}</span>
+        {value && (
+          <span className="inline-flex items-center rounded-full bg-value/12 px-2 py-0.5 text-[11px] font-semibold text-value-text">
+            הזול ביותר בכניסה
+          </span>
+        )}
+      </div>
       <h3 className="mt-1 font-display text-xl font-bold tracking-tight text-ink">
         <Link
           href={`/providers/${side.provider.slug}`}
@@ -237,7 +261,12 @@ function SideCard({
       <dl className="mt-5 flex flex-wrap items-start gap-x-6 gap-y-3 text-sm">
         <div>
           <dt className="text-muted">מחיר התחלתי</dt>
-          <dd className="font-display text-3xl font-bold tracking-tight text-value-text">
+          <dd
+            className={[
+              "font-display text-3xl font-bold tracking-tight",
+              value ? "text-value-text" : "text-ink",
+            ].join(" ")}
+          >
             {ils(side.minPrice)}
           </dd>
         </div>
@@ -532,16 +561,37 @@ export default async function VsPage({ params }: Params) {
         className="mt-8"
       />
 
-      {/* ── Side-by-side stat cards ───────────────────────────────────────── */}
+      {/* ── Side-by-side stat cards ───────────────────────────────────────────
+          A true A-vs-B layout: the two side cards flank a centered "מול" token so
+          the head-to-head is unmistakable at a glance. The cheaper-entry side (a
+          real, derived read from vsVerdict — null on a tie) gets the amber VALUE
+          treatment so the value winner is the section's focal point. */}
       <section aria-labelledby="sides-h" className="mt-10">
         <h2 id="sides-h" className="sr-only">
           {aN} מול {bN} — נתוני הספקים
         </h2>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <SideCard side={a} label={`צד א׳ — ${categoryLabel}`} />
+        <div className="grid grid-cols-1 items-stretch gap-4 sm:grid-cols-[1fr_auto_1fr]">
+          <SideCard
+            side={a}
+            label={`צד א׳ — ${categoryLabel}`}
+            value={verdict.cheaperSide === a}
+          />
+          {/* Center "מול" pivot — a circular ink token on a hairline rule. Purely
+              decorative (the H1 + cards carry the meaning), so hidden from a11y. */}
+          <div
+            aria-hidden="true"
+            className="flex items-center justify-center sm:flex-col"
+          >
+            <span className="h-px w-full bg-border sm:h-full sm:w-px" />
+            <span className="mx-3 my-0 grid h-10 w-10 shrink-0 place-items-center rounded-full border border-border bg-surface font-display text-sm font-bold text-muted shadow-[var(--shadow-soft)] sm:mx-0 sm:my-3">
+              מול
+            </span>
+            <span className="h-px w-full bg-border sm:h-full sm:w-px" />
+          </div>
           <SideCard
             side={b}
             label={`צד ב׳ — ${categoryLabel}`}
+            value={verdict.cheaperSide === b}
             style={{ animationDelay: "60ms" }}
           />
         </div>

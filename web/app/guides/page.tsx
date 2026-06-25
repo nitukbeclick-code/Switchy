@@ -12,6 +12,8 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import JsonLd from "@/components/JsonLd";
 import RelatedAuthorityPages from "@/components/RelatedAuthorityPages";
+import EmptyState from "@/components/EmptyState";
+import Icon from "@/components/Icon";
 import { getGuides, guideCategories, guidesInCategory } from "@/lib/guides";
 import { breadcrumbSchema, collectionPageSchema, SITE_URL } from "@/lib/schema";
 import { pageMetadata } from "@/lib/seo";
@@ -100,10 +102,12 @@ export default function GuidesHubPage() {
             <a
               key={c.cat}
               href={`#cat-${encodeURIComponent(c.cat)}`}
-              className="interactive press rounded-full border border-border/70 bg-background px-3.5 py-1.5 text-sm font-medium text-foreground transition-colors hover:border-accent/50 hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+              className="interactive press inline-flex items-center gap-2 rounded-full border border-border/70 bg-surface px-3.5 py-1.5 text-sm font-medium text-foreground hover:border-accent/50 hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             >
               {c.cat}
-              <span className="mr-1.5 text-xs text-muted">{c.count}</span>
+              <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-accent/[0.1] px-1.5 text-xs font-semibold tabular-nums text-accent-text">
+                {c.count}
+              </span>
             </a>
           ))}
         </nav>
@@ -111,6 +115,14 @@ export default function GuidesHubPage() {
 
       {/* ── Grouped guide cards (by category) ─────────────────────────────── */}
       <div className="mt-12 space-y-14">
+        {guides.length === 0 ? (
+          <EmptyState
+            mascot
+            title="המדריכים בדרך"
+            description="עוד לא פרסמנו מדריכים בעמוד הזה. בינתיים אפשר לקפוץ ישר להשוואת המסלולים ולראות כמה אפשר לחסוך."
+            cta={{ label: "להשוואת מסלולים", href: "/compare/cellular" }}
+          />
+        ) : null}
         {categories.map((c) => {
           const inCat = guidesInCategory(c.cat);
           return (
@@ -151,12 +163,15 @@ export default function GuidesHubPage() {
                       {g.desc}
                     </p>
                     <span className="mt-4 flex items-center gap-1.5 text-xs text-muted">
-                      {g.read} דק׳ קריאה
-                      <span
-                        aria-hidden="true"
-                        className="text-accent transition-transform duration-200 group-hover:-translate-x-0.5"
-                      >
-                        ←
+                      <span>{g.read} דק׳ קריאה</span>
+                      <span className="mr-auto inline-flex items-center gap-1 font-medium text-accent-text">
+                        קראו
+                        <Icon
+                          name="arrow"
+                          size={15}
+                          aria-hidden="true"
+                          className="transition-transform duration-200 ease-[var(--ease-out)] motion-safe:group-hover:-translate-x-0.5"
+                        />
                       </span>
                     </span>
                   </Link>

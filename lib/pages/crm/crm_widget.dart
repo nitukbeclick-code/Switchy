@@ -12,6 +12,7 @@ import '../../theme/app_theme.dart';
 import '../../widgets/app_button.dart';
 import '../../widgets/app_snackbar.dart';
 import '../../widgets/empty_state.dart';
+import '../../widgets/skeleton.dart';
 
 /// ניהול לקוחות — the admin WhatsApp CRM.
 ///
@@ -298,7 +299,7 @@ class _OverviewTab extends StatelessWidget {
     final t = AppTheme.of(context);
 
     if (loading && overview == null) {
-      return const Center(child: CircularProgressIndicator());
+      return const _OverviewSkeleton();
     }
     if (error != null && overview == null) {
       return _ErrorState(onRetry: onRefresh);
@@ -551,7 +552,17 @@ class _ConversationsTab extends StatelessWidget {
 
   Widget _buildList(BuildContext context, AppTheme t) {
     if (loading && conversations.isEmpty) {
-      return const Center(child: CircularProgressIndicator());
+      return ListView(
+        padding: const EdgeInsets.fromLTRB(16, 6, 16, 32),
+        physics: const NeverScrollableScrollPhysics(),
+        children: const [
+          _ConversationRowSkeleton(),
+          _ConversationRowSkeleton(),
+          _ConversationRowSkeleton(),
+          _ConversationRowSkeleton(),
+          _ConversationRowSkeleton(),
+        ],
+      );
     }
     if (error != null && conversations.isEmpty) {
       return _ErrorState(onRetry: onRefresh);
@@ -877,7 +888,7 @@ class _ThreadViewState extends State<_ThreadView> {
 
   Widget _buildMessages(BuildContext context, AppTheme t) {
     if (_loading && _thread == null) {
-      return const Center(child: CircularProgressIndicator());
+      return const _ThreadSkeleton();
     }
     if (_error != null && _thread == null) {
       return _ErrorState(onRetry: _load);
@@ -1113,7 +1124,16 @@ class _LeadsTab extends StatelessWidget {
     final t = AppTheme.of(context);
 
     if (loading && leads.isEmpty) {
-      return const Center(child: CircularProgressIndicator());
+      return ListView(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+        physics: const NeverScrollableScrollPhysics(),
+        children: const [
+          _LeadRowSkeleton(),
+          _LeadRowSkeleton(),
+          _LeadRowSkeleton(),
+          _LeadRowSkeleton(),
+        ],
+      );
     }
     if (error != null && leads.isEmpty) {
       return _ErrorState(onRetry: onRefresh);
@@ -1229,6 +1249,212 @@ class _LeadRow extends StatelessWidget {
                 .toList(),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// Designed loading states — skeletons that hint the final shape, not a spinner
+// ═══════════════════════════════════════════════════════════════════════════
+
+/// The overview tab's loading ghost: a 2×2 stat-card grid above a couple of
+/// conversation-row ghosts, so the surface already reads as its final layout
+/// before the pipeline counts land. Non-scrolling — it's a static placeholder.
+class _OverviewSkeleton extends StatelessWidget {
+  const _OverviewSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppTheme.of(context);
+    return Semantics(
+      label: 'טוען',
+      container: true,
+      child: ExcludeSemantics(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+          physics: const NeverScrollableScrollPhysics(),
+          children: [
+            GridView.count(
+              crossAxisCount: 2,
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              mainAxisSpacing: 12,
+              crossAxisSpacing: 12,
+              childAspectRatio: 1.7,
+              children: [
+                for (var i = 0; i < 4; i++)
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: t.bentoDecoration(),
+                    child: SkeletonShimmer(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              SkeletonBox(
+                                  width: 36, height: 36, radius: t.radiusSm),
+                              const Spacer(),
+                              const SkeletonBox(width: 34, height: 24),
+                            ],
+                          ),
+                          const SkeletonBox(width: 64, height: 12),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            const SkeletonShimmer(child: SkeletonBox(width: 130, height: 16)),
+            const SizedBox(height: 14),
+            const _ConversationRowSkeleton(),
+            const _ConversationRowSkeleton(),
+            const _ConversationRowSkeleton(),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A ghost of a [_ConversationRow] — avatar, name + time, snippet, status chips —
+/// laid out to match the real row so the list already signals its shape.
+class _ConversationRowSkeleton extends StatelessWidget {
+  const _ConversationRowSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppTheme.of(context);
+    return Semantics(
+      label: 'טוען',
+      container: true,
+      child: ExcludeSemantics(
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.all(14),
+          decoration: t.cardDecoration(radius: t.radiusLg),
+          child: SkeletonShimmer(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SkeletonBox(width: 42, height: 42, radius: 21),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Row(
+                        children: [
+                          SkeletonBox(width: 110, height: 13),
+                          Spacer(),
+                          SkeletonBox(width: 36, height: 10),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      const SkeletonBox(width: double.infinity, height: 11),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          SkeletonBox(
+                              width: 56, height: 18, radius: t.radiusPill),
+                          const SizedBox(width: 6),
+                          SkeletonBox(
+                              width: 48, height: 18, radius: t.radiusPill),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A ghost of a [_LeadRow] — avatar, name + meta, trailing action.
+class _LeadRowSkeleton extends StatelessWidget {
+  const _LeadRowSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppTheme.of(context);
+    return Semantics(
+      label: 'טוען',
+      container: true,
+      child: ExcludeSemantics(
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 10),
+          padding: const EdgeInsets.all(14),
+          decoration: t.cardDecoration(radius: t.radiusLg),
+          child: const SkeletonShimmer(
+            child: Row(
+              children: [
+                SkeletonBox(width: 42, height: 42, radius: 21),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SkeletonBox(width: 120, height: 13),
+                      SizedBox(height: 7),
+                      SkeletonBox(width: 170, height: 11),
+                    ],
+                  ),
+                ),
+                SizedBox(width: 8),
+                SkeletonBox(width: 24, height: 24, radius: 12),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The thread view's loading ghost: a few message bubbles alternating along the
+/// leading/trailing edges, matching the real conversation layout.
+class _ThreadSkeleton extends StatelessWidget {
+  const _ThreadSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppTheme.of(context);
+    final widths = [0.64, 0.5, 0.72, 0.42];
+    final outbound = [false, true, false, true];
+    return Semantics(
+      label: 'טוען',
+      container: true,
+      child: ExcludeSemantics(
+        child: SkeletonShimmer(
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+            physics: const NeverScrollableScrollPhysics(),
+            children: [
+              for (var i = 0; i < widths.length; i++)
+                Align(
+                  alignment: outbound[i]
+                      ? AlignmentDirectional.centerStart
+                      : AlignmentDirectional.centerEnd,
+                  child: Container(
+                    margin: const EdgeInsets.only(bottom: 10),
+                    width: MediaQuery.of(context).size.width * widths[i],
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: t.cardSurface,
+                      borderRadius: BorderRadius.circular(t.radiusLg),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }

@@ -958,9 +958,31 @@ class _QuizWidgetState extends State<QuizWidget> {
                     ),
                   ],
                   const SizedBox(height: 12),
-                  // Badge row
-                  Row(
+                  // Badge row — the winner moment leads with an amber VALUE
+                  // "המלצה ראשית" trophy badge, then the green ACTION match-score
+                  // and the engine's label. Wraps so RTL long labels don't clip.
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
                     children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: ffTheme.saving.withValues(alpha: 0.16),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: ffTheme.saving.withValues(alpha: 0.40)),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.emoji_events_rounded, size: 13, color: ffTheme.savingDark),
+                            const SizedBox(width: 4),
+                            Text('המלצה ראשית',
+                                style: ffTheme.labelSmall
+                                    .copyWith(color: ffTheme.savingText, fontWeight: FontWeight.w800)),
+                          ],
+                        ),
+                      ),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
@@ -978,7 +1000,6 @@ class _QuizWidgetState extends State<QuizWidget> {
                           ],
                         ),
                       ),
-                      const SizedBox(width: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                         decoration: BoxDecoration(
@@ -1114,8 +1135,24 @@ class _StepCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('שלב $step מתוך 5', style: ffTheme.labelMedium),
-            const SizedBox(height: 8),
+            // Designed step eyebrow — a quiet green ACTION pill that anchors the
+            // step in the 5-step flow (the same text the resume test asserts on,
+            // kept verbatim inside the pill via ExcludeSemantics so the parent
+            // container Semantics stays the single announced label).
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: ffTheme.brandAccentTint,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: ExcludeSemantics(
+                child: Text('שלב $step מתוך 5',
+                    style: ffTheme.labelSmall.copyWith(
+                        color: ffTheme.brandAccentText,
+                        fontWeight: FontWeight.w700)),
+              ),
+            ),
+            const SizedBox(height: 12),
             Text(title, style: ffTheme.headlineMedium),
             const SizedBox(height: 4),
             Text(subtitle, style: ffTheme.bodyMedium.copyWith(color: ffTheme.secondaryText)),

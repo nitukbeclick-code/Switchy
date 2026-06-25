@@ -224,9 +224,16 @@ class _PlanDetailWidgetState extends State<PlanDetailWidget> {
                                   children: [
                                     Text(
                                       '₪${plan.priceText}',
+                                      // The plan's headline price is the page's
+                                      // single focal number — tabular figures so
+                                      // the hero figure reads crisp and aligned,
+                                      // matching every other ₪ figure on the page.
                                       style: ffTheme.displaySmall.copyWith(
                                           color: ffTheme.primary,
-                                          fontWeight: FontWeight.w800),
+                                          fontWeight: FontWeight.w800,
+                                          fontFeatures: const [
+                                            FontFeature.tabularFigures()
+                                          ]),
                                     ),
                                     const SizedBox(width: 4),
                                     Padding(

@@ -46,7 +46,6 @@ class _MeetingWidgetState extends State<MeetingWidget> {
   bool _acceptTerms = false;
   bool _acceptPrivacy = false;
   bool _acceptMarketing = false;
-  bool _submitting = false;
   bool _justBooked = false;
 
   /// The bookable dates are recomputed every build (cheap + pure) so the grid
@@ -110,7 +109,6 @@ class _MeetingWidgetState extends State<MeetingWidget> {
       return;
     }
     HapticFeedback.lightImpact();
-    setState(() => _submitting = true);
 
     final name = _nameCtrl.text.trim();
     final phone = _phoneCtrl.text.replaceAll(RegExp(r'[^\d+]'), '');
@@ -140,7 +138,6 @@ class _MeetingWidgetState extends State<MeetingWidget> {
       // The request never reached the team — keep the form so the user can
       // retry. The guard trigger's rejections get specific, honest copy.
       if (!mounted) return;
-      setState(() => _submitting = false);
       final msg = e.toString();
       if (msg.contains('meeting already pending')) {
         // There IS an open booking server-side (e.g. cleared local state) —
@@ -182,10 +179,7 @@ class _MeetingWidgetState extends State<MeetingWidget> {
         ));
     HapticFeedback.mediumImpact();
     if (!mounted) return;
-    setState(() {
-      _submitting = false;
-      _justBooked = true;
-    });
+    setState(() => _justBooked = true);
   }
 
   @override
@@ -353,8 +347,10 @@ class _MeetingWidgetState extends State<MeetingWidget> {
           const SizedBox(height: 16),
 
           AppButton(
-            text: _submitting ? 'שולח...' : 'בקשו פגישת וידאו',
-            onPressed: _submitting ? () async {} : () async => _submit(),
+            // AppButton drives the spinner + tap-ignore while [_submit] awaits,
+            // so the label stays the honest CTA text (no faked "שולח...").
+            text: 'בקשו פגישת וידאו',
+            onPressed: () async => _submit(),
             width: double.infinity,
             height: 56,
             color: AppColors.primary,

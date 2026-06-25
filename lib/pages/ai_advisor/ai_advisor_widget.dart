@@ -390,8 +390,13 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
                     child: TextField(
                       controller: _inputCtrl,
                       textDirection: TextDirection.rtl,
+                      minLines: 1,
+                      maxLines: 4,
+                      textInputAction: TextInputAction.send,
                       decoration: InputDecoration(
                         hintText: 'שאל על מסלולי תקשורת...',
+                        hintTextDirection: TextDirection.rtl,
+                        isDense: true,
                         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide(color: ffTheme.alternate)),
                         enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide(color: ffTheme.alternate)),
@@ -400,7 +405,6 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
                         fillColor: ffTheme.background,
                       ),
                       onSubmitted: _send,
-                      textInputAction: TextInputAction.send,
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -491,23 +495,44 @@ class _MessageBubble extends StatelessWidget {
           ],
           Row(
             mainAxisAlignment: msg.isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               if (!msg.isUser) ...[
-                Container(
-                  constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: ffTheme.secondaryBackground,
-                    borderRadius: const BorderRadius.only(
-                      topLeft: Radius.circular(18),
-                      topRight: Radius.circular(18),
-                      bottomLeft: Radius.circular(4),
-                      bottomRight: Radius.circular(18),
+                // The Switchy mascot avatar beside every agent bubble — anchors
+                // the "theirs" side and reinforces the AI identity (decorative;
+                // the agent is named in the app bar, so hidden from a11y).
+                ExcludeSemantics(
+                  child: Container(
+                    width: 30,
+                    height: 30,
+                    margin: const EdgeInsetsDirectional.only(end: 8, bottom: 2),
+                    decoration: BoxDecoration(
+                      gradient: ffTheme.accentGradient,
+                      shape: BoxShape.circle,
+                      boxShadow: ffTheme.shadowAccent,
                     ),
-                    border: Border.all(color: ffTheme.alternate.withValues(alpha: 0.10)),
-                    boxShadow: ffTheme.shadowSoft,
+                    child: const Center(
+                      child: Icon(Icons.auto_awesome_rounded, size: 16, color: Colors.white),
+                    ),
                   ),
-                  child: Text(msg.text, style: ffTheme.bodyMedium.copyWith(height: 1.5), textDirection: TextDirection.rtl),
+                ),
+                Flexible(
+                  child: Container(
+                    constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.72),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: ffTheme.secondaryBackground,
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(18),
+                        topRight: Radius.circular(18),
+                        bottomLeft: Radius.circular(4),
+                        bottomRight: Radius.circular(18),
+                      ),
+                      border: Border.all(color: ffTheme.alternate.withValues(alpha: 0.10)),
+                      boxShadow: ffTheme.shadowSoft,
+                    ),
+                    child: Text(msg.text, style: ffTheme.bodyMedium.copyWith(height: 1.5), textDirection: TextDirection.rtl),
+                  ),
                 ),
               ] else ...[
                 Container(
@@ -650,7 +675,25 @@ class _TypingBubble extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
+          // Mascot avatar matches the agent bubbles so "Switchy is typing" reads
+          // as the same speaker (decorative — hidden from screen readers).
+          ExcludeSemantics(
+            child: Container(
+              width: 30,
+              height: 30,
+              margin: const EdgeInsetsDirectional.only(end: 8, bottom: 2),
+              decoration: BoxDecoration(
+                gradient: ffTheme.accentGradient,
+                shape: BoxShape.circle,
+                boxShadow: ffTheme.shadowAccent,
+              ),
+              child: const Center(
+                child: Icon(Icons.auto_awesome_rounded, size: 16, color: Colors.white),
+              ),
+            ),
+          ),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(

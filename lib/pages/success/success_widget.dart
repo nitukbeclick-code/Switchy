@@ -79,9 +79,14 @@ class _SuccessWidgetState extends State<SuccessWidget> {
                     ),
                     child: const Icon(Icons.check_rounded, size: 56, color: Colors.white),
                   ).animate()
-                    .scale(duration: 500.ms, curve: Curves.elasticOut)
-                    .then()
-                    .shake(hz: 2, duration: 200.ms),
+                    // A single confident spring-in — restrained, premium; no
+                    // jittery post-shake.
+                    .scale(
+                      begin: const Offset(0.6, 0.6),
+                      end: const Offset(1, 1),
+                      duration: 480.ms,
+                      curve: Curves.easeOutBack,
+                    ),
 
                   // Sparkle top-left
                   Positioned(

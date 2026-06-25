@@ -737,9 +737,9 @@ class _TelegramRowState extends State<_TelegramRow> {
       final success = await TelegramService.testConnection(appState.userTelegramChatId);
       if (!mounted) return;
       if (success) {
-        AppSnackBar.success(context, '✅ ההודעה נשלחה בהצלחה!');
+        AppSnackBar.success(context, 'ההודעה נשלחה בהצלחה!');
       } else {
-        AppSnackBar.error(context, '❌ כשל בשליחת הודעה. אנא נסה שוב.');
+        AppSnackBar.error(context, 'כשל בשליחת הודעה. אנא נסה שוב.');
       }
     } catch (e) {
       if (!mounted) return;
@@ -788,10 +788,7 @@ class _TelegramRowState extends State<_TelegramRow> {
     final ffTheme = widget.ffTheme;
 
     if (isConnected) {
-      return InkWell(
-        onTap: () {},
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
+      return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           child: Row(
             children: [
@@ -810,7 +807,13 @@ class _TelegramRowState extends State<_TelegramRow> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text('טלגרם', style: ffTheme.titleSmall),
-                    Text('✅ מחובר', style: ffTheme.bodySmall.copyWith(color: ffTheme.brandAccentText)),
+                    Row(
+                      children: [
+                        Icon(Icons.check_circle_rounded, size: 14, color: ffTheme.brandAccent),
+                        const SizedBox(width: 4),
+                        Text('מחובר', style: ffTheme.bodySmall.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w700)),
+                      ],
+                    ),
                   ],
                 ),
               ),
@@ -830,8 +833,7 @@ class _TelegramRowState extends State<_TelegramRow> {
               ),
             ],
           ),
-        ),
-      );
+        );
     } else {
       return InkWell(
         onTap: _busy ? null : _connectTelegram,

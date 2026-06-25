@@ -251,14 +251,20 @@ class _RecapBody extends StatelessWidget {
           ).animate(delay: 320.ms).fadeIn(duration: 300.ms),
           const SizedBox(height: 12),
         ],
+        // Share affordance — a confident, full-width secondary. When there's a
+        // top opportunity above it sits as the calm second action; when sharing
+        // is the only action (already-realized, nothing left to act on) it still
+        // reads as a clear, inviting CTA. Brand ink so it never competes with the
+        // green ACTION primary above.
         OutlinedButton.icon(
           onPressed: onShare,
           icon: const Icon(Icons.ios_share_rounded, size: 18),
-          label: const Text('שתף את הסיכום שלי'),
+          label: Text('שתף את הסיכום שלי',
+              style: ffTheme.titleSmall.copyWith(color: ffTheme.primary)),
           style: OutlinedButton.styleFrom(
             foregroundColor: ffTheme.primary,
-            side: BorderSide(color: ffTheme.primary),
-            minimumSize: const Size(double.infinity, 48),
+            side: BorderSide(color: ffTheme.primary.withValues(alpha: 0.5), width: 1.5),
+            minimumSize: const Size(double.infinity, 52),
             shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(ffTheme.radiusMd)),
           ),
@@ -280,49 +286,79 @@ class _HeroCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final year = DateTime.now().year;
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 28),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 32),
       decoration: BoxDecoration(
         // A premium ink hero: soft wash + a pronounced lift so the headline
         // figure floats off the page.
         gradient: ffTheme.brandGradient,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(ffTheme.radiusCard),
         boxShadow: ffTheme.shadowLifted,
       ),
       child: Column(
         children: [
-          // The celebratory mark arrives with a single gentle pop — plays once.
-          Icon(Icons.celebration_rounded, color: ffTheme.saving, size: 30)
-              .animate()
-              .scale(
-                begin: const Offset(0.8, 0.8),
-                end: const Offset(1, 1),
-                duration: 450.ms,
-                curve: Curves.easeOutBack,
-              ),
-          const SizedBox(height: 12),
+          // A year badge frames the recap as a specific "year in review" — a warm
+          // amber VALUE chip with the celebratory mark, so the card reads as a
+          // shareable moment, not a generic stat panel.
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+            decoration: BoxDecoration(
+              color: ffTheme.saving.withValues(alpha: 0.16),
+              borderRadius: BorderRadius.circular(ffTheme.radiusPill),
+              border: Border.all(color: ffTheme.saving.withValues(alpha: 0.4)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.celebration_rounded, color: ffTheme.saving, size: 16)
+                    .animate()
+                    .scale(
+                      begin: const Offset(0.8, 0.8),
+                      end: const Offset(1, 1),
+                      duration: 450.ms,
+                      curve: Curves.easeOutBack,
+                    ),
+                const SizedBox(width: 6),
+                Text('הסיכום של $year',
+                    style: ffTheme.labelMedium.copyWith(
+                        color: ffTheme.saving, fontWeight: FontWeight.w800)),
+              ],
+            ),
+          ),
+          const SizedBox(height: 18),
           Text(
             'החיסכון הפוטנציאלי שלך לשנה',
             style: ffTheme.labelMedium.copyWith(color: Colors.white.withValues(alpha: 0.6)),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 10),
+          // The amber VALUE figure is the single dominant focal point of the
+          // whole recap — display-medium (44px) with a soft VALUE glow halo so it
+          // reads as the celebratory headline number.
           TweenAnimationBuilder<int>(
             tween: IntTween(begin: 0, end: total),
             duration: const Duration(milliseconds: 1400),
             curve: Curves.easeOutCubic,
             builder: (_, value, __) => Text(
               personalized ? '₪$value' : '~₪$value',
-              style: ffTheme.displaySmall.copyWith(
+              style: ffTheme.displayMedium.copyWith(
                 color: ffTheme.saving,
-                fontWeight: FontWeight.bold,
+                fontWeight: FontWeight.w900,
+                // A warm amber glow lifts the figure off the ink hero — a real
+                // "moment", not a flat numeral.
+                shadows: [
+                  Shadow(
+                      color: ffTheme.saving.withValues(alpha: 0.45),
+                      blurRadius: 24),
+                ],
                 // Fixed-width digits — the count-up doesn't jitter sideways.
                 fontFeatures: const [FontFeature.tabularFigures()],
               ),
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           Text(
             personalized
                 ? 'על בסיס המסלולים שאנחנו ממליצים עבורכם'

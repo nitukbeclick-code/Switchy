@@ -575,10 +575,14 @@ class _ChatWidgetState extends State<ChatWidget> {
               child: TextField(
                 controller: _inputCtrl,
                 textDirection: TextDirection.rtl,
+                minLines: 1,
+                maxLines: 4,
+                textInputAction: TextInputAction.send,
                 decoration: InputDecoration(
                   hintText: 'כתוב הודעה...',
                   hintTextDirection: TextDirection.rtl,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide(color: ffTheme.alternate)),
                   enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide(color: ffTheme.alternate)),
                   focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide(color: ffTheme.brandAccent, width: 1.5)),
@@ -586,7 +590,6 @@ class _ChatWidgetState extends State<ChatWidget> {
                   fillColor: ffTheme.background,
                 ),
                 onSubmitted: _send,
-                textInputAction: TextInputAction.send,
               ),
             ),
             const SizedBox(width: 8),
@@ -734,7 +737,7 @@ class _ChatWidgetState extends State<ChatWidget> {
               children: List.generate(3, (i) => Container(
                 width: 7, height: 7,
                 margin: EdgeInsetsDirectional.only(start: i > 0 ? 4 : 0),
-                decoration: BoxDecoration(color: ffTheme.secondaryText.withValues(alpha: 0.5), shape: BoxShape.circle),
+                decoration: BoxDecoration(color: ffTheme.brandAccent, shape: BoxShape.circle),
               ).animate(onPlay: (c) => c.repeat())
                 .fadeIn(delay: (i * 200).ms, duration: 300.ms)
                 .then().fadeOut(duration: 300.ms)),

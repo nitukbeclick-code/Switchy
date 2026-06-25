@@ -15,7 +15,9 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import Icon from "@/components/Icon";
 import JsonLd from "@/components/JsonLd";
+import EmptyState from "@/components/EmptyState";
 import SgeSummary from "@/components/SgeSummary";
 import AuthorityBlock from "@/components/AuthorityBlock";
 import AuthorityReasoning from "@/components/AuthorityReasoning";
@@ -321,6 +323,9 @@ export default async function ServiceHubPage({ params }: Params) {
   const questions: AeoQuestion[] = pageQuestions(service, plans);
 
   const cities: City[] = getCities();
+  // Lowest headline price across the live plans — surfaced as the amber (VALUE)
+  // hero stat. Derived from the SAME `plans` the table renders (no drift).
+  const heroMin = minPriceOf(plans);
   const summary = buildSummary(svc, plans);
   const authority = buildAuthority(svc, plans);
   const ranked = topProviders(svc);
@@ -450,22 +455,61 @@ export default async function ServiceHubPage({ params }: Params) {
         <span className="text-foreground">השוואת {svc.label}</span>
       </nav>
 
-      {/* ── Heading ───────────────────────────────────────────────────────── */}
-      {/* Conversational, intent-matching H1 (matches the real query "what's the
-          cheapest <service> in Israel?") — the question the AEO answer below
-          answers directly. */}
-      <header className="mt-3">
-        <h1 className="sw-reveal font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
+      {/* ── Hero ──────────────────────────────────────────────────────────────
+          Conversational, intent-matching H1 (the real query "what's the cheapest
+          <service> in Israel?") — answered directly by the AEO block below. The
+          eyebrow names the service axis (green = ACTION); the stat row surfaces
+          the REAL catalogue facts above the fold, with the lowest price amber
+          (VALUE) and everything else ink/structure. */}
+      <header className="mt-4">
+        <span
+          className="sw-reveal inline-flex items-center gap-2 rounded-full border border-accent/20 bg-accent/10 px-3 py-1 font-display text-xs font-semibold tracking-tight text-accent-text"
+        >
+          <Icon name="search" size={14} aria-hidden="true" />
+          השוואת {svc.label}
+        </span>
+        <h1
+          className="sw-reveal mt-4 font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl"
+          style={{ animationDelay: "40ms" }}
+        >
           מהו מסלול ה{svc.label} הזול ביותר בישראל?
         </h1>
         <p
           className="sw-reveal mt-4 max-w-2xl text-lg leading-relaxed text-foreground"
-          style={{ animationDelay: "60ms" }}
+          style={{ animationDelay: "80ms" }}
         >
           {plans.length} מסלולי {svc.label} מכל הספקים בישראל, ממוינים מהזול ליקר.
           הזמינות ארצית — אותם ספקים בכל עיר. המחירים בשקלים וכוללים את המחיר אחרי
           המבצע.
         </p>
+        <dl
+          className="sw-reveal mt-6 flex flex-wrap items-center gap-x-6 gap-y-3"
+          style={{ animationDelay: "120ms" }}
+        >
+          <div className="flex items-baseline gap-1.5">
+            <dt className="sr-only">מסלולים בהשוואה</dt>
+            <dd className="font-display text-xl font-bold tracking-tight text-ink">
+              {plans.length.toLocaleString("he-IL")}
+            </dd>
+            <span className="text-sm text-muted">מסלולים</span>
+          </div>
+          <div className="flex items-baseline gap-1.5">
+            <dt className="sr-only">ספקים</dt>
+            <dd className="font-display text-xl font-bold tracking-tight text-ink">
+              {svcProviders.length.toLocaleString("he-IL")}
+            </dd>
+            <span className="text-sm text-muted">ספקים</span>
+          </div>
+          {heroMin != null && (
+            <div className="flex items-baseline gap-1.5">
+              <dt className="sr-only">המחיר ההתחלתי הנמוך ביותר</dt>
+              <dd className="font-display text-xl font-bold tracking-tight text-value-text">
+                {ils(heroMin)}
+              </dd>
+              <span className="text-sm text-muted">החל מ-</span>
+            </div>
+          )}
+        </dl>
       </header>
 
       {/* ── AEO zero-click direct answer (right below the H1) ──────────────── */}
@@ -500,16 +544,39 @@ export default async function ServiceHubPage({ params }: Params) {
         />
       </div>
 
-      {/* ── Comparison table ──────────────────────────────────────────────── */}
-      <section aria-labelledby="table-h" className="mt-10">
-        <h2 id="table-h" className="sr-only">
+      {/* ── Comparison table ────────────────────────────────────────────────
+          The core product. A visible section heading + a one-line intent caption
+          frame the table (it was an sr-only h2 before, leaving the table to
+          dead-start). When the live read yields no plans we render the shared
+          EmptyState (honest "no data yet") instead of an empty table. */}
+      <section aria-labelledby="table-h" className="mt-12">
+        <h2
+          id="table-h"
+          className="font-display text-2xl font-bold tracking-tight text-ink"
+        >
           טבלת השוואת {svc.label}
         </h2>
-        <ComparisonTable
-          plans={plans}
-          caption={`השוואת ${svc.label} — מחירים בשקלים, כולל מחיר אחרי המבצע`}
-        />
-        <PriceCaveat className="mt-3" />
+        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">
+          {plans.length} מסלולים מכל הספקים, זה מול זה — ממוינים מהזול ליקר, כולל
+          המחיר אחרי המבצע.
+        </p>
+        {plans.length === 0 ? (
+          <EmptyState
+            className="mt-6"
+            mascot
+            title={`אין כרגע מסלולי ${svc.label} בקטלוג`}
+            description="הנתונים מתעדכנים בכל פרסום של האתר. אפשר לעיין בשירותים אחרים או לחזור בקרוב."
+            cta={{ label: "לכל ההשוואות", href: "/compare" }}
+          />
+        ) : (
+          <>
+            <ComparisonTable
+              plans={plans}
+              caption={`השוואת ${svc.label} — מחירים בשקלים, כולל מחיר אחרי המבצע`}
+            />
+            <PriceCaveat className="mt-3" />
+          </>
+        )}
       </section>
 
       {/* ── AEO conversational Q&A (data-derived; mirrors the FAQPage JSON-LD) ─ */}

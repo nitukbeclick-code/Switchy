@@ -114,6 +114,20 @@ function webhookRoutes(sink: WebhookSink, relayRow: Record<string, unknown> | nu
         u.includes("/rest/v1/ai_sessions") && (init?.method ?? "GET") === "GET",
       respond: () => jsonResponse([]),
     },
+    // update_id dedup ledger insert (POST ai_sessions, synthetic "tgu-upd-<id>" key).
+    // Return the inserted row (representation) so the dedup treats a first-seen update
+    // as NEW — PostgREST returns the row on a first insert and [] only on conflict.
+    // (Must precede the generic upsert route, and must NOT push to sessionUpserts.)
+    {
+      match: (u: string, init?: RequestInit) =>
+        u.includes("/rest/v1/ai_sessions") && (init?.method ?? "GET") === "POST" &&
+        String(init?.body ?? "").includes("tgu-upd-"),
+      respond: (_u: string, init?: RequestInit) => {
+        const body = JSON.parse(String(init?.body ?? "{}"));
+        const row = Array.isArray(body) ? body[0] : body;
+        return jsonResponse([row ?? { session_id: "tgu-upd" }], 201);
+      },
+    },
     // ai_sessions upsert (POST) — the takeover flip + the transcript save.
     {
       match: (u: string, init?: RequestInit) =>

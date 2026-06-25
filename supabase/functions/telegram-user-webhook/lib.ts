@@ -13,6 +13,8 @@
 // The two never share auth or behaviour, so they live in disjoint functions.
 // ─────────────────────────────────────────────────────────────────────────────
 
+import { CATEGORIES, CATEGORY_HE, type Plan } from "../_shared/catalogue.ts";
+
 // ── Minimal Telegram update shapes (we only read what we route on) ────────────
 export type TgUserFrom = {
   id: number;
@@ -130,6 +132,21 @@ export function telegramSessionId(chatId: number): string {
   return `tg-u-${Math.trunc(chatId)}`;
 }
 
+// ── update_id idempotency key ──────────────────────────────────────────────────
+// Telegram RE-DELIVERS an update when the webhook doesn't 200 fast enough (a slow
+// agent run), which would otherwise cause a double agent run + double reply. We
+// dedup on the monotonic per-bot `update_id` by recording it once in a tiny ledger
+// (we reuse public.ai_sessions, keyed on a synthetic id — see index.ts). This
+// derives that ledger key. The namespace is "tgu-upd-" — DISTINCT from a real
+// chat session key ("tg-u-…") so the two never collide in the ai_sessions table.
+// Shape /^tgu-upd-\-?\d+$/ ⊂ the session layer's safe charset [A-Za-z0-9_-].
+// Returns "" for a non-finite/absent update_id (⇒ dedup disabled → process anyway,
+// fail-soft: a missing id must never drop the message).
+export function telegramUpdateDedupKey(updateId: number | undefined | null): string {
+  if (updateId === undefined || updateId === null || !Number.isFinite(updateId)) return "";
+  return `tgu-upd-${Math.trunc(updateId)}`;
+}
+
 // ── Reply-language hint from Telegram's locale ─────────────────────────────────
 // runAgent auto-detects the reply language from the message TEXT (its primary
 // signal). But a terse first message ("היי", "hi", an emoji) carries little script
@@ -145,6 +162,82 @@ export function langFromTelegramLocale(languageCode: string): AgentLangHint | un
   if (c.startsWith("ru")) return "ru";
   if (c.startsWith("en")) return "en";
   return undefined;
+}
+
+// ── Reply chunking (Telegram's 4096-char sendMessage hard limit) ───────────────
+// Telegram's sendMessage rejects a text body over 4096 chars, so a long agent
+// reply would otherwise fail to send entirely. chunkTelegram splits the text into
+// ordered pieces each ≤ `max`, preferring the widest natural boundary available:
+// paragraph breaks (blank line) first, then single newlines / sentence ends /
+// whitespace inside an over-long paragraph, and only a hard cut as a last resort —
+// so it NEVER breaks mid-word for normal prose. Pure + total (never throws, never
+// drops text): a short reply returns a single-element array unchanged (the common
+// case is a no-op), and the concatenation of the pieces preserves every word of
+// the input (run-of-blank-lines between merged paragraphs is normalised to one).
+// Mirrors the spirit of whatsapp-webhook's chunkReply; the handler awaits the
+// pieces in sequence (fail-soft per chunk). Default 4000 (a safe margin under
+// 4096, since HTML-escape expansion can grow the payload by a few chars).
+export function chunkTelegram(text: string, max = 4000): string[] {
+  const body = (text ?? "").trim();
+  if (!body) return [];
+  const limit = Number.isFinite(max) && max > 0 ? Math.trunc(max) : 4000;
+  if (body.length <= limit) return [body];
+
+  // Greedily pack paragraphs (split on blank lines) into chunks; a paragraph that
+  // is itself too long is recursively broken on softer boundaries (breakLongTg).
+  const paras = body.split(/\n{2,}/);
+  const chunks: string[] = [];
+  let cur = "";
+  const flush = () => {
+    if (cur) chunks.push(cur);
+    cur = "";
+  };
+  for (const para of paras) {
+    const piece = para.trim();
+    if (!piece) continue;
+    if (piece.length > limit) {
+      flush();
+      for (const sub of breakLongTg(piece, limit)) chunks.push(sub);
+      continue;
+    }
+    const joined = cur ? `${cur}\n\n${piece}` : piece;
+    if (joined.length <= limit) {
+      cur = joined;
+    } else {
+      flush();
+      cur = piece;
+    }
+  }
+  flush();
+  return chunks.length ? chunks : [body.slice(0, limit)];
+}
+
+// Break a single over-long block on softer boundaries: newline → sentence end →
+// space → hard cut. Always makes progress (a chunk is never empty) so it can't
+// loop. Only used by chunkTelegram for a paragraph that overflows on its own.
+function breakLongTg(block: string, limit: number): string[] {
+  const out: string[] = [];
+  let rest = block.trim();
+  while (rest.length > limit) {
+    const window = rest.slice(0, limit);
+    // Prefer the latest newline, then a sentence terminator, then a space — so a
+    // normal sentence/word boundary is chosen and we never split inside a word.
+    let cut = Math.max(
+      window.lastIndexOf("\n"),
+      window.lastIndexOf("! "),
+      window.lastIndexOf("? "),
+      window.lastIndexOf(". "),
+      window.lastIndexOf("׃ "),
+      window.lastIndexOf("; "),
+    );
+    if (cut < limit * 0.5) cut = window.lastIndexOf(" "); // avoid a tiny first piece
+    if (cut <= 0) cut = limit; // no boundary at all (e.g. one giant token) → hard cut
+    else cut += 1; // keep the boundary char on the left piece
+    out.push(rest.slice(0, cut).trim());
+    rest = rest.slice(cut).trim();
+  }
+  if (rest) out.push(rest);
+  return out;
 }
 
 // ── /help copy (Hebrew, the default audience) ──────────────────────────────────
@@ -163,6 +256,57 @@ export const WELCOME_REPLY =
   `היי! אני העוזר החכם של <b>Switchy AI</b> 🤖\n` +
   `אני משווה בשבילכם מסלולי סלולר, אינטרנט, טלוויזיה וחבילות חו"ל ועוזר לחסוך בחשבון.\n` +
   `אפשר לשאול אותי כל דבר על המסלולים והמחירים, ואם תרצו — אחבר אתכם לנציג אנושי.`;
+
+// ── /start category quick-replies (truth-only, from the live catalogue) ─────────
+// On the /start welcome ONLY, we offer the catalogue's REAL categories as one-tap
+// quick replies. We deliberately use a ReplyKeyboardMarkup (button TEXT), NOT an
+// inline_keyboard with callback_data: the user bot registers allowed_updates
+// ["message"] and has NO callback_query path, so a tap on a reply-keyboard button
+// simply SENDS that Hebrew category label as the user's next message — which then
+// flows through the SAME guard chain + agent as if they typed it. This adds a UX
+// affordance without any new update type, callback handler, or guard-chain change.
+//
+// TRUTH-ONLY: we only surface a category that actually has plans in the live
+// catalogue (the same `plans` the agent is grounded in), in the canonical
+// CATEGORIES order, labelled with the Hebrew display name (CATEGORY_HE). An empty
+// catalogue ⇒ no keyboard (returns null) so we never show a fabricated option.
+
+// The exact wording each category button sends — a short, natural Hebrew question
+// the agent answers from the catalogue ("המסלולים הזולים ב<category>"). Keyed by
+// the canonical category id; only categories present in the catalogue are shown.
+function categoryButtonText(cat: string): string {
+  const he = CATEGORY_HE[cat] ?? cat;
+  return `מסלולי ${he} הזולים`;
+}
+
+// The distinct catalogue categories that actually have at least one priced plan,
+// in canonical CATEGORIES order. Pure over the same Plan[] the agent uses.
+export function catalogueCategories(plans: Plan[]): string[] {
+  const present = new Set<string>();
+  for (const p of plans) {
+    if (p && p.cat && typeof p.price === "number") present.add(p.cat);
+  }
+  return (CATEGORIES as readonly string[]).filter((c) => present.has(c));
+}
+
+// Build the /start reply-keyboard from the live catalogue, or null when there's
+// nothing real to offer (empty catalogue) — truth-only, never a fabricated button.
+// Two buttons per row; one-time + resizable so it doesn't clutter the chat, and it
+// stays available until the user types (selective:false). Shape is a plain object
+// the handler passes straight to Telegram's reply_markup.
+export function welcomeCategoryKeyboard(plans: Plan[]): Record<string, unknown> | null {
+  const cats = catalogueCategories(plans);
+  if (cats.length === 0) return null;
+  const buttons = cats.map((c) => ({ text: categoryButtonText(c) }));
+  const rows: { text: string }[][] = [];
+  for (let i = 0; i < buttons.length; i += 2) rows.push(buttons.slice(i, i + 2));
+  return {
+    keyboard: rows,
+    resize_keyboard: true,
+    one_time_keyboard: true,
+    is_persistent: false,
+  };
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HUMAN HANDOFF — "connect me to a human" intent (the customer→team takeover).

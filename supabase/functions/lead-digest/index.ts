@@ -1,0 +1,152 @@
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// lead-digest — Switchy AI
+// A PROACTIVE, cron-driven push to the team Telegram chat (no user reads it on
+// demand — pg_cron fires it). Two parts in one pass:
+//
+//   (a) MORNING DIGEST — the same count-led executive brief the team can pull
+//       with /digest, but pushed automatically each morning. It REUSES the
+//       existing buildDailyDigest (over the agenda data) + sendTelegram from
+//       notify-lead/_shared — never duplicated here.
+//
+//   (b) STALE-LEAD SLA NUDGE — a short "X לידים ללא מענה, הוותיק Yש׳" line for
+//       leads that breached the response SLA: still status=new, never contacted
+//       (contacted_at IS NULL), and created more than SLA_HOURS ago. This is the
+//       single most actionable number for a rep, surfaced on its own so it can't
+//       hide inside the digest.
+//
+// Auth: gated on the shared webhook secret (x-webhook-secret header), exactly
+// like the other internal triggers (notify-lead, community-notify,
+// renewal-reminders). Fail-CLOSED — no secret configured, or a mismatch, → 401/503
+// and nothing is posted. The cron job (lead-digest-cron-2026-06.sql) supplies the
+// header from Vault.
+//
+// Fail-soft everywhere else: a failed query / Telegram miss is logged via jlog and
+// degrades the response, but never throws to the caller (the cron run just retries
+// next tick). Truth-only: every number comes from a real PostgREST read; an
+// agenda-query failure suppresses that section rather than inventing "all clear".
+//
+// POST body (optional): { dryRun?: boolean } — when true, builds everything and
+// returns the would-send text WITHOUT posting (for a safe manual check).
+//
+// Deploy: supabase functions deploy lead-digest --no-verify-jwt
+// Schedule: see supabase/lead-digest-cron-2026-06.sql (pg_cron + pg_net, ~08:30 IL).
+// ─────────────────────────────────────────────────────────────────────────────
+
+import type { Cfg, Lead, MeetingRow } from "../_shared/types.ts";
+import { resolveCfgCached, safeEqual } from "../_shared/config.ts";
+import { fetchRows } from "../_shared/db.ts";
+import { sendTelegram } from "../_shared/telegram.ts";
+import { type AgendaInput, buildDailyDigest } from "../_shared/agenda.ts";
+import { jlog } from "../_shared/log.ts";
+
+// Pure SLA helpers live in ./lib.ts so tests can import them WITHOUT loading this
+// module — its top-level Deno.serve would otherwise be cached before the capture
+// stub installs (see tests/_capture_handler.ts).
+import { buildStaleNudge, selectStaleLeads, SLA_HOURS, type StaleLead } from "./lib.ts";
+
+const enc = encodeURIComponent;
+
+function json(body: unknown, status = 200): Response {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*" },
+  });
+}
+
+// ── agenda fetch (mirrors notify-lead/commands.ts fetchAgenda, which is not
+// exported) ──────────────────────────────────────────────────────────────────
+// Confirmed + pending meetings in a ±day window (buildDailyDigest trims to the
+// Israel day) and uncontacted (status=new) leads. Returns null on a failed query
+// so the caller suppresses the digest instead of pushing a hollow "all clear".
+async function fetchAgenda(): Promise<AgendaInput | null> {
+  const winStart = enc(new Date(Date.now() - 24 * 3_600_000).toISOString());
+  const winEnd = enc(new Date(Date.now() + 36 * 3_600_000).toISOString());
+  const [confirmed, pending, uncontacted] = await Promise.all([
+    fetchRows<MeetingRow>(`/rest/v1/meetings?select=*&status=eq.confirmed&starts_at=gte.${winStart}&starts_at=lt.${winEnd}&order=starts_at.asc&limit=30`),
+    fetchRows<MeetingRow>(`/rest/v1/meetings?select=*&status=eq.pending&starts_at=gte.${winStart}&starts_at=lt.${winEnd}&order=starts_at.asc&limit=30`),
+    fetchRows<Lead>(`/rest/v1/leads?select=*&status=eq.new&order=created_at.asc&limit=200`),
+  ]);
+  if (confirmed === null || pending === null || uncontacted === null) return null;
+  return { confirmed, pending, uncontacted };
+}
+
+// ── stale-lead fetch ──────────────────────────────────────────────────────────
+// Pre-filter DB-side: status=new AND contacted_at IS NULL AND created more than
+// SLA_HOURS ago. Returns null on a failed query (so we can stay honest about a
+// query miss vs a genuinely empty queue).
+async function fetchStaleLeads(nowMs: number): Promise<StaleLead[] | null> {
+  const cutoff = enc(new Date(nowMs - SLA_HOURS * 3_600_000).toISOString());
+  return await fetchRows<StaleLead>(
+    `/rest/v1/leads?select=id,name,phone,status,contacted_at,created_at&status=eq.new&contacted_at=is.null&created_at=lt.${cutoff}&order=created_at.asc&limit=500`,
+  );
+}
+
+Deno.serve(async (req: Request) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", {
+      headers: { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*", "Access-Control-Allow-Methods": "POST, OPTIONS" },
+    });
+  }
+  if (req.method !== "POST") return json({ ok: false, error: "method not allowed" }, 405);
+
+  const cfg = await resolveCfgCached();
+
+  // Fail-CLOSED secret gate — identical contract to the other internal triggers.
+  const provided = req.headers.get("x-webhook-secret") ?? "";
+  if (!cfg.webhookSecret) return json({ ok: false, error: "webhook secret not configured" }, 503);
+  if (!(await safeEqual(provided, cfg.webhookSecret))) return json({ ok: false, error: "unauthorized" }, 401);
+
+  let body: { dryRun?: boolean } = {};
+  try { body = await req.json() as { dryRun?: boolean }; } catch (_) { /* empty body is fine */ }
+  const dryRun = body.dryRun === true;
+  const nowMs = Date.now();
+
+  // Build both parts from REAL reads. Each section is independent and fail-soft:
+  // a miss on one never blocks the other.
+  const [agenda, stale] = await Promise.all([fetchAgenda(), fetchStaleLeads(nowMs)]);
+
+  const digestText = agenda ? buildDailyDigest(agenda, nowMs) : "";
+  const staleSelected = stale ? selectStaleLeads(stale, nowMs) : [];
+  const nudgeText = buildStaleNudge(staleSelected, nowMs);
+
+  if (dryRun) {
+    return json({
+      ok: true,
+      dryRun: true,
+      digest: { ready: !!agenda, text: digestText },
+      nudge: { stale: staleSelected.length, text: nudgeText },
+    });
+  }
+
+  // Push: digest first (the full morning brief), then the SLA nudge as its own
+  // message so it stands out. Skip a section that has nothing to say — never spam
+  // an "all clear". A null agenda means the query failed → say nothing rather than
+  // posting a misleading empty digest.
+  let digestOk = false;
+  if (agenda && digestText) {
+    const r = await sendTelegram(cfg, digestText);
+    digestOk = r.ok;
+  }
+  let nudgeOk = false;
+  if (nudgeText) {
+    const r = await sendTelegram(cfg, nudgeText);
+    nudgeOk = r.ok;
+  }
+
+  jlog({
+    at: "lead-digest",
+    digest_sent: digestOk,
+    digest_query_ok: !!agenda,
+    stale: staleSelected.length,
+    nudge_sent: nudgeOk,
+    stale_query_ok: stale !== null,
+  });
+
+  return json({
+    ok: true,
+    digest: { sent: digestOk, queryOk: !!agenda },
+    nudge: { sent: nudgeOk, stale: staleSelected.length, queryOk: stale !== null },
+  });
+});

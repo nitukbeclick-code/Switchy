@@ -25,6 +25,92 @@ const LEGACY_PROVIDER_SLUGS: Record<string, string> = {
   "019": "019mobile", // 019 מובייל (old ASCII slug → new readable)
 };
 
+// ────────────────────────────────────────────────────────────────────────────
+// Content-Security-Policy — backwards-compatible STRICT CSP (hash + strict-dynamic).
+//
+// WHY hashes, not 'unsafe-inline' for scripts: we enumerate the exact SHA-256 of
+// every inline <script> we emit, so a modern (CSP3) browser executes only those
+// and refuses any injected inline script — the core XSS mitigation. The hashes
+// ARE the allowlist. 'strict-dynamic' then lets a hash-trusted loader (the Next
+// runtime + GA's gtag.js, pulled via next/script src=) fetch its own child
+// scripts without us listing every host. For legacy (CSP1/2) browsers that ignore
+// hashes/strict-dynamic, 'unsafe-inline' + the https: host fallback keep GA/Meta
+// working — and those tokens are *ignored* by CSP3 browsers exactly because a
+// hash is present, so they don't weaken the modern policy. This is the documented
+// "graceful degradation" strict-CSP recipe.
+//
+// Set entirely via next.config headers() (NOT a nonce/proxy) on purpose: a nonce
+// forces every page to dynamic rendering, which would kill this app's static +
+// ISR (revalidate=3600) output — the very thing CELL C3 is protecting. Static
+// HTML + hashed inline scripts keeps full CDN cacheability AND a strict CSP.
+//
+// INLINE SCRIPT HASHES (recompute if the literal bytes below ever change):
+//  • theme no-flash guard (app/layout.tsx <head> + app/global-error.tsx) — identical
+//  • GA4 Consent Mode v2 default (app/layout.tsx, beforeInteractive)
+//  • GA4 init/config (app/layout.tsx, lazyOnload) — GA4 id resolved into the string
+// ────────────────────────────────────────────────────────────────────────────
+const SCRIPT_HASHES = [
+  // theme no-flash guard
+  "'sha256-lt/jzp5WghHs55L76Qx27LnwaSq1sd0Otti3yNnkC9E='",
+  // GA4 consent default (denied)
+  "'sha256-Wm3VqYsyHNBkLe9vbwFfwvpleh3w28hOQ74uxW19xPo='",
+  // GA4 init/config (G-YCTGRVN7SJ)
+  "'sha256-FnLpdcBNhDmIMlNWpijeigE04yHv3SKWzGWhQXLY3PU='",
+].join(" ");
+
+// First-party Supabase project (public anon reads happen server-side today, but
+// keep it allowlisted so any future client read isn't silently blocked by CSP).
+const SUPABASE_ORIGIN = (
+  process.env.NEXT_PUBLIC_SUPABASE_URL ??
+  "https://orzitfqmlvopujsoyigr.supabase.co"
+).replace(/\/+$/, "");
+
+// Google Analytics 4 (gtag.js) + Meta Pixel — script host, beacon (connect) and
+// pixel (img) origins. These are the ONLY third parties the site talks to from
+// the browser; everything else is same-origin (/api/* relative fetches).
+const CSP = [
+  "default-src 'self'",
+  // Inline scripts pinned by hash; gtag.js arrives via next/script src= and is
+  // trusted to load its children through 'strict-dynamic'. https: + 'unsafe-inline'
+  // are CSP1/2-only fallbacks (ignored by CSP3 because a hash is present).
+  `script-src 'self' 'strict-dynamic' 'unsafe-inline' https: ${SCRIPT_HASHES}`,
+  // Next.js and several pages emit inline <style>; 'unsafe-inline' for styles is
+  // required and low-risk (style injection is not script execution).
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob: https://www.google-analytics.com https://www.googletagmanager.com https://www.facebook.com",
+  "font-src 'self'",
+  // XHR/fetch/beacon targets: GA4, Meta pixel, and the Supabase project.
+  `connect-src 'self' https://www.google-analytics.com https://*.google-analytics.com https://www.googletagmanager.com https://*.analytics.google.com https://connect.facebook.net https://www.facebook.com ${SUPABASE_ORIGIN}`,
+  "manifest-src 'self'",
+  "worker-src 'self'",
+  "frame-src 'none'",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'none'",
+  "upgrade-insecure-requests",
+].join("; ");
+
+// Security headers applied to every HTML response (defence-in-depth alongside CSP).
+const SECURITY_HEADERS = [
+  { key: "Content-Security-Policy", value: CSP },
+  // Don't leak full URLs (with query) cross-origin; send only the origin off-site.
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  // Never let the browser MIME-sniff a response into an executable type.
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  // Clickjacking: redundant with frame-ancestors 'none' but covers pre-CSP UAs.
+  { key: "X-Frame-Options", value: "DENY" },
+  // Process isolation (Spectre-class) — safe here: no cross-origin popups embed us.
+  { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
+  // Powerful-feature lockdown. The bill flow uses a file <input> (not getUserMedia),
+  // so camera/microphone/geolocation can all be denied site-wide.
+  {
+    key: "Permissions-Policy",
+    value:
+      "camera=(), microphone=(), geolocation=(), browsing-topics=(), interest-cohort=()",
+  },
+];
+
 const nextConfig: NextConfig = {
   turbopack: {
     root: projectRoot,
@@ -49,6 +135,14 @@ const nextConfig: NextConfig = {
   // offline fallback is likewise served fresh. Mirrors the Next PWA guide.
   async headers() {
     return [
+      {
+        // Site-wide security headers (CSP + the hardening set) on every route.
+        // The more-specific /service-worker.js and /offline.html rules below ALSO
+        // match and add their own headers; the SW's own stricter CSP is the
+        // intersection winner there, which is fine (it only needs 'self').
+        source: "/(.*)",
+        headers: SECURITY_HEADERS,
+      },
       {
         source: "/service-worker.js",
         headers: [

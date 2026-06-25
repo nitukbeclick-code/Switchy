@@ -466,7 +466,74 @@ class _EmptyState extends StatelessWidget {
 
 // ── Compare table ─────────────────────────────────────────────────────────────
 
-class _CompareTable extends StatelessWidget {
+/// Shared geometry for the frozen-column matrix. The first (label) column is
+/// pinned — it never scrolls — while every per-plan column is the same width and
+/// scrolls horizontally in lockstep across all strips (header, rows, specs, CTA,
+/// features) via a linked group of [ScrollController]s (see [_LinkedHScroll]).
+const double _kLabelColW = 104;
+const double _kPlanColW = 150;
+
+/// Keeps several horizontal scroll views in lockstep WITHOUT a third-party
+/// package. A single [ScrollController] can't legally attach to more than one
+/// scrollable at once, so each matrix strip gets its OWN controller from
+/// [vend]; whenever one moves, the group mirrors its offset onto the others and
+/// publishes the [fraction] (0…1 of the scroll extent) for the scroll
+/// affordance. A re-entrancy guard prevents the mirror writes from echoing.
+class _LinkedHScroll {
+  final List<ScrollController> _controllers = [];
+  bool _syncing = false;
+
+  /// 0 (start) … 1 (end) of the horizontal extent, and whether the band is
+  /// actually overflowing. Drives the edge fades + dot rail.
+  final ValueNotifier<double> fraction = ValueNotifier<double>(0);
+  final ValueNotifier<bool> scrollable = ValueNotifier<bool>(false);
+
+  /// Creates and registers a controller for one strip. Dispose via [dispose].
+  ScrollController vend() {
+    final c = ScrollController();
+    c.addListener(() => _onMoved(c));
+    _controllers.add(c);
+    return c;
+  }
+
+  void _onMoved(ScrollController source) {
+    if (_syncing || !source.hasClients) return;
+    _syncing = true;
+    final offset = source.offset;
+    for (final c in _controllers) {
+      if (c == source || !c.hasClients) continue;
+      // Clamp to the peer's own extent so a shorter band can't be jumped past
+      // its end (extents match in practice, but stay safe).
+      final max = c.position.maxScrollExtent;
+      final target = offset.clamp(0.0, max);
+      if ((c.offset - target).abs() > 0.5) c.jumpTo(target);
+    }
+    _syncing = false;
+    _publish(source);
+  }
+
+  /// Recompute the public fraction/scrollable from any attached controller.
+  void publishFrom(ScrollController c) => _publish(c);
+
+  void _publish(ScrollController c) {
+    if (!c.hasClients) return;
+    final max = c.position.maxScrollExtent;
+    final canScroll = max > 1;
+    scrollable.value = canScroll;
+    fraction.value = canScroll ? (c.offset / max).clamp(0.0, 1.0) : 0.0;
+  }
+
+  void dispose() {
+    for (final c in _controllers) {
+      c.dispose();
+    }
+    _controllers.clear();
+    fraction.dispose();
+    scrollable.dispose();
+  }
+}
+
+class _CompareTable extends StatefulWidget {
   const _CompareTable({
     required this.plans,
     required this.appState,
@@ -479,6 +546,28 @@ class _CompareTable extends StatelessWidget {
   final AppTheme ffTheme;
   final String? winnerId;
   final Map<String, PlanMatch> matchMap;
+
+  @override
+  State<_CompareTable> createState() => _CompareTableState();
+}
+
+class _CompareTableState extends State<_CompareTable> {
+  // One linked group keeps every horizontal strip in lockstep, so the frozen
+  // label column and the plan columns stay row-aligned no matter which strip
+  // the user drags. (A single controller can't attach to >1 scrollable.)
+  final _LinkedHScroll _hGroup = _LinkedHScroll();
+
+  List<Plan> get plans => widget.plans;
+  AppState get appState => widget.appState;
+  AppTheme get ffTheme => widget.ffTheme;
+  String? get winnerId => widget.winnerId;
+  Map<String, PlanMatch> get matchMap => widget.matchMap;
+
+  @override
+  void dispose() {
+    _hGroup.dispose();
+    super.dispose();
+  }
 
   // Canonical spec key order; any extra keys are appended alphabetically.
   static const _canonicalSpecOrder = [
@@ -538,8 +627,10 @@ class _CompareTable extends StatelessWidget {
 
     // Root is a plain Column now — the page's vertical scroll is owned by the
     // outer RefreshableScroll (this widget lives in a SliverToBoxAdapter). The
-    // inner horizontal SingleChildScrollViews still drive the side-by-side
-    // spec/price matrix across all plans, which stays the screen's core.
+    // matrix below keeps the side-by-side spec/price comparison (the screen's
+    // core), but with a FROZEN first column (row labels) and the plan columns
+    // scrolling horizontally in lockstep across every strip via [_hGroup], so the
+    // user never loses the "which row is this?" context while panning plans.
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -552,228 +643,513 @@ class _CompareTable extends StatelessWidget {
           matchMap: matchMap,
         ),
 
-          // Header row
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-              child: Row(
-                children: [
-                  // Label column
-                  const SizedBox(width: 110),
-                  ...plans.map((p) {
-                    final isWinner = p.id == winnerId;
-                    return _PlanHeader(
-                      plan: p,
-                      isWinner: isWinner,
-                      ffTheme: ffTheme,
-                      appState: appState,
-                      match: matchMap[p.id],
-                    );
-                  }),
-                ],
-              ),
+        // ── Header strip — frozen empty label cell + scrolling plan headers ──
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+          child: _FrozenMatrixStrip(
+            group: _hGroup,
+            ffTheme: ffTheme,
+            planColWidth: _kPlanColW,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            // The header carries the shared dot rail (only one strip should).
+            showDots: true,
+            // Empty corner above the row labels keeps the grid aligned.
+            label: const SizedBox(width: _kLabelColW),
+            cells: plans.map((p) {
+              final isWinner = p.id == winnerId;
+              return _PlanHeader(
+                plan: p,
+                isWinner: isWinner,
+                ffTheme: ffTheme,
+                appState: appState,
+                match: matchMap[p.id],
+              );
+            }).toList(),
+          ),
+        ),
+
+        // ── Main rows — each row keeps its label frozen on the start edge ──
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+          child: _FrozenRowGroup(
+            group: _hGroup,
+            ffTheme: ffTheme,
+            rows: [
+              for (final e in rows.asMap().entries)
+                _RowWidget(
+                  row: e.value,
+                  plans: plans,
+                  winnerId: winnerId,
+                  ffTheme: ffTheme,
+                  isAlt: e.key.isOdd,
+                ),
+            ],
+          ),
+        ),
+
+        // ── Spec rows (מפרט) ────────────────────────────────────────────────
+        if (specKeys.isNotEmpty) ...[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 6),
+            child: Row(
+              children: [
+                Icon(Icons.tune_rounded, size: 14, color: ffTheme.secondaryText),
+                const SizedBox(width: 6),
+                Text(
+                  'מפרט',
+                  style: ffTheme.labelSmall.copyWith(
+                    color: ffTheme.secondaryText,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ],
             ),
           ),
-
-          // Rows
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: rows.asMap().entries.map((e) {
-                  final idx = e.key;
-                  final row = e.value;
-                  final isAlt = idx.isOdd;
-                  return _RowWidget(
-                    row: row,
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+            child: _FrozenRowGroup(
+              group: _hGroup,
+              ffTheme: ffTheme,
+              rows: [
+                for (final e in specKeys.asMap().entries)
+                  _RowWidget(
+                    row: _Row(
+                      e.value,
+                      plans.map((p) => p.specs[e.value] ?? '—').toList(),
+                    ),
                     plans: plans,
                     winnerId: winnerId,
                     ffTheme: ffTheme,
-                    isAlt: isAlt,
-                  );
-                }).toList(),
-              ),
+                    // Continue alternating tint from where main rows left off.
+                    isAlt: (rows.length + e.key).isOdd,
+                  ),
+              ],
             ),
           ),
+        ] else
+          const SizedBox(height: 16),
 
-          // ── Spec rows (מפרט) ────────────────────────────────────────────────
-          if (specKeys.isNotEmpty) ...[
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 6),
+        // Mixed-category notice
+        if (mixedCats)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: ffTheme.warning.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: ffTheme.warning.withValues(alpha: 0.3)),
+              ),
               child: Row(
                 children: [
-                  Icon(Icons.tune_rounded, size: 14, color: ffTheme.secondaryText),
-                  const SizedBox(width: 6),
-                  Text(
-                    'מפרט',
-                    style: ffTheme.labelSmall.copyWith(
-                      color: ffTheme.secondaryText,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: 0.5,
+                  Icon(Icons.info_outline_rounded, size: 16, color: ffTheme.warning),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'אתה משווה מסלולים מקטגוריות שונות',
+                      style: ffTheme.labelSmall.copyWith(color: ffTheme.warning, fontWeight: FontWeight.w600),
                     ),
                   ),
                 ],
               ),
             ),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: specKeys.asMap().entries.map((e) {
-                    final idx = e.key;
-                    final key = e.value;
-                    final specRow = _Row(
-                      key,
-                      plans.map((p) => p.specs[key] ?? '—').toList(),
-                    );
-                    // Continue alternating tint from where main rows left off.
-                    final isAlt = (rows.length + idx).isOdd;
-                    return _RowWidget(
-                      row: specRow,
-                      plans: plans,
-                      winnerId: winnerId,
-                      ffTheme: ffTheme,
-                      isAlt: isAlt,
-                    );
-                  }).toList(),
-                ),
-              ),
-            ),
-          ] else
-            const SizedBox(height: 16),
+          ),
 
-          // Mixed-category notice
-          if (mixedCats)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                decoration: BoxDecoration(
-                  color: ffTheme.warning.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: ffTheme.warning.withValues(alpha: 0.3)),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.info_outline_rounded, size: 16, color: ffTheme.warning),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'אתה משווה מסלולים מקטגוריות שונות',
-                        style: ffTheme.labelSmall.copyWith(color: ffTheme.warning, fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-
-          // CTA row
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  const SizedBox(width: 110),
-                  ...plans.map((p) => SizedBox(
-                    width: 140,
-                    child: Padding(
-                      padding: const EdgeInsetsDirectional.only(start: 10),
-                      child: Semantics(
-                        button: true,
-                        label: 'בחר את המסלול ${p.plan} של ${p.provider}',
-                        child: ElevatedButton(
-                          onPressed: () {
-                            HapticFeedback.lightImpact();
-                            context.pushNamed('Lead', pathParameters: {'planId': p.id}, queryParameters: {'source': 'compare'});
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: p.id == winnerId
+        // ── CTA strip — frozen empty label cell + scrolling per-plan buttons ──
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+          child: _FrozenMatrixStrip(
+            group: _hGroup,
+            ffTheme: ffTheme,
+            planColWidth: _kPlanColW,
+            label: const SizedBox(width: _kLabelColW),
+            cells: plans.map((p) {
+              final isWinner = p.id == winnerId;
+              return Padding(
+                padding: const EdgeInsetsDirectional.only(start: 10),
+                child: Semantics(
+                  button: true,
+                  label: 'בחר את המסלול ${p.plan} של ${p.provider}',
+                  child: ElevatedButton(
+                    onPressed: () {
+                      HapticFeedback.lightImpact();
+                      context.pushNamed('Lead', pathParameters: {'planId': p.id}, queryParameters: {'source': 'compare'});
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: isWinner
+                          ? ffTheme.primary
+                          : ffTheme.cardSurface,
+                      foregroundColor: isWinner
+                          ? (ffTheme.dark ? ffTheme.background : Colors.white)
+                          : ffTheme.primaryText,
+                      elevation: 0,
+                      // Raise the per-plan select control to the accessible
+                      // minimum tap target so it's comfortable on mobile.
+                      minimumSize: const Size(0, kMinTapTarget),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        side: BorderSide(
+                            color: isWinner
                                 ? ffTheme.primary
-                                : ffTheme.cardSurface,
-                            foregroundColor: p.id == winnerId
-                                ? (ffTheme.dark ? ffTheme.background : Colors.white)
-                                : ffTheme.primaryText,
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              side: BorderSide(
-                                  color: p.id == winnerId
-                                      ? ffTheme.primary
-                                      : ffTheme.alternate),
-                            ),
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                          ),
-                          child: Text(
-                            'בחר ←',
-                            style: ffTheme.titleSmall.copyWith(
-                                color: p.id == winnerId
-                                    ? (ffTheme.dark ? ffTheme.background : Colors.white)
-                                    : ffTheme.primaryText),
-                          ),
-                        ),
+                                : ffTheme.alternate),
                       ),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
-                  )),
+                    child: Text(
+                      'בחר ←',
+                      style: ffTheme.titleSmall.copyWith(
+                          color: isWinner
+                              ? (ffTheme.dark ? ffTheme.background : Colors.white)
+                              : ffTheme.primaryText),
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+
+        // Features comparison
+        if (plans.any((p) => p.feats.isNotEmpty)) ...[
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Divider(color: ffTheme.alternate),
+                const SizedBox(height: 8),
+                Text('מה כלול בכל מסלול', style: ffTheme.titleSmall.copyWith(color: ffTheme.secondaryText, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 12),
+                _FrozenMatrixStrip(
+                  group: _hGroup,
+                  ffTheme: ffTheme,
+                  planColWidth: _kPlanColW,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  label: const SizedBox(width: _kLabelColW),
+                  cells: plans.map((p) => Padding(
+                    padding: const EdgeInsetsDirectional.only(start: 10),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: p.feats.map((f) => Padding(
+                        padding: const EdgeInsets.only(bottom: 6),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(Icons.check_rounded, size: 14, color: p.id == winnerId ? ffTheme.primary : ffTheme.secondaryText),
+                            const SizedBox(width: 4),
+                            Expanded(child: Text(f, style: ffTheme.labelSmall.copyWith(
+                              color: p.id == winnerId ? ffTheme.primaryText : ffTheme.secondaryText,
+                            ))),
+                          ],
+                        ),
+                      )).toList(),
+                    ),
+                  )).toList(),
+                ),
+              ],
+            ),
+          ),
+        ] else
+          const SizedBox(height: 32),
+      ],
+    );
+  }
+}
+
+// ── Frozen-column matrix primitives ─────────────────────────────────────────────
+
+/// A single matrix strip: a FROZEN [label] cell pinned to the start edge, plus a
+/// horizontally-scrolling band of plan [cells]. The band's controller is vended
+/// from the shared [group] so this strip pans in lockstep with every other strip.
+/// Wrapped in [_ScrollAffordance] so the band shows an edge fade (and, on the
+/// [showDots] strip, a dot rail) hinting there are more plans off-screen. Used
+/// for the header, CTA and features bands; the row groups use [_FrozenRowGroup].
+class _FrozenMatrixStrip extends StatefulWidget {
+  const _FrozenMatrixStrip({
+    required this.group,
+    required this.ffTheme,
+    required this.label,
+    required this.cells,
+    required this.planColWidth,
+    this.crossAxisAlignment = CrossAxisAlignment.center,
+    this.showDots = false,
+  });
+
+  final _LinkedHScroll group;
+  final AppTheme ffTheme;
+  final Widget label;
+  final List<Widget> cells;
+
+  /// Width given to each per-plan cell, so columns line up across every strip.
+  final double planColWidth;
+  final CrossAxisAlignment crossAxisAlignment;
+
+  /// Whether this strip carries the shared dot rail (only one strip should).
+  final bool showDots;
+
+  @override
+  State<_FrozenMatrixStrip> createState() => _FrozenMatrixStripState();
+}
+
+class _FrozenMatrixStripState extends State<_FrozenMatrixStrip> {
+  late final ScrollController _ctrl = widget.group.vend();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: widget.crossAxisAlignment,
+      children: [
+        // Frozen label cell — stays put while the plan band scrolls.
+        widget.label,
+        Expanded(
+          child: _ScrollAffordance(
+            group: widget.group,
+            controller: _ctrl,
+            ffTheme: widget.ffTheme,
+            showDots: widget.showDots,
+            child: SingleChildScrollView(
+              controller: _ctrl,
+              scrollDirection: Axis.horizontal,
+              // iOS-style rubber-band so the horizontal pan feels native.
+              physics: const BouncingScrollPhysics(),
+              child: Row(
+                crossAxisAlignment: widget.crossAxisAlignment,
+                children: [
+                  for (final c in widget.cells)
+                    SizedBox(width: widget.planColWidth, child: c),
                 ],
               ),
             ),
           ),
+        ),
+      ],
+    );
+  }
+}
 
-          // Features comparison
-          if (plans.any((p) => p.feats.isNotEmpty)) ...[
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+/// A group of [_RowWidget]s sharing ONE horizontal scroll for their plan cells,
+/// with each row's label frozen on the start edge. Splitting the label out of
+/// the scroll view (instead of scrolling a fixed-width spacer with the plans) is
+/// what gives the matrix a true frozen first column. Its controller is vended
+/// from [group] so it pans in lockstep with the header/CTA/features bands.
+class _FrozenRowGroup extends StatefulWidget {
+  const _FrozenRowGroup({
+    required this.group,
+    required this.ffTheme,
+    required this.rows,
+  });
+
+  final _LinkedHScroll group;
+  final AppTheme ffTheme;
+  final List<_RowWidget> rows;
+
+  @override
+  State<_FrozenRowGroup> createState() => _FrozenRowGroupState();
+}
+
+class _FrozenRowGroupState extends State<_FrozenRowGroup> {
+  late final ScrollController _ctrl = widget.group.vend();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Frozen label column: the row labels stacked, pinned in place. Each
+        // label cell sets its own fixed width (_kLabelColW), so the column sizes
+        // to that — never stretch (the parent Row gives unbounded width).
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [for (final r in widget.rows) r.frozenLabel()],
+        ),
+        Expanded(
+          child: _ScrollAffordance(
+            group: widget.group,
+            controller: _ctrl,
+            ffTheme: widget.ffTheme,
+            child: SingleChildScrollView(
+              controller: _ctrl,
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Divider(color: ffTheme.alternate),
-                  const SizedBox(height: 8),
-                  Text('מה כלול בכל מסלול', style: ffTheme.titleSmall.copyWith(color: ffTheme.secondaryText, fontWeight: FontWeight.w600)),
-                  const SizedBox(height: 12),
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(width: 110),
-                        ...plans.map((p) => SizedBox(
-                          width: 150,
-                          child: Padding(
-                            padding: const EdgeInsetsDirectional.only(start: 10),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: p.feats.map((f) => Padding(
-                                padding: const EdgeInsets.only(bottom: 6),
-                                child: Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Icon(Icons.check_rounded, size: 14, color: p.id == winnerId ? ffTheme.primary : ffTheme.secondaryText),
-                                    const SizedBox(width: 4),
-                                    Expanded(child: Text(f, style: ffTheme.labelSmall.copyWith(
-                                      color: p.id == winnerId ? ffTheme.primaryText : ffTheme.secondaryText,
-                                    ))),
-                                  ],
-                                ),
-                              )).toList(),
-                            ),
-                          ),
-                        )),
-                      ],
-                    ),
-                  ),
-                ],
+                children: [for (final r in widget.rows) r.scrollingValues()],
               ),
             ),
-          ] else
-            const SizedBox(height: 32),
-        ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Subtle "there's more to the side" affordance for a horizontally-scrolling
+/// band: a soft edge fade on whichever side has hidden content, plus (when
+/// [showDots]) a compact dot rail under the band that fills as the user scrolls.
+/// Purely decorative — it never intercepts the scroll gesture, and reads its
+/// state from the shared [group] so every band agrees. Hidden entirely when
+/// nothing is clipped, so a short/complete band stays clean.
+class _ScrollAffordance extends StatefulWidget {
+  const _ScrollAffordance({
+    required this.group,
+    required this.controller,
+    required this.ffTheme,
+    required this.child,
+    this.showDots = false,
+  });
+  final _LinkedHScroll group;
+  final ScrollController controller;
+  final AppTheme ffTheme;
+  final Widget child;
+  final bool showDots;
+
+  @override
+  State<_ScrollAffordance> createState() => _ScrollAffordanceState();
+}
+
+class _ScrollAffordanceState extends State<_ScrollAffordance> {
+  @override
+  void initState() {
+    super.initState();
+    // The viewport isn't measured on the first frame; publish once laid out so
+    // the group's notifiers reflect whether this band actually overflows.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && widget.controller.hasClients) {
+        widget.group.publishFrom(widget.controller);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ff = widget.ffTheme;
+    final fadeColor = ff.background;
+
+    return ValueListenableBuilder<bool>(
+      valueListenable: widget.group.scrollable,
+      builder: (context, scrollable, _) {
+        return ValueListenableBuilder<double>(
+          valueListenable: widget.group.fraction,
+          builder: (context, frac, _) {
+            // Under RTL the scroll "start" is the right edge, "end" the left —
+            // so the fades map to physical right (start) / left (end).
+            final showStartFade = scrollable && frac > 0.02;
+            final showEndFade = scrollable && frac < 0.98;
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Stack(
+                  children: [
+                    widget.child,
+                    // RIGHT edge fade (scroll start under RTL).
+                    if (showStartFade)
+                      PositionedDirectional(
+                        start: 0,
+                        top: 0,
+                        bottom: 0,
+                        child: _EdgeFade(color: fadeColor, toStart: true),
+                      ),
+                    // LEFT edge fade (scroll end under RTL).
+                    if (showEndFade)
+                      PositionedDirectional(
+                        end: 0,
+                        top: 0,
+                        bottom: 0,
+                        child: _EdgeFade(color: fadeColor, toStart: false),
+                      ),
+                  ],
+                ),
+                if (widget.showDots && scrollable) ...[
+                  const SizedBox(height: 8),
+                  _ScrollDots(fraction: frac, ffTheme: ff),
+                ],
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+/// A 24dp-wide horizontal gradient from [color] (opaque, at the band edge) to
+/// transparent, hinting clipped content. [toStart] points the opaque side to the
+/// directional start (right under RTL); otherwise to the end (left).
+class _EdgeFade extends StatelessWidget {
+  const _EdgeFade({required this.color, required this.toStart});
+  final Color color;
+  final bool toStart;
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: Container(
+        width: 24,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: toStart
+                ? AlignmentDirectional.centerStart
+                : AlignmentDirectional.centerEnd,
+            end: toStart
+                ? AlignmentDirectional.centerEnd
+                : AlignmentDirectional.centerStart,
+            colors: [color, color.withValues(alpha: 0)],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A compact dot rail under a scrolling band. A pale track of three dots with a
+/// single brand-green thumb that glides across as [fraction] (0…1) advances —
+/// a quiet "more plans this way" tell that mirrors a page indicator.
+class _ScrollDots extends StatelessWidget {
+  const _ScrollDots({required this.fraction, required this.ffTheme});
+  final double fraction;
+  final AppTheme ffTheme;
+
+  @override
+  Widget build(BuildContext context) {
+    const trackW = 44.0;
+    const dotR = 3.0;
+    return ExcludeSemantics(
+      child: Align(
+        alignment: Alignment.center,
+        child: SizedBox(
+          width: trackW,
+          height: 8,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              // Pale track.
+              Container(
+                height: 2,
+                decoration: BoxDecoration(
+                  color: ffTheme.alternate,
+                  borderRadius: BorderRadius.circular(1),
+                ),
+              ),
+              // Gliding thumb — left/right is physical, fraction follows the
+              // RTL scroll direction so it reads "moving with my finger".
+              Align(
+                alignment: Alignment(-1 + fraction * 2, 0),
+                child: Container(
+                  width: dotR * 2,
+                  height: dotR * 2,
+                  decoration: BoxDecoration(
+                    color: ffTheme.brandAccent,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -1053,7 +1429,9 @@ class _PlanHeader extends StatelessWidget {
         context.pushNamed('PlanDetail', pathParameters: {'planId': plan.id});
       },
       child: Container(
-      width: 140,
+      // Width comes from the matrix strip's per-plan column (_kPlanColW); the
+      // start margin keeps the original inter-column gap, so the card renders at
+      // its prior 140dp visual width inside the 150dp column.
       margin: const EdgeInsetsDirectional.only(start: 10),
       padding: const EdgeInsets.all(14),
       decoration: isWinner
@@ -1155,6 +1533,11 @@ class _Row {
   final bool isHighlight;
 }
 
+/// One comparison row, split into a FROZEN label cell ([frozenLabel]) and a
+/// horizontally-scrolling band of value cells ([scrollingValues]). The two are
+/// rendered in separate columns ([_FrozenRowGroup]) so the label stays pinned
+/// while plans pan — to keep them row-aligned, BOTH halves share the same fixed
+/// [_kRowMinH] height and the same per-row alternating tint.
 class _RowWidget extends StatelessWidget {
   const _RowWidget({
     required this.row,
@@ -1169,80 +1552,119 @@ class _RowWidget extends StatelessWidget {
   final AppTheme ffTheme;
   final bool isAlt;
 
-  @override
-  Widget build(BuildContext context) {
+  // Shared FIXED row height so the frozen label column and the scrolling value
+  // column line up cell-for-cell. It's fixed (not a minimum) so a tall value —
+  // e.g. multi-line fees — can never make the scrolling band's row outgrow the
+  // frozen label's row and shear the grid; value text is capped to fit.
+  static const double _kRowH = 48;
+
+  Color get _tint =>
+      isAlt ? ffTheme.accent1.withValues(alpha: 0.5) : ffTheme.cardSurface;
+
+  /// The pinned label cell for the frozen first column.
+  Widget frozenLabel() {
     return Container(
+      width: _kLabelColW,
+      height: _kRowH,
       margin: const EdgeInsets.only(bottom: 2),
       decoration: BoxDecoration(
-        color: isAlt ? ffTheme.accent1.withValues(alpha: 0.5) : ffTheme.cardSurface,
-        borderRadius: BorderRadius.circular(8),
+        color: _tint,
+        // Round only the start side; the end butts against the scrolling band.
+        borderRadius: const BorderRadiusDirectional.horizontal(
+          start: Radius.circular(8),
+        ),
+      ),
+      alignment: AlignmentDirectional.centerStart,
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      child: Text(row.label,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText)),
+    );
+  }
+
+  /// The scrolling value cells for this row (one fixed-width cell per plan).
+  Widget scrollingValues() {
+    return Container(
+      height: _kRowH,
+      margin: const EdgeInsets.only(bottom: 2),
+      decoration: BoxDecoration(
+        color: _tint,
+        borderRadius: const BorderRadiusDirectional.horizontal(
+          end: Radius.circular(8),
+        ),
       ),
       child: Row(
         children: [
-          SizedBox(
-            width: 110,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-              child: Text(row.label,
-                  style: ffTheme.bodySmall
-                      .copyWith(color: ffTheme.secondaryText)),
-            ),
-          ),
-          ...row.values.asMap().entries.map((e) {
-            final idx = e.key;
-            final v = e.value;
-            final plan = plans[idx];
-            final isWinner = plan.id == winnerId;
-
-            Color textColor = ffTheme.primaryText;
-            if (v == '✓') textColor = ffTheme.primary;
-            if (v == '—') textColor = ffTheme.secondaryText;
-            if (row.isHighlight && isWinner) textColor = ffTheme.primary;
-
-            return SizedBox(
-              width: 150,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 10, vertical: 12),
-                child: row.isHighlight
-                    ? Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          // Savings highlight wears the VALUE accent (amber) for
-                          // the winner; others stay a quiet glass tint.
-                          color: isWinner
-                              ? ffTheme.saving.withValues(alpha: 0.18)
-                              : ffTheme.background,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          v,
-                          style: ffTheme.labelSmall.copyWith(
-                            color: isWinner
-                                ? ffTheme.savingDark
-                                : ffTheme.secondaryText,
-                            fontWeight: isWinner
-                                ? FontWeight.w800
-                                : FontWeight.w500,
-                            fontFeatures: const [FontFeature.tabularFigures()],
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                      )
-                    : Text(
-                        v,
-                        style: ffTheme.bodySmall.copyWith(
-                          color: textColor,
-                          fontWeight: FontWeight.w600,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-              ),
-            );
-          }),
+          for (final e in row.values.asMap().entries)
+            _valueCell(e.key, e.value),
         ],
       ),
+    );
+  }
+
+  Widget _valueCell(int idx, String v) {
+    final plan = plans[idx];
+    final isWinner = plan.id == winnerId;
+
+    Color textColor = ffTheme.primaryText;
+    if (v == '✓') textColor = ffTheme.primary;
+    if (v == '—') textColor = ffTheme.secondaryText;
+    if (row.isHighlight && isWinner) textColor = ffTheme.primary;
+
+    return SizedBox(
+      width: _kPlanColW,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        child: Center(
+          child: row.isHighlight
+              ? Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    // Savings highlight wears the VALUE accent (amber) for the
+                    // winner; others stay a quiet glass tint.
+                    color: isWinner
+                        ? ffTheme.saving.withValues(alpha: 0.18)
+                        : ffTheme.background,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    v,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: ffTheme.labelSmall.copyWith(
+                      color:
+                          isWinner ? ffTheme.savingDark : ffTheme.secondaryText,
+                      fontWeight:
+                          isWinner ? FontWeight.w800 : FontWeight.w500,
+                      fontFeatures: const [FontFeature.tabularFigures()],
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                )
+              : Text(
+                  v,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: ffTheme.bodySmall.copyWith(
+                    color: textColor,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+        ),
+      ),
+    );
+  }
+
+  // The standalone build is retained for completeness but the matrix uses the
+  // split [frozenLabel]/[scrollingValues] pair via [_FrozenRowGroup].
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [frozenLabel(), scrollingValues()],
     );
   }
 }

@@ -96,6 +96,16 @@ export default function RootLayout({
         {/* Tell the UA both schemes exist so native controls/scrollbars adapt. */}
         <meta name="color-scheme" content="light dark" />
 
+        {/* Perf resource hints — GA4 (gtag.js) loads lazyOnload, so we only warm
+            DNS (cheap, no socket/TLS held open) for its hosts. This overlaps the
+            name-resolution with idle time WITHOUT competing with the first-party
+            LCP fetch the way a full preconnect would. The fonts are already
+            preloaded + self-hosted by next/font (no gstatic hop), so no font
+            preconnect is needed. Meta Pixel hosts are intentionally omitted —
+            the pixel is opt-in/unset by default, so a hint would go unused. */}
+        <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
+        <link rel="dns-prefetch" href="https://www.google-analytics.com" />
+
         {/* Site-wide structured data: Organization + WebSite (SearchAction). */}
         <JsonLd data={orgSchema()} />
         <JsonLd data={websiteSchema()} />

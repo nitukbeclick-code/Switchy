@@ -154,7 +154,25 @@ const PERSONA_HEADER =
 `;
 
 const MAX_STEPS = 4; // tool-loop iterations before we force a text wrap-up
-const MAX_OUTPUT_TOKENS = 500;
+
+// ── Tier-aware output-token budget ────────────────────────────────────────────
+// The per-turn output cap is keyed on the RESOLVED tier (see selectTier), not a
+// single const. A "smart" turn — an objection-handling / closing turn that may
+// stack a grounded recommendation + an objection rebuttal + a single honest ask
+// in one reply — gets a larger budget so the close is never truncated mid-thought.
+// A "fast" turn (a greeting, a one-liner) stays lean: less to say, lower latency
+// and cost. Same brain, same facts — only the room to finish the thought differs.
+// Pure + deterministic so it's unit-testable and can't drift.
+const OUTPUT_TOKENS_BY_TIER: Record<ModelTier, number> = {
+  fast: 500, // lean — short, simple turns
+  smart: 820, // roomy — recommend + objection + close without truncation
+};
+
+// The output-token budget for a given tier. Threaded into BOTH the tool-loop step
+// and the text fallback so the whole turn shares one consistent cap.
+export function maxOutputTokensForTier(tier: ModelTier): number {
+  return OUTPUT_TOKENS_BY_TIER[tier] ?? OUTPUT_TOKENS_BY_TIER.smart;
+}
 
 // A friendly last-resort line if literally everything fails (the caller's
 // template fallback should normally cover this).
@@ -281,7 +299,33 @@ function buildSystemPrompt(
   // us; the model still grounds every fact in the catalogue + tool results.
   const memLine = buildMemoryLine(memory);
   if (memLine) prompt += memLine;
+  // A turn-budget-aware CLOSING nudge: when we're mid/late in the conversation OR
+  // a bill/recommendation is in play, append one honest line telling the model to
+  // make a single clear ask for the close. §7b-respecting, no fabricated savings,
+  // no pressure. Absent on early small-talk turns (it would push too soon).
+  const closeLine = buildClosingNudge(memory, billHint);
+  if (closeLine) prompt += closeLine;
   return prompt;
+}
+
+// The conversation is "late enough to close" once we're a few exchanges in. Each
+// session turn adds a user+bot pair, so turnCount ≥ 2 means rapport + at least one
+// real exchange exists — the honest moment to offer the next step, not before.
+const CLOSE_MIN_TURNS = 2;
+
+// A single honest CLOSING line for the system prompt, gated on the turn budget.
+// Returns it only when the conversation is mid/late (memory.turnCount ≥ threshold)
+// OR a real bill is in play (a saving/recommendation turn) — otherwise "" so early
+// small-talk turns aren't pushed. The line instructs ONE clear ask (book a callback
+// / connect a rep), §7b-respecting, with no fabricated savings, urgency, or pressure.
+export function buildClosingNudge(memory?: AgentMemory, billHint?: RunAgentInput["billHint"]): string {
+  const turnCount = Number(memory?.turnCount ?? 0);
+  const billInPlay = Number(billHint?.monthly) > 0;
+  const lateEnough = turnCount >= CLOSE_MIN_TURNS;
+  if (!lateEnough && !billInPlay) return "";
+  return "\n\nסגירה (כשמתאים): אם יש כבר המלצה או חשבון על השולחן, סיים/י בבקשה אחת ברורה וקצרה לצעד הבא — " +
+    "להזמין שיחת חזרה או לחבר נציג — בלי לחץ, בלי דחיפות מומצאת ובלי הבטחת חיסכון שלא נמסר. " +
+    "הזכר/י בקצרה ש-Switchy AI עשוי לקבל עמלה מהספק, וזה לא משפיע על המחיר או ההמלצה.";
 }
 
 // A short, honest "what the user already signalled" line for the system prompt.
@@ -343,6 +387,10 @@ export async function runAgent(input: RunAgentInput): Promise<RunAgentResult> {
     hasBill: Number(input.billHint?.monthly) > 0,
   });
   const tierOpts: AiTierOpts = { tier };
+  // Output-token budget for THIS turn, keyed on the resolved tier — bigger for
+  // smart (rich recommend+objection+close) than fast. One cap shared by the tool
+  // loop and the text fallback so the whole turn is consistent.
+  const maxOutTokens = maxOutputTokensForTier(tier);
 
   // ── 1) Gemini tool loop (the rich path) ──────────────────────────────────
   if (keys.gemini) {
@@ -354,7 +402,7 @@ export async function runAgent(input: RunAgentInput): Promise<RunAgentResult> {
         // On the final step, drop the tools so the model is forced to produce a
         // text wrap-up instead of asking for yet another tool call.
         const decls = isLastStep ? [] : TOOL_DECLARATIONS;
-        const out = await generateWithToolsStep(keys.gemini, system, contents, decls, MAX_OUTPUT_TOKENS, tierOpts);
+        const out = await generateWithToolsStep(keys.gemini, system, contents, decls, maxOutTokens, tierOpts);
 
         if (out.calls.length === 0) {
           // Final text answer. Fold in a tool note (e.g. the §7b disclosure) if
@@ -401,7 +449,7 @@ export async function runAgent(input: RunAgentInput): Promise<RunAgentResult> {
   // Same grounded system prompt + same tier; no tool calls. Honors timeouts.
   const meta: ReplyMeta = { timedOut: false };
   try {
-    const text = await generateReply(keys, system, history, message || "שלום", MAX_OUTPUT_TOKENS, meta, tierOpts);
+    const text = await generateReply(keys, system, history, message || "שלום", maxOutTokens, meta, tierOpts);
     if (text) return { reply: text, via: "text", toolCalls, timedOut: meta.timedOut };
   } catch (_e) {
     // fall through

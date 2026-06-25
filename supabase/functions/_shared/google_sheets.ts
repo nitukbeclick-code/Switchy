@@ -8,6 +8,7 @@
 
 import type { Cfg, Lead } from "./types.ts";
 import { jlog } from "./log.ts";
+import { deriveCategory, scoreLead } from "./lead_quality.ts";
 
 const TOKEN_URL = "https://oauth2.googleapis.com/token";
 const SHEETS_BASE = "https://sheets.googleapis.com/v4/spreadsheets";
@@ -167,12 +168,19 @@ export async function appendRow(cfg: Cfg, tab: string, values: string[]): Promis
   }
 }
 
-// PURE — flatten a Lead into the 11-column row written to the "Leads" tab:
+// PURE — flatten a Lead into the 12-column row written to the "Leads" tab:
 // [company, date, firstName, lastName, email, phone, plan_id, category, source,
-// status, notes]. The leads table has no company column yet, so company is "".
-// name is split on the FIRST space into first/last (multi-word surnames fold
-// into lastName). date is the created_at instant (or now() when absent) as an
-// ISO string. category is "" unless we can recover it from notes/plan_id.
+// status, notes, quality]. The leads table has no company column yet, so company
+// is "". name is split on the FIRST space into first/last (multi-word surnames
+// fold into lastName). date is the created_at instant (or now() when absent) as
+// an ISO string. The original 11-column order (indices 0–10) is preserved
+// exactly so existing sheet headers/formulas don't shift — the two enrichments
+// the business needs for sellable rows are layered on without breaking it:
+//   • column 7 (category) is now FILLED via deriveCategory — the canonical
+//     desired service recovered from plan_id/notes, or "" when truly unknown
+//     (honest, never fabricated);
+//   • a NEW trailing column 11 (quality) carries scoreLead's 0–100 completeness
+//     score, so a buyer can sort/triage rows by how workable they are.
 export function buildLeadSheetRow(lead: Lead, nowIso = new Date().toISOString()): string[] {
   const fullName = String(lead.name ?? "").trim();
   const sp = fullName.indexOf(" ");
@@ -187,9 +195,10 @@ export function buildLeadSheetRow(lead: Lead, nowIso = new Date().toISOString())
     String(lead.email ?? ""),
     String(lead.phone ?? ""),
     String(lead.plan_id ?? ""),
-    "", // category — unknown at this layer
+    deriveCategory(lead), // category — recovered from plan_id/notes, "" if unknown
     String(lead.source ?? ""),
     String(lead.status ?? ""),
     String(lead.notes ?? ""),
+    String(scoreLead(lead)), // quality — 0–100 completeness score (new column)
   ];
 }

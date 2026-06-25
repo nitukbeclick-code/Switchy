@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -10,6 +11,7 @@ import '../../data.dart';
 import '../../models.dart';
 import '../../components/logo_widget/logo_widget.dart';
 import '../../widgets/app_button.dart';
+import '../../widgets/refreshable_scroll.dart';
 import '../../services/recommendation_engine.dart';
 import '../../services/reminder_schedule.dart';
 import '../../services/push_notification_service.dart';
@@ -29,6 +31,14 @@ class _RenewalWidgetState extends State<RenewalWidget> {
   void initState() {
     super.initState();
     _loadRemote().catchError((_) {});
+  }
+
+  /// Pull-to-refresh: re-pull remote tracked plans and re-derive the list. A
+  /// frame-bounded setState recomputes the watch summary + per-plan cards from
+  /// AppState even when the remote fetch yields nothing new.
+  Future<void> _refresh() async {
+    await _loadRemote().catchError((_) {});
+    if (mounted) setState(() {});
   }
 
   Future<void> _loadRemote() async {
@@ -78,12 +88,21 @@ class _RenewalWidgetState extends State<RenewalWidget> {
         leading: IconButton(
           icon: const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white),
           tooltip: 'חזרה',
-          onPressed: () => context.safePop(),
+          onPressed: () {
+            HapticFeedback.selectionClick();
+            context.safePop();
+          },
         ),
       ),
-      body: ListView(
+      // Pull-to-refresh + bouncing overscroll via the shared primitive. The
+      // intro hero card stays the first item in the list (NOT a pinned header
+      // floating over content), so every tappable control below — including the
+      // "טבלת השוואה מלאה" compare button — stays fully hit-testable.
+      body: RefreshableScroll(
+        onRefresh: _refresh,
         padding: const EdgeInsets.all(20),
-        children: [
+        slivers: [
+          SliverList.list(children: [
           // Intro card
           _IntroCard(ffTheme: ffTheme)
               .animate()
@@ -146,6 +165,7 @@ class _RenewalWidgetState extends State<RenewalWidget> {
               .fadeIn(delay: 300.ms),
 
           const SizedBox(height: 32),
+          ]),
         ],
       ),
     );
@@ -568,11 +588,15 @@ class _PlanCard extends StatelessWidget {
             ),
           ],
 
-          // Compare button
+          // Compare button — a light selection haptic on tap, then navigate to
+          // the full RenewalReport comparison table.
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 0, 12, 14),
             child: OutlinedButton.icon(
-              onPressed: onCompare,
+              onPressed: () {
+                HapticFeedback.selectionClick();
+                onCompare();
+              },
               icon: const Icon(Icons.table_chart_rounded, size: 17),
               label: const Text('טבלת השוואה מלאה'),
               style: OutlinedButton.styleFrom(

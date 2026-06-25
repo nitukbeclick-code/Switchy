@@ -99,7 +99,7 @@ function sheetsOk(): Response {
 
 // ── buildLeadSheetRow: PURE mapping + name split ─────────────────────────────
 
-Deno.test("buildLeadSheetRow maps the 11 columns in order with an empty company + category", () => {
+Deno.test("buildLeadSheetRow maps the 12 columns in order: empty company, FILLED category, trailing quality", () => {
   const lead: Lead = {
     name: "דנה כהן",
     email: "dana@example.com",
@@ -109,9 +109,14 @@ Deno.test("buildLeadSheetRow maps the 11 columns in order with an empty company 
     status: "new",
     notes: "רוצה לעבור",
     created_at: "2026-06-20T08:00:00.000Z",
-  };
+    // consent timestamps present → the legal-to-act gate is satisfied (scored)
+    terms_accepted_at: "2026-06-20T08:00:00.000Z",
+    privacy_accepted_at: "2026-06-20T08:00:00.000Z",
+  } as Lead;
   const row = buildLeadSheetRow(lead);
-  assertEquals(row, [
+  // indices 0–10 keep their original order/contract; category (7) is now filled
+  // from the "partner-cellular-100" plan_id; a 12th column (quality) is appended.
+  assertEquals(row.slice(0, 11), [
     "",                              // company
     "2026-06-20T08:00:00.000Z",      // date (created_at)
     "דנה",                           // firstName
@@ -119,11 +124,16 @@ Deno.test("buildLeadSheetRow maps the 11 columns in order with an empty company 
     "dana@example.com",              // email
     "0501234567",                    // phone
     "partner-cellular-100",          // plan_id
-    "",                              // category
+    "cellular",                      // category — recovered from plan_id
     "form",                          // source
     "new",                           // status
     "רוצה לעבור",                    // notes
   ]);
+  assertEquals(row.length, 12);
+  // quality is a 0–100 numeric string; this rich, consented lead scores high.
+  const quality = Number(row[11]);
+  assert(Number.isFinite(quality) && quality >= 0 && quality <= 100);
+  assert(quality >= 90, `expected a high score for a complete consented lead, got ${quality}`);
 });
 
 Deno.test("buildLeadSheetRow splits name on the FIRST space (multi-word surname folds into last)", () => {
@@ -142,8 +152,12 @@ Deno.test("buildLeadSheetRow falls back to now() when created_at is missing, and
   assertEquals(row[0], ""); // company
   assertEquals(row[4], ""); // email (null → '')
   assertEquals(row[6], ""); // plan_id (null → '')
+  assertEquals(row[7], ""); // category — nothing to recover (no plan_id/notes) → ''
   assertEquals(row[10], ""); // notes (null → '')
-  assertEquals(row.length, 11);
+  assertEquals(row.length, 12); // 11 original columns + trailing quality score
+  // a name-only, phoneless, unconsented lead still produces a finite 0–100 score.
+  const quality = Number(row[11]);
+  assert(Number.isFinite(quality) && quality >= 0 && quality <= 100);
 });
 
 // ── sheetsConfigured: gating ─────────────────────────────────────────────────

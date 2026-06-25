@@ -19,7 +19,7 @@
   --ink: #111827; /* structural ink (headings, dark cards) */
   --border: #e5e7eb; /* hairline borders */
   --border-strong: #222a35; /* strong/structural borders */
-  --muted: #5b616b; /* secondary text (≥5.3:1 on glass; was #6b7280 = 4.5:1 exactly) */
+  --muted: #4a5260; /* secondary text — darkened for small metadata (≥6:1 on white, ≥6.7:1 on glass; was #5b616b) */
 
   /* Accents — use with intent, sparingly.
      IMPORTANT: split "fill" shades from "text" shades for WCAG AA (1.4.3).
@@ -215,6 +215,22 @@ h6 {
   color: var(--ink);
 }
 
+/* Tight optical tracking on Rubik display headings — matches the Flutter app's
+   condensed display set so the site and app read as one type system. The scale
+   loosens with level (big type tolerates more negative tracking than small). */
+h1 {
+  letter-spacing: -0.05em;
+}
+h2 {
+  letter-spacing: -0.04em;
+}
+h3 {
+  letter-spacing: -0.03em;
+}
+h4 {
+  letter-spacing: -0.02em;
+}
+
 a {
   /* AA: link text on a light surface uses the text-grade green (≥4.5:1), not the
      headline #16A34A fill green (3.30:1). */
@@ -316,6 +332,30 @@ a:hover {
   }
 }
 
+/* Dark-mode glass: deepen the frost (more blur) and float a faint green accent
+   glow BEHIND the panel via a radial wash, so sticky bars / navbars read as
+   raised-above-content rather than flat ink-on-ink. The radial sits on a
+   layered background (color-mix tint + radial glow); the blur lifts so the
+   content behind reads as soft frost. Light mode is left untouched. */
+:root[data-theme="dark"] .glass {
+  backdrop-filter: saturate(180%) blur(16px);
+  -webkit-backdrop-filter: saturate(180%) blur(16px);
+  background-image: radial-gradient(
+    120% 140% at 50% -20%,
+    rgba(74, 222, 128, 0.08),
+    rgba(74, 222, 128, 0) 60%
+  );
+}
+:root[data-theme="dark"] .glass-strong {
+  backdrop-filter: saturate(180%) blur(24px);
+  -webkit-backdrop-filter: saturate(180%) blur(24px);
+  background-image: radial-gradient(
+    120% 140% at 50% -20%,
+    rgba(74, 222, 128, 0.1),
+    rgba(74, 222, 128, 0) 60%
+  );
+}
+
 /* ── Cards & bento tiles ──────────────────────────────────────────────────────
    .card        — the base surface card (soft border + soft shadow + lg radius).
    .bento       — a bento tile: bigger radius, card shadow; pairs with .bento-grid.
@@ -331,6 +371,16 @@ a:hover {
   border: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-card);
+}
+/* Dark-mode top-edge glint: a hairline inset highlight along the card's top edge
+   so cards catch "light" and don't sink flat into the dark page. Light mode reads
+   this brightness naturally from the white surface; on dark we add it explicitly.
+   Composed WITH the existing soft/card shadow so the elevation is preserved. */
+:root[data-theme="dark"] .card {
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.06), var(--shadow-soft);
+}
+:root[data-theme="dark"] .bento {
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.07), var(--shadow-card);
 }
 .card-interactive {
   transition:
@@ -349,6 +399,15 @@ a:hover {
 }
 .card-interactive:active {
   transform: translateY(-1px) scale(0.995);
+}
+/* Focus ring sits INSIDE the card edge (negative offset) so the green ring never
+   collides with neighbours in dense bento/card grids. Inset offset hugs the
+   rounded corners cleanly; the ring stays the brand fill green (non-text, 3:1)
+   and remains visible on dark (the fill green is bright enough on dark glass). */
+.card:focus-visible,
+.card-interactive:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
 }
 
 /* ── Elevation tiers (apply a soft shadow without the rest of a card) ────────── */
@@ -419,6 +478,11 @@ a:hover {
 @media (min-width: 1024px) {
   .bento-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+    /* Cap the grid width on lg+ so tiles keep their proportion on ultra-wide
+       (2560px) displays instead of stretching into letterboxed slabs. Centered
+       via auto inline margins; RTL-safe (symmetric, no logical-side bias). */
+    max-width: 80rem;
+    margin-inline: auto;
   }
 }
 .section {

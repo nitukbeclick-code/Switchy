@@ -86,8 +86,11 @@ export default function SiteFooter({ columns, className }: SiteFooterProps) {
     <footer
       data-site-footer
       className={[
-        // Subtle top divider (border/60, not harsh) + generous whitespace.
-        "mt-auto border-t border-border/60 bg-surface",
+        // Distinct footer ZONE: a firmer full-opacity top border separates it
+        // from the content above, and a subtle tinted background (surface mixed
+        // a touch toward ink) sets it apart from the plain surface without
+        // breaking the white-glass brand. Token-relative, so it's dark-safe.
+        "mt-auto border-t border-border bg-[color-mix(in_srgb,var(--surface)_94%,var(--ink))]",
         className ?? "",
       ]
         .join(" ")
@@ -118,7 +121,11 @@ export default function SiteFooter({ columns, className }: SiteFooterProps) {
                   <li key={`${col.title}-${link.href}-${link.label}`}>
                     <Link
                       href={link.href}
-                      className="inline-block text-sm text-foreground transition-colors duration-200 ease-[var(--ease-out)] hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                      // Faint hover background turns each link into a discrete,
+                      // tappable target. The negative inline-start margin offsets
+                      // the inline padding so the resting text stays flush with
+                      // the column edge (RTL-correct via logical -ms/ps).
+                      className="-ms-2 inline-block rounded-md px-2 py-1 text-sm text-foreground transition-colors duration-200 ease-[var(--ease-out)] hover:bg-accent/10 hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                     >
                       {link.label}
                     </Link>

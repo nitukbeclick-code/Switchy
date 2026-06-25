@@ -104,14 +104,28 @@ export default function Home() {
       {/* ── Hero ──────────────────────────────────────────────────────────── */}
       <section className="pt-4 text-center sm:pt-8">
         <h1 className="sw-reveal font-display text-4xl font-bold tracking-tight text-ink sm:text-6xl">
-          משווים תקשורת. חוסכים כסף.
+          משווים תקשורת.{" "}
+          <span className="text-accent-text">חוסכים כסף.</span>
         </h1>
         <p
-          className="sw-reveal mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-foreground sm:text-xl"
+          className="sw-reveal mx-auto mt-5 max-w-2xl text-xl font-semibold leading-relaxed text-foreground sm:text-2xl"
           style={{ animationDelay: "60ms" }}
         >
           השוואה חינמית של מסלולי סלולר, אינטרנט, טלוויזיה, חבילות משולבות
           וחבילות חו״ל מכל הספקים בישראל — מחירים מעודכנים בשקלים.
+        </p>
+        {/* Amber VALUE badge — honest, qualitative framing (no fabricated figure);
+            the per-category savings vary, so we promise comparison value, not a
+            number the catalogue can't substantiate. */}
+        <p
+          className="sw-reveal mt-4 inline-flex items-center gap-1.5 rounded-full border border-value/30 bg-value/10 px-3.5 py-1.5 text-sm font-semibold text-value-text"
+          style={{ animationDelay: "90ms" }}
+        >
+          <span
+            aria-hidden="true"
+            className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-value"
+          />
+          מסלול מתאים יכול לחסוך לכם מאות ₪ בשנה — וההשוואה חינם
         </p>
         <div
           className="sw-reveal mt-8 flex flex-wrap items-center justify-center gap-3"
@@ -121,7 +135,7 @@ export default function Home() {
             href={`/compare/${featuredCat}`}
             location="hero"
             label="compare"
-            className="interactive press sw-lift rounded-xl bg-accent px-6 py-3 font-medium text-accent-contrast shadow-soft hover:bg-accent-hover hover:shadow-float hover:shadow-accent/20"
+            className="interactive press sw-lift rounded-xl border border-accent/40 bg-accent px-6 py-3 font-semibold text-accent-contrast shadow-[var(--glow-accent)] hover:bg-accent-hover hover:shadow-float hover:shadow-accent/30"
           >
             להשוואת מסלולים
           </TrackedCtaLink>

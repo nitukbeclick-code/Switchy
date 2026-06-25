@@ -129,11 +129,11 @@ export default function ComparisonTable({
                 key={plan.id}
                 className={[
                   "border-b border-border/70 last:border-b-0 align-top transition-colors",
-                  // Editor's-pick / promoted row: a subtle tint PLUS an inset
-                  // start-border (logical, RTL-correct) so the labeled row reads
-                  // at a glance without raising the fill opacity.
+                  // Editor's-pick / promoted row: a firmer accent tint PLUS an
+                  // inset start-border (logical, RTL-correct) so the labeled row
+                  // scans instantly without overwhelming the table.
                   label
-                    ? "bg-accent/[0.04] ring-1 ring-inset ring-accent/20 border-s-2 border-s-accent"
+                    ? "bg-accent/[0.12] ring-1 ring-inset ring-accent/25 border-s-2 border-s-accent"
                     : "hover:bg-accent/[0.03]",
                 ]
                   .join(" ")
@@ -147,16 +147,25 @@ export default function ComparisonTable({
                   <span className="flex flex-wrap items-center gap-2">
                     {plan.provider}
                     {label ? (
-                      <span
-                        className={[
-                          "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold",
-                          label === "editor"
-                            ? "bg-value/15 text-value-contrast"
-                            : "bg-accent/15 text-accent",
-                        ].join(" ")}
-                      >
-                        {LABEL_HE[label]}
-                      </span>
+                      <>
+                        {/* "מומלץ" pill — amber VALUE accent so a genuine
+                            editorial/featured pick is recognisable at a glance.
+                            Renders ONLY when the caller marked the row (honesty:
+                            §7b/§17), alongside the precise editorial label. */}
+                        <span className="inline-flex items-center rounded-full bg-value px-2 py-0.5 text-[11px] font-bold text-value-contrast">
+                          מומלץ
+                        </span>
+                        <span
+                          className={[
+                            "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold",
+                            label === "editor"
+                              ? "bg-value/15 text-value-text"
+                              : "bg-accent/15 text-accent",
+                          ].join(" ")}
+                        >
+                          {LABEL_HE[label]}
+                        </span>
+                      </>
                     ) : null}
                   </span>
                 </th>

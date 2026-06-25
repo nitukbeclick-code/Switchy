@@ -251,7 +251,12 @@ class _AppButtonState extends State<AppButton> {
                 decoration: BoxDecoration(
                   gradient: ffTheme.accentGradient,
                   borderRadius: borderRadius,
-                  boxShadow: (_loading || !widget.enabled) ? null : ffTheme.shadowAccent,
+                  // The "live" green glow: a 1px accent ring + a soft accent
+                  // drop (the Flutter mirror of the site's --glow-accent), so the
+                  // primary CTA reads energised rather than just lifted. Replaces
+                  // the older shadowAccent here to avoid double-stacking drops.
+                  boxShadow:
+                      (_loading || !widget.enabled) ? null : ffTheme.glowAccent,
                 ),
                 // Glass edge: a faint top light over the gradient — the same
                 // dimensional tell the site's primaries carry.

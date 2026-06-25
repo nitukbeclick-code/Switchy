@@ -194,46 +194,67 @@ class _Hero extends StatelessWidget {
               const SizedBox(height: 6),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: Row(
-                  children: [
-                    Hero(
-                      tag: 'tracked-logo-${tp.id}',
-                      child: Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
+                // "Your plan" is the ANCHOR the alternatives below are measured
+                // against — give it a soft green ACTION wash + green hairline +
+                // a "המסלול שלך" tag so it reads as the distinct reference card,
+                // not just another comparison row.
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: ffTheme.brandAccent.withValues(alpha: 0.16),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: ffTheme.brandAccent.withValues(alpha: 0.5)),
+                  ),
+                  child: Row(
+                    children: [
+                      Hero(
+                        tag: 'tracked-logo-${tp.id}',
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: LogoWidget(provider: tp.provider, size: 40),
                         ),
-                        child: LogoWidget(provider: tp.provider, size: 40),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.person_pin_circle_rounded,
+                                    size: 13, color: Colors.white.withValues(alpha: 0.9)),
+                                const SizedBox(width: 4),
+                                Text('המסלול שלך היום',
+                                    style: GoogleFonts.assistant(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                        color: Colors.white.withValues(alpha: 0.9))),
+                              ],
+                            ),
+                            Text('${tp.provider} · ${tp.planName}',
+                                style: GoogleFonts.rubik(
+                                    fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white),
+                                maxLines: 1, overflow: TextOverflow.ellipsis),
+                          ],
+                        ),
+                      ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          Text('המסלול שלך היום',
-                              style: GoogleFonts.assistant(
-                                  fontSize: 12, color: Colors.white.withValues(alpha: 0.8))),
-                          Text('${tp.provider} · ${tp.planName}',
+                          Text('₪${tp.monthlyPrice}',
                               style: GoogleFonts.rubik(
-                                  fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white),
-                              maxLines: 1, overflow: TextOverflow.ellipsis),
+                                  fontSize: 24, fontWeight: FontWeight.w800, color: Colors.white)),
+                          Text(priceCaption,
+                              style: GoogleFonts.assistant(
+                                  fontSize: 11, color: Colors.white.withValues(alpha: 0.8))),
                         ],
                       ),
-                    ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text('₪${tp.monthlyPrice}',
-                            style: GoogleFonts.rubik(
-                                fontSize: 24, fontWeight: FontWeight.w800, color: Colors.white)),
-                        Text(priceCaption,
-                            style: GoogleFonts.assistant(
-                                fontSize: 11, color: Colors.white.withValues(alpha: 0.8))),
-                      ],
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
               if (days != null) ...[

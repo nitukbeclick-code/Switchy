@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -10,6 +11,7 @@ import '../../data.dart';
 import '../../models.dart';
 import '../../components/logo_widget/logo_widget.dart';
 import '../../widgets/app_button.dart';
+import '../../widgets/refreshable_scroll.dart';
 import '../../services/recommendation_engine.dart';
 import '../../services/reminder_schedule.dart';
 import '../../services/push_notification_service.dart';
@@ -29,6 +31,14 @@ class _RenewalWidgetState extends State<RenewalWidget> {
   void initState() {
     super.initState();
     _loadRemote().catchError((_) {});
+  }
+
+  /// Pull-to-refresh: re-pull remote tracked plans and re-derive the list. A
+  /// frame-bounded setState recomputes the watch summary + per-plan cards from
+  /// AppState even when the remote fetch yields nothing new.
+  Future<void> _refresh() async {
+    await _loadRemote().catchError((_) {});
+    if (mounted) setState(() {});
   }
 
   Future<void> _loadRemote() async {
@@ -78,12 +88,21 @@ class _RenewalWidgetState extends State<RenewalWidget> {
         leading: IconButton(
           icon: const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white),
           tooltip: 'חזרה',
-          onPressed: () => context.safePop(),
+          onPressed: () {
+            HapticFeedback.selectionClick();
+            context.safePop();
+          },
         ),
       ),
-      body: ListView(
+      // Pull-to-refresh + bouncing overscroll via the shared primitive. The
+      // intro hero card stays the first item in the list (NOT a pinned header
+      // floating over content), so every tappable control below — including the
+      // "טבלת השוואה מלאה" compare button — stays fully hit-testable.
+      body: RefreshableScroll(
+        onRefresh: _refresh,
         padding: const EdgeInsets.all(20),
-        children: [
+        slivers: [
+          SliverList.list(children: [
           // Intro card
           _IntroCard(ffTheme: ffTheme)
               .animate()
@@ -96,6 +115,8 @@ class _RenewalWidgetState extends State<RenewalWidget> {
               ffTheme: ffTheme,
               onAdd: () => _showAddSheet(context),
               onFind: () => context.goNamed('Results'),
+              onQuiz: () => context.goNamed('Quiz'),
+              onBills: () => context.goNamed('Bills'),
             ).animate().fadeIn(delay: 150.ms),
           ] else ...[
             // Price-watch summary: how many plans we're tracking and the total
@@ -144,6 +165,7 @@ class _RenewalWidgetState extends State<RenewalWidget> {
               .fadeIn(delay: 300.ms),
 
           const SizedBox(height: 32),
+          ]),
         ],
       ),
     );
@@ -566,11 +588,15 @@ class _PlanCard extends StatelessWidget {
             ),
           ],
 
-          // Compare button
+          // Compare button — a light selection haptic on tap, then navigate to
+          // the full RenewalReport comparison table.
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 0, 12, 14),
             child: OutlinedButton.icon(
-              onPressed: onCompare,
+              onPressed: () {
+                HapticFeedback.selectionClick();
+                onCompare();
+              },
               icon: const Icon(Icons.table_chart_rounded, size: 17),
               label: const Text('טבלת השוואה מלאה'),
               style: OutlinedButton.styleFrom(
@@ -595,10 +621,14 @@ class _EmptyState extends StatelessWidget {
     required this.ffTheme,
     required this.onAdd,
     required this.onFind,
+    required this.onQuiz,
+    required this.onBills,
   });
   final AppTheme ffTheme;
   final VoidCallback onAdd;
   final VoidCallback onFind;
+  final VoidCallback onQuiz;
+  final VoidCallback onBills;
 
   @override
   Widget build(BuildContext context) {
@@ -643,6 +673,45 @@ class _EmptyState extends StatelessWidget {
           label: const Text('או מצא מסלול חדש לחיסכון'),
           style: TextButton.styleFrom(foregroundColor: ffTheme.primary),
         ),
+        const SizedBox(height: 16),
+        // Two more ways to set one up without typing it all in by hand: answer a
+        // quick quiz to get a match, or fill in the current bill on the Bills
+        // screen — both feed straight back into something worth tracking.
+        Divider(color: ffTheme.lineColor, height: 1),
+        const SizedBox(height: 12),
+        Text('לא בטוחים מאיפה להתחיל?',
+            style: ffTheme.labelMedium.copyWith(color: ffTheme.secondaryText)),
+        const SizedBox(height: 10),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: onQuiz,
+                icon: const Icon(Icons.quiz_outlined, size: 18),
+                label: const Text('שאלון התאמה'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: ffTheme.primary,
+                  side: BorderSide(color: ffTheme.primary.withValues(alpha: 0.5)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: OutlinedButton.icon(
+                onPressed: onBills,
+                icon: const Icon(Icons.receipt_long_outlined, size: 18),
+                label: const Text('החשבון שלי'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: ffTheme.primary,
+                  side: BorderSide(color: ffTheme.primary.withValues(alpha: 0.5)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ),
+          ],
+        ),
         const SizedBox(height: 32),
       ],
     );
@@ -665,38 +734,68 @@ class _ReminderTile extends StatelessWidget {
     return Container(
       // Premium card surface — soft hairline + shadow, replacing the old border.
       decoration: ffTheme.cardDecoration(radius: ffTheme.radiusMd),
-      child: SwitchListTile(
-        value: appState.renewalReminders,
-        onChanged: (v) async {
-          appState.setRenewalReminders(v);
-          appBackend.setRenewalReminder(v).catchError((_) {});
-          if (v) await PushNotificationService.instance.requestPermission();
-          await PushNotificationService.instance.syncRenewalReminders(appState);
-        },
-        activeThumbColor: ffTheme.primary,
-        title: Text('תזכורות חידוש',
-            style: ffTheme.titleSmall
-                .copyWith(fontWeight: FontWeight.w700)),
-        subtitle: Padding(
-          padding: const EdgeInsets.only(top: 2),
-          child: Text(
-            subtitle,
-            style: ffTheme.bodySmall
-                .copyWith(color: ffTheme.secondaryText),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SwitchListTile(
+            value: appState.renewalReminders,
+            onChanged: (v) async {
+              appState.setRenewalReminders(v);
+              appBackend.setRenewalReminder(v).catchError((_) {});
+              if (v) await PushNotificationService.instance.requestPermission();
+              await PushNotificationService.instance.syncRenewalReminders(appState);
+            },
+            activeThumbColor: ffTheme.primary,
+            title: Text('תזכורות חידוש',
+                style: ffTheme.titleSmall
+                    .copyWith(fontWeight: FontWeight.w700)),
+            subtitle: Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text(
+                subtitle,
+                style: ffTheme.bodySmall
+                    .copyWith(color: ffTheme.secondaryText),
+              ),
+            ),
+            secondary: Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: ffTheme.accent1,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(Icons.notifications_active_outlined,
+                  color: ffTheme.primary, size: 20),
+            ),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
           ),
-        ),
-        secondary: Container(
-          width: 40,
-          height: 40,
-          decoration: BoxDecoration(
-            color: ffTheme.accent1,
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Icon(Icons.notifications_active_outlined,
-              color: ffTheme.primary, size: 20),
-        ),
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          // Explicit opt-in microcopy (Spam-Law §30A): shown once reminders are
+          // ON, stating the user consented to receive renewal notifications and
+          // can withdraw consent any time from the same switch.
+          if (appState.renewalReminders)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.verified_user_outlined,
+                      size: 14, color: ffTheme.secondaryText),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'בהפעלה אישרת לקבל מאיתנו התראות חידוש (התראה באפליקציה, '
+                      'ואם תאשר גם אימייל עם קישור הסרה). אפשר לבטל בכל רגע.',
+                      style: ffTheme.labelSmall.copyWith(
+                        color: ffTheme.secondaryText,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -999,7 +1098,7 @@ class _AddPlanSheetState extends State<_AddPlanSheet> {
                   value: _joinedViaUs,
                   onChanged: (v) => setState(() => _joinedViaUs = v),
                   activeThumbColor: ffTheme.primary,
-                  title: Text('הצטרפתי דרך חוסך',
+                  title: Text('הצטרפתי דרך Switchy AI',
                       style: ffTheme.bodyMedium
                           .copyWith(fontWeight: FontWeight.w600)),
                   contentPadding:

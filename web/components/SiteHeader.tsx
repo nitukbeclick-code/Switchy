@@ -1,7 +1,7 @@
 // ────────────────────────────────────────────────────────────────────────────
 // <SiteHeader> — the global, sticky site masthead, intended to render on EVERY
 // route (place it in app/layout.tsx, before {children}). Provides:
-//   • brand wordmark ("חוסך / Switch AI") linking home,
+//   • brand wordmark ("Switchy AI") linking home,
 //   • primary internal nav (השוואה · ספקים · דופק השוק · מעבר ספק),
 //   • one green ACTION CTA (שיחת ייעוץ חינם → /#lead).
 //
@@ -61,10 +61,10 @@ export default function SiteHeader({ className }: SiteHeaderProps) {
         >
           <span
             aria-hidden="true"
-            className="inline-block h-5 w-1.5 rounded-full bg-accent transition-transform duration-200 group-hover:scale-y-110"
+            className="inline-block h-5 w-1.5 rounded-full bg-accent transition-transform duration-200 ease-[var(--ease-out)] motion-safe:group-hover:scale-y-110"
           />
-          חוסך
-          <span className="text-sm font-semibold text-muted">/ Switch AI</span>
+          Switchy
+          <span className="text-sm font-semibold text-muted">AI</span>
         </Link>
 
         {/* Primary nav — hidden on small screens (footer carries the full set). */}
@@ -76,7 +76,7 @@ export default function SiteHeader({ className }: SiteHeaderProps) {
             <Link
               key={link.href}
               href={link.href}
-              className="rounded-xl px-3 py-2 text-sm font-medium text-foreground transition-all duration-200 hover:-translate-y-0.5 hover:bg-accent/[0.06] hover:text-accent active:translate-y-0"
+              className="rounded-xl px-3 py-2 text-sm font-medium text-foreground transition-[color,background-color,transform] duration-150 ease-[var(--ease-out)] hover:bg-accent/[0.06] hover:text-accent active:scale-[0.97] [@media(hover:hover)_and_(pointer:fine)]:motion-safe:hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             >
               {link.label}
             </Link>
@@ -92,7 +92,7 @@ export default function SiteHeader({ className }: SiteHeaderProps) {
           href="/#lead"
           location="header"
           label="consult"
-          className="rounded-xl bg-accent px-4 py-2 text-sm font-semibold text-accent-contrast transition-all duration-200 hover:-translate-y-0.5 hover:bg-accent-hover hover:shadow-md hover:shadow-accent/25 active:translate-y-0 active:scale-[.98]"
+          className="rounded-xl border border-accent/40 bg-accent px-4 py-2 text-sm font-semibold text-accent-contrast shadow-[var(--glow-accent)] transition-[color,background-color,box-shadow,transform] duration-150 ease-[var(--ease-out)] hover:bg-accent-hover hover:shadow-float hover:shadow-accent/30 active:scale-[0.96] [@media(hover:hover)_and_(pointer:fine)]:motion-safe:hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
           שיחת ייעוץ חינם
         </TrackedCtaLink>

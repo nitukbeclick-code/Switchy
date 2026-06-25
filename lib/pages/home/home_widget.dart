@@ -13,6 +13,8 @@ import '../../services/backend/backend.dart' show MeetingStatus;
 import '../../services/meeting_slots.dart' show meetingLocalStart;
 import '../meeting/meeting_status_card.dart';
 import '../../widgets/pressable.dart';
+import '../../widgets/refreshable_scroll.dart';
+import '../../widgets/app_sliver_header.dart';
 import '../../services/recommendation_engine.dart';
 import '../../services/notifications.dart';
 import '../../services/savings_summary.dart';
@@ -50,6 +52,18 @@ class _HomeWidgetState extends State<HomeWidget> {
       _savingsKey = key;
     }
     return _savingsMemo!;
+  }
+
+  /// Pull-to-refresh: drop the memoised derivations so the next build recomputes
+  /// the savings summary (and the per-category cheapest scan) from the current
+  /// AppState, then re-render. Notifications are derived inline from AppState in
+  /// the header builder, so clearing the savings memo + a [setState] is enough to
+  /// re-derive every home figure honestly.
+  Future<void> _onRefresh() async {
+    _savingsKey = null;
+    _savingsMemo = null;
+    _cheapestCache.clear();
+    if (mounted) setState(() {});
   }
 
   @override
@@ -102,39 +116,48 @@ class _HomeWidgetState extends State<HomeWidget> {
       body: Stack(
         children: [
           // ── Main scrollable content ────────────────────────────────────────
-          CustomScrollView(
+          // Pull-to-refresh (bouncing physics) over the whole home feed; the
+          // gesture clears the memoised savings/cheapest derivations and re-builds.
+          RefreshableScroll(
             controller: _scrollController,
+            onRefresh: _onRefresh,
             slivers: [
-              // ── 1. Brand header ────────────────────────────────────────────
-              SliverToBoxAdapter(child: _buildHeader(context, ffTheme, appState)),
+              // ── 1. Collapsing brand header ─────────────────────────────────
+              _buildHeader(context, ffTheme, appState),
 
-              // ── 2. Renewal Radar alert ─────────────────────────────────────
+              // ════════════════════════════════════════════════════════════════
+              // ABOVE THE FOLD — the user's personal, high-value content first:
+              // what's about to renew, how much they can save, their top pick,
+              // and the plans they're already tracking / just viewed. This is the
+              // "your money right now" band — it earns the first scroll.
+              // ════════════════════════════════════════════════════════════════
+
+              // ── 2. Renewal Radar alert (personal, time-critical) ───────────
               _buildRenewalAlert(context, ffTheme, appState),
 
-              // ── 3. Savings hero card ───────────────────────────────────────
+              // ── 3. Savings hero card (personal headline figure) ────────────
               SliverToBoxAdapter(child: _buildSavingsHero(context, ffTheme, savings)),
 
-              // ── 4. Hot deal card ───────────────────────────────────────────
-              if (deal != null)
-                SliverToBoxAdapter(child: _buildHotDeal(context, ffTheme, deal, appState)),
+              // ── 4. Top pick for you (personal recommendation) ──────────────
+              SliverToBoxAdapter(child: _buildTopPick(context, ffTheme, appState)),
 
-              // ── 4b. Quiz match (when quiz completed) ──────────────────────
+              // ── 5. Quiz match (personal, when quiz completed) ──────────────
               if (appState.quizCompleted)
                 SliverToBoxAdapter(child: _buildQuizMatch(context, ffTheme, appState)),
 
-              // ── 4c. Top pick for you ──────────────────────────────────────
-              SliverToBoxAdapter(child: _buildTopPick(context, ffTheme, appState)),
+              // ── 6. Hot deal card (a real saving on the active category) ────
+              if (deal != null)
+                SliverToBoxAdapter(child: _buildHotDeal(context, ffTheme, deal, appState)),
 
-              // ── 5. Category grid ───────────────────────────────────────────
-              SliverToBoxAdapter(child: _buildCategoryGrid(context, ffTheme, appState, savings)),
+              // ── 7. Watchlist quick view (plans the user tracks) ────────────
+              if (appState.watchedPlans.isNotEmpty)
+                SliverToBoxAdapter(child: _buildWatchlist(context, ffTheme, appState)),
 
-              // ── 6. AI advisor card ─────────────────────────────────────────
-              SliverToBoxAdapter(child: _buildAIAdvisor(context, ffTheme)),
+              // ── 8. Recently viewed (the user's own trail) ──────────────────
+              if (appState.recentlyViewed.isNotEmpty)
+                SliverToBoxAdapter(child: _buildRecentlyViewed(context, ffTheme, appState)),
 
-              // ── 6b. Community highlights ──────────────────────────────────
-              SliverToBoxAdapter(child: _buildCommunityHighlights(context, ffTheme)),
-
-              // ── 6c. Booked video meeting status ───────────────────────────
+              // ── 9. Booked video meeting status (actionable, personal) ──────
               if (_showMeetingCard(appState))
                 SliverToBoxAdapter(
                   child: Padding(
@@ -146,21 +169,29 @@ class _HomeWidgetState extends State<HomeWidget> {
                   ),
                 ),
 
-              // ── 7. Tools quick-action row ──────────────────────────────────
+              // ════════════════════════════════════════════════════════════════
+              // BELOW THE FOLD — secondary / browse content, de-emphasised so it
+              // doesn't dominate the scroll: category browse, a compact tools
+              // row, the AI-advisor promo, community, and the provider strip.
+              // Everything stays present + navigable (de-emphasise, not remove).
+              // ════════════════════════════════════════════════════════════════
+
+              // ── 10. Category grid (browse) ─────────────────────────────────
+              SliverToBoxAdapter(child: _buildCategoryGrid(context, ffTheme, appState, savings)),
+
+              // ── 11. Tools quick-action row (compact) ───────────────────────
               SliverToBoxAdapter(child: _buildToolsRow(context, ffTheme)),
 
-              // ── 8. Watchlist quick view ────────────────────────────────────
-              if (appState.watchedPlans.isNotEmpty)
-                SliverToBoxAdapter(child: _buildWatchlist(context, ffTheme, appState)),
+              // ── 12. AI advisor promo (compact) ─────────────────────────────
+              SliverToBoxAdapter(child: _buildAIAdvisor(context, ffTheme)),
 
-              // ── 8b. Recently viewed ───────────────────────────────────────
-              if (appState.recentlyViewed.isNotEmpty)
-                SliverToBoxAdapter(child: _buildRecentlyViewed(context, ffTheme, appState)),
+              // ── 13. Community highlights (compact) ─────────────────────────
+              SliverToBoxAdapter(child: _buildCommunityHighlights(context, ffTheme)),
 
-              // ── 9. Brand trust strip ───────────────────────────────────────
+              // ── 14. Brand trust strip ──────────────────────────────────────
               SliverToBoxAdapter(child: _buildBrandStrip(context, ffTheme)),
 
-              // ── 10. Bottom padding for nav + FAB ──────────────────────────
+              // ── 15. Bottom padding for nav + FAB ──────────────────────────
               const SliverToBoxAdapter(child: SizedBox(height: 100)),
             ],
           ),
@@ -175,14 +206,16 @@ class _HomeWidgetState extends State<HomeWidget> {
                 boxShadow: ffTheme.shadowAccent,
               ),
               child: FloatingActionButton(
-                // Green ACTION — request a callback.
+                // Green ACTION — request a callback. Icon-only, so it carries a
+                // tooltip (also surfaced as a semantics label) per the a11y rule.
+                tooltip: 'בקשת שיחה חוזרת',
                 backgroundColor: ffTheme.brandAccent,
                 elevation: 0,
                 onPressed: () {
                   HapticFeedback.lightImpact();
                   context.pushNamed('Callback');
                 },
-                child: const Icon(Icons.phone_rounded, color: Colors.white, size: 26),
+                child: const ExcludeSemantics(child: Icon(Icons.phone_rounded, color: Colors.white, size: 26)),
               ),
             ),
           ),
@@ -344,105 +377,104 @@ class _HomeWidgetState extends State<HomeWidget> {
     );
   }
 
+  /// Collapsing brand header (the shared [AppSliverHeader]) — the greeting is the
+  /// large title that shrinks on scroll, the notification bell rides in the
+  /// trailing actions, and the search affordance lives in the expanded
+  /// [flexibleChild] as a clearly-a-button pill. Home is a root tab, so there's
+  /// nothing to pop: [showBack] is false.
   Widget _buildHeader(BuildContext context, AppTheme ffTheme, AppState appState) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: ffTheme.freshGradient,
+    return AppSliverHeader(
+      title: '${_greeting()} ${appState.firstName}',
+      showBack: false,
+      expandedHeight: 176,
+      actions: [_buildNotificationBell(context, ffTheme, appState)],
+      flexibleChild: _buildHeaderSearch(context, ffTheme),
+    );
+  }
+
+  /// The notification bell action: an icon-only [IconButton] (keeps its
+  /// `התראות` tooltip / semantics label) with the amber unread badge stacked on
+  /// the corner. Tapping it pushes the Notifications route.
+  Widget _buildNotificationBell(BuildContext context, AppTheme ffTheme, AppState appState) {
+    return Padding(
+      padding: const EdgeInsetsDirectional.only(end: 6),
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.center,
+        children: [
+          IconButton(
+            icon: const Icon(Icons.notifications_outlined, color: Colors.white, size: 22),
+            tooltip: 'התראות',
+            onPressed: () {
+              HapticFeedback.lightImpact();
+              context.pushNamed('Notifications');
+            },
+          ),
+          Builder(builder: (context) {
+            final count = notificationCount(appState);
+            if (count == 0) return const SizedBox.shrink();
+            return PositionedDirectional(
+              top: 6,
+              end: 6,
+              child: Container(
+                width: 16,
+                height: 16,
+                // Amber VALUE dot — the unread badge pops against the green
+                // header and reads as "needs attention" in both themes.
+                decoration: BoxDecoration(color: ffTheme.saving, shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 1.5)),
+                child: Center(child: Text(count > 9 ? '9+' : '$count', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: ffTheme.onSaving))),
+              ),
+            );
+          }),
+        ],
       ),
-      child: SafeArea(
-        bottom: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 14, 20, 28),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              // Left: greeting
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '${_greeting()} ${appState.firstName}',
-                      style: AppTheme.of(context).headlineSmall.copyWith(
-                        color: Colors.white,
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Semantics(
-                      button: true,
-                      label: 'חיפוש ספק או מסלול',
-                      child: GestureDetector(
-                        onTap: () {
-                          HapticFeedback.lightImpact();
-                          context.pushNamed('Search');
-                        },
-                        child: Container(
-                          margin: const EdgeInsets.only(top: 8),
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(ffTheme.radiusPill),
-                            border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(Icons.search_rounded, color: Colors.white.withValues(alpha: 0.7), size: 16),
-                              const SizedBox(width: 8),
-                              Text('חפש ספק או מסלול...', style: AppTheme.of(context).bodySmall.copyWith(color: Colors.white.withValues(alpha: 0.65))),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              // Right: notification bell
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Container(
-                    width: 44,
-                    height: 44,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.10),
-                      shape: BoxShape.circle,
-                    ),
-                    child: IconButton(
-                      icon: const Icon(Icons.notifications_outlined, color: Colors.white, size: 22),
-                      tooltip: 'התראות',
-                      onPressed: () {
-                        HapticFeedback.lightImpact();
-                        context.pushNamed('Notifications');
-                      },
-                      padding: EdgeInsets.zero,
-                    ),
+    );
+  }
+
+  /// A real search affordance — a full-width pill that reads unmistakably as a
+  /// button: a leading search icon, the prompt text, and a trailing chevron
+  /// (RTL-correct `chevron_left`) pointing into the search screen. Wrapped in a
+  /// labelled [Semantics] button; tapping pushes the Search route. Enforces the
+  /// minimum 48px tap target.
+  Widget _buildHeaderSearch(BuildContext context, AppTheme ffTheme) {
+    return Semantics(
+      button: true,
+      label: 'חיפוש ספק או מסלול',
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            HapticFeedback.lightImpact();
+            context.pushNamed('Search');
+          },
+          borderRadius: BorderRadius.circular(ffTheme.radiusPill),
+          child: Container(
+            constraints: const BoxConstraints(minHeight: kMinTapTarget),
+            padding: const EdgeInsetsDirectional.fromSTEB(16, 12, 12, 12),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.18),
+              borderRadius: BorderRadius.circular(ffTheme.radiusPill),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.30)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.search_rounded, color: Colors.white, size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'חפש ספק או מסלול...',
+                    style: AppTheme.of(context).bodySmall.copyWith(color: Colors.white.withValues(alpha: 0.85)),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  Builder(builder: (context) {
-                    final count = notificationCount(appState);
-                    if (count == 0) return const SizedBox.shrink();
-                    return Positioned(
-                      top: -2,
-                      right: -2,
-                      child: Container(
-                        width: 16,
-                        height: 16,
-                        // Amber VALUE dot — the unread badge pops against the ink
-                        // header and reads as "needs attention" in both themes.
-                        decoration: BoxDecoration(color: ffTheme.saving, shape: BoxShape.circle, border: Border.all(color: Colors.white, width: 1.5)),
-                        child: Center(child: Text(count > 9 ? '9+' : '$count', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w800, color: ffTheme.onSaving))),
-                      ),
-                    );
-                  }),
-                ],
-              ),
-            ],
+                ),
+                Icon(Icons.chevron_left_rounded, color: Colors.white.withValues(alpha: 0.85), size: 20),
+              ],
+            ),
           ),
         ),
       ),
-    ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.06, end: 0, curve: Curves.easeOutCubic);
+    );
   }
 
   Widget _buildSavingsHero(BuildContext context, AppTheme ffTheme, SavingsSummary savings) {
@@ -514,7 +546,8 @@ class _HomeWidgetState extends State<HomeWidget> {
             child: GestureDetector(
               onTap: () {
                 HapticFeedback.lightImpact();
-                appState.billsPersonalized ? context.goNamed('Results') : context.goNamed('Quiz');
+                // Push (not go) so the hardware/gesture back returns to home.
+                appState.billsPersonalized ? context.pushNamed('Results') : context.pushNamed('Quiz');
               },
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 13),
@@ -726,7 +759,15 @@ class _HomeWidgetState extends State<HomeWidget> {
                 onTap: () {
                   HapticFeedback.selectionClick();
                   appState.setCategory(cat.id);
-                  context.goNamed('Results');
+                  // Electricity has its own dedicated comparison screen (private
+                  // suppliers, indicative pricing) rather than the generic
+                  // results list; every other category lands on Results.
+                  if (cat.id == 'electricity') {
+                    context.pushNamed('Electricity');
+                  } else {
+                    // Push (not go) so back returns to home.
+                    context.pushNamed('Results');
+                  }
                 },
                 child: Container(
                   padding: const EdgeInsets.all(16),
@@ -784,6 +825,9 @@ class _HomeWidgetState extends State<HomeWidget> {
     );
   }
 
+  /// Secondary promo — condensed into a single compact band (tighter padding, a
+  /// one-line headline and a smaller glyph) so it reads as an entry point, not a
+  /// hero. Route + brand tokens + tap target unchanged.
   Widget _buildAIAdvisor(BuildContext context, AppTheme ffTheme) {
     return Pressable(
       onTap: () {
@@ -791,45 +835,52 @@ class _HomeWidgetState extends State<HomeWidget> {
         context.pushNamed('AIAdvisor');
       },
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        padding: const EdgeInsets.all(22),
+        margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           gradient: ffTheme.freshGradient,
           borderRadius: BorderRadius.circular(ffTheme.radiusCard),
-          boxShadow: ffTheme.shadowLifted,
+          boxShadow: ffTheme.shadowSoft,
         ),
         child: Row(
           children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                // Green chip glyph — the brand "AI" mark, decorative.
+                color: ffTheme.brandAccent,
+                borderRadius: BorderRadius.circular(ffTheme.radiusSm),
+              ),
+              child: const Center(
+                child: ExcludeSemantics(
+                  child: Icon(Icons.chat_bubble_rounded, color: Colors.white, size: 20),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      // Green chip on the ink advisor band — the brand "AI" tag.
-                      color: ffTheme.brandAccent,
-                      borderRadius: BorderRadius.circular(ffTheme.radiusSm),
-                    ),
-                    child: Text(
-                      '✦ חוסך AI',
-                      style: ffTheme.labelSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w800),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
                   Text(
-                    'שאלו אותנו הכל\nעל מסלולי תקשורת',
-                    style: ffTheme.titleMedium.copyWith(color: Colors.white),
+                    '✦ Switchy AI · שאלו אותנו הכל',
+                    style: ffTheme.titleSmall.copyWith(color: Colors.white, fontWeight: FontWeight.w800),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 2),
                   Text(
                     'זמין 24/7 · עונה תוך שניות',
                     style: ffTheme.bodySmall.copyWith(color: Colors.white.withValues(alpha: 0.60)),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
             ),
-            Icon(Icons.chat_bubble_rounded, color: ffTheme.brandAccent, size: 40),
+            const SizedBox(width: 8),
+            Icon(Icons.chevron_left_rounded, color: ffTheme.brandAccent, size: 22),
           ],
         ),
       ),
@@ -842,6 +893,8 @@ class _HomeWidgetState extends State<HomeWidget> {
     // invented like/reply counts. Consistent with the honestly-empty Community
     // page: until someone actually posts, we show a single "join the discussion"
     // CTA instead of pretending there's a buzzing feed.
+    // Secondary section — cap the preview at 2 posts (was 3) so the browse band
+    // stays compact; the "all ←" link carries the user into the full feed.
     final realPosts = appState.communityPosts
         .map((p) => _CommunityPreview(
               user: (p['author'] as String? ?? 'א')[0],
@@ -849,11 +902,11 @@ class _HomeWidgetState extends State<HomeWidget> {
               text: p['text'] as String? ?? '',
             ))
         .where((p) => p.text.isNotEmpty)
-        .take(3)
+        .take(2)
         .toList();
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -890,7 +943,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                 onTap: () => context.goNamed('Community'),
                 child: Container(
                   margin: const EdgeInsets.only(bottom: 8),
-                  padding: const EdgeInsets.all(14),
+                  padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
                     color: ffTheme.accent1,
                     borderRadius: BorderRadius.circular(ffTheme.radiusLg),
@@ -900,8 +953,8 @@ class _HomeWidgetState extends State<HomeWidget> {
                   child: Row(
                     children: [
                       Container(
-                        width: 38,
-                        height: 38,
+                        width: 32,
+                        height: 32,
                         decoration: BoxDecoration(
                           // Green avatar — the community identity accent.
                           gradient: ffTheme.accentGradient,
@@ -910,11 +963,11 @@ class _HomeWidgetState extends State<HomeWidget> {
                         child: Center(
                           child: Text(
                             post.user,
-                            style: ffTheme.labelLarge.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
+                            style: ffTheme.labelMedium.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
                           ),
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 10),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -998,6 +1051,7 @@ class _HomeWidgetState extends State<HomeWidget> {
 
   Widget _buildToolsRow(BuildContext context, AppTheme ffTheme) {
     final tools = [
+      const _Tool(icon: Icons.local_fire_department_rounded, label: 'מבצעים חמים', route: 'Deals'),
       const _Tool(icon: Icons.videocam_rounded, label: 'פגישת וידאו', route: 'Meeting'),
       const _Tool(icon: Icons.adjust_rounded, label: 'ההתאמות שלי', route: 'Matches'),
       const _Tool(icon: Icons.savings_rounded, label: 'החיסכון שלי', route: 'Savings'),
@@ -1010,21 +1064,25 @@ class _HomeWidgetState extends State<HomeWidget> {
       const _Tool(icon: Icons.smart_toy_rounded, label: 'יועץ AI', route: 'AIAdvisor'),
     ];
 
+    // Secondary browse — a compact horizontal rail (tighter cards + smaller
+    // glyphs than the personal cards above) so the full toolbox is one swipe
+    // away without dominating the scroll. Every route stays reachable.
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 0, 4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
-            padding: const EdgeInsets.only(right: 0, bottom: 12),
+            padding: const EdgeInsets.only(right: 0, bottom: 10),
             child: Text('כלים שימושיים', style: ffTheme.titleLarge),
           ),
           SizedBox(
-            height: 96,
+            height: 84,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
               itemCount: tools.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 12),
+              separatorBuilder: (_, __) => const SizedBox(width: 10),
               itemBuilder: (context, i) {
                 final tool = tools[i];
                 return Pressable(
@@ -1033,13 +1091,13 @@ class _HomeWidgetState extends State<HomeWidget> {
                     context.pushNamed(tool.route);
                   },
                   child: Container(
-                    width: 110,
-                    padding: const EdgeInsets.all(14),
+                    width: 100,
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
                     decoration: ffTheme.cardDecoration(),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(tool.icon, size: 26, color: ffTheme.primaryText),
+                        Icon(tool.icon, size: 22, color: ffTheme.primaryText),
                         const SizedBox(height: 6),
                         Text(
                           tool.label,
@@ -1093,6 +1151,7 @@ class _HomeWidgetState extends State<HomeWidget> {
             height: 90,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
               itemCount: appState.watchedPlans.length,
               separatorBuilder: (_, __) => const SizedBox(width: 10),
               itemBuilder: (_, i) {
@@ -1186,6 +1245,7 @@ class _HomeWidgetState extends State<HomeWidget> {
             height: 90,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
               itemCount: appState.recentlyViewed.length,
               separatorBuilder: (_, __) => const SizedBox(width: 10),
               itemBuilder: (_, i) {
@@ -1258,6 +1318,7 @@ class _HomeWidgetState extends State<HomeWidget> {
             height: 44,
             child: ListView.separated(
               scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
               itemCount: providers.length,
               separatorBuilder: (_, __) => const SizedBox(width: 8),
               itemBuilder: (context, i) {

@@ -524,6 +524,10 @@ class _MeetingWidgetState extends State<MeetingWidget> {
 
   Widget _buildSlotChips(AppTheme t) {
     final slots = meetingSlotsFor(_effectiveDate(bookableMeetingDates()));
+    // Defensive: a bookable day always has slots today, but if the rules ever
+    // leave a day with none, never render a silent empty gap — offer the user a
+    // real alternative (a phone callback) so the flow can't dead-end here.
+    if (slots.isEmpty) return _buildNoSlots(t);
     return Wrap(
       spacing: 8,
       runSpacing: 8,
@@ -558,6 +562,51 @@ class _MeetingWidgetState extends State<MeetingWidget> {
           ),
         );
       }).toList(),
+    );
+  }
+
+  /// Shown when the chosen day has no bookable slots: an honest note plus a
+  /// "request a callback instead" route, so the wizard never strands the user.
+  Widget _buildNoSlots(AppTheme t) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: t.cardDecoration(radius: t.radiusMd),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.event_busy_rounded, size: 20, color: t.secondaryText),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text('אין מועדים פנויים ביום זה',
+                    style: t.titleSmall.copyWith(fontWeight: FontWeight.w700)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'אפשר לבחור יום אחר למעלה, או לבקש שנציג יחזור אליכם טלפונית במקום.',
+            style: t.bodySmall.copyWith(color: t.secondaryText),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () => context.pushNamed('Callback'),
+              icon: const Icon(Icons.headset_mic_outlined, size: 18),
+              label: const Text('בקשו שיחה חוזרת במקום'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: t.brandAccent,
+                side: BorderSide(color: t.brandAccent),
+                minimumSize: const Size(double.infinity, 46),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:shimmer/shimmer.dart';
 import '../../theme/app_theme.dart';
 import '../../core/nav.dart';
 import '../../app_state.dart';
@@ -9,6 +11,9 @@ import '../../data.dart';
 import '../../components/logo_widget/logo_widget.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/app_snackbar.dart';
+import '../../widgets/app_sheet.dart';
+import '../../widgets/refreshable_scroll.dart';
+import '../../widgets/skeleton.dart';
 import '../../services/provider_ratings.dart';
 import '../../services/backend/backend.dart';
 import '../../services/backend/local_backend.dart';
@@ -26,7 +31,8 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
   final _reviewCtrl = TextEditingController();
   final Map<String, int> _subRatings = {'price': 0, 'service': 0, 'coverage': 0, 'speed': 0};
 
-  // Anchor so "ערוך" in "הדירוגים שלי" can scroll the form into view.
+  // Anchor so the "כתבו ביקורת" FAB, the "ערוך" action in "הדירוגים שלי" and the
+  // "דרגו ראשונים" buttons can scroll the composer into view.
   final _formKey = GlobalKey();
   final _scrollCtrl = ScrollController();
 
@@ -34,6 +40,9 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
   String _selectedCat = 'הכל';
   String _sortBy = 'rating'; // 'rating' | 'reviews' | 'value'
   late TabController _tabCtrl;
+
+  // First remote load shows skeleton rows instead of a hard empty state.
+  bool _loading = true;
 
   // Live community reviews from the backend (provider → reviews).
   Map<String, List<ReviewInput>> _remoteReviews = {};
@@ -54,17 +63,22 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
     super.initState();
     _tabCtrl = TabController(length: _cats.length, vsync: this);
     _tabCtrl.addListener(() => setState(() => _selectedCat = _cats[_tabCtrl.index]));
-    _loadRemoteReviews().catchError((_) {});
+    _loadRemoteReviews().catchError((_) {
+      if (mounted) setState(() => _loading = false);
+    });
   }
 
   Future<void> _loadRemoteReviews() async {
     final all = await appBackend.fetchAllReviews();
-    if (!mounted || all.isEmpty) return;
+    if (!mounted) return;
     final grouped = <String, List<ReviewInput>>{};
     for (final r in all) {
       grouped.putIfAbsent(r.provider, () => []).add(r);
     }
-    setState(() => _remoteReviews = grouped);
+    setState(() {
+      _remoteReviews = grouped;
+      _loading = false;
+    });
   }
 
   @override
@@ -129,8 +143,9 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
     return values.reduce((a, b) => a + b) / values.length;
   }
 
-  // Load an existing review into the form and scroll the form into view. Used
-  // both by the provider chips and the "ערוך" action in "הדירוגים שלי".
+  // Load an existing review into the composer and scroll it into view. Used by
+  // the "כתבו ביקורת" FAB (no provider), the provider picker, the "דרגו ראשונים"
+  // buttons, and the "ערוך" action in "הדירוגים שלי".
   void _editReview(String provider) {
     final existing = AppState().reviewFor(provider);
     setState(() {
@@ -145,6 +160,10 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
         _reviewCtrl.clear();
       }
     });
+    _scrollToComposer();
+  }
+
+  void _scrollToComposer() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final ctx = _formKey.currentContext;
       if (ctx != null) {
@@ -152,6 +171,23 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
             duration: const Duration(milliseconds: 400), curve: Curves.easeOutCubic, alignment: 0.05);
       }
     });
+  }
+
+  // The provider chooser, lifted out of the inline Wrap-of-pills into an AppSheet
+  // picker so the composer stays compact and the choice gets a full-height,
+  // scrollable list.
+  Future<void> _pickProvider() async {
+    HapticFeedback.selectionClick();
+    final chosen = await AppSheet.show<String>(
+      context,
+      title: 'בחרו ספק',
+      child: _ProviderPicker(
+        providers: _providersInCat,
+        selected: _selectedProvider,
+        hasReviewedProvider: AppState().hasReviewedProvider,
+      ),
+    );
+    if (chosen != null) _editReview(chosen);
   }
 
   void _submitReview(AppState appState) {
@@ -214,9 +250,24 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
 
     return Scaffold(
       backgroundColor: t.background,
-      body: NestedScrollView(
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          HapticFeedback.selectionClick();
+          _scrollToComposer();
+        },
+        backgroundColor: t.brandAccent,
+        foregroundColor: Colors.white,
+        icon: const Icon(Icons.rate_review_rounded),
+        label: const Text('כתבו ביקורת'),
+      ),
+      body: RefreshableScroll(
         controller: _scrollCtrl,
-        headerSliverBuilder: (context, _) => [
+        onRefresh: () async {
+          await _loadRemoteReviews();
+        },
+        slivers: [
+          // Pinned ink header + category tabs — unchanged chrome, now the first
+          // sliver of the refreshable CustomScrollView.
           SliverAppBar(
             title: const Text('דירוגי ספקים'),
             // Fixed ink header (const token) so the white tab labels keep their
@@ -224,6 +275,7 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
             // off-white on dark and strand the white-on-ink TabBar.
             backgroundColor: AppColors.primary,
             foregroundColor: Colors.white,
+            pinned: true,
             floating: true,
             snap: true,
             elevation: 0,
@@ -240,397 +292,490 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
               unselectedLabelStyle: GoogleFonts.rubik(fontSize: 13, fontWeight: FontWeight.w500),
             ),
           ),
-        ],
-        body: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Top 3 podium — only once at least 3 providers have REAL reviews.
-              if (rated.length >= 3) ...[
-                _buildPodium(rated.take(3).map((p) => MapEntry(p, _avgStars(p, appState))).toList(), t),
-                const SizedBox(height: 20),
-              ],
 
-              // Sort row
-              Row(
-                children: [
-                  Text('לוח מנצחים', style: t.titleLarge),
-                  const Spacer(),
-                  _SortChip(label: 'דירוג', value: 'rating', current: _sortBy, t: t, onTap: () => setState(() => _sortBy = 'rating')),
-                  const SizedBox(width: 6),
-                  _SortChip(label: 'ביקורות', value: 'reviews', current: _sortBy, t: t, onTap: () => setState(() => _sortBy = 'reviews')),
-                  const SizedBox(width: 6),
-                  _SortChip(label: 'מחיר-ערך', value: 'value', current: _sortBy, t: t, onTap: () => setState(() => _sortBy = 'value')),
-                ],
-              ),
-              const SizedBox(height: 12),
-
-              // No real reviews anywhere yet → honest empty state for the board.
-              if (rated.isEmpty)
-                const EmptyState(
-                  icon: Icons.reviews_outlined,
-                  headline: 'אין עדיין דירוגים',
-                  subtitle: 'עדיין לא התקבלו ביקורות אמיתיות על ספקים בקטגוריה זו. היו הראשונים לדרג למטה.',
-                )
-              else
-                // Ranked leaderboard — real reviews only.
-                ...rated.asMap().entries.map((entry) {
-                  final i = entry.key;
-                  final provider = entry.value;
-                  return _LeaderboardCard(
-                    rank: i,
-                    provider: provider,
-                    avg: _avgStars(provider, appState),
-                    totalReviews: _totalReviews(provider, appState),
-                    subValues: {
-                      for (final key in ProviderRatings.subKeys)
-                        key: _subRatingValue(provider, key, appState),
-                    },
-                    t: t,
-                    onTap: () => context.pushNamed('Provider', pathParameters: {'name': provider}),
-                  ).animate(delay: (i * 60).ms).fadeIn(duration: 350.ms).slideX(begin: 0.05, end: 0);
-                }),
-
-              // Providers without real reviews yet — listed honestly.
-              if (unrated.isNotEmpty) ...[
-                const SizedBox(height: 8),
-                Text('ממתינים לדירוג ראשון', style: t.titleSmall.copyWith(color: t.secondaryText)),
-                const SizedBox(height: 10),
-                ...unrated.map((provider) => Semantics(
-                      button: true,
-                      label: 'פתח את עמוד הספק $provider — אין עדיין דירוגים',
-                      child: GestureDetector(
-                      onTap: () => context.pushNamed('Provider', pathParameters: {'name': provider}),
-                      child: Container(
-                        margin: const EdgeInsets.only(bottom: 10),
-                        padding: const EdgeInsets.all(12),
-                        decoration: t.glassDecoration(radius: t.radiusMd),
-                        child: Row(
-                          children: [
-                            ExcludeSemantics(child: LogoWidget(provider: provider, size: 34)),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(provider, style: t.titleSmall, overflow: TextOverflow.ellipsis),
-                                  Text('אין עדיין דירוגים', style: t.labelSmall.copyWith(color: t.secondaryText)),
-                                ],
-                              ),
-                            ),
-                            TextButton(
-                              onPressed: () => _editReview(provider),
-                              style: TextButton.styleFrom(
-                                foregroundColor: t.brandAccent,
-                                visualDensity: VisualDensity.compact,
-                                textStyle: t.labelSmall.copyWith(fontWeight: FontWeight.w800),
-                              ),
-                              child: const Text('דרגו ראשונים'),
-                            ),
-                          ],
-                        ),
-                      ),
-                      ),
-                    )),
-              ],
-
-              const SizedBox(height: 24),
-
-              // Write review section
-              Container(
-                key: _formKey,
-                padding: const EdgeInsets.all(20),
-                // Anchor bento tile for the review composer.
-                decoration: t.bentoDecoration(),
+          // While the first remote page is in flight, show ghost rows instead of
+          // a premature "no ratings" state.
+          if (_loading)
+            const SliverPadding(
+              padding: EdgeInsets.fromLTRB(16, 16, 16, 24),
+              sliver: SliverToBoxAdapter(child: _LeaderboardSkeleton()),
+            )
+          else ...[
+            // Top 3 podium + sort row — fixed leading block above the lazy list.
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              sliver: SliverToBoxAdapter(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    if (rated.length >= 3) ...[
+                      _buildPodium(
+                          rated.take(3).map((p) => MapEntry(p, _avgStars(p, appState))).toList(), t),
+                      const SizedBox(height: 20),
+                    ],
+                    // Hero heading — this leaderboard is the page's primary focus.
                     Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            gradient: t.accentGradient,
-                            borderRadius: BorderRadius.circular(t.radiusSm),
-                            boxShadow: t.shadowAccent,
-                          ),
-                          child: const Icon(Icons.rate_review_rounded, color: Colors.white, size: 20),
-                        ),
-                        const SizedBox(width: 10),
+                        Icon(Icons.leaderboard_rounded, color: t.brandAccent, size: 24),
+                        const SizedBox(width: 8),
                         Expanded(
-                          child: Text(
-                            _selectedProvider != null && appState.hasReviewedProvider(_selectedProvider!)
-                                ? 'עריכת הביקורת על $_selectedProvider'
-                                : 'כתיבת ביקורת',
-                            style: t.titleLarge,
-                          ),
+                          child: Text('לוח מנצחים',
+                              style: t.headlineSmall.copyWith(fontWeight: FontWeight.w800)),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 16),
-
-                    Text('בחרו ספק', style: t.labelLarge),
-                    const SizedBox(height: 8),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: providers.take(12).map((e) {
-                        final active = _selectedProvider == e;
-                        return Semantics(
-                          button: true,
-                          selected: active,
-                          label: 'בחר ספק $e',
-                          child: GestureDetector(
-                            onTap: () => _editReview(e),
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 200),
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                              decoration: BoxDecoration(
-                                color: active ? AppColors.primary : t.cardSurface,
-                                borderRadius: BorderRadius.circular(t.radiusPill),
-                                border: Border.all(color: active ? AppColors.primary : t.alternate),
-                                boxShadow: active ? t.shadowPrimary : null,
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  if (appState.hasReviewedProvider(e))
-                                    Padding(
-                                      padding: const EdgeInsetsDirectional.only(end: 4),
-                                      child: Icon(Icons.check_circle_rounded, size: 13,
-                                          color: active ? Colors.white : t.tertiary),
-                                    ),
-                                  Text(e, style: t.labelSmall.copyWith(
-                                      color: active ? Colors.white : t.primaryText,
-                                      fontWeight: active ? FontWeight.w700 : FontWeight.w600)),
-                                ],
-                              ),
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-
-                    const SizedBox(height: 18),
-                    Text('דירוג לפי קטגוריה', style: t.labelLarge),
+                    const SizedBox(height: 4),
+                    Text('הספקים המדורגים ביותר — לפי ביקורות אמיתיות מהקהילה',
+                        style: t.bodySmall.copyWith(color: t.secondaryText)),
                     const SizedBox(height: 12),
+                    // Sort control on its own line — a SegmentedButton with >=44dp
+                    // segments, replacing the cramped inline chip row.
+                    _SortControl(
+                      value: _sortBy,
+                      onChanged: (v) {
+                        HapticFeedback.selectionClick();
+                        setState(() => _sortBy = v);
+                      },
+                    ),
+                    const SizedBox(height: 12),
+                    if (rated.isEmpty)
+                      const EmptyState(
+                        icon: Icons.reviews_outlined,
+                        headline: 'אין עדיין דירוגים',
+                        subtitle:
+                            'עדיין לא התקבלו ביקורות אמיתיות על ספקים בקטגוריה זו. היו הראשונים לדרג למטה.',
+                      ),
+                  ],
+                ),
+              ),
+            ),
 
-                    // Multi-dimension star ratings — accessible 44px hit areas.
-                    ..._subLabels.entries.map((e) => Padding(
-                          padding: const EdgeInsets.only(bottom: 10),
+            // Ranked leaderboard — real reviews only, rendered lazily as a
+            // SliverList so long boards build only the visible rows.
+            if (rated.isNotEmpty)
+              SliverPadding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                sliver: SliverList.builder(
+                  itemCount: rated.length,
+                  itemBuilder: (context, i) {
+                    final provider = rated[i];
+                    return _LeaderboardCard(
+                      rank: i,
+                      provider: provider,
+                      avg: _avgStars(provider, appState),
+                      totalReviews: _totalReviews(provider, appState),
+                      subValues: {
+                        for (final key in ProviderRatings.subKeys)
+                          key: _subRatingValue(provider, key, appState),
+                      },
+                      t: t,
+                      onTap: () => context.pushNamed('Provider', pathParameters: {'name': provider}),
+                    ).animate(delay: (i * 60).ms).fadeIn(duration: 350.ms).slideX(begin: 0.05, end: 0);
+                  },
+                ),
+              ),
+
+            // Providers without real reviews yet — listed honestly, also lazy.
+            if (unrated.isNotEmpty) ...[
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+                sliver: SliverToBoxAdapter(
+                  child: Text('ממתינים לדירוג ראשון',
+                      style: t.titleSmall.copyWith(color: t.secondaryText)),
+                ),
+              ),
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+                sliver: SliverList.builder(
+                  itemCount: unrated.length,
+                  itemBuilder: (context, i) {
+                    final provider = unrated[i];
+                    return Semantics(
+                      button: true,
+                      label: 'פתח את עמוד הספק $provider — אין עדיין דירוגים',
+                      child: GestureDetector(
+                        onTap: () => context.pushNamed('Provider', pathParameters: {'name': provider}),
+                        child: Container(
+                          margin: const EdgeInsets.only(bottom: 10),
+                          padding: const EdgeInsets.all(12),
+                          decoration: t.glassDecoration(radius: t.radiusMd),
                           child: Row(
                             children: [
-                              Icon(_subIcons[e.key], size: 16, color: t.sage),
-                              const SizedBox(width: 6),
-                              SizedBox(width: 46, child: Text(e.value, style: t.labelSmall)),
-                              const SizedBox(width: 4),
-                              ...List.generate(5, (j) {
-                                final filled = j < (_subRatings[e.key] ?? 0);
-                                return Semantics(
-                                  button: true,
-                                  selected: filled,
-                                  label: 'דרג ${j + 1} מתוך 5 — ${e.value}',
-                                  child: InkResponse(
-                                    onTap: () => setState(() => _subRatings[e.key] = j + 1),
-                                    radius: 22,
-                                    // 44px tap target around the 28px glyph (a11y
-                                    // minimum) without enlarging the visual star.
-                                    child: SizedBox(
-                                      width: 44,
-                                      height: 44,
-                                      child: Center(
-                                        child: Icon(
-                                          filled ? Icons.star_rounded : Icons.star_outline_rounded,
-                                          size: 28,
-                                          color: t.warning,
+                              ExcludeSemantics(child: LogoWidget(provider: provider, size: 34)),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(provider, style: t.titleSmall, overflow: TextOverflow.ellipsis),
+                                    Text('אין עדיין דירוגים',
+                                        style: t.labelSmall.copyWith(color: t.secondaryText)),
+                                  ],
+                                ),
+                              ),
+                              TextButton(
+                                onPressed: () => _editReview(provider),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: t.brandAccent,
+                                  visualDensity: VisualDensity.compact,
+                                  textStyle: t.labelSmall.copyWith(fontWeight: FontWeight.w800),
+                                ),
+                                child: const Text('דרגו ראשונים'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
+
+            // Secondary-section divider — frames the composer below as a quieter
+            // "contribute" area so it reads as clearly subordinate to the
+            // leaderboard hero above, not a co-equal focal point.
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 28, 16, 0),
+              sliver: SliverToBoxAdapter(
+                child: Row(
+                  children: [
+                    Expanded(child: Divider(color: t.alternate, height: 1)),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: Text('רוצים לתרום ללוח?',
+                          style: t.labelSmall.copyWith(
+                              color: t.secondaryText, fontWeight: FontWeight.w700)),
+                    ),
+                    Expanded(child: Divider(color: t.alternate, height: 1)),
+                  ],
+                ),
+              ),
+            ),
+
+            // Write-review composer — DEMOTED to a clearly-secondary card (quieter
+            // than the hero leaderboard above): a soft surface instead of the loud
+            // bento, a compact header, and a tinted accent chip rather than the big
+            // gradient block. Still fully built + scroll-reachable (the FAB / edit
+            // actions scroll it into view via [_formKey]); its provider picker
+            // opens an AppSheet.
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              sliver: SliverToBoxAdapter(
+                child: Container(
+                  key: _formKey,
+                  padding: const EdgeInsets.all(16),
+                  decoration: t.glassDecoration(radius: t.radiusCard),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            width: 32,
+                            height: 32,
+                            decoration: BoxDecoration(
+                              color: t.brandAccent.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(t.radiusSm),
+                            ),
+                            child: Icon(Icons.rate_review_rounded, color: t.brandAccent, size: 18),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              _selectedProvider != null && appState.hasReviewedProvider(_selectedProvider!)
+                                  ? 'עריכת הביקורת על $_selectedProvider'
+                                  : 'כתיבת ביקורת',
+                              style: t.titleSmall.copyWith(fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+
+                      Text('בחרו ספק', style: t.labelLarge),
+                      const SizedBox(height: 8),
+                      // Provider select — opens the AppSheet picker (replaces the
+                      // inline Wrap-of-pills). >=48dp tall.
+                      Semantics(
+                        button: true,
+                        label: _selectedProvider == null
+                            ? 'בחר ספק'
+                            : 'הספק שנבחר: $_selectedProvider, החלפת ספק',
+                        child: InkWell(
+                          onTap: _pickProvider,
+                          borderRadius: BorderRadius.circular(t.radiusMd),
+                          child: Container(
+                            constraints: const BoxConstraints(minHeight: kMinTapTarget),
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: t.cardSurface.withValues(alpha: 0.6),
+                              borderRadius: BorderRadius.circular(t.radiusMd),
+                              border: Border.all(
+                                  color: _selectedProvider != null ? t.primary : t.alternate,
+                                  width: _selectedProvider != null ? 1.5 : 1),
+                            ),
+                            child: Row(
+                              children: [
+                                if (_selectedProvider != null) ...[
+                                  ExcludeSemantics(child: LogoWidget(provider: _selectedProvider!, size: 28)),
+                                  const SizedBox(width: 10),
+                                ],
+                                Expanded(
+                                  child: Text(
+                                    _selectedProvider ?? 'בחרו ספק לדירוג',
+                                    style: t.bodyMedium.copyWith(
+                                      color: _selectedProvider != null ? t.primaryText : t.secondaryText,
+                                      fontWeight: _selectedProvider != null ? FontWeight.w700 : FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                                Icon(Icons.unfold_more_rounded, size: 20, color: t.secondaryText),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 18),
+                      Text('דירוג לפי קטגוריה', style: t.labelLarge),
+                      const SizedBox(height: 12),
+
+                      // Multi-dimension star ratings — accessible 44px hit areas.
+                      // Semantics label "דרג N מתוך 5 — …" preserved verbatim.
+                      ..._subLabels.entries.map((e) => Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: Row(
+                              children: [
+                                Icon(_subIcons[e.key], size: 16, color: t.sage),
+                                const SizedBox(width: 6),
+                                SizedBox(width: 46, child: Text(e.value, style: t.labelSmall)),
+                                const SizedBox(width: 4),
+                                ...List.generate(5, (j) {
+                                  final filled = j < (_subRatings[e.key] ?? 0);
+                                  return Semantics(
+                                    button: true,
+                                    selected: filled,
+                                    label: 'דרג ${j + 1} מתוך 5 — ${e.value}',
+                                    child: InkResponse(
+                                      onTap: () {
+                                        HapticFeedback.selectionClick();
+                                        setState(() => _subRatings[e.key] = j + 1);
+                                      },
+                                      radius: 22,
+                                      // 44px tap target around the 28px glyph (a11y
+                                      // minimum) without enlarging the visual star.
+                                      child: SizedBox(
+                                        width: 44,
+                                        height: 44,
+                                        child: Center(
+                                          child: Icon(
+                                            filled ? Icons.star_rounded : Icons.star_outline_rounded,
+                                            size: 28,
+                                            color: t.warning,
+                                          ),
                                         ),
                                       ),
                                     ),
+                                  );
+                                }),
+                                const Spacer(),
+                                if ((_subRatings[e.key] ?? 0) > 0)
+                                  Text(
+                                    _ratingLabel(_subRatings[e.key]!),
+                                    style: t.labelSmall.copyWith(color: t.primary, fontWeight: FontWeight.w700),
                                   ),
-                                );
-                              }),
-                              const Spacer(),
-                              if ((_subRatings[e.key] ?? 0) > 0)
-                                Text(
-                                  _ratingLabel(_subRatings[e.key]!),
-                                  style: t.labelSmall.copyWith(color: t.primary, fontWeight: FontWeight.w700),
-                                ),
-                            ],
-                          ),
-                        )),
+                              ],
+                            ),
+                          )),
 
-                    const SizedBox(height: 8),
-                    TextField(
-                      controller: _reviewCtrl,
-                      maxLines: 3,
-                      textDirection: TextDirection.rtl,
-                      decoration: InputDecoration(
-                        hintText: 'ספרו על החוויה שלכם (אופציונלי)...',
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(t.radiusSm),
-                          borderSide: BorderSide(color: t.alternate),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(t.radiusSm),
-                          borderSide: BorderSide(color: t.alternate),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(t.radiusSm),
-                          borderSide: BorderSide(color: t.primary, width: 1.5),
-                        ),
-                        filled: true,
-                        fillColor: t.cardSurface.withValues(alpha: 0.6),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Builder(builder: (context) {
-                      final canSubmit = _selectedProvider != null && _subRatings.values.any((v) => v > 0);
-                      final editing = _selectedProvider != null && appState.hasReviewedProvider(_selectedProvider!);
-                      return AnimatedContainer(
-                        duration: t.motionFast,
-                        curve: t.easeOut,
-                        decoration: BoxDecoration(
-                          gradient: canSubmit ? t.accentGradient : null,
-                          color: canSubmit ? null : t.alternate.withValues(alpha: 0.3),
-                          borderRadius: BorderRadius.circular(t.radiusMd),
-                          boxShadow: canSubmit ? t.shadowAccent : null,
-                        ),
-                        child: ElevatedButton.icon(
-                          onPressed: canSubmit ? () => _submitReview(appState) : null,
-                          icon: const Icon(Icons.send_rounded, size: 18),
-                          label: Text(editing ? 'עדכון ביקורת' : 'שליחת ביקורת'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.transparent,
-                            foregroundColor: Colors.white,
-                            disabledBackgroundColor: Colors.transparent,
-                            disabledForegroundColor: Colors.white.withValues(alpha: 0.6),
-                            shadowColor: Colors.transparent,
-                            elevation: 0,
-                            minimumSize: const Size(double.infinity, 50),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(t.radiusMd)),
-                            textStyle: GoogleFonts.rubik(fontSize: 15, fontWeight: FontWeight.w700),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: _reviewCtrl,
+                        maxLines: 3,
+                        textDirection: TextDirection.rtl,
+                        decoration: InputDecoration(
+                          hintText: 'ספרו על החוויה שלכם (אופציונלי)...',
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(t.radiusSm),
+                            borderSide: BorderSide(color: t.alternate),
                           ),
-                        ),
-                      );
-                    }),
-                  ],
-                ),
-              ).animate().fadeIn(delay: 300.ms),
-
-              // "הדירוגים שלי" — the user's own submitted reviews, with edit.
-              if (appState.userReviews.isNotEmpty) ...[
-                const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: t.cardDecoration(radius: t.radiusCard),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.person_rounded, color: t.primary, size: 20),
-                          const SizedBox(width: 8),
-                          Text('הדירוגים שלי', style: t.titleLarge),
-                          const Spacer(),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(color: t.accent1, borderRadius: BorderRadius.circular(t.radiusPill)),
-                            child: Text('${appState.userReviews.length}',
-                                style: t.labelSmall.copyWith(color: t.primary, fontWeight: FontWeight.w800)),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(t.radiusSm),
+                            borderSide: BorderSide(color: t.alternate),
                           ),
-                        ],
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(t.radiusSm),
+                            borderSide: BorderSide(color: t.primary, width: 1.5),
+                          ),
+                          filled: true,
+                          fillColor: t.cardSurface.withValues(alpha: 0.6),
+                        ),
                       ),
-                      const SizedBox(height: 12),
-                      ...appState.userReviews.asMap().entries.map((entry) {
-                        final r = entry.value;
-                        final provider = r['provider'] as String;
-                        final overall = r['overall'] as int? ?? 0;
-                        final text = r['text'] as String? ?? '';
-                        final last = entry.key == appState.userReviews.length - 1;
-                        return _MyReviewRow(
-                          provider: provider,
-                          overall: overall,
-                          text: text,
-                          subRatings: {for (final k in ProviderRatings.subKeys) k: r[k] as int? ?? 0},
-                          showDivider: !last,
-                          t: t,
-                          onEdit: () => _editReview(provider),
+                      const SizedBox(height: 16),
+                      Builder(builder: (context) {
+                        final canSubmit = _selectedProvider != null && _subRatings.values.any((v) => v > 0);
+                        final editing = _selectedProvider != null && appState.hasReviewedProvider(_selectedProvider!);
+                        return AnimatedContainer(
+                          duration: t.motionFast,
+                          curve: t.easeOut,
+                          decoration: BoxDecoration(
+                            gradient: canSubmit ? t.accentGradient : null,
+                            color: canSubmit ? null : t.alternate.withValues(alpha: 0.3),
+                            borderRadius: BorderRadius.circular(t.radiusMd),
+                            boxShadow: canSubmit ? t.shadowAccent : null,
+                          ),
+                          child: ElevatedButton.icon(
+                            onPressed: canSubmit
+                                ? () {
+                                    HapticFeedback.mediumImpact();
+                                    _submitReview(appState);
+                                  }
+                                : null,
+                            icon: const Icon(Icons.send_rounded, size: 18),
+                            label: Text(editing ? 'עדכון ביקורת' : 'שליחת ביקורת'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.transparent,
+                              foregroundColor: Colors.white,
+                              disabledBackgroundColor: Colors.transparent,
+                              disabledForegroundColor: Colors.white.withValues(alpha: 0.6),
+                              shadowColor: Colors.transparent,
+                              elevation: 0,
+                              minimumSize: const Size(double.infinity, 50),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(t.radiusMd)),
+                              textStyle: GoogleFonts.rubik(fontSize: 15, fontWeight: FontWeight.w700),
+                            ),
+                          ),
                         );
                       }),
                     ],
                   ),
-                ).animate().fadeIn(delay: 400.ms),
-              ],
+                ).animate().fadeIn(delay: 300.ms),
+              ),
+            ),
 
-              // Live community reviews from the backend.
-              if (_remoteReviews.isNotEmpty) ...[
-                const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: t.cardDecoration(radius: t.radiusCard),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.people_alt_rounded, color: t.primary, size: 20),
-                          const SizedBox(width: 8),
-                          Text('ביקורות מהקהילה', style: t.titleLarge),
-                          const Spacer(),
-                          Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                            decoration: BoxDecoration(color: t.accent1, borderRadius: BorderRadius.circular(t.radiusPill)),
-                            child: Text('${_remoteReviews.values.fold(0, (s, l) => s + l.length)}',
-                                style: t.labelSmall.copyWith(color: t.primary, fontWeight: FontWeight.w800)),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      ..._remoteReviews.entries.expand((mapEntry) {
-                        return mapEntry.value.take(2).map((r) => Padding(
-                              padding: const EdgeInsets.only(bottom: 12),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Flexible(
-                                        child: Text(mapEntry.key,
-                                            style: t.labelMedium.copyWith(
-                                                fontWeight: FontWeight.w700, color: t.primaryText),
-                                            overflow: TextOverflow.ellipsis),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      _StarRow(value: r.overall.toDouble(), size: 12, t: t),
-                                      const SizedBox(width: 4),
-                                      Text(r.overall.toString(),
-                                          style: t.labelSmall.copyWith(fontWeight: FontWeight.w700, color: t.primary)),
+            // "הדירוגים שלי" — the user's own submitted reviews, with edit.
+            if (appState.userReviews.isNotEmpty)
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                sliver: SliverToBoxAdapter(
+                  child: Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: t.cardDecoration(radius: t.radiusCard),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.person_rounded, color: t.primary, size: 20),
+                            const SizedBox(width: 8),
+                            Text('הדירוגים שלי', style: t.titleLarge),
+                            const Spacer(),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                  color: t.accent1, borderRadius: BorderRadius.circular(t.radiusPill)),
+                              child: Text('${appState.userReviews.length}',
+                                  style: t.labelSmall.copyWith(color: t.primary, fontWeight: FontWeight.w800)),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        ...appState.userReviews.asMap().entries.map((entry) {
+                          final r = entry.value;
+                          final provider = r['provider'] as String;
+                          final overall = r['overall'] as int? ?? 0;
+                          final text = r['text'] as String? ?? '';
+                          final last = entry.key == appState.userReviews.length - 1;
+                          return _MyReviewRow(
+                            provider: provider,
+                            overall: overall,
+                            text: text,
+                            subRatings: {for (final k in ProviderRatings.subKeys) k: r[k] as int? ?? 0},
+                            showDivider: !last,
+                            t: t,
+                            onEdit: () => _editReview(provider),
+                          );
+                        }),
+                      ],
+                    ),
+                  ).animate().fadeIn(delay: 400.ms),
+                ),
+              ),
+
+            // Live community reviews from the backend.
+            if (_remoteReviews.isNotEmpty)
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                sliver: SliverToBoxAdapter(
+                  child: Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: t.cardDecoration(radius: t.radiusCard),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.people_alt_rounded, color: t.primary, size: 20),
+                            const SizedBox(width: 8),
+                            Text('ביקורות מהקהילה', style: t.titleLarge),
+                            const Spacer(),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                  color: t.accent1, borderRadius: BorderRadius.circular(t.radiusPill)),
+                              child: Text('${_remoteReviews.values.fold(0, (s, l) => s + l.length)}',
+                                  style: t.labelSmall.copyWith(color: t.primary, fontWeight: FontWeight.w800)),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        ..._remoteReviews.entries.expand((mapEntry) {
+                          return mapEntry.value.take(2).map((r) => Padding(
+                                padding: const EdgeInsets.only(bottom: 12),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Flexible(
+                                          child: Text(mapEntry.key,
+                                              style: t.labelMedium.copyWith(
+                                                  fontWeight: FontWeight.w700, color: t.primaryText),
+                                              overflow: TextOverflow.ellipsis),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        _StarRow(value: r.overall.toDouble(), size: 12, t: t),
+                                        const SizedBox(width: 4),
+                                        Text(r.overall.toString(),
+                                            style: t.labelSmall.copyWith(
+                                                fontWeight: FontWeight.w700, color: t.primary)),
+                                      ],
+                                    ),
+                                    if (r.isVerifiedCustomer) ...[
+                                      const SizedBox(height: 5),
+                                      _VerifiedBadge(t: t),
                                     ],
-                                  ),
-                                  if (r.isVerifiedCustomer) ...[
-                                    const SizedBox(height: 5),
-                                    _VerifiedBadge(t: t),
+                                    if (r.text.isNotEmpty) ...[
+                                      const SizedBox(height: 5),
+                                      Text(r.text, style: t.bodySmall, maxLines: 2, overflow: TextOverflow.ellipsis),
+                                    ],
+                                    const Divider(height: 16),
                                   ],
-                                  if (r.text.isNotEmpty) ...[
-                                    const SizedBox(height: 5),
-                                    Text(r.text, style: t.bodySmall, maxLines: 2, overflow: TextOverflow.ellipsis),
-                                  ],
-                                  const Divider(height: 16),
-                                ],
-                              ),
-                            ));
-                      }),
-                    ],
-                  ),
-                ).animate().fadeIn(delay: 450.ms),
-              ],
+                                ),
+                              ));
+                        }),
+                      ],
+                    ),
+                  ).animate().fadeIn(delay: 450.ms),
+                ),
+              ),
 
-              const SizedBox(height: 24),
-            ],
-          ),
-        ),
+            // Tail spacing so the FAB never covers the last row.
+            const SliverToBoxAdapter(child: SizedBox(height: 96)),
+          ],
+        ],
       ),
     );
   }
@@ -685,6 +830,168 @@ class _RatingsWidgetState extends State<RatingsWidget> with SingleTickerProvider
         ),
       ),
     ).animate().fadeIn(duration: 500.ms);
+  }
+}
+
+/// The provider chooser body for the composer's picker sheet — a scrollable
+/// list of providers (with a "reviewed" check), popping the chosen name.
+class _ProviderPicker extends StatelessWidget {
+  const _ProviderPicker({
+    required this.providers,
+    required this.selected,
+    required this.hasReviewedProvider,
+  });
+
+  final List<String> providers;
+  final String? selected;
+  final bool Function(String provider) hasReviewedProvider;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppTheme.of(context);
+    return ConstrainedBox(
+      constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.5),
+      child: ListView.builder(
+        shrinkWrap: true,
+        itemCount: providers.length,
+        itemBuilder: (context, i) {
+          final p = providers[i];
+          final active = p == selected;
+          final reviewed = hasReviewedProvider(p);
+          return Semantics(
+            button: true,
+            selected: active,
+            label: 'בחר ספק $p',
+            child: InkWell(
+              onTap: () {
+                HapticFeedback.selectionClick();
+                Navigator.of(context).pop(p);
+              },
+              borderRadius: BorderRadius.circular(t.radiusMd),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 56),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                  child: Row(
+                    children: [
+                      ExcludeSemantics(child: LogoWidget(provider: p, size: 32)),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(p,
+                            style: t.bodyLarge.copyWith(
+                              color: t.primaryText,
+                              fontWeight: active ? FontWeight.w800 : FontWeight.w600,
+                            ),
+                            overflow: TextOverflow.ellipsis),
+                      ),
+                      if (reviewed)
+                        Padding(
+                          padding: const EdgeInsetsDirectional.only(end: 6),
+                          child: Icon(Icons.check_circle_rounded, size: 18, color: t.tertiary),
+                        ),
+                      if (active) Icon(Icons.radio_button_checked_rounded, size: 20, color: t.primary),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+/// The sort control: a SegmentedButton on its own line, each segment a >=44dp
+/// tap target. Replaces the cramped inline `_SortChip` row.
+class _SortControl extends StatelessWidget {
+  const _SortControl({required this.value, required this.onChanged});
+
+  final String value;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppTheme.of(context);
+    return SizedBox(
+      width: double.infinity,
+      child: SegmentedButton<String>(
+        showSelectedIcon: false,
+        segments: const [
+          ButtonSegment(value: 'rating', label: Text('דירוג'), icon: Icon(Icons.star_rounded, size: 16)),
+          ButtonSegment(value: 'reviews', label: Text('ביקורות'), icon: Icon(Icons.reviews_rounded, size: 16)),
+          ButtonSegment(value: 'value', label: Text('מחיר-ערך'), icon: Icon(Icons.savings_rounded, size: 16)),
+        ],
+        selected: {value},
+        onSelectionChanged: (s) => onChanged(s.first),
+        style: ButtonStyle(
+          // Keep each segment a comfortable, >=44dp tap target.
+          minimumSize: const WidgetStatePropertyAll(Size(0, kMinTapTarget)),
+          tapTargetSize: MaterialTapTargetSize.padded,
+          textStyle: WidgetStatePropertyAll(t.labelSmall.copyWith(fontWeight: FontWeight.w700)),
+          backgroundColor: WidgetStateProperty.resolveWith(
+            (states) => states.contains(WidgetState.selected) ? AppColors.primary : t.cardSurface,
+          ),
+          foregroundColor: WidgetStateProperty.resolveWith(
+            (states) => states.contains(WidgetState.selected) ? Colors.white : t.secondaryText,
+          ),
+          side: WidgetStatePropertyAll(BorderSide(color: t.alternate)),
+        ),
+      ),
+    );
+  }
+}
+
+/// Four ghost leaderboard rows shown while the first remote review page loads.
+class _LeaderboardSkeleton extends StatelessWidget {
+  const _LeaderboardSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    final t = AppTheme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(width: 120, child: Text('לוח מנצחים', style: t.titleLarge)),
+        const SizedBox(height: 16),
+        ...List.generate(
+          4,
+          (_) => Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(t.radiusMd),
+              border: Border.all(color: t.alternate.withValues(alpha: 0.4)),
+            ),
+            child: Shimmer.fromColors(
+              baseColor: const Color(0xFFE9EDF0),
+              highlightColor: const Color(0xFFF7F9FA),
+              child: const Row(
+                children: [
+                  SkeletonBox(width: 30, height: 30, radius: 15),
+                  SizedBox(width: 10),
+                  SkeletonBox(width: 38, height: 38, radius: 10),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SkeletonBox(width: 110, height: 13),
+                        SizedBox(height: 7),
+                        SkeletonBox(width: 64, height: 10),
+                      ],
+                    ),
+                  ),
+                  SizedBox(width: 10),
+                  SkeletonBox(width: 28, height: 22),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
   }
 }
 
@@ -889,40 +1196,6 @@ class _StarRow extends StatelessWidget {
                   : Icons.star_outline_rounded;
           return Icon(icon, size: size, color: t.warning);
         }),
-      ),
-    );
-  }
-}
-
-class _SortChip extends StatelessWidget {
-  const _SortChip({required this.label, required this.value, required this.current, required this.t, required this.onTap});
-  final String label, value, current;
-  final AppTheme t;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final active = current == value;
-    return Semantics(
-      button: true,
-      selected: active,
-      label: 'מיין לפי $label',
-      child: GestureDetector(
-        onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 150),
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-          decoration: BoxDecoration(
-            color: active ? AppColors.primary : t.cardSurface,
-            borderRadius: BorderRadius.circular(t.radiusPill),
-            border: Border.all(color: active ? AppColors.primary : t.alternate),
-          ),
-          child: Text(label, style: t.labelSmall.copyWith(
-            color: active ? Colors.white : t.secondaryText,
-            fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-            fontSize: 11,
-          )),
-        ),
       ),
     );
   }

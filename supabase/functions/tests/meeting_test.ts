@@ -178,9 +178,9 @@ Deno.test("planMeetingFollowUps ignores non-pending and unparseable rows", () =>
 // ── Zoom ─────────────────────────────────────────────────────────────────────
 
 Deno.test("buildZoomMeetingBody is a 30-minute Israel-time meeting with a waiting room", () => {
-  const body = buildZoomMeetingBody({ topic: "חוסך — פגישת ייעוץ", startsAtIso: "2026-06-16T11:30:00.000Z" });
+  const body = buildZoomMeetingBody({ topic: "Switchy AI — פגישת ייעוץ", startsAtIso: "2026-06-16T11:30:00.000Z" });
   assertEquals(body, {
-    topic: "חוסך — פגישת ייעוץ",
+    topic: "Switchy AI — פגישת ייעוץ",
     type: 2,
     start_time: "2026-06-16T11:30:00Z",
     duration: 30,
@@ -209,7 +209,7 @@ Deno.test("zoomConfigured requires all three S2S credentials", () => {
     tgToken: "t", tgChat: "-100123", resend: "", resendFrom: "", notifyEmail: "",
     openai: "", anthropic: "", gemini: "", webhookSecret: "s",
     zoomAccountId: "acc", zoomClientId: "cid", zoomClientSecret: "sec", zoomHostEmail: "",
-    googleServiceAccount: "", googleCalendarId: "",
+    googleServiceAccount: "", googleCalendarId: "", googleSpreadsheetId: "",
     allowedUserIds: [42], src: {},
     ...over,
   });

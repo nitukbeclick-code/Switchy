@@ -7,6 +7,10 @@ import {
   knowledgeWebSchema,
   webPageSchema,
   relatedLinksSchema,
+  articleSchema,
+  howToSchema,
+  pageAggregateOfferSchema,
+  speakableSchema,
   SITE_URL,
 } from "@/lib/schema";
 import type { Plan, Provider } from "@/lib/types";
@@ -298,5 +302,150 @@ describe("knowledgeWebSchema — provider-node @id dedupe", () => {
           n["@id"] === `${SITE_URL}/providers/cellcom#org`,
       ),
     ).toBe(true);
+  });
+});
+
+describe("articleSchema — guide Article, real dates + brand authorship", () => {
+  it("builds an Article with self-canonical mainEntityOfPage + brand author", () => {
+    const schema = articleSchema({
+      headline: "המדריך המלא למעבר ספק תקשורת",
+      description: "כל מה שצריך לדעת לפני שמחליפים ספק.",
+      url: "/guides/guide-switching",
+      datePublished: "2026-06-01",
+      section: "מדריך כללי",
+    });
+    expect(schema).toMatchObject({
+      "@type": "Article",
+      headline: "המדריך המלא למעבר ספק תקשורת",
+      inLanguage: "he-IL",
+      datePublished: "2026-06-01",
+      articleSection: "מדריך כללי",
+    });
+    // mainEntityOfPage is the absolute canonical url of the article.
+    expect(schema.mainEntityOfPage).toEqual({
+      "@type": "WebPage",
+      "@id": `${SITE_URL}/guides/guide-switching`,
+    });
+    // author === publisher === the brand Organization (no third party credited).
+    const author = schema.author as Record<string, unknown>;
+    const publisher = schema.publisher as Record<string, unknown>;
+    expect(author["@type"]).toBe("Organization");
+    expect(author).toEqual(publisher);
+    expect(author.url).toBe(SITE_URL);
+  });
+
+  it("defaults dateModified to datePublished (honest freshness, never future)", () => {
+    const schema = articleSchema({
+      headline: "x",
+      description: "y",
+      url: "/guides/x",
+      datePublished: "2026-06-03",
+    });
+    expect(schema.dateModified).toBe("2026-06-03");
+  });
+
+  it("forwards an explicit dateModified when given", () => {
+    const schema = articleSchema({
+      headline: "x",
+      description: "y",
+      url: "/guides/x",
+      datePublished: "2026-06-03",
+      dateModified: "2026-06-20",
+    });
+    expect(schema.dateModified).toBe("2026-06-20");
+  });
+
+  it("omits articleSection when no section is supplied", () => {
+    const schema = articleSchema({
+      headline: "x",
+      description: "y",
+      url: "/guides/x",
+      datePublished: "2026-06-03",
+    });
+    expect(schema.articleSection).toBeUndefined();
+  });
+});
+
+describe("howToSchema — emitted only for real step-by-step guides", () => {
+  it("returns null when there are no steps (non-procedural guide)", () => {
+    expect(howToSchema({ name: "x", steps: [] })).toBeNull();
+  });
+
+  it("builds a positioned HowTo from real ordered steps", () => {
+    const schema = howToSchema({
+      name: "איך מתקינים eSIM",
+      description: "מדריך התקנה.",
+      url: "/guides/guide-esim",
+      steps: [
+        { name: "בחרו חבילה", text: "בחרו חבילת eSIM לפי היעד." },
+        { name: "התקינו מראש", text: "סרקו את הקוד עוד בבית." },
+      ],
+    });
+    expect(schema).not.toBeNull();
+    expect(schema!["@type"]).toBe("HowTo");
+    expect(schema!.url).toBe(`${SITE_URL}/guides/guide-esim`);
+    const steps = schema!.step as Array<Record<string, unknown>>;
+    expect(steps).toHaveLength(2);
+    expect(steps[0]).toMatchObject({
+      "@type": "HowToStep",
+      position: 1,
+      name: "בחרו חבילה",
+    });
+    expect(steps[1].position).toBe(2);
+  });
+
+  it("drops malformed steps and returns null when none remain", () => {
+    const schema = howToSchema({
+      name: "x",
+      // @ts-expect-error — deliberately malformed step to prove it is filtered.
+      steps: [{ name: "only name, no text" }],
+    });
+    expect(schema).toBeNull();
+  });
+});
+
+describe("pageAggregateOfferSchema — one offer across the page's real plans", () => {
+  it("sets lowPrice/highPrice/offerCount from real prices in ILS", () => {
+    const plans = [
+      plan({ id: "a", price: 70 }),
+      plan({ id: "b", price: 29 }),
+      plan({ id: "c", price: 49 }),
+    ];
+    const schema = pageAggregateOfferSchema(plans);
+    expect(schema).toMatchObject({
+      "@type": "AggregateOffer",
+      priceCurrency: "ILS",
+      lowPrice: 29,
+      highPrice: 70,
+      offerCount: 3,
+    });
+  });
+
+  it("skips unpriced rows and returns null when none are priced", () => {
+    const schema = pageAggregateOfferSchema([
+      plan({ id: "a", price: 0 }),
+      plan({ id: "b", price: 25 }),
+    ]);
+    expect(schema).toMatchObject({ lowPrice: 25, highPrice: 25, offerCount: 1 });
+    expect(pageAggregateOfferSchema([])).toBeNull();
+    expect(pageAggregateOfferSchema([plan({ price: 0 })])).toBeNull();
+  });
+});
+
+describe("speakableSchema — voice (pillar 7)", () => {
+  it("builds a SpeakableSpecification from non-empty selectors", () => {
+    const schema = speakableSchema(["#aeo-answer [data-direct-answer]", "h1"]);
+    expect(schema).toMatchObject({
+      "@type": "WebPage",
+      speakable: {
+        "@type": "SpeakableSpecification",
+        cssSelector: ["#aeo-answer [data-direct-answer]", "h1"],
+      },
+    });
+  });
+
+  it("filters blanks and returns null when no usable selector remains", () => {
+    expect(speakableSchema([])).toBeNull();
+    expect(speakableSchema(["", "   "])).toBeNull();
   });
 });

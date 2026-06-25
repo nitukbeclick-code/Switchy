@@ -5,6 +5,7 @@
 
 import { assert, assertEquals, assertFalse } from "@std/assert";
 import {
+  auditDetail,
   clampLimit,
   contactName,
   CONTACT_STATUSES,
@@ -124,4 +125,25 @@ Deno.test("eventPreview clips past the 80-char cap with an ellipsis", () => {
 Deno.test("eventPreview is null-safe", () => {
   assertEquals(eventPreview(null), "");
   assertEquals(eventPreview(undefined), "");
+});
+
+// ── auditDetail (security_audit_log.detail shaping) ───────────────────────────
+
+Deno.test("auditDetail stamps the admin uid first as actor, then the action fields", () => {
+  const d = auditDetail("uid-123", { conversation_id: "c1", rep: "דנה" });
+  assertEquals(d, { actor: "uid-123", conversation_id: "c1", rep: "דנה" });
+  // actor is the single source of WHO — it comes from the verified admin, not the
+  // request body, so a client can't spoof it via an `actor` field in `extra`.
+  const spoof = auditDetail("uid-real", { actor: "uid-attacker", lead_id: "L1" });
+  assertEquals(spoof.actor, "uid-real");
+  assertEquals(spoof.lead_id, "L1");
+});
+
+Deno.test("auditDetail records a missing uid as null, not an empty string", () => {
+  assertEquals(auditDetail(""), { actor: null });
+  assertEquals(auditDetail("", { status: "won" }), { actor: null, status: "won" });
+});
+
+Deno.test("auditDetail defaults extra to an empty bag", () => {
+  assertEquals(auditDetail("uid-9"), { actor: "uid-9" });
 });

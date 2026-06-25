@@ -6,14 +6,14 @@
 //   deno task test
 
 import { assert, assertEquals } from "@std/assert";
-import { parseExtraction, parseImage } from "../site-bill-analyzer/lib.ts";
+import { buildParsedBill, parseExtraction, parseImage, parseLines } from "../site-bill-analyzer/lib.ts";
 import { buildSuggestions, type Plan } from "../_shared/catalogue.ts";
 
 // ── parseExtraction: defensive JSON parsing of Gemini's reply ─────────────────
 
 Deno.test("parseExtraction reads a clean JSON object", () => {
   const out = parseExtraction('{"provider":"סלקום","monthly":89,"category":"cellular","confidence":0.9}');
-  assertEquals(out, { provider: "סלקום", monthly: 89, category: "cellular", confidence: 0.9 });
+  assertEquals(out, { provider: "סלקום", monthly: 89, category: "cellular", confidence: 0.9, warnings: [], lines: [] });
 });
 
 Deno.test("parseExtraction strips a ```json fence", () => {
@@ -47,6 +47,37 @@ Deno.test("parseExtraction clips over-long provider/category strings", () => {
   const out = parseExtraction(JSON.stringify({ provider: longProvider, monthly: 50, category: longCategory, confidence: 1 }));
   assertEquals(out?.provider.length, 80);
   assertEquals(out?.category.length, 40);
+});
+
+// ── confidence clamping + warnings (honest about blurry photos) ───────────────
+
+Deno.test("parseExtraction clamps confidence into [0,1]", () => {
+  assertEquals(parseExtraction('{"monthly":50,"confidence":1.7}')?.confidence, 1);
+  assertEquals(parseExtraction('{"monthly":50,"confidence":-0.5}')?.confidence, 0);
+  // a 0-100 style score from a confused model still clamps to 1
+  assertEquals(parseExtraction('{"monthly":50,"confidence":85}')?.confidence, 1);
+});
+
+Deno.test("parseExtraction reads a warnings array, trims + clips entries", () => {
+  const out = parseExtraction(
+    '{"monthly":50,"confidence":0.5,"warnings":["  התמונה מטושטשת  ","",123]}',
+  );
+  // empties dropped, whitespace trimmed, the number coerced to its string form
+  assertEquals(out?.warnings, ["התמונה מטושטשת", "123"]);
+});
+
+Deno.test("parseExtraction accepts a single warning string", () => {
+  const out = parseExtraction('{"monthly":50,"confidence":0.4,"warnings":"הסכום לא ברור"}');
+  assertEquals(out?.warnings, ["הסכום לא ברור"]);
+});
+
+Deno.test("parseExtraction caps warnings at 5 entries", () => {
+  const many = JSON.stringify({ monthly: 50, confidence: 0.4, warnings: ["a", "b", "c", "d", "e", "f", "g"] });
+  assertEquals(parseExtraction(many)?.warnings.length, 5);
+});
+
+Deno.test("parseExtraction defaults warnings to [] when the model omits it", () => {
+  assertEquals(parseExtraction('{"provider":"yes","monthly":100,"category":"tv","confidence":0.7}')?.warnings, []);
 });
 
 Deno.test("parseExtraction returns null on empty input or unparseable garbage", () => {
@@ -115,4 +146,74 @@ Deno.test("buildSuggestions ignores other categories and plans at/above the spen
 Deno.test("buildSuggestions is empty without a category or a positive spend", () => {
   assertEquals(buildSuggestions(BILL_PLANS, "", 70, 3), []);
   assertEquals(buildSuggestions(BILL_PLANS, "cellular", 0, 3), []);
+});
+
+// ── parseLines: itemized charge lines for the forensic auditor ────────────────
+
+Deno.test("parseLines reads desc+amount and passes through forensic hints", () => {
+  const out = parseLines([
+    { desc: "חבילת גלישה 5G", amount: 89, prevAmount: 49, isAddon: false },
+    { desc: "ביטוח מכשיר", amount: 19, isAddon: true, promoEnd: "2026-01-01" },
+  ]);
+  assertEquals(out.length, 2);
+  assertEquals(out[0], { desc: "חבילת גלישה 5G", amount: 89, prevAmount: 49, promoEnd: null, category: null, isAddon: false });
+  assertEquals(out[1].isAddon, true);
+  assertEquals(out[1].promoEnd, "2026-01-01");
+});
+
+Deno.test("parseLines accepts synonym keys (description/price/is_addon)", () => {
+  const out = parseLines([{ description: "ערוצי פרימיום", price: 30, is_addon: true }]);
+  assertEquals(out.length, 1);
+  assertEquals(out[0].desc, "ערוצי פרימיום");
+  assertEquals(out[0].amount, 30);
+  assertEquals(out[0].isAddon, true);
+});
+
+Deno.test("parseLines drops a line with no desc AND no positive amount, never fabricates", () => {
+  const out = parseLines([
+    { desc: "", amount: 0 },
+    { desc: "   ", amount: "x" },
+    { desc: "שורה אמיתית", amount: 50 },
+  ]);
+  assertEquals(out.length, 1);
+  assertEquals(out[0].desc, "שורה אמיתית");
+});
+
+Deno.test("parseLines coerces a non-finite/negative prevAmount to null", () => {
+  const out = parseLines([{ desc: "x", amount: 50, prevAmount: -5 }, { desc: "y", amount: 50, prevAmount: "n/a" }]);
+  assertEquals(out[0].prevAmount, null);
+  assertEquals(out[1].prevAmount, null);
+});
+
+Deno.test("parseLines caps at 30 lines (OCR-noise guard)", () => {
+  const many = Array.from({ length: 50 }, (_, i) => ({ desc: `שורה ${i}`, amount: 10 }));
+  assertEquals(parseLines(many).length, 30);
+});
+
+Deno.test("parseLines returns [] for a non-array / missing value", () => {
+  assertEquals(parseLines(undefined), []);
+  assertEquals(parseLines("not an array"), []);
+  assertEquals(parseLines({}), []);
+});
+
+Deno.test("parseExtraction surfaces lines when present", () => {
+  const out = parseExtraction(
+    '{"provider":"yes","monthly":120,"category":"tv","confidence":0.8,"lines":[{"desc":"בסיס","amount":90},{"desc":"ערוצים","amount":30,"isAddon":true}]}',
+  );
+  assertEquals(out?.lines.length, 2);
+  assertEquals(out?.lines[1].isAddon, true);
+});
+
+// ── buildParsedBill: assembles the ParsedBill for the auditor ─────────────────
+
+Deno.test("buildParsedBill carries normalized provider/category/monthly + extracted lines", () => {
+  const extracted = parseExtraction(
+    '{"provider":"raw","monthly":150,"category":"cellular","confidence":0.9,"lines":[{"desc":"a","amount":50}]}',
+  )!;
+  const bill = buildParsedBill(extracted, "סלקום", "cellular", 150);
+  assertEquals(bill.provider, "סלקום");
+  assertEquals(bill.category, "cellular");
+  assertEquals(bill.monthly, 150);
+  assertEquals(bill.lines.length, 1);
+  assertEquals(bill.lines[0].desc, "a");
 });

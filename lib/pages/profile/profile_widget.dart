@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -10,6 +11,8 @@ import '../../app_state.dart';
 import '../../data.dart';
 import '../../models.dart';
 import '../../widgets/pressable.dart';
+import '../../widgets/refreshable_scroll.dart';
+import '../../widgets/app_sliver_header.dart';
 import '../../components/logo_widget/logo_widget.dart';
 import '../../components/plan_card/mini_plan_card.dart';
 import '../../services/backend/local_backend.dart';
@@ -23,89 +26,17 @@ class ProfileWidget extends StatefulWidget {
 }
 
 class _ProfileWidgetState extends State<ProfileWidget> {
-  String _lang = 'עברית';
-
   /// Whole-app saving potential from the user's bills + the recommendation
   /// engine. Recomputed each build (pure, cheap) so it tracks bill edits.
   late SavingsSummary _savings;
 
   void _showEditProfile(BuildContext context, AppState appState, AppTheme ffTheme) {
-    final nameCtrl = TextEditingController(text: appState.userName);
-    final phoneCtrl = TextEditingController(text: appState.userPhone);
-
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: ffTheme.background,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.fromLTRB(20, 16, 20, MediaQuery.of(ctx).viewInsets.bottom + 32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(width: 40, height: 4, decoration: BoxDecoration(color: ffTheme.alternate, borderRadius: BorderRadius.circular(2))),
-            ),
-            const SizedBox(height: 16),
-            Text('עריכת פרופיל', style: ffTheme.headlineSmall),
-            const SizedBox(height: 20),
-            Text('שם מלא', style: ffTheme.labelLarge),
-            const SizedBox(height: 8),
-            TextField(
-              controller: nameCtrl,
-              textDirection: TextDirection.rtl,
-              decoration: InputDecoration(
-                hintText: 'ישראל ישראלי',
-                filled: true,
-                fillColor: ffTheme.cardSurface,
-                prefixIcon: Icon(Icons.person_outline_rounded, color: ffTheme.secondaryText),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.alternate)),
-                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.brandAccent, width: 1.5)),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Text('מספר טלפון', style: ffTheme.labelLarge),
-            const SizedBox(height: 8),
-            TextField(
-              controller: phoneCtrl,
-              keyboardType: TextInputType.phone,
-              textDirection: TextDirection.ltr,
-              decoration: InputDecoration(
-                hintText: '050-0000000',
-                filled: true,
-                fillColor: ffTheme.cardSurface,
-                prefixIcon: Icon(Icons.phone_outlined, color: ffTheme.secondaryText),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.alternate)),
-                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.brandAccent, width: 1.5)),
-              ),
-            ),
-            const SizedBox(height: 24),
-            AppButton(
-              text: 'שמור שינויים',
-              onPressed: () async {
-                final name = nameCtrl.text.trim();
-                final phone = phoneCtrl.text.trim();
-                if (name.isEmpty || phone.isEmpty) {
-                  AppSnackBar.error(ctx, 'אנא מלאו שם ומספר טלפון',
-                      duration: const Duration(seconds: 2));
-                  return;
-                }
-                Provider.of<AppState>(ctx, listen: false).login(name: name, phone: phone);
-                appBackend.upsertProfile(name: name, phone: phone).catchError((_) {});
-                Navigator.pop(ctx);
-              },
-              width: double.infinity,
-              height: 52,
-              color: AppColors.primary,
-              textStyle: ffTheme.titleSmall.copyWith(color: Colors.white),
-              borderRadius: BorderRadius.circular(14),
-            ),
-          ],
-        ),
-      ),
+      builder: (ctx) => const EditProfileSheet(),
     );
   }
 
@@ -117,8 +48,20 @@ class _ProfileWidgetState extends State<ProfileWidget> {
 
     return Scaffold(
       backgroundColor: ffTheme.background,
-      body: CustomScrollView(
+      // Pull-to-refresh recomputes the live AppState-derived figures (savings
+      // potential, renewals, watchlist) — a notify is enough to rebuild.
+      body: RefreshableScroll(
+        onRefresh: () async {
+          HapticFeedback.lightImpact();
+          AppState().update(() {});
+        },
         slivers: [
+          // Collapsing savings hero — the visual anchor that opens the profile
+          // on the single highest-value stat: the user's total annual saving
+          // potential (computed by the real savings service, never invented).
+          // When there is no bill data yet it shows an honest "fill in details"
+          // state instead of a fake figure. Green ACTION wash via AppSliverHeader.
+          _buildSavingsHero(context, ffTheme),
           _buildHeroHeader(context, ffTheme, appState),
           SliverToBoxAdapter(
             child: Padding(
@@ -254,32 +197,46 @@ class _ProfileWidgetState extends State<ProfileWidget> {
 
                   const SizedBox(height: 20),
 
-                  // Language
+                  // Language — informational only. The app ships Hebrew-first
+                  // (RTL) and there is no live locale switch yet, so this is a
+                  // static status row, not a fake toggle: the previous tappable
+                  // chips set a `_lang` field that changed nothing visible. We
+                  // surface the active language honestly and mark the rest as
+                  // upcoming rather than pretending they're selectable.
                   _buildSectionHeader('שפה', ffTheme),
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: ffTheme.cardDecoration(radius: ffTheme.radiusLg),
                     child: Row(
-                      children: ['עברית', 'English', 'العربية'].map((lang) {
-                        final active = _lang == lang;
-                        return Expanded(
-                          child: GestureDetector(
-                            onTap: () => setState(() => _lang = lang),
-                            child: AnimatedContainer(
-                              duration: ffTheme.motionFast,
-                              margin: const EdgeInsets.symmetric(horizontal: 3),
-                              padding: const EdgeInsets.symmetric(vertical: 8),
-                              decoration: BoxDecoration(
-                                gradient: active ? ffTheme.accentGradient : null,
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              child: Center(
-                                child: Text(lang, style: ffTheme.labelSmall.copyWith(color: active ? Colors.white : ffTheme.secondaryText)),
-                              ),
-                            ),
+                      children: [
+                        Container(
+                          width: 38,
+                          height: 38,
+                          decoration: BoxDecoration(
+                            color: ffTheme.brandAccentTint,
+                            borderRadius: BorderRadius.circular(ffTheme.radiusSm),
                           ),
-                        );
-                      }).toList(),
+                          child: Icon(Icons.translate_rounded, color: ffTheme.brandAccent, size: 20),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('עברית', style: ffTheme.titleSmall),
+                              Text('English · العربية בקרוב', style: ffTheme.bodySmall),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: ffTheme.brandAccentTint,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text('פעיל', style: ffTheme.labelSmall.copyWith(color: ffTheme.brandAccentText, fontWeight: FontWeight.w700)),
+                        ),
+                      ],
                     ),
                   ),
 
@@ -355,6 +312,65 @@ class _ProfileWidgetState extends State<ProfileWidget> {
   }
 
   // ── Sections ────────────────────────────────────────────────────────────────
+
+  /// The collapsing hero that anchors the profile on its single most valuable
+  /// number: the whole-app annual saving potential from [_savings] (the same
+  /// `computeSavings` service the savings card uses — no invented figure).
+  ///
+  /// Reuses the shared [AppSliverHeader] primitive in its green ACTION wash.
+  /// With a real opportunity it shows "עד ₪X בשנה"; with bills but no positive
+  /// saving it stays honest ("הפרטים שלך מעודכנים"); with no bill data at all it
+  /// invites the user to start ("התחילו למלא פרטים כדי לראות חיסכון"). [showBack]
+  /// is false here — the pinned [_buildHeroHeader] below keeps the back/edit
+  /// affordances — so this header is a pure hero anchor at the top of the page.
+  Widget _buildSavingsHero(BuildContext context, AppTheme ffTheme) {
+    final total = _savings.totalAnnualPotential;
+    final hasOpportunity = _savings.hasAnyBill && total > 0;
+
+    final String subtitle;
+    final Widget figure;
+    if (hasOpportunity) {
+      subtitle = 'פוטנציאל החיסכון השנתי שלך';
+      figure = Text(
+        'עד ₪$total בשנה',
+        textAlign: TextAlign.center,
+        style: ffTheme.displaySmall.copyWith(
+          color: Colors.white,
+          fontWeight: FontWeight.w800,
+        ),
+      );
+    } else if (_savings.hasAnyBill) {
+      // Bills entered but no positive saving — stay truthful, don't fake a number.
+      subtitle = 'פוטנציאל החיסכון השנתי שלך';
+      figure = Text(
+        'הפרטים שלך מעודכנים',
+        textAlign: TextAlign.center,
+        style: ffTheme.titleMedium.copyWith(
+          color: Colors.white,
+          fontWeight: FontWeight.w700,
+        ),
+      );
+    } else {
+      // No data at all — honest invitation rather than a hollow "₪0".
+      subtitle = 'כמה אפשר לחסוך?';
+      figure = Text(
+        'התחילו למלא פרטים כדי לראות חיסכון',
+        textAlign: TextAlign.center,
+        style: ffTheme.titleSmall.copyWith(
+          color: Colors.white.withValues(alpha: 0.92),
+          fontWeight: FontWeight.w700,
+        ),
+      );
+    }
+
+    return AppSliverHeader(
+      title: 'הפרופיל שלי',
+      subtitle: subtitle,
+      expandedHeight: 184,
+      showBack: false,
+      flexibleChild: figure,
+    );
+  }
 
   Widget _buildHeroHeader(BuildContext context, AppTheme ffTheme, AppState appState) {
     return SliverAppBar(
@@ -999,6 +1015,175 @@ class _ToggleTile extends StatelessWidget {
             value: value,
             onChanged: onChanged,
             activeThumbColor: ffTheme.brandAccent,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The edit-profile bottom sheet. A [StatefulWidget] so its controllers are
+/// disposed and the save button can show an async loading state. Validates the
+/// Israeli phone (via [AppState.isValidIlPhone]), commits to local state through
+/// [AppState.saveProfile], then best-effort syncs to the backend via
+/// [appBackend.upsertProfile]; a network failure still keeps the local edit and
+/// only downgrades the success message.
+/// Public so it can be pumped directly in a widget test (the full-app shell's
+/// live-blur [GlassPanel] bottom nav otherwise intercepts taps on the sheet).
+class EditProfileSheet extends StatefulWidget {
+  const EditProfileSheet({super.key});
+
+  @override
+  State<EditProfileSheet> createState() => _EditProfileSheetState();
+}
+
+class _EditProfileSheetState extends State<EditProfileSheet> {
+  late final TextEditingController _nameCtrl;
+  late final TextEditingController _phoneCtrl;
+  bool _saving = false;
+  String? _nameError;
+  String? _phoneError;
+
+  @override
+  void initState() {
+    super.initState();
+    final appState = AppState();
+    _nameCtrl = TextEditingController(text: appState.userName);
+    _phoneCtrl = TextEditingController(text: appState.userPhone);
+  }
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _phoneCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    if (_saving) return;
+    final name = _nameCtrl.text.trim();
+    final phone = _phoneCtrl.text.trim();
+
+    // Inline field validation first so the error sits next to the offending field.
+    final nameErr = name.isEmpty ? 'נא להזין שם מלא' : null;
+    final phoneErr = !AppState.isValidIlPhone(phone) ? 'מספר טלפון אינו תקין' : null;
+    if (nameErr != null || phoneErr != null) {
+      setState(() {
+        _nameError = nameErr;
+        _phoneError = phoneErr;
+      });
+      return;
+    }
+
+    setState(() {
+      _saving = true;
+      _nameError = null;
+      _phoneError = null;
+    });
+
+    final appState = Provider.of<AppState>(context, listen: false);
+    final result = appState.saveProfile(name: name, phone: phone);
+    if (result != ProfileSaveResult.ok) {
+      // Defensive: validation already passed above, but keep the UI honest if a
+      // rule ever changes in AppState.
+      if (!mounted) return;
+      setState(() {
+        _saving = false;
+        if (result == ProfileSaveResult.emptyName) _nameError = 'נא להזין שם מלא';
+        if (result == ProfileSaveResult.invalidPhone) _phoneError = 'מספר טלפון אינו תקין';
+      });
+      return;
+    }
+
+    // Local save succeeded; sync to the backend and report honestly whether the
+    // remote write went through.
+    final savedPhone = appState.userPhone;
+    var remoteOk = true;
+    try {
+      await appBackend.upsertProfile(name: name, phone: savedPhone);
+    } catch (_) {
+      remoteOk = false;
+    }
+
+    if (!mounted) return;
+    Navigator.pop(context);
+    if (remoteOk) {
+      AppSnackBar.success(context, 'הפרופיל עודכן', duration: const Duration(seconds: 2));
+    } else {
+      AppSnackBar.info(context, 'הפרטים נשמרו במכשיר — הסנכרון לשרת ייעשה מאוחר יותר');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ffTheme = AppTheme.of(context);
+    // Scrollable so the on-screen keyboard never overflows the sheet — the
+    // viewInsets padding lifts the content above it and the user can scroll to
+    // the save button.
+    return SingleChildScrollView(
+      padding: EdgeInsets.fromLTRB(20, 16, 20, MediaQuery.of(context).viewInsets.bottom + 32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(width: 40, height: 4, decoration: BoxDecoration(color: ffTheme.alternate, borderRadius: BorderRadius.circular(2))),
+          ),
+          const SizedBox(height: 16),
+          Text('עריכת פרופיל', style: ffTheme.headlineSmall),
+          const SizedBox(height: 20),
+          Text('שם מלא', style: ffTheme.labelLarge),
+          const SizedBox(height: 8),
+          TextField(
+            key: const Key('editProfileName'),
+            controller: _nameCtrl,
+            textDirection: TextDirection.rtl,
+            enabled: !_saving,
+            textInputAction: TextInputAction.next,
+            onChanged: (_) { if (_nameError != null) setState(() => _nameError = null); },
+            decoration: InputDecoration(
+              hintText: 'ישראל ישראלי',
+              errorText: _nameError,
+              filled: true,
+              fillColor: ffTheme.cardSurface,
+              prefixIcon: Icon(Icons.person_outline_rounded, color: ffTheme.secondaryText),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.alternate)),
+              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.brandAccent, width: 1.5)),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text('מספר טלפון', style: ffTheme.labelLarge),
+          const SizedBox(height: 8),
+          TextField(
+            key: const Key('editProfilePhone'),
+            controller: _phoneCtrl,
+            keyboardType: TextInputType.phone,
+            textDirection: TextDirection.ltr,
+            enabled: !_saving,
+            textInputAction: TextInputAction.done,
+            onChanged: (_) { if (_phoneError != null) setState(() => _phoneError = null); },
+            onSubmitted: (_) => _save(),
+            decoration: InputDecoration(
+              hintText: '050-0000000',
+              errorText: _phoneError,
+              filled: true,
+              fillColor: ffTheme.cardSurface,
+              prefixIcon: Icon(Icons.phone_outlined, color: ffTheme.secondaryText),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.alternate)),
+              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: ffTheme.brandAccent, width: 1.5)),
+            ),
+          ),
+          const SizedBox(height: 24),
+          AppButton(
+            text: 'שמור שינויים',
+            onPressed: _save,
+            width: double.infinity,
+            height: 52,
+            color: AppColors.primary,
+            textStyle: ffTheme.titleSmall.copyWith(color: Colors.white),
+            borderRadius: BorderRadius.circular(14),
           ),
         ],
       ),

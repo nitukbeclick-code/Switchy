@@ -81,7 +81,14 @@ class RealtimePoller {
     _heartbeat?.cancel();
 
     _sub = _eventStream.listen(
-      (_) => _onEvent(),
+      (_) {
+        // A malformed payload must never escape the data callback and tear down
+        // the stream — swallow defensively, exactly like [onError] below. The
+        // heartbeat keeps polling regardless.
+        try {
+          _onEvent();
+        } catch (_) {}
+      },
       // A realtime error (socket drop, auth) must not crash the screen — the
       // heartbeat keeps polling, and the next event (if any) re-arms realtime.
       onError: (_) {},

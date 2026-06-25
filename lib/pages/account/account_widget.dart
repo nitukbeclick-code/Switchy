@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -7,6 +8,8 @@ import '../../core/nav.dart';
 import '../../app_state.dart';
 import '../../data.dart';
 import '../../widgets/pressable.dart';
+import '../../widgets/app_sliver_header.dart';
+import '../../widgets/refreshable_scroll.dart';
 import '../../components/logo_widget/logo_widget.dart';
 import '../../components/plan_card/mini_plan_card.dart';
 
@@ -21,77 +24,66 @@ class AccountWidget extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: ffTheme.background,
-      body: CustomScrollView(
+      // Pull-to-refresh recomputes the live AppState-derived figures (savings,
+      // tracker, watchlist) — a notify is enough to rebuild this StatelessWidget.
+      body: RefreshableScroll(
+        onRefresh: () async {
+          HapticFeedback.lightImpact();
+          AppState().update(() {});
+        },
         slivers: [
-          SliverToBoxAdapter(
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topRight,
-                  end: Alignment.bottomLeft,
-                  colors: [ffTheme.primary, ffTheme.tertiary],
-                ),
-              ),
-              child: SafeArea(
-                bottom: false,
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 56,
-                        height: 56,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.2),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Center(
-                          child: ExcludeSemantics(
-                            child: appState.isLoggedIn && appState.firstName.isNotEmpty
-                                ? Text(
-                                    appState.firstName[0],
-                                    style: GoogleFonts.rubik(fontSize: 26, fontWeight: FontWeight.w700, color: Colors.white),
-                                  )
-                                : const Icon(Icons.person_rounded, size: 28, color: Colors.white),
-                          ),
-                        ),
+          // Collapsing ink hero — mirrors the Profile header. The avatar rides
+          // as the flexibleChild and the settings / login action sits trailing.
+          AppSliverHeader(
+            title: appState.isLoggedIn ? appState.userName : 'אורח',
+            subtitle: appState.isLoggedIn ? appState.userPhone : 'לא מחובר',
+            expandedHeight: 188,
+            gradient: false,
+            showBack: false,
+            actions: [
+              if (appState.isLoggedIn)
+                IconButton(
+                  icon: const Icon(Icons.settings_rounded, color: Colors.white),
+                  tooltip: 'הגדרות פרופיל',
+                  onPressed: () => context.pushNamed('Settings'),
+                )
+              else
+                Padding(
+                  padding: const EdgeInsetsDirectional.only(end: 8),
+                  child: TextButton(
+                    onPressed: () => context.pushNamed('Auth'),
+                    // Solid white chip with ink text — reads as a clear CTA on
+                    // the ink header in both themes (the old `secondary` fill
+                    // went dark slate on dark, hiding the black label).
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(10),
                       ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(appState.isLoggedIn ? appState.userName : 'אורח', style: GoogleFonts.rubik(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white)),
-                            Text(appState.isLoggedIn ? appState.userPhone : 'לא מחובר', style: GoogleFonts.assistant(fontSize: 13, color: Colors.white70)),
-                          ],
-                        ),
-                      ),
-                      if (appState.isLoggedIn)
-                        IconButton(
-                          icon: const Icon(Icons.settings_rounded, color: Colors.white),
-                          tooltip: 'הגדרות פרופיל',
-                          onPressed: () => context.pushNamed('Settings'),
-                        )
-                      else
-                        TextButton(
-                          onPressed: () => context.pushNamed('Auth'),
-                          // Solid white chip with ink text — reads as a clear CTA on
-                          // the ink header in both themes (the old `secondary` fill
-                          // went dark slate on dark, hiding the black label).
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Text('כניסה', style: GoogleFonts.rubik(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.primary)),
-                          ),
-                        ),
-                    ],
+                      child: Text('כניסה', style: GoogleFonts.rubik(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.primary)),
+                    ),
                   ),
                 ),
+            ],
+            flexibleChild: Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                shape: BoxShape.circle,
               ),
-            ).animate().fadeIn(duration: 400.ms),
+              child: Center(
+                child: ExcludeSemantics(
+                  child: appState.isLoggedIn && appState.firstName.isNotEmpty
+                      ? Text(
+                          appState.firstName[0],
+                          style: GoogleFonts.rubik(fontSize: 28, fontWeight: FontWeight.w700, color: Colors.white),
+                        )
+                      : const Icon(Icons.person_rounded, size: 30, color: Colors.white),
+                ),
+              ),
+            ),
           ),
 
           // Login CTA banner for guests
@@ -116,7 +108,7 @@ class AccountWidget extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('הצטרפו לחוסך בחינם', style: ffTheme.titleSmall.copyWith(color: ffTheme.brandAccentText)),
+                            Text('הצטרפו ל-Switchy AI בחינם', style: ffTheme.titleSmall.copyWith(color: ffTheme.brandAccentText)),
                             Text('שמרו תוצאות, עקבו אחר מחירים ועוד', style: ffTheme.bodySmall),
                           ],
                         ),
@@ -163,7 +155,7 @@ class AccountWidget extends StatelessWidget {
                         ),
                         const SizedBox(height: 6),
                         Text('₪${appState.totalSavings}', style: GoogleFonts.rubik(fontSize: 44, fontWeight: FontWeight.w800, color: ffTheme.saving, letterSpacing: -1)),
-                        Text('מאז שהצטרפת לחוסך', style: GoogleFonts.assistant(fontSize: 12, color: Colors.white.withValues(alpha: 0.62))),
+                        Text('מאז שהצטרפת ל-Switchy AI', style: GoogleFonts.assistant(fontSize: 12, color: Colors.white.withValues(alpha: 0.62))),
                       ],
                     ),
                   ),
@@ -485,13 +477,18 @@ class AccountWidget extends StatelessWidget {
                                 ],
                               ),
                             ),
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: List.generate(5, (i) => Icon(
-                                i < overall ? Icons.star_rounded : Icons.star_outline_rounded,
-                                size: 14,
-                                color: ffTheme.warning,
-                              )),
+                            Semantics(
+                              label: 'דירוג: $overall מתוך 5 כוכבים',
+                              child: ExcludeSemantics(
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: List.generate(5, (i) => Icon(
+                                    i < overall ? Icons.star_rounded : Icons.star_outline_rounded,
+                                    size: 14,
+                                    color: ffTheme.warning,
+                                  )),
+                                ),
+                              ),
                             ),
                           ],
                         ),
@@ -509,9 +506,12 @@ class AccountWidget extends StatelessWidget {
                       _ActionTile(icon: Icons.dashboard_rounded, title: 'ניהול לקוחות / CRM', subtitle: 'שיחות וואטסאפ, לידים וצבר מכירות', onTap: () => context.pushNamed('Crm'), ffTheme: ffTheme),
                       _ActionTile(icon: Icons.insights_rounded, title: 'דשבורד אנליטיקס', subtitle: 'מדדי משפך אמיתיים — לידים, ערוצים והמרה', onTap: () => context.pushNamed('Analytics'), ffTheme: ffTheme),
                     ],
+                    _ActionTile(icon: Icons.account_balance_wallet_rounded, title: 'ארנק התקשורת', subtitle: 'כמה כבר חסכת דרכנו', onTap: () => context.pushNamed('Wallet'), ffTheme: ffTheme),
                     _ActionTile(icon: Icons.alarm_rounded, title: 'מעקב חידושים', subtitle: 'אל תשלם יותר מדי כשהמבצע נגמר', onTap: () => context.pushNamed('Renewal'), ffTheme: ffTheme),
+                    _ActionTile(icon: Icons.support_agent_rounded, title: 'תסריט מיקוח', subtitle: 'רוצים להישאר? בקשו הנחה עם נתונים אמיתיים', onTap: () => context.pushNamed('Negotiate'), ffTheme: ffTheme),
                     _ActionTile(icon: Icons.compare_arrows_rounded, title: 'השוואה חדשה', subtitle: 'מצא את המסלול הכי מתאים לך', onTap: () => context.goNamed('Results'), ffTheme: ffTheme),
                     _ActionTile(icon: Icons.auto_awesome_rounded, title: 'יועץ AI', subtitle: 'שאל שאלות על מסלולי תקשורת', onTap: () => context.pushNamed('AIAdvisor'), ffTheme: ffTheme),
+                    _ActionTile(icon: Icons.card_giftcard_rounded, title: 'הזמינו חבר', subtitle: 'עזרו לחבר לחסוך — שתפו את Switchy AI', onTap: () => context.pushNamed('Referral'), ffTheme: ffTheme),
                     _ActionTile(icon: Icons.person_rounded, title: 'הגדרות פרופיל', subtitle: 'עדכן פרטים ועדפות', onTap: () => context.pushNamed('Profile'), ffTheme: ffTheme),
                   ].animate(interval: 70.ms).fadeIn(duration: 300.ms).slideY(begin: 0.06, end: 0),
 
@@ -573,7 +573,12 @@ class _ActionTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Pressable(
-      onTap: onTap,
+      // Light haptic confirms the tap before the route push, matching the
+      // tactile feedback the rest of the app gives on primary actions.
+      onTap: () {
+        HapticFeedback.lightImpact();
+        onTap();
+      },
       child: Container(
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.all(16),
@@ -587,7 +592,7 @@ class _ActionTile extends StatelessWidget {
                 color: ffTheme.brandAccentTint,
                 borderRadius: BorderRadius.circular(ffTheme.radiusSm),
               ),
-              child: Icon(icon, color: ffTheme.brandAccent, size: 22),
+              child: ExcludeSemantics(child: Icon(icon, color: ffTheme.brandAccent, size: 22)),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -599,7 +604,7 @@ class _ActionTile extends StatelessWidget {
                 ],
               ),
             ),
-            Icon(Icons.arrow_back_ios_rounded, size: 14, color: ffTheme.secondaryText),
+            ExcludeSemantics(child: Icon(Icons.arrow_back_ios_rounded, size: 14, color: ffTheme.secondaryText)),
           ],
         ),
       ),

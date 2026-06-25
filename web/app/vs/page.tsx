@@ -12,17 +12,23 @@ import type { Metadata } from "next";
 import JsonLd from "@/components/JsonLd";
 import SgeSummary from "@/components/SgeSummary";
 import RelatedAuthorityPages from "@/components/RelatedAuthorityPages";
+import DataMethodology from "@/components/DataMethodology";
+import LlmDataFeed from "@/components/LlmDataFeed";
 import { getVsPairs } from "@/lib/vs";
 import type { VsPair } from "@/lib/vs";
+import { getLivePlans } from "@/lib/live-catalogue";
+import { lastDataDate } from "@/lib/aeo";
 import {
   breadcrumbSchema,
   collectionPageSchema,
+  pageAggregateOfferSchema,
   SITE_URL,
 } from "@/lib/schema";
 import { pageMetadata } from "@/lib/seo";
 import { ils } from "@/lib/format";
 
-export const dynamic = "force-static";
+// ISR keeps the hub's static HTML fresh against the live catalogue (hourly).
+export const revalidate = 3600;
 
 // Bare title — the root layout's title template brands the <title> once. (The OG
 // title is brand-normalised by pageMetadata.) Previously the inline brand suffix
@@ -48,9 +54,16 @@ function groupByCategory(pairs: VsPair[]): { label: string; pairs: VsPair[] }[] 
     .sort((a, b) => b.pairs.length - a.pairs.length || a.label.localeCompare(b.label, "he"));
 }
 
-export default function VsIndexPage() {
+export default async function VsIndexPage() {
   const pairs = getVsPairs();
   const groups = groupByCategory(pairs);
+
+  // AEO: read the whole live catalogue ONCE so the hub's AggregateOffer, the
+  // machine-readable feed and the methodology stamp all read the SAME fresh rows.
+  // getLivePlans never throws (bundled fallback with stale: true).
+  const live = await getLivePlans();
+  const asOf = live.lastUpdated ?? lastDataDate(live.plans);
+  const offerSchema = pageAggregateOfferSchema(live.plans);
 
   const crumbs = [
     { name: "בית", url: "/" },
@@ -58,7 +71,7 @@ export default function VsIndexPage() {
   ];
 
   const summary =
-    `מרכז ההשוואות הישירות של חוסך: ${pairs.length} השוואות ראש בראש בין ספקי ` +
+    `מרכז ההשוואות הישירות של Switchy AI: ${pairs.length} השוואות ראש בראש בין ספקי ` +
     `התקשורת בישראל, באותה קטגוריה. כל השוואה מציגה את המחיר ההתחלתי, מספר ` +
     `המסלולים והמאפיינים של שני הספקים זה מול זה — נתונים מהקטלוג, בשקלים, וללא ` +
     `עלות. בחרו השוואה כדי לראות מי זול יותר ומי מציע יותר.`;
@@ -96,6 +109,26 @@ export default function VsIndexPage() {
 
   return (
     <main id="main" className="mx-auto w-full max-w-5xl flex-1 px-4 py-10 sm:px-6">
+      {/* Page-scoped entrance motion (Emil Kowalski rules): a one-time fade + 10px
+          lift, staggered 30–80ms via inline animationDelay. Server-rendered CSS
+          only (no JS) — references the shared --ease-out token and animates ONLY
+          transform + opacity (GPU). Reduced-motion: the animation is removed so
+          blocks render statically at their already-visible resting state. */}
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
+        .sw-reveal { animation: swReveal 420ms var(--ease-out) both; }
+        @keyframes swReveal {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: none; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .sw-reveal { animation: none; }
+        }
+      `,
+        }}
+      />
+
       {/* Structured data: CollectionPage + ItemList + Breadcrumb. */}
       <JsonLd
         data={collectionPageSchema({
@@ -107,6 +140,14 @@ export default function VsIndexPage() {
       />
       <JsonLd data={itemList} />
       <JsonLd data={breadcrumbSchema(crumbs)} />
+      {/* AEO: AggregateOffer (catalogue-wide price range) — null when no data. */}
+      {offerSchema && <JsonLd data={offerSchema} />}
+
+      {/* AEO pillar 3: machine-readable feed of the live catalogue. */}
+      <LlmDataFeed
+        plans={live.plans}
+        meta={{ url: `${SITE_URL}/vs`, asOf, stale: live.stale }}
+      />
 
       {/* ── Breadcrumb (visible) ──────────────────────────────────────────── */}
       <nav aria-label="פירורי לחם" className="text-sm text-muted">
@@ -119,10 +160,13 @@ export default function VsIndexPage() {
 
       {/* ── Heading ───────────────────────────────────────────────────────── */}
       <header className="mt-4">
-        <h1 className="font-display text-4xl font-bold tracking-tight text-ink sm:text-5xl">
+        <h1 className="sw-reveal font-display text-4xl font-bold tracking-tight text-ink sm:text-5xl">
           השוואות ראש בראש — ספק מול ספק
         </h1>
-        <p className="mt-4 max-w-2xl text-lg leading-relaxed text-foreground">
+        <p
+          className="sw-reveal mt-4 max-w-2xl text-lg leading-relaxed text-foreground"
+          style={{ animationDelay: "60ms" }}
+        >
           השוואות ישירות בין שני ספקים באותה קטגוריה — מחיר התחלתי, מספר מסלולים
           ומאפיינים זה מול זה. הנתונים מהקטלוג ובשקלים.
         </p>
@@ -147,8 +191,12 @@ export default function VsIndexPage() {
             {group.label}
           </h2>
           <ul className="mt-6 bento-grid">
-            {group.pairs.map((p) => (
-              <li key={p.slug}>
+            {group.pairs.map((p, i) => (
+              <li
+                key={p.slug}
+                className="sw-reveal"
+                style={{ animationDelay: `${Math.min(i * 50, 250)}ms` }}
+              >
                 <Link
                   href={`/vs/${p.slug}`}
                   className="group bento card-interactive flex h-full flex-col p-6 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
@@ -170,6 +218,14 @@ export default function VsIndexPage() {
           </ul>
         </section>
       ))}
+
+      {/* ── Sources & methodology — show your work (E-E-A-T) ──────────────── */}
+      <DataMethodology
+        dateModified={asOf}
+        stale={live.stale}
+        planCount={live.plans.length}
+        className="mt-14"
+      />
 
       {/* ── Related — no dead-ends ────────────────────────────────────────── */}
       <RelatedAuthorityPages

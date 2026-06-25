@@ -22,7 +22,6 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { fetchRows, serviceFetch } from "../_shared/db.ts";
 import { jlog } from "../_shared/log.ts";
 import {
-  buildCatalogueContext,
   buildRecommendBlock,
   buildSuggestions,
   catalogueProviders,
@@ -37,10 +36,19 @@ import {
   callGeminiVision,
   type ChatTurn,
   extractJson,
-  generateReply,
-  SYSTEM_PROMPT_HEADER,
+  transcribeAudio,
   VISION_PROMPT,
 } from "../_shared/ai.ts";
+// Shared Cloud API toolkit (fail-soft): markRead/markTyping make the bot feel
+// responsive, sendList drives the >3-option category picker. sendText keeps its
+// signature but now retries once on a 5xx internally — see _shared/whatsapp.ts.
+import {
+  type ListSection,
+  markRead as waMarkRead,
+  markTyping as waMarkTyping,
+  sendList as waSendList,
+  sendText as waSendText,
+} from "../_shared/whatsapp.ts";
 import {
   classifyTextIntent,
   isOptedOut,
@@ -57,6 +65,16 @@ import {
   parseContext,
 } from "./context.ts";
 import { buildSavingHint, buildTopicReply } from "./flows.ts";
+import { captureAiLead } from "../_shared/leads.ts";
+import { type AgentRunnerDeps, runWhatsappAgent } from "./agent_runner.ts";
+// Live-relay (human takeover): when a rep has the conversation, forward the
+// customer's inbound text to the rep's Telegram chat so they see the live
+// conversation. Reuses the shared telegram sender + config resolver — we do NOT
+// reinvent sending.
+import { esc as tgEsc, sendTelegram } from "../_shared/telegram.ts";
+import { resolveCfgCached } from "../_shared/config.ts";
+import { captureError } from "../_shared/observability.ts";
+import { rateLimit } from "../_shared/ratelimit.ts";
 
 const VERIFY_TOKEN = Deno.env.get("WHATSAPP_VERIFY_TOKEN") ?? "";
 const APP_SECRET = Deno.env.get("WHATSAPP_APP_SECRET") ?? "";
@@ -70,6 +88,51 @@ const enc = new TextEncoder();
 // out to a (paid) AI call; beyond it the bot sends a soft "one moment" reply.
 const PER_CONTACT_HOURLY = 30;
 const MAX_MEDIA_BYTES = 6_000_000;
+// Hard cap on the inbound text/caption/transcript fed to the (paid) agent — a
+// cheap runaway-token guard. A WhatsApp text body is already bounded by Meta, but
+// a malicious/garbled payload (or a very long voice-note transcript) shouldn't be
+// allowed to balloon the prompt. We TRUNCATE rather than reject so the customer
+// still gets a grounded answer to (the start of) what they sent. The DB row is
+// separately clipped to 4000; this bounds what the model actually sees.
+const MAX_INBOUND_TEXT = 2000;
+
+// Truncate an inbound text/caption/transcript to the agent-input cap. Total +
+// fail-soft: a non-string collapses to "" and never throws. Exported so the cap
+// can be pinned in tests without booting the server.
+export function capInbound(s: string): string {
+  const t = (s ?? "");
+  return t.length > MAX_INBOUND_TEXT ? t.slice(0, MAX_INBOUND_TEXT) : t;
+}
+
+// Cheap in-memory per-sender burst shed (process-local; the shared fixed-window
+// limiter). This is a SECOND layer in FRONT of the per-contact hourly DB cap
+// (overLimit): it sheds a tight loop — a leaked-secret flood or a retry storm of
+// distinct wamids from one number — BEFORE any DB/AI work, without a round-trip.
+// Deliberately generous so only abuse trips it; the HMAC signature gate remains
+// the real auth and overLimit remains the durable per-hour quota. Fail-soft: any
+// throw here is swallowed and treated as "allowed" so the limiter can never drop
+// a legitimate message.
+const SENDER_BURST_LIMIT = 20;
+const SENDER_BURST_WINDOW_MS = 60_000;
+
+// Exported so the fail-soft burst-shed contract can be pinned in tests. `now` is
+// passed through to the (injectable-clock) shared limiter so a test needs no timers.
+export function senderBurstOk(from: string, now?: number): boolean {
+  try {
+    return rateLimit(`wa:${from}`, SENDER_BURST_LIMIT, SENDER_BURST_WINDOW_MS, now).allowed;
+  } catch (_) {
+    return true; // never let the limiter itself drop a message
+  }
+}
+
+// WhatsApp renders very long bubbles awkwardly (and Graph hard-caps a text body
+// at 4096). A grounded recommend block + reasons can run long, so we split any
+// reply past this soft budget into ordered bubbles on natural boundaries. Kept
+// well under Meta's hard limit so a single chunk is always sendable.
+const CHUNK_SOFT_LIMIT = 1000;
+// Small pause between ordered chunks so they arrive (and render) in order rather
+// than racing — WhatsApp orders by receipt, and back-to-back posts can invert.
+const CHUNK_GAP_MS = 350;
 
 // Catalogue is loaded once per function instance from the live public.plans
 // table (service-role read) — always fresh, no bundled snapshot to redeploy.
@@ -127,25 +190,15 @@ async function validSignature(raw: string, header: string | null): Promise<boole
 
 // ── outbound (Graph API) ─────────────────────────────────────────────────────
 
-// Sends a text reply; returns Meta's wamid (for idempotent outbound storage) or null.
+// Sends a text reply; returns Meta's wamid (for idempotent outbound storage) or
+// null. Delegates to the shared _shared/whatsapp.ts sendText so EVERY outbound
+// path (here + the CRM) sends identically AND gets the retry-once-on-5xx that
+// helper now does internally. The signature + fail-soft contract are unchanged:
+// a missing token / bad request / network throw still returns null, exactly as
+// the old inline implementation did. (PHONE_ID/GRAPH_VER are read by the shared
+// module from the same env with the same Switchy defaults.)
 async function sendText(to: string, body: string): Promise<string | null> {
-  if (!TOKEN) { jlog({ at: "wa.sendText", ok: false, error: "WHATSAPP_TOKEN not set" }); return null; }
-  try {
-    const res = await fetch(`https://graph.facebook.com/${GRAPH_VER}/${PHONE_ID}/messages`, {
-      method: "POST",
-      headers: { Authorization: `Bearer ${TOKEN}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ messaging_product: "whatsapp", to, type: "text", text: { body } }),
-    });
-    if (!res.ok) {
-      jlog({ at: "wa.sendText", ok: false, status: res.status, msg: await res.text().catch(() => "") });
-      return null;
-    }
-    const j = await res.json().catch(() => ({}));
-    return j?.messages?.[0]?.id ?? null;
-  } catch (e) {
-    jlog({ at: "wa.sendText", ok: false, error: String(e) });
-    return null;
-  }
+  return await waSendText(to, body);
 }
 
 // Quick-reply button ids (echoed back by Meta in interactive.button_reply.id)
@@ -158,6 +211,73 @@ const MENU_BUTTONS: { id: string; title: string }[] = [
   { id: BTN_HUMAN, title: "דבר עם נציג" },
   { id: BTN_BILL, title: "ניתוח חשבון" },
 ];
+
+// Category-picker list rows (sent as an interactive LIST, not buttons, because
+// there are 5 categories and Meta caps buttons at 3). Each row id is prefixed
+// "cat:" + the canonical catalogue category so the inbound-tap router can seed
+// that category and drop straight into the grounded compare flow — reusing the
+// SAME compare handler the "השוואת מסלול" button already triggers (no new path).
+const CAT_ROW_PREFIX = "cat:";
+// Budget quick-reply button rows (≤ 3, so these go out as real buttons). Tapping
+// one seeds the budget and runs the recommend flow. The "no cap" row recommends
+// the best value with no ceiling. Ids are "bud:<n>" / "bud:any".
+const BUD_BTN_PREFIX = "bud:";
+
+// The ordered category list shown in the picker — canonical category + its
+// Hebrew label from the shared CATEGORY_HE map (single source of truth).
+const PICKER_CATEGORIES = [
+  "cellular",
+  "internet",
+  "tv",
+  "triple",
+  "abroad",
+] as const;
+
+// Build the interactive-list sections for the category picker. Pure (no I/O) so
+// the row ids/labels can be pinned in tests. One section, one row per category,
+// each row id = "cat:<category>" and title = the Hebrew label (≤ 24 chars, well
+// within Meta's cap). The compare button id is intentionally NOT here — this is
+// the drill-down AFTER the user chose "compare".
+export function buildCategoryPickerSections(): ListSection[] {
+  return [{
+    title: "קטגוריות",
+    rows: PICKER_CATEGORIES.map((c) => ({
+      id: `${CAT_ROW_PREFIX}${c}`,
+      title: CATEGORY_HE[c] ?? c,
+    })),
+  }];
+}
+
+// The dynamic budget quick-reply buttons (≤ 3). Reuses the existing button path:
+// each id is "bud:<n>"/"bud:any" and routes to the recommend flow with the budget
+// seeded. Pure so the option set is testable.
+export function buildBudgetButtons(): { id: string; title: string }[] {
+  return [
+    { id: `${BUD_BTN_PREFIX}50`, title: "עד ₪50" },
+    { id: `${BUD_BTN_PREFIX}100`, title: "עד ₪100" },
+    { id: `${BUD_BTN_PREFIX}any`, title: "הכי משתלם" },
+  ];
+}
+
+// Parse a picker/budget tap id back into a slot patch. Returns the canonical
+// category for a "cat:*" id, the numeric budget for "bud:<n>" (null budget for
+// "bud:any"), or null when the id isn't one of ours. Pure + total.
+export function parsePickerTapId(
+  id: string,
+): { category?: string; budget?: number | null } | null {
+  const raw = (id ?? "").trim();
+  if (raw.startsWith(CAT_ROW_PREFIX)) {
+    const cat = normalizeCategory(raw.slice(CAT_ROW_PREFIX.length));
+    return cat ? { category: cat } : null;
+  }
+  if (raw.startsWith(BUD_BTN_PREFIX)) {
+    const v = raw.slice(BUD_BTN_PREFIX.length);
+    if (v === "any") return { budget: null };
+    const n = Number(v);
+    return Number.isFinite(n) && n > 0 ? { budget: Math.round(n) } : null;
+  }
+  return null;
+}
 
 // Sends a text body with up to 3 reply buttons; returns Meta's wamid or null.
 // Falls back to a plain text send if the interactive call is rejected (so the
@@ -200,8 +320,118 @@ async function sendButtons(
   }
 }
 
-// Inbound bill image → bytes → base64 (two bearer-gated, short-lived Graph hops).
-async function downloadMedia(mediaId: string): Promise<{ mimeType: string; data: string } | null> {
+// Split a reply into ordered bubbles, each ≤ `limit` chars, on the most natural
+// boundary available: paragraph breaks first (blank line), then single newlines,
+// then sentence ends, then whitespace, and only as a last resort a hard cut. A
+// short reply returns a single-element array unchanged, so the common case is a
+// no-op. Pure + total (never throws, never drops text) so the boundary logic can
+// be pinned in tests. The concatenation of the result always equals the input
+// with run-of-blank-lines normalised between merged paragraphs.
+export function chunkReply(text: string, limit = CHUNK_SOFT_LIMIT): string[] {
+  const body = (text ?? "").trim();
+  if (!body) return [];
+  if (body.length <= limit) return [body];
+
+  // Greedily pack paragraphs (split on blank lines) into chunks; a paragraph
+  // that is itself too long is recursively broken on softer boundaries.
+  const paras = body.split(/\n{2,}/);
+  const chunks: string[] = [];
+  let cur = "";
+  const flush = () => {
+    if (cur) chunks.push(cur);
+    cur = "";
+  };
+  for (const para of paras) {
+    const piece = para.trim();
+    if (!piece) continue;
+    if (piece.length > limit) {
+      // The paragraph alone overflows — flush what we have, then break it.
+      flush();
+      for (const sub of breakLong(piece, limit)) chunks.push(sub);
+      continue;
+    }
+    const joined = cur ? `${cur}\n\n${piece}` : piece;
+    if (joined.length <= limit) {
+      cur = joined;
+    } else {
+      flush();
+      cur = piece;
+    }
+  }
+  flush();
+  return chunks.length ? chunks : [body.slice(0, limit)];
+}
+
+// Break a single over-long block on softer boundaries: newline → sentence end →
+// space → hard cut. Always makes progress (a chunk is never empty) so it can't
+// loop. Used only by chunkReply for a paragraph that exceeds the limit on its own.
+function breakLong(block: string, limit: number): string[] {
+  const out: string[] = [];
+  let rest = block.trim();
+  while (rest.length > limit) {
+    const window = rest.slice(0, limit);
+    // Prefer the latest newline, then sentence terminator, then space.
+    let cut = Math.max(
+      window.lastIndexOf("\n"),
+      window.lastIndexOf("! "),
+      window.lastIndexOf("? "),
+      window.lastIndexOf(". "),
+      window.lastIndexOf("׃ "),
+      window.lastIndexOf("; "),
+    );
+    if (cut < limit * 0.5) cut = window.lastIndexOf(" "); // avoid a tiny first piece
+    if (cut <= 0) cut = limit; // no boundary at all → hard cut
+    else cut += 1; // keep the boundary char on the left piece
+    out.push(rest.slice(0, cut).trim());
+    rest = rest.slice(cut).trim();
+  }
+  if (rest) out.push(rest);
+  return out;
+}
+
+// Send a (possibly long) text reply as one or more ordered bubbles, pausing
+// briefly between them so WhatsApp renders them in order. Returns the wamid of
+// the FIRST bubble (the one we store as the canonical outbound row) or null.
+// Each send goes through sendText, which already retries once on a 5xx; we add a
+// one-shot retry around the FIRST bubble specifically so the stored message is as
+// reliable as possible. Fail-soft throughout — a failed later chunk is logged,
+// never thrown.
+async function sendChunkedText(to: string, body: string): Promise<string | null> {
+  const parts = chunkReply(body);
+  if (parts.length === 0) return null;
+  if (parts.length === 1) {
+    // Single bubble: send once, and retry once on a null (covers a transient
+    // failure the shared 5xx-retry didn't catch, e.g. a network throw).
+    let id = await sendText(to, parts[0]);
+    if (!id) id = await sendText(to, parts[0]);
+    return id;
+  }
+  let firstId: string | null = null;
+  for (let i = 0; i < parts.length; i++) {
+    let id = await sendText(to, parts[i]);
+    if (i === 0) {
+      if (!id) id = await sendText(to, parts[i]); // protect the canonical bubble
+      firstId = id;
+    } else if (!id) {
+      jlog({ at: "wa.chunk", ok: false, idx: i, total: parts.length });
+    }
+    // Brief inter-bubble gap so ordering holds; skip after the last one.
+    if (i < parts.length - 1) {
+      await new Promise((r) => setTimeout(r, CHUNK_GAP_MS));
+    }
+  }
+  return firstId;
+}
+
+// Inbound media → raw bytes (two bearer-gated, short-lived Graph hops). The
+// shared download core: a bill image and a voice note both fetch the same way,
+// they only differ in how the bytes are consumed (base64 for Vision, raw bytes
+// for Whisper). Returns the codec mime + the bytes, or null on any failure /
+// over-size (fail-soft). `fallbackMime` is used when Graph omits content-type.
+async function downloadMediaBytes(
+  mediaId: string,
+  fallbackMime: string,
+): Promise<{ mimeType: string; bytes: Uint8Array } | null> {
   if (!TOKEN) return null;
   try {
     const meta = await fetch(`https://graph.facebook.com/${GRAPH_VER}/${mediaId}`, {
@@ -214,14 +444,33 @@ async function downloadMedia(mediaId: string): Promise<{ mimeType: string; data:
     if (!bin.ok) { jlog({ at: "wa.media", ok: false, step: "fetch", status: bin.status }); return null; }
     const bytes = new Uint8Array(await bin.arrayBuffer());
     if (bytes.length > MAX_MEDIA_BYTES) { jlog({ at: "wa.media", ok: false, step: "size", bytes: bytes.length }); return null; }
-    let s = "";
-    const chunk = 0x8000;
-    for (let i = 0; i < bytes.length; i += chunk) s += String.fromCharCode(...bytes.subarray(i, i + chunk));
-    return { mimeType: bin.headers.get("content-type") || "image/jpeg", data: btoa(s) };
+    return { mimeType: bin.headers.get("content-type") || fallbackMime, bytes };
   } catch (e) {
     jlog({ at: "wa.media", ok: false, error: String(e) });
     return null;
   }
+}
+
+// Inbound bill image → bytes → base64 (for Gemini Vision's inlineData).
+async function downloadMedia(mediaId: string): Promise<{ mimeType: string; data: string } | null> {
+  const got = await downloadMediaBytes(mediaId, "image/jpeg");
+  if (!got) return null;
+  let s = "";
+  const chunk = 0x8000;
+  for (let i = 0; i < got.bytes.length; i += chunk) s += String.fromCharCode(...got.bytes.subarray(i, i + chunk));
+  return { mimeType: got.mimeType, data: btoa(s) };
+}
+
+// Inbound voice note → transcript (Groq Whisper). Downloads the audio bytes then
+// transcribes them in Hebrew. Returns "" on any failure (no token, unreadable
+// media, no Groq key, STT failure) so the caller sends a friendly "write to me
+// instead" nudge — never throws. The transcript, when non-empty, is fed to the
+// SAME agent path as a typed message.
+async function transcribeVoiceNote(mediaId: string, aiKeys: AiKeys): Promise<string> {
+  if (!aiKeys.groq) return "";
+  const audio = await downloadMediaBytes(mediaId, "audio/ogg");
+  if (!audio) return "";
+  return await transcribeAudio(aiKeys.groq, audio);
 }
 
 // ── persistence (service-role PostgREST) ─────────────────────────────────────
@@ -279,7 +528,7 @@ async function upsertContact(phone: string, name?: string): Promise<Row | null> 
 
 async function getOrCreateConversation(contactId: string): Promise<Row | null> {
   const open = await fetchRows<Row>(
-    `/rest/v1/whatsapp_conversations?contact_id=eq.${contactId}&status=in.(open,bot,human)&order=created_at.desc&limit=1&select=id,status,bot_enabled,ai_state`,
+    `/rest/v1/whatsapp_conversations?contact_id=eq.${contactId}&status=in.(open,bot,human)&order=created_at.desc&limit=1&select=id,status,bot_enabled,ai_state,relay_tg_chat_id`,
   );
   if (open && open.length) return open[0];
   const created = await pgInsert("whatsapp_conversations", { contact_id: contactId, status: "open" }, { returnRep: true });
@@ -296,6 +545,42 @@ function botEnabled(convo: Row | null): boolean {
   const v = convo.bot_enabled;
   if (v === undefined || v === null) return true; // column not present yet → behave as before
   return v !== false;
+}
+
+// RELAY-ACTIVE = a rep has taken the conversation over (bot_enabled=false) AND a
+// relay target is set (whatsapp_conversations.relay_tg_chat_id, see the takeover
+// contract). When both hold, an inbound customer message is forwarded to the rep's
+// Telegram chat so they follow the live conversation; NULL relay = no relay.
+function relayChatId(convo: Row | null): string | null {
+  if (!convo) return null;
+  const v = convo.relay_tg_chat_id;
+  if (v === undefined || v === null) return null;
+  const id = String(v).trim();
+  return id || null;
+}
+
+// Forward ONE inbound customer message to the rep's Telegram relay chat. This is
+// the customer→rep half of the live relay (rep→customer is the CRM/telegram side):
+// the customer is in an ACTIVE human conversation, so this is NOT marketing and
+// runs only AFTER the §30A opt-out gate. Best-effort + fail-soft: a Telegram error
+// never blocks going silent for the human takeover. The customer inbound is already
+// stored above — we send nothing back to the customer and store no new outbound.
+async function relayInboundToRep(contact: Row, convo: Row, text: string): Promise<void> {
+  const chatId = relayChatId(convo);
+  if (!chatId) return;
+  const who = String(contact.wa_name ?? "").trim() || String(contact.wa_phone ?? "").trim() || "לקוח";
+  // HTML-escape the customer-controlled label + body (sendTelegram posts parse_mode
+  // HTML), and clip the body so a long message can't blow past Telegram's limit.
+  const body = tgEsc(text.slice(0, 3500));
+  const prefix = `📩 <b>${tgEsc(who)}</b>:`;
+  try {
+    const cfg = await resolveCfgCached();
+    // Route to the rep's specific relay chat (not the team default tgChat) by
+    // overriding tgChat on the resolved config — sendTelegram sends to cfg.tgChat.
+    await sendTelegram({ ...cfg, tgChat: chatId }, `${prefix} ${body}`);
+  } catch (e) {
+    jlog({ at: "wa.relay", ok: false, convId: String(convo.id), error: String(e) });
+  }
 }
 
 // Append a crm_events audit row (inbound/outbound/system) for the activity feed
@@ -357,7 +642,7 @@ const FALLBACK_REPLY =
 // One-time greeting for a brand-new contact — explains what the bot can do,
 // then offers the quick-reply menu (sent as interactive buttons).
 const WELCOME_REPLY =
-  'היי, אני העוזר החכם של חוסך (Switchy) 🤖\nאני משווה בשבילך מסלולי סלולר, אינטרנט, טלוויזיה וחבילות חו"ל ועוזר לחסוך בחשבון. אפשר לשאול אותי כל דבר, לשלוח צילום של החשבון לניתוח, או לבחור למטה 👇';
+  'היי, אני העוזר החכם של Switchy AI 🤖\nאני משווה בשבילך מסלולי סלולר, אינטרנט, טלוויזיה וחבילות חו"ל ועוזר לחסוך בחשבון. אפשר לשאול אותי כל דבר, לשלוח צילום של החשבון לניתוח, או לבחור למטה 👇';
 
 // Sent right after the welcome buttons land — primes the conversation.
 const BILL_PROMPT_REPLY =
@@ -379,6 +664,18 @@ async function handleOptOut(contact: Row, inText: string): Promise<void> {
     status: "opted_out",
     last_message_at: new Date().toISOString(),
   });
+  // §30A durable opt-out: append the phone to the cross-channel suppression
+  // registry so EVERY proactive sender (the savings-watch watcher, any future
+  // SMS/email/WhatsApp blast) honours this STOP — not just this conversation's
+  // opted_out flag. UNIQUE(channel, contact) → re-opting-out is a harmless no-op
+  // (ignore-duplicates). Best-effort: never blocks the single confirmation below.
+  if (phone) {
+    await pgInsert(
+      "marketing_suppression",
+      { channel: "whatsapp", contact: phone, reason: "whatsapp_stop" },
+      { onConflict: "channel,contact", ignore: true },
+    );
+  }
   await logSecurityEvent("whatsapp_marketing_opt_out", {
     channel: "whatsapp",
     wa_phone: phone,
@@ -403,7 +700,12 @@ async function handleOptOut(contact: Row, inText: string): Promise<void> {
   jlog({ at: "wa.optout", phone, ok: true });
 }
 
-async function handleHandoff(contact: Row, inText: string, history: ChatTurn[]): Promise<string> {
+// Create the hand-off lead (Telegram rep card via the leads trigger) and flip the
+// contact to handed_off. Returns whether the lead landed. Shared by the explicit
+// handoff intent AND the agent's escalate_to_human tool, so both paths behave
+// identically (one source of truth for "raise a human"). This is a SERVICE action
+// — no marketing consent is required (the person asked for a human).
+async function createHandoffLead(contact: Row, inText: string, history: ChatTurn[]): Promise<boolean> {
   const transcript = history
     .slice(-4)
     .map((h) => `${h.role === "user" ? "לקוח" : "בוט"}: ${h.text}`)
@@ -422,38 +724,75 @@ async function handleHandoff(contact: Row, inText: string, history: ChatTurn[]):
     status: "handed_off",
     ...(leadId ? { lead_id: leadId } : {}),
   });
-  if (!created) {
+  return !!created;
+}
+
+async function handleHandoff(contact: Row, inText: string, history: ChatTurn[]): Promise<string> {
+  const ok = await createHandoffLead(contact, inText, history);
+  if (!ok) {
     // Insert blocked (e.g. per-phone rate limit) — still reassure the customer.
     return "אני כאן לכל שאלה 🙂 רשמתי שתרצה/י לדבר עם נציג — ננסה לחזור אליך בהקדם. בינתיים אפשר לשאול אותי כל דבר על המסלולים.";
   }
   return "מעולה 🙌 נציג אנושי שלנו יחזור אליך כאן בוואטסאפ בהקדם. בינתיים אפשר להמשיך לשאול אותי כל דבר על המסלולים והמחירים.";
 }
 
-async function handleBill(mediaId: string, aiKeys: AiKeys): Promise<string> {
+// A bill photo, read by Gemini Vision into grounded facts. Returns the extracted
+// {provider, monthly, category} (the agent's analyze_bill turns it into cheaper
+// suggestions) plus a deterministic `fallbackReply` used verbatim when the agent
+// path is unavailable (no Gemini key, image unreadable, or amount not found).
+// `hint` is null only when we couldn't read a usable monthly amount.
+type BillExtract = {
+  hint: { provider?: string; monthly: number; category?: string; imageId?: string } | null;
+  fallbackReply: string;
+};
+
+async function extractBillHint(mediaId: string, aiKeys: AiKeys): Promise<BillExtract> {
   if (!aiKeys.gemini) {
-    return "אפשר לכתוב לי מה הספק הנוכחי והסכום החודשי, ואמליץ על מסלולים זולים יותר 🙂";
+    return {
+      hint: null,
+      fallbackReply: "אפשר לכתוב לי מה הספק הנוכחי והסכום החודשי, ואמליץ על מסלולים זולים יותר 🙂",
+    };
   }
   const plans = await getPlans();
   const providers = catalogueProviders(plans);
   const img = await downloadMedia(mediaId);
   if (!img) {
-    return "לא הצלחתי לקרוא את התמונה 🙏 אפשר לשלוח שוב, או פשוט לכתוב לי מה הספק והסכום החודשי?";
+    return {
+      hint: null,
+      fallbackReply: "לא הצלחתי לקרוא את התמונה 🙏 אפשר לשלוח שוב, או פשוט לכתוב לי מה הספק והסכום החודשי?",
+    };
   }
   let out = "";
   try {
     out = await callGeminiVision(aiKeys.gemini, VISION_PROMPT.replace("__PROVIDERS__", providers.join(", ")), img);
   } catch (e) {
     jlog({ at: "wa.bill", ok: false, error: String(e) });
-    return "לא הצלחתי לנתח את החשבון כרגע 🙏 אפשר לנסות שוב, או לכתוב לי את הספק והסכום החודשי?";
+    return {
+      hint: null,
+      fallbackReply: "לא הצלחתי לנתח את החשבון כרגע 🙏 אפשר לנסות שוב, או לכתוב לי את הספק והסכום החודשי?",
+    };
   }
   const ex = extractJson(out);
   const monthly = Number(ex?.monthly);
   if (!ex || !(monthly > 0)) {
-    return "לא הצלחתי לקרוא את הסכום מהחשבון 🙏 אפשר לשלוח תמונה ברורה יותר, או לכתוב לי את הספק והסכום החודשי?";
+    return {
+      hint: null,
+      fallbackReply: "לא הצלחתי לקרוא את הסכום מהחשבון 🙏 אפשר לשלוח תמונה ברורה יותר, או לכתוב לי את הספק והסכום החודשי?",
+    };
   }
   const category = normalizeCategory(String(ex.category ?? ""));
   const provider = normalizeProvider(String(ex.provider ?? ""), providers);
   const spend = Math.round(Math.min(5000, Math.max(0, monthly)));
+  return {
+    hint: { provider: provider || undefined, monthly: spend, category: category || undefined, imageId: mediaId },
+    fallbackReply: buildBillFallbackReply(plans, provider, spend, category),
+  };
+}
+
+// Deterministic, grounded bill reply (the old handleBill body) — used as the
+// agent's templateFallback for the bill flow so the customer always gets a real,
+// catalogue-backed answer even when the LLM is unavailable.
+function buildBillFallbackReply(plans: Plan[], provider: string, spend: number, category: string): string {
   const sugg = buildSuggestions(plans, category, spend, 3);
   const head = `קראתי את החשבון 📄 ${provider ? provider + ", " : ""}סביב ₪${spend} לחודש${category ? ` (${CATEGORY_HE[category] ?? category})` : ""}.`;
   if (!sugg.length) {
@@ -463,30 +802,26 @@ async function handleBill(mediaId: string, aiKeys: AiKeys): Promise<string> {
   return `${head}\nכמה מסלולים זולים יותר:\n${lines.join("\n")}\n\nרוצה שאחבר אותך לנציג שיסדר את המעבר?`;
 }
 
-async function handleChat(
-  message: string,
-  history: ChatTurn[],
-  aiKeys: AiKeys,
-  recommend: boolean,
-  ctx: ConvContext = {},
-): Promise<string> {
-  const plans = await getPlans();
-  const system = SYSTEM_PROMPT_HEADER + buildCatalogueContext(plans);
-  let userMsg = message;
-  if (recommend) {
-    // Ground the advisor turn in a TIGHT candidate block built from the context
-    // we've gathered across turns (category/budget/abroad) so the model picks
-    // FROM real, relevant rows instead of scanning the whole catalogue. Falls
-    // back to the generic nudge when we have no hints yet.
-    const block = buildRecommendBlock(plans, { category: ctx.category, budget: ctx.budget, abroad: ctx.abroad }, 6);
-    const grounding = block
-      ? `\n\nמסלולים מתאימים מהקטלוג (בחר/י מתוכם בלבד):\n${block}`
-      : "";
-    userMsg =
-      `${message}\n\n(המשתמש/ת מבקש/ת המלצה — הצע/י עד 3 מסלולים ספציפיים מהרשימה עם סיבה קצרה לכל אחד, ושאל/י שאלה אחת קצרה לדיוק.)${grounding}`;
+// The DETERMINISTIC chat fallback — the agent's last-resort templateFallback for
+// a free-text turn. The agent already tried the Gemini tool loop AND the no-tools
+// grounded text chain (Gemini→Groq→OpenRouter) before reaching here, so this does
+// NOT make another LLM call: it returns a grounded, catalogue-backed nudge built
+// from the context we've gathered (a real recommend block when we know the
+// category, else the generic FALLBACK_REPLY). Never fabricates a plan/price.
+function buildChatFallback(plans: Plan[], recommend: boolean, ctx: ConvContext): string {
+  if (recommend || ctx.category) {
+    const block = buildRecommendBlock(
+      plans,
+      { category: ctx.category, budget: ctx.budget, abroad: ctx.abroad },
+      3,
+    );
+    if (block) {
+      const heCat = ctx.category ? (CATEGORY_HE[ctx.category] ?? ctx.category) : "";
+      const head = heCat ? `כמה מסלולי ${heCat} מתאימים מהקטלוג שלנו 👇` : "כמה מסלולים מתאימים מהקטלוג שלנו 👇";
+      return `${head}\n${block}\n\nרוצה שאמליץ לפי תקציב מסוים, או אחבר אותך לנציג שיסדר את המעבר?`;
+    }
   }
-  const reply = await generateReply(aiKeys, system, history, userMsg || "שלום");
-  return reply || FALLBACK_REPLY;
+  return FALLBACK_REPLY;
 }
 
 // ── per-message orchestration ────────────────────────────────────────────────
@@ -494,22 +829,41 @@ async function handleChat(
 async function handleMessage(m: Row, profileName: string | undefined, aiKeys: AiKeys): Promise<void> {
   const from = String(m?.from ?? "");
   if (!from) return;
+  // Cheap in-memory per-sender burst shed — runs BEFORE any DB/AI work so a tight
+  // loop (leaked-secret flood / distinct-wamid retry storm from one number) is
+  // dropped without a round-trip. Generous window, so a normal conversation never
+  // trips it; the durable per-hour cap (overLimit) + the HMAC gate are untouched.
+  // Fail-soft: senderBurstOk swallows any limiter error and returns true.
+  if (!senderBurstOk(from)) {
+    jlog({ at: "wa.burst", from, ok: false });
+    return;
+  }
   const wamid = m?.id ? String(m.id) : null;
   const type = String(m?.type ?? "text");
-  // A quick-reply tap arrives as type "interactive" with button_reply.{id,title}.
-  // We carry the id (cmp/human/bill) for routing and store the title as the body.
-  const buttonId = type === "interactive"
-    ? String(
-      (m as Row & { interactive?: { button_reply?: { id?: string } } }).interactive?.button_reply?.id ?? "",
-    )
-    : "";
-  // Text + image bodies come from the shared messageText extractor; a quick-reply
-  // tap's label lives in button_reply.title, which messageText doesn't cover.
-  const text = type === "interactive"
-    ? String(
-      (m as Row & { interactive?: { button_reply?: { title?: string } } }).interactive?.button_reply?.title ?? "",
-    )
-    : messageText(m);
+  // A tap arrives as type "interactive": a quick-reply button is under
+  // interactive.button_reply.{id,title}; a LIST selection (the category picker we
+  // now send) is under interactive.list_reply.{id,title}. We read either, carry
+  // the id (cmp/human/bill OR cat:*/bud:*) for routing, and store the title as the
+  // body. One `tapReply` accessor so both shapes route through the same branch.
+  const tapReply = type === "interactive"
+    ? (() => {
+      const ix = (m as Row & {
+        interactive?: {
+          button_reply?: { id?: string; title?: string };
+          list_reply?: { id?: string; title?: string };
+        };
+      }).interactive;
+      return ix?.button_reply ?? ix?.list_reply ?? undefined;
+    })()
+    : undefined;
+  const buttonId = tapReply ? String(tapReply.id ?? "") : "";
+  // Text + image bodies come from the shared messageText extractor; a tap's label
+  // lives in its reply.title, which messageText doesn't cover. Capped to
+  // MAX_INBOUND_TEXT — a cheap runaway-token guard before any (paid) AI fan-out.
+  // Truncation (not rejection) keeps the bot answering; storage clips separately.
+  const text = capInbound(
+    type === "interactive" ? String(tapReply?.title ?? "") : messageText(m),
+  );
 
   // 1) Persist contact + conversation, idempotently store the inbound message.
   const contact = await upsertContact(from, profileName);
@@ -535,6 +889,13 @@ async function handleMessage(m: Row, profileName: string | undefined, aiKeys: Ai
   // Carry the conversation id on the contact so opt-out (handled before the
   // normal reply path) can store its single outbound against this conversation.
   if (contact && convo) contact._convId = convo.id;
+
+  // Acknowledge receipt with a read tick as soon as we've accepted a NEW (non-
+  // duplicate) inbound. This is a benign service acknowledgement — NOT a menu,
+  // typing indicator, or marketing — so it's correct for every inbound we handle,
+  // including a STOP (the person sees we registered their request) and a
+  // human-takeover turn. Best-effort + fail-soft (returns null on any error).
+  if (wamid) await waMarkRead(wamid);
 
   // Audit every (non-duplicate) inbound on the CRM activity feed — this is what
   // a human rep watches while they have a conversation taken over. Logged
@@ -562,10 +923,19 @@ async function handleMessage(m: Row, profileName: string | undefined, aiKeys: Ai
   // 2b) HUMAN TAKEOVER GATE. When a rep has taken the conversation over
   //     (whatsapp_conversations.bot_enabled = false) the AI bot must NOT
   //     auto-reply. The inbound is already stored + audited above and STOP was
-  //     already honoured; we simply go silent and let the human handle it. Only
-  //     the inbound timestamps are touched (no outbound, no AI fan-out).
+  //     already honoured (step 2, BEFORE this gate — opt-out always wins); we go
+  //     silent for the BOT and let the human handle it. If a relay target is set
+  //     (RELAY-ACTIVE), we additionally FORWARD this inbound to the rep's Telegram
+  //     chat so they follow the live conversation — instead of the old silent
+  //     store-only. The bot still does NOT auto-reply to the customer. Only the
+  //     inbound timestamps are touched (no customer-facing outbound, no AI fan-out).
   if (convo && !botEnabled(convo)) {
     jlog({ at: "wa.silent", reason: "human_takeover", convId: String(convo.id) });
+    if (contact && type !== "image") {
+      // Customer→rep relay (NOT marketing — this is the customer's live human
+      // conversation, gated behind the §30A opt-out above). Best-effort.
+      await relayInboundToRep(contact, convo, text);
+    }
     if (contact) {
       const now = new Date().toISOString();
       await pgPatch("whatsapp_conversations", `id=eq.${convo.id}`, { last_message_at: now });
@@ -595,65 +965,239 @@ async function handleMessage(m: Row, profileName: string | undefined, aiKeys: Ai
   // When true, the reply is sent with the 3-button quick-reply menu instead of
   // plain text (welcome, or any moment we want to re-offer the main actions).
   let withMenu = false;
-  if (type === "image") {
+  // When true, the reply is sent as an interactive LIST (the 5-category picker) —
+  // used after the user taps "compare". When true, the reply is sent with the
+  // dynamic budget quick-reply buttons — used after they pick a category. Both are
+  // reactive drill-downs of an action the user just chose, never proactive blasts.
+  let withCategoryPicker = false;
+  let withBudgetButtons = false;
+  // When true, runWhatsappAgent already persisted ai_state (transcript + slots +
+  // tool-call history nested under ai_state.agent). Step 6 must NOT then overwrite
+  // ai_state with the bare top-level slots — that would drop the agent envelope.
+  // For non-agent turns (welcome / button prompts / explicit handoff) this stays
+  // false and step 6 writes mergedCtx as before.
+  let agentSaved = false;
+
+  // The agent's side-effect sinks (audit / consent-gated lead / human escalation).
+  // Built once per message; only used when we route a turn through runWhatsappAgent.
+  // Every sink is best-effort and reuses the webhook's existing honest paths:
+  //   • captureLead → _shared/leads.ts captureAiLead (consent===true gate + §7b)
+  //   • escalate    → createHandoffLead (service action: lead + status=handed_off)
+  const agentDeps: AgentRunnerDeps = {
+    conversationId: convo ? String(convo.id) : null,
+    contactId: contact ? String(contact.id) : null,
+    logCrmEvent: (ev) =>
+      logCrmEvent({
+        conversationId: convo ? String(convo.id) : null,
+        contactId: contact ? String(contact.id) : null,
+        actor: ev.actor,
+        event: ev.event,
+        preview: ev.preview,
+      }),
+    logSecurityEvent: (event, detail) => logSecurityEvent(event, detail as Row),
+    captureLead: (lead) => captureAiLead(lead),
+    escalate: (reason) =>
+      contact ? createHandoffLead(contact, reason || "המשתמש ביקש נציג", history) : false,
+  };
+
+  // Whether this contact has opted out of marketing — computed up here because it
+  // ALSO gates the typing indicator: an opted-out person gets reactive service
+  // replies but never a "typing…" affordance (treated as part of the proactive
+  // surface we suppress for them, alongside the menus). Reused in step 6.
+  const optedOut = contact ? isOptedOut(contact.status) : false;
+  // Show the "typing…" indicator while we work on the reply (it can involve a
+  // Vision + agent round-trip). Suppressed for opted-out contacts. Tied to the
+  // inbound wamid per Graph's model. Best-effort; cleared right before we send.
+  const canType = !!wamid && !optedOut;
+  if (canType) await waMarkTyping(wamid, true);
+
+  // VOICE NOTE → transcript. A WhatsApp voice note (type "audio", with voice:true)
+  // or any inbound audio is transcribed to Hebrew text via Groq Whisper, then
+  // routed through the SAME free-text agent path as if the customer had typed it.
+  // The guard chain above (HMAC / §30A opt-out / human-takeover / rate-limit) is
+  // UNTOUCHED — this runs only after all of it. If we can't hear the message (no
+  // Groq key, unreadable media, empty transcript), we reply with a friendly ask to
+  // write instead. `routeType`/`routeText` let the existing dispatch below treat a
+  // successful transcript exactly like a typed message (no duplicated agent block).
+  let routeType = type;
+  let routeText = text;
+  // True once an inbound voice note was successfully transcribed — used to skip
+  // the first-contact WELCOME branch so a spoken first message reaches the agent
+  // directly (the customer asked something out loud; answer it).
+  let transcribed = false;
+  if (type === "audio" || type === "voice") {
+    intent = "qa";
+    const mediaId = (m as Row & { audio?: { id?: string }; voice?: { id?: string } }).audio?.id ??
+      (m as Row & { voice?: { id?: string } }).voice?.id;
+    const transcript = mediaId ? await transcribeVoiceNote(String(mediaId), aiKeys) : "";
+    if (transcript) {
+      // Treat the transcript as a typed free-text message: fall through to the
+      // text path below by rebranding the routing type + text.
+      routeType = "text";
+      routeText = transcript;
+      transcribed = true;
+      jlog({ at: "wa.voice", ok: true, chars: transcript.length });
+    } else {
+      // Couldn't hear it → friendly Hebrew nudge to write instead. We DON'T fall
+      // through (routeType stays "audio"), so no agent/text branch runs below.
+      reply = "לא הצלחתי לשמוע את ההודעה הקולית — אפשר לכתוב לי בכתב? 🙏";
+      jlog({ at: "wa.voice", ok: false });
+    }
+  }
+
+  if (routeType === "audio" || routeType === "voice") {
+    // Voice note we couldn't transcribe — `reply` is already the friendly nudge
+    // set above; skip every routing branch and go straight to send (step 5/6).
+  } else if (routeType === "image") {
     intent = "bill";
     const mediaId = (m as Row & { image?: { id?: string } }).image?.id;
-    reply = mediaId ? await handleBill(String(mediaId), aiKeys) : "שלחת תמונה אבל לא הצלחתי לקרוא אותה — אפשר לשלוח שוב?";
+    if (!mediaId) {
+      reply = "שלחת תמונה אבל לא הצלחתי לקרוא אותה — אפשר לשלוח שוב?";
+    } else {
+      // Read the bill with Vision into grounded facts, then let the AGENT turn
+      // them into cheaper suggestions (analyze_bill) so a bill photo gets the
+      // same tool-using treatment as text. The deterministic suggestion builder
+      // is the agent's templateFallback (used when the LLM is unavailable, or
+      // when Vision couldn't read an amount — then we have no hint to pass).
+      const bill = await extractBillHint(String(mediaId), aiKeys);
+      if (!bill.hint) {
+        reply = bill.fallbackReply; // no usable amount → deterministic ask
+      } else {
+        const r = await runWhatsappAgent({
+          sessionKey: convo ? String(convo.id) : "",
+          message: text || 'צירפתי צילום של החשבון שלי, אפשר לנתח ולמצוא מסלול זול יותר?',
+          plans: await getPlans(),
+          keys: aiKeys,
+          deps: agentDeps,
+          billHint: bill.hint,
+          templateFallback: () => bill.fallbackReply,
+          slotPatch: bill.hint.category ? { category: bill.hint.category } : undefined,
+        });
+        reply = r.reply || bill.fallbackReply;
+        if (convo) agentSaved = true;
+      }
+    }
   } else if (buttonId) {
-    // Inbound quick-reply tap → route by the button id.
-    if (buttonId === BTN_HUMAN) {
+    // Inbound tap (quick-reply button OR list selection) → route by the id.
+    // A category/budget picker tap is detected first (parsePickerTapId), then the
+    // fixed menu ids, so the drill-down rows can't collide with the menu actions.
+    const pick = parsePickerTapId(buttonId);
+    if (pick) {
+      // Picker drill-down. A category tap seeds the category and offers budget
+      // buttons; a budget tap seeds the budget and runs the grounded recommend
+      // flow now (reusing the SAME agent path a typed "סלולר עד 50" would take).
+      mergedCtx = mergeContext(mergedCtx, { topic: "compare" });
+      if (pick.category) mergedCtx.category = pick.category;
+      if (pick.budget !== undefined && pick.budget !== null) mergedCtx.budget = pick.budget;
+      intent = "recommend";
+      if (pick.category && pick.budget === undefined) {
+        // Category chosen → ask budget via the dynamic buttons (reactive).
+        const heCat = CATEGORY_HE[pick.category] ?? pick.category;
+        reply = `מעולה — ${heCat} 👍 מה התקציב החודשי? אפשר לבחור למטה, או פשוט לכתוב לי סכום.`;
+        withBudgetButtons = true;
+      } else {
+        // Budget chosen (or a budget-only tap) → run the grounded recommend flow.
+        const plans = await getPlans();
+        const templateFallback = (): string =>
+          buildChatFallback(plans, true, mergedCtx);
+        const r = await runWhatsappAgent({
+          sessionKey: convo ? String(convo.id) : "",
+          message: text ||
+            `ממליץ לי על ${mergedCtx.category ? (CATEGORY_HE[mergedCtx.category] ?? mergedCtx.category) : "מסלול"}${
+              mergedCtx.budget ? ` עד ₪${mergedCtx.budget}` : ""
+            }`,
+          plans,
+          keys: aiKeys,
+          deps: agentDeps,
+          templateFallback,
+          slotPatch: {
+            ...(mergedCtx.category ? { category: mergedCtx.category } : {}),
+            ...(mergedCtx.budget ? { budget: mergedCtx.budget } : {}),
+            topic: "compare",
+          },
+        });
+        reply = r.reply || templateFallback();
+        if (convo) agentSaved = true;
+      }
+    } else if (buttonId === BTN_HUMAN) {
       intent = "human";
       reply = contact ? await handleHandoff(contact, text || "נציג אנושי", history) : FALLBACK_REPLY;
     } else if (buttonId === BTN_BILL) {
       intent = "bill";
       reply = BILL_PROMPT_REPLY;
-    } else { // BTN_COMPARE (or any unknown id) → the comparison/recommend prompt.
+    } else { // BTN_COMPARE (or any unknown id) → offer the category picker.
       intent = "recommend";
       reply = COMPARE_PROMPT_REPLY;
-      // Remember that we're in a compare flow so the next (likely terse) reply
-      // — "סלולר עד 50" — is routed straight to the grounded compare template.
+      withCategoryPicker = true;
+      // Remember that we're in a compare flow so a terse follow-up — "סלולר עד 50"
+      // — is routed straight to the grounded compare template.
       mergedCtx = mergeContext(mergedCtx, { topic: "compare" });
     }
-  } else if (firstContact) {
-    // First message from this contact → greet, explain, offer the menu.
+  } else if (firstContact && !transcribed) {
+    // First message from this contact → greet, explain, offer the menu. A
+    // transcribed voice note skips this (transcribed === true) and routes to the
+    // agent below, so a spoken first question gets a real answer, not the menu.
     intent = "greeting";
     reply = WELCOME_REPLY;
     withMenu = true;
   } else {
-    const t = text.trim();
+    const t = routeText.trim();
     // Update the structured memory with anything this message reveals
     // (category/budget/abroad/topic), merged onto what we already knew.
     const slots = extractSlots(t);
     mergedCtx = mergeContext(mergedCtx, slots);
     intent = classifyTextIntent(t);
     if (intent === "human") {
+      // An explicit "I want a human" stays a deterministic service action — we
+      // don't need an LLM round-trip to honour it (create the lead, reassure).
       reply = contact ? await handleHandoff(contact, t, history) : FALLBACK_REPLY;
     } else {
-      // Effective topic: this message's own topic, or — when it's a terse
-      // continuation (a "וכמה?" follow-up OR a slot-only answer like "עד 40")
-      // — the topic we were on. Lets a budget reply continue a compare/recommend
-      // thread instead of dead-ending into generic chat.
+      // Effective topic for THIS turn (this message's topic, or a continuation of
+      // the prior thread) — used both to remember the thread and to build the
+      // deterministic templateFallback the agent falls back to.
       const topic = effectiveTopic(t, slots, priorCtx.topic);
-      // Templated, fully-grounded answer for the common telecom asks
-      // (switching steps, roaming, compare, cheapest, coverage, cancel).
-      const templated = topic
-        ? buildTopicReply(topic, await getPlans(), { category: mergedCtx.category, budget: mergedCtx.budget })
-        : null;
-      if (templated && topic) {
-        // Remember the topic we just answered so the next terse follow-up
-        // ("וכמה?", "וזה כולל חו״ל?") stays on the same thread. Direct assign
-        // (not mergeContext) so the per-turn `turns` counter isn't double-bumped.
+      if (topic) {
         mergedCtx.topic = topic;
         intent = topic === "switch" || topic === "cancel" || topic === "coverage" ? "qa" : "recommend";
-        // For compare/cheapest with a known budget, append a grounded saving
-        // hint (real cheaper rows + annual saving) — never a promised figure.
-        const hint = (topic === "compare" || topic === "cheapest")
-          ? buildSavingHint(await getPlans(), mergedCtx.category, mergedCtx.budget)
-          : "";
-        reply = hint ? `${templated}\n\n${hint}` : templated;
-      } else {
-        reply = await handleChat(t, history, aiKeys, intent === "recommend", mergedCtx);
+      } else if (intent === "recommend") {
+        // keep intent
       }
+      const plans = await getPlans();
+      // The deterministic, fully-grounded fallback: a templated topic answer
+      // (switch/roaming/compare/cheapest/coverage/cancel) enriched with a real
+      // saving hint when we know the budget, else a grounded recommend block.
+      const templateFallback = (): string => {
+        const templated = topic
+          ? buildTopicReply(topic, plans, { category: mergedCtx.category, budget: mergedCtx.budget })
+          : null;
+        if (templated && topic) {
+          const hint = (topic === "compare" || topic === "cheapest")
+            ? buildSavingHint(plans, mergedCtx.category, mergedCtx.budget)
+            : "";
+          return hint ? `${templated}\n\n${hint}` : templated;
+        }
+        return buildChatFallback(plans, intent === "recommend", mergedCtx);
+      };
+      // PRIMARY path: the shared tool-using agent. It recommends from the
+      // catalogue, captures consent-gated leads (§7b first), books callbacks,
+      // and escalates — all via tools — then degrades to the templateFallback
+      // above and finally a hard fallback, so the customer always gets a reply.
+      const r = await runWhatsappAgent({
+        sessionKey: convo ? String(convo.id) : "",
+        message: t,
+        plans,
+        keys: aiKeys,
+        deps: agentDeps,
+        templateFallback,
+        slotPatch: {
+          ...(mergedCtx.category ? { category: mergedCtx.category } : {}),
+          ...(mergedCtx.budget ? { budget: mergedCtx.budget } : {}),
+          ...(mergedCtx.abroad ? { abroad: mergedCtx.abroad } : {}),
+          ...(mergedCtx.topic ? { topic: mergedCtx.topic } : {}),
+        },
+      });
+      reply = r.reply || templateFallback();
+      if (convo) agentSaved = true;
     }
   }
 
@@ -662,21 +1206,39 @@ async function handleMessage(m: Row, profileName: string | undefined, aiKeys: Ai
   //    no-op on every later message.
   reply = withFirstContactNotice(reply, firstContact);
 
-  // 6) Reply + store outbound + update CRM timestamps. The welcome (and any
-  // menu-flagged reply) goes out as interactive buttons; everything else stays
-  // plain text. Both paths return a wamid, so outbound storage is unchanged.
-  // Outbound guard: never send the proactive/marketing quick-reply menu to an
-  // opted-out contact — degrade to a plain-text service reply instead.
-  const optedOut = contact ? isOptedOut(contact.status) : false;
+  // 6) Reply + store outbound + update CRM timestamps. Clear the typing indicator
+  // first (we're about to send). The welcome menu, the category picker, and the
+  // budget buttons are all INTERACTIVE; everything else is plain text — and a long
+  // plain-text reply is split into ordered bubbles by sendChunkedText. Every path
+  // returns a wamid (the first bubble's, for the canonical outbound row), so
+  // outbound storage is unchanged.
+  // Outbound guard: never send the proactive/marketing quick-reply menu OR the
+  // reactive interactive pickers to an opted-out contact — degrade to plain text.
+  if (canType) await waMarkTyping(wamid, false);
   const useMenu = withMenu && !optedOut;
-  const sentId = useMenu ? await sendButtons(from, reply) : await sendText(from, reply);
+  const usePicker = withCategoryPicker && !optedOut;
+  const useBudget = withBudgetButtons && !optedOut;
+  const interactive = useMenu || usePicker || useBudget;
+  let sentId: string | null;
+  if (useMenu) {
+    sentId = await sendButtons(from, reply); // the 3-action main menu
+  } else if (useBudget) {
+    sentId = await sendButtons(from, reply, buildBudgetButtons()); // ≤3 → buttons
+  } else if (usePicker) {
+    // 5 categories > the 3-button cap → an interactive LIST. Degrade to the buttons
+    // menu (then plain text) if Graph rejects the list, so the user is never stuck.
+    sentId = await waSendList(from, reply, buildCategoryPickerSections()) ??
+      await sendButtons(from, reply);
+  } else {
+    sentId = await sendChunkedText(from, reply); // plain text, chunked if long
+  }
   if (convo) {
     await pgInsert("whatsapp_messages", {
       conversation_id: convo.id,
       contact_id: contact!.id,
       direction: "out",
       actor: "bot",
-      msg_type: useMenu ? "interactive" : "text",
+      msg_type: interactive ? "interactive" : "text",
       body: reply.slice(0, 4000),
       wa_message_id: sentId,
       status: sentId ? "sent" : "failed",
@@ -687,7 +1249,11 @@ async function handleMessage(m: Row, profileName: string | undefined, aiKeys: Ai
       last_message_at: now,
       // Persist the multi-turn memory (last category/budget/abroad/topic) so the
       // next inbound continues the thread. Stored in the reserved ai_state jsonb.
-      ai_state: mergedCtx as Row,
+      // SKIP when the agent already saved ai_state this turn — its envelope nests
+      // the transcript + tool-call history under ai_state.agent, and overwriting
+      // with the bare slots here would drop it (the agent's save already carried
+      // the same merged top-level slots forward).
+      ...(agentSaved ? {} : { ai_state: mergedCtx as Row }),
       ...(intent === "human" ? { status: "human" } : {}),
     });
     await pgPatch("whatsapp_contacts", `id=eq.${contact!.id}`, { last_message_at: now });
@@ -704,7 +1270,11 @@ async function handleMessage(m: Row, profileName: string | undefined, aiKeys: Ai
 
 // ── HTTP ─────────────────────────────────────────────────────────────────────
 
-Deno.serve(async (req: Request) => {
+// The real request logic. Wrapped by the Deno.serve handler below so any
+// UNEXPECTED throw is captured for observability (fire-and-forget; dark until a
+// Sentry DSN exists) and STILL returns a fail-soft response — every status/shape
+// Meta + the verification handshake depend on is preserved exactly.
+async function handle(req: Request): Promise<Response> {
   const url = new URL(req.url);
 
   // 1) Webhook verification handshake (GET)
@@ -734,6 +1304,7 @@ Deno.serve(async (req: Request) => {
         const aiKeys: AiKeys = {
           gemini: await geminiKey(),
           groq: Deno.env.get("GROQ_API_KEY") ?? "",
+          cerebras: Deno.env.get("CEREBRAS_API_KEY") ?? "",
           openrouter: Deno.env.get("OPENROUTER_API_KEY") ?? "",
         };
         const profileName: string | undefined = value?.contacts?.[0]?.profile?.name;
@@ -741,10 +1312,26 @@ Deno.serve(async (req: Request) => {
       }
     } catch (e) {
       jlog({ at: "wa.post", ok: false, error: String(e) });
-      // Still 200 so Meta does not hammer retries on a transient error.
+      // Surface the unexpected per-message throw to observability (dark until a
+      // DSN exists). Still 200 below so Meta does not hammer retries.
+      captureError(e, { fn: "whatsapp-webhook", phase: "process" });
     }
     return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { "Content-Type": "application/json" } });
   }
 
   return new Response("OK", { status: 200 });
+}
+
+// Observability wrapper (fire-and-forget; dark until a Sentry DSN is configured).
+// A throw OUTSIDE handle's own try/catch (e.g. reading the body, the signature
+// check) is captured and degraded to the SAME 200 {ok:true} Meta expects, so the
+// webhook never 5xx's into a Meta retry storm. captureError never throws/blocks.
+Deno.serve(async (req: Request) => {
+  try {
+    return await handle(req);
+  } catch (e) {
+    captureError(e, { fn: "whatsapp-webhook", phase: "request", method: req.method });
+    jlog({ at: "wa.post", ok: false, error: String(e) });
+    return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { "Content-Type": "application/json" } });
+  }
 });

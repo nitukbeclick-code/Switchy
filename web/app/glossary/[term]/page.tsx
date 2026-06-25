@@ -10,7 +10,8 @@ import {
 } from "@/lib/schema";
 import { pageMetadata } from "@/lib/seo";
 
-// Pre-render one page per glossary term at build time.
+// Pre-render one page per glossary term at build time. Unknown terms -> real 404.
+export const dynamicParams = false;
 export function generateStaticParams() {
   return getGlossary().map((t) => ({ term: t.slug }));
 }

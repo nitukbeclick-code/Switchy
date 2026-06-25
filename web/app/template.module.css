@@ -1,0 +1,64 @@
+/* ────────────────────────────────────────────────────────────────────────────
+   Route-transition module — the per-navigation enter animation for template.tsx.
+
+   WHY a CSS Module (not styled-jsx / not a JS library): the wrapper stays a tiny
+   "use client" component with ZERO runtime cost beyond a class name. No Framer, no
+   AnimatePresence, no per-frame JS — the browser compositor runs the keyframe.
+
+   WHY a one-shot keyframe ANIMATION (not a transition): a transition needs a
+   start→end state change driven by JS/effects, which risks a paint at the start
+   state (an opacity:0 flash that would hide SSR content from a crawler that runs
+   no JS, and could shift layout). A keyframe `animation` instead runs ONCE on
+   mount and leaves the element at its NATURAL resting style — opacity:1, no
+   transform. So:
+     • The element's *committed* style is fully visible. Crawlers / no-JS clients
+       see the server-rendered DOM at full opacity (the animation is purely a
+       presentational enter; it never gates content visibility).
+     • Motion is opacity + translateY ONLY. translateY does not participate in
+       layout flow, so there is ZERO cumulative layout shift (CLS).
+
+   WHY translateY (vertical), never translateX: a vertical "slide-up" is
+   direction-agnostic — it reads identically in RTL and LTR, so there is no
+   left/right (physical) bias to get wrong. The brief's "horizontal motion must
+   follow the logical end" is satisfied by construction: there is no horizontal
+   motion at all.
+
+   Timing matches the app's "motionMedium": 240ms (inside the 200–280ms band) on
+   the brand `--ease-out` token (cubic-bezier(0.23, 1, 0.32, 1)) defined in
+   globals.css, so page transitions speak the same easing vocabulary as the rest
+   of the site and the Flutter app.
+   ──────────────────────────────────────────────────────────────────────────── */
+
+@keyframes routeEnter {
+  from {
+    opacity: 0;
+    /* Logical "up" — RTL/LTR-neutral, no horizontal (physical) bias. */
+    transform: translate3d(0, 8px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.transition {
+  /* The resting (committed) state is fully visible — the animation only plays the
+     enter; it does not hold the element at opacity:0. `both` keeps the FROM frame
+     applied for the (sub-frame) gap before the animation starts so there is no
+     1-frame flash of the final state, while `forwards` settles cleanly at the TO
+     frame. Compositor-only properties (opacity/transform) → no layout, no CLS. */
+  animation: routeEnter 240ms var(--ease-out, cubic-bezier(0.23, 1, 0.32, 1)) both;
+  /* Hint the compositor; auto-released after the animation by most engines. */
+  will-change: opacity, transform;
+}
+
+/* Reduced-motion: render children STATICALLY. No keyframe → the element is shown
+   at its natural opacity:1 / no-transform resting state immediately, with no
+   opacity or transform animation at all (vestibular-safe, and never hides
+   content). Mirrors the global reduced-motion contract in globals.css. */
+@media (prefers-reduced-motion: reduce) {
+  .transition {
+    animation: none;
+    will-change: auto;
+  }
+}

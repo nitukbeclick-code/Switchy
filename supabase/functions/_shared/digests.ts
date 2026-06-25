@@ -24,9 +24,9 @@ function waSuffix(phone: string | null): string {
 
 export function buildDigest(rows: RenewalRow[], days: number, now = new Date()): string {
   if (rows.length === 0) {
-    return `📅 <b>חידושים קרובים — חוסך</b>${NL}${NL}אין מסלולים המתחדשים ב-${days} הימים הקרובים.`;
+    return `📅 <b>חידושים קרובים — Switchy AI</b>${NL}${NL}אין מסלולים המתחדשים ב-${days} הימים הקרובים.`;
   }
-  const lines: string[] = [`📅 <b>חידושים קרובים — חוסך (${days} ימים)</b>`, ""];
+  const lines: string[] = [`📅 <b>חידושים קרובים — Switchy AI (${days} ימים)</b>`, ""];
   for (const r of rows) {
     const d = daysUntil(r.promo_end_date, now);
     const urgency = d <= 3 ? "🔴" : d <= 7 ? "🟡" : "🟢";
@@ -36,7 +36,7 @@ export function buildDigest(rows: RenewalRow[], days: number, now = new Date()):
     lines.push(`   📆 מתחדש: ${esc(r.promo_end_date)} (עוד ${d} ימים)`);
     lines.push("");
   }
-  lines.push(`<i>נשלח אוטומטית על ידי מערכת חוסך</i>`);
+  lines.push(`<i>נשלח אוטומטית על ידי מערכת Switchy AI</i>`);
   return lines.join(NL);
 }
 
@@ -70,7 +70,7 @@ export function buildWeekly(input: WeeklyInput, now = new Date()): string {
   const curr = input.thisWeek.length, prev = input.lastWeek.length;
   const currWon = won(input.thisWeek), prevWon = won(input.lastWeek);
   const lines: string[] = [
-    `📈 <b>דוח שבועי — חוסך</b> (${now.toISOString().slice(0, 10)})`,
+    `📈 <b>דוח שבועי — Switchy AI</b> (${now.toISOString().slice(0, 10)})`,
     "",
     `🔔 לידים השבוע: <b>${curr}</b> (${trend(curr, prev)} מול ${prev} שבוע שעבר)`,
     `🏆 נסגרו מהלידים של השבוע: <b>${currWon}</b> (${trend(currWon, prevWon)} מול ${prevWon})`,
@@ -98,7 +98,7 @@ export function buildWeekly(input: WeeklyInput, now = new Date()): string {
   if (input.hotBrowsers > 0) {
     lines.push("", `🌡️ <b>${input.hotBrowsers} גולשים חמים</b> צפו במסלולים ולא השאירו פנייה — שלחו /hot לרשימה.`);
   }
-  lines.push("", `<i>הבוט פעיל ✅ — נשלח אוטומטית על ידי מערכת חוסך</i>`);
+  lines.push("", `<i>הבוט פעיל ✅ — נשלח אוטומטית על ידי מערכת Switchy AI</i>`);
   return lines.join(NL);
 }
 

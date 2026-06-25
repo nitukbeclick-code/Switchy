@@ -58,7 +58,7 @@ export default function Home() {
   const cities = getCities().slice(0, 12);
 
   const summaryText =
-    `חוסך / Switch AI הוא שירות חינמי להשוואת מסלולי תקשורת בישראל. ` +
+    `Switchy AI הוא שירות חינמי להשוואת מסלולי תקשורת בישראל. ` +
     `אנו משווים ${planCount} מסלולים מ-${providers.length} ספקים בחמש קטגוריות — ` +
     `סלולר, אינטרנט, טלוויזיה, חבילות משולבות וחבילות חו״ל — ` +
     `החל מ-${ils(minFeatured)} לחודש. המחירים בשקלים ומעודכנים, וכוללים גם את המחיר ` +
@@ -66,6 +66,36 @@ export default function Home() {
 
   return (
     <main id="main" className="mx-auto w-full max-w-5xl flex-1 px-4 py-10 sm:px-6">
+      {/* Page-scoped motion (Emil Kowalski rules): a one-time entrance reveal that
+          fades + lifts each block in, staggered 30–80ms via inline animationDelay.
+          Server-rendered CSS only (no JS) — references the shared --ease-out token
+          and animates ONLY transform + opacity (GPU). Reduced-motion: animation is
+          removed entirely so blocks render statically at their resting state (the
+          .sw-reveal default is already fully visible). The .sw-lift helper gates a
+          desktop hover-lift behind a real hover-capable, fine pointer so it never
+          sticks on touch. */}
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
+        .sw-reveal { animation: swReveal 420ms var(--ease-out) both; }
+        @keyframes swReveal {
+          from { opacity: 0; transform: translateY(10px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @media (hover: hover) and (pointer: fine) {
+          .sw-lift { transition: transform 180ms var(--ease-out); }
+          /* Lift on hover, but yield to the .press scale(0.98) while active so the
+             tactile press feedback stays crisp (no transform tug-of-war). */
+          .sw-lift:hover:not(:active) { transform: translateY(-2px); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .sw-reveal { animation: none; }
+          .sw-lift:hover { transform: none; }
+        }
+      `,
+        }}
+      />
+
       {/* Structured data for engines: the featured list and FAQ. (The site-wide
           WebSite/SearchAction node is emitted once in the root layout.) */}
       <JsonLd data={itemListSchema(featured)} />
@@ -73,19 +103,39 @@ export default function Home() {
 
       {/* ── Hero ──────────────────────────────────────────────────────────── */}
       <section className="pt-4 text-center sm:pt-8">
-        <h1 className="font-display text-4xl font-bold tracking-tight text-ink sm:text-6xl">
-          משווים תקשורת. חוסכים כסף.
+        <h1 className="sw-reveal font-display text-4xl font-bold tracking-tight text-ink sm:text-6xl">
+          משווים תקשורת.{" "}
+          <span className="text-accent-text">חוסכים כסף.</span>
         </h1>
-        <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-foreground sm:text-xl">
+        <p
+          className="sw-reveal mx-auto mt-5 max-w-2xl text-xl font-semibold leading-relaxed text-foreground sm:text-2xl"
+          style={{ animationDelay: "60ms" }}
+        >
           השוואה חינמית של מסלולי סלולר, אינטרנט, טלוויזיה, חבילות משולבות
           וחבילות חו״ל מכל הספקים בישראל — מחירים מעודכנים בשקלים.
         </p>
-        <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+        {/* Amber VALUE badge — honest, qualitative framing (no fabricated figure);
+            the per-category savings vary, so we promise comparison value, not a
+            number the catalogue can't substantiate. */}
+        <p
+          className="sw-reveal mt-4 inline-flex items-center gap-1.5 rounded-full border border-value/30 bg-value/10 px-3.5 py-1.5 text-sm font-semibold text-value-text"
+          style={{ animationDelay: "90ms" }}
+        >
+          <span
+            aria-hidden="true"
+            className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-value"
+          />
+          מסלול מתאים יכול לחסוך לכם מאות ₪ בשנה — וההשוואה חינם
+        </p>
+        <div
+          className="sw-reveal mt-8 flex flex-wrap items-center justify-center gap-3"
+          style={{ animationDelay: "120ms" }}
+        >
           <TrackedCtaLink
             href={`/compare/${featuredCat}`}
             location="hero"
             label="compare"
-            className="interactive press rounded-xl bg-accent px-6 py-3 font-medium text-accent-contrast shadow-soft hover:-translate-y-0.5 hover:bg-accent-hover hover:shadow-float hover:shadow-accent/20"
+            className="interactive press sw-lift rounded-xl border border-accent/40 bg-accent px-6 py-3 font-semibold text-accent-contrast shadow-[var(--glow-accent)] hover:bg-accent-hover hover:shadow-float hover:shadow-accent/30"
           >
             להשוואת מסלולים
           </TrackedCtaLink>
@@ -93,14 +143,17 @@ export default function Home() {
             href="#lead"
             location="hero"
             label="consult"
-            className="interactive press rounded-xl border border-border/60 px-6 py-3 font-medium text-ink hover:-translate-y-0.5 hover:border-accent/40 hover:bg-surface hover:shadow-soft"
+            className="interactive press sw-lift rounded-xl border border-border/60 px-6 py-3 font-medium text-ink hover:border-accent/40 hover:bg-surface hover:shadow-soft"
           >
             שיחת ייעוץ חינם
           </TrackedCtaLink>
         </div>
         {/* Trust band — the cheapest entry price is the product's hook, so it
             carries the amber VALUE token (the rest stays muted). */}
-        <p className="mt-4 text-sm text-muted">
+        <p
+          className="sw-reveal mt-4 text-sm text-muted"
+          style={{ animationDelay: "180ms" }}
+        >
           {planCount} מסלולים · {providers.length} ספקים · החל מ-
           <span className="font-display font-bold text-value-text">
             {ils(minFeatured)}
@@ -139,8 +192,12 @@ export default function Home() {
             t: "מעבר בהסכמה",
             d: "ניצור קשר רק אם תשאירו פרטים ותאשרו זאת בטופס.",
           },
-        ].map((v) => (
-          <article key={v.t} className="bento card-interactive p-6">
+        ].map((v, i) => (
+          <article
+            key={v.t}
+            className="sw-reveal bento card-interactive p-6"
+            style={{ animationDelay: `${i * 70}ms` }}
+          >
             <h3 className="flex items-center gap-2 font-display text-lg font-semibold tracking-tight text-ink">
               <span
                 aria-hidden="true"
@@ -162,13 +219,14 @@ export default function Home() {
           קטגוריות להשוואה
         </h2>
         <ul className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-          {categories.map((cat) => {
+          {categories.map((cat, i) => {
             const count = plansByCategory(cat).length;
             return (
               <li key={cat}>
                 <Link
                   href={`/compare/${cat}`}
-                  className="card card-interactive block h-full p-4"
+                  className="sw-reveal card card-interactive block h-full p-4"
+                  style={{ animationDelay: `${Math.min(i * 50, 250)}ms` }}
                 >
                   <span className="block font-display font-semibold tracking-tight text-ink">
                     {CATEGORY_HE[cat] ?? cat}
@@ -210,7 +268,8 @@ export default function Home() {
             <li key={p.slug}>
               <Link
                 href={`/providers/${p.slug}`}
-                className="card card-interactive flex h-full items-center gap-4 p-4"
+                className="sw-reveal card card-interactive flex h-full items-center gap-4 p-4"
+                style={{ animationDelay: `${Math.min(i * 50, 250)}ms` }}
               >
                 <span
                   aria-hidden="true"
@@ -253,7 +312,7 @@ export default function Home() {
           </p>
           <Link
             href="/market-pulse"
-            className="interactive press mt-6 inline-block rounded-xl bg-accent px-5 py-2.5 font-medium text-accent-contrast shadow-soft hover:-translate-y-0.5 hover:bg-accent-hover hover:shadow-float hover:shadow-accent/20"
+            className="interactive press sw-lift mt-6 inline-block rounded-xl bg-accent px-5 py-2.5 font-medium text-accent-contrast shadow-soft hover:bg-accent-hover hover:shadow-float hover:shadow-accent/20"
           >
             לצפייה בדופק השוק ←
           </Link>
@@ -294,7 +353,7 @@ export default function Home() {
               <li key={c.slug}>
                 <Link
                   href={`/compare/${featuredCat}/${c.slug}`}
-                  className="interactive press inline-block rounded-full border border-border/60 bg-surface px-4 py-1.5 text-sm text-foreground hover:-translate-y-0.5 hover:border-accent/50 hover:text-accent hover:shadow-soft"
+                  className="interactive press sw-lift inline-block rounded-full border border-border/60 bg-surface px-4 py-1.5 text-sm text-foreground hover:border-accent/50 hover:text-accent hover:shadow-soft"
                 >
                   {c.name}
                 </Link>

@@ -12,11 +12,21 @@ export type CronJobRow = {
 
 // Maximum silence per job before it counts as stale (generous slack over the
 // nominal cadence to absorb deploy pauses and slow runs).
+//
+// The two monthly retention jobs run on a calendar cadence (1st/2nd of the month
+// at ~03:30 UTC), so up to ~31 days can legitimately pass between runs. We give
+// them a ~35-day window (35*24h) so a healthy monthly job never false-alarms but a
+// genuinely DEAD purge — which would silently let PII / analytics rows accumulate
+// past their retention windows (a Reg.13 / data-minimisation gap) — is caught.
+const MONTHLY_MAX_SILENCE_HOURS = 35 * 24;
 const MAX_SILENCE_HOURS: Record<string, number> = {
   "renewal-reminders-daily": 26,
   "lead-sweep-10min": 1,
   "lead-followup-hourly": 3,
   "weekly-digest": 8 * 24,
+  // Retention sweeps (data-protection-2026-06.sql + audit-observability-2026-06.sql).
+  "retention-purge-monthly": MONTHLY_MAX_SILENCE_HOURS,
+  "analytics-purge-monthly": MONTHLY_MAX_SILENCE_HOURS,
 };
 
 export type CronHealth = {

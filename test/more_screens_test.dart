@@ -85,7 +85,9 @@ void main() {
 
       _go(tester, '/account');
       await tester.pump(const Duration(milliseconds: 300));
-      await tester.pump(const Duration(milliseconds: 300));
+      // Drain the staggered one-shot entrance animations on the quick-action
+      // tiles so no flutter_animate timer is left pending at dispose.
+      await tester.pump(const Duration(seconds: 2));
 
       // Quick-links row (account_widget.dart lines 152-158).
       expect(find.text('חיסכון'), findsOneWidget);

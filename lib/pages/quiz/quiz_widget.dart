@@ -6,7 +6,9 @@ import 'package:share_plus/share_plus.dart';
 import '../../theme/app_theme.dart';
 import '../../core/nav.dart';
 import '../../widgets/app_button.dart';
+import '../../widgets/app_sheet.dart';
 import '../../widgets/pressable.dart';
+import '../../widgets/skeleton.dart';
 import '../../app_state.dart';
 import '../../data.dart';
 import '../../services/recommendation_engine.dart';
@@ -37,7 +39,22 @@ class _QuizWidgetState extends State<QuizWidget> {
   void initState() {
     super.initState();
     final appState = AppState();
-    // Pre-fill from existing quiz state if already completed
+    final draft = appState.quizDraft;
+    if (draft != null) {
+      // Resume an in-progress quiz exactly where the user left off — step and
+      // every answer, including the secondary filter that the completed-quiz
+      // fields don't carry.
+      final cfg = _budgetConfig(draft.cat);
+      _step = draft.step.clamp(0, 4);
+      _cat = draft.cat;
+      _lines = draft.lines;
+      _priority = draft.priority;
+      _extraFilter = draft.extraFilter;
+      _budget = draft.budget.toDouble().clamp(cfg.$1, cfg.$2);
+      _currentBill = draft.currentBill.toDouble().clamp(cfg.$1, cfg.$2);
+      return;
+    }
+    // No draft → pre-fill from existing (possibly completed) quiz state.
     _cat = appState.selectedCat;
     _lines = appState.quizLines;
     _priority = appState.quizPriority;
@@ -53,6 +70,20 @@ class _QuizWidgetState extends State<QuizWidget> {
     // Seed today's-bill from any saved bill, else a sensible default.
     _currentBill = (catBill > 0 ? catBill.toDouble() : _defaultBudget(appState.selectedCat))
         .clamp(cfg.$1, cfg.$2);
+  }
+
+  /// Snapshot the wizard's current slide + answers into AppState so leaving and
+  /// re-entering resumes here. Called on every slide change (forward/back).
+  void _saveDraft() {
+    AppState().saveQuizDraft(QuizDraft(
+      step: _step,
+      cat: _cat,
+      lines: _lines,
+      priority: _priority,
+      extraFilter: _extraFilter,
+      budget: _budget.round(),
+      currentBill: _currentBill.round(),
+    ));
   }
 
   static const _cats = [
@@ -85,15 +116,18 @@ class _QuizWidgetState extends State<QuizWidget> {
               topRight: Radius.circular(3),
               topLeft: Radius.circular(3),
             ),
-            child: TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0, end: (_step + 1) / 5),
-              duration: ffTheme.motionMedium,
-              curve: ffTheme.easeOut,
-              builder: (context, value, _) => LinearProgressIndicator(
-                value: value,
-                minHeight: 6,
-                backgroundColor: ffTheme.secondary,
-                valueColor: AlwaysStoppedAnimation(ffTheme.brandAccent),
+            child: Semantics(
+              label: 'התקדמות בשאלון: שלב ${_step + 1} מתוך 5',
+              child: TweenAnimationBuilder<double>(
+                tween: Tween(begin: 0, end: (_step + 1) / 5),
+                duration: ffTheme.motionMedium,
+                curve: ffTheme.easeOut,
+                builder: (context, value, _) => LinearProgressIndicator(
+                  value: value,
+                  minHeight: 6,
+                  backgroundColor: ffTheme.secondary,
+                  valueColor: AlwaysStoppedAnimation(ffTheme.brandAccent),
+                ),
               ),
             ),
           ),
@@ -125,7 +159,10 @@ class _QuizWidgetState extends State<QuizWidget> {
               if (_analyzing)
                 const SizedBox.shrink()
               else if (_revealed) ...[
-                // PRIMARY CTA — lead capture for the single best match.
+                // PRIMARY CTA — the single clear next step: lead capture for the
+                // best match. The two former secondary buttons (browse all /
+                // edit answers) are demoted into a low-emphasis "עוד אפשרויות"
+                // row that opens an AppSheet, so the reveal has one obvious CTA.
                 AppButton(
                   text: 'רוצה את המסלול הזה — השאירו פרטים ←',
                   onPressed: () async {
@@ -141,25 +178,19 @@ class _QuizWidgetState extends State<QuizWidget> {
                   borderRadius: BorderRadius.circular(18),
                 ),
                 const SizedBox(height: 8),
-                // SECONDARY — browse the full list instead.
-                OutlinedButton(
-                  onPressed: () {
-                    HapticFeedback.lightImpact();
-                    context.goNamed('Results');
-                  },
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: ffTheme.brandAccentText,
-                    side: BorderSide(color: ffTheme.alternate),
-                    minimumSize: const Size(double.infinity, 52),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                // SECONDARY — demoted to a single low-emphasis text button that
+                // surfaces both prior options in a sheet.
+                Center(
+                  child: TextButton(
+                    onPressed: () => _showRevealOptions(ffTheme),
+                    style: TextButton.styleFrom(
+                      minimumSize: const Size(0, kMinTapTarget),
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                    ),
+                    child: Text('עוד אפשרויות',
+                        style: ffTheme.bodyMedium
+                            .copyWith(color: ffTheme.secondaryText, fontWeight: FontWeight.w600)),
                   ),
-                  child: Text('ראו את כל המסלולים ←', style: ffTheme.titleMedium),
-                ),
-                const SizedBox(height: 4),
-                TextButton(
-                  onPressed: () => setState(() => _revealed = false),
-                  child: Text('↺ ערוך תשובות',
-                      style: ffTheme.bodyMedium.copyWith(color: ffTheme.secondaryText)),
                 ),
               ] else Row(
                 children: [
@@ -167,7 +198,7 @@ class _QuizWidgetState extends State<QuizWidget> {
                     Padding(
                       padding: const EdgeInsetsDirectional.only(end: 12),
                       child: OutlinedButton(
-                        onPressed: () => setState(() => _step--),
+                        onPressed: () { setState(() => _step--); _saveDraft(); },
                         style: OutlinedButton.styleFrom(
                           foregroundColor: ffTheme.secondaryText,
                           side: BorderSide(color: ffTheme.alternate),
@@ -482,25 +513,14 @@ class _QuizWidgetState extends State<QuizWidget> {
                 alignment: WrapAlignment.center,
                 children: _budgetPresets(_cat).map((preset) {
                   final active = clampedBill.round() == preset;
-                  return GestureDetector(
+                  return _PresetChip(
+                    label: '₪$preset',
+                    active: active,
+                    ffTheme: ffTheme,
                     onTap: () {
                       HapticFeedback.selectionClick();
                       setState(() => _currentBill = preset.toDouble());
                     },
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 180),
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                      decoration: BoxDecoration(
-                        color: active ? ffTheme.brandAccent : ffTheme.secondaryBackground,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: active ? ffTheme.brandAccent : ffTheme.alternate),
-                      ),
-                      child: Text('₪$preset',
-                        style: ffTheme.labelMedium.copyWith(
-                          color: active ? Colors.white : ffTheme.primaryText,
-                          fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-                        )),
-                    ),
                   );
                 }).toList(),
               ),
@@ -567,25 +587,14 @@ class _QuizWidgetState extends State<QuizWidget> {
                 alignment: WrapAlignment.center,
                 children: _budgetPresets(_cat).map((preset) {
                   final active = clampedBudget.round() == preset;
-                  return GestureDetector(
+                  return _PresetChip(
+                    label: '₪$preset',
+                    active: active,
+                    ffTheme: ffTheme,
                     onTap: () {
                       HapticFeedback.selectionClick();
                       setState(() => _budget = preset.toDouble());
                     },
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 180),
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                      decoration: BoxDecoration(
-                        color: active ? ffTheme.brandAccent : ffTheme.secondaryBackground,
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: active ? ffTheme.brandAccent : ffTheme.alternate),
-                      ),
-                      child: Text('₪$preset',
-                        style: ffTheme.labelMedium.copyWith(
-                          color: active ? Colors.white : ffTheme.primaryText,
-                          fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-                        )),
-                    ),
                   );
                 }).toList(),
               ),
@@ -637,11 +646,15 @@ class _QuizWidgetState extends State<QuizWidget> {
   Future<void> _next() async {
     if (_step < 4) {
       setState(() => _step++);
+      _saveDraft(); // persist the answers from the slide we just left
       return;
     }
     if (_analyzing) return; // guard against re-entry during the reveal delay
 
     final appState = Provider.of<AppState>(context, listen: false);
+    // The quiz is finishing — its answers now live in the canonical quiz* fields
+    // below, so drop the resume draft (a completed quiz must not re-open mid-flow).
+    appState.clearQuizDraft();
     appState.setCategory(_cat);
     // Persist today's bill — the baseline every savings figure is measured against.
     appState.setCurrentBill(_cat, _currentBill.round());
@@ -715,34 +728,122 @@ class _QuizWidgetState extends State<QuizWidget> {
     });
   }
 
+  /// The demoted secondary actions for the reveal, surfaced from a single
+  /// low-emphasis "עוד אפשרויות" row so the result screen keeps one clear
+  /// primary CTA. Both options preserve their original behaviour: browse the
+  /// full ranked list, or step back into the wizard to edit answers.
+  void _showRevealOptions(AppTheme ffTheme) {
+    HapticFeedback.lightImpact();
+    AppSheet.actions(
+      context,
+      title: 'עוד אפשרויות',
+      actions: [
+        AppSheetAction(
+          icon: Icons.list_alt_rounded,
+          label: 'ראו את כל המסלולים',
+          onTap: () {
+            HapticFeedback.lightImpact();
+            context.goNamed('Results');
+          },
+        ),
+        AppSheetAction(
+          icon: Icons.tune_rounded,
+          label: 'ערוך תשובות',
+          onTap: () {
+            if (mounted) setState(() => _revealed = false);
+          },
+        ),
+      ],
+    );
+  }
+
+  /// While ranking runs (the brief ~700ms "analyzing" beat) we show a shimmer
+  /// ghost of the result card the reveal is about to paint — same heading row,
+  /// hero card, savings strip, badges and reason lines — so the layout settles
+  /// in place instead of snapping from a spinner. Uses the shared
+  /// [SkeletonShimmer]/[SkeletonBox] primitives (RTL- and reduced-motion-aware).
   Widget _buildAnalyzing(AppTheme ffTheme) {
-    return Center(
-      key: const ValueKey('analyzing'),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 72,
-            height: 72,
-            decoration: BoxDecoration(
-              color: ffTheme.brandAccentTint,
-              shape: BoxShape.circle,
-            ),
-            child: Center(
-              child: SizedBox(
-                width: 40,
-                height: 40,
-                child: CircularProgressIndicator(color: ffTheme.brandAccent, strokeWidth: 3),
+    return Semantics(
+      label: 'מנתח את הנתונים ומתאים מסלולים',
+      child: SingleChildScrollView(
+        key: const ValueKey('analyzing'),
+        physics: const NeverScrollableScrollPhysics(),
+        child: SkeletonShimmer(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Heading row ghost (icon tile + title line).
+              Row(
+                children: [
+                  SkeletonBox(width: 36, height: 36, radius: ffTheme.radiusMd),
+                  const SizedBox(width: 10),
+                  const Expanded(child: SkeletonBox(width: double.infinity, height: 22)),
+                ],
               ),
-            ),
+              const SizedBox(height: 10),
+              const SkeletonBox(width: 160, height: 13),
+              const SizedBox(height: 20),
+              // Hero match-card ghost.
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(22),
+                decoration: BoxDecoration(
+                  color: ffTheme.secondaryBackground,
+                  borderRadius: BorderRadius.circular(ffTheme.radiusCard),
+                  border: Border.all(color: ffTheme.alternate),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              SkeletonBox(width: 90, height: 12),
+                              SizedBox(height: 8),
+                              SkeletonBox(width: 150, height: 18),
+                            ],
+                          ),
+                        ),
+                        SizedBox(width: 12),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            SkeletonBox(width: 70, height: 22),
+                            SizedBox(height: 6),
+                            SkeletonBox(width: 44, height: 11),
+                          ],
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    // Savings strip ghost.
+                    SkeletonBox(width: double.infinity, height: 56, radius: ffTheme.radiusLg),
+                    const SizedBox(height: 14),
+                    // Badge row ghost.
+                    const Row(
+                      children: [
+                        SkeletonBox(width: 84, height: 24, radius: 20),
+                        SizedBox(width: 8),
+                        SkeletonBox(width: 96, height: 24, radius: 20),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    // Reason lines ghost.
+                    const SkeletonBox(width: double.infinity, height: 13),
+                    const SizedBox(height: 8),
+                    const SkeletonBox(width: double.infinity, height: 13),
+                    const SizedBox(height: 8),
+                    const SkeletonBox(width: 200, height: 13),
+                  ],
+                ),
+              ),
+            ],
           ),
-          const SizedBox(height: 24),
-          Text('מנתח את הנתונים…',
-              style: ffTheme.titleMedium.copyWith(color: ffTheme.primaryText)),
-          const SizedBox(height: 6),
-          Text('מתאים את המסלולים בדיוק לצרכים שלך',
-              style: ffTheme.bodySmall.copyWith(color: ffTheme.secondaryText)),
-        ],
+        ),
       ),
     );
   }
@@ -925,7 +1026,7 @@ class _QuizWidgetState extends State<QuizWidget> {
               onPressed: () {
                 HapticFeedback.lightImpact();
                 Share.share(
-                    'מצאתי מסלול ${top.plan.provider} ב-₪${top.plan.priceText} — ${top.annualSaving > 0 ? 'חוסך ₪${top.annualSaving} בשנה ' : ''}עם חוסך');
+                    'מצאתי מסלול ${top.plan.provider} ב-₪${top.plan.priceText} — ${top.annualSaving > 0 ? 'חוסך ₪${top.annualSaving} בשנה ' : ''}עם Switchy AI');
               },
               icon: Icon(Icons.ios_share_rounded, size: 18, color: ffTheme.brandAccent),
               label: Text('שתף',
@@ -1006,18 +1107,22 @@ class _StepCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('שלב $step מתוך 5', style: ffTheme.labelMedium),
-          const SizedBox(height: 8),
-          Text(title, style: ffTheme.headlineMedium),
-          const SizedBox(height: 4),
-          Text(subtitle, style: ffTheme.bodyMedium.copyWith(color: ffTheme.secondaryText)),
-          const SizedBox(height: 32),
-          child,
-        ],
+    return Semantics(
+      container: true,
+      label: 'שלב $step מתוך 5: $title. $subtitle',
+      child: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('שלב $step מתוך 5', style: ffTheme.labelMedium),
+            const SizedBox(height: 8),
+            Text(title, style: ffTheme.headlineMedium),
+            const SizedBox(height: 4),
+            Text(subtitle, style: ffTheme.bodyMedium.copyWith(color: ffTheme.secondaryText)),
+            const SizedBox(height: 32),
+            child,
+          ],
+        ),
       ),
     );
   }
@@ -1092,6 +1197,59 @@ class _RadioTile extends StatelessWidget {
             Expanded(child: Text(label, style: ffTheme.bodyLarge.copyWith(color: selected ? ffTheme.brandAccent : ffTheme.primaryText, fontWeight: selected ? FontWeight.w700 : FontWeight.w500))),
             if (selected) Icon(Icons.check_circle_rounded, color: ffTheme.brandAccent),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+/// A quick budget/bill preset pill. Visually a compact rounded chip, but its
+/// tappable area is held to a comfortable >=44dp height via [kMinTapTarget] so
+/// the row of presets clears the minimum-touch-target guideline (the old chips
+/// were only ~30dp tall from `vertical: 7` padding).
+class _PresetChip extends StatelessWidget {
+  const _PresetChip({
+    required this.label,
+    required this.active,
+    required this.onTap,
+    required this.ffTheme,
+  });
+  final String label;
+  final bool active;
+  final VoidCallback onTap;
+  final AppTheme ffTheme;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      selected: active,
+      label: label,
+      child: GestureDetector(
+        onTap: onTap,
+        // Transparent fill so the (smaller) visible pill still gets the full
+        // >=44dp hit area without painting a larger background.
+        behavior: HitTestBehavior.opaque,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: kMinTapTarget),
+          child: Center(
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: active ? ffTheme.brandAccent : ffTheme.secondaryBackground,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: active ? ffTheme.brandAccent : ffTheme.alternate),
+              ),
+              child: ExcludeSemantics(
+                child: Text(label,
+                    style: ffTheme.labelMedium.copyWith(
+                      color: active ? Colors.white : ffTheme.primaryText,
+                      fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+                    )),
+              ),
+            ),
+          ),
         ),
       ),
     );

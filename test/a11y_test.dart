@@ -58,10 +58,15 @@ void main() {
       _go(tester, '/ratings');
       await _settle(tester);
 
-      // The review form sits below the leaderboard; bring it on-screen so
-      // its semantics are compiled (the free-text field sits right under
-      // the star rows, so this scrolls the whole form into view).
-      await tester.ensureVisible(find.byType(TextField).first);
+      // The review form sits below the (now lazy-built) leaderboard slivers;
+      // scroll it into view so the composer's slivers build + their semantics
+      // compile. scrollUntilVisible walks the lazy CustomScrollView until the
+      // first star row exists (ensureVisible can't target an unbuilt widget).
+      await tester.scrollUntilVisible(
+        find.bySemanticsLabel('דרג 1 מתוך 5 — מחיר'),
+        300,
+        scrollable: find.byType(Scrollable).first,
+      );
       await _settle(tester);
 
       // Every rating dimension exposes 5 labelled star buttons
@@ -122,6 +127,58 @@ void main() {
       await _settle(tester);
 
       expect(find.bySemanticsLabel('נקה חיפוש'), findsOneWidget);
+
+      handle.dispose();
+      tester.takeException();
+    });
+  });
+
+  testWidgets('Callback timing chips expose labelled selectable buttons',
+      (tester) async {
+    await _ignoringOverflow(() async {
+      final handle = tester.ensureSemantics();
+      await _bootApp(tester);
+
+      _go(tester, '/callback');
+      await _settle(tester);
+
+      // The timing chips sit partway down a scroll view; bring them on-screen
+      // so their semantics are compiled in the test viewport.
+      await tester.ensureVisible(find.text('בהקדם').first);
+      await _settle(tester);
+
+      // The "when is convenient?" timing chips render unconditionally and each
+      // exposes a labelled button ("זמן מועדף: <slot>") so screen readers
+      // announce both the option and its role; spot-check the row's ends.
+      expect(find.bySemanticsLabel('זמן מועדף: בהקדם'), findsOneWidget);
+      expect(find.bySemanticsLabel('זמן מועדף: ערב'), findsOneWidget);
+
+      handle.dispose();
+      tester.takeException();
+    });
+  });
+
+  testWidgets('Community feed bookmark filter exposes a labelled toggle button',
+      (tester) async {
+    await _ignoringOverflow(() async {
+      final handle = tester.ensureSemantics();
+      await _bootApp(tester);
+
+      _go(tester, '/community');
+      await _settle(tester);
+
+      // The toolbar row (sort toggle + bookmark filter + search field) fades in
+      // via flutter_animate; an Opacity(0) start hides the subtree from the
+      // semantics tree, so bring the row on-screen and let the 280ms fade finish
+      // before asserting (mirrors the callback-chips test above).
+      await tester.ensureVisible(find.text('חיפוש בפוסטים...').first);
+      await _settle(tester);
+
+      // The icon-only "saved posts" filter in the feed toolbar must expose a
+      // labelled button for screen-reader users (it sits next to the sort toggle
+      // and search field). The same label is reused on per-post bookmark
+      // controls, so allow more than one.
+      expect(find.bySemanticsLabel('פוסטים שמורים'), findsWidgets);
 
       handle.dispose();
       tester.takeException();

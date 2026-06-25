@@ -105,6 +105,8 @@ export type Cfg = {
   zoomHostEmail: string; // '' = use the token's own user (/users/me)
   googleServiceAccount: string; // base64 of the service-account JSON ('' = off)
   googleCalendarId: string;     // target calendar id ('' = off)
+  googleSpreadsheetId: string;  // lead-log spreadsheet id ('' = off)
+  sentryDsn?: string;           // Sentry DSN for error/message capture ('' = dark/no-op; optional so existing Cfg literals stay valid)
   allowedUserIds: number[]; // empty = anyone in the team chat may act
   src: Record<string, string>;
 };

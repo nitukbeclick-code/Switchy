@@ -557,6 +557,321 @@ class BillAnalysis {
       );
 }
 
+/// One row from `plan_price_history` — an append-only daily price snapshot for a
+/// catalogue plan (the Market-Pulse ledger). Null-tolerant: a partial/legacy row
+/// never crashes the deals feed. [price] is the promo/current monthly price (₪)
+/// at capture time; [after] is the post-promo price (null when there's no
+/// step-up); [capturedAt] is when the snapshot was taken.
+class PriceSnapshot {
+  const PriceSnapshot({
+    required this.planId,
+    required this.category,
+    required this.provider,
+    required this.price,
+    this.after,
+    required this.capturedAt,
+  });
+
+  final String planId;
+  final String category;
+  final String provider;
+  final double price;
+  final double? after;
+  final DateTime capturedAt;
+
+  factory PriceSnapshot.fromJson(Map<String, dynamic> r) => PriceSnapshot(
+        planId: r['plan_id'] as String? ?? '',
+        category: r['category'] as String? ?? '',
+        provider: r['provider'] as String? ?? '',
+        price: (r['price'] as num?)?.toDouble() ?? 0,
+        after: (r['after'] as num?)?.toDouble(),
+        capturedAt:
+            DateTime.tryParse(r['captured_at'] as String? ?? '')?.toLocal() ??
+                DateTime.fromMillisecondsSinceEpoch(0),
+      );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Owner observability — admin-only DTOs. These mirror the `admin-metrics` edge
+// function's JSON response EXACTLY (see supabase/functions/admin-metrics/
+// {index,metrics}.ts and _shared/cron_health.ts). Those tables (analytics_events
+// / agent_tool_calls / security_audit_log / cron) are service-role-only; the
+// function gates on profiles.is_admin and reads them, then returns counts only —
+// never PII. Every factory is null-tolerant so a partial/legacy payload never
+// crashes the dashboard, and an absent section reads as "no data" (honest empty),
+// never as a fabricated zero-trend.
+//
+// Response shape:
+//   { ok, window:{days,since},
+//     analytics:{ events:[{event,total,days:[{day,events}]}], total },
+//     toolCalls:{ total, ok, rate, byTool:[{key,calls,ok,rate}], byChannel:[…] },
+//     audit:{ total, byEvent:[{event,count}] },
+//     cron:{ ok, known, stale:[…], failing:[…] } }
+// ─────────────────────────────────────────────────────────────────────────────
+
+/// One day's count for a single analytics event (a `DayCount` from the edge fn:
+/// `{day:'YYYY-MM-DD', events:N}`).
+class EventDayCount {
+  const EventDayCount({required this.day, required this.events});
+
+  final DateTime day;
+  final int events;
+
+  factory EventDayCount.fromJson(Map<String, dynamic> r) => EventDayCount(
+        day: DateTime.tryParse(r['day'] as String? ?? '')?.toLocal() ??
+            DateTime.fromMillisecondsSinceEpoch(0),
+        events: (r['events'] as num?)?.toInt() ?? 0,
+      );
+}
+
+/// One funnel event's trailing per-day series + its total over the window
+/// (`EventSeries`: `{event, total, days:[…]}`). [days] is newest-first.
+class EventSeries {
+  const EventSeries({
+    required this.event,
+    required this.total,
+    required this.days,
+  });
+
+  final String event;
+  final int total;
+  final List<EventDayCount> days;
+
+  factory EventSeries.fromJson(Map<String, dynamic> r) => EventSeries(
+        event: r['event'] as String? ?? '',
+        total: (r['total'] as num?)?.toInt() ?? 0,
+        days: ((r['days'] as List?) ?? const [])
+            .map((d) => EventDayCount.fromJson((d as Map).cast<String, dynamic>()))
+            .toList(),
+      );
+}
+
+/// A success-rate bucket keyed by tool name OR channel (`RateBucket`:
+/// `{key, calls, ok, rate}`). [rate] is server-computed (0..1) and is only
+/// meaningful when [calls] > 0 — [successRate] returns null otherwise so the UI
+/// shows "—" instead of a fabricated 0%.
+class RateBucket {
+  const RateBucket({
+    required this.key,
+    required this.calls,
+    required this.ok,
+    required this.rate,
+  });
+
+  final String key;
+  final int calls;
+  final int ok;
+  final double rate;
+
+  int get errors => (calls - ok).clamp(0, calls);
+
+  /// 0..1, or null when there were no calls in-window (honest "no data").
+  double? get successRate => calls <= 0 ? null : rate;
+
+  factory RateBucket.fromJson(Map<String, dynamic> r) => RateBucket(
+        key: r['key'] as String? ?? '',
+        calls: (r['calls'] as num?)?.toInt() ?? 0,
+        ok: (r['ok'] as num?)?.toInt() ?? 0,
+        rate: (r['rate'] as num?)?.toDouble() ?? 0,
+      );
+}
+
+/// The agent tool-call success rollup (`ToolCallSummary`: `{total, ok, rate,
+/// byTool, byChannel}`). [rate] is the overall success rate (0..1).
+class ToolCallSummary {
+  const ToolCallSummary({
+    required this.total,
+    required this.ok,
+    required this.rate,
+    required this.byTool,
+    required this.byChannel,
+  });
+
+  final int total;
+  final int ok;
+  final double rate;
+  final List<RateBucket> byTool;
+  final List<RateBucket> byChannel;
+
+  int get errors => (total - ok).clamp(0, total);
+
+  /// Overall success rate (0..1), or null when nothing was called.
+  double? get successRate => total <= 0 ? null : rate;
+
+  factory ToolCallSummary.fromJson(Map<String, dynamic> r) => ToolCallSummary(
+        total: (r['total'] as num?)?.toInt() ?? 0,
+        ok: (r['ok'] as num?)?.toInt() ?? 0,
+        rate: (r['rate'] as num?)?.toDouble() ?? 0,
+        byTool: ((r['byTool'] as List?) ?? const [])
+            .map((b) => RateBucket.fromJson((b as Map).cast<String, dynamic>()))
+            .toList(),
+        byChannel: ((r['byChannel'] as List?) ?? const [])
+            .map((b) => RateBucket.fromJson((b as Map).cast<String, dynamic>()))
+            .toList(),
+      );
+
+  static const empty =
+      ToolCallSummary(total: 0, ok: 0, rate: 0, byTool: [], byChannel: []);
+}
+
+/// One recent `security_audit_log` event label + its count (`AuditBucket`:
+/// `{event, count}`). The edge fn surfaces counts only — never the `detail`
+/// jsonb — so no PII reaches the client.
+class AuditBucket {
+  const AuditBucket({required this.event, required this.count});
+
+  final String event;
+  final int count;
+
+  factory AuditBucket.fromJson(Map<String, dynamic> r) => AuditBucket(
+        event: r['event'] as String? ?? '',
+        count: (r['count'] as num?)?.toInt() ?? 0,
+      );
+}
+
+/// The security-audit histogram (`{total, byEvent:[…]}`).
+class AuditSummary {
+  const AuditSummary({required this.total, required this.byEvent});
+
+  final int total;
+  final List<AuditBucket> byEvent;
+
+  factory AuditSummary.fromJson(Map<String, dynamic> r) => AuditSummary(
+        total: (r['total'] as num?)?.toInt() ?? 0,
+        byEvent: ((r['byEvent'] as List?) ?? const [])
+            .map((b) => AuditBucket.fromJson((b as Map).cast<String, dynamic>()))
+            .toList(),
+      );
+
+  static const empty = AuditSummary(total: 0, byEvent: []);
+}
+
+/// The cron-health summary (`CronHealth` from _shared/cron_health.ts:
+/// `{ok, known, stale:[…], failing:[…]}`). [known] is how many expected jobs are
+/// registered; [stale] are job names that haven't run within their window;
+/// [failing] are jobs whose last run didn't succeed. When pg_cron isn't installed
+/// the edge fn returns `known:0` with empty lists (honest "unknown", not a
+/// fabricated all-healthy claim).
+class CronSummary {
+  const CronSummary({
+    required this.ok,
+    required this.known,
+    required this.stale,
+    required this.failing,
+  });
+
+  final bool ok;
+  final int known;
+  final List<String> stale;
+  final List<String> failing;
+
+  /// True when no jobs are registered/observed yet — render an honest empty.
+  bool get isUnknown => known == 0 && stale.isEmpty && failing.isEmpty;
+
+  factory CronSummary.fromJson(Map<String, dynamic> r) => CronSummary(
+        ok: r['ok'] as bool? ?? true,
+        known: (r['known'] as num?)?.toInt() ?? 0,
+        stale: ((r['stale'] as List?) ?? const [])
+            .map((e) => e.toString())
+            .toList(),
+        failing: ((r['failing'] as List?) ?? const [])
+            .map((e) => e.toString())
+            .toList(),
+      );
+
+  static const empty =
+      CronSummary(ok: true, known: 0, stale: [], failing: []);
+}
+
+/// The owner observability payload from the `admin-metrics` edge function — the
+/// faithful Dart mirror of its JSON response. [windowDays] is `window.days`.
+///
+/// Each section is independently null-tolerant: a section the function couldn't
+/// compute (e.g. pg_cron absent, or no rows) comes back empty, and the UI renders
+/// an honest per-section empty state instead of a zeroed-out chart.
+class AdminMetrics {
+  const AdminMetrics({
+    required this.windowDays,
+    required this.events,
+    required this.totalEvents,
+    required this.toolCalls,
+    required this.audit,
+    required this.cron,
+  });
+
+  /// The look-back window the function aggregated over (days).
+  final int windowDays;
+
+  /// Per-event trailing series (one [EventSeries] per known funnel event).
+  final List<EventSeries> events;
+
+  /// Grand total of analytics events across all series in the window.
+  final int totalEvents;
+
+  final ToolCallSummary toolCalls;
+  final AuditSummary audit;
+  final CronSummary cron;
+
+  /// True when every section is empty — the whole tab shows one empty state.
+  bool get isEmpty =>
+      totalEvents == 0 &&
+      toolCalls.total == 0 &&
+      audit.total == 0 &&
+      cron.isUnknown;
+
+  /// Total analytics events flattened to a per-day series (summed across every
+  /// event), newest day first — what the events-over-time chart plots. Derived,
+  /// not fabricated: each day's value is the exact sum of the real per-event
+  /// counts for that date.
+  List<EventDayCount> get eventsByDay {
+    final byDay = <DateTime, int>{};
+    for (final s in events) {
+      for (final d in s.days) {
+        final key = DateTime(d.day.year, d.day.month, d.day.day);
+        byDay[key] = (byDay[key] ?? 0) + d.events;
+      }
+    }
+    final out = byDay.entries
+        .map((e) => EventDayCount(day: e.key, events: e.value))
+        .toList()
+      ..sort((a, b) => a.day.compareTo(b.day));
+    return out;
+  }
+
+  /// Total tool calls across the window.
+  int get totalToolCalls => toolCalls.total;
+
+  /// Total tool errors across the window.
+  int get totalToolErrors => toolCalls.errors;
+
+  /// Overall tool success rate (0..1), or null when nothing was called.
+  double? get overallToolSuccessRate => toolCalls.successRate;
+
+  /// Total audited security events across the window.
+  int get totalAuditEvents => audit.total;
+
+  factory AdminMetrics.fromJson(Map<String, dynamic> r) {
+    final analytics = (r['analytics'] as Map?)?.cast<String, dynamic>() ?? const {};
+    final window = (r['window'] as Map?)?.cast<String, dynamic>() ?? const {};
+    return AdminMetrics(
+      windowDays: (window['days'] as num?)?.toInt() ?? 7,
+      events: ((analytics['events'] as List?) ?? const [])
+          .map((e) => EventSeries.fromJson((e as Map).cast<String, dynamic>()))
+          .toList(),
+      totalEvents: (analytics['total'] as num?)?.toInt() ?? 0,
+      toolCalls: r['toolCalls'] is Map
+          ? ToolCallSummary.fromJson((r['toolCalls'] as Map).cast<String, dynamic>())
+          : ToolCallSummary.empty,
+      audit: r['audit'] is Map
+          ? AuditSummary.fromJson((r['audit'] as Map).cast<String, dynamic>())
+          : AuditSummary.empty,
+      cron: r['cron'] is Map
+          ? CronSummary.fromJson((r['cron'] as Map).cast<String, dynamic>())
+          : CronSummary.empty,
+    );
+  }
+}
+
 /// The app's data backend — the seam between the UI and where shared data lives.
 ///
 /// [LocalBackend] keeps everything on-device (the default). `SupabaseBackend`
@@ -567,6 +882,31 @@ class BillAnalysis {
 /// Scope here is the user-owned data with clean mappings (leads, tracked plans,
 /// reviews); the community feed (posts/replies/media) is the next domain to add.
 abstract interface class Backend {
+  // ── AI advisor (site-ai-chat edge agent) ─────────────────────────────────────
+  /// Calls the `site-ai-chat` edge agent (the grounded, multi-turn Switchy AI) and
+  /// returns its decoded JSON body (`{reply, offerLead?, leadCaptured?,
+  /// contextTruncated?, sessionId?}`). [body] is the request shape
+  /// (`{message, history, sessionId?}`). Throws on a transport / non-2xx / parse
+  /// failure so the caller can fall back to the on-device [AdvisorEngine].
+  /// [LocalBackend] throws unconditionally (no edge function offline), which the
+  /// advisor widget treats as "fall back to local".
+  Future<Map<String, dynamic>> aiChat(Map<String, dynamic> body);
+
+  // ── Real-time deals (plan_price_history) ─────────────────────────────────────
+  /// The most-recent price snapshots from `plan_price_history`, newest-first,
+  /// capped at [limit]. The deals feed diffs consecutive snapshots per plan to
+  /// surface honest price drops. [LocalBackend] returns an empty list (no ledger
+  /// offline) so the feed shows an honest empty state.
+  Future<List<PriceSnapshot>> fetchPriceSnapshots({int limit = 400});
+
+  /// Emits void whenever a `plan_price_history` row is inserted (a fresh price
+  /// snapshot). [LocalBackend] returns an empty stream; [SupabaseBackend] opens a
+  /// Realtime channel so the deals feed refreshes the moment a new drop lands,
+  /// with the [RealtimePoller] heartbeat as the polling fallback.
+  Stream<void> priceHistoryChanges();
+
+  // ── User profile ─────────────────────────────────────────────────────────────
+  /// Upserts the user's identity into the `profiles` table. No-op when the
   // ── User profile ─────────────────────────────────────────────────────────────
   /// Upserts the user's identity into the `profiles` table. No-op when the
   /// user isn't signed in (anonymous session without a real uid is fine —
@@ -724,4 +1064,15 @@ abstract interface class Backend {
 
   /// The leads board, optionally filtered by [status].
   Future<List<CrmLead>> crmListLeads({String? status});
+
+  // ── Owner observability (admin-only) ─────────────────────────────────────────
+  /// Owner observability metrics from the `admin-metrics` edge function:
+  /// per-day analytics-event counts, agent tool-call success rates, recent
+  /// `security_audit_log` counts, and cron health. Admin-gated server-side
+  /// (profiles.is_admin), exactly like the `crm-api` reads. The app NEVER queries
+  /// the underlying analytics_events / security_audit_log / cron tables directly.
+  /// [LocalBackend] returns a deterministic fake so the dashboard renders offline;
+  /// [SupabaseBackend] calls functions.invoke. Throws on a transport / non-2xx so
+  /// the tab can show an honest retry state.
+  Future<AdminMetrics> fetchAdminMetrics({int windowDays = 14});
 }

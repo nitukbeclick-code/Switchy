@@ -104,8 +104,15 @@ class MiniPlanCard extends StatelessWidget {
                       ),
                       child: Text(
                         '$ctaLabel ←',
+                        // The label sits on the ink ACTION fill (ffTheme.primary
+                        // = ink on light, near-white on dark). ffTheme.background
+                        // is the theme's opposite-lightness canvas, so it always
+                        // pairs as a guaranteed-AA (>=16:1) on-color in BOTH
+                        // themes — no hardcoded white that would fail on the
+                        // near-white dark fill.
                         style: ffTheme.labelSmall.copyWith(
-                          color: ffTheme.dark ? ffTheme.background : Colors.white,
+                          color: ffTheme.background,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ),

@@ -94,6 +94,12 @@ class _CommunityWidgetState extends State<CommunityWidget> {
   // shows shimmer skeletons rather than the "no posts yet" empty state.
   bool _firstLoadDone = false;
 
+  // Set when the most recent backend fetch threw. Used only to choose between
+  // the honest "couldn't load" + retry state and the "no posts yet" empty state
+  // when the feed has nothing to show — so an offline first load never silently
+  // masquerades as an empty community.
+  bool _loadFailed = false;
+
   Future<void> _loadFromBackend() async {
     try {
       final remote = await appBackend.fetchPosts();
@@ -103,7 +109,12 @@ class _CommunityWidgetState extends State<CommunityWidget> {
         final seedOnly = communityPosts.where((p) => !remoteIds.contains(p.id)).toList();
         setState(() => _posts = [...remote, ...seedOnly]);
       }
-    } catch (_) {/* offline — seeds/local stay */} finally {
+      if (mounted) setState(() => _loadFailed = false);
+    } catch (_) {
+      // Offline — seeds/local stay. Flag the failure so an otherwise-empty feed
+      // can offer a retry instead of an "empty community" lie.
+      if (mounted) setState(() => _loadFailed = true);
+    } finally {
       if (mounted && !_firstLoadDone) setState(() => _firstLoadDone = true);
     }
   }
@@ -910,7 +921,7 @@ class _CommunityWidgetState extends State<CommunityWidget> {
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('קהילת חוסך', style: GoogleFonts.rubik(fontSize: 17, fontWeight: FontWeight.w800, color: Colors.white)),
+            Text('קהילת Switchy AI', style: GoogleFonts.rubik(fontSize: 17, fontWeight: FontWeight.w800, color: Colors.white)),
             Text('שתפו חוויות, טיפים ועצות חיסכון', style: GoogleFonts.assistant(fontSize: 11, color: Colors.white70)),
           ],
         ),
@@ -1052,28 +1063,35 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                Tooltip(
-                  message: 'פוסטים שמורים',
-                  child: GestureDetector(
-                    onTap: () {
-                      HapticFeedback.selectionClick();
-                      setState(() {
-                        _showBookmarksOnly = !_showBookmarksOnly;
-                        _visibleCount = _feedPageSize;
-                      });
-                    },
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: _showBookmarksOnly ? ffTheme.warning.withValues(alpha: 0.12) : ffTheme.background,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: _showBookmarksOnly ? ffTheme.warning : ffTheme.alternate),
-                      ),
-                      child: Icon(
-                        _showBookmarksOnly ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
-                        size: 15,
-                        color: _showBookmarksOnly ? ffTheme.warning : ffTheme.secondaryText,
+                Semantics(
+                  button: true,
+                  toggled: _showBookmarksOnly,
+                  label: 'פוסטים שמורים',
+                  child: Tooltip(
+                    message: 'פוסטים שמורים',
+                    child: GestureDetector(
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        setState(() {
+                          _showBookmarksOnly = !_showBookmarksOnly;
+                          _visibleCount = _feedPageSize;
+                        });
+                      },
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: _showBookmarksOnly ? ffTheme.warning.withValues(alpha: 0.12) : ffTheme.background,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: _showBookmarksOnly ? ffTheme.warning : ffTheme.alternate),
+                        ),
+                        child: ExcludeSemantics(
+                          child: Icon(
+                            _showBookmarksOnly ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+                            size: 15,
+                            color: _showBookmarksOnly ? ffTheme.warning : ffTheme.secondaryText,
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -1202,13 +1220,24 @@ class _CommunityWidgetState extends State<CommunityWidget> {
                                   SkeletonPostCard(),
                                 ],
                               )
-                            : EmptyState(
-                                icon: Icons.forum_outlined,
-                                headline: 'עדיין אין פוסטים',
-                                subtitle: 'היו הראשונים לשתף',
-                                ctaLabel: 'פרסם פוסט',
-                                onCtaTap: () async => _showComposer(context, appState, ffTheme),
-                              ))
+                            // First load finished but the fetch failed and there
+                            // is genuinely nothing cached — be honest and offer a
+                            // retry rather than implying the community is empty.
+                            : _loadFailed
+                                ? EmptyState(
+                                    icon: Icons.cloud_off_rounded,
+                                    headline: 'לא הצלחנו לטעון את הקהילה',
+                                    subtitle: 'בדקו את החיבור לאינטרנט ונסו שוב.',
+                                    ctaLabel: 'נסו שוב',
+                                    onCtaTap: _refreshFeed,
+                                  )
+                                : EmptyState(
+                                    icon: Icons.forum_outlined,
+                                    headline: 'עדיין אין פוסטים',
+                                    subtitle: 'היו הראשונים לשתף',
+                                    ctaLabel: 'פרסם פוסט',
+                                    onCtaTap: () async => _showComposer(context, appState, ffTheme),
+                                  ))
                 : RefreshIndicator(
                     onRefresh: _refreshFeed,
                     color: ffTheme.primary,
@@ -1558,7 +1587,7 @@ class _PostCardState extends State<_PostCard> {
                   semanticLabel: 'שתף פוסט',
                   onTap: () {
                     HapticFeedback.selectionClick();
-                    Share.share('${post.author}:\n${post.text}\n\nמתוך אפליקציית חוסך');
+                    Share.share('${post.author}:\n${post.text}\n\nמתוך אפליקציית Switchy AI');
                   },
                 ),
               ],

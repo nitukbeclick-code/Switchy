@@ -3,7 +3,10 @@ import 'package:flutter/foundation.dart'
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// Central design tokens for the חוסך app.
+/// Minimum interactive touch-target size (dp), enforced on small controls app-wide.
+const double kMinTapTarget = 48.0;
+
+/// Central design tokens for the Switchy AI app.
 ///
 /// This is hand-authored, idiomatic Flutter — no FlutterFlow runtime,
 /// no code generation. Colors live in [AppColors]; the [AppTheme] facade
@@ -323,6 +326,37 @@ class AppTheme {
         BoxShadow(color: Color(0x2615803D), blurRadius: 6, offset: Offset(0, 2)),
       ];
 
+  /// The "live" green ACTION glow — a 1px accent-tinted ring hugging the edge
+  /// plus a soft accent-coloured drop — the Flutter mirror of the site's
+  /// `--glow-accent`. Use on the surface a primary CTA wants to feel energised
+  /// (the green button, an active "best match" tile). Theme-aware: on dark the
+  /// hue lifts to the brighter green and the alphas rise a touch so the glow
+  /// still reads against slate. The ring is the `0 0 0 1px` layer
+  /// (spread 1, blur 0); the soft drop is the `0 8px 28px` layer.
+  List<BoxShadow> get glowAccent => dark
+      ? const [
+          BoxShadow(color: Color(0x2E4ADE80), spreadRadius: 1), // ring: rgba(74,222,128,.18)
+          BoxShadow(color: Color(0x384ADE80), blurRadius: 28, offset: Offset(0, 8)), // soft: rgba(74,222,128,.22)
+        ]
+      : const [
+          BoxShadow(color: Color(0x1F16A34A), spreadRadius: 1), // ring: rgba(22,163,74,.12)
+          BoxShadow(color: Color(0x2916A34A), blurRadius: 28, offset: Offset(0, 8)), // soft: rgba(22,163,74,.16)
+        ];
+
+  /// The "live" amber VALUE glow — the same 1px ring + soft drop as
+  /// [glowAccent], tinted to the amber VALUE accent. The Flutter mirror of the
+  /// site's `--glow-value`; reach for it on a "best value"/savings surface that
+  /// should glow warm. Theme-aware (lifts to amber 400 on dark).
+  List<BoxShadow> get glowValue => dark
+      ? const [
+          BoxShadow(color: Color(0x33FBBF24), spreadRadius: 1), // ring: rgba(251,191,36,.20)
+          BoxShadow(color: Color(0x3DFBBF24), blurRadius: 28, offset: Offset(0, 8)), // soft: rgba(251,191,36,.24)
+        ]
+      : const [
+          BoxShadow(color: Color(0x24F59E0B), spreadRadius: 1), // ring: rgba(245,158,11,.14)
+          BoxShadow(color: Color(0x2EF59E0B), blurRadius: 28, offset: Offset(0, 8)), // soft: rgba(245,158,11,.18)
+        ];
+
   /// A soft, diffuse, neutral shadow for frosted-glass surfaces.
   List<BoxShadow> get shadowGlass => dark
       ? const [
@@ -610,6 +644,21 @@ class AppTheme {
           fontWeight: FontWeight.w700,
           color: isDark ? t.primaryText : Colors.white,
         ),
+      ),
+      // Native page motion app-wide: every pushed MaterialPage now slides in
+      // (iOS-style + RTL-aware, with edge swipe-back on iOS) instead of swapping
+      // with no motion — the single biggest fix for the "feels like a website"
+      // tell. go_router builds each route as a MaterialPage, so this themes all
+      // ~40 routes at once with zero per-route changes.
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.android: ZoomPageTransitionsBuilder(),
+          TargetPlatform.fuchsia: ZoomPageTransitionsBuilder(),
+          TargetPlatform.linux: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.windows: CupertinoPageTransitionsBuilder(),
+        },
       ),
       cardTheme: CardThemeData(
         color: t.cardSurface,

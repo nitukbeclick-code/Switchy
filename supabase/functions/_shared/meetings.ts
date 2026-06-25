@@ -35,7 +35,7 @@ export function formatMeetingTime(m: MeetingRow): string {
 export function buildMeetingText(m: MeetingRow): string {
   const wa = waLink(m.phone);
   const lines: (string | null)[] = [
-    "🎥 <b>בקשת פגישת וידאו — חוסך</b>",
+    "🎥 <b>בקשת פגישת וידאו — Switchy AI</b>",
     "",
     `👤 <b>שם:</b> ${esc(m.name)}`,
     `📞 <b>טלפון:</b> ${esc(m.phone)}` + (wa ? ` — <a href="${wa}">WhatsApp</a>` : ""),
@@ -211,20 +211,20 @@ export function formatMeetingTimeline(m: MeetingRow, events: MeetingEvent[]): st
 }
 
 // Customer-facing confirmation email — formal Hebrew, RTL, no emoji.
-// Subject used by the caller: אישור פגישת וידאו — חוסך
+// Subject used by the caller: אישור פגישת וידאו — Switchy AI
 export function buildMeetingCustomerEmailHtml(m: MeetingRow): string {
   const when = formatMeetingWhen(m);
   return `<div dir="rtl" style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#0B0F14">`
     + `<h2 style="color:#111827">פגישת הווידאו שלכם אושרה</h2>`
     + `<p>שלום ${esc(m.name ?? "")},</p>`
-    + `<p>פגישת הייעוץ שלכם עם נציג חוסך נקבעה ל<b>${esc(when)}</b> (30 דקות, שעון ישראל)`
+    + `<p>פגישת הייעוץ שלכם עם נציג Switchy AI נקבעה ל<b>${esc(when)}</b> (30 דקות, שעון ישראל)`
     + (m.provider ? ` בנושא <b>${esc(m.provider)}</b>` : "")
     + `.</p>`
     + (m.join_url
-      ? `<p style="margin:24px 0"><a href="${esc(m.join_url)}" style="background:#4F46E5;color:#ffffff;padding:12px 28px;border-radius:8px;text-decoration:none;display:inline-block">הצטרפות לפגישת ה-Zoom</a></p>`
+      ? `<p style="margin:24px 0"><a href="${esc(m.join_url)}" style="background:#16A34A;color:#ffffff;padding:12px 28px;border-radius:8px;text-decoration:none;display:inline-block">הצטרפות לפגישת ה-Zoom</a></p>`
         + `<p style="font-size:13px;color:#222A35">אם הכפתור אינו נפתח, העתיקו את הקישור לדפדפן: <a href="${esc(m.join_url)}">${esc(m.join_url)}</a></p>`
       : "")
     + `<p>מומלץ להצטרף דקה-שתיים לפני המועד. אם המועד אינו מתאים, השיבו למייל זה ונתאם מועד חדש.</p>`
-    + `<p>בברכה,<br>צוות חוסך</p>`
+    + `<p>בברכה,<br>צוות Switchy AI</p>`
     + `</div>`;
 }

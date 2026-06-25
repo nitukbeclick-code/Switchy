@@ -403,7 +403,7 @@ serve(async (req: Request) => {
       } else if (text === "/help") {
         await sendTelegramMessage(
           chatId,
-          `<b>עזרה — בוט חוסך</b>\n\n<b>פקודות:</b>\n/start - חיבור החשבון\n/help - הצגת הודעה זו\n\nקבלו התראות על:\n✅ אישורי פגישות\n⏰ תזכורות חידוש\n🎉 דילים משתלמים יותר\n💰 הזדמנויות חיסכון`
+          `<b>עזרה — בוט Switchy AI</b>\n\n<b>פקודות:</b>\n/start - חיבור החשבון\n/help - הצגת הודעה זו\n\nקבלו התראות על:\n✅ אישורי פגישות\n⏰ תזכורות חידוש\n🎉 דילים משתלמים יותר\n💰 הזדמנויות חיסכון`
         );
       } else {
         // Non-command text. First try relaying it to a customer's WhatsApp when

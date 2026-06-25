@@ -20,13 +20,13 @@ import {
  * 301 app→apex. Drives canonicals/sitemap/robots/JSON-LD. */
 export const SITE_URL = "https://app.switchy-ai.com";
 /** Brand name as shown to users / engines (single canonical form everywhere). */
-export const SITE_NAME = "חוסך / Switch AI";
+export const SITE_NAME = "Switchy AI";
 /**
  * Alternate brand-name forms that MUST resolve to the same entity. GEO/knowledge
  * graphs key `sameAs`/knowledge-panel on a single name, so we declare every form
- * the brand appears under (the Hebrew "חוסך", the canonical English "Switch AI",
- * and the legacy "Switchy" variant the site also appeared under) as
- * `alternateName`. KEEP the footer + llm-context in sync with these.
+ * the brand has appeared under (the legacy Hebrew "חוסך", the older English
+ * "Switch AI", and the bare "Switchy" wordmark) as `alternateName`. KEEP the
+ * footer + llm-context in sync with these.
  */
 export const SITE_ALT_NAMES: readonly string[] = ["חוסך", "Switch AI", "Switchy"];
 const CURRENCY = "ILS";
@@ -203,6 +203,113 @@ export function breadcrumbSchema(items: Crumb[]): Json {
         : `${SITE_URL}${item.url.startsWith("/") ? "" : "/"}${item.url}`,
     })),
   };
+}
+
+// ── Article (guide) ──────────────────────────────────────────────────────────
+/**
+ * Shared brand Organization node used as Article `author`/`publisher`. Inlined
+ * (name + url + logo) rather than `@id`-referenced because the layout's
+ * orgSchema() does not declare an `@id`; this keeps each Article self-contained
+ * and validator-clean. HONESTY: the brand is the genuine author/publisher of its
+ * own editorial guides — no third party is credited.
+ */
+function brandOrgNode(): Json {
+  return {
+    "@type": "Organization",
+    name: SITE_NAME,
+    url: SITE_URL,
+    logo: `${SITE_URL}/favicon.png`,
+  };
+}
+
+/** Input for {@link articleSchema} — the REAL guide metadata. */
+export interface ArticleInput {
+  /** The article headline (visible H1 — bare, no brand suffix). */
+  headline: string;
+  /** Meta description / summary. */
+  description: string;
+  /** Canonical url of the article (absolute or site-relative). */
+  url: string;
+  /** REAL publish date (ISO yyyy-mm-dd). Never fabricated. */
+  datePublished: string;
+  /**
+   * REAL last-modified date (ISO). Defaults to `datePublished` when no separate
+   * edit time is tracked — a valid, honest freshness signal (mirrors the static
+   * site's behaviour), never an invented future date.
+   */
+  dateModified?: string;
+  /** The article's category/section label (e.g. "סלולר"). */
+  section?: string;
+}
+
+/**
+ * Article schema for a guide. `author`/`publisher` are the brand Organization
+ * (the genuine author of its editorial guides); `mainEntityOfPage` and
+ * `isPartOf` tie the article to its canonical page and the brand WebSite.
+ *
+ * HONESTY (E-E-A-T): dates are the REAL publish/modified dates supplied by the
+ * caller; nothing here fabricates authorship, ratings, or freshness.
+ */
+export function articleSchema(input: ArticleInput): Json {
+  const url = absUrl(input.url);
+  const org = brandOrgNode();
+  return {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: input.headline,
+    description: input.description,
+    inLanguage: "he-IL",
+    datePublished: input.datePublished,
+    dateModified: input.dateModified ?? input.datePublished,
+    ...(input.section ? { articleSection: input.section } : {}),
+    mainEntityOfPage: { "@type": "WebPage", "@id": url },
+    image: `${SITE_URL}/opengraph-image.png`,
+    isPartOf: { "@type": "WebSite", name: SITE_NAME, url: SITE_URL },
+    author: org,
+    publisher: org,
+  };
+}
+
+// ── HowTo (step-by-step guide) ───────────────────────────────────────────────
+/** One ordered HowTo step (name + instruction text). */
+export interface HowToStepInput {
+  name: string;
+  text: string;
+}
+
+/**
+ * HowTo schema for a step-by-step guide. Emitted ONLY when the guide genuinely is
+ * a procedure (the caller passes its real ordered steps); a non-procedural guide
+ * must NOT get a HowTo (callers omit it). Returns `null` when there are no steps,
+ * so callers can render it unconditionally without fabricating a procedure.
+ *
+ * HONESTY: every step mirrors the real on-page instructions — no invented steps.
+ */
+export function howToSchema(args: {
+  name: string;
+  description?: string;
+  url?: string;
+  steps: HowToStepInput[];
+}): Json | null {
+  const steps = (args.steps ?? []).filter(
+    (s) => s && typeof s.name === "string" && typeof s.text === "string",
+  );
+  if (steps.length === 0) return null;
+  const schema: Json = {
+    "@context": "https://schema.org",
+    "@type": "HowTo",
+    name: args.name,
+    inLanguage: "he-IL",
+    step: steps.map((s, i) => ({
+      "@type": "HowToStep",
+      position: i + 1,
+      name: s.name,
+      text: s.text,
+    })),
+  };
+  if (args.description) schema.description = args.description;
+  if (args.url) schema.url = absUrl(args.url);
+  return schema;
 }
 
 // ── ItemList of internal links (RelatedLinks counterpart) ────────────────────
@@ -451,7 +558,7 @@ export function definedTermSetSchema(
     "@context": "https://schema.org",
     "@type": "DefinedTermSet",
     "@id": `${SITE_URL}/glossary#set`,
-    name: opts.name ?? "מילון מונחי תקשורת — חוסך / Switch AI",
+    name: opts.name ?? "מילון מונחי תקשורת — Switchy AI",
     description:
       opts.description ??
       "מילון מונחים עובדתי בעברית לשוק התקשורת בישראל: סלולר, אינטרנט, " +
@@ -826,4 +933,64 @@ export function knowledgeWebSchema(
   }
 
   return { "@context": "https://schema.org", "@graph": graph };
+}
+
+// ── Page-level AggregateOffer (AEO pillar 4) ─────────────────────────────────
+/**
+ * ONE `AggregateOffer` summarising the whole page's real plan set: `lowPrice` =
+ * the cheapest plan's price, `highPrice` = the priciest, `offerCount` = N priced
+ * plans, in ILS. This gives answer engines a single structured "prices range
+ * from ₪X to ₪Y across N plans" node for the comparison page — the formal,
+ * machine-parseable companion to the visible AEO direct answer + table.
+ *
+ * HONESTY: lowPrice/highPrice/offerCount are computed ONLY from the real prices
+ * handed in (the SAME list the page renders + answers from), so the schema can
+ * never disagree with the page. Plans without a finite positive price are skipped
+ * (they can't honestly set a bound). Returns `null` when no priced plan exists,
+ * so callers render it unconditionally without emitting an empty/false offer.
+ */
+export function pageAggregateOfferSchema(plans: Plan[]): Json | null {
+  const prices = plans
+    .map((p) => p.price)
+    .filter((n): n is number => typeof n === "number" && Number.isFinite(n) && n > 0);
+  if (prices.length === 0) return null;
+
+  return {
+    "@context": "https://schema.org",
+    "@type": "AggregateOffer",
+    priceCurrency: CURRENCY,
+    lowPrice: Math.min(...prices),
+    highPrice: Math.max(...prices),
+    offerCount: prices.length,
+  };
+}
+
+// ── Speakable (AEO pillar 7 — voice) ─────────────────────────────────────────
+/**
+ * `speakable` SpeakableSpecification keyed on CSS selectors — tells voice
+ * assistants which parts of the page are the concise, read-aloud answer (e.g. the
+ * AEO direct-answer paragraph + the page H1). Returns `null` when no selectors
+ * are supplied so callers can render it unconditionally.
+ *
+ * Emitted as a standalone `WebPage` carrying only the `speakable` spec; pages
+ * already declare their main WebPage via {@link webPageSchema}, and a second
+ * narrowly-scoped WebPage node purely for `speakable` is valid and keeps this
+ * builder additive (it does not need to rewrite the page's main WebPage).
+ *
+ * HONESTY: this marks up EXISTING on-page text for voice reading — it asserts no
+ * new claim and fabricates nothing; selectors must point at real rendered nodes.
+ */
+export function speakableSchema(selectors: string[]): Json | null {
+  const cssSelector = (selectors ?? []).filter(
+    (s): s is string => typeof s === "string" && s.trim().length > 0,
+  );
+  if (cssSelector.length === 0) return null;
+  return {
+    "@context": "https://schema.org",
+    "@type": "WebPage",
+    speakable: {
+      "@type": "SpeakableSpecification",
+      cssSelector,
+    },
+  };
 }

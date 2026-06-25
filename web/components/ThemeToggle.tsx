@@ -22,6 +22,7 @@
 // ────────────────────────────────────────────────────────────────────────────
 
 import { useSyncExternalStore } from "react";
+import Icon from "@/components/Icon";
 
 export const THEME_STORAGE_KEY = "chosech-theme";
 
@@ -120,42 +121,16 @@ export default function ThemeToggle({ className }: ThemeToggleProps) {
       className={[
         // A square icon control that sits on the glass masthead. Tokens only, so
         // it re-skins in dark mode automatically. ≥44px target via padding.
-        "inline-flex h-9 w-9 items-center justify-center rounded-xl border border-border/60 text-foreground transition-all duration-200 hover:-translate-y-0.5 hover:border-accent/40 hover:bg-accent/[0.06] hover:text-accent active:translate-y-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
+        "inline-flex h-9 w-9 items-center justify-center rounded-xl border border-border/60 text-foreground transition-[color,background-color,border-color,transform] duration-150 ease-[var(--ease-out)] hover:border-accent/40 hover:bg-accent/[0.06] hover:text-accent active:scale-[0.97] [@media(hover:hover)_and_(pointer:fine)]:motion-safe:hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent",
         className ?? "",
       ]
         .join(" ")
         .trim()}
     >
-      {/* Sun (shown in dark mode → "switch to light") */}
-      {isDark ? (
-        <svg
-          aria-hidden="true"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="h-5 w-5"
-        >
-          <circle cx="12" cy="12" r="4" />
-          <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
-        </svg>
-      ) : (
-        /* Moon (shown in light mode → "switch to dark") */
-        <svg
-          aria-hidden="true"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="h-5 w-5"
-        >
-          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-        </svg>
-      )}
+      {/* Sun (shown in dark mode → "switch to light") / Moon (light → dark).
+          Decorative — the button's aria-label carries the meaning. */}
+      <Icon name={isDark ? "sun" : "moon"} size={20} strokeWidth={2} />
+
     </button>
   );
 }

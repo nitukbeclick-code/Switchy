@@ -19,7 +19,7 @@
   --ink: #111827; /* structural ink (headings, dark cards) */
   --border: #e5e7eb; /* hairline borders */
   --border-strong: #222a35; /* strong/structural borders */
-  --muted: #5b616b; /* secondary text (≥5.3:1 on glass; was #6b7280 = 4.5:1 exactly) */
+  --muted: #4a5260; /* secondary text — darkened for small metadata (≥6:1 on white, ≥6.7:1 on glass; was #5b616b) */
 
   /* Accents — use with intent, sparingly.
      IMPORTANT: split "fill" shades from "text" shades for WCAG AA (1.4.3).
@@ -66,6 +66,21 @@
     0 8px 28px rgba(22, 163, 74, 0.16);
   --glow-value: 0 0 0 1px rgba(245, 158, 11, 0.14),
     0 8px 28px rgba(245, 158, 11, 0.18);
+
+  /* ── Motion system (Emil Kowalski's rules) ────────────────────────────────
+     Define easing + duration ONCE here and reference everywhere, so every
+     transition speaks the same crisp telecom-grade vocabulary. These are
+     theme-independent (timing, not color) — they live in :root and apply in
+     dark mode too. NEVER use the built-in `ease-in` (sluggish); use these. */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1); /* enter / settle — most UI */
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1); /* symmetric move */
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1); /* drawers / sheets */
+
+  /* Durations — keep most UI < 300ms (faster feels more responsive). */
+  --duration-press: 140ms; /* button / press feedback (100–160ms) */
+  --duration-tooltip: 160ms; /* tooltips / small popovers (125–200ms) */
+  --duration-dropdown: 200ms; /* dropdowns / selects (150–250ms) */
+  --duration-modal: 280ms; /* modals / drawers (200–500ms) */
 }
 
 /* ════════════════════════════════════════════════════════════════════════════
@@ -165,6 +180,13 @@
   --shadow-soft: var(--shadow-soft);
   --shadow-card: var(--shadow-card);
   --shadow-float: var(--shadow-float);
+
+  /* Motion easing → ease-out / ease-in-out / ease-drawer transition-timing
+     utilities resolve to the brand curves (Tailwind v4 `--ease-*` namespace),
+     so component agents get the disciplined easing without re-typing béziers. */
+  --ease-out: var(--ease-out);
+  --ease-in-out: var(--ease-in-out);
+  --ease-drawer: var(--ease-drawer);
 }
 
 /* ── Base RTL / Hebrew-first styles ──────────────────────────────────────── */
@@ -191,6 +213,22 @@ h5,
 h6 {
   font-family: var(--font-rubik), system-ui, sans-serif;
   color: var(--ink);
+}
+
+/* Tight optical tracking on Rubik display headings — matches the Flutter app's
+   condensed display set so the site and app read as one type system. The scale
+   loosens with level (big type tolerates more negative tracking than small). */
+h1 {
+  letter-spacing: -0.05em;
+}
+h2 {
+  letter-spacing: -0.04em;
+}
+h3 {
+  letter-spacing: -0.03em;
+}
+h4 {
+  letter-spacing: -0.02em;
 }
 
 a {
@@ -294,6 +332,30 @@ a:hover {
   }
 }
 
+/* Dark-mode glass: deepen the frost (more blur) and float a faint green accent
+   glow BEHIND the panel via a radial wash, so sticky bars / navbars read as
+   raised-above-content rather than flat ink-on-ink. The radial sits on a
+   layered background (color-mix tint + radial glow); the blur lifts so the
+   content behind reads as soft frost. Light mode is left untouched. */
+:root[data-theme="dark"] .glass {
+  backdrop-filter: saturate(180%) blur(16px);
+  -webkit-backdrop-filter: saturate(180%) blur(16px);
+  background-image: radial-gradient(
+    120% 140% at 50% -20%,
+    rgba(74, 222, 128, 0.08),
+    rgba(74, 222, 128, 0) 60%
+  );
+}
+:root[data-theme="dark"] .glass-strong {
+  backdrop-filter: saturate(180%) blur(24px);
+  -webkit-backdrop-filter: saturate(180%) blur(24px);
+  background-image: radial-gradient(
+    120% 140% at 50% -20%,
+    rgba(74, 222, 128, 0.1),
+    rgba(74, 222, 128, 0) 60%
+  );
+}
+
 /* ── Cards & bento tiles ──────────────────────────────────────────────────────
    .card        — the base surface card (soft border + soft shadow + lg radius).
    .bento       — a bento tile: bigger radius, card shadow; pairs with .bento-grid.
@@ -310,19 +372,42 @@ a:hover {
   border-radius: var(--radius-xl);
   box-shadow: var(--shadow-card);
 }
+/* Dark-mode top-edge glint: a hairline inset highlight along the card's top edge
+   so cards catch "light" and don't sink flat into the dark page. Light mode reads
+   this brightness naturally from the white surface; on dark we add it explicitly.
+   Composed WITH the existing soft/card shadow so the elevation is preserved. */
+:root[data-theme="dark"] .card {
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.06), var(--shadow-soft);
+}
+:root[data-theme="dark"] .bento {
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.07), var(--shadow-card);
+}
 .card-interactive {
   transition:
-    transform 200ms ease,
-    box-shadow 200ms ease,
-    border-color 200ms ease;
+    transform 200ms var(--ease-out),
+    box-shadow 200ms var(--ease-out),
+    border-color 200ms var(--ease-out);
 }
-.card-interactive:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-float);
-  border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+/* Gate hover-lift behind real hover-capable, fine pointers so it never sticks
+   on touch (where :hover latches until the next tap). */
+@media (hover: hover) and (pointer: fine) {
+  .card-interactive:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-float);
+    border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+  }
 }
 .card-interactive:active {
   transform: translateY(-1px) scale(0.995);
+}
+/* Focus ring sits INSIDE the card edge (negative offset) so the green ring never
+   collides with neighbours in dense bento/card grids. Inset offset hugs the
+   rounded corners cleanly; the ring stays the brand fill green (non-text, 3:1)
+   and remains visible on dark (the fill green is bright enough on dark glass). */
+.card:focus-visible,
+.card-interactive:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
 }
 
 /* ── Elevation tiers (apply a soft shadow without the rest of a card) ────────── */
@@ -351,18 +436,28 @@ a:hover {
    .press       — tactile press feedback (compose with .interactive). */
 .interactive {
   transition:
-    color 180ms ease,
-    background-color 180ms ease,
-    border-color 180ms ease,
-    box-shadow 180ms ease,
-    transform 180ms ease;
+    color 180ms var(--ease-out),
+    background-color 180ms var(--ease-out),
+    border-color 180ms var(--ease-out),
+    box-shadow 180ms var(--ease-out),
+    transform 180ms var(--ease-out);
 }
-.hover-lift:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-card);
+/* Hover-lift is a pointer affordance — only on hover-capable, fine pointers so
+   it doesn't latch on touch devices. */
+@media (hover: hover) and (pointer: fine) {
+  .hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-card);
+  }
+}
+/* Tactile press feedback — scale(0.97) on :active for ~140ms, ease-out. Press
+   feedback fires on every pointer (it's the touch/click response itself), so it
+   is intentionally NOT gated behind hover. */
+.press {
+  transition: transform var(--duration-press) var(--ease-out);
 }
 .press:active {
-  transform: scale(0.98);
+  transform: scale(0.97);
 }
 
 /* ── Layout helpers ───────────────────────────────────────────────────────────
@@ -383,6 +478,11 @@ a:hover {
 @media (min-width: 1024px) {
   .bento-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+    /* Cap the grid width on lg+ so tiles keep their proportion on ultra-wide
+       (2560px) displays instead of stretching into letterboxed slabs. Centered
+       via auto inline margins; RTL-safe (symmetric, no logical-side bias). */
+    max-width: 80rem;
+    margin-inline: auto;
   }
 }
 .section {
@@ -394,7 +494,18 @@ a:hover {
   }
 }
 
-/* Respect reduced-motion: disable smooth scroll + animations/transitions. */
+/* Respect reduced-motion. The accessible behaviour is NOT "kill everything":
+   keep opacity/color transitions (they convey state without vestibular motion)
+   but REMOVE transform/position motion and looping animations.
+
+   • Smooth scroll → instant.
+   • Looping/keyframe animations → collapsed (the `animation` shorthand also
+     resets transition, so transitions are re-declared below to survive it).
+   • Transitions → strip the `transform` channel so hover-lifts / presses /
+     card travel settle instantly, while color/background/opacity/box-shadow
+     still ease for legible state feedback.
+   • Neutralize the transform on the motion utilities so their hover/active
+     end-states snap rather than slide. */
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
@@ -404,7 +515,16 @@ a:hover {
   *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
+    /* Keep color/opacity/shadow easing; drop only transform motion. */
+    transition-property:
+      color, background-color, border-color, fill, stroke, opacity, box-shadow !important;
+  }
+  /* Hold the affected utilities at their resting transform so no travel occurs. */
+  .card-interactive:hover,
+  .card-interactive:active,
+  .hover-lift:hover,
+  .press:active {
+    transform: none !important;
   }
 }

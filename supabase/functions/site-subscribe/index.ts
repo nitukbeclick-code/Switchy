@@ -1,8 +1,9 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { EMAIL_RE, type InsertResult, shouldWelcome } from "./lib.ts";
+import { listUnsubscribeHeader, unsubscribeUrlFor, welcomeEmail } from "../_shared/email.ts";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// site-subscribe — newsletter signup for the חוסך marketing site.
+// site-subscribe — newsletter signup for the Switchy AI marketing site.
 //
 // Public endpoint behind the "הרשמה לניוזלטר" form. Records the subscriber in
 // `newsletter_subscribers` (service role) and sends a short Hebrew welcome
@@ -16,8 +17,8 @@ import { EMAIL_RE, type InsertResult, shouldWelcome } from "./lib.ts";
 
 const PER_IP_HOURLY_LIMIT = 10;
 const MAX_EMAIL_LEN = 254; // RFC 5321 max address length
-const DEFAULT_FROM = "חוסך <noreply@switchy-ai.com>";
-const WELCOME_SUBJECT = "ברוכים הבאים ל-חוסך";
+const DEFAULT_FROM = "Switchy AI <noreply@switchy-ai.com>";
+const WELCOME_SUBJECT = "ברוכים הבאים ל-Switchy AI";
 
 // ── logging ──────────────────────────────────────────────────────────────────
 // One JSON line per event so the Supabase log explorer can filter on fields
@@ -151,19 +152,27 @@ async function sendWelcome(email: string): Promise<void> {
     return;
   }
   const from = Deno.env.get("RESEND_FROM") || DEFAULT_FROM;
-  const html = `<!DOCTYPE html><html dir="rtl" lang="he"><body style="font-family:Arial,Helvetica,sans-serif;background:#F5F7F8;margin:0;padding:24px;color:#0B0F14">
-  <div style="max-width:480px;margin:0 auto;background:#ffffff;border:1px solid #E5E7EB;border-radius:14px;padding:28px;text-align:right">
-    <h1 style="font-size:22px;margin:0 0 12px">ברוכים הבאים ל-חוסך 🎉</h1>
-    <p style="font-size:16px;line-height:1.6;margin:0 0 12px">תודה שנרשמתם לניוזלטר שלנו!</p>
-    <p style="font-size:16px;line-height:1.6;margin:0 0 12px">מעכשיו תקבלו עדכונים על המסלולים המשתלמים ביותר בסלולר, אינטרנט, טלוויזיה וחבילות לחו״ל — כדי שתמשיכו לחסוך בלי מאמץ.</p>
-    <p style="font-size:14px;line-height:1.6;color:#6B7280;margin:16px 0 0">קיבלתם את המייל הזה כי נרשמתם באתר חוסך. אם זו טעות, אפשר פשוט להתעלם.</p>
-  </div>
-</body></html>`;
+  // Branded, email-client-safe welcome built by the shared template system
+  // (_shared/email.ts): table layout + inline styles, RTL Hebrew, green CTA,
+  // and a §30A footer carrying a working unsubscribe link.
+  const unsubscribe = unsubscribeUrlFor(email);
+  const html = welcomeEmail({ unsubscribeUrl: unsubscribe });
   try {
     const r = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { "Authorization": `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ from, to: [email], subject: WELCOME_SUBJECT, html }),
+      // List-Unsubscribe / -Post let Gmail & Apple Mail surface a native
+      // one-tap unsubscribe (Spam-Law §30A + good deliverability).
+      body: JSON.stringify({
+        from,
+        to: [email],
+        subject: WELCOME_SUBJECT,
+        html,
+        headers: {
+          "List-Unsubscribe": listUnsubscribeHeader(email),
+          "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+        },
+      }),
     });
     if (!r.ok) {
       const j = await r.json().catch(() => ({} as Record<string, unknown>)) as Record<string, unknown>;

@@ -1,7 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// renewal-reminders — חוסך
+// renewal-reminders — Switchy AI
 // The bot's scheduled brain. pg_cron POSTs here with a `mode` (see the
 // schedule block in supabase/schema.sql); auth is the shared x-webhook-secret.
 //
@@ -17,12 +17,17 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 //                               + "the customer asked for evening" pings
 //                               + meeting rep-reminders (≤2h) and expirations
 // POST {mode:"weekly"}       -> weekly business report (also /weekly in chat)
+// POST {mode:"renewal-emails",days?} -> customer-facing renewal-radar reminder
+//                               EMAILS (opt-in tracked plans only; claim-before-
+//                               send; deploy-safe no-op until the opt-in columns
+//                               exist — see supabase/renewal-email-optin-*.sql)
 //
 // Deploy: supabase functions deploy renewal-reminders --no-verify-jwt
 // ─────────────────────────────────────────────────────────────────────────────
 
 import type { Cfg, Lead, MeetingRow, RenewalRow } from "../_shared/types.ts";
 import { resolveCfgCached, safeEqual } from "../_shared/config.ts";
+import { rateLimit, secretFingerprint } from "../_shared/ratelimit.ts";
 import { esc, NL, sendTelegram } from "../_shared/telegram.ts";
 import { fetchRows, logMeetingEvent, patchCount, rpcRows, serviceFetch } from "../_shared/db.ts";
 import { jlog } from "../_shared/log.ts";
@@ -34,6 +39,9 @@ import { buildWeeklyReport } from "../_shared/weekly.ts";
 import { israelDateOf, israelHourOf, planFollowUps } from "../_shared/followup.ts";
 import { planMeetingFollowUps } from "../_shared/meeting_followup.ts";
 import { type CronJobRow, evalCronHealth } from "../_shared/cron_health.ts";
+import { sendCustomerEmail } from "../_shared/email.ts";
+import { buildRenewalReminderEmail, RENEWAL_EMAIL_SUBJECT } from "./email.ts";
+import { captureError } from "../_shared/observability.ts";
 
 const enc = encodeURIComponent;
 
@@ -278,16 +286,109 @@ async function runFollowUp(cfg: Cfg) {
   };
 }
 
+// ── mode: renewal-emails ─────────────────────────────────────────────────────
+//
+// Customer-facing renewal-radar reminder by EMAIL (the Telegram digest above is
+// team-facing). Sent ONLY to tracked plans that:
+//   • carry an email address,
+//   • opted in to renewal reminders (reminder_opt_in = true), and
+//   • haven't already been emailed for this renewal window
+//     (reminder_email_sent_at is null OR predates the current promo_end_date).
+//
+// CLAIM-BEFORE-SEND: we stamp reminder_email_sent_at (atomic, guarded on the
+// still-unstamped condition) BEFORE the send, so two overlapping cron runs can't
+// double-mail; on a send failure we revert our own stamp so the next run retries.
+//
+// DEPLOY-SAFE BEFORE THE MIGRATION: the reminder_opt_in / reminder_email_sent_at
+// columns ship in a NOT-yet-applied migration (supabase/renewal-email-optin-*.sql).
+// Until they exist, the filtered SELECT 400s → fetchRows returns null → this mode
+// is a logged no-op. It only starts mailing once the columns + opt-in exist.
+// The webhook-secret gate above is unchanged; this runs inside it.
+const RENEWAL_EMAIL_BATCH = 20; // cap per run — keeps inside the edge wall-clock
+
+async function runRenewalEmails(cfg: Cfg, days: number) {
+  if (!cfg.resend || !cfg.resendFrom) {
+    return { ok: true, sent: 0, skipped: 0, note: "resend not configured" };
+  }
+  const horizon = enc(
+    new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10),
+  );
+  const today = enc(new Date().toISOString().slice(0, 10));
+  // Filter on the opt-in column + a not-yet-mailed-for-this-window condition.
+  // or(...) keeps a row whose last reminder predates the upcoming renewal.
+  const rows = await fetchRows<RenewalRow & { reminder_email_sent_at?: string | null }>(
+    `/rest/v1/tracked_plans?select=id,user_id,provider,plan_name,monthly_price,promo_end_date,category,reminder_email_sent_at,profiles(name,phone,email)` +
+      `&reminder_opt_in=is.true` +
+      `&promo_end_date=gte.${today}&promo_end_date=lte.${horizon}` +
+      `&order=promo_end_date.asc&limit=${RENEWAL_EMAIL_BATCH}`,
+  );
+  if (rows === null) {
+    // columns missing (pre-migration) or transient — log + no-op, never throw
+    jlog({ at: "renewal-emails", ok: true, note: "query unavailable (pre-migration?)" });
+    return { ok: true, sent: 0, skipped: 0, note: "query unavailable" };
+  }
+  let sent = 0, skipped = 0, failed = 0;
+  for (const r of rows) {
+    // PostgREST embeds the joined profile under `profiles`; normalise onto the
+    // flat RenewalRow shape the email builder expects.
+    const prof = (r as unknown as { profiles?: { name?: string; phone?: string; email?: string } }).profiles;
+    const email = prof?.email ?? r.email ?? null;
+    if (!email) { skipped++; continue; }
+    const norm: RenewalRow = {
+      id: r.id, user_id: r.user_id, provider: r.provider, plan_name: r.plan_name,
+      monthly_price: r.monthly_price, promo_end_date: r.promo_end_date, category: r.category,
+      name: prof?.name ?? r.name ?? null, phone: prof?.phone ?? r.phone ?? null, email,
+    };
+    // Claim: stamp sent-at only if still unmailed for THIS renewal window.
+    const claimTs = new Date().toISOString();
+    const claimed = await patchCount(
+      `/rest/v1/tracked_plans?id=eq.${r.id}` +
+        `&or=(reminder_email_sent_at.is.null,reminder_email_sent_at.lt.${enc(r.promo_end_date)})`,
+      { reminder_email_sent_at: claimTs },
+    );
+    if (claimed === 0) { skipped++; continue; } // already mailed / lost race
+    const res = await sendCustomerEmail(cfg, email, RENEWAL_EMAIL_SUBJECT, buildRenewalReminderEmail(norm));
+    if (res.ok) {
+      sent++;
+    } else {
+      failed++;
+      // revert ONLY our own claim so the next run retries this row
+      await patchCount(
+        `/rest/v1/tracked_plans?id=eq.${r.id}&reminder_email_sent_at=eq.${enc(claimTs)}`,
+        { reminder_email_sent_at: null },
+      );
+    }
+  }
+  if (failed > 0) jlog({ at: "renewal-emails", candidates: rows.length, sent, skipped, failed });
+  return { ok: true, candidates: rows.length, sent, skipped, failed };
+}
+
 // ── HTTP ─────────────────────────────────────────────────────────────────────
 
-function json(body: unknown, status = 200): Response {
+function json(body: unknown, status = 200, extraHeaders?: Record<string, string>): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*" },
+    headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*", ...(extraHeaders ?? {}) },
   });
 }
 
-Deno.serve(async (req: Request) => {
+// Light per-route throttle, applied ONLY after the x-webhook-secret gate passes,
+// so it can never weaken auth. Each scheduled run does heavy work (digest fan-out,
+// the lead/meeting sweep, SLA follow-ups, the weekly report). pg_cron fires these
+// at most a few times an hour, so the per-minute cap below sits far above real
+// traffic and only sheds a runaway loop / leaked-secret flood. The bucket key is
+// the route plus a non-reversible fingerprint of the secret — never the raw value.
+const RL_LIMIT = 60; // authenticated POSTs per window
+const RL_WINDOW_MS = 60_000; // 1 minute
+async function rateLimited(secret: string): Promise<Response | null> {
+  const fp = await secretFingerprint(secret);
+  const res = rateLimit(`renewal-reminders:post:${fp}`, RL_LIMIT, RL_WINDOW_MS);
+  if (res.allowed) return null;
+  jlog({ at: "rate-limit", fn: "renewal-reminders", secret_fp: fp, retry_after: res.retryAfterSec });
+  return json({ ok: false, error: "rate_limited" }, 429, { "Retry-After": String(res.retryAfterSec) });
+}
+
+async function handle(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*", "Access-Control-Allow-Methods": "GET, POST, OPTIONS" } });
   }
@@ -310,7 +411,7 @@ Deno.serve(async (req: Request) => {
     return json({
       ok: true,
       function: "renewal-reminders",
-      modes: ["digest", "sweep", "follow-up", "weekly"],
+      modes: ["digest", "sweep", "follow-up", "weekly", "renewal-emails"],
       configured: {
         telegram: { present: !!(cfg.tgToken && cfg.tgChat) },
         webhook_secret: { present: !!cfg.webhookSecret },
@@ -324,6 +425,10 @@ Deno.serve(async (req: Request) => {
   if (!cfg.webhookSecret) return json({ ok: false, error: "webhook secret not configured" }, 503);
   if (!(await safeEqual(provided, cfg.webhookSecret))) return json({ ok: false, error: "unauthorized" }, 401);
 
+  // Authenticated → throttle. Scheduled runs are sparse; this only sheds abuse.
+  const limited = await rateLimited(cfg.webhookSecret);
+  if (limited) return limited;
+
   let payload: Record<string, unknown> = {};
   try { payload = await req.json(); } catch (_) { /* empty body */ }
   const mode = String(payload.mode ?? "digest");
@@ -334,6 +439,9 @@ Deno.serve(async (req: Request) => {
       return json(await runSweep(cfg));
     case "follow-up":
       return json(await runFollowUp(cfg));
+    case "renewal-emails":
+      // customer-facing renewal-radar reminder emails (opt-in only)
+      return json(await runRenewalEmails(cfg, days));
     case "weekly": {
       let report = await buildWeeklyReport();
       // surface dead/failing schedules to the team — pg_cron fails silently
@@ -365,5 +473,19 @@ Deno.serve(async (req: Request) => {
       const leadSweep = await runSweep(cfg);
       return json({ ...result, lead_sweep: leadSweep });
     }
+  }
+}
+
+// Observability wrapper (fire-and-forget; dark until a Sentry DSN is configured).
+// An UNEXPECTED throw outside handle's own fail-soft paths is surfaced to
+// captureError and degraded to a 503 in the function's existing { ok:false, error }
+// shape — never a new body shape. captureError is NOT awaited and never throws/blocks.
+Deno.serve(async (req: Request) => {
+  try {
+    return await handle(req);
+  } catch (e) {
+    captureError(e, { fn: "renewal-reminders", method: req.method });
+    jlog({ at: "renewal-reminders", ok: false, error: String(e) });
+    return json({ ok: false, error: "temporarily unavailable" }, 503);
   }
 });

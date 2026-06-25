@@ -588,11 +588,11 @@ class AdvisorEngine {
     } else if (isGreeting) {
       intent = AdvisorIntent.greeting;
       reply =
-          'שלום! אני חוסך AI — יועץ התקשורת החכם שלכם.\n\nאספר לי מה מחפשים ואמצא את המסלול הכי משתלם:\n\nסלולר · אינטרנט · טלוויזיה · חו"ל';
+          'שלום! אני Switchy AI — יועץ התקשורת החכם שלכם.\n\nאספר לי מה מחפשים ואמצא את המסלול הכי משתלם:\n\nסלולר · אינטרנט · טלוויזיה · חו"ל';
     } else if (isThanks) {
       intent = AdvisorIntent.thanks;
       reply =
-          'בשמחה! תמיד פה לעזור.\n\nאחרי שתחליטו, אפשר לסיים את המעבר כולל ניוד מספר ישירות דרך חוסך — בקלות ובלי עמלות נסתרות.';
+          'בשמחה! תמיד פה לעזור.\n\nאחרי שתחליטו, אפשר לסיים את המעבר כולל ניוד מספר ישירות דרך Switchy AI — בקלות ובלי עמלות נסתרות.';
     } else if (lower.contains('כמה') &&
         (lower.contains('עולה') || lower.contains('עלות') || lower.contains('מחיר'))) {
       intent = AdvisorIntent.price;

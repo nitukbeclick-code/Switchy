@@ -263,13 +263,38 @@ export default function LeadForm({
         )}
       </p>
 
-      {/* Progress */}
+      {/* Progress — a glanceable "שלב X מתוך Y" line, a per-step dot strip so the
+          discrete position is visible at once, and the continuous fill bar that
+          carries the accessible progressbar semantics. Presentation only; `step`
+          is already tracked, this just renders it. */}
       <div className="mt-3 mb-5">
-        <div className="mb-1 flex items-center justify-between text-xs text-muted">
+        <div className="mb-1.5 flex items-center justify-between text-xs text-muted">
           <span>
             שלב {step + 1} מתוך {STEP_FIELDS.length}: {STEP_TITLES[step]}
           </span>
           <span>{progress}%</span>
+        </div>
+        {/* Step dots — the active step is accent-green, completed steps stay a
+            softer accent, upcoming steps are neutral. Decorative (the bar below
+            owns the a11y semantics), so the strip is aria-hidden. RTL-correct:
+            flex follows the document's logical direction. */}
+        <div
+          aria-hidden="true"
+          className="mb-1.5 flex items-center gap-1.5"
+        >
+          {STEP_FIELDS.map((_, i) => (
+            <span
+              key={i}
+              className={[
+                "h-1.5 flex-1 rounded-full transition-colors duration-300 ease-[var(--ease-out)]",
+                i < step
+                  ? "bg-accent/40"
+                  : i === step
+                    ? "bg-accent"
+                    : "bg-border",
+              ].join(" ")}
+            />
+          ))}
         </div>
         <div
           className="h-1.5 w-full overflow-hidden rounded-full bg-border"
@@ -280,7 +305,7 @@ export default function LeadForm({
           aria-label="התקדמות הטופס"
         >
           <div
-            className="h-full rounded-full bg-accent transition-all duration-300"
+            className="h-full rounded-full bg-accent transition-all duration-300 ease-[var(--ease-out)]"
             style={{ width: `${progress}%` }}
           />
         </div>

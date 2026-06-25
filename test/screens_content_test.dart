@@ -172,7 +172,8 @@ void main() {
     await tester.pump(const Duration(milliseconds: 700));
     await tester.pump(const Duration(milliseconds: 700));
 
-    // The report hero is up ("המסלול שלך היום" is unique to it).
+    // The report hero ("המסלול שלך היום") renders as an eager sliver right under
+    // the collapsing header.
     expect(find.text('המסלול שלך היום'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });

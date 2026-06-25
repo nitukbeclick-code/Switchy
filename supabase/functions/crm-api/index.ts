@@ -34,6 +34,7 @@ import { requireAdmin } from "../_shared/admin.ts";
 import { sendText } from "../_shared/whatsapp.ts";
 import { jlog } from "../_shared/log.ts";
 import {
+  auditDetail,
   clampLimit,
   CONTACT_STATUSES,
   contactName,
@@ -131,6 +132,29 @@ async function logCrmEvent(ev: {
     event: ev.event,
     preview: ev.preview ? eventPreview(ev.preview) : null,
   });
+}
+
+// Append a Reg.13 security-audit row for an admin CRM control action. This is a
+// SEPARATE, tamper-evident trail from the user-facing crm_events feed: it records
+// WHO (the verified admin uid) did WHAT to WHICH entity, into the service-role-only
+// public.security_audit_log (RLS-locked; see audit-observability-2026-06.sql).
+// Best-effort by contract — wrapped so a logging failure NEVER blocks or fails the
+// control action it audits. The actor uid + entity ids + a PII-light preview live
+// inside `detail`; `event` is the action label. NEVER store bytes/raw message PII.
+async function logAudit(
+  actorUid: string,
+  event: string, // 'crm_takeover' / 'crm_handback' / 'crm_reply' / 'crm_contact_status' / 'crm_lead_status'
+  detail: Record<string, unknown>,
+): Promise<void> {
+  try {
+    await insertRow("security_audit_log", {
+      user_id: actorUid || null,
+      event,
+      detail: auditDetail(actorUid, detail),
+    });
+  } catch (e) {
+    jlog({ at: "crm.audit", ok: false, event, error: String(e) });
+  }
 }
 
 // ── actions ──────────────────────────────────────────────────────────────────
@@ -279,7 +303,7 @@ async function actGetThread(b: Row): Promise<Response> {
 
 // sendReply {conversationId, body} → store out/rep row (authoritative), then
 // best-effort Graph send + status update.
-async function actSendReply(b: Row): Promise<Response> {
+async function actSendReply(b: Row, actorUid: string): Promise<Response> {
   const convId = s(b.conversationId).trim();
   const body = s(b.body).trim();
   if (!convId) return json({ error: "conversationId חסר" }, 400);
@@ -347,6 +371,15 @@ async function actSendReply(b: Row): Promise<Response> {
     preview: body,
   });
 
+  // 5) Reg.13 security-audit trail: which admin sent a reply on which conversation
+  //    (preview clamped + PII-light; raw body never stored here). Best-effort.
+  await logAudit(actorUid, "crm_reply", {
+    conversation_id: convId,
+    contact_id: contactId || null,
+    delivered: Boolean(wamid),
+    preview: eventPreview(body),
+  });
+
   return json({ ok: true, messageId: wamid });
 }
 
@@ -355,7 +388,7 @@ async function actSendReply(b: Row): Promise<Response> {
 // silent), marks the conversation 'human', stamps human_active_at, and audits a
 // 'takeover' event. Idempotent: taking over an already-human conversation is a
 // no-op flip that still records the (re)takeover for the timeline.
-async function actTakeOver(b: Row): Promise<Response> {
+async function actTakeOver(b: Row, actorUid: string): Promise<Response> {
   const convId = s(b.conversationId).trim();
   if (!convId) return json({ error: "conversationId חסר" }, 400);
   const rep = s(b.rep).trim().slice(0, 120);
@@ -382,6 +415,12 @@ async function actTakeOver(b: Row): Promise<Response> {
     event: "takeover",
     preview: rep ? `נציג ${rep} השתלט על השיחה` : "נציג השתלט על השיחה",
   });
+  // Reg.13 security-audit: which admin took the conversation off the bot.
+  await logAudit(actorUid, "crm_takeover", {
+    conversation_id: convId,
+    contact_id: s(rows[0].contact_id) || null,
+    rep: rep || null,
+  });
   return json({ ok: true, botEnabled: false });
 }
 
@@ -389,7 +428,7 @@ async function actTakeOver(b: Row): Promise<Response> {
 // back ON, marks the conversation 'bot', clears assigned_rep, and audits a
 // 'handback' event. Idempotent (handing back a bot-driven conversation is a
 // no-op flip that still records the event).
-async function actHandBack(b: Row): Promise<Response> {
+async function actHandBack(b: Row, actorUid: string): Promise<Response> {
   const convId = s(b.conversationId).trim();
   if (!convId) return json({ error: "conversationId חסר" }, 400);
 
@@ -412,11 +451,16 @@ async function actHandBack(b: Row): Promise<Response> {
     event: "handback",
     preview: "השיחה הוחזרה לבוט האוטומטי",
   });
+  // Reg.13 security-audit: which admin handed the conversation back to the bot.
+  await logAudit(actorUid, "crm_handback", {
+    conversation_id: convId,
+    contact_id: s(rows[0].contact_id) || null,
+  });
   return json({ ok: true, botEnabled: true });
 }
 
 // setContactStatus {contactId, status} → patch whatsapp_contacts.status.
-async function actSetContactStatus(b: Row): Promise<Response> {
+async function actSetContactStatus(b: Row, actorUid: string): Promise<Response> {
   const contactId = s(b.contactId).trim();
   const status = s(b.status).trim();
   if (!contactId || !status) return json({ error: "contactId/status חסרים" }, 400);
@@ -429,11 +473,13 @@ async function actSetContactStatus(b: Row): Promise<Response> {
     jlog({ at: "crm.setContactStatus", ok: false, status: r?.status });
     return json({ error: "עדכון הסטטוס נכשל" }, 502);
   }
+  // Reg.13 security-audit: which admin set which contact to which status.
+  await logAudit(actorUid, "crm_contact_status", { contact_id: contactId, status });
   return json({ ok: true });
 }
 
 // setLeadStatus {leadId, status} → patch leads.status + lead_events audit row.
-async function actSetLeadStatus(b: Row): Promise<Response> {
+async function actSetLeadStatus(b: Row, actorUid: string): Promise<Response> {
   const leadId = s(b.leadId).trim();
   const status = s(b.status).trim();
   if (!leadId || !status) return json({ error: "leadId/status חסרים" }, 400);
@@ -453,6 +499,8 @@ async function actSetLeadStatus(b: Row): Promise<Response> {
     new_status: status,
     actor_name: "CRM",
   });
+  // Reg.13 security-audit: which admin moved which lead to which pipeline status.
+  await logAudit(actorUid, "crm_lead_status", { lead_id: leadId, status });
   return json({ ok: true });
 }
 
@@ -542,15 +590,15 @@ Deno.serve(async (req: Request) => {
       case "getThread":
         return await actGetThread(body);
       case "sendReply":
-        return await actSendReply(body);
+        return await actSendReply(body, admin.uid);
       case "takeOver":
-        return await actTakeOver(body);
+        return await actTakeOver(body, admin.uid);
       case "handBack":
-        return await actHandBack(body);
+        return await actHandBack(body, admin.uid);
       case "setContactStatus":
-        return await actSetContactStatus(body);
+        return await actSetContactStatus(body, admin.uid);
       case "setLeadStatus":
-        return await actSetLeadStatus(body);
+        return await actSetLeadStatus(body, admin.uid);
       case "listLeads":
         return await actListLeads(body);
       default:

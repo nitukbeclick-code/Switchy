@@ -1,7 +1,7 @@
 // ────────────────────────────────────────────────────────────────────────────
 // <SiteFooter> — the global site footer, intended to render on EVERY route (place
 // it in app/layout.tsx). Provides:
-//   • brand identity ("חוסך / Switch AI" + tagline "סוכן השוואה חכם"),
+//   • brand identity ("Switchy AI" + tagline "סוכן השוואה חכם"),
 //   • a real internal-nav grid (no dead-ends → topical authority + crawl depth),
 //   • prominent links to /transparency and /glossary (authority hubs),
 //   • a short, TRUTHFUL disclosure line about the service.
@@ -52,6 +52,7 @@ const DEFAULT_COLUMNS: FooterColumn[] = [
   {
     title: "ידע ושקיפות",
     links: [
+      { href: "/guides", label: "מדריכים" },
       { href: "/vs", label: "השוואות ראש בראש" },
       { href: "/glossary", label: "מילון מונחים" },
       { href: "/transparency", label: "שקיפות ומתודולוגיה" },
@@ -62,6 +63,7 @@ const DEFAULT_COLUMNS: FooterColumn[] = [
     title: "השירות",
     links: [
       { href: "/", label: "דף הבית" },
+      { href: "/bills", label: "צילום חשבון" },
       { href: "/transparency", label: "איך אנחנו ממליצים" },
     ],
   },
@@ -84,8 +86,11 @@ export default function SiteFooter({ columns, className }: SiteFooterProps) {
     <footer
       data-site-footer
       className={[
-        // Subtle top divider (border/60, not harsh) + generous whitespace.
-        "mt-auto border-t border-border/60 bg-surface",
+        // Distinct footer ZONE: a firmer full-opacity top border separates it
+        // from the content above, and a subtle tinted background (surface mixed
+        // a touch toward ink) sets it apart from the plain surface without
+        // breaking the white-glass brand. Token-relative, so it's dark-safe.
+        "mt-auto border-t border-border bg-[color-mix(in_srgb,var(--surface)_94%,var(--ink))]",
         className ?? "",
       ]
         .join(" ")
@@ -96,7 +101,7 @@ export default function SiteFooter({ columns, className }: SiteFooterProps) {
           {/* Brand identity. */}
           <div className="lg:col-span-1">
             <p className="font-display text-lg font-bold tracking-tight text-ink">
-              חוסך / Switch AI
+              Switchy AI
             </p>
             <p className="mt-1 text-sm text-muted">סוכן השוואה חכם</p>
             <p className="mt-3 max-w-xs text-sm leading-relaxed text-foreground">
@@ -116,7 +121,11 @@ export default function SiteFooter({ columns, className }: SiteFooterProps) {
                   <li key={`${col.title}-${link.href}-${link.label}`}>
                     <Link
                       href={link.href}
-                      className="inline-block text-sm text-foreground transition-colors duration-200 hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+                      // Faint hover background turns each link into a discrete,
+                      // tappable target. The negative inline-start margin offsets
+                      // the inline padding so the resting text stays flush with
+                      // the column edge (RTL-correct via logical -ms/ps).
+                      className="-ms-2 inline-block rounded-md px-2 py-1 text-sm text-foreground transition-colors duration-200 ease-[var(--ease-out)] hover:bg-accent/10 hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
                     >
                       {link.label}
                     </Link>
@@ -129,35 +138,35 @@ export default function SiteFooter({ columns, className }: SiteFooterProps) {
 
         {/* Bottom row: copyright + legal/accessibility links (always present). */}
         <div className="mt-12 flex flex-col gap-3 border-t border-border/60 pt-6 text-xs text-muted sm:flex-row sm:items-center sm:justify-between">
-          <p>© {year} חוסך / Switch AI. כל הזכויות שמורות.</p>
+          <p>© {year} Switchy AI. כל הזכויות שמורות.</p>
           <nav
             aria-label="קישורים משפטיים ונגישות"
             className="flex flex-wrap items-center gap-x-3 gap-y-1"
           >
             <Link
               href="/privacy"
-              className="font-medium text-accent-text transition-colors duration-200 hover:text-accent-hover"
+              className="rounded font-medium text-accent-text transition-colors duration-200 ease-[var(--ease-out)] hover:text-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             >
               פרטיות
             </Link>
             <span aria-hidden="true">·</span>
             <Link
               href="/terms"
-              className="font-medium text-accent-text transition-colors duration-200 hover:text-accent-hover"
+              className="rounded font-medium text-accent-text transition-colors duration-200 ease-[var(--ease-out)] hover:text-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             >
               תנאי שימוש
             </Link>
             <span aria-hidden="true">·</span>
             <Link
               href="/accessibility"
-              className="font-medium text-accent-text transition-colors duration-200 hover:text-accent-hover"
+              className="rounded font-medium text-accent-text transition-colors duration-200 ease-[var(--ease-out)] hover:text-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             >
               נגישות
             </Link>
             <span aria-hidden="true">·</span>
             <Link
               href="/transparency"
-              className="font-medium text-accent-text transition-colors duration-200 hover:text-accent-hover"
+              className="rounded font-medium text-accent-text transition-colors duration-200 ease-[var(--ease-out)] hover:text-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             >
               שקיפות
             </Link>

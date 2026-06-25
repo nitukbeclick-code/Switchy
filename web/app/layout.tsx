@@ -6,23 +6,38 @@ import JsonLd from "@/components/JsonLd";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
 import ConsentBanner from "@/components/ConsentBanner";
+import AiConcierge from "@/components/AiConcierge";
+import PwaInstaller from "@/components/PwaInstaller";
 import { orgSchema, websiteSchema, SITE_URL, SITE_NAME } from "@/lib/schema";
 
 // Rubik for display/headings, Assistant for body/labels. Hebrew-only subset: this
 // is a Hebrew-first RTL site, so the latin subset is mostly dead weight (the few
-// latin glyphs — "Switch AI", digits, ₪ — fall back gracefully). Dropping it trims
+// latin glyphs — "Switchy AI", digits, ₪ — fall back gracefully). Dropping it trims
 // the preloaded woff2 set that contends with the LCP resource. `display: swap`
 // keeps text visible immediately (no FOIT).
+//
+// PRELOAD: `preload: true` (set explicitly, though it is also the next/font
+// default) makes next/font inject a `<link rel="preload" as="font" type="font/woff2"
+// crossorigin>` for the subsetted woff2 into <head> on every route this root layout
+// wraps — i.e. site-wide — so the LCP text font is fetched at the highest priority
+// instead of being discovered late via CSS. We deliberately do NOT hand-write those
+// <link> tags: the file names are content-hashed (e.g. `...-s.p.<hash>.woff2`) and
+// rotate every build, so a hardcoded href would 404, and a duplicate preload would
+// double-fetch the font and trip the browser's "preloaded but not used" warning.
+// Letting next/font own the tag keeps the href correct across builds. See next docs
+// -> Font / Preloading.
 const rubik = Rubik({
   variable: "--font-rubik",
   subsets: ["hebrew"],
   display: "swap",
+  preload: true,
 });
 
 const assistant = Assistant({
   variable: "--font-assistant",
   subsets: ["hebrew"],
   display: "swap",
+  preload: true,
 });
 
 // GA4 Measurement ID (Google Analytics 4). Loaded site-wide via next/script.
@@ -31,8 +46,8 @@ const GA4_MEASUREMENT_ID = "G-YCTGRVN7SJ";
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "חוסך / Switch AI — השוואת מסלולי תקשורת בישראל",
-    template: "%s | חוסך / Switch AI",
+    default: "Switchy AI — השוואת מסלולי תקשורת בישראל",
+    template: "%s | Switchy AI",
   },
   description:
     "השוואה חינמית של מסלולי סלולר, אינטרנט, טלוויזיה, חבילות משולבות וחבילות " +
@@ -44,7 +59,7 @@ export const metadata: Metadata = {
     locale: "he_IL",
     url: SITE_URL,
     siteName: SITE_NAME,
-    title: "חוסך / Switch AI — השוואת מסלולי תקשורת בישראל",
+    title: "Switchy AI — השוואת מסלולי תקשורת בישראל",
     description:
       "השוואה חינמית של מסלולי תקשורת בישראל — סלולר, אינטרנט, טלוויזיה ועוד.",
   },
@@ -80,6 +95,16 @@ export default function RootLayout({
         />
         {/* Tell the UA both schemes exist so native controls/scrollbars adapt. */}
         <meta name="color-scheme" content="light dark" />
+
+        {/* Perf resource hints — GA4 (gtag.js) loads lazyOnload, so we only warm
+            DNS (cheap, no socket/TLS held open) for its hosts. This overlaps the
+            name-resolution with idle time WITHOUT competing with the first-party
+            LCP fetch the way a full preconnect would. The fonts are already
+            preloaded + self-hosted by next/font (no gstatic hop), so no font
+            preconnect is needed. Meta Pixel hosts are intentionally omitted —
+            the pixel is opt-in/unset by default, so a hint would go unused. */}
+        <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
+        <link rel="dns-prefetch" href="https://www.google-analytics.com" />
 
         {/* Site-wide structured data: Organization + WebSite (SearchAction). */}
         <JsonLd data={orgSchema()} />
@@ -146,6 +171,16 @@ export default function RootLayout({
             localStorage; respects a stored choice on load (no flash for returning
             users) and replays a stored grant via gtag('consent','update'). */}
         <ConsentBanner />
+
+        {/* PWA shell: registers the service worker (offline shell + cache-busting
+            + push handlers) and surfaces the opt-in for price-drop / renewal web
+            push. Fail-soft — renders nothing when push is unsupported/unconfigured. */}
+        <PwaInstaller />
+
+        {/* AI concierge — floating grounded chat ("Switchy AI"). Answers only from
+            the real catalogue; offers consented lead capture (§7b disclosure +
+            mandatory consent) when a switch/contact intent is detected. */}
+        <AiConcierge />
       </body>
     </html>
   );

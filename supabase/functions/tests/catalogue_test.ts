@@ -7,8 +7,10 @@ import { assert, assertEquals, assertFalse, assertStringIncludes } from "@std/as
 import {
   annualSaving,
   buildCatalogueContext,
+  buildCitedCatalogueContext,
   buildSuggestions,
   catalogueProviders,
+  DEFAULT_CITED_TOP_K,
   normalizeCategory,
   normalizeProvider,
   type Plan,
@@ -217,4 +219,152 @@ Deno.test("normalizeCategory: 'גלישה בחו\"ל' is abroad, not internet (B
   // bare browsing, no abroad cue → still internet
   assertEquals(normalizeCategory("גלישה"), "internet");
   assertEquals(normalizeCategory("גלישה מהירה בבית"), "internet");
+});
+
+// ── buildCitedCatalogueContext: top-K cap + memoization (A3) ──────────────────
+// A larger catalogue than PLANS so the global topK cap actually bites: cellular
+// alone has more rows than several small topK values, letting us assert both the
+// size bound AND that the cheapest/most-relevant rows survive.
+
+// Build N priced regular plans in a category, priced p, p+1, … (cheapest first).
+function makeCat(cat: string, provider: string, n: number, base: number): Plan[] {
+  const out: Plan[] = [];
+  for (let i = 0; i < n; i++) {
+    out.push({
+      id: `${cat}-${i}`,
+      cat,
+      provider,
+      plan: `${provider} ${cat} ${i}`,
+      price: base + i,
+      kind: "regular",
+    });
+  }
+  return out;
+}
+
+// 20 cellular + 10 internet + 4 tv = 34 regular rows across 3 categories.
+const BIG: Plan[] = [
+  ...makeCat("cellular", "סלקום", 20, 30),
+  ...makeCat("internet", "בזק", 10, 80),
+  ...makeCat("tv", "yes", 4, 110),
+];
+
+// Count of [Sn] markers in a built context (one per emitted row).
+function markerCount(ctx: string): number {
+  return ctx ? ctx.split("\n").filter((l) => /^\[S\d+\] /.test(l)).length : 0;
+}
+
+Deno.test("buildCitedCatalogueContext caps the total row count at topK", () => {
+  const ctx = buildCitedCatalogueContext(BIG, { topK: 12, perCat: 14 });
+  assertEquals(markerCount(ctx), 12);
+});
+
+Deno.test("buildCitedCatalogueContext defaults to DEFAULT_CITED_TOP_K and never exceeds it", () => {
+  assertEquals(DEFAULT_CITED_TOP_K, 50);
+  // With the default perCat (14), 2 cats → 28 candidate rows, comfortably under
+  // the 50 cap, so all 28 emit.
+  const moderate: Plan[] = [
+    ...makeCat("cellular", "סלקום", 40, 30),
+    ...makeCat("internet", "בזק", 40, 80),
+  ];
+  assertEquals(markerCount(buildCitedCatalogueContext(moderate)), 28);
+  // Now make the candidate set exceed 50 (raise perCat so each big category
+  // contributes >25): the default topK=50 must clamp the total to exactly 50.
+  const huge = buildCitedCatalogueContext(moderate, { perCat: 100 });
+  assert(markerCount(huge) <= DEFAULT_CITED_TOP_K);
+  assertEquals(markerCount(huge), 50);
+});
+
+Deno.test("buildCitedCatalogueContext [Sn] markers are contiguous 1..N over survivors only", () => {
+  // The grounding invariant: numbering is assigned AFTER the cap, so the model
+  // can only ever cite a row that is actually present — no [Sn] beyond N.
+  const ctx = buildCitedCatalogueContext(BIG, { topK: 9 });
+  const nums = ctx.split("\n").map((l) => {
+    const m = l.match(/^\[S(\d+)\] /);
+    return m ? Number(m[1]) : null;
+  }).filter((x): x is number => x !== null);
+  assertEquals(nums, [1, 2, 3, 4, 5, 6, 7, 8, 9]);
+  // No marker is referenced past the last emitted row.
+  assertFalse(ctx.includes("[S10]"));
+});
+
+Deno.test("buildCitedCatalogueContext cap keeps the cheapest rows and every category", () => {
+  // topK 6 across 3 categories: round-robin keeps the cheapest of each category
+  // before deepening any single one, so all 3 categories survive and the very
+  // cheapest plan of each is present.
+  const ctx = buildCitedCatalogueContext(BIG, { topK: 6 });
+  assertStringIncludes(ctx, "₪30"); // cheapest cellular
+  assertStringIncludes(ctx, "₪80"); // cheapest internet
+  assertStringIncludes(ctx, "₪110"); // cheapest tv (category not starved)
+  // The priciest cellular tail (₪49) is dropped by the cap.
+  assertFalse(ctx.includes("₪49"));
+});
+
+Deno.test("buildCitedCatalogueContext under the cap is grouped by category, cheapest-first", () => {
+  // When topK is large enough to keep everything, the output is the legacy
+  // category-grouped, price-sorted block (round-robin + re-sort restores it).
+  // Raise perCat too so the per-category bound doesn't trim cellular (20 rows):
+  // 20 + 10 + 4 = 34 rows survive both caps.
+  const ctx = buildCitedCatalogueContext(BIG, { topK: 1000, perCat: 100 });
+  assertEquals(markerCount(ctx), 34);
+  const lines = ctx.split("\n");
+  // All cellular rows precede all internet rows precede all tv rows.
+  const firstInternet = lines.findIndex((l) => l.includes("internet") || l.includes("אינטרנט"));
+  const firstTv = lines.findIndex((l) => l.includes(" tv ") || l.includes("טלוויזיה"));
+  const lastCellular = lines.map((l) => l.includes("סלקום")).lastIndexOf(true);
+  assert(lastCellular < firstInternet);
+  assert(firstInternet < firstTv);
+  // S1 is the cheapest cellular row (₪30).
+  assertStringIncludes(lines[0], "[S1]");
+  assertStringIncludes(lines[0], "₪30");
+});
+
+Deno.test("buildCitedCatalogueContext legacy call shape is unchanged (positional perCat)", () => {
+  // The pre-A3 signature buildCitedCatalogueContext(plans, perCat:number) still
+  // works and, under the default cap, yields the legacy grouped block.
+  const small: Plan[] = [
+    { cat: "cellular", provider: "סלקום", plan: "5G 100GB", price: 39, is5G: true, kind: "regular" },
+    { cat: "internet", provider: "בזק", plan: "סיב 1000", price: 99, kind: "regular", specs: { speed: "1000Mb" } },
+  ];
+  const positional = buildCitedCatalogueContext(small, 14);
+  const optionsForm = buildCitedCatalogueContext(small, { perCat: 14 });
+  assertEquals(positional, optionsForm);
+  assertStringIncludes(positional, "[S1]");
+  assertStringIncludes(positional, "₪39");
+  assertStringIncludes(positional, "1000Mb");
+});
+
+Deno.test("buildCitedCatalogueContext memoizes by (locale, plan-count) + array identity", () => {
+  // Same array reference + same params → the exact cached string instance.
+  const a = buildCitedCatalogueContext(BIG, { topK: 8 });
+  const b = buildCitedCatalogueContext(BIG, { topK: 8 });
+  assertEquals(a, b);
+  // A different topK is a distinct memo key → recomputed, different row count.
+  const c = buildCitedCatalogueContext(BIG, { topK: 5 });
+  assertEquals(markerCount(c), 5);
+  assertEquals(markerCount(a), 8);
+  // A different locale tag is a distinct memo key but the same Hebrew copy today.
+  const heCtx = buildCitedCatalogueContext(BIG, { topK: 8, locale: "he" });
+  const enCtx = buildCitedCatalogueContext(BIG, { topK: 8, locale: "en" });
+  assertEquals(heCtx, enCtx);
+});
+
+Deno.test("buildCitedCatalogueContext recomputes for a different catalogue array", () => {
+  // A new array with a different plan-count must not serve a stale cache entry.
+  const first = buildCitedCatalogueContext(BIG, { topK: 1000 });
+  const fewer = BIG.slice(0, 5); // distinct length AND distinct reference
+  const second = buildCitedCatalogueContext(fewer, { topK: 1000 });
+  assert(markerCount(second) <= 5);
+  assert(markerCount(first) > markerCount(second));
+  // A same-length but DIFFERENT array reference also recomputes (identity gate),
+  // not a stale hit keyed only on the count.
+  const sameLenDifferent = makeCat("internet", "פרטנר", BIG.length, 200);
+  const third = buildCitedCatalogueContext(sameLenDifferent, { topK: 1000 });
+  assertStringIncludes(third, "פרטנר");
+  assertFalse(third.includes("סלקום"));
+});
+
+Deno.test("buildCitedCatalogueContext is empty for an empty catalogue (cap path)", () => {
+  assertEquals(buildCitedCatalogueContext([], { topK: 50 }), "");
+  assertEquals(markerCount(buildCitedCatalogueContext([])), 0);
 });

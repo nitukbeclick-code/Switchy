@@ -40,7 +40,8 @@ import {
 import { pageMetadata } from "@/lib/seo";
 import { leadCategory } from "@/lib/format";
 
-// Pre-render one guide per derived provider at build time.
+// Pre-render one guide per derived provider at build time. Unknown provider -> real 404.
+export const dynamicParams = false;
 export function generateStaticParams() {
   return getProviders().map((p) => ({ provider: p.slug }));
 }

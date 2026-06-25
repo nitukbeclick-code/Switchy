@@ -88,7 +88,7 @@ export default function TrustSignals({
         </span>
         <Link
           href="/transparency"
-          className="interactive ms-auto font-medium text-accent-text underline hover:text-accent-hover"
+          className="interactive ms-auto rounded font-medium text-accent-text underline ease-[var(--ease-out)] hover:text-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
           איך אנחנו מדרגים? ←
         </Link>

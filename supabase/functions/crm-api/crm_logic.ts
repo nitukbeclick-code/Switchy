@@ -67,3 +67,23 @@ export function isValidConversationStatus(status: string): boolean {
 export function clampLimit(raw: unknown): number {
   return Math.min(100, Math.max(1, Number(raw) || 50));
 }
+
+/**
+ * Build the `detail` jsonb for a Reg.13 security_audit_log row recording an admin
+ * CRM control action. The verified admin uid is stamped first as `actor` (single
+ * source of WHO), then the per-action fields are spread on top. This is a pure
+ * shaping helper so the audit payload can be unit-tested without a network write.
+ *
+ * The caller is responsible for keeping `extra` PII-light (entity ids + clamped
+ * previews via eventPreview — NEVER raw message bytes/base64). actorUid "" → null
+ * so a missing uid is recorded honestly rather than as an empty string.
+ *
+ * `actor` is stamped LAST so the verified admin uid always wins — a caller (or a
+ * client field that leaked into `extra`) can never override WHO did the action.
+ */
+export function auditDetail(
+  actorUid: string,
+  extra: Record<string, unknown> = {},
+): Record<string, unknown> {
+  return { ...extra, actor: actorUid || null };
+}

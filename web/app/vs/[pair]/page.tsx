@@ -16,19 +16,27 @@
 // Per-provider brand colours are NOT used — the page is in the app theme only.
 // ────────────────────────────────────────────────────────────────────────────
 
+import type { CSSProperties } from "react";
 import Link from "next/link";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import JsonLd from "@/components/JsonLd";
-import SgeSummary from "@/components/SgeSummary";
 import AuthorityBlock from "@/components/AuthorityBlock";
 import ComparisonTable from "@/components/ComparisonTable";
 import RelatedLinks from "@/components/RelatedLinks";
 import type { RelatedLinkGroup } from "@/components/RelatedLinks";
 import LeadForm from "@/components/LeadForm";
+import AeoAnswerBlock from "@/components/AeoAnswerBlock";
+import AeoQA from "@/components/AeoQA";
+import DataMethodology from "@/components/DataMethodology";
+import FactCheckBadge from "@/components/FactCheckBadge";
+import LlmDataFeed from "@/components/LlmDataFeed";
 import { getVsPairs, getVsPair, vsVerdict } from "@/lib/vs";
 import type { VsPair, VsSide } from "@/lib/vs";
 import { getProviders } from "@/lib/data";
+import { getLivePlans } from "@/lib/live-catalogue";
+import { pageQuestions, lastDataDate } from "@/lib/aeo";
+import type { AeoQuestion } from "@/lib/aeo";
 import {
   comparisonSchema,
   faqPageSchema,
@@ -36,6 +44,9 @@ import {
   knowledgeGraphSchema,
   knowledgeWebSchema,
   relatedLinksSchema,
+  pageAggregateOfferSchema,
+  speakableSchema,
+  SITE_URL,
   type NavLink,
   type QA,
 } from "@/lib/schema";
@@ -45,6 +56,10 @@ import { ils, leadCategory } from "@/lib/format";
 import type { Plan } from "@/lib/types";
 
 // One page per curated, catalogue-gated match-up, pre-rendered at build time.
+// Unknown pairs -> real 404. ISR keeps the static HTML fresh against the live DB
+// (revalidate hourly) while still serving instantly from cache.
+export const dynamicParams = false;
+export const revalidate = 3600;
 export function generateStaticParams() {
   return getVsPairs().map((p) => ({ pair: p.slug }));
 }
@@ -56,6 +71,46 @@ interface Params {
 // The catalogue is rebuilt with the deploy; the render date is the honest
 // "last reviewed" date (when the data behind this page was regenerated).
 const REVIEWED_AT = new Date().toISOString().slice(0, 10);
+
+/**
+ * Rebuild one side of a match-up from a LIVE plan list (so the page's table,
+ * answer, feed and schema all read the SAME fresh rows). Filters the live plans
+ * to this provider + the pair's category, cheapest first. Returns null when the
+ * live data has no plan for this side, so the caller can fall back to the bundled
+ * side rather than render an empty/false comparison.
+ */
+function liveSide(base: VsSide, livePlans: Plan[]): VsSide | null {
+  const plans = livePlans
+    .filter(
+      (p) => p.provider === base.provider.name && typeof p.price === "number",
+    )
+    .sort((x, y) => x.price - y.price);
+  if (plans.length === 0) return null;
+  const cheapest = plans[0];
+  return {
+    provider: base.provider,
+    plans,
+    minPrice: cheapest.price,
+    planCount: plans.length,
+    cheapest,
+  };
+}
+
+/**
+ * Re-resolve a {@link VsPair} against the live catalogue for the pair's category.
+ * Both sides are rebuilt from the SAME live plan list; if EITHER side has no live
+ * plan (the live read dropped it), we keep the bundled pair so the page is never
+ * degraded. Returns the (possibly live) pair plus provenance flags from the read.
+ */
+function resolveLivePair(
+  pair: VsPair,
+  livePlans: Plan[],
+): VsPair {
+  const a = liveSide(pair.a, livePlans);
+  const b = liveSide(pair.b, livePlans);
+  if (!a || !b) return pair; // incomplete live data → bundled fallback pair.
+  return { ...pair, a, b };
+}
 
 export async function generateMetadata({ params }: Params): Promise<Metadata> {
   const { pair: slug } = await params;
@@ -157,9 +212,19 @@ function buildAuthorityRows(
 }
 
 // One compact stat card per side (entry price + plan count + cheapest plan name).
-function SideCard({ side, label }: { side: VsSide; label: string }) {
+// `style` is an optional pass-through so the caller can stagger the entrance
+// reveal (animationDelay) without changing the card's layout or content.
+function SideCard({
+  side,
+  label,
+  style,
+}: {
+  side: VsSide;
+  label: string;
+  style?: CSSProperties;
+}) {
   return (
-    <div className="bento card-interactive p-6">
+    <div className="sw-reveal bento card-interactive p-6" style={style}>
       <span className="text-xs font-medium text-muted">{label}</span>
       <h3 className="mt-1 font-display text-xl font-bold tracking-tight text-ink">
         <Link
@@ -298,8 +363,16 @@ function relatedNavLinks(groups: RelatedLinkGroup[]): NavLink[] {
 
 export default async function VsPage({ params }: Params) {
   const { pair: slug } = await params;
-  const pair = getVsPair(slug);
-  if (!pair) notFound();
+  const bundledPair = getVsPair(slug);
+  if (!bundledPair) notFound();
+
+  // ── AEO: read the live catalogue ONCE for this pair's category, then thread
+  // the SAME plan list through the table, the AEO helpers, the components and the
+  // JSON-LD so they can never disagree. Resilient: getLivePlans never throws and
+  // falls back to the bundled snapshot (stale: true); if either side has no live
+  // plan we keep the bundled pair so the comparison is never degraded.
+  const live = await getLivePlans({ category: bundledPair.category });
+  const pair = resolveLivePair(bundledPair, live.plans);
 
   const { a, b, category, categoryLabel } = pair;
   const aN = a.provider.name;
@@ -309,6 +382,16 @@ export default async function VsPage({ params }: Params) {
   const authorityRows = buildAuthorityRows(pair);
   const faqs = buildFaqs(pair);
   const relatedGroups = buildRelatedGroups(pair);
+
+  // Real "data as of" date: the live read's lastUpdated when present, else the
+  // newest plan timestamp, else today's build date (never a fabricated future).
+  const asOf = live.lastUpdated ?? lastDataDate(allPlans);
+
+  // AEO conversational Q&A — FACTUAL answers derived from the SAME combined plan
+  // list (cheapest / no-commit / 5G / abroad). fiber maps to internet upstream;
+  // here the pair's own category id is the service. Empties are omitted by the
+  // helper, so these only appear when the data supports them.
+  const aeoQuestions: AeoQuestion[] = pageQuestions(category, allPlans);
 
   // The two representative plans (cheapest per side), cheapest-first, for the
   // comparison ItemList JSON-LD.
@@ -321,11 +404,38 @@ export default async function VsPage({ params }: Params) {
     { name: `${aN} מול ${bN}`, url: `/vs/${slug}` },
   ];
 
+  // The head-to-head verdict, derived from the real plans — NO fabricated winner.
+  // vsVerdict() already says "tie" when entry prices are equal, so this is the
+  // honest zero-click answer the engines lift.
   const answer =
     `בהשוואת ${categoryLabel} בין ${aN} ל${bN}: ` + verdict.summary;
 
+  // AggregateOffer + speakable JSON-LD over the SAME plans (null when no data).
+  const offerSchema = pageAggregateOfferSchema(allPlans);
+  const speakable = speakableSchema(["#aeo-answer [data-direct-answer]", "h1"]);
+
   return (
     <main id="main" className="mx-auto w-full max-w-5xl flex-1 px-4 py-10 sm:px-6">
+      {/* Page-scoped entrance motion (Emil Kowalski rules): a one-time fade + 10px
+          lift, staggered 30–80ms via inline animationDelay. Server-rendered CSS
+          only (no JS) — references the shared --ease-out token and animates ONLY
+          transform + opacity (GPU). Reduced-motion: the animation is removed so
+          blocks render statically at their already-visible resting state. */}
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
+        .sw-reveal { animation: swReveal 420ms var(--ease-out) both; }
+        @keyframes swReveal {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: none; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .sw-reveal { animation: none; }
+        }
+      `,
+        }}
+      />
+
       {/* GEO structured data: comparison ItemList + FAQ + Breadcrumb + KnowledgeGraph + KnowledgeWeb. */}
       <JsonLd
         data={comparisonSchema({
@@ -334,7 +444,14 @@ export default async function VsPage({ params }: Params) {
           plans: repPlans,
         })}
       />
-      <JsonLd data={faqPageSchema(faqs)} />
+      {/* FAQPage merges the AEO conversational Q&A (visible in <AeoQA>) with the
+          curated match-up FAQ — both data-derived, so structured ⊕ visible agree. */}
+      <JsonLd
+        data={faqPageSchema([
+          ...aeoQuestions.map((q) => ({ question: q.question, answer: q.answer })),
+          ...faqs,
+        ])}
+      />
       <JsonLd data={breadcrumbSchema(crumbs)} />
       <JsonLd
         data={knowledgeGraphSchema({
@@ -362,6 +479,20 @@ export default async function VsPage({ params }: Params) {
         });
         return nav ? <JsonLd data={nav} /> : null;
       })()}
+      {/* AEO: AggregateOffer (price range over both sides) + speakable (voice). */}
+      {offerSchema && <JsonLd data={offerSchema} />}
+      {speakable && <JsonLd data={speakable} />}
+
+      {/* AEO pillar 3: machine-readable feed of the SAME combined plan list. */}
+      <LlmDataFeed
+        plans={allPlans}
+        meta={{
+          service: category,
+          url: `${SITE_URL}/vs/${slug}`,
+          asOf,
+          stale: live.stale,
+        }}
+      />
 
       {/* ── Breadcrumb (visible) ──────────────────────────────────────────── */}
       <nav aria-label="פירורי לחם" className="text-sm text-muted">
@@ -378,16 +509,28 @@ export default async function VsPage({ params }: Params) {
         </span>
       </nav>
 
-      {/* ── Heading ───────────────────────────────────────────────────────── */}
+      {/* ── Heading (conversational, query-shaped) ────────────────────────── */}
       <header className="mt-4">
-        <h1 className="font-display text-4xl font-bold tracking-tight text-ink sm:text-5xl">
-          {aN} מול {bN} — השוואת {categoryLabel}
+        <h1 className="sw-reveal font-display text-4xl font-bold tracking-tight text-ink sm:text-5xl">
+          {aN} מול {bN} — מי זול יותר ב{categoryLabel}?
         </h1>
-        <p className="mt-4 max-w-2xl text-lg leading-relaxed text-foreground">
+        <p
+          className="sw-reveal mt-4 max-w-2xl text-lg leading-relaxed text-foreground"
+          style={{ animationDelay: "60ms" }}
+        >
           השוואה ישירה של מסלולי {categoryLabel} בין {aN} ל{bN} — מחיר התחלתי,
           מספר מסלולים ומאפיינים, הכל מתוך הקטלוג ובשקלים.
         </p>
       </header>
+
+      {/* ── AEO zero-click answer — the head-to-head verdict engines lift ──── */}
+      <AeoAnswerBlock
+        answer={answer}
+        dateModified={asOf}
+        stale={live.stale}
+        heading={`מי זול יותר — ${aN} או ${bN}?`}
+        className="mt-8"
+      />
 
       {/* ── Side-by-side stat cards ───────────────────────────────────────── */}
       <section aria-labelledby="sides-h" className="mt-10">
@@ -396,22 +539,19 @@ export default async function VsPage({ params }: Params) {
         </h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <SideCard side={a} label={`צד א׳ — ${categoryLabel}`} />
-          <SideCard side={b} label={`צד ב׳ — ${categoryLabel}`} />
+          <SideCard
+            side={b}
+            label={`צד ב׳ — ${categoryLabel}`}
+            style={{ animationDelay: "60ms" }}
+          />
         </div>
       </section>
 
-      {/* ── SGE summary (derived verdict) ─────────────────────────────────── */}
-      <div className="mt-8">
-        <SgeSummary heading={`השורה התחתונה: ${aN} מול ${bN}`}>
-          {verdict.summary}
-        </SgeSummary>
-      </div>
-
-      {/* ── Authority block: direct answer + truth table + verification stamp ─ */}
+      {/* ── Authority block: per-factor truth table + verification stamp ──── */}
       <div className="mt-8">
         <AuthorityBlock
           heading="מי מנצח בכל פרמטר"
-          answer={answer}
+          answer={`פירוק מלא של ההשוואה בין ${aN} ל${bN} ב${categoryLabel} — מי מנצח בכל פרמטר, לפי הקטלוג.`}
           rows={authorityRows}
           tableCaption={`${aN} מול ${bN} — מי מנצח בכל פרמטר ולמה`}
           reviewedAt={REVIEWED_AT}
@@ -429,17 +569,28 @@ export default async function VsPage({ params }: Params) {
             caption={`${aN} מול ${bN} ב${categoryLabel} — מחירים בשקלים, כולל מחיר אחרי המבצע`}
           />
         </div>
+        {/* Honest verification stamp for the table's price claims. */}
+        <FactCheckBadge dateModified={asOf} className="mt-3" />
       </section>
 
-      {/* ── FAQ ───────────────────────────────────────────────────────────── */}
+      {/* ── AEO conversational Q&A (data-derived, mirrors FAQPage JSON-LD) ─── */}
+      {aeoQuestions.length > 0 && (
+        <AeoQA
+          questions={aeoQuestions}
+          heading={`שאלות נפוצות — ${aN} מול ${bN}`}
+          className="mt-14"
+        />
+      )}
+
+      {/* ── FAQ — curated match-up questions (distinct from the AEO Q&A above) ─ */}
       <section aria-labelledby="faq-h" className="mt-14">
         <h2 id="faq-h" className="font-display text-2xl font-bold tracking-tight text-ink">
-          שאלות נפוצות — {aN} מול {bN}
+          {aN} מול {bN} — ההבדלים בקצרה
         </h2>
         <div className="card mt-6 divide-y divide-border/60 overflow-hidden">
           {faqs.map((qa) => (
             <details key={qa.question} className="group p-5">
-              <summary className="flex cursor-pointer list-none items-center gap-2 font-display font-semibold text-ink marker:hidden">
+              <summary className="interactive flex cursor-pointer list-none items-center gap-2 rounded-md font-display font-semibold text-ink marker:hidden hover:text-accent">
                 <span>{qa.question}</span>
                 <span
                   aria-hidden="true"
@@ -473,6 +624,14 @@ export default async function VsPage({ params }: Params) {
           />
         </div>
       </section>
+
+      {/* ── Sources & methodology — show your work (E-E-A-T) ──────────────── */}
+      <DataMethodology
+        dateModified={asOf}
+        stale={live.stale}
+        planCount={allPlans.length}
+        className="mt-14"
+      />
 
       {/* ── Semantic interlinking — grouped, no dead-ends ─────────────────── */}
       <RelatedLinks

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -7,6 +8,7 @@ import 'package:share_plus/share_plus.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/app_snackbar.dart';
 import '../../widgets/pressable.dart';
+import '../../widgets/refreshable_scroll.dart';
 import '../../core/nav.dart';
 import '../../app_state.dart';
 import '../../services/push_notification_service.dart';
@@ -22,15 +24,20 @@ import '../../services/backend/local_backend.dart';
 /// The full, fresh comparison table for a single tracked plan that is about to
 /// renew — every alternative in its category ranked by fit, with the annual
 /// saving each one delivers against what the customer pays today.
-class RenewalReportWidget extends StatelessWidget {
+class RenewalReportWidget extends StatefulWidget {
   const RenewalReportWidget({super.key, required this.trackedId});
   final String trackedId;
 
   @override
+  State<RenewalReportWidget> createState() => _RenewalReportWidgetState();
+}
+
+class _RenewalReportWidgetState extends State<RenewalReportWidget> {
+  @override
   Widget build(BuildContext context) {
     final ffTheme = AppTheme.of(context);
     final appState = Provider.of<AppState>(context);
-    final tp = appState.trackedPlanById(trackedId);
+    final tp = appState.trackedPlanById(widget.trackedId);
 
     if (tp == null) return _NotFound(ffTheme: ffTheme);
 
@@ -43,7 +50,16 @@ class RenewalReportWidget extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: ffTheme.background,
-      body: CustomScrollView(
+      // Pull-to-refresh + bouncing overscroll via the shared primitive. The
+      // hero stays a normal *eager* first sliver (SliverToBoxAdapter) — NOT a
+      // pinned/collapsing header — so it never floats over the tappable
+      // comparison rows, and "המסלול שלך היום" renders immediately.
+      body: RefreshableScroll(
+        // Recompute the whole report (alternatives + best-saver re-derive from
+        // AppState on rebuild) — a frame-bounded setState is the recompute.
+        onRefresh: () async {
+          if (mounted) setState(() {});
+        },
         slivers: [
           SliverToBoxAdapter(
             child: _Hero(tp: tp, unit: unit, ffTheme: ffTheme, onBack: () => context.safePop()),
@@ -163,7 +179,10 @@ class _Hero extends StatelessWidget {
                   IconButton(
                     icon: const Icon(Icons.arrow_forward_ios_rounded, color: Colors.white, size: 20),
                     tooltip: 'חזרה',
-                    onPressed: onBack,
+                    onPressed: () {
+                      HapticFeedback.selectionClick();
+                      onBack();
+                    },
                   ),
                   Expanded(
                     child: Text('טבלת השוואה מלאה',
@@ -175,46 +194,67 @@ class _Hero extends StatelessWidget {
               const SizedBox(height: 6),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: Row(
-                  children: [
-                    Hero(
-                      tag: 'tracked-logo-${tp.id}',
-                      child: Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
+                // "Your plan" is the ANCHOR the alternatives below are measured
+                // against — give it a soft green ACTION wash + green hairline +
+                // a "המסלול שלך" tag so it reads as the distinct reference card,
+                // not just another comparison row.
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: ffTheme.brandAccent.withValues(alpha: 0.16),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: ffTheme.brandAccent.withValues(alpha: 0.5)),
+                  ),
+                  child: Row(
+                    children: [
+                      Hero(
+                        tag: 'tracked-logo-${tp.id}',
+                        child: Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: LogoWidget(provider: tp.provider, size: 40),
                         ),
-                        child: LogoWidget(provider: tp.provider, size: 40),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.person_pin_circle_rounded,
+                                    size: 13, color: Colors.white.withValues(alpha: 0.9)),
+                                const SizedBox(width: 4),
+                                Text('המסלול שלך היום',
+                                    style: GoogleFonts.assistant(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w700,
+                                        color: Colors.white.withValues(alpha: 0.9))),
+                              ],
+                            ),
+                            Text('${tp.provider} · ${tp.planName}',
+                                style: GoogleFonts.rubik(
+                                    fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white),
+                                maxLines: 1, overflow: TextOverflow.ellipsis),
+                          ],
+                        ),
+                      ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          Text('המסלול שלך היום',
-                              style: GoogleFonts.assistant(
-                                  fontSize: 12, color: Colors.white.withValues(alpha: 0.8))),
-                          Text('${tp.provider} · ${tp.planName}',
+                          Text('₪${tp.monthlyPrice}',
                               style: GoogleFonts.rubik(
-                                  fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white),
-                              maxLines: 1, overflow: TextOverflow.ellipsis),
+                                  fontSize: 24, fontWeight: FontWeight.w800, color: Colors.white)),
+                          Text(priceCaption,
+                              style: GoogleFonts.assistant(
+                                  fontSize: 11, color: Colors.white.withValues(alpha: 0.8))),
                         ],
                       ),
-                    ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Text('₪${tp.monthlyPrice}',
-                            style: GoogleFonts.rubik(
-                                fontSize: 24, fontWeight: FontWeight.w800, color: Colors.white)),
-                        Text(priceCaption,
-                            style: GoogleFonts.assistant(
-                                fontSize: 11, color: Colors.white.withValues(alpha: 0.8))),
-                      ],
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
               if (days != null) ...[
@@ -279,17 +319,24 @@ class _SaverBanner extends StatelessWidget {
         ? 'אפשר לחסוך ₪$perPackage לחבילה'
         : 'אפשר לחסוך ₪${match.annualSaving} בשנה';
     final shareText = isAbroad
-        ? 'גיליתי שאפשר לחסוך ₪$perPackage לחבילה במעבר ל${match.plan.provider} — עם חוסך'
-        : 'גיליתי שאפשר לחסוך ₪${match.annualSaving} בשנה במעבר ל${match.plan.provider} — עם חוסך';
+        ? 'גיליתי שאפשר לחסוך ₪$perPackage לחבילה במעבר ל${match.plan.provider} — עם Switchy AI'
+        : 'גיליתי שאפשר לחסוך ₪${match.annualSaving} בשנה במעבר ל${match.plan.provider} — עם Switchy AI';
     // The headline saving is the page's hero VALUE moment — amber wash, amber
     // figure, with a celebratory icon badge.
+    // Light selection haptic on the saver tap targets — matches the tactile
+    // feedback the Pressable rows below emit.
+    void tapWithHaptic() {
+      HapticFeedback.selectionClick();
+      onTap();
+    }
+
     return Semantics(
       button: true,
       label: '$headline, מעבר ל${match.plan.provider}. הצג מסלול',
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: onTap,
+          onTap: tapWithHaptic,
           borderRadius: BorderRadius.circular(16),
           splashColor: ffTheme.saving.withValues(alpha: 0.12),
           child: Container(
@@ -343,7 +390,7 @@ class _SaverBanner extends StatelessWidget {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
-                    onPressed: onTap,
+                    onPressed: tapWithHaptic,
                     icon: const Icon(Icons.arrow_back_rounded, size: 18),
                     label: const Text('צפה במסלול החוסך'),
                     style: ElevatedButton.styleFrom(
@@ -598,6 +645,7 @@ class _ReminderCta extends StatelessWidget {
                   width: double.infinity,
                   child: ElevatedButton.icon(
                     onPressed: () async {
+                      HapticFeedback.selectionClick();
                       appState.setRenewalReminders(true);
                       appBackend.setRenewalReminder(true).catchError((_) {});
                       await PushNotificationService.instance.requestPermission();

@@ -7,7 +7,58 @@ import '../../app_state.dart';
 import '../../services/support_ticket_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+/// A single issue category the user can pick when opening a new ticket. The
+/// [seed] is prepended to their free-text message so the support agent (and any
+/// human picking the ticket up) gets the context up front.
+class _IssueType {
+  const _IssueType({
+    required this.id,
+    required this.label,
+    required this.icon,
+    required this.seed,
+  });
+  final String id;
+  final String label;
+  final IconData icon;
+  final String seed;
+}
+
+const List<_IssueType> _issueTypes = [
+  _IssueType(
+    id: 'plan',
+    label: 'התוכנית שלי',
+    icon: Icons.sim_card_rounded,
+    seed: 'שאלה על התוכנית שלי',
+  ),
+  _IssueType(
+    id: 'billing',
+    label: 'חיוב וחשבונית',
+    icon: Icons.receipt_long_rounded,
+    seed: 'שאלה על חיוב או חשבונית',
+  ),
+  _IssueType(
+    id: 'switch',
+    label: 'מעבר ספק',
+    icon: Icons.swap_horiz_rounded,
+    seed: 'שאלה על מעבר ספק',
+  ),
+  _IssueType(
+    id: 'technical',
+    label: 'תקלה טכנית',
+    icon: Icons.build_rounded,
+    seed: 'דיווח על תקלה טכנית',
+  ),
+  _IssueType(
+    id: 'other',
+    label: 'אחר',
+    icon: Icons.help_outline_rounded,
+    seed: 'פנייה כללית',
+  ),
+];
+
 class SupportTicketWidget extends StatefulWidget {
+  /// Either an existing ticket id, or the sentinel `'new'` (also accepts an
+  /// empty value) to open the in-page compose flow.
   final String ticketId;
 
   const SupportTicketWidget({
@@ -20,15 +71,21 @@ class SupportTicketWidget extends StatefulWidget {
 }
 
 class _SupportTicketWidgetState extends State<SupportTicketWidget> {
-  late SupportTicketService _service;
-  late StreamSubscription<List<SupportMessage>> _messagesSubscription;
-  late StreamSubscription<SupportTicket> _ticketSubscription;
+  SupportTicketService? _service;
+  StreamSubscription<List<SupportMessage>>? _messagesSubscription;
+  StreamSubscription<SupportTicket>? _ticketSubscription;
 
   final _inputCtrl = TextEditingController();
+  final _composeCtrl = TextEditingController();
   final _scrollCtrl = ScrollController();
 
-  final bool _isLoading = false;
+  /// The resolved real ticket id, once we either received one or created one via
+  /// [SupportTicketService.createOrOpenTicket]. Null while still composing.
+  String? _resolvedTicketId;
+
   bool _isTyping = false;
+  bool _isOpening = false; // creating the ticket from the compose flow
+  String? _selectedIssueId;
   List<SupportMessage> _messages = [];
   SupportTicket? _ticket;
   String? _error;
@@ -40,15 +97,27 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
     'איך אני משנה את התוכנית שלי?',
   ];
 
+  /// True until the user has actually opened/loaded a real ticket — i.e. we are
+  /// showing the issue-type picker + first-message compose form.
+  bool get _isComposing => _resolvedTicketId == null;
+
   @override
   void initState() {
     super.initState();
-    _service = SupportTicketService(Supabase.instance.client);
-    _loadTicket();
+    final initial = widget.ticketId.trim();
+    // Only an existing, real ticket id binds the live streams. The `'new'`
+    // sentinel (or an empty value) drops us into the compose flow instead — we
+    // must NOT stream against a non-existent id (it never resolves and the user
+    // could never start a conversation).
+    if (initial.isNotEmpty && initial != 'new') {
+      _resolvedTicketId = initial;
+      _bindStreams(initial);
+    }
   }
 
-  void _loadTicket() {
-    _messagesSubscription = _service.messageStream(widget.ticketId).listen(
+  void _bindStreams(String ticketId) {
+    _service ??= SupportTicketService(Supabase.instance.client);
+    _messagesSubscription = _service!.messageStream(ticketId).listen(
       (messages) {
         if (mounted) {
           setState(() {
@@ -60,12 +129,12 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
       },
       onError: (e) {
         if (mounted) {
-          setState(() => _error = 'Error loading messages: $e');
+          setState(() => _error = 'אירעה שגיאה בטעינת ההודעות. נסו שוב.');
         }
       },
     );
 
-    _ticketSubscription = _service.ticketStream(widget.ticketId).listen(
+    _ticketSubscription = _service!.ticketStream(ticketId).listen(
       (ticket) {
         if (mounted) {
           setState(() => _ticket = ticket);
@@ -80,15 +149,83 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
   @override
   void dispose() {
     _inputCtrl.dispose();
+    _composeCtrl.dispose();
     _scrollCtrl.dispose();
-    _messagesSubscription.cancel();
-    _ticketSubscription.cancel();
+    _messagesSubscription?.cancel();
+    _ticketSubscription?.cancel();
     super.dispose();
   }
 
+  /// Opens (or re-opens) a ticket from the compose flow: create/find the ticket,
+  /// send the composed first message, then bind the live streams so the page
+  /// becomes the normal chat view.
+  Future<void> _openTicket() async {
+    if (_isOpening) return;
+    final text = _composeCtrl.text.trim();
+    if (text.isEmpty) {
+      setState(() => _error = 'כתבו לנו במה נוכל לעזור לפני השליחה.');
+      return;
+    }
+
+    setState(() {
+      _isOpening = true;
+      _error = null;
+    });
+
+    try {
+      final appState = Provider.of<AppState>(context, listen: false);
+      final userId = appState.userId;
+      if (userId == null || userId.isEmpty) {
+        throw Exception('not-logged-in');
+      }
+
+      final service = _service ??= SupportTicketService(Supabase.instance.client);
+      final ticketId = await service.createOrOpenTicket(userId);
+
+      // Prefix the chosen issue type so the agent/human has context.
+      final issue = _selectedIssueId == null
+          ? null
+          : _issueTypes.firstWhere((t) => t.id == _selectedIssueId);
+      final composed = issue == null ? text : '[${issue.seed}] $text';
+
+      // Remember the open ticket so the FAB can deep-link straight back to it.
+      appState.setSupportTicketId(ticketId);
+
+      // Switch into chat mode + bind streams BEFORE awaiting the send, so the
+      // user immediately sees their conversation surface.
+      if (!mounted) return;
+      setState(() {
+        _resolvedTicketId = ticketId;
+        _isTyping = true;
+      });
+      _bindStreams(ticketId);
+
+      await service.sendMessage(ticketId, userId, composed);
+    } catch (e) {
+      if (mounted) {
+        final msg = e.toString().contains('not-logged-in')
+            ? 'צריך להתחבר כדי לפתוח פנייה לתמיכה.'
+            : 'לא הצלחנו לפתוח את הפנייה. נסו שוב בעוד רגע.';
+        setState(() {
+          _error = msg;
+          // Roll back into compose mode if we never managed to bind a ticket.
+          if (_messagesSubscription == null) _resolvedTicketId = null;
+        });
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isOpening = false;
+          _isTyping = false;
+        });
+      }
+    }
+  }
+
   Future<void> _sendMessage(String text) async {
-    if (text.trim().isEmpty || _isTyping || _isLoading) return;
-    if (_ticket == null) return;
+    if (text.trim().isEmpty || _isTyping) return;
+    final ticketId = _resolvedTicketId;
+    if (ticketId == null || _ticket == null) return;
 
     _inputCtrl.clear();
 
@@ -100,11 +237,7 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
       final userId = appState.userId;
       if (userId == null) throw Exception('User not logged in');
 
-      final result = await _service.sendMessage(
-        widget.ticketId,
-        userId,
-        text,
-      );
+      final result = await _service!.sendMessage(ticketId, userId, text);
 
       if (result['escalated'] == true) {
         if (mounted) {
@@ -118,7 +251,7 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
       }
     } catch (e) {
       if (mounted) {
-        setState(() => _error = 'Failed to send message: $e');
+        setState(() => _error = 'לא הצלחנו לשלוח את ההודעה. נסו שוב.');
       }
     } finally {
       if (mounted) {
@@ -189,7 +322,7 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
       appBar: AppBar(
         // Inherit the themed app-bar (ink on light, darkSurface on dark) so the
         // header is correct in both modes instead of forcing white-on-ink.
-        title: const Text('תמיכה'),
+        title: Text(_isComposing ? 'פתיחת פנייה' : 'תמיכה'),
         elevation: 0,
         actions: [
           if (isEscalated)
@@ -220,52 +353,253 @@ class _SupportTicketWidgetState extends State<SupportTicketWidget> {
             ),
         ],
       ),
-      body: Column(
+      body: _isComposing ? _buildComposeFlow(theme) : _buildChatView(theme, isEscalated),
+    );
+  }
+
+  // ── Compose flow (open a new ticket) ────────────────────────────────────────
+
+  Widget _buildComposeFlow(AppTheme theme) {
+    return SafeArea(
+      child: ListView(
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
         children: [
-          _buildStatusBanner(theme),
-          if (_error != null)
-            Container(
-              width: double.infinity,
-              margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: theme.error.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(theme.radiusSm),
-                border: Border.all(color: theme.error.withValues(alpha: 0.25)),
+          // Intro header.
+          Row(
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  gradient: theme.accentGradient,
+                  borderRadius: BorderRadius.circular(theme.radiusMd),
+                  boxShadow: theme.shadowAccent,
+                ),
+                child: const Icon(Icons.support_agent_rounded, size: 28, color: Colors.white),
               ),
-              child: Row(
-                children: [
-                  Icon(Icons.error_outline_rounded, size: 18, color: theme.error),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      _error!,
-                      style: theme.bodySmall.copyWith(color: theme.error),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('איך אפשר לעזור?',
+                        style: theme.titleMedium.copyWith(fontWeight: FontWeight.w800)),
+                    const SizedBox(height: 2),
+                    Text(
+                      'מענה מיידי 24/7 — ותמיד אפשר לעבור לנציג אנושי.',
+                      style: theme.bodySmall.copyWith(color: theme.secondaryText, height: 1.35),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ).animate().fadeIn(duration: 300.ms).slideY(begin: -0.08, end: 0),
+
+          const SizedBox(height: 22),
+
+          // Issue-type picker.
+          Text('על מה הפנייה?',
+              style: theme.titleSmall.copyWith(fontWeight: FontWeight.w800)),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (var i = 0; i < _issueTypes.length; i++)
+                _buildIssueChip(theme, _issueTypes[i], i),
+            ],
+          ),
+
+          const SizedBox(height: 22),
+
+          // Free-text first message.
+          Text('פרטו בקצרה',
+              style: theme.titleSmall.copyWith(fontWeight: FontWeight.w800)),
+          const SizedBox(height: 10),
+          TextField(
+            controller: _composeCtrl,
+            textDirection: TextDirection.rtl,
+            minLines: 4,
+            maxLines: 8,
+            textInputAction: TextInputAction.newline,
+            enabled: !_isOpening,
+            onChanged: (_) {
+              // Clear a stale validation error as soon as the user types.
+              if (_error != null) setState(() => _error = null);
+            },
+            decoration: InputDecoration(
+              hintText: 'כתבו כאן את השאלה או הבעיה...',
+              hintTextDirection: TextDirection.rtl,
+              filled: true,
+              fillColor: theme.cardSurface,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(theme.radiusMd),
+                borderSide: BorderSide(color: theme.alternate.withValues(alpha: 0.12)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(theme.radiusMd),
+                borderSide: BorderSide(color: theme.alternate.withValues(alpha: 0.12)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(theme.radiusMd),
+                borderSide: BorderSide(color: theme.brandAccent, width: 1.5),
+              ),
+              contentPadding: const EdgeInsets.all(16),
+            ),
+          ),
+
+          if (_error != null) ...[
+            const SizedBox(height: 12),
+            _buildErrorBox(theme, _error!),
+          ],
+
+          const SizedBox(height: 20),
+
+          // Submit.
+          Semantics(
+            button: true,
+            label: 'פתיחת פנייה ושליחה',
+            child: SizedBox(
+              width: double.infinity,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: _isOpening ? null : theme.accentGradient,
+                  color: _isOpening ? theme.alternate.withValues(alpha: 0.2) : null,
+                  borderRadius: BorderRadius.circular(theme.radiusPill),
+                  boxShadow: _isOpening ? null : theme.shadowAccent,
+                ),
+                child: TextButton.icon(
+                  onPressed: _isOpening ? null : _openTicket,
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    foregroundColor: Colors.white,
+                    disabledForegroundColor: Colors.white.withValues(alpha: 0.7),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(theme.radiusPill),
                     ),
                   ),
-                ],
+                  icon: _isOpening
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(
+                              strokeWidth: 2, color: Colors.white),
+                        )
+                      : const Icon(Icons.send_rounded, size: 18),
+                  label: Text(
+                    _isOpening ? 'פותח/ת פנייה...' : 'פתחו פנייה',
+                    style: theme.labelLarge.copyWith(
+                        color: Colors.white, fontWeight: FontWeight.w800),
+                  ),
+                ),
               ),
             ),
-          Expanded(
-            child: _messages.isEmpty && !_isLoading
-                ? _buildEmptyState(theme)
-                : ListView.builder(
-                    controller: _scrollCtrl,
-                    padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
-                    itemCount: _messages.length + (_isTyping ? 1 : 0),
-                    itemBuilder: (context, index) {
-                      if (index == _messages.length) {
-                        return _buildTypingIndicator(theme);
-                      }
-                      return _buildMessageBubble(_messages[index], theme);
-                    },
-                  ),
           ),
-          if (_shouldShowQuickReplies())
-            _buildQuickReplies(theme),
-          _buildInputArea(theme, isEscalated),
         ],
       ),
+    );
+  }
+
+  Widget _buildIssueChip(AppTheme theme, _IssueType issue, int index) {
+    final selected = _selectedIssueId == issue.id;
+    return Semantics(
+      button: true,
+      selected: selected,
+      container: true,
+      // Collapse the inner Text/Icon into a single labelled button node so the
+      // a11y tree exposes exactly the issue label (no duplicate child node).
+      excludeSemantics: true,
+      label: issue.label,
+      child: GestureDetector(
+        onTap: _isOpening
+            ? null
+            : () => setState(() => _selectedIssueId = selected ? null : issue.id),
+        child: AnimatedContainer(
+          duration: theme.motionFast,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: selected
+                ? theme.brandAccent.withValues(alpha: 0.12)
+                : theme.cardSurface,
+            borderRadius: BorderRadius.circular(theme.radiusPill),
+            border: Border.all(
+              color: selected
+                  ? theme.brandAccent
+                  : theme.alternate.withValues(alpha: 0.18),
+              width: selected ? 1.5 : 1,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(issue.icon,
+                  size: 16,
+                  color: selected ? theme.brandAccent : theme.secondaryText),
+              const SizedBox(width: 6),
+              Text(
+                issue.label,
+                style: theme.labelSmall.copyWith(
+                  color: selected ? theme.brandAccent : theme.primaryText,
+                  fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ).animate().fadeIn(delay: (index * 40).ms, duration: 260.ms).slideY(begin: 0.1, end: 0);
+  }
+
+  Widget _buildErrorBox(AppTheme theme, String message) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: theme.error.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(theme.radiusSm),
+        border: Border.all(color: theme.error.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.error_outline_rounded, size: 18, color: theme.error),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(message, style: theme.bodySmall.copyWith(color: theme.error)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Chat view (existing ticket) ─────────────────────────────────────────────
+
+  Widget _buildChatView(AppTheme theme, bool isEscalated) {
+    return Column(
+      children: [
+        _buildStatusBanner(theme),
+        if (_error != null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+            child: _buildErrorBox(theme, _error!),
+          ),
+        Expanded(
+          child: _messages.isEmpty
+              ? _buildEmptyState(theme)
+              : ListView.builder(
+                  controller: _scrollCtrl,
+                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+                  itemCount: _messages.length + (_isTyping ? 1 : 0),
+                  itemBuilder: (context, index) {
+                    if (index == _messages.length) {
+                      return _buildTypingIndicator(theme);
+                    }
+                    return _buildMessageBubble(_messages[index], theme);
+                  },
+                ),
+        ),
+        if (_shouldShowQuickReplies()) _buildQuickReplies(theme),
+        _buildInputArea(theme, isEscalated),
+      ],
     );
   }
 

@@ -6,7 +6,7 @@ import { esc, NL, waDraftLink, waLink } from "./telegram.ts";
 import { insertRow } from "./db.ts";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// AI-chat lead capture (Track 2E) — when the site "חוסך AI" chat detects a
+// AI-chat lead capture (Track 2E) — when the site "Switchy AI" chat detects a
 // genuine switch/contact intent and the user supplies name + phone + the
 // MANDATORY consent, we capture a lead via the service role. The leads table's
 // BEFORE INSERT gate re-stamps consent + IP and rate-limits; the pg_net trigger
@@ -45,6 +45,10 @@ export type AiLeadInput = {
   category?: unknown; // desired service category, folded into notes
   notes?: unknown; // short context (e.g. the user's ask), clipped
   consent?: unknown; // MANDATORY terms+privacy — must be true to capture
+  // OPTIONAL, SEPARATE third-party-sharing consent (the business SELLS leads). Never
+  // implied by `consent`: true ONLY when the user explicitly agreed to "העברת פרטים
+  // לספקים רלוונטיים". Stamps consent_share_at so the exporter can mark a row sellable.
+  consent_share?: unknown;
   consent_marketing_sms?: unknown;
   consent_marketing_email?: unknown;
   consent_marketing_whatsapp?: unknown;
@@ -63,6 +67,9 @@ export type AiLeadRow = {
   consent_marketing_sms: boolean;
   consent_marketing_email: boolean;
   consent_marketing_whatsapp: boolean;
+  // Third-party-sharing consent timestamp — present (now) ONLY on an explicit yes;
+  // null otherwise. This is the single signal that makes a lead "sellable".
+  consent_share_at: string | null;
 };
 
 function clip(v: unknown, max: number): string {
@@ -87,9 +94,12 @@ export function buildAiLeadRow(input: AiLeadInput, nowIso = new Date().toISOStri
   const marketingEmail = input.consent_marketing_email === true;
   const marketingWhatsapp = input.consent_marketing_whatsapp === true;
   const anyMarketing = marketingSms || marketingEmail || marketingWhatsapp;
+  // SEPARATE third-party-sharing consent (sellable gate). Stamp now ONLY on an
+  // explicit true — never inferred from the §30A service consent or marketing flags.
+  const shareConsented = input.consent_share === true;
 
   const category = clip(input.category, 40);
-  const notesParts: string[] = ["נוצר משיחת חוסך AI באתר"];
+  const notesParts: string[] = ["נוצר משיחת Switchy AI באתר"];
   if (category) notesParts.push(`שירות מבוקש: ${category}`);
   const extra = clip(input.notes, 600);
   if (extra) notesParts.push(extra);
@@ -110,6 +120,8 @@ export function buildAiLeadRow(input: AiLeadInput, nowIso = new Date().toISOStri
     consent_marketing_sms: marketingSms,
     consent_marketing_email: marketingEmail,
     consent_marketing_whatsapp: marketingWhatsapp,
+    // Sellable signal — now() only on an explicit share-consent, else null.
+    consent_share_at: shareConsented ? nowIso : null,
   };
 }
 
@@ -124,7 +136,16 @@ export async function captureAiLead(
 ): Promise<"captured" | "incomplete" | "error"> {
   const row = buildAiLeadRow(input);
   if (!row) return "incomplete";
-  const ok = await insertRow("leads", row);
+  // Persist consent_share_at DEFENSIVELY: include it only when an explicit share
+  // consent stamped it (non-null). When there's no share consent we OMIT the key
+  // entirely so a project where the column hasn't been migrated yet still accepts
+  // the insert — the absence of the column then simply means "not sellable", which
+  // is the safe default. (Truth-only: we never send a sellable signal we didn't get.)
+  const { consent_share_at, ...rest } = row;
+  const payload: Record<string, unknown> = consent_share_at
+    ? { ...rest, consent_share_at }
+    : rest;
+  const ok = await insertRow("leads", payload);
   return ok ? "captured" : "error";
 }
 
@@ -158,28 +179,66 @@ export const SOURCE_HE: Record<string, string> = { form: "טופס", plan: "דף
 export const STATUS_HE: Record<string, string> = { new: "חדש", contacted: "דיברתי", won: "נסגר", lost: "לא רלוונטי" };
 export const STATUS_EMOJI: Record<string, string> = { new: "🆕", contacted: "📞", won: "🏆", lost: "❌" };
 
+// Plan categories (lib/data.dart's owned set) → Hebrew, for the "desired need"
+// card line. Mirrors digests.ts CAT_HE; kept here so leads.ts stays dependency-light.
+export const CATEGORY_HE: Record<string, string> = {
+  cellular: "סלולר", internet: "אינטרנט", tv: "טלוויזיה",
+  triple: "חבילה משולבת (טריפל)", abroad: 'חבילת חו"ל',
+};
+
+// The leads table has no category column — the desired service is captured in
+// the notes free text (the AI-chat capture writes "שירות מבוקש: <category>") or
+// implied by the plan_id prefix. Surface it ONLY when it's actually present:
+// honesty over a fabricated guess. Returns the Hebrew category label, or "".
+export function desiredCategory(lead: Lead): string {
+  // 1) Explicit, structured hint the AI-chat capture (or any form) wrote.
+  const tagged = String(lead.notes ?? "").match(/שירות מבוקש:\s*([^\n|]{1,40})/);
+  if (tagged) {
+    const raw = tagged[1].trim();
+    // map a known english key if that's what was stored, else show the free text
+    const key = raw.toLowerCase();
+    return CATEGORY_HE[key] ?? raw;
+  }
+  // 2) plan_id is "<provider>-<cat>-…" in the catalogue, so a leading known
+  // category token is a reliable, non-fabricated signal.
+  const planCat = String(lead.plan_id ?? "").toLowerCase().split(/[-_ ]/).find((t) => t in CATEGORY_HE);
+  if (planCat) return CATEGORY_HE[planCat];
+  return "";
+}
+
 export function tgDisplayName(from?: { first_name?: string; last_name?: string }): string {
   return [from?.first_name, from?.last_name].filter(Boolean).join(" ");
 }
+
+// A one-line compliance reminder for the rep, shown on the inbound card. The
+// rep is about to call the customer, so they must remember §7b (disclose the
+// commission/affiliation when recommending a deal) + §30A (get consent before
+// any marketing follow-up). Italic, low-key — a nudge, not a wall of text.
+export const REP_COMPLIANCE_LINE =
+  '⚖️ <i>תזכורת: גלו עמלה/שיוך בהמלצה (§7b) · אישור ללקוח לפני פולואו-אפ שיווקי (§30A).</i>';
 
 // Default WhatsApp opener when the AI didn't supply one.
 export function defaultDraft(lead: Lead): string {
   const first = String(lead.name ?? "").trim().split(/\s+/)[0] || "";
   const about = lead.provider ? ` לגבי ${lead.provider}` : "";
-  return `היי${first ? " " + first : ""}, כאן חוסך 💚 קיבלנו את הפנייה שלך${about} — מתי נוח לדבר?`;
+  return `היי${first ? " " + first : ""}, כאן Switchy AI 💚 קיבלנו את הפנייה שלך${about} — מתי נוח לדבר?`;
 }
 
 export function buildText(lead: Lead, triage?: TriageResult | null): string {
   const cb = CALLBACK_HE[String(lead.callback_time ?? "")] ?? String(lead.callback_time ?? "—");
   const wa = waLink(lead.phone);
   const sourceLabel = SOURCE_HE[String(lead.source ?? "")] ?? (lead.source ? String(lead.source) : null);
+  const category = desiredCategory(lead);
   const hot = (triage?.score ?? 0) >= 4;
   const lines: (string | null)[] = [
-    hot ? "🔥 <b>ליד חם — חוסך</b>" : "🔔 <b>פנייה חדשה — חוסך</b>",
+    hot ? "🔥 <b>ליד חם — Switchy AI</b>" : "🔔 <b>פנייה חדשה — Switchy AI</b>",
     "",
     `👤 <b>שם:</b> ${esc(lead.name)}`,
     `📞 <b>טלפון:</b> ${esc(lead.phone)}` + (wa ? ` — <a href="${wa}">WhatsApp</a>` : ""),
     lead.email ? `📧 <b>אימייל:</b> ${esc(lead.email)}` : null,
+    // Desired-service line first — it's the "what does this customer want?" the
+    // rep reads before dialing. Shown only when we honestly have it.
+    category ? `🎯 <b>צריך:</b> ${esc(category)}` : null,
     (lead.provider || lead.plan_id) ? `📦 <b>ספק / מסלול:</b> ${esc(lead.provider ?? "—")} / ${esc(lead.plan_id ?? "—")}` : null,
     `⏰ <b>זמן חזרה מועדף:</b> ${esc(cb)}`,
     sourceLabel ? `📌 <b>מקור:</b> ${esc(sourceLabel)}` : null,
@@ -189,6 +248,8 @@ export function buildText(lead: Lead, triage?: TriageResult | null): string {
     lead.notes ? `📋 <b>הקשר:</b> ${esc(String(lead.notes).slice(0, 700))}` : null,
     triage?.line ? "" : null,
     triage?.line ? `🤖 <i>${esc(triage.line)}</i>${triage.score > 0 ? ` (כוונה: ${triage.score}/5)` : ""}` : null,
+    "",
+    REP_COMPLIANCE_LINE,
   ];
   return lines.filter((x) => x !== null).join(NL);
 }
@@ -197,7 +258,7 @@ export function buildHtml(lead: Lead, triage?: TriageResult | null): string {
   const cb = CALLBACK_HE[String(lead.callback_time ?? "")] ?? String(lead.callback_time ?? "—");
   const sourceLabel = SOURCE_HE[String(lead.source ?? "")] ?? (lead.source ? String(lead.source) : null);
   return `<div dir="rtl" style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#15281e">`
-    + `<h2 style="color:#15603E">🔔 פנייה חדשה — חוסך</h2>`
+    + `<h2 style="color:#15603E">🔔 פנייה חדשה — Switchy AI</h2>`
     + `<p><b>שם:</b> ${esc(lead.name)}<br>`
     + `<b>טלפון:</b> ${esc(lead.phone)}<br>`
     + (lead.email ? `<b>אימייל:</b> ${esc(lead.email)}<br>` : "")
@@ -207,12 +268,30 @@ export function buildHtml(lead: Lead, triage?: TriageResult | null): string {
     + (lead.notes ? `<b>הקשר:</b> ${esc(String(lead.notes).slice(0, 700))}<br>` : "")
     + `</p>`
     + (triage?.line ? `<p style="background:#F4F0E8;padding:10px;border-radius:8px">🤖 ${esc(triage.line)}</p>` : "")
+    + `<p style="font-size:12px;color:#4B5563;margin-top:14px">תזכורת לנציג: גלו עמלה/שיוך בעת המלצה (§7b לחוק הגנת הצרכן) · קבלו אישור מהלקוח לפני פולואו-אפ שיווקי (§30A לחוק התקשורת).</p>`
     + `</div>`;
 }
 
-// Live keyboard: status row + lost row + claim/WhatsApp row.
+// A lead originated by the WhatsApp bot — its phone is a live WhatsApp contact, so
+// the rep can take the conversation over IN-PLACE (relay) instead of only opening
+// a fresh wa.me draft. The bot stamps source='whatsapp' (SOURCE_HE has the label);
+// anything else is a form/plan/advisor lead with no live WhatsApp thread to relay.
+export function isWhatsappLead(lead: Lead): boolean {
+  return String(lead.source ?? "").toLowerCase() === "whatsapp";
+}
+
+// Live keyboard: status row + lost/snooze row + history + claim/WhatsApp row.
 // Every callback_data carries the lead id so reply-notes can resolve the lead
-// even from frozen stamps.
+// even from frozen stamps. The ⏰ snooze button pushes the SLA nudge back ~2h
+// (sets nudged_at forward) for a rep who'll get to it later but isn't dropping
+// it — a softer middle ground than "לא רלוונטי".
+//
+// For a WhatsApp-source lead we add a relay control row: "🤝 השתלט ושוחח כאן"
+// (take over → bot goes silent, the live conversation is relayed to THIS rep's
+// Telegram chat) and "🤖 החזר לבוט" (hand back → the AI bot resumes). Both flip
+// whatsapp_conversations.bot_enabled / relay_tg_chat_id per the take-over contract
+// in callbacks.ts handleCallback; the existing wa.me draft button stays for the
+// non-relay "just message them" path.
 export function leadKeyboard(lead: Lead, draft = ""): TgInlineKeyboard | undefined {
   if (!lead.id) return undefined;
   const id = String(lead.id);
@@ -223,9 +302,21 @@ export function leadKeyboard(lead: Lead, draft = ""): TgInlineKeyboard | undefin
     ],
     [
       { text: `${STATUS_EMOJI.lost} לא רלוונטי`, callback_data: `lead:${id}:lost` },
+      { text: "⏰ דחה", callback_data: `lead:${id}:snooze` },
+    ],
+    [
       { text: "📜 היסטוריה", callback_data: `lead:${id}:history` },
     ],
   ];
+  // WhatsApp-source leads get a live take-over / hand-back relay row. This is the
+  // human-in-the-loop control: take-over silences the bot and pipes the customer's
+  // messages to the pressing rep's Telegram; hand-back returns the AI bot.
+  if (isWhatsappLead(lead)) {
+    rows.push([
+      { text: "🤝 השתלט ושוחח כאן", callback_data: `lead:${id}:takeover` },
+      { text: "🤖 החזר לבוט", callback_data: `lead:${id}:handback` },
+    ]);
+  }
   const actionRow: TgInlineKeyboard["inline_keyboard"][number] = [];
   if (lead.claimed_by) {
     actionRow.push({ text: `👤 בטיפול: ${lead.claimed_by}`.slice(0, 60), callback_data: `lead:${id}:claimed` });
@@ -294,6 +385,9 @@ export function formatTimeline(lead: Lead, events: LeadEvent[]): string {
       }
       case "note":
         lines.push(`📝 ${at} — ${who}: ${esc(String(ev.note ?? "").slice(0, 200))}`);
+        break;
+      case "snooze":
+        lines.push(`⏰ ${at} — ${who} דחה את התזכורת`);
         break;
       case "undo":
         lines.push(`↩️ ${at} — ${who} שחזר ל"${esc(STATUS_HE[String(ev.new_status ?? "")] ?? String(ev.new_status ?? ""))}"`);

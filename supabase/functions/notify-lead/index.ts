@@ -1,7 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// notify-lead — חוסך
+// notify-lead — Switchy AI
 // The team's Telegram "digital rep". Fired by a Postgres trigger on every
 // INSERT into public.leads AND public.meetings ({ table: 'meetings', record });
 // also serves the bot's webhook and chat commands.
@@ -24,6 +24,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 import type { Cfg, Lead, MeetingRow, TgUpdate } from "../_shared/types.ts";
 import { botFullyConfigured, resolveCfgCached, safeEqual, tgWebhookToken } from "../_shared/config.ts";
+import { rateLimit, secretFingerprint } from "../_shared/ratelimit.ts";
 import { sendTelegram, tgApi } from "../_shared/telegram.ts";
 import { fetchRows, rpcRows, serviceFetch } from "../_shared/db.ts";
 import { sendEmail } from "../_shared/email.ts";
@@ -33,10 +34,12 @@ import { buildMeetingText, meetingKeyboard } from "../_shared/meetings.ts";
 import { buildReturningLine, type PriorLead, type PriorMeeting } from "../_shared/agenda.ts";
 import { zoomConfigured } from "../_shared/zoom.ts";
 import { gcalConfigured } from "../_shared/google_calendar.ts";
+import { appendRow, buildLeadSheetRow, sheetsConfigured } from "../_shared/google_sheets.ts";
 import { aiTriage } from "./triage.ts";
 import { BOT_COMMANDS } from "./commands.ts";
 import { handleCallback, handleTeamMessage } from "./callbacks.ts";
 import { handleConsoleAct, handleConsoleData, renderConsoleHtml } from "./console.ts";
+import { captureError } from "../_shared/observability.ts";
 
 // Stamp the row as notified so the sweep doesn't re-send it. Fail-soft: a
 // missed stamp costs at most one duplicate message.
@@ -69,20 +72,38 @@ async function returningLineFor(
   return buildReturningLine(priorLeads, priorMeetings);
 }
 
-function json(body: unknown, status = 200): Response {
+function json(body: unknown, status = 200, extraHeaders?: Record<string, string>): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*" },
+    headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*", ...(extraHeaders ?? {}) },
   });
+}
+
+// Light per-route throttle, applied ONLY after a request has authenticated, so
+// it can never weaken the secret gate or be tripped by attacker-chosen pre-auth
+// input. Authenticated POST traffic here is a handful of trigger-driven lead /
+// meeting INSERTs and Telegram updates per minute; the cap sits far above that
+// so real bursts pass and only a runaway loop / leaked-secret flood gets a 429.
+// The bucket key is the route plus a non-reversible fingerprint of the secret —
+// never the raw secret. Returns a 429 Response when over the cap, else null.
+const RL_LIMIT = 120; // authenticated requests per route per window
+const RL_WINDOW_MS = 60_000; // 1 minute
+async function rateLimited(route: string, secret: string): Promise<Response | null> {
+  const fp = await secretFingerprint(secret);
+  const res = rateLimit(`notify-lead:${route}:${fp}`, RL_LIMIT, RL_WINDOW_MS);
+  if (res.allowed) return null;
+  jlog({ at: "rate-limit", fn: "notify-lead", route, secret_fp: fp, retry_after: res.retryAfterSec });
+  return json({ ok: false, error: "rate_limited" }, 429, { "Retry-After": String(res.retryAfterSec) });
 }
 
 // One compact "are the integrations wired?" object, surfaced both in ?action=health
 // and in the console-data payload (the console health strip renders it). Booleans
 // only — never the secret values themselves.
-export function integrationsStatus(cfg: Cfg): { zoom: boolean; calendar: boolean; email: boolean; telegram: boolean } {
+export function integrationsStatus(cfg: Cfg): { zoom: boolean; calendar: boolean; sheets: boolean; email: boolean; telegram: boolean } {
   return {
     zoom: zoomConfigured(cfg),
     calendar: gcalConfigured(cfg),
+    sheets: sheetsConfigured(cfg),
     email: !!cfg.resend,
     telegram: !!cfg.tgToken,
   };
@@ -103,7 +124,7 @@ async function leadsGrantProbe(): Promise<"ok" | "forbidden" | "error"> {
   }
 }
 
-Deno.serve(async (req: Request) => {
+async function handle(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*", "Access-Control-Allow-Methods": "GET, POST, OPTIONS" } });
   }
@@ -184,21 +205,27 @@ Deno.serve(async (req: Request) => {
       const cmds = await tgApi(cfg, "setMyCommands", { commands: BOT_COMMANDS });
       // bot profile: what new team members see before the first message
       await tgApi(cfg, "setMyDescription", {
-        description: "הנציג הדיגיטלי של חוסך — מקבל כל ליד בזמן אמת עם כפתורי סטטוס, שולח תזכורות חכמות, ומפיק דוחות. שלחו /help לרשימת הפקודות.",
+        description: "הנציג הדיגיטלי של Switchy AI — מקבל כל ליד בזמן אמת עם כפתורי סטטוס, שולח תזכורות חכמות, ומפיק דוחות. שלחו /help לרשימת הפקודות.",
       });
-      await tgApi(cfg, "setMyShortDescription", { short_description: "ניהול הלידים של חוסך בטלגרם" });
-      // Menu button → the rep console Mini App (one tap in the chat).
-      const menu = await tgApi(cfg, "setChatMenuButton", {
-        menu_button: {
-          type: "web_app",
-          text: "לוח הפגישות",
-          web_app: { url: `${base}/functions/v1/notify-lead?action=console` },
-        },
-      });
+      await tgApi(cfg, "setMyShortDescription", { short_description: "ניהול הלידים של Switchy AI בטלגרם" });
+      // The Mini App web_app menu button was unreliable in-group; the board now
+      // lives NATIVELY in chat. Reset the menu button to the default commands list
+      // and post a one-tap inline button (callback_data "board:today") into the
+      // team chat — tapping it posts the native meetings board. Posting needs a
+      // configured team chat; skip gracefully (and report) when it's unset.
+      const menu = await tgApi(cfg, "setChatMenuButton", { menu_button: { type: "commands" } });
+      const boardButton = cfg.tgChat
+        ? await sendTelegram(
+          cfg,
+          "📋 <b>לוח הפגישות של Switchy AI</b> — הקישו לפתיחת הלוח בצ׳אט (פגישות היום, ממתינות והשבוע, עם כפתורי אישור/דחייה).",
+          { inline_keyboard: [[{ text: "📋 פתח את לוח הפגישות", callback_data: "board:today" }]] },
+        )
+        : { ok: false, error: "telegram chat not configured" };
       return json({
         ...r,
         commands_registered: cmds.ok,
-        menu_button_set: menu.ok,
+        menu_button_reset: menu.ok,
+        board_button_posted: boardButton.ok,
         webhook_url: hookUrl,
         note: "getUpdates (?action=telegram-chats) is disabled while a webhook is set — delete-telegram-webhook re-enables it.",
       });
@@ -215,6 +242,11 @@ Deno.serve(async (req: Request) => {
     if (!cfg.webhookSecret || !(await safeEqual(token, await tgWebhookToken(cfg.webhookSecret)))) {
       return json({ ok: false, error: "unauthorized" }, 401);
     }
+    // Throttle authenticated Telegram updates (post-auth, so a forged/unsigned
+    // flood is already shed by the 401 above). Real updates are a few presses /
+    // messages per minute — well under the cap.
+    const limited = await rateLimited("telegram-update", cfg.webhookSecret);
+    if (limited) return limited;
     // Fail-close: refuse to act on team chat / callback updates unless the bot
     // is fully configured — an empty allowlist or unset team chat would mean the
     // authorization gates default to "deny everyone", so dispatching is pointless
@@ -256,6 +288,13 @@ Deno.serve(async (req: Request) => {
   if (!cfg.webhookSecret) return json({ ok: false, error: "webhook secret not configured" }, 503);
   if (!(await safeEqual(provided, cfg.webhookSecret))) return json({ ok: false, error: "unauthorized" }, 401);
 
+  // Authenticated → throttle the expensive fan-out path (triage + Telegram +
+  // email). The lead/meeting INSERT triggers fire a handful of times per minute
+  // at most; the cap is well above that, so this only sheds a runaway loop or a
+  // leaked-secret flood.
+  const limited = await rateLimited("webhook", cfg.webhookSecret);
+  if (limited) return limited;
+
   let payload: Record<string, unknown> = {};
   try { payload = await req.json(); } catch (_) { /* empty body */ }
 
@@ -280,14 +319,33 @@ Deno.serve(async (req: Request) => {
   const returningLine = lead.id ? await returningLineFor(lead.phone, "leads", lead.id) : "";
 
   const triage = await aiTriage(cfg, lead);
-  const [tg, email] = await Promise.all([
+  // Sheets row-logging runs alongside the Telegram/email sends — it is fully
+  // fail-soft (appendRow returns { ok:false }, never throws), so a logging miss
+  // can NEVER change the tg/email outcome below. Best-effort, off when unconfigured.
+  const [tg, email, sheet] = await Promise.all([
     sendTelegram(cfg, returningLine + buildText(lead, triage), leadKeyboard(lead, triage.draft)),
-    sendEmail(cfg, "🔔 פנייה חדשה — חוסך", buildHtml(lead, triage)),
+    sendEmail(cfg, "🔔 פנייה חדשה — Switchy AI", buildHtml(lead, triage)),
+    appendRow(cfg, "Leads!A:K", buildLeadSheetRow(lead)),
   ]);
   // stamp only on Telegram success: an email-only delivery has no interactive
   // card, so the sweep should keep retrying the chat path
   if (tg.ok) await markNotified("leads", lead.id);
-  jlog({ at: "notify", lead: lead.id, telegram: tg.ok, email: email.ok, hot: triage.score >= 4 });
+  jlog({ at: "notify", lead: lead.id, telegram: tg.ok, email: email.ok, sheet: sheet.ok, hot: triage.score >= 4 });
 
   return json({ ok: tg.ok || email.ok, telegram: { ok: tg.ok, error: tg.error }, email });
+}
+
+// Observability wrapper (fire-and-forget; dark until a Sentry DSN is configured).
+// An UNEXPECTED throw outside handle's own fail-soft paths (config resolve, a
+// trigger fan-out, a Telegram-update dispatch) is surfaced to captureError and
+// degraded to a 503 in the function's existing { ok:false, error } shape — never a
+// new status/body. captureError is NOT awaited and never throws/blocks.
+Deno.serve(async (req: Request) => {
+  try {
+    return await handle(req);
+  } catch (e) {
+    captureError(e, { fn: "notify-lead", method: req.method });
+    jlog({ at: "notify-lead", ok: false, error: String(e) });
+    return json({ ok: false, error: "temporarily unavailable" }, 503);
+  }
 });

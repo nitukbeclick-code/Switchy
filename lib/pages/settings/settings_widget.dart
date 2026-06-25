@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/app_snackbar.dart';
+import '../../widgets/app_sheet.dart';
 import '../../core/nav.dart';
 import '../../app_state.dart';
 import '../../services/auth_service.dart';
 import '../../services/telegram_service.dart';
 import '../../widgets/app_button.dart';
+import '../../widgets/sticky_cta_scaffold.dart';
 
 class SettingsWidget extends StatelessWidget {
   const SettingsWidget({super.key});
@@ -18,22 +21,21 @@ class SettingsWidget extends StatelessWidget {
     final ffTheme = AppTheme.of(context);
     final appState = Provider.of<AppState>(context);
 
-    return Scaffold(
-      backgroundColor: ffTheme.background,
-      appBar: AppBar(
-        title: Text('הגדרות', style: ffTheme.titleLarge.copyWith(color: ffTheme.primaryText)),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        foregroundColor: ffTheme.primaryText,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_forward_ios_rounded),
-          tooltip: 'חזרה',
-          onPressed: () => context.safePop(),
-        ),
+    final appBar = AppBar(
+      title: Text('הגדרות', style: ffTheme.titleLarge.copyWith(color: ffTheme.primaryText)),
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      foregroundColor: ffTheme.primaryText,
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_forward_ios_rounded),
+        tooltip: 'חזרה',
+        onPressed: () => context.safePop(),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        child: Column(
+    );
+
+    final scrollBody = SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 8),
@@ -49,7 +51,10 @@ class SettingsWidget extends StatelessWidget {
                     title: 'התראות מחיר',
                     subtitle: 'קבל עדכון כשמחיר חבילה משתנה',
                     value: appState.prefPriceAlerts,
-                    onChanged: (v) => Provider.of<AppState>(context, listen: false).setPrefPriceAlerts(v),
+                    onChanged: (v) {
+                      HapticFeedback.selectionClick();
+                      Provider.of<AppState>(context, listen: false).setPrefPriceAlerts(v);
+                    },
                     ffTheme: ffTheme,
                   ),
                   _Divider(ffTheme: ffTheme),
@@ -58,7 +63,10 @@ class SettingsWidget extends StatelessWidget {
                     title: 'עדכוני בקשות',
                     subtitle: 'קבל התראה על סטטוס הבקשה שלך',
                     value: appState.prefRequestUpdates,
-                    onChanged: (v) => Provider.of<AppState>(context, listen: false).setPrefRequestUpdates(v),
+                    onChanged: (v) {
+                      HapticFeedback.selectionClick();
+                      Provider.of<AppState>(context, listen: false).setPrefRequestUpdates(v);
+                    },
                     ffTheme: ffTheme,
                   ),
                   _Divider(ffTheme: ffTheme),
@@ -67,7 +75,10 @@ class SettingsWidget extends StatelessWidget {
                     title: 'פעילות קהילה',
                     subtitle: 'קבל עדכונים על פוסטים ותגובות',
                     value: appState.prefCommunityNotifs,
-                    onChanged: (v) => Provider.of<AppState>(context, listen: false).setPrefCommunityNotifs(v),
+                    onChanged: (v) {
+                      HapticFeedback.selectionClick();
+                      Provider.of<AppState>(context, listen: false).setPrefCommunityNotifs(v);
+                    },
                     ffTheme: ffTheme,
                   ),
                   _Divider(ffTheme: ffTheme),
@@ -185,7 +196,10 @@ class SettingsWidget extends StatelessWidget {
                     _ThemeSegmented(
                       ffTheme: ffTheme,
                       mode: appState.themeMode,
-                      onChanged: (m) => Provider.of<AppState>(context, listen: false).setThemeMode(m),
+                      onChanged: (m) {
+                        HapticFeedback.selectionClick();
+                        Provider.of<AppState>(context, listen: false).setThemeMode(m);
+                      },
                     ),
                   ],
                 ),
@@ -220,7 +234,7 @@ class SettingsWidget extends StatelessWidget {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('חוסך', style: ffTheme.titleMedium.copyWith(color: ffTheme.primaryText)),
+                            Text('Switchy AI', style: ffTheme.titleMedium.copyWith(color: ffTheme.primaryText)),
                             Text('השוואת מחירי תקשורת בישראל', style: ffTheme.bodySmall),
                           ],
                         ),
@@ -255,53 +269,77 @@ class SettingsWidget extends StatelessWidget {
               ),
             ).animate().fadeIn(delay: 320.ms, duration: 350.ms).slideY(begin: 0.06, end: 0),
 
-            const SizedBox(height: 24),
-
-            // ── Logout button (logged-in only) ────────────────────────────
-            if (appState.isLoggedIn)
-              AppButton(
-                text: 'התנתקות',
-                color: ffTheme.error,
-                width: double.infinity,
-                onPressed: () async {
-                  final confirmed = await showDialog<bool>(
-                    context: context,
-                    builder: (ctx) => AlertDialog(
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                      title: const Text('התנתקות', textAlign: TextAlign.center),
-                      content: const Text('האם להתנתק מהחשבון?', textAlign: TextAlign.center),
-                      actionsAlignment: MainAxisAlignment.center,
-                      actions: [
-                        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('ביטול')),
-                        ElevatedButton(
-                          onPressed: () => Navigator.pop(ctx, true),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: ffTheme.error,
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                          ),
-                          child: const Text('התנתק'),
-                        ),
-                      ],
-                    ),
-                  );
-                  if (confirmed == true && context.mounted) {
-                    await AuthService.instance.signOut();
-                    if (!context.mounted) return;
-                    Provider.of<AppState>(context, listen: false).logout();
-                    context.goNamed('Home');
-                  }
-                },
-              ).animate().fadeIn(delay: 300.ms, duration: 350.ms),
-
+            // The logout CTA is pinned to the bottom (StickyCtaScaffold) instead
+            // of scrolling with the list, so leave only breathing room here.
             const SizedBox(height: 32),
           ],
         ),
-      ),
+      );
+
+    // Logged-in users get the logout CTA pinned above the scrolling list via
+    // StickyCtaScaffold; guests keep the plain scaffold (no CTA bar). Either way
+    // the page body and every setting render identically.
+    if (appState.isLoggedIn) {
+      return StickyCtaScaffold(
+        appBar: appBar,
+        body: scrollBody,
+        cta: AppButton(
+          text: 'התנתקות',
+          color: ffTheme.error,
+          width: double.infinity,
+          onPressed: () => _confirmLogout(context),
+        ).animate().fadeIn(delay: 300.ms, duration: 350.ms),
+      );
+    }
+
+    return Scaffold(
+      backgroundColor: ffTheme.background,
+      appBar: appBar,
+      body: scrollBody,
     );
   }
 
-  void _confirmAction({
+  /// Logout confirm — an AppSheet bottom-sheet (primary destructive + secondary
+  /// cancel) replacing the old centred AlertDialog. On confirm it signs out,
+  /// clears AppState, and returns Home (unchanged behaviour).
+  Future<void> _confirmLogout(BuildContext context) async {
+    final ffTheme = AppTheme.of(context);
+    final confirmed = await AppSheet.show<bool>(
+      context,
+      title: 'התנתקות',
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('האם להתנתק מהחשבון?', style: ffTheme.bodyMedium),
+          const SizedBox(height: 16),
+          AppButton(
+            text: 'התנתק',
+            color: ffTheme.error,
+            width: double.infinity,
+            onPressed: () async => Navigator.pop(context, true),
+          ),
+          const SizedBox(height: 8),
+          AppButton.secondary(
+            text: 'ביטול',
+            width: double.infinity,
+            onPressed: () async => Navigator.pop(context, false),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && context.mounted) {
+      await AuthService.instance.signOut();
+      if (!context.mounted) return;
+      Provider.of<AppState>(context, listen: false).logout();
+      context.goNamed('Home');
+    }
+  }
+
+  /// Generic destructive confirm — an AppSheet bottom-sheet (primary confirm in
+  /// [confirmColor] + secondary cancel) replacing the old AlertDialog. Runs
+  /// [onConfirm] only when the user taps the confirm action.
+  Future<void> _confirmAction({
     required BuildContext context,
     required AppTheme ffTheme,
     required String title,
@@ -309,28 +347,32 @@ class SettingsWidget extends StatelessWidget {
     required String confirmLabel,
     required Color confirmColor,
     required VoidCallback onConfirm,
-  }) {
-    showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(title, textAlign: TextAlign.center),
-        content: Text(message, textAlign: TextAlign.center),
-        actionsAlignment: MainAxisAlignment.center,
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('ביטול')),
-          ElevatedButton(
-            onPressed: () { Navigator.pop(ctx, true); onConfirm(); },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: confirmColor,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-            child: Text(confirmLabel),
+  }) async {
+    final confirmed = await AppSheet.show<bool>(
+      context,
+      title: title,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(message, style: ffTheme.bodyMedium),
+          const SizedBox(height: 16),
+          AppButton(
+            text: confirmLabel,
+            color: confirmColor,
+            width: double.infinity,
+            onPressed: () async => Navigator.pop(context, true),
+          ),
+          const SizedBox(height: 8),
+          AppButton.secondary(
+            text: 'ביטול',
+            width: double.infinity,
+            onPressed: () async => Navigator.pop(context, false),
           ),
         ],
       ),
     );
+    if (confirmed == true && context.mounted) onConfirm();
   }
 
   void _showSnack(BuildContext context, String message) {
@@ -674,20 +716,14 @@ class _TelegramRowState extends State<_TelegramRow> {
       if (await canLaunchUrl(deepLink)) {
         await launchUrl(deepLink, mode: LaunchMode.externalApplication);
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('טלגרם נפתח. שלח /start כדי להתחבר')),
-        );
+        AppSnackBar.info(context, 'טלגרם נפתח. שלח /start כדי להתחבר');
       } else {
         if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('לא ניתן לפתוח את טלגרם. אנא תקנו אותו תחילה.')),
-        );
+        AppSnackBar.error(context, 'לא ניתן לפתוח את טלגרם. אנא תקנו אותו תחילה.');
       }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('שגיאה: $e')),
-      );
+      AppSnackBar.error(context, 'שגיאה: $e');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -700,41 +736,49 @@ class _TelegramRowState extends State<_TelegramRow> {
       final appState = Provider.of<AppState>(context, listen: false);
       final success = await TelegramService.testConnection(appState.userTelegramChatId);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(success ? '✅ ההודעה נשלחה בהצלחה!' : '❌ כשל בשליחת הודעה. אנא נסה שוב.'),
-        ),
-      );
+      if (success) {
+        AppSnackBar.success(context, '✅ ההודעה נשלחה בהצלחה!');
+      } else {
+        AppSnackBar.error(context, '❌ כשל בשליחת הודעה. אנא נסה שוב.');
+      }
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('שגיאה: $e')),
-      );
+      AppSnackBar.error(context, 'שגיאה: $e');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
   }
 
   Future<void> _disconnectTelegram() async {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('ניתוק טלגרם'),
-        content: const Text('האם אתה בטוח שברצונך לנתק את חשבון הטלגרם שלך?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('ביטול')),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              final appState = Provider.of<AppState>(context, listen: false);
-              appState.clearTelegramData();
-              setState(() {});
-            },
-            child: Text('נתק', style: TextStyle(color: widget.ffTheme.error)),
+    final ffTheme = widget.ffTheme;
+    final confirmed = await AppSheet.show<bool>(
+      context,
+      title: 'ניתוק טלגרם',
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text('האם אתה בטוח שברצונך לנתק את חשבון הטלגרם שלך?', style: ffTheme.bodyMedium),
+          const SizedBox(height: 16),
+          AppButton(
+            text: 'נתק',
+            color: ffTheme.error,
+            width: double.infinity,
+            onPressed: () async => Navigator.pop(context, true),
+          ),
+          const SizedBox(height: 8),
+          AppButton.secondary(
+            text: 'ביטול',
+            width: double.infinity,
+            onPressed: () async => Navigator.pop(context, false),
           ),
         ],
       ),
     );
+    if (confirmed == true && mounted) {
+      Provider.of<AppState>(context, listen: false).clearTelegramData();
+      setState(() {});
+    }
   }
 
   @override

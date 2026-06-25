@@ -4,6 +4,8 @@ import {
   priceUnitShort,
   ils,
   leadCategory,
+  providerBrandColor,
+  providerInitials,
 } from "@/lib/format";
 import type { Plan } from "@/lib/types";
 
@@ -83,5 +85,49 @@ describe("leadCategory", () => {
     expect(leadCategory("electricity")).toBeUndefined();
     expect(leadCategory("gibberish")).toBeUndefined();
     expect(leadCategory(undefined)).toBeUndefined();
+  });
+});
+
+describe("providerBrandColor — the carrier's OWN brand hue (avatar)", () => {
+  it("returns each known provider's real brand color (NOT the app accent)", () => {
+    expect(providerBrandColor("סלקום")).toBe("#0098DA");
+    expect(providerBrandColor("פרטנר")).toBe("#00B5A5");
+    expect(providerBrandColor("פלאפון")).toBe("#E5202E");
+    // None of them is ever the app's green/amber accent palette.
+    for (const name of ["סלקום", "פרטנר", "פלאפון"]) {
+      expect(providerBrandColor(name).toLowerCase()).not.toBe("#16a34a");
+      expect(providerBrandColor(name).toLowerCase()).not.toBe("#f59e0b");
+    }
+  });
+
+  it("trims surrounding whitespace before lookup", () => {
+    expect(providerBrandColor("  סלקום  ")).toBe("#0098DA");
+  });
+
+  it("falls back to a neutral ink (never blank) for unknown providers", () => {
+    expect(providerBrandColor("ספק לא ידוע")).toBe("#374151");
+    expect(providerBrandColor("")).toBe("#374151");
+  });
+});
+
+describe("providerInitials — avatar monogram", () => {
+  it("uses the first character of a single-word Hebrew name", () => {
+    expect(providerInitials("סלקום")).toBe("ס");
+  });
+
+  it("uses the first character of each of the first two words", () => {
+    expect(providerInitials("גולן טלקום")).toBe("גט");
+    expect(providerInitials("הוט מובייל")).toBe("המ");
+  });
+
+  it("upper-cases latin handles", () => {
+    expect(providerInitials("yes")).toBe("Y");
+    expect(providerInitials("STING TV")).toBe("ST");
+    expect(providerInitials("NextTV")).toBe("N");
+  });
+
+  it("is resilient to empty / whitespace input", () => {
+    expect(providerInitials("")).toBe("?");
+    expect(providerInitials("   ")).toBe("?");
   });
 });

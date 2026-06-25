@@ -27,6 +27,10 @@ import StickyLeadCta from "@/components/StickyLeadCta";
 import RelatedLinks from "@/components/RelatedLinks";
 import type { RelatedLinkGroup } from "@/components/RelatedLinks";
 import LeadForm from "@/components/LeadForm";
+import AeoAnswerBlock from "@/components/AeoAnswerBlock";
+import AeoQA from "@/components/AeoQA";
+import DataMethodology from "@/components/DataMethodology";
+import LlmDataFeed from "@/components/LlmDataFeed";
 import {
   getServices,
   serviceBySlug,
@@ -46,12 +50,26 @@ import {
   placeSchema,
   geoSchema,
   relatedLinksSchema,
+  pageAggregateOfferSchema,
+  speakableSchema,
 } from "@/lib/schema";
 import type { NavLink, QA } from "@/lib/schema";
 import { pageMetadata } from "@/lib/seo";
 import { ils, leadCategory } from "@/lib/format";
+import { getLivePlans } from "@/lib/live-catalogue";
+import {
+  directAnswerFor,
+  pageQuestions,
+  lastDataDate,
+  type AeoQuestion,
+} from "@/lib/aeo";
 
 // Bounded matrix: every service × every city, pre-rendered at build time.
+// Unknown service/city combos -> real 404 (we only serve the curated matrix).
+export const dynamicParams = false;
+// ISR: regenerate hourly so the live DB catalogue (prices, direct answer, table,
+// JSON-LD) stays fresh on every geo page while still serving instantly.
+export const revalidate = 3600;
 export function generateStaticParams() {
   const cities = getCities();
   return getServices().flatMap((s) =>
@@ -114,8 +132,7 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
 
 // A factual, HONEST 40–50 word Hebrew localized conclusion. It states national
 // availability up front (truthful) and names the real cheapest plan.
-function buildSummary(svc: Service, c: City): string {
-  const plans = plansForService(svc.slug);
+function buildSummary(svc: Service, c: City, plans: Plan[]): string {
   const providerNames = [...new Set(plans.map((p) => p.provider))];
   const cheapest = cheapestOf(plans);
   const min = cheapest?.price ?? 0;
@@ -136,8 +153,9 @@ function cheapestBy(plans: Plan[], pred: (p: Plan) => boolean): Plan | undefined
 function buildAuthority(
   svc: Service,
   c: City,
+  plansIn: Plan[],
 ): { answer: string; rows: { factor: string; winner: string; reason: string }[] } {
-  const plans = [...plansForService(svc.slug)];
+  const plans = [...plansIn];
   const cheapest = cheapestBy(plans, () => true);
   const cheapestNoCommit = cheapestBy(plans, (p) => p.noCommit);
   const cheapest5G = cheapestBy(plans, (p) => p.is5G);
@@ -187,8 +205,7 @@ function buildAuthority(
 
 // HONEST local FAQ: the questions a real resident would ask, answered truthfully —
 // the key answer is "availability is national; price does not vary by city".
-function buildLocalFaq(svc: Service, c: City): QA[] {
-  const plans = plansForService(svc.slug);
+function buildLocalFaq(svc: Service, c: City, plans: Plan[]): QA[] {
   const providerCount = new Set(plans.map((p) => p.provider)).size;
   const cheapest = cheapestOf(plans);
 
@@ -289,22 +306,61 @@ export default async function ServiceCityPage({ params }: Params) {
   const c = cityBySlug(city);
   if (!svc || !c) notFound();
 
-  const plans = plansForService(service);
-  const summary = buildSummary(svc, c);
-  const authority = buildAuthority(svc, c);
-  const faqs = buildLocalFaq(svc, c);
+  // ── ONE source of truth per render ──────────────────────────────────────────
+  // Read the live catalogue ONCE (scoped to this service's category) and thread
+  // the SAME plan list through the table, the AEO answer/Q&A, the LLM feed and
+  // every JSON-LD block. getLivePlans falls back to the bundled snapshot
+  // (stale: true) on any failure and never throws.
+  const { plans: livePlans, stale, lastUpdated } = await getLivePlans({
+    category: svc.categories[0],
+  });
+  const plans = livePlans.length ? livePlans : plansForService(service);
+  const asOf = lastUpdated ?? lastDataDate(plans);
+
+  // AEO surfaces, all from the SAME `plans`. The city is threaded so the direct
+  // answer/feed honestly note national availability (same plans everywhere).
+  const directAnswer = directAnswerFor(service, c.name, plans);
+  const questions: AeoQuestion[] = pageQuestions(service, plans);
+
+  const summary = buildSummary(svc, c, plans);
+  const authority = buildAuthority(svc, c, plans);
+  const faqs = buildLocalFaq(svc, c, plans);
   const relatedGroups = buildRelatedGroups(svc, c);
   const cats = new Set(svc.categories);
   const svcProviders = getProviders().filter((pr) =>
     pr.categories.some((cat) => cats.has(cat)),
   );
 
+  const pagePath = `/compare/${service}/${city}`;
   const crumbs = [
     { name: "בית", url: "/" },
     { name: "השוואה", url: "/compare" },
     { name: svc.label, url: `/compare/${service}` },
-    { name: c.name, url: `/compare/${service}/${city}` },
+    { name: c.name, url: pagePath },
   ];
+
+  // AEO JSON-LD, derived from the SAME `plans` + `questions` so structured data
+  // never disagrees with the visible answer/table. null-returning builders are
+  // filtered out before render. NOTE: indexing of mobile/abroad city pages is
+  // governed by generateMetadata's robots (unchanged) — emitting honest
+  // structured data here is independent of, and does not override, that.
+  // Single FAQPage for the whole page: the honest local Qs + the data-derived AEO
+  // Qs, deduped by question text (both sets are rendered visibly: `faqs` in the
+  // FAQ section, `questions` in <AeoQA>), so one FAQPage node mirrors all visible
+  // Q&A rather than emitting two competing FAQPage entities.
+  const faqSeen = new Set<string>();
+  const allFaqs: QA[] = [...faqs, ...questions].filter((qa) => {
+    if (faqSeen.has(qa.question)) return false;
+    faqSeen.add(qa.question);
+    return true;
+  });
+
+  const aeoJsonLd = [
+    pageAggregateOfferSchema(plans),
+    directAnswer
+      ? speakableSchema(["#aeo-answer [data-direct-answer]", "h1"])
+      : null,
+  ].filter(Boolean) as Record<string, unknown>[];
 
   // Place schema for the city, enriched with the real administrative district as
   // a containedInPlace AdministrativeArea (honest public data).
@@ -319,6 +375,26 @@ export default async function ServiceCityPage({ params }: Params) {
 
   return (
     <main id="main" className="mx-auto w-full max-w-5xl flex-1 px-4 py-10 sm:px-6">
+      {/* Page-scoped entrance reveal (Emil Kowalski rules): a single fade + lift on
+          the header so the page settles in crisply. Server CSS only (no JS),
+          references the shared --ease-out token, animates ONLY transform + opacity.
+          Reduced-motion removes the animation so the header renders statically at
+          its resting (fully visible) state. */}
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
+        .sw-reveal { animation: swReveal 420ms var(--ease-out) both; }
+        @keyframes swReveal {
+          from { opacity: 0; transform: translateY(10px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .sw-reveal { animation: none; }
+        }
+      `,
+        }}
+      />
+
       {/* GEO structured data: CollectionPage + Place/GeoCoordinates/AdminArea +
           ItemList + FAQ + Breadcrumb + KnowledgeGraph. Each plan's Product data is
           serialized ONCE in the standalone ItemList and once more (entity-linked)
@@ -335,7 +411,8 @@ export default async function ServiceCityPage({ params }: Params) {
       <JsonLd data={place} />
       <JsonLd data={geo} />
       <JsonLd data={itemListSchema(plans)} />
-      <JsonLd data={faqPageSchema(faqs)} />
+      {/* ONE FAQPage mirroring all visible Q&A (local FAQ + AEO Q&A, deduped). */}
+      <JsonLd data={faqPageSchema(allFaqs)} />
       <JsonLd data={breadcrumbSchema(crumbs)} />
       <JsonLd
         data={knowledgeGraphSchema({
@@ -359,6 +436,18 @@ export default async function ServiceCityPage({ params }: Params) {
         });
         return nav ? <JsonLd data={nav} /> : null;
       })()}
+      {/* AEO structured data from the SAME `plans`: page-level AggregateOffer + a
+          speakable spec for the direct-answer node + H1. (The FAQPage is emitted
+          once above, merged with the local FAQ.) */}
+      {aeoJsonLd.map((data, i) => (
+        <JsonLd key={`aeo-${i}`} data={data} />
+      ))}
+      {/* Machine-readable LLM data feed: one compact JSON snapshot of the real
+          plans, city-tagged (availability still national). */}
+      <LlmDataFeed
+        plans={plans}
+        meta={{ service, city: c.name, url: pagePath, asOf, stale }}
+      />
 
       {/* ── Breadcrumb (visible) ──────────────────────────────────────────── */}
       <nav aria-label="פירורי לחם" className="text-sm text-muted">
@@ -374,16 +463,32 @@ export default async function ServiceCityPage({ params }: Params) {
       </nav>
 
       {/* ── Heading ───────────────────────────────────────────────────────── */}
+      {/* Conversational, intent-matching H1 (the real local query "what's the
+          cheapest <service> in <city>?") — answered directly by the AEO block. */}
       <header className="mt-3">
-        <h1 className="font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
-          {svc.label} ב{c.name}
+        <h1 className="sw-reveal font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
+          מהו מסלול ה{svc.label} הזול ביותר ב{c.name}?
         </h1>
-        <p className="mt-4 max-w-2xl text-lg leading-relaxed text-foreground">
+        <p
+          className="sw-reveal mt-4 max-w-2xl text-lg leading-relaxed text-foreground"
+          style={{ animationDelay: "60ms" }}
+        >
           הזמינות ארצית — אותם ספקים ומסלולי {svc.label} זמינים ב{c.name}
           {" "}({c.district}) כמו בכל הארץ, ובאותם מחירים. {plans.length} מסלולים,
           ממוינים מהזול ליקר.
         </p>
       </header>
+
+      {/* ── AEO zero-click direct answer (right below the H1) ──────────────── */}
+      {directAnswer && (
+        <div className="mt-6">
+          <AeoAnswerBlock
+            answer={directAnswer}
+            dateModified={asOf}
+            stale={stale}
+          />
+        </div>
+      )}
 
       {/* ── SGE summary ───────────────────────────────────────────────────── */}
       <div className="mt-8">
@@ -411,6 +516,15 @@ export default async function ServiceCityPage({ params }: Params) {
         />
         <PriceCaveat className="mt-3" />
       </section>
+
+      {/* ── AEO conversational Q&A (data-derived; part of the page's FAQPage) ── */}
+      {questions.length > 0 && (
+        <AeoQA
+          questions={questions}
+          heading={`שאלות ותשובות — ${svc.label}`}
+          className="mt-10"
+        />
+      )}
 
       {/* ── Honest local nuance note ──────────────────────────────────────── */}
       <section
@@ -463,6 +577,14 @@ export default async function ServiceCityPage({ params }: Params) {
           ))}
         </div>
       </section>
+
+      {/* ── Sources & methodology (E-E-A-T "show your work") ───────────────── */}
+      <DataMethodology
+        dateModified={asOf}
+        stale={stale}
+        planCount={plans.length}
+        className="mt-12"
+      />
 
       {/* ── Lead form ─────────────────────────────────────────────────────── */}
       <section id="lead" aria-labelledby="lead-h" className="mt-20 scroll-mt-6">

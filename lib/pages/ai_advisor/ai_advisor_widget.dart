@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -10,13 +11,20 @@ import '../../data.dart';
 import '../../models.dart';
 import '../../components/plan_card/plan_card_widget.dart';
 import '../../services/advisor_engine.dart';
+import '../../services/edge_advisor.dart';
 import '../../services/savings_summary.dart';
 import '../../services/provider_ratings.dart';
 import '../../services/backend/local_backend.dart';
+import '../../widgets/app_button.dart';
+import '../../widgets/app_sheet.dart';
 import '../../widgets/pressable.dart';
 
 class AIAdvisorWidget extends StatefulWidget {
-  const AIAdvisorWidget({super.key});
+  const AIAdvisorWidget({super.key, this.edgeAdvisor});
+
+  /// Injectable edge-agent client — tests pass a fake (mocked HTTP); production
+  /// leaves it null and the state builds one over [appBackend.aiChat].
+  final EdgeAdvisor? edgeAdvisor;
 
   @override
   State<AIAdvisorWidget> createState() => _AIAdvisorWidgetState();
@@ -28,13 +36,18 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
   bool _isTyping = false;
   late List<_ChatMsg> _messages;
 
+  /// The live edge agent (site-ai-chat) over the backend invoker. The on-device
+  /// [AdvisorEngine] is the offline fallback when this throws.
+  late final EdgeAdvisor _edge =
+      widget.edgeAdvisor ?? EdgeAdvisor(invoker: appBackend.aiChat);
+
   List<_ChatMsg> _buildSeed() {
     final appState = AppState();
     final String greeting;
     if (appState.isLoggedIn && appState.firstName.isNotEmpty && appState.firstName != 'אורח') {
-      greeting = 'שלום ${appState.firstName}! אני חוסך AI\nיועץ התקשורת החכם שלך.\n\nמה מחפשים?';
+      greeting = 'שלום ${appState.firstName}! אני Switchy AI\nיועץ התקשורת החכם שלך.\n\nמה מחפשים?';
     } else {
-      greeting = 'שלום! אני חוסך AI\nיועץ התקשורת החכם שלך.\n\nמה מחפשים?';
+      greeting = 'שלום! אני Switchy AI\nיועץ התקשורת החכם שלך.\n\nמה מחפשים?';
     }
     return [_ChatMsg(text: greeting, isUser: false, time: DateTime.now())];
   }
@@ -70,8 +83,12 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
 
   Future<void> _send(String text) async {
     if (text.trim().isEmpty || _isTyping) return;
+    HapticFeedback.lightImpact();
     _inputCtrl.clear();
     final appState = Provider.of<AppState>(context, listen: false);
+    // Snapshot the prior transcript BEFORE adding this turn, so the edge agent
+    // gets the conversation up to (not including) the new message.
+    final history = _edgeHistory();
     appState.addAdvisorMessage(text: text, isUser: true);
     setState(() {
       _messages.add(_ChatMsg(text: text, isUser: true, time: DateTime.now()));
@@ -79,34 +96,61 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
     });
     _scrollToBottom();
 
-    final typingDelay = 800 + (text.length * 12).clamp(0, 800);
-    await Future.delayed(Duration(milliseconds: typingDelay));
-
-    // The advisor's "brain" lives in the pure AdvisorEngine — intent
-    // classification, provider/category/filter/budget detection, the plan
-    // pipeline and every Hebrew reply branch. The widget only builds the
-    // context from AppState and renders the result.
-    final reply = AdvisorEngine.respondTo(text, context: _advisorContext(appState));
-    final topPlans = reply.planIds.map((id) => planById(id)).whereType<Plan>().toList();
-
-    if (mounted) {
-      appState.addAdvisorMessage(text: reply.text, isUser: false);
-      setState(() {
-        _isTyping = false;
-        _messages.add(_ChatMsg(
-          text: reply.text,
-          isUser: false,
-          time: DateTime.now(),
-          planIds: topPlans.map((p) => p.id).toList(),
-          cat: reply.category,
-        ));
-      });
+    // 1) Try the live, grounded edge agent (site-ai-chat) — multi-turn via the
+    //    persisted session id. 2) On ANY failure (offline, edge not configured,
+    //    non-2xx, timeout) fall back to the on-device AdvisorEngine, which also
+    //    renders plan cards and deep-links. The user always gets an answer.
+    _ChatMsg? botMsg;
+    try {
+      final res = await _edge.respond(
+        text,
+        history: history,
+        sessionId: appState.advisorSessionId,
+      );
+      if (res.sessionId != null) appState.setAdvisorSessionId(res.sessionId);
+      botMsg = _ChatMsg(
+        text: res.reply,
+        isUser: false,
+        time: DateTime.now(),
+        offerLead: res.offerLead,
+        contextTruncated: res.contextTruncated,
+      );
+    } catch (_) {
+      // Offline fallback: the pure AdvisorEngine classifies intent, detects
+      // provider/category/filter/budget, runs the plan pipeline and builds the
+      // Hebrew reply — fully on-device, no network.
+      final typingDelay = 300 + (text.length * 8).clamp(0, 500);
+      await Future.delayed(Duration(milliseconds: typingDelay));
+      final reply = AdvisorEngine.respondTo(text, context: _advisorContext(appState));
+      final topPlans = reply.planIds.map((id) => planById(id)).whereType<Plan>().toList();
+      botMsg = _ChatMsg(
+        text: reply.text,
+        isUser: false,
+        time: DateTime.now(),
+        planIds: topPlans.map((p) => p.id).toList(),
+        cat: reply.category,
+        fromFallback: true,
+      );
       for (final p in topPlans) {
         appBackend.trackPlanView(planId: p.id, provider: p.provider, category: p.cat).catchError((_) {});
       }
     }
+
+    if (mounted) {
+      appState.addAdvisorMessage(text: botMsg.text, isUser: false);
+      setState(() {
+        _isTyping = false;
+        _messages.add(botMsg!);
+      });
+    }
     _scrollToBottom();
   }
+
+  /// The transcript replayed to the edge agent (oldest→newest), excluding the
+  /// turn currently being sent. The engine trims this to its window.
+  List<AdvisorTurn> _edgeHistory() => _messages
+      .map((m) => AdvisorTurn(role: m.isUser ? 'user' : 'bot', text: m.text))
+      .toList();
 
   /// Build the pure [AdvisorContext] the engine needs from the live [AppState]:
   /// per-category bills, the browsed category, the watchlist, the quiz/preference
@@ -203,7 +247,7 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('חוסך AI', style: GoogleFonts.rubik(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
+                Text('Switchy AI', style: GoogleFonts.rubik(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white)),
                 Row(
                   children: [
                     Container(
@@ -230,14 +274,27 @@ class _AIAdvisorWidgetState extends State<AIAdvisorWidget> {
             icon: const Icon(Icons.delete_sweep_rounded),
             tooltip: 'נקה שיחה',
             onPressed: () async {
-              final confirmed = await showDialog<bool>(
-                context: context,
-                builder: (ctx) => AlertDialog(
-                  title: Text('נקה שיחה', style: AppTheme.of(context).titleMedium),
-                  content: Text('לנקות את השיחה?', style: AppTheme.of(context).bodyMedium),
-                  actions: [
-                    TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('ביטול')),
-                    TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('נקה')),
+              final confirmed = await AppSheet.show<bool>(
+                context,
+                title: 'נקה שיחה',
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text('לנקות את השיחה?', style: ffTheme.bodyMedium),
+                    const SizedBox(height: 16),
+                    AppButton(
+                      text: 'נקה',
+                      color: ffTheme.error,
+                      width: double.infinity,
+                      onPressed: () async => Navigator.pop(context, true),
+                    ),
+                    const SizedBox(height: 8),
+                    AppButton.secondary(
+                      text: 'ביטול',
+                      width: double.infinity,
+                      onPressed: () async => Navigator.pop(context, false),
+                    ),
                   ],
                 ),
               );
@@ -380,7 +437,29 @@ class _ChatMsg {
   final DateTime time;
   final List<String> planIds;
   final String cat;
-  const _ChatMsg({required this.text, required this.isUser, required this.time, this.planIds = const [], this.cat = 'cellular'});
+
+  /// True when this bot reply came from the on-device fallback (no live edge
+  /// agent) — the bubble badges it "מצב לא מקוון".
+  final bool fromFallback;
+
+  /// True when the edge agent detected a switch/contact intent — the bubble
+  /// offers a hand-off to a rep (lead capture happens on that screen, with
+  /// consent — never here).
+  final bool offerLead;
+
+  /// True when older turns fell outside the model's context window.
+  final bool contextTruncated;
+
+  const _ChatMsg({
+    required this.text,
+    required this.isUser,
+    required this.time,
+    this.planIds = const [],
+    this.cat = 'cellular',
+    this.fromFallback = false,
+    this.offerLead = false,
+    this.contextTruncated = false,
+  });
   String? get planId => planIds.isNotEmpty ? planIds.first : null;
 }
 
@@ -398,6 +477,18 @@ class _MessageBubble extends StatelessWidget {
       child: Column(
         crossAxisAlignment: msg.isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
         children: [
+          if (!msg.isUser && msg.fromFallback) ...[
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.cloud_off_rounded, size: 13, color: ffTheme.secondaryText),
+                const SizedBox(width: 4),
+                Text('מצב לא מקוון — תשובה מהמכשיר',
+                    style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText)),
+              ],
+            ),
+            const SizedBox(height: 4),
+          ],
           Row(
             mainAxisAlignment: msg.isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
             children: [
@@ -501,6 +592,43 @@ class _MessageBubble extends StatelessWidget {
                 ],
               ],
             ),
+          ],
+          // Edge agent offered a hand-off (genuine switch/contact intent): a
+          // single honest CTA into the rep flow. Lead capture (with consent)
+          // happens on the callback screen — never silently here.
+          if (!msg.isUser && msg.offerLead && msg.planIds.isEmpty) ...[
+            const SizedBox(height: 8),
+            Semantics(
+              button: true,
+              label: 'דברו עם נציג',
+              child: Pressable(
+                onTap: () => context.pushNamed('Callback'),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    gradient: ffTheme.accentGradient,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: ffTheme.shadowAccent,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.support_agent_rounded, size: 14, color: Colors.white),
+                      const SizedBox(width: 5),
+                      Text('דברו עם נציג — חינם',
+                          style: ffTheme.labelSmall
+                              .copyWith(color: Colors.white, fontWeight: FontWeight.w700)),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+          if (!msg.isUser && msg.contextTruncated) ...[
+            const SizedBox(height: 6),
+            Text('הערה: חלק מההודעות הקודמות מחוץ לזיכרון השיחה הנוכחי.',
+                style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText),
+                textDirection: TextDirection.rtl),
           ],
         ],
       ),

@@ -53,7 +53,7 @@ class MeetingStatusCard extends StatelessWidget {
   /// time, title, and (if known) the Zoom join link.
   Future<void> _addToCalendar(BuildContext context, DateTime start) async {
     final end = start.add(const Duration(minutes: 30));
-    final details = StringBuffer('פגישת וידאו של 30 דקות עם נציג חוסך.');
+    final details = StringBuffer('פגישת וידאו של 30 דקות עם נציג Switchy AI.');
     if (meeting.provider != null && meeting.provider!.isNotEmpty) {
       details.write('\nספק: ${meeting.provider}');
     }
@@ -62,7 +62,7 @@ class MeetingStatusCard extends StatelessWidget {
     }
     final uri = Uri.https('calendar.google.com', '/calendar/render', {
       'action': 'TEMPLATE',
-      'text': 'פגישת וידאו עם נציג חוסך',
+      'text': 'פגישת וידאו עם נציג Switchy AI',
       'dates': '${_calStamp(start)}/${_calStamp(end)}',
       'ctz': 'Asia/Jerusalem',
       'details': details.toString(),

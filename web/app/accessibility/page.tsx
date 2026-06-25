@@ -11,7 +11,7 @@
 //     signed compliance certificate, because none is verified here.
 // RESPONSIBLE PARTY: at the current scale of activity (turnover < 1M ₪) a formal
 // accessibility COORDINATOR is not mandatory; the responsible party is named as the
-// team ("צוות Switch AI (חוסך)") with real contacts, plus a complaint/feedback
+// team ("צוות Switchy AI") with real contacts, plus a complaint/feedback
 // mechanism that commits to handling accessibility issues within 60 days. The date
 // is the real last review. No unverified compliance claim is asserted (no "fully
 // compliant"/"certified"). MUST be reviewed by the owner / an accessibility
@@ -30,7 +30,7 @@ const LAST_REVIEWED = "2026-06-23";
 export const metadata: Metadata = pageMetadata({
   title: "הצהרת נגישות",
   description:
-    "הצהרת הנגישות של חוסך / Switch AI: רמת הנגישות הנוכחית של האתר, ההתאמות " +
+    "הצהרת הנגישות של Switchy AI: רמת הנגישות הנוכחית של האתר, ההתאמות " +
     "שבוצעו, מגבלות ידועות, וכיצד לדווח על תקלת נגישות או לבקש סיוע.",
   path: "/accessibility",
 });
@@ -97,10 +97,10 @@ export default function AccessibilityPage() {
       paras: [
         "בהיקף הפעילות הנוכחי של השירות לא חלה חובה למנות רכז נגישות ייעודי. עם " +
           "זאת, אנו רואים בנגישות אחריות שלנו: הגורם האחראי לטיפול בנושאי נגישות " +
-          "באתר הוא צוות Switch AI (חוסך), שניתן לפנות אליו ישירות בערוצים הבאים:",
+          "באתר הוא צוות Switchy AI, שניתן לפנות אליו ישירות בערוצים הבאים:",
       ],
       items: [
-        "הגורם האחראי: צוות Switch AI (חוסך)",
+        "הגורם האחראי: צוות Switchy AI",
         "דוא״ל: hello@chosech.co.il",
         "וואטסאפ: 050-503-7537",
       ],
@@ -131,9 +131,29 @@ export default function AccessibilityPage() {
 
   return (
     <main id="main" className="mx-auto w-full max-w-3xl flex-1 px-4 py-10 sm:px-6">
+      {/* Page-scoped entrance motion (Emil Kowalski rules): a one-time fade + 10px
+          lift, staggered 30–80ms via inline animationDelay. Server-rendered CSS
+          only (no JS) — references the shared --ease-out token and animates ONLY
+          transform + opacity (GPU). Reduced-motion: the animation is removed so
+          blocks render statically at their already-visible resting state. */}
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
+        .sw-reveal { animation: swReveal 420ms var(--ease-out) both; }
+        @keyframes swReveal {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: none; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .sw-reveal { animation: none; }
+        }
+      `,
+        }}
+      />
+
       <JsonLd
         data={webPageSchema({
-          name: "הצהרת נגישות — חוסך / Switch AI",
+          name: "הצהרת נגישות — Switchy AI",
           description:
             "רמת הנגישות הנוכחית של האתר, ההתאמות שבוצעו, מגבלות ידועות, וכיצד " +
             "לדווח על תקלת נגישות.",
@@ -154,14 +174,20 @@ export default function AccessibilityPage() {
       </nav>
 
       <header className="mt-4">
-        <h1 className="font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
+        <h1 className="sw-reveal font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
           הצהרת נגישות
         </h1>
-        <p className="mt-4 max-w-2xl text-lg leading-relaxed text-foreground">
+        <p
+          className="sw-reveal mt-4 max-w-2xl text-lg leading-relaxed text-foreground"
+          style={{ animationDelay: "60ms" }}
+        >
           אנו מחויבים להנגיש את האתר לכלל המשתמשים. כאן מפורטים מצב הנגישות
           הנוכחי, ההתאמות שבוצעו, מגבלות ידועות, וכיצד לפנות אלינו לקבלת סיוע.
         </p>
-        <p className="mt-5 inline-flex items-center gap-2 rounded-full border border-border/60 bg-surface/70 px-3 py-1 text-sm text-muted backdrop-blur supports-[backdrop-filter]:bg-surface/60">
+        <p
+          className="sw-reveal mt-5 inline-flex items-center gap-2 rounded-full border border-border/60 bg-surface/70 px-3 py-1 text-sm text-muted backdrop-blur supports-[backdrop-filter]:bg-surface/60"
+          style={{ animationDelay: "120ms" }}
+        >
           <span
             aria-hidden="true"
             className="inline-block h-1.5 w-1.5 rounded-full bg-accent"
@@ -172,11 +198,12 @@ export default function AccessibilityPage() {
       </header>
 
       <div className="mt-12 space-y-5 sm:space-y-6">
-        {sections.map((s) => (
+        {sections.map((s, i) => (
           <section
             key={s.h}
             aria-labelledby={`s-${s.h}`}
-            className="bento p-6 sm:p-8"
+            className="sw-reveal bento p-6 sm:p-8"
+            style={{ animationDelay: `${Math.min(i * 50, 250)}ms` }}
           >
             <h2
               id={`s-${s.h}`}
@@ -205,14 +232,14 @@ export default function AccessibilityPage() {
           ראו גם את{" "}
           <Link
             href="/privacy"
-            className="text-accent-text hover:text-accent-hover"
+            className="interactive text-accent-text hover:text-accent-hover"
           >
             מדיניות הפרטיות
           </Link>{" "}
           ואת{" "}
           <Link
             href="/terms"
-            className="text-accent-text hover:text-accent-hover"
+            className="interactive text-accent-text hover:text-accent-hover"
           >
             תנאי השימוש
           </Link>

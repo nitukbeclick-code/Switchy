@@ -11,7 +11,7 @@ const LAST_REVIEWED = "2026-06-22";
 export const metadata: Metadata = pageMetadata({
   title: "שקיפות ומתודולוגיה",
   description:
-    "איך חוסך / Switch AI אוסף ומאמת נתונים, איך נקבעת בחירת העורך, ולמה כל מסלול " +
+    "איך Switchy AI אוסף ומאמת נתונים, איך נקבעת בחירת העורך, ולמה כל מסלול " +
     "מקודם מסומן בגלוי. מדיניות שקיפות מלאה — ללא ביקורות מומצאות ובלי דירוג סמוי.",
   path: "/transparency",
 });
@@ -95,6 +95,26 @@ export default function TransparencyPage() {
 
   return (
     <main id="main" className="mx-auto w-full max-w-3xl flex-1 px-4 py-10 sm:px-6">
+      {/* Page-scoped entrance motion (Emil Kowalski rules): a one-time fade + 10px
+          lift, staggered 30–80ms via inline animationDelay. Server-rendered CSS
+          only (no JS) — references the shared --ease-out token and animates ONLY
+          transform + opacity (GPU). Reduced-motion: the animation is removed so
+          blocks render statically at their already-visible resting state. */}
+      <style
+        dangerouslySetInnerHTML={{
+          __html: `
+        .sw-reveal { animation: swReveal 420ms var(--ease-out) both; }
+        @keyframes swReveal {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: none; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .sw-reveal { animation: none; }
+        }
+      `,
+        }}
+      />
+
       <JsonLd data={transparencyPageSchema()} />
       <JsonLd data={breadcrumbSchema(crumbs)} />
 
@@ -108,15 +128,21 @@ export default function TransparencyPage() {
       </nav>
 
       <header className="mt-4">
-        <h1 className="font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
+        <h1 className="sw-reveal font-display text-3xl font-bold tracking-tight text-ink sm:text-4xl">
           שקיפות ומתודולוגיה
         </h1>
-        <p className="mt-4 max-w-2xl text-lg leading-relaxed text-foreground">
+        <p
+          className="sw-reveal mt-4 max-w-2xl text-lg leading-relaxed text-foreground"
+          style={{ animationDelay: "60ms" }}
+        >
           אנו מאמינים שהשוואה שווה רק אם היא הוגנת ושקופה. כאן מפורט איך אנו
           אוספים ומאמתים נתונים, איך נקבעת בחירת העורך, ולמה כל תוכן מקודם מסומן
           בגלוי.
         </p>
-        <p className="mt-5 inline-flex items-center gap-2 rounded-full border border-border/60 bg-surface/70 px-3 py-1 text-sm text-muted backdrop-blur supports-[backdrop-filter]:bg-surface/60">
+        <p
+          className="sw-reveal mt-5 inline-flex items-center gap-2 rounded-full border border-border/60 bg-surface/70 px-3 py-1 text-sm text-muted backdrop-blur supports-[backdrop-filter]:bg-surface/60"
+          style={{ animationDelay: "120ms" }}
+        >
           <span
             aria-hidden="true"
             className="inline-block h-1.5 w-1.5 rounded-full bg-accent"
@@ -127,11 +153,12 @@ export default function TransparencyPage() {
       </header>
 
       <div className="mt-12 space-y-5 sm:space-y-6">
-        {sections.map((s) => (
+        {sections.map((s, i) => (
           <section
             key={s.h}
             aria-labelledby={`s-${s.h}`}
-            className="bento p-6 sm:p-8"
+            className="sw-reveal bento p-6 sm:p-8"
+            style={{ animationDelay: `${Math.min(i * 50, 250)}ms` }}
           >
             <h2
               id={`s-${s.h}`}
@@ -151,12 +178,18 @@ export default function TransparencyPage() {
       <aside className="mt-12 border-t border-border/40 pt-8 text-sm text-muted">
         <p>
           רוצים לראות את הנתונים בצורה מובנית? עיינו ב
-          <Link href="/api/llm-feed" className="text-accent-text hover:text-accent-hover">
+          <Link
+            href="/api/llm-feed"
+            className="interactive text-accent-text hover:text-accent-hover"
+          >
             {" "}
             מפה הסמנטית (JSON)
           </Link>{" "}
           או ב
-          <Link href="/glossary" className="text-accent-text hover:text-accent-hover">
+          <Link
+            href="/glossary"
+            className="interactive text-accent-text hover:text-accent-hover"
+          >
             מילון המונחים
           </Link>
           .

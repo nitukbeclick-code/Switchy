@@ -20,9 +20,21 @@ const _meetingChannelId = 'meeting_reminders';
 const _meetingChannelName = 'תזכורות פגישה';
 const _meetingChannelDesc = 'תזכורת לפני פגישת וידאו עם נציג';
 
+const _dealChannelId = 'price_drops';
+const _dealChannelName = 'ירידות מחיר';
+const _dealChannelDesc = 'התראה כשמסלול שעניין אותך יורד במחיר';
+
 /// Meeting notification ids live above this offset so they never collide with
 /// the renewal reminders (indexed 0..n).
 const _meetingIdBase = 1000;
+
+/// Price-drop notifications live above the meeting band so an immediate "show
+/// now" alert never overwrites a scheduled renewal/meeting reminder.
+const _dealIdBase = 2000;
+int _dealSeq = 0;
+
+/// Payload prefix that routes a tapped price-drop notification to the Deals feed.
+const _dealPayloadPrefix = 'deal';
 
 bool get _isMobile =>
     defaultTargetPlatform == TargetPlatform.iOS || defaultTargetPlatform == TargetPlatform.android;
@@ -52,10 +64,14 @@ Future<void> initPush() async {
 void _onTap(NotificationResponse response) {
   final id = response.payload;
   if (id == null || id.isEmpty) return;
-  // Meeting reminders land on the meeting screen; renewal reminders deep-link
-  // into the tracked plan's renewal report.
+  // Meeting reminders land on the meeting screen; price drops land on the deals
+  // feed; renewal reminders deep-link into the tracked plan's renewal report.
   if (id == 'meeting') {
     appRouterInstance?.goNamed('Meeting');
+    return;
+  }
+  if (id == _dealPayloadPrefix || id.startsWith('$_dealPayloadPrefix:')) {
+    appRouterInstance?.goNamed('Deals');
     return;
   }
   appRouterInstance?.goNamed('RenewalReport', pathParameters: {'trackedId': id});
@@ -143,4 +159,30 @@ Future<void> scheduleAll(
       payload: m.payload,
     );
   }
+}
+
+/// Show an immediate (un-scheduled) notification — used for live price drops,
+/// which arrive in real time rather than on a known date. Tapping it routes to
+/// the Deals feed via [_onTap]. No-op off mobile. Does NOT cancel anything, so
+/// it never disturbs the scheduled renewal/meeting reminders.
+Future<void> showNow({required String title, required String body}) async {
+  if (!_isMobile) return;
+  _ensureTz();
+  const details = NotificationDetails(
+    android: AndroidNotificationDetails(
+      _dealChannelId,
+      _dealChannelName,
+      channelDescription: _dealChannelDesc,
+      importance: Importance.high,
+      priority: Priority.high,
+    ),
+    iOS: DarwinNotificationDetails(),
+  );
+  await _plugin.show(
+    id: _dealIdBase + (_dealSeq++),
+    title: title,
+    body: body,
+    notificationDetails: details,
+    payload: _dealPayloadPrefix,
+  );
 }

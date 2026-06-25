@@ -59,11 +59,15 @@ class InfoBanner extends StatelessWidget {
 
     return Container(
       padding: padding,
-      decoration: BoxDecoration(
+      // Route through the shared soft card surface so the banner gets the
+      // two-layer ink-tinted shadow + 1px top glass-glint instead of a hard
+      // 1px rectangle. The hairline keeps the accent tint it had before — a
+      // low-opacity edge in the banner's own accent colour — so each variant
+      // (tip / notice / hint) still reads with its hue.
+      decoration: ffTheme.cardDecoration(
         color: bg,
-        borderRadius: BorderRadius.circular(borderRadius),
-        border: Border.all(color: accent.withValues(alpha: 0.12)),
-        boxShadow: ffTheme.shadowSoft,
+        radius: borderRadius,
+        borderColor: accent.withValues(alpha: 0.12),
       ),
       child: Row(
         crossAxisAlignment:

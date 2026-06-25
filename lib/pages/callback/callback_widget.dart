@@ -374,21 +374,25 @@ class _CallbackWidgetState extends State<CallbackWidget> {
   Widget _buildTopicChips(AppTheme ffTheme) {
     Widget chip(String t) {
       final active = _topic == t;
-      return GestureDetector(
-        onTap: () => setState(() => _topic = t),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          decoration: BoxDecoration(
-            color: active ? ffTheme.brandAccent : ffTheme.cardSurface,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: active ? ffTheme.brandAccent : ffTheme.alternate),
-            boxShadow: active ? [BoxShadow(color: ffTheme.brandAccent.withValues(alpha: 0.28), blurRadius: 10, offset: const Offset(0, 3))] : [],
+      return Semantics(
+        button: true,
+        selected: active,
+        child: GestureDetector(
+          onTap: () => setState(() => _topic = t),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: active ? ffTheme.brandAccent : ffTheme.cardSurface,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: active ? ffTheme.brandAccent : ffTheme.alternate),
+              boxShadow: active ? [BoxShadow(color: ffTheme.brandAccent.withValues(alpha: 0.28), blurRadius: 10, offset: const Offset(0, 3))] : [],
+            ),
+            child: Text(t, style: ffTheme.labelMedium.copyWith(
+              color: active ? Colors.white : ffTheme.primaryText,
+              fontWeight: active ? FontWeight.w700 : FontWeight.w500,
+            )),
           ),
-          child: Text(t, style: ffTheme.labelMedium.copyWith(
-            color: active ? Colors.white : ffTheme.primaryText,
-            fontWeight: active ? FontWeight.w700 : FontWeight.w500,
-          )),
         ),
       );
     }
@@ -434,24 +438,31 @@ class _CallbackWidgetState extends State<CallbackWidget> {
         final t = _timings[i];
         final active = _timing == t;
         return Expanded(
-          child: GestureDetector(
-            onTap: () => setState(() => _timing = t),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              margin: EdgeInsetsDirectional.only(end: i < _timings.length - 1 ? 8 : 0),
-              padding: const EdgeInsets.symmetric(vertical: 10),
-              decoration: BoxDecoration(
-                color: active ? ffTheme.brandAccent : ffTheme.cardSurface,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: active ? ffTheme.brandAccent : ffTheme.alternate),
-                boxShadow: active ? [BoxShadow(color: ffTheme.brandAccent.withValues(alpha: 0.28), blurRadius: 10, offset: const Offset(0, 3))] : [],
-              ),
-              child: Column(
-                children: [
-                  Icon(icons[i], size: 18, color: active ? Colors.white : ffTheme.secondaryText),
-                  const SizedBox(height: 4),
-                  Text(t, style: ffTheme.labelSmall.copyWith(color: active ? Colors.white : ffTheme.primaryText, fontWeight: active ? FontWeight.w700 : FontWeight.w500, fontSize: 11)),
-                ],
+          child: Semantics(
+            button: true,
+            selected: active,
+            container: true,
+            excludeSemantics: true,
+            label: 'זמן מועדף: $t',
+            child: GestureDetector(
+              onTap: () => setState(() => _timing = t),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                margin: EdgeInsetsDirectional.only(end: i < _timings.length - 1 ? 8 : 0),
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(
+                  color: active ? ffTheme.brandAccent : ffTheme.cardSurface,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: active ? ffTheme.brandAccent : ffTheme.alternate),
+                  boxShadow: active ? [BoxShadow(color: ffTheme.brandAccent.withValues(alpha: 0.28), blurRadius: 10, offset: const Offset(0, 3))] : [],
+                ),
+                child: Column(
+                  children: [
+                    ExcludeSemantics(child: Icon(icons[i], size: 18, color: active ? Colors.white : ffTheme.secondaryText)),
+                    const SizedBox(height: 4),
+                    Text(t, style: ffTheme.labelSmall.copyWith(color: active ? Colors.white : ffTheme.primaryText, fontWeight: active ? FontWeight.w700 : FontWeight.w500, fontSize: 11)),
+                  ],
+                ),
               ),
             ),
           ),
@@ -514,21 +525,35 @@ class _CallbackWidgetState extends State<CallbackWidget> {
                 ),
               ).animate().fadeIn(delay: 450.ms),
               const SizedBox(height: 32),
-              AppButton(
-                text: 'מעקב אחר התהליך',
-                onPressed: () async => context.goNamed('Tracker'),
-                
+              // Primary onward CTA. The tracker only has content once the user
+              // has tracked a plan — a callback request alone doesn't create
+              // one. So when the tracker is empty, sending them there is a
+              // dead-end; route them to browse plans instead.
+              if (AppState().myPlans.isNotEmpty)
+                AppButton(
+                  text: 'מעקב אחר התהליך',
+                  onPressed: () async => context.goNamed('Tracker'),
                   width: 240,
                   height: 52,
                   color: AppColors.primary,
                   textStyle: ffTheme.titleSmall.copyWith(color: Colors.white),
                   borderRadius: BorderRadius.circular(14),
-                
-              ).animate().fadeIn(delay: 500.ms),
+                ).animate().fadeIn(delay: 500.ms)
+              else
+                AppButton(
+                  text: 'בינתיים, עיינו במסלולים',
+                  onPressed: () async => context.goNamed('Results'),
+                  width: 260,
+                  height: 52,
+                  color: AppColors.primary,
+                  textStyle: ffTheme.titleSmall.copyWith(color: Colors.white),
+                  borderRadius: BorderRadius.circular(14),
+                ).animate().fadeIn(delay: 500.ms),
               const SizedBox(height: 12),
               TextButton(
-                onPressed: () => context.safePop(),
-                child: Text('חזרה', style: ffTheme.bodyMedium.copyWith(color: ffTheme.secondaryText)),
+                onPressed: () => context.goNamed('Home'),
+                child: Text('חזרה לדף הבית',
+                    style: ffTheme.bodyMedium.copyWith(color: ffTheme.secondaryText)),
               ).animate().fadeIn(delay: 600.ms),
             ],
           ),

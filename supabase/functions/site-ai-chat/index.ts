@@ -1,28 +1,35 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 // ─────────────────────────────────────────────────────────────────────────────
-// site-ai-chat — חוסך AI  (Track 2E: lead capture + memory + grounding)
+// site-ai-chat — Switchy AI  (now routed through the SHARED agent)
 //
-// Public chat endpoint behind the "חוסך AI" widget on app.html. Three pillars:
+// Public chat endpoint behind the "Switchy AI" widget on app.html. As of the
+// agent-platform work this function no longer carries its own grounding /
+// generation logic — it delegates to the ONE shared brain so the site, the app
+// and WhatsApp can never drift:
 //
-//  1. GROUNDING — answers are STRICTLY grounded in the real plan catalogue
-//     (bundled plans-snapshot.json, the site/data/plans.json shape) via the
-//     shared _shared/catalogue.ts. The model only ever sees real rows, each
-//     tagged with a citation marker [Sn], and is instructed to cite [Sn] and to
-//     OMIT/refuse when data is missing. It can never invent providers/prices.
+//   • _shared/agent.ts  runAgent({ channel:'site' })  — grounded, tool-using
+//     Gemini loop (cited [Sn] catalogue + search/recommend/get_provider/…),
+//     degrading gracefully to a no-tools text chain and finally a template
+//     fallback (never hard-fails a customer message).
+//   • _shared/session.ts  loadSession/saveSession  — the unified ChatSession
+//     (transcript + toolCalls + slots) persisted in public.ai_sessions. This
+//     REPLACES the bespoke ai_sessions transcript merge this fn used to do.
+//   • _shared/tools.ts (via the agent) — consent-gated create_lead/book_callback
+//     route through ctx.captureLead → _shared/leads.ts captureAiLead, so the
+//     §30A/§11/§7b guarantees are enforced in ONE place.
 //
-//  2. MULTI-TURN MEMORY — when the client sends a sessionId we load the stored
-//     transcript from public.ai_sessions (service role), merge it with the
-//     browser-replayed history, answer, then persist the capped transcript. The
-//     conversation survives a reload. If the table isn't migrated yet this is a
-//     best-effort no-op (the chat still works statelessly via `history`).
-//
-//  3. LEAD CAPTURE — when the chat detects a genuine switch/contact intent it
-//     sets `offerLead:true` so the front-end can collect name+phone+CONSENT. If
-//     the client posts that structured `lead`, we capture it into public.leads
-//     via _shared/leads.ts — WITH proper consent (mandatory terms+privacy
-//     required; per-channel marketing opt-ins optional/default-off, Spam Law).
-//     Consent is NEVER fabricated; no consent ⇒ no capture.
+// WAVE-5 HARDENING PRESERVED (this fn still owns the public-edge guards):
+//   • Origin allowlist — corsHeaders(req)/preflight(req) reflect only an
+//     allowlisted Origin (a public, paid-LLM endpoint; `*` would let any site
+//     spend our quota).
+//   • Per-IP hourly rate-limit — fail-CLOSED on a DB error (503) so a Supabase
+//     outage can't turn the paid providers into an unmetered open relay.
+//   • Timeout → 504 — when every provider aborts on its timeout, the client
+//     gets a "try again" rather than a fake answer.
+//   • Oversized-payload / length guards before any (paid) AI work.
+//   • Consent-gated lead capture — a client-posted structured `lead` is captured
+//     ONLY with consent===true (captureAiLead gate); no consent ⇒ no write.
 //
 // POST {
 //   message: string,
@@ -31,17 +38,29 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 //   lead?: { name, phone, consent, consent_marketing_sms?, _email?, _whatsapp?,
 //            provider?, category?, notes? }   // captured only with consent===true
 // }
-//   -> { reply: string, offerLead?: boolean, leadCaptured?: boolean, sessionId?: string }
+//   -> { reply, offerLead?, leadCaptured?, contextTruncated?, sessionId? }
 //
 // Deploy: supabase functions deploy site-ai-chat --no-verify-jwt
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { firstEnv, resolveCfgCached } from "../_shared/config.ts";
-import { fetchRows, insertRow, serviceFetch } from "../_shared/db.ts";
+import { fetchRows, insertRow } from "../_shared/db.ts";
 import { jlog } from "../_shared/log.ts";
-import { type AiKeys, generateReply } from "../_shared/ai.ts";
-import { buildCitedCatalogueContext, type Plan, plansFromSnapshot } from "../_shared/catalogue.ts";
+import { type AiKeys } from "../_shared/ai.ts";
+import { corsHeaders, preflight } from "../_shared/cors.ts";
+import { type Plan, plansFromRows, plansFromSnapshot } from "../_shared/catalogue.ts";
 import { type AiLeadInput, captureAiLead, detectSwitchIntent } from "../_shared/leads.ts";
+import { runAgent } from "../_shared/agent.ts";
+import {
+  appendTurn,
+  asChatTurns,
+  type ChatSession,
+  loadSession,
+  recordToolCall,
+  safeSessionId,
+  saveSession,
+} from "../_shared/session.ts";
+import { captureError } from "../_shared/observability.ts";
 import plansSnapshot from "./plans-snapshot.json" with { type: "json" };
 
 const MAX_MESSAGE_LEN = 500;
@@ -50,47 +69,47 @@ const MAX_MESSAGE_LEN = 500;
 // still applies; this is the coarse "obviously abusive" gate.
 const MAX_INPUT_LEN = 2000;
 const MAX_HISTORY_TURNS = 6;
-// Stored transcript cap (12 entries ≈ 6 user+bot turns). The persisted memory is
-// bounded so a long chat can't bloat the row or the next prompt.
-const MAX_STORED_MESSAGES = 12;
-const MAX_OUTPUT_TOKENS = 350;
 const PER_IP_HOURLY_LIMIT = 15;
-const MAX_SESSION_ID_LEN = 64;
 
-function cors(extra: Record<string, string> = {}): Record<string, string> {
-  return { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*", ...extra };
-}
-
-function json(body: unknown, status = 200): Response {
+// CORS is per-request now: corsHeaders(req) reflects only an allowlisted Origin
+// (this is a public, paid-LLM endpoint — `*` would let any site spend our quota).
+function json(req: Request, body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { "Content-Type": "application/json", ...cors() },
+    headers: { "Content-Type": "application/json", ...corsHeaders(req) },
   });
 }
 
 type ChatTurn = { role: string; text: string };
 
-// Bundled at deploy time (the production site isn't fetched at runtime) — refresh
-// plans-snapshot.json from site/data/plans.json and redeploy when prices change.
-function loadPlans(): Plan[] {
-  return plansFromSnapshot(plansSnapshot);
+// Grounding catalogue — read LIVE from public.plans (the SAME service-role read
+// the WhatsApp/Telegram webhooks use) so the site agent never drifts from the
+// catalogue the other channels answer from. Cached in-memory for the instance
+// lifetime with a short TTL so a price change is picked up within a minute
+// without hammering PostgREST on every chat turn.
+//
+// FALLBACK: if the live read fails (fetchRows → null) OR returns no usable rows,
+// we fall back to the bundled plans-snapshot.json so an outage degrades to a
+// (possibly stale) grounded answer rather than an empty catalogue / hard fail.
+// The snapshot is the floor, never the default.
+const PLANS_TTL_MS = 60_000;
+let _plans: Plan[] | null = null;
+let _plansAt = 0;
+async function loadPlans(): Promise<Plan[]> {
+  const now = Date.now();
+  if (_plans && now - _plansAt < PLANS_TTL_MS) return _plans;
+  const rows = await fetchRows<Record<string, unknown>>(
+    "/rest/v1/plans?select=id,provider,category,price,price_unit,specs,subtitle,kind,title&limit=1000",
+  );
+  const live = rows ? plansFromRows(rows) : [];
+  // Snapshot fallback on a failed read or an empty live catalogue — never serve
+  // the agent an empty grounding when we have a bundled snapshot to fall back to.
+  const plans = live.length ? live : plansFromSnapshot(plansSnapshot);
+  if (!live.length) jlog({ at: "ai-chat.plans", live: live.length, fallback: "snapshot" });
+  _plans = plans;
+  _plansAt = now;
+  return plans;
 }
-
-// Grounded Hebrew system prompt: persona + hard rules + the cited catalogue. The
-// model only ever sees real rows ([Sn] markers), must cite them, and must OMIT
-// when a fact isn't in the list — the E-E-A-T / honesty guarantee.
-const SYSTEM_PROMPT_HEADER =
-  `את/ה "חוסך AI" — עוזר/ת וירטואלי/ת באתר חוסך, שירות ישראלי להשוואת מסלולי סלולר/אינטרנט/טלוויזיה/חבילה משולבת/חו"ל וחיסכון בחשבונות תקשורת.
-כללים מחייבים:
-- ענה/י בעברית בלבד, בקצרה (2-4 משפטים), בטון חם ומקצועי.
-- התבסס/י אך ורק על נתוני המסלולים שמופיעים למטה (כל שורה מסומנת ב-[Sn]). אסור להמציא ספק, מסלול, מחיר או תכונה שלא מופיעים ברשימה.
-- כשמציינים מסלול או מחיר ספציפי, צ_טט/י את המקור בסוגריים מרובעים בסוף המשפט, למשל [S3]. אם אין נתון שתומך בתשובה — אמר/י זאת בכנות ואל תמציא/י; הפנה/י לטופס "קבלו השוואה חינם" או לוואטסאפ.
-- אל תבטיח/י חיסכון מדויק לאדם ספציפי — רק טווחים כלליים שמבוססים על הנתונים.
-- אם המשתמש/ת רוצה לעבור ספק, לקבל הצעה אישית, שיחזרו אליו/ה, או לדבר עם נציג — עודד/י בעדינות להשאיר שם וטלפון כדי שנחזור עם השוואה (השירות חינמי, ללא התחייבות). אל תבקש/י פרטים רגישים אחרים.
-- אל תיתן/י מידע רגיש או לא קשור לתחום התקשורת/האתר.
-
-נתוני מסלולים אמיתיים (מקור | קטגוריה | ספק | מסלול | מחיר | תכונות):
-`;
 
 function clientIp(req: Request): string {
   // Same trust order as the leads rate-limit gate: CDN-set header first, then
@@ -119,15 +138,10 @@ async function rateLimited(ip: string): Promise<boolean | null> {
   return rows.length >= PER_IP_HOURLY_LIMIT;
 }
 
-// ── Multi-turn memory (public.ai_sessions, service role) ─────────────────────
-// A sane, length-bounded session id: clip + strip anything that isn't a safe
-// id char so it can't smuggle a PostgREST filter. Empty ⇒ memory disabled.
-function safeSessionId(raw: unknown): string {
-  const s = String(raw ?? "").trim().slice(0, MAX_SESSION_ID_LEN);
-  return /^[A-Za-z0-9_-]{6,64}$/.test(s) ? s : "";
-}
-
-function sanitizeTurns(raw: unknown): ChatTurn[] {
+// Sanitize the browser-replayed history into the {role,text} turns the session
+// layer expects. The stored session is authoritative for older turns; this only
+// fills the very-latest turns (and works when memory is disabled).
+export function sanitizeTurns(raw: unknown): ChatTurn[] {
   if (!Array.isArray(raw)) return [];
   return raw
     .filter((h) => h && typeof h === "object")
@@ -139,59 +153,43 @@ function sanitizeTurns(raw: unknown): ChatTurn[] {
     .filter((h) => h.text);
 }
 
-// Load the stored transcript for a session. Fail-soft: any error (table not
-// migrated, DB down) yields [] so the chat still works statelessly.
-async function loadSession(sessionId: string): Promise<ChatTurn[]> {
-  if (!sessionId) return [];
-  const rows = await fetchRows<{ messages?: unknown }>(
-    `/rest/v1/ai_sessions?select=messages&session_id=eq.${encodeURIComponent(sessionId)}&limit=1`,
-  );
-  if (!rows || rows.length === 0) return [];
-  return sanitizeTurns(rows[0].messages).slice(-MAX_STORED_MESSAGES);
-}
-
-// Persist the capped transcript (upsert on session_id). Best-effort: never
-// blocks or fails the reply.
-async function saveSession(sessionId: string, ip: string, turns: ChatTurn[]): Promise<void> {
-  if (!sessionId) return;
-  const messages = turns.slice(-MAX_STORED_MESSAGES);
-  try {
-    // PostgREST upsert: POST with on_conflict + merge-duplicates Prefer.
-    const r = await serviceFetch(
-      `/rest/v1/ai_sessions?on_conflict=session_id`,
-      {
-        method: "POST",
-        headers: { "Prefer": "resolution=merge-duplicates,return=minimal" },
-        body: JSON.stringify({
-          session_id: sessionId,
-          messages,
-          ip: ip || null,
-          updated_at: new Date().toISOString(),
-        }),
-      },
-    );
-    if (!r || !r.ok) jlog({ at: "ai-chat.saveSession", ok: false, status: r?.status });
-  } catch (e) {
-    jlog({ at: "ai-chat.saveSession", ok: false, error: String(e) });
+// Merge the stored transcript with the browser-replayed history: stored first
+// (authoritative), then any client turns not already present. Capped to the
+// window the model will actually see. Pure so it's unit-testable.
+export function mergeHistory(stored: ChatTurn[], clientHistory: ChatTurn[]): {
+  merged: ChatTurn[];
+  history: ChatTurn[];
+  contextTruncated: boolean;
+} {
+  const merged: ChatTurn[] = [...stored];
+  for (const h of clientHistory) {
+    if (!merged.some((m) => m.role === h.role && m.text === h.text)) merged.push(h);
   }
+  const history = merged.slice(-MAX_HISTORY_TURNS);
+  // Honesty signal: tell the client when older turns fell outside the window the
+  // model actually saw, so the UI can note the assistant has limited recall.
+  return { merged, history, contextTruncated: merged.length > history.length };
 }
 
 const FRIENDLY_BUSY = "שירות עמוס כרגע, נסו שוב בעוד רגע";
 const FALLBACK_REPLY =
   "מצטער/ת, לא הצלחתי לנסח תשובה כרגע — נסו לשאול אחרת או דברו איתנו בוואטסאפ.";
 
-Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") {
-    return new Response("ok", { headers: cors({ "Access-Control-Allow-Methods": "POST, OPTIONS" }) });
-  }
-  if (req.method !== "POST") return json({ error: "method not allowed" }, 405);
+// The real request logic. Wrapped by the Deno.serve handler below so any
+// UNEXPECTED throw is passed to captureError (fire-and-forget, dark until a DSN
+// exists) and STILL returns the existing fail-soft response — the status/shape
+// the front-end depends on is never changed by the wrapper.
+async function handle(req: Request): Promise<Response> {
+  if (req.method === "OPTIONS") return preflight(req);
+  if (req.method !== "POST") return json(req, { error: "method not allowed" }, 405);
 
   const geminiKey = (await resolveCfgCached()).gemini || firstEnv(["GEMINI_API_KEY", "GOOGLE_AI_KEY"]);
   const groqKey = firstEnv(["GROQ_API_KEY"]);
+  const cerebrasKey = firstEnv(["CEREBRAS_API_KEY"]);
   const openrouterKey = firstEnv(["OPENROUTER_API_KEY"]);
   // Configured if ANY provider in the fallback chain has a key.
-  if (!geminiKey && !groqKey && !openrouterKey) {
-    return json({ error: "ai chat is not configured" }, 503);
+  if (!geminiKey && !groqKey && !cerebrasKey && !openrouterKey) {
+    return json(req, { error: "ai chat is not configured" }, 503);
   }
 
   let body: {
@@ -203,23 +201,23 @@ Deno.serve(async (req: Request) => {
   try {
     body = await req.json();
   } catch (_) {
-    return json({ error: "invalid json" }, 400);
+    return json(req, { error: "invalid json" }, 400);
   }
   // Cheap abuse/cost guard: reject an oversized raw payload before any AI work.
   if (String(body.message ?? "").length > MAX_INPUT_LEN) {
-    return json({ error: "message too long" }, 400);
+    return json(req, { error: "message too long" }, 400);
   }
   const message = String(body.message ?? "").trim();
-  if (!message) return json({ error: "message is required" }, 400);
-  if (message.length > MAX_MESSAGE_LEN) return json({ error: "message too long" }, 400);
+  if (!message) return json(req, { error: "message is required" }, 400);
+  if (message.length > MAX_MESSAGE_LEN) return json(req, { error: "message too long" }, 400);
 
   const sessionId = safeSessionId(body.sessionId);
   const clientHistory = sanitizeTurns(body.history).slice(-MAX_HISTORY_TURNS);
 
   const ip = clientIp(req);
   const limited = await rateLimited(ip);
-  if (limited === null) return json({ error: FRIENDLY_BUSY }, 503);
-  if (limited) return json({ error: "rate limit exceeded" }, 429);
+  if (limited === null) return json(req, { error: FRIENDLY_BUSY }, 503);
+  if (limited) return json(req, { error: "rate limit exceeded" }, 429);
 
   // ── Lead capture (only with explicit consent) ──────────────────────────────
   // If the client posted a structured lead (collected after we offered), capture
@@ -232,48 +230,108 @@ Deno.serve(async (req: Request) => {
     jlog({ at: "ai-chat.lead", result });
   }
 
-  // ── Memory: stored transcript ⊕ browser-replayed history ───────────────────
-  // The stored session is authoritative for older turns; the client history
-  // covers the very latest (and works when memory is disabled). Merge by taking
-  // stored first, then any client turns not already present, capped.
-  const stored = await loadSession(sessionId);
-  const merged: ChatTurn[] = [...stored];
-  for (const h of clientHistory) {
-    if (!merged.some((m) => m.role === h.role && m.text === h.text)) merged.push(h);
-  }
-  const history = merged.slice(-MAX_HISTORY_TURNS);
+  // ── Memory: unified session ⊕ browser-replayed history ─────────────────────
+  // Load the stored ChatSession (transcript + toolCalls + slots) from
+  // public.ai_sessions via the shared session layer (fail-soft → empty session).
+  const session: ChatSession = await loadSession("site", sessionId);
+  const { history, contextTruncated } = mergeHistory(asChatTurns(session), clientHistory);
 
-  // ── Grounding: cited catalogue context ─────────────────────────────────────
-  const plans = loadPlans();
-  const systemPrompt = SYSTEM_PROMPT_HEADER + buildCitedCatalogueContext(plans);
+  // ── Tool-context sinks (real, audited, consent-gated) ──────────────────────
+  // The agent's tools route their side-effects through these. captureLead is the
+  // single honest-consent gate (captureAiLead); the audit sinks append best-effort
+  // crm_events / security_audit_log rows (service role bypasses RLS).
+  const logCrmEvent = (ev: { actor: string; event: string; preview?: string }) => {
+    const preview = (ev.preview ?? "").trim().replace(/\s+/g, " ").slice(0, 80) || null;
+    insertRow("crm_events", {
+      conversation_id: null,
+      contact_id: null,
+      actor: ev.actor,
+      event: ev.event,
+      preview,
+    }).catch(() => {});
+  };
+  const logSecurityEvent = (event: string, detail: Record<string, unknown>) => {
+    insertRow("security_audit_log", { event, detail }).catch(() => {});
+  };
 
-  // ── Generate (shared Gemini → Groq → OpenRouter chain, reply cleaned) ──────
-  const keys: AiKeys = { gemini: geminiKey, groq: groqKey, openrouter: openrouterKey };
-  let reply = "";
+  // ── Generate via the shared agent (grounded, tool-using, graceful) ─────────
+  const keys: AiKeys = { gemini: geminiKey, groq: groqKey, cerebras: cerebrasKey, openrouter: openrouterKey };
+  let agentReply = "";
+  let via = "hard_fallback";
+  let timedOut = false;
+  const toolCalls: { name: string; ok: boolean; preview?: string }[] = [];
   try {
-    reply = await generateReply(keys, systemPrompt, history, message, MAX_OUTPUT_TOKENS);
+    const res = await runAgent({
+      channel: "site",
+      message,
+      history,
+      keys,
+      plans: await loadPlans(),
+      toolContext: {
+        conversationId: sessionId || null,
+        contactId: null,
+        logCrmEvent,
+        logSecurityEvent,
+        // Consent-gated capture — the same honest gate the client path uses.
+        captureLead: (input) => captureAiLead(input as AiLeadInput),
+      },
+    });
+    agentReply = res.reply;
+    via = res.via;
+    timedOut = res.timedOut;
+    toolCalls.push(...res.toolCalls);
   } catch (e) {
     jlog({ at: "ai-chat", ok: false, error: String(e) });
-    return json({ error: "ai request failed" }, 502);
+    return json(req, { error: "ai request failed" }, 502);
   }
-  const finalReply = reply || FALLBACK_REPLY;
+
+  // Every provider failed AND at least one aborted on its timeout → 504 so the
+  // client can show "try again" rather than a generic error or a fake answer.
+  // (runAgent never hard-fails, so we only honor the timeout when it fell through
+  // to a generic fallback — i.e. it has no real grounded answer.)
+  if (timedOut && (via === "template" || via === "hard_fallback")) {
+    jlog({ at: "ai-chat", ok: false, timedOut: true, via });
+    return json(req, { error: FRIENDLY_BUSY }, 504);
+  }
+  const finalReply = agentReply || FALLBACK_REPLY;
 
   // Detect a genuine switch/contact intent so the front-end can offer to collect
   // name+phone+consent. We only OFFER here — capture still requires consent.
-  // Suppress the offer if a lead was just captured.
-  const offerLead = !leadCaptured && detectSwitchIntent(message);
+  // Suppress the offer if a lead was just captured (client path or via a tool).
+  const leadCapturedByTool = toolCalls.some((t) => t.name === "create_lead" && t.ok);
+  const offerLead = !leadCaptured && !leadCapturedByTool && detectSwitchIntent(message);
 
-  // Persist memory: append the new user + bot turn. Best-effort.
+  // ── Persist memory: append the new turns + tool calls, save the session ────
   if (sessionId) {
-    const next = [...merged, { role: "user", text: message }, { role: "bot", text: finalReply }];
-    saveSession(sessionId, ip, next).catch(() => {});
+    appendTurn(session, "user", message);
+    appendTurn(session, "bot", finalReply);
+    for (const tc of toolCalls) recordToolCall(session, tc.name, tc.ok, tc.preview);
+    if (leadCaptured || leadCapturedByTool) session.slots.leadCaptured = true;
+    saveSession(session, ip).catch(() => {});
   }
   // Best-effort rate-limit audit row, never blocks the reply.
   insertRow("chat_messages", { ip: ip || null }).catch(() => {});
 
   const out: Record<string, unknown> = { reply: finalReply };
   if (offerLead) out.offerLead = true;
-  if (leadCaptured) out.leadCaptured = true;
+  if (leadCaptured || leadCapturedByTool) out.leadCaptured = true;
+  if (contextTruncated) out.contextTruncated = true;
   if (sessionId) out.sessionId = sessionId;
-  return json(out);
+  return json(req, out);
+}
+
+// Observability wrapper (fire-and-forget; dark until a Sentry DSN is configured).
+// An UNEXPECTED throw — one not already handled by an inner fail-soft branch — is
+// captured and then degraded to the SAME friendly 503 the function already returns
+// for a transient outage, so the client contract is unchanged. captureError never
+// throws or blocks (see _shared/observability.ts).
+Deno.serve(async (req: Request) => {
+  try {
+    return await handle(req);
+  } catch (e) {
+    captureError(e, { fn: "site-ai-chat", method: req.method });
+    jlog({ at: "ai-chat", ok: false, error: String(e) });
+    // Mirror corsHeaders so even the failure response stays origin-correct.
+    return json(req, { error: FRIENDLY_BUSY }, 503);
+  }
 });

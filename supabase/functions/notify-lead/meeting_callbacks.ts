@@ -21,7 +21,7 @@ import { allowed } from "./callbacks.ts";
 
 type HandlerResult = Record<string, unknown>;
 
-const CUSTOMER_SUBJECT = "אישור פגישת וידאו — חוסך";
+const CUSTOMER_SUBJECT = "אישור פגישת וידאו — Switchy AI";
 
 // Re-render the card keyboard from current DB state. Status-aware: a meeting
 // closed by a concurrent press stays frozen — a late claim can't resurrect
@@ -73,7 +73,7 @@ async function createGcalEventFor(cfg: Cfg, meeting: MeetingRow, joinUrl: string
   if (!startIso) return "skipped";
   const name = meeting.name ?? "";
   const provider = meeting.provider ?? "";
-  const summary = `חוסך — פגישת ייעוץ ${provider} עם ${name}`.replace(/\s+/g, " ").trim();
+  const summary = `Switchy AI — פגישת ייעוץ ${provider} עם ${name}`.replace(/\s+/g, " ").trim();
   const description =
     `שם: ${name}\nטלפון: ${meeting.phone ?? ""}\nספק: ${provider}\nקישור Zoom: ${joinUrl}`;
   const ev = await createCalendarEvent(cfg, { summary, description, startIso });
@@ -251,7 +251,7 @@ export async function handleMeetingCallback(cfg: Cfg, cb: TgCallbackQuery): Prom
   }
 
   const zoom = await createZoomMeeting(cfg, {
-    topic: `חוסך — פגישת ייעוץ ${meeting.provider ?? ""} עם ${meeting.name ?? ""}`.replace(/\s+/g, " ").trim(),
+    topic: `Switchy AI — פגישת ייעוץ ${meeting.provider ?? ""} עם ${meeting.name ?? ""}`.replace(/\s+/g, " ").trim(),
     startsAtIso: String(meeting.starts_at ?? ""),
   });
   if (!zoom) {

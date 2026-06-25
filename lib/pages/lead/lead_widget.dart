@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../theme/app_theme.dart';
 import '../../core/nav.dart';
 import '../../widgets/app_button.dart';
+import '../../widgets/sticky_cta_scaffold.dart';
 import '../../widgets/app_snackbar.dart';
 import '../../widgets/consent_panel.dart';
 import '../../app_state.dart';
@@ -33,6 +34,10 @@ class _LeadWidgetState extends State<LeadWidget> {
 
   String _callbackTime = 'now'; // 'now' | 'noon' | 'evening' | 'tomorrow'
   bool _isSubmitting = false;
+  // True once a submit reached the network but failed — surfaces a PERSISTENT
+  // recovery panel (retry + WhatsApp + support) instead of relying on a
+  // transient snackbar the user may miss, so the form never silently dead-ends.
+  bool _submitFailed = false;
 
   // Legal consent (Israeli Privacy Protection Regs + Spam Law): terms+privacy
   // mandatory to submit a lead; marketing is opt-in (unchecked default).
@@ -57,6 +62,95 @@ class _LeadWidgetState extends State<LeadWidget> {
     super.dispose();
   }
 
+  /// Submit (or retry) the lead. Shared by the main CTA and the recovery
+  /// panel's retry button so both paths behave identically. Validates the form
+  /// + consent, mirrors the lead to the backend, and on failure flips
+  /// [_submitFailed] so the persistent recovery panel appears.
+  Future<void> _submitLead(Plan? plan) async {
+    if (_isSubmitting) return;
+    if (!_formKey.currentState!.validate()) return;
+    if (!_acceptTerms || !_acceptPrivacy) {
+      AppSnackBar.info(context, 'יש לאשר את תנאי השימוש ומדיניות הפרטיות כדי לשלוח');
+      return;
+    }
+    HapticFeedback.lightImpact();
+    setState(() {
+      _isSubmitting = true;
+      _submitFailed = false;
+    });
+    final appState = AppState();
+    final name = _nameCtrl.text.trim();
+    // Normalize to digits/+ — the leads gate rejects dots/parens.
+    final phone = _phoneCtrl.text.replaceAll(RegExp(r'[^\d+]'), '');
+    final email = _emailCtrl.text.trim();
+    // Mirror the lead to the backend seam — a no-op locally today,
+    // an insert into the `leads` table once SupabaseBackend is set.
+    try {
+      // Build rep context: current bill + quiz preferences.
+      final bill = plan != null ? appState.currentBill(plan.cat) : 0;
+      final parts = <String>[];
+      if (bill > 0) parts.add('חשבון נוכחי: ₪$bill/חודש');
+      if (plan != null) parts.add('חסכון שנתי צפוי: ₪${planSaveYear(plan, bill)}');
+      if (appState.quizCompleted) {
+        parts.add('תקציב: ₪${appState.quizBudget} | עדיפות: ${appState.quizPriority} | קווים: ${appState.quizLines}');
+      }
+      final nowIso = DateTime.now().toUtc().toIso8601String();
+      await appBackend.submitLead(LeadInput(
+        name: name,
+        phone: phone,
+        email: email,
+        provider: plan?.provider,
+        planId: widget.planId,
+        callbackTime: _callbackTime,
+        source: widget.source,
+        notes: parts.isNotEmpty ? parts.join(' | ') : null,
+        // Legal consent (server re-stamps these authoritatively).
+        termsAcceptedAt: nowIso,
+        privacyAcceptedAt: nowIso,
+        marketingAcceptedAt: _acceptMarketing ? nowIso : null,
+      )).timeout(const Duration(seconds: 10));
+      // Sync the user's identity to their profile row.
+      appBackend
+          .upsertProfile(name: name, phone: phone, email: email.isNotEmpty ? email : null)
+          .catchError((_) {});
+    } catch (e) {
+      // The lead never reached the team — keep the form AND raise a persistent
+      // recovery panel (retry + WhatsApp + support) so the user can act, rather
+      // than believing someone will call. Log for diagnostics (debug-only, no
+      // user-facing change) so a flaky backend/timeout is traceable.
+      debugPrint('LeadWidget submit failed: $e');
+      if (!mounted) return;
+      setState(() {
+        _isSubmitting = false;
+        _submitFailed = true;
+      });
+      AppSnackBar.error(context, 'שליחת הפנייה נכשלה — בדקו את החיבור ונסו שוב');
+      return;
+    }
+    if (!mounted) return;
+    // Record locally (savings headline + tracker step) only after
+    // the backend accepted the lead — failed retries must not
+    // inflate the savings number or pin the tracker.
+    appState.submitLead(
+      name: name,
+      phone: phone,
+      provider: plan?.provider ?? '',
+      planId: widget.planId,
+      email: email,
+      callbackTime: _callbackTime,
+    );
+    // Funnel beacon — fire-and-forget, only after the team got it.
+    AnalyticsService.track(AnalyticsEvent.leadSubmit, props: {
+      'source': widget.source,
+      if (plan != null) 'provider': plan.provider,
+      if (plan != null) 'category': plan.cat,
+    });
+    // Tactile confirmation that the lead actually reached the team.
+    HapticFeedback.mediumImpact();
+    if (!mounted) return;
+    context.goNamed('Success');
+  }
+
   @override
   Widget build(BuildContext context) {
     final ffTheme = AppTheme.of(context);
@@ -70,8 +164,7 @@ class _LeadWidgetState extends State<LeadWidget> {
       _phoneCtrl.text = appState.userPhone;
     }
 
-    return Scaffold(
-      backgroundColor: ffTheme.background,
+    return StickyCtaScaffold(
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -84,6 +177,9 @@ class _LeadWidgetState extends State<LeadWidget> {
         title: Text('השאירו פרטים', style: ffTheme.titleMedium),
         centerTitle: true,
       ),
+      // The submit CTA + "ללא התחייבות" microcopy is pinned above the keyboard
+      // by the scaffold; the form itself scrolls independently below the app bar.
+      cta: _buildSubmitCta(ffTheme, plan),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Form(
@@ -195,99 +291,14 @@ class _LeadWidgetState extends State<LeadWidget> {
               _consentPanel(ffTheme),
               const SizedBox(height: 16),
 
-              // Submit button — the green ACTION gradient (AppColors.primary is
-              // the const-ink sentinel AppButton maps to the theme-aware accent
-              // gradient, so the CTA stays vivid in dark too).
-              AppButton(
-                text: _isSubmitting ? 'שולח...' : 'קבלו המלצה אישית — נציג יחזור אליכם היום ←',
-                onPressed: _isSubmitting ? () async {} : () async {
-                  if (!_formKey.currentState!.validate()) return;
-                  if (!_acceptTerms || !_acceptPrivacy) {
-                    AppSnackBar.info(context, 'יש לאשר את תנאי השימוש ומדיניות הפרטיות כדי לשלוח');
-                    return;
-                  }
-                  HapticFeedback.lightImpact();
-                  setState(() => _isSubmitting = true);
-                  final name = _nameCtrl.text.trim();
-                  // Normalize to digits/+ — the leads gate rejects dots/parens.
-                  final phone = _phoneCtrl.text.replaceAll(RegExp(r'[^\d+]'), '');
-                  final email = _emailCtrl.text.trim();
-                  // Mirror the lead to the backend seam — a no-op locally today,
-                  // an insert into the `leads` table once SupabaseBackend is set.
-                  try {
-                    final st = AppState();
-                    // Build rep context: current bill + quiz preferences.
-                    final bill = plan != null ? st.currentBill(plan.cat) : 0;
-                    final parts = <String>[];
-                    if (bill > 0) parts.add('חשבון נוכחי: ₪$bill/חודש');
-                    if (plan != null) parts.add('חסכון שנתי צפוי: ₪${planSaveYear(plan, bill)}');
-                    if (st.quizCompleted) parts.add('תקציב: ₪${st.quizBudget} | עדיפות: ${st.quizPriority} | קווים: ${st.quizLines}');
-                    final nowIso = DateTime.now().toUtc().toIso8601String();
-                    await appBackend.submitLead(LeadInput(
-                      name: name,
-                      phone: phone,
-                      email: email,
-                      provider: plan?.provider,
-                      planId: widget.planId,
-                      callbackTime: _callbackTime,
-                      source: widget.source,
-                      notes: parts.isNotEmpty ? parts.join(' | ') : null,
-                      // Legal consent (server re-stamps these authoritatively).
-                      termsAcceptedAt: nowIso,
-                      privacyAcceptedAt: nowIso,
-                      marketingAcceptedAt: _acceptMarketing ? nowIso : null,
-                    )).timeout(const Duration(seconds: 10));
-                    // Sync the user's identity to their profile row.
-                    appBackend.upsertProfile(name: name, phone: phone, email: email.isNotEmpty ? email : null).catchError((_) {});
-                  } catch (_) {
-                    // The lead never reached the team — keep the form so the
-                    // user can retry instead of believing someone will call.
-                    if (!context.mounted) return;
-                    setState(() => _isSubmitting = false);
-                    AppSnackBar.error(context, 'שליחת הפנייה נכשלה — בדקו את החיבור ונסו שוב');
-                    return;
-                  }
-                  if (!context.mounted) return;
-                  // Record locally (savings headline + tracker step) only after
-                  // the backend accepted the lead — failed retries must not
-                  // inflate the savings number or pin the tracker.
-                  appState.submitLead(
-                    name: name,
-                    phone: phone,
-                    provider: plan?.provider ?? '',
-                    planId: widget.planId,
-                    email: email,
-                    callbackTime: _callbackTime,
-                  );
-                  // Funnel beacon — fire-and-forget, only after the team got it.
-                  AnalyticsService.track(AnalyticsEvent.leadSubmit, props: {
-                    'source': widget.source,
-                    if (plan != null) 'provider': plan.provider,
-                    if (plan != null) 'category': plan.cat,
-                  });
-                  // Tactile confirmation that the lead actually reached the team.
-                  HapticFeedback.mediumImpact();
-                  context.goNamed('Success');
-                },
-                
-                  width: double.infinity,
-                  height: 56,
-                  color: AppColors.primary,
-                  textStyle: ffTheme.titleMedium.copyWith(color: Colors.white),
-                  borderRadius: BorderRadius.circular(18),
-                
-              ).animate().fadeIn(delay: 300.ms),
-
-              const SizedBox(height: 8),
-
-              Center(
-                child: Text(
-                  'ללא התחייבות • שירות חינמי לחלוטין',
-                  style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText),
-                ),
-              ),
-
-              const SizedBox(height: 16),
+              // Persistent recovery panel — only after a failed submit. Gives
+              // the user an explicit retry plus alternative channels (WhatsApp /
+              // phone support) so a flaky network never becomes a dead-end. The
+              // primary retry lives on the pinned submit CTA below.
+              if (_submitFailed) ...[
+                _buildRecoveryPanel(ffTheme, plan),
+                const SizedBox(height: 16),
+              ],
 
               // Prefer to talk now? A direct WhatsApp channel as an alternative
               // to leaving details — same green ACTION CTA.
@@ -295,8 +306,8 @@ class _LeadWidgetState extends State<LeadWidget> {
                 source: 'lead',
                 width: double.infinity,
                 prefillText: plan != null
-                    ? 'היי, ראיתי את ${plan.provider} – ${plan.plan} בחוסך ואשמח לפרטים'
-                    : 'היי, אשמח לעזרה במציאת מסלול משתלם דרך חוסך',
+                    ? 'היי, ראיתי את ${plan.provider} – ${plan.plan} ב-Switchy AI ואשמח לפרטים'
+                    : 'היי, אשמח לעזרה במציאת מסלול משתלם דרך Switchy AI',
               ).animate().fadeIn(delay: 340.ms),
             ],
             ),
@@ -304,6 +315,95 @@ class _LeadWidgetState extends State<LeadWidget> {
         ),
       ),
     );
+  }
+
+  // The pinned bottom CTA: the primary submit button + the "ללא התחייבות"
+  // reassurance, hosted by [StickyCtaScaffold] so it stays reachable above the
+  // keyboard while the form scrolls. The button uses [AppButton]'s built-in
+  // async loading (spinner + tap-ignore while [_submitLead] awaits) — no faked
+  // "שולח..." label and no no-op onPressed swap. The label only flips to a retry
+  // affordance after a failed submit (_submitFailed).
+  Widget _buildSubmitCta(AppTheme ffTheme, Plan? plan) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        AppButton(
+          text: _submitFailed
+              ? 'נסו שוב ←'
+              : 'קבלו המלצה אישית — נציג יחזור אליכם היום ←',
+          onPressed: () async => _submitLead(plan),
+          width: double.infinity,
+          height: 56,
+          color: AppColors.primary,
+          textStyle: ffTheme.titleMedium.copyWith(color: Colors.white),
+          borderRadius: BorderRadius.circular(18),
+        ).animate().fadeIn(delay: 300.ms),
+        const SizedBox(height: 8),
+        Text(
+          'ללא התחייבות • שירות חינמי לחלוטין',
+          style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText),
+          textAlign: TextAlign.center,
+        ),
+      ],
+    );
+  }
+
+  // Shown only after a failed submit: an honest, persistent recovery surface.
+  // Retry lives on the main CTA above; here we offer the real alternative
+  // channels — WhatsApp (opens WhatsApp's own contact picker, never an invented
+  // number) and a request-a-callback route — so a network hiccup never strands
+  // the user mid-funnel.
+  Widget _buildRecoveryPanel(AppTheme ffTheme, Plan? plan) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: ffTheme.error.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(ffTheme.radiusMd),
+        border: Border.all(color: ffTheme.error.withValues(alpha: 0.35)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(Icons.error_outline_rounded, size: 20, color: ffTheme.error),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'הפנייה לא נשלחה. אפשר לנסות שוב, או לפנות אלינו ישירות:',
+                  style: ffTheme.bodySmall.copyWith(
+                      color: ffTheme.primaryText, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          WhatsAppButton(
+            source: 'lead_recovery',
+            width: double.infinity,
+            prefillText: plan != null
+                ? 'היי, ניסיתי להשאיר פרטים על ${plan.provider} – ${plan.plan} ב-Switchy AI אבל זה נכשל — אפשר לעזור?'
+                : 'היי, ניסיתי להשאיר פרטים ב-Switchy AI אבל זה נכשל — אפשר לעזור?',
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: () => context.pushNamed('Callback'),
+              icon: const Icon(Icons.headset_mic_outlined, size: 18),
+              label: const Text('בקשו שנחזור אליכם'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: ffTheme.brandAccent,
+                side: BorderSide(color: ffTheme.brandAccent),
+                minimumSize: const Size(double.infinity, 46),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ),
+        ],
+      ),
+    ).animate().fadeIn(duration: 250.ms).slideY(begin: 0.05);
   }
 
   Widget _buildAvailabilityBanner(AppTheme ffTheme) {
@@ -463,45 +563,54 @@ class _LeadWidgetState extends State<LeadWidget> {
       ('evening', 'בערב', Icons.nights_stay_outlined),
       ('tomorrow', 'מחר', Icons.calendar_today_outlined),
     ];
-    return Row(
-      children: options.map((opt) {
-        final selected = _callbackTime == opt.$1;
-        return Expanded(
-          child: Semantics(
-            button: true,
-            selected: selected,
-            label: opt.$2,
-            child: GestureDetector(
-            onTap: () {
-              HapticFeedback.selectionClick();
-              setState(() => _callbackTime = opt.$1);
-            },
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              margin: EdgeInsets.only(right: opt.$1 != 'tomorrow' ? 8 : 0),
-              padding: const EdgeInsets.symmetric(vertical: 10),
-              decoration: BoxDecoration(
-                color: selected ? ffTheme.brandAccent : ffTheme.cardSurface,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: selected ? ffTheme.brandAccent : ffTheme.alternate, width: selected ? 1.5 : 1),
-                boxShadow: selected ? [BoxShadow(color: ffTheme.brandAccent.withValues(alpha: 0.28), blurRadius: 10, offset: const Offset(0, 3))] : [],
-              ),
-              child: Column(
-                children: [
-                  Icon(opt.$3, size: 18, color: selected ? Colors.white : ffTheme.secondaryText),
-                  const SizedBox(height: 4),
-                  Text(opt.$2, style: ffTheme.labelSmall.copyWith(
-                    color: selected ? Colors.white : ffTheme.primaryText,
-                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                    fontSize: 11,
-                  )),
-                ],
-              ),
+    // A single-select [SegmentedButton] replaces the old hand-rolled 4-up Row of
+    // 11px chips: every segment is a real >=kMinTapTarget control, the selected
+    // one fills with the green ACTION accent, and the per-option icon + Hebrew
+    // label stay visible inline (no extra tap / no hidden sheet). The label text
+    // is preserved verbatim so existing find.bySemanticsLabel(...) targets and
+    // the readable copy both hold.
+    return SegmentedButton<String>(
+      showSelectedIcon: false,
+      segments: [
+        for (final opt in options)
+          ButtonSegment<String>(
+            value: opt.$1,
+            icon: Icon(opt.$3, size: 18),
+            label: Text(
+              opt.$2,
+              style: ffTheme.labelSmall.copyWith(fontWeight: FontWeight.w600),
             ),
           ),
-          ),
-        );
-      }).toList(),
+      ],
+      selected: {_callbackTime},
+      onSelectionChanged: (sel) {
+        HapticFeedback.selectionClick();
+        setState(() => _callbackTime = sel.first);
+      },
+      style: ButtonStyle(
+        // Guarantee a comfortable touch target on every segment.
+        minimumSize: const WidgetStatePropertyAll(Size(0, kMinTapTarget)),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        padding: const WidgetStatePropertyAll(
+          EdgeInsetsDirectional.symmetric(horizontal: 8, vertical: 8),
+        ),
+        side: WidgetStatePropertyAll(BorderSide(color: ffTheme.alternate)),
+        shape: WidgetStatePropertyAll(
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+        backgroundColor: WidgetStateProperty.resolveWith((states) =>
+            states.contains(WidgetState.selected)
+                ? ffTheme.brandAccent
+                : ffTheme.cardSurface),
+        foregroundColor: WidgetStateProperty.resolveWith((states) =>
+            states.contains(WidgetState.selected)
+                ? Colors.white
+                : ffTheme.primaryText),
+        iconColor: WidgetStateProperty.resolveWith((states) =>
+            states.contains(WidgetState.selected)
+                ? Colors.white
+                : ffTheme.secondaryText),
+      ),
     ).animate(delay: 200.ms).fadeIn().slideY(begin: 0.05);
   }
 

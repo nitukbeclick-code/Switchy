@@ -3,7 +3,7 @@
 
 import { assert, assertEquals, assertFalse, assertMatch, assertStringIncludes } from "@std/assert";
 import type { Cfg, Lead } from "../_shared/types.ts";
-import { buildText, defaultDraft, formatTimeline, frozenKeyboard, isWonAskMarkup, keyboardFor, leadIdFromMarkup, leadKeyboard } from "../_shared/leads.ts";
+import { buildText, CATEGORY_HE, defaultDraft, desiredCategory, formatTimeline, frozenKeyboard, isWonAskMarkup, keyboardFor, leadIdFromMarkup, leadKeyboard, REP_COMPLIANCE_LINE } from "../_shared/leads.ts";
 import { evalCronHealth } from "../_shared/cron_health.ts";
 import { waDraftLink, waLink } from "../_shared/telegram.ts";
 import { botFullyConfigured, safeEqual, tgWebhookToken } from "../_shared/config.ts";
@@ -55,6 +55,35 @@ Deno.test("buildText escapes HTML in user-controlled fields", () => {
   assertStringIncludes(text, "&lt;script&gt;");
 });
 
+Deno.test("buildText always carries the §7b/§30A rep compliance reminder", () => {
+  assertStringIncludes(buildText(LEAD), REP_COMPLIANCE_LINE);
+  assertStringIncludes(buildText(LEAD), "§7b");
+  assertStringIncludes(buildText(LEAD), "§30A");
+});
+
+Deno.test("buildText shows the desired-service line only when known", () => {
+  // plan_id carries a known category token → surfaced as the Hebrew label
+  assertStringIncludes(buildText({ ...LEAD, plan_id: "partner-cellular-100" }), "🎯");
+  assertStringIncludes(buildText({ ...LEAD, plan_id: "partner-cellular-100" }), CATEGORY_HE.cellular);
+  // an explicit notes tag is honoured even without a category-tagged plan_id
+  assertStringIncludes(buildText({ ...LEAD, plan_id: null, notes: "שירות מבוקש: internet" }), CATEGORY_HE.internet);
+  // no honest signal → no fabricated "צריך" line
+  assertFalse(buildText({ ...LEAD, plan_id: "xyz-123", notes: "סתם הערה" }).includes("🎯 <b>צריך"));
+});
+
+// ── desired-category detection (pure) ────────────────────────────────────────
+
+Deno.test("desiredCategory reads an explicit notes tag, mapping known keys", () => {
+  assertEquals(desiredCategory({ ...LEAD, notes: "שירות מבוקש: cellular" }), CATEGORY_HE.cellular);
+  // free-text Hebrew tag passes through verbatim (no fabrication, no drop)
+  assertEquals(desiredCategory({ ...LEAD, notes: "שירות מבוקש: סלולר ונייד" }), "סלולר ונייד");
+});
+
+Deno.test("desiredCategory infers from a category-tagged plan_id, else returns empty", () => {
+  assertEquals(desiredCategory({ ...LEAD, plan_id: "hot-triple-fiber" }), CATEGORY_HE.triple);
+  assertEquals(desiredCategory({ ...LEAD, plan_id: "xyz-123", notes: null }), "");
+});
+
 // ── keyboards ────────────────────────────────────────────────────────────────
 
 Deno.test("leadKeyboard offers claim + prefilled WhatsApp when unclaimed", () => {
@@ -76,6 +105,18 @@ Deno.test("leadKeyboard shows the owner instead of claim once claimed", () => {
 
 Deno.test("leadKeyboard returns undefined without a lead id", () => {
   assertEquals(leadKeyboard({ ...LEAD, id: undefined }), undefined);
+});
+
+Deno.test("leadKeyboard offers a snooze (⏰ דחה) action on open leads", () => {
+  const flat = leadKeyboard(LEAD)!.inline_keyboard.flat();
+  const snooze = flat.find((b) => b.callback_data === `lead:${LEAD.id}:snooze`);
+  assert(snooze);
+  assertStringIncludes(snooze!.text, "דחה");
+});
+
+Deno.test("keyboardFor drops snooze from a frozen (closed) lead", () => {
+  const frozen = keyboardFor({ ...LEAD, status: "lost" })!;
+  assertFalse(frozen.inline_keyboard.flat().some((b) => b.callback_data === `lead:${LEAD.id}:snooze`));
 });
 
 Deno.test("frozenKeyboard keeps the lead id reachable for undo and replies", () => {
@@ -160,7 +201,7 @@ const cfgWith = (over: Partial<Cfg>): Cfg => ({
   tgToken: "t", tgChat: "-100123", resend: "", resendFrom: "", notifyEmail: "",
   openai: "", anthropic: "", gemini: "", webhookSecret: "s",
   zoomAccountId: "", zoomClientId: "", zoomClientSecret: "", zoomHostEmail: "",
-  googleServiceAccount: "", googleCalendarId: "",
+  googleServiceAccount: "", googleCalendarId: "", googleSpreadsheetId: "",
   allowedUserIds: [42], src: {},
   ...over,
 });
@@ -297,6 +338,14 @@ Deno.test("formatTimeline handles a lead with no events", () => {
   assertStringIncludes(formatTimeline(LEAD, []), "אין עדיין פעולות");
 });
 
+Deno.test("formatTimeline renders a snooze event with its own label", () => {
+  const text = formatTimeline(LEAD, [
+    { event: "snooze", note: "2026-06-10T10:00:00Z", actor_name: "דנה", created_at: "2026-06-10T08:00:00Z" },
+  ]);
+  assertStringIncludes(text, "דחה את התזכורת");
+  assertStringIncludes(text, "⏰");
+});
+
 Deno.test("evalCronHealth flags stale and failing jobs, ignores unregistered", () => {
   const now = Date.parse("2026-06-10T12:00:00Z");
   const fresh = (mins: number) => new Date(now - mins * 60000).toISOString();
@@ -323,6 +372,32 @@ Deno.test("evalCronHealth flags stale and failing jobs, ignores unregistered", (
   const empty = evalCronHealth([], now);
   assert(empty.ok);
   assertEquals(empty.known, 0);
+});
+
+Deno.test("evalCronHealth watches the monthly retention purges with a 35-day window", () => {
+  const now = Date.parse("2026-06-23T12:00:00Z");
+  const hoursAgo = (h: number) => new Date(now - h * 3_600_000).toISOString();
+  // A monthly job that ran ~28 days ago is healthy (inside the ~35-day window) —
+  // a calendar-monthly cadence must not false-alarm.
+  const healthy = evalCronHealth([
+    { jobname: "retention-purge-monthly", schedule: "", active: true, last_start: hoursAgo(28 * 24), last_status: "succeeded" },
+    { jobname: "analytics-purge-monthly", schedule: "", active: true, last_start: hoursAgo(28 * 24), last_status: "succeeded" },
+  ], now);
+  assert(healthy.ok);
+  assertEquals(healthy.known, 2);
+  // A purge silent for 40 days is genuinely DEAD (PII / analytics rows piling up
+  // past their retention windows) -> stale.
+  const stale = evalCronHealth([
+    { jobname: "retention-purge-monthly", schedule: "", active: true, last_start: hoursAgo(40 * 24), last_status: "succeeded" },
+  ], now);
+  assertFalse(stale.ok);
+  assertEquals(stale.stale, ["retention-purge-monthly"]);
+  // A purge whose last run errored -> failing (caught even when recent).
+  const failing = evalCronHealth([
+    { jobname: "analytics-purge-monthly", schedule: "", active: true, last_start: hoursAgo(24), last_status: "failed" },
+  ], now);
+  assertFalse(failing.ok);
+  assertEquals(failing.failing, ["analytics-purge-monthly"]);
 });
 
 // ── digests ──────────────────────────────────────────────────────────────────

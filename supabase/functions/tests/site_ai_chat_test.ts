@@ -3,6 +3,8 @@
 //                          detectSwitchIntent
 //   • _shared/catalogue.ts — buildCitedCatalogueContext (citation markers,
 //                            grounded-only rows)
+// The handler's agent-routing + memory-merge behavior is covered separately in
+// site_ai_chat_agent_test.ts (which captures the Deno.serve handler).
 // No network, no env. Run from supabase/functions/:
 //   deno task test
 
@@ -85,7 +87,7 @@ Deno.test("buildAiLeadRow builds a clean row with consent and stamps terms+priva
   assertEquals(row!.consent_marketing_email, false);
   assertEquals(row!.consent_marketing_whatsapp, false);
   assert(row!.notes !== null);
-  assertStringIncludes(row!.notes!, "חוסך AI");
+  assertStringIncludes(row!.notes!, "Switchy AI");
   assertStringIncludes(row!.notes!, "cellular");
   assertStringIncludes(row!.notes!, "רוצה לעבור");
 });

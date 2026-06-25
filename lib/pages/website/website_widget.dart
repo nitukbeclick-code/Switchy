@@ -59,7 +59,7 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(color: ffTheme.secondary, borderRadius: BorderRadius.circular(8)),
-                  child: Text('חוסך', style: GoogleFonts.rubik(fontSize: 16, fontWeight: FontWeight.w800, color: ffTheme.primaryDark)),
+                  child: Text('Switchy AI', style: GoogleFonts.rubik(fontSize: 16, fontWeight: FontWeight.w800, color: ffTheme.primaryDark)),
                 ),
                 const Spacer(),
                 TextButton(
@@ -331,7 +331,7 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
             ).animate().fadeIn(delay: 400.ms),
           ),
 
-          // Why חוסך — honest value props, no fabricated testimonials.
+          // Why Switchy AI — honest value props, no fabricated testimonials.
           SliverToBoxAdapter(
             child: Container(
               padding: const EdgeInsets.fromLTRB(20, 28, 20, 28),
@@ -339,7 +339,7 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('למה חוסך?', style: ffTheme.headlineMedium),
+                  Text('למה Switchy AI?', style: ffTheme.headlineMedium),
                   const SizedBox(height: 16),
                   const _ValueProp(
                     icon: Icons.account_balance_wallet_outlined,
@@ -393,8 +393,8 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _FAQHeader(),
-                  _FAQ(q: 'האם השירות חינמי?', a: 'כן! חוסך הוא שירות חינמי לחלוטין. אנחנו מרוויחים עמלה מהספקים, לא ממך.'),
-                  _FAQ(q: 'מה קורה לאחר שאני בוחר מסלול?', a: 'נציג חוסך יצור קשר תוך שעה, יסביר את התהליך ויסייע בכל שלב עד הניוד.'),
+                  _FAQ(q: 'האם השירות חינמי?', a: 'כן! Switchy AI הוא שירות חינמי לחלוטין. אנחנו מרוויחים עמלה מהספקים, לא ממך.'),
+                  _FAQ(q: 'מה קורה לאחר שאני בוחר מסלול?', a: 'נציג Switchy AI יצור קשר תוך שעה, יסביר את התהליך ויסייע בכל שלב עד הניוד.'),
                   _FAQ(q: 'האם אפשר לנייד את המספר שלי?', a: 'כן! ניוד מספר בישראל הוא חינמי וזכות שלך. התהליך לוקח עד 3 ימי עסקים.'),
                   _FAQ(q: 'מה אם לא מרוצה מהספק החדש?', a: 'ניתן לנייד שוב בכל עת. לחבילות ללא התחייבות – ניתן לסגת מיד.'),
                 ],
@@ -437,9 +437,9 @@ class _WebsiteWidgetState extends State<WebsiteWidget> {
               color: ffTheme.primaryDark,
               child: Column(
                 children: [
-                  Text('חוסך', style: GoogleFonts.rubik(fontSize: 18, fontWeight: FontWeight.w800, color: ffTheme.secondary)),
+                  Text('Switchy AI', style: GoogleFonts.rubik(fontSize: 18, fontWeight: FontWeight.w800, color: ffTheme.secondary)),
                   const SizedBox(height: 8),
-                  Text('© 2026 חוסך. כל הזכויות שמורות.', style: GoogleFonts.assistant(fontSize: 11, color: Colors.white38)),
+                  Text('© 2026 Switchy AI. כל הזכויות שמורות.', style: GoogleFonts.assistant(fontSize: 11, color: Colors.white38)),
                   const SizedBox(height: 4),
                   Text('לא ספק תקשורת. לא מחויבים לאף חברה. רק בצד שלכם.', style: GoogleFonts.assistant(fontSize: 11, color: Colors.white38), textAlign: TextAlign.center),
                 ],

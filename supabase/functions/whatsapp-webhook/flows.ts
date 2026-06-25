@@ -19,14 +19,30 @@
 
 import {
   buildSuggestions,
+  CATEGORIES,
   CATEGORY_HE,
   type Plan,
   pickCandidates,
 } from "../_shared/catalogue.ts";
+import {
+  REPLY_ID_BILL,
+  REPLY_ID_HUMAN,
+  REPLY_ID_OTHER,
+  REPLY_ID_SWITCHKIT,
+} from "./intents.ts";
 
 // The templated telecom topics we handle deterministically. `null` upstream
 // means "no specific topic" → fall through to the general grounded LLM chat.
 export type Topic = "switch" | "roaming" | "compare" | "cheapest" | "coverage" | "cancel";
+
+// ── interactive reply structures (consumed by index.ts → _shared/whatsapp.ts) ──
+// Structurally compatible with _shared/whatsapp.ts's {id,title}/ListRow/ListSection
+// so index.ts can pass these straight into sendButtons / sendList without a shim.
+// Declared locally (not imported) to keep flows.ts pure — whatsapp.ts reads env at
+// module load, and these builders must stay side-effect-free + unit-testable.
+export type QuickReplyButton = { id: string; title: string };
+export type FlowListRow = { id: string; title: string; description?: string };
+export type FlowListSection = { title?: string; rows: FlowListRow[] };
 
 // Topic cue regexes. Ordered by how specific/actionable they are when scanned by
 // detectTopic (switch + cancel are concrete asks and win over a vague compare).
@@ -202,4 +218,141 @@ export function buildTopicReply(
     default:
       return null;
   }
+}
+
+// ── dynamic, context-aware quick-reply templates ──────────────────────────────
+// These return STRUCTURES (button/list rows), not sent messages — index.ts wires
+// them into _shared/whatsapp.ts (sendButtons/sendList). Every label is Hebrew and
+// ≤ 20 chars (Meta's button cap; sendButtons/sendList also clip defensively). The
+// ids are the structured ids parseReplyId (intents.ts) decodes, so one tap can
+// carry a slot. Nothing here sends, persists, or fabricates a plan/price.
+
+// Hebrew labels for the categories we let a user pick by tapping. Drawn from the
+// shared CATEGORY_HE so a picker row can never name a category that isn't real.
+const PICKER_CATEGORIES: readonly string[] = CATEGORIES;
+
+// The canonical 3-button main menu (compare / human / bill). Mirrors index.ts's
+// MENU_BUTTONS but lives here as the single source so the welcome + any re-offer
+// share one definition. Returned as data so the caller sends it however it likes.
+export function buildMainMenuButtons(): QuickReplyButton[] {
+  return [
+    { id: "cmp", title: "השוואת מסלול" },
+    { id: REPLY_ID_HUMAN, title: "דבר עם נציג" },
+    { id: REPLY_ID_BILL, title: "ניתוח חשבון" },
+  ];
+}
+
+/**
+ * Up to 3 context-aware quick replies to offer RIGHT AFTER a recommendation, so
+ * the user can act with one tap instead of typing. Always honest + non-pushy:
+ *   • "אפשרויות נוספות" (other options) — re-rank, never a fake "better deal";
+ *   • "מעבר ספק" (switch-kit) — only when there's a category to switch within;
+ *   • "דבר עם נציג" (human) — the §-safe service handoff, always offered last.
+ * Buttons cap at 3 (Meta), so we prioritise other→switch→human and trim. Pure.
+ */
+export function buildPostRecommendButtons(ctx: { category?: string } = {}): QuickReplyButton[] {
+  const btns: QuickReplyButton[] = [{ id: REPLY_ID_OTHER, title: "אפשרויות נוספות" }];
+  if (ctx.category) {
+    // Carry the category on the switch-kit tap so the kit is scoped correctly.
+    btns.push({ id: `topic:switch`, title: "איך עוברים?" });
+  } else {
+    btns.push({ id: REPLY_ID_SWITCHKIT, title: "איך עוברים?" });
+  }
+  btns.push({ id: REPLY_ID_HUMAN, title: "דבר עם נציג" });
+  return btns.slice(0, 3);
+}
+
+/**
+ * An interactive LIST of the catalogue categories, each row carrying a structured
+ * "cat:<category>" id so a tap drops the category straight into context (no extra
+ * free-text turn). Used when the bot needs to know "which service?" and a list is
+ * friendlier than asking in prose. Grounded: rows come only from CATEGORIES, so a
+ * picker can never offer a category we don't actually cover. Pure.
+ */
+export function buildCategoryPicker(): FlowListSection[] {
+  const rows: FlowListRow[] = PICKER_CATEGORIES.map((c) => ({
+    id: `cat:${c}`,
+    title: CATEGORY_HE[c] ?? c,
+  }));
+  return [{ title: "תחומים", rows }];
+}
+
+/**
+ * Up to 3 budget "chip" buttons for a category, each carrying a "budget:<n>" id so
+ * a tap fills the budget slot. The ceilings are sensible monthly anchors per
+ * category (cellular is cheap, internet/tv/triple pricier) — they are PROMPTS, not
+ * claims about what exists; the grounded compare/cheapest flow then quotes only
+ * real rows at-or-under the chosen ceiling. Pure; never fabricates a plan.
+ */
+export function buildBudgetButtons(category?: string): QuickReplyButton[] {
+  const ladders: Record<string, number[]> = {
+    cellular: [30, 50, 70],
+    internet: [60, 90, 120],
+    tv: [50, 90, 130],
+    triple: [120, 160, 200],
+    abroad: [30, 60, 100],
+  };
+  const ceilings = (category && ladders[category]) || [50, 80, 120];
+  return ceilings.slice(0, 3).map((n) => ({ id: `budget:${n}`, title: `עד ₪${n}` }));
+}
+
+// ── objection / loyalty honest replies (grounded, never a promise) ────────────
+// These answer a push-back or a "should I stay?" without re-pitching the same
+// plan. detectObjection / classifyRefinement (intents.ts) decide WHEN to use them.
+
+/**
+ * Honest response to an OBJECTION ("too expensive", "I'm locked in", "not enough
+ * data"). When we know the category we surface the genuinely cheapest real rows
+ * (optionally tighter than the prior budget) so "too expensive" is met with a
+ * cheaper REAL option, not a sales line. When we don't know the category yet we
+ * ask which service — never invent one. Optional `tighterBudget` lets the caller
+ * pass a lowered ceiling the user implied ("something under 40"). Pure + grounded.
+ */
+export function buildObjectionReply(
+  plans: Plan[],
+  category?: string,
+  tighterBudget?: number,
+): string {
+  if (!category) {
+    return "הבנתי, בוא נדייק 🙂 באיזה תחום מדובר — סלולר, אינטרנט, טלוויזיה או חבילת חו\"ל? ומה התקציב החודשי שמרגיש לך נוח? כך אביא רק אפשרויות שבאמת מתאימות.";
+  }
+  const rows = pickCandidates(plans, { category, budget: tighterBudget }, 3);
+  const heCat = CATEGORY_HE[category] ?? category;
+  if (!rows.length) {
+    return `הבנתי 🙏 כרגע אין לי מסלול ${heCat} שמתאים לדרישה הזו. רוצה שאבדוק תחום אחר, או שאחבר נציג שיבדוק מולך אפשרויות נוספות?`;
+  }
+  const cheaper = rows.map(planLine);
+  const capLine = tighterBudget && tighterBudget > 0 ? ` עד ₪${tighterBudget}` : "";
+  return `הוגן לגמרי — בוא נמצא משהו שמרגיש שווה יותר 👇\nהזולים ב${heCat}${capLine} מהקטלוג:\n${cheaper.join("\n")}\n\nאם יש משהו ספציפי שחשוב לך (נפח, מהירות, ללא התחייבות) — תגיד/י ואצמצם בהתאם.`;
+}
+
+/**
+ * Honest LOYALTY / retention coaching for a user weighing whether to STAY with
+ * their current provider. We never promise the provider will match a price; we
+ * give them the real leverage (the genuine market alternatives, as grounded rows)
+ * so they can negotiate from facts. §-safe: this is advice, not a guarantee, and
+ * it carries NO lead capture. `spend` (current monthly ₪), when known, lets us
+ * show the concrete saving a real alternative would give. Pure + grounded.
+ */
+export function buildLoyaltyReply(
+  plans: Plan[],
+  category?: string,
+  spend?: number,
+): string {
+  const head =
+    "אם בא לך להישאר — לגיטימי לגמרי 🙂 הדרך החכמה היא להתקשר למחלקת השימור של הספק הנוכחי ולבקש להתאים את המחיר. הקלף הכי חזק שלך הוא לדעת מה באמת קיים בשוק:";
+  if (!category) {
+    return `${head}\nספר/י לי איזה שירות זה (סלולר/אינטרנט/טלוויזיה) וכמה את/ה משלם/ת היום, ואביא לך כמה מחירי שוק אמיתיים שתוכל/י לשים על השולחן.`;
+  }
+  const hint = buildSavingHint(plans, category, spend);
+  const heCat = CATEGORY_HE[category] ?? category;
+  if (hint) {
+    return `${head}\n${hint}\n\nאלה מחירי שוק אמיתיים — שווה לבקש מהספק הנוכחי להתיישר אליהם. אם לא — אני כאן כדי לעזור לעבור בלי כאב ראש.`;
+  }
+  const rows = pickCandidates(plans, { category }, 3);
+  if (!rows.length) {
+    return `${head}\nכרגע אין לי מספיק נתוני ${heCat} להראות לך מחיר שוק. רוצה שאבדוק תחום אחר, או אחבר נציג?`;
+  }
+  const lines = rows.map(planLine);
+  return `${head}\nמחירי שוק אמיתיים ב${heCat} כרגע:\n${lines.join("\n")}\n\nשווה לבקש מהספק להתיישר אליהם. אם תרצה/י — אעזור לעבור.`;
 }

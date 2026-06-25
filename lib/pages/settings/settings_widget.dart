@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show HapticFeedback;
 import 'package:provider/provider.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/app_snackbar.dart';
@@ -118,6 +119,7 @@ class SettingsWidget extends StatelessWidget {
                         title: 'אפס חשבונות',
                         message: 'לאפס את כל החשבונות החודשיים לאפס?',
                         confirmLabel: 'אפס',
+                        holdHint: 'החזק כדי לאפס',
                         confirmColor: ffTheme.warning,
                         onConfirm: () {
                           Provider.of<AppState>(context, listen: false).resetAllBills();
@@ -140,6 +142,7 @@ class SettingsWidget extends StatelessWidget {
                         title: 'נקה שיחת תמיכה',
                         message: 'למחוק את היסטוריית שיחת התמיכה?',
                         confirmLabel: 'מחק',
+                        holdHint: 'החזק כדי למחוק',
                         confirmColor: ffTheme.error,
                         onConfirm: () {
                           Provider.of<AppState>(context, listen: false).clearChatHistory();
@@ -162,6 +165,7 @@ class SettingsWidget extends StatelessWidget {
                         title: 'נקה שיחת יועץ',
                         message: 'למחוק את היסטוריית שיחת היועץ?',
                         confirmLabel: 'מחק',
+                        holdHint: 'החזק כדי למחוק',
                         confirmColor: ffTheme.error,
                         onConfirm: () {
                           Provider.of<AppState>(context, listen: false).clearAdvisorHistory();
@@ -316,9 +320,12 @@ class SettingsWidget extends StatelessWidget {
     );
   }
 
-  /// Logout confirm — an AppSheet bottom-sheet (primary destructive + secondary
-  /// cancel) replacing the old centred AlertDialog. On confirm it signs out,
-  /// clears AppState, and returns Home (unchanged behaviour).
+  /// Logout confirm — an AppSheet bottom-sheet whose primary action is an Emil
+  /// HOLD-TO-CONFIRM ([_HoldToConfirm]): logging out is destructive (signs out +
+  /// wipes local AppState), so the user must press-and-HOLD to commit — a slow,
+  /// deliberate ~1.5s LINEAR fill; releasing early SNAPS back. On completion it
+  /// pops the sheet `true`, preserving the prior contract exactly (the outer
+  /// branch below is byte-for-byte unchanged), then signs out + returns Home.
   Future<void> _confirmLogout(BuildContext context) async {
     final ffTheme = AppTheme.of(context);
     final confirmed = await AppSheet.show<bool>(
@@ -330,11 +337,12 @@ class SettingsWidget extends StatelessWidget {
         children: [
           Text('האם להתנתק מהחשבון?', style: ffTheme.bodyMedium),
           const SizedBox(height: 16),
-          AppButton(
-            text: 'התנתק',
+          _HoldToConfirm(
+            label: 'התנתק',
+            holdHint: 'החזק כדי להתנתק',
             color: ffTheme.error,
-            width: double.infinity,
-            onPressed: () async => Navigator.pop(context, true),
+            ffTheme: ffTheme,
+            onConfirmed: () => Navigator.pop(context, true),
           ),
           const SizedBox(height: 8),
           AppButton.secondary(
@@ -353,15 +361,21 @@ class SettingsWidget extends StatelessWidget {
     }
   }
 
-  /// Generic destructive confirm — an AppSheet bottom-sheet (primary confirm in
-  /// [confirmColor] + secondary cancel) replacing the old AlertDialog. Runs
-  /// [onConfirm] only when the user taps the confirm action.
+  /// Generic destructive confirm — an AppSheet bottom-sheet whose primary action
+  /// is an Emil HOLD-TO-CONFIRM ([_HoldToConfirm]). These flows DELETE data
+  /// (reset bills / clear chat / clear advisor history), so a single tap is too
+  /// easy: the user must press-and-HOLD (~1.5s LINEAR progress fill) to commit;
+  /// releasing early SNAPS the fill back (200ms ease-out) and nothing happens.
+  /// On completion it pops the sheet `true`, so the outer `onConfirm` contract is
+  /// unchanged — only the gesture got more deliberate. [holdHint] is the spoken
+  /// a11y prompt ("החזק כדי ל…").
   Future<void> _confirmAction({
     required BuildContext context,
     required AppTheme ffTheme,
     required String title,
     required String message,
     required String confirmLabel,
+    required String holdHint,
     required Color confirmColor,
     required VoidCallback onConfirm,
   }) async {
@@ -374,11 +388,12 @@ class SettingsWidget extends StatelessWidget {
         children: [
           Text(message, style: ffTheme.bodyMedium),
           const SizedBox(height: 16),
-          AppButton(
-            text: confirmLabel,
+          _HoldToConfirm(
+            label: confirmLabel,
+            holdHint: holdHint,
             color: confirmColor,
-            width: double.infinity,
-            onPressed: () async => Navigator.pop(context, true),
+            ffTheme: ffTheme,
+            onConfirmed: () => Navigator.pop(context, true),
           ),
           const SizedBox(height: 8),
           AppButton.secondary(
@@ -915,5 +930,207 @@ class _TelegramRowState extends State<_TelegramRow> {
         ),
       );
     }
+  }
+}
+
+// ── Emil signature: HOLD-TO-CONFIRM (asymmetric) ────────────────────────────────
+/// The destructive-confirm primary action. Unlike a tap, committing here demands
+/// a deliberate PRESS-AND-HOLD: while held, a fill sweeps the button via a
+/// clip-path-equivalent ([ClipRect] + [Align] `widthFactor`) over ~1.5s on a
+/// LINEAR curve, and only a *completed* sweep fires [onConfirmed]. The motion is
+/// intentionally ASYMMETRIC — slow + deliberate to arm, but if the finger lifts
+/// early the fill SNAPS back fast (200ms ease-out) and nothing happens. A light
+/// `scale(0.97)` press feedback (the app's [AppTheme.pressScale]) gives the
+/// "I'm holding" tell, and a heavy haptic punctuates completion.
+///
+/// On confirm it calls [onConfirmed] — the call sites pass
+/// `() => Navigator.pop(context, true)`, so the surrounding confirm contract is
+/// byte-for-byte preserved; only the gesture changed from tap → hold.
+///
+/// A11Y / REDUCED-MOTION: a timed hold is hostile to switch-control and to users
+/// who asked for less motion, so when [MediaQuery.disableAnimations] is set this
+/// degrades to a single-tap [AppButton] (same label, colour, onConfirmed) — no
+/// progress, no transform. Either way the control is a [Semantics] `button`
+/// labelled with [holdHint] ("החזק כדי ל…"), and exposes `onLongPress` so
+/// assistive tech can commit without timing a physical hold.
+class _HoldToConfirm extends StatefulWidget {
+  const _HoldToConfirm({
+    required this.label,
+    required this.holdHint,
+    required this.color,
+    required this.ffTheme,
+    required this.onConfirmed,
+  });
+
+  /// Resting label, e.g. 'מחק' / 'אפס' / 'התנתק'.
+  final String label;
+
+  /// Spoken a11y prompt while held, e.g. 'החזק כדי למחוק'.
+  final String holdHint;
+
+  /// Destructive fill colour (error / warning) — white label sits on top.
+  final Color color;
+  final AppTheme ffTheme;
+
+  /// Fired exactly once when a full hold completes.
+  final VoidCallback onConfirmed;
+
+  @override
+  State<_HoldToConfirm> createState() => _HoldToConfirmState();
+}
+
+class _HoldToConfirmState extends State<_HoldToConfirm>
+    with SingleTickerProviderStateMixin {
+  // ~1.5s LINEAR arming sweep. The controller's RAW value is the fill fraction
+  // while held; on release we animate it back fast with an ease-out curve, so
+  // the press↔release asymmetry lives in *how* we drive this one controller.
+  static const Duration _holdDuration = Duration(milliseconds: 1500);
+  static const Duration _snapBackDuration = Duration(milliseconds: 200);
+
+  late final AnimationController _ctrl;
+  bool _holding = false;
+  bool _fired = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(vsync: this, duration: _holdDuration)
+      ..addStatusListener(_onStatus);
+  }
+
+  void _onStatus(AnimationStatus status) {
+    if (status == AnimationStatus.completed && !_fired) {
+      _fired = true;
+      HapticFeedback.heavyImpact();
+      widget.onConfirmed();
+    }
+  }
+
+  void _startHold() {
+    if (_fired) return;
+    setState(() => _holding = true);
+    HapticFeedback.selectionClick();
+    // LINEAR fill from the current position to full over the remaining time.
+    _ctrl.forward();
+  }
+
+  void _endHold() {
+    if (_fired || !_holding) return;
+    setState(() => _holding = false);
+    // SNAP back fast (ease-out) — the asymmetric release. Nothing fires.
+    _ctrl.animateBack(0, duration: _snapBackDuration, curve: widget.ffTheme.easeOut);
+  }
+
+  /// Assistive-tech path: commit immediately (skip the physical hold timing).
+  void _confirmNow() {
+    if (_fired) return;
+    _fired = true;
+    HapticFeedback.heavyImpact();
+    widget.onConfirmed();
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ffTheme = widget.ffTheme;
+    final reduceMotion = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    final radius = BorderRadius.circular(ffTheme.radiusMd);
+    const height = 52.0;
+    final labelStyle = GoogleFonts.rubik(
+      fontSize: 14,
+      fontWeight: FontWeight.w700,
+      color: Colors.white,
+    );
+
+    // REDUCED-MOTION / a11y fallback: a plain destructive tap button. No timed
+    // hold to fight, same label + colour + action. (AppButton already supplies
+    // its own Semantics button + press feedback.)
+    if (reduceMotion) {
+      return AppButton(
+        text: widget.label,
+        color: widget.color,
+        width: double.infinity,
+        onPressed: () async => _confirmNow(),
+      );
+    }
+
+    return Semantics(
+      button: true,
+      label: widget.holdHint,
+      onLongPress: _confirmNow,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        // Press-and-hold drives the sweep; lift / cancel snaps it back.
+        onTapDown: (_) => _startHold(),
+        onTapUp: (_) => _endHold(),
+        onTapCancel: _endHold,
+        child: AnimatedScale(
+          // scale(0.97) press feel while armed; releases back to rest.
+          scale: _holding ? ffTheme.pressScale : 1.0,
+          duration: _holding ? ffTheme.motionPress : ffTheme.motionMedium,
+          curve: ffTheme.easeOut,
+          child: AnimatedBuilder(
+            animation: _ctrl,
+            builder: (context, _) {
+              final progress = _ctrl.value;
+              return ClipRRect(
+                borderRadius: radius,
+                child: SizedBox(
+                  width: double.infinity,
+                  height: height,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      // Resting track: the destructive colour, dimmed — reads as
+                      // "armable" without shouting until the user commits.
+                      ColoredBox(color: widget.color.withValues(alpha: 0.34)),
+                      // The arming fill — a clip-path-equivalent reveal that grows
+                      // from the start edge (RTL-aware via Alignment.centerStart)
+                      // as the hold progresses. Pure width-factor clip: no layout,
+                      // GPU-friendly.
+                      Align(
+                        alignment: AlignmentDirectional.centerStart,
+                        widthFactor: progress.clamp(0.0, 1.0),
+                        child: SizedBox(
+                          width: double.infinity,
+                          child: ColoredBox(color: widget.color),
+                        ),
+                      ),
+                      // Label + state hint, centred over the fill.
+                      Center(
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            ExcludeSemantics(
+                              child: Icon(
+                                _holding
+                                    ? Icons.lock_open_rounded
+                                    : Icons.lock_rounded,
+                                size: 16,
+                                color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              _holding ? widget.holdHint : widget.label,
+                              style: labelStyle,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
   }
 }

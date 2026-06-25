@@ -75,6 +75,14 @@ interface ChatResponse {
 
 export default function AiConcierge() {
   const [open, setOpen] = useState(false);
+  // Graceful EXIT: closing the panel doesn't unmount it instantly — we keep it in
+  // the DOM via `closing` and reverse the SAME origin-aware popover transition
+  // (scale back down to 0.96 + fade), so it visually collapses BACK INTO the
+  // launcher corner it grew from. Finalize on transitionend (timeout fallback for
+  // reduced-motion / no-layout). Re-opening mid-exit cancels `closing` and the
+  // enter transition replays from the launcher corner.
+  const [closing, setClosing] = useState(false);
+  const exitTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [turns, setTurns] = useState<Turn[]>([{ role: "bot", text: GREETING }]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
@@ -119,22 +127,50 @@ export default function AiConcierge() {
     launcherRef.current?.focus();
   }, [open]);
 
-  // ESC closes the panel.
+  // Begin the graceful exit: flip closed but keep the panel MOUNTED via `closing`
+  // so the reverse origin-aware transition can collapse it back into the launcher
+  // corner; finalize on transitionend, with a timeout fallback.
+  const closePanel = useCallback(() => {
+    setOpen(false);
+    setClosing(true);
+    if (exitTimer.current) clearTimeout(exitTimer.current);
+    exitTimer.current = setTimeout(() => {
+      setClosing(false);
+      exitTimer.current = null;
+    }, 280);
+  }, []);
+
+  // ESC closes the panel (through the graceful exit).
   useEffect(() => {
     if (!open) return;
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") closePanel();
     }
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [open]);
+  }, [open, closePanel]);
+
+  // Clear any pending exit timer on unmount.
+  useEffect(
+    () => () => {
+      if (exitTimer.current) clearTimeout(exitTimer.current);
+    },
+    [],
+  );
 
   function toggle() {
-    setOpen((o) => {
-      const next = !o;
-      if (next) trackEvent("ai_chat_open", { source: "concierge" });
-      return next;
-    });
+    if (open) {
+      closePanel();
+      return;
+    }
+    // Opening: cancel any in-flight exit so the panel re-grows from the corner.
+    setClosing(false);
+    if (exitTimer.current) {
+      clearTimeout(exitTimer.current);
+      exitTimer.current = null;
+    }
+    setOpen(true);
+    trackEvent("ai_chat_open", { source: "concierge" });
   }
 
   const send = useCallback(
@@ -300,23 +336,42 @@ export default function AiConcierge() {
         </span>
       </button>
 
-      {/* Panel */}
-      {open && (
+      {/* Panel — mounted while open OR exiting (kept alive to collapse back into
+          the launcher corner). */}
+      {(open || closing) && (
         <div
           ref={panelRef}
-          role="dialog"
-          aria-modal="false"
-          aria-labelledby={titleId}
+          {...(closing
+            ? { "aria-hidden": true }
+            : { role: "dialog", "aria-modal": "false", "aria-labelledby": titleId })}
+          onTransitionEnd={(e) => {
+            // Only finalize on the panel's OWN transform/opacity exit (ignore child
+            // bubbling + the enter transition).
+            if (e.target !== e.currentTarget || open) return;
+            if (exitTimer.current) {
+              clearTimeout(exitTimer.current);
+              exitTimer.current = null;
+            }
+            setClosing(false);
+          }}
           // ORIGIN-AWARE popover (Emil rule 7): the panel scales UP FROM the
           // launcher's corner, not its own center, so it reads as "this opened from
-          // the button". The launcher pins to the inline-start, bottom corner — in
-          // this RTL app that is physically bottom-right. The shared `.popover`
-          // utility (globals.css) handles the rest: scale(0.96)+opacity:0 enter via
-          // @starting-style (never scale(0), rule 6), interruptible transition,
-          // dropdown band, and reduced-motion-safe opacity-only fallback.
+          // the button" — and on close it collapses BACK INTO that same corner. The
+          // launcher pins to the inline-start, bottom corner — in this RTL app that
+          // is physically bottom-right. The shared `.popover` utility (globals.css)
+          // handles the enter: scale(0.96)+opacity:0 via @starting-style (never
+          // scale(0), rule 6), interruptible transition (transform+opacity), dropdown
+          // band, reduced-motion-safe opacity-only fallback. For the EXIT we re-apply
+          // that same end state (scale(0.96)+opacity:0) as utilities, which animates
+          // back through `.popover`'s own transition — same curve, same
+          // `--popover-origin` corner — so the panel collapses INTO the launcher.
+          // `pointer-events-none` keeps the closing panel inert (never blocks input).
           style={{ ["--popover-origin" as string]: "bottom right" }}
           className={[
             "popover",
+            closing
+              ? "pointer-events-none scale-[0.96] opacity-0 motion-reduce:scale-100"
+              : "",
             "fixed bottom-20 start-4 z-40 flex w-[min(22rem,calc(100vw-2rem))] flex-col",
             "max-h-[min(34rem,calc(100vh-7rem))] overflow-hidden rounded-2xl",
             "border border-border bg-surface shadow-float",
@@ -345,7 +400,7 @@ export default function AiConcierge() {
             </div>
             <button
               type="button"
-              onClick={() => setOpen(false)}
+              onClick={closePanel}
               aria-label="סגירת הצ׳אט"
               className="interactive press rounded-lg p-1.5 text-muted hover:bg-background hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
             >

@@ -34,6 +34,7 @@ import { analyzeBill, type ForensicsPlan } from "@/lib/bill-forensics";
 import LeadForm from "@/components/LeadForm";
 import PriceCaveat from "@/components/PriceCaveat";
 import BillForensics from "@/components/BillForensics";
+import SavingsReveal from "@/components/SavingsReveal";
 import Icon from "@/components/Icon";
 
 // Compression budget: cap the longest edge and re-encode as JPEG. A bill is text-
@@ -396,6 +397,17 @@ export default function BillUploader({ promoPlans = [] }: BillUploaderProps) {
               warnings={result.warnings}
             />
           </div>
+
+          {/* Signature clip-path before/after — "your annual cost today" wipes to
+              "your annual cost on the cheapest plan" as the user scrubs. Pure over
+              the SAME read (currentSpend × 12 minus the REAL headline annualSaving);
+              renders nothing unless there's a real positive gap. */}
+          {result.annualSaving > 0 && (
+            <SavingsReveal
+              currentSpend={result.currentSpend}
+              annualSaving={result.annualSaving}
+            />
+          )}
 
           {/* Itemized forensics — "ייתכן שאתה משלם ₪X מיותר" + expired-promo /
               unused-line flags + total-overpay summary. Pure analyzer over the

@@ -54,6 +54,7 @@ import {
   summarizeDataFor,
 } from "../_shared/compliance.ts";
 import { jlog } from "../_shared/log.ts";
+import { captureError } from "../_shared/observability.ts";
 import { rateLimit } from "../_shared/ratelimit.ts";
 import { type AiKeys, type ChatTurn } from "../_shared/ai.ts";
 import { type Plan, plansFromRows } from "../_shared/catalogue.ts";
@@ -810,6 +811,9 @@ Deno.serve(async (req: Request) => {
     await handleUpdate(update);
   } catch (e) {
     jlog({ at: "tgu.post", ok: false, error: String(e) });
+    // Surface the unexpected throw to Sentry (fire-and-forget; dark until a DSN is
+    // configured; never throws or blocks) — parity with the other customer handlers.
+    captureError(e, { fn: "telegram-user-webhook", method: req.method });
   }
   return json({ ok: true }, 200);
 });

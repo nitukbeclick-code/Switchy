@@ -445,7 +445,8 @@ a:hover {
 /* Hover-lift is a pointer affordance — only on hover-capable, fine pointers so
    it doesn't latch on touch devices. */
 @media (hover: hover) and (pointer: fine) {
-  .hover-lift:hover {
+  .hover-lift:hover,
+  .sw-lift:hover {
     transform: translateY(-2px);
     box-shadow: var(--shadow-card);
   }
@@ -502,7 +503,11 @@ a:hover {
     transform: translateY(0);
   }
 }
-.reveal {
+/* `.sw-reveal` / `.sw-lift` are aliases the page components reference (the names
+   drifted from `.reveal` / `.hover-lift`); defining them here makes those
+   entrances/hovers fire instead of silently being inert no-op classes. */
+.reveal,
+.sw-reveal {
   animation: swRevealUp 420ms var(--ease-out) both;
 }
 /* Convenience: a container that wants to stagger its DIRECT children without
@@ -621,6 +626,7 @@ a:hover {
   .card-interactive:hover,
   .card-interactive:active,
   .hover-lift:hover,
+  .sw-lift:hover,
   .press:active {
     transform: none !important;
   }
@@ -629,6 +635,7 @@ a:hover {
      visible, never hiding it. The popover loses its scale enter (transform) but
      keeps the opacity fade for legible state feedback. */
   .reveal,
+  .sw-reveal,
   .stagger > *,
   .blur-mask {
     animation: none !important;

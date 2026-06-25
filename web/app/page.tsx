@@ -10,6 +10,7 @@ import StickyLeadCta from "@/components/StickyLeadCta";
 import LeadForm from "@/components/LeadFormLazy";
 import SmartTimer from "@/components/SmartTimerLazy";
 import TrackedCtaLink from "@/components/TrackedCtaLink";
+import HeroVideo from "@/components/HeroVideo";
 import {
   getCategories,
   getProviders,
@@ -102,64 +103,73 @@ export default function Home() {
       <JsonLd data={faqPageSchema(GENERAL_FAQ)} />
 
       {/* ── Hero ──────────────────────────────────────────────────────────── */}
-      <section className="pt-4 text-center sm:pt-8">
-        <h1 className="sw-reveal font-display text-4xl font-bold tracking-tight text-ink sm:text-6xl">
-          משווים תקשורת.{" "}
-          <span className="text-accent-text">חוסכים כסף.</span>
-        </h1>
-        <p
-          className="sw-reveal mx-auto mt-5 max-w-2xl text-xl font-semibold leading-relaxed text-foreground sm:text-2xl"
-          style={{ animationDelay: "60ms" }}
-        >
-          השוואה חינמית של מסלולי סלולר, אינטרנט, טלוויזיה, חבילות משולבות
-          וחבילות חו״ל מכל הספקים בישראל — מחירים מעודכנים בשקלים.
-        </p>
-        {/* Amber VALUE badge — honest, qualitative framing (no fabricated figure);
-            the per-category savings vary, so we promise comparison value, not a
-            number the catalogue can't substantiate. */}
-        <p
-          className="sw-reveal mt-4 inline-flex items-center gap-1.5 rounded-full border border-value/30 bg-value/10 px-3.5 py-1.5 text-sm font-semibold text-value-text"
-          style={{ animationDelay: "90ms" }}
-        >
-          <span
-            aria-hidden="true"
-            className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-value"
-          />
-          מסלול מתאים יכול לחסוך לכם מאות ₪ בשנה — וההשוואה חינם
-        </p>
-        <div
-          className="sw-reveal mt-8 flex flex-wrap items-center justify-center gap-3"
-          style={{ animationDelay: "120ms" }}
-        >
-          <TrackedCtaLink
-            href={`/compare/${featuredCat}`}
-            location="hero"
-            label="compare"
-            className="interactive press sw-lift rounded-xl border border-accent/40 bg-accent px-6 py-3 font-semibold text-accent-contrast shadow-[var(--glow-accent)] hover:bg-accent-hover hover:shadow-float hover:shadow-accent/30"
+      <section className="grid grid-cols-1 items-center gap-10 pt-4 text-center sm:pt-8 lg:grid-cols-2 lg:gap-12 lg:text-start">
+        {/* Text column — headline, value pitch, CTAs. On lg it sits at the start
+            edge (right, RTL) with the video in the opposite column; on mobile it
+            stacks above the video, centered. */}
+        <div>
+          <h1 className="sw-reveal font-display text-4xl font-bold tracking-tight text-ink sm:text-6xl">
+            משווים תקשורת.{" "}
+            <span className="text-accent-text">חוסכים כסף.</span>
+          </h1>
+          <p
+            className="sw-reveal mx-auto mt-5 max-w-2xl text-xl font-semibold leading-relaxed text-foreground sm:text-2xl lg:mx-0"
+            style={{ animationDelay: "60ms" }}
           >
-            להשוואת מסלולים
-          </TrackedCtaLink>
-          <TrackedCtaLink
-            href="#lead"
-            location="hero"
-            label="consult"
-            className="interactive press sw-lift rounded-xl border border-border/60 px-6 py-3 font-medium text-ink hover:border-accent/40 hover:bg-surface hover:shadow-soft"
+            השוואה חינמית של מסלולי סלולר, אינטרנט, טלוויזיה, חבילות משולבות
+            וחבילות חו״ל מכל הספקים בישראל — מחירים מעודכנים בשקלים.
+          </p>
+          {/* Amber VALUE badge — honest, qualitative framing (no fabricated figure);
+              the per-category savings vary, so we promise comparison value, not a
+              number the catalogue can't substantiate. */}
+          <p
+            className="sw-reveal mt-4 inline-flex items-center gap-1.5 rounded-full border border-value/30 bg-value/10 px-3.5 py-1.5 text-sm font-semibold text-value-text"
+            style={{ animationDelay: "90ms" }}
           >
-            שיחת ייעוץ חינם
-          </TrackedCtaLink>
+            <span
+              aria-hidden="true"
+              className="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-value"
+            />
+            מסלול מתאים יכול לחסוך לכם מאות ₪ בשנה — וההשוואה חינם
+          </p>
+          <div
+            className="sw-reveal mt-8 flex flex-wrap items-center justify-center gap-3 lg:justify-start"
+            style={{ animationDelay: "120ms" }}
+          >
+            <TrackedCtaLink
+              href={`/compare/${featuredCat}`}
+              location="hero"
+              label="compare"
+              className="interactive press sw-lift rounded-xl border border-accent/40 bg-accent px-6 py-3 font-semibold text-accent-contrast shadow-[var(--glow-accent)] hover:bg-accent-hover hover:shadow-float hover:shadow-accent/30"
+            >
+              להשוואת מסלולים
+            </TrackedCtaLink>
+            <TrackedCtaLink
+              href="#lead"
+              location="hero"
+              label="consult"
+              className="interactive press sw-lift rounded-xl border border-border/60 px-6 py-3 font-medium text-ink hover:border-accent/40 hover:bg-surface hover:shadow-soft"
+            >
+              שיחת ייעוץ חינם
+            </TrackedCtaLink>
+          </div>
+          {/* Trust band — the cheapest entry price is the product's hook, so it
+              carries the amber VALUE token (the rest stays muted). */}
+          <p
+            className="sw-reveal mt-4 text-sm text-muted"
+            style={{ animationDelay: "150ms" }}
+          >
+            {planCount} מסלולים · {providers.length} ספקים · החל מ-
+            <span className="font-display font-bold text-value-text">
+              {ils(minFeatured)}
+            </span>{" "}
+            לחודש
+          </p>
         </div>
-        {/* Trust band — the cheapest entry price is the product's hook, so it
-            carries the amber VALUE token (the rest stays muted). */}
-        <p
-          className="sw-reveal mt-4 text-sm text-muted"
-          style={{ animationDelay: "150ms" }}
-        >
-          {planCount} מסלולים · {providers.length} ספקים · החל מ-
-          <span className="font-display font-bold text-value-text">
-            {ils(minFeatured)}
-          </span>{" "}
-          לחודש
-        </p>
+
+        {/* Visual anchor — Switchy, the AI agent, looping in a branded frame
+            (replaces the old static app mockup). */}
+        <HeroVideo />
       </section>
 
       {/* ── Trust signals — REAL catalogue counts + honest trust points + the

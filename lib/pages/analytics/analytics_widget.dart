@@ -1866,8 +1866,8 @@ class _DashboardSkeleton extends StatelessWidget {
                 child: Column(
                   children: [
                     for (var i = 0; i < 4; i++) ...[
-                      Row(
-                        children: const [
+                      const Row(
+                        children: [
                           Expanded(child: SkeletonBox(height: 12)),
                           SizedBox(width: 8),
                           SkeletonBox(width: 32, height: 14),

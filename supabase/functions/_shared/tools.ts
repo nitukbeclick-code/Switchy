@@ -767,7 +767,7 @@ export async function escalateToHuman(
   return {
     ok: true, // never fail the customer — we always acknowledge
     data: { escalated: ok },
-    note: "מעולה 🙌 חיברתי אותך לנציג אנושי שיחזור אליך בהקדם. בינתיים אפשר להמשיך לשאול אותי כל דבר.",
+    note: `${COMMISSION_DISCLOSURE} מעולה 🙌 חיברתי אותך לנציג אנושי שיחזור אליך בהקדם. בינתיים אפשר להמשיך לשאול אותי כל דבר.`,
   };
 }
 

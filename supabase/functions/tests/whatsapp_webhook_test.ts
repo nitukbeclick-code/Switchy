@@ -39,7 +39,11 @@ import { captureServeHandler } from "./_capture_handler.ts";
 // top-level Deno.serve against the REAL Deno.serve (binding a port + defeating the
 // capture), so both the handler and the helpers come through this one import.
 const waHandler = await captureServeHandler("../whatsapp-webhook/index.ts");
-const { capInbound, senderBurstOk } = await import("../whatsapp-webhook/index.ts");
+const { capInbound, senderBurstOk, buildHandoffReply, handleOptOut } = await import(
+  "../whatsapp-webhook/index.ts"
+);
+// §7b disclosure constant — the single source of truth the handoff replies reuse.
+import { COMMISSION_DISCLOSURE } from "../_shared/tools.ts";
 
 // ── opt-out / STOP regex (Spam Law §30A) ──────────────────────────────────────
 
@@ -331,4 +335,82 @@ Deno.test("HARDEN: a VALID signature with no messages returns the 200 {ok:true} 
   );
   assertEquals(r.status, 200);
   assertEquals(await r.json(), { ok: true });
+});
+
+// ── §7b: the deterministic human-handoff replies carry the commission disclosure ─
+// A hand-off reaches a commission-bearing rep, so BOTH the success reply and the
+// rate-limited fallback MUST prepend the SAME COMMISSION_DISCLOSURE create_lead
+// surfaces (Switchy may earn a commission). Pinned via the exported pure builder so
+// the disclosure can never be silently dropped from either branch.
+
+Deno.test("§7b: buildHandoffReply prepends the commission disclosure on the SUCCESS reply", () => {
+  const reply = buildHandoffReply(true);
+  // The disclosure leads the message (mirrors create_lead's note).
+  assert(reply.startsWith(COMMISSION_DISCLOSURE), "disclosure leads the success handoff reply");
+  assertStringIncludes(reply, "עמלה"); // the disclosure mentions a commission
+  // The existing success copy is kept verbatim AFTER the disclosure.
+  assertStringIncludes(reply, "נציג אנושי שלנו יחזור אליך");
+});
+
+Deno.test("§7b: buildHandoffReply prepends the disclosure on the rate-limited fallback too", () => {
+  const reply = buildHandoffReply(false);
+  assert(reply.startsWith(COMMISSION_DISCLOSURE), "disclosure leads the fallback handoff reply");
+  assertStringIncludes(reply, "עמלה");
+  // The existing insert-blocked reassurance copy is kept verbatim.
+  assertStringIncludes(reply, "רשמתי שתרצה/י לדבר עם נציג");
+});
+
+Deno.test("§7b: NEITHER handoff branch can omit the disclosure (both contain it)", () => {
+  for (const ok of [true, false]) {
+    assertStringIncludes(
+      buildHandoffReply(ok),
+      COMMISSION_DISCLOSURE,
+      `handoff reply (ok=${ok}) must carry the §7b disclosure`,
+    );
+  }
+});
+
+// ── Privacy: the opt-out breadcrumb log carries NO phone (PII) ──────────────────
+// handleOptOut's final jlog line must be { at: "wa.optout", ok: true } — the phone
+// is the data subject and lives in the durable marketing_suppression record + the
+// security_audit_log row, NOT in the operational breadcrumb. We capture console.log
+// (jlog's sink) while running handleOptOut with a fake contact; every DB/send call
+// it makes is fail-soft and no-ops without service-role env, so no DB is needed.
+
+Deno.test("PRIVACY: the wa.optout log line contains ok:true and NO phone (PII)", async () => {
+  const phone = "972500000999";
+  const captured: string[] = [];
+  const origLog = console.log;
+  // Hermetic: sibling test files set SUPABASE_URL/SERVICE_ROLE at module load with
+  // no cleanup, and `deno test` shares one process — so clear them here to force
+  // handleOptOut's fail-soft no-op DB path (the pg* helpers return early without a
+  // URL). Otherwise a real fetch to the leaked stub URL throws before the breadcrumb.
+  // Restored in finally so we don't perturb later tests.
+  const savedUrl = Deno.env.get("SUPABASE_URL");
+  const savedKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  Deno.env.delete("SUPABASE_URL");
+  Deno.env.delete("SUPABASE_SERVICE_ROLE_KEY");
+  // jlog writes one JSON line per event via console.log; capture them all.
+  console.log = (...args: unknown[]) => {
+    captured.push(args.map((a) => String(a)).join(" "));
+  };
+  try {
+    await handleOptOut(
+      // Minimal contact Row; no _convId so the outbound store is skipped. The DB
+      // helpers (pgPatch/pgInsert/logSecurityEvent) no-op without SUPABASE_URL.
+      { id: "contact-1", wa_phone: phone } as Record<string, unknown>,
+      "הסר",
+    );
+  } finally {
+    console.log = origLog;
+    if (savedUrl !== undefined) Deno.env.set("SUPABASE_URL", savedUrl);
+    if (savedKey !== undefined) Deno.env.set("SUPABASE_SERVICE_ROLE_KEY", savedKey);
+  }
+  const optoutLine = captured.find((l) => l.includes('"at":"wa.optout"'));
+  assert(optoutLine, "an wa.optout breadcrumb line was logged");
+  // The breadcrumb signals success…
+  assertStringIncludes(optoutLine!, '"ok":true');
+  // …and must NOT leak the phone (PII) into the structured log.
+  assertFalse(optoutLine!.includes(phone), "the opt-out log line must not carry the phone (PII)");
+  assertFalse(/"phone"/.test(optoutLine!), "the opt-out log line has no phone field at all");
 });

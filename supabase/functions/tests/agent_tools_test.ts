@@ -226,6 +226,18 @@ Deno.test("escalate_to_human never fails the customer and flips the gate", async
   assert(ctx.sec.some((e) => e.event === "agent_escalation"));
 });
 
+Deno.test("escalate_to_human surfaces the §7b commission disclosure (escalation leads to a commission-bearing sale)", async () => {
+  const ctx = fakeCtx({ escalate: () => true });
+  const r = await escalateToHuman(ctx, { reason: "המשתמש ביקש נציג" });
+  assert(r.ok);
+  assert(r.note!.includes(COMMISSION_DISCLOSURE.slice(0, 20)), "§7b commission disclosure surfaced on hand-off");
+  // Even if the escalate sink throws, the customer is still acknowledged WITH the disclosure (fail-soft).
+  const ctxThrow = fakeCtx({ escalate: () => { throw new Error("boom"); } });
+  const r2 = await escalateToHuman(ctxThrow, { reason: "x" });
+  assert(r2.ok);
+  assert(r2.note!.includes(COMMISSION_DISCLOSURE.slice(0, 20)), "§7b disclosure present even on escalate failure");
+});
+
 // ── runAgent: graceful degradation to the template fallback ───────────────────
 
 Deno.test("runAgent reaches templateFallback when no AI providers are configured", async () => {

@@ -66,6 +66,11 @@ import {
 } from "./context.ts";
 import { buildSavingHint, buildTopicReply } from "./flows.ts";
 import { captureAiLead } from "../_shared/leads.ts";
+// §7b: the SAME commission disclosure create_lead surfaces (single source of
+// truth). Prepended to the deterministic human-handoff replies so a customer who
+// reaches a commission-bearing rep is told Switchy may earn a commission — exactly
+// as the agent's create_lead tool does.
+import { COMMISSION_DISCLOSURE } from "../_shared/tools.ts";
 import { type AgentRunnerDeps, runWhatsappAgent } from "./agent_runner.ts";
 // Live-relay (human takeover): when a rep has the conversation, forward the
 // customer's inbound text to the rep's Telegram chat so they see the live
@@ -657,7 +662,10 @@ const COMPARE_PROMPT_REPLY =
 // caller to RETURN without any AI reply. Stays fully fail-soft: even if the DB
 // patch is blocked, the person still gets the confirmation so they know they're
 // out, and the failure is logged.
-async function handleOptOut(contact: Row, inText: string): Promise<void> {
+// Exported so the §30A opt-out side-effects (durable suppression + the PII-free
+// breadcrumb log shape) can be exercised in tests; all DB/send helpers it calls
+// are fail-soft and no-op without service-role env, so the test needs no DB.
+export async function handleOptOut(contact: Row, inText: string): Promise<void> {
   const phone = String(contact.wa_phone ?? "");
   await pgPatch("whatsapp_contacts", `id=eq.${contact.id}`, {
     opted_in_marketing: false,
@@ -697,7 +705,10 @@ async function handleOptOut(contact: Row, inText: string): Promise<void> {
       status: sentId ? "sent" : "failed",
     });
   }
-  jlog({ at: "wa.optout", phone, ok: true });
+  // Privacy-Law: do NOT put the phone (PII) in the structured log. The durable,
+  // authoritative opt-out record already lives in marketing_suppression (and the
+  // security_audit_log row above); this line is just an operational breadcrumb.
+  jlog({ at: "wa.optout", ok: true });
 }
 
 // Create the hand-off lead (Telegram rep card via the leads trigger) and flip the
@@ -727,13 +738,24 @@ async function createHandoffLead(contact: Row, inText: string, history: ChatTurn
   return !!created;
 }
 
-async function handleHandoff(contact: Row, inText: string, history: ChatTurn[]): Promise<string> {
-  const ok = await createHandoffLead(contact, inText, history);
+// Deterministic human-handoff reply text. §7b: a hand-off reaches a commission-
+// bearing rep, so BOTH replies (the success line and the rate-limited fallback)
+// MUST carry the SAME commission disclosure create_lead surfaces — the customer is
+// told Switchy may earn a commission before the rep follows up. Pure + total so the
+// disclosure contract can be pinned in tests without the DB. `ok` selects success
+// vs. the insert-blocked reassurance; the existing copy is kept verbatim after the
+// disclosure.
+export function buildHandoffReply(ok: boolean): string {
   if (!ok) {
     // Insert blocked (e.g. per-phone rate limit) — still reassure the customer.
-    return "אני כאן לכל שאלה 🙂 רשמתי שתרצה/י לדבר עם נציג — ננסה לחזור אליך בהקדם. בינתיים אפשר לשאול אותי כל דבר על המסלולים.";
+    return `${COMMISSION_DISCLOSURE}\nאני כאן לכל שאלה 🙂 רשמתי שתרצה/י לדבר עם נציג — ננסה לחזור אליך בהקדם. בינתיים אפשר לשאול אותי כל דבר על המסלולים.`;
   }
-  return "מעולה 🙌 נציג אנושי שלנו יחזור אליך כאן בוואטסאפ בהקדם. בינתיים אפשר להמשיך לשאול אותי כל דבר על המסלולים והמחירים.";
+  return `${COMMISSION_DISCLOSURE}\nמעולה 🙌 נציג אנושי שלנו יחזור אליך כאן בוואטסאפ בהקדם. בינתיים אפשר להמשיך לשאול אותי כל דבר על המסלולים והמחירים.`;
+}
+
+async function handleHandoff(contact: Row, inText: string, history: ChatTurn[]): Promise<string> {
+  const ok = await createHandoffLead(contact, inText, history);
+  return buildHandoffReply(ok);
 }
 
 // A bill photo, read by Gemini Vision into grounded facts. Returns the extracted
@@ -824,9 +846,47 @@ function buildChatFallback(plans: Plan[], recommend: boolean, ctx: ConvContext):
   return FALLBACK_REPLY;
 }
 
-// ── per-message orchestration ────────────────────────────────────────────────
+// ── per-conversation serialization (warm-isolate mutex) ──────────────────────
+// Two DISTINCT-wamid inbound messages for the SAME conversation can arrive close
+// together (the wamid dedup only collapses a RETRY of the SAME message, not two
+// different ones). Without serialization their load→run→save cycles interleave and
+// the second save clobbers the first's memory (a lost-update race on ai_state).
+//
+// Mitigation: a module-scope Map<key, Promise> that chains handleMessage so only
+// ONE turn per conversation runs at a time — the next turn awaits the previous
+// one's settlement before it starts. The key is the sender phone (a contact has a
+// single open conversation, and the conversation id isn't known until after the DB
+// round-trip inside the body), so this serialises per conversation in practice.
+//
+// SCOPE: in serverless this only serialises within ONE warm isolate. Two isolates
+// (cold-start fan-out) still race; true cross-isolate safety would need a DB
+// version/lock (optimistic concurrency on ai_state). This is a pragmatic, zero-
+// dependency mitigation matched to Switchy's low QPS — most close-together turns
+// from one number land on the same warm isolate. Fail-soft: the chain swallows the
+// inner result/throw so one turn's failure never blocks the next.
+const _convChains = new Map<string, Promise<void>>();
 
 async function handleMessage(m: Row, profileName: string | undefined, aiKeys: AiKeys): Promise<void> {
+  const key = String(m?.from ?? "");
+  if (!key) return; // no sender → handleMessageInner returns immediately anyway
+  // Chain onto any in-flight turn for this conversation. The prior link is already
+  // a never-rejecting Promise (we store the .catch'd form below), so the new tail
+  // simply awaits it, then runs this turn — serialising load→run→save per sender.
+  const prev = _convChains.get(key) ?? Promise.resolve();
+  const tail = prev.then(() => handleMessageInner(m, profileName, aiKeys));
+  // Store the never-rejecting form as the new tail so the NEXT message waits on it
+  // and one turn's throw never poisons the chain. Once it settles, drop the entry —
+  // but only if WE are still the current tail (a newer turn may have replaced us) —
+  // so the Map can't grow unbounded across distinct senders over the isolate's life.
+  const guarded = tail.catch(() => {});
+  _convChains.set(key, guarded);
+  guarded.then(() => {
+    if (_convChains.get(key) === guarded) _convChains.delete(key);
+  });
+  await tail;
+}
+
+async function handleMessageInner(m: Row, profileName: string | undefined, aiKeys: AiKeys): Promise<void> {
   const from = String(m?.from ?? "");
   if (!from) return;
   // Cheap in-memory per-sender burst shed — runs BEFORE any DB/AI work so a tight
@@ -1042,6 +1102,13 @@ async function handleMessage(m: Row, profileName: string | undefined, aiKeys: Ai
       // through (routeType stays "audio"), so no agent/text branch runs below.
       reply = "לא הצלחתי לשמוע את ההודעה הקולית — אפשר לכתוב לי בכתב? 🙏";
       jlog({ at: "wa.voice", ok: false });
+      // Persistent audit so a silent voice failure is observable (was the Groq key
+      // missing? did the media never arrive?). NO phone/PII — only the two cheap
+      // booleans that explain WHY transcription produced nothing. Best-effort.
+      await logSecurityEvent("voice_transcription_failed", {
+        hasGroqKey: !!aiKeys.groq,
+        mediaPresent: !!mediaId,
+      });
     }
   }
 

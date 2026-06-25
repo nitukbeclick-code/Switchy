@@ -195,7 +195,12 @@ export function buildLeadSheetRow(lead: Lead, nowIso = new Date().toISOString())
   const lastName = sp === -1 ? "" : fullName.slice(sp + 1).trim();
   const created = String(lead.created_at ?? "").trim() || nowIso;
   // Sellable gate: a non-empty consent_share_at is the ONLY signal that marks a
-  // lead as marketable to third-party providers. Read defensively (not on the type).
+  // lead as marketable to third-party providers. Read defensively (not on the type)
+  // so a row from a project where the consent_share_at column is absent (or a SELECT
+  // that didn't fetch it) simply reads undefined → "no" — it can never throw here.
+  // DEPLOY DEPENDENCY (HARD): sellable=yes requires the consent_share_at migration to
+  // be applied AND selected into `lead`; without the column every row is honestly
+  // "no" (the safe default), never a fabricated "yes".
   const shareAt = String((lead as unknown as Record<string, unknown>).consent_share_at ?? "").trim();
   const sellable = shareAt ? "yes" : "no";
   return [

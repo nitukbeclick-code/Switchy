@@ -12,9 +12,17 @@
 //   • buildLeadSheetRow: "sellable" is "yes" iff consent_share_at is set, else "no".
 //
 // Run from supabase/functions/:  deno task test
-import { assert, assertEquals } from "@std/assert";
+//
+// The defensive-write tests at the BOTTOM stub globalThis.fetch (the PostgREST
+// service-role layer insertRow uses) so they need SUPABASE_URL +
+// SUPABASE_SERVICE_ROLE_KEY set BEFORE _shared/db.ts reads them. No real network.
+import { assert, assertEquals, assertFalse } from "@std/assert";
+
+Deno.env.set("SUPABASE_URL", "https://stub.supabase.co");
+Deno.env.set("SUPABASE_SERVICE_ROLE_KEY", "service-role-stub");
+
 import type { Lead } from "../_shared/types.ts";
-import { buildAiLeadRow } from "../_shared/leads.ts";
+import { buildAiLeadRow, captureAiLead } from "../_shared/leads.ts";
 import { buildLeadSheetRow } from "../_shared/google_sheets.ts";
 
 const NOW = "2026-06-25T09:00:00.000Z";
@@ -113,4 +121,137 @@ Deno.test("buildLeadSheetRow: sellable reads ONLY consent_share_at — honest ye
   );
   // Absent → no.
   assertEquals(buildLeadSheetRow({ name: "x y", phone: "0501234567" } as Lead)[12], "no");
+});
+
+// ── captureAiLead: DEFENSIVE lead-write (missing consent_share_at can't throw) ──
+// These pin the schema-drift safety: even if the consent_share_at column is missing
+// (PostgREST 4xx on the insert that references it), captureAiLead must NEVER throw,
+// and a CONSENTED customer's lead must still land (just as not-sellable) rather than
+// vanish. We stub globalThis.fetch as the leads-insert sink.
+
+const realFetch = globalThis.fetch;
+
+type Insert = { body: Record<string, unknown> };
+
+// Install a fetch stub for /rest/v1/leads inserts. `colMissing` simulates a project
+// where consent_share_at hasn't been migrated: any insert whose body carries that key
+// is rejected (400), all others accepted (201). Returns the captured insert bodies.
+function stubLeadsInsert(colMissing: boolean): { inserts: Insert[]; restore: () => void } {
+  const inserts: Insert[] = [];
+  globalThis.fetch = ((input: Request | URL | string, init?: RequestInit) => {
+    const url = String(input instanceof Request ? input.url : input);
+    if (!url.includes("/rest/v1/leads")) {
+      return Promise.resolve(new Response("[]", { status: 200 }));
+    }
+    let body: Record<string, unknown> = {};
+    try { body = init?.body ? JSON.parse(String(init.body)) : {}; } catch { body = {}; }
+    inserts.push({ body });
+    const refsMissingCol = colMissing && Object.prototype.hasOwnProperty.call(body, "consent_share_at");
+    return Promise.resolve(
+      refsMissingCol
+        ? new Response(
+          JSON.stringify({ code: "PGRST204", message: "column \"consent_share_at\" does not exist" }),
+          { status: 400 },
+        )
+        : new Response("", { status: 201 }),
+    );
+  }) as typeof globalThis.fetch;
+  return { inserts, restore: () => { globalThis.fetch = realFetch; } };
+}
+
+Deno.test("captureAiLead: missing consent_share_at column ⇒ no throw, lead still captured (not-sellable)", async () => {
+  // Column ABSENT + an explicit share consent: the first insert (with the stamp) is
+  // rejected, the defensive retry without it succeeds → "captured", never a throw.
+  const { inserts, restore } = stubLeadsInsert(true);
+  try {
+    const res = await captureAiLead({
+      name: "דנה כהן",
+      phone: "0501234567",
+      consent: true,
+      consent_share: true,
+    });
+    assertEquals(res, "captured");
+    // Two attempts: first WITH the stamp (rejected), retry WITHOUT it (accepted).
+    assertEquals(inserts.length, 2);
+    assert(
+      Object.prototype.hasOwnProperty.call(inserts[0].body, "consent_share_at"),
+      "first attempt should carry the share stamp",
+    );
+    assertFalse(
+      Object.prototype.hasOwnProperty.call(inserts[1].body, "consent_share_at"),
+      "retry must DROP the unknown column so the lead still lands",
+    );
+    // The lead's actual data still persisted on the retry (consented customer kept).
+    assertEquals(inserts[1].body.phone, "0501234567");
+    assertEquals(inserts[1].body.source, "advisor");
+  } finally {
+    restore();
+  }
+});
+
+Deno.test("captureAiLead: column present + share consent ⇒ single insert keeps the stamp", async () => {
+  const { inserts, restore } = stubLeadsInsert(false);
+  try {
+    const res = await captureAiLead({
+      name: "דנה כהן",
+      phone: "0501234567",
+      consent: true,
+      consent_share: true,
+    });
+    assertEquals(res, "captured");
+    assertEquals(inserts.length, 1); // no retry needed when the column exists
+    assertEquals(inserts[0].body.consent_share_at != null, true);
+  } finally {
+    restore();
+  }
+});
+
+Deno.test("captureAiLead: NO share consent ⇒ one insert that never references the column", async () => {
+  // colMissing=true would reject any body carrying consent_share_at — so this passing
+  // proves the no-consent path never sends the key at all (safe on any schema).
+  const { inserts, restore } = stubLeadsInsert(true);
+  try {
+    const res = await captureAiLead({ name: "דנה כהן", phone: "0501234567", consent: true });
+    assertEquals(res, "captured");
+    assertEquals(inserts.length, 1);
+    assertFalse(
+      Object.prototype.hasOwnProperty.call(inserts[0].body, "consent_share_at"),
+      "no-share path must omit the column entirely",
+    );
+  } finally {
+    restore();
+  }
+});
+
+Deno.test("captureAiLead: every insert fails ⇒ 'error' (still no throw)", async () => {
+  const { restore } = stubLeadsInsert(false);
+  // Reject ALL leads inserts to prove the failure path returns 'error', never throws.
+  globalThis.fetch = ((input: Request | URL | string) => {
+    const url = String(input instanceof Request ? input.url : input);
+    if (url.includes("/rest/v1/leads")) return Promise.resolve(new Response("", { status: 500 }));
+    return Promise.resolve(new Response("[]", { status: 200 }));
+  }) as typeof globalThis.fetch;
+  try {
+    const res = await captureAiLead({
+      name: "דנה כהן",
+      phone: "0501234567",
+      consent: true,
+      consent_share: true,
+    });
+    assertEquals(res, "error");
+  } finally {
+    restore();
+  }
+});
+
+Deno.test("captureAiLead: no name/phone/consent ⇒ 'incomplete' (no insert attempted)", async () => {
+  const { inserts, restore } = stubLeadsInsert(false);
+  try {
+    assertEquals(await captureAiLead({ name: "א", phone: "0501234567", consent: true }), "incomplete"); // name too short
+    assertEquals(await captureAiLead({ name: "דנה כהן", phone: "x", consent: true }), "incomplete"); // bad phone
+    assertEquals(await captureAiLead({ name: "דנה כהן", phone: "0501234567" }), "incomplete"); // no §30A consent
+    assertEquals(inserts.length, 0);
+  } finally {
+    restore();
+  }
 });

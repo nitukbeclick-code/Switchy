@@ -24,10 +24,12 @@ on:
         type: choice
         default: notify-lead
         options:
+          - whatsapp-webhook
           - notify-lead
-          - renewal-reminders
-          - telegram-webhook
+          - telegram-user-webhook
           - site-ai-chat
+          - telegram-webhook
+          - renewal-reminders
           - all
   push:
     branches:
@@ -79,7 +81,7 @@ jobs:
           }
 
           if [ "$target" = "all" ]; then
-            for fn in notify-lead renewal-reminders telegram-webhook site-ai-chat; do
+            for fn in whatsapp-webhook notify-lead telegram-user-webhook site-ai-chat renewal-reminders telegram-webhook; do
               deploy_one "$fn"
             done
           else

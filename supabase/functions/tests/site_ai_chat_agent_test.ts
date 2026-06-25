@@ -286,3 +286,58 @@ Deno.test("a FAILED live catalogue read degrades to the bundled snapshot (still 
     );
   });
 });
+
+// ── HARDEN: observability wrapper + input cap + rate-limit fail-soft ────────────
+// The top-level handler is wrapped so an UNEXPECTED throw is fire-and-forwarded to
+// captureError (dark until a Sentry DSN exists) and STILL returns a fail-soft
+// response — the status/shape clients depend on is never changed by the wrapper.
+// We can't easily force a throw past the inner fail-soft branches without touching
+// source, so we pin the wrapper's TRANSPARENCY instead: every existing contract
+// still holds AND CORS is preserved on the wrapped path (a regression in the
+// wrapper would drop the origin reflection or alter a status here).
+
+Deno.test("HARDEN: the obs wrapper is transparent — happy-path shape + CORS unchanged", async () => {
+  await withFetchStub(rig(), async () => {
+    const r = await post({ message: "מה הכי זול בסלולר?" }, { origin: ALLOWED_ORIGIN });
+    // Unchanged success contract: 200 + a non-empty reply string.
+    assertEquals(r.status, 200);
+    const body = await r.json();
+    assert(typeof body.reply === "string" && body.reply.length > 0);
+    // The wrapper passes corsHeaders through untouched (origin still reflected).
+    assertEquals(r.headers.get("access-control-allow-origin"), ALLOWED_ORIGIN);
+  });
+});
+
+Deno.test("HARDEN: an oversize message is rejected (400) BEFORE any AI work — input cap", async () => {
+  const writes: string[] = [];
+  await withFetchStub(rig(0, writes), async () => {
+    const r = await post({ message: "א".repeat(2100) }); // > MAX_INPUT_LEN (2000)
+    assertEquals(r.status, 400);
+    // Cost guard: no AI provider was called for the oversize payload.
+    assertFalse(
+      writes.some((u) =>
+        u.includes("generativelanguage.googleapis.com") ||
+        u.includes("api.groq.com") ||
+        u.includes("openrouter.ai")
+      ),
+      "no paid provider hit for an over-cap payload",
+    );
+  });
+});
+
+Deno.test("HARDEN: the rate-limit gate is fail-soft for the 'no client IP' case (200, not 5xx)", async () => {
+  // With no cf-connecting-ip / x-forwarded-for the limiter can't key the caller,
+  // so it must FAIL-OPEN (a missing IP is not abuse) and let the request through —
+  // never 5xx. (The DB-error path is the deliberate fail-CLOSED 503, asserted above.)
+  await withFetchStub(rig(), async () => {
+    const r = await Promise.resolve(
+      handler(new Request("https://edge/site-ai-chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" }, // no IP headers
+        body: JSON.stringify({ message: "מה זול?" }),
+      })),
+    );
+    assertEquals(r.status, 200);
+    await r.body?.cancel();
+  });
+});

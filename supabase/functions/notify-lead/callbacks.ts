@@ -7,7 +7,7 @@ import { fetchRows, insertRow, logEvent, patchCount, rpcRows, serviceFetch } fro
 import { desiredCategory, formatTimeline, frozenKeyboard, isWonAskMarkup, keyboardFor, leadIdFromMarkup, type LeadEvent, STATUS_HE, tgDisplayName } from "../_shared/leads.ts";
 import { isLinkAskMarkup, isRescheduleAskMarkup } from "../_shared/meetings.ts";
 import { sendText as waSendText } from "../_shared/whatsapp.ts";
-import { aiMeetingsSummary, baresPhone, handleCommand } from "./commands.ts";
+import { aiMeetingsSummary, applyBookSlot, auditBookedMeeting, baresPhone, handleCommand } from "./commands.ts";
 import { handleMeetingCallback, handleMeetingLinkReply, handleMeetingRescheduleReply } from "./meeting_callbacks.ts";
 import { applyMeetingAct, buildBoard, fetchOpenMeetings } from "./console.ts";
 import {
@@ -607,6 +607,57 @@ async function handleBoardCallback(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// REP-BOOK-A-MEETING — the rep tapped a slot from the /book picker. We authorize
+// (already done by handleCallback's gates), book via the SHARED applyBookSlot
+// (commands.ts) which re-validates the slot through parseReschedule, creates a
+// REAL Google Calendar event (fail-soft), and persists a confirmed meetings row,
+// then audit + confirm. A greyed busy slot carries book:busy:noop → just toast.
+//
+// CALLBACK-DATA CONTRACT (own namespace; the lead/board regexes never match it):
+//   slot pick = "book:<YYYY-MM-DD>:<HH:MM>"   (e.g. book:2026-06-18:14:30)
+//   busy noop = "book:busy:noop"
+// ─────────────────────────────────────────────────────────────────────────────
+
+// "יום ג׳, 18.6, 14:30" — Israel wall-clock confirmation label for a booked slot.
+function bookWhenLabel(startsAt: string): string {
+  const t = Date.parse(startsAt);
+  if (!Number.isFinite(t)) return startsAt;
+  return new Intl.DateTimeFormat("he-IL", {
+    timeZone: "Asia/Jerusalem", weekday: "long", day: "numeric", month: "numeric",
+    hour: "2-digit", minute: "2-digit",
+  }).format(new Date(t));
+}
+
+// Handle a book:<day>:<slot> tap (or the busy noop). Auth + team-chat gate already
+// enforced by handleCallback. Books via the shared applyBookSlot, audits, confirms.
+async function handleBookSlot(
+  cfg: Cfg,
+  answer: (text?: string) => Promise<unknown>,
+  cb: TgCallbackQuery,
+  day: string,
+  slot: string,
+): Promise<HandlerResult> {
+  const actor = tgDisplayName(cb.from) || "נציג";
+  const res = await applyBookSlot(cfg, day, slot, actor);
+  if (!res.ok) {
+    await answer(res.error ?? "הקביעה נכשלה");
+    return { ok: false, skipped: res.error };
+  }
+  await answer("נקבע ✅");
+  // Best-effort audit — never blocks. The id comes back from applyBookSlot.
+  await auditBookedMeeting(res.meetingId, actor, `${res.day} ${res.slot}`);
+  // Confirm in chat so the booking is visible to the team (it also now shows on
+  // the board/digest). Honest note when the calendar didn't sync (dark/failed).
+  const when = bookWhenLabel(res.startsAt ?? "");
+  const calNote = res.gcalSynced ? "" : `${NL}⚠️ סנכרון יומן Google לא בוצע — הוסיפו ידנית אם צריך.`;
+  await sendTelegram(
+    cfg,
+    `🗓️ <b>פגישה נקבעה</b> ל${esc(when)} (30 דק׳, שעון ישראל) על ידי ${esc(actor)}.${calNote}`,
+  );
+  return { ok: true, booked: res.meetingId ?? true, startsAt: res.startsAt };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // LOST-REASON disposition — when a rep marks a lead "לא רלוונטי" (lost) we don't
 // just flip the status: we ask WHY with a small inline keyboard of GROUNDED
 // reasons (no free-text fabrication), persist the chosen reason as a lost_reason
@@ -753,6 +804,20 @@ export async function handleCallback(cfg: Cfg, cb: TgCallbackQuery): Promise<Han
     if (handled) return handled;
     await answer();
     return { ok: true, skipped: "unrecognized board callback" };
+  }
+
+  // Rep-book-a-meeting slot picker (book:<day>:<slot>) — its own namespace, gated
+  // by the same allowlist + team-chat checks above. A greyed busy slot carries
+  // book:busy:noop; a real slot is book:<YYYY-MM-DD>:<HH:MM>.
+  if (data.startsWith("book:")) {
+    if (data === "book:busy:noop") {
+      await answer("המועד הזה תפוס ביומן — בחרו מועד אחר");
+      return { ok: true, skipped: "busy slot" };
+    }
+    const bookM = data.match(/^book:(\d{4}-\d{2}-\d{2}):(\d{2}:\d{2})$/);
+    if (bookM) return await handleBookSlot(cfg, answer, cb, bookM[1], bookM[2]);
+    await answer();
+    return { ok: true, skipped: "unrecognized book callback" };
   }
 
   const renewM = data.match(/^renew:([0-9a-fA-F-]{36}):lead$/);

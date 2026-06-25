@@ -192,6 +192,80 @@ export async function createCalendarEvent(
   }
 }
 
+// A single busy window from the Calendar freebusy.query response (UTC instants).
+export interface BusyInterval {
+  start: string;
+  end: string;
+}
+
+// READ-ONLY free/busy lookup over the configured calendar between two ISO
+// instants. Used by the rep "book a meeting" flow to grey out slots that already
+// have an event. Fail-soft: returns null when Calendar isn't configured, the
+// token can't be minted, or the API call fails — the caller MUST treat null as
+// "unknown, offer the slot anyway" so a calendar hiccup never blocks booking.
+// Never throws. Returns [] (not null) when the window is genuinely clear.
+export async function getFreeBusy(
+  cfg: Cfg,
+  fromIso: string,
+  toIso: string,
+): Promise<BusyInterval[] | null> {
+  if (!gcalConfigured(cfg)) return null;
+  // Validate the window — a bad pair would 400 anyway; bail to the fail-soft path.
+  const fromT = new Date(fromIso);
+  const toT = new Date(toIso);
+  if (Number.isNaN(fromT.getTime()) || Number.isNaN(toT.getTime())) return null;
+  const token = await getCalendarToken(cfg);
+  if (!token) return null;
+  try {
+    const r = await fetch("https://www.googleapis.com/calendar/v3/freeBusy", {
+      method: "POST",
+      headers: { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        timeMin: fromT.toISOString(),
+        timeMax: toT.toISOString(),
+        timeZone: IL_TZ,
+        items: [{ id: cfg.googleCalendarId }],
+      }),
+    });
+    const j = await r.json().catch(() => ({} as Record<string, unknown>)) as Record<string, unknown>;
+    if (!r.ok) {
+      jlog({ at: "gcal.getFreeBusy", ok: false, status: r.status, error: (j.error as Record<string, unknown>)?.message ?? j.error });
+      return null;
+    }
+    const cals = (j.calendars ?? {}) as Record<string, { busy?: Array<{ start?: string; end?: string }>; errors?: unknown }>;
+    const entry = cals[cfg.googleCalendarId];
+    // A per-calendar error (e.g. notFound / no access) → unknown, fail soft.
+    if (!entry || (Array.isArray(entry.errors) && entry.errors.length > 0)) {
+      if (entry?.errors) jlog({ at: "gcal.getFreeBusy", ok: false, calErrors: entry.errors });
+      return null;
+    }
+    const busy = Array.isArray(entry.busy) ? entry.busy : [];
+    return busy
+      .filter((b) => b && b.start && b.end)
+      .map((b) => ({ start: String(b.start), end: String(b.end) }));
+  } catch (e) {
+    jlog({ at: "gcal.getFreeBusy", ok: false, error: String(e) });
+    return null;
+  }
+}
+
+// PURE — is the [slotStart, slotEnd) window covered by any busy interval? Overlap
+// test (start < busyEnd AND end > busyStart). Used to grey out taken slots. When
+// `busy` is null (free/busy unavailable) the caller treats every slot as free, so
+// this is only ever called with a real (possibly empty) list.
+export function slotIsBusy(startIso: string, durationMin: number, busy: BusyInterval[]): boolean {
+  const s = Date.parse(startIso);
+  if (Number.isNaN(s)) return false;
+  const e = s + durationMin * 60_000;
+  for (const b of busy) {
+    const bs = Date.parse(b.start);
+    const be = Date.parse(b.end);
+    if (Number.isNaN(bs) || Number.isNaN(be)) continue;
+    if (s < be && e > bs) return true;
+  }
+  return false;
+}
+
 // Best-effort cleanup when a confirmed meeting is cancelled / marked no-rep — a
 // stray calendar event is harmless, a thrown error here is not.
 export async function deleteCalendarEvent(cfg: Cfg, eventId: string): Promise<void> {

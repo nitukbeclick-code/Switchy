@@ -20,6 +20,27 @@ import {
   withFirstContactNotice,
 } from "../whatsapp-webhook/intents.ts";
 
+// The HMAC App-Secret must be set BEFORE the module is imported (read into
+// APP_SECRET at top level). A known value lets a test forge a VALID signature so
+// the POST path runs end-to-end through the capture-handler rig below.
+const WA_APP_SECRET = "test-app-secret-123";
+Deno.env.set("WHATSAPP_APP_SECRET", WA_APP_SECRET);
+Deno.env.set("WHATSAPP_VERIFY_TOKEN", "verify-tok");
+// No WHATSAPP_TOKEN ⇒ every outbound send returns null (fail-soft), so the
+// handler never actually calls the Graph API during these tests.
+Deno.env.delete("WHATSAPP_TOKEN");
+
+import { __resetRateLimitForTests } from "../_shared/ratelimit.ts";
+import { captureServeHandler } from "./_capture_handler.ts";
+
+// Capture the Deno.serve handler WITHOUT binding a port (Deno.serve is stubbed
+// during the dynamic import). We then pull the module's named pure helpers from
+// the now-cached module — importing them statically would run the module's
+// top-level Deno.serve against the REAL Deno.serve (binding a port + defeating the
+// capture), so both the handler and the helpers come through this one import.
+const waHandler = await captureServeHandler("../whatsapp-webhook/index.ts");
+const { capInbound, senderBurstOk } = await import("../whatsapp-webhook/index.ts");
+
 // ── opt-out / STOP regex (Spam Law §30A) ──────────────────────────────────────
 
 Deno.test("RE_OPTOUT / isOptOut match Hebrew unsubscribe verbs", () => {
@@ -196,4 +217,118 @@ Deno.test("messageText reads image.caption for image messages", () => {
 Deno.test("messageText is tolerant of a malformed/empty envelope", () => {
   assertEquals(messageText({}), "");
   assertEquals(messageText({ type: "text" }), "");
+});
+
+// ── HARDEN: inbound input cap (capInbound) ─────────────────────────────────────
+// A cheap runaway-token guard: the inbound text/caption/transcript fed to the
+// (paid) agent is TRUNCATED to MAX_INBOUND_TEXT (2000). Truncation, not rejection,
+// so the bot still answers; the DB row is separately clipped to 4000.
+
+Deno.test("HARDEN: capInbound truncates oversize input to the agent cap (2000)", () => {
+  const big = "א".repeat(5000);
+  const out = capInbound(big);
+  assertEquals(out.length, 2000);
+  assert(big.startsWith(out), "the cap keeps the START of the message");
+});
+
+Deno.test("HARDEN: capInbound is a no-op for normal-length input and total on junk", () => {
+  assertEquals(capInbound("כמה עולה סלולר?"), "כמה עולה סלולר?");
+  assertEquals(capInbound(""), "");
+  // Never throws on a non-string coerced by the caller.
+  assertEquals(capInbound(undefined as unknown as string), "");
+});
+
+// ── HARDEN: per-sender burst shed is fail-soft (senderBurstOk) ─────────────────
+// A SECOND layer in front of the per-contact hourly DB cap: a process-local
+// fixed-window shed that drops a tight loop BEFORE any DB/AI work. The clock is
+// injectable so no timers are needed; the limiter never drops a legitimate first
+// message and reopens once the window rolls.
+
+Deno.test("HARDEN: senderBurstOk allows a normal conversation, sheds a flood, reopens next window", () => {
+  __resetRateLimitForTests();
+  const t0 = 1_000_000;
+  // The generous limit (20/min) admits a normal back-and-forth…
+  for (let i = 0; i < 20; i++) {
+    assert(senderBurstOk("972500000001", t0), `message ${i + 1} should be allowed`);
+  }
+  // …and sheds the 21st within the same window (abuse only).
+  assertFalse(senderBurstOk("972500000001", t0), "the over-cap message in-window is shed");
+  // A distinct sender has its OWN bucket — one flood can't starve everyone.
+  assert(senderBurstOk("972500000002", t0), "a different sender is unaffected");
+  // The very next window reopens the original sender.
+  assert(senderBurstOk("972500000001", t0 + 61_000), "the window rolls and reopens");
+  __resetRateLimitForTests();
+});
+
+// ── HARDEN: obs wrapper never changes the response (handshake + signature gate) ─
+// The top-level handler is wrapped so an unexpected throw is fire-and-forwarded to
+// captureError and STILL returns a fail-soft response. We pin that the wrapper is
+// transparent: every response contract Meta + the verification handshake depend on
+// is byte-for-byte unchanged. (waHandler is captured once at the top of the file.)
+
+async function signBody(raw: string): Promise<string> {
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(WA_APP_SECRET),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const mac = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(raw));
+  const hex = [...new Uint8Array(mac)].map((b) => b.toString(16).padStart(2, "0")).join("");
+  return `sha256=${hex}`;
+}
+
+Deno.test("HARDEN: GET verification handshake echoes the challenge (200) — unchanged", async () => {
+  const r = await Promise.resolve(
+    waHandler(
+      new Request("https://edge/wa?hub.mode=subscribe&hub.verify_token=verify-tok&hub.challenge=42", { method: "GET" }),
+    ),
+  );
+  assertEquals(r.status, 200);
+  assertEquals(await r.text(), "42");
+});
+
+Deno.test("HARDEN: GET with a wrong verify token is rejected (403) — unchanged", async () => {
+  const r = await Promise.resolve(
+    waHandler(
+      new Request("https://edge/wa?hub.mode=subscribe&hub.verify_token=WRONG&hub.challenge=42", { method: "GET" }),
+    ),
+  );
+  assertEquals(r.status, 403);
+});
+
+Deno.test("HARDEN: POST with a bad/missing signature stays 401 — guard chain preserved", async () => {
+  const raw = JSON.stringify({ entry: [{ changes: [{ value: { messages: [{ from: "x", id: "m1", type: "text" }] } }] }] });
+  // No signature header at all.
+  const r1 = await Promise.resolve(
+    waHandler(new Request("https://edge/wa", { method: "POST", body: raw })),
+  );
+  assertEquals(r1.status, 401);
+  // A present-but-wrong signature.
+  const r2 = await Promise.resolve(
+    waHandler(new Request("https://edge/wa", {
+      method: "POST",
+      headers: { "x-hub-signature-256": "sha256=deadbeef" },
+      body: raw,
+    })),
+  );
+  assertEquals(r2.status, 401);
+});
+
+Deno.test("HARDEN: a VALID signature with no messages returns the 200 {ok:true} contract (no throw)", async () => {
+  // A signed event carrying no `messages` (e.g. a status callback) does no DB/AI
+  // work and must return the exact 200 {ok:true} body Meta expects — proving the
+  // obs wrapper passes the success contract through untouched.
+  const raw = JSON.stringify({ entry: [{ changes: [{ value: { statuses: [{ id: "s1" }] } }] }] });
+  const sig = await signBody(raw);
+  const r = await Promise.resolve(
+    waHandler(new Request("https://edge/wa", {
+      method: "POST",
+      headers: { "x-hub-signature-256": sig },
+      body: raw,
+    })),
+  );
+  assertEquals(r.status, 200);
+  assertEquals(await r.json(), { ok: true });
 });

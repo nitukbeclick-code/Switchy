@@ -73,6 +73,8 @@ import { type AgentRunnerDeps, runWhatsappAgent } from "./agent_runner.ts";
 // reinvent sending.
 import { esc as tgEsc, sendTelegram } from "../_shared/telegram.ts";
 import { resolveCfgCached } from "../_shared/config.ts";
+import { captureError } from "../_shared/observability.ts";
+import { rateLimit } from "../_shared/ratelimit.ts";
 
 const VERIFY_TOKEN = Deno.env.get("WHATSAPP_VERIFY_TOKEN") ?? "";
 const APP_SECRET = Deno.env.get("WHATSAPP_APP_SECRET") ?? "";
@@ -86,6 +88,42 @@ const enc = new TextEncoder();
 // out to a (paid) AI call; beyond it the bot sends a soft "one moment" reply.
 const PER_CONTACT_HOURLY = 30;
 const MAX_MEDIA_BYTES = 6_000_000;
+// Hard cap on the inbound text/caption/transcript fed to the (paid) agent — a
+// cheap runaway-token guard. A WhatsApp text body is already bounded by Meta, but
+// a malicious/garbled payload (or a very long voice-note transcript) shouldn't be
+// allowed to balloon the prompt. We TRUNCATE rather than reject so the customer
+// still gets a grounded answer to (the start of) what they sent. The DB row is
+// separately clipped to 4000; this bounds what the model actually sees.
+const MAX_INBOUND_TEXT = 2000;
+
+// Truncate an inbound text/caption/transcript to the agent-input cap. Total +
+// fail-soft: a non-string collapses to "" and never throws. Exported so the cap
+// can be pinned in tests without booting the server.
+export function capInbound(s: string): string {
+  const t = (s ?? "");
+  return t.length > MAX_INBOUND_TEXT ? t.slice(0, MAX_INBOUND_TEXT) : t;
+}
+
+// Cheap in-memory per-sender burst shed (process-local; the shared fixed-window
+// limiter). This is a SECOND layer in FRONT of the per-contact hourly DB cap
+// (overLimit): it sheds a tight loop — a leaked-secret flood or a retry storm of
+// distinct wamids from one number — BEFORE any DB/AI work, without a round-trip.
+// Deliberately generous so only abuse trips it; the HMAC signature gate remains
+// the real auth and overLimit remains the durable per-hour quota. Fail-soft: any
+// throw here is swallowed and treated as "allowed" so the limiter can never drop
+// a legitimate message.
+const SENDER_BURST_LIMIT = 20;
+const SENDER_BURST_WINDOW_MS = 60_000;
+
+// Exported so the fail-soft burst-shed contract can be pinned in tests. `now` is
+// passed through to the (injectable-clock) shared limiter so a test needs no timers.
+export function senderBurstOk(from: string, now?: number): boolean {
+  try {
+    return rateLimit(`wa:${from}`, SENDER_BURST_LIMIT, SENDER_BURST_WINDOW_MS, now).allowed;
+  } catch (_) {
+    return true; // never let the limiter itself drop a message
+  }
+}
 
 // WhatsApp renders very long bubbles awkwardly (and Graph hard-caps a text body
 // at 4096). A grounded recommend block + reasons can run long, so we split any
@@ -791,6 +829,15 @@ function buildChatFallback(plans: Plan[], recommend: boolean, ctx: ConvContext):
 async function handleMessage(m: Row, profileName: string | undefined, aiKeys: AiKeys): Promise<void> {
   const from = String(m?.from ?? "");
   if (!from) return;
+  // Cheap in-memory per-sender burst shed — runs BEFORE any DB/AI work so a tight
+  // loop (leaked-secret flood / distinct-wamid retry storm from one number) is
+  // dropped without a round-trip. Generous window, so a normal conversation never
+  // trips it; the durable per-hour cap (overLimit) + the HMAC gate are untouched.
+  // Fail-soft: senderBurstOk swallows any limiter error and returns true.
+  if (!senderBurstOk(from)) {
+    jlog({ at: "wa.burst", from, ok: false });
+    return;
+  }
   const wamid = m?.id ? String(m.id) : null;
   const type = String(m?.type ?? "text");
   // A tap arrives as type "interactive": a quick-reply button is under
@@ -811,10 +858,12 @@ async function handleMessage(m: Row, profileName: string | undefined, aiKeys: Ai
     : undefined;
   const buttonId = tapReply ? String(tapReply.id ?? "") : "";
   // Text + image bodies come from the shared messageText extractor; a tap's label
-  // lives in its reply.title, which messageText doesn't cover.
-  const text = type === "interactive"
-    ? String(tapReply?.title ?? "")
-    : messageText(m);
+  // lives in its reply.title, which messageText doesn't cover. Capped to
+  // MAX_INBOUND_TEXT — a cheap runaway-token guard before any (paid) AI fan-out.
+  // Truncation (not rejection) keeps the bot answering; storage clips separately.
+  const text = capInbound(
+    type === "interactive" ? String(tapReply?.title ?? "") : messageText(m),
+  );
 
   // 1) Persist contact + conversation, idempotently store the inbound message.
   const contact = await upsertContact(from, profileName);
@@ -1221,7 +1270,11 @@ async function handleMessage(m: Row, profileName: string | undefined, aiKeys: Ai
 
 // ── HTTP ─────────────────────────────────────────────────────────────────────
 
-Deno.serve(async (req: Request) => {
+// The real request logic. Wrapped by the Deno.serve handler below so any
+// UNEXPECTED throw is captured for observability (fire-and-forget; dark until a
+// Sentry DSN exists) and STILL returns a fail-soft response — every status/shape
+// Meta + the verification handshake depend on is preserved exactly.
+async function handle(req: Request): Promise<Response> {
   const url = new URL(req.url);
 
   // 1) Webhook verification handshake (GET)
@@ -1259,10 +1312,26 @@ Deno.serve(async (req: Request) => {
       }
     } catch (e) {
       jlog({ at: "wa.post", ok: false, error: String(e) });
-      // Still 200 so Meta does not hammer retries on a transient error.
+      // Surface the unexpected per-message throw to observability (dark until a
+      // DSN exists). Still 200 below so Meta does not hammer retries.
+      captureError(e, { fn: "whatsapp-webhook", phase: "process" });
     }
     return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { "Content-Type": "application/json" } });
   }
 
   return new Response("OK", { status: 200 });
+}
+
+// Observability wrapper (fire-and-forget; dark until a Sentry DSN is configured).
+// A throw OUTSIDE handle's own try/catch (e.g. reading the body, the signature
+// check) is captured and degraded to the SAME 200 {ok:true} Meta expects, so the
+// webhook never 5xx's into a Meta retry storm. captureError never throws/blocks.
+Deno.serve(async (req: Request) => {
+  try {
+    return await handle(req);
+  } catch (e) {
+    captureError(e, { fn: "whatsapp-webhook", phase: "request", method: req.method });
+    jlog({ at: "wa.post", ok: false, error: String(e) });
+    return new Response(JSON.stringify({ ok: true }), { status: 200, headers: { "Content-Type": "application/json" } });
+  }
 });

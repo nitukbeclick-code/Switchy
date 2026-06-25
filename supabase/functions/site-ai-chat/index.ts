@@ -60,6 +60,7 @@ import {
   safeSessionId,
   saveSession,
 } from "../_shared/session.ts";
+import { captureError } from "../_shared/observability.ts";
 import plansSnapshot from "./plans-snapshot.json" with { type: "json" };
 
 const MAX_MESSAGE_LEN = 500;
@@ -174,7 +175,11 @@ const FRIENDLY_BUSY = "שירות עמוס כרגע, נסו שוב בעוד רג
 const FALLBACK_REPLY =
   "מצטער/ת, לא הצלחתי לנסח תשובה כרגע — נסו לשאול אחרת או דברו איתנו בוואטסאפ.";
 
-Deno.serve(async (req: Request) => {
+// The real request logic. Wrapped by the Deno.serve handler below so any
+// UNEXPECTED throw is passed to captureError (fire-and-forget, dark until a DSN
+// exists) and STILL returns the existing fail-soft response — the status/shape
+// the front-end depends on is never changed by the wrapper.
+async function handle(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") return preflight(req);
   if (req.method !== "POST") return json(req, { error: "method not allowed" }, 405);
 
@@ -313,4 +318,20 @@ Deno.serve(async (req: Request) => {
   if (contextTruncated) out.contextTruncated = true;
   if (sessionId) out.sessionId = sessionId;
   return json(req, out);
+}
+
+// Observability wrapper (fire-and-forget; dark until a Sentry DSN is configured).
+// An UNEXPECTED throw — one not already handled by an inner fail-soft branch — is
+// captured and then degraded to the SAME friendly 503 the function already returns
+// for a transient outage, so the client contract is unchanged. captureError never
+// throws or blocks (see _shared/observability.ts).
+Deno.serve(async (req: Request) => {
+  try {
+    return await handle(req);
+  } catch (e) {
+    captureError(e, { fn: "site-ai-chat", method: req.method });
+    jlog({ at: "ai-chat", ok: false, error: String(e) });
+    // Mirror corsHeaders so even the failure response stays origin-correct.
+    return json(req, { error: FRIENDLY_BUSY }, 503);
+  }
 });

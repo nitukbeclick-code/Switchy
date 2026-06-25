@@ -1,15 +1,17 @@
 // Team chat commands: /today, /agenda, /week, /leads, /myleads, /meetings,
-// /stats, /search, /customer, /hot, /weekly, /help.
+// /stats, /search, /customer, /hot, /weekly, /book, /help.
 
-import type { Cfg, Lead, MeetingRow } from "../_shared/types.ts";
+import type { Cfg, Lead, MeetingRow, TgInlineKeyboard } from "../_shared/types.ts";
 import { esc, NL, sendTelegram, waLink } from "../_shared/telegram.ts";
-import { fetchRows, rpcRows } from "../_shared/db.ts";
+import { fetchRows, insertRow, logMeetingEvent, patchCount, rpcRows } from "../_shared/db.ts";
 import { buildText, keyboardFor, SOURCE_HE, STATUS_EMOJI, STATUS_HE } from "../_shared/leads.ts";
 import { formatMinutes, medianMinutes } from "../_shared/digests.ts";
 import { buildWeeklyReport } from "../_shared/weekly.ts";
 import { buildAgenda, buildDailyDigest, buildDossier, buildStats, buildWeek, type DossierInput } from "../_shared/agenda.ts";
 import { buildBoard, type ConsoleBoard, fetchOpenMeetings } from "./console.ts";
 import { pipelineCounts, renderLeadCard, renderLeadsPipeline, renderMeetingsBoard } from "./board.ts";
+import { parseReschedule } from "../_shared/reschedule.ts";
+import { type BusyInterval, createCalendarEvent, gcalConfigured, getFreeBusy, slotIsBusy } from "../_shared/google_calendar.ts";
 import { jlog } from "../_shared/log.ts";
 
 type CmdResult = { ok: boolean; command: string; failures?: number };
@@ -191,6 +193,256 @@ async function sendDossier(cfg: Cfg, phoneDigits: string): Promise<CmdResult> {
   return { ok: true, command: "/customer" };
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// REP-BOOK-A-MEETING (cockpit parity with the customer flow). A rep runs /book,
+// taps one of the next few valid slots, and we create a REAL Google Calendar
+// event + persist a confirmed meetings row so it shows on the board/digest.
+//
+// Slot schedule rules are NOT re-derived here: every candidate is validated
+// through the EXISTING parseReschedule (the single source of truth — Sun–Thu
+// 09:00–20:30, Fri 09:00–12:30, NEVER Saturday, ≥ tomorrow, ≤ 30 days, DST-safe
+// starts_at). We only *enumerate* "YYYY-MM-DD HH:MM" candidates and let the
+// shared parser accept/reject + compute the authoritative starts_at.
+//
+// CALLBACK-DATA CONTRACT (own namespace so no other regex swallows it):
+//   slot pick = "book:<YYYY-MM-DD>:<HH:MM>"   (e.g. book:2026-06-18:14:30)
+// The pick handler lives in callbacks.ts; the slot rendering + booking write
+// (applyBookSlot) live here so commands.ts owns the booking logic end-to-end.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// A bookable slot: the Israel wall-clock day/time + the authoritative UTC instant
+// parseReschedule derived (single source), plus whether free/busy says it's taken.
+export interface BookSlot {
+  day: string; // YYYY-MM-DD (Israel)
+  slot: string; // HH:MM (Israel wall-clock)
+  startsAt: string; // UTC ISO instant (from parseReschedule)
+  busy: boolean; // greyed out when a calendar event already overlaps
+}
+
+// Israel calendar day for an instant, "YYYY-MM-DD" (mirrors reschedule.ts/console).
+function ilDay(ms: number): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Jerusalem" }).format(new Date(ms));
+}
+
+// The half-hour candidate grid we OFFER, per weekday. parseReschedule is still the
+// gate — these are just the times we try. A small, sensible spread (late-morning →
+// evening on weekdays; the short Friday window) so a rep gets a handful of options
+// without scrolling. Sun–Thu and Friday differ exactly as the parser requires.
+const WEEKDAY_SLOTS = ["10:00", "11:00", "12:00", "14:00", "16:00", "18:00"];
+const FRIDAY_SLOTS = ["09:30", "10:30", "11:30"];
+
+// ISO weekday for a YYYY-MM-DD: 1=Mon … 7=Sun (mirrors reschedule.ts isoDow). A
+// pure calendar value (a date has no tz). dow===6 is Saturday → never offered.
+function bookIsoDow(day: string): number {
+  const [y, m, d] = day.split("-").map(Number);
+  const js = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+  return js === 0 ? 7 : js;
+}
+
+// Generate up to `limit` valid future slots (default 6), starting from tomorrow
+// (the earliest parseReschedule allows). PURE over nowMs: walks Israel days
+// forward, skips Saturday, and validates each candidate through parseReschedule —
+// so a slot only survives if the shared schedule rules accept it. `busy` is filled
+// later from free/busy (defaults false here). Never offers a past or Saturday slot.
+export function generateBookSlots(nowMs: number, limit = 6): BookSlot[] {
+  const out: BookSlot[] = [];
+  const today = ilDay(nowMs);
+  // Scan a generous horizon of Israel days; parseReschedule caps it at +30 days.
+  for (let dayOffset = 1; dayOffset <= 32 && out.length < limit; dayOffset++) {
+    const base = Date.parse(`${today}T12:00:00Z`) + dayOffset * 86_400_000;
+    const day = ilDay(base);
+    const dow = bookIsoDow(day);
+    if (dow === 6) continue; // NEVER Saturday
+    const candidates = dow === 5 ? FRIDAY_SLOTS : WEEKDAY_SLOTS;
+    for (const slot of candidates) {
+      if (out.length >= limit) break;
+      // The single source of truth: accepts/rejects + derives the real starts_at.
+      const parsed = parseReschedule(`${day} ${slot}`, nowMs);
+      if (!parsed.ok) continue;
+      out.push({ day: parsed.meetingDate, slot: parsed.slot, startsAt: parsed.startsAt, busy: false });
+    }
+  }
+  return out;
+}
+
+// Overlay free/busy onto generated slots: mark a slot busy when a calendar event
+// overlaps its 30-min window. Fail-soft — when `busy` is null (free/busy or token
+// unavailable) we mark NOTHING busy, so every slot stays offerable. PURE.
+export function applyBusyToSlots(slots: BookSlot[], busy: BusyInterval[] | null): BookSlot[] {
+  if (!busy) return slots; // unknown → offer them all (never block on calendar)
+  return slots.map((s) => ({ ...s, busy: slotIsBusy(s.startsAt, 30, busy) }));
+}
+
+// "יום ג׳ · 18.6 · 14:30" — a compact Hebrew slot label for the picker button.
+function bookSlotLabel(s: BookSlot): string {
+  const t = Date.parse(s.startsAt);
+  if (!Number.isFinite(t)) return `${s.day} ${s.slot}`;
+  const when = new Intl.DateTimeFormat("he-IL", {
+    timeZone: "Asia/Jerusalem", weekday: "short", day: "numeric", month: "numeric",
+    hour: "2-digit", minute: "2-digit",
+  }).format(new Date(t));
+  return when;
+}
+
+// The slot-picker keyboard. One button per slot; a busy slot is greyed (a ⛔ mark
+// + a noop callback so it can't be tapped). callback_data = "book:<day>:<slot>".
+// Pure rendering — no I/O.
+export function bookSlotsKeyboard(slots: BookSlot[]): TgInlineKeyboard {
+  const rows: TgInlineKeyboard["inline_keyboard"] = slots.map((s) =>
+    s.busy
+      ? [{ text: `⛔ ${bookSlotLabel(s)} (תפוס)`.slice(0, 60), callback_data: "book:busy:noop" }]
+      : [{ text: `🗓️ ${bookSlotLabel(s)}`.slice(0, 60), callback_data: `book:${s.day}:${s.slot}` }]
+  );
+  return { inline_keyboard: rows };
+}
+
+// Build the /book picker message: generate slots, overlay free/busy (fail-soft),
+// and render the keyboard. Returns the text + markup (and the slots, for tests).
+// When the calendar is dark (no Google keys) free/busy returns null → all slots
+// offered, exactly as required. When EVERY slot is busy, we still surface them
+// (greyed) plus an honest note rather than an empty board.
+export async function buildBookPicker(cfg: Cfg, nowMs: number): Promise<{ text: string; markup: TgInlineKeyboard; slots: BookSlot[] }> {
+  const base = generateBookSlots(nowMs);
+  let busy: BusyInterval[] | null = null;
+  if (base.length > 0) {
+    // Query free/busy over the span the slots cover (first start → last end).
+    const fromIso = base[0].startsAt;
+    const toMs = Date.parse(base[base.length - 1].startsAt) + 30 * 60_000;
+    busy = await getFreeBusy(cfg, fromIso, new Date(toMs).toISOString());
+  }
+  const slots = applyBusyToSlots(base, busy);
+  const anyFree = slots.some((s) => !s.busy);
+  const lines = [
+    "🗓️ <b>קביעת פגישת ייעוץ — Switchy AI</b>",
+    "",
+    "בחרו מועד פנוי מהרשימה; ניצור פגישת Zoom/יומן אמיתית ונרשום אותה ללוח.",
+    busy === null ? "<i>(לוח Google לא מחובר — כל המועדים מוצגים)</i>" : null,
+    !anyFree ? "<i>כל המועדים הקרובים תפוסים ביומן — בחרו מועד אחר עם 🔄 שינוי מועד מאוחר יותר.</i>" : null,
+  ].filter((x): x is string => x !== null);
+  return { text: lines.join(NL), markup: bookSlotsKeyboard(slots), slots };
+}
+
+// The outcome of booking one slot. Fail-soft data — the caller (callbacks.ts)
+// surfaces it as a toast + confirmation message.
+//   ok:false + error → a user-facing Hebrew reason (invalid slot, DB write failed)
+//   ok:true + meetingId + startsAt + gcalSynced → booked; meeting persisted
+export interface BookResult {
+  ok: boolean;
+  error?: string;
+  meetingId?: string | null;
+  startsAt?: string;
+  day?: string;
+  slot?: string;
+  gcalSynced?: boolean;
+}
+
+// A guard-valid, per-booking-unique placeholder phone. meetings_guard REQUIRES a
+// phone matching ^[+0-9][0-9\-\s]{7,14}$ and enforces "one open meeting per phone",
+// so a rep booking (which has no customer phone yet) needs a unique valid token to
+// pass the gate and never collide with another rep booking. Derived from the
+// epoch-ms tail → a 12-digit all-numeric string ("0" + the last 11 ms digits),
+// which always satisfies the guard regex and is effectively unique per second.
+function repBookingPhone(nowMs: number): string {
+  return "0" + String(nowMs).slice(-11).padStart(11, "0");
+}
+
+// Book ONE slot a rep picked. RESPECTS the live meetings_guard: rather than forging
+// a confirmed row (the BEFORE-INSERT guard pins status→'pending', recomputes
+// starts_at, and would reject an empty phone), we use the SAME two-step the rest of
+// the bot uses — INSERT a pending row through the guard (so the schedule/Saturday/
+// DST rules ALL re-enforce server-side), then service-role PATCH it to confirmed
+// (the ungated transition path applyMeetingAct uses). A REAL Google Calendar event
+// is created best-effort and its id stashed on the row.
+//
+// PURE of auth: the caller MUST authorize the rep first (callbacks.ts enforces the
+// allowlist + team-chat gate before invoking this). `actor` is the rep's display
+// name for the audit trail. Never throws — any DB/guard miss returns ok:false.
+export async function applyBookSlot(
+  cfg: Cfg,
+  day: string,
+  slot: string,
+  actor = "נציג",
+): Promise<BookResult> {
+  const nowMs = Date.now();
+  // Re-validate against the SHARED schedule rules (Sun–Thu/Fri hours, no Saturday,
+  // ≥ tomorrow, ≤ 30 days) and recompute the DST-safe starts_at. A stale/forged
+  // callback (e.g. a slot that just rolled into the past) is rejected here BEFORE
+  // we touch the DB — and the SQL guard re-checks the same rules on insert.
+  const parsed = parseReschedule(`${day} ${slot}`, nowMs);
+  if (!parsed.ok) return { ok: false, error: parsed.error };
+
+  const phone = repBookingPhone(nowMs);
+  // 1) INSERT through meetings_guard → lands a PENDING row (the guard owns
+  //    starts_at + validates the schedule again). name ≥ 2 chars (guard rule).
+  const repName = (actor || "נציג").slice(0, 80);
+  const inserted = await insertRow("meetings", {
+    name: repName.length >= 2 ? repName : "נציג",
+    phone,
+    meeting_date: parsed.meetingDate,
+    slot: parsed.slot,
+    source: "rep_book",
+  });
+  if (!inserted) return { ok: false, error: "שגיאת מסד נתונים — נסו שוב בעוד רגע" };
+
+  // Resolve the row the guard just wrote (by its unique phone) so we can confirm it.
+  const rows = await fetchRows<MeetingRow>(
+    `/rest/v1/meetings?phone=eq.${encodeURIComponent(phone)}&order=created_at.desc&limit=1&select=id,starts_at`,
+  );
+  const meetingId = rows?.[0]?.id ? String(rows[0].id) : null;
+  // Trust the guard's server-computed starts_at when present (single source).
+  const startsAt = String(rows?.[0]?.starts_at ?? parsed.startsAt);
+  if (!meetingId) {
+    // The insert reported ok but we can't see the row — don't claim success.
+    return { ok: false, error: "שגיאת מסד נתונים — נסו שוב בעוד רגע" };
+  }
+
+  // 2) REAL Google Calendar event (best-effort — fail-soft when Calendar is dark /
+  //    the create fails; the row is the source of truth, the event a convenience).
+  let gcalEventId: string | null = null;
+  if (gcalConfigured(cfg)) {
+    const ev = await createCalendarEvent(cfg, {
+      summary: `Switchy AI — פגישת ייעוץ (${actor})`,
+      description: `פגישת ייעוץ שנקבעה ידנית על ידי ${actor} מתוך צ׳אט הצוות.`,
+      startIso: startsAt,
+    });
+    gcalEventId = ev?.id ?? null;
+  }
+
+  // 3) PATCH pending→confirmed via the SAME service-role path the board uses (the
+  //    BEFORE-INSERT guard does not apply to UPDATEs). Atomic on status=pending so
+  //    a concurrent press can't double-confirm. Stash the rep + calendar event id.
+  const n = await patchCount(
+    `/rest/v1/meetings?id=eq.${meetingId}&status=eq.pending`,
+    {
+      status: "confirmed",
+      claimed_by: actor.slice(0, 60),
+      confirmed_at: new Date().toISOString(),
+      ...(gcalEventId ? { gcal_event_id: gcalEventId } : {}),
+    },
+  );
+  if (n === 0) {
+    // The pending row existed a moment ago, so a zero-row confirm is a DB failure.
+    return { ok: false, error: "שגיאת מסד נתונים — נסו שוב בעוד רגע", meetingId };
+  }
+
+  return {
+    ok: true,
+    meetingId,
+    day: parsed.meetingDate,
+    slot: parsed.slot,
+    startsAt,
+    gcalSynced: Boolean(gcalEventId),
+  };
+}
+
+// Log the rep booking to the meetings audit trail (best-effort). Mirrors the
+// console/board write path's logMeetingEvent usage. Skipped silently when the id
+// is missing — never blocks the booking.
+export async function auditBookedMeeting(meetingId: string | null | undefined, actor: string, when: string): Promise<void> {
+  if (!meetingId) return;
+  await logMeetingEvent({ meeting_id: meetingId, event: "status_change", old_status: "pending", new_status: "confirmed", actor_name: actor, note: `rep_book ${when}` });
+}
+
 // `fromId` is the pressing rep's Telegram user id — threaded from the team
 // message so /myleads can filter to the leads THIS rep owns (claimed). It's
 // optional so the bare-phone /customer shortcut (and any other caller) stays
@@ -351,6 +603,16 @@ export async function handleCommand(cfg: Cfg, cmd: string, args: string, fromId?
     return { ok: true, command: cmd };
   }
 
+  if (cmd === "/book") {
+    // Rep-initiated booking: show the next few valid slots (Israel hours, never
+    // Saturday — via the shared parseReschedule), greying out ones the calendar
+    // says are taken (fail-soft when Google is dark). A tap → book:<day>:<slot>
+    // → applyBookSlot (callbacks.ts) creates the event + confirmed meetings row.
+    const picker = await buildBookPicker(cfg, Date.now());
+    const r = await sendTelegram(cfg, picker.text, picker.markup);
+    return { ok: true, command: cmd, failures: r.ok ? 0 : 1 };
+  }
+
   // /help and anything unrecognized
   await sendTelegram(cfg, [
     "🤖 <b>הנציג הדיגיטלי של Switchy AI</b>",
@@ -362,6 +624,7 @@ export async function handleCommand(cfg: Cfg, cmd: string, args: string, fromId?
     "/leads — צינור הלידים: ספירת חדש/בטיפול/נסגר + הכרטיסים האחרונים עם כפתורי סטטוס",
     "/myleads — הלידים שתפסתם (🙋): רק הלידים הפתוחים בטיפולכם",
     "/meetings — לוח הפגישות: היום/ממתינות/השבוע בהודעה אחת, עם כפתורי אישור/דחייה/ביטול",
+    "/book — קביעת פגישת ייעוץ: בחירת מועד פנוי מהרשימה (שעות ישראל, ללא שבת) ויצירת פגישה אמיתית ביומן",
     "/search <code>שם או טלפון</code> — איתור ליד ישן",
     "/customer <code>טלפון</code> — תיק לקוח מלא (אפשר גם לשלוח מספר טלפון)",
     "/stats — המשפך השבועי + המשפך לפי מקור + מהירות תגובה",
@@ -382,6 +645,7 @@ export const BOT_COMMANDS = [
   { command: "leads", description: "לידים פתוחים עם כפתורי סטטוס" },
   { command: "myleads", description: "הלידים שתפסתם (בטיפולכם)" },
   { command: "meetings", description: "פגישות וידאו קרובות" },
+  { command: "book", description: "קביעת פגישה — בחירת מועד פנוי" },
   { command: "search", description: "חיפוש ליד לפי שם או טלפון" },
   { command: "customer", description: "תיק לקוח מלא לפי טלפון" },
   { command: "stats", description: "המשפך השבועי ומהירות תגובה" },

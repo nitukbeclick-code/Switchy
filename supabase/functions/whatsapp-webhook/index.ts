@@ -83,6 +83,17 @@ import { captureAiLead } from "../_shared/leads.ts";
 // as the agent's create_lead tool does.
 import { COMMISSION_DISCLOSURE } from "../_shared/tools.ts";
 import { type AgentRunnerDeps, runWhatsappAgent } from "./agent_runner.ts";
+// Curated, truth-only verified-FAQ knowledge layer (bot_knowledge) + the learning
+// data sink (bot_question_log). The webhook loads the knowledge once per instance,
+// injects it into the agent prompt for the free-text Q&A path, and appends each
+// real customer question (with the matched topic) for the team to curate.
+import {
+  formatKnowledgeForPrompt,
+  type KnowledgeEntry,
+  loadBotKnowledge,
+  logCustomerQuestion,
+  matchTopic,
+} from "../_shared/knowledge.ts";
 // Live-relay (human takeover): when a rep has the conversation, forward the
 // customer's inbound text to the rep's Telegram chat so they see the live
 // conversation. Reuses the shared telegram sender + config resolver — we do NOT
@@ -160,6 +171,17 @@ async function getPlans(): Promise<Plan[]> {
   );
   _plans = rows ? plansFromRows(rows) : [];
   return _plans;
+}
+
+// Curated verified-FAQ knowledge (bot_knowledge), loaded once per function
+// instance via the service-role read. Fail-soft → [] (loadBotKnowledge never
+// throws), so a missing/empty table simply means the agent runs without the
+// knowledge block. Cached for the instance lifetime like the catalogue above.
+let _knowledge: KnowledgeEntry[] | null = null;
+async function getBotKnowledge(): Promise<KnowledgeEntry[]> {
+  if (_knowledge) return _knowledge;
+  _knowledge = await loadBotKnowledge();
+  return _knowledge;
 }
 
 // Gemini API key: Vault first (gemini_api_key, via the shared config RPC the
@@ -760,12 +782,15 @@ function normalizeLeadPhone(raw: string): string {
   return `+${digits}`;
 }
 
-// Create the hand-off lead (Telegram rep card via the leads trigger), flip the
-// contact to handed_off AND silence the bot on the open conversation. Returns
-// whether the lead landed. Shared by the explicit handoff intent AND the agent's
-// escalate_to_human tool, so both paths behave identically (one source of truth
-// for "raise a human"). This is a SERVICE action — no marketing consent is
-// required (the person asked for a human).
+// Create the hand-off lead (Telegram rep card via the leads trigger) and flip the
+// contact to handed_off. Returns whether the lead landed. Shared by the explicit
+// handoff intent AND the agent's escalate_to_human tool, so both paths behave
+// identically (one source of truth for "raise a human"). This is a SERVICE action
+// — no marketing consent is required (the person asked for a human).
+// IMPORTANT: this does NOT silence the bot. The assistant stays available until a
+// human actually takes the conversation over (notify-lead/callbacks.ts flips
+// whatsapp_conversations.bot_enabled on takeover), so the customer is never
+// stranded waiting for a rep.
 async function createHandoffLead(contact: Row, inText: string, history: ChatTurn[]): Promise<boolean> {
   const transcript = history
     .slice(-4)
@@ -788,21 +813,14 @@ async function createHandoffLead(contact: Row, inText: string, history: ChatTurn
     status: "handed_off",
     ...(leadId ? { lead_id: leadId } : {}),
   });
-  // CRITICAL: also silence the BOT on this contact's open conversation. The
-  // takeover/relay gate reads botEnabled(convo) from whatsapp_conversations
-  // .bot_enabled — without flipping it the agent keeps answering the next turn as
-  // if no handoff happened (and inbound never relays to the team). Resolve the
-  // conversation the same way the inbound path does (contact._convId, set right
-  // after we resolve the open conversation); fall back to looking it up by
-  // contact_id when only the contact is in scope. Fail-soft (best-effort PATCH).
-  let convId: string | null = contact._convId ? String(contact._convId) : null;
-  if (!convId) {
-    const convo = await getOrCreateConversation(String(contact.id));
-    convId = convo?.id ? String(convo.id) : null;
-  }
-  if (convId) {
-    await pgPatch("whatsapp_conversations", `id=eq.${convId}`, { bot_enabled: false });
-  }
+  // The bot stays ALIVE on a mere rep-REQUEST. A rep-request creates the lead
+  // (→ Telegram card) and marks the contact handed_off, but it must NOT silence
+  // the agent — otherwise the customer is stranded while they wait for a human.
+  // The ACTUAL human takeover is what flips whatsapp_conversations.bot_enabled
+  // false: notify-lead/callbacks.ts does it when the owner taps "קבל שיחה" on the
+  // Telegram card (and hand-back restores it true). The inbound takeover gate
+  // (botEnabled(convo)) reads ONLY that column, so until the owner takes over the
+  // assistant keeps answering questions about the plans meanwhile.
   // pgInsert swallows the PostgREST error (returns falsy), so a blocked insert
   // (failed shape/rate-limit) would otherwise be invisible. Emit a persistent ops
   // signal so a failed handoff is observable. No PII: just whether a phone shape
@@ -823,9 +841,10 @@ async function createHandoffLead(contact: Row, inText: string, history: ChatTurn
 export function buildHandoffReply(ok: boolean): string {
   if (!ok) {
     // Insert blocked (e.g. per-phone rate limit) — still reassure the customer.
-    return `${COMMISSION_DISCLOSURE}\nאני כאן לכל שאלה 🙂 רשמתי שתרצה/י לדבר עם נציג — ננסה לחזור אליך בהקדם. בינתיים אפשר לשאול אותי כל דבר על המסלולים.`;
+    // Same contract: a human will get back, the assistant stays available meanwhile.
+    return `${COMMISSION_DISCLOSURE}\nרשמתי שתרצה/י לדבר עם נציג — נציג/ה אנושי/ת יחזור/תחזור אליך בהקדם 🙏 בינתיים אני כאן וזמין/ה לכל שאלה על המסלולים.`;
   }
-  return `${COMMISSION_DISCLOSURE}\nמעולה 🙌 נציג אנושי שלנו יחזור אליך כאן בוואטסאפ בהקדם. בינתיים אפשר להמשיך לשאול אותי כל דבר על המסלולים והמחירים.`;
+  return `${COMMISSION_DISCLOSURE}\nנציג/ה אנושי/ת יחזור/תחזור אליך בהקדם 🙏 בינתיים אני כאן וזמין/ה לכל שאלה על המסלולים.`;
 }
 
 async function handleHandoff(contact: Row, inText: string, history: ChatTurn[]): Promise<string> {
@@ -1342,6 +1361,14 @@ async function handleMessageInner(m: Row, profileName: string | undefined, aiKey
         }
         return buildChatFallback(plans, intent === "recommend", mergedCtx);
       };
+      // Curated verified-FAQ knowledge for THIS turn: injected into the agent
+      // prompt so common questions ("זה בחינם?", "אילו חברות?") are answered
+      // directly + consistently. Loaded once per instance, fail-soft (empty ⇒ no
+      // block). We also TAG the question with the matched topic (or null) for the
+      // bot_question_log "learning data" the team curates from.
+      const knowledge = await getBotKnowledge();
+      const knowledgeContext = formatKnowledgeForPrompt(knowledge);
+      const matchedTopic = matchTopic(t, knowledge);
       // PRIMARY path: the shared tool-using agent. It recommends from the
       // catalogue, captures consent-gated leads (§7b first), books callbacks,
       // and escalates — all via tools — then degrades to the templateFallback
@@ -1353,6 +1380,7 @@ async function handleMessageInner(m: Row, profileName: string | undefined, aiKey
         keys: aiKeys,
         deps: agentDeps,
         templateFallback,
+        knowledgeContext: knowledgeContext || undefined,
         slotPatch: {
           ...(mergedCtx.category ? { category: mergedCtx.category } : {}),
           ...(mergedCtx.budget ? { budget: mergedCtx.budget } : {}),
@@ -1361,6 +1389,12 @@ async function handleMessageInner(m: Row, profileName: string | undefined, aiKey
         },
       });
       reply = r.reply || templateFallback();
+      // LEARNING DATA: append this real free-text question (+ matched topic) to
+      // bot_question_log for the team to review. Fire-and-forget — best-effort,
+      // never awaited on the reply path, swallows its own errors. Runs ONLY on
+      // this genuine free-text Q&A path (NOT opt-out, NOT human takeover/relay,
+      // NOT the honeypot/system messages — all returned before reaching here).
+      void logCustomerQuestion("whatsapp", t, matchedTopic);
       if (convo) agentSaved = true;
     }
   }

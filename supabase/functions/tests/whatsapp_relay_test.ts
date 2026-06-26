@@ -246,21 +246,23 @@ Deno.test("relay label falls back to the phone when the contact has no name", as
   assertStringIncludes(sink.telegram[0].text, "972527654321");
 });
 
-// ── 5) HANDOFF flips bot_enabled=false (the state-flip fix) ────────────────────
-// The live bug: createHandoffLead set the contact to handed_off but NEVER flipped
-// whatsapp_conversations.bot_enabled, so the takeover gate (which reads
-// botEnabled(convo)) kept the agent answering the next turn and inbound never
-// relayed to the team. The fix: after the lead insert, PATCH the open
-// conversation { bot_enabled: false } so the bot goes silent and the takeover
-// relay engages. This test drives the DETERMINISTIC text-handoff path (an inbound
-// containing "נציג" classifies as intent="human" → handleHandoff →
-// createHandoffLead) and asserts the conversation PATCH happens with bot_enabled
-// false — covering both the state-flip fix AND that the RE_HANDOFF path still works.
+// ── 5) HANDOFF keeps the bot ALIVE on a mere rep-request (the strand fix) ──────
+// The live complaint: on a rep-request createHandoffLead used to PATCH
+// whatsapp_conversations { bot_enabled: false } immediately, which made the bot go
+// SILENT and stranded the customer (they kept messaging into the void while no
+// human had actually taken over yet). The fix: a rep-REQUEST creates the lead
+// (→ Telegram card) and marks the contact handed_off, but it must NOT silence the
+// bot — the bot only goes quiet when the owner ACTUALLY takes over (notify-lead
+// /callbacks.ts flips bot_enabled=false on "קבל שיחה"). This test drives the
+// DETERMINISTIC text-handoff path (an inbound containing "נציג" classifies as
+// intent="human" → handleHandoff → createHandoffLead) and asserts the conversation
+// is NEVER patched with bot_enabled:false — the bot stays available meanwhile.
 
 // Records every PostgREST write the handoff path makes, so we can pin both the
-// conversation bot_enabled flip and the (normalized) leads insert shape.
+// (absence of a) bot_enabled flip and the (normalized) leads insert shape.
 type Writes = {
   convPatch: Array<Record<string, unknown>>; // PATCH bodies to whatsapp_conversations
+  contactPatch: Array<Record<string, unknown>>; // PATCH bodies to whatsapp_contacts
   leadsInsert: Array<Record<string, unknown>>; // POST bodies to leads
 };
 
@@ -310,6 +312,15 @@ function handoffRoutes(sink: Sink, writes: Writes, leadLands: boolean) {
         u.includes("/rest/v1/whatsapp_messages") && (init?.method ?? "GET") === "GET",
       respond: () => jsonResponse([{ id: "prior-msg" }]),
     },
+    // Contact PATCH → record the body (this is the status='handed_off' mark we assert).
+    {
+      match: (u: string, init?: RequestInit) =>
+        u.includes("/rest/v1/whatsapp_contacts") && init?.method === "PATCH",
+      respond: (_u: string, init?: RequestInit) => {
+        writes.contactPatch.push(JSON.parse(String(init?.body ?? "{}")));
+        return jsonResponse([], 200);
+      },
+    },
     { match: (u: string, init?: RequestInit) => u.includes("/rest/v1/whatsapp_contacts") && (init?.method ?? "GET") === "POST", respond: () => jsonResponse([CONTACT]) },
     { match: (u: string, init?: RequestInit) => u.includes("/rest/v1/whatsapp_messages") && (init?.method ?? "GET") === "POST", respond: () => jsonResponse([{ id: crypto.randomUUID() }]) },
     // Leads insert → record the body; return a row (lands) or a 400 (blocked, e.g.
@@ -329,28 +340,34 @@ function handoffRoutes(sink: Sink, writes: Writes, leadLands: boolean) {
   ];
 }
 
-Deno.test("handoff flips whatsapp_conversations.bot_enabled=false (the state-flip fix)", async () => {
+Deno.test("handoff keeps the bot ALIVE — never flips bot_enabled=false (the strand fix)", async () => {
   const sink: Sink = { graph: [], telegram: [] };
-  const writes: Writes = { convPatch: [], leadsInsert: [] };
+  const writes: Writes = { convPatch: [], contactPatch: [], leadsInsert: [] };
   await withFetchStub(handoffRoutes(sink, writes, true), async () => {
     const r = await postSigned(metaTextBody("972501234567", "אני רוצה לדבר עם נציג אנושי"));
     assertEquals(r.status, 200);
   });
-  // The conversation was patched with bot_enabled:false — the bot goes silent so
-  // the next turn relays to the team instead of being answered by the agent.
-  assert(
+  // A mere rep-request must NOT silence the bot. The conversation is never patched
+  // with bot_enabled:false — only an ACTUAL human takeover (notify-lead/callbacks)
+  // does that, so the customer keeps getting answers while they wait for a rep.
+  assertFalse(
     writes.convPatch.some((b) => b.bot_enabled === false),
-    "createHandoffLead must PATCH whatsapp_conversations { bot_enabled: false }",
+    "createHandoffLead must NOT silence the bot on a mere rep-request",
   );
-  // The deterministic handoff still fired the lead insert (RE_HANDOFF path intact)…
+  // The deterministic handoff still fired the lead insert (lead creation intact)…
   assertEquals(writes.leadsInsert.length, 1, "the handoff still creates the lead");
+  // …the contact was still marked handed_off…
+  assert(
+    writes.contactPatch.some((b) => b.status === "handed_off"),
+    "the contact is still marked handed_off",
+  );
   // …and the customer got the reassurance reply (handoff reply was sent).
   assert(sink.graph.length >= 1, "customer is reassured the handoff happened");
 });
 
 Deno.test("handoff normalizes the phone to satisfy the leads trigger shape", async () => {
   const sink: Sink = { graph: [], telegram: [] };
-  const writes: Writes = { convPatch: [], leadsInsert: [] };
+  const writes: Writes = { convPatch: [], contactPatch: [], leadsInsert: [] };
   await withFetchStub(handoffRoutes(sink, writes, true), async () => {
     await postSigned(metaTextBody("972501234567", "תן לי נציג בבקשה"));
   });
@@ -363,7 +380,7 @@ Deno.test("handoff normalizes the phone to satisfy the leads trigger shape", asy
 
 Deno.test("a blocked handoff insert emits the handoff_lead_insert_failed ops signal", async () => {
   const sink: Sink = { graph: [], telegram: [] };
-  const writes: Writes = { convPatch: [], leadsInsert: [] };
+  const writes: Writes = { convPatch: [], contactPatch: [], leadsInsert: [] };
   // leadLands=false ⇒ pgInsert returns [] (a blocked/failed insert). The fix emits
   // a persistent security_audit_log row so the failure is no longer invisible.
   const audits: Array<Record<string, unknown>> = [];
@@ -384,10 +401,11 @@ Deno.test("a blocked handoff insert emits the handoff_lead_insert_failed ops sig
     audits.some((a) => a.event === "handoff_lead_insert_failed"),
     "a failed handoff lead insert must emit the handoff_lead_insert_failed signal",
   );
-  // Even when the insert is blocked, the bot is still silenced (the takeover takes
-  // hold regardless) so the customer isn't left talking to a bot that "transferred".
-  assert(
+  // Even when the insert is blocked, the bot stays ALIVE — a rep-request never
+  // silences the assistant (only an actual human takeover does), so the customer
+  // keeps getting answers instead of talking into the void.
+  assertFalse(
     writes.convPatch.some((b) => b.bot_enabled === false),
-    "bot is silenced even when the lead insert is blocked",
+    "bot stays alive even when the lead insert is blocked",
   );
 });

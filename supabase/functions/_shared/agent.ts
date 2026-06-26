@@ -148,6 +148,9 @@ const PERSONA_HEADER =
 - ענה/י בעברית בלבד.
 - אם הלקוח/ה מבקש/ת לדבר עם נציג / "נציג" / "בן אדם" / "אל תשלח לי בוט" / מתוסכל/ת / רוצה במפורש אדם אמיתי → קרא/י מיד ל-escalate_to_human (הכלי לא דורש אישור). אל תדחוף/י create_lead ואל תבקש/י אישור או פרטים קודם — escalate_to_human הוא הדרך הנכונה והמיידית לחבר נציג.
 - התבסס/י אך ורק על נתוני הקטלוג (כל שורה מסומנת [Sn]) ועל תוצאות הכלים. אסור להמציא ספק, מסלול, מחיר, כיסוי, דירוג, חיסכון או דחיפות. אם חסר מידע — אמר/י זאת בכנות, אל תמציא/י.
+- ענה/י תחילה על השאלה עצמה — קצר וקונקרטי. אסור מילוי ריק כמו "התהליך פשוט! זה הכל!" או חזרה על "אני כאן לעזור" בלי תוכן. אם נשאלת שאלה — תן/י את התשובה, לא סיסמה.
+- שאלות מחיר/ספק ("מה המחירים של הוט", "כמה עולה סלולר ב..."): ענה/י מהקטלוג האמיתי בעזרת recommend_plans. אל תתחמק/י משאלת מחיר עם משפט כללי — אם יש מסלולים מתאימים, ציין/י מספרים אמיתיים (הזול הרלוונטי + מחיר אחרי המבצע אם קיים). אם באמת אין התאמה — אמר/י זאת בכנות והצע/י את הקטגוריה הקרובה.
+- שאלות זהות/מי-אתם ("מי אתם", "מי המנהל", "מי עומד מאחורי", "זה אמיתי?"): ענה/י באלגנטיות — Switchy הוא שירות ישראלי להשוואת מסלולי תקשורת ומעבר ספק, ואת/ה היועץ/ת החכם/ה שלו; הצע/י לחבר נציג אנושי אם רוצים אדם. לעולם לא לענות "לא מצליח למצוא את המידע על המנהל" — זו תקלה.
 - שיטת הייעוץ (סגירה ביושר): (1) אבחן/י צורך — אם הלקוח/ה מתלבט/ת, שאל/י שאלה אחת קצרה (תקציב/מהירות/בלי-התחייבות/ספק נוכחי). (2) המלץ/י עם הכלי recommend_plans והצג/י עד 3 מסלולים עם סיבה קצרה לכל אחד. (3) טפל/י בהתנגדויות: "יקר" או "טוב לי עם הספק שלי" → suggest_retention_offer (תסריט מיקוח אמיתי) או refine_recommendation; מסלול שנדחה → refine_recommendation שמדלג עליו. (4) סגור/י: הצע/י בעדינות הצעד הבא המתאים — חיבור נציג (escalate_to_human אם ביקשו אדם/מתוסכלים, אחרת create_lead/book_callback), ערכת מעבר (generate_switch_kit) או קוד הפניה (generate_referral_code).
 - אל תבטיח/י חיסכון מדויק לאדם ספציפי — רק אם נמסר חשבון נוכחי אמיתי. בלי בדיה של דחיפות ("רק היום"), הטבות או מבצעים שלא בנתונים.
 - לפני create_lead/book_callback: אסוף/י שם+טלפון ובקש/י אישור מפורש לתנאי השימוש ולמדיניות הפרטיות (consent). בלי אישור — אל תיצור/י פנייה. לפני create_lead/book_callback/escalate_to_human ציין/י בקצרה ש-Switchy AI עשוי לקבל עמלה מהספק, וזה לא משפיע על המחיר או על ההמלצה.
@@ -222,6 +225,15 @@ export type RunAgentInput = {
   // passes none and behaves exactly as before. When present, the persona refines
   // instead of repeating; nothing is ever fabricated from it.
   memory?: AgentMemory;
+  // Optional CURATED, truth-only knowledge block (the verified-FAQ section built by
+  // _shared/knowledge.ts formatKnowledgeForPrompt). The CALLER loads it from the DB
+  // and passes it down — runAgent itself does NO DB I/O for this, so the same
+  // mechanism can later serve site-ai-chat/telegram. OPTIONAL + back-compatible:
+  // omitted by every existing caller and then the prompt is identical to before.
+  // When present it is injected verbatim so the model answers common questions
+  // directly + consistently (fewer tool round-trips = faster). It is approved copy,
+  // so it adds NO fabrication risk — the "don't invent" rules still apply.
+  knowledgeContext?: string;
 };
 
 export type RunAgentResult = {
@@ -280,6 +292,7 @@ function buildSystemPrompt(
   lang: AgentLang,
   billHint?: RunAgentInput["billHint"],
   memory?: AgentMemory,
+  knowledgeContext?: string,
 ): string {
   const cited = buildCitedCatalogueContext(plans as CataloguePlan[]);
   const styleLine = CHANNEL_STYLE[channel];
@@ -290,6 +303,13 @@ function buildSystemPrompt(
     : PERSONA_HEADER.replace(HEBREW_ONLY_LINE, REPLY_IN_USER_LANG_LINE);
   let prompt = header + LANG_DIRECTIVE[lang] + "\n" + styleLine +
     "\n\nנתוני מסלולים אמיתיים (מקור | קטגוריה | ספק | מסלול | מחיר | תכונות):\n" + cited;
+  // Curated, truth-only verified-FAQ block (when the caller supplied one). It is
+  // approved copy the model may answer common questions from directly — placed
+  // after the catalogue so it reads as another grounded source, never a license
+  // to invent (the "don't fabricate" rules above still bind).
+  if (knowledgeContext && knowledgeContext.trim()) {
+    prompt += "\n\n" + knowledgeContext.trim();
+  }
   if (billHint && Number(billHint.monthly) > 0) {
     prompt += `\n\nנתוני חשבון שחולצו מהתמונה (לשימוש עם analyze_bill): ` +
       `ספק=${billHint.provider ?? "?"}, סכום חודשי=₪${Math.round(Number(billHint.monthly))}` +
@@ -372,7 +392,7 @@ export async function runAgent(input: RunAgentInput): Promise<RunAgentResult> {
   // Reply language: explicit override wins; otherwise auto-detect from the
   // message (Hebrew default). Backward-compatible — existing callers pass none.
   const lang: AgentLang = isSupportedLang(input.lang) ? input.lang : detectLang(message);
-  const system = buildSystemPrompt(channel, plans, lang, input.billHint, input.memory);
+  const system = buildSystemPrompt(channel, plans, lang, input.billHint, input.memory, input.knowledgeContext);
   const toolCalls: { name: string; ok: boolean; preview?: string }[] = [];
   // Pass the resolved language to the tools so their surfaced notes (retention
   // script, referral line) are localized to the same language as the reply.

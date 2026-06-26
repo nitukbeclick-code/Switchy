@@ -93,13 +93,29 @@ type Sink = {
 
 // Builds the fetch routes. `convo` is the single conversation row PostgREST GET
 // returns for getOrCreateConversation — vary bot_enabled / relay_tg_chat_id /
-// contact status per test.
-function routes(sink: Sink, convo: Record<string, unknown>, contact: Record<string, unknown>) {
+// contact status per test. `convPatch` (optional) records every PATCH body sent to
+// whatsapp_conversations, so a test can assert the self-heal repair (bot_enabled:true).
+function routes(
+  sink: Sink,
+  convo: Record<string, unknown>,
+  contact: Record<string, unknown>,
+  convPatch?: Array<Record<string, unknown>>,
+) {
   return [
     // Vault config RPC → {} so env TELEGRAM_BOT_TOKEN/CHAT_ID win (env fallback).
     {
       match: (u: string) => u.includes("/rest/v1/rpc/get_lead_notify_config"),
       respond: () => jsonResponse({}),
+    },
+    // Conversation PATCH → record the body (the self-heal sets bot_enabled:true here).
+    // Placed BEFORE the catch-all + the GET route below so it wins on method=PATCH.
+    {
+      match: (u: string, init?: RequestInit) =>
+        u.includes("/rest/v1/whatsapp_conversations") && init?.method === "PATCH",
+      respond: (_u: string, init?: RequestInit) => {
+        convPatch?.push(JSON.parse(String(init?.body ?? "{}")));
+        return jsonResponse([], 200);
+      },
     },
     // Graph API (any messages/media endpoint): record customer-facing text sends.
     {
@@ -137,6 +153,15 @@ function routes(sink: Sink, convo: Record<string, unknown>, contact: Record<stri
         u.includes("/rest/v1/whatsapp_messages") && (init?.method ?? "GET") === "POST",
       respond: () => jsonResponse([{ id: crypto.randomUUID() }]),
     },
+    // Message lookups (GET): isFirstContact / recentHistory → a prior row so the
+    // self-heal path routes through the normal free-text agent flow (a PLAIN TEXT
+    // reply) instead of the first-contact WELCOME menu (an interactive send). The
+    // relay-active tests return BEFORE routing, so this is inert for them.
+    {
+      match: (u: string, init?: RequestInit) =>
+        u.includes("/rest/v1/whatsapp_messages") && (init?.method ?? "GET") === "GET",
+      respond: () => jsonResponse([{ id: "prior-msg" }]),
+    },
     // Everything else PostgREST (PATCH timestamps, crm_events / audit inserts,
     // contact select fallback, etc.) → benign 200.
     {
@@ -152,8 +177,9 @@ const CONTACT = { id: "c-1", wa_phone: "972501234567", wa_name: "דנה כהן",
 
 Deno.test("relay-active inbound is forwarded to relay_tg_chat_id, with no customer reply", async () => {
   const sink: Sink = { graph: [], telegram: [] };
+  const convPatch: Array<Record<string, unknown>> = [];
   const convo = { id: "conv-1", status: "human", bot_enabled: false, ai_state: null, relay_tg_chat_id: "55501" };
-  await withFetchStub(routes(sink, convo, CONTACT), async () => {
+  await withFetchStub(routes(sink, convo, CONTACT, convPatch), async () => {
     const r = await postSigned(metaTextBody("972501234567", "מתי הנציג חוזר אליי?"));
     assertEquals(r.status, 200);
   });
@@ -166,6 +192,13 @@ Deno.test("relay-active inbound is forwarded to relay_tg_chat_id, with no custom
   assertStringIncludes(sink.telegram[0].text, "מתי הנציג חוזר אליי?");
   // The bot sent NOTHING back to the customer (no auto-reply during takeover).
   assertEquals(sink.graph.length, 0);
+  // ACTIVE TAKEOVER PRESERVED: the self-heal must NEVER fire here — a genuine
+  // relay (bot_enabled=false AND relay_tg_chat_id set) must stay suppressed, so the
+  // row is NOT "repaired" to bot_enabled=true (that would silently end the takeover).
+  assertFalse(
+    convPatch.some((b) => b.bot_enabled === true),
+    "an ACTIVE takeover must NOT be self-healed to bot_enabled=true",
+  );
 });
 
 Deno.test("relay forwards to the rep chat, never to the team-default TELEGRAM_CHAT_ID", async () => {
@@ -208,28 +241,55 @@ Deno.test("English STOP also wins over relay (no relay forward)", async () => {
   assert(sink.graph.length === 1); // only the opt-out confirmation
 });
 
-// ── 3) NOT relay-active: takeover stays silent store-only (no relay) ──────────
+// ── 3) NOT relay-active (STUCK): the bot SELF-HEALS and answers ───────────────
+// THE PRODUCTION OUTAGE: a conversation left with bot_enabled=false while NO rep
+// is relaying (relay_tg_chat_id IS NULL) used to suppress EVERY inbound forever —
+// total silence, even to "מחירים"/"מסלולים". The fix: a stuck row is NOT an active
+// takeover, so the bot answers normally AND the row is repaired (bot_enabled:true)
+// so it auto-recovers. (No AI keys here ⇒ the reply is the deterministic template,
+// which is exactly what production falls back to if the LLM is down — still a reply,
+// never silence.)
 
-Deno.test("takeover without a relay target stays silent: no relay, no customer reply", async () => {
+Deno.test("STUCK takeover (bot_enabled=false, relay_tg_chat_id=null) SELF-HEALS: bot replies + row repaired", async () => {
   const sink: Sink = { graph: [], telegram: [] };
-  // bot_enabled=false but relay_tg_chat_id is NULL ⇒ NOT relay-active.
+  const convPatch: Array<Record<string, unknown>> = [];
+  // bot_enabled=false but relay_tg_chat_id is NULL ⇒ NOT relay-active ⇒ stuck.
   const convo = { id: "conv-5", status: "human", bot_enabled: false, ai_state: null, relay_tg_chat_id: null };
-  await withFetchStub(routes(sink, convo, CONTACT), async () => {
-    const r = await postSigned(metaTextBody("972501234567", "שלום, יש עדכון?"));
+  await withFetchStub(routes(sink, convo, CONTACT, convPatch), async () => {
+    const r = await postSigned(metaTextBody("972501234567", "מה המחירים?"));
     assertEquals(r.status, 200);
   });
-  assertEquals(sink.telegram.length, 0); // no relay
-  assertEquals(sink.graph.length, 0); // bot still silent during takeover
+  // No relay (no rep was ever relaying)…
+  assertEquals(sink.telegram.length, 0);
+  // …the customer gets a real bot reply instead of silence-forever…
+  assert(sink.graph.length >= 1, "stuck conversation must self-heal and answer the customer");
+  assertEquals(sink.graph[0].to, "972501234567");
+  // …and the row is REPAIRED: bot_enabled flipped back to true so it auto-recovers.
+  assert(
+    convPatch.some((b) => b.bot_enabled === true),
+    "self-heal must repair the stuck row by setting bot_enabled=true",
+  );
+  // The repair must NOT resurrect/keep a relay target (none existed).
+  assertFalse(
+    convPatch.some((b) => "relay_tg_chat_id" in b),
+    "self-heal must not touch relay_tg_chat_id",
+  );
 });
 
-Deno.test("an empty-string relay target is treated as NOT relay-active", async () => {
+Deno.test("an empty-string relay target is NOT relay-active → self-heals and answers", async () => {
   const sink: Sink = { graph: [], telegram: [] };
+  const convPatch: Array<Record<string, unknown>> = [];
+  // bot_enabled=false with a blank relay target is the same stuck state.
   const convo = { id: "conv-6", status: "human", bot_enabled: false, ai_state: null, relay_tg_chat_id: "   " };
-  await withFetchStub(routes(sink, convo, CONTACT), async () => {
-    await postSigned(metaTextBody("972501234567", "בדיקה"));
+  await withFetchStub(routes(sink, convo, CONTACT, convPatch), async () => {
+    await postSigned(metaTextBody("972501234567", "מה המסלולים שלכם?"));
   });
-  assertEquals(sink.telegram.length, 0);
-  assertEquals(sink.graph.length, 0);
+  assertEquals(sink.telegram.length, 0); // a blank target is not a real rep chat
+  assert(sink.graph.length >= 1, "blank relay target is stuck → bot answers");
+  assert(
+    convPatch.some((b) => b.bot_enabled === true),
+    "blank-target stuck row is also repaired to bot_enabled=true",
+  );
 });
 
 // ── 4) Relay uses the phone when no profile name is known ─────────────────────

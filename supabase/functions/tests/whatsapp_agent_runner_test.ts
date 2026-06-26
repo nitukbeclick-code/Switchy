@@ -12,7 +12,7 @@
 //     fall back on; a session I/O throw never loses the reply).
 // No network, no env. Run from supabase/functions/:  deno task test
 
-import { assert, assertEquals, assertFalse } from "@std/assert";
+import { assert, assertEquals, assertFalse, assertStringIncludes } from "@std/assert";
 import {
   type AgentRunnerDeps,
   buildAgentToolContext,
@@ -22,6 +22,7 @@ import type { RunAgentInput, RunAgentResult } from "../_shared/agent.ts";
 import { type ChatSession, emptySession } from "../_shared/session.ts";
 import { createLead, escalateToHuman, type ToolContext } from "../_shared/tools.ts";
 import type { ScorablePlan } from "../_shared/scoring.ts";
+import { withFetchStub } from "./_capture_handler.ts";
 
 const PLANS: ScorablePlan[] = [
   { id: "c1", cat: "cellular", provider: "סלקום", plan: "5G 100GB", price: 49, is5G: true },
@@ -226,6 +227,65 @@ Deno.test("runWhatsappAgent still returns the reply when the session load AND sa
   });
   // Memory is a bonus, never a hard dependency — the customer still gets the reply.
   assertEquals(r.reply, "תשובה");
+});
+
+// ── (c) NEVER SILENT: a configured AI provider that FAILS still yields a reply ──
+// The production symptom was total silence. The agent's job is to NEVER hard-fail a
+// customer message: when the LLM is configured (a Gemini key IS present) but EVERY
+// provider call errors (rate limit / 5xx / network), runAgent must degrade through
+// its chain and still return a non-empty reply — here the deterministic template
+// fallback. We drive the REAL runAgent (default runAgentFn, NO stub) and fail every
+// AI provider endpoint, proving a normal question is answered even when AI is down.
+
+Deno.test("(c) a normal question still gets a reply when EVERY AI provider fails (template fallback)", async () => {
+  const aiEndpoints = [
+    "generativelanguage.googleapis.com", // Gemini (tool loop + text)
+    "api.groq.com", // Groq text fallback
+    "api.cerebras.ai", // Cerebras text fallback
+    "openrouter.ai", // OpenRouter text fallback
+  ];
+  const FALLBACK = "המסלול הזול ביותר בסלולר הוא פרטנר ב-29 ₪ לחודש 🙂";
+  let r: Awaited<ReturnType<typeof runWhatsappAgent>> | null = null;
+  await withFetchStub(
+    [{
+      // Fail EVERY AI provider call (500) — simulates the LLM being down.
+      match: (u: string) => aiEndpoints.some((e) => u.includes(e)),
+      respond: () => new Response("provider error", { status: 500 }),
+    }],
+    async () => {
+      r = await runWhatsappAgent({
+        sessionKey: "", // stateless — no DB
+        message: "מה המסלול הזול ביותר בסלולר?",
+        plans: PLANS,
+        keys: { gemini: "configured-but-failing-key" }, // AI IS configured…
+        deps: fakeDeps(),
+        templateFallback: () => FALLBACK, // …yet the customer still gets a real answer
+        // default runAgentFn → exercise the REAL degradation chain
+      });
+    },
+  );
+  assert(r, "runWhatsappAgent returned");
+  const res = r as Awaited<ReturnType<typeof runWhatsappAgent>>;
+  // NEVER silent: a non-empty reply came back…
+  assert(res.reply.length > 0, "a failing AI provider must STILL yield a reply, never silence");
+  // …and it's the grounded template fallback (the LLM paths all errored out).
+  assertEquals(res.reply, FALLBACK);
+  assertEquals(res.via, "template");
+});
+
+Deno.test("(c) with NO template fallback either, the agent STILL replies (hard fallback, never empty)", async () => {
+  // Even the last-resort path is covered: no key AND no template → the hard fallback
+  // line. The customer is never met with silence.
+  const r = await runWhatsappAgent({
+    sessionKey: "",
+    message: "מחירים",
+    plans: PLANS,
+    keys: {}, // no AI provider at all
+    deps: fakeDeps(),
+    // no templateFallback supplied
+  });
+  assert(r.reply.length > 0, "the hard fallback guarantees a non-empty reply");
+  assertEquals(r.via, "hard_fallback");
 });
 
 Deno.test("an empty sessionKey runs stateless (no load/save) but still replies", async () => {

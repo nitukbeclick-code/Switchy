@@ -281,7 +281,14 @@
     });
     // fetch resolves on HTTP errors too — a rejected insert (validation gate,
     // rate limit) must not be presented to the visitor as success.
-    if (!res.ok) throw new Error('lead rejected: ' + res.status);
+    if (!res.ok) {
+      let body = '';
+      try { body = await res.text(); } catch (_) {}
+      const limited = body.includes('rate limit') || body.includes('rate_limit') || res.status === 429;
+      const err = new Error('lead rejected: ' + res.status);
+      err.code = limited ? 'rate_limited' : 'server_error';
+      throw err;
+    }
   };
   // Per-field inline error: a <span class="field-error"> placed right after the
   // field (created lazily, id-linked via aria-describedby) + aria-invalid. AT
@@ -372,6 +379,7 @@
       // and prevent a double-submit while the request is in flight.
       let btnLabel = '';
       if (btn) { btnLabel = btn.textContent; btn.disabled = true; btn.classList.add('is-loading'); btn.textContent = 'שולח…'; }
+      let leadErrCode = '';
       let sent = true;
       try {
         await sendLead({
@@ -383,14 +391,18 @@
           marketing_accepted_at: marketingAt,
           notes: priceAlert ? 'מעוניין/ת בהתראת ירידת מחיר' : null,
         });
-      } catch (_) {
+      } catch (err) {
         sent = false;
+        leadErrCode = (err && err.code) || 'server_error';
       }
       if (btn) { btn.disabled = false; btn.classList.remove('is-loading'); if (btnLabel) btn.textContent = btnLabel; }
       if (!sent) {
-        if (note) { note.classList.add('cta__note--err'); note.textContent = 'השליחה נכשלה — נסו שוב, או כתבו לנו בוואטסאפ 💬'; }
-        toast('השליחה נכשלה — נסו שוב בעוד רגע', 'error');
-        if (btn) btn.focus(); // keep focus on the retry affordance
+        const errMsg = leadErrCode === 'rate_limited'
+          ? 'קיבלנו כבר פנייה מכם — נחזור אליכם בהקדם! אם דחוף, כתבו לנו בוואטסאפ 💬'
+          : 'השליחה נכשלה — נסו שוב, או כתבו לנו בוואטסאפ 💬';
+        if (note) { note.classList.add('cta__note--err'); note.textContent = errMsg; }
+        toast(leadErrCode === 'rate_limited' ? 'פנייתכם כבר נקלטה — נחזור בהקדם' : 'שגיאה — נסו שוב בעוד רגע', 'error');
+        if (btn) btn.focus();
         return;
       }
       track('lead_submit', { source: location.pathname });
@@ -671,7 +683,7 @@
       const b = document.createElement('div');
       b.className = 'ai-bubble ai-bubble--bot ai-bubble--typing';
       b.setAttribute('aria-live', 'polite');
-      b.setAttribute('aria-label', 'חוסך AI כותב תשובה');
+      b.setAttribute('aria-label', 'SWITCHY AI כותב תשובה');
       b.innerHTML = '<span></span><span></span><span></span>';
       aiChat.appendChild(b);
       b.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'nearest' });
@@ -798,7 +810,7 @@
                 consent: true, // terms+privacy confirmed above
                 consent_marketing_sms: !!(mktEl && mktEl.checked),
                 consent_marketing_whatsapp: !!(mktEl && mktEl.checked),
-                notes: 'נשלח מצ׳אט חוסך AI באתר',
+                notes: 'נשלח מצ׳אט SWITCHY AI באתר',
               },
             }),
           });

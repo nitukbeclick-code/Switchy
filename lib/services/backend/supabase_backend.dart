@@ -274,14 +274,72 @@ class SupabaseBackend implements Backend {
             DateTime.tryParse(r['created_at'] as String? ?? '') ?? DateTime.now(),
       );
 
+  // Calls a `meeting-book` action and returns its decoded JSON body. The edge
+  // function (not a raw table) owns the booking now, so we can later close the
+  // anon `meetings` INSERT policy: every action returns a `{ok, error?}` map.
+  // functions.invoke auto-attaches the anon/session JWT and surfaces a non-2xx
+  // as a thrown FunctionException — callers translate that into honest copy.
+  Future<Map<String, dynamic>> _meetingBook(Map<String, dynamic> body) async {
+    final res = await _db.functions.invoke('meeting-book', body: body);
+    final data = res.data;
+    return data is Map ? data.cast<String, dynamic>() : const {};
+  }
+
+  @override
+  Future<bool> requestMeetingEmailCode(String email, {String? name}) async {
+    try {
+      // The function always answers {ok:true} (it never reveals whether the
+      // address exists); only a transport / non-2xx failure should read as
+      // "couldn't send" so the UI can offer a retry.
+      await _meetingBook({
+        'action': 'request-code',
+        'email': email,
+        if (name != null && name.isNotEmpty) 'name': name,
+      });
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  @override
+  Future<({bool ok, String? error})> verifyMeetingEmailCode(String email, String code) async {
+    try {
+      final data = await _meetingBook({
+        'action': 'verify-code',
+        'email': email,
+        'code': code,
+      });
+      final ok = data['ok'] == true;
+      return (ok: ok, error: ok ? null : data['error'] as String?);
+    } catch (_) {
+      // A transport / non-2xx failure isn't a "wrong code" — let the UI show a
+      // connection error rather than implying the typed code was invalid.
+      return (ok: false, error: null);
+    }
+  }
+
   @override
   Future<void> requestMeeting(MeetingInput input) async {
-    // `meetings` allows anon insert (same gate pattern as leads); the
-    // meetings_guard trigger validates schedule + rate limits server-side.
-    await _db.from('meetings').insert({
-      ...input.toRow(),
-      if (_uid != null) 'user_id': _uid,
+    // Routed through the `meeting-book` edge function (action:"book") instead of
+    // a direct `meetings` INSERT, so the open anon-insert policy can later be
+    // closed without breaking the app. The function re-checks the just-verified
+    // email, then writes the row (the meetings_guard trigger still validates the
+    // schedule + rate limits server-side). A {ok:false,error} comes back as a
+    // thrown StateError so the wizard surfaces honest Hebrew copy.
+    final data = await _meetingBook({
+      'action': 'book',
+      'name': input.name,
+      'phone': input.phone,
+      'email': input.email,
+      'meeting_date': input.meetingDate,
+      'slot': input.slot,
+      'category': input.provider,
+      'consent': true,
     });
+    if (data['ok'] != true) {
+      throw StateError(data['error'] as String? ?? 'meeting-book failed');
+    }
   }
 
   @override

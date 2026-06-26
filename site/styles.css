@@ -484,6 +484,24 @@ a:not([class]) { text-decoration: underline; text-underline-offset: 2px; text-de
 .hero__stats b { font-family: 'Rubik'; font-size: 26px; font-weight: 800; color: var(--green-d); }
 .hero__stats span { font-size: 13px; color: var(--muted); }
 
+/* Hero robot video — framed to match the site (rounded, soft shadow, accent glow) */
+.hero__video {
+  position: relative; margin: 0; width: 100%; max-width: 420px; isolation: isolate;
+}
+/* Accent glow puddle behind the framed video. */
+.hero__video::before {
+  content: ""; position: absolute; inset: -8% -6% -12%; z-index: -1; pointer-events: none;
+  background: radial-gradient(60% 55% at 50% 42%, color-mix(in srgb, var(--accent) 30%, transparent), transparent 70%);
+  filter: blur(26px);
+}
+.hero__video-el {
+  display: block; width: 100%; height: auto; aspect-ratio: 1 / 1; object-fit: cover;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg), inset 0 0 0 1.5px rgba(255,255,255,.10);
+  background: linear-gradient(155deg, #1b232f, #000);
+}
+:root[data-theme="dark"] .hero__video-el { box-shadow: var(--shadow-lg), inset 0 0 0 1.5px rgba(255,255,255,.06); }
+
 /* Phone mockup */
 .hero__visual { display: grid; place-items: center; }
 .phone {
@@ -1823,6 +1841,32 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
 @media (prefers-reduced-motion: reduce) { .booking__step.is-active { animation: none; } }
 
 .booking__submit { margin-top: 22px; }
+
+/* Email-OTP verification step — revealed after a code is requested. A calm,
+   tinted panel so it reads as a distinct, deliberate gate rather than another
+   form row. Honours the brand tokens (accent tint, radius, ring). */
+.booking__verify {
+  margin-top: 18px; padding: 16px 16px 14px; border-radius: var(--radius-sm);
+  background: var(--accent-t); border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
+  display: grid; gap: 12px;
+}
+.booking__verify[hidden] { display: none; }
+.booking__verify-lead { margin: 0; font-weight: 700; font-size: 14.5px; color: var(--ink-800); line-height: 1.5; }
+.booking__verify-row { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px; }
+.booking__field--code { flex: 1 1 150px; }
+.booking__field--code input {
+  letter-spacing: .5em; text-align: center; font-weight: 800; font-family: 'Rubik', inherit;
+  font-size: 20px; padding-inline: 14px;
+}
+.booking__verify-row .btn { flex: 0 0 auto; }
+.booking__verify-resend { margin: 0; font-size: 13px; color: var(--muted); }
+.linklike {
+  appearance: none; background: none; border: 0; padding: 0; cursor: pointer;
+  color: var(--accent-ink); font-weight: 700; font: inherit; text-decoration: underline; text-underline-offset: 2px;
+}
+.linklike:hover { color: var(--accent-d); }
+.linklike:focus-visible { outline: none; box-shadow: var(--ring); border-radius: 4px; }
+:root[data-theme="dark"] .booking__verify-lead { color: var(--ink); }
 
 /* Status note — success = green, error = red. Hidden until a state is set. */
 .booking__note {

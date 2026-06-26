@@ -126,6 +126,18 @@
   };
   if (heroCounter) countTo(heroCounter, 1188);
 
+  // ── Hero robot video — respect reduced-motion ───────────────────────────────
+  // The <video> ships with `autoplay`, but if the visitor prefers reduced motion
+  // we stop it and drop autoplay so the static poster shows instead of looping.
+  const heroVideo = document.querySelector('.hero__video-el');
+  if (heroVideo && reduceMotion) {
+    heroVideo.removeAttribute('autoplay');
+    heroVideo.autoplay = false;
+    try { heroVideo.pause(); } catch (_) { /* best-effort */ }
+    // Some engines begin playback before this runs; force back to the poster frame.
+    heroVideo.addEventListener('loadeddata', () => { try { heroVideo.pause(); heroVideo.currentTime = 0; } catch (_) {} }, { once: true });
+  }
+
   // ── Scroll reveal ──────────────────────────────────────────────────────────
   const reveals = document.querySelectorAll('.reveal');
   if ('IntersectionObserver' in window && !reduceMotion) {
@@ -1784,12 +1796,37 @@
     const privacyEl = $('bookPrivacy');
     const marketingEl = $('bookMarketing');
     const noteEl = $('bookNote') || form.querySelector('.booking__note');
-    const btn = form.querySelector('button[type="submit"]');
+    const btn = $('bookSubmit') || form.querySelector('button[type="submit"]');
     const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    // ── Email-OTP step elements (revealed after a code is requested) ──────────
+    const verifyBox = $('bookVerify');
+    const verifyLead = $('bookVerifyLead');
+    const codeEl = $('bookCode');
+    const verifyBtn = $('bookVerifyBtn');
+    const resendBtn = $('bookResend');
 
     let chosenProvider = '';
     let chosenSlot = '';
     let busy = false;
+    let verifiedEmail = '';   // the email the current OTP was sent to (lowercased)
+
+    // Call the meeting-book edge function (same backend the web app uses).
+    // Mirrors the fnName fetch pattern: anon key as apikey + Bearer. Returns the
+    // parsed JSON ({ok, error?}); throws only on a transport/non-JSON failure so
+    // callers can surface the server's Hebrew `error` from the body.
+    const callMeetingBook = async (payload) => {
+      const cfg = window.CHOSECH_SUPABASE;
+      if (!cfg || !cfg.url || !cfg.anonKey) throw new Error('booking backend not configured');
+      const res = await fetch(cfg.url.replace(/\/$/, '') + '/functions/v1/meeting-book', {
+        method: 'POST',
+        headers: { apikey: cfg.anonKey, Authorization: 'Bearer ' + cfg.anonKey, 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok && (!data || data.ok == null)) throw new Error('meeting-book failed: ' + res.status);
+      return data || {};
+    };
 
     const setNote = (msg, isErr) => {
       if (!noteEl) return;
@@ -1958,11 +1995,27 @@
       if (el) el.addEventListener('input', () => { if (el.getAttribute('aria-invalid')) fieldError(el, null); });
     });
 
-    // ── Submit ───────────────────────────────────────────────────────────────
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      if (busy) return;
+    // ── 3-step booking via the meeting-book edge function (email-OTP gated) ──
+    // SECURITY: the form never inserts into the DB directly. Submit → request a
+    // 6-digit email code; the visitor enters it → verify-code; on success →
+    // action:"book" performs the gated insert server-side. The anon key only
+    // reaches the edge function, which owns rate-limiting + validation.
 
+    // Reveal/refresh the verification step for a given email.
+    const showVerifyStep = (email) => {
+      verifiedEmail = email;
+      if (verifyLead) verifyLead.textContent = 'שלחנו קוד בן 6 ספרות ל-' + email;
+      if (verifyBox) verifyBox.hidden = false;
+      if (codeEl) { codeEl.value = ''; setTimeout(() => { try { codeEl.focus(); } catch (_) {} }, reduceMotion ? 0 : 60); }
+    };
+    const hideVerifyStep = () => {
+      verifiedEmail = '';
+      if (verifyBox) verifyBox.hidden = true;
+      if (codeEl) codeEl.value = '';
+    };
+
+    // Read + validate the whole form. Returns the normalised values or null.
+    const readForm = () => {
       const name = (nameEl && nameEl.value || '').trim();
       const phoneRaw = (phoneEl && phoneEl.value || '').trim();
       const phone = phoneRaw.replace(/[^\d+]/g, '');
@@ -1982,55 +2035,136 @@
         setNote('נא למלא שם, טלפון ואימייל תקינים 🙏', true);
         const bad = !nameOk ? nameEl : (!phoneOk ? phoneEl : emailEl);
         if (bad) bad.focus();
-        return;
+        return null;
       }
-      if (!chosenProvider) { setNote('בחרו ספק לפגישה 🙏', true); if (providersHost) providersHost.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' }); return; }
-      if (!dateSel || !dateSel.value) { setNote('בחרו תאריך לפגישה 🙏', true); if (dateSel) dateSel.focus(); return; }
-      if (!chosenSlot) { setNote('בחרו שעה פנויה לפגישה 🙏', true); if (slotHost) slotHost.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' }); return; }
+      if (!chosenProvider) { setNote('בחרו ספק לפגישה 🙏', true); if (providersHost) providersHost.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' }); return null; }
+      if (!dateSel || !dateSel.value) { setNote('בחרו תאריך לפגישה 🙏', true); if (dateSel) dateSel.focus(); return null; }
+      if (!chosenSlot) { setNote('בחרו שעה פנויה לפגישה 🙏', true); if (slotHost) slotHost.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'center' }); return null; }
       if (!termsOk || !privacyOk) {
         setNote('יש לאשר את תנאי השימוש ומדיניות הפרטיות כדי להמשיך 🙏', true);
         const badC = !termsOk ? termsEl : privacyEl;
         if (badC) badC.focus();
-        return;
+        return null;
       }
+      return { name: name, phone: phone, email: email };
+    };
 
-      const now = new Date().toISOString();
-      const payload = {
-        name: name,
-        phone: phone,
-        email: email,
-        provider: chosenProvider,
-        meeting_date: dateSel.value,
-        slot: chosenSlot,
-        source: 'site',
-        terms_accepted_at: now,
-        privacy_accepted_at: now,
-        marketing_accepted_at: (marketingEl && marketingEl.checked) ? now : null,
-      };
-
+    // Step 1 — request a code (always {ok:true}) then reveal the verify step.
+    const requestCode = async (vals) => {
       busy = true;
       let btnLabel = '';
-      if (btn) { btnLabel = btn.textContent; btn.disabled = true; btn.classList.add('is-loading'); btn.textContent = 'קובע פגישה…'; }
+      if (btn) { btnLabel = btn.textContent; btn.disabled = true; btn.classList.add('is-loading'); btn.textContent = 'שולח קוד…'; }
       try {
-        await sbRest('meetings', { method: 'POST', headers: { Prefer: 'return=minimal' }, body: payload });
-        track('meeting_booked', { provider: chosenProvider });
-        form.reset();
-        chosenProvider = '';
-        chosenSlot = '';
-        Array.from(form.querySelectorAll('.booking__provider')).forEach((c) => { c.classList.remove('is-chosen'); c.setAttribute('aria-pressed', 'false'); });
-        buildDates();
-        buildSlots();
-        setNote('תודה! נשלח אליכם קישור Zoom למייל מיד לאחר שנציג יאשר את הפגישה.', false);
-        toast('תודה! נשלח אליכם קישור Zoom למייל לאחר אישור הנציג', 'success');
-      } catch (err) {
-        // Guard errors (e.g. 400) carry a friendly server message; prefer it.
-        const msg = (err && err.detail) ? err.detail : 'לא הצלחנו לקבוע את הפגישה — בדקו את הפרטים ונסו שוב, או דברו איתנו בוואטסאפ 💬';
+        await callMeetingBook({ action: 'request-code', email: vals.email, name: vals.name });
+        setNote('', false);
+        showVerifyStep(vals.email);
+      } catch (_) {
+        const msg = 'לא הצלחנו לשלוח קוד אימות — נסו שוב, או דברו איתנו בוואטסאפ 💬';
         setNote(msg, true);
         toast(msg, 'error');
-        if (btn) btn.focus();
       }
       if (btn) { btn.disabled = false; btn.classList.remove('is-loading'); if (btnLabel) btn.textContent = btnLabel; }
       busy = false;
+    };
+
+    // Step 3 — the gated insert (only reached after verify-code returns ok).
+    const doBook = async (vals) => {
+      busy = true;
+      let vLabel = '';
+      if (verifyBtn) { vLabel = verifyBtn.textContent; verifyBtn.disabled = true; verifyBtn.classList.add('is-loading'); verifyBtn.textContent = 'קובע פגישה…'; }
+      try {
+        const data = await callMeetingBook({
+          action: 'book',
+          name: vals.name,
+          phone: vals.phone,
+          email: vals.email,
+          meeting_date: dateSel.value,
+          slot: chosenSlot,
+          category: chosenProvider,
+          consent: !!(termsEl && termsEl.checked && privacyEl && privacyEl.checked),
+        });
+        if (!data || !data.ok) {
+          const msg = (data && data.error) ? data.error : 'לא הצלחנו לקבוע את הפגישה — בדקו את הפרטים ונסו שוב, או דברו איתנו בוואטסאפ 💬';
+          setNote(msg, true);
+          toast(msg, 'error');
+        } else {
+          track('meeting_booked', { provider: chosenProvider });
+          form.reset();
+          chosenProvider = '';
+          chosenSlot = '';
+          Array.from(form.querySelectorAll('.booking__provider')).forEach((c) => { c.classList.remove('is-chosen'); c.setAttribute('aria-pressed', 'false'); });
+          buildDates();
+          buildSlots();
+          hideVerifyStep();
+          setNote('הבקשה נשלחה — נציג יאשר ויחזור עם קישור Zoom למייל.', false);
+          toast('הבקשה נשלחה — נציג יאשר ויחזור עם קישור Zoom למייל', 'success');
+        }
+      } catch (_) {
+        const msg = 'לא הצלחנו לקבוע את הפגישה — נסו שוב, או דברו איתנו בוואטסאפ 💬';
+        setNote(msg, true);
+        toast(msg, 'error');
+      }
+      if (verifyBtn) { verifyBtn.disabled = false; verifyBtn.classList.remove('is-loading'); if (vLabel) verifyBtn.textContent = vLabel; }
+      busy = false;
+    };
+
+    // Step 2 — verify the entered code; on ok auto-trigger the final book.
+    const verifyCode = async () => {
+      if (busy) return;
+      const code = (codeEl && codeEl.value || '').replace(/\D/g, '');
+      if (code.length !== 6) {
+        fieldError(codeEl, 'נא להזין את הקוד בן 6 הספרות שנשלח אליכם');
+        if (codeEl) codeEl.focus();
+        return;
+      }
+      // Re-validate the form so a value tampered with after the code was sent
+      // can't slip through; bail back to step 1 if it no longer passes.
+      const vals = readForm();
+      if (!vals) return;
+      if (vals.email !== verifiedEmail) { showVerifyStep(vals.email); return; }
+
+      busy = true;
+      let vLabel = '';
+      if (verifyBtn) { vLabel = verifyBtn.textContent; verifyBtn.disabled = true; verifyBtn.classList.add('is-loading'); verifyBtn.textContent = 'מאמת…'; }
+      let ok = false;
+      try {
+        const data = await callMeetingBook({ action: 'verify-code', email: vals.email, code: code });
+        if (data && data.ok) {
+          ok = true;
+          fieldError(codeEl, null);
+        } else {
+          const msg = (data && data.error) ? data.error : 'הקוד שגוי או שפג תוקפו — בקשו קוד חדש';
+          fieldError(codeEl, msg);
+          setNote(msg, true);
+          if (codeEl) codeEl.focus();
+        }
+      } catch (_) {
+        const msg = 'אירעה תקלה באימות הקוד — נסו שוב';
+        setNote(msg, true);
+        toast(msg, 'error');
+      }
+      if (verifyBtn) { verifyBtn.disabled = false; verifyBtn.classList.remove('is-loading'); if (vLabel) verifyBtn.textContent = vLabel; }
+      busy = false;
+      if (ok) await doBook(vals);
+    };
+
+    // Submit = step 1 (request code). Clear stale code error as the user types.
+    if (codeEl) codeEl.addEventListener('input', () => { if (codeEl.getAttribute('aria-invalid')) fieldError(codeEl, null); });
+    if (verifyBtn) verifyBtn.addEventListener('click', () => { verifyCode(); });
+    if (codeEl) codeEl.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); verifyCode(); } });
+    if (resendBtn) resendBtn.addEventListener('click', async () => {
+      if (busy) return;
+      const vals = readForm();
+      if (!vals) return;
+      await requestCode(vals);
+    });
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (busy) return;
+      const vals = readForm();
+      if (!vals) return;
+      await requestCode(vals);
     });
   })();
 

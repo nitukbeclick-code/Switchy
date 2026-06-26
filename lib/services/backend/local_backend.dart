@@ -127,6 +127,22 @@ class LocalBackend implements Backend {
   StreamController<BookedMeeting>? _meetingCtrl;
   Timer? _demoTimer;
 
+  // Email-OTP gate — there is no `meeting-book` edge function offline, so the
+  // verification is a no-op that always succeeds: any non-empty address gets a
+  // "code sent" and any non-empty code verifies. This keeps the full
+  // request → verify → book UX exercisable in demo mode and in widget tests.
+  @override
+  Future<bool> requestMeetingEmailCode(String email, {String? name}) async =>
+      email.trim().isNotEmpty;
+
+  @override
+  Future<({bool ok, String? error})> verifyMeetingEmailCode(String email, String code) async {
+    if (code.trim().isEmpty) {
+      return (ok: false, error: 'יש להזין את הקוד שנשלח לאימייל');
+    }
+    return (ok: true, error: null);
+  }
+
   @override
   Future<void> requestMeeting(MeetingInput input) async {
     _meetings.add(input);

@@ -965,8 +965,26 @@ abstract interface class Backend {
   Stream<int> leadStepStream();
 
   // ── Video meetings (Zoom) ────────────────────────────────────────────────────
-  /// Books a video-meeting request. Server-side the `meetings_guard()` trigger
-  /// validates schedule + rate limits and a Telegram card reaches the rep team.
+  /// Step 1 of the email-gated booking: asks the `meeting-book` edge function to
+  /// email a 6-digit verification code to [email] (the rep needs a reachable
+  /// address before a slot is held). [name] personalises the email when known.
+  /// Returns true unless a transport error stopped the request from being sent —
+  /// the function always answers `{ok:true}` so we never leak whether the address
+  /// exists. [LocalBackend] accepts any address offline so the OTP UX still runs.
+  Future<bool> requestMeetingEmailCode(String email, {String? name});
+
+  /// Step 2: verifies the [code] the user typed against the one mailed in
+  /// [requestMeetingEmailCode]. Returns `(ok:true)` when the code matches, or
+  /// `(ok:false, error)` with a friendly Hebrew reason (wrong/expired code) the
+  /// UI can show. [LocalBackend] accepts any non-empty code offline.
+  Future<({bool ok, String? error})> verifyMeetingEmailCode(String email, String code);
+
+  /// Step 3: books a video-meeting request through the `meeting-book` edge
+  /// function (`action:"book"`), which only proceeds for an email that was just
+  /// verified. Server-side the `meetings_guard()` trigger validates schedule +
+  /// rate limits and a Telegram card reaches the rep team. Throws a [StateError]
+  /// carrying the function's `error` (or a transport failure) so the wizard can
+  /// surface honest copy and keep the form for a retry.
   Future<void> requestMeeting(MeetingInput input);
 
   /// The user's newest meeting request, or null if none.

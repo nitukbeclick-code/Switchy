@@ -1,0 +1,37 @@
+-- ═══════════════════════════════════════════════════════════════════════════
+-- Close the anonymous-insert hole on public.meetings — 2026-06.
+--
+-- ⚠️ OWNER-APPLIED, NOT AUTO. And SEQUENCING-CRITICAL — read before applying.
+--
+-- THE HOLE: meetings-2026-06.sql created
+--     create policy "meetings_insert_anyone" on public.meetings
+--       for insert with check (true);
+-- i.e. ANY anonymous client (the public anon key, which ships in the static
+-- site's JS) could INSERT a meeting straight into the table. The booking page's
+-- email-OTP is just UI on top — a bot skips the page and POSTs to
+-- /rest/v1/meetings directly. The Flutter app + both websites all used this
+-- same un-gated path.
+--
+-- THE FIX: every legitimate booker now goes through the email-OTP-gated
+-- `meeting-book` edge function (service-role → bypasses RLS) or a rep
+-- (notify-lead, service-role). So the anon INSERT policy is no longer needed and
+-- is the only thing letting bots in. Drop it → inserts become service-role-only
+-- (auth.users is empty, so the leftover authenticated policy never applies).
+--   • meeting-book (service-role) → still inserts. ✓
+--   • notify-lead rep booking (service-role) → still inserts. ✓
+--   • static site switchy-ai.com → routed to meeting-book. ✓ (deploy first)
+--   • app.switchy-ai.com /book → meeting-book. ✓
+--   • Flutter app requestMeeting() → meeting-book. ✓ (NEW BUILD required)
+--
+-- ⚠️ APPLY ONLY AFTER the new Flutter app build (the one that routes booking
+-- through meeting-book) is PUBLISHED and users have updated — OLDER installed
+-- app versions still insert directly and their booking will FAIL the moment this
+-- runs. Recommended: ship the new app build (ideally with a force-update / min
+-- version gate), confirm the websites are deployed to meeting-book, THEN run this.
+-- Idempotent — safe to re-run.
+-- ═══════════════════════════════════════════════════════════════════════════
+
+drop policy if exists "meetings_insert_anyone" on public.meetings;
+
+-- Sanity: meetings stays RLS-enabled; the remaining insert path is service-role
+-- (the meeting-book edge function + reps), which the OTP gate protects.

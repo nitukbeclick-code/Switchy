@@ -3060,7 +3060,20 @@ ${navNoCta}
             </label>
           </div>
 
-          <button class="btn btn--primary btn--lg" type="submit">קבעו פגישה ←</button>
+          <button class="btn btn--primary btn--lg" id="bookSubmit" type="submit">קבעו פגישה ←</button>
+
+          <!-- Email-OTP verification step — hidden until a code is requested -->
+          <div class="booking__verify" id="bookVerify" hidden>
+            <p class="booking__verify-lead" id="bookVerifyLead" role="status" aria-live="polite"></p>
+            <div class="booking__verify-row">
+              <label class="booking__field booking__field--code" for="bookCode">קוד אימות
+                <input type="text" id="bookCode" name="code" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]*" maxlength="6" placeholder="------" />
+              </label>
+              <button class="btn btn--primary" id="bookVerifyBtn" type="button">אימות</button>
+            </div>
+            <p class="booking__verify-resend">לא קיבלתם? <button type="button" class="linklike" id="bookResend">שלח שוב</button></p>
+          </div>
+
           <p class="booking__note" id="bookNote" role="status" aria-live="polite"></p>
         </form>
         <p class="booking__note" style="text-align:center;margin-top:18px;max-width:52ch;margin-inline:auto">לאחר שליחה, נציג מאשר את הפגישה ואתם מקבלים קישור Zoom למייל. אין צורך להוריד תוכנה — נכנסים מהדפדפן או מאפליקציית Zoom.</p>

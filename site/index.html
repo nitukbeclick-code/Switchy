@@ -51,7 +51,7 @@
   <noscript><link href="https://fonts.googleapis.com/css2?family=Rubik:wght@500;700;800;900&family=Assistant:wght@400;500;600;700&display=swap" rel="stylesheet" /></noscript>
   <!-- ?v= cache-busting hash is owned by build.js (it prints the current
        values on every run) — keep this in sync when styles.css changes. -->
-  <link rel="stylesheet" href="styles.css?v=4eab30fd" />
+  <link rel="stylesheet" href="styles.css?v=0d2bcca8" />
 
   <!-- Google Analytics 4 (Measurement ID G-YCTGRVN7SJ; mirror in site/build.js GA4_ID). -->
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-YCTGRVN7SJ"></script>
@@ -215,32 +215,13 @@
         </div>
 
         <div class="hero__visual reveal">
-          <div class="phone" aria-hidden="true">
-            <div class="phone__notch"></div>
-            <div class="phone__screen">
-              <div class="card card--save">
-                <span class="card__label">חיסכון פוטנציאלי שנתי</span>
-                <span class="card__big" id="heroCounter">₪0</span>
-                <span class="card__hint">מחושב לפי החשבונות שלך</span>
-              </div>
-              <div class="card card--row">
-                <span class="logo logo--cel">סל</span>
-                <div class="card__text"><b>סלקום</b><small>5G ללא הגבלה</small></div>
-                <span class="tag">₪29</span>
-              </div>
-              <div class="card card--row">
-                <span class="logo logo--par">פר</span>
-                <div class="card__text"><b>פרטנר</b><small>סיב 1000Mb</small></div>
-                <span class="tag">₪99</span>
-              </div>
-              <div class="card card--row best">
-                <span class="logo logo--gol">גל</span>
-                <div class="card__text"><b>גולן טלקום</b><small>ההמלצה שלנו</small></div>
-                <span class="tag tag--win">חוסך ₪960</span>
-              </div>
-            </div>
-          </div>
-          <img class="hero__shot" src="assets/app/shot-results.webp" width="280" height="600" loading="lazy" decoding="async" alt="מסך תוצאות ההשוואה באפליקציית חוסך — מסלולים מדורגים לפי החיסכון השנתי" />
+          <figure class="hero__video">
+            <video class="hero__video-el" autoplay muted loop playsinline preload="metadata"
+                   poster="assets/videos/switchy-hero-poster.svg"
+                   aria-label="הדגמה מונפשת של הרובוט של חוסך מוצא את המסלול המשתלם ביותר">
+              <source src="assets/videos/switchy-hero.mp4" type="video/mp4" />
+            </video>
+          </figure>
         </div>
       </div>
     </section>
@@ -808,6 +789,6 @@
   <script>window.CHOSECH_SUPABASE={url:'https://orzitfqmlvopujsoyigr.supabase.co',anonKey:'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9yeml0ZnFtbHZvcHVqc295aWdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA5OTc5NzIsImV4cCI6MjA5NjU3Mzk3Mn0.NY4ZHzR3BAWUxm5as9Z054o8fwcfejAab9SIvduKlhM'};</script>
   <!-- ?v= cache-busting hash is owned by build.js (it prints the current
        values on every run) — keep this in sync when script.js changes. -->
-  <script src="script.js?v=abd29b8d" defer></script>
+  <script src="script.js?v=ae3f94a8" defer></script>
 </body>
 </html>

@@ -38,6 +38,7 @@ class _MeetingWidgetState extends State<MeetingWidget> {
   final _phoneCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
   final _noteCtrl = TextEditingController();
+  final _codeCtrl = TextEditingController();
   final _formKey = GlobalKey<FormState>();
 
   String? _provider;
@@ -48,6 +49,24 @@ class _MeetingWidgetState extends State<MeetingWidget> {
   bool _acceptPrivacy = false;
   bool _acceptMarketing = false;
   bool _justBooked = false;
+
+  // Email-OTP gate (the `meeting-book` edge function). The final "book" only
+  // unlocks once the user has verified a code mailed to their address, so the
+  // anon `meetings` INSERT policy can later be closed without breaking the app.
+  bool _codeSent = false;       // a code was requested → show the code field
+  bool _emailVerified = false;  // the typed code checked out → unlock booking
+  bool _sendingCode = false;    // "שלח קוד אימות" is in-flight
+  bool _verifyingCode = false;  // "אימות" is in-flight
+  // The exact address the code was sent to / verified for. Editing the email
+  // after verifying must re-arm the gate, so we compare against this.
+  String? _verifiedEmail;
+
+  /// Single source of truth for the email regex (mirrors the lead form): a
+  /// reachable written channel is mandatory here because the Zoom link is mailed.
+  static final RegExp _emailRe = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$');
+
+  String get _emailText => _emailCtrl.text.trim();
+  bool get _emailLooksValid => _emailRe.hasMatch(_emailText);
 
   /// The bookable dates are recomputed every build (cheap + pure) so the grid
   /// can't go stale across midnight; the picked date falls back to the first
@@ -66,6 +85,10 @@ class _MeetingWidgetState extends State<MeetingWidget> {
     if (appState.userPhone.isNotEmpty) _phoneCtrl.text = appState.userPhone;
     if (appState.userEmail.isNotEmpty) _emailCtrl.text = appState.userEmail;
 
+    // Editing the email after a code was sent/verified invalidates the gate:
+    // a code is bound to one address, so the user must re-request + re-verify.
+    _emailCtrl.addListener(_onEmailChanged);
+
     // Live status is owned by the app-scope MeetingSync (rep confirmations
     // must land even when this screen is closed); (re)starting it here is
     // idempotent and also hydrates the latest server row.
@@ -74,11 +97,26 @@ class _MeetingWidgetState extends State<MeetingWidget> {
 
   @override
   void dispose() {
+    _emailCtrl.removeListener(_onEmailChanged);
     _nameCtrl.dispose();
     _phoneCtrl.dispose();
     _emailCtrl.dispose();
     _noteCtrl.dispose();
+    _codeCtrl.dispose();
     super.dispose();
+  }
+
+  /// Re-arms the OTP gate whenever the address no longer matches the one a code
+  /// was sent to — a stale "verified" badge on a different email would be a lie.
+  void _onEmailChanged() {
+    if (!_codeSent && !_emailVerified) return;
+    if (_emailText == _verifiedEmail) return;
+    setState(() {
+      _codeSent = false;
+      _emailVerified = false;
+      _verifiedEmail = null;
+      _codeCtrl.clear();
+    });
   }
 
   /// A meeting that should occupy this screen: anything not terminal, or a
@@ -95,6 +133,75 @@ class _MeetingWidgetState extends State<MeetingWidget> {
     };
   }
 
+  /// Step 1 of the OTP gate: mail a 6-digit code to the typed address. We
+  /// validate the email locally first (the code is useless if it can't arrive),
+  /// then reveal the code field. The function answers {ok:true} regardless of
+  /// whether the address exists, so a true return just means "request sent".
+  Future<void> _sendCode() async {
+    if (!_emailLooksValid) {
+      AppSnackBar.info(context, 'הזינו כתובת אימייל תקינה לקבלת קוד האימות');
+      return;
+    }
+    HapticFeedback.lightImpact();
+    setState(() => _sendingCode = true);
+    bool ok;
+    try {
+      ok = await appBackend
+          .requestMeetingEmailCode(_emailText, name: _nameCtrl.text.trim())
+          .timeout(const Duration(seconds: 10));
+    } catch (_) {
+      ok = false;
+    }
+    if (!mounted) return;
+    setState(() {
+      _sendingCode = false;
+      if (ok) {
+        _codeSent = true;
+        _verifiedEmail = _emailText; // bind the gate to this address
+        _emailVerified = false;
+        _codeCtrl.clear();
+      }
+    });
+    if (ok) {
+      AppSnackBar.success(context, 'שלחנו קוד אימות בן 6 ספרות לכתובת $_emailText');
+    } else {
+      AppSnackBar.error(context, 'שליחת קוד האימות נכשלה — בדקו את החיבור ונסו שוב');
+    }
+  }
+
+  /// Step 2: verify the typed code against the one mailed in [_sendCode]. On
+  /// success the final "book" CTA unlocks; otherwise we show the function's
+  /// honest Hebrew reason (wrong / expired code).
+  Future<void> _verifyCode() async {
+    final code = _codeCtrl.text.trim();
+    if (code.length < 6) {
+      AppSnackBar.info(context, 'הזינו את קוד האימות בן 6 הספרות');
+      return;
+    }
+    HapticFeedback.lightImpact();
+    setState(() => _verifyingCode = true);
+    ({bool ok, String? error}) res;
+    try {
+      res = await appBackend
+          .verifyMeetingEmailCode(_emailText, code)
+          .timeout(const Duration(seconds: 10));
+    } catch (_) {
+      res = (ok: false, error: null);
+    }
+    if (!mounted) return;
+    setState(() {
+      _verifyingCode = false;
+      _emailVerified = res.ok;
+      if (res.ok) _verifiedEmail = _emailText;
+    });
+    if (res.ok) {
+      HapticFeedback.mediumImpact();
+      AppSnackBar.success(context, 'האימייל אומת — אפשר לקבוע את הפגישה');
+    } else {
+      AppSnackBar.error(context, res.error ?? 'הקוד שגוי או שפג תוקפו — נסו שוב');
+    }
+  }
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     if (_provider == null) {
@@ -107,6 +214,10 @@ class _MeetingWidgetState extends State<MeetingWidget> {
     }
     if (!_acceptTerms || !_acceptPrivacy) {
       AppSnackBar.info(context, 'יש לאשר את תנאי השימוש ומדיניות הפרטיות כדי לשלוח');
+      return;
+    }
+    if (!_emailVerified || _emailText != _verifiedEmail) {
+      AppSnackBar.info(context, 'אמתו את כתובת האימייל לפני קביעת הפגישה');
       return;
     }
     HapticFeedback.lightImpact();
@@ -146,6 +257,16 @@ class _MeetingWidgetState extends State<MeetingWidget> {
         AppSnackBar.info(context, 'כבר קיימת לכם פגישה פתוחה — מציגים אותה');
         await MeetingSync.refresh();
         if (mounted) setState(() => _justBooked = false);
+      } else if (msg.contains('not verified') ||
+          msg.contains('verify') ||
+          msg.contains('code')) {
+        // The server rejected the booking because the email isn't verified
+        // (e.g. the OTP expired between verify and book) — re-arm the gate.
+        setState(() {
+          _emailVerified = false;
+          _verifiedEmail = null;
+        });
+        AppSnackBar.error(context, 'יש לאמת מחדש את כתובת האימייל — שלחו קוד חדש');
       } else if (msg.contains('rate limit')) {
         AppSnackBar.error(context, 'נשלחו יותר מדי בקשות — נסו שוב מאוחר יותר');
       } else if (msg.contains('invalid slot') ||
@@ -323,10 +444,23 @@ class _MeetingWidgetState extends State<MeetingWidget> {
             controller: _emailCtrl,
             keyboardType: TextInputType.emailAddress,
             textDirection: TextDirection.ltr,
-            decoration: _inputDecoration(t, hint: 'אימייל (אופציונלי)', icon: Icons.mail_outline_rounded),
+            autofillHints: const [AutofillHints.email],
+            // Email is mandatory now: we mail a verification code here before a
+            // slot is held, and the Zoom link is delivered to this address.
+            enabled: !_emailVerified, // lock once verified (editing re-arms it)
+            decoration: _inputDecoration(t, hint: 'אימייל', icon: Icons.mail_outline_rounded),
+            validator: (v) {
+              final s = (v ?? '').trim();
+              if (s.isEmpty) return 'יש להזין כתובת אימייל';
+              return _emailRe.hasMatch(s) ? null : 'כתובת אימייל לא תקינה';
+            },
           ),
           const SizedBox(height: 4),
-          Text('קישור ההצטרפות יישלח גם לכתובת זו.', style: t.labelSmall),
+          Text('נשלח לכאן קוד אימות, וקישור ההצטרפות יגיע לכתובת זו.', style: t.labelSmall),
+          const SizedBox(height: 12),
+          _buildEmailVerification(t)
+              .animate(delay: 200.ms)
+              .fadeIn(duration: 260.ms, curve: t.easeOut),
 
           const SizedBox(height: 12),
           TextFormField(
@@ -354,8 +488,11 @@ class _MeetingWidgetState extends State<MeetingWidget> {
           AppButton(
             // AppButton drives the spinner + tap-ignore while [_submit] awaits,
             // so the label stays the honest CTA text (no faked "שולח...").
+            // Disabled until the email is verified — the OTP gate must pass
+            // before a slot is held (the edge function re-checks server-side).
             text: 'בקשו פגישת וידאו',
             onPressed: () async => _submit(),
+            enabled: _emailVerified,
             width: double.infinity,
             height: 56,
             color: AppColors.primary,
@@ -628,6 +765,129 @@ class _MeetingWidgetState extends State<MeetingWidget> {
       errorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: t.error)),
       focusedErrorBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: t.error, width: 1.5)),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+    );
+  }
+
+  // ── Email verification (OTP gate) ──────────────────────────────────────────
+  /// The three-state email-OTP block that sits between the consent panel and the
+  /// final booking CTA: (1) "שלח קוד אימות" → (2) a 6-digit code field + "אימות"
+  /// (with a resend) → (3) a verified confirmation. Until state (3) is reached
+  /// the booking button stays disabled, so a slot is only ever held for a
+  /// reachable, verified address.
+  Widget _buildEmailVerification(AppTheme t) {
+    if (_emailVerified) {
+      return Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: t.success.withValues(alpha: 0.10),
+          borderRadius: BorderRadius.circular(t.radiusMd),
+          border: Border.all(color: t.success.withValues(alpha: 0.45)),
+        ),
+        child: Semantics(
+          liveRegion: true,
+          label: 'האימייל אומת',
+          child: Row(
+            children: [
+              Icon(Icons.verified_rounded, size: 20, color: t.success),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text('האימייל אומת — אפשר לקבוע את הפגישה',
+                    style: t.bodySmall.copyWith(color: t.success, fontWeight: FontWeight.w700)),
+              ),
+              TextButton(
+                onPressed: () {
+                  // "Change email" — re-arm the gate so a new address must be
+                  // re-verified before booking.
+                  setState(() {
+                    _emailVerified = false;
+                    _codeSent = false;
+                    _verifiedEmail = null;
+                    _codeCtrl.clear();
+                  });
+                },
+                child: Text('שינוי',
+                    style: t.labelSmall.copyWith(color: t.brandAccent, fontWeight: FontWeight.w700)),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    if (!_codeSent) {
+      return AppButton.secondary(
+        text: 'שלח קוד אימות',
+        icon: Icon(Icons.mark_email_read_outlined, size: 18, color: t.brandAccent),
+        onPressed: () async => _sendCode(),
+        width: double.infinity,
+        height: 48,
+        textStyle: t.labelLarge.copyWith(color: t.brandAccent, fontWeight: FontWeight.w700),
+      );
+    }
+
+    // Code sent → ask for the 6 digits, verify, and offer a resend.
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: t.cardDecoration(radius: t.radiusMd),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('הזינו את קוד האימות שנשלח ל-$_verifiedEmail',
+              style: t.bodySmall.copyWith(color: t.secondaryText)),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: TextFormField(
+                  key: const Key('meeting-otp-code'),
+                  controller: _codeCtrl,
+                  keyboardType: TextInputType.number,
+                  textDirection: TextDirection.ltr,
+                  textAlign: TextAlign.center,
+                  maxLength: 6,
+                  // Digits only; the verify CTA enables once all 6 are present.
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    LengthLimitingTextInputFormatter(6),
+                  ],
+                  onChanged: (_) => setState(() {}), // re-evaluate the CTA enable
+                  onFieldSubmitted: (_) => _verifyCode(),
+                  style: t.titleMedium.copyWith(
+                    letterSpacing: 6,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
+                  decoration: _inputDecoration(t, hint: '------', icon: Icons.password_outlined)
+                      .copyWith(counterText: ''),
+                ),
+              ),
+              const SizedBox(width: 10),
+              AppButton(
+                text: 'אימות',
+                onPressed: () async => _verifyCode(),
+                enabled: _codeCtrl.text.trim().length == 6,
+                height: 52,
+                padding: const EdgeInsets.symmetric(horizontal: 18),
+                color: AppColors.primary,
+                textStyle: t.labelLarge.copyWith(color: Colors.white, fontWeight: FontWeight.w700),
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: TextButton(
+              // Disabled while either request is in flight so a resend can't
+              // race an in-progress verify.
+              onPressed: (_sendingCode || _verifyingCode) ? null : () async => _sendCode(),
+              child: Text(_sendingCode ? 'שולח קוד…' : 'לא קיבלתם? שליחה חוזרת',
+                  style: t.labelSmall.copyWith(color: t.brandAccent, fontWeight: FontWeight.w700)),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

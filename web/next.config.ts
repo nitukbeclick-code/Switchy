@@ -109,6 +109,16 @@ const SECURITY_HEADERS = [
     value:
       "camera=(), microphone=(), geolocation=(), browsing-topics=(), interest-cohort=()",
   },
+  // Force HTTPS for a year incl. subdomains, and submit to the preload list. This
+  // lives here (not vercel.json) so ALL security headers — CSP + HSTS + the
+  // hardening set — have a single source of truth. vercel.json intentionally
+  // defines NO `headers`: a duplicate header block there would diverge from this
+  // strict, hash-based CSP and (per Vercel's header precedence) could silently
+  // ship a weaker policy. Keep header config in this file only.
+  {
+    key: "Strict-Transport-Security",
+    value: "max-age=31536000; includeSubDomains; preload",
+  },
 ];
 
 const nextConfig: NextConfig = {

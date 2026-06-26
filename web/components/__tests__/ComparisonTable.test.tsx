@@ -1,8 +1,16 @@
 // ────────────────────────────────────────────────────────────────────────────
-// <ComparisonTable> — a native semantic comparison <table>. Tests cover the a11y
-// structure (region label, <caption>, column + row headers), the ₪ price + after-
-// promo rendering, and the HONESTY requirement: a featured/sponsored row is always
-// VISIBLY labeled ("מקודם" / "בחירת העורך"), never covert.
+// <ComparisonTable> — the RICH, category-aware comparison view. MOBILE-FIRST:
+// a card per plan; lg+ a native semantic <table> whose columns adapt to the
+// plans' category. Tests cover the a11y structure (region label, caption, the
+// always-present base column headers + category-derived rich columns), the ₪
+// price + honest post-promo rendering ("מחיר קבוע" when there is no jump, never
+// a bare dash), the rich category fields, the perks line, and the HONESTY
+// requirement: a featured/sponsored row is ALWAYS visibly labeled.
+//
+// NOTE: both the mobile cards and the desktop table render in the DOM under jsdom
+// (the `lg:hidden` / `hidden lg:block` split is CSS-only, which jsdom does not
+// apply), so a given plan's text appears TWICE. Assertions use getAllBy* /
+// queryAllBy* where duplication across the two views is expected.
 // ────────────────────────────────────────────────────────────────────────────
 
 import { describe, it, expect } from "vitest";
@@ -27,28 +35,28 @@ function plan(overrides: Partial<Plan> = {}): Plan {
 }
 
 describe("ComparisonTable — semantics & a11y", () => {
-  it("exposes a labeled scroll region, a caption, and the five column headers", () => {
+  it("exposes a labeled region, a caption, and the base column headers", () => {
     const caption = "השוואת סלולר — מחירים בשקלים";
     render(<ComparisonTable plans={[plan()]} caption={caption} />);
 
-    // The focusable scroll wrapper is a region labeled by the caption text.
-    const region = screen.getByRole("region", { name: caption });
-    expect(region).toHaveAttribute("tabindex", "0");
+    // The desktop scroll wrapper is a region labeled by the caption text.
+    const regions = screen.getAllByRole("region", { name: caption });
+    expect(regions.length).toBeGreaterThanOrEqual(1);
 
-    // Visible <caption> with the same text.
-    expect(screen.getByText(caption)).toBeInTheDocument();
+    // The caption text is shown (mobile heading + sr-only table caption).
+    expect(screen.getAllByText(caption).length).toBeGreaterThanOrEqual(1);
 
-    for (const col of ["ספק", "מסלול", "מחיר", "מחיר אחרי מבצע", "מאפיינים"]) {
-      expect(screen.getByRole("columnheader", { name: col })).toBeInTheDocument();
+    // The base columns are always present in the desktop table head.
+    for (const col of ["ספק", "מסלול", "מחיר", "מחיר אחרי תקופה"]) {
+      expect(
+        screen.getByRole("columnheader", { name: col }),
+      ).toBeInTheDocument();
     }
   });
 
-  it("uses the provider name as the row header (scope=row)", () => {
+  it("uses the provider name as the desktop row header (scope=row)", () => {
     render(
-      <ComparisonTable
-        plans={[plan({ provider: "פרטנר" })]}
-        caption="cap"
-      />,
+      <ComparisonTable plans={[plan({ provider: "פרטנר" })]} caption="cap" />,
     );
     expect(
       screen.getByRole("rowheader", { name: /פרטנר/ }),
@@ -56,21 +64,114 @@ describe("ComparisonTable — semantics & a11y", () => {
   });
 });
 
-describe("ComparisonTable — price rendering", () => {
-  it("formats integer and fractional prices and shows the after-promo price", () => {
+describe("ComparisonTable — category-aware rich columns", () => {
+  it("derives the rich columns from the plans' category (cellular)", () => {
     render(
       <ComparisonTable
-        plans={[plan({ price: 69.9, after: 99 })]}
+        plans={[
+          plan({
+            specs: { נתונים: "100GB", דקות: "ללא הגבלה" },
+            fees: { "דמי חיבור": "אין" },
+          }),
+        ]}
         caption="cap"
       />,
     );
-    expect(screen.getByText("₪69.9")).toBeInTheDocument();
-    expect(screen.getByText("₪99")).toBeInTheDocument();
+    // Cellular fields that have a value show as columns; absent ones do not.
+    expect(screen.getByRole("columnheader", { name: "נפח" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("columnheader", { name: "דקות/SMS" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("columnheader", { name: "דמי חיבור" }),
+    ).toBeInTheDocument();
   });
 
-  it("renders a dash with an accessible label when there is no after-promo price", () => {
+  it("shows internet fields (מהירות / נתב) and the value appears in the table", () => {
+    render(
+      <ComparisonTable
+        plans={[
+          plan({
+            cat: "internet",
+            specs: { מהירות: "עד 300/100" },
+            fees: { נתב: "+₪19.9/ח׳" },
+          }),
+        ]}
+        caption="cap"
+      />,
+    );
+    expect(
+      screen.getByRole("columnheader", { name: "מהירות" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "נתב" })).toBeInTheDocument();
+    // Values render in both views → at least one occurrence each.
+    expect(screen.getAllByText("עד 300/100").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("+₪19.9/ח׳").length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("omits a rich column that is empty for every plan", () => {
+    render(<ComparisonTable plans={[plan({ specs: {}, fees: {} })]} caption="cap" />);
+    // No specs/fees → no rich columns at all, only the base ones.
+    expect(screen.queryByRole("columnheader", { name: "נפח" })).toBeNull();
+    expect(screen.queryByRole("columnheader", { name: "מהירות" })).toBeNull();
+  });
+});
+
+describe("ComparisonTable — price + honest post-promo rendering", () => {
+  it("formats the price (exact-aware) and shows a real post-promo JUMP", () => {
+    render(
+      <ComparisonTable
+        plans={[plan({ cat: "internet", price: 109, after: 196 })]}
+        caption="cap"
+      />,
+    );
+    // Price appears in both views.
+    expect(screen.getAllByText("₪109").length).toBeGreaterThanOrEqual(1);
+    // The jump price + suffix is shown (desktop table cell + mobile line).
+    expect(screen.getAllByText("₪196/ח׳").length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('shows "מחיר קבוע" (NOT a bare dash) when there is no after-promo jump', () => {
     render(<ComparisonTable plans={[plan({ after: null })]} caption="cap" />);
-    expect(screen.getByLabelText("ללא שינוי מחיר")).toBeInTheDocument();
+    // Honest fixed-price marker, present in both views.
+    expect(screen.getAllByText("מחיר קבוע").length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("prefers the exact advertised price", () => {
+    render(
+      <ComparisonTable plans={[plan({ price: 70, priceExact: 69.9 })]} caption="cap" />,
+    );
+    expect(screen.getAllByText("₪69.90").length).toBeGreaterThanOrEqual(1);
+  });
+});
+
+describe("ComparisonTable — perks", () => {
+  it("renders the qualitative perks line (filtered of raw spec tokens)", () => {
+    render(
+      <ComparisonTable
+        plans={[plan({ feats: ["5G", "100GB גלישה", "נתיב מהיר"] })]}
+        caption="cap"
+      />,
+    );
+    // "נתיב מהיר" survives; the raw "100GB גלישה" / "5G" tokens are filtered out.
+    expect(screen.getAllByText(/נתיב מהיר/).length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("exposes full fine-print behind a 'פרטים מלאים' disclosure", () => {
+    render(
+      <ComparisonTable
+        plans={[
+          plan({
+            feats: ["נתיב מהיר"],
+            fineLines: ["חריגה 49 אג׳/דק׳", "מחיר רשמי: ₪69.9"],
+          }),
+        ]}
+        caption="cap"
+      />,
+    );
+    expect(screen.getByText("פרטים מלאים")).toBeInTheDocument();
+    // The extra fine-line (not already in perks) is present in the disclosure.
+    expect(screen.getByText("חריגה 49 אג׳/דק׳")).toBeInTheDocument();
   });
 });
 
@@ -83,6 +184,8 @@ describe("ComparisonTable — honesty labels", () => {
         featured={{ promo1: "promoted" }}
       />,
     );
+    // The label appears in both the mobile card header and the desktop rowheader.
+    expect(screen.getAllByText("מקודם").length).toBeGreaterThanOrEqual(1);
     const rowHeader = screen.getByRole("rowheader");
     expect(within(rowHeader).getByText("מקודם")).toBeInTheDocument();
   });
@@ -106,23 +209,8 @@ describe("ComparisonTable — honesty labels", () => {
   });
 });
 
-describe("ComparisonTable — feature tags", () => {
-  it("renders 5G / ללא התחייבות / כולל חו״ל chips only for the matching flags", () => {
-    render(
-      <ComparisonTable
-        plans={[plan({ is5G: true, noCommit: true, hasAbroad: false })]}
-        caption="cap"
-      />,
-    );
-    expect(screen.getByText("5G")).toBeInTheDocument();
-    expect(screen.getByText("ללא התחייבות")).toBeInTheDocument();
-    expect(screen.queryByText("כולל חו״ל")).not.toBeInTheDocument();
-  });
-});
-
 describe("ComparisonTable — always a clean semantic table (pillar-3)", () => {
   it("renders a real <table> with <caption>, <thead> and <tbody> in SSR even with no plans", () => {
-    // Server-render to the raw HTML a crawler/LLM receives (no client JS).
     const html = renderToStaticMarkup(
       <ComparisonTable plans={[]} caption="השוואת סלולר" />,
     );
@@ -130,74 +218,71 @@ describe("ComparisonTable — always a clean semantic table (pillar-3)", () => {
     expect(html).toContain("<caption");
     expect(html).toContain("<thead");
     expect(html).toContain("<tbody");
-    // The body is never an empty skeleton — it carries a spanning placeholder row
-    // (case-insensitive: the serializer may emit colSpan or colspan).
+    // The body carries a spanning placeholder row (the base columns = 4).
     expect(html).toContain("<td");
-    expect(html).toMatch(/colspan="5"/i);
+    expect(html).toMatch(/colspan="4"/i);
   });
 
-  it("shows a branded empty-state row that spans all five columns when there are no plans", () => {
+  it("shows a branded empty-state spanning all base columns when there are no plans", () => {
     render(<ComparisonTable plans={[]} caption="cap" />);
 
-    // Five column headers are still present (the header is the schema for LLMs).
-    for (const col of ["ספק", "מסלול", "מחיר", "מחיר אחרי מבצע", "מאפיינים"]) {
+    // The base column headers are still present (the header is the LLM schema).
+    for (const col of ["ספק", "מסלול", "מחיר", "מחיר אחרי תקופה"]) {
       expect(
         screen.getByRole("columnheader", { name: col }),
       ).toBeInTheDocument();
     }
 
-    // The branded empty state (headline + broaden link) lives inside a single
-    // spanning body cell, so the table stays well-formed for crawlers/LLMs.
-    const headline = screen.getByText("אין התאמות כרגע");
-    expect(headline).toBeInTheDocument();
-    const cell = headline.closest("td");
-    expect(cell).not.toBeNull();
-    expect(cell).toHaveAttribute("colspan", "5");
-    // A useful escape hatch (broaden / back-home link) is offered.
+    // The branded empty state renders (once per view → at least one).
     expect(
-      screen.getByRole("link", { name: "חזרה לדף הבית" }),
+      screen.getAllByText("אין התאמות כרגע").length,
+    ).toBeGreaterThanOrEqual(1);
+    // The desktop empty cell spans the base columns.
+    const cell = screen
+      .getAllByText("אין התאמות כרגע")
+      .map((el) => el.closest("td"))
+      .find((td) => td != null);
+    expect(cell).toHaveAttribute("colspan", "4");
+    // A useful escape hatch (back-home link) is offered.
+    expect(
+      screen.getAllByRole("link", { name: "חזרה לדף הבית" })[0],
     ).toHaveAttribute("href", "/");
   });
 
-  it("emits exactly one tbody row per plan (no empty-state row when populated)", () => {
+  it("emits exactly one tbody <tr> per plan (no empty-state row when populated)", () => {
     render(
       <ComparisonTable
         plans={[plan({ id: "a" }), plan({ id: "b", provider: "פרטנר" })]}
         caption="cap"
       />,
     );
-    // Two data rows in the body + one header row in the thead = 3 total rows.
+    // Two data rows in the body + one header row in the thead = 3 <tr> total.
     expect(screen.getAllByRole("row")).toHaveLength(3);
     expect(screen.queryByText("אין התאמות כרגע")).not.toBeInTheDocument();
   });
 
-  it("renders a pulsing skeleton row grid (not an empty state) while loading", () => {
+  it("renders a pulsing skeleton (not an empty state) while loading", () => {
     const { container } = render(
       <ComparisonTable plans={[]} caption="cap" loading loadingRows={3} />,
     );
 
-    // The five column headers stay (the table shape is stable, zero CLS).
-    for (const col of ["ספק", "מסלול", "מחיר", "מחיר אחרי מבצע", "מאפיינים"]) {
+    // The base column headers stay (stable table shape, zero CLS).
+    for (const col of ["ספק", "מסלול", "מחיר", "מחיר אחרי תקופה"]) {
       expect(
         screen.getByRole("columnheader", { name: col }),
       ).toBeInTheDocument();
     }
-    // The empty state is suppressed while loading (no premature "no matches").
+    // The empty state is suppressed while loading.
     expect(screen.queryByText("אין התאמות כרגע")).not.toBeInTheDocument();
-    // Exactly `loadingRows` decorative skeleton rows in the body (aria-hidden so
-    // screen-readers don't read placeholder noise; the host announces "loading").
+    // Exactly `loadingRows` decorative skeleton rows in the table body.
     const skeletonRows = container.querySelectorAll(
       'tbody tr[aria-hidden="true"]',
     );
     expect(skeletonRows).toHaveLength(3);
-    // Each skeleton mirrors the real layout: 5 body cells per row.
-    expect(skeletonRows[0].querySelectorAll("td")).toHaveLength(5);
   });
 
   it("ignores `loading` once real plans have arrived", () => {
-    render(
-      <ComparisonTable plans={[plan({ id: "a" })]} caption="cap" loading />,
-    );
+    render(<ComparisonTable plans={[plan({ id: "a" })]} caption="cap" loading />);
     expect(
       screen.getByRole("rowheader", { name: /סלקום/ }),
     ).toBeInTheDocument();

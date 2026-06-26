@@ -73,9 +73,13 @@ interface RawPlanRow {
   price_unit?: string | null;
   kind?: string | null;
   specs?: Record<string, string> | null;
+  // Rich fee/spec data the comparison views render — these DO exist on
+  // public.plans (jsonb). The qualitative `feats`/`fineLines`/`notes` are NOT
+  // columns on the live table; they are merged in from the bundled catalogue by
+  // id in getLivePlans (see mergeBundledRichFields), so they are absent here.
+  fees?: unknown;
   highlight?: string | null;
   terms?: string | null;
-  fees?: unknown;
   rating?: number | string | null;
   review_count?: number | null;
   updated_at?: string | null;
@@ -171,6 +175,19 @@ function normalizeRow(row: RawPlanRow): Plan | null {
   }
   if (typeof row.terms === "string" && row.terms) plan.terms = row.terms;
 
+  // ── Rich display payload (truth-only passthrough) ───────────────────────────
+  // Carry the EXACT price columns so the comparison views can show ₪69.90 (not a
+  // rounded ₪70) and decide "price jump vs קבוע" the same way the bundled
+  // catalogue does. `fees` (jsonb) is a real column and drives the נתב/ממיר/
+  // התקנה table fields. The QUALITATIVE fields (feats/fineLines/notes) are NOT
+  // columns on public.plans — they are merged from the bundled catalogue by id
+  // after normalisation (see mergeBundledRichFields). Nothing here is fabricated.
+  const priceExact = num(row.price_exact);
+  if (priceExact != null) plan.priceExact = priceExact;
+  const afterExact = num(row.after_exact);
+  if (afterExact != null) plan.afterExact = afterExact;
+  if (row.fees && typeof row.fees === "object") plan.fees = row.fees;
+
   // Real rating data only (callers omit Review/Rating schema when absent).
   const rating = num(row.rating);
   const reviewCount = num(row.review_count);
@@ -185,6 +202,34 @@ function bundledCatalogue(category?: string): LiveCatalogue {
   const all = getPlans();
   const plans = category ? all.filter((p) => p.cat === category) : all;
   return { plans, stale: true, source: "bundled", lastUpdated: null };
+}
+
+/**
+ * Overlay the QUALITATIVE rich fields (`feats`, `fineLines`, `notes`) from the
+ * bundled catalogue onto LIVE plans, matched by plan `id`. These fields are NOT
+ * columns on public.plans (only fees/specs/prices are live), so without this the
+ * live path would show fresh prices but lose the perks/fine-print the comparison
+ * views render. This gives the live path FULL richness — fresh DB price / after /
+ * fees / specs + the committed static perks/fine-print — with no DB migration.
+ *
+ * TRUTH-ONLY: only fills a field the LIVE plan doesn't already carry, and only
+ * from the SAME plan id in the committed catalogue (no cross-plan guessing, no
+ * fabrication). A live plan with no bundled match keeps exactly its DB data.
+ * Mutates the passed plans in place (they are freshly built per render) and
+ * returns them for chaining.
+ */
+function mergeBundledRichFields(plans: Plan[]): Plan[] {
+  const bundledById = new Map(getPlans().map((p) => [p.id, p]));
+  for (const plan of plans) {
+    const bundled = bundledById.get(plan.id);
+    if (!bundled) continue;
+    if (plan.feats == null && bundled.feats != null) plan.feats = bundled.feats;
+    if (plan.fineLines == null && bundled.fineLines != null) {
+      plan.fineLines = bundled.fineLines;
+    }
+    if (plan.notes == null && bundled.notes != null) plan.notes = bundled.notes;
+  }
+  return plans;
 }
 
 /** Newest `updated_at` across the rows (ISO), or null when none is parseable. */
@@ -243,7 +288,7 @@ export async function getLivePlans(
     let query = supabase
       .from("plans")
       .select(
-        "id,category,provider,title,subtitle,price,price_exact,after,after_exact,is_5g,no_commit,has_abroad,price_unit,kind,specs,highlight,terms,rating,review_count,updated_at",
+        "id,category,provider,title,subtitle,price,price_exact,after,after_exact,is_5g,no_commit,has_abroad,price_unit,kind,specs,fees,highlight,terms,rating,review_count,updated_at",
       );
     if (category) query = query.eq("category", category);
 
@@ -260,6 +305,11 @@ export async function getLivePlans(
     }
     // Zero valid rows after normalisation → fall back rather than render empty.
     if (plans.length === 0) return bundledCatalogue(category);
+
+    // Overlay the qualitative perks/fine-print from the committed catalogue by
+    // id — public.plans has no feats/fineLines/notes columns, so the live rows
+    // carry fresh prices/fees/specs but lack these. Truth-only, same-id only.
+    mergeBundledRichFields(plans);
 
     plans.sort((a, b) => (a.price ?? Infinity) - (b.price ?? Infinity));
     return {

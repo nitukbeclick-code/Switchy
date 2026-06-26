@@ -1,12 +1,20 @@
 // ────────────────────────────────────────────────────────────────────────────
-// <ComparisonTable> — a NATIVE, semantic comparison <table> for a list of plans.
-// Real <table>/<caption>/<th scope> markup (great for a11y + GEO; AI engines and
-// screen-readers parse it cleanly). Price shown in ₪ with the correct per-unit
-// suffix, an "after promo" column, and a labeled "promoted/editor's pick" row.
+// <ComparisonTable> — the RICH, category-aware plan comparison for a list of
+// plans. MOBILE-FIRST: phones get one clean card per plan; lg+ screens get a
+// native semantic <table> whose columns adapt to the plans' category (mirroring
+// the static site's `comparisonTable`). Both views render from the SAME
+// per-plan {@link PlanDisplay} bundle (lib/plan-display) so they can never drift.
+//
+// DATA: price (₪ + per-unit suffix), the post-promo line (an honest "לאחר המבצע:
+// ₪X" jump or a "מחיר קבוע" marker — never a meaningless bare dash), the
+// category's rich fields (נפח / מהירות / נתב / ממיר / התקנה / חו״ל / …) and the
+// qualitative perks ("מידע נוסף"). Long fine-print sits behind a "פרטים מלאים ▾"
+// native <details> disclosure (no JS, server-rendered).
 //
 // HONESTY: a featured/sponsored row is ALWAYS visibly labeled ("מקודם" /
-// "בחירת העורך") — never covert. The label is set by the caller per plan via the
-// `featured` map; this component only renders the disclosure it is told to.
+// "בחירת העורך") — never covert. Provider brand colors are the carrier's REAL
+// hue (providerBrandColor) and are NEVER recolored to the app accent. TRUTH-ONLY:
+// only fields that exist on a plan are shown — nothing is fabricated.
 // ────────────────────────────────────────────────────────────────────────────
 
 import Link from "next/link";
@@ -16,6 +24,7 @@ import {
   providerBrandColor,
   providerInitials,
 } from "@/lib/format";
+import { planDisplay, type PlanDisplay, type PlanField } from "@/lib/plan-display";
 import type { PriceDrop } from "@/lib/price-history";
 import PriceDropBadge from "@/components/PriceDropBadge";
 
@@ -29,7 +38,7 @@ export interface ComparisonTableProps {
   caption: string;
   /**
    * Optional per-plan editorial label keyed by plan id. A present entry renders a
-   * visible "מקודם" / "בחירת העורך" badge on that row — honesty requirement.
+   * visible "מקודם" / "בחירת העורך" badge on that row/card — honesty requirement.
    */
   featured?: Record<string, FeatureLabel>;
   /**
@@ -50,20 +59,15 @@ export interface ComparisonTableProps {
   priceDropSparkline?: boolean;
   /**
    * When the table can render before its data has arrived, set this true to show a
-   * pulsing skeleton row grid (matching the real row layout, zero layout shift)
-   * instead of a blank or premature empty state. Defaults to false. `rows` sizes
-   * the placeholder; ignored once real `plans` are passed.
+   * pulsing skeleton (matching the real layout, zero layout shift) instead of a
+   * blank or premature empty state. Defaults to false. `loadingRows` sizes the
+   * placeholder; ignored once real `plans` are passed.
    */
   loading?: boolean;
-  /** How many skeleton rows to render while `loading`. Defaults to 4. */
+  /** How many skeleton rows/cards to render while `loading`. Defaults to 4. */
   loadingRows?: number;
-  /** Optional extra classes on the outer scroll wrapper. */
+  /** Optional extra classes on the outer wrapper. */
   className?: string;
-}
-
-/** Format a number as an ILS amount, e.g. 69.9 → "₪69.9", 70 → "₪70". */
-function shekel(n: number): string {
-  return `₪${Number.isInteger(n) ? n : n.toFixed(1)}`;
 }
 
 const LABEL_HE: Record<FeatureLabel, string> = {
@@ -72,20 +76,19 @@ const LABEL_HE: Record<FeatureLabel, string> = {
 };
 
 /**
- * The visible column headers, in display order. Single source of truth so the
- * <thead> and the empty-state row's colSpan can never drift apart — a crawler/LLM
- * always sees a well-formed table whose body spans every column. Presentation
- * only; changing copy here does not touch data, props, or logic.
+ * The DESKTOP column order shown BEFORE the category's rich fields. The price /
+ * post-promo columns are always present; the rich category fields follow,
+ * computed per-plan and unioned across the visible plans so a category never
+ * shows a column that is empty for every plan (mirrors the static `keep` logic).
  */
-const COLUMNS = ["ספק", "מסלול", "מחיר", "מחיר אחרי מבצע", "מאפיינים"] as const;
+const BASE_COLUMNS = ["ספק", "מסלול", "מחיר", "מחיר אחרי תקופה"] as const;
 
 /**
- * A 32px avatar anchoring a plan row — a circle filled with the provider's OWN
- * brand color carrying its Hebrew/latin monogram, so a row is scannable at a
- * glance without any image assets. The brand color comes from
- * {@link providerBrandColor}; it is the carrier's real hue, NOT the app accent,
- * and is never recolored. White glyph for contrast on the saturated fill.
- * Decorative (the adjacent provider name carries the meaning) → hidden from AT.
+ * A 32px avatar anchoring a plan — a circle filled with the provider's OWN brand
+ * color carrying its monogram, so a row/card is scannable at a glance without
+ * image assets. The brand color comes from {@link providerBrandColor}; it is the
+ * carrier's real hue, NOT the app accent, and is never recolored. White glyph for
+ * contrast. Decorative (the adjacent provider name carries the meaning).
  */
 function ProviderAvatar({ provider }: { provider: string }) {
   return (
@@ -99,13 +102,89 @@ function ProviderAvatar({ provider }: { provider: string }) {
   );
 }
 
+/** An editorial "מומלץ" + precise-label pill pair — rendered ONLY when labeled. */
+function FeatureBadges({ label }: { label: FeatureLabel }) {
+  return (
+    <>
+      <span className="inline-flex items-center rounded-full bg-value px-2 py-0.5 text-[11px] font-bold text-value-contrast">
+        מומלץ
+      </span>
+      <span
+        className={[
+          "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold",
+          label === "editor"
+            ? "bg-value/15 text-value-text"
+            : "bg-accent/15 text-accent",
+        ].join(" ")}
+      >
+        {LABEL_HE[label]}
+      </span>
+    </>
+  );
+}
+
+/** The honest post-promo line: an "לאחר המבצע" jump, or a neutral "מחיר קבוע". */
+function AfterLine({ after }: { after: PlanDisplay["after"] }) {
+  if (after.kind === "jump") {
+    return (
+      <span className="text-foreground">
+        לאחר המבצע:{" "}
+        <span className="font-semibold text-ink">{after.text}</span>
+      </span>
+    );
+  }
+  return (
+    <span className="text-muted" title="המחיר אינו עולה לאחר תום המבצע">
+      {after.text}
+    </span>
+  );
+}
+
+/** A small labelled chip used on the mobile card for one rich field. */
+function FieldChip({ field }: { field: PlanField }) {
+  return (
+    <span className="inline-flex items-baseline gap-1 rounded-lg border border-border/70 bg-background px-2 py-1 text-[12px] leading-tight">
+      <span className="text-muted">{field.label}</span>
+      <span className="font-medium text-foreground">{field.value}</span>
+    </span>
+  );
+}
+
+/** The price-drop badge cell (pre-resolved map OR self-fetching), shared by views. */
+function PriceDrop({
+  plan,
+  priceDrops,
+  autoPriceDrops,
+  priceDropSparkline,
+}: {
+  plan: Plan;
+  priceDrops?: Record<string, PriceDrop | null>;
+  autoPriceDrops: boolean;
+  priceDropSparkline: boolean;
+}) {
+  if (priceDrops) {
+    const drop = priceDrops[plan.id];
+    return drop ? (
+      <span className="mt-1 block">
+        <PriceDropBadge planId={plan.id} drop={drop} sparkline={priceDropSparkline} />
+      </span>
+    ) : null;
+  }
+  if (autoPriceDrops) {
+    return (
+      <span className="mt-1 block">
+        <PriceDropBadge planId={plan.id} sparkline={priceDropSparkline} />
+      </span>
+    );
+  }
+  return null;
+}
+
 /** A single pulsing skeleton bar — neutral `--border` fill, theme-aware. */
 function SkelBar({ className }: { className?: string }) {
   return (
     <span
-      className={["block h-3.5 rounded-md bg-border", className ?? ""]
-        .join(" ")
-        .trim()}
+      className={["block h-3.5 rounded-md bg-border", className ?? ""].join(" ").trim()}
     />
   );
 }
@@ -121,263 +200,331 @@ export default function ComparisonTable({
   loadingRows = 4,
   className,
 }: ComparisonTableProps) {
-  // Only treat as "loading" when asked AND there's no real data to show yet, so a
-  // late `loading` flag can never blank out plans that already arrived.
+  // Only treat as "loading" when asked AND there's no real data yet, so a late
+  // `loading` flag can never blank out plans that already arrived.
   const showSkeleton = loading && plans.length === 0;
+  const isEmpty = !showSkeleton && plans.length === 0;
+
+  // Build every plan's display bundle ONCE; both the mobile cards and the desktop
+  // table render from these so the two views can never disagree.
+  const displays: PlanDisplay[] = plans.map(planDisplay);
+
+  // Desktop rich columns: the UNION of the category field labels actually present
+  // across the visible plans, in first-seen order. This mirrors the static
+  // `keep` rule — a column appears only if at least one plan has a value for it,
+  // so a category never renders a column of dashes.
+  const richColumns: string[] = [];
+  const seenCol = new Set<string>();
+  for (const d of displays) {
+    for (const f of d.fields) {
+      if (!seenCol.has(f.label)) {
+        seenCol.add(f.label);
+        richColumns.push(f.label);
+      }
+    }
+  }
+  // Whether any visible plan has perks → only then add the "מידע נוסף" column.
+  const hasPerksColumn = displays.some((d) => d.perks.length > 0);
+  const desktopColumns = [
+    ...BASE_COLUMNS,
+    ...richColumns,
+    ...(hasPerksColumn ? ["מידע נוסף"] : []),
+  ];
+  const totalCols = desktopColumns.length;
+
+  const sharedDropProps = { priceDrops, autoPriceDrops, priceDropSparkline };
+
   return (
     <div
-      // Mobile horizontal-scroll wrapper; focusable so keyboard users can scroll.
-      // `scroll-shadow` (defined in globals.css) fades in soft edge shadows ONLY
-      // when there's hidden content to scroll to — a discoverability affordance so
-      // phone users know the table extends sideways. It shadows whichever physical
-      // edge is clipped, so it's RTL-correct. Pure CSS, no JS, no layout shift.
-      className={[
-        "scroll-shadow w-full overflow-x-auto rounded-2xl border border-border/60 bg-surface elevate-card",
-        className ?? "",
-      ]
-        .join(" ")
-        .trim()}
-      tabIndex={0}
+      className={["w-full", className ?? ""].join(" ").trim()}
       role="region"
       aria-label={caption}
     >
-      <table className="w-full min-w-[640px] border-collapse text-right">
-        <caption className="px-4 pt-5 text-start font-display text-sm font-semibold tracking-tight text-ink">
-          {caption}
-        </caption>
-        <thead>
-          <tr className="border-b border-border text-xs text-muted">
-            {COLUMNS.map((col) => (
-              <th
-                key={col}
-                scope="col"
-                className="px-4 py-3 text-start font-medium"
-              >
-                {col}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {/* LOADING — a pulsing skeleton row grid that mirrors the real row
-              layout (avatar + bars per column) so a pending table reads as
-              "loading" with zero layout shift, never a blank body. Decorative +
-              announced by the host's status region → aria-hidden. */}
-          {showSkeleton
-            ? Array.from({ length: Math.max(1, loadingRows) }).map((_, i) => (
-                <tr
-                  key={`skeleton-${i}`}
-                  aria-hidden="true"
-                  className="border-b border-border/70 last:border-b-0 align-top"
-                >
-                  {/* ספק — avatar dot + name bar */}
-                  <td className="px-4 py-3">
-                    <span className="flex animate-pulse items-center gap-2 motion-reduce:animate-none">
-                      <span className="block h-8 w-8 shrink-0 rounded-full bg-border" />
-                      <SkelBar className="w-20" />
-                    </span>
-                  </td>
-                  {/* מסלול */}
-                  <td className="px-4 py-3">
-                    <span className="block animate-pulse motion-reduce:animate-none">
-                      <SkelBar className="w-28" />
-                    </span>
-                  </td>
-                  {/* מחיר */}
-                  <td className="px-4 py-3">
-                    <span className="block animate-pulse motion-reduce:animate-none">
-                      <SkelBar className="h-5 w-16" />
-                    </span>
-                  </td>
-                  {/* מחיר אחרי מבצע */}
-                  <td className="px-4 py-3">
-                    <span className="block animate-pulse motion-reduce:animate-none">
-                      <SkelBar className="w-14" />
-                    </span>
-                  </td>
-                  {/* מאפיינים — two short chip bars */}
-                  <td className="px-4 py-3">
-                    <span className="flex animate-pulse gap-1.5 motion-reduce:animate-none">
-                      <SkelBar className="w-10" />
-                      <SkelBar className="w-16" />
-                    </span>
-                  </td>
-                </tr>
-              ))
-            : null}
+      {/* Visible + accessible caption, shared by both views. */}
+      <p className="mb-3 text-start font-display text-sm font-semibold tracking-tight text-ink lg:sr-only">
+        {caption}
+      </p>
 
-          {/* EMPTY — a branded, card-wrapped empty state (glyph + headline + a
-              link to broaden the search), kept inside a spanning body cell so SSR
-              still emits a complete, parseable table (thead + body) for
-              crawlers/LLMs/screen-readers — never a bare header. Shown only when
-              there are no plans AND we are not loading. */}
-          {!showSkeleton && plans.length === 0 ? (
-            <tr>
-              <td colSpan={COLUMNS.length} className="px-4 py-10 sm:py-12">
-                <div className="flex flex-col items-center text-center">
-                  {/* Soft green ACTION badge — decorative glyph, hidden from AT;
-                      the headline carries the meaning. */}
-                  <span
-                    aria-hidden="true"
-                    className="elevate-soft flex h-16 w-16 items-center justify-center rounded-full border border-accent/20 bg-accent/10 text-2xl text-accent-text"
-                  >
-                    🔍
-                  </span>
-                  <p className="mt-4 font-display text-base font-bold tracking-tight text-ink sm:text-lg">
-                    אין התאמות כרגע
-                  </p>
-                  <p className="mt-1 max-w-xs text-sm leading-relaxed text-muted">
-                    נסו להרחיב את הסינון או לחזור לדף הבית כדי לראות עוד מסלולים.
-                  </p>
-                  <Link
-                    href="/"
-                    className="interactive press mt-5 inline-flex items-center justify-center rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-accent-contrast ease-[var(--ease-out)] hover:bg-accent-hover [@media(hover:hover)_and_(pointer:fine)]:motion-safe:hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-                  >
-                    חזרה לדף הבית
-                  </Link>
+      {/* ══ MOBILE / TABLET (default) — one card per plan ════════════════════ */}
+      <ul className="flex flex-col gap-3 lg:hidden">
+        {showSkeleton
+          ? Array.from({ length: Math.max(1, loadingRows) }).map((_, i) => (
+              <li
+                key={`m-skel-${i}`}
+                aria-hidden="true"
+                className="rounded-2xl border border-border/60 bg-surface p-4 elevate-card"
+              >
+                <span className="flex animate-pulse items-center gap-2 motion-reduce:animate-none">
+                  <span className="block h-8 w-8 shrink-0 rounded-full bg-border" />
+                  <SkelBar className="w-24" />
+                </span>
+                <SkelBar className="mt-3 h-6 w-20" />
+                <span className="mt-3 flex gap-1.5">
+                  <SkelBar className="w-16" />
+                  <SkelBar className="w-12" />
+                </span>
+              </li>
+            ))
+          : null}
+
+        {isEmpty ? (
+          <li>
+            <EmptyCard />
+          </li>
+        ) : null}
+
+        {displays.map((d) => {
+          const plan = d.plan;
+          const label = featured?.[plan.id];
+          return (
+            <li
+              key={plan.id}
+              className={[
+                "rounded-2xl border bg-surface p-4 elevate-card",
+                label
+                  ? "border-accent/30 bg-accent/[0.06] ring-1 ring-inset ring-accent/25"
+                  : "border-border/60",
+              ]
+                .join(" ")
+                .trim()}
+            >
+              {/* Header: provider badge + name, optional editorial label. */}
+              <div className="flex flex-wrap items-center gap-2">
+                <ProviderAvatar provider={plan.provider} />
+                <span className="font-medium text-foreground">{plan.provider}</span>
+                {label ? <FeatureBadges label={label} /> : null}
+              </div>
+
+              {/* Plan name. */}
+              <p className="mt-2 font-display text-base font-semibold tracking-tight text-ink">
+                {plan.plan}
+              </p>
+
+              {/* Price big + unit, then the honest post-promo line. */}
+              <div className="mt-2 flex items-baseline gap-1.5">
+                <span className="font-display text-2xl font-bold tracking-tight text-ink">
+                  ₪{d.price}
+                </span>
+                <span className="text-sm text-muted">{priceUnitLabel(plan)}</span>
+              </div>
+              <div className="mt-0.5 text-[13px]">
+                <AfterLine after={d.after} />
+              </div>
+              <PriceDrop plan={plan} {...sharedDropProps} />
+
+              {/* Category-relevant rich fields as compact labelled chips. */}
+              {d.fields.length > 0 ? (
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {d.fields.map((f) => (
+                    <FieldChip key={f.label} field={f} />
+                  ))}
                 </div>
-              </td>
-            </tr>
-          ) : null}
+              ) : null}
 
-          {plans.map((plan) => {
-            const label = featured?.[plan.id];
-            return (
-              <tr
-                key={plan.id}
-                className={[
-                  // Row hover is a low-stakes, frequently-scanned affordance →
-                  // a color tint only (no transform), eased, and gated behind a
-                  // real hover-capable+fine pointer so it never latches on touch.
-                  "border-b border-border/70 last:border-b-0 align-top transition-colors duration-150 ease-[var(--ease-out)]",
-                  // Editor's-pick / promoted row: a firmer accent tint PLUS an
-                  // inset start-border (logical, RTL-correct) so the labeled row
-                  // scans instantly without overwhelming the table.
-                  label
-                    ? "bg-accent/[0.12] ring-1 ring-inset ring-accent/25 border-s-2 border-s-accent"
-                    : "[@media(hover:hover)_and_(pointer:fine)]:hover:bg-accent/[0.03]",
-                ]
-                  .join(" ")
-                  .trim()}
-              >
-                {/* Provider name is the row header for a11y. The brand-colored
-                    avatar anchors the row for fast scanning (decorative — the
-                    name beside it carries the meaning). */}
-                <th
-                  scope="row"
-                  className="px-4 py-3 text-start font-medium text-foreground"
-                >
-                  <span className="flex flex-wrap items-center gap-2">
-                    <ProviderAvatar provider={plan.provider} />
-                    {plan.provider}
-                    {label ? (
-                      <>
-                        {/* "מומלץ" pill — amber VALUE accent so a genuine
-                            editorial/featured pick is recognisable at a glance.
-                            Renders ONLY when the caller marked the row (honesty:
-                            §7b/§17), alongside the precise editorial label. */}
-                        <span className="inline-flex items-center rounded-full bg-value px-2 py-0.5 text-[11px] font-bold text-value-contrast">
-                          מומלץ
-                        </span>
-                        <span
-                          className={[
-                            "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold",
-                            label === "editor"
-                              ? "bg-value/15 text-value-text"
-                              : "bg-accent/15 text-accent",
-                          ].join(" ")}
-                        >
-                          {LABEL_HE[label]}
-                        </span>
-                      </>
-                    ) : null}
-                  </span>
-                </th>
+              {/* Perks line ("מידע נוסף"). */}
+              {d.perks.length > 0 ? (
+                <p className="mt-3 text-[13px] leading-relaxed text-muted">
+                  {d.perks.join(" · ")}
+                </p>
+              ) : null}
 
-                <td className="px-4 py-3 text-start text-foreground">
-                  {plan.plan}
-                </td>
-
-                <td className="px-4 py-3 text-start whitespace-nowrap">
-                  <span className="font-display text-base font-bold text-ink">
-                    {shekel(plan.price)}
-                  </span>{" "}
-                  <span className="text-xs text-muted">
-                    {priceUnitLabel(plan)}
-                  </span>
-                  {/* Honest price-drop badge — renders ONLY when a real
-                      week-over-week drop exists (decided upstream from
-                      plan_price_history). Either driven by a pre-resolved
-                      `priceDrops` map, or self-fetched when `autoPriceDrops`. */}
-                  {priceDrops
-                    ? (() => {
-                        const drop = priceDrops[plan.id];
-                        return drop ? (
-                          <span className="mt-1 block">
-                            <PriceDropBadge
-                              planId={plan.id}
-                              drop={drop}
-                              sparkline={priceDropSparkline}
-                            />
-                          </span>
-                        ) : null;
-                      })()
-                    : autoPriceDrops ? (
-                        <span className="mt-1 block">
-                          <PriceDropBadge
-                            planId={plan.id}
-                            sparkline={priceDropSparkline}
-                          />
-                        </span>
-                      ) : null}
-                </td>
-
-                <td className="px-4 py-3 text-start whitespace-nowrap">
-                  {typeof plan.after === "number" && plan.after > 0 ? (
-                    <span className="font-medium text-foreground">
-                      {shekel(plan.after)}{" "}
-                      <span className="text-xs text-muted">
-                        {priceUnitLabel(plan)}
-                      </span>
-                    </span>
-                  ) : (
+              {/* Full fine-print behind a native, no-JS disclosure — only when the
+                  plan carries fine-lines NOT already shown as perks. */}
+              {extraFineLines(d).length > 0 ? (
+                <details className="group mt-3">
+                  <summary className="interactive flex cursor-pointer list-none items-center gap-1 text-[13px] font-semibold text-accent marker:hidden">
+                    פרטים מלאים
                     <span
-                      className="text-muted"
-                      aria-label="ללא שינוי מחיר"
-                      title="ללא שינוי מחיר"
+                      aria-hidden="true"
+                      className="transition-transform group-open:rotate-180"
                     >
-                      —
+                      ▾
                     </span>
-                  )}
-                </td>
+                  </summary>
+                  <ul className="mt-2 list-disc space-y-1 ps-5 text-[13px] leading-relaxed text-foreground">
+                    {extraFineLines(d).map((line, i) => (
+                      <li key={i}>{line}</li>
+                    ))}
+                  </ul>
+                </details>
+              ) : null}
+            </li>
+          );
+        })}
+      </ul>
 
-                <td className="px-4 py-3 text-start">
-                  {/* Neutral feature tags (NOT brand-colored — these aren't
-                      accents). A hairline border makes each read as a discrete
-                      chip rather than a single grey blob. */}
-                  <span className="flex flex-wrap gap-1.5">
-                    {plan.is5G ? (
-                      <span className="inline-flex items-center rounded-md border border-border/70 bg-background px-1.5 py-0.5 text-[11px] text-foreground">
-                        5G
-                      </span>
-                    ) : null}
-                    {plan.noCommit ? (
-                      <span className="inline-flex items-center rounded-md border border-border/70 bg-background px-1.5 py-0.5 text-[11px] text-foreground">
-                        ללא התחייבות
-                      </span>
-                    ) : null}
-                    {plan.hasAbroad ? (
-                      <span className="inline-flex items-center rounded-md border border-border/70 bg-background px-1.5 py-0.5 text-[11px] text-foreground">
-                        כולל חו״ל
-                      </span>
-                    ) : null}
-                  </span>
+      {/* ══ DESKTOP (lg+) — rich, category-aware semantic table ══════════════ */}
+      <div
+        className="scroll-shadow hidden w-full overflow-x-auto rounded-2xl border border-border/60 bg-surface elevate-card lg:block"
+        tabIndex={0}
+        role="region"
+        aria-label={caption}
+      >
+        <table className="w-full min-w-[720px] border-collapse text-right">
+          <caption className="sr-only">{caption}</caption>
+          <thead>
+            <tr className="border-b border-border text-xs text-muted">
+              {desktopColumns.map((col, i) => (
+                <th
+                  key={col}
+                  scope="col"
+                  className={[
+                    "px-4 py-3 font-medium",
+                    i === 2 || i === 3 ? "text-start" : "text-start",
+                  ].join(" ")}
+                >
+                  {col}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {showSkeleton
+              ? Array.from({ length: Math.max(1, loadingRows) }).map((_, i) => (
+                  <tr
+                    key={`d-skel-${i}`}
+                    aria-hidden="true"
+                    className="border-b border-border/70 last:border-b-0 align-top"
+                  >
+                    {desktopColumns.map((col, ci) => (
+                      <td key={col} className="px-4 py-3">
+                        <span className="block animate-pulse motion-reduce:animate-none">
+                          <SkelBar className={ci === 0 ? "w-24" : "w-16"} />
+                        </span>
+                      </td>
+                    ))}
+                  </tr>
+                ))
+              : null}
+
+            {isEmpty ? (
+              <tr>
+                <td colSpan={totalCols} className="px-4 py-10 sm:py-12">
+                  <EmptyCard />
                 </td>
               </tr>
-            );
-          })}
-        </tbody>
-      </table>
+            ) : null}
+
+            {displays.map((d) => {
+              const plan = d.plan;
+              const label = featured?.[plan.id];
+              // Quick lookup of this plan's value per rich column label.
+              const byLabel = new Map(d.fields.map((f) => [f.label, f.value]));
+              return (
+                <tr
+                  key={plan.id}
+                  className={[
+                    "border-b border-border/70 last:border-b-0 align-top transition-colors duration-150 ease-[var(--ease-out)]",
+                    label
+                      ? "bg-accent/[0.12] ring-1 ring-inset ring-accent/25 border-s-2 border-s-accent"
+                      : "[@media(hover:hover)_and_(pointer:fine)]:hover:bg-accent/[0.03]",
+                  ]
+                    .join(" ")
+                    .trim()}
+                >
+                  {/* ספק — row header for a11y, brand-colored avatar anchor. */}
+                  <th
+                    scope="row"
+                    className="px-4 py-3 text-start font-medium text-foreground"
+                  >
+                    <span className="flex flex-wrap items-center gap-2">
+                      <ProviderAvatar provider={plan.provider} />
+                      {plan.provider}
+                      {label ? <FeatureBadges label={label} /> : null}
+                    </span>
+                  </th>
+
+                  {/* מסלול */}
+                  <td className="px-4 py-3 text-start text-foreground">{plan.plan}</td>
+
+                  {/* מחיר */}
+                  <td className="px-4 py-3 text-start whitespace-nowrap">
+                    <span className="font-display text-base font-bold text-ink">
+                      ₪{d.price}
+                    </span>{" "}
+                    <span className="text-xs text-muted">{priceUnitLabel(plan)}</span>
+                    <PriceDrop plan={plan} {...sharedDropProps} />
+                  </td>
+
+                  {/* מחיר אחרי תקופה */}
+                  <td className="px-4 py-3 text-start whitespace-nowrap text-[13px]">
+                    {d.after.kind === "jump" ? (
+                      <span className="font-medium text-foreground">{d.after.text}</span>
+                    ) : (
+                      <span
+                        className="text-muted"
+                        title="המחיר אינו עולה לאחר תום המבצע"
+                      >
+                        {d.after.text}
+                      </span>
+                    )}
+                  </td>
+
+                  {/* Rich category fields, in the unioned column order. */}
+                  {richColumns.map((col) => {
+                    const value = byLabel.get(col);
+                    return (
+                      <td
+                        key={col}
+                        className="px-4 py-3 text-start text-[13px] text-foreground"
+                      >
+                        {value ?? <span className="text-muted">—</span>}
+                      </td>
+                    );
+                  })}
+
+                  {/* מידע נוסף (perks) — only when the column exists. */}
+                  {hasPerksColumn ? (
+                    <td className="px-4 py-3 text-start text-[13px] text-muted">
+                      {d.perks.length > 0 ? d.perks.join(" · ") : "—"}
+                    </td>
+                  ) : null}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The fine-print to show in the "פרטים מלאים" disclosure — the plan's fineLines
+ * MINUS anything already shown on the perks line (so the disclosure adds detail
+ * rather than repeating it). Truth-only: real catalogue text only.
+ */
+function extraFineLines(d: PlanDisplay): string[] {
+  const shown = new Set(d.perks);
+  return d.fineLines.filter((line) => !shown.has(line));
+}
+
+/**
+ * A branded, card-wrapped empty state (glyph + headline + a link to broaden the
+ * search). Reused by both the mobile list and the desktop table's spanning body
+ * cell, so SSR always emits a complete, parseable structure (never a bare header).
+ */
+function EmptyCard() {
+  return (
+    <div className="flex flex-col items-center rounded-2xl border border-border/60 bg-surface px-4 py-10 text-center sm:py-12">
+      <span
+        aria-hidden="true"
+        className="elevate-soft flex h-16 w-16 items-center justify-center rounded-full border border-accent/20 bg-accent/10 text-2xl text-accent-text"
+      >
+        🔍
+      </span>
+      <p className="mt-4 font-display text-base font-bold tracking-tight text-ink sm:text-lg">
+        אין התאמות כרגע
+      </p>
+      <p className="mt-1 max-w-xs text-sm leading-relaxed text-muted">
+        נסו להרחיב את הסינון או לחזור לדף הבית כדי לראות עוד מסלולים.
+      </p>
+      <Link
+        href="/"
+        className="interactive press mt-5 inline-flex items-center justify-center rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-accent-contrast ease-[var(--ease-out)] hover:bg-accent-hover [@media(hover:hover)_and_(pointer:fine)]:motion-safe:hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+      >
+        חזרה לדף הבית
+      </Link>
     </div>
   );
 }

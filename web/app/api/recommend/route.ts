@@ -33,6 +33,7 @@ import {
   type ScorablePlan,
 } from "@/lib/recommend";
 import { priceUnitLabel } from "@/lib/format";
+import { planDisplay } from "@/lib/plan-display";
 import type { Plan } from "@/lib/types";
 import type { RecommendMatch } from "@/app/quiz/types";
 
@@ -149,6 +150,11 @@ export async function POST(req: Request) {
 
   const matches: RecommendMatch[] = ranked.map((m) => {
     const p = m.plan as Plan;
+    // Build the SAME rich display bundle the comparison tables render from, so the
+    // quiz result cards surface identical category-aware catalogue data (post-promo
+    // price, decoder/router/installation, data/speed/minutes specs, perks) without
+    // duplicating any of plan-display's truth-only logic.
+    const d = planDisplay(p);
     return {
       id: String(p.id ?? ""),
       provider: String(p.provider ?? ""),
@@ -157,6 +163,10 @@ export async function POST(req: Request) {
       price: typeof p.price === "number" ? p.price : 0,
       after: typeof p.after === "number" ? p.after : null,
       priceUnit: priceUnitLabel(p),
+      priceText: d.price,
+      afterLabel: { kind: d.after.kind, text: d.after.text },
+      fields: d.fields,
+      perks: d.perks,
       is5G: p.is5G === true,
       noCommit: p.noCommit === true,
       hasAbroad: p.hasAbroad === true,

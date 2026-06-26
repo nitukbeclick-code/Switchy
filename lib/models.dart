@@ -157,6 +157,150 @@ class Plan {
       (eligibility != null && eligibility!.trim().isNotEmpty) ||
       (notes != null && notes!.trim().isNotEmpty);
 
+  // ── Category-aware display fields (parity with web/lib/plan-display.ts) ──────
+  //
+  // The single source of truth, in Dart, for "which rich equipment/fee columns
+  // does this plan's category show" — mirroring the web `planFieldsForCategory`
+  // + `perks()` so the Flutter card/compare surfaces match the web/static sites.
+  //
+  // TRUTH-ONLY: every accessor reads ONLY what exists on the plan. A missing
+  // field is OMITTED — nothing is fabricated. Pure + side-effect-free, so these
+  // are safe to call in build() and trivially unit-testable.
+
+  /// Read a value off [fees] (then [specs]) by Hebrew key, trying [key] then each
+  /// of [alts] in order. Returns the first non-empty trimmed value, or null.
+  ///
+  /// Why both maps: the bundled catalogue places equipment keys inconsistently —
+  /// `נתב` lives in `specs` on most fiber plans but in `fees` on others, and
+  /// `ממיר`/`מגדיל טווח` likewise straddle both. The web `fee()`/`spec()` split
+  /// reads one map each; in Dart we check `fees` first (the canonical home for a
+  /// charge) then fall back to `specs`, so a real value is never dropped just
+  /// because of where the catalogue stored it. Mirrors the web alt-key lookup.
+  String? _field(String key, [List<String> alts = const []]) {
+    for (final k in [key, ...alts]) {
+      final f = fees[k];
+      if (f != null && f.trim().isNotEmpty) return f.trim();
+      final s = specs[k];
+      if (s != null && s.trim().isNotEmpty) return s.trim();
+    }
+    return null;
+  }
+
+  /// Read a value ONLY from [specs] (the web `spec()` semantics) — used for the
+  /// quantity columns (נפח / מהירות / דקות) that are never fees.
+  String? _spec(String key, [List<String> alts = const []]) {
+    for (final k in [key, ...alts]) {
+      final v = specs[k];
+      if (v != null && v.trim().isNotEmpty) return v.trim();
+    }
+    return null;
+  }
+
+  /// The cellular "דקות/SMS" cell — `דקות` + `SMS` combined, mirroring the web
+  /// `minutesAndSms`. Null when neither is present.
+  String? get _minutesAndSms {
+    final mins = _spec('דקות');
+    final sms = _spec('SMS');
+    final parts = [
+      if (mins != null) mins,
+      if (sms != null) '$sms SMS',
+    ];
+    return parts.isEmpty ? null : parts.join(' · ');
+  }
+
+  /// The cellular "חו״ל" cell — only when the plan actually bundles abroad use,
+  /// preferring an explicit spec value else a "✓". Mirrors the web `abroadValue`.
+  String? get _abroadValue {
+    if (!hasAbroad) return null;
+    return _spec('חו"ל', ['חו״ל']) ?? '✓';
+  }
+
+  /// The ORDERED, category-aware rich fields PRESENT on this plan — the typed
+  /// mirror of the web `planFieldsForCategory`. Each entry is a `(label, value)`
+  /// record; the price + post-promo columns are handled separately by the views.
+  ///
+  /// - internet: מהירות, נתב, מגדיל טווח, התקנה
+  /// - tv / triple: ממיר, נתב, התקנה
+  /// - abroad: נפח, תוקף
+  /// - cellular (default): דמי חיבור, נפח, דקות/SMS, חו״ל
+  ///
+  /// Only fields with a REAL value are included (truth-only).
+  List<({String label, String value})> categoryFields() {
+    final out = <({String label, String value})>[];
+    void push(String label, String? value) {
+      if (value != null && value.isNotEmpty) out.add((label: label, value: value));
+    }
+
+    switch (cat) {
+      case 'internet':
+        push('מהירות', _spec('מהירות', ['גלישה']));
+        push('נתב', _field('נתב', ['ראוטר']));
+        push('מגדיל טווח', _field('מגדיל טווח', ['מרחיב טווח']));
+        push('התקנה', _field('התקנה', ['חיבור']));
+        break;
+      case 'tv':
+      case 'triple':
+        push('ממיר', _field('ממיר', ['ממירים']));
+        push('נתב', _field('נתב', ['ראוטר']));
+        push('התקנה', _field('התקנה', ['חיבור']));
+        break;
+      case 'abroad':
+        push('נפח', _spec('נתונים', ['נפח']));
+        push('תוקף', _spec('תוקף', ['ימים']));
+        break;
+      case 'cellular':
+      default:
+        push('דמי חיבור', _field('דמי חיבור'));
+        push('נפח', _spec('נתונים', ['נפח']));
+        push('דקות/SMS', _minutesAndSms);
+        push('חו״ל', _abroadValue);
+        break;
+    }
+    return out;
+  }
+
+  /// Tokens that are pure spec noise in [feats] — volume / minutes / SMS / speed
+  /// / 5G — already shown in their own columns. Mirrors the web `PERK_NOISE`
+  /// regex `/^\d|GB|דק|SMS|מגה|Mb|^5G$/i` (Dart needs explicit case-insensitive).
+  static final RegExp _perkNoise =
+      RegExp(r'^\d|GB|דק|SMS|מגה|Mb|^5G$', caseSensitive: false);
+
+  /// The qualitative perks for a plan — the web/static "מידע נוסף". Built from
+  /// [feats], dropping the raw spec tokens (see [_perkNoise]); when no feats
+  /// survive, falls back to [fineLines], then a single-item [notes]. Ordered +
+  /// de-duplicated (possibly empty). Never invents a perk.
+  List<String> perksList() {
+    String? clean(String s) {
+      final t = s.trim();
+      return t.isEmpty ? null : t;
+    }
+
+    List<String> dedupe(Iterable<String> items) {
+      final seen = <String>{};
+      final result = <String>[];
+      for (final x in items) {
+        if (seen.add(x)) result.add(x);
+      }
+      return result;
+    }
+
+    final keptFeats = [
+      for (final f in feats)
+        if (clean(f) case final t?)
+          if (!_perkNoise.hasMatch(t)) t,
+    ];
+    if (keptFeats.isNotEmpty) return dedupe(keptFeats);
+
+    final lines = [
+      for (final l in fineLines)
+        if (clean(l) case final t?) t,
+    ];
+    if (lines.isNotEmpty) return dedupe(lines);
+
+    final n = notes?.trim();
+    return (n != null && n.isNotEmpty) ? [n] : const [];
+  }
+
   String get commitmentLabel => noCommit ? 'ללא התחייבות' : 'התחייבות $term חודשים';
   String get netLabel {
     switch (net) {

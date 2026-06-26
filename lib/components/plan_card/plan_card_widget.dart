@@ -305,6 +305,38 @@ class PlanCardWidget extends StatelessWidget {
                   ),
                 ],
 
+                // Equipment / fees chips — the category-relevant router / decoder
+                // / range-extender / installation / connection-fee the card used
+                // to hide (the detail page has the full breakdown on tap). Built
+                // from the truth-only [Plan.categoryFields]; we drop any field
+                // whose value is already shown above as a spec chip so we never
+                // duplicate נפח/מהירות. Neutral white-glass + ink only — the
+                // green/amber accents stay reserved for ACTION/VALUE, and the
+                // provider's own colours are never touched here.
+                Builder(builder: (context) {
+                  // Values already rendered as spec chips (first three specs).
+                  final shownSpecValues =
+                      plan.specs.values.take(3).toSet();
+                  final equip = plan
+                      .categoryFields()
+                      .where((f) => !shownSpecValues.contains(f.value))
+                      .toList();
+                  if (equip.isEmpty) return const SizedBox.shrink();
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      clipBehavior: Clip.hardEdge,
+                      children: [
+                        for (final f in equip)
+                          _EquipChip(
+                              label: f.label, value: f.value, ffTheme: ffTheme),
+                      ],
+                    ),
+                  );
+                }),
+
                 const SizedBox(height: 12),
 
                 // Price + savings row
@@ -609,6 +641,21 @@ IconData _specIcon(String label) {
   return Icons.check_rounded;
 }
 
+/// Per-label icon for an equipment/fee chip — mirrors the plan-detail
+/// `_feeIcon` heuristic (router / decoder / installation / connection),
+/// defaulting to a neutral receipt glyph.
+IconData _equipIcon(String label) {
+  final l = label;
+  if (l.contains('נתב') || l.contains('ראוטר')) return Icons.router_rounded;
+  if (l.contains('ממיר')) return Icons.devices_other_rounded;
+  if (l.contains('מגדיל טווח') || l.contains('מרחיב טווח')) {
+    return Icons.wifi_tethering_rounded;
+  }
+  if (l.contains('התקנה')) return Icons.build_rounded;
+  if (l.contains('חיבור') || l.contains('הצטרפות')) return Icons.link_rounded;
+  return Icons.receipt_long_rounded;
+}
+
 class _SpecChip extends StatelessWidget {
   const _SpecChip({required this.label, required this.value, required this.ffTheme});
   final String label;
@@ -632,6 +679,62 @@ class _SpecChip extends StatelessWidget {
           Flexible(
             child: Text(
               value,
+              style: GoogleFonts.assistant(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                color: ffTheme.secondaryText,
+              ),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// A compact equipment / fee chip for the card — same white-glass + ink pill
+/// styling as [_SpecChip], but it carries the label too (e.g. "נתב +₪21.9/ח׳",
+/// "התקנה: חינם", "דמי חיבור: אין"), since the label is what distinguishes one
+/// fee from another. Decorative detail inside the card's top-level Semantics; it
+/// adds no competing focusable node, and uses no green/amber (those stay
+/// reserved for ACTION/VALUE).
+class _EquipChip extends StatelessWidget {
+  const _EquipChip(
+      {required this.label, required this.value, required this.ffTheme});
+  final String label;
+  final String value;
+  final AppTheme ffTheme;
+
+  /// Compose "label value" — but when the value already starts with a sign /
+  /// currency (e.g. "+₪21.9/ח׳") keep it tight ("נתב +₪21.9/ח׳"); otherwise add
+  /// a colon ("התקנה: חינם") for readability.
+  String get _text {
+    final v = value.trim();
+    final joiner = (v.startsWith('+') || v.startsWith('₪') || v.startsWith('-'))
+        ? ' '
+        : ': ';
+    return '$label$joiner$v';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+      decoration: BoxDecoration(
+        color: ffTheme.background,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: ffTheme.alternate),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(_equipIcon(label), size: 11, color: ffTheme.secondaryText),
+          const SizedBox(width: 3),
+          Flexible(
+            child: Text(
+              _text,
               style: GoogleFonts.assistant(
                 fontSize: 11,
                 fontWeight: FontWeight.w600,

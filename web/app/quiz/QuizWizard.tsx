@@ -683,14 +683,45 @@ function MatchCard({
         {/* Price + match score */}
         <div className="text-left">
           <div className="font-display text-xl font-bold text-ink">
-            {ils(match.price)}
+            ₪{match.priceText}
             <span className="text-sm font-normal text-muted"> {match.priceUnit}</span>
+          </div>
+          {/* Honest post-promo line — an "לאחר המבצע" jump or a neutral "מחיר קבוע",
+              exactly as the comparison tables show (never a meaningless bare dash). */}
+          <div className="mt-0.5 text-xs">
+            {match.afterLabel.kind === "jump" ? (
+              <span className="text-foreground">
+                לאחר המבצע:{" "}
+                <span className="font-semibold text-ink">{match.afterLabel.text}</span>
+              </span>
+            ) : (
+              <span className="text-muted" title="המחיר אינו עולה לאחר תום המבצע">
+                {match.afterLabel.text}
+              </span>
+            )}
           </div>
           <div className="mt-0.5 text-xs font-medium text-accent-text">
             {match.score}% התאמה · {match.label}
           </div>
         </div>
       </div>
+
+      {/* Category-relevant rich catalogue fields as compact labelled chips —
+          נפח / מהירות / נתב / ממיר / התקנה / דקות / חו״ל, truth-only (only fields
+          that exist on the plan), matching the comparison cards. */}
+      {match.fields.length > 0 && (
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {match.fields.map((f) => (
+            <span
+              key={f.label}
+              className="inline-flex items-baseline gap-1 rounded-lg border border-border/70 bg-background px-2 py-1 text-[12px] leading-tight"
+            >
+              <span className="text-muted">{f.label}</span>
+              <span className="font-medium text-foreground">{f.value}</span>
+            </span>
+          ))}
+        </div>
+      )}
 
       {/* Honest annual saving — ONLY when the user gave a real current bill. */}
       {hasBill && match.annualSaving > 0 && (
@@ -727,6 +758,14 @@ function MatchCard({
             </li>
           ))}
         </ul>
+      )}
+
+      {/* Qualitative perks ("מידע נוסף") — real catalogue feats only, the same
+          line the comparison cards show. */}
+      {match.perks.length > 0 && (
+        <p className="mt-3 text-[13px] leading-relaxed text-muted">
+          {match.perks.join(" · ")}
+        </p>
       )}
 
       {/* Deep-link into the full comparison for this category (no dead-end). */}

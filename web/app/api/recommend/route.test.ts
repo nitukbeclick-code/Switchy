@@ -78,6 +78,47 @@ describe("POST /api/recommend", () => {
     expect(json.hasBill).toBe(false);
   });
 
+  it("includes the rich plan-display fields the quiz cards render", async () => {
+    const res = await POST(
+      postJson(
+        { category: "cellular", priority: "balanced", limit: 5 },
+        { origin: "http://localhost:3000" },
+      ),
+    );
+    expect(res.status).toBe(200);
+    const json = (await res.json()) as {
+      matches: {
+        priceText: string;
+        afterLabel: { kind: "jump" | "fixed"; text: string };
+        fields: { label: string; value: string }[];
+        perks: string[];
+      }[];
+    };
+    expect(json.matches.length).toBeGreaterThan(0);
+    for (const m of json.matches) {
+      // Exact-aware headline price string (no ₪ prefix) — always present.
+      expect(typeof m.priceText).toBe("string");
+      expect(m.priceText.length).toBeGreaterThan(0);
+      // Honest post-promo label — a jump or the neutral "מחיר קבוע" marker.
+      expect(["jump", "fixed"]).toContain(m.afterLabel.kind);
+      expect(typeof m.afterLabel.text).toBe("string");
+      expect(m.afterLabel.text.length).toBeGreaterThan(0);
+      if (m.afterLabel.kind === "fixed") {
+        expect(m.afterLabel.text).toBe("מחיר קבוע");
+      }
+      // Truth-only rich fields: each carries a non-empty label + value.
+      expect(Array.isArray(m.fields)).toBe(true);
+      for (const f of m.fields) {
+        expect(f.label.length).toBeGreaterThan(0);
+        expect(f.value.length).toBeGreaterThan(0);
+      }
+      expect(Array.isArray(m.perks)).toBe(true);
+    }
+    // At least one cellular match exposes a category-relevant rich field (e.g. נפח),
+    // proving the enrichment is wired through and not universally empty.
+    expect(json.matches.some((m) => m.fields.length > 0)).toBe(true);
+  });
+
   it("flags hasBill + surfaces a real annual saving when a bill is given", async () => {
     const res = await POST(
       postJson(

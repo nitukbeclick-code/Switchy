@@ -140,3 +140,52 @@ Deno.test("runAgent: NO closing nudge on an early small-talk turn", async () => 
     globalThis.fetch = realFetch;
   }
 });
+
+// ── persona: ask-for-a-human ⇒ escalate_to_human IMMEDIATELY (no consent gate) ──
+// The handoff bug had the persona advertise only create_lead/book_callback for the
+// "next step", so a "I want a human" request routed to the consent-gated lead and
+// looped. The persona MUST now carry a high-priority rule: a human request /
+// frustration → escalate_to_human right away (it needs no consent). We assert the
+// rule rides in the system prompt on EVERY turn (it is in the base persona header,
+// independent of the closing nudge), and that it explicitly names escalate_to_human
+// as needing no consent ("לא דורש אישור").
+Deno.test("persona: escalate_to_human rule on a human request rides in the system prompt", async () => {
+  const bodies: string[] = [];
+  globalThis.fetch = textGeminiFetch({ finalText: "מעביר/ה אותך לנציג אנושי.", bodies });
+  try {
+    await runAgent({
+      channel: "whatsapp",
+      message: "תפסיק לשלוח לי בוט, אני רוצה נציג",
+      keys: { gemini: "k" },
+      plans: PLANS,
+      toolContext: {},
+    });
+    const firstBody = bodies[0] ?? "";
+    assert(firstBody.includes("escalate_to_human"), "persona names escalate_to_human");
+    // The rule fires on the human-request cues and is explicitly consent-free.
+    assert(firstBody.includes("נציג"), "rule keys on a human request");
+    assert(firstBody.includes("לא דורש אישור"), "escalate_to_human is consent-free in the persona");
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
+
+// The rule lives in the BASE header, so it is present even on an early small-talk
+// turn (it is NOT gated on the closing nudge / turnCount).
+Deno.test("persona: escalate_to_human rule is present even on an early turn", async () => {
+  const bodies: string[] = [];
+  globalThis.fetch = textGeminiFetch({ finalText: "שלום!", bodies });
+  try {
+    await runAgent({
+      channel: "whatsapp",
+      message: "היי",
+      keys: { gemini: "k" },
+      plans: PLANS,
+      toolContext: {},
+    });
+    const firstBody = bodies[0] ?? "";
+    assert(firstBody.includes("escalate_to_human"), "escalate rule is in the base persona, not the nudge");
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});

@@ -102,12 +102,22 @@ export default function Home() {
       <JsonLd data={itemListSchema(featured)} />
       <JsonLd data={faqPageSchema(GENERAL_FAQ)} />
 
-      {/* ── Hero ──────────────────────────────────────────────────────────── */}
-      <section className="grid grid-cols-1 items-center gap-10 pt-4 text-center sm:pt-8 lg:grid-cols-2 lg:gap-12 lg:text-start">
-        {/* Text column — headline, value pitch, CTAs. On lg it sits at the start
-            edge (right, RTL) with the video in the opposite column; on mobile it
-            stacks above the video, centered. */}
-        <div>
+      {/* ── Hero ──────────────────────────────────────────────────────────────
+          Full-bleed background video (HeroVideo, absolute inset-0) with the text
+          column overlaid above it (relative z-10). `relative isolate
+          overflow-hidden` contains the video + its own stacking context; the
+          min-height gives the robot room to breathe on lg while staying auto on
+          mobile (where the clip sits at the top and text reads below it). */}
+      <section className="relative isolate grid grid-cols-1 items-center gap-10 overflow-hidden pt-4 text-center sm:pt-8 lg:min-h-[clamp(440px,56vh,620px)] lg:grid-cols-2 lg:gap-12 lg:text-start">
+        {/* Full-bleed background — Switchy, the AI agent, feathered borderlessly
+            into the page (replaces the old framed card). */}
+        <HeroVideo />
+
+        {/* Text column — headline, value pitch, CTAs. Overlaid above the video
+            (relative z-10). On lg it is pinned to the start edge (right, RTL) in
+            the first grid column; on mobile it reads below the clip (the
+            top-padding clears the top-anchored robot), centered on the scrim. */}
+        <div className="relative z-10 pt-[58vw] sm:pt-[44vw] lg:pt-0">
           <h1 className="sw-reveal font-display text-4xl font-bold tracking-tight text-ink sm:text-6xl">
             משווים תקשורת.{" "}
             <span className="text-accent-text">חוסכים כסף.</span>
@@ -166,10 +176,6 @@ export default function Home() {
             לחודש
           </p>
         </div>
-
-        {/* Visual anchor — Switchy, the AI agent, looping in a branded frame
-            (replaces the old static app mockup). */}
-        <HeroVideo />
       </section>
 
       {/* ── Trust signals — REAL catalogue counts + honest trust points + the

@@ -83,6 +83,17 @@ import { captureAiLead } from "../_shared/leads.ts";
 // as the agent's create_lead tool does.
 import { COMMISSION_DISCLOSURE } from "../_shared/tools.ts";
 import { type AgentRunnerDeps, runWhatsappAgent } from "./agent_runner.ts";
+// Curated, truth-only verified-FAQ knowledge layer (bot_knowledge) + the learning
+// data sink (bot_question_log). The webhook loads the knowledge once per instance,
+// injects it into the agent prompt for the free-text Q&A path, and appends each
+// real customer question (with the matched topic) for the team to curate.
+import {
+  formatKnowledgeForPrompt,
+  type KnowledgeEntry,
+  loadBotKnowledge,
+  logCustomerQuestion,
+  matchTopic,
+} from "../_shared/knowledge.ts";
 // Live-relay (human takeover): when a rep has the conversation, forward the
 // customer's inbound text to the rep's Telegram chat so they see the live
 // conversation. Reuses the shared telegram sender + config resolver — we do NOT
@@ -160,6 +171,17 @@ async function getPlans(): Promise<Plan[]> {
   );
   _plans = rows ? plansFromRows(rows) : [];
   return _plans;
+}
+
+// Curated verified-FAQ knowledge (bot_knowledge), loaded once per function
+// instance via the service-role read. Fail-soft → [] (loadBotKnowledge never
+// throws), so a missing/empty table simply means the agent runs without the
+// knowledge block. Cached for the instance lifetime like the catalogue above.
+let _knowledge: KnowledgeEntry[] | null = null;
+async function getBotKnowledge(): Promise<KnowledgeEntry[]> {
+  if (_knowledge) return _knowledge;
+  _knowledge = await loadBotKnowledge();
+  return _knowledge;
 }
 
 // Gemini API key: Vault first (gemini_api_key, via the shared config RPC the
@@ -1339,6 +1361,14 @@ async function handleMessageInner(m: Row, profileName: string | undefined, aiKey
         }
         return buildChatFallback(plans, intent === "recommend", mergedCtx);
       };
+      // Curated verified-FAQ knowledge for THIS turn: injected into the agent
+      // prompt so common questions ("זה בחינם?", "אילו חברות?") are answered
+      // directly + consistently. Loaded once per instance, fail-soft (empty ⇒ no
+      // block). We also TAG the question with the matched topic (or null) for the
+      // bot_question_log "learning data" the team curates from.
+      const knowledge = await getBotKnowledge();
+      const knowledgeContext = formatKnowledgeForPrompt(knowledge);
+      const matchedTopic = matchTopic(t, knowledge);
       // PRIMARY path: the shared tool-using agent. It recommends from the
       // catalogue, captures consent-gated leads (§7b first), books callbacks,
       // and escalates — all via tools — then degrades to the templateFallback
@@ -1350,6 +1380,7 @@ async function handleMessageInner(m: Row, profileName: string | undefined, aiKey
         keys: aiKeys,
         deps: agentDeps,
         templateFallback,
+        knowledgeContext: knowledgeContext || undefined,
         slotPatch: {
           ...(mergedCtx.category ? { category: mergedCtx.category } : {}),
           ...(mergedCtx.budget ? { budget: mergedCtx.budget } : {}),
@@ -1358,6 +1389,12 @@ async function handleMessageInner(m: Row, profileName: string | undefined, aiKey
         },
       });
       reply = r.reply || templateFallback();
+      // LEARNING DATA: append this real free-text question (+ matched topic) to
+      // bot_question_log for the team to review. Fire-and-forget — best-effort,
+      // never awaited on the reply path, swallows its own errors. Runs ONLY on
+      // this genuine free-text Q&A path (NOT opt-out, NOT human takeover/relay,
+      // NOT the honeypot/system messages — all returned before reaching here).
+      void logCustomerQuestion("whatsapp", t, matchedTopic);
       if (convo) agentSaved = true;
     }
   }

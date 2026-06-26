@@ -86,6 +86,11 @@ export type RunWhatsappAgentInput = {
   // Seed/extra slots learned this turn (category/budget/abroad/topic) to persist
   // alongside the agent transcript so a terse follow-up keeps its thread.
   slotPatch?: Record<string, unknown>;
+  // Optional CURATED verified-FAQ block (built by _shared/knowledge.ts from the
+  // bot_knowledge table). Loaded by the webhook and passed straight to runAgent so
+  // the model can answer common questions directly + consistently. OPTIONAL +
+  // back-compatible: omitted ⇒ runAgent's prompt is identical to before.
+  knowledgeContext?: string;
   // Injectable for tests; default to the real shared implementations.
   runAgentFn?: typeof defaultRunAgent;
   loadSessionFn?: typeof defaultLoadSession;
@@ -131,6 +136,7 @@ export async function runWhatsappAgent(input: RunWhatsappAgentInput): Promise<Ru
       toolContext: buildAgentToolContext(input.deps),
       templateFallback: input.templateFallback,
       billHint: input.billHint,
+      knowledgeContext: input.knowledgeContext,
     });
   } catch (_e) {
     // The shared runAgent shouldn't throw, but if it ever does we MUST still let

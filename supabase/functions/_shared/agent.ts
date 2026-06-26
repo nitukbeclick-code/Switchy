@@ -225,6 +225,15 @@ export type RunAgentInput = {
   // passes none and behaves exactly as before. When present, the persona refines
   // instead of repeating; nothing is ever fabricated from it.
   memory?: AgentMemory;
+  // Optional CURATED, truth-only knowledge block (the verified-FAQ section built by
+  // _shared/knowledge.ts formatKnowledgeForPrompt). The CALLER loads it from the DB
+  // and passes it down — runAgent itself does NO DB I/O for this, so the same
+  // mechanism can later serve site-ai-chat/telegram. OPTIONAL + back-compatible:
+  // omitted by every existing caller and then the prompt is identical to before.
+  // When present it is injected verbatim so the model answers common questions
+  // directly + consistently (fewer tool round-trips = faster). It is approved copy,
+  // so it adds NO fabrication risk — the "don't invent" rules still apply.
+  knowledgeContext?: string;
 };
 
 export type RunAgentResult = {
@@ -283,6 +292,7 @@ function buildSystemPrompt(
   lang: AgentLang,
   billHint?: RunAgentInput["billHint"],
   memory?: AgentMemory,
+  knowledgeContext?: string,
 ): string {
   const cited = buildCitedCatalogueContext(plans as CataloguePlan[]);
   const styleLine = CHANNEL_STYLE[channel];
@@ -293,6 +303,13 @@ function buildSystemPrompt(
     : PERSONA_HEADER.replace(HEBREW_ONLY_LINE, REPLY_IN_USER_LANG_LINE);
   let prompt = header + LANG_DIRECTIVE[lang] + "\n" + styleLine +
     "\n\nנתוני מסלולים אמיתיים (מקור | קטגוריה | ספק | מסלול | מחיר | תכונות):\n" + cited;
+  // Curated, truth-only verified-FAQ block (when the caller supplied one). It is
+  // approved copy the model may answer common questions from directly — placed
+  // after the catalogue so it reads as another grounded source, never a license
+  // to invent (the "don't fabricate" rules above still bind).
+  if (knowledgeContext && knowledgeContext.trim()) {
+    prompt += "\n\n" + knowledgeContext.trim();
+  }
   if (billHint && Number(billHint.monthly) > 0) {
     prompt += `\n\nנתוני חשבון שחולצו מהתמונה (לשימוש עם analyze_bill): ` +
       `ספק=${billHint.provider ?? "?"}, סכום חודשי=₪${Math.round(Number(billHint.monthly))}` +
@@ -375,7 +392,7 @@ export async function runAgent(input: RunAgentInput): Promise<RunAgentResult> {
   // Reply language: explicit override wins; otherwise auto-detect from the
   // message (Hebrew default). Backward-compatible — existing callers pass none.
   const lang: AgentLang = isSupportedLang(input.lang) ? input.lang : detectLang(message);
-  const system = buildSystemPrompt(channel, plans, lang, input.billHint, input.memory);
+  const system = buildSystemPrompt(channel, plans, lang, input.billHint, input.memory, input.knowledgeContext);
   const toolCalls: { name: string; ok: boolean; preview?: string }[] = [];
   // Pass the resolved language to the tools so their surfaced notes (retention
   // script, referral line) are localized to the same language as the reply.

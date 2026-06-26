@@ -9,8 +9,8 @@
 //   (b) CONTEXT HEADER — the takeover brief carries the lead dossier (name +
 //       desired category + provider/plan + notes context) and the customer's last
 //       few messages, so the rep has the full picture in one message.
-//   (c) DELIVERY FEEDBACK — a rep reply that Graph accepts gets a ✓ "נמסר ללקוח"
-//       confirmation; a send miss is fail-soft (stored, "נסו שוב", never throws).
+//   (c) DELIVERY FEEDBACK — a rep reply that Graph accepts gets a ✅ "נשלח ללקוח"
+//       confirmation; a send miss is fail-soft (stored, "נסה/י שוב", never throws).
 //
 // All gates preserved: the secret/admin auth gate (allowed()) + team-chat gate +
 // the existing relay wiring (bot_enabled / relay_tg_chat_id contract) are untouched.
@@ -137,8 +137,10 @@ Deno.test("context header carries the lead dossier: name + desired category + pr
   assertStringIncludes(header, "סלקום");
   assertStringIncludes(header, "cellular-unlimited");
   assertStringIncludes(header, "תקציב 50");
-  // Still carries the "what happens next" instruction line.
-  assertStringIncludes(header, "כל הודעה שתשיבו");
+  // Still carries the "what happens next" instruction line — now advertising that
+  // plainly TYPING in the chat (not only a reply) reaches the customer.
+  assertStringIncludes(header, "כתוב/כתבי כאן");
+  assertStringIncludes(header, "תגיע ישירות ללקוח");
 });
 
 Deno.test("context header surfaces a MEDIA NOTE for a bill photo + the customer's last messages (oldest→newest)", () => {
@@ -337,7 +339,7 @@ function relayReplyRoutes(graphRoute: Route, sinks: { tg: Capture[] }): Route[] 
   ];
 }
 
-Deno.test("delivery feedback: a successful relay shows ✓ נמסר ללקוח + an echo of what was sent", async () => {
+Deno.test("delivery feedback: a successful relay shows ✅ נשלח ללקוח + an echo of what was sent", async () => {
   const tg: Capture[] = [];
   const routes = relayReplyRoutes(
     { match: isGraphSend, respond: () => graphOkWamid("wamid.OUT1") },
@@ -357,8 +359,8 @@ Deno.test("delivery feedback: a successful relay shows ✓ נמסר ללקוח +
     assertEquals(res.relayed, true);
     assertEquals(res.delivered, true);
     const blob = tg.map((c) => String(c.body.text ?? "")).join("\n");
-    assertStringIncludes(blob, "✓");
-    assertStringIncludes(blob, "נמסר ללקוח");
+    assertStringIncludes(blob, "✅");
+    assertStringIncludes(blob, "נשלח ללקוח");
     // The echo shows the rep what reached the customer (two-way clarity).
     assertStringIncludes(blob, "מתי נוח לדבר");
   } finally {
@@ -366,7 +368,7 @@ Deno.test("delivery feedback: a successful relay shows ✓ נמסר ללקוח +
   }
 });
 
-Deno.test("delivery feedback is FAIL-SOFT on a send miss: stored, 'נסו שוב', delivered=false, never throws", async () => {
+Deno.test("delivery feedback is FAIL-SOFT on a send miss: stored, 'נסה/י שוב', delivered=false, never throws", async () => {
   const tg: Capture[] = [];
   const routes = relayReplyRoutes(
     { match: isGraphSend, respond: () => graphFail() }, // Graph 400 → wamid null
@@ -387,9 +389,9 @@ Deno.test("delivery feedback is FAIL-SOFT on a send miss: stored, 'נסו שוב
     assertEquals(res.relayed, true);
     assertEquals(res.delivered, false);
     const blob = tg.map((c) => String(c.body.text ?? "")).join("\n");
-    // No false ✓ on a miss; the rep is told to retry.
-    assertFalse(blob.includes("✓ <b>נמסר ללקוח</b>"));
-    assertStringIncludes(blob, "נסו שוב");
+    // No false success line on a miss; the rep is told to retry.
+    assertFalse(blob.includes("נשלח ללקוח"));
+    assertStringIncludes(blob, "נסה/י שוב");
   } finally {
     s.restore();
   }

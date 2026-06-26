@@ -7,7 +7,7 @@ import { fetchRows, insertRow, logEvent, patchCount, rpcRows, serviceFetch } fro
 import { jlog } from "../_shared/log.ts";
 import { desiredCategory, formatTimeline, frozenKeyboard, isWonAskMarkup, keyboardFor, leadIdFromMarkup, type LeadEvent, STATUS_HE, tgDisplayName } from "../_shared/leads.ts";
 import { isLinkAskMarkup, isRescheduleAskMarkup } from "../_shared/meetings.ts";
-import { sendText as waSendText } from "../_shared/whatsapp.ts";
+import { lastSendWasOutside24hWindow, sendText as waSendText } from "../_shared/whatsapp.ts";
 import { aiMeetingsSummary, applyBookSlot, auditBookedMeeting, baresPhone, handleCommand } from "./commands.ts";
 import { handleMeetingCallback, handleMeetingLinkReply, handleMeetingRescheduleReply } from "./meeting_callbacks.ts";
 import { applyMeetingAct, buildBoard, fetchOpenMeetings } from "./console.ts";
@@ -94,6 +94,45 @@ export function isRelayActive(convo: WaConvo | null | undefined): boolean {
   if (!convo) return false;
   const target = String(convo.relay_tg_chat_id ?? "").trim();
   return convo.bot_enabled === false && target.length > 0;
+}
+
+// All RELAY-ACTIVE conversations whose relay target is THIS Telegram chat — the
+// set a plainly-typed (non-reply) rep message could be addressed to. Used by the
+// plain-type relay branch in handleTeamMessage: during a takeover the owner just
+// types in the chat and we route it to the one active customer. Filters on the
+// full contract (bot_enabled=false AND relay_tg_chat_id=<chat>), newest-active
+// first. Fail-soft → [] on a null/error query (the caller then no-ops as before,
+// never erroring on non-takeover chatter).
+async function fetchRelayActiveConvosForChat(chatId: string): Promise<WaConvo[]> {
+  const target = String(chatId ?? "").trim();
+  if (!target) return [];
+  const rows = await fetchRows<WaConvo>(
+    `/rest/v1/whatsapp_conversations?bot_enabled=eq.false&relay_tg_chat_id=eq.${encodeURIComponent(target)}` +
+      `&select=id,contact_id,bot_enabled,relay_tg_chat_id&order=last_message_at.desc`,
+  );
+  return rows ?? [];
+}
+
+// Resolve the lead_id a relay-active conversation's contact is tied to, for the
+// Reg.13 audit trail. Returns "" when there's no contact / no lead / a DB error —
+// the relay still goes through; relayRepReplyToCustomer only writes the lead_events
+// audit when this is a real uuid (an empty/invalid id would break the FK). The
+// security_audit_log row is always written regardless (it carries the ids in its
+// detail and has no lead FK), so the relay is never un-audited.
+async function leadIdForContact(contactId: string): Promise<string> {
+  const id = String(contactId ?? "").trim();
+  if (!id) return "";
+  const rows = await fetchRows<{ lead_id?: string | null }>(
+    `/rest/v1/whatsapp_contacts?id=eq.${encodeURIComponent(id)}&select=lead_id&limit=1`,
+  );
+  return String(rows?.[0]?.lead_id ?? "").trim();
+}
+
+// A v4-style uuid (the shape leads.id / lead_events.lead_id use). Used to guard the
+// lead_events audit write inside relayRepReplyToCustomer: a plain-type relay may
+// have no resolvable lead (leadId=""), and writing a bad/empty FK would error.
+function isUuid(s: unknown): boolean {
+  return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(String(s ?? ""));
 }
 
 // Reg.13 security-audit row for a relay control/action — mirrors crm-api's
@@ -255,7 +294,8 @@ export function buildTakeoverContextHeader(lead: Lead, recent: WaMessage[]): str
 
   lines.push(
     "",
-    "הבוט הושתק — הודעות הלקוח יופנו לכאן, וכל הודעה שתשיבו (reply) לכרטיס תישלח אליו בוואטסאפ.",
+    "✅ השתלטת על השיחה — כתוב/כתבי כאן וכל הודעה תגיע ישירות ללקוח בוואטסאפ. " +
+      'לסיום, לחץ/י על "🤖 החזר לבוט".',
   );
   return lines.filter((x) => x !== null).join(NL);
 }
@@ -328,7 +368,7 @@ async function handleRelayTakeover(
     contact_id: convo.contact_id ?? null,
     relay_tg_chat_id: relayChat,
   });
-  await answer("השתלטת על השיחה 🤝 — הודעות הלקוח יגיעו לכאן");
+  await answer("השתלטת על השיחה 🤝 — כתוב/כתבי כאן וההודעה תגיע ללקוח");
   // Richer takeover brief: the lead dossier (name/category/provider/notes) + the
   // last few customer messages, with a short note for any media (bill photo /
   // voice note). The recent-messages fetch is fail-soft — on a null/error query it
@@ -1369,9 +1409,13 @@ async function relayRepReplyToCustomer(
     method: "PATCH",
     body: JSON.stringify({ bot_enabled: false, last_message_at: new Date().toISOString() }),
   });
-  // 4) Reg.13 audit (who/when, PII-light preview) — like crm-api actSendReply.
+  // §30A/§Reg.13 audit (who/when, PII-light preview) — like crm-api actSendReply.
+  // The security_audit_log row is ALWAYS written (its lead_id lives inside the jsonb
+  // detail, not an FK), but we only stamp a REAL lead id: a plain-type relay may have
+  // no resolvable lead (leadId=""), and a bad/empty id in the trail is noise. When
+  // there's no valid uuid we omit lead_id from the detail rather than record "".
   await logRelayAudit(msg.from?.id ?? null, "wa_relay_reply", {
-    lead_id: leadId,
+    ...(isUuid(leadId) ? { lead_id: leadId } : {}),
     conversation_id: convo.id,
     contact_id: contactId,
     delivered: Boolean(wamid),
@@ -1381,17 +1425,23 @@ async function relayRepReplyToCustomer(
     await sendTelegram(cfg, "⚠️ שמירת ההודעה נכשלה — בדקו אם נשלחה ללקוח.");
     return { ok: false, skipped: "message store failed", delivered: Boolean(wamid) };
   }
-  // Lightweight delivery feedback: a ✓ when Graph accepted the relay (the rep sees
-  // their reply reached the customer), with a short echo of what was sent so the
-  // two-way thread is clear. Fail-soft on a send miss — the message is still stored
-  // (the human stays in the loop), so we tell the rep to retry rather than error.
-  const echo = esc(body.slice(0, 140)) + (body.length > 140 ? "…" : "");
-  await sendTelegram(
-    cfg,
-    wamid
-      ? `✓ <b>נמסר ללקוח</b> בוואטסאפ (${esc(who || "נציג")})${NL}💬 <i>${echo}</i>`
-      : "⚠️ ההודעה נשמרה אך השליחה לוואטסאפ נכשלה — נסו שוב.",
-  );
+  // Delivery feedback the rep can act on. On success: a ✓ + a short echo so the
+  // two-way thread is clear. On a send MISS the message is still stored (the human
+  // stays in the loop), so we make the failure LOUD + actionable instead of leaving
+  // the rep to infer it: if Graph rejected it as the 24h customer-service-window
+  // (re-engagement) block, say exactly that (ask the customer to reply / send an
+  // approved template); otherwise the generic "saved but send failed — retry".
+  if (wamid) {
+    const echo = esc(body.slice(0, 140)) + (body.length > 140 ? "…" : "");
+    await sendTelegram(cfg, `✅ נשלח ללקוח בוואטסאפ (${esc(who || "נציג")})${NL}💬 <i>${echo}</i>`);
+  } else if (lastSendWasOutside24hWindow()) {
+    await sendTelegram(
+      cfg,
+      "⏳ עברו 24 שעות מאז ההודעה האחרונה של הלקוח — וואטסאפ חוסם הודעה חופשית. בקש/י מהלקוח להגיב, או שלח/י תבנית מאושרת.",
+    );
+  } else {
+    await sendTelegram(cfg, "⚠️ ההודעה נשמרה אך השליחה לוואטסאפ נכשלה — נסה/י שוב.");
+  }
   return { ok: true, relayed: true, delivered: Boolean(wamid) };
 }
 
@@ -1498,6 +1548,33 @@ export async function handleTeamMessage(cfg: Cfg, msg: TgMessage): Promise<Handl
     // A bare phone number in the team chat is a shortcut for /customer <phone>.
     const digits = baresPhone(text);
     if (digits) return await handleCommand(cfg, "/customer", digits, msg.from?.id);
+
+    // PLAIN-TYPE LIVE RELAY: during an active human takeover the owner shouldn't
+    // need to reply-to the lead card — a message simply TYPED in this chat is meant
+    // for the customer they took over. Resolve it by the relay TARGET: every
+    // RELAY-ACTIVE conversation (bot_enabled=false + relay_tg_chat_id set) whose
+    // target is THIS chat. The reply-to-card path above still works unchanged; this
+    // only catches the no-reply case that used to be silently dropped.
+    const activeRelays = await fetchRelayActiveConvosForChat(String(chatId ?? ""));
+    if (activeRelays.length === 1) {
+      // Exactly one open takeover → this text is for that customer. Reuse the proven
+      // rep→customer path (contact resolve, §30A gate, send, store, audit, feedback).
+      const convo = activeRelays[0];
+      const who = tgDisplayName(msg.from);
+      const leadId = await leadIdForContact(String(convo.contact_id ?? ""));
+      return await relayRepReplyToCustomer(cfg, msg, leadId, convo, text, who);
+    }
+    if (activeRelays.length > 1) {
+      // Ambiguous: more than one customer is in an active takeover relayed to this
+      // chat, so a plain message has no unambiguous recipient — ask the owner to
+      // reply on the specific lead card (the per-customer reply path).
+      await sendTelegram(
+        cfg,
+        "יש כמה שיחות פעילות כרגע — השב/י על הכרטיס של הלקוח הספציפי כדי לענות לו, או הסתכל/י איזה כרטיס פתוח.",
+      );
+      return { ok: true, skipped: "ambiguous relay" };
+    }
+    // Zero active relays → ordinary non-takeover chatter; unchanged no-op.
     return { ok: true, skipped: "not a command" };
   }
   const [cmdTok, ...rest] = text.split(/\s+/);

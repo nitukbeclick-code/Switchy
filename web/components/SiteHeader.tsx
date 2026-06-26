@@ -92,7 +92,7 @@ export default function SiteHeader({ className }: SiteHeaderProps) {
           href="/#lead"
           location="header"
           label="consult"
-          className="rounded-xl border border-accent/40 bg-accent px-4 py-2 text-sm font-semibold text-accent-contrast shadow-[var(--glow-accent)] transition-[color,background-color,box-shadow,transform] duration-150 ease-[var(--ease-out)] hover:bg-accent-hover hover:shadow-float hover:shadow-accent/30 active:scale-[0.96] [@media(hover:hover)_and_(pointer:fine)]:motion-safe:hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+          className="rounded-xl border border-accent/40 bg-accent px-4 py-2 text-sm font-semibold text-accent-contrast shadow-[var(--glow-accent)] transition-[color,background-color,box-shadow,transform] duration-150 ease-[var(--ease-out)] hover:bg-accent-hover hover:shadow-float hover:shadow-accent/30 active:scale-[0.97] [@media(hover:hover)_and_(pointer:fine)]:motion-safe:hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
           שיחת ייעוץ חינם
         </TrackedCtaLink>

@@ -133,12 +133,16 @@ export default function HeroVideo() {
           __html: `
         @media (max-width: 760px) {
           .sw-hero-video {
-            object-position: 50% 12% !important;
-            -webkit-mask-image: linear-gradient(to bottom, #000 34%, transparent 74%) !important;
-            mask-image: linear-gradient(to bottom, #000 34%, transparent 74%) !important;
+            /* Frame the robot's head + shoulders (was cropping near the waist) and
+               keep the clip opaque longer before the mask feathers it into the page. */
+            object-position: 50% 8% !important;
+            -webkit-mask-image: linear-gradient(to bottom, #000 44%, transparent 82%) !important;
+            mask-image: linear-gradient(to bottom, #000 44%, transparent 82%) !important;
           }
           .sw-hero-scrim {
-            background: linear-gradient(to bottom, color-mix(in srgb, var(--background) 22%, transparent) 0%, var(--background) 50%) !important;
+            /* Don't tint the top — let the robot read clearly — then ramp to the page
+               background lower down so the headline/CTAs below stay legible. */
+            background: linear-gradient(to bottom, transparent 0%, transparent 32%, var(--background) 66%) !important;
           }
         }
       `,

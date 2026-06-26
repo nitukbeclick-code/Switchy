@@ -216,7 +216,7 @@ export default function LeadForm({
         {/* Rare, first-time SUCCESS delight (rule 11): a one-shot settle of the
             confirmation glyph — transform+opacity only, ease-out, motion-safe.
             Not a loop; fires once when the form completes. */}
-        <style>{`@keyframes lead-success-pop{from{opacity:0;transform:scale(0.8)}to{opacity:1;transform:scale(1)}}`}</style>
+        <style>{`@keyframes lead-success-pop{from{opacity:0;transform:scale(0.9)}to{opacity:1;transform:scale(1)}}`}</style>
         <h3 className="font-display text-lg font-bold tracking-tight text-ink">
           הפרטים התקבלו, תודה!
         </h3>

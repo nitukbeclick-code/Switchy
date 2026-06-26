@@ -269,7 +269,7 @@ export default function BookClient() {
         >
           ✓
         </div>
-        <style>{`@keyframes book-success-pop{from{opacity:0;transform:scale(0.8)}to{opacity:1;transform:scale(1)}}`}</style>
+        <style>{`@keyframes book-success-pop{from{opacity:0;transform:scale(0.9)}to{opacity:1;transform:scale(1)}}`}</style>
         <h3 className="font-display text-lg font-bold tracking-tight text-ink">
           הבקשה נשלחה!
         </h3>

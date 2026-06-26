@@ -71,7 +71,12 @@ function corsHeaders(origin: string | null): Record<string, string> {
   const allow = origin && ALLOWED_ORIGINS.has(origin) ? origin : (origin ? "null" : "*");
   return {
     "Access-Control-Allow-Origin": allow,
-    "Access-Control-Allow-Headers": "content-type",
+    // The browser preflights the booking POST because it carries `apikey` +
+    // `Authorization` (the Supabase anon key). Those MUST be echoed here or the
+    // preflight fails and every browser booking is blocked (curl, which skips
+    // preflight, still works — which is why this hid for so long). Mirror the
+    // shared _shared/cors.ts allow-list.
+    "Access-Control-Allow-Headers": "authorization, apikey, content-type",
     "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
     "Vary": "Origin",
   };

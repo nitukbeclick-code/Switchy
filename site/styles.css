@@ -507,6 +507,39 @@ a:not([class]) { text-decoration: underline; text-underline-offset: 2px; text-de
 }
 :root[data-theme="dark"] .hero__video-el { box-shadow: var(--shadow-lg), inset 0 0 0 1.5px rgba(255,255,255,.06); }
 
+/* ── Hero with full-bleed background video — the robot becomes part of the UI ── */
+.hero--video { overflow: hidden; isolation: isolate; }
+.hero--video::before, .hero--video::after { display: none; } /* drop the dot-grid/parallax under the video */
+.hero--video .hero__bg { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+.hero--video .hero__bg-el {
+  position: absolute; inset: 0; width: 100%; height: 100%; display: block;
+  object-fit: cover; object-position: 32% 50%;
+  /* Feather the white-background character into the page → borderless, seamless in both themes. */
+  -webkit-mask-image: radial-gradient(125% 118% at 31% 47%, #000 40%, transparent 80%);
+          mask-image: radial-gradient(125% 118% at 31% 47%, #000 40%, transparent 80%);
+}
+/* Legibility scrim: solid on the text side (physical right = RTL start), clears toward the robot. Theme-aware via --cream. */
+.hero--video .hero__bg::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(to left,
+    var(--cream) 0%, var(--cream) 27%,
+    color-mix(in srgb, var(--cream) 72%, transparent) 45%,
+    transparent 67%);
+}
+.hero--video .hero__inner--overlay {
+  position: relative; z-index: 2;
+  grid-template-columns: minmax(0, 580px); justify-content: start;
+  min-height: clamp(440px, 56vh, 620px); align-content: center;
+}
+@media (max-width: 760px) {
+  .hero--video .hero__bg-el { object-position: 50% 12%;
+    -webkit-mask-image: linear-gradient(to bottom, #000 34%, transparent 74%);
+            mask-image: linear-gradient(to bottom, #000 34%, transparent 74%); }
+  .hero--video .hero__bg::after {
+    background: linear-gradient(to bottom, color-mix(in srgb, var(--cream) 22%, transparent) 0%, var(--cream) 50%); }
+  .hero--video .hero__inner--overlay { min-height: auto; grid-template-columns: 1fr; }
+}
+
 /* Phone mockup */
 .hero__visual { display: grid; place-items: center; }
 .phone {

@@ -26,6 +26,22 @@
   const year = $('year');
   if (year) year.textContent = new Date().getFullYear();
 
+  // ── Hero background video ──────────────────────────────────────────────────
+  // Respect reduced-motion (pause → the poster frame shows) and pause when the
+  // hero scrolls out of view (saves CPU/battery — the loop only runs in view).
+  const heroVid = document.querySelector('.hero__bg-el');
+  if (heroVid) {
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      heroVid.removeAttribute('autoplay');
+      heroVid.addEventListener('loadeddata', () => heroVid.pause(), { once: true });
+      heroVid.pause();
+    } else if ('IntersectionObserver' in window) {
+      new IntersectionObserver((entries) => entries.forEach((e) => {
+        if (e.isIntersecting) heroVid.play().catch(() => {}); else heroVid.pause();
+      }), { threshold: 0.1 }).observe(heroVid);
+    }
+  }
+
   // ── Sticky nav shadow ────────────────────────────────────────────────────
   // rAF-throttled: toggling a class is a write, but reading scrollY each event
   // and reacting synchronously is wasteful at scroll cadence.

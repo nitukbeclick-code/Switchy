@@ -188,8 +188,14 @@
 
   <main id="top"><span id="main"></span>
     <!-- ── Hero ─────────────────────────────────────────────────────────── -->
-    <section class="hero">
-      <div class="container hero__inner">
+    <section class="hero hero--video">
+      <div class="hero__bg" aria-hidden="true">
+        <video class="hero__bg-el" autoplay muted loop playsinline preload="metadata"
+               poster="assets/videos/switchy-hero-poster.jpg">
+          <source src="assets/videos/switchy-hero.mp4?v=2" type="video/mp4" />
+        </video>
+      </div>
+      <div class="container hero__inner hero__inner--overlay">
         <div class="hero__copy reveal">
           <span class="pill">גישה מוקדמת · חינם · בלי התחייבות</span>
           <h1>מפסיקים לשלם<br /><span class="hl">יותר מדי על תקשורת</span></h1>
@@ -213,16 +219,6 @@
             <li><b>מ-₪15</b><span>מחיר התחלתי</span></li>
           </ul>
           <p class="hero__fineprint">* החיסכון משתנה לפי החבילה, הספק והשימוש שלכם — נחשב לכם אישית. ראו <a href="terms.html">תנאי שימוש</a>.</p>
-        </div>
-
-        <div class="hero__visual reveal">
-          <figure class="hero__video">
-            <video class="hero__video-el" autoplay muted loop playsinline preload="metadata"
-                   poster="assets/videos/switchy-hero-poster.svg"
-                   aria-label="הדגמה מונפשת של הרובוט של SWITCHY מוצא את המסלול המשתלם ביותר">
-              <source src="assets/videos/switchy-hero.mp4" type="video/mp4" />
-            </video>
-          </figure>
         </div>
       </div>
     </section>

@@ -26,37 +26,29 @@ const LEGACY_PROVIDER_SLUGS: Record<string, string> = {
 };
 
 // ────────────────────────────────────────────────────────────────────────────
-// Content-Security-Policy — backwards-compatible STRICT CSP (hash + strict-dynamic).
+// Content-Security-Policy.
 //
-// WHY hashes, not 'unsafe-inline' for scripts: we enumerate the exact SHA-256 of
-// every inline <script> we emit, so a modern (CSP3) browser executes only those
-// and refuses any injected inline script — the core XSS mitigation. The hashes
-// ARE the allowlist. 'strict-dynamic' then lets a hash-trusted loader (the Next
-// runtime + GA's gtag.js, pulled via next/script src=) fetch its own child
-// scripts without us listing every host. For legacy (CSP1/2) browsers that ignore
-// hashes/strict-dynamic, 'unsafe-inline' + the https: host fallback keep GA/Meta
-// working — and those tokens are *ignored* by CSP3 browsers exactly because a
-// hash is present, so they don't weaken the modern policy. This is the documented
-// "graceful degradation" strict-CSP recipe.
+// IMPORTANT — why this file does NOT use 'strict-dynamic' + inline-script hashes:
+// that recipe (a previous version of this file) BROKE THE ENTIRE APP IN PRODUCTION.
+// Next.js + Turbopack emit their OWN framework inline scripts (the bootstrap/chunk
+// loader, flight payload, etc.) whose byte content — and therefore SHA-256 —
+// changes every build and cannot be statically enumerated. With 'strict-dynamic'
+// present, a CSP3 browser DISABLES host-based allowlisting ('self' / https:), so
+// every /_next/static/chunks/*.js <script> was refused, AND the un-hashed framework
+// inline bootstrap was refused → zero JS executed → the page froze forever on the
+// server-rendered loading skeleton (observed live on switchy-ai.com, 60+ CSP
+// violations in the console).
 //
-// Set entirely via next.config headers() (NOT a nonce/proxy) on purpose: a nonce
-// forces every page to dynamic rendering, which would kill this app's static +
-// ISR (revalidate=3600) output — the very thing CELL C3 is protecting. Static
-// HTML + hashed inline scripts keeps full CDN cacheability AND a strict CSP.
-//
-// INLINE SCRIPT HASHES (recompute if the literal bytes below ever change):
-//  • theme no-flash guard (app/layout.tsx <head> + app/global-error.tsx) — identical
-//  • GA4 Consent Mode v2 default (app/layout.tsx, beforeInteractive)
-//  • GA4 init/config (app/layout.tsx, lazyOnload) — GA4 id resolved into the string
+// The "correct" strict CSP for Next uses a per-request nonce — but a nonce forces
+// every page into dynamic rendering, which would destroy this app's static + ISR
+// (revalidate) output and CDN cacheability. So we use the standard static-site
+// posture instead: 'self' (covers all /_next/* chunks) + 'unsafe-inline' (Next's
+// framework inline scripts + our theme guard + GA inline config) + the explicit
+// analytics script hosts. NO 'strict-dynamic', NO hashes (a hash would re-disable
+// 'unsafe-inline' and re-break the inline bootstrap). XSS posture stays tight
+// elsewhere: object-src/base-uri/frame-ancestors locked, connect/img tightly
+// allowlisted, and the app renders no user-authored HTML.
 // ────────────────────────────────────────────────────────────────────────────
-const SCRIPT_HASHES = [
-  // theme no-flash guard
-  "'sha256-lt/jzp5WghHs55L76Qx27LnwaSq1sd0Otti3yNnkC9E='",
-  // GA4 consent default (denied)
-  "'sha256-Wm3VqYsyHNBkLe9vbwFfwvpleh3w28hOQ74uxW19xPo='",
-  // GA4 init/config (G-YCTGRVN7SJ)
-  "'sha256-FnLpdcBNhDmIMlNWpijeigE04yHv3SKWzGWhQXLY3PU='",
-].join(" ");
 
 // First-party Supabase project (public anon reads happen server-side today, but
 // keep it allowlisted so any future client read isn't silently blocked by CSP).
@@ -70,10 +62,11 @@ const SUPABASE_ORIGIN = (
 // the browser; everything else is same-origin (/api/* relative fetches).
 const CSP = [
   "default-src 'self'",
-  // Inline scripts pinned by hash; gtag.js arrives via next/script src= and is
-  // trusted to load its children through 'strict-dynamic'. https: + 'unsafe-inline'
-  // are CSP1/2-only fallbacks (ignored by CSP3 because a hash is present).
-  `script-src 'self' 'strict-dynamic' 'unsafe-inline' https: ${SCRIPT_HASHES}`,
+  // 'self' loads all first-party /_next/* chunks; 'unsafe-inline' runs Next's
+  // framework inline bootstrap + our theme-guard & GA inline config; the explicit
+  // hosts load gtag.js (GA4) and the Meta pixel. NO 'strict-dynamic'/hashes — see
+  // the note above for why that combination took the whole site down.
+  "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com https://www.google-analytics.com https://connect.facebook.net",
   // Next.js and several pages emit inline <style>; 'unsafe-inline' for styles is
   // required and low-risk (style injection is not script execution).
   "style-src 'self' 'unsafe-inline'",

@@ -573,18 +573,6 @@ async function getOrCreateConversation(contactId: string): Promise<Row | null> {
   return created && created.length ? created[0] : null;
 }
 
-// True when the AI bot may auto-reply on this conversation. The gate column
-// (whatsapp_conversations.bot_enabled, see supabase/crm-takeover-2026-06.sql)
-// defaults true; a human takeover sets it false. We fail OPEN only when the
-// column is genuinely absent/undefined (older row before the migration) so the
-// bot keeps working pre-migration; an explicit `false` always silences it.
-function botEnabled(convo: Row | null): boolean {
-  if (!convo) return true;
-  const v = convo.bot_enabled;
-  if (v === undefined || v === null) return true; // column not present yet → behave as before
-  return v !== false;
-}
-
 // RELAY-ACTIVE = a rep has taken the conversation over (bot_enabled=false) AND a
 // relay target is set (whatsapp_conversations.relay_tg_chat_id, see the takeover
 // contract). When both hold, an inbound customer message is forwarded to the rep's
@@ -595,6 +583,48 @@ function relayChatId(convo: Row | null): string | null {
   if (v === undefined || v === null) return null;
   const id = String(v).trim();
   return id || null;
+}
+
+// RELAY-ACTIVE: the ONE source of truth for "a human rep currently owns this
+// conversation". Mirrors notify-lead/callbacks.ts isRelayActive VERBATIM:
+//   bot_enabled === false  AND  relay_tg_chat_id is a non-empty string.
+// Both halves of the takeover contract must hold. A row with bot_enabled=false
+// but NO relay target is NOT an active takeover — see botEnabled() below for why
+// that distinction is load-bearing (the self-heal that ended the silent-forever
+// outage).
+function relayActive(convo: Row | null): boolean {
+  if (!convo) return false;
+  return convo.bot_enabled === false && relayChatId(convo) !== null;
+}
+
+// True when the AI bot may auto-reply on this conversation. The gate column
+// (whatsapp_conversations.bot_enabled, see supabase/crm-takeover-2026-06.sql)
+// defaults true; an ACTIVE human takeover sets it false.
+//
+// SELF-HEALING CONTRACT (fixes the production "silent forever" outage):
+// The bot is silenced ONLY during an ACTIVE human takeover — i.e. when the FULL
+// relay contract holds (bot_enabled=false AND relay_tg_chat_id IS NOT NULL). A
+// conversation can get STUCK with bot_enabled=false while NO human is actually
+// relaying (relay_tg_chat_id IS NULL) — left over from a past handoff, an aborted
+// takeover, or a hand-back that cleared the relay target but not the flag. In that
+// stuck state the OLD gate (read bot_enabled alone) suppressed EVERY inbound
+// forever, so the customer got total silence and the only way out was a fresh
+// human takeover+handback. We now treat that stuck state as bot-ENABLED: a rep
+// who is NOT relaying cannot be "handling it", so the assistant must keep
+// answering. (The caller additionally REPAIRS the row — sets bot_enabled=true —
+// so the stuck state auto-recovers and the relay write itself is cheap.)
+//
+// Fail OPEN when the column is genuinely absent/undefined (older row before the
+// crm-takeover migration) so the bot keeps working pre-migration.
+function botEnabled(convo: Row | null): boolean {
+  if (!convo) return true;
+  const v = convo.bot_enabled;
+  if (v === undefined || v === null) return true; // column not present yet → behave as before
+  if (v !== false) return true; // explicitly enabled
+  // bot_enabled === false: silence ONLY when a rep is ACTUALLY relaying. A stuck
+  // false with no relay target (no active rep) self-heals to ENABLED — the bot
+  // answers normally instead of going silent forever.
+  return !relayActive(convo);
 }
 
 // Forward ONE inbound customer message to the rep's Telegram relay chat. This is
@@ -817,10 +847,13 @@ async function createHandoffLead(contact: Row, inText: string, history: ChatTurn
   // (→ Telegram card) and marks the contact handed_off, but it must NOT silence
   // the agent — otherwise the customer is stranded while they wait for a human.
   // The ACTUAL human takeover is what flips whatsapp_conversations.bot_enabled
-  // false: notify-lead/callbacks.ts does it when the owner taps "קבל שיחה" on the
-  // Telegram card (and hand-back restores it true). The inbound takeover gate
-  // (botEnabled(convo)) reads ONLY that column, so until the owner takes over the
-  // assistant keeps answering questions about the plans meanwhile.
+  // false AND sets relay_tg_chat_id: notify-lead/callbacks.ts does both when the
+  // owner taps "קבל שיחה" on the Telegram card (and hand-back restores bot_enabled
+  // true + clears the relay target). The inbound takeover gate suppresses the bot
+  // ONLY while that FULL relay contract holds (relayActive: bot_enabled=false AND
+  // relay_tg_chat_id set), so until the owner takes over the assistant keeps
+  // answering — and a row left stuck bot_enabled=false with no relay target
+  // self-heals back to answering instead of going silent forever.
   // pgInsert swallows the PostgREST error (returns falsy), so a blocked insert
   // (failed shape/rate-limit) would otherwise be invisible. Emit a persistent ops
   // signal so a failed handoff is observable. No PII: just whether a phone shape
@@ -1096,16 +1129,15 @@ async function handleMessageInner(m: Row, profileName: string | undefined, aiKey
     }
   }
 
-  // 2b) HUMAN TAKEOVER GATE. When a rep has taken the conversation over
-  //     (whatsapp_conversations.bot_enabled = false) the AI bot must NOT
-  //     auto-reply. The inbound is already stored + audited above and STOP was
-  //     already honoured (step 2, BEFORE this gate — opt-out always wins); we go
-  //     silent for the BOT and let the human handle it. If a relay target is set
-  //     (RELAY-ACTIVE), we additionally FORWARD this inbound to the rep's Telegram
-  //     chat so they follow the live conversation — instead of the old silent
-  //     store-only. The bot still does NOT auto-reply to the customer. Only the
-  //     inbound timestamps are touched (no customer-facing outbound, no AI fan-out).
-  if (convo && !botEnabled(convo)) {
+  // 2b) HUMAN TAKEOVER GATE. The AI bot must NOT auto-reply ONLY while a rep is
+  //     ACTUALLY relaying — i.e. the FULL takeover contract holds: bot_enabled=false
+  //     AND relay_tg_chat_id IS NOT NULL (relayActive). The inbound is already
+  //     stored + audited above and STOP was already honoured (step 2, BEFORE this
+  //     gate — opt-out always wins); we go silent for the BOT and FORWARD this
+  //     inbound to the rep's Telegram chat so they follow the live conversation. The
+  //     bot does NOT auto-reply to the customer. Only the inbound timestamps are
+  //     touched (no customer-facing outbound, no AI fan-out).
+  if (convo && relayActive(convo)) {
     jlog({ at: "wa.silent", reason: "human_takeover", convId: String(convo.id) });
     if (contact && type !== "image") {
       // Customer→rep relay (NOT marketing — this is the customer's live human
@@ -1118,6 +1150,26 @@ async function handleMessageInner(m: Row, profileName: string | undefined, aiKey
       await pgPatch("whatsapp_contacts", `id=eq.${contact.id}`, { last_message_at: now });
     }
     return;
+  }
+
+  // 2c) SELF-HEAL the stuck-silent state. A conversation can be left with
+  //     bot_enabled=false while NO rep is relaying (relay_tg_chat_id IS NULL) —
+  //     a past handoff, an aborted takeover, or a hand-back that cleared the relay
+  //     target but not the flag. The OLD gate read bot_enabled alone and went
+  //     SILENT FOREVER on every inbound (the production outage: customers got no
+  //     reply, not even to "מחירים"/"מסלולים"). botEnabled() now treats this stuck
+  //     state as ENABLED (so we DON'T return above and the normal reply path runs
+  //     below); here we additionally REPAIR the row — set bot_enabled=true — so the
+  //     DB itself recovers and downstream relay/takeover logic sees a consistent
+  //     state. Best-effort: a failed repair never blocks the reply (the gate above
+  //     already let us through). We DO NOT touch relay_tg_chat_id (already NULL).
+  //     Guarded by botEnabled() so the "stuck" predicate stays the single source of
+  //     truth: it returns true here precisely BECAUSE the row is not relay-active.
+  if (convo && convo.bot_enabled === false && botEnabled(convo)) {
+    jlog({ at: "wa.selfheal", reason: "stuck_bot_disabled_no_relay", convId: String(convo.id) });
+    await pgPatch("whatsapp_conversations", `id=eq.${convo.id}`, { bot_enabled: true });
+    // Reflect the repair locally so the rest of this turn sees the healed state.
+    convo.bot_enabled = true;
   }
 
   // 3) Abuse guard (per-contact hourly cap on AI fan-out).

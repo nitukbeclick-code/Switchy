@@ -745,18 +745,37 @@ async function sendStoredReply(contact: Row, reply: string): Promise<void> {
   }
 }
 
-// Create the hand-off lead (Telegram rep card via the leads trigger) and flip the
-// contact to handed_off. Returns whether the lead landed. Shared by the explicit
-// handoff intent AND the agent's escalate_to_human tool, so both paths behave
-// identically (one source of truth for "raise a human"). This is a SERVICE action
-// — no marketing consent is required (the person asked for a human).
+// Normalize a WhatsApp phone into the shape the leads BEFORE-INSERT trigger
+// accepts (leads_rate_limit: `^[+0-9][0-9\-\s]{7,14}$`). A WhatsApp wa_id is
+// already E.164-ish digits (e.g. "972501234567"), but be defensive: strip any
+// char that isn't a digit (the trigger anchors on a leading [+0-9] then 7-14 of
+// [0-9\-\s], so a leading '+' is the only allowed non-digit) and re-prefix '+'.
+// If after cleaning it can't satisfy the trigger (too short/long), return "" so
+// the caller treats the insert as blocked instead of silently failing the regex.
+function normalizeLeadPhone(raw: string): string {
+  const digits = String(raw ?? "").replace(/\D/g, "");
+  // Trigger total length = 1 leading char + 7..14 = 8..15. With a '+' prefix the
+  // digit count must be 7..14 to land in-bounds.
+  if (digits.length < 7 || digits.length > 14) return "";
+  return `+${digits}`;
+}
+
+// Create the hand-off lead (Telegram rep card via the leads trigger), flip the
+// contact to handed_off AND silence the bot on the open conversation. Returns
+// whether the lead landed. Shared by the explicit handoff intent AND the agent's
+// escalate_to_human tool, so both paths behave identically (one source of truth
+// for "raise a human"). This is a SERVICE action — no marketing consent is
+// required (the person asked for a human).
 async function createHandoffLead(contact: Row, inText: string, history: ChatTurn[]): Promise<boolean> {
   const transcript = history
     .slice(-4)
     .map((h) => `${h.role === "user" ? "לקוח" : "בוט"}: ${h.text}`)
     .join("\n");
-  const phone = String(contact.wa_phone ?? "");
-  const name = String(contact.wa_name ?? "").trim() || phone;
+  const rawPhone = String(contact.wa_phone ?? "");
+  // Shape the phone to satisfy the leads trigger (`^[+0-9][0-9\-\s]{7,14}$`) —
+  // an unnormalized value would be silently rejected by the BEFORE-INSERT gate.
+  const phone = normalizeLeadPhone(rawPhone);
+  const name = String(contact.wa_name ?? "").trim() || phone || rawPhone;
   const created = await pgInsert("leads", {
     name,
     phone,
@@ -769,6 +788,28 @@ async function createHandoffLead(contact: Row, inText: string, history: ChatTurn
     status: "handed_off",
     ...(leadId ? { lead_id: leadId } : {}),
   });
+  // CRITICAL: also silence the BOT on this contact's open conversation. The
+  // takeover/relay gate reads botEnabled(convo) from whatsapp_conversations
+  // .bot_enabled — without flipping it the agent keeps answering the next turn as
+  // if no handoff happened (and inbound never relays to the team). Resolve the
+  // conversation the same way the inbound path does (contact._convId, set right
+  // after we resolve the open conversation); fall back to looking it up by
+  // contact_id when only the contact is in scope. Fail-soft (best-effort PATCH).
+  let convId: string | null = contact._convId ? String(contact._convId) : null;
+  if (!convId) {
+    const convo = await getOrCreateConversation(String(contact.id));
+    convId = convo?.id ? String(convo.id) : null;
+  }
+  if (convId) {
+    await pgPatch("whatsapp_conversations", `id=eq.${convId}`, { bot_enabled: false });
+  }
+  // pgInsert swallows the PostgREST error (returns falsy), so a blocked insert
+  // (failed shape/rate-limit) would otherwise be invisible. Emit a persistent ops
+  // signal so a failed handoff is observable. No PII: just whether a phone shape
+  // survived normalization.
+  if (!created) {
+    await logSecurityEvent("handoff_lead_insert_failed", { hasPhone: !!phone });
+  }
   return !!created;
 }
 

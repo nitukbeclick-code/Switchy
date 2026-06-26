@@ -245,3 +245,149 @@ Deno.test("relay label falls back to the phone when the contact has no name", as
   assertEquals(sink.telegram.length, 1);
   assertStringIncludes(sink.telegram[0].text, "972527654321");
 });
+
+// ── 5) HANDOFF flips bot_enabled=false (the state-flip fix) ────────────────────
+// The live bug: createHandoffLead set the contact to handed_off but NEVER flipped
+// whatsapp_conversations.bot_enabled, so the takeover gate (which reads
+// botEnabled(convo)) kept the agent answering the next turn and inbound never
+// relayed to the team. The fix: after the lead insert, PATCH the open
+// conversation { bot_enabled: false } so the bot goes silent and the takeover
+// relay engages. This test drives the DETERMINISTIC text-handoff path (an inbound
+// containing "נציג" classifies as intent="human" → handleHandoff →
+// createHandoffLead) and asserts the conversation PATCH happens with bot_enabled
+// false — covering both the state-flip fix AND that the RE_HANDOFF path still works.
+
+// Records every PostgREST write the handoff path makes, so we can pin both the
+// conversation bot_enabled flip and the (normalized) leads insert shape.
+type Writes = {
+  convPatch: Array<Record<string, unknown>>; // PATCH bodies to whatsapp_conversations
+  leadsInsert: Array<Record<string, unknown>>; // POST bodies to leads
+};
+
+// Routes for the handoff path. bot_enabled=true ⇒ the bot is ACTIVE (NOT a
+// takeover), so the inbound reaches the normal routing where "נציג" → handoff.
+// `leadLands` toggles whether the leads POST returns a row (insert succeeds) or
+// an empty array (insert blocked → the ops-signal branch).
+function handoffRoutes(sink: Sink, writes: Writes, leadLands: boolean) {
+  const convo = { id: "conv-ho", status: "bot", bot_enabled: true, ai_state: null, relay_tg_chat_id: null };
+  return [
+    { match: (u: string) => u.includes("/rest/v1/rpc/get_lead_notify_config"), respond: () => jsonResponse({}) },
+    {
+      match: (u: string) => u.includes("graph.facebook.com"),
+      respond: (_u: string, init?: RequestInit) => {
+        const b = JSON.parse(String(init?.body ?? "{}"));
+        if (b?.type === "text") sink.graph.push({ to: String(b.to ?? ""), body: String(b.text?.body ?? "") });
+        return jsonResponse({ messages: [{ id: `wamid.out.${crypto.randomUUID()}` }] });
+      },
+    },
+    {
+      match: (u: string) => u.includes("api.telegram.org"),
+      respond: (_u: string, init?: RequestInit) => {
+        const b = JSON.parse(String(init?.body ?? "{}"));
+        sink.telegram.push({ chat_id: String(b.chat_id ?? ""), text: String(b.text ?? "") });
+        return jsonResponse({ ok: true, result: { message_id: 1 } });
+      },
+    },
+    // Conversation GET → the open conversation under test.
+    {
+      match: (u: string, init?: RequestInit) =>
+        u.includes("/rest/v1/whatsapp_conversations") && (init?.method ?? "GET") === "GET",
+      respond: () => jsonResponse([convo]),
+    },
+    // Conversation PATCH → record the body (this is the bot_enabled flip we assert).
+    {
+      match: (u: string, init?: RequestInit) =>
+        u.includes("/rest/v1/whatsapp_conversations") && init?.method === "PATCH",
+      respond: (_u: string, init?: RequestInit) => {
+        writes.convPatch.push(JSON.parse(String(init?.body ?? "{}")));
+        return jsonResponse([], 200);
+      },
+    },
+    // NOT a first contact → make isFirstContact's GET on whatsapp_messages non-empty
+    // so the inbound routes through classifyTextIntent (not the greeting branch).
+    {
+      match: (u: string, init?: RequestInit) =>
+        u.includes("/rest/v1/whatsapp_messages") && (init?.method ?? "GET") === "GET",
+      respond: () => jsonResponse([{ id: "prior-msg" }]),
+    },
+    { match: (u: string, init?: RequestInit) => u.includes("/rest/v1/whatsapp_contacts") && (init?.method ?? "GET") === "POST", respond: () => jsonResponse([CONTACT]) },
+    { match: (u: string, init?: RequestInit) => u.includes("/rest/v1/whatsapp_messages") && (init?.method ?? "GET") === "POST", respond: () => jsonResponse([{ id: crypto.randomUUID() }]) },
+    // Leads insert → record the body; return a row (lands) or a 400 (blocked, e.g.
+    // the BEFORE-INSERT trigger raised). pgInsert returns null on a non-2xx, which
+    // is the falsy `created` that drives the handoff_lead_insert_failed ops signal.
+    {
+      match: (u: string, init?: RequestInit) => u.includes("/rest/v1/leads") && (init?.method ?? "GET") === "POST",
+      respond: (_u: string, init?: RequestInit) => {
+        writes.leadsInsert.push(JSON.parse(String(init?.body ?? "{}")));
+        return leadLands
+          ? jsonResponse([{ id: "lead-1" }])
+          : jsonResponse({ message: "invalid phone" }, 400);
+      },
+    },
+    // Everything else PostgREST → benign 200.
+    { match: (u: string) => u.includes("/rest/v1/"), respond: () => jsonResponse([], 200) },
+  ];
+}
+
+Deno.test("handoff flips whatsapp_conversations.bot_enabled=false (the state-flip fix)", async () => {
+  const sink: Sink = { graph: [], telegram: [] };
+  const writes: Writes = { convPatch: [], leadsInsert: [] };
+  await withFetchStub(handoffRoutes(sink, writes, true), async () => {
+    const r = await postSigned(metaTextBody("972501234567", "אני רוצה לדבר עם נציג אנושי"));
+    assertEquals(r.status, 200);
+  });
+  // The conversation was patched with bot_enabled:false — the bot goes silent so
+  // the next turn relays to the team instead of being answered by the agent.
+  assert(
+    writes.convPatch.some((b) => b.bot_enabled === false),
+    "createHandoffLead must PATCH whatsapp_conversations { bot_enabled: false }",
+  );
+  // The deterministic handoff still fired the lead insert (RE_HANDOFF path intact)…
+  assertEquals(writes.leadsInsert.length, 1, "the handoff still creates the lead");
+  // …and the customer got the reassurance reply (handoff reply was sent).
+  assert(sink.graph.length >= 1, "customer is reassured the handoff happened");
+});
+
+Deno.test("handoff normalizes the phone to satisfy the leads trigger shape", async () => {
+  const sink: Sink = { graph: [], telegram: [] };
+  const writes: Writes = { convPatch: [], leadsInsert: [] };
+  await withFetchStub(handoffRoutes(sink, writes, true), async () => {
+    await postSigned(metaTextBody("972501234567", "תן לי נציג בבקשה"));
+  });
+  assertEquals(writes.leadsInsert.length, 1);
+  const phone = String(writes.leadsInsert[0].phone ?? "");
+  // Normalized to the leads_rate_limit shape: ^[+0-9][0-9\-\s]{7,14}$
+  assert(/^[+0-9][0-9\-\s]{7,14}$/.test(phone), `normalized phone "${phone}" matches the leads trigger regex`);
+  assertEquals(phone, "+972501234567");
+});
+
+Deno.test("a blocked handoff insert emits the handoff_lead_insert_failed ops signal", async () => {
+  const sink: Sink = { graph: [], telegram: [] };
+  const writes: Writes = { convPatch: [], leadsInsert: [] };
+  // leadLands=false ⇒ pgInsert returns [] (a blocked/failed insert). The fix emits
+  // a persistent security_audit_log row so the failure is no longer invisible.
+  const audits: Array<Record<string, unknown>> = [];
+  const routes = handoffRoutes(sink, writes, false);
+  // Splice a recorder for the security_audit_log insert BEFORE the catch-all.
+  routes.splice(routes.length - 1, 0, {
+    match: (u: string, init?: RequestInit) =>
+      u.includes("/rest/v1/security_audit_log") && (init?.method ?? "GET") === "POST",
+    respond: (_u: string, init?: RequestInit) => {
+      audits.push(JSON.parse(String(init?.body ?? "{}")));
+      return jsonResponse([], 200);
+    },
+  });
+  await withFetchStub(routes, async () => {
+    await postSigned(metaTextBody("972501234567", "אני רוצה נציג"));
+  });
+  assert(
+    audits.some((a) => a.event === "handoff_lead_insert_failed"),
+    "a failed handoff lead insert must emit the handoff_lead_insert_failed signal",
+  );
+  // Even when the insert is blocked, the bot is still silenced (the takeover takes
+  // hold regardless) so the customer isn't left talking to a bot that "transferred".
+  assert(
+    writes.convPatch.some((b) => b.bot_enabled === false),
+    "bot is silenced even when the lead insert is blocked",
+  );
+});

@@ -50,6 +50,41 @@ async function wamidOf(res: Response): Promise<string | null> {
   return j?.messages?.[0]?.id ?? null;
 }
 
+// Best-effort 24h-window signal for the LAST sendText that failed. sendText is
+// fail-soft (returns null on any error and never throws), which historically hid
+// WHY it failed. The most actionable cause for a human relay is Meta's "outside
+// the 24h customer-service window" re-engagement block (error code 131047, or a
+// body mentioning the re-engagement / 24-hour window) — a free-form text to a
+// customer who hasn't messaged in 24h is rejected and a template is required.
+//
+// We capture ONLY a boolean classification of the most recent failure here, so a
+// caller can show a precise nudge. sendText's signature + happy-path contract are
+// UNCHANGED (still returns wamid|null). This is a side-channel, not a return value:
+//   - reset to false at the start of every sendText (so a later success clears it),
+//   - set true only when the failing response looks like the 24h window error.
+// Concurrency note: edge invocations are effectively single-flight per request, and
+// the caller reads this immediately after its own awaited sendText returns null, so
+// the value reflects that call. Never throws; defaults to false.
+let _lastSendOutside24hWindow = false;
+
+// Did the most recent failed sendText look like Meta's 24h customer-service-window
+// (re-engagement) block? Only meaningful right after a sendText that returned null.
+export function lastSendWasOutside24hWindow(): boolean {
+  return _lastSendOutside24hWindow;
+}
+
+// Classify a Graph error body/status as the 24h re-engagement window block. Meta
+// returns HTTP 400 with error.code 131047 ("Message failed to send because more
+// than 24 hours have passed…") — match the code or the human text defensively.
+function looksLike24hWindow(status: number, bodyText: string): boolean {
+  const t = String(bodyText ?? "");
+  if (/131047/.test(t)) return true;
+  if (/re-?engag/i.test(t)) return true;
+  if (/24[\s-]*hour/i.test(t)) return true;
+  // The classic phrasing, in case the code/keyword shifts.
+  return status === 400 && /more than 24 hours have passed/i.test(t);
+}
+
 // Sends a text reply; returns Meta's wamid or null.
 //
 // Signature is UNCHANGED. Internally it now retries ONCE on a 5xx (Graph/Meta
@@ -60,6 +95,9 @@ export async function sendText(
   to: string,
   body: string,
 ): Promise<string | null> {
+  // Reset the 24h-window side-channel for THIS attempt: a success (or a non-window
+  // failure) must not leave a stale "outside 24h" flag from an earlier send.
+  _lastSendOutside24hWindow = false;
   if (!TOKEN) {
     jlog({ at: "wa.sendText", ok: false, error: "WHATSAPP_TOKEN not set" });
     return null;
@@ -86,12 +124,11 @@ export async function sendText(
       res = await graphPost(payload);
     }
     if (!res.ok) {
-      jlog({
-        at: "wa.sendText",
-        ok: false,
-        status: res.status,
-        msg: await res.text().catch(() => ""),
-      });
+      // Read the error body ONCE, classify the 24h-window block for the side-channel,
+      // then log it (unchanged shape). Keeps the null return contract intact.
+      const msg = await res.text().catch(() => "");
+      _lastSendOutside24hWindow = looksLike24hWindow(res.status, msg);
+      jlog({ at: "wa.sendText", ok: false, status: res.status, msg });
       return null;
     }
     return await wamidOf(res);

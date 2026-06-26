@@ -351,6 +351,217 @@ Deno.test("rep relay is BLOCKED when the customer is on the marketing_suppressio
   }
 });
 
+// ── 2b) PLAIN-TYPE relay during an active takeover (no reply-to needed) ──────────
+// The owner just TYPES in the team chat. We resolve the recipient by the relay
+// TARGET — every RELAY-ACTIVE conversation whose relay_tg_chat_id is this chat.
+
+// A plain message (no reply_to_message) typed straight into the team chat.
+function plainTyped(text: string): TgMessage {
+  return {
+    message_id: 21,
+    chat: { id: -1001 },
+    from: { id: 42, first_name: "בעל העסק" },
+    text,
+  };
+}
+
+Deno.test("plain-typed text with EXACTLY ONE active relay for this chat relays to that customer", async () => {
+  const graphSends: Capture[] = [];
+  const msgInserts: Capture[] = [];
+  const auditInserts: Capture[] = [];
+  const routes: Route[] = [
+    {
+      // The relay-target lookup: RELAY-ACTIVE convos whose relay_tg_chat_id = this chat.
+      match: (c) =>
+        isRest("whatsapp_conversations")(c) && c.method === "GET" &&
+        c.url.includes("relay_tg_chat_id=eq.") && c.url.includes("bot_enabled=eq.false"),
+      respond: () => jsonRes([{ id: CONV_ID, contact_id: CONTACT_ID, bot_enabled: false, relay_tg_chat_id: "-1001" }]),
+    },
+    {
+      // leadIdForContact: contact → lead_id (for the audit trail).
+      match: (c) => isRest("whatsapp_contacts")(c) && c.method === "GET" && c.url.includes("select=lead_id"),
+      respond: () => jsonRes([{ lead_id: LEAD_ID }]),
+    },
+    {
+      // relayRepReplyToCustomer: contact → wa_phone + status.
+      match: (c) => isRest("whatsapp_contacts")(c) && c.method === "GET" && c.url.includes("wa_phone"),
+      respond: () => jsonRes([{ wa_phone: "972501234567", status: "active" }]),
+    },
+    { match: (c) => isRest("marketing_suppression")(c) && c.method === "GET", respond: () => jsonRes([]) },
+    { match: isGraphSend, respond: (c) => { graphSends.push(c); return graphOkWamid("wamid.PLAIN1"); } },
+    { match: (c) => isRest("whatsapp_messages")(c) && c.method === "POST", respond: (c) => { msgInserts.push(c); return jsonRes({}, 201); } },
+    { match: (c) => isRest("security_audit_log")(c) && c.method === "POST", respond: (c) => { auditInserts.push(c); return jsonRes({}, 201); } },
+    { match: (c) => isRest("whatsapp_conversations")(c) && c.method === "PATCH", respond: () => jsonRes([{ id: CONV_ID }]) },
+    { match: isTg, respond: tgOk },
+  ];
+  const s = installRoutes(routes);
+  try {
+    const res = await cb.handleTeamMessage(cfg(), plainTyped("היי, חזרתי אליך — אפשר לדבר עכשיו?"));
+    assertEquals(res.ok, true);
+    assertEquals(res.relayed, true);
+    // Sent to the customer over WhatsApp.
+    assertEquals(graphSends.length, 1);
+    assertEquals(graphSends[0].body.to, "972501234567");
+    assertEquals((graphSends[0].body.text as { body: string }).body, "היי, חזרתי אליך — אפשר לדבר עכשיו?");
+    // Stored as an outbound rep message with the wamid.
+    assertEquals(msgInserts.length, 1);
+    assertEquals(msgInserts[0].body.direction, "out");
+    assertEquals(msgInserts[0].body.actor, "rep");
+    assertEquals(msgInserts[0].body.wa_message_id, "wamid.PLAIN1");
+    assertEquals(msgInserts[0].body.conversation_id, CONV_ID);
+    // Audited (Reg.13), and the resolved lead id is stamped in the detail.
+    assertEquals(auditInserts.length, 1);
+    assertEquals(auditInserts[0].body.event, "wa_relay_reply");
+    assertEquals((auditInserts[0].body.detail as { lead_id?: string }).lead_id, LEAD_ID);
+  } finally {
+    s.restore();
+  }
+});
+
+Deno.test("plain-typed text still relays when the contact has NO lead (leadId guarded, no bad FK in audit)", async () => {
+  const graphSends: Capture[] = [];
+  const auditInserts: Capture[] = [];
+  const routes: Route[] = [
+    {
+      match: (c) =>
+        isRest("whatsapp_conversations")(c) && c.method === "GET" &&
+        c.url.includes("relay_tg_chat_id=eq.") && c.url.includes("bot_enabled=eq.false"),
+      respond: () => jsonRes([{ id: CONV_ID, contact_id: CONTACT_ID, bot_enabled: false, relay_tg_chat_id: "-1001" }]),
+    },
+    // No lead tied to the contact → leadIdForContact returns "".
+    { match: (c) => isRest("whatsapp_contacts")(c) && c.method === "GET" && c.url.includes("select=lead_id"), respond: () => jsonRes([{ lead_id: null }]) },
+    { match: (c) => isRest("whatsapp_contacts")(c) && c.method === "GET" && c.url.includes("wa_phone"), respond: () => jsonRes([{ wa_phone: "972501234567", status: "active" }]) },
+    { match: (c) => isRest("marketing_suppression")(c) && c.method === "GET", respond: () => jsonRes([]) },
+    { match: isGraphSend, respond: (c) => { graphSends.push(c); return graphOkWamid("wamid.PLAIN2"); } },
+    { match: (c) => isRest("whatsapp_messages")(c) && c.method === "POST", respond: () => jsonRes({}, 201) },
+    { match: (c) => isRest("security_audit_log")(c) && c.method === "POST", respond: (c) => { auditInserts.push(c); return jsonRes({}, 201); } },
+    { match: (c) => isRest("whatsapp_conversations")(c) && c.method === "PATCH", respond: () => jsonRes([{ id: CONV_ID }]) },
+    { match: isTg, respond: tgOk },
+  ];
+  const s = installRoutes(routes);
+  try {
+    const res = await cb.handleTeamMessage(cfg(), plainTyped("עדכון קצר"));
+    assertEquals(res.ok, true);
+    assertEquals(res.relayed, true);
+    assertEquals(graphSends.length, 1, "still relays even without a lead");
+    // The audit row is written but carries NO lead_id key (guarded — no empty/bad FK).
+    assertEquals(auditInserts.length, 1);
+    assertFalse("lead_id" in (auditInserts[0].body.detail as Record<string, unknown>), "no lead_id stamped when unresolved");
+  } finally {
+    s.restore();
+  }
+});
+
+Deno.test("plain-typed text with TWO active relays does NOT send and asks the owner to use the card", async () => {
+  const graphSends: Capture[] = [];
+  const tgSends: Capture[] = [];
+  const routes: Route[] = [
+    {
+      match: (c) =>
+        isRest("whatsapp_conversations")(c) && c.method === "GET" &&
+        c.url.includes("relay_tg_chat_id=eq.") && c.url.includes("bot_enabled=eq.false"),
+      respond: () =>
+        jsonRes([
+          { id: CONV_ID, contact_id: CONTACT_ID, bot_enabled: false, relay_tg_chat_id: "-1001" },
+          { id: "44444444-4444-4444-4444-444444444444", contact_id: "55555555-5555-5555-5555-555555555555", bot_enabled: false, relay_tg_chat_id: "-1001" },
+        ]),
+    },
+    { match: isGraphSend, respond: (c) => { graphSends.push(c); return graphOkWamid(); } },
+    { match: isTg, respond: (c) => { tgSends.push(c); return tgOk(); } },
+  ];
+  const s = installRoutes(routes);
+  try {
+    const res = await cb.handleTeamMessage(cfg(), plainTyped("מי מקבל את זה?"));
+    assertEquals(res.ok, true);
+    assertEquals(res.skipped, "ambiguous relay");
+    assertEquals(graphSends.length, 0, "ambiguous → never sends to a customer");
+    // The owner is told to reply on the specific card.
+    assert(tgSends.length >= 1);
+    const sent = tgSends.map((c) => String(c.body.text ?? "")).join(" ");
+    assert(sent.includes("כמה שיחות פעילות"), "disambiguation message shown");
+  } finally {
+    s.restore();
+  }
+});
+
+Deno.test("plain-typed text with ZERO active relays is the unchanged 'not a command' no-op", async () => {
+  const graphSends: Capture[] = [];
+  const routes: Route[] = [
+    {
+      match: (c) =>
+        isRest("whatsapp_conversations")(c) && c.method === "GET" &&
+        c.url.includes("relay_tg_chat_id=eq.") && c.url.includes("bot_enabled=eq.false"),
+      respond: () => jsonRes([]),
+    },
+    { match: isGraphSend, respond: (c) => { graphSends.push(c); return graphOkWamid(); } },
+    { match: isTg, respond: tgOk },
+  ];
+  const s = installRoutes(routes);
+  try {
+    const res = await cb.handleTeamMessage(cfg(), plainTyped("סתם פטפוט בקבוצה"));
+    assertEquals(res.ok, true);
+    assertEquals(res.skipped, "not a command");
+    assertEquals(graphSends.length, 0, "non-takeover chatter never sends WhatsApp");
+  } finally {
+    s.restore();
+  }
+});
+
+Deno.test("a relay send rejected as the 24h customer-service window tells the rep exactly that", async () => {
+  const msgInserts: Capture[] = [];
+  const tgSends: Capture[] = [];
+  const routes: Route[] = [
+    { match: (c) => isRest("leads?id=eq.")(c), respond: () => jsonRes([{ status: "new", phone: "0501234567" }]) },
+    {
+      match: (c) => isRest("whatsapp_contacts")(c) && c.method === "GET" && c.url.includes("wa_phone=ilike"),
+      respond: () => jsonRes([{ id: CONTACT_ID }]),
+    },
+    {
+      match: (c) => isRest("whatsapp_conversations")(c) && c.method === "GET",
+      respond: () => jsonRes([{ id: CONV_ID, contact_id: CONTACT_ID, bot_enabled: false, relay_tg_chat_id: "-1009" }]),
+    },
+    {
+      match: (c) => isRest("whatsapp_contacts")(c) && c.method === "GET" && c.url.includes("id=eq."),
+      respond: () => jsonRes([{ wa_phone: "972501234567", status: "active" }]),
+    },
+    { match: (c) => isRest("marketing_suppression")(c) && c.method === "GET", respond: () => jsonRes([]) },
+    // Graph rejects with the re-engagement / 24h-window error (code 131047).
+    {
+      match: isGraphSend,
+      respond: () =>
+        jsonRes(
+          { error: { code: 131047, message: "Message failed to send because more than 24 hours have passed since the customer last replied." } },
+          400,
+        ),
+    },
+    { match: (c) => isRest("whatsapp_messages")(c) && c.method === "POST", respond: (c) => { msgInserts.push(c); return jsonRes({}, 201); } },
+    { match: (c) => isRest("security_audit_log")(c) && c.method === "POST", respond: () => jsonRes({}, 201) },
+    { match: (c) => isRest("whatsapp_conversations")(c) && c.method === "PATCH", respond: () => jsonRes([{ id: CONV_ID }]) },
+    { match: isTg, respond: (c) => { tgSends.push(c); return tgOk(); } },
+  ];
+  const s = installRoutes(routes);
+  try {
+    const msg: TgMessage = {
+      message_id: 19,
+      chat: { id: -1001 },
+      from: { id: 42, first_name: "נציג" },
+      text: "תזכורת קצרה",
+      reply_to_message: leadCardReply(),
+    };
+    const res = await cb.handleTeamMessage(cfg(), msg);
+    // The message is still stored (human stays in the loop), but marked failed.
+    assertEquals(res.relayed, true);
+    assertEquals(res.delivered, false);
+    assertEquals(msgInserts.length, 1);
+    assertEquals(msgInserts[0].body.status, "failed");
+    // The rep is told it's the 24h window, not a generic failure.
+    const sent = tgSends.map((c) => String(c.body.text ?? "")).join(" ");
+    assert(sent.includes("24 שעות"), "24h-window nudge shown to the rep");
+  } finally {
+    s.restore();
+  }
+});
+
 // ── 3) NON-relay reply still notes / parses savings (preserved behaviour) ───────
 
 Deno.test("a reply to a NON-relay open card is stored as a NOTE (no Graph send)", async () => {

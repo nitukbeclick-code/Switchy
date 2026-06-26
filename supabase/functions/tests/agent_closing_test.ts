@@ -189,3 +189,41 @@ Deno.test("persona: escalate_to_human rule is present even on an early turn", as
     globalThis.fetch = realFetch;
   }
 });
+
+// ── persona: CONCRETE answers + price/provider + identity handling ─────────────
+// The weak-answers complaints: the bot dodged a concrete price question ("מה
+// המחירים של הוט"), answered identity questions with a robotic "לא מצליח למצוא את
+// המידע על המנהל", and padded replies with empty filler ("התהליך פשוט! זה הכל!").
+// The persona MUST now carry, in the BASE header (every turn), rules that: answer
+// the actual question first/concretely, ban that filler, quote real prices from the
+// catalogue on price/provider questions, and handle identity/meta questions
+// gracefully (never the robotic "manager" line). We assert these rules ride in the
+// system prompt on a plain turn.
+Deno.test("persona: concrete-answer + price + identity rules ride in the system prompt", async () => {
+  const bodies: string[] = [];
+  globalThis.fetch = textGeminiFetch({ finalText: "הוט מציעים מסלולים החל מ-X ש\"ח.", bodies });
+  try {
+    await runAgent({
+      channel: "whatsapp",
+      message: "מה המחירים של הוט",
+      keys: { gemini: "k" },
+      plans: PLANS,
+      toolContext: {},
+    });
+    const firstBody = bodies[0] ?? "";
+    // Answer the actual question first / ban empty filler.
+    assert(firstBody.includes("ענה/י תחילה על השאלה"), "answer-the-question-first rule present");
+    assert(firstBody.includes("מילוי ריק"), "empty-filler ban present");
+    // Price/provider questions → real numbers from the catalogue (recommend_plans).
+    assert(firstBody.includes("שאלות מחיר/ספק"), "price/provider rule present");
+    assert(firstBody.includes("מספרים אמיתיים"), "rule demands real numbers, not a dodge");
+    // Identity/meta questions → graceful answer, never the robotic "manager" line.
+    assert(firstBody.includes("שאלות זהות"), "identity/meta rule present");
+    assert(
+      firstBody.includes("לא מצליח למצוא את המידע על המנהל"),
+      "the robotic manager line is named so the persona bans it",
+    );
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});

@@ -357,8 +357,10 @@ Deno.test("§7b: buildHandoffReply prepends the commission disclosure on the SUC
   // The disclosure leads the message (mirrors create_lead's note).
   assert(reply.startsWith(COMMISSION_DISCLOSURE), "disclosure leads the success handoff reply");
   assertStringIncludes(reply, "עמלה"); // the disclosure mentions a commission
-  // The existing success copy is kept verbatim AFTER the disclosure.
-  assertStringIncludes(reply, "נציג אנושי שלנו יחזור אליך");
+  // (a) a human rep will get back to the customer soon, AND…
+  assertStringIncludes(reply, "יחזור/תחזור אליך בהקדם");
+  // (b) …the assistant stays available meanwhile (the bot is NOT going silent).
+  assertStringIncludes(reply, "בינתיים אני כאן");
 });
 
 Deno.test("§7b: buildHandoffReply prepends the disclosure on the rate-limited fallback too", () => {

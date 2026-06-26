@@ -760,12 +760,15 @@ function normalizeLeadPhone(raw: string): string {
   return `+${digits}`;
 }
 
-// Create the hand-off lead (Telegram rep card via the leads trigger), flip the
-// contact to handed_off AND silence the bot on the open conversation. Returns
-// whether the lead landed. Shared by the explicit handoff intent AND the agent's
-// escalate_to_human tool, so both paths behave identically (one source of truth
-// for "raise a human"). This is a SERVICE action — no marketing consent is
-// required (the person asked for a human).
+// Create the hand-off lead (Telegram rep card via the leads trigger) and flip the
+// contact to handed_off. Returns whether the lead landed. Shared by the explicit
+// handoff intent AND the agent's escalate_to_human tool, so both paths behave
+// identically (one source of truth for "raise a human"). This is a SERVICE action
+// — no marketing consent is required (the person asked for a human).
+// IMPORTANT: this does NOT silence the bot. The assistant stays available until a
+// human actually takes the conversation over (notify-lead/callbacks.ts flips
+// whatsapp_conversations.bot_enabled on takeover), so the customer is never
+// stranded waiting for a rep.
 async function createHandoffLead(contact: Row, inText: string, history: ChatTurn[]): Promise<boolean> {
   const transcript = history
     .slice(-4)
@@ -788,21 +791,14 @@ async function createHandoffLead(contact: Row, inText: string, history: ChatTurn
     status: "handed_off",
     ...(leadId ? { lead_id: leadId } : {}),
   });
-  // CRITICAL: also silence the BOT on this contact's open conversation. The
-  // takeover/relay gate reads botEnabled(convo) from whatsapp_conversations
-  // .bot_enabled — without flipping it the agent keeps answering the next turn as
-  // if no handoff happened (and inbound never relays to the team). Resolve the
-  // conversation the same way the inbound path does (contact._convId, set right
-  // after we resolve the open conversation); fall back to looking it up by
-  // contact_id when only the contact is in scope. Fail-soft (best-effort PATCH).
-  let convId: string | null = contact._convId ? String(contact._convId) : null;
-  if (!convId) {
-    const convo = await getOrCreateConversation(String(contact.id));
-    convId = convo?.id ? String(convo.id) : null;
-  }
-  if (convId) {
-    await pgPatch("whatsapp_conversations", `id=eq.${convId}`, { bot_enabled: false });
-  }
+  // The bot stays ALIVE on a mere rep-REQUEST. A rep-request creates the lead
+  // (→ Telegram card) and marks the contact handed_off, but it must NOT silence
+  // the agent — otherwise the customer is stranded while they wait for a human.
+  // The ACTUAL human takeover is what flips whatsapp_conversations.bot_enabled
+  // false: notify-lead/callbacks.ts does it when the owner taps "קבל שיחה" on the
+  // Telegram card (and hand-back restores it true). The inbound takeover gate
+  // (botEnabled(convo)) reads ONLY that column, so until the owner takes over the
+  // assistant keeps answering questions about the plans meanwhile.
   // pgInsert swallows the PostgREST error (returns falsy), so a blocked insert
   // (failed shape/rate-limit) would otherwise be invisible. Emit a persistent ops
   // signal so a failed handoff is observable. No PII: just whether a phone shape
@@ -823,9 +819,10 @@ async function createHandoffLead(contact: Row, inText: string, history: ChatTurn
 export function buildHandoffReply(ok: boolean): string {
   if (!ok) {
     // Insert blocked (e.g. per-phone rate limit) — still reassure the customer.
-    return `${COMMISSION_DISCLOSURE}\nאני כאן לכל שאלה 🙂 רשמתי שתרצה/י לדבר עם נציג — ננסה לחזור אליך בהקדם. בינתיים אפשר לשאול אותי כל דבר על המסלולים.`;
+    // Same contract: a human will get back, the assistant stays available meanwhile.
+    return `${COMMISSION_DISCLOSURE}\nרשמתי שתרצה/י לדבר עם נציג — נציג/ה אנושי/ת יחזור/תחזור אליך בהקדם 🙏 בינתיים אני כאן וזמין/ה לכל שאלה על המסלולים.`;
   }
-  return `${COMMISSION_DISCLOSURE}\nמעולה 🙌 נציג אנושי שלנו יחזור אליך כאן בוואטסאפ בהקדם. בינתיים אפשר להמשיך לשאול אותי כל דבר על המסלולים והמחירים.`;
+  return `${COMMISSION_DISCLOSURE}\nנציג/ה אנושי/ת יחזור/תחזור אליך בהקדם 🙏 בינתיים אני כאן וזמין/ה לכל שאלה על המסלולים.`;
 }
 
 async function handleHandoff(contact: Row, inText: string, history: ChatTurn[]): Promise<string> {

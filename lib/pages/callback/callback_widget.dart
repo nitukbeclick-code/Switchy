@@ -512,12 +512,12 @@ class _CallbackWidgetState extends State<CallbackWidget> {
                   Container(
                     width: 120, height: 120,
                     decoration: BoxDecoration(color: ffTheme.brandAccent.withValues(alpha: 0.10), shape: BoxShape.circle),
-                  ).animate().scale(begin: const Offset(0.85, 0.85), end: const Offset(1, 1), duration: 500.ms, curve: Curves.easeOut),
+                  ).animate().scale(begin: const Offset(0.85, 0.85), end: const Offset(1, 1), duration: 400.ms, curve: Curves.easeOut),
                   Container(
                     width: 92, height: 92,
                     decoration: BoxDecoration(color: ffTheme.brandAccentTint, shape: BoxShape.circle),
                     child: Icon(Icons.phone_in_talk_rounded, color: ffTheme.brandAccent, size: 46),
-                  ).animate().scale(duration: 600.ms, curve: Curves.elasticOut),
+                  ).animate().scale(duration: 450.ms, curve: ffTheme.spring),
                   PositionedDirectional(
                     top: 4, end: 4,
                     child: ExcludeSemantics(child: Icon(Icons.auto_awesome, size: 16, color: ffTheme.saving)).animate(delay: 400.ms).fadeIn().slideY(begin: -0.5),

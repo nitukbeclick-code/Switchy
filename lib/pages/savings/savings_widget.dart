@@ -221,7 +221,7 @@ class _HeroFigure extends StatelessWidget {
       children: [
         TweenAnimationBuilder<int>(
           tween: IntTween(begin: reduceMotion ? total : 0, end: total),
-          duration: const Duration(milliseconds: 1400),
+          duration: const Duration(milliseconds: 1000),
           curve: Curves.easeOutCubic,
           builder: (_, value, __) => Text(
             hasBill ? '₪$value' : '₪—',

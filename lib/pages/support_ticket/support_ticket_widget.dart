@@ -969,7 +969,7 @@ class _TypingDots extends StatefulWidget {
 
 class _TypingDotsState extends State<_TypingDots> with SingleTickerProviderStateMixin {
   late final AnimationController _ctrl =
-      AnimationController(vsync: this, duration: const Duration(milliseconds: 1100))..repeat();
+      AnimationController(vsync: this, duration: const Duration(milliseconds: 800))..repeat();
 
   @override
   void dispose() {

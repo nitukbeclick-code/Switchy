@@ -342,7 +342,7 @@ class _AvailabilityWidgetState extends State<AvailabilityWidget> {
               SizedBox(
                 width: 64, height: 64,
                 child: CircularProgressIndicator(color: ffTheme.brandAccent, strokeWidth: 3),
-              ).animate(onPlay: (c) => c.repeat()).rotate(duration: 1200.ms),
+              ).animate(onPlay: (c) => c.repeat()).rotate(duration: 800.ms),
               ExcludeSemantics(child: Icon(Icons.cell_tower_rounded, size: 24, color: ffTheme.brandAccent)),
             ],
           ),

@@ -238,6 +238,61 @@ export default function sitemap(): MetadataRoute.Sitemap {
     },
   ];
 
+  // ── New static content + category-landing routes ───────────────────────────
+  // Editorial/company pages (about · how-it-works · faq · community). Indexable,
+  // self-canonical, low change frequency.
+  const content: MetadataRoute.Sitemap = [
+    "/about",
+    "/how-it-works",
+    "/faq",
+    "/community",
+  ].map((path) => ({
+    url: `${SITE_URL}${path}`,
+    lastModified: now,
+    changeFrequency: "monthly" as const,
+    priority: 0.6,
+  }));
+
+  // Catalogue-backed category landing pages — the "/plans" all-categories hub plus
+  // one per top-level category (cellular/internet/tv/triple/abroad). These mirror
+  // the static-site landing pages and render only real catalogue data, so they sit
+  // alongside the /compare/[category] hubs at a comparable priority.
+  const categoryLandings: MetadataRoute.Sitemap = [
+    "/plans",
+    "/cellular",
+    "/internet",
+    "/tv",
+    "/triple",
+    "/abroad",
+  ].map((path) => ({
+    url: `${SITE_URL}${path}`,
+    lastModified: now,
+    changeFrequency: "weekly" as const,
+    priority: 0.8,
+  }));
+
+  // Sub-category landing pages — narrower, high-intent catalogue slices
+  // (5G / budget / eSIM / mid-range / cellular+abroad, fiber-only / cable-only /
+  // giga internet, kosher plans, no-commitment plans). Each is self-canonical and
+  // catalogue-gated; a touch below the top-level category landings.
+  const subCategoryLandings: MetadataRoute.Sitemap = [
+    "/cellular-5g",
+    "/cellular-budget",
+    "/cellular-esim",
+    "/cellular-mid-range",
+    "/cellular-with-abroad",
+    "/internet-fiber-only",
+    "/internet-cable-only",
+    "/internet-giga",
+    "/kosher-plans",
+    "/plans-no-commitment",
+  ].map((path) => ({
+    url: `${SITE_URL}${path}`,
+    lastModified: now,
+    changeFrequency: "weekly" as const,
+    priority: 0.7,
+  }));
+
   // /guides (hub) + /guides/[slug] — the editorial authority layer (150 ported,
   // real articles). lastModified uses each article's genuine publish date so the
   // <lastmod> is truthful rather than a build-time stamp.
@@ -274,6 +329,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
     ...switchHub,
     ...switchProviders,
     ...switchKitAndStreet,
+    ...content,
+    ...categoryLandings,
+    ...subCategoryLandings,
     ...guidesHub,
     ...guides,
     ...authority,

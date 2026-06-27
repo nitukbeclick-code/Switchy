@@ -355,7 +355,7 @@ a:not([class]) { text-decoration: underline; text-underline-offset: 2px; text-de
 .btn--primary:focus-visible { box-shadow: inset 0 1px 0 rgba(255,255,255,.22), 0 10px 24px rgba(22,163,74,.32), var(--ring); }
 .btn--ghost:focus-visible { box-shadow: inset 0 0 0 1px var(--ink-200), var(--ring); }
 .btn--inverse:focus-visible { box-shadow: inset 0 1px 0 rgba(255,255,255,.6), var(--ring-value); }
-.btn--primary:active { transform: translateY(0) scale(.985); filter: brightness(.97); box-shadow: inset 0 2px 4px rgba(0,0,0,.18), 0 6px 14px rgba(22,163,74,.3); }
+.btn--primary:active { transform: translateY(0) scale(.97); filter: brightness(.97); box-shadow: inset 0 2px 4px rgba(0,0,0,.18), 0 6px 14px rgba(22,163,74,.3); }
 .btn--ghost { background: var(--mint); color: var(--green); box-shadow: inset 0 0 0 1px var(--line); }
 .btn--ghost:hover { background: #fff; transform: translateY(-2px); box-shadow: inset 0 0 0 1px var(--ink-200), var(--shadow-sm); }
 .btn--ghost:active { transform: translateY(0) scale(.985); }
@@ -418,7 +418,9 @@ a:not([class]) { text-decoration: underline; text-underline-offset: 2px; text-de
 .nav__cta { margin-inline-start: 6px; padding: 9px 16px; font-size: 14px; border-radius: 12px;
   box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 4px 12px rgba(22,163,74,.24); }
 .nav__wa { display:flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:50%;background:#25d366;color:#fff;flex-shrink:0;transition:transform .15s,box-shadow .15s; }
-.nav__wa:hover { transform:scale(1.1);box-shadow:0 4px 14px rgba(37,211,102,.4); }
+@media (hover: hover) and (pointer: fine) {
+  .nav__wa:hover { transform:scale(1.1);box-shadow:0 4px 14px rgba(37,211,102,.4); }
+}
 .nav__wa svg { width:20px;height:20px; }
 .nav__zoom-link { display:flex;align-items:center;gap:4px; }
 .nav__zoom-icon { width:14px;height:14px;flex-shrink:0; }
@@ -545,7 +547,7 @@ a:not([class]) { text-decoration: underline; text-underline-offset: 2px; text-de
 .phone {
   width: 290px; background: linear-gradient(155deg, #1b232f, #000); border-radius: 42px; padding: 14px;
   box-shadow: var(--shadow-lg), inset 0 0 0 1.5px rgba(255,255,255,.08);
-  position: relative; animation: float 6s ease-in-out infinite;
+  position: relative; animation: float 4.5s ease-in-out infinite;
 }
 /* Soft specular highlight raking across the phone glass. */
 .phone::before {
@@ -556,7 +558,7 @@ a:not([class]) { text-decoration: underline; text-underline-offset: 2px; text-de
 .phone::after {
   content: ""; position: absolute; left: 12%; right: 12%; bottom: -34px; height: 44px; z-index: -1;
   background: radial-gradient(closest-side, rgba(17,24,39,.22), transparent 78%);
-  filter: blur(2px); animation: floatShadow 6s ease-in-out infinite;
+  filter: blur(2px); animation: floatShadow 4.5s ease-in-out infinite;
 }
 .phone__notch { width: 120px; height: 22px; background: #000; border-radius: 0 0 14px 14px; margin: 0 auto 8px; }
 .phone__screen { background: var(--cream); border-radius: 28px; padding: 16px; display: grid; gap: 12px; }
@@ -623,7 +625,7 @@ a.chip:hover { transform: translateY(-2px); border-color: var(--green-2); box-sh
 .step { background: var(--cream); border: 1px solid var(--line); border-radius: var(--radius); padding: 28px 24px; position: relative; z-index: 1; }
 .section--alt .step { background: var(--cream); }
 .step { box-shadow: var(--shadow-sm); transition: transform .2s var(--ease), box-shadow .2s; }
-.step:hover { transform: translateY(-4px); box-shadow: var(--shadow); }
+/* .step:hover lift moved under @media (hover:hover) and (pointer:fine) — see card-hover block */
 .step__num { position: relative; width: 44px; height: 44px; display: grid; place-items: center; background: linear-gradient(140deg, var(--accent), var(--accent-d)); color: #fff; font-family: 'Rubik'; font-weight: 800; border-radius: 14px; font-size: 19px; margin-bottom: 16px; box-shadow: var(--glint), 0 6px 16px rgba(22,163,74,.32); }
 @media (max-width: 900px) { .steps::before { display: none; } }
 .step h3 { font-size: 19px; color: var(--green-d); margin-bottom: 8px; }
@@ -633,7 +635,7 @@ a.chip:hover { transform: translateY(-2px); border-color: var(--green-2); box-sh
 .cats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; }
 .cat { background: var(--cream); border: 1px solid var(--line); border-radius: var(--radius); padding: 26px 16px; text-align: center; transition: transform .2s var(--ease), box-shadow .2s; }
 .section--alt .cat { background: var(--cream); }
-.cat:hover { transform: translateY(-5px); box-shadow: var(--shadow); }
+/* .cat:hover lift moved under @media (hover:hover) and (pointer:fine) — see card-hover block */
 .cat:focus-visible { transform: translateY(-5px); box-shadow: var(--ring), var(--shadow); border-color: var(--accent); }
 .cat:focus-visible .cat__go { opacity: 1; }
 .cat { display: block; color: inherit; }
@@ -676,7 +678,7 @@ a.chip:hover { transform: translateY(-2px); border-color: var(--green-2); box-sh
 .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
 .feature { background: rgba(255,255,255,.66); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border: 1px solid rgba(255,255,255,.6); border-radius: var(--radius); padding: 26px; box-shadow: var(--shadow-sm); transition: transform .2s var(--ease), box-shadow .2s; }
 @supports not ((backdrop-filter: blur(14px)) or (-webkit-backdrop-filter: blur(14px))) { .feature { background: #fff; } }
-.feature:hover { transform: translateY(-4px); box-shadow: var(--shadow); }
+/* .feature:hover lift moved under @media (hover:hover) and (pointer:fine) — see card-hover block */
 .feature__icon { font-size: 30px; display: grid; place-items: center; width: 56px; height: 56px; background: var(--mint); border-radius: 16px; margin-bottom: 16px; }
 .feature h3 { font-size: 18px; color: var(--green-d); margin-bottom: 6px; }
 .feature p { color: var(--muted); }
@@ -921,7 +923,7 @@ body:has(.sticky-cta.is-visible) .wa-fab { bottom: 76px; }
 .guide-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
 .guide-card { background: rgba(255,255,255,.66); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border: 1px solid rgba(255,255,255,.6); border-radius: var(--radius); padding: 24px; box-shadow: 0 3px 10px rgba(15,27,34,.03); transition: transform .2s var(--ease), box-shadow .2s; display: flex; flex-direction: column; }
 @supports not ((backdrop-filter: blur(14px)) or (-webkit-backdrop-filter: blur(14px))) { .guide-card { background: #fff; } }
-.guide-card:hover { transform: translateY(-4px); box-shadow: var(--shadow); }
+/* .guide-card:hover lift moved under @media (hover:hover) and (pointer:fine) — see card-hover block */
 /* The whole card is an <a> — give it the focus ring + the same lift as hover. */
 .guide-card:focus-visible { box-shadow: var(--ring), var(--shadow); border-color: var(--accent); transform: translateY(-4px); }
 .guide-card .tag-cat { align-self: flex-start; background: var(--accent-t); color: var(--accent-ink); font-weight: 700; font-size: 12px; padding: 4px 11px; border-radius: 999px; margin-bottom: 14px; letter-spacing: .01em; transition: background .18s, color .18s; }
@@ -946,7 +948,7 @@ body:has(.sticky-cta.is-visible) .wa-fab { bottom: 76px; }
 @media (max-width: 560px) { .plan-grid--featured { grid-template-columns: 1fr; } }
 .plan { background: rgba(255,255,255,.7); backdrop-filter: blur(16px) saturate(130%); -webkit-backdrop-filter: blur(16px) saturate(130%); border: 1px solid rgba(255,255,255,.65); border-radius: 18px; padding: 16px; display: flex; flex-direction: column; box-shadow: var(--shadow-sm); transition: box-shadow .22s var(--ease), transform .22s var(--ease), border-color .18s; }
 @supports not ((backdrop-filter: blur(14px)) or (-webkit-backdrop-filter: blur(14px))) { .plan { background: #fff; } }
-.plan:hover { transform: translateY(-4px); box-shadow: var(--shadow); }
+/* .plan:hover lift moved under @media (hover:hover) and (pointer:fine) — see card-hover block */
 /* Keyboard parity — tabbing into a card's link lifts it like a hover, with a
    ring so the whole card is the visible focus target (its inner link's own
    ring would be lost against the glass). */
@@ -962,7 +964,7 @@ body:has(.sticky-cta.is-visible) .wa-fab { bottom: 76px; }
 .plogo--img img { width: 100%; height: 100%; object-fit: contain; padding: 4px; display: block; }
 .provider-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; }
 .provider-card { background: var(--white); border: 1px solid var(--line); border-radius: 18px; padding: 18px; display: flex; align-items: center; gap: 12px; box-shadow: var(--shadow-sm); transition: transform .2s var(--ease), box-shadow .2s; }
-.provider-card:hover { transform: translateY(-3px); box-shadow: var(--shadow); }
+/* .provider-card:hover lift moved under @media (hover:hover) and (pointer:fine) — see card-hover block */
 .provider-card:focus-visible, .provider-card:focus-within { transform: translateY(-3px); box-shadow: var(--ring), var(--shadow); border-color: var(--accent); }
 .provider-card b { font-family: 'Rubik'; color: var(--green-d); font-size: 16px; display: block; }
 .provider-card small { color: var(--muted); font-size: 13px; display: block; }
@@ -1138,7 +1140,7 @@ input[type="number"].filter-search::-webkit-inner-spin-button { -webkit-appearan
 }
 
 /* ── Scroll reveal ───────────────────────────────────────────────────── */
-.reveal { opacity: 0; transform: translateY(22px); transition: opacity .6s var(--ease), transform .6s var(--ease); }
+.reveal { opacity: 0; transform: translateY(22px); transition: opacity .4s var(--ease), transform .4s var(--ease); }
 .reveal.in { opacity: 1; transform: none; }
 @media (prefers-reduced-motion: reduce) {
   .reveal { opacity: 1; transform: none; transition: none; }
@@ -1247,7 +1249,7 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
   background: radial-gradient(220px circle at var(--mx, 50%) var(--my, 0%), rgba(17,24,39,.06), transparent 60%);
   opacity: 0; transition: opacity .3s var(--ease);
 }
-.feature:hover::after, .step:hover::after, .cat:hover::after, .guide-card:hover::after, .plan:hover::after, .provider-card:hover::after { opacity: 1; }
+/* Spotlight reveal-on-hover moved under @media (hover:hover) and (pointer:fine) — see card-hover block */
 .feature, .step, .cat, .guide-card, .plan, .provider-card {
   /* Glass-glint (1px top-edge light) + elevation — the signature card surface. */
   box-shadow: var(--glint), var(--shadow-sm);
@@ -1259,6 +1261,20 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
 .feature:hover, .step:hover, .cat:hover, .guide-card:hover, .plan:hover, .provider-card:hover {
   border-color: var(--ink-200);
   will-change: transform;
+}
+
+/* ── Card hover-lift + spotlight — pointer-only ──────────────────────────────
+   Gated behind (hover:hover) and (pointer:fine) so touch devices never fire a
+   sticky :hover transform/spotlight on tap (the "touch-hover false positive").
+   Keyboard :focus-visible / :focus-within parity lifts stay device-agnostic. */
+@media (hover: hover) and (pointer: fine) {
+  .step:hover { transform: translateY(-4px); box-shadow: var(--shadow); }
+  .cat:hover { transform: translateY(-5px); box-shadow: var(--shadow); }
+  .feature:hover { transform: translateY(-4px); box-shadow: var(--shadow); }
+  .guide-card:hover { transform: translateY(-4px); box-shadow: var(--shadow); }
+  .plan:hover { transform: translateY(-4px); box-shadow: var(--shadow); }
+  .provider-card:hover { transform: translateY(-3px); box-shadow: var(--shadow); }
+  .feature:hover::after, .step:hover::after, .cat:hover::after, .guide-card:hover::after, .plan:hover::after, .provider-card:hover::after { opacity: 1; }
 }
 
 /* ── Staggered reveals ──────────────────────────────────────────────────────
@@ -1437,6 +1453,9 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
 .toast__close { margin-inline-start: 6px; background: none; border: 0; color: rgba(255,255,255,.7); font-size: 18px; line-height: 1; cursor: pointer; padding: 2px 4px; border-radius: 6px; }
 .toast__close:hover { color: #fff; }
 .toast__close:focus-visible { box-shadow: var(--ring); }
+@media (prefers-reduced-motion: reduce) {
+  .toast, .toast.is-in, .toast.is-out { transition: none; }
+}
 
 /* ── Field error ───────────────────────────────────────────────────────────
    Invalid inputs get a red rim + a small message. Driven by aria-invalid so
@@ -1522,6 +1541,10 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
 .skeleton--block { min-height: 120px; border-radius: var(--radius); }
 .skeleton--circle { border-radius: 50%; width: 40px; height: 40px; }
 @keyframes skeleton-sweep { 100% { transform: translateX(100%); } }
+@media (prefers-reduced-motion: reduce) {
+  .skeleton { animation: none; opacity: .7; }
+  .skeleton::after { animation: none; }
+}
 
 /* ── Advisor (multi-step card) ─────────────────────────────────────────────
    A guided question card (the plan-advisor flow). Steps stack; only the active
@@ -1771,24 +1794,61 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
   background: var(--white); border: 1px solid var(--line); border-radius: var(--radius);
   padding: 28px; box-shadow: var(--shadow);
 }
-.booking__group { margin-bottom: 22px; }
-.booking__group:last-of-type { margin-bottom: 0; }
-.booking__label {
-  display: block; font-family: 'Rubik', sans-serif; font-weight: 700; font-size: 14px;
-  color: var(--green-d); margin-bottom: 10px;
+
+/* Form layout — one vertical stack of fields with comfortable, even rhythm.
+   `.booking__row` lays two fields side-by-side on desktop and stacks them on
+   mobile (see the breakpoint below). */
+.booking__form { display: grid; gap: 18px; }
+.booking__row {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start;
 }
-.booking__label .req { color: var(--accent-ink); font-weight: 800; }
-.booking__hint { color: var(--muted); font-size: 13px; margin: -4px 0 10px; }
+
+/* Field = a label that wraps its own control. The label text sits above the
+   input; the input fills the field. Bare <input>/<select> inside a field get
+   the shared control styling so name/phone/email/date all match exactly. */
+.booking__field {
+  display: flex; flex-direction: column; gap: 8px; min-width: 0;
+  font-family: 'Rubik', sans-serif; font-weight: 700; font-size: 14px; color: var(--green-d);
+}
+.booking__field-label {
+  font-family: 'Rubik', sans-serif; font-weight: 700; font-size: 14px; color: var(--green-d);
+}
+.booking__field input,
+.booking__field select {
+  width: 100%; min-height: 48px; padding: 12px 16px;
+  border: 1px solid var(--line); border-radius: var(--radius-sm);
+  font-family: 'Assistant', sans-serif; font-weight: 500; font-size: 16px;
+  background: var(--white); color: var(--ink);
+  transition: border-color .15s, box-shadow .15s, background .15s;
+}
+.booking__field input::placeholder { color: var(--ink-400); font-weight: 400; }
+.booking__field input:hover,
+.booking__field select:hover { border-color: var(--ink-300); }
+.booking__field input:focus-visible,
+.booking__field select:focus-visible { outline: none; box-shadow: var(--ring); border-color: var(--accent); }
+.booking__field input[aria-invalid="true"],
+.booking__field select[aria-invalid="true"] { border-color: var(--error); }
+.booking__field select { cursor: pointer; appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, var(--ink-400) 50%), linear-gradient(135deg, var(--ink-400) 50%, transparent 50%);
+  background-position: left 18px center, left 13px center;
+  background-size: 5px 5px, 5px 5px; background-repeat: no-repeat;
+  padding-inline-start: 38px;
+}
 
 /* Provider chips — selectable; chosen = green ACTION. The rendered button class
    is `.booking__provider` (build.js/script.js); `.provider-pick` is kept as a
    forward-compat alias so both carry the focus ring + the pressed (green) state. */
-.booking__providers { display: flex; flex-wrap: wrap; gap: 8px; }
+.booking__providers { border: 0; padding: 0; margin: 0; min-width: 0; }
+.booking__providers legend {
+  font-family: 'Rubik', sans-serif; font-weight: 700; font-size: 14px;
+  color: var(--green-d); margin-bottom: 10px; padding: 0;
+}
+.booking__providers-grid { display: flex; flex-wrap: wrap; gap: 8px; }
 .booking__providers .provider-pick,
 .booking__providers-grid .booking__provider,
 .booking__providers .booking__provider {
   font-family: 'Rubik', sans-serif; font-weight: 700; font-size: 14px;
-  padding: 9px 16px; min-height: 44px; display: inline-flex; align-items: center;
+  gap: 8px; padding: 9px 16px; min-height: 44px; display: inline-flex; align-items: center;
   background: var(--cream); border: 1px solid var(--line); color: var(--green-d);
   border-radius: 999px; cursor: pointer;
   transition: background .15s, color .15s, border-color .15s, transform .15s var(--ease-spring), box-shadow .18s;
@@ -1807,16 +1867,6 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
   box-shadow: inset 0 1px 0 rgba(255,255,255,.18), 0 4px 12px rgba(22,163,74,.24);
 }
 
-/* Date row — native date picker styled like the filter fields. */
-.booking__date {
-  width: 100%; min-height: 46px; padding: 11px 16px;
-  border: 1px solid var(--line); border-radius: 14px;
-  font-family: 'Assistant', sans-serif; font-size: 16px; background: var(--white); color: var(--ink);
-  transition: border-color .15s, box-shadow .15s;
-}
-.booking__date:hover { border-color: var(--ink-300); }
-.booking__date:focus-visible { outline: none; box-shadow: var(--ring); border-color: var(--accent); }
-
 /* Slot grid — responsive grid of 30-min time buttons. Chosen = green; taken or
    out-of-window slots render disabled. */
 .slot-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(82px, 1fr)); gap: 8px; }
@@ -1824,7 +1874,7 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
   font-family: 'Rubik', sans-serif; font-weight: 700; font-size: 14px;
   min-height: 44px; padding: 10px 8px; text-align: center;
   background: var(--cream); border: 1px solid var(--line); color: var(--green-d);
-  border-radius: 12px; cursor: pointer;
+  border-radius: var(--radius-xs); cursor: pointer;
   transition: background .15s, color .15s, border-color .15s, transform .15s var(--ease-spring), box-shadow .18s;
 }
 .slot:hover { transform: translateY(-1px); border-color: var(--accent); box-shadow: var(--shadow-sm); }
@@ -1840,20 +1890,10 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
   border-color: var(--line); text-decoration: line-through;
   transform: none !important; box-shadow: none !important;
 }
-/* Empty slot-grid message (no date picked / no slots for the day). */
-.slot-grid__empty { grid-column: 1 / -1; color: var(--muted); font-size: 13.5px; padding: 12px 4px; }
-
-/* Contact fields — reuse the .field / .field-error contract already in the system. */
-.booking__fields { display: grid; gap: 14px; }
-.booking__input {
-  width: 100%; min-height: 46px; padding: 12px 16px;
-  border: 1px solid var(--line); border-radius: 14px;
-  font-family: 'Assistant', sans-serif; font-size: 16px; background: var(--white); color: var(--ink);
-  transition: border-color .15s, box-shadow .15s;
-}
-.booking__input::placeholder { color: var(--ink-400); }
-.booking__input:hover { border-color: var(--ink-300); }
-.booking__input:focus-visible { outline: none; box-shadow: var(--ring); border-color: var(--accent); }
+/* The "pick a date / no slots" hints render as a .booking__note inside the grid;
+   span the full width and breathe, so they don't look like a stray broken cell. */
+.slot-grid .booking__note,
+.slot-grid__empty { grid-column: 1 / -1; color: var(--muted); font-size: 13.5px; margin: 0; padding: 12px 4px; text-align: start; }
 
 /* Consent block — mandatory terms/privacy + optional marketing. Native checkbox
    tinted to the ACTION colour; rows read as quiet, legible fine print. */
@@ -1917,6 +1957,8 @@ a, button, summary, input, select, label, .btn, .chip, .ai-chip, [role="button"]
 
 @media (max-width: 560px) {
   .booking { padding: 20px; }
+  .booking__row { grid-template-columns: 1fr; gap: 18px; }
+  .booking__form #bookSubmit { width: 100%; }
   .community__join { padding: 16px; }
   .reply { margin-inline-start: 10px; }
   .slot-grid { grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 6px; }

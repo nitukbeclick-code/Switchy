@@ -253,7 +253,7 @@ class _HomeWidgetState extends State<HomeWidget> {
                     ],
                   ),
                 ),
-              ).animate().slideY(begin: 1, end: 0, duration: 300.ms, curve: Curves.easeOutCubic),
+              ).animate().slideY(begin: 1, end: 0, duration: 250.ms, curve: Curves.easeOutCubic),
             ),
         ],
       ),
@@ -376,7 +376,7 @@ class _HomeWidgetState extends State<HomeWidget> {
               ),
             ],
           ),
-        ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.1, end: 0),
+        ).animate().fadeIn(duration: 320.ms).slideY(begin: -0.1, end: 0, curve: Curves.easeOutCubic),
       ),
     );
   }

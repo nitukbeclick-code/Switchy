@@ -159,7 +159,7 @@ class AccountWidget extends StatelessWidget {
                       ],
                     ),
                   ),
-                  ).animate().scale(begin: const Offset(0.97, 0.97), delay: 100.ms, duration: 400.ms),
+                  ).animate().scale(begin: const Offset(0.95, 0.95), delay: 100.ms, duration: 300.ms),
 
                   const SizedBox(height: 16),
 

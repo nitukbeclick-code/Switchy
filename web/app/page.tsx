@@ -11,6 +11,10 @@ import LeadForm from "@/components/LeadFormLazy";
 import SmartTimer from "@/components/SmartTimerLazy";
 import TrackedCtaLink from "@/components/TrackedCtaLink";
 import HeroVideo from "@/components/HeroVideo";
+import { ProviderLogo } from "@/components/ProviderLogo";
+import { AiToolsShowcase } from "@/components/AiToolsShowcase";
+import { HowItWorks } from "@/components/HowItWorks";
+import { FaqAccordion, type FaqItem } from "@/components/FaqAccordion";
 import {
   getCategories,
   getProviders,
@@ -20,10 +24,18 @@ import {
   getCities,
   CATEGORY_HE,
 } from "@/lib/data";
+import { getGuides } from "@/lib/guides";
 import { itemListSchema, faqPageSchema } from "@/lib/schema";
 import { pageMetadata } from "@/lib/seo";
 import { GENERAL_FAQ } from "@/lib/faq";
 import { ils } from "@/lib/format";
+
+// GENERAL_FAQ items are {question, answer} (QA); <FaqAccordion> renders {q, a}.
+// Map them here so the SAME canonical home FAQ copy drives both the visible
+// accordion and the FAQPage JSON-LD (which consumes the QA shape directly).
+function faqItems(qas: typeof GENERAL_FAQ): FaqItem[] {
+  return qas.map((qa) => ({ q: qa.question, a: qa.answer }));
+}
 
 export const metadata: Metadata = pageMetadata({
   title: "השוואת מסלולי תקשורת בישראל — חינם",
@@ -57,6 +69,9 @@ export default function Home() {
 
   // City quick-links into the geo compare pages (a representative sample).
   const cities = getCities().slice(0, 12);
+
+  // Real guide count for the guides feature CTA (no fabricated figure).
+  const guideCount = getGuides().length;
 
   const summaryText =
     `Switchy AI הוא שירות חינמי להשוואת מסלולי תקשורת בישראל. ` +
@@ -190,6 +205,38 @@ export default function Home() {
         />
       </div>
 
+      {/* ── Provider logo strip (trust band) ──────────────────────────────────
+          A horizontal wrap of EVERY real carrier mark in the catalogue, via the
+          shared <ProviderLogo> (real bundled logo, else the carrier's own
+          brand-colored monogram — NEVER recolored to the app accent). It signals
+          coverage with truth-only data: the marks are the same providers counted
+          in TrustSignals above, each a link into its provider page (no
+          dead-ends). Decorative marks are aria-hidden; the provider name beside
+          each carries the label, so the row is fully readable to AT and AA.
+          Motion reuses the page `.sw-reveal` entrance + `.sw-lift` hover. ───── */}
+      <section aria-labelledby="carriers-h" className="mt-10">
+        <h2 id="carriers-h" className="sr-only">
+          הספקים שאנו משווים
+        </h2>
+        <p className="text-center text-sm text-muted">
+          משווים את כל ספקי התקשורת בישראל — במקום אחד
+        </p>
+        <ul className="mt-5 flex flex-wrap items-center justify-center gap-2.5">
+          {providers.map((p, i) => (
+            <li key={p.slug}>
+              <Link
+                href={`/providers/${p.slug}`}
+                className="sw-reveal sw-lift interactive press inline-flex items-center gap-2 rounded-full border border-border/60 bg-surface py-1.5 pe-3.5 ps-1.5 text-sm text-foreground hover:border-accent/50 hover:text-accent hover:shadow-soft"
+                style={{ animationDelay: `${Math.min(i * 40, 280)}ms` }}
+              >
+                <ProviderLogo provider={p.name} size={28} rounded="full" />
+                <span className="font-medium">{p.name}</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </section>
+
       {/* ── Value props ───────────────────────────────────────────────────── */}
       <section
         aria-label="למה להשוות איתנו"
@@ -226,6 +273,13 @@ export default function Home() {
         ))}
       </section>
 
+      {/* ── How it works (shared 3-step explainer) ────────────────────────────
+          The canonical compare → choose → switch-with-consent strip, single
+          source of truth shared with /how-it-works (so the copy can't drift). It
+          renders its own heading/intro + the staggered `.sw-reveal` step cards;
+          truth-only (no figures, just the service's real promises). ────────── */}
+      <HowItWorks className="mt-16" />
+
       {/* ── Category cards ────────────────────────────────────────────────── */}
       <section aria-labelledby="cats-h" className="mt-16">
         <h2
@@ -256,6 +310,13 @@ export default function Home() {
           })}
         </ul>
       </section>
+
+      {/* ── AI tools showcase ─────────────────────────────────────────────────
+          A mobile-first card grid into the app's REAL first-party tools (bill
+          analysis, matching quiz, switch kit, negotiation, referral) — each
+          links to its existing on-site route. Renders its own heading + intro;
+          truth-only qualitative copy, no carrier marks (first-party tools). ── */}
+      <AiToolsShowcase className="mt-16" />
 
       {/* ── AI summary (GEO answer box) ───────────────────────────────────── */}
       <div className="mt-14">
@@ -352,6 +413,35 @@ export default function Home() {
         </div>
       </section>
 
+      {/* ── Guides feature ────────────────────────────────────────────────────
+          Routes high-intent readers into the /guides hub. The count is REAL
+          (getGuides().length) — no fabricated figure. A single bento panel with
+          the page's `.sw-lift` CTA, mobile-first and RTL. ──────────────────── */}
+      <section aria-labelledby="guides-h" className="mt-16">
+        <div className="bento p-6 sm:p-9">
+          <p className="text-xs font-semibold uppercase tracking-wide text-accent-text">
+            ידע שמוביל לחיסכון
+          </p>
+          <h2
+            id="guides-h"
+            className="mt-2 font-display text-2xl font-bold tracking-tight text-ink"
+          >
+            מדריכים — איך לעבור ספק ולחסוך
+          </h2>
+          <p className="mt-3 max-w-2xl leading-relaxed text-foreground">
+            {guideCount} מדריכים בעברית: איך עוברים ספק, בוחרים מסלול סלולר,
+            אינטרנט או טלוויזיה, ומבינים בדיוק על מה משלמים — שלב אחר שלב, בלי
+            ז׳רגון.
+          </p>
+          <Link
+            href="/guides"
+            className="interactive press sw-lift mt-6 inline-block rounded-xl bg-accent px-5 py-2.5 font-medium text-accent-contrast shadow-soft hover:bg-accent-hover hover:shadow-float hover:shadow-accent/20"
+          >
+            לכל המדריכים ←
+          </Link>
+        </div>
+      </section>
+
       {/* ── City quick-links (geo compare pages) ──────────────────────────── */}
       {cities.length > 0 && (
         <section aria-labelledby="cities-h" className="mt-16">
@@ -403,6 +493,25 @@ export default function Home() {
         >
           לכל מסלולי ה{CATEGORY_HE[featuredCat] ?? featuredCat} ←
         </Link>
+      </section>
+
+      {/* ── FAQ (visible, backs the FAQPage JSON-LD above) ────────────────────
+          The same canonical GENERAL_FAQ set already emitted as faqPageSchema at
+          the top of the page, now rendered visibly via <FaqAccordion> (native
+          <details>, zero JS, RTL, AA). Mapped QA→FaqItem ({q,a}); answering the
+          real objections right before the lead hand-off. Truth-only copy. ───── */}
+      <section aria-labelledby="faq-h" className="mt-20">
+        <h2
+          id="faq-h"
+          className="font-display text-2xl font-bold tracking-tight text-ink"
+        >
+          שאלות נפוצות
+        </h2>
+        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">
+          כל מה שצריך לדעת לפני שמשווים ועוברים — חינם, בלי התחייבות ובלי פנייה לא
+          מבוקשת.
+        </p>
+        <FaqAccordion items={faqItems(GENERAL_FAQ)} className="mt-6" />
       </section>
 
       {/* ── Lead form ─────────────────────────────────────────────────────── */}

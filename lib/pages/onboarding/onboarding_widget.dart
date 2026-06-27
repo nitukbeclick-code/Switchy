@@ -23,7 +23,7 @@ class _OnboardingWidgetState extends State<OnboardingWidget> {
     if (_animating) return;
     if (_page < 2) {
       _animating = true;
-      _controller.nextPage(duration: const Duration(milliseconds: 350), curve: Curves.easeInOut);
+      _controller.nextPage(duration: const Duration(milliseconds: 350), curve: AppTheme.of(context).easeDrawer);
     } else {
       AppState().markOnboardingSeen();
       context.goNamed('Auth');

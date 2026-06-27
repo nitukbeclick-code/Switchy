@@ -40,13 +40,27 @@ export interface SiteFooterProps {
 /** Default footer columns — real internal routes, plus the authority hubs. */
 const DEFAULT_COLUMNS: FooterColumn[] = [
   {
+    // Compare-category hubs → the dynamic /compare/[service] routes (real,
+    // indexable service slugs: cellular, internet, tv, triple, abroad).
     title: "השוואת מסלולים",
     links: [
+      { href: "/plans", label: "כל המסלולים" },
       { href: "/compare/cellular", label: "סלולר" },
       { href: "/compare/internet", label: "אינטרנט" },
       { href: "/compare/tv", label: "טלוויזיה" },
       { href: "/compare/triple", label: "חבילה משולבת" },
       { href: "/compare/abroad", label: "חבילות חו״ל" },
+    ],
+  },
+  {
+    title: "מסלולים פופולריים",
+    links: [
+      { href: "/cellular-5g", label: "מסלולי 5G" },
+      { href: "/cellular-budget", label: "סלולר זול" },
+      { href: "/cellular-esim", label: "eSIM" },
+      { href: "/internet-fiber-only", label: "סיב אופטי" },
+      { href: "/kosher-plans", label: "מסלולים כשרים" },
+      { href: "/plans-no-commitment", label: "ללא התחייבות" },
     ],
   },
   {
@@ -63,8 +77,11 @@ const DEFAULT_COLUMNS: FooterColumn[] = [
     title: "השירות",
     links: [
       { href: "/", label: "דף הבית" },
+      { href: "/about", label: "אודות" },
+      { href: "/how-it-works", label: "איך זה עובד" },
+      { href: "/faq", label: "שאלות נפוצות" },
+      { href: "/community", label: "קהילה" },
       { href: "/bills", label: "צילום חשבון" },
-      { href: "/transparency", label: "איך אנחנו ממליצים" },
     ],
   },
   {
@@ -97,7 +114,7 @@ export default function SiteFooter({ columns, className }: SiteFooterProps) {
         .trim()}
     >
       <div className="mx-auto w-full max-w-5xl px-4 py-12 sm:px-6 md:py-16">
-        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
           {/* Brand identity. */}
           <div className="lg:col-span-1">
             <p className="font-display text-lg font-bold tracking-tight text-ink">

@@ -12,7 +12,7 @@ import { NextRequest, NextResponse } from "next/server";
 // requests to the static origin: Vercel fetches the static page server-side and
 // returns it under switchy-ai.com, so the user never sees the proxy hop. The
 // static site uses root-relative assets (styles.css, script.js, assets/*), so
-// every follow-up asset request re-enters this middleware on switchy-ai.com and
+// every follow-up asset request re-enters this proxy on switchy-ai.com and
 // is rewritten the same way → the whole static page loads transparently.
 //
 // `Vary: User-Agent` tells Vercel's CDN to cache desktop and mobile responses
@@ -37,7 +37,7 @@ function isMobileUA(ua: string): boolean {
   return ua.length > 0 && MOBILE_UA.test(ua);
 }
 
-export function middleware(request: NextRequest): NextResponse {
+export function proxy(request: NextRequest): NextResponse {
   const ua = request.headers.get("user-agent") ?? "";
 
   // Phone/tablet → stay on the Next.js app. No rewrite; just mark the response

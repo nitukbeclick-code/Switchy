@@ -811,8 +811,11 @@ class _CompareTableState extends State<_CompareTable> {
           ),
         ),
 
-        // Features comparison
-        if (plans.any((p) => p.feats.isNotEmpty)) ...[
+        // Perks comparison ("מה כלול בכל מסלול"). Sourced from the truth-only
+        // [Plan.perksList] (web-parity), NOT raw feats — so the raw spec tokens
+        // (volume / minutes / speed / 5G) that already appear in their own
+        // price/spec rows are filtered out, and only the qualitative perks show.
+        if (plans.any((p) => p.perksList().isNotEmpty)) ...[
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
             child: Column(
@@ -832,7 +835,7 @@ class _CompareTableState extends State<_CompareTable> {
                     padding: const EdgeInsetsDirectional.only(start: 10),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: p.feats.map((f) => Padding(
+                      children: p.perksList().map((f) => Padding(
                         padding: const EdgeInsets.only(bottom: 6),
                         child: Row(
                           crossAxisAlignment: CrossAxisAlignment.start,

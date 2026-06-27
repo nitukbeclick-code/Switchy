@@ -34,30 +34,13 @@ import {
 } from "@/lib/schema";
 import { pageMetadata } from "@/lib/seo";
 import { GENERAL_FAQ } from "@/lib/faq";
-import {
-  ils,
-  leadCategory,
-  providerBrandColor,
-  providerInitials,
-} from "@/lib/format";
+import { ils, leadCategory } from "@/lib/format";
+import { ProviderLogo } from "@/components/ProviderLogo";
 import type { Plan } from "@/lib/types";
 
-// ── Provider avatar ──────────────────────────────────────────────────────────
-// A rounded monogram filled with the carrier's OWN brand color (from
-// {@link providerBrandColor}) — the real per-carrier hue, NOT the app accent, and
-// never recolored to the theme. White glyph for contrast on the saturated fill.
-// Decorative: the <h1> beside it carries the meaning → hidden from AT.
-function ProviderAvatar({ provider }: { provider: string }) {
-  return (
-    <span
-      aria-hidden="true"
-      className="inline-flex h-14 w-14 shrink-0 select-none items-center justify-center rounded-2xl text-xl font-bold leading-none text-white shadow-sm ring-1 ring-inset ring-black/10 sm:h-16 sm:w-16 sm:text-2xl"
-      style={{ backgroundColor: providerBrandColor(provider) }}
-    >
-      {providerInitials(provider)}
-    </span>
-  );
-}
+// ── Provider brand mark ──────────────────────────────────────────────────────
+// The shared <ProviderLogo> (real carrier logo, else a brand-colored monogram),
+// here at a 56px squircle anchoring the provider hero.
 
 // ISR: regenerate hourly so the live plan read (cheapest-plan answer, table,
 // AggregateOffer) reflects current DB prices, while serving instantly from the
@@ -358,7 +341,7 @@ export default async function ProviderPage({ params }: Params) {
             own hue, never the app theme), with an honest outbound link to the
             provider's REAL official site when one is verified. */}
         <div className="flex items-start gap-4">
-          <ProviderAvatar provider={provider.name} />
+          <ProviderLogo provider={provider.name} size={56} rounded="2xl" />
           <div className="min-w-0">
             <h1 className="font-display text-4xl font-bold tracking-tight text-ink sm:text-5xl">
               {provider.name}

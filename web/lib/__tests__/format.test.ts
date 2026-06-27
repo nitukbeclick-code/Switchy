@@ -6,7 +6,9 @@ import {
   leadCategory,
   providerBrandColor,
   providerInitials,
+  providerLogoFile,
 } from "@/lib/format";
+import { providerSlug } from "@/lib/data";
 import type { Plan } from "@/lib/types";
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -129,5 +131,28 @@ describe("providerInitials — avatar monogram", () => {
   it("is resilient to empty / whitespace input", () => {
     expect(providerInitials("")).toBe("?");
     expect(providerInitials("   ")).toBe("?");
+  });
+});
+
+describe("providerLogoFile", () => {
+  it("maps known carrier slugs to their bundled logo file (webp/svg/png)", () => {
+    expect(providerLogoFile("cellcom")).toBe("cellcom.webp");
+    expect(providerLogoFile("hot")).toBe("hot.svg");
+    expect(providerLogoFile("pelephone")).toBe("pelephone.svg");
+    expect(providerLogoFile("019mobile")).toBe("019mobile.webp");
+    expect(providerLogoFile("rami-levy")).toBe("rami-levy.webp");
+    expect(providerLogoFile("ccc")).toBe("ccc.png");
+  });
+
+  it("returns undefined for a slug with no bundled logo (→ avatar fallback)", () => {
+    expect(providerLogoFile("unknown-carrier")).toBeUndefined();
+    expect(providerLogoFile("")).toBeUndefined();
+  });
+
+  it("resolves real provider display names → slug → logo file end-to-end", () => {
+    expect(providerLogoFile(providerSlug("סלקום"))).toBe("cellcom.webp");
+    expect(providerLogoFile(providerSlug("גולן טלקום"))).toBe("golan.webp");
+    expect(providerLogoFile(providerSlug("הוט מובייל"))).toBe("hot-mobile.webp");
+    expect(providerLogoFile(providerSlug("019 מובייל"))).toBe("019mobile.webp");
   });
 });

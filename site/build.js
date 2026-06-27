@@ -56,6 +56,39 @@ const PLAN_COUNT = catalogue.plans.length;
 const PROVIDER_COUNT = new Set(catalogue.plans.map((p) => p.provider)).size;
 const CATEGORY_COUNT = new Set(catalogue.plans.map((p) => p.cat)).size;
 
+// ── Real catalogue freshness (single source of truth) ────────────────────────
+// The "data as of" date comes ONLY from the real catalogue: `catalogue.generated`
+// (the export timestamp) is authoritative; we never stamp a fabricated "today".
+// Mirrors web/lib/aeo.lastDataDate() — the genuine freshness of the prices, used
+// by the visible "מחירים עודכנו" badge, temporalCoverage, AggregateOffer and the
+// llms.txt/ai.txt feeds so every freshness signal agrees. If `generated` is ever
+// missing we fall back to the newest per-plan `updatedAt` month, then to today —
+// always a truthful "checked on" stamp, never an invented future date.
+const _catalogueDateSource = (() => {
+  if (catalogue.generated) {
+    const t = Date.parse(catalogue.generated);
+    if (!Number.isNaN(t)) return new Date(t);
+  }
+  // Fall back to the newest plan `updatedAt` (YYYY-MM) if no export timestamp.
+  let best = null;
+  for (const p of catalogue.plans) {
+    if (typeof p.updatedAt !== 'string') continue;
+    const t = Date.parse(p.updatedAt.length === 7 ? `${p.updatedAt}-01` : p.updatedAt);
+    if (Number.isNaN(t)) continue;
+    if (best == null || t > best) best = t;
+  }
+  return best != null ? new Date(best) : new Date();
+})();
+// ISO yyyy-mm-dd (e.g. "2026-06-21") — for <time>, lastmod, datePublished, feeds.
+const CATALOGUE_DATE_ISO = _catalogueDateSource.toISOString().slice(0, 10);
+// schema.org temporalCoverage month (e.g. "2026-06") — the real catalogue month.
+const CATALOGUE_MONTH = CATALOGUE_DATE_ISO.slice(0, 7);
+// Hebrew "DD.MM.YYYY" for the visible freshness badge — derived from the SAME date.
+const CATALOGUE_DATE_HE = (() => {
+  const [y, m, d] = CATALOGUE_DATE_ISO.split('-');
+  return `${d}.${m}.${y}`;
+})();
+
 // ── Monochrome SVG icon set ─────────────────────────────────────────────────
 // Formal brand uses line icons, not emoji (per UI/UX best practice + the
 // white-glass/black-ink identity). Icons inherit `currentColor`; sizing/colour
@@ -678,6 +711,21 @@ const OG_IMAGE_ALT = 'SWITCHY — השוואת מחירי תקשורת חכמה'
 // nodes are emitted in each page's @graph via siteGraphNodes() below.
 const ORG_ID = `${SITE}/#organization`;
 const WEBSITE_ID = `${SITE}/#website`;
+// The REAL telecom topics the brand demonstrably covers across its catalogue,
+// compare pages and guides — emitted as the Organization's `knowsAbout` so
+// knowledge graphs understand the entity's genuine area of expertise (E-E-A-T).
+// Each entry maps to a real on-site surface (a compare category or a guide
+// subject); nothing here is an invented competency. Mirrors web/lib/schema.ts
+// ORG_KNOWS_ABOUT so the desktop + mobile surfaces describe the same entity.
+const ORG_KNOWS_ABOUT = [
+  'השוואת מסלולי סלולר',
+  'השוואת מסלולי אינטרנט',
+  'השוואת מסלולי טלוויזיה',
+  'השוואת חבילות משולבות (Triple)',
+  'השוואת חבילות גלישה בחו״ל',
+  'מעבר ספק תקשורת',
+  'ניוד מספר טלפון',
+];
 const orgNode = {
   '@type': 'Organization',
   '@id': ORG_ID,
@@ -690,7 +738,10 @@ const orgNode = {
   image: OG_IMAGE,
   slogan: 'משווים, חוסכים, עוברים — בלי כאב ראש',
   description: 'השוואת מחירי תקשורת חכמה — סלולר, אינטרנט, טלוויזיה, חבילות וחו״ל.',
-  areaServed: 'IL',
+  // areaServed: Israel (the only market served); knowsAbout: only topics the
+  // site genuinely covers — no fake awards, ratings, sameAs profiles or founder.
+  areaServed: { '@type': 'Country', name: 'IL' },
+  knowsAbout: ORG_KNOWS_ABOUT,
   email: 'hello@chosech.co.il',
   contactPoint: {
     '@type': 'ContactPoint',
@@ -769,6 +820,41 @@ function plansItemListJsonLd(plans, listUrl, listName) {
   };
 }
 
+// A category/collection-scoped AggregateOffer: ONE structured "prices range from
+// ₪low to ₪high across N plans" node, in ILS, availability InStock — the formal,
+// machine-parseable companion to the visible plan ItemList for answer engines.
+// Mirrors web/lib/schema.ts categoryAggregateOfferSchema(). HONESTY: low/high/
+// offerCount are computed ONLY from the real priced plans handed in (the SAME
+// list the page renders), so the schema can never disagree with the page; plans
+// without a finite positive price are skipped (they can't honestly set a bound).
+// `temporalCoverage` is the REAL catalogue month (CATALOGUE_MONTH). Returns null
+// when no priced plan exists so callers omit it rather than emit an empty offer.
+function categoryAggregateOfferNode(plans, categoryLabel) {
+  const prices = plans
+    .map(offerPrice)
+    .filter((n) => typeof n === 'number' && Number.isFinite(n) && n > 0);
+  if (prices.length === 0) return null;
+  const node = {
+    '@type': 'AggregateOffer',
+    priceCurrency: 'ILS',
+    lowPrice: Math.min(...prices),
+    highPrice: Math.max(...prices),
+    offerCount: prices.length,
+    availability: 'https://schema.org/InStock',
+    temporalCoverage: CATALOGUE_MONTH,
+  };
+  if (categoryLabel) node.category = categoryLabel;
+  return node;
+}
+
+// Visible freshness badge — "מחירים עודכנו DD.MM.YYYY" from the REAL catalogue
+// date (CATALOGUE_DATE_HE, derived from catalogue.generated), with a machine-
+// readable <time datetime="YYYY-MM-DD">. Rendered on plan-driven templates
+// (category, collection, provider) so both humans and answer engines see the
+// genuine "data as of" stamp on every price listing — never a hardcoded "today".
+const freshnessBadge = () =>
+  `<p class="data-fresh" role="note" style="display:inline-flex;align-items:center;gap:7px;margin-top:10px;padding:5px 12px;border:1px solid color-mix(in srgb,currentColor 18%,transparent);border-radius:999px;font-size:.82rem;font-weight:600;opacity:.85"><span aria-hidden="true" style="width:7px;height:7px;border-radius:50%;background:#16a34a;box-shadow:0 0 0 3px color-mix(in srgb,#16a34a 22%,transparent)"></span>מחירים עודכנו <time datetime="${CATALOGUE_DATE_ISO}">${CATALOGUE_DATE_HE}</time></p>`;
+
 function jsonLd(c) {
   const url = `${SITE}/${c.slug}.html`;
   const faq = { '@type': 'FAQPage', mainEntity: c.faq.map(([q, a]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } })) };
@@ -782,10 +868,18 @@ function jsonLd(c) {
   // Site identity nodes are emitted in the page head; here we add the page's own
   // breadcrumb, FAQ, and a CollectionPage carrying the plan ItemList.
   const catPlans = plansByCat[c.slug] || [];
+  // temporalCoverage = the REAL catalogue month so engines read how fresh the
+  // listed prices are. The category-scoped AggregateOffer (real min/max/count) is
+  // emitted as its OWN top-level @graph node — the formal "prices range from ₪X to
+  // ₪Y across N plans" companion to the ItemList (matches the web app, where
+  // `offers` is NOT a valid CollectionPage property so the offer stands alone).
+  const aggOffer = categoryAggregateOfferNode(catPlans, c.name);
   const collection = { '@type': 'CollectionPage', name: c.title, description: c.desc, url, inLanguage: 'he-IL',
     isPartOf: { '@id': WEBSITE_ID }, publisher: { '@id': ORG_ID },
+    temporalCoverage: CATALOGUE_MONTH,
     ...(catPlans.length ? { mainEntity: plansItemListJsonLd(catPlans, url, `מסלולי ${c.name}`) } : {}) };
   const graph = [crumbs, collection, faq];
+  if (aggOffer) graph.push(aggOffer);
   return jsonForScript({ '@context': 'https://schema.org', '@graph': graph });
 }
 
@@ -967,7 +1061,7 @@ ${comparisonTable(catPlans, c.slug)}
 
     <section class="section" id="plans">
       <div class="container">
-        <header class="section__head reveal"><span class="eyebrow">${catPlans.length} מסלולים</span><h2>כל המסלולים — בפירוט מלא</h2><p>אותם מסלולים כמו בטבלה, עם כל הפרטים וכפתור פנייה ישיר.</p></header>
+        <header class="section__head reveal"><span class="eyebrow">${catPlans.length} מסלולים</span><h2>כל המסלולים — בפירוט מלא</h2><p>אותם מסלולים כמו בטבלה, עם כל הפרטים וכפתור פנייה ישיר.</p>${freshnessBadge()}</header>
         <div class="plan-grid">
       ${planCards}
         </div>
@@ -1442,19 +1536,44 @@ ${footer}
 // the whole guides hub (better crawl depth) without fabricating any data.
 function guidesIndexJsonLd() {
   const url = `${SITE}/guides.html`;
+  // Guides-hub CollectionPage embedding an ItemList of the REAL published guides.
+  // Mirrors web/lib/schema.ts guidesCollectionSchema(): each list item is a
+  // positioned Article carrying the guide's real headline, url, publish date and
+  // section, with the brand Organization as author/publisher (the genuine author
+  // of its editorial guides — same convention as articleJsonLd). HONESTY: every
+  // entry mirrors a real guide; datePublished is the guide's REAL date (omitted
+  // when absent, never invented); urls are real on-site routes. Nothing fabricated.
+  const itemListElement = guides.map((g, i) => {
+    const gUrl = `${SITE}/${g.slug}.html`;
+    const article = {
+      '@type': 'Article',
+      headline: g.h1,
+      url: gUrl,
+      inLanguage: 'he-IL',
+      mainEntityOfPage: { '@type': 'WebPage', '@id': gUrl },
+      author: { '@id': ORG_ID },
+      publisher: { '@id': ORG_ID },
+    };
+    if (g.desc) article.description = g.desc;
+    // Real publish date only (already ISO yyyy-mm-dd in the guide data, exactly as
+    // articleJsonLd() emits it); omitted when absent — never invented.
+    if (g.date) article.datePublished = g.date;
+    if (g.cat) article.articleSection = g.cat;
+    return { '@type': 'ListItem', position: i + 1, url: gUrl, item: article };
+  });
   return jsonForScript({ '@context': 'https://schema.org', '@graph': [
     { '@type': 'BreadcrumbList', itemListElement: [
       { '@type': 'ListItem', position: 1, name: 'דף הבית', item: SITE + '/' },
       { '@type': 'ListItem', position: 2, name: 'מדריכים', item: url },
     ] },
-    { '@type': 'CollectionPage', name: 'מדריכים — איך לחסוך על תקשורת', url, inLanguage: 'he-IL',
+    { '@type': 'CollectionPage', name: 'מדריכים — איך לחסוך על תקשורת',
+      description: 'מדריכים בעברית להשוואת מסלולי תקשורת בישראל: סלולר, אינטרנט, טלוויזיה, חבילות משולבות וחו״ל.',
+      url, inLanguage: 'he-IL',
       isPartOf: { '@id': WEBSITE_ID }, publisher: { '@id': ORG_ID },
       mainEntity: {
         '@type': 'ItemList',
-        numberOfItems: guides.length,
-        itemListElement: guides.map((g, i) => ({
-          '@type': 'ListItem', position: i + 1, url: `${SITE}/${g.slug}.html`, name: g.h1,
-        })),
+        numberOfItems: itemListElement.length,
+        itemListElement,
       } },
   ] });
 }
@@ -2175,22 +2294,25 @@ function providerPage(name, plans) {
       const other = v.a.provider === name ? v.b.provider : v.a.provider;
       return `<a class="chip" href="${v.slug}.html">${svgIcon('scale')} ${esc(name)} מול ${esc(other)} (${esc(v.catName)})</a>`;
     }).join('\n          ');
-  const jsonld = jsonForScript({
-    '@context': 'https://schema.org',
-    '@graph': [
-      { '@type': 'BreadcrumbList', itemListElement: [
-        { '@type': 'ListItem', position: 1, name: 'דף הבית', item: SITE + '/' },
-        { '@type': 'ListItem', position: 2, name: 'כל החבילות', item: SITE + '/plans.html' },
-        { '@type': 'ListItem', position: 3, name: name, item: url },
-      ] },
-      // CollectionPage wrapper ties the provider's plan ItemList to the site
-      // entity; the per-plan Products already carry the provider as their Brand.
-      { '@type': 'CollectionPage', name: `כל המסלולים של ${name}`, url, inLanguage: 'he-IL',
-        isPartOf: { '@id': WEBSITE_ID }, publisher: { '@id': ORG_ID },
-        about: { '@type': 'Brand', name },
-        mainEntity: plansItemListJsonLd(plans, url, `מסלולי ${name}`) },
-    ],
-  });
+  // Provider-scoped AggregateOffer (real min/max/count) — emitted as its own
+  // top-level node, summarising this provider's genuine price band across the
+  // catalogue. temporalCoverage on the CollectionPage stamps the real catalogue
+  // month. The per-plan Products already carry the provider as their Brand.
+  const provAggOffer = categoryAggregateOfferNode(plans);
+  const provGraph = [
+    { '@type': 'BreadcrumbList', itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'דף הבית', item: SITE + '/' },
+      { '@type': 'ListItem', position: 2, name: 'כל החבילות', item: SITE + '/plans.html' },
+      { '@type': 'ListItem', position: 3, name: name, item: url },
+    ] },
+    { '@type': 'CollectionPage', name: `כל המסלולים של ${name}`, url, inLanguage: 'he-IL',
+      isPartOf: { '@id': WEBSITE_ID }, publisher: { '@id': ORG_ID },
+      about: { '@type': 'Brand', name },
+      temporalCoverage: CATALOGUE_MONTH,
+      mainEntity: plansItemListJsonLd(plans, url, `מסלולי ${name}`) },
+  ];
+  if (provAggOffer) provGraph.push(provAggOffer);
+  const jsonld = jsonForScript({ '@context': 'https://schema.org', '@graph': provGraph });
   return `<!DOCTYPE html>
 <html lang="he" dir="rtl">
 ${head(`כל המסלולים של ${name} — מחירים והשוואה | SWITCHY`, `כל מסלולי ${name} במקום אחד — ${plans.length} מסלולים מ-₪${cheapest}. השוו מחירים ותכונות ומצאו את המשתלם ביותר.`, url, jsonld, false, 'website')}
@@ -2210,7 +2332,7 @@ ${nav}
 ${provTables}
     <section class="section" id="plans">
       <div class="container">
-        <header class="section__head reveal"><span class="eyebrow">${plans.length} מסלולים</span><h2>כל המסלולים של ${esc(name)} — בפירוט</h2><p>ממוין מהזול ביותר, עם כל הפרטים וכפתור פנייה ישיר.</p></header>
+        <header class="section__head reveal"><span class="eyebrow">${plans.length} מסלולים</span><h2>כל המסלולים של ${esc(name)} — בפירוט</h2><p>ממוין מהזול ביותר, עם כל הפרטים וכפתור פנייה ישיר.</p>${freshnessBadge()}</header>
         <div class="plan-grid">
         ${cards}
         </div>
@@ -2805,10 +2927,15 @@ function collectionPage(col) {
   ] };
   const graph = [crumbs];
   // CollectionPage wrapper carries the plan ItemList and links the page to the
-  // site entity; the per-plan Products supply the real price/offer data.
+  // site entity; the per-plan Products supply the real price/offer data. We also
+  // stamp the real catalogue month (temporalCoverage); a collection-scoped
+  // AggregateOffer (real min/max/count) is pushed as its own top-level node below.
+  const colAggOffer = categoryAggregateOfferNode(shown, col.catName);
   graph.push({ '@type': 'CollectionPage', name: col.h1, description: col.desc, url, inLanguage: 'he-IL',
     isPartOf: { '@id': WEBSITE_ID }, publisher: { '@id': ORG_ID },
+    temporalCoverage: CATALOGUE_MONTH,
     ...(shown.length ? { mainEntity: plansItemListJsonLd(shown, url, col.h1) } : {}) });
+  if (colAggOffer) graph.push(colAggOffer);
   const extraJsonLd = jsonForScript({ '@context': 'https://schema.org', '@graph': graph });
   const guidesHtml = relatedGuides(col.catName, null, 2).map(guideCard).join('\n');
   return `<!DOCTYPE html>
@@ -2833,7 +2960,7 @@ ${nav}
 
     <section class="section" id="plans">
       <div class="container">
-        <header class="section__head reveal"><span class="eyebrow">${shown.length} מסלולים</span><h2>${esc(col.h1)}</h2><p>ממוין מהזול ביותר — מחירים מעודכנים מכל החברות.</p></header>
+        <header class="section__head reveal"><span class="eyebrow">${shown.length} מסלולים</span><h2>${esc(col.h1)}</h2><p>ממוין מהזול ביותר — מחירים מעודכנים מכל החברות.</p>${freshnessBadge()}</header>
         <div class="plan-grid">
       ${planCards}
         </div>
@@ -3822,6 +3949,123 @@ fs.writeFileSync(path.join(__dirname, 'book.html'), bookPage());
 fs.writeFileSync(path.join(__dirname, 'app.html'), appPage());
 fs.writeFileSync(path.join(__dirname, '404.html'), notFoundPage());
 
+// ── Generate llms.txt + ai.txt (AI / answer-engine resources) ────────────────
+// The emerging "llms.txt" standard: a clean, LLM-friendly Markdown summary of the
+// service (what it is, the REAL catalogue scope/counts, the hub URLs as
+// switchy-ai.com/*.html, the honesty stance, contact). ai.txt is a concise
+// AI-crawler policy welcoming the answer-engine bots (same set as robots.txt).
+// Mirrors the Next web app's /llms.txt + /ai.txt routes (GEO consistency).
+//
+// 🔴 TRUTH-ONLY: every number is computed from the real bundled catalogue; the
+// freshness date is the REAL catalogue date (CATALOGUE_DATE_ISO), never a
+// hardcoded "today". No fabricated ratings/stats/awards. The commission
+// disclosure is stated verbatim — we are free to the user and transparent.
+const CONTACT_EMAIL = 'hello@chosech.co.il';
+const CONTACT_WHATSAPP = '050-503-7537';
+const SITE_ALT_NAMES = ['Switch AI', 'Switchy'];
+// AI / answer-engine bots welcomed for citation — single source of truth, also
+// consumed by the generated robots.txt below (kept in sync with web/app/robots.ts).
+const AI_BOTS = [
+  'GPTBot', 'OAI-SearchBot', 'ChatGPT-User', 'PerplexityBot', 'Perplexity-User',
+  'Google-Extended', 'ClaudeBot', 'Claude-Web', 'anthropic-ai', 'Applebot-Extended',
+  'CCBot', 'Amazonbot', 'Bytespider', 'Meta-ExternalAgent',
+];
+
+// Real per-category counts + cheapest entry price, straight from the catalogue.
+const llmCategoryLines = categories.map((c) => {
+  const catPlans = plansByCat[c.slug] || [];
+  const prices = catPlans
+    .map(offerPrice)
+    .filter((n) => typeof n === 'number' && Number.isFinite(n) && n > 0);
+  const from = prices.length ? `, החל מ-₪${Math.round(Math.min(...prices))}` : '';
+  return `- [${c.name}](${SITE}/${c.slug}.html) — ${catPlans.length} מסלולים${from}.`;
+});
+
+// Real per-provider counts + cheapest entry price, straight from the catalogue.
+const llmProviderLines = providerNames.map((name) => {
+  const plans = providersMap[name] || [];
+  const prices = plans
+    .map(offerPrice)
+    .filter((n) => typeof n === 'number' && Number.isFinite(n) && n > 0);
+  const from = prices.length ? `, החל מ-₪${Math.round(Math.min(...prices))}` : '';
+  return `- [${name}](${SITE}/provider-${providerSlug(name)}.html) — ${plans.length} מסלולים${from}.`;
+});
+
+const llmsTxt = [
+  // H1 + blockquote summary — the llms.txt convention (name + one-line summary).
+  '# SWITCHY',
+  '',
+  `> SWITCHY (גם: ${SITE_ALT_NAMES.join(', ')}) — שירות חינמי להשוואת מסלולי ` +
+    'תקשורת בישראל: סלולר, אינטרנט, טלוויזיה, חבילות משולבות וחבילות חו״ל. ' +
+    `כרגע ${PLAN_COUNT} מסלולים מ-${PROVIDER_COUNT} ספקים, ${CATEGORY_COUNT} ` +
+    `קטגוריות. נתונים נכונים ל-${CATALOGUE_DATE_ISO}.`,
+  '',
+  `SWITCHY is a free Israeli telecom price-comparison service. It compares ` +
+    `${PLAN_COUNT} plans from ${PROVIDER_COUNT} providers across ` +
+    `${CATEGORY_COUNT} categories, shows prices in ILS (₪, VAT-inclusive, ` +
+    'including the post-promo price), and connects a user to a provider only ' +
+    `after they explicitly opt in. Data as of ${CATALOGUE_DATE_ISO}.`,
+  '',
+  '## מה השירות עושה (What it does)',
+  '- משווה מסלולי תקשורת מכל הספקים בישראל במקום אחד, חינם וללא התחייבות.',
+  '- מציג מחירים בשקלים (₪) כולל יחידת החיוב (לחודש / לחבילה / ליום) והמחיר לאחר תום המבצע.',
+  '- ממיין כברירת מחדל מהמחיר ההתחלתי הנמוך לגבוה; כל נתון נלקח מהקטלוג.',
+  '- פנייה לספק נשלחת אך ורק לאחר שהמשתמש מילא טופס ואישר במפורש.',
+  '',
+  '## שקיפות ומתודולוגיה (Honesty & methodology)',
+  '- הדירוג מבוסס על המחיר ההתחלתי המפורסם בלבד, מהנמוך לגבוה, מתוך הקטלוג. אין דירוג סמוי.',
+  '- כל נתון (מחיר, מספר מסלולים, "הזול ביותר") נלקח מהקטלוג; נתון חסר מושמט ולא מנוחש. אין ביקורות או דירוגי כוכבים מומצאים.',
+  '- גילוי נאות: השירות חינמי למשתמש. אנו מקבלים דמי תיווך/הפניה מהספקים כאשר המשתמש עובר דרכנו — וזה אינו משפיע על המחיר שהמשתמש משלם.',
+  '',
+  '## קישורי על (Key pages)',
+  `- [דף הבית / Home](${SITE}/)`,
+  `- [השוואת מסלולים / Compare](${SITE}/compare.html)`,
+  `- [כל ההשוואות / Comparisons](${SITE}/comparisons.html)`,
+  `- [ספקים / Providers](${SITE}/providers.html)`,
+  `- [כל המסלולים / Plans](${SITE}/plans.html)`,
+  `- [מדריכים / Guides](${SITE}/guides.html)`,
+  `- [מילון מונחים / Glossary](${SITE}/glossary.html)`,
+  `- [שאלות נפוצות / FAQ](${SITE}/faq.html)`,
+  `- [איך זה עובד / How it works](${SITE}/how-it-works.html)`,
+  '',
+  '## קטגוריות (Categories)',
+  ...llmCategoryLines,
+  '',
+  '## ספקים (Providers)',
+  ...llmProviderLines,
+  '',
+  '## משאבים נוספים (More)',
+  `- [מפת אתר / Sitemap](${SITE}/sitemap.xml)`,
+  `- [מדיניות סורקי AI / AI crawler policy](${SITE}/ai.txt)`,
+  `- צור קשר / Contact: ${CONTACT_EMAIL} · WhatsApp ${CONTACT_WHATSAPP}`,
+  '',
+  '## ציטוט מועדף (Preferred citation)',
+  `SWITCHY — השוואת מחירי תקשורת בישראל (${SITE}), נתונים נכונים ל-${CATALOGUE_DATE_ISO}.`,
+  '',
+].join('\n');
+fs.writeFileSync(path.join(__dirname, 'llms.txt'), llmsTxt);
+
+const aiTxt = [
+  `# ai.txt — SWITCHY (${SITE})`,
+  '',
+  'SWITCHY is a free Israeli telecom price-comparison service. AI and ' +
+    'answer-engine crawlers are welcome to read, index, and cite our public ' +
+    'content. All prices and counts are catalogue-derived and truthful; please ' +
+    `cite the page URL and the data-as-of date (currently ${CATALOGUE_DATE_ISO}).`,
+  '',
+  '# Allowed AI / answer-engine crawlers (see /robots.txt)',
+  ...AI_BOTS.flatMap((bot) => [`User-agent: ${bot}`, 'Allow: /']),
+  '',
+  '# Preferred resources for LLMs',
+  `Llms: ${SITE}/llms.txt`,
+  `Sitemap: ${SITE}/sitemap.xml`,
+  '',
+  '# Contact',
+  `Email: ${CONTACT_EMAIL}`,
+  '',
+].join('\n');
+fs.writeFileSync(path.join(__dirname, 'ai.txt'), aiTxt);
+
 // ── Refresh sitemap ─────────────────────────────────────────────────────────
 // Each URL carries a <lastmod> and a tiered <priority>/<changefreq>:
 //  • catalogue date (when prices were last exported) for plan-driven pages
@@ -3829,7 +4073,10 @@ fs.writeFileSync(path.join(__dirname, '404.html'), notFoundPage());
 //  • the guide's own publish date for articles;
 //  • today's build date for evergreen static pages.
 const isoDate = (d) => new Date(d).toISOString().slice(0, 10); // YYYY-MM-DD
-const CATALOGUE_DATE = isoDate(catalogue.generated || Date.now());
+// Reuse the single catalogue-date source (defined near the top) so the sitemap
+// <lastmod>, the visible freshness badge, temporalCoverage and the llms/ai feeds
+// all derive from the SAME real export date — no divergent "data as of" values.
+const CATALOGUE_DATE = CATALOGUE_DATE_ISO;
 const BUILD_DATE = isoDate(Date.now());
 // priority/changefreq tiers — home is the apex; conversion + plan pages rank
 // above evergreen content; legal pages sit lowest.
@@ -3876,11 +4123,7 @@ fs.writeFileSync(path.join(__dirname, 'sitemap.xml'), sitemap);
 // cited in AI answers — kept in sync with the Next.js web app's app/robots.ts
 // (GEO consistency). `User-agent: *` already permits them implicitly; the explicit
 // stanzas make the intent unambiguous and survive any future tightening of `*`.
-const AI_BOTS = [
-  'GPTBot', 'OAI-SearchBot', 'ChatGPT-User', 'PerplexityBot', 'Perplexity-User',
-  'Google-Extended', 'ClaudeBot', 'Claude-Web', 'anthropic-ai', 'Applebot-Extended',
-  'CCBot', 'Amazonbot', 'Bytespider', 'Meta-ExternalAgent',
-];
+// The /llms.txt + /ai.txt resources are surfaced here so crawlers discover them.
 const robots = `# https://www.robotstxt.org/robotstxt.html
 User-agent: *
 Allow: /
@@ -3890,6 +4133,10 @@ Disallow: /data/
 ${AI_BOTS.map((b) => `User-agent: ${b}`).join('\n')}
 Allow: /
 Disallow: /data/
+
+# AI / answer-engine resources
+# Llms: ${SITE}/llms.txt
+# Ai: ${SITE}/ai.txt
 
 Sitemap: ${SITE}/sitemap.xml
 Host: ${SITE.replace(/^https?:\/\//, '')}

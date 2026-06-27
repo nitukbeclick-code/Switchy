@@ -116,6 +116,44 @@ export function providerBrandColor(provider: string): string {
 }
 
 /**
+ * Provider SLUG → logo filename in web/public/assets/logos/. Mirrors the static
+ * site's LOGO_FILE (site/build.js) exactly — same asset files, same slugs (from
+ * providerSlug()) — so a real carrier logo renders identically on web + static.
+ * A provider with no entry here has no bundled logo asset, so the caller falls
+ * back to the colored-initials avatar (truth-only: never a wrong/placeholder
+ * logo). Brand assets are the carriers' own — never recolored.
+ */
+const PROVIDER_LOGO_FILES: Readonly<Record<string, string>> = {
+  cellcom: "cellcom.webp",
+  partner: "partner.webp",
+  pelephone: "pelephone.svg",
+  golan: "golan.webp",
+  "hot-mobile": "hot-mobile.webp",
+  hot: "hot.svg",
+  "rami-levy": "rami-levy.webp",
+  "walla-mobile": "walla-mobile.webp",
+  bezeq: "bezeq.svg",
+  gilat: "gilat.webp",
+  "019mobile": "019mobile.webp",
+  xphone: "xphone.png",
+  wecom: "wecom.png",
+  ccc: "ccc.png",
+  "sting-tv": "sting-tv.png",
+  yes: "yes.webp",
+  nexttv: "nexttv.png",
+  airalo: "airalo.webp",
+};
+
+/**
+ * The logo filename for a provider SLUG (from providerSlug()), or undefined when
+ * the carrier has no bundled logo → the caller should fall back to the initials
+ * avatar. Use as `/assets/logos/${providerLogoFile(slug)}`.
+ */
+export function providerLogoFile(slug: string): string | undefined {
+  return PROVIDER_LOGO_FILES[slug];
+}
+
+/**
  * The 1–2 character monogram for a provider avatar — the leading word's first
  * character, plus the next word's first character when the name is multi-word
  * (e.g. "גולן טלקום" → "גט", "סלקום" → "ס"). Latin handles upper-case (e.g.

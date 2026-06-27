@@ -19,11 +19,8 @@
 
 import Link from "next/link";
 import type { Plan } from "@/lib/types";
-import {
-  priceUnitLabel,
-  providerBrandColor,
-  providerInitials,
-} from "@/lib/format";
+import { priceUnitLabel } from "@/lib/format";
+import { ProviderLogo } from "@/components/ProviderLogo";
 import { planDisplay, type PlanDisplay, type PlanField } from "@/lib/plan-display";
 import type { PriceDrop } from "@/lib/price-history";
 import PriceDropBadge from "@/components/PriceDropBadge";
@@ -83,24 +80,8 @@ const LABEL_HE: Record<FeatureLabel, string> = {
  */
 const BASE_COLUMNS = ["ספק", "מסלול", "מחיר", "מחיר אחרי תקופה"] as const;
 
-/**
- * A 32px avatar anchoring a plan — a circle filled with the provider's OWN brand
- * color carrying its monogram, so a row/card is scannable at a glance without
- * image assets. The brand color comes from {@link providerBrandColor}; it is the
- * carrier's real hue, NOT the app accent, and is never recolored. White glyph for
- * contrast. Decorative (the adjacent provider name carries the meaning).
- */
-function ProviderAvatar({ provider }: { provider: string }) {
-  return (
-    <span
-      aria-hidden="true"
-      className="inline-flex h-8 w-8 shrink-0 select-none items-center justify-center rounded-full text-[11px] font-bold leading-none text-white shadow-sm ring-1 ring-inset ring-black/10"
-      style={{ backgroundColor: providerBrandColor(provider) }}
-    >
-      {providerInitials(provider)}
-    </span>
-  );
-}
+// The provider brand mark (real carrier logo, else a brand-colored monogram) is
+// the shared <ProviderLogo>, used here at the default 32px circle.
 
 /** An editorial "מומלץ" + precise-label pill pair — rendered ONLY when labeled. */
 function FeatureBadges({ label }: { label: FeatureLabel }) {
@@ -290,7 +271,7 @@ export default function ComparisonTable({
             >
               {/* Header: provider badge + name, optional editorial label. */}
               <div className="flex flex-wrap items-center gap-2">
-                <ProviderAvatar provider={plan.provider} />
+                <ProviderLogo provider={plan.provider} />
                 <span className="font-medium text-foreground">{plan.provider}</span>
                 {label ? <FeatureBadges label={label} /> : null}
               </div>
@@ -428,7 +409,7 @@ export default function ComparisonTable({
                     className="px-4 py-3 text-start font-medium text-foreground"
                   >
                     <span className="flex flex-wrap items-center gap-2">
-                      <ProviderAvatar provider={plan.provider} />
+                      <ProviderLogo provider={plan.provider} />
                       {plan.provider}
                       {label ? <FeatureBadges label={label} /> : null}
                     </span>

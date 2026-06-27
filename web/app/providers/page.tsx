@@ -30,35 +30,16 @@ import {
   SITE_URL,
 } from "@/lib/schema";
 import { pageMetadata } from "@/lib/seo";
-import { ils, providerBrandColor, providerInitials } from "@/lib/format";
+import { ils } from "@/lib/format";
+import { ProviderLogo } from "@/components/ProviderLogo";
 
 // ── Provider avatar ──────────────────────────────────────────────────────────
 // A circular monogram filled with the carrier's OWN brand color (from
 // {@link providerBrandColor}) — the real per-carrier hue, NOT the app accent, and
 // never recolored to the theme. White glyph for contrast on the saturated fill.
 // Decorative: the provider name beside it carries the meaning → hidden from AT.
-function ProviderAvatar({
-  provider,
-  size = 44,
-}: {
-  provider: string;
-  size?: number;
-}) {
-  return (
-    <span
-      aria-hidden="true"
-      className="inline-flex shrink-0 select-none items-center justify-center rounded-2xl font-bold leading-none text-white shadow-sm ring-1 ring-inset ring-black/10"
-      style={{
-        backgroundColor: providerBrandColor(provider),
-        width: size,
-        height: size,
-        fontSize: Math.round(size * 0.34),
-      }}
-    >
-      {providerInitials(provider)}
-    </span>
-  );
-}
+// Provider brand mark (real carrier logo, else brand-colored monogram) is the
+// shared <ProviderLogo>, here at a 44px squircle.
 
 export const metadata: Metadata = pageMetadata({
   title: "כל ספקי התקשורת בישראל — מסלולים ומחירים",
@@ -205,7 +186,7 @@ export default function ProvidersIndexPage() {
                       VALUE pill marks the single cheapest entry point (rank 0),
                       tied to the stated methodology below — amber = VALUE. */}
                   <div className="flex items-center gap-3">
-                    <ProviderAvatar provider={p.name} />
+                    <ProviderLogo provider={p.name} size={44} rounded="2xl" />
                     <span className="font-display text-lg font-semibold tracking-tight text-ink transition-colors group-hover:text-accent">
                       {p.name}
                     </span>

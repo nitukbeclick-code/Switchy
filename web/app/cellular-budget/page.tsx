@@ -15,10 +15,16 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import JsonLd from "@/components/JsonLd";
 import CategoryLanding from "@/components/CategoryLanding";
+import FreshnessBadge from "@/components/FreshnessBadge";
 import RelatedAuthorityPages from "@/components/RelatedAuthorityPages";
 import { plansByCategory, CATEGORY_HE } from "@/lib/data";
-import { collectionPageSchema, breadcrumbSchema } from "@/lib/schema";
+import {
+  collectionPageSchema,
+  categoryAggregateOfferSchema,
+  breadcrumbSchema,
+} from "@/lib/schema";
 import { pageMetadata } from "@/lib/seo";
+import { lastDataDate } from "@/lib/aeo";
 import type { Plan } from "@/lib/types";
 
 const CATEGORY = "cellular";
@@ -46,6 +52,16 @@ export const metadata: Metadata = pageMetadata({
 
 export default function CellularBudgetPage() {
   const plans = budgetPlans();
+  // Real "data as of" date (catalogue updated_at, else build-time UTC) — drives
+  // BOTH the visible <FreshnessBadge> and the schema's temporalCoverage month, so
+  // the structured data can never disagree with what the human reads.
+  const asOf = lastDataDate(plans);
+  // Category-scoped AggregateOffer (price range across the REAL featured plans).
+  // Returns null when no plan is priced; rendered conditionally so nothing false
+  // is emitted.
+  const categoryOffer = categoryAggregateOfferSchema(plans, CATEGORY, {
+    temporalCoverage: asOf.slice(0, 7),
+  });
 
   const crumbs = [
     { name: "בית", url: "/" },
@@ -82,6 +98,10 @@ export default function CellularBudgetPage() {
           plans,
         })}
       />
+      {/* Category AggregateOffer — a single "prices range ₪low–₪high across N
+          plans" node for the featured set, in ILS, stamped with the real
+          catalogue month. Omitted when no plan is priced. */}
+      {categoryOffer && <JsonLd data={categoryOffer} />}
       <JsonLd data={breadcrumbSchema(crumbs)} />
 
       <nav aria-label="פירורי לחם" className="text-sm text-muted">
@@ -105,7 +125,12 @@ export default function CellularBudgetPage() {
         </h1>
       </header>
 
-      <div className="mt-8">
+      {/* ── Freshness stamp (honest "data as of" date, near the table) ────── */}
+      <div className="mt-6">
+        <FreshnessBadge date={asOf} />
+      </div>
+
+      <div className="mt-4">
         <CategoryLanding
           category={CATEGORY}
           titleHe={TITLE_HE}

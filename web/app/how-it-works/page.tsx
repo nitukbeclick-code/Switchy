@@ -32,7 +32,12 @@ import CommissionDisclosure from "@/components/CommissionDisclosure";
 import PriceCaveat from "@/components/PriceCaveat";
 import TrackedCtaLink from "@/components/TrackedCtaLink";
 import RelatedAuthorityPages from "@/components/RelatedAuthorityPages";
-import { breadcrumbSchema, howToSchema, faqPageSchema } from "@/lib/schema";
+import {
+  breadcrumbSchema,
+  howToSchema,
+  faqPageSchema,
+  speakableSchema,
+} from "@/lib/schema";
 import { pageMetadata } from "@/lib/seo";
 
 export const metadata: Metadata = pageMetadata({
@@ -122,12 +127,18 @@ export default function HowItWorksPage() {
     steps: HOW_IT_WORKS_STEPS.map((s) => ({ name: s.title, text: s.description })),
   });
 
+  // Speakable (voice / pillar 7): the concise read-aloud region — the H1 + the
+  // intro answer paragraph (#how-it-works-intro) that frames the procedure. Both
+  // are real rendered nodes; the spec asserts nothing new.
+  const speakable = speakableSchema(["h1", "#how-it-works-intro"]);
+
   return (
     <main id="main" className="mx-auto w-full max-w-5xl flex-1 px-4 py-10 sm:px-6">
-      {/* Structured data: Breadcrumb + HowTo (real procedure) + FAQPage. */}
+      {/* Structured data: Breadcrumb + HowTo (real procedure) + FAQPage + Speakable. */}
       <JsonLd data={breadcrumbSchema(crumbs)} />
       {howTo && <JsonLd data={howTo} />}
       <JsonLd data={faqPageSchema(FAQS as { question: string; answer: string }[])} />
+      {speakable ? <JsonLd data={speakable} /> : null}
 
       {/* ── Breadcrumb (visible) ──────────────────────────────────────────── */}
       <nav aria-label="פירורי לחם" className="text-sm text-muted">
@@ -146,7 +157,12 @@ export default function HowItWorksPage() {
         <h1 className="sw-reveal mt-2 font-display text-3xl font-bold tracking-tight text-ink sm:text-5xl">
           איך זה עובד
         </h1>
-        <p className="sw-reveal mt-4 max-w-2xl text-lg leading-relaxed text-foreground">
+        {/* The concise "what Switchy does" answer — a stable id so the speakable
+            (voice) schema can target this exact rendered paragraph for read-aloud. */}
+        <p
+          id="how-it-works-intro"
+          className="sw-reveal mt-4 max-w-2xl text-lg leading-relaxed text-foreground"
+        >
           אנחנו מרכזים את כל מסלולי התקשורת בישראל — סלולר, אינטרנט, טלוויזיה,
           חבילות משולבות וחו״ל — במקום אחד, משווים בשבילכם ומלווים את המעבר. הנה
           כל התהליך, מההשוואה ועד החיסכון.

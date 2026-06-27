@@ -16,7 +16,7 @@ import EmptyState from "@/components/EmptyState";
 import ScrollReveal from "@/components/ScrollReveal";
 import Icon from "@/components/Icon";
 import { getGuides, guideCategories, guidesInCategory } from "@/lib/guides";
-import { breadcrumbSchema, collectionPageSchema, SITE_URL } from "@/lib/schema";
+import { breadcrumbSchema, guidesCollectionSchema } from "@/lib/schema";
 import { pageMetadata } from "@/lib/seo";
 
 export const dynamic = "force-static";
@@ -31,11 +31,6 @@ export const metadata: Metadata = pageMetadata({
   path: "/guides",
 });
 
-/** A guide → ListItem url (for the CollectionPage ItemList JSON-LD). */
-function guideUrl(slug: string): string {
-  return `${SITE_URL}/guides/${slug}`;
-}
-
 export default function GuidesHubPage() {
   const guides = getGuides();
   const categories = guideCategories();
@@ -45,27 +40,22 @@ export default function GuidesHubPage() {
     { name: "מדריכים", url: "/guides" },
   ];
 
-  // CollectionPage whose ItemList enumerates every guide by URL — an explicit,
-  // ranked map of the hub for crawlers (real on-site urls only).
-  const collection = {
-    ...collectionPageSchema({
-      name: "מדריכים — איך לחסוך על תקשורת",
-      description:
-        "מדריכים בעברית להשוואת מסלולי תקשורת בישראל: סלולר, אינטרנט, טלוויזיה, " +
-        "חבילות משולבות וחו״ל.",
-      url: "/guides",
-    }),
-    mainEntity: {
-      "@type": "ItemList",
-      numberOfItems: guides.length,
-      itemListElement: guides.map((g, i) => ({
-        "@type": "ListItem",
-        position: i + 1,
-        url: guideUrl(g.slug),
-        name: g.h1,
-      })),
-    },
-  };
+  // CollectionPage embedding an ItemList of Article references — an explicit,
+  // ranked map of the hub for engines. Each entry carries the guide's real
+  // headline, url, publish date and section + the brand Organization as
+  // author/publisher (the genuine author of its editorial guides). Fields map
+  // straight from the real guide catalogue (slug/h1/desc/date/cat) — nothing
+  // fabricated; the builder omits any date it isn't given.
+  const collection = guidesCollectionSchema({
+    guides: guides.map((g) => ({
+      slug: g.slug,
+      h1: g.h1,
+      desc: g.desc,
+      date: g.date,
+      cat: g.cat,
+    })),
+    url: "/guides",
+  });
 
   return (
     <main id="main" className="mx-auto w-full max-w-5xl flex-1 px-4 py-10 sm:px-6">

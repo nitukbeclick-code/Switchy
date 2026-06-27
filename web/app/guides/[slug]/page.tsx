@@ -18,6 +18,7 @@ import JsonLd from "@/components/JsonLd";
 import RelatedAuthorityPages from "@/components/RelatedAuthorityPages";
 import AeoAnswerBlock from "@/components/AeoAnswerBlock";
 import DataMethodology from "@/components/DataMethodology";
+import FreshnessBadge from "@/components/FreshnessBadge";
 import Icon from "@/components/Icon";
 import {
   getGuide,
@@ -32,6 +33,7 @@ import {
   breadcrumbSchema,
   faqPageSchema,
   howToSchema,
+  speakableSchema,
 } from "@/lib/schema";
 import { getLivePlans } from "@/lib/live-catalogue";
 import { directAnswerFor, lastDataDate } from "@/lib/aeo";
@@ -60,11 +62,33 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
   if (!guide) return {};
   // The ported `title` already carries the brand suffix; pageMetadata's brand
   // normaliser strips+reapplies it, so the H1 (bare) is the cleaner title source.
-  return pageMetadata({
+  const meta = pageMetadata({
     title: guide.h1,
     description: guide.desc,
     path: `/guides/${guide.slug}`,
   });
+  // Carry the REAL article dates at the metadata level too (OpenGraph `article`):
+  // `publishedTime`/`modifiedTime` are the guide's genuine publish date — an
+  // honest freshness signal that never invents a future date (the live-catalogue
+  // "data as of" freshness flows into the Article JSON-LD's `dateModified`). We
+  // augment the shared OpenGraph block (not replace it) so the share image/locale
+  // declared by pageMetadata are preserved; only `type` flips website→article.
+  const og = meta.openGraph;
+  return {
+    ...meta,
+    openGraph: {
+      locale: og?.locale,
+      siteName: og?.siteName,
+      url: og?.url,
+      title: og?.title,
+      description: og?.description,
+      images: og?.images,
+      type: "article",
+      publishedTime: guide.date,
+      modifiedTime: guide.date,
+      section: guide.cat,
+    },
+  };
 }
 
 /** Stable ASCII anchor id for a section (sec-N) — avoids slugifying Hebrew. */
@@ -158,6 +182,14 @@ export default async function GuidePage({ params }: Params) {
       })
     : null;
 
+  // Speakable (voice / pillar 7): mark the concise read-aloud region — the H1 +
+  // the AEO direct-answer paragraph — so assistants read the real on-page answer.
+  // Gated on `aeoAnswer` because the <AeoAnswerBlock> (and its
+  // `[data-direct-answer]` node) only renders when there is a real answer.
+  const speakable = aeoAnswer
+    ? speakableSchema(["#aeo-answer [data-direct-answer]", "h1"])
+    : null;
+
   // A TOC is only worth showing for longer articles (a 2-item TOC is clutter).
   const showToc = guide.sections.length >= 3;
 
@@ -169,13 +201,18 @@ export default async function GuidePage({ params }: Params) {
 
   return (
     <main id="main" className="mx-auto w-full max-w-6xl flex-1 px-4 py-10 sm:px-6">
-      {/* Structured data: Article + Breadcrumb (always); FAQPage + HowTo (real). */}
+      {/* Structured data: Article + Breadcrumb (always); FAQPage + HowTo (real);
+          Speakable (voice) when there is a real read-aloud answer.
+          `dateModified` is the REAL freshness date the page already resolved —
+          the live catalogue's "data as of" for category guides, else the guide's
+          own publish date — so the Article's last-modified never outruns reality. */}
       <JsonLd
         data={articleSchema({
           headline: guide.h1,
           description: guide.desc,
           url,
           datePublished: guide.date,
+          dateModified: asOf,
           section: guide.cat,
         })}
       />
@@ -188,6 +225,7 @@ export default async function GuidePage({ params }: Params) {
         />
       ) : null}
       {howTo ? <JsonLd data={howTo} /> : null}
+      {speakable ? <JsonLd data={speakable} /> : null}
 
       {/* The article keeps a comfortable long-form measure; on lg+ a sticky TOC
           rail sits alongside it without stretching the prose. */}
@@ -258,6 +296,16 @@ export default async function GuidePage({ params }: Params) {
             <time dateTime={guide.date}>{dateHe}</time>
             <span aria-hidden="true">·</span>
             <span>{guide.read} דק׳ קריאה</span>
+            {/* Price-data freshness — ONLY for a price-grounded category guide,
+                where `asOf` is the live catalogue's real "data as of" month (not
+                the editorial publish date already shown above). General guides
+                carry no plan/price data, so no freshness stamp is shown. */}
+            {aeoCategory ? (
+              <>
+                <span aria-hidden="true">·</span>
+                <FreshnessBadge date={asOf} label="month" />
+              </>
+            ) : null}
           </div>
         </header>
 

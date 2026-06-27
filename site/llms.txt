@@ -1,0 +1,62 @@
+# SWITCHY
+
+> SWITCHY (גם: Switch AI, Switchy) — שירות חינמי להשוואת מסלולי תקשורת בישראל: סלולר, אינטרנט, טלוויזיה, חבילות משולבות וחבילות חו״ל. כרגע 120 מסלולים מ-18 ספקים, 5 קטגוריות. נתונים נכונים ל-2026-06-21.
+
+SWITCHY is a free Israeli telecom price-comparison service. It compares 120 plans from 18 providers across 5 categories, shows prices in ILS (₪, VAT-inclusive, including the post-promo price), and connects a user to a provider only after they explicitly opt in. Data as of 2026-06-21.
+
+## מה השירות עושה (What it does)
+- משווה מסלולי תקשורת מכל הספקים בישראל במקום אחד, חינם וללא התחייבות.
+- מציג מחירים בשקלים (₪) כולל יחידת החיוב (לחודש / לחבילה / ליום) והמחיר לאחר תום המבצע.
+- ממיין כברירת מחדל מהמחיר ההתחלתי הנמוך לגבוה; כל נתון נלקח מהקטלוג.
+- פנייה לספק נשלחת אך ורק לאחר שהמשתמש מילא טופס ואישר במפורש.
+
+## שקיפות ומתודולוגיה (Honesty & methodology)
+- הדירוג מבוסס על המחיר ההתחלתי המפורסם בלבד, מהנמוך לגבוה, מתוך הקטלוג. אין דירוג סמוי.
+- כל נתון (מחיר, מספר מסלולים, "הזול ביותר") נלקח מהקטלוג; נתון חסר מושמט ולא מנוחש. אין ביקורות או דירוגי כוכבים מומצאים.
+- גילוי נאות: השירות חינמי למשתמש. אנו מקבלים דמי תיווך/הפניה מהספקים כאשר המשתמש עובר דרכנו — וזה אינו משפיע על המחיר שהמשתמש משלם.
+
+## קישורי על (Key pages)
+- [דף הבית / Home](https://switchy-ai.com/)
+- [השוואת מסלולים / Compare](https://switchy-ai.com/compare.html)
+- [כל ההשוואות / Comparisons](https://switchy-ai.com/comparisons.html)
+- [ספקים / Providers](https://switchy-ai.com/providers.html)
+- [כל המסלולים / Plans](https://switchy-ai.com/plans.html)
+- [מדריכים / Guides](https://switchy-ai.com/guides.html)
+- [מילון מונחים / Glossary](https://switchy-ai.com/glossary.html)
+- [שאלות נפוצות / FAQ](https://switchy-ai.com/faq.html)
+- [איך זה עובד / How it works](https://switchy-ai.com/how-it-works.html)
+
+## קטגוריות (Categories)
+- [סלולר](https://switchy-ai.com/cellular.html) — 59 מסלולים, החל מ-₪11.
+- [אינטרנט](https://switchy-ai.com/internet.html) — 30 מסלולים, החל מ-₪39.
+- [טלוויזיה](https://switchy-ai.com/tv.html) — 9 מסלולים, החל מ-₪49.
+- [חבילה משולבת](https://switchy-ai.com/triple.html) — 11 מסלולים, החל מ-₪119.
+- [חבילות חו״ל](https://switchy-ai.com/abroad.html) — 11 מסלולים, החל מ-₪1.
+
+## ספקים (Providers)
+- [019 מובייל](https://switchy-ai.com/provider-019mobile.html) — 11 מסלולים, החל מ-₪1.
+- [Airalo eSIM](https://switchy-ai.com/provider-airalo.html) — 3 מסלולים, החל מ-₪13.
+- [CCC](https://switchy-ai.com/provider-ccc.html) — 6 מסלולים, החל מ-₪80.
+- [HOT](https://switchy-ai.com/provider-hot.html) — 7 מסלולים, החל מ-₪89.
+- [NextTV](https://switchy-ai.com/provider-nexttv.html) — 3 מסלולים, החל מ-₪70.
+- [STING TV](https://switchy-ai.com/provider-sting-tv.html) — 4 מסלולים, החל מ-₪49.
+- [WeCom](https://switchy-ai.com/provider-wecom.html) — 4 מסלולים, החל מ-₪30.
+- [Xphone](https://switchy-ai.com/provider-xphone.html) — 13 מסלולים, החל מ-₪23.
+- [yes](https://switchy-ai.com/provider-yes.html) — 3 מסלולים, החל מ-₪49.
+- [בזק](https://switchy-ai.com/provider-bezeq.html) — 8 מסלולים, החל מ-₪65.
+- [גולן טלקום](https://switchy-ai.com/provider-golan.html) — 9 מסלולים, החל מ-₪10.
+- [גילת](https://switchy-ai.com/provider-gilat.html) — 3 מסלולים, החל מ-₪49.
+- [הוט מובייל](https://switchy-ai.com/provider-hot-mobile.html) — 7 מסלולים, החל מ-₪9.
+- [וואלה מובייל](https://switchy-ai.com/provider-walla-mobile.html) — 3 מסלולים, החל מ-₪31.
+- [סלקום](https://switchy-ai.com/provider-cellcom.html) — 12 מסלולים, החל מ-₪8.
+- [פלאפון](https://switchy-ai.com/provider-pelephone.html) — 4 מסלולים, החל מ-₪40.
+- [פרטנר](https://switchy-ai.com/provider-partner.html) — 11 מסלולים, החל מ-₪29.
+- [רמי לוי](https://switchy-ai.com/provider-rami-levy.html) — 9 מסלולים, החל מ-₪15.
+
+## משאבים נוספים (More)
+- [מפת אתר / Sitemap](https://switchy-ai.com/sitemap.xml)
+- [מדיניות סורקי AI / AI crawler policy](https://switchy-ai.com/ai.txt)
+- צור קשר / Contact: hello@chosech.co.il · WhatsApp 050-503-7537
+
+## ציטוט מועדף (Preferred citation)
+SWITCHY — השוואת מחירי תקשורת בישראל (https://switchy-ai.com), נתונים נכונים ל-2026-06-21.

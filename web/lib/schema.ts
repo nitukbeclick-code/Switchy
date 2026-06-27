@@ -34,7 +34,33 @@ const CURRENCY = "ILS";
 type Json = Record<string, unknown>;
 
 // ── Organization ─────────────────────────────────────────────────────────────
-/** Organization schema for the brand (used in the global layout). */
+/**
+ * The REAL telecom topics the brand demonstrably covers across its catalogue,
+ * compare pages and guides — emitted as the Organization's `knowsAbout` so
+ * knowledge graphs understand the entity's genuine area of expertise (E-E-A-T).
+ * Every entry maps to a real on-site surface (a compare category or a guide
+ * subject) — nothing here is an invented competency.
+ */
+const ORG_KNOWS_ABOUT: readonly string[] = [
+  "השוואת מסלולי סלולר",
+  "השוואת מסלולי אינטרנט",
+  "השוואת מסלולי טלוויזיה",
+  "השוואת חבילות משולבות (Triple)",
+  "השוואת חבילות גלישה בחו״ל",
+  "מעבר ספק תקשורת",
+  "ניוד מספר טלפון",
+];
+
+/**
+ * Organization schema for the brand (used in the global layout).
+ *
+ * HONESTY (E-E-A-T): `knowsAbout` lists only topics the site genuinely covers
+ * (each maps to a real compare category / guide subject); `areaServed` is Israel
+ * (the only market served); `publishingPrinciples` + `significantLink` point at
+ * the REAL /transparency page that states our ranking/recommendation methodology.
+ * No awards, ratings, `sameAs` social profiles or a fictitious founder are
+ * invented — the brand stays the sole, truthful author of its own service.
+ */
 export function orgSchema(): Json {
   return {
     "@context": "https://schema.org",
@@ -47,6 +73,11 @@ export function orgSchema(): Json {
       "שירות חינמי להשוואת מסלולי תקשורת בישראל — סלולר, אינטרנט, טלוויזיה, " +
       "חבילות משולבות וחבילות חו״ל — וחיבור ללקוחות עם הסכמתם.",
     areaServed: "IL",
+    knowsAbout: ORG_KNOWS_ABOUT,
+    // The real transparency/methodology page — our stated editorial principles for
+    // how "cheapest"/rankings/recommendations are derived (no covert scoring).
+    publishingPrinciples: `${SITE_URL}/transparency`,
+    significantLink: `${SITE_URL}/transparency`,
   };
 }
 
@@ -68,11 +99,18 @@ export function websiteSchema(): Json {
  * Product schema for one plan, with an AggregateOffer in ILS. `after` (post-promo
  * price), when present, widens the price range so the offer is honest about the
  * highest the customer may pay.
+ *
+ * HONESTY: `aggregateRating` is attached ONLY when {@link aggregateRatingSchema}
+ * finds REAL catalogue rating/review data on the plan (it returns `null`
+ * otherwise) — there is NO fabricated rating. As of the current catalogue NO plan
+ * carries rating data, so the field is genuinely omitted everywhere; the wiring is
+ * here so it lights up automatically (and truthfully) the moment real ratings land
+ * in the data layer, with no further code change.
  */
 export function productSchema(plan: Plan): Json {
   const catHe = CATEGORY_HE[plan.cat] ?? plan.cat;
 
-  return {
+  const schema: Json = {
     "@context": "https://schema.org",
     "@type": "Product",
     name: plan.plan,
@@ -81,6 +119,9 @@ export function productSchema(plan: Plan): Json {
     sku: plan.id,
     offers: planOffers(plan, { "@type": "Organization", name: plan.provider }),
   };
+  const rating = aggregateRatingSchema(plan);
+  if (rating) schema.aggregateRating = rating; // real catalogue data only
+  return schema;
 }
 
 /**
@@ -392,6 +433,91 @@ export function collectionPageSchema(args: {
     schema.mainEntity = itemListSchema(plans);
   }
   return schema;
+}
+
+// ── Guides hub (CollectionPage + ItemList of Article refs) ───────────────────
+/**
+ * Minimal REAL guide metadata for {@link guidesCollectionSchema}. A structural
+ * input (not the full guides-module `Guide` type) so this builder stays decoupled
+ * from the content layer while consuming the genuine published fields.
+ */
+export interface GuideRefInput {
+  /** URL-safe slug, e.g. "guide-switching" → /guides/guide-switching. */
+  slug: string;
+  /** Visible H1 / headline of the guide (bare, no brand suffix). */
+  h1: string;
+  /** Meta description / summary of the guide. */
+  desc?: string;
+  /** REAL publish date (ISO yyyy-mm-dd) — never fabricated. Omitted when unknown. */
+  date?: string;
+  /** Hebrew category label (e.g. "סלולר", "מדריך כללי"). */
+  cat?: string;
+}
+
+/**
+ * `CollectionPage` for the /guides hub embedding an `ItemList` of `Article`
+ * references — the machine-readable map of the guides index for engines. Each
+ * list item is a positioned `Article` carrying the guide's real headline, url,
+ * publish date and section, plus the brand Organization as author/publisher (the
+ * genuine author of its editorial guides — same convention as {@link articleSchema}).
+ *
+ * HONESTY (E-E-A-T): every entry mirrors a real published guide handed in by the
+ * caller; `datePublished` is the guide's REAL date (omitted when absent, never
+ * invented); urls are real on-site /guides/<slug> routes. Nothing is fabricated.
+ */
+export function guidesCollectionSchema(args: {
+  /** The guides to enumerate (real published guide metadata). */
+  guides: GuideRefInput[];
+  /** Accessible name of the hub (defaults to the Hebrew guides-hub title). */
+  name?: string;
+  /** Factual description of the hub. */
+  description?: string;
+  /** Canonical url of the hub (absolute or site-relative). Defaults to /guides. */
+  url?: string;
+}): Json {
+  const hubUrl = absUrl(args.url ?? "/guides");
+  const org = brandOrgNode();
+  const guides = (args.guides ?? []).filter((g) => g && g.slug && g.h1);
+
+  const itemListElement = guides.map((g, i) => {
+    const url = `${SITE_URL}/guides/${g.slug}`;
+    const article: Json = {
+      "@type": "Article",
+      headline: g.h1,
+      url,
+      inLanguage: "he-IL",
+      mainEntityOfPage: { "@type": "WebPage", "@id": url },
+      author: org,
+      publisher: org,
+    };
+    if (g.desc) article.description = g.desc;
+    if (g.date) article.datePublished = g.date; // real publish date only
+    if (g.cat) article.articleSection = g.cat;
+    return {
+      "@type": "ListItem",
+      position: i + 1,
+      url,
+      item: article,
+    };
+  });
+
+  return {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    name: args.name ?? "מדריכים — איך לחסוך על תקשורת",
+    description:
+      args.description ??
+      "מדריכים בעברית להשוואת מסלולי תקשורת בישראל: סלולר, אינטרנט, טלוויזיה, " +
+        "חבילות משולבות וחו״ל.",
+    url: hubUrl,
+    inLanguage: "he-IL",
+    isPartOf: { "@type": "WebSite", name: SITE_NAME, url: SITE_URL },
+    mainEntity: {
+      "@type": "ItemList",
+      numberOfItems: itemListElement.length,
+      itemListElement,
+    },
+  };
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -949,13 +1075,16 @@ export function knowledgeWebSchema(
  * (they can't honestly set a bound). Returns `null` when no priced plan exists,
  * so callers render it unconditionally without emitting an empty/false offer.
  */
-export function pageAggregateOfferSchema(plans: Plan[]): Json | null {
+export function pageAggregateOfferSchema(
+  plans: Plan[],
+  opts: { temporalCoverage?: string } = {},
+): Json | null {
   const prices = plans
     .map((p) => p.price)
     .filter((n): n is number => typeof n === "number" && Number.isFinite(n) && n > 0);
   if (prices.length === 0) return null;
 
-  return {
+  const schema: Json = {
     "@context": "https://schema.org",
     "@type": "AggregateOffer",
     priceCurrency: CURRENCY,
@@ -963,6 +1092,50 @@ export function pageAggregateOfferSchema(plans: Plan[]): Json | null {
     highPrice: Math.max(...prices),
     offerCount: prices.length,
   };
+  // Real catalogue month (e.g. "2026-06" from lastDataDate()) — never a fake range.
+  if (opts.temporalCoverage) schema.temporalCoverage = opts.temporalCoverage;
+  return schema;
+}
+
+// ── Category AggregateOffer (landing + compare pages) ─────────────────────────
+/**
+ * A category-scoped `AggregateOffer` for a category landing / compare page: a
+ * single structured "prices for <category> range from ₪low to ₪high across N
+ * plans" node, in ILS, availability InStock. `lowPrice`/`highPrice`/`offerCount`
+ * are computed ONLY from the real priced plans handed in (the SAME list the page
+ * renders + answers from), so the schema can never disagree with the page; plans
+ * without a finite positive price are skipped (they can't honestly set a bound).
+ *
+ * The optional `category` is stamped onto the offer as the Hebrew category label
+ * (so engines read which service the range is for) and `temporalCoverage`, when
+ * given, should be the REAL catalogue month (e.g. "2026-06" via lastDataDate()) —
+ * never a fabricated period.
+ *
+ * Returns `null` when no priced plan exists, so callers render it unconditionally
+ * without emitting an empty/false offer.
+ */
+export function categoryAggregateOfferSchema(
+  plans: Plan[],
+  category?: string,
+  opts: { temporalCoverage?: string } = {},
+): Json | null {
+  const prices = plans
+    .map((p) => p.price)
+    .filter((n): n is number => typeof n === "number" && Number.isFinite(n) && n > 0);
+  if (prices.length === 0) return null;
+
+  const schema: Json = {
+    "@context": "https://schema.org",
+    "@type": "AggregateOffer",
+    priceCurrency: CURRENCY,
+    lowPrice: Math.min(...prices),
+    highPrice: Math.max(...prices),
+    offerCount: prices.length,
+    availability: "https://schema.org/InStock",
+  };
+  if (category) schema.category = CATEGORY_HE[category] ?? category;
+  if (opts.temporalCoverage) schema.temporalCoverage = opts.temporalCoverage;
+  return schema;
 }
 
 // ── Speakable (AEO pillar 7 — voice) ─────────────────────────────────────────
@@ -971,6 +1144,11 @@ export function pageAggregateOfferSchema(plans: Plan[]): Json | null {
  * assistants which parts of the page are the concise, read-aloud answer (e.g. the
  * AEO direct-answer paragraph + the page H1). Returns `null` when no selectors
  * are supplied so callers can render it unconditionally.
+ *
+ * GENERIC by design: it takes only a CSS-selector list, so ANY page with a
+ * concise read-aloud region can call it — not just /compare. e.g. /guides (the
+ * "התשובה הקצרה" block + H1), /faq (the first answer), /how-it-works (the intro).
+ * Each page passes the selectors of its own real rendered nodes.
  *
  * Emitted as a standalone `WebPage` carrying only the `speakable` spec; pages
  * already declare their main WebPage via {@link webPageSchema}, and a second

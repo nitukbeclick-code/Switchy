@@ -24,6 +24,7 @@ import { CATEGORY_HE } from "@/lib/categories";
 import {
   faqPageSchema,
   breadcrumbSchema,
+  speakableSchema,
   type QA,
 } from "@/lib/schema";
 import { pageMetadata } from "@/lib/seo";
@@ -108,6 +109,10 @@ export default function FaqPage() {
     { name: "שאלות נפוצות", url: "/faq" },
   ];
 
+  // Speakable (voice / pillar 7): the concise read-aloud region — the SGE/AEO
+  // summary paragraph (#ai-summary) + the H1 — both real rendered nodes.
+  const speakable = speakableSchema(["#ai-summary p", "h1"]);
+
   const summary =
     `כל השאלות הנפוצות על מעבר ספק תקשורת בישראל במקום אחד — סלולר, אינטרנט, ` +
     `טלוויזיה, חבילות משולבות וחו״ל. תמצאו כאן הסברים על ניוד מספר, התחייבות וקנס ` +
@@ -119,9 +124,13 @@ export default function FaqPage() {
       id="main"
       className="mx-auto w-full max-w-3xl flex-1 px-4 py-10 sm:px-6"
     >
-      {/* Structured data: ONE FAQPage (all visible Q&A) + Breadcrumb. */}
+      {/* Structured data: ONE FAQPage (all visible Q&A) + Breadcrumb + Speakable.
+          Speakable marks the concise read-aloud region — the SGE/AEO summary
+          paragraph (#ai-summary) + the H1 — so voice assistants read the real
+          on-page answer block (it points at rendered nodes; it asserts nothing). */}
       <JsonLd data={faqPageSchema(allQA)} />
       <JsonLd data={breadcrumbSchema(crumbs)} />
+      {speakable ? <JsonLd data={speakable} /> : null}
 
       {/* ── Breadcrumb (visible) ──────────────────────────────────────────── */}
       <nav aria-label="פירורי לחם" className="text-sm text-muted">

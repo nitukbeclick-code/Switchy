@@ -21,6 +21,7 @@ import EmptyState from "@/components/EmptyState";
 import ComparisonTable from "@/components/ComparisonTable";
 import CommissionDisclosure from "@/components/CommissionDisclosure";
 import PriceCaveat from "@/components/PriceCaveat";
+import FreshnessBadge from "@/components/FreshnessBadge";
 import RelatedAuthorityPages from "@/components/RelatedAuthorityPages";
 import {
   getPlans,
@@ -33,9 +34,11 @@ import type { Plan, Category } from "@/lib/types";
 import {
   collectionPageSchema,
   itemListSchema,
+  categoryAggregateOfferSchema,
   breadcrumbSchema,
 } from "@/lib/schema";
 import { pageMetadata } from "@/lib/seo";
+import { lastDataDate } from "@/lib/aeo";
 import { ils } from "@/lib/format";
 
 // How many cheapest plans to preview per category before linking to /compare.
@@ -123,6 +126,19 @@ export default function PlansPricingPage() {
   // the page, not the whole catalogue.
   const previewed: Plan[] = blocks.flatMap((b) => b.preview);
 
+  // Real "data as of" date (catalogue updated_at, else build-time UTC) — drives
+  // BOTH the visible <FreshnessBadge> and the schema's temporalCoverage month, so
+  // the structured data can never disagree with what the human reads.
+  const asOf = lastDataDate(allPlans);
+  // ONE cross-category AggregateOffer for the whole pricing hub: the price range
+  // across the SAME previewed plans the page lists (no `category` arg — this hub
+  // spans every category, so the range is multi-category and honestly un-labelled).
+  // Returns null when nothing is priced; rendered conditionally so nothing false
+  // is emitted.
+  const categoryOffer = categoryAggregateOfferSchema(previewed, undefined, {
+    temporalCoverage: asOf.slice(0, 7),
+  });
+
   const crumbs = [
     { name: "בית", url: "/" },
     { name: "מחירון", url: "/plans" },
@@ -160,6 +176,10 @@ export default function PlansPricingPage() {
         })}
       />
       <JsonLd data={itemListSchema(previewed)} />
+      {/* Cross-category AggregateOffer — a single "prices range ₪low–₪high across
+          N plans" node for the previewed catalogue set, in ILS, stamped with the
+          real catalogue month. Omitted when nothing is priced. */}
+      {categoryOffer && <JsonLd data={categoryOffer} />}
       <JsonLd data={breadcrumbSchema(crumbs)} />
 
       {/* ── Breadcrumb (visible) ──────────────────────────────────────────── */}
@@ -237,6 +257,11 @@ export default function PlansPricingPage() {
         (מהזול ליקר). זהו סידור &quot;ערך&quot; עובדתי לפי מחיר — לא ציון איכות סמוי
         ולא תשלום על מיקום.
       </p>
+
+      {/* ── Freshness stamp (honest "data as of" date, near the prices) ────── */}
+      <div className="mt-4">
+        <FreshnessBadge date={asOf} />
+      </div>
 
       {/* ── Per-category price blocks ─────────────────────────────────────── */}
       {blocks.length === 0 ? (

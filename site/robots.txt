@@ -21,5 +21,9 @@ User-agent: Meta-ExternalAgent
 Allow: /
 Disallow: /data/
 
+# AI / answer-engine resources
+# Llms: https://switchy-ai.com/llms.txt
+# Ai: https://switchy-ai.com/ai.txt
+
 Sitemap: https://switchy-ai.com/sitemap.xml
 Host: switchy-ai.com

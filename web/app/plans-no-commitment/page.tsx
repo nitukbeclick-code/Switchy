@@ -22,10 +22,16 @@ import JsonLd from "@/components/JsonLd";
 import ComparisonTable from "@/components/ComparisonTable";
 import CommissionDisclosure from "@/components/CommissionDisclosure";
 import PriceCaveat from "@/components/PriceCaveat";
+import FreshnessBadge from "@/components/FreshnessBadge";
 import RelatedAuthorityPages from "@/components/RelatedAuthorityPages";
 import { plansByCategory } from "@/lib/data";
-import { collectionPageSchema, breadcrumbSchema } from "@/lib/schema";
+import {
+  collectionPageSchema,
+  categoryAggregateOfferSchema,
+  breadcrumbSchema,
+} from "@/lib/schema";
 import { pageMetadata } from "@/lib/seo";
+import { lastDataDate } from "@/lib/aeo";
 import type { Plan } from "@/lib/types";
 
 const TITLE_HE = "מסלולים ללא התחייבות";
@@ -51,6 +57,17 @@ export const metadata: Metadata = pageMetadata({
 export default function PlansNoCommitmentPage() {
   const plans = noCommitPlans();
   const hasPlans = plans.length > 0;
+  // Real "data as of" date (catalogue updated_at, else build-time UTC) — drives
+  // BOTH the visible <FreshnessBadge> and the schema's temporalCoverage month, so
+  // the structured data can never disagree with what the human reads.
+  const asOf = lastDataDate(plans);
+  // Cross-category AggregateOffer (cellular + internet no-commit plans) — the
+  // price range across the SAME plans the table renders; no single `category` arg
+  // since this page spans two categories. Returns null when nothing is priced;
+  // rendered conditionally so nothing false is emitted.
+  const categoryOffer = categoryAggregateOfferSchema(plans, undefined, {
+    temporalCoverage: asOf.slice(0, 7),
+  });
 
   const crumbs = [
     { name: "בית", url: "/" },
@@ -75,6 +92,10 @@ export default function PlansNoCommitmentPage() {
           plans,
         })}
       />
+      {/* Cross-category AggregateOffer — a single "prices range ₪low–₪high across
+          N plans" node for the no-commit set, in ILS, stamped with the real
+          catalogue month. Omitted when nothing is priced. */}
+      {categoryOffer && <JsonLd data={categoryOffer} />}
       <JsonLd data={breadcrumbSchema(crumbs)} />
 
       <nav aria-label="פירורי לחם" className="text-sm text-muted">
@@ -112,6 +133,11 @@ export default function PlansNoCommitmentPage() {
 
         {/* Commission disclosure (Consumer Protection §7b) — above the prices. */}
         <CommissionDisclosure variant="inline" className="mt-4 max-w-2xl" />
+
+        {/* Freshness stamp (honest "data as of" date, near the table). */}
+        <div className="mt-4">
+          <FreshnessBadge date={asOf} />
+        </div>
 
         {/* Featured comparison table + price caveat (§17) under the prices. */}
         <div className="mt-6">

@@ -43,8 +43,204 @@ const SUPABASE_ANON_KEY =
 const leadsConfigTag = () =>
   `<script>window.CHOSECH_SUPABASE={url:'${SUPABASE_URL}',anonKey:'${SUPABASE_ANON_KEY}'};</script>`;
 
-// Real plan catalogue, exported from the app via `flutter test tool/export_plans.dart`.
-const catalogue = JSON.parse(fs.readFileSync(path.join(__dirname, 'data', 'plans.json'), 'utf8'));
+// ── Plan catalogue source — LIVE from Supabase, bundled JSON as the fallback ──
+// The catalogue used to be read straight from the committed `data/plans.json`
+// (the app export). It is now read LIVE from `public.plans` over the Supabase
+// REST API (PostgREST) at build time, using the PUBLIC anon key — so an owner
+// editing prices/perks in the Supabase dashboard is reflected on the static SEO
+// site by the next scheduled/triggered rebuild, with NO manual git push.
+//
+// TRUTH-ONLY + NEVER-BLANK: `data/plans.json` is ALWAYS loaded first as the
+// last-known-good snapshot. The live read only REPLACES it when it succeeds and
+// returns ≥1 valid normalised plan; on ANY failure (env unset, network, RLS,
+// timeout, malformed/zero rows) the build silently keeps the bundled snapshot.
+// The build therefore can never break and never renders fabricated/empty data.
+//
+// SEO: this only changes the DATA SOURCE. Every price surface — visible HTML,
+// schema.org Offer/AggregateOffer JSON-LD, and the window.__PLANS__ blob — is
+// still SERVER-RENDERED from this one in-memory `catalogue.plans` array, so the
+// three representations can never diverge and crawlers always read real prices.
+//
+// SECURITY: the anon/publishable key is the PUBLIC client key (already shipped
+// in the static HTML for the lead form). public.plans grants anon SELECT only
+// (RLS, no writes) — no service-role key, no secret, ever touches this path.
+
+// Last-known-good bundled snapshot — the resilient fallback (and the merge
+// source for the qualitative perks/fine-print, see normaliseDbPlans).
+const bundledCatalogue = JSON.parse(
+  fs.readFileSync(path.join(__dirname, 'data', 'plans.json'), 'utf8'),
+);
+
+// Categories the SEO site surfaces — a live row in any other category is dropped
+// (defensive: keeps a stray/experimental DB category off the public pages).
+const KNOWN_CATEGORIES = new Set(['cellular', 'internet', 'tv', 'triple', 'abroad', 'electricity']);
+const VALID_PRICE_UNITS = new Set(['month', 'package', 'day', 'minute']);
+
+// Coerce a possibly-string numeric (PostgREST can return numbers as strings for
+// some types) to a finite number, or null.
+const _num = (v) => {
+  if (v == null) return null;
+  const n = typeof v === 'string' ? Number(v) : v;
+  return typeof n === 'number' && Number.isFinite(n) ? n : null;
+};
+
+// Map ONE raw `public.plans` row (snake_case columns) into the bundled `Plan`
+// shape (camelCase) the whole build expects — the SAME mapping the web app and
+// the bot use (category→cat, title→plan, price_exact→priceExact, is_5g→is5G,
+// no_commit→noCommit, has_abroad→hasAbroad, fine_lines→fineLines, …). Prefers
+// the exact price columns over the rounded headline, exactly like the bundled
+// catalogue (which carries both `price` and `priceExact`). Returns null for a
+// row missing load-bearing fields (id/provider/title/price or unknown category)
+// so a single malformed row can't poison the page. The QUALITATIVE rich fields
+// (feats / fineLines / notes / net) are overlaid from the bundled snapshot by id
+// AFTERWARDS (normaliseDbPlans) when the live row doesn't carry them — truth-only,
+// same-id only — so the live path keeps fresh prices without losing perks.
+function normaliseDbRow(row) {
+  if (!row || typeof row !== 'object') return null;
+  const id = typeof row.id === 'string' ? row.id : null;
+  const provider = typeof row.provider === 'string' ? row.provider : null;
+  const title = typeof row.title === 'string' ? row.title : null;
+  const cat = typeof row.category === 'string' ? row.category : null;
+  const price = _num(row.price_exact) ?? _num(row.price);
+  if (!id || !provider || !title || !cat || price == null) return null;
+  if (!KNOWN_CATEGORIES.has(cat)) return null;
+
+  const priceExact = _num(row.price_exact);
+  const after = _num(row.after_exact) ?? _num(row.after);
+  const afterExact = _num(row.after_exact);
+  const priceUnit =
+    typeof row.price_unit === 'string' && VALID_PRICE_UNITS.has(row.price_unit)
+      ? row.price_unit
+      : undefined;
+
+  const isArr = (v) => Array.isArray(v);
+  const p = {
+    id,
+    cat,
+    provider,
+    plan: title,
+    price,
+    priceExact: priceExact != null ? priceExact : null,
+    after: after,
+    afterExact: afterExact != null ? afterExact : null,
+    net: typeof row.net === 'string' && row.net ? row.net : null,
+    is5G: row.is_5g === true,
+    noCommit: row.no_commit === true,
+    hasAbroad: row.has_abroad === true,
+    priceUnit: priceUnit,
+    kind: typeof row.kind === 'string' && row.kind ? row.kind : 'regular',
+    specs: row.specs && typeof row.specs === 'object' ? row.specs : {},
+    fees: row.fees && typeof row.fees === 'object' ? row.fees : {},
+    // Owner-editable jsonb/text columns per the schema contract. Absent on older
+    // rows → left null/empty here and back-filled from the bundled snapshot by id.
+    feats: isArr(row.feats) ? row.feats : null,
+    fineLines: isArr(row.fine_lines) ? row.fine_lines : null,
+    terms: isArr(row.terms) ? row.terms : (typeof row.terms === 'string' && row.terms ? [row.terms] : []),
+    notes: typeof row.notes === 'string' && row.notes ? row.notes : null,
+    updatedAt: typeof row.updated_at === 'string' ? row.updated_at.slice(0, 7) : null,
+  };
+  return p;
+}
+
+// Normalise + sort the live rows, then overlay the qualitative perks/fine-print/
+// notes/net from the bundled snapshot by id wherever the live row lacks them
+// (mirrors the web app's mergeBundledRichFields). Returns [] if nothing valid.
+function normaliseDbPlans(rows) {
+  if (!Array.isArray(rows)) return [];
+  const bundledById = new Map((bundledCatalogue.plans || []).map((p) => [p.id, p]));
+  const out = [];
+  for (const row of rows) {
+    const p = normaliseDbRow(row);
+    if (!p) continue;
+    const b = bundledById.get(p.id);
+    if (b) {
+      if (p.feats == null && b.feats != null) p.feats = b.feats;
+      if (p.fineLines == null && b.fineLines != null) p.fineLines = b.fineLines;
+      if (p.notes == null && b.notes != null) p.notes = b.notes;
+      if (!p.net && b.net) p.net = b.net;
+      if ((!p.terms || !p.terms.length) && Array.isArray(b.terms) && b.terms.length) p.terms = b.terms;
+    }
+    if (p.feats == null) p.feats = [];
+    if (p.fineLines == null) p.fineLines = [];
+    out.push(p);
+  }
+  out.sort((a, b) => (a.price ?? Infinity) - (b.price ?? Infinity));
+  return out;
+}
+
+// Synchronously read public.plans over the Supabase REST API, returning the raw
+// rows array (or null on any failure). We keep the rest of build.js fully
+// synchronous (it executes top-to-bottom at module load and the catalogue is
+// consumed immediately below), and we must stay DEPENDENCY-FREE — so the async
+// `fetch` is run in an isolated child `node -e` process whose ONLY job is to
+// print the JSON rows to stdout. A non-zero exit / timeout / parse error here is
+// swallowed by the caller, which then falls back to the bundled snapshot.
+function readPlansFromDbSync() {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || SUPABASE_ANON_KEY;
+  if (!url || !key) return null;
+  // `select=*` returns whatever columns exist, so this keeps working before AND
+  // after the owner adds feats/fine_lines/notes (selecting a missing column by
+  // name would 400). cache:no-store so each rebuild reads the real current DB.
+  const child = `
+    const url = ${JSON.stringify(url)}.replace(/\\/$/, '') + '/rest/v1/plans?select=*';
+    const key = ${JSON.stringify(key)};
+    const ac = new AbortController();
+    const t = setTimeout(() => ac.abort(), 8000);
+    fetch(url, {
+      cache: 'no-store',
+      signal: ac.signal,
+      headers: { apikey: key, Authorization: 'Bearer ' + key, Accept: 'application/json' },
+    })
+      .then((r) => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then((rows) => { clearTimeout(t); process.stdout.write(JSON.stringify(rows)); })
+      .catch((e) => { clearTimeout(t); process.stderr.write(String(e && e.message || e)); process.exit(1); });
+  `;
+  try {
+    const out = require('node:child_process').execFileSync(process.execPath, ['-e', child], {
+      encoding: 'utf8',
+      timeout: 15000,
+      maxBuffer: 32 * 1024 * 1024,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    const rows = JSON.parse(out);
+    return Array.isArray(rows) ? rows : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+// Build the in-memory `catalogue` (SAME shape as data/plans.json): LIVE plans
+// when the DB read yields ≥1 valid normalised plan, else the bundled snapshot.
+const catalogue = (() => {
+  let liveRows = null;
+  try {
+    liveRows = readPlansFromDbSync();
+  } catch {
+    liveRows = null;
+  }
+  const livePlans = normaliseDbPlans(liveRows);
+  if (livePlans.length > 0) {
+    // Freshness stamp comes from the REAL data: newest live `updatedAt` (YYYY-MM)
+    // expanded to a full ISO timestamp, so the "data as of" date downstream
+    // reflects the live DB, not the stale committed export.
+    let newest = null;
+    for (const p of livePlans) {
+      if (typeof p.updatedAt !== 'string') continue;
+      const t = Date.parse(p.updatedAt.length === 7 ? `${p.updatedAt}-01` : p.updatedAt);
+      if (!Number.isNaN(t) && (newest == null || t > newest)) newest = t;
+    }
+    const generated = newest != null ? new Date(newest).toISOString() : new Date().toISOString();
+    console.log(`Catalogue source: LIVE Supabase (${livePlans.length} plans, data as of ${generated.slice(0, 10)}).`);
+    return { generated, categories: bundledCatalogue.categories, plans: livePlans };
+  }
+  console.log(
+    `Catalogue source: BUNDLED data/plans.json (${(bundledCatalogue.plans || []).length} plans` +
+      ` — live DB read failed/empty, serving last-known-good).`,
+  );
+  return bundledCatalogue;
+})();
+
 const plansByCat = {};
 for (const p of catalogue.plans) (plansByCat[p.cat] ||= []).push(p);
 for (const k of Object.keys(plansByCat)) plansByCat[k].sort((a, b) => a.price - b.price);
@@ -2198,14 +2394,20 @@ const staticPages = [
     slug: 'privacy',
     title: 'מדיניות פרטיות — SWITCHY',
     desc: 'מדיניות הפרטיות של SWITCHY — איזה מידע אנחנו אוספים, כיצד אנו משתמשים בו, עם מי הוא משותף ומהן זכויותיכם.',
-    h1: 'מדיניות פרטיות', intro: 'עודכן לאחרונה: יוני 2026',
+    h1: 'מדיניות פרטיות', intro: 'עודכן לאחרונה: 28 ביוני 2026',
     sections: [
-      { h2: 'איזה מידע אנחנו אוספים', ul: ['פרטים שאתם מוסרים: שם, מספר טלפון ואימייל (למשל בטופס השארת פרטים).', 'העדפות וחשבונות שאתם מזינים באפליקציה כדי לקבל המלצה מותאמת.', 'נתוני שימוש בסיסיים (כגון דפים שנצפו) לשיפור השירות.'] },
-      { h2: 'כיצד אנו משתמשים במידע', ul: ['כדי לספק את ההשוואה וההמלצה.', 'כדי ליצור איתכם קשר לגבי מעבר ספק — בהסכמתכם, לרבות הצעות רלוונטיות על בסיס מסלולים שצפיתם בהם באפליקציה כמשתמשים רשומים.', 'כדי לשפר את הדיוק והשירות.', 'בעת השארת פנייה נשמרת גם כתובת ה-IP למניעת שימוש לרעה; היא נמחקת בתוך 30 יום.'] },
-      { h2: 'שיתוף מידע', p: ['איננו מוכרים את המידע שלכם. אנו עשויים לשתף פרטים עם חברת התקשורת שבחרתם — אך ורק לצורך ביצוע המעבר ובהסכמתכם — ועם ספקי שירות טכניים המסייעים בהפעלת הפלטפורמה.', 'בעת השארת פנייה, פרטיה (שם, הספק המבוקש והערות שמסרתם) עשויים להיות מעובדים באופן אוטומטי על-ידי ספק בינה מלאכותית חיצוני (כגון OpenAI או Anthropic) לצורך סיכום הפנייה ותעדוף הטיפול בה, בכפוף למדיניות הפרטיות של אותו ספק. המידע אינו משמש לפרסום.'] },
-      { h2: 'שמירה ואבטחה', p: ['אנו שומרים את המידע למשך הזמן הדרוש למתן השירות ובהתאם לדין, ונוקטים אמצעים סבירים לאבטחתו.'] },
-      { h2: 'הזכויות שלכם', p: ['אתם רשאים לעיין במידע שלכם, לתקנו או לבקש את מחיקתו — בפנייה אלינו לכתובת hello@chosech.co.il.'] },
-      { h2: 'עוגיות ושינויים', p: ['האתר עשוי לעשות שימוש בעוגיות בסיסיות לתפעול ולניתוח. נעדכן מדיניות זו מעת לעת, והמשך השימוש מהווה הסכמה לגרסה המעודכנת.'] },
+      { h2: 'מי אנחנו (בעל מאגר המידע)', p: ['SWITCHY (Switch AI) הוא שירות מקוון להשוואת מסלולי תקשורת בישראל (סלולר, אינטרנט, טלוויזיה, חבילות משולבות וחבילות חו״ל). אנו הגורם האחראי לעיבוד המידע הנאסף דרך האתר (בעל מאגר המידע). לפניות בנושאי פרטיות ניתן ליצור קשר בכתובת hello@chosech.co.il או בוואטסאפ 050-503-7537.', 'פרטי הישות המשפטית הרשומה המפעילה את השירות (שם החברה ומספר ח.פ/ע.מ) יעודכנו בעמוד זה עם השלמת הרישום.'] },
+      { h2: 'איזה מידע אנחנו אוספים', ul: ['פרטים שאתם מוסרים: שם, מספר טלפון ואימייל (למשל בטופס השארת פרטים), ולעיתים העיר והקטגוריה המבוקשת.', 'העדפות וחשבונות שאתם מזינים באפליקציה כדי לקבל המלצה מותאמת.', 'טקסט חופשי ותמונת חשבון שאתם בוחרים להעלות לעוזר ה-AI או לניתוח חשבון.', 'נתוני שימוש בסיסיים (כגון דפים שנצפו) לשיפור השירות, וכן כתובת IP בעת השארת פנייה למניעת שימוש לרעה.'] },
+      { h2: 'כיצד אנו משתמשים במידע', ul: ['כדי לספק את ההשוואה וההמלצה.', 'כדי ליצור איתכם קשר לגבי מעבר ספק — בהסכמתכם, לרבות הצעות רלוונטיות על בסיס מסלולים שצפיתם בהם באפליקציה כמשתמשים רשומים.', 'כדי לשפר את הדיוק והשירות ולעמוד בחובות חוקיות.', 'למניעת שימוש לרעה, אבטחה והגבלת קצב פניות (כולל באמצעות כתובת ה-IP).'] },
+      { h2: 'דיוור שיווקי והסרה', p: ['דיוור שיווקי (מבצעים, עדכוני מחיר והצעות מעבר ספק) נשלח אך ורק לאחר הסכמה מפורשת מראש — למשל בסימון תיבת ההסכמה בטופס ההרשמה לעדכונים — בהתאם לסעיף 30א לחוק התקשורת (בזק ושידורים), התשמ״ב-1982. אנו מתעדים את מתן ההסכמה ואת מועדה. כל דיוור שיווקי יכלול דרך פשוטה להסרה (קישור להסרה או אפשרות להשיב במילה הסר), וניתן להסיר את ההסכמה בכל עת גם בפנייה לכתובת hello@chosech.co.il.'] },
+      { h2: 'שיתוף מידע עם צדדים שלישיים', p: ['איננו מוכרים את המידע שלכם ואיננו משתמשים בו לפרסום ממוקד. הפנייה מועברת לחברת התקשורת או לספק הרלוונטי אך ורק לאחר הסכמתכם המפורשת ולצורך מתן הצעה. בנוסף, אנו נעזרים במעבדי מידע (ספקי תשתית ושירות) הפועלים מטעמנו ובהתאם להנחיותינו; חלק מהם מאחסנים או מעבדים מידע מחוץ לישראל, כמפורט בסעיף הבא.', 'גילוי נאות: השירות חינמי עבורכם, ו-SWITCHY (Switch AI) מקבלת עמלת תיווך מחברות התקשורת כאשר אתם עוברים ספק דרכנו. העמלה אינה משפיעה על המחיר שאתם משלמים ואינה משפיעה על דירוג המסלולים. לפירוט ראו את הגילוי הנאות שבתחתית האתר.', 'האתר אינו עושה שימוש בפיקסלים פרסומיים או בכלי רימרקטינג (כגון Facebook או Meta Pixel); כלי המדידה היחיד הנטען בדפדפן הוא Google Analytics 4, בכפוף להסכמתכם. אלה ספקי השירות שאנו נעזרים בהם:'], ul: ['Google Analytics 4 (Google LLC, נטען דרך googletagmanager.com): מדידת שימוש מצטברת ואנונימית באתר. הסקריפט נטען בכל עמוד אך פועל במצב הסכמה (Consent Mode), כך שעוגיות אנליטיקה ופרסום נשמרות רק לאחר שאישרתם אותן בבאנר העוגיות.', 'Supabase: אחסון מסד הנתונים, הרשאות (Auth) ופונקציות שרת — מאגר המידע המרכזי שבו נשמרים פרטי הפנייה.', 'Vercel: אירוח האתר ושירותי ה-API (לרבות קליטת טופס יצירת הקשר).', 'Cloudflare: שירותי רשת, קצה ו-DNS; כתובת ה-IP משמשת לאבטחה והגבלת קצב.', 'Google — Gemini API (Google LLC): עיבוד בינה מלאכותית של הטקסט החופשי שאתם כותבים לעוזר ושל תמונת החשבון בניתוח חשבון. תמונת החשבון מעובדת באופן רגעי ואינה נשמרת, והעיבוד כפוף לתנאי השימוש של Google. כגיבוי, כאשר השירות הראשי אינו זמין, מעובד הטקסט אצל Groq, Cerebras או OpenRouter.', 'OpenAI / Anthropic: שימוש פנימי בלבד לתעדוף פניות — סיכום אוטומטי של פרטי פנייה (שם והערות) עבור צוות המכירות. אינו פונה ללקוח ואינו משמש לפרסום.', 'Meta — WhatsApp (WhatsApp Cloud API): התכתבות בוואטסאפ כאשר אתם פונים אלינו בערוץ זה (מספר טלפון, שם פרופיל ותוכן ההודעה; הודעות קוליות מתומללות אוטומטית באמצעות Groq).', 'Resend: שליחת הודעות דוא״ל תפעוליות (כגון התראות פנייה לצוות).', 'Telegram: התראות פנימיות לצוות בלבד (פרטי הפנייה מוצגים לנציגי הצוות) — אינו פונה ללקוח.', 'רשויות מוסמכות: אם נידרש לכך על פי דין.'] },
+      { h2: 'העברת מידע אל מחוץ לישראל', p: ['חלק מספקי השירות שלנו מאחסנים או מעבדים מידע מחוץ לישראל, בהתאם להוראות חוק הגנת הפרטיות ותקנותיו בנוגע להעברת מידע אל מחוץ לגבולות המדינה. בפועל: מאגר המידע המרכזי (Supabase) מאוחסן באיחוד האירופי (פרנקפורט, גרמניה); האירוח, שירותי הרשת, האנליטיקה, עיבוד ה-AI והמסרים (Vercel, Cloudflare, Google, Groq, Cerebras, OpenRouter, Meta/WhatsApp, Resend, Telegram, OpenAI/Anthropic) פועלים בארה״ב או בשירותי ענן גלובליים. מסירת הפרטים והמשך השימוש בשירות מהווים הסכמה להעברת המידע ולעיבודו אצל ספקים אלה.'] },
+      { h2: 'כמה זמן נשמרים הפרטים', p: ['אנו שומרים את הפרטים למשך הזמן הדרוש למתן השירות ולעמידה בחובות חוקיות, ולאחר מכן מוחקים אותם או הופכים אותם לאנונימיים. ככלל:'], ul: ['פרטי פנייה (שם, טלפון, עיר, קטגוריה והערות) וכתובת ה-IP המשויכת אליהם — עד 24 חודשים ממועד הפנייה, או עד לבקשת מחיקה, המוקדם מביניהם.', 'רשומות הסכמה ורישומי הסרה מדיוור (Opt-out) — נשמרים כראיה משפטית למשך התקופה הנדרשת על פי דין.', 'מנויי דיוור (אימייל וכתובת IP שנמסרו בעת ההרשמה לעדכונים בטופס שבתחתית האתר) — נשמרים כל עוד אתם מנויים, ועד הסרתכם מרשימת הדיוור או בקשת מחיקה; רישום ההסרה עצמו נשמר כראיה לפי דין.', 'פרטי חשבון של משתמש רשום (לרבות חותמת ההסכמה, כתובת ה-IP שממנה ניתנה ההסכמה והמסלולים שנצפו) — נשמרים כל עוד החשבון פעיל, ויימחקו לבקשתכם או עם סגירת החשבון.', 'נתוני שימוש (טלמטריה) פנימיים — עד 90 יום.', 'נתוני Google Analytics 4 — בהתאם להגדרות השמירה של Google (עד 14 חודשים).'] },
+      { h2: 'אבטחת מידע', p: ['אנו נוקטים אמצעים סבירים לאבטחת המידע מפני גישה, שימוש או חשיפה בלתי מורשים, ובכלל זה העברת נתונים מוצפנת (HTTPS) והגבלת גישה. עם זאת, אף מערכת אינה חסינה לחלוטין ואיננו יכולים להבטיח אבטחה מוחלטת.'] },
+      { h2: 'דיווח על אירוע אבטחה', p: ['במקרה של אירוע אבטחה חמור הנוגע למידע אישי, נפעל ללא דיחוי כדי לבלום ולהעריך את האירוע ולצמצם את הנזק. ככל שהדבר נדרש על פי דין, נדווח לרשות להגנת הפרטיות ונודיע לנושאי המידע שהמידע שלהם הושפע, בהקדם האפשרי ובמסגרת הזמן הקבועה בדין. ההודעה תכלול מידע סביר על האירוע ועל הצעדים להקטנת הסיכון.'] },
+      { h2: 'הזכויות שלכם', p: ['בהתאם לחוק הגנת הפרטיות, התשמ״א-1981 ולתקנותיו, אתם רשאים: (א) לעיין במידע שאנו מחזיקים עליכם ולקבל ממנו העתק; (ב) לבקש לתקן מידע שגוי, לא שלם או לא מעודכן; (ג) לבקש את מחיקת המידע או הפסקת עיבודו; (ד) להתנגד לשימוש במידע למטרות שיווק ולבטל בכל עת הסכמה לדיוור; (ה) להגיש תלונה לרשות להגנת הפרטיות במשרד המשפטים.', 'למימוש הזכויות פנו אלינו בכתובת hello@chosech.co.il או בוואטסאפ 050-503-7537. לצורך אימות זהותכם ייתכן שנבקש פרטים מזהים. נטפל בפנייתכם ללא תשלום (למעט מקרים חריגים הקבועים בדין) ונשיב בתוך פרק הזמן הקבוע בחוק — ככלל עד 30 יום ממועד קבלת הבקשה.'] },
+      { h2: 'פרטיות קטינים', p: ['השירות אינו מיועד לקטינים מתחת לגיל 16 ואיננו אוספים ביודעין מידע מקטינים. אם נודע לכם שקטין מסר לנו מידע אישי, פנו אלינו בכתובת hello@chosech.co.il ונפעל למחיקתו.'] },
+      { h2: 'עוגיות ושינויים', p: ['האתר עושה שימוש ב-Google Analytics 4 למדידת שימוש מצטברת ולשיפור השירות. עוגיות אנליטיקה נשמרות רק לאחר הסכמתכם, וניתן לסרב להן או למחוק אותן דרך הגדרות הדפדפן; עוגיות חיוניות לתפעול האתר עשויות לפעול גם בהיעדר הסכמה לעוגיות לא-חיוניות. נעדכן מדיניות זו מעת לעת, והמשך השימוש מהווה הסכמה לגרסה המעודכנת.'] },
     ],
   },
   {

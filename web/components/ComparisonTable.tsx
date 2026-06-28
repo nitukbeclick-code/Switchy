@@ -8,8 +8,12 @@
 // DATA: price (₪ + per-unit suffix), the post-promo line (an honest "לאחר המבצע:
 // ₪X" jump or a "מחיר קבוע" marker — never a meaningless bare dash), the
 // category's rich fields (נפח / מהירות / נתב / ממיר / התקנה / חו״ל / …) and the
-// qualitative perks ("מידע נוסף"). Long fine-print sits behind a "פרטים מלאים ▾"
-// native <details> disclosure (no JS, server-rendered).
+// qualitative perks ("מידע נוסף"). Extra long fine-print sits behind an
+// "אותיות קטנות ▾" native <details> disclosure (no JS, server-rendered).
+//
+// NAVIGABLE: every plan — the mobile card's name + its "פרטים מלאים ←" link, and
+// the desktop row's "מסלול" cell — links to the plan's full detail page
+// (/plans/{id}) via next/link, so the comparison is a gateway to the rich detail.
 //
 // HONESTY: a featured/sponsored row is ALWAYS visibly labeled ("מקודם" /
 // "בחירת העורך") — never covert. Provider brand colors are the carrier's REAL
@@ -276,9 +280,15 @@ export default function ComparisonTable({
                 {label ? <FeatureBadges label={label} /> : null}
               </div>
 
-              {/* Plan name. */}
-              <p className="mt-2 font-display text-base font-semibold tracking-tight text-ink">
-                {plan.plan}
+              {/* Plan name — links to the plan's full detail page. */}
+              <p className="mt-2">
+                <Link
+                  href={`/plans/${plan.id}`}
+                  aria-label={`לפרטים מלאים על ${plan.plan} מ${plan.provider}`}
+                  className="interactive inline-block rounded-sm font-display text-base font-semibold tracking-tight text-ink underline-offset-4 transition-colors hover:text-accent hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                >
+                  {plan.plan}
+                </Link>
               </p>
 
               {/* Price big + unit, then the honest post-promo line. */}
@@ -309,12 +319,13 @@ export default function ComparisonTable({
                 </p>
               ) : null}
 
-              {/* Full fine-print behind a native, no-JS disclosure — only when the
-                  plan carries fine-lines NOT already shown as perks. */}
+              {/* Extra fine-print behind a native, no-JS disclosure — only when the
+                  plan carries fine-lines NOT already shown as perks. (The full
+                  detail page, linked below, is the canonical "פרטים מלאים".) */}
               {extraFineLines(d).length > 0 ? (
                 <details className="group mt-3">
                   <summary className="interactive flex cursor-pointer list-none items-center gap-1 text-[13px] font-semibold text-accent marker:hidden">
-                    פרטים מלאים
+                    אותיות קטנות
                     <span
                       aria-hidden="true"
                       className="transition-transform group-open:rotate-180"
@@ -329,6 +340,17 @@ export default function ComparisonTable({
                   </ul>
                 </details>
               ) : null}
+
+              {/* Always-present navigation to the plan's full detail page, so every
+                  card is reachable regardless of whether it carries fine-print. */}
+              <Link
+                href={`/plans/${plan.id}`}
+                aria-label={`לעמוד המסלול המלא של ${plan.plan} מ${plan.provider}`}
+                className="interactive press mt-3 inline-flex items-center gap-1 rounded-lg text-[13px] font-semibold text-accent underline-offset-4 transition-colors hover:text-accent-hover hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              >
+                פרטים מלאים
+                <span aria-hidden="true">←</span>
+              </Link>
             </li>
           );
         })}
@@ -415,8 +437,16 @@ export default function ComparisonTable({
                     </span>
                   </th>
 
-                  {/* מסלול */}
-                  <td className="px-4 py-3 text-start text-foreground">{plan.plan}</td>
+                  {/* מסלול — links to the plan's full detail page. */}
+                  <td className="px-4 py-3 text-start text-foreground">
+                    <Link
+                      href={`/plans/${plan.id}`}
+                      aria-label={`לפרטים מלאים על ${plan.plan} מ${plan.provider}`}
+                      className="interactive rounded-sm font-medium text-foreground underline-offset-4 transition-colors hover:text-accent hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+                    >
+                      {plan.plan}
+                    </Link>
+                  </td>
 
                   {/* מחיר */}
                   <td className="px-4 py-3 text-start whitespace-nowrap">

@@ -49,6 +49,42 @@ export interface Plan {
   kind?: PlanKind;
   /** Free-form spec map, Hebrew keys → values (e.g. {"נתונים":"1500GB"}). */
   specs?: Record<string, string>;
+  // ── Rich real-world detail (all OPTIONAL, already carried by the catalogue) ──
+  // The bundled catalogue ships these on most plans even though the GEO app only
+  // reads a subset; typing them (rather than leaving them under the index
+  // signature) lets the mobile detail surface render the full plan story
+  // truth-only — every one is omittable, so a plan missing it simply renders less.
+  /** Qualitative feature bullets ("מה כלול"), e.g. ["5G","נתיב מהיר"]. */
+  feats?: string[];
+  /** Fine-print clauses (the "אותיות קטנות"), each a single line. */
+  fineLines?: string[];
+  /**
+   * Commitment / contract terms. The bundled catalogue carries an array of
+   * bullet clauses (`string[]`); the live-DB `terms` column is a single raw
+   * string. Both are accepted — `planDetail` normalises to a clean `string[]`,
+   * so a string is treated as a one-line term and nothing is fabricated.
+   */
+  terms?: string[] | string;
+  /** Who the plan is for, e.g. "ללקוחות חדשים בלבד". */
+  eligibility?: string;
+  /** Free-text additional info. */
+  notes?: string;
+  /** Link to the provider/source page the data was taken from. */
+  sourceUrl?: string;
+  /** When this data was last verified (ISO date string, e.g. "2026-06"). */
+  updatedAt?: string;
+  /** Real average star rating (0–5) — REAL catalogue data only; never invented. */
+  rating?: number;
+  /** Real number of reviews backing {@link rating} — real count only. */
+  reviews?: number;
+  /**
+   * Fees as Hebrew label → value (e.g. {"התקנה":"₪149","נתב":"+₪19.9/ח׳"}). The
+   * canonical shape is `Record<string, string>`; the `| object` member only
+   * admits the live-DB jsonb column (typed `unknown` upstream, narrowed to
+   * `object`) without a cast. Read it via `fee()` / `planFees()`, which coerce
+   * values defensively — never index this map for a typed string directly.
+   */
+  fees?: Record<string, string> | object;
   /** Catalogue carries extra rich fields; keep them rather than dropping. */
   [key: string]: unknown;
 }

@@ -3,7 +3,8 @@
 // route (place it in app/layout.tsx, before {children}). Provides:
 //   • brand wordmark ("Switchy AI") linking home,
 //   • primary internal nav (השוואה · ספקים · דופק השוק · מעבר ספק),
-//   • one green ACTION CTA (שיחת ייעוץ חינם → /#lead).
+//   • one green ACTION CTA (שיחת ייעוץ בזום → /book, the Zoom consultation
+//     scheduler; the homepage LeadForm (#lead) is its own section lower down).
 //
 // Server component (no state). Uses next/link for internal nav.
 //
@@ -127,14 +128,17 @@ export default function SiteHeader({ className }: SiteHeaderProps) {
             CTA. Stays visible on every breakpoint (unlike the primary nav). */}
         <ThemeToggle className="ms-auto" />
 
-        {/* CTA — the single green ACTION in the masthead. */}
+        {/* CTA — the single green ACTION in the masthead → the Zoom consultation
+            scheduler (/book), labelled so it's clearly a Zoom video meeting (not
+            just a callback form). The homepage LeadForm (#lead) remains its own
+            section lower on the page. */}
         <TrackedCtaLink
-          href="/#lead"
+          href="/book"
           location="header"
           label="consult"
           className="rounded-xl border border-accent/40 bg-accent px-4 py-2 text-sm font-semibold text-accent-contrast shadow-[var(--glow-accent)] transition-[color,background-color,box-shadow,transform] duration-150 ease-[var(--ease-out)] hover:bg-accent-hover hover:shadow-float hover:shadow-accent/30 active:scale-[0.97] [@media(hover:hover)_and_(pointer:fine)]:motion-safe:hover:-translate-y-0.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
-          שיחת ייעוץ חינם
+          שיחת ייעוץ בזום
         </TrackedCtaLink>
 
         {/* Mobile menu — a native <details> disclosure, shown only < md (the

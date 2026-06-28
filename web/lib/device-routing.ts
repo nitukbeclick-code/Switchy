@@ -44,9 +44,11 @@ const STATIC_HTML_MAP: ReadonlyMap<string, string> = new Map([
 
 // Files the static project serves verbatim — its own *.html pages plus every
 // static asset / crawl / meta file. Matched by extension so a desktop request for
-// one is NEVER diverted to the Next app (which would 404 it).
+// one is NEVER diverted to the Next app (which would 404 it). MUST include media
+// (mp4/webm/… — the hero video lives at /assets/videos/*.mp4; omitting it 404'd
+// the static homepage video) and audio, alongside images/fonts/styles/scripts.
 const STATIC_PASSTHROUGH_RE =
-  /\.(?:html?|css|m?js|json|txt|xml|ico|png|jpe?g|webp|avif|gif|svg|woff2?|ttf|otf|eot|map|pdf|webmanifest)$/i;
+  /\.(?:html?|css|m?js|json|txt|xml|ico|png|jpe?g|webp|avif|gif|svg|woff2?|ttf|otf|eot|map|pdf|webmanifest|mp4|webm|mov|m4v|ogv|mp3|wav|ogg|m4a|aac|flac|vtt|wasm|csv)$/i;
 
 /**
  * The path to fetch from the STATIC origin for a DESKTOP request to `pathname`,

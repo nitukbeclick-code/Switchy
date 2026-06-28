@@ -16,7 +16,7 @@ import ReferralCard from "@/components/ReferralCard";
 const OK_BODY = {
   ok: true,
   code: "SW-7KQ4M9",
-  link: "https://app.switchy-ai.com/?ref=SW-7KQ4M9",
+  link: "https://switchy-ai.com/?ref=SW-7KQ4M9",
   shareText: "מצאתי כלי חינמי… SW-7KQ4M9",
   persisted: true,
 };
@@ -61,7 +61,7 @@ describe("ReferralCard — issue + render", () => {
     );
     // The shareable link is visible.
     expect(
-      screen.getByText("https://app.switchy-ai.com/?ref=SW-7KQ4M9"),
+      screen.getByText("https://switchy-ai.com/?ref=SW-7KQ4M9"),
     ).toBeInTheDocument();
     // The code is exposed with an accessible label.
     expect(

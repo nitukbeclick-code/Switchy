@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { staticDesktopPath } from "@/lib/device-routing";
 
 // ────────────────────────────────────────────────────────────────────────────
 // DEVICE-SPLIT ROUTING for the one canonical domain (switchy-ai.com).
@@ -48,11 +49,20 @@ export function middleware(request: NextRequest): NextResponse {
     return res;
   }
 
-  // Desktop (and unknown UA) → proxy the same path on the static site.
-  const target = new URL(
-    request.nextUrl.pathname + request.nextUrl.search,
-    STATIC_ORIGIN,
-  );
+  // Desktop (and unknown UA) → the desktop-optimized static site. Since the app
+  // now self-canonicals to the apex, Google (mobile-first) indexes CLEAN apex
+  // URLs; a desktop visitor landing on one must not 404. staticDesktopPath maps a
+  // clean marketing path to its static .html twin, passes the static site's own
+  // *.html + "/" + assets through unchanged, and returns null for a Next-only
+  // route — which we then render from THIS app on desktop rather than rewrite to
+  // a non-existent static page.
+  const staticPath = staticDesktopPath(request.nextUrl.pathname);
+  if (staticPath === null) {
+    const res = NextResponse.next();
+    res.headers.set("Vary", "User-Agent");
+    return res;
+  }
+  const target = new URL(staticPath + request.nextUrl.search, STATIC_ORIGIN);
   const res = NextResponse.rewrite(target);
   res.headers.set("Vary", "User-Agent");
   return res;

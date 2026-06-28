@@ -239,6 +239,132 @@ export function planDisplay(plan: Plan): PlanDisplay {
 /** Alias of {@link planFieldsForCategory} — the ordered rich rows for a plan. */
 export const planRows = planFieldsForCategory;
 
+// ── detail page bundle (the rich mobile plan-detail surface) ─────────────────
+
+/**
+ * The ORDERED equipment / one-off-fee rows a detail page surfaces — the typed
+ * mirror of the Flutter `_PaymentsEquipmentSection` ("תשלומים וציוד"). Each entry
+ * is a real `{ label, value }` charge read off `plan.fees` (alt-key aware), so the
+ * true cost of the line — connection, installation, router, decoder, range
+ * extender — is never buried. Truth-only: a fee the plan doesn't carry is OMITTED.
+ *
+ * `label` is the canonical Hebrew column header; `value` is the catalogue's own
+ * verbatim string (e.g. "₪149" / "+₪19.9/ח׳" / "אין"). Never computed or invented.
+ */
+export function planFees(plan: Plan): PlanField[] {
+  const out: PlanField[] = [];
+  const push = (label: string, value: string | null) => {
+    if (value) out.push({ label, value });
+  };
+  // Canonical order + alt-keys mirror the static site / Flutter equipment list.
+  push("דמי חיבור", fee(plan, "דמי חיבור", "חיבור", "הצטרפות"));
+  push("התקנה", fee(plan, "התקנה"));
+  push("נתב", fee(plan, "נתב", "ראוטר"));
+  push("ממיר", fee(plan, "ממיר", "ממירים", "מקלט"));
+  push("מגדיל טווח", fee(plan, "מגדיל טווח", "מרחיב טווח"));
+  return out;
+}
+
+/**
+ * Every spec on the plan as ordered `{ label, value }` rows — the FULL spec map,
+ * NOT the category subset {@link planFieldsForCategory} renders. Backs the detail
+ * page's "מפרט" grid (the Flutter `_SpecGrid`), which shows the whole `plan.specs`
+ * dict verbatim. Insertion order of the catalogue map is preserved; empty values
+ * are dropped (truth-only). Empty when the plan carries no specs.
+ */
+export function allSpecs(plan: Plan): PlanField[] {
+  const map = plan.specs;
+  if (!map || typeof map !== "object") return [];
+  const out: PlanField[] = [];
+  for (const [label, raw] of Object.entries(map as Record<string, unknown>)) {
+    const key = typeof label === "string" ? label.trim() : "";
+    if (!key) continue;
+    let value: string | null = null;
+    if (typeof raw === "string") {
+      const t = raw.trim();
+      value = t || null;
+    } else if (typeof raw === "number" && Number.isFinite(raw)) {
+      value = String(raw);
+    }
+    if (value) out.push({ label: key, value });
+  }
+  return out;
+}
+
+/**
+ * The full detail-page bundle — EVERYTHING the rich mobile plan-detail surface
+ * needs, in one truth-only call. A superset of {@link PlanDisplay}: it adds the
+ * complete spec list, the structured equipment/fee rows, and the textual extras
+ * (terms / eligibility / notes / source / freshness) the detail page shows beyond
+ * the compact comparison card.
+ *
+ * TRUTH-ONLY: optional textual fields are present ONLY when the plan really
+ * carries non-empty data — absent ones are left `undefined`/empty so callers can
+ * omit their rows without inventing content. No ratings are fabricated here:
+ * rating/review rendering MUST go through `getAggregateRating`, which returns
+ * `null` when there's no real data.
+ */
+export interface PlanDetail {
+  /** The plan this bundle describes. */
+  plan: Plan;
+  /** Headline price string (exact-aware), e.g. "69.90" — no ₪ prefix. */
+  price: string;
+  /** Short per-unit suffix for the headline price, e.g. "/ח׳" / "/חבילה". */
+  priceUnit: string;
+  /** The post-promo price label (jump vs fixed) — see {@link afterPriceLabel}. */
+  after: ReturnType<typeof afterPriceLabel>;
+  /** The FULL spec list (all of `plan.specs`) — see {@link allSpecs}. */
+  specs: PlanField[];
+  /** Structured equipment / one-off-fee rows — see {@link planFees}. */
+  fees: PlanField[];
+  /** Qualitative perks ("מידע נוסף") — see {@link perks}. */
+  perks: string[];
+  /** Full fine-print for the "אותיות קטנות" disclosure — see {@link fineLines}. */
+  fineLines: string[];
+  /** Commitment / contract term bullets — empty when the plan carries none. */
+  terms: string[];
+  /** Who the plan is for — present only when the catalogue carries it. */
+  eligibility?: string;
+  /** Free-text additional info — present only when non-empty. */
+  notes?: string;
+  /** Source/provider link the data was taken from — present only when set. */
+  sourceUrl?: string;
+  /** When this data was last verified (ISO date) — present only when set. */
+  updatedAt?: string;
+}
+
+/**
+ * The full {@link PlanDetail} bundle for a plan — the one call the rich mobile
+ * plan-detail page makes to get everything it renders, category-aware and
+ * truth-only. Reuses the existing price/perks/fineLines accessors so the detail
+ * page can never drift from the comparison views, and adds the full spec list,
+ * the structured equipment/fee rows, and the textual extras.
+ */
+export function planDetail(plan: Plan): PlanDetail {
+  const out: PlanDetail = {
+    plan,
+    price: priceText(plan),
+    priceUnit: priceUnitShort(plan),
+    after: afterPriceLabel(plan),
+    specs: allSpecs(plan),
+    fees: planFees(plan),
+    perks: perks(plan),
+    fineLines: fineLines(plan),
+    terms: termsList(plan),
+  };
+
+  const eligibility = cleanText(plan.eligibility);
+  if (eligibility) out.eligibility = eligibility;
+  const notes = cleanText(plan.notes);
+  if (notes) out.notes = notes;
+  const sourceUrl = cleanText(plan.sourceUrl);
+  if (sourceUrl) out.sourceUrl = sourceUrl;
+  const updatedAt = cleanText(plan.updatedAt);
+  if (updatedAt) out.updatedAt = updatedAt;
+
+  return out;
+}
+
 // ── internal helpers ─────────────────────────────────────────────────────────
 
 /** Combine `דקות` + `SMS` into one cell, mirroring the static cellular row. */
@@ -277,6 +403,27 @@ function readMap(
     }
   }
   return null;
+}
+
+/**
+ * The contract-terms bullets for a plan, de-duplicated. Accepts BOTH catalogue
+ * shapes truth-only: the bundled `string[]` of clauses, or the live-DB single
+ * raw `string` (treated as one term). Empty when the plan carries no terms.
+ */
+function termsList(plan: Plan): string[] {
+  const raw = plan.terms;
+  if (typeof raw === "string") {
+    const t = raw.trim();
+    return t ? [t] : [];
+  }
+  return dedupe(toStringArray(raw));
+}
+
+/** A trimmed non-empty string from an unknown, or null (truth-only text gate). */
+function cleanText(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const t = value.trim();
+  return t ? t : null;
 }
 
 /** Coerce an unknown (possibly string) to a finite number, or null. */

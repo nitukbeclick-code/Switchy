@@ -3,7 +3,7 @@
 //   • a real <header> landmark with a labelled primary <nav>,
 //   • the brand wordmark links home (no dead-end),
 //   • the four primary internal hubs link to their real routes,
-//   • exactly one green ACTION CTA → /#lead,
+//   • exactly one green ACTION CTA → the Zoom consultation scheduler (/book),
 //   • the light/dark toggle is present (accessible <button>).
 //
 // SiteHeader embeds two "use client" children (TrackedCtaLink, ThemeToggle).
@@ -60,10 +60,10 @@ describe("SiteHeader — primary nav links resolve to real routes", () => {
 });
 
 describe("SiteHeader — the single ACTION CTA + theme toggle", () => {
-  it("renders one consultation CTA pointing at the lead anchor", () => {
+  it("renders one consultation CTA pointing at the Zoom scheduler", () => {
     render(<SiteHeader />);
-    const cta = screen.getByRole("link", { name: "שיחת ייעוץ חינם" });
-    expect(cta).toHaveAttribute("href", "/#lead");
+    const cta = screen.getByRole("link", { name: "שיחת ייעוץ בזום" });
+    expect(cta).toHaveAttribute("href", "/book");
   });
 
   it("renders the accessible light/dark toggle button", () => {

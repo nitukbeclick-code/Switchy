@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   productSchema,
   comparisonSchema,
+  itemListSchema,
   aggregateRatingSchema,
   reviewSchema,
   knowledgeWebSchema,
@@ -125,6 +126,111 @@ describe("productSchema — price range from [price, after]", () => {
   it("treats an after <= price as a single fixed Offer (no negative range)", () => {
     const schema = productSchema(plan({ price: 50, after: 50 }));
     expect((schema.offers as Record<string, unknown>)["@type"]).toBe("Offer");
+  });
+
+  it("stamps additionalType: TelecomunicationsService on the Product", () => {
+    const schema = productSchema(plan());
+    expect(schema.additionalType).toBe(
+      "https://schema.org/TelecomunicationsService",
+    );
+  });
+
+  it("references the provider Organization by @id for BOTH brand and seller (no inline copies)", () => {
+    const schema = productSchema(plan({ provider: "סלקום" }));
+    const providerId = `${SITE_URL}/providers/cellcom#org`;
+    // brand is an @id reference to the provider Organization node, not a fresh Brand.
+    const brand = schema.brand as Record<string, unknown>;
+    expect(brand["@type"]).toBe("Organization");
+    expect(brand["@id"]).toBe(providerId);
+    // seller on the offer is the SAME @id reference — no second inline Organization.
+    const seller = (schema.offers as Record<string, unknown>).seller as Record<
+      string,
+      unknown
+    >;
+    expect(seller["@id"]).toBe(providerId);
+  });
+});
+
+describe("productSchema — priceSpecification (monthly base + one-time fee)", () => {
+  it("ALWAYS emits a UnitPriceSpecification for the monthly base in ILS", () => {
+    const schema = productSchema(plan({ price: 40, after: null }));
+    const specs = (schema.offers as Record<string, unknown>)
+      .priceSpecification as Array<Record<string, unknown>>;
+    expect(Array.isArray(specs)).toBe(true);
+    expect(specs[0]).toMatchObject({
+      "@type": "UnitPriceSpecification",
+      price: 40,
+      priceCurrency: "ILS",
+      valueAddedTaxIncluded: true,
+    });
+    expect(specs[0].referenceQuantity).toMatchObject({
+      "@type": "QuantitativeValue",
+      value: 1,
+      unitCode: "MON",
+    });
+  });
+
+  it("adds a separate one-time PriceSpecification when the plan carries a real install/connection fee", () => {
+    const schema = productSchema(
+      plan({ fees: { "דמי חיבור": "₪149" } } as Partial<Plan>),
+    );
+    const specs = (schema.offers as Record<string, unknown>)
+      .priceSpecification as Array<Record<string, unknown>>;
+    expect(specs).toHaveLength(2);
+    expect(specs[1]).toMatchObject({
+      "@type": "PriceSpecification",
+      price: 149,
+      priceCurrency: "ILS",
+      valueAddedTaxIncluded: true,
+    });
+  });
+
+  it("OMITS the one-time fee spec when absent, free, or a recurring (per-month) charge", () => {
+    // No fees at all → monthly base only.
+    expect(
+      (
+        (productSchema(plan()).offers as Record<string, unknown>)
+          .priceSpecification as unknown[]
+      ).length,
+    ).toBe(1);
+    // A recurring router rental (per-month) is NOT a one-time fee → omitted.
+    const recurring = productSchema(
+      plan({ fees: { "נתב": "+₪19.9/ח׳" } } as Partial<Plan>),
+    );
+    expect(
+      (
+        (recurring.offers as Record<string, unknown>)
+          .priceSpecification as unknown[]
+      ).length,
+    ).toBe(1);
+  });
+});
+
+describe("itemListSchema — references Products by @id (no duplicate full Products)", () => {
+  it("emits lean ListItems pointing at the canonical Product @id, never inlining a Product", () => {
+    const plans = [
+      plan({ id: "cel_a", cat: "cellular" }),
+      plan({ id: "cel_b", cat: "cellular" }),
+    ];
+    const schema = itemListSchema(plans);
+    expect(schema).toMatchObject({
+      "@type": "ItemList",
+      numberOfItems: 2,
+    });
+    const els = schema.itemListElement as Array<Record<string, unknown>>;
+    expect(els).toHaveLength(2);
+    const idA = `${SITE_URL}/compare/cellular#plan-cel_a`;
+    expect(els[0]).toMatchObject({
+      "@type": "ListItem",
+      position: 1,
+      url: idA,
+      item: { "@id": idA },
+    });
+    // The list item REFERENCES the product (only @id) — it does NOT re-serialize it.
+    const item = els[0].item as Record<string, unknown>;
+    expect(item["@type"]).toBeUndefined();
+    expect(item.name).toBeUndefined();
+    expect(item.offers).toBeUndefined();
   });
 });
 
@@ -302,6 +408,38 @@ describe("knowledgeWebSchema — provider-node @id dedupe", () => {
           n["@id"] === `${SITE_URL}/providers/cellcom#org`,
       ),
     ).toBe(true);
+  });
+
+  it("is the single source of Product nodes: one per plan, @id matches the ItemList refs, with TelecomService + PriceSpecification", () => {
+    const plans = [
+      plan({ id: "cel_a", cat: "cellular", provider: "סלקום", price: 40 }),
+      plan({ id: "cel_b", cat: "cellular", provider: "פרטנר", price: 55 }),
+    ];
+    const graph = knowledgeWebSchema({ plans })["@graph"] as Array<
+      Record<string, unknown>
+    >;
+    const products = graph.filter((n) => n["@type"] === "Product");
+    // Exactly ONE Product per plan, keyed on the SAME @id the ItemList references.
+    expect(products).toHaveLength(2);
+    const productIds = products.map((p) => p["@id"]);
+    expect(productIds).toContain(`${SITE_URL}/compare/cellular#plan-cel_a`);
+    const listEls = itemListSchema(plans).itemListElement as Array<
+      Record<string, unknown>
+    >;
+    for (const el of listEls) {
+      const refId = (el.item as Record<string, unknown>)["@id"];
+      expect(productIds).toContain(refId);
+    }
+    // Each Product is a telecom service and its offer carries a monthly PriceSpecification.
+    for (const prod of products) {
+      expect(prod.additionalType).toBe(
+        "https://schema.org/TelecomunicationsService",
+      );
+      const specs = (prod.offers as Record<string, unknown>)
+        .priceSpecification as Array<Record<string, unknown>>;
+      expect(specs[0]["@type"]).toBe("UnitPriceSpecification");
+      expect(specs[0].priceCurrency).toBe("ILS");
+    }
   });
 });
 

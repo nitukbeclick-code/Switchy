@@ -25,7 +25,6 @@ import FreshnessBadge from "@/components/FreshnessBadge";
 import RelatedAuthorityPages from "@/components/RelatedAuthorityPages";
 import {
   getPlans,
-  getProviders,
   getCategories,
   plansByCategory,
   CATEGORY_HE,
@@ -37,9 +36,15 @@ import {
   categoryAggregateOfferSchema,
   breadcrumbSchema,
 } from "@/lib/schema";
-import { pageMetadata } from "@/lib/seo";
+import { pageMetadata, homeMetaDescription } from "@/lib/seo";
 import { lastDataDate } from "@/lib/aeo";
+import { getLivePlans } from "@/lib/live-catalogue";
 import { ils } from "@/lib/format";
+
+// ISR: regenerate the static HTML hourly so the price list + ₪ figures read from
+// the live DB catalogue (with the bundled snapshot as a resilient fallback) and
+// never drift stale vs the live /compare hubs.
+export const revalidate = 3600;
 
 // How many cheapest plans to preview per category before linking to /compare.
 // A short, scannable taste of each category's pricing — the full list lives on
@@ -63,10 +68,14 @@ const REVEAL_CSS = `
 
 export const metadata: Metadata = pageMetadata({
   title: "מחירון מלא — מחירי כל מסלולי התקשורת בישראל",
+  // Fact-dense, truth-only site-wide TL;DR (total plans, providers, covered
+  // categories, ₪ floor) — this hub spans every category, so the whole-catalogue
+  // homeMetaDescription fits; falls back to the static copy if the catalogue is empty.
   description:
+    homeMetaDescription() ??
     "מחירון מלא של מסלולי הסלולר, האינטרנט, הטלוויזיה, החבילות המשולבות וחו״ל מכל " +
-    "הספקים בישראל — המסלולים הזולים בכל קטגוריה, מחירים בשקלים כולל המחיר אחרי " +
-    "המבצע. השוואה חינמית ובלי התחייבות.",
+      "הספקים בישראל — המסלולים הזולים בכל קטגוריה, מחירים בשקלים כולל המחיר אחרי " +
+      "המבצע. השוואה חינמית ובלי התחייבות.",
   path: "/plans",
 });
 
@@ -95,17 +104,26 @@ interface CategoryBlock {
   preview: Plan[];
 }
 
-export default function PlansPricingPage() {
-  // ── One catalogue read, threaded through everything ─────────────────────────
-  const allPlans = getPlans();
-  const providers = getProviders();
+export default async function PlansPricingPage() {
+  // ── ONE live catalogue read per render, threaded through everything ──────────
+  // The whole catalogue, live from the DB (bundled snapshot as a resilient
+  // fallback). Every count/price below is derived from this single list so they
+  // can never disagree with each other or with the live /compare hubs.
+  const { plans: live } = await getLivePlans();
+  const allPlans = live.length ? live : getPlans();
+  // Provider count + category order derived FROM the same plan list (not a
+  // separate bundled read) so the figures match the prices shown.
+  const providerCount = new Set(allPlans.map((p) => p.provider).filter(Boolean))
+    .size;
+  // Canonical category ORDER from getCategories(), but membership/figures come
+  // from the live plans (filter the live list per category).
   const categories = getCategories();
 
   // Per-category blocks (only categories that carry plans), each with its REAL
   // cheapest-first preview, total count and lowest price.
   const blocks: CategoryBlock[] = [];
   for (const cat of categories) {
-    const inCat = plansByCategory(cat);
+    const inCat = allPlans.filter((p) => p.cat === cat);
     if (inCat.length === 0) continue;
     const ranked = cheapestFirst(inCat);
     blocks.push({
@@ -145,7 +163,7 @@ export default function PlansPricingPage() {
   ];
 
   const summary =
-    `מחירון מלא של ${allPlans.length} מסלולי תקשורת מ-${providers.length} ספקים ` +
+    `מחירון מלא של ${allPlans.length} מסלולי תקשורת מ-${providerCount} ספקים ` +
     `בישראל, בכל הקטגוריות` +
     (overallMin != null ? ` — החל מ-${ils(overallMin)} לחודש` : "") +
     `. לכל קטגוריה מוצגים כאן המסלולים הזולים ביותר, ומשם אפשר לעבור להשוואה ` +
@@ -206,7 +224,7 @@ export default function PlansPricingPage() {
           className="sw-reveal mt-4 max-w-2xl text-lg leading-relaxed text-foreground"
           style={{ animationDelay: "80ms" }}
         >
-          {allPlans.length} מסלולים מ-{providers.length} ספקים, בכל הקטגוריות —
+          {allPlans.length} מסלולים מ-{providerCount} ספקים, בכל הקטגוריות —
           ממוינים מהזול ליקר. לכל קטגוריה מוצגים כאן המסלולים הזולים ביותר, ומשם
           אפשר לעבור להשוואה המלאה. המחירים בשקלים וכוללים את המחיר אחרי המבצע.
         </p>
@@ -226,7 +244,7 @@ export default function PlansPricingPage() {
           <div className="flex items-baseline gap-2">
             <dt className="text-muted">ספקים</dt>
             <dd className="font-display text-xl font-bold tracking-tight text-ink">
-              {providers.length.toLocaleString("he-IL")}
+              {providerCount.toLocaleString("he-IL")}
             </dd>
           </div>
           {overallMin != null && (

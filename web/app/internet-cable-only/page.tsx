@@ -25,12 +25,18 @@ import {
   categoryAggregateOfferSchema,
   breadcrumbSchema,
 } from "@/lib/schema";
-import { pageMetadata } from "@/lib/seo";
+import { pageMetadata, categoryMetaDescription } from "@/lib/seo";
 import { lastDataDate } from "@/lib/aeo";
+import { getLivePlans } from "@/lib/live-catalogue";
 import type { Plan } from "@/lib/types";
 
 const CATEGORY = "internet";
 const TITLE_HE = "אינטרנט על תשתית כבל";
+
+// ISR: regenerate the static HTML hourly so the featured table + ₪ figures read
+// from the live DB catalogue (with the bundled snapshot as a resilient fallback)
+// and never drift stale vs the live /compare hub.
+export const revalidate = 3600;
 
 /** A searchable blob of a plan's REAL descriptive fields (name/specs/feats/fine). */
 function planBlob(p: Plan): string {
@@ -47,24 +53,37 @@ function isCopperOrCable(p: Plan): boolean {
   return /נחושת|כבל|cable|דאבל|docsis/i.test(planBlob(p));
 }
 
+/** A priced cable/copper (HFC) internet plan. */
+function isCableOnly(p: Plan): boolean {
+  return typeof p.price === "number" && isCopperOrCable(p);
+}
+
 /** Cheapest cable/copper internet plans, priced first. */
-function cablePlans(limit = 10): Plan[] {
-  return plansByCategory(CATEGORY)
-    .filter((p): p is Plan => typeof p.price === "number" && isCopperOrCable(p))
+function cablePlans(all: Plan[], limit = 10): Plan[] {
+  return all
+    .filter((p): p is Plan => isCableOnly(p))
     .sort((a, b) => a.price - b.price)
     .slice(0, limit);
 }
 
 export const metadata: Metadata = pageMetadata({
   title: "אינטרנט על תשתית כבל / נחושת — השוואת מחירים",
+  // Fact-dense, truth-only TL;DR derived from the SAME filtered (cable/HFC) plans
+  // the page renders — real count, provider sample and ₪ floor, never fabricated.
   description:
+    categoryMetaDescription(CATEGORY, {
+      plans: plansByCategory(CATEGORY).filter(isCableOnly),
+    }) ??
     "מסלולי אינטרנט ביתי על תשתית הכבל והנחושת (HFC) — חלופה זמינה היכן שאין סיב. " +
-    "ממוינים מהזול ביותר, כולל המחיר אחרי המבצע. השוו מכל הספקים. השוואה חינמית.",
+      "ממוינים מהזול ביותר, כולל המחיר אחרי המבצע. השוו מכל הספקים. השוואה חינמית.",
   path: "/internet-cable-only",
 });
 
-export default function InternetCableOnlyPage() {
-  const plans = cablePlans();
+export default async function InternetCableOnlyPage() {
+  // ── ONE live catalogue read per render (bundled fallback on any failure) ──────
+  const { plans: catalogue } = await getLivePlans({ category: CATEGORY });
+  const all = catalogue.length ? catalogue : plansByCategory(CATEGORY);
+  const plans = cablePlans(all);
   // Real "data as of" date (catalogue updated_at, else build-time UTC) — drives
   // BOTH the visible <FreshnessBadge> and the schema's temporalCoverage month, so
   // the structured data can never disagree with what the human reads.
@@ -93,7 +112,7 @@ export default function InternetCableOnlyPage() {
     {
       href: `/compare/${CATEGORY}`,
       label: "השוואת כל מסלולי האינטרנט",
-      hint: `${plansByCategory(CATEGORY).length} מסלולים מכל הספקים, ממוין מהזול.`,
+      hint: `${all.length} מסלולים מכל הספקים, ממוין מהזול.`,
     },
     { href: "/internet-fiber-only", label: "אינטרנט סיב אופטי", hint: "מהירות ויציבות גבוהות — אם יש סיב בכתובת." },
     { href: "/internet-giga", label: "אינטרנט גיגה", hint: "מסלולים במהירות 1000Mb ומעלה." },

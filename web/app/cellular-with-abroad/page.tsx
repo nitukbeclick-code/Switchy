@@ -24,33 +24,50 @@ import {
   categoryAggregateOfferSchema,
   breadcrumbSchema,
 } from "@/lib/schema";
-import { pageMetadata } from "@/lib/seo";
+import { pageMetadata, categoryMetaDescription } from "@/lib/seo";
 import { lastDataDate } from "@/lib/aeo";
+import { getLivePlans } from "@/lib/live-catalogue";
 import type { Plan } from "@/lib/types";
 
 const CATEGORY = "cellular";
 const TITLE_HE = "מסלולי סלולר עם חו״ל";
 
+// ISR: regenerate the static HTML hourly so the featured table + ₪ figures read
+// from the live DB catalogue (with the bundled snapshot as a resilient fallback)
+// and never drift stale vs the live /compare hub.
+export const revalidate = 3600;
+
+/** A priced cellular plan that bundles abroad use (real `hasAbroad`). */
+function isWithAbroad(p: Plan): boolean {
+  return typeof p.price === "number" && p.hasAbroad === true;
+}
+
 /** Cheapest cellular plans that bundle abroad use (real `hasAbroad`), priced first. */
-function abroadPlans(limit = 8): Plan[] {
-  return plansByCategory(CATEGORY)
-    .filter(
-      (p): p is Plan => typeof p.price === "number" && p.hasAbroad === true,
-    )
+function abroadPlans(all: Plan[], limit = 8): Plan[] {
+  return all
+    .filter((p): p is Plan => isWithAbroad(p))
     .sort((a, b) => a.price - b.price)
     .slice(0, limit);
 }
 
 export const metadata: Metadata = pageMetadata({
   title: "מסלולי סלולר עם גלישה בחו״ל — השוואת מחירים",
+  // Fact-dense, truth-only TL;DR derived from the SAME filtered (כולל חו״ל) plans the
+  // page renders — real count, provider sample and ₪ floor, never fabricated.
   description:
+    categoryMetaDescription(CATEGORY, {
+      plans: plansByCategory(CATEGORY).filter(isWithAbroad),
+    }) ??
     "מסלולי סלולר שכוללים גלישה בחו״ל בחבילה — בלי לקנות חבילת רומינג נפרדת. " +
-    "ממוינים מהזול ביותר, כולל המחיר אחרי המבצע. השוו מכל החברות. השוואה חינמית.",
+      "ממוינים מהזול ביותר, כולל המחיר אחרי המבצע. השוו מכל החברות. השוואה חינמית.",
   path: "/cellular-with-abroad",
 });
 
-export default function CellularWithAbroadPage() {
-  const plans = abroadPlans();
+export default async function CellularWithAbroadPage() {
+  // ── ONE live catalogue read per render (bundled fallback on any failure) ──────
+  const { plans: catalogue } = await getLivePlans({ category: CATEGORY });
+  const all = catalogue.length ? catalogue : plansByCategory(CATEGORY);
+  const plans = abroadPlans(all);
   // Real "data as of" date (catalogue updated_at, else build-time UTC) — drives
   // BOTH the visible <FreshnessBadge> and the schema's temporalCoverage month, so
   // the structured data can never disagree with what the human reads.
@@ -79,7 +96,7 @@ export default function CellularWithAbroadPage() {
     {
       href: `/compare/${CATEGORY}`,
       label: "השוואת כל מסלולי הסלולר",
-      hint: `${plansByCategory(CATEGORY).length} מסלולים מכל הספקים, ממוין מהזול.`,
+      hint: `${all.length} מסלולים מכל הספקים, ממוין מהזול.`,
     },
     { href: "/compare/abroad", label: "השוואת חבילות חו״ל", hint: "חבילות רומינג ו-eSIM ליעדים נפוצים." },
     { href: "/glossary/roaming", label: "מה זה רומינג?", hint: "הסבר קצר וברור במילון המונחים." },

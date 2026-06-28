@@ -23,16 +23,22 @@ import {
   categoryAggregateOfferSchema,
   breadcrumbSchema,
 } from "@/lib/schema";
-import { pageMetadata } from "@/lib/seo";
+import { pageMetadata, categoryMetaDescription } from "@/lib/seo";
 import { lastDataDate } from "@/lib/aeo";
+import { getLivePlans } from "@/lib/live-catalogue";
 import type { Plan } from "@/lib/types";
 
 const CATEGORY = "triple";
 const TITLE_HE = CATEGORY_HE[CATEGORY]; // "חבילה משולבת" (already a full phrase)
 
-/** The cheapest N plans in a category (by headline price), priced first. */
-function cheapestPlans(cat: string, limit = 6): Plan[] {
-  return plansByCategory(cat)
+// ISR: regenerate the static HTML hourly so the featured table + ₪ figures read
+// from the live DB catalogue (with the bundled snapshot as a resilient fallback)
+// and never drift stale vs the live /compare hub.
+export const revalidate = 3600;
+
+/** The cheapest N plans (by headline price), priced first, from a plan list. */
+function cheapestPlans(all: Plan[], limit = 6): Plan[] {
+  return all
     .filter((p): p is Plan => typeof p.price === "number")
     .sort((a, b) => a.price - b.price)
     .slice(0, limit);
@@ -40,14 +46,20 @@ function cheapestPlans(cat: string, limit = 6): Plan[] {
 
 export const metadata: Metadata = pageMetadata({
   title: "חבילות משולבות (טריפל) — השוואת מחירים",
+  // Fact-dense, truth-only TL;DR derived from the catalogue (plan count, provider
+  // count + sample names, ₪ price floor) so an answer engine extracts real figures.
   description:
+    categoryMetaDescription(CATEGORY) ??
     "אינטרנט, טלוויזיה וסלולר בחבילה אחת — לרוב המסלול הכי חסכוני. השוו את כל " +
-    "הטריפלים, כולל המחיר אחרי המבצע, ומצאו את החבילה שמתאימה לבית שלכם. השוואה חינמית.",
+      "הטריפלים, כולל המחיר אחרי המבצע, ומצאו את החבילה שמתאימה לבית שלכם. השוואה חינמית.",
   path: "/triple",
 });
 
-export default function TripleLandingPage() {
-  const plans = cheapestPlans(CATEGORY);
+export default async function TripleLandingPage() {
+  // ── ONE live catalogue read per render (bundled fallback on any failure) ──────
+  const { plans: catalogue } = await getLivePlans({ category: CATEGORY });
+  const all = catalogue.length ? catalogue : plansByCategory(CATEGORY);
+  const plans = cheapestPlans(all);
   // Real "data as of" date (catalogue updated_at, else build-time UTC) — drives
   // BOTH the visible <FreshnessBadge> and the schema's temporalCoverage month, so
   // the structured data can never disagree with what the human reads.
@@ -76,7 +88,7 @@ export default function TripleLandingPage() {
     {
       href: `/compare/${CATEGORY}`,
       label: "השוואת כל החבילות המשולבות",
-      hint: `${plansByCategory(CATEGORY).length} מסלולים מכל הספקים, ממוין מהזול.`,
+      hint: `${all.length} מסלולים מכל הספקים, ממוין מהזול.`,
     },
     {
       href: "/compare/internet",

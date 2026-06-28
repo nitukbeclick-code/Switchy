@@ -25,16 +25,22 @@ import {
   categoryAggregateOfferSchema,
   breadcrumbSchema,
 } from "@/lib/schema";
-import { pageMetadata } from "@/lib/seo";
+import { pageMetadata, categoryMetaDescription } from "@/lib/seo";
 import { lastDataDate } from "@/lib/aeo";
+import { getLivePlans } from "@/lib/live-catalogue";
 import type { Plan } from "@/lib/types";
 
 const CATEGORY = "abroad";
 const TITLE_HE = CATEGORY_HE[CATEGORY]; // "חבילות חו״ל" (already a full phrase)
 
-/** The cheapest N plans in a category (by headline price), priced first. */
-function cheapestPlans(cat: string, limit = 6): Plan[] {
-  return plansByCategory(cat)
+// ISR: regenerate the static HTML hourly so the featured table + ₪ figures read
+// from the live DB catalogue (with the bundled snapshot as a resilient fallback)
+// and never drift stale vs the live /compare hub.
+export const revalidate = 3600;
+
+/** The cheapest N plans (by headline price), priced first, from a plan list. */
+function cheapestPlans(all: Plan[], limit = 6): Plan[] {
+  return all
     .filter((p): p is Plan => typeof p.price === "number")
     .sort((a, b) => a.price - b.price)
     .slice(0, limit);
@@ -42,14 +48,20 @@ function cheapestPlans(cat: string, limit = 6): Plan[] {
 
 export const metadata: Metadata = pageMetadata({
   title: "חבילות גלישה בחו״ל — eSIM ונדידה, השוואת מחירים",
+  // Fact-dense, truth-only TL;DR derived from the catalogue (plan count, provider
+  // count + sample names, ₪ price floor) so an answer engine extracts real figures.
   description:
+    categoryMetaDescription(CATEGORY) ??
     "גלישה בחו״ל בלי הפתעות. השוו חבילות eSIM ונדידה לכל יעד — לפי ימים, נפח " +
-    "גלישה ומחיר — והפעילו עוד לפני הטיסה. השוואה חינמית, מחירים בשקלים.",
+      "גלישה ומחיר — והפעילו עוד לפני הטיסה. השוואה חינמית, מחירים בשקלים.",
   path: "/abroad",
 });
 
-export default function AbroadLandingPage() {
-  const plans = cheapestPlans(CATEGORY);
+export default async function AbroadLandingPage() {
+  // ── ONE live catalogue read per render (bundled fallback on any failure) ──────
+  const { plans: catalogue } = await getLivePlans({ category: CATEGORY });
+  const all = catalogue.length ? catalogue : plansByCategory(CATEGORY);
+  const plans = cheapestPlans(all);
   // Real "data as of" date (catalogue updated_at, else build-time UTC) — drives
   // BOTH the visible <FreshnessBadge> and the schema's temporalCoverage month, so
   // the structured data can never disagree with what the human reads.
@@ -78,7 +90,7 @@ export default function AbroadLandingPage() {
     {
       href: `/compare/${CATEGORY}`,
       label: "השוואת כל חבילות חו״ל",
-      hint: `${plansByCategory(CATEGORY).length} חבילות מכל הספקים, ממוין מהזול.`,
+      hint: `${all.length} חבילות מכל הספקים, ממוין מהזול.`,
     },
     {
       href: "/compare/cellular",

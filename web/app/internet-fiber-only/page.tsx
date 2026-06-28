@@ -25,12 +25,18 @@ import {
   categoryAggregateOfferSchema,
   breadcrumbSchema,
 } from "@/lib/schema";
-import { pageMetadata } from "@/lib/seo";
+import { pageMetadata, categoryMetaDescription } from "@/lib/seo";
 import { lastDataDate } from "@/lib/aeo";
+import { getLivePlans } from "@/lib/live-catalogue";
 import type { Plan } from "@/lib/types";
 
 const CATEGORY = "internet";
 const TITLE_HE = "אינטרנט סיב אופטי";
+
+// ISR: regenerate the static HTML hourly so the featured table + ₪ figures read
+// from the live DB catalogue (with the bundled snapshot as a resilient fallback)
+// and never drift stale vs the live /compare hub.
+export const revalidate = 3600;
 
 /** A searchable blob of a plan's REAL descriptive fields (name/specs/feats/fine). */
 function planBlob(p: Plan): string {
@@ -52,27 +58,37 @@ function isCopperOrCable(p: Plan): boolean {
   return /נחושת|כבל|cable|דאבל|docsis/i.test(planBlob(p));
 }
 
+/** A priced fiber-only internet plan (fiber, NOT copper/cable). */
+function isFiberOnly(p: Plan): boolean {
+  return typeof p.price === "number" && isFiber(p) && !isCopperOrCable(p);
+}
+
 /** Cheapest fiber-only internet plans (fiber, NOT copper/cable), priced first. */
-function fiberPlans(limit = 10): Plan[] {
-  return plansByCategory(CATEGORY)
-    .filter(
-      (p): p is Plan =>
-        typeof p.price === "number" && isFiber(p) && !isCopperOrCable(p),
-    )
+function fiberPlans(all: Plan[], limit = 10): Plan[] {
+  return all
+    .filter((p): p is Plan => isFiberOnly(p))
     .sort((a, b) => a.price - b.price)
     .slice(0, limit);
 }
 
 export const metadata: Metadata = pageMetadata({
   title: "אינטרנט סיב אופטי (Fiber) — כל ספקי הסיב בישראל",
+  // Fact-dense, truth-only TL;DR derived from the SAME filtered (fiber-only) plans
+  // the page renders — real count, provider sample and ₪ floor, never fabricated.
   description:
+    categoryMetaDescription(CATEGORY, {
+      plans: plansByCategory(CATEGORY).filter(isFiberOnly),
+    }) ??
     "השוואת כל מסלולי אינטרנט הסיב האופטי (FTTH/Fiber) בישראל — בזק, HOT, פרטנר, " +
-    "גולן וגילת. ממוינים מהזול ביותר, כולל המחיר אחרי המבצע. השוואה חינמית.",
+      "גולן וגילת. ממוינים מהזול ביותר, כולל המחיר אחרי המבצע. השוואה חינמית.",
   path: "/internet-fiber-only",
 });
 
-export default function InternetFiberOnlyPage() {
-  const plans = fiberPlans();
+export default async function InternetFiberOnlyPage() {
+  // ── ONE live catalogue read per render (bundled fallback on any failure) ──────
+  const { plans: catalogue } = await getLivePlans({ category: CATEGORY });
+  const all = catalogue.length ? catalogue : plansByCategory(CATEGORY);
+  const plans = fiberPlans(all);
   // Real "data as of" date (catalogue updated_at, else build-time UTC) — drives
   // BOTH the visible <FreshnessBadge> and the schema's temporalCoverage month, so
   // the structured data can never disagree with what the human reads.
@@ -101,7 +117,7 @@ export default function InternetFiberOnlyPage() {
     {
       href: `/compare/${CATEGORY}`,
       label: "השוואת כל מסלולי האינטרנט",
-      hint: `${plansByCategory(CATEGORY).length} מסלולים מכל הספקים, ממוין מהזול.`,
+      hint: `${all.length} מסלולים מכל הספקים, ממוין מהזול.`,
     },
     { href: "/internet", label: "עמוד האינטרנט הראשי", hint: "כל תתי-הקטגוריות במקום אחד." },
     { href: "/internet-giga", label: "אינטרנט גיגה", hint: "מסלולים במהירות 1000Mb ומעלה." },

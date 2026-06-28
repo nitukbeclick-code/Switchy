@@ -49,6 +49,7 @@ import {
   faqPageSchema,
   breadcrumbSchema,
   knowledgeGraphSchema,
+  knowledgeWebSchema,
   placeSchema,
   relatedLinksSchema,
   pageAggregateOfferSchema,
@@ -411,11 +412,12 @@ export default async function ServiceCityPage({ params }: Params) {
       />
 
       {/* GEO structured data: CollectionPage + Place/GeoCoordinates/AdminArea +
-          ItemList + FAQ + Breadcrumb + KnowledgeGraph. Each plan's Product data is
-          serialized ONCE in the standalone ItemList and once more (entity-linked)
-          in the knowledgeWebSchema @graph below — we deliberately do NOT also embed
-          it in the CollectionPage (no `plans`) nor emit a per-plan productSchema
-          loop, to keep the JSON-LD payload lean on these 252 geo pages. */}
+          ItemList + FAQ + Breadcrumb + KnowledgeGraph + KnowledgeWeb. Each plan's
+          Product entity is serialized EXACTLY ONCE — in the knowledgeWebSchema
+          @graph below — and merely REFERENCED by @id from the lean ItemList here
+          (and never embedded in the CollectionPage, which carries no `plans`, nor
+          emitted via a per-plan productSchema loop). That keeps the JSON-LD payload
+          lean on these 252 geo pages with no duplicate Product nodes. */}
       <JsonLd
         data={collectionPageSchema({
           name: `${svc.label} ב${c.name}`,
@@ -443,6 +445,20 @@ export default async function ServiceCityPage({ params }: Params) {
           related: [
             { id: `/compare/${service}`, name: `השוואת ${svc.label}` },
           ],
+        })}
+      />
+      {/* Knowledge Web: each Product offer ↔ its DefinedTerm(s) ↔ Provider — the
+          SINGLE source of the de-duplicated Product nodes the lean ItemList above
+          references by @id. This is what makes those `/compare/<cat>#plan-<id>`
+          refs resolve on this geo page (TelecomService additionalType +
+          monthly/one-time PriceSpecification per offer), without re-serializing any
+          Product twice. */}
+      <JsonLd
+        data={knowledgeWebSchema({
+          pageUrl: `/compare/${service}/${city}`,
+          category: svc.categories[0],
+          plans,
+          providers: svcProviders,
         })}
       />
       {/* Internal cross-links as a SiteNavigationElement list (mirrors RelatedLinks). */}

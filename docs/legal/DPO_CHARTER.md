@@ -14,8 +14,8 @@
 - **יצירת קשר ישירה / Direct contact:** `[[OWNER: email/phone for the DPO]]`
   (public-facing privacy contact remains hello@chosech.co.il · WhatsApp
   050-503-7537 — routed to the DPO).
-- **מאשר/ממנה / Appointed by:** `[[OWNER: registered legal entity]]`,
-  ח.פ `[[OWNER]]`.
+- **מאשר/ממנה / Appointed by:** אריאל תקשורת,
+  ח.פ/ע.מ 322253618.
 - **תאריך מינוי / Appointment date:** `[[OWNER: date]]`.
 
 ## 2. תחומי אחריות / Duties

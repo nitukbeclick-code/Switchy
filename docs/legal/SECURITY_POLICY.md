@@ -7,7 +7,7 @@
 > assert a completed external audit or certified compliance. Some items are
 > explicitly marked as **planned** or as **owner-to-verify**.
 
-- **בעל המאגר / Holder:** `[[OWNER: registered legal entity]]`, ח.פ `[[OWNER]]`
+- **בעל המאגר / Holder:** אריאל תקשורת, ח.פ/ע.מ 322253618, ליאו בק 64, נהריה
 - **אחראי אבטחת מידע / Security officer:** `[[OWNER: name]]` (may be the DPO)
 - **רמת אבטחה / Security tier:** the operator should classify the database tier
   (basic / medium / high) under the Regulations — given lead PII + marketing, a

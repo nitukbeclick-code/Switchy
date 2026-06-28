@@ -739,10 +739,16 @@ const orgNode = {
   slogan: 'משווים, חוסכים, עוברים — בלי כאב ראש',
   description: 'השוואת מחירי תקשורת חכמה — סלולר, אינטרנט, טלוויזיה, חבילות וחו״ל.',
   // areaServed: Israel (the only market served); knowsAbout: only topics the
-  // site genuinely covers — no fake awards, ratings, sameAs profiles or founder.
+  // site genuinely covers — no fake awards, ratings or founder.
   areaServed: { '@type': 'Country', name: 'IL' },
   knowsAbout: ORG_KNOWS_ABOUT,
   email: 'hello@chosech.co.il',
+  // sameAs: ONLY the brand's genuine, owner-confirmed WhatsApp business profile
+  // (050-503-7537 / +972 50-503-7537 — the same number in contactPoint below and
+  // the visible CTAs). Mirrors web/lib/schema.ts ORG_SAME_AS so the desktop +
+  // mobile surfaces resolve to the SAME entity. No social/Wikidata/marketing URLs
+  // are invented — a profile is listed here ONLY when it genuinely exists.
+  sameAs: ['https://wa.me/972505037537'],
   contactPoint: {
     '@type': 'ContactPoint',
     contactType: 'customer support',
@@ -767,6 +773,97 @@ const websiteNode = {
 };
 // The two identity nodes, ready to spread into any page's @graph.
 const siteGraphNodes = () => [orgNode, websiteNode];
+
+// ── Provider official URLs (Knowledge-Graph sameAs) ──────────────────────────
+// Map of provider display name → its REAL official website. Used for `sameAs` on
+// the provider Organization nodes so engines resolve our provider entity to the
+// authoritative one. Mirrors web/lib/data.ts PROVIDER_OFFICIAL_URLS EXACTLY so the
+// desktop + mobile surfaces cite the same verified URLs. HONESTY: every URL here
+// is the provider's genuine official site — never a marketing redirect, affiliate,
+// or fabrication, and NEVER a guessed Wikidata Q-id. Providers without a verified
+// official URL are intentionally omitted (callers skip `sameAs` rather than invent).
+const PROVIDER_OFFICIAL_URLS = {
+  'בזק': 'https://www.bezeq.co.il',
+  'פרטנר': 'https://www.partner.co.il',
+  'HOT': 'https://www.hot.net.il',
+  'הוט מובייל': 'https://www.hotmobile.co.il',
+  'סלקום': 'https://www.cellcom.co.il',
+  'yes': 'https://www.yes.co.il',
+  'פלאפון': 'https://www.pelephone.co.il',
+  'גולן טלקום': 'https://www.golantelecom.co.il',
+  'רמי לוי': 'https://www.rl-net.co.il',
+  '019 מובייל': 'https://www.019mobile.co.il',
+};
+// The provider's real official URL by display name, or undefined when none is
+// verified. Callers MUST omit `sameAs` when this returns undefined.
+const providerOfficialUrl = (name) => PROVIDER_OFFICIAL_URLS[name];
+
+// Build an Organization node for a provider, with `sameAs` to its REAL official
+// URL (omitted when none is verified — never fabricated) and `url` to its on-site
+// provider page. Stable @id so other graph nodes can reference the same entity.
+// Mirrors web/lib/schema.ts providerOrgNode(). We emit NO aggregateRating: every
+// provider has 0 real reviews, so a rating would be fabricated.
+function providerOrgNode(name) {
+  const slug = providerSlug(name);
+  const org = {
+    '@type': 'Organization',
+    '@id': `${SITE}/provider-${slug}.html#org`,
+    name,
+    url: `${SITE}/provider-${slug}.html`,
+  };
+  const official = providerOfficialUrl(name);
+  if (official) org.sameAs = [official];
+  return org;
+}
+
+// ── Dataset ("Switchy as the data source" — the telecom price catalogue) ─────
+// English alternate name + the real catalogue topics, mirroring web/lib/schema.ts
+// (DATASET_ALT_NAME_EN / DATASET_KEYWORDS) so both surfaces describe the SAME
+// data entity for cross-language resolution.
+const DATASET_ALT_NAME_EN = 'Israel Telecom Price Catalogue — Switchy';
+const DATASET_KEYWORDS = [
+  'מחירי סלולר',
+  'מחירי אינטרנט',
+  'מחירי טלוויזיה',
+  'חבילות משולבות (Triple)',
+  'חבילות גלישה בחו״ל',
+  'השוואת מחירי תקשורת',
+  'שוק התקשורת בישראל',
+];
+// Dataset node positioning Switchy as the authoritative, citable data source for
+// the Israeli telecom price catalogue. Describes the REAL build-time catalogue
+// snapshot we publish — no fabricated trend history. creator + publisher both
+// reference the brand Organization via ORG_ID; temporalCoverage is the REAL
+// catalogue month (CATALOGUE_MONTH); spatialCoverage is Israel (the only market
+// the comparison covers — national framing, never city-specific); license is the
+// real /terms page; variableMeasured are the genuine measured fields. NO
+// `distribution` is emitted: the static site exposes no public JSON download, and
+// inventing one would be dishonest. Mirrors web/lib/schema.ts datasetSchema().
+function datasetNode({ name, description, url, measures }) {
+  return {
+    '@type': 'Dataset',
+    name,
+    alternateName: DATASET_ALT_NAME_EN,
+    description,
+    url,
+    inLanguage: 'he-IL',
+    creator: { '@id': ORG_ID },
+    publisher: { '@id': ORG_ID },
+    isAccessibleForFree: true,
+    license: `${SITE}/terms.html`,
+    keywords: DATASET_KEYWORDS,
+    temporalCoverage: CATALOGUE_MONTH,
+    spatialCoverage: {
+      '@type': 'Place',
+      name: 'ישראל',
+      address: { '@type': 'PostalAddress', addressCountry: 'IL' },
+    },
+    variableMeasured: (measures || ['מחיר', 'ספק', 'קטגוריה']).map((m) => ({
+      '@type': 'PropertyValue',
+      name: m,
+    })),
+  };
+}
 
 // Build a Product node (with an Offer) for one real plan. We intentionally emit
 // NO aggregateRating/review here: every plan has 0 real reviews, so a rating
@@ -2169,6 +2266,18 @@ function plansPage() {
   // Products. Capped at 40 so the JSON-LD payload stays lean (the page renders
   // every plan in HTML; the structured list just gives crawlers a real sample).
   const sortedPlans = catalogue.plans.slice().sort((a, b) => a.price - b.price);
+  // Dataset node — positions THIS full price catalogue as the authoritative,
+  // citable data source for the Israeli telecom market (a real build-time
+  // snapshot, not invented trends). plans.html is the catalogue/market page, so
+  // the Dataset lives here. Description states the genuine catalogue scope
+  // (PLAN_COUNT plans, PROVIDER_COUNT providers, CATEGORY_COUNT categories) and a
+  // national (Israel-wide) framing — never city-specific prices.
+  const datasetForPlans = datasetNode({
+    name: 'מחירון התקשורת של SWITCHY — סלולר, אינטרנט, טלוויזיה, משולב וחו״ל',
+    description: `מחירון מלא של שוק התקשורת בישראל: ${PLAN_COUNT} מסלולים מ-${PROVIDER_COUNT} ספקים ב-${CATEGORY_COUNT} קטגוריות (סלולר, אינטרנט, טלוויזיה, חבילות משולבות וחו״ל). מחירים ארציים נכון ל-${CATALOGUE_DATE_HE}, כולל מע״מ.`,
+    url,
+    measures: ['מחיר', 'ספק', 'קטגוריה', 'מחיר לאחר מבצע', 'נפח גלישה', 'מהירות'],
+  });
   const ldGraph = [
     { '@type': 'BreadcrumbList', itemListElement: [
       { '@type': 'ListItem', position: 1, name: 'דף הבית', item: SITE + '/' },
@@ -2176,7 +2285,11 @@ function plansPage() {
     ] },
     { '@type': 'CollectionPage', name: 'כל החבילות — מחירון מלא', url, inLanguage: 'he-IL',
       isPartOf: { '@id': WEBSITE_ID }, publisher: { '@id': ORG_ID },
+      // The CollectionPage is the main subject (mainEntity = the plan ItemList);
+      // the Dataset is its formal "this is a citable data source" companion.
+      isBasedOn: { '@id': `${url}#dataset` },
       mainEntity: plansItemListJsonLd(sortedPlans.slice(0, 40), url, 'מחירון מלא של כל חברות התקשורת') },
+    { ...datasetForPlans, '@id': `${url}#dataset` },
   ];
   const plansJsonLd = jsonForScript({ '@context': 'https://schema.org', '@graph': ldGraph });
   return `<!DOCTYPE html>
@@ -2299,6 +2412,11 @@ function providerPage(name, plans) {
   // catalogue. temporalCoverage on the CollectionPage stamps the real catalogue
   // month. The per-plan Products already carry the provider as their Brand.
   const provAggOffer = categoryAggregateOfferNode(plans);
+  // Provider Organization node with `sameAs` to its REAL official site (omitted
+  // when none is verified — never fabricated). The CollectionPage `about` points
+  // at this entity by @id so engines resolve our provider page to the
+  // authoritative provider. Mirrors the web app's provider Organization nodes.
+  const provOrg = providerOrgNode(name);
   const provGraph = [
     { '@type': 'BreadcrumbList', itemListElement: [
       { '@type': 'ListItem', position: 1, name: 'דף הבית', item: SITE + '/' },
@@ -2307,9 +2425,10 @@ function providerPage(name, plans) {
     ] },
     { '@type': 'CollectionPage', name: `כל המסלולים של ${name}`, url, inLanguage: 'he-IL',
       isPartOf: { '@id': WEBSITE_ID }, publisher: { '@id': ORG_ID },
-      about: { '@type': 'Brand', name },
+      about: { '@id': provOrg['@id'] },
       temporalCoverage: CATALOGUE_MONTH,
       mainEntity: plansItemListJsonLd(plans, url, `מסלולי ${name}`) },
+    provOrg,
   ];
   if (provAggOffer) provGraph.push(provAggOffer);
   const jsonld = jsonForScript({ '@context': 'https://schema.org', '@graph': provGraph });
@@ -2406,6 +2525,13 @@ function providersIndexPage() {
     const cats = [...new Set(ps.map((p) => p.cat))].filter((c) => catLabel[c]).sort((a, b) => Object.keys(catLabel).indexOf(a) - Object.keys(catLabel).indexOf(b)).map((c) => catLabel[c]).join(' · ');
     return `        <a class="provider-card" href="provider-${providerSlug(name)}.html">${providerLogo(name, 46)}<span><b>${esc(name)}</b><small>${ps.length} מסלולים · מ-₪${min}</small>${cats ? `<small class="provider-card__cats">${esc(cats)}</small>` : ''}</span></a>`;
   }).join('\n');
+  // Provider Organization nodes — one per provider, each `sameAs` its REAL
+  // official site (omitted when none is verified — never fabricated). The
+  // ItemList entries reference these by @id so the provider hub resolves every
+  // listed provider to the authoritative entity. Mirrors the web app's provider
+  // Organization nodes (verified PROVIDER_OFFICIAL_URLS only — no guessed
+  // Wikidata).
+  const providerOrgNodes = sortedNames.map(providerOrgNode);
   // Breadcrumb + CollectionPage whose ItemList links every provider page —
   // an explicit, crawlable map of the provider hub.
   const provJsonLd = jsonForScript({ '@context': 'https://schema.org', '@graph': [
@@ -2420,8 +2546,10 @@ function providersIndexPage() {
         itemListElement: sortedNames.map((name, i) => ({
           '@type': 'ListItem', position: i + 1, name,
           url: `${SITE}/provider-${providerSlug(name)}.html`,
+          item: { '@id': `${SITE}/provider-${providerSlug(name)}.html#org` },
         })),
       } },
+    ...providerOrgNodes,
   ] });
   return `<!DOCTYPE html>
 <html lang="he" dir="rtl">

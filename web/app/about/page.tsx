@@ -297,6 +297,10 @@ export default function AboutPage() {
             {CONTACT_EMAIL}
           </a>
         </div>
+        <p className="mt-5 text-sm text-muted">
+          השירות מופעל על-ידי אריאל תקשורת (עוסק מורשה 322253618), מרחוב ליאו בק
+          64, נהריה.
+        </p>
       </section>
 
       {/* ── CTA — start comparing ──────────────────────────────────────────── */}

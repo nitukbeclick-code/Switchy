@@ -12,6 +12,7 @@
 // token + the rep allowlist) — the same trust the bot commands require.
 
 import type { Cfg, MeetingRow } from "../_shared/types.ts";
+import { botFullyConfigured } from "../_shared/config.ts";
 import { fetchRows, logMeetingEvent, patchCount } from "../_shared/db.ts";
 import { authorizeRep } from "../_shared/webapp.ts";
 import { createZoomMeeting, zoomConfigured } from "../_shared/zoom.ts";
@@ -113,6 +114,12 @@ export async function fetchOpenMeetings(): Promise<MeetingRow[]> {
 }
 
 export async function handleConsoleData(cfg: Cfg, initData: string): Promise<Response> {
+  // Fail-close: an empty rep allowlist would make authorizeRep's allowlist check
+  // vacuous, so gate on botFullyConfigured FIRST (mirrors index.ts:254's 503) —
+  // otherwise any user with valid Mini App initData could read all meetings PII.
+  if (!botFullyConfigured(cfg)) {
+    return json({ ok: false, error: "bot not fully configured" }, 503);
+  }
   const rep = await authorizeRep(initData, cfg.tgToken, cfg.allowedUserIds);
   if (!rep) return json({ ok: false, error: "unauthorized" }, 401);
   const board = buildBoard(await fetchOpenMeetings(), Date.now());
@@ -229,6 +236,11 @@ export async function handleConsoleAct(
   cfg: Cfg,
   body: { initData?: string; id?: string; act?: string; payload?: string },
 ): Promise<Response> {
+  // Fail-close on an empty rep allowlist (mirrors index.ts:254's 503) BEFORE auth —
+  // otherwise any user with valid Mini App initData could confirm/cancel/reschedule.
+  if (!botFullyConfigured(cfg)) {
+    return json({ ok: false, error: "bot not fully configured" }, 503);
+  }
   const rep = await authorizeRep(body.initData ?? "", cfg.tgToken, cfg.allowedUserIds);
   if (!rep) return json({ ok: false, error: "unauthorized" }, 401);
   const id = String(body.id ?? "");

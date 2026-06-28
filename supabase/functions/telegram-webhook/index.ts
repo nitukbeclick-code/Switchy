@@ -46,6 +46,17 @@ interface TelegramUpdate {
   message?: TelegramMessage;
 }
 
+// HTML-escape an untrusted string before interpolating it into a parse_mode:
+// "HTML" Telegram message. first_name is attacker-controllable (any Telegram
+// user sets their own name), so an unescaped "<b>" / "&" would corrupt — or
+// inject markup into — the rendered message. Mirrors console.ts's esc().
+function esc(s: string): string {
+  return String(s ?? "").replace(
+    /[&<>"]/g,
+    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c] as string),
+  );
+}
+
 async function sendTelegramMessage(
   chatId: number,
   text: string
@@ -154,7 +165,7 @@ async function handleStartCommand(
       if (existing === chatIdStr) {
         await sendTelegramMessage(
           chatId,
-          `<b>✅ כבר מחוברים!</b>\n\nשלום ${firstName}, החשבון שלכם כבר מקושר לצ׳אט הזה.`
+          `<b>✅ כבר מחוברים!</b>\n\nשלום ${esc(firstName)}, החשבון שלכם כבר מקושר לצ׳אט הזה.`
         );
       } else {
         await sendTelegramMessage(
@@ -199,7 +210,7 @@ async function handleStartCommand(
 
     await sendTelegramMessage(
       chatId,
-      `<b>✅ מחוברים!</b>\n\nשלום ${firstName}! מעכשיו תקבלו התראות על:\n• אישורי פגישות\n• תזכורות חידוש\n• התראות על דילים משתלמים יותר\n• הצעות מיוחדות\n\nניתן לנהל את ההעדפות בהגדרות האפליקציה.`
+      `<b>✅ מחוברים!</b>\n\nשלום ${esc(firstName)}! מעכשיו תקבלו התראות על:\n• אישורי פגישות\n• תזכורות חידוש\n• התראות על דילים משתלמים יותר\n• הצעות מיוחדות\n\nניתן לנהל את ההעדפות בהגדרות האפליקציה.`
     );
 
     console.log("Successfully linked Telegram chat to profile");

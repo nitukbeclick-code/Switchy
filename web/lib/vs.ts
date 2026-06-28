@@ -56,9 +56,12 @@ const CURATED_PAIRS: VsPairSpec[] = [
   { a: "רמי לוי", b: "019 מובייל", category: "cellular" },
   { a: "גולן טלקום", b: "019 מובייל", category: "cellular" },
   { a: "הוט מובייל", b: "רמי לוי", category: "cellular" },
+  { a: "הוט מובייל", b: "גולן טלקום", category: "cellular" },
+  { a: "Xphone", b: "רמי לוי", category: "cellular" },
 
   // ── Internet — the major ISPs vs each other ────────────────────────────────
   { a: "בזק", b: "HOT", category: "internet" },
+  { a: "בזק", b: "CCC", category: "internet" },
   { a: "בזק", b: "פרטנר", category: "internet" },
   { a: "בזק", b: "סלקום", category: "internet" },
   { a: "HOT", b: "פרטנר", category: "internet" },

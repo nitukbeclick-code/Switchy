@@ -865,41 +865,163 @@ function datasetNode({ name, description, url, measures }) {
   };
 }
 
+// schema.org subtype stamped onto every plan Product (via `additionalType`) so
+// engines read each offer as a telecommunications service, not a generic product.
+// Mirrors web/lib/schema.ts TELECOM_SERVICE_TYPE.
+const TELECOM_SERVICE_TYPE = 'https://schema.org/TelecomunicationsService';
+
+// The fee keys that name a genuinely ONE-OFF install/connection charge. Recurring
+// equipment rentals (נתב/ממיר/מגדיל טווח) are deliberately excluded so we never
+// mis-state a monthly rental as a one-time fee. Mirrors web/lib/schema.ts
+// ONE_TIME_FEE_KEYS (the catalogue is byte-identical, so the same keys apply).
+const ONE_TIME_FEE_KEYS = ['דמי חיבור', 'חיבור', 'הצטרפות', 'התקנה'];
+
+// Parse a REAL one-time install/connection fee off a plan into a numeric ILS
+// amount, truth-only. Returns null when the plan carries no such fee, when the
+// value is "free"/non-numeric ("חינם"/"אין"/"עלות מוזלת"/"מהיום להיום"), or when it
+// is flagged recurring (a per-month suffix) — so we never fabricate a one-off
+// charge or mislabel a monthly rental. Mirrors web/lib/schema.ts oneTimeFeeAmount()
+// against the SAME (byte-identical) catalogue, with one deliberate hardening: we
+// pull the ₪-anchored amount (the number adjacent to a ₪ sign) rather than the
+// first digit anywhere in the string. Some התקנה values carry an apartment-count
+// qualifier before the price (e.g. "חינם בבניין; 1-4 דירות ₪499", "...5+ דירות
+// ₪499"); a bare first-number grab would mis-emit price:1 / price:5 — a fabricated
+// fee. Anchoring on ₪ yields the genuine ₪499 install fee and leaves every other
+// case identical to the reference. Currency-less strings (no ₪) return null.
+function oneTimeFeeAmount(p) {
+  const fees = p.fees || {};
+  let raw = null;
+  for (const k of ONE_TIME_FEE_KEYS) { if (fees[k] != null) { raw = fees[k]; break; } }
+  if (!raw) return null;
+  raw = String(raw).replace(/,/g, '');
+  // A per-month marker means it is NOT a one-time fee — skip it.
+  if (/ל?ח(?:ו|ׄ|״|')?(?:דש)?\b|\/\s*ח|חודש/.test(raw)) return null;
+  // The ₪-denominated amount only (prefix "₪499" or suffix "499 ₪") — never a
+  // stray apartment-count or payment-term number that isn't the actual fee.
+  let m = raw.match(/₪\s*(\d+(?:\.\d+)?)/) || raw.match(/(\d+(?:\.\d+)?)\s*₪/);
+  if (!m) return null;
+  const amount = Number(m[1]);
+  return Number.isFinite(amount) && amount > 0 ? amount : null;
+}
+
+// The `priceSpecification` array for a plan's Offer, truth-only:
+//  - ALWAYS a UnitPriceSpecification for the recurring monthly base (price,
+//    priceCurrency ILS, per-unit referenceQuantity) so engines read the headline
+//    as a per-period charge, not an undated lump sum.
+//  - PLUS, only when the plan really carries one, a separate one-time
+//    PriceSpecification for the install/connection fee (OMITTED when absent —
+//    never invented). Mirrors web/lib/schema.ts priceSpecifications().
+function planPriceSpecifications(p) {
+  const isPerUnit = UNIT_HE[p.priceUnit] || p.cat === 'abroad';
+  const specs = [
+    {
+      '@type': 'UnitPriceSpecification',
+      price: offerPrice(p),
+      priceCurrency: 'ILS',
+      valueAddedTaxIncluded: true,
+      ...(isPerUnit
+        ? { unitText: UNIT_HE[p.priceUnit] || 'לחבילה' }
+        : {
+            unitText: 'לחודש',
+            billingDuration: 1,
+            billingIncrement: 1,
+            unitCode: 'MON',
+            referenceQuantity: { '@type': 'QuantitativeValue', value: 1, unitCode: 'MON' },
+          }),
+    },
+  ];
+  const oneTime = oneTimeFeeAmount(p);
+  if (oneTime != null) {
+    specs.push({
+      '@type': 'PriceSpecification',
+      name: 'דמי חיבור/התקנה חד-פעמיים',
+      price: oneTime,
+      priceCurrency: 'ILS',
+      valueAddedTaxIncluded: true,
+    });
+  }
+  return specs;
+}
+
+// Build the Offer node for one plan. `seller` is the provider — passed as a
+// concrete Organization or an `@id` reference so callers can dedupe. The Offer's
+// priceSpecification carries the monthly base + (when real) the one-time
+// install/connection fee. Mirrors the offer shape in web/lib/schema.ts planOffers().
+function planOfferNode(p, listUrl, seller) {
+  return {
+    '@type': 'Offer',
+    price: offerPrice(p),
+    priceCurrency: 'ILS',
+    availability: 'https://schema.org/InStock',
+    url: listUrl,
+    priceSpecification: planPriceSpecifications(p),
+    ...(seller ? { seller } : {}),
+    ...(p.after != null ? { description: `מחיר היכרות; ואז ₪${p.after}` } : {}),
+  };
+}
+
 // Build a Product node (with an Offer) for one real plan. We intentionally emit
 // NO aggregateRating/review here: every plan has 0 real reviews, so a rating
 // would be fabricated — honest structured data carries price/offer only.
-function planProductNode(p, listUrl) {
+//
+// `additionalType` stamps the plan as a telecommunications service (not a generic
+// product). The provider is referenced as an Organization by its stable `@id`
+// (providerOrgNode()'s id) — NO inline per-plan Brand/Organization copies — so on
+// graph pages the Product merges with the single emitted provider Organization
+// node (the dedup pattern from web/lib/schema.ts). `providerSeen` (a Set passed by
+// graph callers) collects the provider Org `@id`s referenced here so the caller
+// can emit each provider Organization exactly once alongside the Products.
+function planProductNode(p, listUrl, providerSeen) {
   const name = `${p.provider} — ${p.plan}`;
   const feats = (p.feats || []).join(', ');
+  const providerId = `${SITE}/provider-${providerSlug(p.provider)}.html#org`;
+  if (providerSeen) providerSeen.add(p.provider);
+  const ref = { '@type': 'Organization', '@id': providerId, name: p.provider };
   const node = {
     '@type': 'Product',
+    additionalType: TELECOM_SERVICE_TYPE,
     name,
     category: (categories.find((c) => c.slug === p.cat) || {}).name || p.cat,
-    brand: { '@type': 'Brand', name: p.provider },
-    offers: {
-      '@type': 'Offer',
-      price: offerPrice(p),
-      priceCurrency: 'ILS',
-      availability: 'https://schema.org/InStock',
-      url: listUrl,
-      // Explicit PriceSpecification: the unit (month/package/day/minute) the
-      // price is billed per, in ILS — lets Google read the figure unambiguously
-      // instead of guessing it's a one-off. valueAddedTaxIncluded:true since
-      // Israeli advertised consumer prices include VAT.
-      priceSpecification: {
-        '@type': 'UnitPriceSpecification',
-        price: offerPrice(p),
-        priceCurrency: 'ILS',
-        valueAddedTaxIncluded: true,
-        ...(UNIT_HE[p.priceUnit] || p.cat === 'abroad'
-          ? { unitText: UNIT_HE[p.priceUnit] || 'לחבילה' }
-          : { unitText: 'לחודש', billingDuration: 1, billingIncrement: 1, unitCode: 'MON' }),
-      },
-      ...(p.after != null ? { description: `מחיר היכרות; ואז ₪${p.after}` } : {}),
-    },
+    sku: p.id,
+    // brand references the single provider Organization node by @id (no inline
+    // per-plan Brand/Organization copies); self-describing so the ref stays valid
+    // standalone and merges by @id with the full org on graph pages.
+    brand: ref,
+    offers: planOfferNode(p, listUrl, ref),
   };
   if (feats) node.description = feats;
   return node;
+}
+
+// De-duplicated @graph nodes for a set of plans on one page: ONE Organization per
+// provider (emitted once, by stable @id) PLUS one Product per plan (each Product
+// references its provider Org by @id via planProductNode). This is the lean-rich
+// structured data answer engines consume on plan-bearing pages — it gives every
+// listed plan a Product + Offer + priceSpecification while keeping provider
+// entities de-duplicated. Mirrors web/lib/schema.ts knowledgeWebSchema()'s pattern.
+function planGraphNodes(plans, listUrl) {
+  const providerSeen = new Set();
+  const products = plans.map((p) => planProductNode(p, listUrl, providerSeen));
+  // Provider Organization nodes first so the Products' @id refs resolve to a real
+  // node on the page (deduped: one per provider, regardless of plan count).
+  const orgs = [...providerSeen].map((name) => providerOrgNode(name));
+  return [...orgs, ...products];
+}
+
+// De-duplicated Organization nodes (one per provider) for the providers that own
+// any of `plans` — for pages that already embed the per-plan Products inside an
+// ItemList and only need the provider Org nodes added so those Products' `@id`
+// brand/seller refs resolve. Mirrors the single-Organization-per-provider dedup in
+// web/lib/schema.ts.
+function providerOrgsFor(plans) {
+  const seen = new Set();
+  const orgs = [];
+  for (const p of plans) {
+    if (seen.has(p.provider)) continue;
+    seen.add(p.provider);
+    orgs.push(providerOrgNode(p.provider));
+  }
+  return orgs;
 }
 
 // ItemList of plan Products for a category or provider page (helps Google read
@@ -976,6 +1098,10 @@ function jsonLd(c) {
     temporalCoverage: CATALOGUE_MONTH,
     ...(catPlans.length ? { mainEntity: plansItemListJsonLd(catPlans, url, `מסלולי ${c.name}`) } : {}) };
   const graph = [crumbs, collection, faq];
+  // Emit ONE Organization node per provider listed on this page (deduped) so the
+  // per-plan Products' `brand`/`seller` @id refs resolve to a real node in the
+  // graph — the dedup pattern from web/lib/schema.ts (no inline org duplicates).
+  for (const org of providerOrgsFor(catPlans)) graph.push(org);
   if (aggOffer) graph.push(aggOffer);
   return jsonForScript({ '@context': 'https://schema.org', '@graph': graph });
 }
@@ -2660,8 +2786,16 @@ function comparePage() {
   const sel = (i, preId) =>
     `<select class="compare-pick filter-search" id="cmp${i}" aria-label="מסלול ${i + 1}"><option value="">— בחרו מסלול —</option>${optionsFor(preId)}</select>`;
   // The comparison tool is an interactive WebApplication; pair it with a
-  // breadcrumb so the page is well-typed for search.
-  const compareJsonLd = jsonForScript({ '@context': 'https://schema.org', '@graph': [
+  // breadcrumb so the page is well-typed for search. The page lets the visitor
+  // compare EVERY catalogue plan (window.__PLANS__ below), so the AI-facing graph
+  // also carries, de-duplicated, ONE Product per plan (additionalType TelecomService,
+  // provider referenced by @id) + its Offer (monthly base + real one-time install/
+  // connection fee) + ONE Organization per provider, plus a single page-level
+  // AggregateOffer (real min/max/count). This mirrors the rich web/lib/schema.ts
+  // structured data onto the static page AI engines actually crawl — same prices/
+  // providers as the visible tool, so HTML and JSON-LD agree.
+  const comparePlans = catalogue.plans;
+  const compareGraph = [
     { '@type': 'BreadcrumbList', itemListElement: [
       { '@type': 'ListItem', position: 1, name: 'דף הבית', item: SITE + '/' },
       { '@type': 'ListItem', position: 2, name: 'השוואה', item: url },
@@ -2670,7 +2804,11 @@ function comparePage() {
       applicationCategory: 'BusinessApplication', browserRequirements: 'requires JavaScript',
       isPartOf: { '@id': WEBSITE_ID }, publisher: { '@id': ORG_ID },
       offers: { '@type': 'Offer', price: '0', priceCurrency: 'ILS' } },
-  ] });
+    ...planGraphNodes(comparePlans, url),
+  ];
+  const compareAggOffer = categoryAggregateOfferNode(comparePlans);
+  if (compareAggOffer) compareGraph.push(compareAggOffer);
+  const compareJsonLd = jsonForScript({ '@context': 'https://schema.org', '@graph': compareGraph });
   return `<!DOCTYPE html>
 <html lang="he" dir="rtl">
 ${head('השוואת מסלולים צד לצד | SWITCHY', 'בחרו עד 3 מסלולים והשוו אותם צד לצד — מחיר, רשת, 5G, התחייבות, חו״ל ומפרט. מכל חברות התקשורת.', url, compareJsonLd, false, 'website')}
@@ -3063,6 +3201,9 @@ function collectionPage(col) {
     isPartOf: { '@id': WEBSITE_ID }, publisher: { '@id': ORG_ID },
     temporalCoverage: CATALOGUE_MONTH,
     ...(shown.length ? { mainEntity: plansItemListJsonLd(shown, url, col.h1) } : {}) });
+  // ONE Organization node per provider listed here (deduped) so the per-plan
+  // Products' @id brand/seller refs resolve to a real node — same dedup pattern.
+  for (const org of providerOrgsFor(shown)) graph.push(org);
   if (colAggOffer) graph.push(colAggOffer);
   const extraJsonLd = jsonForScript({ '@context': 'https://schema.org', '@graph': graph });
   const guidesHtml = relatedGuides(col.catName, null, 2).map(guideCard).join('\n');

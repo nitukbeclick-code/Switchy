@@ -934,6 +934,9 @@ const orgNode = {
   image: OG_IMAGE,
   slogan: 'משווים, חוסכים, עוברים — בלי כאב ראש',
   description: 'השוואת מחירי תקשורת חכמה — סלולר, אינטרנט, טלוויזיה, חבילות וחו״ל.',
+  // legalName/address: the registered operator (sole proprietor) — real entity identity.
+  legalName: 'אריאל תקשורת',
+  address: { '@type': 'PostalAddress', streetAddress: 'ליאו בק 64', addressLocality: 'נהריה', addressCountry: 'IL' },
   // areaServed: Israel (the only market served); knowsAbout: only topics the
   // site genuinely covers — no fake awards, ratings or founder.
   areaServed: { '@type': 'Country', name: 'IL' },

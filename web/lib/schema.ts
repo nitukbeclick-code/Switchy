@@ -189,6 +189,14 @@ export function orgSchema(): Json {
     description:
       "שירות חינמי להשוואת מסלולי תקשורת בישראל — סלולר, אינטרנט, טלוויזיה, " +
       "חבילות משולבות וחבילות חו״ל — וחיבור ללקוחות עם הסכמתם.",
+    // The registered operator (sole proprietor) — real legal entity identity.
+    legalName: "אריאל תקשורת",
+    address: {
+      "@type": "PostalAddress",
+      streetAddress: "ליאו בק 64",
+      addressLocality: "נהריה",
+      addressCountry: "IL",
+    },
     areaServed: "IL",
     knowsAbout: ORG_KNOWS_ABOUT,
     // The real transparency/methodology page — our stated editorial principles for

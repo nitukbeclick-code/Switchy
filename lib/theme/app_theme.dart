@@ -320,10 +320,11 @@ class AppTheme {
         BoxShadow(color: Color(0x26111827), blurRadius: 20, offset: Offset(0, 8)),
       ];
 
-  /// A green glow under the accent (CTA) gradient so it reads tappable.
+  /// A soft green lift under the accent (CTA) so it reads tappable — toned DOWN
+  /// from the old neon glow to a restrained, bank-grade drop shadow.
   List<BoxShadow> get shadowAccent => const [
-        BoxShadow(color: Color(0x4D16A34A), blurRadius: 22, offset: Offset(0, 8)),
-        BoxShadow(color: Color(0x2615803D), blurRadius: 6, offset: Offset(0, 2)),
+        BoxShadow(color: Color(0x2616A34A), blurRadius: 16, offset: Offset(0, 6)),
+        BoxShadow(color: Color(0x14000000), blurRadius: 4, offset: Offset(0, 1)),
       ];
 
   /// The "live" green ACTION glow — a 1px accent-tinted ring hugging the edge
@@ -511,12 +512,15 @@ class AppTheme {
       );
 
   // ── Radii — one friendly, generous rounding scale ───────────────────────────
-  double get radiusXs => 10; // small chips/flags
-  double get radiusSm => 12;
-  double get radiusMd => 16;
-  double get radiusLg => 20;
-  double get radiusCard => 24; // the canonical premium-2026 card/bento corner
-  double get radiusXl => 28;
+  // Tightened to a crisp, professional rounding (bank-grade). The old 20-24
+  // corners read soft/playful; 10-16 reads considered + serious while still
+  // friendly. One change here re-corners every card/sheet/button app-wide.
+  double get radiusXs => 8; // small chips/flags
+  double get radiusSm => 10;
+  double get radiusMd => 12;
+  double get radiusLg => 14;
+  double get radiusCard => 16; // the canonical card/bento corner (was 24)
+  double get radiusXl => 20;
   double get radiusPill => 999;
 
   // ── Motion — one shared vocabulary of durations + curves ────────────────────
@@ -604,25 +608,28 @@ class AppTheme {
   TextStyle _ink(TextStyle s) => dark ? s.copyWith(color: AppColors.darkPrimaryText) : s;
   TextStyle _muted(TextStyle s) => dark ? s.copyWith(color: AppColors.darkSecondaryText) : s;
 
-  static final TextStyle _displayLarge = GoogleFonts.rubik(fontSize: 58, fontWeight: FontWeight.w900, letterSpacing: -0.05, height: 1.02, color: AppColors.primaryText);
-  static final TextStyle _displayMedium = GoogleFonts.rubik(fontSize: 44, fontWeight: FontWeight.w900, letterSpacing: -0.04, height: 1.03, color: AppColors.primaryText);
-  static final TextStyle _displaySmall = GoogleFonts.rubik(fontSize: 35, fontWeight: FontWeight.w900, letterSpacing: -0.03, height: 1.05, color: AppColors.primaryText);
+  // Display — dialled DOWN from the old 35-58px / w900 "exaggerated" scale to a
+  // restrained 26-40px / w700. Big numerals still read as the hero, but
+  // considered, not shouting (the #1 fix for the "loud/childish" feel).
+  static final TextStyle _displayLarge = GoogleFonts.rubik(fontSize: 40, fontWeight: FontWeight.w700, letterSpacing: -0.02, height: 1.04, color: AppColors.primaryText);
+  static final TextStyle _displayMedium = GoogleFonts.rubik(fontSize: 32, fontWeight: FontWeight.w700, letterSpacing: -0.02, height: 1.05, color: AppColors.primaryText);
+  static final TextStyle _displaySmall = GoogleFonts.rubik(fontSize: 26, fontWeight: FontWeight.w700, letterSpacing: -0.015, height: 1.07, color: AppColors.primaryText);
   TextStyle get displayLarge => _ink(_displayLarge);
   TextStyle get displayMedium => _ink(_displayMedium);
   TextStyle get displaySmall => _ink(_displaySmall);
 
   // Headlines
-  static final TextStyle _headlineLarge = GoogleFonts.rubik(fontSize: 28, fontWeight: FontWeight.w800, letterSpacing: -0.02, color: AppColors.primaryText);
-  static final TextStyle _headlineMedium = GoogleFonts.rubik(fontSize: 24, fontWeight: FontWeight.w700, letterSpacing: -0.01, color: AppColors.primaryText);
-  static final TextStyle _headlineSmall = GoogleFonts.rubik(fontSize: 20, fontWeight: FontWeight.w700, letterSpacing: -0.01, color: AppColors.primaryText);
+  static final TextStyle _headlineLarge = GoogleFonts.rubik(fontSize: 22, fontWeight: FontWeight.w700, letterSpacing: -0.01, color: AppColors.primaryText);
+  static final TextStyle _headlineMedium = GoogleFonts.rubik(fontSize: 19, fontWeight: FontWeight.w600, letterSpacing: -0.005, color: AppColors.primaryText);
+  static final TextStyle _headlineSmall = GoogleFonts.rubik(fontSize: 17, fontWeight: FontWeight.w600, letterSpacing: 0, color: AppColors.primaryText);
   TextStyle get headlineLarge => _ink(_headlineLarge);
   TextStyle get headlineMedium => _ink(_headlineMedium);
   TextStyle get headlineSmall => _ink(_headlineSmall);
 
   // Titles
-  static final TextStyle _titleLarge = GoogleFonts.rubik(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.primaryText);
-  static final TextStyle _titleMedium = GoogleFonts.rubik(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.primaryText);
-  static final TextStyle _titleSmall = GoogleFonts.rubik(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.primaryText);
+  static final TextStyle _titleLarge = GoogleFonts.rubik(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.primaryText);
+  static final TextStyle _titleMedium = GoogleFonts.rubik(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.primaryText);
+  static final TextStyle _titleSmall = GoogleFonts.rubik(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primaryText);
   TextStyle get titleLarge => _ink(_titleLarge);
   TextStyle get titleMedium => _ink(_titleMedium);
   TextStyle get titleSmall => _ink(_titleSmall);
@@ -677,14 +684,19 @@ class AppTheme {
       ),
       iconTheme: IconThemeData(color: t.primaryText),
       appBarTheme: AppBarTheme(
-        backgroundColor: isDark ? AppColors.darkSurface : AppColors.primary,
-        foregroundColor: isDark ? t.primaryText : Colors.white,
+        // Clean light/surface app bar with ink text — the bank-grade replacement
+        // for the old solid ink-black bar (which read heavy + "app-y"). Surface
+        // on both themes; dark ink foreground on light.
+        backgroundColor: isDark ? AppColors.darkSurface : Colors.white,
+        foregroundColor: t.primaryText,
+        surfaceTintColor: Colors.transparent,
         elevation: 0,
+        scrolledUnderElevation: 0.5,
         centerTitle: false,
         titleTextStyle: GoogleFonts.rubik(
-          fontSize: 18,
+          fontSize: 17,
           fontWeight: FontWeight.w700,
-          color: isDark ? t.primaryText : Colors.white,
+          color: t.primaryText,
         ),
       ),
       // Native page motion app-wide: every pushed MaterialPage now slides in

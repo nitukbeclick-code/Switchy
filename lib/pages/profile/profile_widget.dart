@@ -650,7 +650,7 @@ class _ProfileWidgetState extends State<ProfileWidget> {
                   ),
                   const SizedBox(height: 6),
                   Text('עד ₪$total בשנה',
-                      style: ffTheme.titleMedium.copyWith(color: ffTheme.savingDark, fontWeight: FontWeight.w800)),
+                      style: ffTheme.titleMedium.copyWith(color: ffTheme.savingText, fontWeight: FontWeight.w800)),
                 ],
               ),
             ),

@@ -9,7 +9,7 @@ import '../theme/app_theme.dart';
 /// screen gets the same brand-correct, RTL-safe header without re-deriving it.
 ///
 /// It renders a `SliverAppBar(pinned: true)` whose expanded background is the
-/// brand green ACTION wash ([AppTheme.accentGradient]) when [gradient] is true,
+/// premium ink gradient ([AppTheme.brandGradient]) when [gradient] is true,
 /// or a flat premium ink surface ([AppTheme.primary]) otherwise. As the user
 /// scrolls, the [FlexibleSpaceBar] title smoothly collapses from the large
 /// expanded heading into the compact pinned bar.
@@ -83,9 +83,9 @@ class AppSliverHeader extends StatelessWidget {
   /// below the title block.
   final Widget? flexibleChild;
 
-  /// Whether the expanded background uses the brand green [AppTheme.accentGradient]
-  /// (the default, for an energetic ACTION surface) or a flat premium ink
-  /// surface ([AppTheme.primary]) when false.
+  /// Whether the expanded background uses the premium ink [AppTheme.brandGradient]
+  /// (the default, a subtle charcoal depth) or a flat premium ink surface
+  /// ([AppTheme.primary]) when false.
   final bool gradient;
 
   const AppSliverHeader({
@@ -117,9 +117,9 @@ class AppSliverHeader extends StatelessWidget {
       expandedHeight: expandedHeight,
       automaticallyImplyLeading: showBack,
       // The flat surface colour the pinned bar settles on once collapsed; it
-      // matches the bottom of the expanded gradient so the transition is seamless.
-      backgroundColor:
-          gradient ? AppColors.brandAccentDark : ffTheme.primary,
+      // matches the bottom of the expanded ink gradient so the transition is
+      // seamless. Always the premium ink (no more saturated-green hero bar).
+      backgroundColor: ffTheme.primary,
       foregroundColor: onHeader,
       elevation: 0,
       actions: actions,
@@ -180,7 +180,9 @@ class _HeaderBackground extends StatelessWidget {
     final hasContent = subtitle != null || flexibleChild != null;
     return DecoratedBox(
       decoration: BoxDecoration(
-        gradient: gradient ? ffTheme.accentGradient : null,
+        // Premium ink hero (charcoal) — the bank-grade replacement for the old
+        // saturated-green ACTION wash. Green now lives only on CTAs/accents.
+        gradient: gradient ? ffTheme.brandGradient : null,
         color: gradient ? null : ffTheme.primary,
       ),
       child: SafeArea(

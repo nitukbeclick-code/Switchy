@@ -713,24 +713,20 @@ class _TechBadge extends StatelessWidget {
   final String tech;
   final AppTheme ffTheme;
 
-  Color get _color {
-    switch (tech) {
-      case 'סיב אופטי': return const Color(0xFF1565C0);
-      case 'כבלים': return const Color(0xFF6A1B9A);
-      case 'לוויין': return const Color(0xFF00695C);
-      default: return const Color(0xFF4527A0);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
+    // Tech type (fiber/cables/satellite) is a generic infrastructure label, not
+    // a brand — render it in a restrained, theme-aware NEUTRAL chip. The old
+    // per-type blue/purple/teal/indigo were off-palette and never flipped for
+    // dark mode (deep hue text on the dark card failed contrast). The label text
+    // itself distinguishes the type, so colour-coding was redundant decoration.
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
       decoration: BoxDecoration(
-        color: _color.withValues(alpha: 0.1),
+        color: ffTheme.accent1,
         borderRadius: BorderRadius.circular(4),
       ),
-      child: Text(tech, style: ffTheme.labelSmall.copyWith(color: _color, fontSize: 10, fontWeight: FontWeight.w600)),
+      child: Text(tech, style: ffTheme.labelSmall.copyWith(color: ffTheme.secondaryText, fontSize: 10, fontWeight: FontWeight.w600)),
     );
   }
 }

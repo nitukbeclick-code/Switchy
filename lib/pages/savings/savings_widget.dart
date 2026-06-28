@@ -441,7 +441,7 @@ class _TopOpportunityCard extends StatelessWidget {
                       const SizedBox(height: 3),
                       Text(savingText,
                           style: GoogleFonts.rubik(
-                              fontSize: 19, fontWeight: FontWeight.w800, color: ffTheme.savingDark)),
+                              fontSize: 19, fontWeight: FontWeight.w800, color: ffTheme.savingText)),
                       const SizedBox(height: 2),
                       Text(providerAndPlan,
                           style: ffTheme.bodySmall.copyWith(

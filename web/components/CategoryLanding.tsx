@@ -28,6 +28,13 @@ import type { Plan } from "@/lib/types";
 import ComparisonTable from "@/components/ComparisonTable";
 import CommissionDisclosure from "@/components/CommissionDisclosure";
 import PriceCaveat from "@/components/PriceCaveat";
+import RelatedLinks from "@/components/RelatedLinks";
+import JsonLd from "@/components/JsonLd";
+import {
+  buildCategoryRelatedGroups,
+  relatedNavLinks,
+} from "@/lib/related-links";
+import { relatedLinksSchema } from "@/lib/schema";
 
 /** A single onward subcategory link (e.g. "5G", "תקציבי", "סיב אופטי"). */
 export interface CategorySubcat {
@@ -72,6 +79,12 @@ export default function CategoryLanding({
   const comparePath = `/compare/${category}`;
   const hasPlans = plans.length > 0;
   const headingId = `cat-landing-${category}`;
+
+  // Catalogue-derived hub-spoke cross-links: this category's providers, head-to-
+  // head /vs pages, the other-category /compare hubs, and the category's guides.
+  // Every link is a real on-site route; empty groups are dropped by <RelatedLinks>.
+  const relatedGroups = buildCategoryRelatedGroups(category);
+  const relatedNav = relatedNavLinks(relatedGroups);
 
   return (
     <section
@@ -164,6 +177,24 @@ export default function CategoryLanding({
         </Link>
         .
       </p>
+
+      {/* ── Grouped hub-spoke cross-links (catalogue-derived, no dead-ends) ─────
+          A labelled topical web — ספקים / ראש-בראש / השוואות נוספות / מדריכים —
+          that deepens the crawlable entity graph for SEO + answer engines. The
+          relatedLinksSchema ItemList mirrors exactly what is rendered (de-duped
+          by url), and is omitted when there are no links. */}
+      {(() => {
+        const nav = relatedLinksSchema({
+          name: "המשיכו לחקור",
+          links: relatedNav,
+        });
+        return nav ? <JsonLd data={nav} /> : null;
+      })()}
+      <RelatedLinks
+        id={`cat-related-${category}`}
+        groups={relatedGroups}
+        className="mt-12"
+      />
     </section>
   );
 }

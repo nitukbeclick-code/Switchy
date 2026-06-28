@@ -69,5 +69,13 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
+        <!-- Let url_launcher resolve + open an external browser for Google/Facebook
+             OAuth (Supabase signInWithOAuth). Without this, Android 11+ package
+             visibility hides browsers, so the OAuth launch hangs on a white screen. -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <category android:name="android.intent.category.BROWSABLE" />
+            <data android:scheme="https" />
+        </intent>
     </queries>
 </manifest>

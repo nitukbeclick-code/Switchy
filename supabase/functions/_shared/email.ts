@@ -375,13 +375,30 @@ export async function sendEmail(
   return await resendSend(cfg, cfg.notifyEmail, subject, html);
 }
 
-// Customer-facing email (meeting confirmations) — same plumbing, explicit
-// recipient. Caller owns the address validity (it came from the booking form).
+// Rebuild a `from` value with an explicit display NAME while keeping the address
+// from resend_from. The secret historically carried the legacy "חוסך" brand,
+// which reads as marketing to Gmail and pushes a one-time-code email toward the
+// Promotions tab; a clear product name ("Switchy AI") lands transactional mail in
+// Primary far more reliably. Handles both "Name <addr>" and a bare "addr".
+function withDisplayName(resendFrom: string, name: string): string {
+  const m = resendFrom.match(/<([^>]+)>/);
+  const addr = (m ? m[1] : resendFrom).trim();
+  return `${name} <${addr}>`;
+}
+
+// Customer-facing email (meeting confirmations, OTP codes) — same plumbing,
+// explicit recipient. Caller owns the address validity (it came from the booking
+// form). Pass opts.fromName to override the sender display name for transactional
+// mail that must land in Primary (e.g. the OTP code).
 export async function sendCustomerEmail(
   cfg: { resend: string; resendFrom: string },
   to: string,
   subject: string,
   html: string,
+  opts?: { fromName?: string },
 ): Promise<{ ok: boolean; error?: string }> {
-  return await resendSend(cfg, to, subject, html);
+  const eff = opts?.fromName
+    ? { ...cfg, resendFrom: withDisplayName(cfg.resendFrom, opts.fromName) }
+    : cfg;
+  return await resendSend(eff, to, subject, html);
 }

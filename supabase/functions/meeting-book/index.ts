@@ -237,6 +237,9 @@ async function handleRequestCode(body: Record<string, unknown>, ip: string, orig
         email,
         "קוד אימות לקביעת שיחת ייעוץ — Switchy AI",
         buildOtpEmailHtml({ code, name: name || undefined }),
+        // Force a recognizable transactional sender so the code lands in Primary,
+        // not Gmail's Promotions tab (the secret's legacy "חוסך" reads marketing).
+        { fromName: "Switchy AI" },
       );
       sent = r.ok === true;
       if (!r.ok) jlog({ at: "request-code", ok: false, error: r.error ?? "send failed" });

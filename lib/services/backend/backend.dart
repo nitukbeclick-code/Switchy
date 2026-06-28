@@ -1008,6 +1008,14 @@ abstract interface class Backend {
   /// UI can show. [LocalBackend] accepts any non-empty code offline.
   Future<({bool ok, String? error})> verifyMeetingEmailCode(String email, String code);
 
+  /// Mints a REAL, persisted referral code (channel='app') via the `referral-issue`
+  /// edge function, so an app-shared code is attributable in public.referral_codes
+  /// — matching the website's persisted codes (closes the parity gap where the app
+  /// minted a local, untracked code). Always returns a usable `SW-XXXXXX` token:
+  /// if the backend is unreachable it FAILS SOFT to a local (unpersisted) code so
+  /// the share UX never dead-ends. [LocalBackend] returns a local code offline.
+  Future<String> issueReferralCode({String? name});
+
   /// Step 3: books a video-meeting request through the `meeting-book` edge
   /// function (`action:"book"`), which only proceeds for an email that was just
   /// verified. Server-side the `meetings_guard()` trigger validates schedule +

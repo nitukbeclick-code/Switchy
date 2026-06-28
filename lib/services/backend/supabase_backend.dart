@@ -17,6 +17,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../data.dart' show compiledPlans;
 import '../../models.dart';
 import 'backend.dart';
+import '../referral_code.dart';
 
 class SupabaseBackend implements Backend {
   SupabaseClient get _db => Supabase.instance.client;
@@ -415,6 +416,26 @@ class SupabaseBackend implements Backend {
       // connection error rather than implying the typed code was invalid.
       return (ok: false, error: null);
     }
+  }
+
+  @override
+  Future<String> issueReferralCode({String? name}) async {
+    try {
+      // referral-issue mints + persists the code (channel='app') via service-role
+      // and returns { code, persisted }. We use the server code when valid; any
+      // failure falls through to a local (unpersisted) code so sharing never breaks.
+      final res = await _db.functions.invoke('referral-issue', body: {
+        if (name != null && name.trim().isNotEmpty) 'name': name.trim(),
+      });
+      final data = res.data;
+      final code = data is Map ? data['code'] : null;
+      if (code is String && ReferralCode.isValid(code)) {
+        return ReferralCode.normalize(code);
+      }
+    } catch (_) {
+      // fall through to a local code — sharing must never dead-end
+    }
+    return ReferralCode.make();
   }
 
   @override

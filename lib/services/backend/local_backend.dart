@@ -4,6 +4,7 @@ import '../../data.dart' show compiledPlans;
 import '../../models.dart';
 import '../meeting_slots.dart';
 import 'backend.dart';
+import '../referral_code.dart';
 
 /// On-device [Backend] — the default. Single-user (this device), in-memory plus
 /// whatever the caller persists. It mirrors the server semantics so swapping in
@@ -154,6 +155,9 @@ class LocalBackend implements Backend {
     }
     return (ok: true, error: null);
   }
+
+  @override
+  Future<String> issueReferralCode({String? name}) async => ReferralCode.make();
 
   @override
   Future<void> requestMeeting(MeetingInput input) async {

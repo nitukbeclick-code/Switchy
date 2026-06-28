@@ -9,6 +9,7 @@ import '../../widgets/app_button.dart';
 import '../../widgets/app_snackbar.dart';
 import '../../widgets/sticky_cta_scaffold.dart';
 import '../../services/referral_code.dart';
+import '../../services/backend/local_backend.dart';
 
 /// "הזמינו חבר" (Refer a friend) — share Switchy AI with a REAL, shareable code in the
 /// same `SW-XXXXXX` shape the backend issues.
@@ -24,13 +25,25 @@ class ReferralWidget extends StatefulWidget {
 }
 
 class _ReferralWidgetState extends State<ReferralWidget> {
-  late final String _code;
+  // Shown immediately so the UI is never empty; replaced by the persisted code
+  // (attributable in public.referral_codes) once the backend responds.
+  String _code = ReferralCode.make();
 
   @override
   void initState() {
     super.initState();
-    // One code per visit — a real, well-formed token the friend could redeem.
-    _code = ReferralCode.make();
+    _issuePersistedCode();
+  }
+
+  /// Mint a REAL, persisted code via the backend (channel='app') so a friend's
+  /// redemption can be attributed — matching the website. Fail-soft: the local
+  /// code from the field initializer stays if the backend is unreachable.
+  Future<void> _issuePersistedCode() async {
+    final code = await appBackend.issueReferralCode();
+    if (!mounted) return;
+    if (code != _code && ReferralCode.isValid(code)) {
+      setState(() => _code = code);
+    }
   }
 
   String get _shareText =>

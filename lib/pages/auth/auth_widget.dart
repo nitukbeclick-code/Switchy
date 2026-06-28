@@ -23,9 +23,12 @@ class AuthWidget extends StatefulWidget {
 
 enum _Mode { choose, signup, login }
 
-class _AuthWidgetState extends State<AuthWidget> {
+class _AuthWidgetState extends State<AuthWidget> with WidgetsBindingObserver {
   _Mode _mode = _Mode.choose;
   bool _busy = false;
+  // True while waiting for an OAuth browser round-trip to deep-link back, so
+  // didChangeAppLifecycleState can tell a completed login from an abandoned one.
+  bool _awaitingOAuth = false;
   bool _obscure = true;
   bool _faceIdAvailable = false;
 
@@ -45,6 +48,7 @@ class _AuthWidgetState extends State<AuthWidget> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     AuthService.instance.biometricAvailable().then((avail) async {
       final enabled = await AuthService.instance.biometricEnabled;
       if (mounted) setState(() => _faceIdAvailable = avail && enabled && AuthService.instance.isRealUser);
@@ -52,7 +56,33 @@ class _AuthWidgetState extends State<AuthWidget> {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Back in the app after the OAuth browser. supabase_flutter completes the
+    // sign-in from the return deep link + the main.dart auth listener navigates
+    // Home on success. So if we're STILL on this screen and still anonymous a
+    // moment after resuming, the login did NOT complete (the user cancelled, or
+    // Supabase fell back to the web Site URL because this redirect URL isn't
+    // allow-listed). Clear the waiting state + tell the user, instead of leaving
+    // them stuck on a dead "כמעט שם".
+    if (state == AppLifecycleState.resumed && _awaitingOAuth) {
+      Future.delayed(const Duration(milliseconds: 1800), () {
+        if (!mounted || !_awaitingOAuth) return;
+        if (AuthService.instance.isRealUser) {
+          setState(() => _awaitingOAuth = false);
+          return;
+        }
+        setState(() {
+          _awaitingOAuth = false;
+          _busy = false;
+        });
+        AppSnackBar.info(context, 'ההתחברות לא הושלמה — נסו שוב');
+      });
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _nameCtrl.dispose();
     _emailCtrl.dispose();
     _passCtrl.dispose();
@@ -81,7 +111,9 @@ class _AuthWidgetState extends State<AuthWidget> {
     }
     if (res.pendingRedirect) {
       // OAuth: the session arrives via the auth-state listener in main.dart,
-      // which logs in + navigates. Just show a gentle waiting state.
+      // which logs in + navigates. Flag the wait so didChangeAppLifecycleState
+      // can recover (message + reset) if the user returns without completing it.
+      setState(() => _awaitingOAuth = true);
       AppSnackBar.info(context, 'כמעט שם — משלימים את ההתחברות…');
       return;
     }

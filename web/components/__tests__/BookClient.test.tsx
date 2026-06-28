@@ -30,6 +30,7 @@ async function fillDetails(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText("מספר טלפון"), "050-123-4567");
   await user.type(screen.getByLabelText("כתובת מייל"), "test@example.com");
   await user.selectOptions(screen.getByLabelText("על איזה שירות נדבר?"), "cellular");
+  await user.selectOptions(screen.getByLabelText("עם איזו חברה תרצו להיפגש?"), "HOT");
   await user.selectOptions(screen.getByLabelText("יום הפגישה"), DAY.date);
   await user.selectOptions(screen.getByLabelText("שעת הפגישה"), FIRST_SLOT);
 }
@@ -140,6 +141,7 @@ describe("BookClient — request → verify → book happy path", () => {
     expect(bookBody.meeting_date).toBe(DAY.date);
     expect(bookBody.slot).toBe(FIRST_SLOT);
     expect(bookBody.category).toBe("cellular");
+    expect(bookBody.provider).toBe("HOT");
     expect(bookBody.consent).toBe(true);
 
     // Success state.

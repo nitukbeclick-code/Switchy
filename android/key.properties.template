@@ -1,0 +1,17 @@
+# Rename this file to `key.properties` (same folder: android/key.properties) and fill in
+# YOUR OWN passwords after you create the upload keystore. This file holds secrets —
+# it is gitignored and must NEVER be committed or shared.
+#
+# 1) Create the upload keystore (run once, from the repo root C:\dev\Switchy):
+#      keytool -genkey -v -keystore android/upload-keystore.jks -keyalg RSA -keysize 2048 -validity 10000 -alias upload
+#    It will ask for a keystore password, your name/org details, then a key password
+#    (you may press Enter to reuse the keystore password). REMEMBER + BACK UP this
+#    keystore file + passwords — you need the SAME keystore for every future update;
+#    losing it means you can never update this app again.
+#
+# 2) Put the passwords you chose below, then save as android/key.properties:
+
+storePassword=YOUR_KEYSTORE_PASSWORD
+keyPassword=YOUR_KEY_PASSWORD
+keyAlias=upload
+storeFile=../upload-keystore.jks

@@ -32,20 +32,34 @@ import {
 } from "@/lib/schema";
 import { pageMetadata } from "@/lib/seo";
 import { lastDataDate } from "@/lib/aeo";
+import { getLivePlans } from "@/lib/live-catalogue";
 import type { Plan } from "@/lib/types";
 
 const TITLE_HE = "מסלולים ללא התחייבות";
 
+// ISR: regenerate the static HTML hourly so the featured table + ₪ figures read
+// from the live DB catalogue (with the bundled snapshot as a resilient fallback)
+// and never drift stale vs the live /compare hub.
+export const revalidate = 3600;
+
+/** This cross-category page's catalogue scope (cellular + internet). */
+const SCOPE: ReadonlySet<string> = new Set(["cellular", "internet"]);
+
 /** Cheapest no-commitment plans across cellular + internet, priced first. */
-function noCommitPlans(limit = 10): Plan[] {
-  return [...plansByCategory("cellular"), ...plansByCategory("internet")]
+function noCommitPlans(all: Plan[], limit = 10): Plan[] {
+  return all
     .filter(
-      (p): p is Plan => typeof p.price === "number" && p.noCommit === true,
+      (p): p is Plan =>
+        SCOPE.has(p.cat) && typeof p.price === "number" && p.noCommit === true,
     )
     .sort((a, b) => a.price - b.price)
     .slice(0, limit);
 }
 
+// NOTE: this page genuinely spans TWO categories (cellular + internet), so the
+// single-category categoryMetaDescription() can't label it without overstating.
+// The description below is already truth-only and category-accurate; it is kept
+// verbatim while the data path moves to the live catalogue.
 export const metadata: Metadata = pageMetadata({
   title: "מסלולים ללא התחייבות — סלולר ואינטרנט",
   description:
@@ -54,8 +68,14 @@ export const metadata: Metadata = pageMetadata({
   path: "/plans-no-commitment",
 });
 
-export default function PlansNoCommitmentPage() {
-  const plans = noCommitPlans();
+export default async function PlansNoCommitmentPage() {
+  // ── ONE live catalogue read per render (whole catalogue; this page is cross-
+  // category). On any failure getLivePlans returns the bundled snapshot. ─────────
+  const { plans: catalogue } = await getLivePlans();
+  const all = catalogue.length
+    ? catalogue
+    : [...plansByCategory("cellular"), ...plansByCategory("internet")];
+  const plans = noCommitPlans(all);
   const hasPlans = plans.length > 0;
   // Real "data as of" date (catalogue updated_at, else build-time UTC) — drives
   // BOTH the visible <FreshnessBadge> and the schema's temporalCoverage month, so

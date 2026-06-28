@@ -13,6 +13,7 @@ import {
   providerSlug,
   termsForCategory,
 } from "./data";
+import { fee } from "./plan-display";
 
 /** Canonical site origin (no trailing slash). APEX CUTOVER (2026-06): consolidated
  * onto the apex https://switchy-ai.com — the single brand domain Google indexes.
@@ -54,6 +55,96 @@ export const ORG_ID = `${SITE_URL}#organization`;
 const ORG_SAME_AS: readonly string[] = ["https://wa.me/972505037537"];
 
 type Json = Record<string, unknown>;
+
+/**
+ * schema.org subtype stamped onto every plan Product (via `additionalType`) so
+ * engines read each offer as a telecommunications service, NOT a generic product.
+ * Applied as `additionalType` on the Product itself (per the prompt) rather than
+ * emitting a parallel TelecomService node — keeps the graph lean (one node per
+ * plan) while still declaring the service nature.
+ */
+const TELECOM_SERVICE_TYPE = "https://schema.org/TelecomunicationsService";
+
+/**
+ * The one-time install / connection fee labels (Hebrew). Only these genuinely
+ * one-off charges become a separate one-time {@link PriceSpecification}; recurring
+ * equipment rentals (נתב/ממיר, typically "+₪x/ח׳") are NOT one-time and are left
+ * out so the spec never mis-states a monthly rental as a one-off fee.
+ */
+const ONE_TIME_FEE_KEYS = ["דמי חיבור", "חיבור", "הצטרפות", "התקנה"] as const;
+
+/**
+ * Parse a REAL one-time install/connection fee off a plan into a numeric ILS
+ * amount, truth-only. Returns `null` when the plan carries no such fee, when the
+ * value is "free"/non-numeric, or when it is flagged recurring (a per-month
+ * suffix) — so we never fabricate a one-off charge or mislabel a monthly rental.
+ */
+function oneTimeFeeAmount(plan: Plan): number | null {
+  const raw = fee(plan, ...ONE_TIME_FEE_KEYS);
+  if (!raw) return null;
+  // A per-month marker means it is NOT a one-time fee — skip it.
+  if (/ל?ח(?:ו|ׄ|״|')?(?:דש)?\b|\/\s*ח|חודש/.test(raw)) return null;
+  // Pull the first number (handles "₪149", "149 ₪", "149.90").
+  const m = raw.replace(/,/g, "").match(/\d+(?:\.\d+)?/);
+  if (!m) return null;
+  const amount = Number(m[0]);
+  return Number.isFinite(amount) && amount > 0 ? amount : null;
+}
+
+/**
+ * The `priceSpecification` array for a plan's Offer, truth-only:
+ *  - ALWAYS a {@link UnitPriceSpecification} for the recurring monthly base
+ *    (`price`, `priceCurrency` ILS, `referenceQuantity` = 1 month) so engines read
+ *    the headline as a per-month charge, not an undated lump sum.
+ *  - PLUS, only when the plan really carries one, a separate one-time
+ *    {@link PriceSpecification} for the install/connection fee.
+ *
+ * `valueAddedTaxIncluded: true` follows the catalogue convention (advertised ILS
+ * prices are tax-inclusive). The fee spec is OMITTED entirely when absent — never
+ * invented.
+ */
+function priceSpecifications(plan: Plan): Json[] {
+  const specs: Json[] = [
+    {
+      "@type": "UnitPriceSpecification",
+      price: plan.price,
+      priceCurrency: CURRENCY,
+      valueAddedTaxIncluded: true,
+      unitText: "חודש",
+      referenceQuantity: {
+        "@type": "QuantitativeValue",
+        value: 1,
+        unitCode: "MON",
+      },
+    },
+  ];
+  const oneTime = oneTimeFeeAmount(plan);
+  if (oneTime != null) {
+    specs.push({
+      "@type": "PriceSpecification",
+      name: "דמי חיבור/התקנה חד-פעמיים",
+      price: oneTime,
+      priceCurrency: CURRENCY,
+      valueAddedTaxIncluded: true,
+    });
+  }
+  return specs;
+}
+
+/**
+ * A self-describing reference to a provider's Organization node: carries the
+ * canonical {@link providerNodeId} `@id` PLUS `@type`/`name`, so it is valid both
+ * standalone (single-Product pages like /plans/[id] and /vs, where the full org
+ * node is not separately emitted) AND as a graph reference that MERGES by `@id`
+ * with the full Organization node on compare pages (no duplicate inline copies).
+ */
+function providerRef(name: string, slug?: string): Json {
+  return {
+    "@type": "Organization",
+    "@id": providerNodeId({ name, slug }),
+    name,
+  };
+}
 
 // ── Organization ─────────────────────────────────────────────────────────────
 /**
@@ -137,15 +228,20 @@ export function websiteSchema(): Json {
  */
 export function productSchema(plan: Plan): Json {
   const catHe = CATEGORY_HE[plan.cat] ?? plan.cat;
+  const ref = providerRef(plan.provider);
 
   const schema: Json = {
     "@context": "https://schema.org",
     "@type": "Product",
+    additionalType: TELECOM_SERVICE_TYPE,
     name: plan.plan,
-    brand: { "@type": "Brand", name: plan.provider },
+    // brand references the single provider Organization node by @id (no inline
+    // per-plan Brand/Organization copies); self-describing so /plans/[id] + /vs
+    // stay valid standalone, and merges by @id with the full org on graph pages.
+    brand: ref,
     category: catHe,
     sku: plan.id,
-    offers: planOffers(plan, { "@type": "Organization", name: plan.provider }),
+    offers: planOffers(plan, ref),
   };
   const rating = aggregateRatingSchema(plan);
   if (rating) schema.aggregateRating = rating; // real catalogue data only
@@ -166,6 +262,9 @@ function planOffers(plan: Plan, seller: Json): Json {
   );
   const low = prices.length ? Math.min(...prices) : plan.price;
   const high = prices.length ? Math.max(...prices) : plan.price;
+  // UnitPriceSpecification (monthly base, ILS) + one-time install/connection fee
+  // when the plan really carries one — truth-only (see priceSpecifications()).
+  const priceSpecification = priceSpecifications(plan);
 
   if (high > low) {
     return {
@@ -174,6 +273,7 @@ function planOffers(plan: Plan, seller: Json): Json {
       lowPrice: low,
       highPrice: high,
       offerCount: 2,
+      priceSpecification,
       seller,
     };
   }
@@ -181,22 +281,41 @@ function planOffers(plan: Plan, seller: Json): Json {
     "@type": "Offer",
     priceCurrency: CURRENCY,
     price: low,
+    priceSpecification,
     seller,
   };
 }
 
 // ── ItemList (a list of plans) ───────────────────────────────────────────────
-/** ItemList schema wrapping a ranked list of plans (each as a Product). */
+/**
+ * ItemList schema wrapping a ranked list of plans. CRUCIALLY it does NOT
+ * re-serialize a full Product per plan: each `itemListElement` is a lean
+ * `ListItem` that REFERENCES the plan's canonical Product by `@id` (the same
+ * {@link planProductId} the entity-linked {@link knowledgeWebSchema} `@graph`
+ * emits as the single source of Product nodes) and carries that id as `url` too —
+ * a real on-site anchor (`/compare/<cat>#plan-<id>`).
+ *
+ * This is what removes the duplicate-Product bloat on the compare pages: the
+ * Product entity is serialized ONCE (in the knowledge-web graph) and merely
+ * pointed at here. A positioned `ListItem` with `position` + `url` is itself a
+ * valid summary-style list entry, so the list stays valid even on a page that
+ * emits it without a sibling knowledge-web graph (the `@id`/`url` then resolves to
+ * the canonical product anchor on the national compare page).
+ */
 export function itemListSchema(plans: Plan[]): Json {
   return {
     "@context": "https://schema.org",
     "@type": "ItemList",
     numberOfItems: plans.length,
-    itemListElement: plans.map((plan, i) => ({
-      "@type": "ListItem",
-      position: i + 1,
-      item: productSchema(plan),
-    })),
+    itemListElement: plans.map((plan, i) => {
+      const id = planProductId(plan);
+      return {
+        "@type": "ListItem",
+        position: i + 1,
+        url: id,
+        item: { "@id": id },
+      };
+    }),
   };
 }
 
@@ -1087,6 +1206,7 @@ function planKnowledgeNodes(plan: Plan, seenIds: Set<string>): Json[] {
   const product: Json = {
     "@type": "Product",
     "@id": productId,
+    additionalType: TELECOM_SERVICE_TYPE,
     name: plan.plan,
     category: catHe,
     sku: plan.id,

@@ -24,14 +24,20 @@ import {
   categoryAggregateOfferSchema,
   breadcrumbSchema,
 } from "@/lib/schema";
-import { pageMetadata } from "@/lib/seo";
+import { pageMetadata, categoryMetaDescription } from "@/lib/seo";
 import { lastDataDate } from "@/lib/aeo";
+import { getLivePlans } from "@/lib/live-catalogue";
 import type { Plan } from "@/lib/types";
 
 const CATEGORY = "internet";
 const TITLE_HE = "אינטרנט גיגה";
 /** The gigabit threshold in Mbps (1000Mb), shown in copy so the filter is honest. */
 const GIGA_MBPS = 1000;
+
+// ISR: regenerate the static HTML hourly so the featured table + ₪ figures read
+// from the live DB catalogue (with the bundled snapshot as a resilient fallback)
+// and never drift stale vs the live /compare hub.
+export const revalidate = 3600;
 
 /** Parse the leading download-speed number (Mbps) from a plan's `מהירות` spec. */
 function downloadMbps(p: Plan): number {
@@ -41,27 +47,37 @@ function downloadMbps(p: Plan): number {
   return m ? parseInt(m[1], 10) : 0;
 }
 
+/** A priced internet plan at gigabit (≥ {@link GIGA_MBPS} Mbps) download speed. */
+function isGiga(p: Plan): boolean {
+  return typeof p.price === "number" && downloadMbps(p) >= GIGA_MBPS;
+}
+
 /** Cheapest internet plans at gigabit (≥ 1000Mb) download speed, priced first. */
-function gigaPlans(limit = 10): Plan[] {
-  return plansByCategory(CATEGORY)
-    .filter(
-      (p): p is Plan =>
-        typeof p.price === "number" && downloadMbps(p) >= GIGA_MBPS,
-    )
+function gigaPlans(all: Plan[], limit = 10): Plan[] {
+  return all
+    .filter((p): p is Plan => isGiga(p))
     .sort((a, b) => a.price - b.price)
     .slice(0, limit);
 }
 
 export const metadata: Metadata = pageMetadata({
   title: "אינטרנט גיגה (1000Mb) — השוואת מחירים",
+  // Fact-dense, truth-only TL;DR derived from the SAME filtered (≥1000Mb) plans the
+  // page renders — real count, provider sample and ₪ floor, never fabricated.
   description:
+    categoryMetaDescription(CATEGORY, {
+      plans: plansByCategory(CATEGORY).filter(isGiga),
+    }) ??
     "מסלולי אינטרנט במהירות גיגה (1000Mb ומעלה) ממוינים מהזול ביותר — לבתים עם " +
-    "הרבה משתמשים כבדים במקביל. השוו מכל הספקים, כולל המחיר אחרי המבצע. השוואה חינמית.",
+      "הרבה משתמשים כבדים במקביל. השוו מכל הספקים, כולל המחיר אחרי המבצע. השוואה חינמית.",
   path: "/internet-giga",
 });
 
-export default function InternetGigaPage() {
-  const plans = gigaPlans();
+export default async function InternetGigaPage() {
+  // ── ONE live catalogue read per render (bundled fallback on any failure) ──────
+  const { plans: catalogue } = await getLivePlans({ category: CATEGORY });
+  const all = catalogue.length ? catalogue : plansByCategory(CATEGORY);
+  const plans = gigaPlans(all);
   // Real "data as of" date (catalogue updated_at, else build-time UTC) — drives
   // BOTH the visible <FreshnessBadge> and the schema's temporalCoverage month, so
   // the structured data can never disagree with what the human reads.
@@ -90,7 +106,7 @@ export default function InternetGigaPage() {
     {
       href: `/compare/${CATEGORY}`,
       label: "השוואת כל מסלולי האינטרנט",
-      hint: `${plansByCategory(CATEGORY).length} מסלולים מכל הספקים, ממוין מהזול.`,
+      hint: `${all.length} מסלולים מכל הספקים, ממוין מהזול.`,
     },
     { href: "/internet-fiber-only", label: "אינטרנט סיב אופטי", hint: "התשתית שמספקת מהירות גיגה אמיתית." },
     { href: "/glossary/download-upload-speed", label: "מהירות הורדה והעלאה", hint: "מה באמת אומר המספר במגה־ביט." },

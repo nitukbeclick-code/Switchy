@@ -63,7 +63,20 @@ export const metadata: Metadata = {
     description:
       "השוואה חינמית של מסלולי תקשורת בישראל — סלולר, אינטרנט, טלוויזיה ועוד.",
   },
-  robots: { index: true, follow: true },
+  robots: {
+    index: true,
+    follow: true,
+    "max-snippet": -1,
+    "max-image-preview": "large",
+    "max-video-preview": -1,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-snippet": -1,
+      "max-image-preview": "large",
+      "max-video-preview": -1,
+    },
+  },
 };
 
 export default function RootLayout({

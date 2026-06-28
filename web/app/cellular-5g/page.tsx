@@ -23,31 +23,50 @@ import {
   categoryAggregateOfferSchema,
   breadcrumbSchema,
 } from "@/lib/schema";
-import { pageMetadata } from "@/lib/seo";
+import { pageMetadata, categoryMetaDescription } from "@/lib/seo";
 import { lastDataDate } from "@/lib/aeo";
+import { getLivePlans } from "@/lib/live-catalogue";
 import type { Plan } from "@/lib/types";
 
 const CATEGORY = "cellular";
 const TITLE_HE = "מסלולי 5G";
 
+// ISR: regenerate the static HTML hourly so the featured table + ₪ figures read
+// from the live DB catalogue (with the bundled snapshot as a resilient fallback)
+// and never drift stale vs the live /compare hub.
+export const revalidate = 3600;
+
+/** Whether a plan is a REAL 5G cellular plan. */
+function is5GPlan(p: Plan): boolean {
+  return typeof p.price === "number" && p.is5G === true;
+}
+
 /** Cheapest REAL 5G cellular plans (by headline price), priced first. */
-function cheapest5G(limit = 8): Plan[] {
-  return plansByCategory(CATEGORY)
-    .filter((p): p is Plan => typeof p.price === "number" && p.is5G === true)
+function cheapest5G(all: Plan[], limit = 8): Plan[] {
+  return all
+    .filter((p): p is Plan => is5GPlan(p))
     .sort((a, b) => a.price - b.price)
     .slice(0, limit);
 }
 
 export const metadata: Metadata = pageMetadata({
   title: "מסלולי 5G הזולים ביותר — השוואת מחירים",
+  // Fact-dense, truth-only TL;DR derived from the SAME filtered (5G-only) plans the
+  // page renders — real count, provider sample and ₪ floor, never fabricated.
   description:
+    categoryMetaDescription(CATEGORY, {
+      plans: plansByCategory(CATEGORY).filter(is5GPlan),
+    }) ??
     "כל מסלולי ה-5G בשוק במקום אחד, ממוינים מהזול ביותר. מהירות וכיסוי משופרים — " +
-    "לרוב במחיר של מסלול רגיל. השוו מחירים מכל החברות, כולל המחיר אחרי המבצע. השוואה חינמית.",
+      "לרוב במחיר של מסלול רגיל. השוו מחירים מכל החברות, כולל המחיר אחרי המבצע. השוואה חינמית.",
   path: "/cellular-5g",
 });
 
-export default function Cellular5gPage() {
-  const plans = cheapest5G();
+export default async function Cellular5gPage() {
+  // ── ONE live catalogue read per render (bundled fallback on any failure) ──────
+  const { plans: catalogue } = await getLivePlans({ category: CATEGORY });
+  const all = catalogue.length ? catalogue : plansByCategory(CATEGORY);
+  const plans = cheapest5G(all);
   // Real "data as of" date (catalogue updated_at, else build-time UTC) — drives
   // BOTH the visible <FreshnessBadge> and the schema's temporalCoverage month, so
   // the structured data can never disagree with what the human reads.
@@ -76,7 +95,7 @@ export default function Cellular5gPage() {
     {
       href: `/compare/${CATEGORY}`,
       label: "השוואת כל מסלולי הסלולר",
-      hint: `${plansByCategory(CATEGORY).length} מסלולים מכל הספקים, ממוין מהזול.`,
+      hint: `${all.length} מסלולים מכל הספקים, ממוין מהזול.`,
     },
     { href: "/cellular", label: "עמוד הסלולר הראשי", hint: "כל תתי-הקטגוריות במקום אחד." },
     { href: "/providers", label: "כל ספקי הסלולר", hint: "מספר מסלולים ומחיר התחלתי לכל ספק." },

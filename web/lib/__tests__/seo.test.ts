@@ -1,6 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { pageMetadata } from "@/lib/seo";
+import {
+  pageMetadata,
+  categoryMetaDescription,
+  homeMetaDescription,
+} from "@/lib/seo";
 import { SITE_NAME, SITE_URL } from "@/lib/schema";
+import type { Plan } from "@/lib/types";
 
 // ────────────────────────────────────────────────────────────────────────────
 // lib/seo.ts — per-page Metadata builder. Invariants: canonical mirrors the path,
@@ -117,5 +122,136 @@ describe("pageMetadata", () => {
     expect(m.openGraph && "url" in m.openGraph ? m.openGraph.url : undefined).toBe(
       `${SITE_URL}/vs/a-vs-b`,
     );
+  });
+});
+
+// ────────────────────────────────────────────────────────────────────────────
+// Fact-dense, catalogue-derived meta descriptions. The load-bearing invariant is
+// TRUTH-ONLY: every figure (plan count, provider count, price floor, provider
+// names) is derived from the SAME plan list the page renders — never fabricated.
+// Synthetic plan lists keep the assertions deterministic across catalogue churn.
+// ────────────────────────────────────────────────────────────────────────────
+
+/** Minimal valid Plan, overridable per-test. */
+function plan(overrides: Partial<Plan> = {}): Plan {
+  return {
+    id: "cel_x",
+    cat: "cellular",
+    provider: "סלקום",
+    plan: "P",
+    price: 50,
+    after: null,
+    is5G: false,
+    noCommit: true,
+    hasAbroad: false,
+    ...overrides,
+  };
+}
+
+describe("categoryMetaDescription", () => {
+  const sample: Plan[] = [
+    plan({ id: "a", provider: "סלקום", price: 39 }),
+    plan({ id: "b", provider: "פרטנר", price: 25 }),
+    plan({ id: "c", provider: "בזק", price: 99 }),
+    plan({ id: "d", provider: "פלאפון", price: 60 }),
+    plan({ id: "e", provider: "סלקום", price: 70 }), // dup provider
+  ];
+
+  it("derives the REAL plan count, provider count, sample names and price floor", () => {
+    const d = categoryMetaDescription("cellular", { plans: sample })!;
+    expect(d).toContain("5 מסלולי סלולר"); // 5 plans
+    expect(d).toContain("מ-4 ספקים"); // 4 distinct providers
+    // sample = first 3 distinct providers in list order
+    expect(d).toContain("(סלקום, פרטנר, בזק…)");
+    // price floor = the cheapest headline price
+    expect(d).toContain("החל מ-₪25 לחודש");
+  });
+
+  it("never fabricates: no number in the output is absent from the plan list", () => {
+    const d = categoryMetaDescription("cellular", { plans: sample })!;
+    // The only bare integers are the real counts (5, 4) and the real floor (25).
+    expect(d).toMatch(/השוואת 5 מסלולי/);
+    expect(d).toMatch(/₪25 /);
+    expect(d).not.toContain("₪39"); // a non-floor price must NOT leak in as the floor
+  });
+
+  it("states the REAL price unit, not a misleading /חודש, for non-monthly plans", () => {
+    // a ₪1/minute roaming tariff must read "₪1 לדקה", never "₪1 לחודש"
+    const d = categoryMetaDescription("abroad", {
+      plans: [
+        plan({ cat: "abroad", provider: "019 מובייל", price: 1, priceUnit: "minute" }),
+        plan({ cat: "abroad", provider: "גולן טלקום", price: 30, priceUnit: "package" }),
+      ],
+    })!;
+    expect(d).toContain("החל מ-₪1 לדקה");
+    expect(d).not.toContain("₪1 לחודש");
+  });
+
+  it("uses the Hebrew category label and stays honest copy (חינמית / ללא התחייבות)", () => {
+    const d = categoryMetaDescription("tv", {
+      plans: [plan({ cat: "tv", provider: "HOT", price: 49 })],
+    })!;
+    expect(d).toContain("מסלולי טלוויזיה");
+    expect(d).toContain("ללא התחייבות");
+  });
+
+  it("omits the price clause when no plan is priced (never invents ₪)", () => {
+    const d = categoryMetaDescription("cellular", {
+      plans: [plan({ price: 0 }), plan({ id: "z", price: Number.NaN })],
+    })!;
+    expect(d).not.toContain("₪");
+    expect(d).not.toContain("החל מ-");
+    expect(d).toContain("2 מסלולי סלולר");
+  });
+
+  it("returns undefined for a category with no plans (caller falls back)", () => {
+    expect(categoryMetaDescription("cellular", { plans: [] })).toBeUndefined();
+  });
+
+  it("omits the ellipsis when the sample covers every provider", () => {
+    const d = categoryMetaDescription("internet", {
+      plans: [
+        plan({ cat: "internet", provider: "בזק", price: 39 }),
+        plan({ cat: "internet", provider: "HOT", price: 45 }),
+      ],
+    })!;
+    expect(d).toContain("(בזק, HOT)"); // 2 providers, 2 shown → no "…"
+    expect(d).not.toContain("…");
+  });
+
+  it("works against the REAL catalogue (default plans) with extractable figures", () => {
+    const d = categoryMetaDescription("cellular")!;
+    expect(d).toMatch(/השוואת \d/);
+    expect(d).toContain("מסלולי סלולר");
+    expect(d).toContain("ספקים");
+    expect(d).toContain("₪");
+  });
+});
+
+describe("homeMetaDescription", () => {
+  it("aggregates the WHOLE catalogue: total plans, providers, categories, ₪ floor", () => {
+    const plans: Plan[] = [
+      plan({ id: "1", cat: "cellular", provider: "סלקום", price: 11 }),
+      plan({ id: "2", cat: "internet", provider: "בזק", price: 39 }),
+      plan({ id: "3", cat: "tv", provider: "HOT", price: 49 }),
+    ];
+    const d = homeMetaDescription({ plans })!;
+    expect(d).toContain("3 מסלולי תקשורת");
+    expect(d).toContain("מ-3 ספקים בישראל");
+    // categories in canonical order, only those with plans
+    expect(d).toContain("סלולר, אינטרנט, טלוויזיה");
+    expect(d).toContain("₪11"); // global floor
+  });
+
+  it("returns undefined when there are no plans at all", () => {
+    expect(homeMetaDescription({ plans: [] })).toBeUndefined();
+  });
+
+  it("works against the REAL catalogue with extractable figures", () => {
+    const d = homeMetaDescription()!;
+    expect(d).toMatch(/השוואת \d/);
+    expect(d).toContain("מסלולי תקשורת");
+    expect(d).toContain("ספקים בישראל");
+    expect(d).toContain("₪");
   });
 });

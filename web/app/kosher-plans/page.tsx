@@ -24,31 +24,50 @@ import {
   categoryAggregateOfferSchema,
   breadcrumbSchema,
 } from "@/lib/schema";
-import { pageMetadata } from "@/lib/seo";
+import { pageMetadata, categoryMetaDescription } from "@/lib/seo";
 import { lastDataDate } from "@/lib/aeo";
+import { getLivePlans } from "@/lib/live-catalogue";
 import type { Plan } from "@/lib/types";
 
 const CATEGORY = "cellular";
 const TITLE_HE = "מסלולים כשרים";
 
+// ISR: regenerate the static HTML hourly so the featured table + ₪ figures read
+// from the live DB catalogue (with the bundled snapshot as a resilient fallback)
+// and never drift stale vs the live /compare hub.
+export const revalidate = 3600;
+
+/** A priced kosher (supervised) plan. */
+function isKosher(p: Plan): boolean {
+  return typeof p.price === "number" && p.kind === "kosher";
+}
+
 /** Cheapest kosher (supervised) plans, priced first. */
-function kosherPlans(limit = 8): Plan[] {
-  return plansByCategory(CATEGORY)
-    .filter((p): p is Plan => typeof p.price === "number" && p.kind === "kosher")
+function kosherPlans(all: Plan[], limit = 8): Plan[] {
+  return all
+    .filter((p): p is Plan => isKosher(p))
     .sort((a, b) => a.price - b.price)
     .slice(0, limit);
 }
 
 export const metadata: Metadata = pageMetadata({
   title: "מסלולים כשרים — השוואת מחירים מלאה",
+  // Fact-dense, truth-only TL;DR derived from the SAME filtered (kosher) plans the
+  // page renders — real count, provider sample and ₪ floor, never fabricated.
   description:
+    categoryMetaDescription(CATEGORY, {
+      plans: plansByCategory(CATEGORY).filter(isKosher),
+    }) ??
     "מסלולי סלולר כשרים בפיקוח — ממוינים מהזול ביותר. השוו מחירים ותנאים מכל " +
-    "החברות במקום אחד, כולל המחיר אחרי המבצע. השוואה חינמית.",
+      "החברות במקום אחד, כולל המחיר אחרי המבצע. השוואה חינמית.",
   path: "/kosher-plans",
 });
 
-export default function KosherPlansPage() {
-  const plans = kosherPlans();
+export default async function KosherPlansPage() {
+  // ── ONE live catalogue read per render (bundled fallback on any failure) ──────
+  const { plans: catalogue } = await getLivePlans({ category: CATEGORY });
+  const all = catalogue.length ? catalogue : plansByCategory(CATEGORY);
+  const plans = kosherPlans(all);
   // Real "data as of" date (catalogue updated_at, else build-time UTC) — drives
   // BOTH the visible <FreshnessBadge> and the schema's temporalCoverage month, so
   // the structured data can never disagree with what the human reads.
@@ -77,7 +96,7 @@ export default function KosherPlansPage() {
     {
       href: `/compare/${CATEGORY}`,
       label: "השוואת כל מסלולי הסלולר",
-      hint: `${plansByCategory(CATEGORY).length} מסלולים מכל הספקים, ממוין מהזול.`,
+      hint: `${all.length} מסלולים מכל הספקים, ממוין מהזול.`,
     },
     { href: "/glossary/kosher-line", label: "מה זה קו כשר?", hint: "הסבר קצר וברור במילון המונחים." },
     { href: "/cellular", label: "עמוד הסלולר הראשי", hint: "כל תתי-הקטגוריות במקום אחד." },

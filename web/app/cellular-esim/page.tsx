@@ -24,12 +24,18 @@ import {
   categoryAggregateOfferSchema,
   breadcrumbSchema,
 } from "@/lib/schema";
-import { pageMetadata } from "@/lib/seo";
+import { pageMetadata, categoryMetaDescription } from "@/lib/seo";
 import { lastDataDate } from "@/lib/aeo";
+import { getLivePlans } from "@/lib/live-catalogue";
 import type { Plan } from "@/lib/types";
 
 const CATEGORY = "cellular";
 const TITLE_HE = "מסלולי סלולר עם eSIM";
+
+// ISR: regenerate the static HTML hourly so the featured table + ₪ figures read
+// from the live DB catalogue (with the bundled snapshot as a resilient fallback)
+// and never drift stale vs the live /compare hub.
+export const revalidate = 3600;
 
 /** Whether a plan EXPLICITLY states eSIM support in its features / fine-print. */
 function statesEsim(p: Plan): boolean {
@@ -42,24 +48,37 @@ function statesEsim(p: Plan): boolean {
   );
 }
 
+/** A priced cellular plan that explicitly states eSIM support. */
+function isEsim(p: Plan): boolean {
+  return typeof p.price === "number" && statesEsim(p);
+}
+
 /** Cheapest cellular plans that explicitly state eSIM support, priced first. */
-function esimPlans(limit = 8): Plan[] {
-  return plansByCategory(CATEGORY)
-    .filter((p): p is Plan => typeof p.price === "number" && statesEsim(p))
+function esimPlans(all: Plan[], limit = 8): Plan[] {
+  return all
+    .filter((p): p is Plan => isEsim(p))
     .sort((a, b) => a.price - b.price)
     .slice(0, limit);
 }
 
 export const metadata: Metadata = pageMetadata({
   title: "מסלולי סלולר עם eSIM בישראל — השוואת מחירים",
+  // Fact-dense, truth-only TL;DR derived from the SAME filtered (eSIM) plans the
+  // page renders — real count, provider sample and ₪ floor, never fabricated.
   description:
+    categoryMetaDescription(CATEGORY, {
+      plans: plansByCategory(CATEGORY).filter(isEsim),
+    }) ??
     "מסלולי סלולר ישראליים התומכים ב-eSIM — ללא SIM פיזי, מתאים לאייפון ולאנדרואיד " +
-    "תואם eSIM. ממוינים מהזול ביותר, כולל המחיר אחרי המבצע. השוואה חינמית.",
+      "תואם eSIM. ממוינים מהזול ביותר, כולל המחיר אחרי המבצע. השוואה חינמית.",
   path: "/cellular-esim",
 });
 
-export default function CellularEsimPage() {
-  const plans = esimPlans();
+export default async function CellularEsimPage() {
+  // ── ONE live catalogue read per render (bundled fallback on any failure) ──────
+  const { plans: catalogue } = await getLivePlans({ category: CATEGORY });
+  const all = catalogue.length ? catalogue : plansByCategory(CATEGORY);
+  const plans = esimPlans(all);
   // Real "data as of" date (catalogue updated_at, else build-time UTC) — drives
   // BOTH the visible <FreshnessBadge> and the schema's temporalCoverage month, so
   // the structured data can never disagree with what the human reads.
@@ -88,7 +107,7 @@ export default function CellularEsimPage() {
     {
       href: `/compare/${CATEGORY}`,
       label: "השוואת כל מסלולי הסלולר",
-      hint: `${plansByCategory(CATEGORY).length} מסלולים מכל הספקים, ממוין מהזול.`,
+      hint: `${all.length} מסלולים מכל הספקים, ממוין מהזול.`,
     },
     { href: "/glossary/esim", label: "מה זה eSIM?", hint: "הסבר קצר וברור במילון המונחים." },
     { href: "/cellular", label: "עמוד הסלולר הראשי", hint: "כל תתי-הקטגוריות במקום אחד." },
